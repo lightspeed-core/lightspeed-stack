@@ -525,7 +525,9 @@ class TestA2AAgentExecutor:
         mock_task = mocker.MagicMock()
         mock_task.id = "test-task-id"
         mock_task.context_id = "test-context-id"
-        mocker.patch("lightspeed_stack.app.endpoints.a2a.new_task", return_value=mock_task)
+        mocker.patch(
+            "lightspeed_stack.app.endpoints.a2a.new_task", return_value=mock_task
+        )
 
         # Mock the streaming process to avoid actual LLM calls
         mocker.patch.object(
@@ -573,7 +575,9 @@ class TestA2AAgentExecutor:
         mock_task = mocker.MagicMock()
         mock_task.id = "computed-task-id-123"
         mock_task.context_id = "computed-context-id-456"
-        mocker.patch("lightspeed_stack.app.endpoints.a2a.new_task", return_value=mock_task)
+        mocker.patch(
+            "lightspeed_stack.app.endpoints.a2a.new_task", return_value=mock_task
+        )
 
         # Mock the streaming process
         mock_process_streaming = mocker.patch.object(
@@ -712,7 +716,8 @@ class TestA2AAgentExecutor:
         mock_context_store = mocker.AsyncMock()
         mock_context_store.get.return_value = None
         mocker.patch(
-            "lightspeed_stack.app.endpoints.a2a._get_context_store", return_value=mock_context_store
+            "lightspeed_stack.app.endpoints.a2a._get_context_store",
+            return_value=mock_context_store,
         )
 
         # Mock the client to raise APIConnectionError on models.list()
@@ -770,7 +775,8 @@ class TestA2AAgentExecutor:
         mock_context_store = mocker.AsyncMock()
         mock_context_store.get.return_value = None
         mocker.patch(
-            "lightspeed_stack.app.endpoints.a2a._get_context_store", return_value=mock_context_store
+            "lightspeed_stack.app.endpoints.a2a._get_context_store",
+            return_value=mock_context_store,
         )
 
         # Mock the client
@@ -856,7 +862,8 @@ class TestA2AAgentExecutor:
         mock_context_store = mocker.AsyncMock()
         mock_context_store.get.return_value = None
         mocker.patch(
-            "lightspeed_stack.app.endpoints.a2a._get_context_store", return_value=mock_context_store
+            "lightspeed_stack.app.endpoints.a2a._get_context_store",
+            return_value=mock_context_store,
         )
 
         mock_client = mocker.AsyncMock()
@@ -931,7 +938,8 @@ class TestA2AAgentExecutor:
         mock_context_store = mocker.AsyncMock()
         mock_context_store.get.return_value = None
         mocker.patch(
-            "lightspeed_stack.app.endpoints.a2a._get_context_store", return_value=mock_context_store
+            "lightspeed_stack.app.endpoints.a2a._get_context_store",
+            return_value=mock_context_store,
         )
 
         mock_client = mocker.AsyncMock()

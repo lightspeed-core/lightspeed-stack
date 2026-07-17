@@ -966,7 +966,9 @@ async def test_query_v2_endpoint_creates_valid_cache_entry(
     _ = mock_query_agent
     _ = patch_db_session
 
-    cache_spy = mocker.spy(lightspeed_stack.utils.query, "store_conversation_into_cache")
+    cache_spy = mocker.spy(
+        lightspeed_stack.utils.query, "store_conversation_into_cache"
+    )
 
     query_request = QueryRequest(query="What is Ansible?")
 
@@ -1264,7 +1266,9 @@ async def test_query_v2_endpoint_quota_integration(
         output_tokens=50,
     )
 
-    mock_consume = mocker.spy(lightspeed_stack.app.endpoints.query, "consume_query_tokens")
+    mock_consume = mocker.spy(
+        lightspeed_stack.app.endpoints.query, "consume_query_tokens"
+    )
     mocker.spy(lightspeed_stack.app.endpoints.query, "get_available_quotas")
 
     query_request = QueryRequest(query="What is Ansible?")

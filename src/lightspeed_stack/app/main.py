@@ -17,7 +17,9 @@ from lightspeed_stack import version
 from lightspeed_stack.a2a_storage import A2AStorageFactory
 from lightspeed_stack.app import routers
 from lightspeed_stack.app.database import create_tables, initialize_database
-from lightspeed_stack.app.endpoints.streaming_query import shutdown_background_topic_summary_tasks
+from lightspeed_stack.app.endpoints.streaming_query import (
+    shutdown_background_topic_summary_tasks,
+)
 from lightspeed_stack.authorization.azure_token_manager import AzureEntraIDManager
 from lightspeed_stack.client import AsyncLlamaStackClientHolder
 from lightspeed_stack.configuration import configuration

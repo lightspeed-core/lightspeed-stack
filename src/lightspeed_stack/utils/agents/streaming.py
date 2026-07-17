@@ -42,7 +42,9 @@ from lightspeed_stack.models.common.agents import (
 from lightspeed_stack.models.common.query import Attachment
 from lightspeed_stack.models.common.responses import ResponseInput
 from lightspeed_stack.models.common.responses.contexts import ResponseGeneratorContext
-from lightspeed_stack.models.common.responses.responses_api_params import ResponsesApiParams
+from lightspeed_stack.models.common.responses.responses_api_params import (
+    ResponsesApiParams,
+)
 from lightspeed_stack.models.common.turn_summary import TurnSummary
 from lightspeed_stack.utils.agents.query import (
     AgentFinishReason,

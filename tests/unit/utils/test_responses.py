@@ -937,7 +937,8 @@ class TestGetTopicSummary:
         mock_client.responses.create = mocker.AsyncMock(return_value=mock_response)
 
         mocker.patch(
-            "lightspeed_stack.utils.responses.get_topic_summary_system_prompt", return_value="Summarize:"
+            "lightspeed_stack.utils.responses.get_topic_summary_system_prompt",
+            return_value="Summarize:",
         )
         mocker.patch("lightspeed_stack.utils.responses.configuration", mocker.Mock())
 
@@ -956,7 +957,8 @@ class TestGetTopicSummary:
         mock_client.responses.create = mocker.AsyncMock(return_value=mock_response)
 
         mocker.patch(
-            "lightspeed_stack.utils.responses.get_topic_summary_system_prompt", return_value="Summarize:"
+            "lightspeed_stack.utils.responses.get_topic_summary_system_prompt",
+            return_value="Summarize:",
         )
         mocker.patch("lightspeed_stack.utils.responses.configuration", mocker.Mock())
 
@@ -976,7 +978,8 @@ class TestGetTopicSummary:
         )
 
         mocker.patch(
-            "lightspeed_stack.utils.responses.get_topic_summary_system_prompt", return_value="Summarize:"
+            "lightspeed_stack.utils.responses.get_topic_summary_system_prompt",
+            return_value="Summarize:",
         )
         mocker.patch("lightspeed_stack.utils.responses.configuration", mocker.Mock())
 
@@ -995,7 +998,8 @@ class TestGetTopicSummary:
         mock_client.responses.create = mocker.AsyncMock(side_effect=mock_error)
 
         mocker.patch(
-            "lightspeed_stack.utils.responses.get_topic_summary_system_prompt", return_value="Summarize:"
+            "lightspeed_stack.utils.responses.get_topic_summary_system_prompt",
+            return_value="Summarize:",
         )
         mocker.patch("lightspeed_stack.utils.responses.configuration", mocker.Mock())
         mocker.patch(
@@ -1037,8 +1041,13 @@ class TestResolveToolChoice:
         self, mocker: MockerFixture, tools_arg: Optional[list[InputTool]]
     ) -> None:
         """ToolChoiceMode.none always yields (None, None)."""
-        mocker.patch("lightspeed_stack.utils.responses.AsyncLlamaStackClientHolder.get_client")
-        mocker.patch("lightspeed_stack.utils.responses.prepare_tools", new_callable=mocker.AsyncMock)
+        mocker.patch(
+            "lightspeed_stack.utils.responses.AsyncLlamaStackClientHolder.get_client"
+        )
+        mocker.patch(
+            "lightspeed_stack.utils.responses.prepare_tools",
+            new_callable=mocker.AsyncMock,
+        )
         out = await resolve_tool_choice(
             tools_arg,
             ToolChoiceMode.none,
@@ -1121,7 +1130,9 @@ class TestResolveToolChoice:
             new_callable=mocker.AsyncMock,
             return_value=None,
         )
-        mocker.patch("lightspeed_stack.utils.responses.AsyncLlamaStackClientHolder.get_client")
+        mocker.patch(
+            "lightspeed_stack.utils.responses.AsyncLlamaStackClientHolder.get_client"
+        )
         tool_choice_obj = ToolChoiceFileSearch()
         prepared, choice = await resolve_tool_choice(
             None,
@@ -1252,7 +1263,9 @@ class TestResolveToolChoice:
             new_callable=mocker.AsyncMock,
             return_value=[fs],
         )
-        mocker.patch("lightspeed_stack.utils.responses.AsyncLlamaStackClientHolder.get_client")
+        mocker.patch(
+            "lightspeed_stack.utils.responses.AsyncLlamaStackClientHolder.get_client"
+        )
         prepared, choice = await resolve_tool_choice(
             None,
             mode_choice,
@@ -1271,7 +1284,9 @@ class TestResolveToolChoice:
             new_callable=mocker.AsyncMock,
             return_value=None,
         )
-        mocker.patch("lightspeed_stack.utils.responses.AsyncLlamaStackClientHolder.get_client")
+        mocker.patch(
+            "lightspeed_stack.utils.responses.AsyncLlamaStackClientHolder.get_client"
+        )
         prepared, choice = await resolve_tool_choice(
             None,
             ToolChoiceMode.auto,
@@ -1292,7 +1307,9 @@ class TestResolveToolChoice:
             new_callable=mocker.AsyncMock,
             return_value=[fs, mcp],
         )
-        mocker.patch("lightspeed_stack.utils.responses.AsyncLlamaStackClientHolder.get_client")
+        mocker.patch(
+            "lightspeed_stack.utils.responses.AsyncLlamaStackClientHolder.get_client"
+        )
         allowed = OpenAIResponseInputToolChoiceAllowedTools(
             mode="auto",
             tools=[{"type": "mcp", "server_label": "s1"}],
@@ -1318,7 +1335,9 @@ class TestResolveToolChoice:
             new_callable=mocker.AsyncMock,
             return_value=[mcp],
         )
-        mocker.patch("lightspeed_stack.utils.responses.AsyncLlamaStackClientHolder.get_client")
+        mocker.patch(
+            "lightspeed_stack.utils.responses.AsyncLlamaStackClientHolder.get_client"
+        )
         allowed = OpenAIResponseInputToolChoiceAllowedTools(
             mode="auto",
             tools=[{"type": "file_search"}],
@@ -1338,7 +1357,9 @@ class TestResolveToolChoice:
             new_callable=mocker.AsyncMock,
             return_value=[mcp],
         )
-        mocker.patch("lightspeed_stack.utils.responses.AsyncLlamaStackClientHolder.get_client")
+        mocker.patch(
+            "lightspeed_stack.utils.responses.AsyncLlamaStackClientHolder.get_client"
+        )
         allowed = OpenAIResponseInputToolChoiceAllowedTools(
             mode="required",
             tools=[{"type": "mcp"}],
@@ -1608,7 +1629,9 @@ class TestPrepareTools:
     ) -> None:
         """Test prepare_tools with specified vector store IDs."""
         mock_client = mocker.AsyncMock()
-        mocker.patch("lightspeed_stack.utils.responses.get_mcp_tools", return_value=None)
+        mocker.patch(
+            "lightspeed_stack.utils.responses.get_mcp_tools", return_value=None
+        )
 
         result = await prepare_tools(mock_client, ["vs1", "vs2"], False, "token")
         assert result is not None
@@ -1631,7 +1654,9 @@ class TestPrepareTools:
         mock_client.vector_stores.list = mocker.AsyncMock(
             return_value=mock_vector_stores
         )
-        mocker.patch("lightspeed_stack.utils.responses.get_mcp_tools", return_value=None)
+        mocker.patch(
+            "lightspeed_stack.utils.responses.get_mcp_tools", return_value=None
+        )
 
         result = await prepare_tools(mock_client, None, False, "token")
         assert result is not None
@@ -1661,7 +1686,10 @@ class TestPrepareTools:
             server_label="test-server",
             server_url="http://test",
         )
-        mocker.patch("lightspeed_stack.utils.responses.get_mcp_tools", return_value=[mock_mcp_tool])
+        mocker.patch(
+            "lightspeed_stack.utils.responses.get_mcp_tools",
+            return_value=[mock_mcp_tool],
+        )
 
         result = await prepare_tools(mock_client, ["vs1"], False, "token")
         assert result is not None
@@ -1691,7 +1719,9 @@ class TestPrepareTools:
         mock_client.vector_stores.list = mocker.AsyncMock(
             return_value=mock_vector_stores
         )
-        mocker.patch("lightspeed_stack.utils.responses.get_mcp_tools", return_value=None)
+        mocker.patch(
+            "lightspeed_stack.utils.responses.get_mcp_tools", return_value=None
+        )
 
         result = await prepare_tools(mock_client, None, False, "token")
         assert result is None
@@ -1776,7 +1806,9 @@ class TestPrepareToolsTranslatesVectorStoreIds:
     ) -> None:
         """Test that prepare_tools translates customer-facing IDs to internal IDs."""
         mock_client = mocker.AsyncMock()
-        mocker.patch("lightspeed_stack.utils.responses.get_mcp_tools", return_value=None)
+        mocker.patch(
+            "lightspeed_stack.utils.responses.get_mcp_tools", return_value=None
+        )
 
         # Configure BYOK RAG mapping
         mock_byok_rag = mocker.Mock()
@@ -1800,7 +1832,9 @@ class TestPrepareToolsTranslatesVectorStoreIds:
     ) -> None:
         """Test that prepare_tools passes through IDs not in BYOK config."""
         mock_client = mocker.AsyncMock()
-        mocker.patch("lightspeed_stack.utils.responses.get_mcp_tools", return_value=None)
+        mocker.patch(
+            "lightspeed_stack.utils.responses.get_mcp_tools", return_value=None
+        )
 
         # Configure empty BYOK RAG
         mock_config = mocker.Mock()
@@ -1827,7 +1861,9 @@ class TestPrepareToolsTranslatesVectorStoreIds:
         mock_client.vector_stores.list = mocker.AsyncMock(
             return_value=mock_vector_stores
         )
-        mocker.patch("lightspeed_stack.utils.responses.get_mcp_tools", return_value=None)
+        mocker.patch(
+            "lightspeed_stack.utils.responses.get_mcp_tools", return_value=None
+        )
 
         # Configure BYOK RAG whose rag_id matches the fetched ID so that
         # accidental translation would change the result and fail the assertion
@@ -1856,7 +1892,9 @@ class TestPrepareToolsVectorStoreResolution:
     ) -> None:
         """Test that rag.tool config IDs are used when no per-request IDs are provided."""
         mock_client = mocker.AsyncMock()
-        mocker.patch("lightspeed_stack.utils.responses.get_mcp_tools", return_value=None)
+        mocker.patch(
+            "lightspeed_stack.utils.responses.get_mcp_tools", return_value=None
+        )
 
         mock_config = mocker.Mock()
         mock_config.configuration.byok_rag = []
@@ -1878,7 +1916,9 @@ class TestPrepareToolsVectorStoreResolution:
     ) -> None:
         """Test that rag.tool config IDs are translated from rag_ids to vector_db_ids."""
         mock_client = mocker.AsyncMock()
-        mocker.patch("lightspeed_stack.utils.responses.get_mcp_tools", return_value=None)
+        mocker.patch(
+            "lightspeed_stack.utils.responses.get_mcp_tools", return_value=None
+        )
 
         mock_byok_rag = mocker.Mock()
         mock_byok_rag.rag_id = "ocp_docs"
@@ -1900,7 +1940,9 @@ class TestPrepareToolsVectorStoreResolution:
     async def test_inline_rag_disables_tool_rag(self, mocker: MockerFixture) -> None:
         """Test that configuring rag.inline without rag.tool disables tool RAG."""
         mock_client = mocker.AsyncMock()
-        mocker.patch("lightspeed_stack.utils.responses.get_mcp_tools", return_value=None)
+        mocker.patch(
+            "lightspeed_stack.utils.responses.get_mcp_tools", return_value=None
+        )
 
         mock_config = mocker.Mock()
         mock_config.configuration.byok_rag = []
@@ -1922,7 +1964,9 @@ class TestPrepareToolsVectorStoreResolution:
     ) -> None:
         """Test that per-request vector_store_ids take priority over rag.tool config."""
         mock_client = mocker.AsyncMock()
-        mocker.patch("lightspeed_stack.utils.responses.get_mcp_tools", return_value=None)
+        mocker.patch(
+            "lightspeed_stack.utils.responses.get_mcp_tools", return_value=None
+        )
 
         mock_config = mocker.Mock()
         mock_config.configuration.byok_rag = []
@@ -1948,7 +1992,9 @@ class TestPrepareToolsVectorStoreResolution:
         mock_list = mocker.Mock()
         mock_list.data = [mock_vs]
         mock_client.vector_stores.list = mocker.AsyncMock(return_value=mock_list)
-        mocker.patch("lightspeed_stack.utils.responses.get_mcp_tools", return_value=None)
+        mocker.patch(
+            "lightspeed_stack.utils.responses.get_mcp_tools", return_value=None
+        )
 
         mock_config = mocker.Mock()
         mock_config.configuration.byok_rag = []
@@ -1985,11 +2031,19 @@ class TestPrepareResponsesParams:
         mock_config = mocker.Mock()
         mock_config.inference = InferenceConfiguration()
         mocker.patch("lightspeed_stack.utils.responses.configuration", mock_config)
-        mocker.patch("lightspeed_stack.utils.responses.get_system_prompt", return_value="System prompt")
-        mocker.patch("lightspeed_stack.utils.responses.prepare_tools", return_value=None)
-        mocker.patch("lightspeed_stack.utils.responses.prepare_input", return_value="test")
         mocker.patch(
-            "lightspeed_stack.utils.responses.to_llama_stack_conversation_id", return_value="llama_conv1"
+            "lightspeed_stack.utils.responses.get_system_prompt",
+            return_value="System prompt",
+        )
+        mocker.patch(
+            "lightspeed_stack.utils.responses.prepare_tools", return_value=None
+        )
+        mocker.patch(
+            "lightspeed_stack.utils.responses.prepare_input", return_value="test"
+        )
+        mocker.patch(
+            "lightspeed_stack.utils.responses.to_llama_stack_conversation_id",
+            return_value="llama_conv1",
         )
 
         result = await prepare_responses_params(
@@ -2021,9 +2075,16 @@ class TestPrepareResponsesParams:
         mock_config = mocker.Mock()
         mock_config.inference = InferenceConfiguration()
         mocker.patch("lightspeed_stack.utils.responses.configuration", mock_config)
-        mocker.patch("lightspeed_stack.utils.responses.get_system_prompt", return_value="System prompt")
-        mocker.patch("lightspeed_stack.utils.responses.prepare_tools", return_value=None)
-        mocker.patch("lightspeed_stack.utils.responses.prepare_input", return_value="test")
+        mocker.patch(
+            "lightspeed_stack.utils.responses.get_system_prompt",
+            return_value="System prompt",
+        )
+        mocker.patch(
+            "lightspeed_stack.utils.responses.prepare_tools", return_value=None
+        )
+        mocker.patch(
+            "lightspeed_stack.utils.responses.prepare_input", return_value="test"
+        )
 
         result = await prepare_responses_params(
             mock_client, query_request, None, "token"
@@ -2073,9 +2134,16 @@ class TestPrepareResponsesParams:
         mock_config = mocker.Mock()
         mock_config.inference = InferenceConfiguration()
         mocker.patch("lightspeed_stack.utils.responses.configuration", mock_config)
-        mocker.patch("lightspeed_stack.utils.responses.get_system_prompt", return_value="System prompt")
-        mocker.patch("lightspeed_stack.utils.responses.prepare_tools", return_value=None)
-        mocker.patch("lightspeed_stack.utils.responses.prepare_input", return_value="test")
+        mocker.patch(
+            "lightspeed_stack.utils.responses.get_system_prompt",
+            return_value="System prompt",
+        )
+        mocker.patch(
+            "lightspeed_stack.utils.responses.prepare_tools", return_value=None
+        )
+        mocker.patch(
+            "lightspeed_stack.utils.responses.prepare_input", return_value="test"
+        )
 
         with pytest.raises(HTTPException) as exc_info:
             await prepare_responses_params(mock_client, query_request, None, "token")
@@ -2140,11 +2208,17 @@ class TestPrepareResponsesParams:
         mock_config = mocker.Mock()
         mock_config.inference = InferenceConfiguration()
         mocker.patch("lightspeed_stack.utils.responses.configuration", mock_config)
-        mocker.patch("lightspeed_stack.utils.responses.get_system_prompt", return_value="System prompt")
         mocker.patch(
-            "lightspeed_stack.utils.responses.prepare_tools", return_value=mcp_tools_with_headers
+            "lightspeed_stack.utils.responses.get_system_prompt",
+            return_value="System prompt",
         )
-        mocker.patch("lightspeed_stack.utils.responses.prepare_input", return_value="test")
+        mocker.patch(
+            "lightspeed_stack.utils.responses.prepare_tools",
+            return_value=mcp_tools_with_headers,
+        )
+        mocker.patch(
+            "lightspeed_stack.utils.responses.prepare_input", return_value="test"
+        )
 
         result = await prepare_responses_params(
             mock_client, query_request, None, "token"
@@ -2188,9 +2262,16 @@ class TestPrepareResponsesParams:
         mock_config = mocker.Mock()
         mock_config.inference = InferenceConfiguration()
         mocker.patch("lightspeed_stack.utils.responses.configuration", mock_config)
-        mocker.patch("lightspeed_stack.utils.responses.get_system_prompt", return_value="System prompt")
-        mocker.patch("lightspeed_stack.utils.responses.prepare_tools", return_value=None)
-        mocker.patch("lightspeed_stack.utils.responses.prepare_input", return_value="test")
+        mocker.patch(
+            "lightspeed_stack.utils.responses.get_system_prompt",
+            return_value="System prompt",
+        )
+        mocker.patch(
+            "lightspeed_stack.utils.responses.prepare_tools", return_value=None
+        )
+        mocker.patch(
+            "lightspeed_stack.utils.responses.prepare_input", return_value="test"
+        )
 
         result = await prepare_responses_params(
             mock_client, query_request, None, "token"
@@ -2220,9 +2301,16 @@ class TestPrepareResponsesParams:
         mock_config = mocker.Mock()
         mock_config.inference = InferenceConfiguration()
         mocker.patch("lightspeed_stack.utils.responses.configuration", mock_config)
-        mocker.patch("lightspeed_stack.utils.responses.get_system_prompt", return_value="System prompt")
-        mocker.patch("lightspeed_stack.utils.responses.prepare_tools", return_value=None)
-        mocker.patch("lightspeed_stack.utils.responses.prepare_input", return_value="test")
+        mocker.patch(
+            "lightspeed_stack.utils.responses.get_system_prompt",
+            return_value="System prompt",
+        )
+        mocker.patch(
+            "lightspeed_stack.utils.responses.prepare_tools", return_value=None
+        )
+        mocker.patch(
+            "lightspeed_stack.utils.responses.prepare_input", return_value="test"
+        )
 
         with pytest.raises(HTTPException) as exc_info:
             await prepare_responses_params(mock_client, query_request, None, "token")
@@ -2434,7 +2522,9 @@ class TestExtractTokenUsage:
         mock_token_usage = mocker.patch(
             "lightspeed_stack.utils.responses.recording.record_llm_token_usage"
         )
-        mock_llm_call = mocker.patch("lightspeed_stack.utils.responses.recording.record_llm_call")
+        mock_llm_call = mocker.patch(
+            "lightspeed_stack.utils.responses.recording.record_llm_call"
+        )
 
         result = extract_token_usage(mock_usage, "provider1/model1", "/test-endpoint")
         assert result.input_tokens == input_tokens
@@ -2451,7 +2541,9 @@ class TestExtractTokenUsage:
             "lightspeed_stack.utils.responses.extract_provider_and_model_from_model_id",
             return_value=("provider1", "model1"),
         )
-        mock_llm_call = mocker.patch("lightspeed_stack.utils.responses.recording.record_llm_call")
+        mock_llm_call = mocker.patch(
+            "lightspeed_stack.utils.responses.recording.record_llm_call"
+        )
 
         result = extract_token_usage(None, "provider1/model1", "/test-endpoint")
         assert result.input_tokens == 0
@@ -2472,7 +2564,9 @@ class TestExtractTokenUsage:
         mock_token_usage = mocker.patch(
             "lightspeed_stack.utils.responses.recording.record_llm_token_usage"
         )
-        mock_llm_call = mocker.patch("lightspeed_stack.utils.responses.recording.record_llm_call")
+        mock_llm_call = mocker.patch(
+            "lightspeed_stack.utils.responses.recording.record_llm_call"
+        )
 
         result = extract_token_usage(mock_usage, "provider1/model1", "/test-endpoint")
         assert result.input_tokens == 0
@@ -2488,7 +2582,9 @@ class TestExtractTokenUsage:
             "lightspeed_stack.utils.responses.extract_provider_and_model_from_model_id",
             return_value=("provider1", "model1"),
         )
-        mock_llm_call = mocker.patch("lightspeed_stack.utils.responses.recording.record_llm_call")
+        mock_llm_call = mocker.patch(
+            "lightspeed_stack.utils.responses.recording.record_llm_call"
+        )
 
         result = extract_token_usage(None, "provider1/model1", "/test-endpoint")
         assert result.input_tokens == 0
@@ -2508,7 +2604,8 @@ class TestBuildToolCallSummary:
         mock_item.arguments = '{"arg1": "value1"}'
 
         mocker.patch(
-            "lightspeed_stack.utils.responses.parse_arguments_string", return_value={"arg1": "value1"}
+            "lightspeed_stack.utils.responses.parse_arguments_string",
+            return_value={"arg1": "value1"},
         )
 
         call_summary, result_summary = build_tool_call_summary(mock_item)
@@ -2578,7 +2675,8 @@ class TestBuildToolCallSummary:
         mock_item.output = "output"
 
         mocker.patch(
-            "lightspeed_stack.utils.responses.parse_arguments_string", return_value={"arg": "value"}
+            "lightspeed_stack.utils.responses.parse_arguments_string",
+            return_value={"arg": "value"},
         )
 
         call_summary, result_summary = build_tool_call_summary(mock_item)
@@ -2601,7 +2699,9 @@ class TestBuildToolCallSummary:
         mock_item.error = "Error occurred"
         mock_item.output = None
 
-        mocker.patch("lightspeed_stack.utils.responses.parse_arguments_string", return_value={})
+        mocker.patch(
+            "lightspeed_stack.utils.responses.parse_arguments_string", return_value={}
+        )
 
         _call_summary, result_summary = build_tool_call_summary(mock_item)
         assert result_summary is not None
@@ -2641,7 +2741,8 @@ class TestBuildToolCallSummary:
         mock_item.arguments = '{"action": "delete"}'
 
         mocker.patch(
-            "lightspeed_stack.utils.responses.parse_arguments_string", return_value={"action": "delete"}
+            "lightspeed_stack.utils.responses.parse_arguments_string",
+            return_value={"action": "delete"},
         )
 
         call_summary, result_summary = build_tool_call_summary(mock_item)

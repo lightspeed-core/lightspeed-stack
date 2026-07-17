@@ -12,7 +12,9 @@ from fastapi.responses import StreamingResponse
 from pytest_mock import AsyncMockType, MockerFixture
 
 from lightspeed_stack import constants
-from lightspeed_stack.app.endpoints.streaming_query import streaming_query_endpoint_handler
+from lightspeed_stack.app.endpoints.streaming_query import (
+    streaming_query_endpoint_handler,
+)
 from lightspeed_stack.authentication.interface import AuthTuple
 from lightspeed_stack.configuration import AppConfig
 from lightspeed_stack.models.api.requests import QueryRequest
@@ -1029,7 +1031,9 @@ async def test_streaming_query_rag_content_limit_caps_inline_rag(  # pylint: dis
     - Context chunk count equals the lowered INLINE_RAG_MAX_CHUNKS
     - Only the highest-scored chunks appear in the context
     """
-    mocker.patch("lightspeed_stack.utils.vector_search.constants.INLINE_RAG_MAX_CHUNKS", 3)
+    mocker.patch(
+        "lightspeed_stack.utils.vector_search.constants.INLINE_RAG_MAX_CHUNKS", 3
+    )
 
     entry = mocker.MagicMock()
     entry.rag_id = "big-source"

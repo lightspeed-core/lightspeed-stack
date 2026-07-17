@@ -16,7 +16,8 @@ async def test_setup_model_metrics(mocker: MockerFixture) -> None:
     # Make sure the client is an AsyncMock for async methods
     mock_client = mocker.AsyncMock()
     mocker.patch(
-        "lightspeed_stack.client.AsyncLlamaStackClientHolder.get_client", return_value=mock_client
+        "lightspeed_stack.client.AsyncLlamaStackClientHolder.get_client",
+        return_value=mock_client,
     )
     mocker.patch(
         "lightspeed_stack.metrics.utils.configuration.inference.default_provider",

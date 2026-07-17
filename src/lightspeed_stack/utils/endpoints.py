@@ -19,10 +19,17 @@ from lightspeed_stack.models.api.responses.error import (
 from lightspeed_stack.models.common.responses.responses_conversation_context import (
     ResponsesConversationContext,
 )
-from lightspeed_stack.models.common.turn_summary import RAGChunk, ReferencedDocument, TurnSummary
+from lightspeed_stack.models.common.turn_summary import (
+    RAGChunk,
+    ReferencedDocument,
+    TurnSummary,
+)
 from lightspeed_stack.models.database.conversations import UserConversation, UserTurn
 from lightspeed_stack.utils.responses import create_new_conversation
-from lightspeed_stack.utils.suid import normalize_conversation_id, to_llama_stack_conversation_id
+from lightspeed_stack.utils.suid import (
+    normalize_conversation_id,
+    to_llama_stack_conversation_id,
+)
 
 logger = get_logger(__name__)
 

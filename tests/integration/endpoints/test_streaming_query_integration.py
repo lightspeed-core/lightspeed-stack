@@ -9,7 +9,9 @@ from fastapi.responses import StreamingResponse
 from fastapi.testclient import TestClient
 from pytest_mock import AsyncMockType, MockerFixture
 
-from lightspeed_stack.app.endpoints.streaming_query import streaming_query_endpoint_handler
+from lightspeed_stack.app.endpoints.streaming_query import (
+    streaming_query_endpoint_handler,
+)
 from lightspeed_stack.authentication.interface import AuthTuple
 from lightspeed_stack.configuration import AppConfig
 from lightspeed_stack.models.api.requests import QueryRequest

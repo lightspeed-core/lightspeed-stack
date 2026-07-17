@@ -10,14 +10,18 @@ from lightspeed_stack.authentication.interface import AuthTuple
 from lightspeed_stack.authorization.middleware import authorize
 from lightspeed_stack.configuration import configuration
 from lightspeed_stack.log import get_logger
-from lightspeed_stack.models.api.responses.constants import UNAUTHORIZED_OPENAPI_EXAMPLES
+from lightspeed_stack.models.api.responses.constants import (
+    UNAUTHORIZED_OPENAPI_EXAMPLES,
+)
 from lightspeed_stack.models.api.responses.error import (
     ForbiddenResponse,
     InternalServerErrorResponse,
     ServiceUnavailableResponse,
     UnauthorizedResponse,
 )
-from lightspeed_stack.models.api.responses.successful import MCPClientAuthOptionsResponse
+from lightspeed_stack.models.api.responses.successful import (
+    MCPClientAuthOptionsResponse,
+)
 from lightspeed_stack.models.common import MCPServerAuthInfo
 from lightspeed_stack.models.config import Action
 from lightspeed_stack.utils.endpoints import check_configuration_loaded

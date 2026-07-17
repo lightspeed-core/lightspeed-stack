@@ -51,10 +51,15 @@ from lightspeed_stack.models.common.agents import (
     ToolResultStreamPayload,
     TurnCompleteStreamPayload,
 )
-from lightspeed_stack.models.common.moderation import ShieldModerationBlocked, ShieldModerationPassed
-from models.common.query import Attachment as QueryAttachment
+from lightspeed_stack.models.common.moderation import (
+    ShieldModerationBlocked,
+    ShieldModerationPassed,
+)
+from lightspeed_stack.models.common.query import Attachment as QueryAttachment
 from lightspeed_stack.models.common.responses.contexts import ResponseGeneratorContext
-from lightspeed_stack.models.common.responses.responses_api_params import ResponsesApiParams
+from lightspeed_stack.models.common.responses.responses_api_params import (
+    ResponsesApiParams,
+)
 from lightspeed_stack.models.common.turn_summary import RAGContext, TurnSummary
 from lightspeed_stack.utils.agents.query import AgentFinishReason
 from lightspeed_stack.utils.agents.streaming import (
@@ -224,7 +229,9 @@ def stream_interrupt_mocks_fixture(mocker: MockerFixture) -> dict[str, Any]:
         "lightspeed_stack.utils.stream_interrupts.get_stream_interrupt_registry",
         return_value=registry,
     )
-    deregister = mocker.patch("lightspeed_stack.utils.agents.streaming.deregister_stream")
+    deregister = mocker.patch(
+        "lightspeed_stack.utils.agents.streaming.deregister_stream"
+    )
     return {"registry": registry, "deregister": deregister}
 
 
@@ -652,7 +659,9 @@ class TestGenerateAgentResponse:
                 MEDIA_TYPE_JSON,
             )
 
-        consume_mock = mocker.patch("lightspeed_stack.utils.agents.streaming.consume_query_tokens")
+        consume_mock = mocker.patch(
+            "lightspeed_stack.utils.agents.streaming.consume_query_tokens"
+        )
         mocker.patch(
             "lightspeed_stack.utils.agents.streaming.get_available_quotas",
             return_value={"daily": 100},
@@ -661,10 +670,14 @@ class TestGenerateAgentResponse:
             "lightspeed_stack.utils.agents.streaming.maybe_get_topic_summary",
             new=mocker.AsyncMock(return_value=None),
         )
-        store_mock = mocker.patch("lightspeed_stack.utils.agents.streaming.store_query_results")
+        store_mock = mocker.patch(
+            "lightspeed_stack.utils.agents.streaming.store_query_results"
+        )
         mock_config = mocker.Mock()
         mock_config.quota_limiters = []
-        mocker.patch("lightspeed_stack.utils.agents.streaming.configuration", mock_config)
+        mocker.patch(
+            "lightspeed_stack.utils.agents.streaming.configuration", mock_config
+        )
 
         result = [
             event

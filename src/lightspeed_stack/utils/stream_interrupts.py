@@ -16,12 +16,17 @@ from lightspeed_stack.constants import (
 )
 from lightspeed_stack.log import get_logger
 from lightspeed_stack.models.common.responses.contexts import ResponseGeneratorContext
-from lightspeed_stack.models.common.responses.responses_api_params import ResponsesApiParams
+from lightspeed_stack.models.common.responses.responses_api_params import (
+    ResponsesApiParams,
+)
 from lightspeed_stack.models.common.responses.types import ResponseInput
 from lightspeed_stack.models.common.turn_summary import TurnSummary
 from lightspeed_stack.utils.conversations import append_turn_items_to_conversation
 from lightspeed_stack.utils.markdown_repair import close_open_markdown
-from lightspeed_stack.utils.query import store_query_results, update_conversation_topic_summary
+from lightspeed_stack.utils.query import (
+    store_query_results,
+    update_conversation_topic_summary,
+)
 from lightspeed_stack.utils.responses import get_topic_summary
 from lightspeed_stack.utils.shields import append_turn_to_conversation
 from lightspeed_stack.utils.types import Singleton

@@ -6,7 +6,11 @@ from typing import Annotated, Literal, Optional, Self, TypeAlias
 from pydantic import BaseModel, ConfigDict, Field
 
 from lightspeed_stack.models.api.responses.error import AbstractErrorResponse
-from lightspeed_stack.models.common import ReferencedDocument, ToolCallSummary, ToolResultSummary
+from lightspeed_stack.models.common import (
+    ReferencedDocument,
+    ToolCallSummary,
+    ToolResultSummary,
+)
 
 
 class StreamPayloadBase(BaseModel):

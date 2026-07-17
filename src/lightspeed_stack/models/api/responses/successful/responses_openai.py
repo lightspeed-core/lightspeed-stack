@@ -27,8 +27,12 @@ from llama_stack_api.openai_responses import (
     OpenAIResponseUsage as Usage,
 )
 
-from lightspeed_stack.models.api.responses.constants import SUCCESSFUL_RESPONSE_DESCRIPTION
-from lightspeed_stack.models.api.responses.successful.bases import AbstractSuccessfulResponse
+from lightspeed_stack.models.api.responses.constants import (
+    SUCCESSFUL_RESPONSE_DESCRIPTION,
+)
+from lightspeed_stack.models.api.responses.successful.bases import (
+    AbstractSuccessfulResponse,
+)
 
 
 class ResponsesResponse(AbstractSuccessfulResponse):

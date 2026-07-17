@@ -6,8 +6,12 @@ from pydantic import Field
 from pydantic_core import SchemaError
 
 from lightspeed_stack.constants import MEDIA_TYPE_EVENT_STREAM
-from lightspeed_stack.models.api.responses.constants import SUCCESSFUL_RESPONSE_DESCRIPTION
-from lightspeed_stack.models.api.responses.successful.bases import AbstractSuccessfulResponse
+from lightspeed_stack.models.api.responses.constants import (
+    SUCCESSFUL_RESPONSE_DESCRIPTION,
+)
+from lightspeed_stack.models.api.responses.successful.bases import (
+    AbstractSuccessfulResponse,
+)
 from lightspeed_stack.models.common.turn_summary import (
     RAGChunk,
     ReferencedDocument,

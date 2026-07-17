@@ -737,10 +737,15 @@ def mock_llama_stack_client_fixture(
     # Patch AsyncLlamaStackClientHolder at multiple import locations
     # This ensures the mock is active both during app startup (app.main)
     # and during endpoint execution (query, conversations_v1, responses, etc.)
-    mock_holder_class = mocker.patch("lightspeed_stack.app.endpoints.query.AsyncLlamaStackClientHolder")
-    mocker.patch("lightspeed_stack.app.main.AsyncLlamaStackClientHolder", mock_holder_class)
+    mock_holder_class = mocker.patch(
+        "lightspeed_stack.app.endpoints.query.AsyncLlamaStackClientHolder"
+    )
     mocker.patch(
-        "lightspeed_stack.app.endpoints.conversations_v1.AsyncLlamaStackClientHolder", mock_holder_class
+        "lightspeed_stack.app.main.AsyncLlamaStackClientHolder", mock_holder_class
+    )
+    mocker.patch(
+        "lightspeed_stack.app.endpoints.conversations_v1.AsyncLlamaStackClientHolder",
+        mock_holder_class,
     )
 
     mock_client = mocker.AsyncMock()

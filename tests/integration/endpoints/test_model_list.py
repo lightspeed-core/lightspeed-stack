@@ -33,7 +33,9 @@ def mock_llama_stack_client_fixture(
         mock_client: The mocked Llama Stack client instance configured as described above.
     """
     # Patch in app.endpoints.models where it's actually used by models_endpoint_handler_base
-    mock_holder_class = mocker.patch("lightspeed_stack.app.endpoints.models.AsyncLlamaStackClientHolder")
+    mock_holder_class = mocker.patch(
+        "lightspeed_stack.app.endpoints.models.AsyncLlamaStackClientHolder"
+    )
 
     mock_client = mocker.AsyncMock()
 
@@ -77,7 +79,9 @@ def mock_llama_stack_client_failing_fixture(
         mock_client: The mocked Llama Stack client instance configured as described above.
     """
     # Patch in app.endpoints.models where it's actually used by models_endpoint_handler_base
-    mock_holder_class = mocker.patch("lightspeed_stack.app.endpoints.models.AsyncLlamaStackClientHolder")
+    mock_holder_class = mocker.patch(
+        "lightspeed_stack.app.endpoints.models.AsyncLlamaStackClientHolder"
+    )
 
     mock_client = mocker.AsyncMock()
 

@@ -167,7 +167,10 @@ class TestAzureEntraIDTokenManager:
             "valid-token", now + TOKEN_EXPIRATION_LEEWAY + 60
         )
 
-        mocker.patch("lightspeed_stack.authorization.azure_token_manager.time.time", return_value=now)
+        mocker.patch(
+            "lightspeed_stack.authorization.azure_token_manager.time.time",
+            return_value=now,
+        )
         assert not token_manager.is_token_expired
 
         mocker.patch(

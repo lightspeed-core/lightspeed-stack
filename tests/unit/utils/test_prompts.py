@@ -8,8 +8,8 @@ from lightspeed_stack import constants
 from lightspeed_stack.configuration import AppConfig
 from lightspeed_stack.models.api.requests import QueryRequest
 from lightspeed_stack.models.config import CustomProfile
-from tests.unit import config_dict
 from lightspeed_stack.utils import prompts
+from tests.unit import config_dict
 
 CONFIGURED_SYSTEM_PROMPT = "This is a configured system prompt"
 
@@ -151,7 +151,9 @@ def test_get_default_system_prompt(
     mocker: MockerFixture,
 ) -> None:
     """Test that default system prompt is returned when other prompts are not provided."""
-    mocker.patch("lightspeed_stack.utils.prompts.configuration", config_without_system_prompt)
+    mocker.patch(
+        "lightspeed_stack.utils.prompts.configuration", config_without_system_prompt
+    )
     system_prompt = prompts.get_system_prompt(
         query_request_without_system_prompt.system_prompt
     )
@@ -164,7 +166,9 @@ def test_get_customized_system_prompt(
     mocker: MockerFixture,
 ) -> None:
     """Test that customized system prompt is used when system prompt is not provided in query."""
-    mocker.patch("lightspeed_stack.utils.prompts.configuration", config_with_custom_system_prompt)
+    mocker.patch(
+        "lightspeed_stack.utils.prompts.configuration", config_with_custom_system_prompt
+    )
     system_prompt = prompts.get_system_prompt(
         query_request_without_system_prompt.system_prompt
     )
@@ -177,7 +181,9 @@ def test_get_query_system_prompt(
     mocker: MockerFixture,
 ) -> None:
     """Test that system prompt from query is returned."""
-    mocker.patch("lightspeed_stack.utils.prompts.configuration", config_without_system_prompt)
+    mocker.patch(
+        "lightspeed_stack.utils.prompts.configuration", config_without_system_prompt
+    )
     system_prompt = prompts.get_system_prompt(
         query_request_with_system_prompt.system_prompt
     )
@@ -190,7 +196,9 @@ def test_get_query_system_prompt_not_customized_one(
     mocker: MockerFixture,
 ) -> None:
     """Test that system prompt from query is returned even when customized one is specified."""
-    mocker.patch("lightspeed_stack.utils.prompts.configuration", config_with_custom_system_prompt)
+    mocker.patch(
+        "lightspeed_stack.utils.prompts.configuration", config_with_custom_system_prompt
+    )
     system_prompt = prompts.get_system_prompt(
         query_request_with_system_prompt.system_prompt
     )

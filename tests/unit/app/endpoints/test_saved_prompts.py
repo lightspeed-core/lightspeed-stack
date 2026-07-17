@@ -6,7 +6,10 @@ from fastapi.testclient import TestClient
 from pytest_mock import MockerFixture
 
 from lightspeed_stack import constants
-from lightspeed_stack.app.endpoints.saved_prompts import get_saved_prompts_config_handler, router
+from lightspeed_stack.app.endpoints.saved_prompts import (
+    get_saved_prompts_config_handler,
+    router,
+)
 from lightspeed_stack.authentication.interface import AuthTuple
 from lightspeed_stack.configuration import AppConfig
 from lightspeed_stack.models.config import Action
@@ -59,7 +62,9 @@ async def test_get_saved_prompts_config_returns_default_values(
 ) -> None:
     """GET /saved-prompts/config returns default saved prompts limits."""
     mock_authorization_resolvers(mocker)
-    mocker.patch("lightspeed_stack.app.endpoints.saved_prompts.configuration", minimal_config)
+    mocker.patch(
+        "lightspeed_stack.app.endpoints.saved_prompts.configuration", minimal_config
+    )
 
     response = await get_saved_prompts_config_handler(
         auth=MOCK_AUTH,
@@ -110,7 +115,9 @@ async def test_get_saved_prompts_config_configuration_not_loaded(
 
     mock_config = AppConfig()
     mock_config._configuration = None  # pylint: disable=protected-access
-    mocker.patch("lightspeed_stack.app.endpoints.saved_prompts.configuration", mock_config)
+    mocker.patch(
+        "lightspeed_stack.app.endpoints.saved_prompts.configuration", mock_config
+    )
 
     with pytest.raises(HTTPException) as exc_info:
         await get_saved_prompts_config_handler(
@@ -141,7 +148,9 @@ async def test_get_saved_prompts_config_incomplete_limits(
     """
     mock_authorization_resolvers(mocker)
     minimal_config.configuration.saved_prompts.max_prompts_per_user = None
-    mocker.patch("lightspeed_stack.app.endpoints.saved_prompts.configuration", minimal_config)
+    mocker.patch(
+        "lightspeed_stack.app.endpoints.saved_prompts.configuration", minimal_config
+    )
 
     with pytest.raises(HTTPException) as exc_info:
         await get_saved_prompts_config_handler(
@@ -162,7 +171,9 @@ async def test_get_saved_prompts_config_forbidden_without_get_config_action(
     saved_prompts_http_request: Request,
 ) -> None:
     """GET /saved-prompts/config returns 403 when user lacks GET_CONFIG permission."""
-    mocker.patch("lightspeed_stack.app.endpoints.saved_prompts.configuration", minimal_config)
+    mocker.patch(
+        "lightspeed_stack.app.endpoints.saved_prompts.configuration", minimal_config
+    )
 
     mock_role_resolver = mocker.AsyncMock()
     mock_role_resolver.resolve_roles.return_value = set()
@@ -199,7 +210,9 @@ def test_get_saved_prompts_config_returns_401_when_auth_rejects(
     Verifies the route is actually wired with the auth dependency by
     hitting it via TestClient rather than calling the handler directly.
     """
-    mocker.patch("lightspeed_stack.app.endpoints.saved_prompts.configuration", minimal_config)
+    mocker.patch(
+        "lightspeed_stack.app.endpoints.saved_prompts.configuration", minimal_config
+    )
     mock_authorization_resolvers(mocker)
 
     async def _reject(_self: object, _request: Request) -> None:
@@ -237,7 +250,9 @@ async def test_get_saved_prompts_config_uses_get_config_action(
 ) -> None:
     """GET /saved-prompts/config authorizes with Action.GET_CONFIG."""
     mock_authorization_resolvers(mocker)
-    mocker.patch("lightspeed_stack.app.endpoints.saved_prompts.configuration", minimal_config)
+    mocker.patch(
+        "lightspeed_stack.app.endpoints.saved_prompts.configuration", minimal_config
+    )
 
     perform_check = mocker.patch(
         "lightspeed_stack.authorization.middleware._perform_authorization_check",

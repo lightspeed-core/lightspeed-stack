@@ -40,11 +40,16 @@ from lightspeed_stack.models.api.requests.rlsapi import (
     RlsapiV1Terminal,
 )
 from lightspeed_stack.models.api.responses.error import ServiceUnavailableResponse
-from lightspeed_stack.models.api.responses.successful.rlsapi import RlsapiV1InferResponse
-from lightspeed_stack.models.common.moderation import ShieldModerationBlocked, ShieldModerationPassed
-from tests.unit.utils.auth_helpers import mock_authorization_resolvers
+from lightspeed_stack.models.api.responses.successful.rlsapi import (
+    RlsapiV1InferResponse,
+)
+from lightspeed_stack.models.common.moderation import (
+    ShieldModerationBlocked,
+    ShieldModerationPassed,
+)
 from lightspeed_stack.utils.rh_identity import get_rh_identity_context
 from lightspeed_stack.utils.suid import check_suid
+from tests.unit.utils.auth_helpers import mock_authorization_resolvers
 
 MOCK_AUTH: AuthTuple = ("mock_user_id", "mock_username", False, "mock_token")
 
@@ -69,7 +74,9 @@ def mock_custom_prompt_fixture(mocker: MockerFixture) -> Callable[[str], None]:
         mock_config.customization = mock_customization
         mock_config.rlsapi_v1 = mock_rlsapi_v1
         mock_config.quota_limiters = []
-        mocker.patch("lightspeed_stack.app.endpoints.rlsapi_v1.configuration", mock_config)
+        mocker.patch(
+            "lightspeed_stack.app.endpoints.rlsapi_v1.configuration", mock_config
+        )
 
     return _set
 
@@ -97,7 +104,9 @@ def mock_configuration_fixture(
     """Extend minimal_config with inference defaults and patch it."""
     minimal_config.inference.default_model = "gpt-4-turbo"
     minimal_config.inference.default_provider = "openai"
-    mocker.patch("lightspeed_stack.app.endpoints.rlsapi_v1.configuration", minimal_config)
+    mocker.patch(
+        "lightspeed_stack.app.endpoints.rlsapi_v1.configuration", minimal_config
+    )
     return minimal_config
 
 
@@ -350,7 +359,9 @@ async def test_get_default_model_id_errors(
     failure_mode: str,
 ) -> None:
     """Test _get_default_model_id fallback failures raise 503 responses."""
-    mocker.patch("lightspeed_stack.app.endpoints.rlsapi_v1.configuration", minimal_config)
+    mocker.patch(
+        "lightspeed_stack.app.endpoints.rlsapi_v1.configuration", minimal_config
+    )
 
     mock_embedding_model = mocker.Mock()
     mock_embedding_model.custom_metadata = {"model_type": "embedding"}
@@ -392,7 +403,9 @@ async def test_config_error_503_matches_llm_error_503_shape(
     handlers use ServiceUnavailableResponse, producing identical detail shapes
     with 'response' and 'cause' keys.
     """
-    mocker.patch("lightspeed_stack.app.endpoints.rlsapi_v1.configuration", minimal_config)
+    mocker.patch(
+        "lightspeed_stack.app.endpoints.rlsapi_v1.configuration", minimal_config
+    )
 
     mock_embedding_model = mocker.Mock()
     mock_embedding_model.custom_metadata = {"model_type": "embedding"}
@@ -430,7 +443,9 @@ async def test_get_default_model_id_auto_discovery_success(
     mocker: MockerFixture, minimal_config: AppConfig
 ) -> None:
     """Test _get_default_model_id returns first discovered LLM model ID."""
-    mocker.patch("lightspeed_stack.app.endpoints.rlsapi_v1.configuration", minimal_config)
+    mocker.patch(
+        "lightspeed_stack.app.endpoints.rlsapi_v1.configuration", minimal_config
+    )
 
     mock_llm_model = mocker.Mock()
     mock_llm_model.custom_metadata = {"model_type": "llm"}
@@ -926,7 +941,9 @@ async def test_infer_extract_token_usage_on_failure_depends_on_verbose(
             new=mocker.AsyncMock(side_effect=RuntimeError("retrieval failed")),
         )
 
-    mock_extract = mocker.patch("lightspeed_stack.app.endpoints.rlsapi_v1.extract_token_usage")
+    mock_extract = mocker.patch(
+        "lightspeed_stack.app.endpoints.rlsapi_v1.extract_token_usage"
+    )
 
     with pytest.raises(RuntimeError):
         infer_request = RlsapiV1InferRequest(question="How do I list files?")
@@ -1082,7 +1099,9 @@ def mock_quota_config_fixture(
         config_mock.customization = mock_configuration.customization
         config_mock.rlsapi_v1 = rlsapi_v1_mock
         config_mock.quota_limiters = []
-        mocker.patch("lightspeed_stack.app.endpoints.rlsapi_v1.configuration", config_mock)
+        mocker.patch(
+            "lightspeed_stack.app.endpoints.rlsapi_v1.configuration", config_mock
+        )
 
     return _set
 
@@ -1098,8 +1117,12 @@ async def test_infer_quota_check_called_when_configured(
 ) -> None:
     """Test /infer calls check_tokens_available when quota_subject is set."""
     mock_quota_config("user_id")
-    mock_check = mocker.patch("lightspeed_stack.app.endpoints.rlsapi_v1.check_tokens_available")
-    mock_consume = mocker.patch("lightspeed_stack.app.endpoints.rlsapi_v1.consume_query_tokens")
+    mock_check = mocker.patch(
+        "lightspeed_stack.app.endpoints.rlsapi_v1.check_tokens_available"
+    )
+    mock_consume = mocker.patch(
+        "lightspeed_stack.app.endpoints.rlsapi_v1.consume_query_tokens"
+    )
 
     response = await infer_endpoint(
         infer_request=RlsapiV1InferRequest(question="How do I list files?"),
@@ -1123,8 +1146,12 @@ async def test_infer_quota_skipped_when_not_configured(
     mock_background_tasks: Any,
 ) -> None:
     """Test /infer skips quota calls when quota_subject is None (default)."""
-    mock_check = mocker.patch("lightspeed_stack.app.endpoints.rlsapi_v1.check_tokens_available")
-    mock_consume = mocker.patch("lightspeed_stack.app.endpoints.rlsapi_v1.consume_query_tokens")
+    mock_check = mocker.patch(
+        "lightspeed_stack.app.endpoints.rlsapi_v1.check_tokens_available"
+    )
+    mock_consume = mocker.patch(
+        "lightspeed_stack.app.endpoints.rlsapi_v1.consume_query_tokens"
+    )
 
     await infer_endpoint(
         infer_request=RlsapiV1InferRequest(question="How do I list files?"),
@@ -1200,8 +1227,12 @@ async def test_infer_quota_with_rh_identity_subject(
     mock_rh_identity.get_org_id.return_value = rh_identity_setup["org_id"]
     mock_rh_identity.get_user_id.return_value = rh_identity_setup["user_id"]
 
-    mock_check = mocker.patch("lightspeed_stack.app.endpoints.rlsapi_v1.check_tokens_available")
-    mock_consume = mocker.patch("lightspeed_stack.app.endpoints.rlsapi_v1.consume_query_tokens")
+    mock_check = mocker.patch(
+        "lightspeed_stack.app.endpoints.rlsapi_v1.check_tokens_available"
+    )
+    mock_consume = mocker.patch(
+        "lightspeed_stack.app.endpoints.rlsapi_v1.consume_query_tokens"
+    )
 
     await infer_endpoint(
         infer_request=RlsapiV1InferRequest(question="How do I list files?"),
@@ -1240,8 +1271,12 @@ async def test_infer_quota_shield_blocked_does_not_consume_tokens(
         new=mocker.AsyncMock(return_value=blocked),
     )
 
-    mock_check = mocker.patch("lightspeed_stack.app.endpoints.rlsapi_v1.check_tokens_available")
-    mock_consume = mocker.patch("lightspeed_stack.app.endpoints.rlsapi_v1.consume_query_tokens")
+    mock_check = mocker.patch(
+        "lightspeed_stack.app.endpoints.rlsapi_v1.check_tokens_available"
+    )
+    mock_consume = mocker.patch(
+        "lightspeed_stack.app.endpoints.rlsapi_v1.consume_query_tokens"
+    )
 
     response = await infer_endpoint(
         infer_request=RlsapiV1InferRequest(question="Bad question"),

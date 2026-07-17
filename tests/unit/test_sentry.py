@@ -132,7 +132,8 @@ class TestInitializeSentry:
         monkeypatch.delenv(SENTRY_ENVIRONMENT_ENV_VAR, raising=False)
         monkeypatch.delenv(SENTRY_CA_CERTS_ENV_VAR, raising=False)
         mocker.patch(
-            "lightspeed_stack.sentry.sentry_sdk.init", side_effect=RuntimeError("connection failed")
+            "lightspeed_stack.sentry.sentry_sdk.init",
+            side_effect=RuntimeError("connection failed"),
         )
         mock_logger = mocker.patch("lightspeed_stack.sentry.logger")
 

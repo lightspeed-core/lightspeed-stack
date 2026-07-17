@@ -26,8 +26,13 @@ from lightspeed_stack.configuration import configuration
 from lightspeed_stack.constants import ENDPOINT_PATH_INFER
 from lightspeed_stack.log import get_logger
 from lightspeed_stack.metrics import recording
-from lightspeed_stack.models.api.requests.rlsapi import RlsapiV1InferRequest, RlsapiV1SystemInfo
-from lightspeed_stack.models.api.responses.constants import UNAUTHORIZED_OPENAPI_EXAMPLES
+from lightspeed_stack.models.api.requests.rlsapi import (
+    RlsapiV1InferRequest,
+    RlsapiV1SystemInfo,
+)
+from lightspeed_stack.models.api.responses.constants import (
+    UNAUTHORIZED_OPENAPI_EXAMPLES,
+)
 from lightspeed_stack.models.api.responses.error import (
     ForbiddenResponse,
     InternalServerErrorResponse,
@@ -43,7 +48,11 @@ from lightspeed_stack.models.api.responses.successful.rlsapi import (
     RlsapiV1InferResponse,
 )
 from lightspeed_stack.models.config import Action
-from lightspeed_stack.observability import InferenceEventData, build_inference_event, send_splunk_event
+from lightspeed_stack.observability import (
+    InferenceEventData,
+    build_inference_event,
+    send_splunk_event,
+)
 from lightspeed_stack.utils.endpoints import check_configuration_loaded
 from lightspeed_stack.utils.query import (
     consume_query_tokens,

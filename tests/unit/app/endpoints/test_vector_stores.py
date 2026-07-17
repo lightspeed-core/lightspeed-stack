@@ -164,7 +164,9 @@ async def test_create_vector_store_configuration_not_loaded(
     mock_authorization_resolvers(mocker)
 
     mock_config = AppConfig()
-    mocker.patch("lightspeed_stack.app.endpoints.vector_stores.configuration", mock_config)
+    mocker.patch(
+        "lightspeed_stack.app.endpoints.vector_stores.configuration", mock_config
+    )
 
     request = get_test_request()
     auth = get_test_auth()
@@ -469,7 +471,9 @@ async def test_add_file_to_vector_store_retry_on_database_lock(
     mocker.patch("lightspeed_stack.app.endpoints.vector_stores.configuration", cfg)
 
     # Mock asyncio.sleep to avoid actual delays in tests
-    mock_sleep = mocker.patch("lightspeed_stack.app.endpoints.vector_stores.asyncio.sleep")
+    mock_sleep = mocker.patch(
+        "lightspeed_stack.app.endpoints.vector_stores.asyncio.sleep"
+    )
 
     request = get_test_request()
     auth = get_test_auth()
@@ -510,7 +514,9 @@ async def test_add_file_to_vector_store_max_retries_exceeded(
     mocker.patch("lightspeed_stack.app.endpoints.vector_stores.configuration", cfg)
 
     # Mock asyncio.sleep to avoid actual delays in tests
-    mock_sleep = mocker.patch("lightspeed_stack.app.endpoints.vector_stores.asyncio.sleep")
+    mock_sleep = mocker.patch(
+        "lightspeed_stack.app.endpoints.vector_stores.asyncio.sleep"
+    )
 
     request = get_test_request()
     auth = get_test_auth()
@@ -554,7 +560,9 @@ async def test_add_file_to_vector_store_non_lock_error_no_retry(
     mocker.patch("lightspeed_stack.app.endpoints.vector_stores.configuration", cfg)
 
     # Mock asyncio.sleep to verify it's not called
-    mock_sleep = mocker.patch("lightspeed_stack.app.endpoints.vector_stores.asyncio.sleep")
+    mock_sleep = mocker.patch(
+        "lightspeed_stack.app.endpoints.vector_stores.asyncio.sleep"
+    )
 
     request = get_test_request()
     auth = get_test_auth()

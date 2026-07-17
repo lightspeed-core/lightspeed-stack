@@ -29,7 +29,9 @@ async def test_readiness_probe_fails_due_to_unhealthy_providers(
     mock_authorization_resolvers(mocker)
 
     # Mock DegradedModeTracker to return healthy (not degraded) state
-    mock_tracker = mocker.patch("lightspeed_stack.app.endpoints.health.DegradedModeTracker")
+    mock_tracker = mocker.patch(
+        "lightspeed_stack.app.endpoints.health.DegradedModeTracker"
+    )
     mock_instance = mock_tracker.return_value
     mock_instance.is_degraded.return_value = False
 
@@ -69,7 +71,9 @@ async def test_readiness_probe_success_when_all_providers_healthy(
     mock_authorization_resolvers(mocker)
 
     # Mock DegradedModeTracker to return healthy (not degraded) state
-    mock_tracker = mocker.patch("lightspeed_stack.app.endpoints.health.DegradedModeTracker")
+    mock_tracker = mocker.patch(
+        "lightspeed_stack.app.endpoints.health.DegradedModeTracker"
+    )
     mock_instance = mock_tracker.return_value
     mock_instance.is_degraded.return_value = False
 
@@ -121,7 +125,9 @@ async def test_readiness_probe_fails_when_model_not_available(
     mock_authorization_resolvers(mocker)
 
     # Mock DegradedModeTracker to return healthy (not degraded) state
-    mock_tracker = mocker.patch("lightspeed_stack.app.endpoints.health.DegradedModeTracker")
+    mock_tracker = mocker.patch(
+        "lightspeed_stack.app.endpoints.health.DegradedModeTracker"
+    )
     mock_instance = mock_tracker.return_value
     mock_instance.is_degraded.return_value = False
 
@@ -210,7 +216,9 @@ class TestGetProvidersHealthStatuses:
         - unhealthy_provider: status ERROR, message "Connection failed"
         """
         # Mock the imports
-        mock_lsc = mocker.patch("lightspeed_stack.client.AsyncLlamaStackClientHolder.get_client")
+        mock_lsc = mocker.patch(
+            "lightspeed_stack.client.AsyncLlamaStackClientHolder.get_client"
+        )
 
         # Mock the client and its methods
         mock_client = mocker.AsyncMock()
@@ -264,7 +272,9 @@ class TestGetProvidersHealthStatuses:
     ) -> None:
         """Test get_providers_health_statuses when connection fails."""
         # Mock the imports
-        mock_lsc = mocker.patch("lightspeed_stack.client.AsyncLlamaStackClientHolder.get_client")
+        mock_lsc = mocker.patch(
+            "lightspeed_stack.client.AsyncLlamaStackClientHolder.get_client"
+        )
 
         # Mock get_llama_stack_client to raise an exception
         mock_lsc.side_effect = APIConnectionError(request=mocker.Mock())
@@ -292,7 +302,9 @@ class TestCheckDefaultModelAvailable:
     @pytest.fixture
     def inference_config(self, mocker: MockerFixture) -> Any:
         """Patch configuration with default model and provider."""
-        mock_config = mocker.patch("lightspeed_stack.app.endpoints.health.configuration")
+        mock_config = mocker.patch(
+            "lightspeed_stack.app.endpoints.health.configuration"
+        )
         mock_config.inference.default_model = (
             "publishers/google/models/gemini-2.5-flash"
         )
@@ -302,7 +314,9 @@ class TestCheckDefaultModelAvailable:
     @pytest.mark.asyncio
     async def test_no_inference_config(self, mocker: MockerFixture) -> None:
         """Test returns True when no inference configuration exists."""
-        mock_config = mocker.patch("lightspeed_stack.app.endpoints.health.configuration")
+        mock_config = mocker.patch(
+            "lightspeed_stack.app.endpoints.health.configuration"
+        )
         mock_config.inference = None
 
         available, reason = await check_default_model_available()
@@ -313,7 +327,9 @@ class TestCheckDefaultModelAvailable:
     @pytest.mark.asyncio
     async def test_no_default_model_configured(self, mocker: MockerFixture) -> None:
         """Test returns True when no default model is configured."""
-        mock_config = mocker.patch("lightspeed_stack.app.endpoints.health.configuration")
+        mock_config = mocker.patch(
+            "lightspeed_stack.app.endpoints.health.configuration"
+        )
         mock_config.inference.default_model = None
         mock_config.inference.default_provider = None
 
@@ -329,7 +345,9 @@ class TestCheckDefaultModelAvailable:
         mocker: MockerFixture,
     ) -> None:
         """Test delegates to client holder with correct model ID."""
-        mock_holder = mocker.patch("lightspeed_stack.app.endpoints.health.AsyncLlamaStackClientHolder")
+        mock_holder = mocker.patch(
+            "lightspeed_stack.app.endpoints.health.AsyncLlamaStackClientHolder"
+        )
         mock_holder.return_value.check_model_available = mocker.AsyncMock(
             return_value=(True, f"Model {self.EXPECTED_MODEL_ID} is available")
         )
@@ -349,7 +367,9 @@ class TestCheckDefaultModelAvailable:
         mocker: MockerFixture,
     ) -> None:
         """Test passes through failure result from client holder."""
-        mock_holder = mocker.patch("lightspeed_stack.app.endpoints.health.AsyncLlamaStackClientHolder")
+        mock_holder = mocker.patch(
+            "lightspeed_stack.app.endpoints.health.AsyncLlamaStackClientHolder"
+        )
         mock_holder.return_value.check_model_available = mocker.AsyncMock(
             return_value=(
                 False,
@@ -372,7 +392,9 @@ class TestReadinessDegradedMode:  # pylint: disable=too-few-public-methods
         mock_authorization_resolvers(mocker)
 
         # Mock DegradedModeTracker to return degraded state
-        mock_tracker = mocker.patch("lightspeed_stack.app.endpoints.health.DegradedModeTracker")
+        mock_tracker = mocker.patch(
+            "lightspeed_stack.app.endpoints.health.DegradedModeTracker"
+        )
         mock_instance = mock_tracker.return_value
         mock_instance.is_degraded.return_value = True
         mock_instance.get_degraded_reason.return_value = (

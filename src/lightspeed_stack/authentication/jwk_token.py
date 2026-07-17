@@ -16,7 +16,11 @@ from authlib.jose.errors import (
 from cachetools import TTLCache
 from fastapi import HTTPException, Request
 
-from lightspeed_stack.authentication.interface import NO_AUTH_TUPLE, AuthInterface, AuthTuple
+from lightspeed_stack.authentication.interface import (
+    NO_AUTH_TUPLE,
+    AuthInterface,
+    AuthTuple,
+)
 from lightspeed_stack.authentication.utils import extract_user_token
 from lightspeed_stack.configuration import configuration
 from lightspeed_stack.constants import (

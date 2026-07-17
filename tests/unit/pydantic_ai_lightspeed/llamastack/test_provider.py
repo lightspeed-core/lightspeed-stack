@@ -13,7 +13,9 @@ from lightspeed_stack.pydantic_ai_lightspeed.llamastack._provider import (
     DEFAULT_BASE_URL,
     LlamaStackProvider,
 )
-from lightspeed_stack.pydantic_ai_lightspeed.llamastack._transport import LlamaStackServerTransport
+from lightspeed_stack.pydantic_ai_lightspeed.llamastack._transport import (
+    LlamaStackServerTransport,
+)
 
 
 class TestLlamaStackProviderProperties:

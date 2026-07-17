@@ -90,7 +90,8 @@ def _patch_all_client_holders(mocker: MockerFixture, mock_client: Any) -> None:
         return original_cls.model_construct(**kwargs)
 
     mocker.patch(
-        "lightspeed_stack.app.endpoints.responses.ResponsesContext", side_effect=_skip_validation
+        "lightspeed_stack.app.endpoints.responses.ResponsesContext",
+        side_effect=_skip_validation,
     )
 
 
@@ -669,7 +670,9 @@ async def test_responses_rag_content_limit_caps_inline_rag(  # pylint: disable=t
     - Context chunk count equals the lowered INLINE_RAG_MAX_CHUNKS
     - Only the highest-scored chunks appear in the context
     """
-    mocker.patch("lightspeed_stack.utils.vector_search.constants.INLINE_RAG_MAX_CHUNKS", 3)
+    mocker.patch(
+        "lightspeed_stack.utils.vector_search.constants.INLINE_RAG_MAX_CHUNKS", 3
+    )
 
     entry = mocker.MagicMock()
     entry.rag_id = "big-source"

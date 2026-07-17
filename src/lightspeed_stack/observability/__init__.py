@@ -108,7 +108,10 @@ from lightspeed_stack.observability.formats import (
     build_inference_event,
     build_responses_event,
 )
-from lightspeed_stack.observability.splunk import dispatch_splunk_event, send_splunk_event
+from lightspeed_stack.observability.splunk import (
+    dispatch_splunk_event,
+    send_splunk_event,
+)
 
 __all__ = [
     "InferenceEventData",

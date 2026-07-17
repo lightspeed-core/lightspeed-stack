@@ -3,7 +3,10 @@
 import pytest
 from pytest_mock import MockerFixture
 
-from lightspeed_stack.observability.formats.responses import ResponsesEventData, build_responses_event
+from lightspeed_stack.observability.formats.responses import (
+    ResponsesEventData,
+    build_responses_event,
+)
 
 
 @pytest.fixture(name="sample_event_data")
@@ -39,7 +42,9 @@ def test_builds_event_with_all_fields(
     mocker: MockerFixture, sample_event_data: ResponsesEventData
 ) -> None:
     """Test event contains all required fields and placeholders."""
-    mock_config = mocker.patch("lightspeed_stack.observability.formats.responses.configuration")
+    mock_config = mocker.patch(
+        "lightspeed_stack.observability.formats.responses.configuration"
+    )
     mock_config.deployment_environment = "production"
 
     event = build_responses_event(sample_event_data)
@@ -57,7 +62,9 @@ def test_builds_event_with_all_fields(
 
 def test_builds_event_with_token_counts(mocker: MockerFixture) -> None:
     """Test total_llm_tokens is computed from input and output token counts."""
-    mock_config = mocker.patch("lightspeed_stack.observability.formats.responses.configuration")
+    mock_config = mocker.patch(
+        "lightspeed_stack.observability.formats.responses.configuration"
+    )
     mock_config.deployment_environment = "production"
 
     data = ResponsesEventData(
@@ -89,7 +96,9 @@ def test_handles_auth_disabled_values(mocker: MockerFixture) -> None:
         system_id="auth_disabled",
     )
 
-    mock_config = mocker.patch("lightspeed_stack.observability.formats.responses.configuration")
+    mock_config = mocker.patch(
+        "lightspeed_stack.observability.formats.responses.configuration"
+    )
     mock_config.deployment_environment = "test"
 
     event = build_responses_event(data)
@@ -134,7 +143,9 @@ def test_user_agent_included_in_splunk_event(
     sample_event_data_with_user_agent: ResponsesEventData,
 ) -> None:
     """Test user_agent field is included in the Splunk event payload."""
-    mock_config = mocker.patch("lightspeed_stack.observability.formats.responses.configuration")
+    mock_config = mocker.patch(
+        "lightspeed_stack.observability.formats.responses.configuration"
+    )
     mock_config.deployment_environment = "production"
 
     event = build_responses_event(sample_event_data_with_user_agent)
@@ -144,7 +155,9 @@ def test_user_agent_included_in_splunk_event(
 
 def test_user_agent_none_included_in_splunk_event(mocker: MockerFixture) -> None:
     """Test user_agent=None is included in the Splunk event payload."""
-    mock_config = mocker.patch("lightspeed_stack.observability.formats.responses.configuration")
+    mock_config = mocker.patch(
+        "lightspeed_stack.observability.formats.responses.configuration"
+    )
     mock_config.deployment_environment = "production"
 
     data = ResponsesEventData(

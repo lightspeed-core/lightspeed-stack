@@ -24,7 +24,9 @@ from lightspeed_stack.pydantic_ai_lightspeed.capabilities.question_validity._cap
     _extract_message_str_from_user_content,
 )
 
-_MODULE = "lightspeed_stack.pydantic_ai_lightspeed.capabilities.question_validity._capability"
+_MODULE = (
+    "lightspeed_stack.pydantic_ai_lightspeed.capabilities.question_validity._capability"
+)
 
 
 class TestExtractMessageStrFromUserContent:

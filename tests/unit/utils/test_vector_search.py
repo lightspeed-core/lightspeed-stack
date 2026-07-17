@@ -913,7 +913,9 @@ class TestBuildRagContext:
         client_mock.vector_io.query.return_value = search_response
 
         # Mock cross-encoder reranking function
-        mock_rerank = mocker.patch("lightspeed_stack.utils.reranker.rerank_chunks_with_cross_encoder")
+        mock_rerank = mocker.patch(
+            "lightspeed_stack.utils.reranker.rerank_chunks_with_cross_encoder"
+        )
 
         context = await build_rag_context(client_mock, "passed", "test query", None)
 

@@ -8,7 +8,9 @@ from lightspeed_stack.authentication import get_auth_dependency
 from lightspeed_stack.authentication.interface import AuthTuple
 from lightspeed_stack.authorization.middleware import authorize
 from lightspeed_stack.models.api.requests import StreamingInterruptRequest
-from lightspeed_stack.models.api.responses.constants import UNAUTHORIZED_OPENAPI_EXAMPLES
+from lightspeed_stack.models.api.responses.constants import (
+    UNAUTHORIZED_OPENAPI_EXAMPLES,
+)
 from lightspeed_stack.models.api.responses.error import (
     ForbiddenResponse,
     NotFoundResponse,

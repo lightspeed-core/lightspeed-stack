@@ -129,7 +129,8 @@ def _patch_client_holders(mocker: MockerFixture, mock_client: Any) -> None:
         return original_cls.model_construct(**kwargs)
 
     mocker.patch(
-        "lightspeed_stack.app.endpoints.responses.ResponsesContext", side_effect=_skip_validation
+        "lightspeed_stack.app.endpoints.responses.ResponsesContext",
+        side_effect=_skip_validation,
     )
 
 

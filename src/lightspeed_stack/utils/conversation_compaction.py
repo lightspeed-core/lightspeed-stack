@@ -55,10 +55,15 @@ from lightspeed_stack.cache.cache import Cache
 from lightspeed_stack.cache.cache_error import CacheError
 from lightspeed_stack.configuration import configuration
 from lightspeed_stack.log import get_logger
-from lightspeed_stack.models.common.responses.responses_api_params import ResponsesApiParams
+from lightspeed_stack.models.common.responses.responses_api_params import (
+    ResponsesApiParams,
+)
 from lightspeed_stack.models.common.responses.types import ResponseInput
 from lightspeed_stack.models.compaction import ConversationSummary
-from lightspeed_stack.models.config import CompactionConfiguration, InferenceConfiguration
+from lightspeed_stack.models.config import (
+    CompactionConfiguration,
+    InferenceConfiguration,
+)
 from lightspeed_stack.utils.compaction import (
     partition_conversation,
     recursively_resummarize,

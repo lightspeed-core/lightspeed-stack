@@ -141,7 +141,9 @@ async def test_sends_event_successfully(
     """Test event is sent successfully to Splunk HEC."""
     mock_config = mocker.patch("lightspeed_stack.observability.splunk.configuration")
     mock_config.splunk = mock_splunk_config
-    mock_client = mocker.patch("lightspeed_stack.observability.splunk.aiohttp.ClientSession")
+    mock_client = mocker.patch(
+        "lightspeed_stack.observability.splunk.aiohttp.ClientSession"
+    )
     mock_client.return_value.__aenter__.return_value = mock_session
 
     await send_splunk_event({"question": "test"}, "infer_with_llm")
@@ -185,7 +187,9 @@ async def test_logs_warning_on_error(
 
     mock_config = mocker.patch("lightspeed_stack.observability.splunk.configuration")
     mock_config.splunk = mock_splunk_config
-    mock_client = mocker.patch("lightspeed_stack.observability.splunk.aiohttp.ClientSession")
+    mock_client = mocker.patch(
+        "lightspeed_stack.observability.splunk.aiohttp.ClientSession"
+    )
     error_setup(mock_client)
     mock_client.return_value.__aenter__.return_value = mock_session
     mock_logger = mocker.patch("lightspeed_stack.observability.splunk.logger")
@@ -211,8 +215,12 @@ class TestDispatchSplunkEvent:
 
     def test_noop_when_no_dispatch_method(self, mocker: MockerFixture) -> None:
         """No-op when background_tasks is None and fire_and_forget is False."""
-        mock_send = mocker.patch("lightspeed_stack.observability.splunk.send_splunk_event")
-        mock_create_task = mocker.patch("lightspeed_stack.observability.splunk.asyncio.create_task")
+        mock_send = mocker.patch(
+            "lightspeed_stack.observability.splunk.send_splunk_event"
+        )
+        mock_create_task = mocker.patch(
+            "lightspeed_stack.observability.splunk.asyncio.create_task"
+        )
 
         dispatch_splunk_event({"k": "v"}, "test_sourcetype")
 
@@ -233,7 +241,8 @@ class TestDispatchSplunkEvent:
         """Creates asyncio task and registers it for GC protection."""
         sentinel_task = mocker.MagicMock()
         mock_create_task = mocker.patch(
-            "lightspeed_stack.observability.splunk.asyncio.create_task", return_value=sentinel_task
+            "lightspeed_stack.observability.splunk.asyncio.create_task",
+            return_value=sentinel_task,
         )
         # Prevent real coroutine creation; the mock returns a coroutine-like
         # object that create_task can accept.
@@ -252,7 +261,8 @@ class TestDispatchSplunkEvent:
         mock_bg = mocker.MagicMock()
         sentinel_task = mocker.MagicMock()
         mocker.patch(
-            "lightspeed_stack.observability.splunk.asyncio.create_task", return_value=sentinel_task
+            "lightspeed_stack.observability.splunk.asyncio.create_task",
+            return_value=sentinel_task,
         )
         mocker.patch("lightspeed_stack.observability.splunk.send_splunk_event")
 

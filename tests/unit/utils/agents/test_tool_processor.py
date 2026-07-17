@@ -152,7 +152,9 @@ class TestSummarizeNativeToolCall:
 
     def test_unknown_tool_returns_none(self, mocker: MockerFixture) -> None:
         """Test unknown native tool logs warning and returns None."""
-        mock_warning = mocker.patch("lightspeed_stack.utils.agents.tool_processor.logger.warning")
+        mock_warning = mocker.patch(
+            "lightspeed_stack.utils.agents.tool_processor.logger.warning"
+        )
         part = NativeToolCallPart(
             tool_name="unknown_tool",
             args={},

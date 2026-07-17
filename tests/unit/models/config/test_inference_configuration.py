@@ -3,7 +3,10 @@
 import pytest
 from pydantic import ValidationError
 
-from lightspeed_stack.models.config import InferenceConfiguration, UnifiedInferenceProvider
+from lightspeed_stack.models.config import (
+    InferenceConfiguration,
+    UnifiedInferenceProvider,
+)
 
 
 def test_inference_constructor() -> None:

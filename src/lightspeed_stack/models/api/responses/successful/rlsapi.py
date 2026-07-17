@@ -4,7 +4,9 @@ from typing import Optional
 
 from pydantic import Field
 
-from lightspeed_stack.models.api.responses.successful.bases import AbstractSuccessfulResponse
+from lightspeed_stack.models.api.responses.successful.bases import (
+    AbstractSuccessfulResponse,
+)
 from lightspeed_stack.models.common import (
     RAGChunk,
     ReferencedDocument,

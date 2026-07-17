@@ -2,7 +2,9 @@
 
 from pydantic import ConfigDict
 
-from lightspeed_stack.models.api.responses.successful.bases import AbstractSuccessfulResponse
+from lightspeed_stack.models.api.responses.successful.bases import (
+    AbstractSuccessfulResponse,
+)
 from lightspeed_stack.models.config import Configuration
 
 

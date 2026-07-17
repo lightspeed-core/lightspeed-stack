@@ -32,7 +32,9 @@ def mock_llama_stack_client_fixture(
     ------
         AsyncMock: A mocked Llama Stack client configured for tests.
     """
-    mock_holder_class = mocker.patch("lightspeed_stack.app.endpoints.info.AsyncLlamaStackClientHolder")
+    mock_holder_class = mocker.patch(
+        "lightspeed_stack.app.endpoints.info.AsyncLlamaStackClientHolder"
+    )
 
     mock_client = mocker.AsyncMock()
     # Mock the version endpoint to return a known version

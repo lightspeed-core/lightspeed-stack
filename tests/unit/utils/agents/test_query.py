@@ -238,7 +238,9 @@ class TestExtractAgentTokenUsage:
         mock_record_usage = mocker.patch(
             "lightspeed_stack.utils.agents.query.recording.record_llm_token_usage"
         )
-        mock_record_call = mocker.patch("lightspeed_stack.utils.agents.query.recording.record_llm_call")
+        mock_record_call = mocker.patch(
+            "lightspeed_stack.utils.agents.query.recording.record_llm_call"
+        )
         usage = RunUsage(input_tokens=8, output_tokens=3, requests=1)
 
         extract_agent_token_usage(

@@ -8,7 +8,9 @@ from llama_stack_client import AsyncLlamaStackClient
 from pydantic_ai_skills import SkillsCapability
 from pytest_mock import MockerFixture
 
-from lightspeed_stack.models.common.responses.responses_api_params import ResponsesApiParams
+from lightspeed_stack.models.common.responses.responses_api_params import (
+    ResponsesApiParams,
+)
 from lightspeed_stack.models.config import SkillsConfiguration
 from lightspeed_stack.utils.pydantic_ai_helpers import (
     _agent_capabilities,

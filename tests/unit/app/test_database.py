@@ -12,7 +12,10 @@ from sqlalchemy.engine.base import Engine
 from sqlalchemy.orm import Session
 
 from lightspeed_stack.app import database
-from lightspeed_stack.models.config import PostgreSQLDatabaseConfiguration, SQLiteDatabaseConfiguration
+from lightspeed_stack.models.config import (
+    PostgreSQLDatabaseConfiguration,
+    SQLiteDatabaseConfiguration,
+)
 
 
 @pytest.fixture(name="reset_database_state")
@@ -336,7 +339,9 @@ class TestInitializeDatabase:
         """Test initialize_database with SQLite configuration."""
         # Setup mocks
         mock_configuration = mocker.patch("lightspeed_stack.app.database.configuration")
-        mock_create_sqlite_engine = mocker.patch("lightspeed_stack.app.database._create_sqlite_engine")
+        mock_create_sqlite_engine = mocker.patch(
+            "lightspeed_stack.app.database._create_sqlite_engine"
+        )
         mock_sessionmaker = mocker.patch("lightspeed_stack.app.database.sessionmaker")
         mock_logger = mocker.patch("lightspeed_stack.app.database.logger")
 

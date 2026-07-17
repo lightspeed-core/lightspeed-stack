@@ -5,7 +5,9 @@ from typing import ClassVar
 from fastapi import status
 from typing_extensions import Self  # noqa: UP035
 
-from lightspeed_stack.models.api.responses.constants import INTERNAL_SERVER_ERROR_DESCRIPTION
+from lightspeed_stack.models.api.responses.constants import (
+    INTERNAL_SERVER_ERROR_DESCRIPTION,
+)
 from lightspeed_stack.models.api.responses.error.bases import AbstractErrorResponse
 
 

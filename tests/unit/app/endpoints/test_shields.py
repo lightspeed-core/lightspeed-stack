@@ -219,7 +219,9 @@ async def test_shields_endpoint_handler_unable_to_retrieve_shields_list(
     # Mock the LlamaStack client
     mock_client = mocker.AsyncMock()
     mock_client.shields.list.return_value = []
-    mock_lsc = mocker.patch("lightspeed_stack.client.AsyncLlamaStackClientHolder.get_client")
+    mock_lsc = mocker.patch(
+        "lightspeed_stack.client.AsyncLlamaStackClientHolder.get_client"
+    )
     mock_lsc.return_value = mock_client
     mock_config = mocker.Mock()
     mocker.patch("lightspeed_stack.app.endpoints.shields.configuration", mock_config)
@@ -363,7 +365,9 @@ async def test_shields_endpoint_handler_success_with_shields_data(
 
     mock_client = mocker.AsyncMock()
     mock_client.shields.list.return_value = mock_shields_data
-    mock_lsc = mocker.patch("lightspeed_stack.client.AsyncLlamaStackClientHolder.get_client")
+    mock_lsc = mocker.patch(
+        "lightspeed_stack.client.AsyncLlamaStackClientHolder.get_client"
+    )
     mock_lsc.return_value = mock_client
     mock_config = mocker.Mock()
     mocker.patch("lightspeed_stack.app.endpoints.shields.configuration", mock_config)

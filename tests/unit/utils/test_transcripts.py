@@ -6,7 +6,11 @@ from pytest_mock import MockerFixture
 
 from lightspeed_stack.configuration import AppConfig
 from lightspeed_stack.models.api.requests import QueryRequest
-from lightspeed_stack.models.common.turn_summary import ToolCallSummary, ToolResultSummary, TurnSummary
+from lightspeed_stack.models.common.turn_summary import (
+    ToolCallSummary,
+    ToolResultSummary,
+    TurnSummary,
+)
 from lightspeed_stack.utils.transcripts import (
     construct_transcripts_path,
     create_transcript,

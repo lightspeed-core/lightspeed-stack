@@ -24,7 +24,9 @@ class HistogramRecorderCase:
 def test_measure_response_duration_records_timer(mocker: MockerFixture) -> None:
     """Test that response duration measurement uses the path label timer."""
     mock_timer = mocker.MagicMock()
-    mock_metric = mocker.patch("lightspeed_stack.metrics.recording.metrics.response_duration_seconds")
+    mock_metric = mocker.patch(
+        "lightspeed_stack.metrics.recording.metrics.response_duration_seconds"
+    )
     mock_metric.labels.return_value.time.return_value = mock_timer
 
     with recording.measure_response_duration("/v1/infer"):
@@ -38,7 +40,9 @@ def test_measure_response_duration_records_timer(mocker: MockerFixture) -> None:
 
 def test_measure_response_duration_logs_metric_errors(mocker: MockerFixture) -> None:
     """Test that response duration metric errors are logged and request still proceeds."""
-    mock_metric = mocker.patch("lightspeed_stack.metrics.recording.metrics.response_duration_seconds")
+    mock_metric = mocker.patch(
+        "lightspeed_stack.metrics.recording.metrics.response_duration_seconds"
+    )
     mock_metric.labels.return_value.time.side_effect = AttributeError("missing")
     mock_logger = mocker.patch("lightspeed_stack.metrics.recording.logger")
 
@@ -52,7 +56,9 @@ def test_measure_response_duration_logs_metric_errors(mocker: MockerFixture) -> 
 
 def test_record_rest_api_call_records_counter(mocker: MockerFixture) -> None:
     """Test that REST API call recording increments the labeled counter."""
-    mock_metric = mocker.patch("lightspeed_stack.metrics.recording.metrics.rest_api_calls_total")
+    mock_metric = mocker.patch(
+        "lightspeed_stack.metrics.recording.metrics.rest_api_calls_total"
+    )
 
     recording.record_rest_api_call("/v1/infer", 200)
 
@@ -62,7 +68,9 @@ def test_record_rest_api_call_records_counter(mocker: MockerFixture) -> None:
 
 def test_record_rest_api_call_logs_metric_errors(mocker: MockerFixture) -> None:
     """Test that REST API call metric errors are logged and swallowed."""
-    mock_metric = mocker.patch("lightspeed_stack.metrics.recording.metrics.rest_api_calls_total")
+    mock_metric = mocker.patch(
+        "lightspeed_stack.metrics.recording.metrics.rest_api_calls_total"
+    )
     mock_metric.labels.return_value.inc.side_effect = AttributeError("missing")
     mock_logger = mocker.patch("lightspeed_stack.metrics.recording.logger")
 
@@ -75,7 +83,9 @@ def test_record_rest_api_call_logs_metric_errors(mocker: MockerFixture) -> None:
 
 def test_record_llm_call_records_counter(mocker: MockerFixture) -> None:
     """Test that LLM call recording increments the provider/model counter."""
-    mock_metric = mocker.patch("lightspeed_stack.metrics.recording.metrics.llm_calls_total")
+    mock_metric = mocker.patch(
+        "lightspeed_stack.metrics.recording.metrics.llm_calls_total"
+    )
 
     recording.record_llm_call("provider1", "model1", "/test-endpoint")
 
@@ -85,7 +95,9 @@ def test_record_llm_call_records_counter(mocker: MockerFixture) -> None:
 
 def test_record_llm_call_logs_metric_errors(mocker: MockerFixture) -> None:
     """Test that LLM call metric errors are logged and swallowed."""
-    mock_metric = mocker.patch("lightspeed_stack.metrics.recording.metrics.llm_calls_total")
+    mock_metric = mocker.patch(
+        "lightspeed_stack.metrics.recording.metrics.llm_calls_total"
+    )
     mock_metric.labels.return_value.inc.side_effect = AttributeError("missing")
     mock_logger = mocker.patch("lightspeed_stack.metrics.recording.logger")
 
@@ -98,7 +110,9 @@ def test_record_llm_call_logs_metric_errors(mocker: MockerFixture) -> None:
 
 def test_record_llm_failure_records_counter(mocker: MockerFixture) -> None:
     """Test that LLM failure recording increments the provider/model counter."""
-    mock_metric = mocker.patch("lightspeed_stack.metrics.recording.metrics.llm_calls_failures_total")
+    mock_metric = mocker.patch(
+        "lightspeed_stack.metrics.recording.metrics.llm_calls_failures_total"
+    )
 
     recording.record_llm_failure("provider1", "model1", "/test-endpoint")
 
@@ -108,7 +122,9 @@ def test_record_llm_failure_records_counter(mocker: MockerFixture) -> None:
 
 def test_record_llm_failure_logs_metric_errors(mocker: MockerFixture) -> None:
     """Test that LLM failure metric errors are logged and swallowed."""
-    mock_metric = mocker.patch("lightspeed_stack.metrics.recording.metrics.llm_calls_failures_total")
+    mock_metric = mocker.patch(
+        "lightspeed_stack.metrics.recording.metrics.llm_calls_failures_total"
+    )
     mock_metric.labels.return_value.inc.side_effect = TypeError("bad")
     mock_logger = mocker.patch("lightspeed_stack.metrics.recording.logger")
 
@@ -150,8 +166,12 @@ def test_record_llm_validation_error_logs_metric_errors(
 
 def test_record_llm_token_usage_records_counters(mocker: MockerFixture) -> None:
     """Test that token usage recording increments sent and received counters."""
-    mock_sent = mocker.patch("lightspeed_stack.metrics.recording.metrics.llm_token_sent_total")
-    mock_received = mocker.patch("lightspeed_stack.metrics.recording.metrics.llm_token_received_total")
+    mock_sent = mocker.patch(
+        "lightspeed_stack.metrics.recording.metrics.llm_token_sent_total"
+    )
+    mock_received = mocker.patch(
+        "lightspeed_stack.metrics.recording.metrics.llm_token_received_total"
+    )
 
     recording.record_llm_token_usage("provider1", "model1", 100, 50, "/test-endpoint")
 
@@ -165,7 +185,9 @@ def test_record_llm_token_usage_records_counters(mocker: MockerFixture) -> None:
 
 def test_record_llm_token_usage_logs_metric_errors(mocker: MockerFixture) -> None:
     """Test that token metric failures are logged and swallowed."""
-    mock_sent = mocker.patch("lightspeed_stack.metrics.recording.metrics.llm_token_sent_total")
+    mock_sent = mocker.patch(
+        "lightspeed_stack.metrics.recording.metrics.llm_token_sent_total"
+    )
     mock_sent.labels.return_value.inc.side_effect = ValueError("bad")
     mocker.patch("lightspeed_stack.metrics.recording.metrics.llm_token_received_total")
     mock_logger = mocker.patch("lightspeed_stack.metrics.recording.logger")

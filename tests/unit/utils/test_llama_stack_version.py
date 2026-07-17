@@ -124,7 +124,9 @@ async def test_check_llama_stack_version_retries_on_connection_error(
 ) -> None:
     """Test that check_llama_stack_version retries on APIConnectionError."""
     mock_client = mocker.AsyncMock()
-    mock_sleep = mocker.patch("lightspeed_stack.utils.llama_stack_version.asyncio.sleep")
+    mock_sleep = mocker.patch(
+        "lightspeed_stack.utils.llama_stack_version.asyncio.sleep"
+    )
 
     # Fail twice with connection error, then succeed
     mock_client.inspect.version.side_effect = [
@@ -145,7 +147,9 @@ async def test_check_llama_stack_version_raises_after_max_retries(
 ) -> None:
     """Test that check_llama_stack_version raises after all retries are exhausted."""
     mock_client = mocker.AsyncMock()
-    mock_sleep = mocker.patch("lightspeed_stack.utils.llama_stack_version.asyncio.sleep")
+    mock_sleep = mocker.patch(
+        "lightspeed_stack.utils.llama_stack_version.asyncio.sleep"
+    )
 
     mock_client.inspect.version.side_effect = APIConnectionError(
         request=mocker.MagicMock()

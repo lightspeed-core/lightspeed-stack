@@ -19,7 +19,11 @@ from pydantic import BaseModel, field_validator, model_validator
 
 from lightspeed_stack.constants import RESPONSES_REQUEST_MAX_SIZE
 from lightspeed_stack.models.common.query import SolrVectorSearchRequest
-from lightspeed_stack.models.common.responses.types import IncludeParameter, InputTool, ResponseInput
+from lightspeed_stack.models.common.responses.types import (
+    IncludeParameter,
+    InputTool,
+    ResponseInput,
+)
 from lightspeed_stack.utils import suid
 
 

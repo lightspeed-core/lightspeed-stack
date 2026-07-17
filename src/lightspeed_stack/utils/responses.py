@@ -93,7 +93,9 @@ from lightspeed_stack.models.api.responses.error import (
     NotFoundResponse,
     ServiceUnavailableResponse,
 )
-from lightspeed_stack.models.common.responses.responses_api_params import ResponsesApiParams
+from lightspeed_stack.models.common.responses.responses_api_params import (
+    ResponsesApiParams,
+)
 from lightspeed_stack.models.common.responses.types import (
     InputTool,
     InputToolMCP,
@@ -114,7 +116,10 @@ from lightspeed_stack.utils.mcp_headers import (
     build_mcp_headers,
     find_unresolved_auth_headers,
 )
-from lightspeed_stack.utils.prompts import get_system_prompt, get_topic_summary_system_prompt
+from lightspeed_stack.utils.prompts import (
+    get_system_prompt,
+    get_topic_summary_system_prompt,
+)
 from lightspeed_stack.utils.query import (
     extract_provider_and_model_from_model_id,
     handle_known_apistatus_errors,

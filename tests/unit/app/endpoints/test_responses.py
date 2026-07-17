@@ -32,12 +32,20 @@ from lightspeed_stack.app.endpoints.responses import (
 )
 from lightspeed_stack.authentication.interface import AuthTuple
 from lightspeed_stack.configuration import AppConfig
-from lightspeed_stack.constants import DEFAULT_SYSTEM_PROMPT, SUBSTITUTED_INSTRUCTIONS_PLACEHOLDER
+from lightspeed_stack.constants import (
+    DEFAULT_SYSTEM_PROMPT,
+    SUBSTITUTED_INSTRUCTIONS_PLACEHOLDER,
+)
 from lightspeed_stack.models.api.requests import ResponsesRequest
 from lightspeed_stack.models.api.responses.successful import ResponsesResponse
-from lightspeed_stack.models.common.moderation import ShieldModerationBlocked, ShieldModerationPassed
+from lightspeed_stack.models.common.moderation import (
+    ShieldModerationBlocked,
+    ShieldModerationPassed,
+)
 from lightspeed_stack.models.common.responses.contexts import ResponsesContext
-from lightspeed_stack.models.common.responses.responses_api_params import ResponsesApiParams
+from lightspeed_stack.models.common.responses.responses_api_params import (
+    ResponsesApiParams,
+)
 from lightspeed_stack.models.common.responses.responses_conversation_context import (
     ResponsesConversationContext,
 )

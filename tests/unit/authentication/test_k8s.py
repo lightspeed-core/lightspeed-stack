@@ -141,8 +141,12 @@ async def test_auth_dependency_valid_token(mocker: MockerFixture) -> None:
     dependency = K8SAuthDependency()
 
     # Mock the Kubernetes API calls
-    mock_authn_api = mocker.patch("lightspeed_stack.authentication.k8s.K8sClientSingleton.get_authn_api")
-    mock_authz_api = mocker.patch("lightspeed_stack.authentication.k8s.K8sClientSingleton.get_authz_api")
+    mock_authn_api = mocker.patch(
+        "lightspeed_stack.authentication.k8s.K8sClientSingleton.get_authn_api"
+    )
+    mock_authz_api = mocker.patch(
+        "lightspeed_stack.authentication.k8s.K8sClientSingleton.get_authz_api"
+    )
 
     # Mock a successful token review response
     mock_authn_api.return_value.create_token_review.return_value = MockK8sResponse(
@@ -175,8 +179,12 @@ async def test_auth_dependency_invalid_token(mocker: MockerFixture) -> None:
     dependency = K8SAuthDependency()
 
     # Mock the Kubernetes API calls
-    mock_authn_api = mocker.patch("lightspeed_stack.authentication.k8s.K8sClientSingleton.get_authn_api")
-    mock_authz_api = mocker.patch("lightspeed_stack.authentication.k8s.K8sClientSingleton.get_authz_api")
+    mock_authn_api = mocker.patch(
+        "lightspeed_stack.authentication.k8s.K8sClientSingleton.get_authn_api"
+    )
+    mock_authz_api = mocker.patch(
+        "lightspeed_stack.authentication.k8s.K8sClientSingleton.get_authz_api"
+    )
 
     # Setup mock responses for invalid token
     mock_authn_api.return_value.create_token_review.return_value = MockK8sResponse(
@@ -211,8 +219,12 @@ async def test_auth_dependency_no_token(mocker: MockerFixture) -> None:
     dependency = K8SAuthDependency()
 
     # Mock the Kubernetes API calls
-    mock_authn_api = mocker.patch("lightspeed_stack.authentication.k8s.K8sClientSingleton.get_authn_api")
-    mock_authz_api = mocker.patch("lightspeed_stack.authentication.k8s.K8sClientSingleton.get_authz_api")
+    mock_authn_api = mocker.patch(
+        "lightspeed_stack.authentication.k8s.K8sClientSingleton.get_authn_api"
+    )
+    mock_authz_api = mocker.patch(
+        "lightspeed_stack.authentication.k8s.K8sClientSingleton.get_authz_api"
+    )
 
     # Setup mock responses for invalid token
     mock_authn_api.return_value.create_token_review.return_value = MockK8sResponse(
@@ -284,8 +296,12 @@ async def test_auth_dependency_no_token_readiness_liveness_endpoints_1(
     dependency = K8SAuthDependency()
 
     # Mock the Kubernetes API calls
-    mock_authn_api = mocker.patch("lightspeed_stack.authentication.k8s.K8sClientSingleton.get_authn_api")
-    mock_authz_api = mocker.patch("lightspeed_stack.authentication.k8s.K8sClientSingleton.get_authz_api")
+    mock_authn_api = mocker.patch(
+        "lightspeed_stack.authentication.k8s.K8sClientSingleton.get_authn_api"
+    )
+    mock_authz_api = mocker.patch(
+        "lightspeed_stack.authentication.k8s.K8sClientSingleton.get_authz_api"
+    )
 
     # Setup mock responses for invalid token
     mock_authn_api.return_value.create_token_review.return_value = MockK8sResponse(
@@ -358,8 +374,12 @@ async def test_auth_dependency_no_token_readiness_liveness_endpoints_2(
     dependency = K8SAuthDependency()
 
     # Mock the Kubernetes API calls
-    mock_authn_api = mocker.patch("lightspeed_stack.authentication.k8s.K8sClientSingleton.get_authn_api")
-    mock_authz_api = mocker.patch("lightspeed_stack.authentication.k8s.K8sClientSingleton.get_authz_api")
+    mock_authn_api = mocker.patch(
+        "lightspeed_stack.authentication.k8s.K8sClientSingleton.get_authn_api"
+    )
+    mock_authz_api = mocker.patch(
+        "lightspeed_stack.authentication.k8s.K8sClientSingleton.get_authz_api"
+    )
 
     # Setup mock responses for invalid token
     mock_authn_api.return_value.create_token_review.return_value = MockK8sResponse(
@@ -445,8 +465,12 @@ async def test_auth_dependency_no_token_normal_endpoints(
     dependency = K8SAuthDependency()
 
     # Mock the Kubernetes API calls
-    mock_authn_api = mocker.patch("lightspeed_stack.authentication.k8s.K8sClientSingleton.get_authn_api")
-    mock_authz_api = mocker.patch("lightspeed_stack.authentication.k8s.K8sClientSingleton.get_authz_api")
+    mock_authn_api = mocker.patch(
+        "lightspeed_stack.authentication.k8s.K8sClientSingleton.get_authn_api"
+    )
+    mock_authz_api = mocker.patch(
+        "lightspeed_stack.authentication.k8s.K8sClientSingleton.get_authz_api"
+    )
 
     # Setup mock responses for invalid token
     mock_authn_api.return_value.create_token_review.return_value = MockK8sResponse(
@@ -522,8 +546,12 @@ async def test_auth_dependency_no_token_metrics_endpoint_skip_enabled(
     dependency = K8SAuthDependency()
 
     # Mock the Kubernetes API calls
-    mock_authn_api = mocker.patch("lightspeed_stack.authentication.k8s.K8sClientSingleton.get_authn_api")
-    mock_authz_api = mocker.patch("lightspeed_stack.authentication.k8s.K8sClientSingleton.get_authz_api")
+    mock_authn_api = mocker.patch(
+        "lightspeed_stack.authentication.k8s.K8sClientSingleton.get_authn_api"
+    )
+    mock_authz_api = mocker.patch(
+        "lightspeed_stack.authentication.k8s.K8sClientSingleton.get_authz_api"
+    )
 
     # Setup mock responses for invalid token
     mock_authn_api.return_value.create_token_review.return_value = MockK8sResponse(
@@ -590,8 +618,12 @@ async def test_auth_dependency_no_token_metrics_endpoint_skip_disabled(
     dependency = K8SAuthDependency()
 
     # Mock the Kubernetes API calls
-    mock_authn_api = mocker.patch("lightspeed_stack.authentication.k8s.K8sClientSingleton.get_authn_api")
-    mock_authz_api = mocker.patch("lightspeed_stack.authentication.k8s.K8sClientSingleton.get_authz_api")
+    mock_authn_api = mocker.patch(
+        "lightspeed_stack.authentication.k8s.K8sClientSingleton.get_authn_api"
+    )
+    mock_authz_api = mocker.patch(
+        "lightspeed_stack.authentication.k8s.K8sClientSingleton.get_authz_api"
+    )
 
     # Setup mock responses for invalid token
     mock_authn_api.return_value.create_token_review.return_value = MockK8sResponse(
@@ -622,7 +654,9 @@ async def test_auth_dependency_no_token_metrics_endpoint_skip_disabled(
 async def test_cluster_id_is_used_for_kube_admin(mocker: MockerFixture) -> None:
     """Test the cluster id is used as user_id when user is kube:admin."""
     dependency = K8SAuthDependency()
-    mock_authz_api = mocker.patch("lightspeed_stack.authentication.k8s.K8sClientSingleton.get_authz_api")
+    mock_authz_api = mocker.patch(
+        "lightspeed_stack.authentication.k8s.K8sClientSingleton.get_authz_api"
+    )
     mock_authz_api.return_value.create_subject_access_review.return_value = (
         MockK8sResponse(allowed=True)
     )
@@ -891,7 +925,9 @@ async def test_kube_admin_cluster_id_api_connection_error_returns_503(
 ) -> None:
     """Test kube:admin flow returns 503 when K8s API is unreachable."""
     dependency = K8SAuthDependency()
-    mock_authz_api = mocker.patch("lightspeed_stack.authentication.k8s.K8sClientSingleton.get_authz_api")
+    mock_authz_api = mocker.patch(
+        "lightspeed_stack.authentication.k8s.K8sClientSingleton.get_authz_api"
+    )
     mock_authz_api.return_value.create_subject_access_review.return_value = (
         MockK8sResponse(allowed=True)
     )
@@ -938,7 +974,9 @@ async def test_kube_admin_cluster_version_not_found_returns_500(
 ) -> None:
     """Test kube:admin flow returns 500 when ClusterVersion doesn't exist."""
     dependency = K8SAuthDependency()
-    mock_authz_api = mocker.patch("lightspeed_stack.authentication.k8s.K8sClientSingleton.get_authz_api")
+    mock_authz_api = mocker.patch(
+        "lightspeed_stack.authentication.k8s.K8sClientSingleton.get_authz_api"
+    )
     mock_authz_api.return_value.create_subject_access_review.return_value = (
         MockK8sResponse(allowed=True)
     )
@@ -993,7 +1031,9 @@ async def test_kube_admin_cluster_version_permission_error_returns_500(
     contains an "Insufficient permissions" message.
     """
     dependency = K8SAuthDependency()
-    mock_authz_api = mocker.patch("lightspeed_stack.authentication.k8s.K8sClientSingleton.get_authz_api")
+    mock_authz_api = mocker.patch(
+        "lightspeed_stack.authentication.k8s.K8sClientSingleton.get_authz_api"
+    )
     mock_authz_api.return_value.create_subject_access_review.return_value = (
         MockK8sResponse(allowed=True)
     )
@@ -1040,7 +1080,9 @@ async def test_kube_admin_invalid_cluster_version_returns_500(
 ) -> None:
     """Test kube:admin flow returns 500 when ClusterVersion has invalid structure."""
     dependency = K8SAuthDependency()
-    mock_authz_api = mocker.patch("lightspeed_stack.authentication.k8s.K8sClientSingleton.get_authz_api")
+    mock_authz_api = mocker.patch(
+        "lightspeed_stack.authentication.k8s.K8sClientSingleton.get_authz_api"
+    )
     mock_authz_api.return_value.create_subject_access_review.return_value = (
         MockK8sResponse(allowed=True)
     )
@@ -1123,7 +1165,9 @@ def test_get_user_info_api_error_handling(
     expected_cause_fragment: str,
 ) -> None:
     """Test get_user_info properly handles Kubernetes API errors."""
-    mock_authn_api = mocker.patch("lightspeed_stack.authentication.k8s.K8sClientSingleton.get_authn_api")
+    mock_authn_api = mocker.patch(
+        "lightspeed_stack.authentication.k8s.K8sClientSingleton.get_authn_api"
+    )
     mock_authn_api.return_value.create_token_review.side_effect = ApiException(
         status=api_status, reason=reason
     )

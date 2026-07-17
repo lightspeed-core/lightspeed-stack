@@ -58,7 +58,9 @@ from lightspeed_stack.constants import (
 from lightspeed_stack.log import get_logger
 from lightspeed_stack.metrics import recording
 from lightspeed_stack.models.api.requests import QueryRequest
-from lightspeed_stack.models.api.responses.constants import UNAUTHORIZED_OPENAPI_EXAMPLES_WITH_MCP_OAUTH
+from lightspeed_stack.models.api.responses.constants import (
+    UNAUTHORIZED_OPENAPI_EXAMPLES_WITH_MCP_OAUTH,
+)
 from lightspeed_stack.models.api.responses.error import (
     ForbiddenResponse,
     InternalServerErrorResponse,
@@ -72,7 +74,9 @@ from lightspeed_stack.models.api.responses.error import (
 from lightspeed_stack.models.api.responses.successful import StreamingQueryResponse
 from lightspeed_stack.models.common.query import Attachment
 from lightspeed_stack.models.common.responses.contexts import ResponseGeneratorContext
-from lightspeed_stack.models.common.responses.responses_api_params import ResponsesApiParams
+from lightspeed_stack.models.common.responses.responses_api_params import (
+    ResponsesApiParams,
+)
 from lightspeed_stack.models.common.responses.types import ResponseInput
 from lightspeed_stack.models.common.turn_summary import TurnSummary
 from lightspeed_stack.models.config import Action
@@ -105,7 +109,10 @@ from lightspeed_stack.utils.query import (
     validate_attachments_metadata,
     validate_model_provider_override,
 )
-from lightspeed_stack.utils.quota_utils import check_tokens_available, get_available_quotas
+from lightspeed_stack.utils.quota_utils import (
+    check_tokens_available,
+    get_available_quotas,
+)
 from lightspeed_stack.utils.responses import (
     build_mcp_tool_call_from_arguments_done,
     build_tool_call_summary,

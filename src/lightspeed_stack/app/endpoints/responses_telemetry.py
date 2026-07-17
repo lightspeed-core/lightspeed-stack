@@ -11,7 +11,9 @@ from fastapi import BackgroundTasks
 
 from lightspeed_stack.log import get_logger
 from lightspeed_stack.models.common.responses.contexts import ResponsesContext
-from lightspeed_stack.models.common.responses.responses_api_params import ResponsesApiParams
+from lightspeed_stack.models.common.responses.responses_api_params import (
+    ResponsesApiParams,
+)
 from lightspeed_stack.models.common.turn_summary import TurnSummary
 from lightspeed_stack.observability import ResponsesEventData, build_responses_event
 from lightspeed_stack.observability.splunk import dispatch_splunk_event

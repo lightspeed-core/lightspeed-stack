@@ -29,11 +29,13 @@ from lightspeed_stack.models.api.requests.rlsapi import (
     RlsapiV1SystemInfo,
     RlsapiV1Terminal,
 )
-from lightspeed_stack.models.api.responses.successful.rlsapi import RlsapiV1InferResponse
+from lightspeed_stack.models.api.responses.successful.rlsapi import (
+    RlsapiV1InferResponse,
+)
 from lightspeed_stack.models.common.moderation import ShieldModerationPassed
-from tests.unit.utils.auth_helpers import mock_authorization_resolvers
 from lightspeed_stack.utils.suid import check_suid
 from lightspeed_stack.version import __version__
+from tests.unit.utils.auth_helpers import mock_authorization_resolvers
 
 # ==========================================
 # Shared Fixtures

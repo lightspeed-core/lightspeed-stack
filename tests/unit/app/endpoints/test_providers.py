@@ -40,7 +40,9 @@ async def test_providers_endpoint_connection_error(
     mocker: MockerFixture, minimal_config: AppConfig
 ) -> None:
     """Test that /providers endpoint raises HTTP 503 if Llama Stack connection fails."""
-    mocker.patch("lightspeed_stack.app.endpoints.providers.configuration", minimal_config)
+    mocker.patch(
+        "lightspeed_stack.app.endpoints.providers.configuration", minimal_config
+    )
 
     mocker.patch(
         "lightspeed_stack.app.endpoints.providers.AsyncLlamaStackClientHolder"
@@ -64,7 +66,9 @@ async def test_providers_endpoint_success(
     mocker: MockerFixture, minimal_config: AppConfig
 ) -> None:
     """Test that /providers endpoint returns a grouped list of providers on success."""
-    mocker.patch("lightspeed_stack.app.endpoints.providers.configuration", minimal_config)
+    mocker.patch(
+        "lightspeed_stack.app.endpoints.providers.configuration", minimal_config
+    )
 
     provider_list = [
         ProviderInfo(
@@ -111,7 +115,9 @@ async def test_get_provider_not_found(
     mocker: MockerFixture, minimal_config: AppConfig
 ) -> None:
     """Test that /providers/{provider_id} endpoint raises HTTP 404 if the provider is not found."""
-    mocker.patch("lightspeed_stack.app.endpoints.providers.configuration", minimal_config)
+    mocker.patch(
+        "lightspeed_stack.app.endpoints.providers.configuration", minimal_config
+    )
 
     # Mock AsyncLlamaStackClientHolder to return a client that raises BadRequestError
     mock_client_holder = mocker.patch(
@@ -148,7 +154,9 @@ async def test_get_provider_success(
     mocker: MockerFixture, minimal_config: AppConfig
 ) -> None:
     """Test that /providers/{provider_id} endpoint returns provider details on success."""
-    mocker.patch("lightspeed_stack.app.endpoints.providers.configuration", minimal_config)
+    mocker.patch(
+        "lightspeed_stack.app.endpoints.providers.configuration", minimal_config
+    )
 
     provider = ProviderInfo(
         api="inference",
@@ -180,7 +188,9 @@ async def test_get_provider_connection_error(
     mocker: MockerFixture, minimal_config: AppConfig
 ) -> None:
     """Test that /providers/{provider_id} raises HTTP 500 if Llama Stack connection fails."""
-    mocker.patch("lightspeed_stack.app.endpoints.providers.configuration", minimal_config)
+    mocker.patch(
+        "lightspeed_stack.app.endpoints.providers.configuration", minimal_config
+    )
     mock_authorization_resolvers(mocker)
 
     mocker.patch(

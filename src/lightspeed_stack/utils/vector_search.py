@@ -20,8 +20,15 @@ from lightspeed_stack.configuration import configuration
 from lightspeed_stack.log import get_logger
 from lightspeed_stack.models.common.query import SolrVectorSearchRequest
 from lightspeed_stack.models.common.responses.types import ResponseInput
-from lightspeed_stack.models.common.turn_summary import RAGChunk, RAGContext, ReferencedDocument
-from lightspeed_stack.utils.reranker import apply_byok_rerank_boost, rerank_chunks_with_cross_encoder
+from lightspeed_stack.models.common.turn_summary import (
+    RAGChunk,
+    RAGContext,
+    ReferencedDocument,
+)
+from lightspeed_stack.utils.reranker import (
+    apply_byok_rerank_boost,
+    rerank_chunks_with_cross_encoder,
+)
 from lightspeed_stack.utils.responses import resolve_vector_store_ids
 
 logger = get_logger(__name__)

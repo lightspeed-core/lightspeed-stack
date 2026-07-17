@@ -19,7 +19,9 @@ from lightspeed_stack.app.endpoints.responses import (
     handle_non_streaming_response,
     handle_streaming_response,
 )
-from lightspeed_stack.app.endpoints.responses_telemetry import queue_responses_splunk_event
+from lightspeed_stack.app.endpoints.responses_telemetry import (
+    queue_responses_splunk_event,
+)
 from lightspeed_stack.configuration import AppConfig
 from lightspeed_stack.models.api.requests import ResponsesRequest
 from lightspeed_stack.models.common.turn_summary import RAGContext, TurnSummary
@@ -177,7 +179,8 @@ class TestQueueResponsesSplunkEvent:
         # Use MagicMock (not AsyncMock) so send_splunk_event() returns a
         # comparable return_value instead of a coroutine object.
         mock_send = mocker.patch(
-            "lightspeed_stack.observability.splunk.send_splunk_event", new=mocker.MagicMock()
+            "lightspeed_stack.observability.splunk.send_splunk_event",
+            new=mocker.MagicMock(),
         )
         mock_task = mocker.MagicMock()
         mock_create_task = mocker.patch("asyncio.create_task", return_value=mock_task)

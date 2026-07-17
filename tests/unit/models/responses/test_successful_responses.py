@@ -31,7 +31,9 @@ from lightspeed_stack.models.api.responses.successful import (
     StreamingQueryResponse,
     ToolsResponse,
 )
-from lightspeed_stack.models.api.responses.successful.bases import AbstractSuccessfulResponse
+from lightspeed_stack.models.api.responses.successful.bases import (
+    AbstractSuccessfulResponse,
+)
 from lightspeed_stack.models.common import (
     ConversationData,
     ConversationDetails,

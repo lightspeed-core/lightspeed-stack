@@ -26,7 +26,9 @@ from lightspeed_stack.configuration import configuration
 from lightspeed_stack.constants import ENDPOINT_PATH_QUERY, IMAGE_CONTENT_TYPES
 from lightspeed_stack.log import get_logger
 from lightspeed_stack.models.api.requests import QueryRequest
-from lightspeed_stack.models.api.responses.constants import UNAUTHORIZED_OPENAPI_EXAMPLES_WITH_MCP_OAUTH
+from lightspeed_stack.models.api.responses.constants import (
+    UNAUTHORIZED_OPENAPI_EXAMPLES_WITH_MCP_OAUTH,
+)
 from lightspeed_stack.models.api.responses.error import (
     ForbiddenResponse,
     InternalServerErrorResponse,
@@ -39,7 +41,9 @@ from lightspeed_stack.models.api.responses.error import (
 )
 from lightspeed_stack.models.api.responses.successful import QueryResponse
 from lightspeed_stack.models.common.moderation import ShieldModerationResult
-from lightspeed_stack.models.common.responses.responses_api_params import ResponsesApiParams
+from lightspeed_stack.models.common.responses.responses_api_params import (
+    ResponsesApiParams,
+)
 from lightspeed_stack.models.common.responses.types import ResponseInput
 from lightspeed_stack.models.common.turn_summary import TurnSummary
 from lightspeed_stack.models.config import Action
@@ -65,7 +69,10 @@ from lightspeed_stack.utils.query import (
     validate_attachments_metadata,
     validate_model_provider_override,
 )
-from lightspeed_stack.utils.quota_utils import check_tokens_available, get_available_quotas
+from lightspeed_stack.utils.quota_utils import (
+    check_tokens_available,
+    get_available_quotas,
+)
 from lightspeed_stack.utils.responses import (
     build_turn_summary,
     deduplicate_referenced_documents,
@@ -73,7 +80,10 @@ from lightspeed_stack.utils.responses import (
     maybe_get_topic_summary,
     prepare_responses_params,
 )
-from lightspeed_stack.utils.shields import run_shield_moderation, validate_shield_ids_override
+from lightspeed_stack.utils.shields import (
+    run_shield_moderation,
+    validate_shield_ids_override,
+)
 from lightspeed_stack.utils.suid import normalize_conversation_id
 from lightspeed_stack.utils.vector_search import build_rag_context
 

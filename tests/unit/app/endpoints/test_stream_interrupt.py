@@ -7,10 +7,15 @@ from collections.abc import Generator
 import pytest
 from fastapi import HTTPException
 
-from lightspeed_stack.app.endpoints.stream_interrupt import stream_interrupt_endpoint_handler
+from lightspeed_stack.app.endpoints.stream_interrupt import (
+    stream_interrupt_endpoint_handler,
+)
 from lightspeed_stack.models.api.requests import StreamingInterruptRequest
 from lightspeed_stack.models.api.responses.successful import StreamingInterruptResponse
-from lightspeed_stack.utils.stream_interrupts import CancelStreamResult, StreamInterruptRegistry
+from lightspeed_stack.utils.stream_interrupts import (
+    CancelStreamResult,
+    StreamInterruptRegistry,
+)
 
 REQUEST_ID_SUCCESS = "123e4567-e89b-12d3-a456-426614174000"
 REQUEST_ID_NOT_FOUND = "123e4567-e89b-12d3-a456-426614174001"

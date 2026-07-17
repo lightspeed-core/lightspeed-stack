@@ -11,7 +11,11 @@ from typing import Any, Optional
 
 from fastapi import HTTPException, Request
 
-from lightspeed_stack.authentication.interface import NO_AUTH_TUPLE, AuthInterface, AuthTuple
+from lightspeed_stack.authentication.interface import (
+    NO_AUTH_TUPLE,
+    AuthInterface,
+    AuthTuple,
+)
 from lightspeed_stack.configuration import configuration
 from lightspeed_stack.constants import (
     DEFAULT_RH_IDENTITY_MAX_HEADER_SIZE,

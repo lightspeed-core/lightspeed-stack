@@ -21,7 +21,12 @@ from lightspeed_stack.authorization.resolvers import (
     NoopAccessResolver,
     NoopRolesResolver,
 )
-from lightspeed_stack.models.config import AccessRule, Action, JsonPathOperator, JwtRoleRule
+from lightspeed_stack.models.config import (
+    AccessRule,
+    Action,
+    JsonPathOperator,
+    JwtRoleRule,
+)
 
 
 @pytest.fixture(name="dummy_auth_tuple")
@@ -114,7 +119,10 @@ class TestGetAuthorizationResolvers:
     ) -> None:
         """Test resolver selection for noop-style authentication modules."""
         mock_configuration.authentication_configuration.module = auth_module
-        mocker.patch("lightspeed_stack.authorization.middleware.configuration", mock_configuration)
+        mocker.patch(
+            "lightspeed_stack.authorization.middleware.configuration",
+            mock_configuration,
+        )
 
         roles_resolver, access_resolver = get_authorization_resolvers()
 
@@ -153,7 +161,10 @@ class TestGetAuthorizationResolvers:
             # For "both_rules", both lists remain empty (default in fixture)
             pass
 
-        mocker.patch("lightspeed_stack.authorization.middleware.configuration", mock_configuration)
+        mocker.patch(
+            "lightspeed_stack.authorization.middleware.configuration",
+            mock_configuration,
+        )
 
         roles_resolver, access_resolver = get_authorization_resolvers()
         assert isinstance(roles_resolver, NoopRolesResolver)
@@ -179,7 +190,10 @@ class TestGetAuthorizationResolvers:
             mock_configuration.authentication_configuration.jwk_configuration.jwt_configuration
         )
         jwt_config.role_rules = [sample_role_rule]
-        mocker.patch("lightspeed_stack.authorization.middleware.configuration", mock_configuration)
+        mocker.patch(
+            "lightspeed_stack.authorization.middleware.configuration",
+            mock_configuration,
+        )
 
         roles_resolver, access_resolver = get_authorization_resolvers()
         assert isinstance(roles_resolver, JwtRolesResolver)
@@ -200,7 +214,10 @@ class TestGetAuthorizationResolvers:
         mock_configuration.authorization_configuration.access_rules = [
             sample_access_rule
         ]
-        mocker.patch("lightspeed_stack.authorization.middleware.configuration", mock_configuration)
+        mocker.patch(
+            "lightspeed_stack.authorization.middleware.configuration",
+            mock_configuration,
+        )
 
         roles_resolver, access_resolver = get_authorization_resolvers()
         assert isinstance(roles_resolver, NoopRolesResolver)
@@ -214,7 +231,10 @@ class TestGetAuthorizationResolvers:
         get_authorization_resolvers.cache_clear()
 
         mock_configuration.authentication_configuration.module = "unknown"
-        mocker.patch("lightspeed_stack.authorization.middleware.configuration", mock_configuration)
+        mocker.patch(
+            "lightspeed_stack.authorization.middleware.configuration",
+            mock_configuration,
+        )
 
         with pytest.raises(HTTPException) as exc_info:
             get_authorization_resolvers()
@@ -370,7 +390,8 @@ class TestAuthorizeDecorator:
             return "success"
 
         mocker.patch(
-            "lightspeed_stack.authorization.middleware._perform_authorization_check", return_value=None
+            "lightspeed_stack.authorization.middleware._perform_authorization_check",
+            return_value=None,
         )
 
         result = await mock_endpoint(auth=dummy_auth_tuple)

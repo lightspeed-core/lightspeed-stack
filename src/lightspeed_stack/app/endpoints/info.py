@@ -11,7 +11,9 @@ from lightspeed_stack.authorization.middleware import authorize
 from lightspeed_stack.client import AsyncLlamaStackClientHolder
 from lightspeed_stack.configuration import configuration
 from lightspeed_stack.log import get_logger
-from lightspeed_stack.models.api.responses.constants import UNAUTHORIZED_OPENAPI_EXAMPLES
+from lightspeed_stack.models.api.responses.constants import (
+    UNAUTHORIZED_OPENAPI_EXAMPLES,
+)
 from lightspeed_stack.models.api.responses.error import (
     ForbiddenResponse,
     ServiceUnavailableResponse,

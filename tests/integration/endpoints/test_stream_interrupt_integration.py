@@ -7,7 +7,9 @@ import pytest
 from fastapi import HTTPException, status
 from fastapi.testclient import TestClient
 
-from lightspeed_stack.app.endpoints.stream_interrupt import stream_interrupt_endpoint_handler
+from lightspeed_stack.app.endpoints.stream_interrupt import (
+    stream_interrupt_endpoint_handler,
+)
 from lightspeed_stack.configuration import AppConfig
 from lightspeed_stack.models.api.requests import StreamingInterruptRequest
 from lightspeed_stack.utils.stream_interrupts import StreamInterruptRegistry

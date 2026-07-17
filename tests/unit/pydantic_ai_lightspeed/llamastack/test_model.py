@@ -17,7 +17,9 @@ from pydantic_ai.models.openai import (
 from pydantic_ai.settings import ModelSettings
 from pytest_mock import MockerFixture
 
-from lightspeed_stack.models.common.responses.responses_api_params import ResponsesApiParams
+from lightspeed_stack.models.common.responses.responses_api_params import (
+    ResponsesApiParams,
+)
 from lightspeed_stack.pydantic_ai_lightspeed.llamastack._model import (
     _LLS_RESPONSES_EXTRA_FIELDS,
     LlamaStackResponsesModel,

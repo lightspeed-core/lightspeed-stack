@@ -50,7 +50,10 @@ from lightspeed_stack.models.common.conversation import (
     Message,
 )
 from lightspeed_stack.models.common.responses.types import ResponseInput
-from lightspeed_stack.models.common.turn_summary import ToolCallSummary, ToolResultSummary
+from lightspeed_stack.models.common.turn_summary import (
+    ToolCallSummary,
+    ToolResultSummary,
+)
 from lightspeed_stack.models.database.conversations import UserTurn
 from lightspeed_stack.utils.responses import parse_arguments_string
 

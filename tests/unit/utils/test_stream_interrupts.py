@@ -8,7 +8,9 @@ from pytest_mock import MockerFixture
 from lightspeed_stack.constants import INTERRUPTED_RESPONSE_MESSAGE
 from lightspeed_stack.models.api.requests import QueryRequest
 from lightspeed_stack.models.common.responses.contexts import ResponseGeneratorContext
-from lightspeed_stack.models.common.responses.responses_api_params import ResponsesApiParams
+from lightspeed_stack.models.common.responses.responses_api_params import (
+    ResponsesApiParams,
+)
 from lightspeed_stack.models.common.turn_summary import TurnSummary
 from lightspeed_stack.utils.stream_interrupts import (
     StreamInterruptRegistry,

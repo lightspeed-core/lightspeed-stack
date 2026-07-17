@@ -48,7 +48,9 @@ async def test_info_endpoint(mocker: MockerFixture) -> None:
     # Mock the LlamaStack client
     mock_client = mocker.AsyncMock()
     mock_client.inspect.version.return_value = VersionInfo(version="0.1.2")
-    mock_lsc = mocker.patch("lightspeed_stack.client.AsyncLlamaStackClientHolder.get_client")
+    mock_lsc = mocker.patch(
+        "lightspeed_stack.client.AsyncLlamaStackClientHolder.get_client"
+    )
     mock_lsc.return_value = mock_client
     mock_config = mocker.Mock()
     mocker.patch("lightspeed_stack.app.endpoints.models.configuration", mock_config)
@@ -120,7 +122,9 @@ async def test_info_endpoint_connection_error(mocker: MockerFixture) -> None:
     # Mock the LlamaStack client
     mock_client = mocker.AsyncMock()
     mock_client.inspect.version.side_effect = APIConnectionError(request=None)  # type: ignore
-    mock_lsc = mocker.patch("lightspeed_stack.client.AsyncLlamaStackClientHolder.get_client")
+    mock_lsc = mocker.patch(
+        "lightspeed_stack.client.AsyncLlamaStackClientHolder.get_client"
+    )
     mock_lsc.return_value = mock_client
     mock_config = mocker.Mock()
     mocker.patch("lightspeed_stack.app.endpoints.models.configuration", mock_config)

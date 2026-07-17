@@ -17,7 +17,10 @@ from lightspeed_stack.app.endpoints.prompts import (
 )
 from lightspeed_stack.authentication.interface import AuthTuple
 from lightspeed_stack.configuration import AppConfig
-from lightspeed_stack.models.api.requests import PromptCreateRequest, PromptUpdateRequest
+from lightspeed_stack.models.api.requests import (
+    PromptCreateRequest,
+    PromptUpdateRequest,
+)
 from lightspeed_stack.models.api.responses.successful import PromptDeleteResponse
 from tests.unit.utils.auth_helpers import mock_authorization_resolvers
 

@@ -42,11 +42,16 @@ from lightspeed_stack.authorization.azure_token_manager import AzureEntraIDManag
 from lightspeed_stack.authorization.middleware import authorize
 from lightspeed_stack.client import AsyncLlamaStackClientHolder
 from lightspeed_stack.configuration import configuration
-from lightspeed_stack.constants import ENDPOINT_PATH_RESPONSES, SUBSTITUTED_INSTRUCTIONS_PLACEHOLDER
+from lightspeed_stack.constants import (
+    ENDPOINT_PATH_RESPONSES,
+    SUBSTITUTED_INSTRUCTIONS_PLACEHOLDER,
+)
 from lightspeed_stack.log import get_logger
 from lightspeed_stack.metrics import recording
 from lightspeed_stack.models.api.requests import ResponsesRequest
-from lightspeed_stack.models.api.responses.constants import UNAUTHORIZED_OPENAPI_EXAMPLES_WITH_MCP_OAUTH
+from lightspeed_stack.models.api.responses.constants import (
+    UNAUTHORIZED_OPENAPI_EXAMPLES_WITH_MCP_OAUTH,
+)
 from lightspeed_stack.models.api.responses.error import (
     ConflictResponse,
     ForbiddenResponse,
@@ -61,7 +66,9 @@ from lightspeed_stack.models.api.responses.error import (
 from lightspeed_stack.models.api.responses.successful import ResponsesResponse
 from lightspeed_stack.models.common.moderation import ShieldModerationBlocked
 from lightspeed_stack.models.common.responses.contexts import ResponsesContext
-from lightspeed_stack.models.common.responses.responses_api_params import ResponsesApiParams
+from lightspeed_stack.models.common.responses.responses_api_params import (
+    ResponsesApiParams,
+)
 from lightspeed_stack.models.common.responses.types import ResponseInput
 from lightspeed_stack.models.common.turn_summary import TurnSummary
 from lightspeed_stack.models.config import Action
@@ -85,7 +92,10 @@ from lightspeed_stack.utils.query import (
     store_query_results,
     validate_model_provider_override,
 )
-from lightspeed_stack.utils.quota_utils import check_tokens_available, get_available_quotas
+from lightspeed_stack.utils.quota_utils import (
+    check_tokens_available,
+    get_available_quotas,
+)
 from lightspeed_stack.utils.responses import (
     build_tool_call_summary,
     build_turn_summary,
@@ -109,7 +119,9 @@ from lightspeed_stack.utils.shields import run_shield_moderation
 from lightspeed_stack.utils.suid import (
     normalize_conversation_id,
 )
-from lightspeed_stack.utils.tool_formatter import translate_vector_store_ids_to_user_facing
+from lightspeed_stack.utils.tool_formatter import (
+    translate_vector_store_ids_to_user_facing,
+)
 from lightspeed_stack.utils.vector_search import (
     append_inline_rag_context_to_responses_input,
     build_rag_context,

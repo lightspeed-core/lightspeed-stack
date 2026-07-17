@@ -10,7 +10,10 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from lightspeed_stack.configuration import configuration
 from lightspeed_stack.log import get_logger
-from lightspeed_stack.models.config import PostgreSQLDatabaseConfiguration, SQLiteDatabaseConfiguration
+from lightspeed_stack.models.config import (
+    PostgreSQLDatabaseConfiguration,
+    SQLiteDatabaseConfiguration,
+)
 from lightspeed_stack.models.database.base import Base
 
 logger = get_logger(__name__)

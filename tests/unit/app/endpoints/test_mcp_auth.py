@@ -10,7 +10,9 @@ from pytest_mock import MockerFixture
 from lightspeed_stack.app.endpoints import mcp_auth
 from lightspeed_stack.authentication.interface import AuthTuple
 from lightspeed_stack.configuration import AppConfig
-from lightspeed_stack.models.api.responses.successful import MCPClientAuthOptionsResponse
+from lightspeed_stack.models.api.responses.successful import (
+    MCPClientAuthOptionsResponse,
+)
 from lightspeed_stack.models.config import (
     Configuration,
     LlamaStackConfiguration,
@@ -119,7 +121,10 @@ async def test_get_mcp_client_auth_options_success(
     mocker.patch("lightspeed_stack.app.endpoints.mcp_auth.configuration", app_config)
 
     # Mock authorization decorator to bypass it
-    mocker.patch("lightspeed_stack.app.endpoints.mcp_auth.authorize", lambda action: lambda func: func)
+    mocker.patch(
+        "lightspeed_stack.app.endpoints.mcp_auth.authorize",
+        lambda action: lambda func: func,
+    )
 
     # Mock request and auth
     mock_request = mocker.Mock()
@@ -155,7 +160,10 @@ async def test_get_mcp_client_auth_options_mixed_auth(
     mocker.patch("lightspeed_stack.app.endpoints.mcp_auth.configuration", app_config)
 
     # Mock authorization decorator to bypass it
-    mocker.patch("lightspeed_stack.app.endpoints.mcp_auth.authorize", lambda action: lambda func: func)
+    mocker.patch(
+        "lightspeed_stack.app.endpoints.mcp_auth.authorize",
+        lambda action: lambda func: func,
+    )
 
     # Mock request and auth
     mock_request = mocker.Mock()
@@ -190,7 +198,10 @@ async def test_get_mcp_client_auth_options_no_client_auth(
     mocker.patch("lightspeed_stack.app.endpoints.mcp_auth.configuration", app_config)
 
     # Mock authorization decorator to bypass it
-    mocker.patch("lightspeed_stack.app.endpoints.mcp_auth.authorize", lambda action: lambda func: func)
+    mocker.patch(
+        "lightspeed_stack.app.endpoints.mcp_auth.authorize",
+        lambda action: lambda func: func,
+    )
 
     # Mock request and auth
     mock_request = mocker.Mock()
@@ -224,7 +235,10 @@ async def test_get_mcp_client_auth_options_empty_config(
     mocker.patch("lightspeed_stack.app.endpoints.mcp_auth.configuration", app_config)
 
     # Mock authorization decorator to bypass it
-    mocker.patch("lightspeed_stack.app.endpoints.mcp_auth.authorize", lambda action: lambda func: func)
+    mocker.patch(
+        "lightspeed_stack.app.endpoints.mcp_auth.authorize",
+        lambda action: lambda func: func,
+    )
 
     # Mock request and auth
     mock_request = mocker.Mock()
@@ -271,7 +285,10 @@ async def test_get_mcp_client_auth_options_whitespace_handling(
     mocker.patch("lightspeed_stack.app.endpoints.mcp_auth.configuration", app_config)
 
     # Mock authorization decorator to bypass it
-    mocker.patch("lightspeed_stack.app.endpoints.mcp_auth.authorize", lambda action: lambda func: func)
+    mocker.patch(
+        "lightspeed_stack.app.endpoints.mcp_auth.authorize",
+        lambda action: lambda func: func,
+    )
 
     # Mock request and auth
     mock_request = mocker.Mock()
@@ -317,7 +334,10 @@ async def test_get_mcp_client_auth_options_multiple_headers_single_server(
     mocker.patch("lightspeed_stack.app.endpoints.mcp_auth.configuration", app_config)
 
     # Mock authorization decorator to bypass it
-    mocker.patch("lightspeed_stack.app.endpoints.mcp_auth.authorize", lambda action: lambda func: func)
+    mocker.patch(
+        "lightspeed_stack.app.endpoints.mcp_auth.authorize",
+        lambda action: lambda func: func,
+    )
 
     # Mock request and auth
     mock_request = mocker.Mock()
