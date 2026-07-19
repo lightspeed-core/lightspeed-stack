@@ -1635,6 +1635,111 @@ def test_dump_models(tmpdir: Path) -> None:
                     "title": "DetailModel",
                     "type": "object"
                 },
+                "EndEventData": {
+                    "description": "Nested data for event: \"end\".",
+                    "properties": {
+                        "referenced_documents": {
+                            "items": {
+                                "$ref": "`#/components/schemas/`ReferencedDocument"
+                            },
+                            "title": "Referenced Documents",
+                            "type": "array"
+                        },
+                        "truncated": {
+                            "type": "boolean",
+                            "nullable": true,
+                            "title": "Truncated"
+                        },
+                        "input_tokens": {
+                            "title": "Input Tokens",
+                            "type": "integer"
+                        },
+                        "output_tokens": {
+                            "title": "Output Tokens",
+                            "type": "integer"
+                        }
+                    },
+                    "required": [
+                        "referenced_documents",
+                        "truncated",
+                        "input_tokens",
+                        "output_tokens"
+                    ],
+                    "title": "EndEventData",
+                    "type": "object"
+                },
+                "EndStreamPayload": {
+                    "additionalProperties": false,
+                    "description": "SSE end-of-stream body (includes available_quotas beside data).",
+                    "properties": {
+                        "event": {
+                            "const": "end",
+                            "default": "end",
+                            "title": "Event",
+                            "type": "string"
+                        },
+                        "data": {
+                            "$ref": "`#/components/schemas/`EndEventData"
+                        },
+                        "available_quotas": {
+                            "additionalProperties": {
+                                "type": "integer"
+                            },
+                            "title": "Available Quotas",
+                            "type": "object"
+                        }
+                    },
+                    "required": [
+                        "data",
+                        "available_quotas"
+                    ],
+                    "title": "EndStreamPayload",
+                    "type": "object"
+                },
+                "ErrorEventData": {
+                    "description": "Payload for event: \"error\".",
+                    "properties": {
+                        "status_code": {
+                            "title": "Status Code",
+                            "type": "integer"
+                        },
+                        "response": {
+                            "title": "Response",
+                            "type": "string"
+                        },
+                        "cause": {
+                            "title": "Cause",
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "status_code",
+                        "response",
+                        "cause"
+                    ],
+                    "title": "ErrorEventData",
+                    "type": "object"
+                },
+                "ErrorStreamPayload": {
+                    "additionalProperties": false,
+                    "description": "SSE error event body (event + typed data).",
+                    "properties": {
+                        "event": {
+                            "const": "error",
+                            "default": "error",
+                            "title": "Event",
+                            "type": "string"
+                        },
+                        "data": {
+                            "$ref": "`#/components/schemas/`ErrorEventData"
+                        }
+                    },
+                    "required": [
+                        "data"
+                    ],
+                    "title": "ErrorStreamPayload",
+                    "type": "object"
+                },
                 "FeedbackCategory": {
                     "description": "Enum representing predefined feedback categories for AI responses.\n\nThese categories help provide structured feedback about AI inference quality\nwhen users provide negative feedback (thumbs down). Multiple categories can\nbe selected to provide comprehensive feedback about response issues.",
                     "enum": [
@@ -2298,6 +2403,40 @@ def test_dump_models(tmpdir: Path) -> None:
                         "detail"
                     ],
                     "title": "InternalServerErrorResponse",
+                    "type": "object"
+                },
+                "InterruptedEventData": {
+                    "description": "Payload for event: \"interrupted\".",
+                    "properties": {
+                        "request_id": {
+                            "title": "Request Id",
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "request_id"
+                    ],
+                    "title": "InterruptedEventData",
+                    "type": "object"
+                },
+                "InterruptedStreamPayload": {
+                    "additionalProperties": false,
+                    "description": "SSE interrupted stream body.",
+                    "properties": {
+                        "event": {
+                            "const": "interrupted",
+                            "default": "interrupted",
+                            "title": "Event",
+                            "type": "string"
+                        },
+                        "data": {
+                            "$ref": "`#/components/schemas/`InterruptedEventData"
+                        }
+                    },
+                    "required": [
+                        "data"
+                    ],
+                    "title": "InterruptedStreamPayload",
                     "type": "object"
                 },
                 "JsonPathOperator": {
@@ -7194,6 +7333,45 @@ def test_dump_models(tmpdir: Path) -> None:
                     "title": "SplunkConfiguration",
                     "type": "object"
                 },
+                "StartEventData": {
+                    "description": "Payload for event: \"start\".",
+                    "properties": {
+                        "conversation_id": {
+                            "title": "Conversation Id",
+                            "type": "string"
+                        },
+                        "request_id": {
+                            "title": "Request Id",
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "conversation_id",
+                        "request_id"
+                    ],
+                    "title": "StartEventData",
+                    "type": "object"
+                },
+                "StartStreamPayload": {
+                    "additionalProperties": false,
+                    "description": "SSE stream start body.",
+                    "properties": {
+                        "event": {
+                            "const": "start",
+                            "default": "start",
+                            "title": "Event",
+                            "type": "string"
+                        },
+                        "data": {
+                            "$ref": "`#/components/schemas/`StartEventData"
+                        }
+                    },
+                    "required": [
+                        "data"
+                    ],
+                    "title": "StartStreamPayload",
+                    "type": "object"
+                },
                 "StatusResponse": {
                     "description": "Model representing a response to a status request.\n\nAttributes:\n    functionality: The functionality of the service.\n    status: The status of the service.",
                     "examples": [
@@ -7230,6 +7408,13 @@ def test_dump_models(tmpdir: Path) -> None:
                         "status"
                     ],
                     "title": "StatusResponse",
+                    "type": "object"
+                },
+                "StreamPayloadBase": {
+                    "additionalProperties": false,
+                    "description": "Base for streaming SSE JSON payloads.",
+                    "properties": {},
+                    "title": "StreamPayloadBase",
                     "type": "object"
                 },
                 "StreamingInterruptRequest": {
@@ -7337,6 +7522,25 @@ def test_dump_models(tmpdir: Path) -> None:
                     "title": "TLSConfiguration",
                     "type": "object"
                 },
+                "TokenChunkData": {
+                    "description": "Structured data for token and turn-complete stream lines.",
+                    "properties": {
+                        "id": {
+                            "title": "Id",
+                            "type": "integer"
+                        },
+                        "token": {
+                            "title": "Token",
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "id",
+                        "token"
+                    ],
+                    "title": "TokenChunkData",
+                    "type": "object"
+                },
                 "TokenCounter": {
                     "description": "Model representing token counter.\n\nAttributes:\n    input_tokens: number of tokens sent to LLM\n    output_tokens: number of tokens received from LLM\n    input_tokens_counted: number of input tokens counted by the handler\n    llm_calls: number of LLM calls",
                     "properties": {
@@ -7362,6 +7566,46 @@ def test_dump_models(tmpdir: Path) -> None:
                         }
                     },
                     "title": "TokenCounter",
+                    "type": "object"
+                },
+                "TokenStreamPayload": {
+                    "additionalProperties": false,
+                    "description": "SSE token delta (event: \"token\").",
+                    "properties": {
+                        "event": {
+                            "const": "token",
+                            "default": "token",
+                            "title": "Event",
+                            "type": "string"
+                        },
+                        "data": {
+                            "$ref": "`#/components/schemas/`TokenChunkData"
+                        }
+                    },
+                    "required": [
+                        "data"
+                    ],
+                    "title": "TokenStreamPayload",
+                    "type": "object"
+                },
+                "ToolCallStreamPayload": {
+                    "additionalProperties": false,
+                    "description": "SSE tool call summary.",
+                    "properties": {
+                        "event": {
+                            "const": "tool_call",
+                            "default": "tool_call",
+                            "title": "Event",
+                            "type": "string"
+                        },
+                        "data": {
+                            "$ref": "`#/components/schemas/`ToolCallSummary"
+                        }
+                    },
+                    "required": [
+                        "data"
+                    ],
+                    "title": "ToolCallStreamPayload",
                     "type": "object"
                 },
                 "ToolCallSummary": {
@@ -7424,6 +7668,26 @@ def test_dump_models(tmpdir: Path) -> None:
                         "name"
                     ],
                     "title": "ToolInfoSummary",
+                    "type": "object"
+                },
+                "ToolResultStreamPayload": {
+                    "additionalProperties": false,
+                    "description": "SSE tool result summary.",
+                    "properties": {
+                        "event": {
+                            "const": "tool_result",
+                            "default": "tool_result",
+                            "title": "Event",
+                            "type": "string"
+                        },
+                        "data": {
+                            "$ref": "`#/components/schemas/`ToolResultSummary"
+                        }
+                    },
+                    "required": [
+                        "data"
+                    ],
+                    "title": "ToolResultStreamPayload",
                     "type": "object"
                 },
                 "ToolResultSummary": {
@@ -7660,6 +7924,26 @@ def test_dump_models(tmpdir: Path) -> None:
                         "name"
                     ],
                     "title": "TrustedProxyServiceAccount",
+                    "type": "object"
+                },
+                "TurnCompleteStreamPayload": {
+                    "additionalProperties": false,
+                    "description": "SSE turn completion (same data shape as token).",
+                    "properties": {
+                        "event": {
+                            "const": "turn_complete",
+                            "default": "turn_complete",
+                            "title": "Event",
+                            "type": "string"
+                        },
+                        "data": {
+                            "$ref": "`#/components/schemas/`TokenChunkData"
+                        }
+                    },
+                    "required": [
+                        "data"
+                    ],
+                    "title": "TurnCompleteStreamPayload",
                     "type": "object"
                 },
                 "TurnSummary": {
@@ -8657,6 +8941,10 @@ def test_dump_models(tmpdir: Path) -> None:
             "Customization",
             "DatabaseConfiguration",
             "DetailModel",
+            "EndEventData",
+            "EndStreamPayload",
+            "ErrorEventData",
+            "ErrorStreamPayload",
             "FeedbackCategory",
             "FeedbackRequest",
             "FeedbackResponse",
@@ -8672,6 +8960,8 @@ def test_dump_models(tmpdir: Path) -> None:
             "InfoResponse",
             "InputToolMCP",
             "InternalServerErrorResponse",
+            "InterruptedEventData",
+            "InterruptedStreamPayload",
             "JsonPathOperator",
             "JwkConfiguration",
             "JwtConfiguration",
@@ -8782,20 +9072,28 @@ def test_dump_models(tmpdir: Path) -> None:
             "SkillsConfiguration",
             "SolrVectorSearchRequest",
             "SplunkConfiguration",
+            "StartEventData",
+            "StartStreamPayload",
             "StatusResponse",
+            "StreamPayloadBase",
             "StreamingInterruptRequest",
             "StreamingInterruptResponse",
             "StreamingQueryResponse",
             "TLSConfiguration",
+            "TokenChunkData",
             "TokenCounter",
+            "TokenStreamPayload",
+            "ToolCallStreamPayload",
             "ToolCallSummary",
             "ToolInfoSummary",
+            "ToolResultStreamPayload",
             "ToolResultSummary",
             "ToolsResponse",
             "Transcript",
             "TranscriptMetadata",
             "TrustedProxyConfiguration",
             "TrustedProxyServiceAccount",
+            "TurnCompleteStreamPayload",
             "TurnSummary",
             "UnauthorizedResponse",
             "UnifiedInferenceProvider",

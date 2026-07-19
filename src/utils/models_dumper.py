@@ -4,6 +4,7 @@ import models.api.requests as r
 import models.api.responses.error as e
 import models.api.responses.successful as s
 import models.common as c
+import models.common.agents as a
 import models.compaction as models_compaction
 from utils.openapi_schema_dumper import dump_openapi_schema
 
@@ -120,6 +121,20 @@ def dump_models(filename: str) -> None:
         c.Transcript,
         c.TranscriptMetadata,
         c.TurnSummary,
+        a.EndEventData,
+        a.EndStreamPayload,
+        a.ErrorEventData,
+        a.ErrorStreamPayload,
+        a.InterruptedEventData,
+        a.InterruptedStreamPayload,
+        a.StartEventData,
+        a.StartStreamPayload,
+        a.StreamPayloadBase,
+        a.TokenChunkData,
+        a.TokenStreamPayload,
+        a.ToolCallStreamPayload,
+        a.ToolResultStreamPayload,
+        a.TurnCompleteStreamPayload,
     ]:
         models.append(model)
     dump_openapi_schema(models, filename)
