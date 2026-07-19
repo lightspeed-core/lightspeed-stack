@@ -74,6 +74,8 @@ See the full documentation at [`../README.md`](../README.md) or browse sub-pages
 
 [Conversation history](https://lightspeed-core.github.io/lightspeed-stack/devel_doc/conversation_history.html)
 
+[Persistent storage](https://lightspeed-core.github.io/lightspeed-stack/devel_doc/persistent_storage.html)
+
 ### API
 
 [OpenAPI specification](https://lightspeed-core.github.io/lightspeed-stack/devel_doc/openapi.html)
