@@ -1,0 +1,5 @@
+team = "lightspeed-core"
+repo = "lightspeed-stack"
+check_sha = "ea5de69d94e33aa2a75a622fec455bc4b0fa6c6b"
+fix_commit_msg = false
+default_branch = "main"
