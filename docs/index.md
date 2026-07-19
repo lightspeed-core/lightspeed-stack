@@ -18,9 +18,9 @@ product questions using backend LLM services, agents, and RAG databases.
 * [User docs](#user-docs)
 * [Developer doc](#developer-doc)
     * [API](#api)
+    * [Models](#models)
+    * [Testing](#testing)
 * [Maintenance](#maintenance)
-* [Migration guides](#migration-guides)
-* [Models](#models)
 * [Design documents](#design-documents)
     * [Agent skills](#agent-skills)
     * [Automatic conversation expiration](#automatic-conversation-expiration)
@@ -31,8 +31,6 @@ product questions using backend LLM services, agents, and RAG databases.
     * [Llama Stack config merge (unified `lightspeed-stack.yaml`)](#llama-stack-config-merge-unified-lightspeed-stackyaml)
     * [Low overhead deployment for server mode](#low-overhead-deployment-for-server-mode)
     * [OpenTelemetry tracing in Lightspeed Core](#opentelemetry-tracing-in-lightspeed-core)
-* [Testing](#testing)
-* [Releasing](#releasing)
 * [Demos](#demos)
 
 <!-- vim-markdown-toc -->
@@ -61,6 +59,8 @@ product questions using backend LLM services, agents, and RAG databases.
 
 [User data collection](https://lightspeed-core.github.io/lightspeed-stack/user_doc/user_data_collection.html)
 
+[Sentry error tracking](https://lightspeed-core.github.io/lightspeed-stack/sentry.html)
+
 ## Developer doc
 
 [Architecture](https://lightspeed-core.github.io/lightspeed-stack/devel_doc/ARCHITECTURE.html)
@@ -85,25 +85,7 @@ product questions using backend LLM services, agents, and RAG databases.
 
 [Conversations API](https://lightspeed-core.github.io/lightspeed-stack/devel_doc/conversations_api.html)
 
-
-## Maintenance
-
-[Status of Lightspeed Core Stack versions](https://lightspeed-core.github.io/lightspeed-stack/maintenance/version_status.html)
-
-[Supported versions](https://lightspeed-core.github.io/lightspeed-stack/maintenance/versions_supported.html)
-
-[Unsupported versions](https://lightspeed-core.github.io/lightspeed-stack/maintenance/versions_unsupported.html)
-
-## Migration guides
-
-[Migration guides](https://lightspeed-core.github.io/lightspeed-stack/migrations/)
-
-
-[Sentry error tracking](https://lightspeed-core.github.io/lightspeed-stack/sentry.html)
-
-
-
-## Models
+### Models
 
 [Common](https://lightspeed-core.github.io/lightspeed-stack/models/common.html)
 
@@ -117,6 +99,29 @@ product questions using backend LLM services, agents, and RAG databases.
 
 [Compaction](https://lightspeed-core.github.io/lightspeed-stack/models/compaction.html)
 
+### Testing
+
+[Testing](https://lightspeed-core.github.io/lightspeed-stack/testing.html)
+
+[End-to-End Tests Guide](https://lightspeed-core.github.io/lightspeed-stack/e2e_testing.html)
+
+[List of e2e scenarios](https://lightspeed-core.github.io/lightspeed-stack/e2e_scenarios.html)
+
+## Maintenance
+
+[Status of Lightspeed Core Stack versions](https://lightspeed-core.github.io/lightspeed-stack/maintenance/version_status.html)
+
+[Supported versions](https://lightspeed-core.github.io/lightspeed-stack/maintenance/versions_supported.html)
+
+[Unsupported versions](https://lightspeed-core.github.io/lightspeed-stack/maintenance/versions_unsupported.html)
+
+[Migration guides](https://lightspeed-core.github.io/lightspeed-stack/migrations/)
+
+[Branching](https://lightspeed-core.github.io/lightspeed-stack/maintenance/branching.html)
+
+[Releasing](https://lightspeed-core.github.io/lightspeed-stack/maintenance/releasing.html)
+
+[LTS process overview](https://lightspeed-core.github.io/lightspeed-stack/maintenance/lts_flow.html)
 
 ## Design documents
 
@@ -167,22 +172,6 @@ product questions using backend LLM services, agents, and RAG databases.
 ### OpenTelemetry tracing in Lightspeed Core
 
 [Design](https://lightspeed-core.github.io/lightspeed-stack/design/observability-opentelemetry/observability-opentelemetry.html)
-
-## Testing
-
-[Testing](https://lightspeed-core.github.io/lightspeed-stack/testing.html)
-
-[End-to-End Tests Guide](https://lightspeed-core.github.io/lightspeed-stack/e2e_testing.html)
-
-[List of e2e scenarios](https://lightspeed-core.github.io/lightspeed-stack/e2e_scenarios.html)
-
-## Releasing
-
-[Branching](https://lightspeed-core.github.io/lightspeed-stack/branching.html)
-
-[Releasing](https://lightspeed-core.github.io/lightspeed-stack/releasing.html)
-
-[LTS provess overview](https://lightspeed-core.github.io/lightspeed-stack/lts_flow.html)
 
 ## Demos
 
