@@ -1,3 +1,3 @@
 # Conversation history
 
-![Conversation history](./conversation_history.md)
+![Conversation history](./conversation_history.svg)

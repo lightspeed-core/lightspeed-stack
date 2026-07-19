@@ -1,3 +1,3 @@
 # Persistent storage
 
-![Persistent storage](./persistent_storage.md)
+![Persistent storage](./persistent_storage.svg)

@@ -76,6 +76,8 @@ See the full documentation at [`../README.md`](../README.md) or browse sub-pages
 
 [Persistent storage](https://lightspeed-core.github.io/lightspeed-stack/devel_doc/persistent_storage.html)
 
+[Quota scheduler](https://lightspeed-core.github.io/lightspeed-stack/devel_doc/quota_scheduler.html)
+
 ### API
 
 [OpenAPI specification](https://lightspeed-core.github.io/lightspeed-stack/devel_doc/openapi.html)
