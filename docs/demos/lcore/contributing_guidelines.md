@@ -74,7 +74,10 @@ ptisnovs@redhat.com
 
 ## PR description
 
-* Jira ticket needs to be added into PR title
+* PR titles must start with a JIRA issue key prefix. CI enforces this via
+  `pr-title-checker` (config: `.github/pr-title-checker-config.json`).
+  Allowed prefixes: `LCORE-`, `RSPEED-`, `MGTM-`, `OLS-`, `RHIDP-`, `LEADS-`,
+  `CWFHEALTH-`, `[release/`
     - for example: `LCORE-740: type hints for models unit tests`
 * Fill-in all relevant information in the PR template
     - unused parts of PR template (like information about testing etc.) can be deleted

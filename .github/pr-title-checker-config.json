@@ -1,0 +1,23 @@
+{
+  "LABEL": {
+    "name": "title needs formatting",
+    "color": "EEEEEE"
+  },
+  "CHECKS": {
+    "prefixes": [
+      "LCORE-",
+      "RSPEED-",
+      "MGTM-",
+      "OLS-",
+      "RHIDP-",
+      "LEADS-",
+      "CWFHEALTH-",
+      "[release/"
+    ]
+  },
+  "MESSAGES": {
+    "success": "All OK",
+    "failure": "Failing CI test",
+    "notice": ""
+  }
+}
