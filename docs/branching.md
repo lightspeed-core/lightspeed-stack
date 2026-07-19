@@ -267,6 +267,9 @@ branch history. Key points:
    - Resolve any merge conflicts, then `git add` and `git cherry-pick --continue`.
    Test, review, and push the resulting commit into the release branch.
 
+We use `cherry_picker` to automate this process. See the
+[contributing guide](../CONTRIBUTING.md#backports) for usage instructions.
+
 NOTE: the cherry picking can be made in main -> release branch direction or
 vice versa. We prefer the first method when possible.
 

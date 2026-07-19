@@ -198,7 +198,7 @@ uv run make test-e2e         # End-to-end tests
 
 **PR titles MUST start with a JIRA issue key prefix.** CI enforces this via `pr-title-checker` (config: `.github/pr-title-checker-config.json`).
 
-Allowed prefixes: `LCORE-`, `RSPEED-`, `MGTM-`, `OLS-`, `RHDHPAI-`, `LEADS-`
+Allowed prefixes: `LCORE-`, `RSPEED-`, `MGTM-`, `OLS-`, `RHIDP-`, `LEADS-`, `CWFHEALTH-`, `[release/`
 
 - ✅ `RSPEED-2849: add user_agent to ResponsesEventData`
 - ❌ `feat(observability): add user_agent to ResponsesEventData`
