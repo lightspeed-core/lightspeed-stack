@@ -91,6 +91,10 @@ product questions using backend LLM services, agents, and RAG databases.
 
 [Conversations API](https://lightspeed-core.github.io/lightspeed-stack/devel_doc/conversations_api.html)
 
+[Query endpoint](https://lightspeed-core.github.io/lightspeed-stack/devel_doc/query_endpoint.html)
+
+[Streaming query endpoint](https://lightspeed-core.github.io/lightspeed-stack/devel_doc/streaming_query_endpoint.html)
+
 ### Models
 
 [Common](https://lightspeed-core.github.io/lightspeed-stack/models/common.html)
@@ -107,11 +111,11 @@ product questions using backend LLM services, agents, and RAG databases.
 
 ### Testing
 
-[Testing](https://lightspeed-core.github.io/lightspeed-stack/testing.html)
+[Testing](https://lightspeed-core.github.io/lightspeed-stack/testing/testing.html)
 
-[End-to-End Tests Guide](https://lightspeed-core.github.io/lightspeed-stack/e2e_testing.html)
+[End-to-End Tests Guide](https://lightspeed-core.github.io/lightspeed-stack/testing/e2e_testing.html)
 
-[List of e2e scenarios](https://lightspeed-core.github.io/lightspeed-stack/e2e_scenarios.html)
+[List of e2e scenarios](https://lightspeed-core.github.io/lightspeed-stack/testing/e2e_scenarios.html)
 
 ## Maintenance
 
