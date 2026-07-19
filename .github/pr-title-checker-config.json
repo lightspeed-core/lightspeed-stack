@@ -4,7 +4,16 @@
     "color": "EEEEEE"
   },
   "CHECKS": {
-    "prefixes": ["LCORE-", "RSPEED-", "MGTM-", "OLS-", "RHDHPAI-", "LEADS-"]
+    "prefixes": [
+      "LCORE-",
+      "RSPEED-",
+      "MGTM-",
+      "OLS-",
+      "RHIDP-",
+      "LEADS-",
+      "CWFHEALTH-",
+      "[release/"
+    ]
   },
   "MESSAGES": {
     "success": "All OK",

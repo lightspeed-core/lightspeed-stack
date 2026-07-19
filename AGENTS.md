@@ -191,6 +191,15 @@ uv run make test-e2e         # End-to-end tests
 - **SQLAlchemy**: Database ORM
 - **Kubernetes**: K8s auth integration
 
+## Pull Request Requirements
+
+**PR titles MUST start with a JIRA issue key prefix.** CI enforces this via `pr-title-checker` (config: `.github/pr-title-checker-config.json`).
+
+Allowed prefixes: `LCORE-`, `RSPEED-`, `MGTM-`, `OLS-`, `RHIDP-`, `LEADS-`, `CWFHEALTH-`, `[release/`
+
+- ✅ `RSPEED-2849: add user_agent to ResponsesEventData`
+- ❌ `feat(observability): add user_agent to ResponsesEventData`
+
 ## Development Workflow
 1. Use `uv sync --group dev --group llslibdev` for dependencies
 2. Always use `uv run` prefix for commands
