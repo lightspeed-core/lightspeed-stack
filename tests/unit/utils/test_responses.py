@@ -2229,8 +2229,10 @@ class TestPrepareResponsesParams:
         assert exc_info.value.status_code == 500
 
     @pytest.mark.asyncio
-    async def test_image_attachments_extracted(self, mocker: MockerFixture) -> None:
-        """Test that image attachments are extracted into ResponsesApiParams."""
+    async def test_image_attachments_excluded_from_input(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test that image attachments are excluded from text input."""
         mock_client = mocker.AsyncMock()
         mock_conversation = mocker.Mock()
         mock_conversation.id = "new_conv_id"
@@ -2270,11 +2272,8 @@ class TestPrepareResponsesParams:
         )
 
         assert isinstance(result.input, str)
-        assert result.image_attachments is not None
-        assert len(result.image_attachments) == 1
-        assert result.image_attachments[0].content_type == "image/jpeg"
-        dumped = result.model_dump(exclude_none=True)
-        assert "image_attachments" not in dumped
+        assert "log output" in result.input
+        assert image_data not in result.input
 
 
 class TestParseReferencedDocuments:

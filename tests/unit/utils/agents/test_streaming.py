@@ -594,6 +594,7 @@ class TestRetrieveAgentResponseGenerator:
             context,
             turn_summary,
             ENDPOINT_PATH_STREAMING_QUERY,
+            image_attachments=None,
         )
 
     @pytest.mark.asyncio
@@ -935,7 +936,6 @@ class TestAgentResponseGenerator:
             content_type="image/jpeg",
         )
         params = make_responses_params(input_text="describe this")
-        params.image_attachments = [image_attachment]
 
         _ = [
             event
@@ -945,6 +945,7 @@ class TestAgentResponseGenerator:
                 context,
                 turn_summary,
                 ENDPOINT_PATH_STREAMING_QUERY,
+                image_attachments=[image_attachment],
             )
         ]
 

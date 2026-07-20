@@ -93,7 +93,6 @@ from models.api.responses.error import (
     NotFoundResponse,
     ServiceUnavailableResponse,
 )
-from models.common.query import Attachment
 from models.common.responses.responses_api_params import ResponsesApiParams
 from models.common.responses.types import (
     InputTool,
@@ -388,17 +387,6 @@ async def prepare_responses_params(  # pylint: disable=too-many-arguments,too-ma
     # Adds inline RAG context and text attachments (images are excluded)
     input_text = prepare_input(query_request, inline_rag_context)
 
-    # Extract image attachments for multimodal support
-    image_attachments: Optional[list[Attachment]] = None
-    if query_request.attachments:
-        images = [
-            a
-            for a in query_request.attachments
-            if a.content_type in constants.IMAGE_CONTENT_TYPES
-        ]
-        if images:
-            image_attachments = images
-
     # Handle conversation ID for Responses API
     conversation_id = query_request.conversation_id
     if conversation_id:
@@ -443,7 +431,6 @@ async def prepare_responses_params(  # pylint: disable=too-many-arguments,too-ma
         extra_headers=extra_headers,
         max_infer_iters=configuration.inference.max_infer_iters,
         max_tool_calls=configuration.inference.max_tool_calls,
-        image_attachments=image_attachments,
     )
 
 

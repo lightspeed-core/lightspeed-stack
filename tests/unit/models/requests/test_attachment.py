@@ -67,7 +67,9 @@ class TestAttachment:
     def test_image_content_type_requires_image_attachment_type(self) -> None:
         """Test that image content_type requires attachment_type='image'."""
         image_data = base64.b64encode(b"\xff\xd8\xff\xe0").decode()
-        with pytest.raises(ValidationError, match="attachment_type must be 'image'"):
+        with pytest.raises(
+            ValidationError, match="attachment_type and content_type are inconsistent"
+        ):
             Attachment(
                 attachment_type="log",
                 content_type="image/jpeg",
@@ -77,7 +79,7 @@ class TestAttachment:
     def test_image_attachment_type_requires_image_content_type(self) -> None:
         """Test that attachment_type='image' requires an image content_type."""
         with pytest.raises(
-            ValidationError, match="content_type must be 'image/jpeg' or 'image/png'"
+            ValidationError, match="attachment_type and content_type are inconsistent"
         ):
             Attachment(
                 attachment_type="image",

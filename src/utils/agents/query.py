@@ -32,6 +32,7 @@ from models.api.responses.error import (
 )
 from models.common.agents import AgentTurnAccumulator
 from models.common.moderation import ShieldModerationResult
+from models.common.query import Attachment
 from models.common.responses.responses_api_params import ResponsesApiParams
 from models.common.responses.types import ResponseInput
 from models.common.turn_summary import TurnSummary
@@ -285,6 +286,7 @@ async def retrieve_agent_response(
     endpoint_path: str,
     _original_input: Optional[ResponseInput] = None,
     no_tools: bool = False,
+    image_attachments: Optional[list[Attachment]] = None,
 ) -> TurnSummary:
     """Retrieve a turn summary from a blocking agent run.
 
@@ -297,6 +299,7 @@ async def retrieve_agent_response(
         endpoint_path: Endpoint path used for metric labeling.
         _original_input: Original user input before the explicit-input rewrite.
         no_tools: Whether to skip tool processing.
+        image_attachments: Image attachments for multimodal prompt construction.
     Returns:
         Turn summary for the completed agent run.
 
@@ -319,10 +322,10 @@ async def retrieve_agent_response(
             client, responses_params, configuration.skills, no_tools=no_tools
         )
         logger.debug("Starting agent non-streaming response processing")
-        if responses_params.image_attachments:
+        if image_attachments:
             prompt = build_multimodal_input(
                 cast(str, responses_params.input),
-                responses_params.image_attachments,
+                image_attachments,
             )
         else:
             prompt = cast(str, responses_params.input)

@@ -2,7 +2,7 @@
 
 import base64
 import binascii
-from typing import Any, Literal, Optional
+from typing import Any, Literal, Optional, Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -41,30 +41,25 @@ class Attachment(BaseModel):
     )
 
     @model_validator(mode="after")
-    def validate_image_attachment(self) -> "Attachment":
+    def validate_image_attachment(self) -> Self:
         """Validate consistency between attachment_type and content_type for images.
 
         Returns:
             Self: The validated Attachment instance.
 
         Raises:
-            ValueError: If image content_type is used without attachment_type='image',
-                if attachment_type='image' is used without an image content_type,
+            ValueError: If attachment_type and content_type are inconsistent
+                (one indicates an image while the other does not),
                 if image content is not valid base64, or if decoded size exceeds the limit.
         """
         is_image_content_type = self.content_type in IMAGE_CONTENT_TYPES
         is_image_attachment_type = self.attachment_type == "image"
 
-        if is_image_content_type and not is_image_attachment_type:
+        if is_image_content_type != is_image_attachment_type:
             raise ValueError(
-                f"attachment_type must be 'image' when content_type is "
-                f"'{self.content_type}'"
-            )
-
-        if is_image_attachment_type and not is_image_content_type:
-            raise ValueError(
-                f"content_type must be 'image/jpeg' or 'image/png' when "
-                f"attachment_type is 'image', got '{self.content_type}'"
+                f"attachment_type and content_type are inconsistent: "
+                f"attachment_type='{self.attachment_type}', "
+                f"content_type='{self.content_type}'"
             )
 
         if is_image_content_type:

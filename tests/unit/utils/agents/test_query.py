@@ -461,13 +461,13 @@ class TestRetrieveAgentResponse:
             content_type="image/jpeg",
         )
         params = make_responses_params(input_text="describe this")
-        params.image_attachments = [image_attachment]
 
         summary = await retrieve_agent_response(
             client=mocker.AsyncMock(),
             responses_params=params,
             moderation_result=ShieldModerationPassed(),
             endpoint_path=ENDPOINT_PATH_QUERY,
+            image_attachments=[image_attachment],
         )
 
         prompt_arg = mock_agent.run.call_args[0][0]
