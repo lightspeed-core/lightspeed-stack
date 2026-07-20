@@ -233,6 +233,8 @@ guardrails:
 
 ### Decision T2: Detector backend abstraction
 
+_No answer needed — this will be implemented as recommended unless you object._
+
 | Option | Description |
 |--------|-------------|
 | A — Protocol + per-type adapters | `DetectorBackend` protocol (`async check(content, rule) -> DetectionResult`); adapters: `granite_guardian`, `openai_moderations`, `llama_stack_shields`. |
@@ -244,7 +246,6 @@ with the risk selected via the guardian chat template (system slot);
 the existing `run_shield_moderation` behavior.
 
 **Confidence**: 85%
-_No answer needed — this will be implemented as recommended unless you object._
 
 ### Decision T3: Blocked-response semantics
 
@@ -262,6 +263,8 @@ are logged and surfaced in metrics only.
 
 ### Decision T4: Streaming output moderation mechanics
 
+_No answer needed — this will be implemented as recommended unless you object._
+
 Output rules on `/v1/streaming_query` and streaming `/v1/responses` cannot
 check text that has already been emitted.
 
@@ -275,9 +278,10 @@ degenerate case (interval=∞) equals B for latency-sensitive deployments.
 This mirrors upstream OGX's batched streaming checks.
 
 **Confidence**: 70% — checkpoint sizing needs implementation-time tuning.
-_No answer needed — this will be implemented as recommended unless you object._
 
 ### Decision T5: Tool-content gating hook
+
+_No answer needed — this will be implemented as recommended unless you object._
 
 | Option | Description |
 |--------|-------------|
@@ -290,7 +294,6 @@ question-validity/redaction features hook the agent loop — same seam,
 llama-stack-independent.
 
 **Confidence**: 75%
-_No answer needed — this will be implemented as recommended unless you object._
 
 ### Decision T6: Failure posture when the detector is unreachable
 
@@ -346,6 +349,8 @@ out of scope — separate feature, own prioritization.
 
 ### Decision T8: Per-rule confidence thresholds
 
+_No answer needed — this will be implemented as recommended unless you object._
+
 The Ask Red Hat gap analysis (IFD-1610) records that IFD tunes a
 **threshold per risk** — 0.65 for leetspeak, 0.80 for CVE — and scores
 LCS as "less granular" here. A pure Yes/No verdict cannot express this.
@@ -376,9 +381,9 @@ score 0.98, indistinguishable from real jailbreaks at 0.99. Do not sell
 thresholds as the false-positive remedy; custom risk definitions are.
 Evidence: `poc-results/06-threshold-scores.md`.
 
-_No answer needed — this will be implemented as recommended unless you object._
-
 ### Decision T9: Per-rule violation messages
+
+_No answer needed — this will be implemented as recommended unless you object._
 
 IFD returns a canned answer selected per violation
 (`PredefinedModelAnswers`), not one global refusal string.
@@ -393,9 +398,10 @@ and lets deployers give users actionable refusals without leaking which
 detector fired (the message is deployer-authored).
 
 **Confidence**: 85%
-_No answer needed — this will be implemented as recommended unless you object._
 
 ### Decision T10: Input-guardrail execution mode (latency vs. exposure)
+
+_No answer needed — this will be implemented as recommended unless you object._
 
 A blocking input guardrail sits on the critical path: the LLM call cannot
 start until the guardian answers. The PoC measured 7–22 s per check on a
@@ -418,8 +424,6 @@ concurrently since they never block.
 
 **Confidence**: 70% — the mode is easy to build; whether teams want the
 exposure tradeoff is a product call. Ask Red Hat runs blocking today.
-
-_No answer needed — this will be implemented as recommended unless you object._
 
 ## Out of scope
 
