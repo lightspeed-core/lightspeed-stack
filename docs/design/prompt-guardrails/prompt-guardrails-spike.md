@@ -42,6 +42,34 @@ definitions are therefore a **precondition for shipping**, not a parity
 feature. See [PoC results](#poc-results) and `poc-results/` (removed
 before merge).
 
+## Decisions at a glance
+
+There are 15 decisions below, but **only 9 need an answer from you**. The
+rest carry a recommendation that will be implemented unless someone
+objects — they are marked as such in place, so you can skip them.
+
+**Answer needed before implementation starts:**
+
+| # | Settles | Reviewer | Conf. |
+|---|---------|----------|-------|
+| [S1](#decision-s1-where-the-guardrails-engine-lives) | Where the guardrails engine lives | @sbunciak | 80% |
+| [S2](#decision-s2-guardrail-points-in-scope) | Which guardrail points are in the epic | @sbunciak | 70% |
+| [T1](#decision-t1-configuration-schema-shape) | Config schema (a public contract) | @tisnik | 80% |
+| [S5](#decision-s5-fate-of-the-existing-shields-moderation-path) | Whether existing shields behavior changes | @sbunciak | 85% |
+| [S3](#decision-s3-recommended-guardian-model) | Which guardian model we recommend publicly | @sbunciak | 90% |
+| [T7](#decision-t7-relationship-to-pydantic-ai-capabilities-and-pydantic-ai-shields) | Whether to depend on `pydantic-ai-shields` | @tisnik | 85% |
+| [S4](#decision-s4-fate-of-lcore-2710-askredhat-custom-guardrails-epic) | What happens to the LCORE-2710 Epic | @sbunciak | 75% |
+| [T6](#decision-t6-failure-posture-when-the-detector-is-unreachable) | Fail-closed when the detector is down | @tisnik | 85% |
+| [T3](#decision-t3-blocked-response-semantics) | How a blocked request is returned | @tisnik | 90% |
+
+**Proceeding as recommended unless you object** (no reply needed): T2
+(detector abstraction), T4 (streaming checkpoints), T5 (tool-content
+hook — moot if S2 drops tool content), T8 (thresholds), T9 (per-rule
+messages), T10 (execution mode).
+
+Ordering note: S2 should be answered before T5, which only matters if
+tool-content stays in scope.
+
 ## Strategic decisions — reviewer: @sbunciak
 
 High-level decisions that determine scope, approach, and cost. Each has a
@@ -216,6 +244,7 @@ with the risk selected via the guardian chat template (system slot);
 the existing `run_shield_moderation` behavior.
 
 **Confidence**: 85%
+_No answer needed — this will be implemented as recommended unless you object._
 
 ### Decision T3: Blocked-response semantics
 
@@ -246,6 +275,7 @@ degenerate case (interval=∞) equals B for latency-sensitive deployments.
 This mirrors upstream OGX's batched streaming checks.
 
 **Confidence**: 70% — checkpoint sizing needs implementation-time tuning.
+_No answer needed — this will be implemented as recommended unless you object._
 
 ### Decision T5: Tool-content gating hook
 
@@ -260,6 +290,7 @@ question-validity/redaction features hook the agent loop — same seam,
 llama-stack-independent.
 
 **Confidence**: 75%
+_No answer needed — this will be implemented as recommended unless you object._
 
 ### Decision T6: Failure posture when the detector is unreachable
 
@@ -288,7 +319,7 @@ appends only the skills capability).
 | Option | Description |
 |--------|-------------|
 | A — Depend on `pydantic-ai-shields` | Adopt the library as the guardrails framework. |
-| B — Own the layer; use the same `AbstractCapability` seam; mine the library for prior art | Build in `src/guardrails/`, hook via the capability mechanism LCS already uses, lift MIT-licensed ideas with attribution. |
+| B — Own the layer; use the same `AbstractCapability` seam; mine the library for anything useful | Build in `src/guardrails/`, hook via the capability mechanism LCS already uses, lift MIT-licensed ideas with attribution. |
 | C — Unify guardrails + question-validity + redaction into one policy framework now | Single config umbrella; larger blast radius, blocks on unrelated decisions. |
 
 **Recommendation**: **B**. The library is a **regex pack with no detector
@@ -303,9 +334,13 @@ handling, Pydantic config). This also matches the precedent already set
 in `docs/design/llama-stack-config-merge/llama-stack-config-merge-spike.md:220`
 ("Do not preemptively abstract `safety.*`").
 
-Worth lifting under MIT attribution: its secret-detection regexes and the
-`AsyncGuardrail` timing pattern (see Decision T10). Wiring the two inert
-capabilities stays out of scope (separate feature, own prioritization).
+**Already taken from it**: the `AsyncGuardrail` blocking/concurrent/
+monitoring timing idea, written up as [Decision T10](#decision-t10-input-guardrail-execution-mode-latency-vs-exposure)
+— the idea only, no code and no dependency. Nothing further is pending.
+(Its secret-detection regexes are MIT and reusable, but secret scanning
+is not part of this feature; that would only matter if output-side secret
+detection is added later.) Wiring the two inert capabilities also stays
+out of scope — separate feature, own prioritization.
 
 **Confidence**: 85%
 
@@ -341,6 +376,8 @@ score 0.98, indistinguishable from real jailbreaks at 0.99. Do not sell
 thresholds as the false-positive remedy; custom risk definitions are.
 Evidence: `poc-results/06-threshold-scores.md`.
 
+_No answer needed — this will be implemented as recommended unless you object._
+
 ### Decision T9: Per-rule violation messages
 
 IFD returns a canned answer selected per violation
@@ -356,6 +393,7 @@ and lets deployers give users actionable refusals without leaking which
 detector fired (the message is deployer-authored).
 
 **Confidence**: 85%
+_No answer needed — this will be implemented as recommended unless you object._
 
 ### Decision T10: Input-guardrail execution mode (latency vs. exposure)
 
@@ -380,6 +418,8 @@ concurrently since they never block.
 
 **Confidence**: 70% — the mode is easy to build; whether teams want the
 exposure tradeoff is a product call. Ask Red Hat runs blocking today.
+
+_No answer needed — this will be implemented as recommended unless you object._
 
 ## Out of scope
 
@@ -959,9 +999,11 @@ model-based detection (Decision S3) over pattern matching, and a warning
 that **false-positive rate on domain traffic** must be part of the
 docs/tuning ticket.
 
-**Worth lifting** (MIT, with attribution): the secret-detection regex set,
-and the `AsyncGuardrail` blocking/concurrent/monitoring timing idea
-(Decision T10).
+**What this spike took from it**: the `AsyncGuardrail`
+blocking/concurrent/monitoring timing idea, adopted as Decision T10 — the
+idea only, no code and no dependency. Its secret-detection regex set is
+MIT and reusable, but secret scanning is not in this feature's scope;
+revisit only if output-side secret detection is added later.
 
 ### Design alternatives considered and rejected
 
