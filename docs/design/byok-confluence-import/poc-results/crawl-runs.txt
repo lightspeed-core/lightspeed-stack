@@ -1,0 +1,5 @@
+# Run 1 (full crawl) summary line:
+[full] spaces=['RHAT'] fetched=20 unchanged=0 deleted=0 total_on_disk=20
+
+# Run 2 (incremental, zero changes):
+[incremental] spaces=['RHAT'] fetched=0 unchanged=20 deleted=0 total_on_disk=20
