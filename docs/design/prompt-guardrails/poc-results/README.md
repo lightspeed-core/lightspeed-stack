@@ -11,6 +11,7 @@ order; each stands alone.
 | `03-layer-findings.md` | Two design findings from the layer run (custom risks must be safety-shaped; output-relevance needs context pairing) + latency. |
 | `04-full-stack-e2e.md` | End-to-end through the real FastAPI stack: the input hook fires, a block returns the refusal, metric increments, layers coexist. |
 | `05-e2e-log-evidence.md` | Raw lightspeed-stack log lines behind `04`. |
+| `06-threshold-scores.md` | **Read this one.** Confidence scores via logprobs (validates per-rule thresholds) *and* the domain false-positive problem that thresholds cannot solve. |
 
 ## What the PoC proves
 
@@ -24,6 +25,16 @@ order; each stands alone.
    a block flows through the real HTTP stack as a refusal with the
    validation-error metric, coexisting additively with the pre-existing
    llama-stack shields (`04`).
+4. Per-rule confidence thresholds are implementable via `logprobs` on the
+   Guardian call (`06`).
+
+## What the PoC disproved
+
+The assumption that out-of-the-box guardian risks are a safe default.
+`jailbreak` flags legitimate OpenShift questions at ~0.98 — as high as
+real jailbreaks — so custom domain-tuned definitions are required to
+ship, and thresholds are not the remedy (`06`). Measured on the 2B model;
+**re-run on the production 8B model before treating as final.**
 
 ## How the PoC diverges from the production design
 
