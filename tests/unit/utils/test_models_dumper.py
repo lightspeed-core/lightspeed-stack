@@ -6068,6 +6068,219 @@ def test_dump_models(tmpdir: Path) -> None:
                         }
                     ]
                 },
+                "ResponsesApiParams": {
+                    "description": "Parameters for a Llama Stack Responses API request.\n\nAll fields accepted by the Llama Stack client responses.create() body are\nincluded so that dumped model can be passed directly to response create.",
+                    "properties": {
+                        "input": {
+                            "$ref": "`#/components/schemas/`ResponseInput",
+                            "description": "The input text or structured input items"
+                        },
+                        "model": {
+                            "description": "The full model ID in format \"provider/model\"",
+                            "title": "Model",
+                            "type": "string"
+                        },
+                        "conversation": {
+                            "description": "The conversation ID in llama-stack format",
+                            "title": "Conversation",
+                            "type": "string"
+                        },
+                        "include": {
+                            "type": "array",
+                            "nullable": true,
+                            "default": null,
+                            "description": "Output item types to include in the response",
+                            "title": "Include"
+                        },
+                        "instructions": {
+                            "type": "string",
+                            "nullable": true,
+                            "default": null,
+                            "description": "The resolved system prompt",
+                            "title": "Instructions"
+                        },
+                        "max_infer_iters": {
+                            "type": "integer",
+                            "nullable": true,
+                            "default": null,
+                            "description": "Maximum number of inference iterations",
+                            "title": "Max Infer Iters"
+                        },
+                        "max_output_tokens": {
+                            "type": "integer",
+                            "nullable": true,
+                            "default": null,
+                            "description": "Maximum number of tokens allowed in the response",
+                            "title": "Max Output Tokens"
+                        },
+                        "max_tool_calls": {
+                            "type": "integer",
+                            "nullable": true,
+                            "default": null,
+                            "description": "Maximum tool calls allowed in a single response",
+                            "title": "Max Tool Calls"
+                        },
+                        "metadata": {
+                            "type": "object",
+                            "nullable": true,
+                            "default": null,
+                            "description": "Custom metadata for tracking or logging",
+                            "title": "Metadata"
+                        },
+                        "parallel_tool_calls": {
+                            "type": "boolean",
+                            "nullable": true,
+                            "default": null,
+                            "description": "Whether the model can make multiple tool calls in parallel",
+                            "title": "Parallel Tool Calls"
+                        },
+                        "previous_response_id": {
+                            "type": "string",
+                            "nullable": true,
+                            "default": null,
+                            "description": "Identifier of the previous response in a multi-turn conversation",
+                            "title": "Previous Response Id"
+                        },
+                        "prompt": {
+                            "anyOf": [
+                                {
+                                    "$ref": "`#/components/schemas/`OpenAIResponsePrompt"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "default": null,
+                            "description": "Prompt template with variables for dynamic substitution"
+                        },
+                        "reasoning": {
+                            "anyOf": [
+                                {
+                                    "$ref": "`#/components/schemas/`OpenAIResponseReasoning"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "default": null,
+                            "description": "Reasoning configuration for the response"
+                        },
+                        "safety_identifier": {
+                            "type": "string",
+                            "nullable": true,
+                            "default": null,
+                            "description": "Stable identifier for safety monitoring and abuse detection",
+                            "title": "Safety Identifier"
+                        },
+                        "store": {
+                            "description": "Whether to store the response",
+                            "title": "Store",
+                            "type": "boolean"
+                        },
+                        "stream": {
+                            "description": "Whether to stream the response",
+                            "title": "Stream",
+                            "type": "boolean"
+                        },
+                        "temperature": {
+                            "type": "number",
+                            "nullable": true,
+                            "default": null,
+                            "description": "Sampling temperature (e.g. 0.0-2.0)",
+                            "title": "Temperature"
+                        },
+                        "text": {
+                            "anyOf": [
+                                {
+                                    "$ref": "`#/components/schemas/`OpenAIResponseText"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "default": null,
+                            "description": "Text response configuration (format constraints)"
+                        },
+                        "tool_choice": {
+                            "anyOf": [
+                                {
+                                    "$ref": "`#/components/schemas/`OpenAIResponseInputToolChoiceMode"
+                                },
+                                {
+                                    "discriminator": {
+                                        "mapping": {
+                                            "allowed_tools": "`#/components/schemas/`OpenAIResponseInputToolChoiceAllowedTools",
+                                            "custom": "`#/components/schemas/`OpenAIResponseInputToolChoiceCustomTool",
+                                            "file_search": "`#/components/schemas/`OpenAIResponseInputToolChoiceFileSearch",
+                                            "function": "`#/components/schemas/`OpenAIResponseInputToolChoiceFunctionTool",
+                                            "mcp": "`#/components/schemas/`OpenAIResponseInputToolChoiceMCPTool",
+                                            "web_search": "`#/components/schemas/`OpenAIResponseInputToolChoiceWebSearch",
+                                            "web_search_2025_08_26": "`#/components/schemas/`OpenAIResponseInputToolChoiceWebSearch",
+                                            "web_search_preview": "`#/components/schemas/`OpenAIResponseInputToolChoiceWebSearch",
+                                            "web_search_preview_2025_03_11": "`#/components/schemas/`OpenAIResponseInputToolChoiceWebSearch"
+                                        },
+                                        "propertyName": "type"
+                                    },
+                                    "oneOf": [
+                                        {
+                                            "$ref": "`#/components/schemas/`OpenAIResponseInputToolChoiceAllowedTools"
+                                        },
+                                        {
+                                            "$ref": "`#/components/schemas/`OpenAIResponseInputToolChoiceFileSearch"
+                                        },
+                                        {
+                                            "$ref": "`#/components/schemas/`OpenAIResponseInputToolChoiceWebSearch"
+                                        },
+                                        {
+                                            "$ref": "`#/components/schemas/`OpenAIResponseInputToolChoiceFunctionTool"
+                                        },
+                                        {
+                                            "$ref": "`#/components/schemas/`OpenAIResponseInputToolChoiceMCPTool"
+                                        },
+                                        {
+                                            "$ref": "`#/components/schemas/`OpenAIResponseInputToolChoiceCustomTool"
+                                        }
+                                    ]
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "default": null,
+                            "description": "Tool selection strategy",
+                            "title": "Tool Choice"
+                        },
+                        "tools": {
+                            "type": "array",
+                            "nullable": true,
+                            "default": null,
+                            "description": "Prepared tool groups for Responses API (same type as ResponsesRequest.tools)",
+                            "title": "Tools"
+                        },
+                        "extra_headers": {
+                            "type": "object",
+                            "nullable": true,
+                            "default": null,
+                            "description": "Extra HTTP headers to send with the request (e.g. x-llamastack-provider-data)",
+                            "title": "Extra Headers"
+                        },
+                        "omit_conversation": {
+                            "default": false,
+                            "description": "When True, the conversation parameter is dropped from the request body while remaining on the object for identity. Set by conversation compaction (LCORE-1572): once a conversation is compacted, lightspeed-stack supplies explicit input and must not let Llama Stack reload the full history via the conversation parameter.",
+                            "title": "Omit Conversation",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "input",
+                        "model",
+                        "conversation",
+                        "store",
+                        "stream"
+                    ],
+                    "title": "ResponsesApiParams",
+                    "type": "object"
+                },
                 "ResponsesRequest": {
                     "additionalProperties": false,
                     "description": "Model representing a request for the Responses API following LCORE specification.\n\nAttributes:\n    input: Input text or structured input items containing the query.\n    model: Model identifier in format \"provider/model\". Auto-selected if not provided.\n    conversation: Conversation ID linking to an existing conversation. Accepts both\n        OpenAI and LCORE formats. Mutually exclusive with previous_response_id.\n    include: Explicitly specify output item types that are excluded by default but\n        should be included in the response.\n    instructions: System instructions or guidelines provided to the model (acts as\n        the system prompt).\n    max_infer_iters: Maximum number of inference iterations the model can perform.\n    max_output_tokens: Maximum number of tokens allowed in the response.\n    max_tool_calls: Maximum number of tool calls allowed in a single response.\n    metadata: Custom metadata dictionary with key-value pairs for tracking or logging.\n    parallel_tool_calls: Whether the model can make multiple tool calls in parallel.\n    previous_response_id: Identifier of the previous response in a multi-turn\n        conversation. Mutually exclusive with conversation.\n    prompt: Prompt object containing a template with variables for dynamic\n        substitution.\n    reasoning: Reasoning configuration for the response.\n    safety_identifier: Safety identifier for the response.\n    store: Whether to store the response in conversation history. Defaults to True.\n    stream: Whether to stream the response as it is generated. Defaults to False.\n    temperature: Sampling temperature controlling randomness (typically 0.0\u20132.0).\n    text: Text response configuration specifying output format constraints (JSON\n        schema, JSON object, or plain text).\n    tool_choice: Tool selection strategy (\"auto\", \"required\", \"none\", or specific\n        tool configuration).\n    tools: List of tools available to the model (file search, web search, function\n        calls, MCP tools). Defaults to all tools available to the model.\n    generate_topic_summary: LCORE-specific flag indicating whether to generate a\n        topic summary for new conversations. Defaults to True.\n    shield_ids: LCORE-specific list of safety shield IDs to apply. If None, all\n        configured shields are used.\n    solr: Optional Solr inline RAG options (mode, filters) or legacy filter-only dict.",
@@ -9050,6 +9263,7 @@ def test_dump_models(tmpdir: Path) -> None:
             "RerankerConfiguration",
             "ResponseInput",
             "ResponseItem",
+            "ResponsesApiParams",
             "ResponsesRequest",
             "ResponsesResponse",
             "RlsapiV1Attachment",
