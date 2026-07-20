@@ -206,7 +206,7 @@ llslibdev = [
     "pydantic>=2.10.6",
     "protobuf>=6.33.5",
     "filelock>=3.20.3",
-    "uv-build==0.11.8",
+    "uv-build==0.11.29",
 ]
 
 build = [
