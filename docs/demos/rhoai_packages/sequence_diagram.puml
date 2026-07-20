@@ -1,0 +1,60 @@
+@startuml
+box "Dummy repository on GitHub" #LightBlue
+    collections "requirements.txt" as plist
+    entity Dependabot
+    collections "CVE list" as cve_list
+end box
+
+box "LCore tooling" #cceecc
+    entity "File JIRAs script" as file_jiras
+    entity "refresh_package_list" as refresh_package_list
+end box
+
+box "Jira" #LightYellow
+    participant "LCORE" as lcore_jira
+    participant "RHOAI" as rhoai_jira
+end box
+
+box "Red Hat Slack" #ffcccc
+    participant "LCORE channel" as lcore_channel
+    participant "RHOAI channel" as rhoai_channel
+end box
+
+box "RHOAI tooling" #ccccee
+    entity "package_bump_up" as package_bump_up
+    entity "package_rebuild" as package_rebuild
+end box
+
+Dependabot -> plist : detect new CVEs
+Dependabot -> cve_list : update list of CVEs
+file_jiras -> cve_list : read all CVEs
+file_jiras -> lcore_jira: read existing issues
+lcore_jira -> file_jiras: read existing issues
+file_jiras -> file_jiras: detect new issues
+
+file_jiras -> lcore_jira : create new Issue
+opt optional
+  file_jiras -> rhoai_jira : create new Issue
+end
+
+file_jiras -> lcore_channel : send notification about new issue
+file_jiras -> rhoai_channel : send notification about new issue
+
+rhoai_channel -> package_bump_up : trigger action
+package_bump_up -> package_bump_up: resolve package version
+
+package_bump_up -> package_rebuild: trigger rebuild
+package_rebuild -> package_rebuild: rebuild new package version
+package_rebuild -> package_rebuild: push package into registry
+package_rebuild -> rhoai_channel: send notification about new package version
+package_rebuild -> lcore_channel: send notification about new package version
+opt optional
+    package_rebuild -> rhoai_jira: update jira
+end
+package_rebuild -> refresh_package_list: new package is in registry
+refresh_package_list -> refresh_package_list: refresh list
+refresh_package_list -> lcore_jira: update Jira
+refresh_package_list -> lcore_channel: info about new package
+refresh_package_list -> plist : update package list
+@enduml
+
