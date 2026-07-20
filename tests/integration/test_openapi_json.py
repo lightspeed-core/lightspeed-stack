@@ -18,7 +18,7 @@ from configuration import configuration
 #   * presence of paths/methods and key response codes
 #   * presence and key attributes of important component schemas (enums, required fields)
 
-OPENAPI_FILE = "docs/openapi.json"
+OPENAPI_FILE = "docs/devel_doc/openapi.json"
 URL = "/openapi.json"
 
 

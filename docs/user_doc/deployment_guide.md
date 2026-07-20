@@ -105,8 +105,11 @@ starts from a *baseline*. By default that is LCORE's built-in baseline; a
 
 A profile is an ordinary `run.yaml`-shaped YAML file — the same schema Llama
 Stack reads natively. Everything else in the unified pipeline (enrichment,
-the high-level `inference.providers` section, `native_override`) is applied
-*on top* of the profile, in that order.
+the high-level `inference.providers` section, ensuring the MCP tool_runtime
+provider, then `native_override`) is applied *on top* of the profile, in that
+order. The MCP ensure adds `provider_id: model-context-protocol` when missing
+so static `mcp_servers` and dynamic MCP registration work; it is skipped only
+for `baseline: empty` (use `native_override` there if you need MCP).
 
 **Authoring a profile.** Start from one of the reference profiles shipped in
 [`examples/profiles/`](https://github.com/lightspeed-core/lightspeed-stack/tree/main/examples/profiles):

@@ -12,97 +12,73 @@ product questions using backend LLM services, agents, and RAG databases.
 
 ![Logo](https://lightspeed-core.github.io/lightspeed-stack/logo.jpg)
 
-<!-- vim-markdown-toc GFM -->
+## Basic info
 
-* [Overview](#overview)
-* [Installation and configuration](#installation-and-configuration)
-* [Status of Lightspeed Core Stack versions](#status-of-lightspeed-core-stack-versions)
-* [Info for developers](#info-for-developers)
-* [API](#api)
-* [RAG and BYOK](#rag-and-byok)
-* [Other features](#other-features)
-* [Models](#models)
-* [Design documents](#design-documents)
-    * [Agent skills](#agent-skills)
-    * [Automatic conversation expiration](#automatic-conversation-expiration)
-    * [BYOK PDF support](#byok-pdf-support)
-    * [Conversation compaction](#conversation-compaction)
-    * [Supporting backport changes for releases](#supporting-backport-changes-for-releases)
-    * [Human-in-the-loop (HIL)](#human-in-the-loop-hil)
-    * [Llama Stack config merge (unified `lightspeed-stack.yaml`)](#llama-stack-config-merge-unified-lightspeed-stackyaml)
-    * [Low overhead deployment for server mode](#low-overhead-deployment-for-server-mode)
-    * [OpenTelemetry tracing in Lightspeed Core](#opentelemetry-tracing-in-lightspeed-core)
-* [Testing](#testing)
-* [Releasing](#releasing)
-* [Demos](#demos)
+[Overview](https://lightspeed-core.github.io/lightspeed-stack/basic_info/overview.html)
 
-<!-- vim-markdown-toc -->
+[Getting started](https://lightspeed-core.github.io/lightspeed-stack/basic_info/getting_started.html)
 
-## Overview
+## User docs
 
-[Architecture](https://lightspeed-core.github.io/lightspeed-stack/ARCHITECTURE.html)
+[Deployment Guide](https://lightspeed-core.github.io/lightspeed-stack/user_doc/deployment_guide.html)
 
-[Architecture diagram](https://lightspeed-core.github.io/lightspeed-stack/architecture.svg)
+[Configuration options](https://lightspeed-core.github.io/lightspeed-stack/user_doc/config.html)
 
-[Getting started](https://lightspeed-core.github.io/lightspeed-stack/getting_started.html)
+[Agent skills](https://lightspeed-core.github.io/lightspeed-stack/user_doc/skills_guide.html)
 
-[Authentication and Authorization](https://lightspeed-core.github.io/lightspeed-stack/auth.html)
+[A2A [Agent-to-Agent] Protocol](https://lightspeed-core.github.io/lightspeed-stack/user_doc/a2a_protocol.html)
 
-## Installation and configuration
+[RAG configuration guide](https://lightspeed-core.github.io/lightspeed-stack/user_doc/rag_guide.html)
 
-[Deployment Guide](https://lightspeed-core.github.io/lightspeed-stack/deployment_guide.html)
+[BYOK guide](https://lightspeed-core.github.io/lightspeed-stack/user_doc/byok_guide.html)
 
-[Container Orchestration Guide](https://lightspeed-core.github.io/lightspeed-stack/container_orchestration.html)
+[OKP guide](https://lightspeed-core.github.io/lightspeed-stack/user_doc/okp_guide.html)
 
-[Linux](https://lightspeed-core.github.io/lightspeed-stack/installation_linux.html)
+[Authentication and Authorization](https://lightspeed-core.github.io/lightspeed-stack/user_doc/auth.html)
 
-[MacOS](https://lightspeed-core.github.io/lightspeed-stack/installation_macos.html)
+[User data collection](https://lightspeed-core.github.io/lightspeed-stack/user_doc/user_data_collection.html)
 
-[Configuration](https://lightspeed-core.github.io/lightspeed-stack/config.html)
+[Sentry error tracking integration](https://lightspeed-core.github.io/lightspeed-stack/user_doc/sentry.html)
 
-## Status of Lightspeed Core Stack versions
+[Splunk integration](https://lightspeed-core.github.io/lightspeed-stack/user_doc/splunk.html)
 
-[Status of Lightspeed Core Stack versions](https://lightspeed-core.github.io/lightspeed-stack/version_status.html)
+## Developer doc
 
-[Supported versions](https://lightspeed-core.github.io/lightspeed-stack/versions_supported.html)
+[Architecture](https://lightspeed-core.github.io/lightspeed-stack/devel_doc/ARCHITECTURE.html)
 
-[Unsupported versions](https://lightspeed-core.github.io/lightspeed-stack/versions_unsupported.html)
+[Architecture diagram](https://lightspeed-core.github.io/lightspeed-stack/devel_doc/architecture.svg)
 
-## Migration guides
+[Installation on Linux](https://lightspeed-core.github.io/lightspeed-stack/devel_doc/installation_linux.html)
 
-[Migration guides](https://lightspeed-core.github.io/lightspeed-stack/migrations/)
-
-## Info for developers
-
-[Contributing guide](https://lightspeed-core.github.io/lightspeed-stack/contributing_guide.html)
-
-## API
-
-[OpenAPI specification](https://lightspeed-core.github.io/lightspeed-stack/openapi.html)
-
-[Conversations API](https://lightspeed-core.github.io/lightspeed-stack/conversations_api.html)
-
-[A2A [Agent-to-Agent] Protocol](https://lightspeed-core.github.io/lightspeed-stack/a2a_protocol.html)
-
-## RAG and BYOK
-
-[RAG Configuration Guide](https://lightspeed-core.github.io/lightspeed-stack/rag_guide.html)
-
-[BYOK guide](https://lightspeed-core.github.io/lightspeed-stack/byok_guide.html)
-
-## Other features
-
-[Providers](https://lightspeed-core.github.io/lightspeed-stack/providers.html)
-
-[Sentry error tracking](https://lightspeed-core.github.io/lightspeed-stack/sentry.html)
-
-[User data collection](https://lightspeed-core.github.io/lightspeed-stack/user_data_collection.html)
+[Installation on MacOS](https://lightspeed-core.github.io/lightspeed-stack/devel_doc/installation_macos.html)
 
 [Database structure](https://lightspeed-core.github.io/lightspeed-stack/DB/index.html)
 
-[Agent skills](https://lightspeed-core.github.io/lightspeed-stack/skills_guide.html)
+[Providers](https://lightspeed-core.github.io/lightspeed-stack/devel_doc/providers.html)
 
-## Models
+[Container Orchestration Guide](https://lightspeed-core.github.io/lightspeed-stack/devel_doc/container_orchestration.html)
+
+[Contributing guide](https://lightspeed-core.github.io/lightspeed-stack/devel_doc/contributing_guide.html)
+
+[Conversation history](https://lightspeed-core.github.io/lightspeed-stack/devel_doc/conversation_history.html)
+
+[Persistent storage](https://lightspeed-core.github.io/lightspeed-stack/devel_doc/persistent_storage.html)
+
+[Quota scheduler](https://lightspeed-core.github.io/lightspeed-stack/devel_doc/quota_scheduler.html)
+
+### API
+
+[OpenAPI specification](https://lightspeed-core.github.io/lightspeed-stack/devel_doc/openapi.html)
+
+[Conversations API](https://lightspeed-core.github.io/lightspeed-stack/devel_doc/conversations_api.html)
+
+[Query endpoint](https://lightspeed-core.github.io/lightspeed-stack/devel_doc/query_endpoint.html)
+
+[Streaming query endpoint](https://lightspeed-core.github.io/lightspeed-stack/devel_doc/streaming_query_endpoint.html)
+
+[OpenResponseAPI specification](https://lightspeed-core.github.io/lightspeed-stack/devel_doc/responses.html)
+
+### Models
 
 [Common](https://lightspeed-core.github.io/lightspeed-stack/models/common.html)
 
@@ -116,42 +92,65 @@ product questions using backend LLM services, agents, and RAG databases.
 
 [Compaction](https://lightspeed-core.github.io/lightspeed-stack/models/compaction.html)
 
+### Testing
+
+[Testing](https://lightspeed-core.github.io/lightspeed-stack/testing/testing.html)
+
+[End-to-End Tests Guide](https://lightspeed-core.github.io/lightspeed-stack/testing/e2e_testing.html)
+
+[List of e2e scenarios](https://lightspeed-core.github.io/lightspeed-stack/testing/e2e_scenarios.html)
+
+## Maintenance
+
+[Status of Lightspeed Core Stack versions](https://lightspeed-core.github.io/lightspeed-stack/maintenance/version_status.html)
+
+[Supported versions](https://lightspeed-core.github.io/lightspeed-stack/maintenance/versions_supported.html)
+
+[Unsupported versions](https://lightspeed-core.github.io/lightspeed-stack/maintenance/versions_unsupported.html)
+
+[Migration guides](https://lightspeed-core.github.io/lightspeed-stack/migrations/)
+
+[Branching](https://lightspeed-core.github.io/lightspeed-stack/maintenance/branching.html)
+
+[Releasing](https://lightspeed-core.github.io/lightspeed-stack/maintenance/releasing.html)
+
+[LTS process overview](https://lightspeed-core.github.io/lightspeed-stack/maintenance/lts_flow.html)
 
 ## Design documents
 
-### Agent skills
+*** Agent skills ***
 
 [Spike](https://lightspeed-core.github.io/lightspeed-stack/design/agent-skills/agent-skills-spike.html)
 
 [Design](https://lightspeed-core.github.io/lightspeed-stack/design/agent-skills/agent-skills.html)
 
-### Automatic conversation expiration
+*** Automatic conversation expiration ***
 
 [Design](https://lightspeed-core.github.io/lightspeed-stack/design/automatic-conversation-expiration/automatic-conversation-expiration.html)
 
-### BYOK PDF support
+*** BYOK PDF support ***
 
 [Spike](https://lightspeed-core.github.io/lightspeed-stack/design/byok-pdf/byok-pdf-spike.html)
 
 [Design](https://lightspeed-core.github.io/lightspeed-stack/design/byok-pdf/byok-pdf.html)
 
-### Conversation compaction
+*** Conversation compaction ***
 
 [Spike](https://lightspeed-core.github.io/lightspeed-stack/design/conversation-compaction/conversation-compaction-spike.html)
 
 [Design](https://lightspeed-core.github.io/lightspeed-stack/design/conversation-compaction/conversation-compaction.html)
 
-### Supporting backport changes for releases
+*** Supporting backport changes for releases ***
 
 [Design](https://lightspeed-core.github.io/lightspeed-stack/design/supporting-backport-changes-for-releases/supporting-backport-changes-for-releases.html)
 
-### Human-in-the-loop (HIL)
+*** Human-in-the-loop (HIL) ***
 
 [Spike](https://lightspeed-core.github.io/lightspeed-stack/design/human-in-the-loop/human-in-the-loop-spike.html)
 
 [Design](https://lightspeed-core.github.io/lightspeed-stack/design/human-in-the-loop/human-in-the-loop.html)
 
-### Llama Stack config merge (unified `lightspeed-stack.yaml`)
+*** Llama Stack config merge (unified `lightspeed-stack.yaml`) ***
 
 [Spike](https://lightspeed-core.github.io/lightspeed-stack/design/llama-stack-config-merge/llama-stack-config-merge-spike.html)
 
@@ -159,29 +158,13 @@ product questions using backend LLM services, agents, and RAG databases.
 
 [Profiles (Deployment Guide)](https://lightspeed-core.github.io/lightspeed-stack/deployment_guide.html#profiles)
 
-### Low overhead deployment for server mode
+*** Low overhead deployment for server mode ***
 
 [Design](https://lightspeed-core.github.io/lightspeed-stack/design/low-overhead-deployment-for-server-mode/low-overhead-deployment-for-server-mode.html)
 
-### OpenTelemetry tracing in Lightspeed Core
+*** OpenTelemetry tracing in Lightspeed Core ***
 
 [Design](https://lightspeed-core.github.io/lightspeed-stack/design/observability-opentelemetry/observability-opentelemetry.html)
-
-## Testing
-
-[Testing](https://lightspeed-core.github.io/lightspeed-stack/testing.html)
-
-[End-to-End Tests Guide](https://lightspeed-core.github.io/lightspeed-stack/e2e_testing.html)
-
-[List of e2e scenarios](https://lightspeed-core.github.io/lightspeed-stack/e2e_scenarios.html)
-
-## Releasing
-
-[Branching](https://lightspeed-core.github.io/lightspeed-stack/branching.html)
-
-[Releasing](https://lightspeed-core.github.io/lightspeed-stack/releasing.html)
-
-[LTS provess overview](https://lightspeed-core.github.io/lightspeed-stack/lts_flow.html)
 
 ## Demos
 

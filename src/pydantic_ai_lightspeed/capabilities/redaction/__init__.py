@@ -4,7 +4,7 @@ from models.config import (
     RedactionConfig,
     RedactionRule,
 )
-from pydantic_ai_lightspeed.capabilities.redaction.capability import (
+from pydantic_ai_lightspeed.capabilities.redaction._capability import (
     PiiRedactionCapability,
 )
 from pydantic_ai_lightspeed.capabilities.redaction.core import (

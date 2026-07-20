@@ -12,6 +12,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from string import Template
+from typing import Optional
 
 from pydantic_ai import AgentRunResult, RunContext
 from pydantic_ai._agent_graph import GraphAgentState
@@ -83,7 +84,7 @@ class QuestionValidity(AbstractCapability[None]):
             model_settings=OpenAIResponsesModelSettings(openai_store=False),
         )
 
-    def _build_prompt(self, message: str | Sequence[UserContent] | None) -> str:
+    def _build_prompt(self, message: Optional[str | Sequence[UserContent]]) -> str:
         """Build the classification prompt from the user message.
 
         Parameters:

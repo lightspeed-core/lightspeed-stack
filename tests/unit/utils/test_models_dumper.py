@@ -75,6 +75,26 @@ def test_dump_models(tmpdir: Path) -> None:
                     "title": "APIKeyTokenConfiguration",
                     "type": "object"
                 },
+                "AbstractErrorResponse": {
+                    "description": "Base class for error responses.\n\nAttributes:\n    status_code: HTTP status code for the error response.\n    detail: The detail model containing error summary and cause.",
+                    "properties": {
+                        "status_code": {
+                            "description": "HTTP status code for the errors response",
+                            "title": "Status Code",
+                            "type": "integer"
+                        },
+                        "detail": {
+                            "$ref": "`#/components/schemas/`DetailModel",
+                            "description": "The detail model containing error summary and cause"
+                        }
+                    },
+                    "required": [
+                        "status_code",
+                        "detail"
+                    ],
+                    "title": "AbstractErrorResponse",
+                    "type": "object"
+                },
                 "AccessRule": {
                     "additionalProperties": false,
                     "description": "Rule defining what actions a role can perform.",
@@ -415,6 +435,42 @@ def test_dump_models(tmpdir: Path) -> None:
                         "client_secret"
                     ],
                     "title": "AzureEntraIdConfiguration",
+                    "type": "object"
+                },
+                "BadRequestResponse": {
+                    "description": "400 Bad Request. Invalid resource identifier.",
+                    "examples": [
+                        {
+                            "detail": {
+                                "cause": "The conversation ID 123e4567-e89b-12d3-a456-426614174000 has invalid format.",
+                                "response": "Invalid conversation ID format"
+                            },
+                            "label": "conversation_id"
+                        },
+                        {
+                            "detail": {
+                                "cause": "The prompt ID pmpt_1234567890abcdef has invalid format.",
+                                "response": "Invalid prompt ID format"
+                            },
+                            "label": "prompt_id"
+                        }
+                    ],
+                    "properties": {
+                        "status_code": {
+                            "description": "HTTP status code for the errors response",
+                            "title": "Status Code",
+                            "type": "integer"
+                        },
+                        "detail": {
+                            "$ref": "`#/components/schemas/`DetailModel",
+                            "description": "The detail model containing error summary and cause"
+                        }
+                    },
+                    "required": [
+                        "status_code",
+                        "detail"
+                    ],
+                    "title": "BadRequestResponse",
                     "type": "object"
                 },
                 "ByokRag": {
@@ -877,6 +933,49 @@ def test_dump_models(tmpdir: Path) -> None:
                         "configuration"
                     ],
                     "title": "ConfigurationResponse",
+                    "type": "object"
+                },
+                "ConflictResponse": {
+                    "description": "409 Conflict - Resource already exists.",
+                    "examples": [
+                        {
+                            "detail": {
+                                "cause": "Mcp Server with name 'test-mcp-server' is already registered",
+                                "response": "Mcp Server already exists"
+                            },
+                            "label": "mcp server"
+                        },
+                        {
+                            "detail": {
+                                "cause": "Client MCP tool with server_label 'my-server' conflicts with a server-configured MCP tool. Rename the client tool to avoid the conflict.",
+                                "response": "Tool conflict"
+                            },
+                            "label": "mcp tool conflict"
+                        },
+                        {
+                            "detail": {
+                                "cause": "Client file_search tool conflicts with a server-configured file_search tool. Remove the client file_search to use the server's configuration.",
+                                "response": "Tool conflict"
+                            },
+                            "label": "file search conflict"
+                        }
+                    ],
+                    "properties": {
+                        "status_code": {
+                            "description": "HTTP status code for the errors response",
+                            "title": "Status Code",
+                            "type": "integer"
+                        },
+                        "detail": {
+                            "$ref": "`#/components/schemas/`DetailModel",
+                            "description": "The detail model containing error summary and cause"
+                        }
+                    },
+                    "required": [
+                        "status_code",
+                        "detail"
+                    ],
+                    "title": "ConflictResponse",
                     "type": "object"
                 },
                 "ConversationData": {
@@ -1515,6 +1614,132 @@ def test_dump_models(tmpdir: Path) -> None:
                     "title": "DatabaseConfiguration",
                     "type": "object"
                 },
+                "DetailModel": {
+                    "description": "Nested detail model for error responses.",
+                    "properties": {
+                        "response": {
+                            "description": "Short summary of the error",
+                            "title": "Response",
+                            "type": "string"
+                        },
+                        "cause": {
+                            "description": "Detailed explanation of what caused the error",
+                            "title": "Cause",
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "response",
+                        "cause"
+                    ],
+                    "title": "DetailModel",
+                    "type": "object"
+                },
+                "EndEventData": {
+                    "description": "Nested data for event: \"end\".",
+                    "properties": {
+                        "referenced_documents": {
+                            "items": {
+                                "$ref": "`#/components/schemas/`ReferencedDocument"
+                            },
+                            "title": "Referenced Documents",
+                            "type": "array"
+                        },
+                        "truncated": {
+                            "type": "boolean",
+                            "nullable": true,
+                            "title": "Truncated"
+                        },
+                        "input_tokens": {
+                            "title": "Input Tokens",
+                            "type": "integer"
+                        },
+                        "output_tokens": {
+                            "title": "Output Tokens",
+                            "type": "integer"
+                        }
+                    },
+                    "required": [
+                        "referenced_documents",
+                        "truncated",
+                        "input_tokens",
+                        "output_tokens"
+                    ],
+                    "title": "EndEventData",
+                    "type": "object"
+                },
+                "EndStreamPayload": {
+                    "additionalProperties": false,
+                    "description": "SSE end-of-stream body (includes available_quotas beside data).",
+                    "properties": {
+                        "event": {
+                            "const": "end",
+                            "default": "end",
+                            "title": "Event",
+                            "type": "string"
+                        },
+                        "data": {
+                            "$ref": "`#/components/schemas/`EndEventData"
+                        },
+                        "available_quotas": {
+                            "additionalProperties": {
+                                "type": "integer"
+                            },
+                            "title": "Available Quotas",
+                            "type": "object"
+                        }
+                    },
+                    "required": [
+                        "data",
+                        "available_quotas"
+                    ],
+                    "title": "EndStreamPayload",
+                    "type": "object"
+                },
+                "ErrorEventData": {
+                    "description": "Payload for event: \"error\".",
+                    "properties": {
+                        "status_code": {
+                            "title": "Status Code",
+                            "type": "integer"
+                        },
+                        "response": {
+                            "title": "Response",
+                            "type": "string"
+                        },
+                        "cause": {
+                            "title": "Cause",
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "status_code",
+                        "response",
+                        "cause"
+                    ],
+                    "title": "ErrorEventData",
+                    "type": "object"
+                },
+                "ErrorStreamPayload": {
+                    "additionalProperties": false,
+                    "description": "SSE error event body (event + typed data).",
+                    "properties": {
+                        "event": {
+                            "const": "error",
+                            "default": "error",
+                            "title": "Event",
+                            "type": "string"
+                        },
+                        "data": {
+                            "$ref": "`#/components/schemas/`ErrorEventData"
+                        }
+                    },
+                    "required": [
+                        "data"
+                    ],
+                    "title": "ErrorStreamPayload",
+                    "type": "object"
+                },
                 "FeedbackCategory": {
                     "description": "Enum representing predefined feedback categories for AI responses.\n\nThese categories help provide structured feedback about AI inference quality\nwhen users provide negative feedback (thumbs down). Multiple categories can\nbe selected to provide comprehensive feedback about response issues.",
                     "enum": [
@@ -1750,6 +1975,120 @@ def test_dump_models(tmpdir: Path) -> None:
                     "title": "FileResponse",
                     "type": "object"
                 },
+                "FileTooLargeResponse": {
+                    "description": "413 Content Too Large - File upload exceeds size limit.",
+                    "examples": [
+                        {
+                            "detail": {
+                                "cause": "File size 150000000 bytes exceeds maximum allowed size of 104857600 bytes (100 MB)",
+                                "response": "File too large"
+                            },
+                            "label": "file upload"
+                        },
+                        {
+                            "detail": {
+                                "cause": "File upload rejected: File size exceeds limit",
+                                "response": "Invalid file upload"
+                            },
+                            "label": "backend rejection"
+                        }
+                    ],
+                    "properties": {
+                        "status_code": {
+                            "description": "HTTP status code for the errors response",
+                            "title": "Status Code",
+                            "type": "integer"
+                        },
+                        "detail": {
+                            "$ref": "`#/components/schemas/`DetailModel",
+                            "description": "The detail model containing error summary and cause"
+                        }
+                    },
+                    "required": [
+                        "status_code",
+                        "detail"
+                    ],
+                    "title": "FileTooLargeResponse",
+                    "type": "object"
+                },
+                "ForbiddenResponse": {
+                    "description": "403 Forbidden. Access denied.",
+                    "examples": [
+                        {
+                            "detail": {
+                                "cause": "User 6789 does not have permission to read conversation with ID 123e4567-e89b-12d3-a456-426614174000",
+                                "response": "User does not have permission to perform this action"
+                            },
+                            "label": "conversation read"
+                        },
+                        {
+                            "detail": {
+                                "cause": "User 6789 does not have permission to delete conversation with ID 123e4567-e89b-12d3-a456-426614174000",
+                                "response": "User does not have permission to perform this action"
+                            },
+                            "label": "conversation delete"
+                        },
+                        {
+                            "detail": {
+                                "cause": "User 6789 is not authorized to access this endpoint.",
+                                "response": "User does not have permission to access this endpoint"
+                            },
+                            "label": "endpoint"
+                        },
+                        {
+                            "detail": {
+                                "cause": "User 6789 does not have permission to list or read stored prompts (missing permission: read_prompts).",
+                                "response": "User does not have permission to perform this action"
+                            },
+                            "label": "prompt read"
+                        },
+                        {
+                            "detail": {
+                                "cause": "User 6789 does not have permission to create, update, or delete stored prompts (missing permission: manage_prompts).",
+                                "response": "User does not have permission to perform this action"
+                            },
+                            "label": "prompt manage"
+                        },
+                        {
+                            "detail": {
+                                "cause": "Storing feedback is disabled.",
+                                "response": "Storing feedback is disabled"
+                            },
+                            "label": "feedback"
+                        },
+                        {
+                            "detail": {
+                                "cause": "User lacks model_override permission required to override model/provider.",
+                                "response": "This instance does not permit overriding model/provider in the query request (missing permission: model_override). Please remove the model and provider fields from your request."
+                            },
+                            "label": "model override"
+                        },
+                        {
+                            "detail": {
+                                "cause": "MCP server 'my-mcp' is defined in configuration and cannot be removed via the API.",
+                                "response": "Cannot delete statically configured MCP server"
+                            },
+                            "label": "mcp server static"
+                        }
+                    ],
+                    "properties": {
+                        "status_code": {
+                            "description": "HTTP status code for the errors response",
+                            "title": "Status Code",
+                            "type": "integer"
+                        },
+                        "detail": {
+                            "$ref": "`#/components/schemas/`DetailModel",
+                            "description": "The detail model containing error summary and cause"
+                        }
+                    },
+                    "required": [
+                        "status_code",
+                        "detail"
+                    ],
+                    "title": "ForbiddenResponse",
+                    "type": "object"
+                },
                 "HealthStatus": {
                     "description": "Health status enum for provider and service health checks.\n\nThis enum serves two purposes:\n\n1. Provider-level health (returned by Llama Stack providers):\n   - OK: Provider is healthy and operational\n   - ERROR: Provider is unhealthy or failed health check\n   - NOT_IMPLEMENTED: Provider does not implement health checks\n   - UNKNOWN: Fallback when provider status cannot be determined\n\n2. Service-level health (overall LCORE status):\n   - HEALTHY: All systems operational, LLS connected, all providers healthy\n   - DEGRADED: Service running with reduced functionality (e.g., LLS unavailable)\n   - UNHEALTHY: Service connected but one or more providers are unhealthy",
                     "enum": [
@@ -1972,6 +2311,132 @@ def test_dump_models(tmpdir: Path) -> None:
                         "server_label"
                     ],
                     "title": "InputToolMCP",
+                    "type": "object"
+                },
+                "InternalServerErrorResponse": {
+                    "description": "500 Internal Server Error.",
+                    "examples": [
+                        {
+                            "detail": {
+                                "cause": "An unexpected error occurred while processing the request.",
+                                "response": "Internal server error"
+                            },
+                            "label": "internal"
+                        },
+                        {
+                            "detail": {
+                                "cause": "Lightspeed Stack configuration has not been initialized.",
+                                "response": "Configuration is not loaded"
+                            },
+                            "label": "configuration"
+                        },
+                        {
+                            "detail": {
+                                "cause": "Failed to store feedback at directory: /path/example",
+                                "response": "Failed to store feedback"
+                            },
+                            "label": "feedback storage"
+                        },
+                        {
+                            "detail": {
+                                "cause": "Failed to call backend API",
+                                "response": "Error while processing query"
+                            },
+                            "label": "query"
+                        },
+                        {
+                            "detail": {
+                                "cause": "Conversation cache is not configured or unavailable.",
+                                "response": "Conversation cache not configured"
+                            },
+                            "label": "conversation cache"
+                        },
+                        {
+                            "detail": {
+                                "cause": "Failed to query the database",
+                                "response": "Database query failed"
+                            },
+                            "label": "database"
+                        },
+                        {
+                            "detail": {
+                                "cause": "ClusterVersion 'version' resource not found in OpenShift cluster",
+                                "response": "Internal server error"
+                            },
+                            "label": "cluster version not found"
+                        },
+                        {
+                            "detail": {
+                                "cause": "Insufficient permissions to read ClusterVersion resource",
+                                "response": "Internal server error"
+                            },
+                            "label": "cluster version permission denied"
+                        },
+                        {
+                            "detail": {
+                                "cause": "Missing or invalid 'clusterID' in ClusterVersion",
+                                "response": "Internal server error"
+                            },
+                            "label": "invalid cluster version"
+                        },
+                        {
+                            "detail": {
+                                "cause": "Could not register the MCP server with the remote service.",
+                                "response": "Failed to register MCP server"
+                            },
+                            "label": "mcp server registration"
+                        }
+                    ],
+                    "properties": {
+                        "status_code": {
+                            "description": "HTTP status code for the errors response",
+                            "title": "Status Code",
+                            "type": "integer"
+                        },
+                        "detail": {
+                            "$ref": "`#/components/schemas/`DetailModel",
+                            "description": "The detail model containing error summary and cause"
+                        }
+                    },
+                    "required": [
+                        "status_code",
+                        "detail"
+                    ],
+                    "title": "InternalServerErrorResponse",
+                    "type": "object"
+                },
+                "InterruptedEventData": {
+                    "description": "Payload for event: \"interrupted\".",
+                    "properties": {
+                        "request_id": {
+                            "title": "Request Id",
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "request_id"
+                    ],
+                    "title": "InterruptedEventData",
+                    "type": "object"
+                },
+                "InterruptedStreamPayload": {
+                    "additionalProperties": false,
+                    "description": "SSE interrupted stream body.",
+                    "properties": {
+                        "event": {
+                            "const": "interrupted",
+                            "default": "interrupted",
+                            "title": "Event",
+                            "type": "string"
+                        },
+                        "data": {
+                            "$ref": "`#/components/schemas/`InterruptedEventData"
+                        }
+                    },
+                    "required": [
+                        "data"
+                    ],
+                    "title": "InterruptedStreamPayload",
                     "type": "object"
                 },
                 "JsonPathOperator": {
@@ -2211,6 +2676,29 @@ def test_dump_models(tmpdir: Path) -> None:
                         }
                     },
                     "title": "MCPClientAuthOptionsResponse",
+                    "type": "object"
+                },
+                "MCPListToolsSummary": {
+                    "description": "Model representing MCP list tools payload serialized into tool results.",
+                    "properties": {
+                        "server_label": {
+                            "description": "MCP server label associated with the tool list",
+                            "title": "Server Label",
+                            "type": "string"
+                        },
+                        "tools": {
+                            "description": "Tools exposed by the MCP server",
+                            "items": {
+                                "$ref": "`#/components/schemas/`ToolInfoSummary"
+                            },
+                            "title": "Tools",
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "server_label"
+                    ],
+                    "title": "MCPListToolsSummary",
                     "type": "object"
                 },
                 "MCPListToolsTool": {
@@ -2693,6 +3181,91 @@ def test_dump_models(tmpdir: Path) -> None:
                         "models"
                     ],
                     "title": "ModelsResponse",
+                    "type": "object"
+                },
+                "NotFoundResponse": {
+                    "description": "404 Not Found - Resource does not exist.",
+                    "examples": [
+                        {
+                            "detail": {
+                                "cause": "Conversation with ID 123e4567-e89b-12d3-a456-426614174000 does not exist",
+                                "response": "Conversation not found"
+                            },
+                            "label": "conversation"
+                        },
+                        {
+                            "detail": {
+                                "cause": "Provider with ID openai does not exist",
+                                "response": "Provider not found"
+                            },
+                            "label": "provider"
+                        },
+                        {
+                            "detail": {
+                                "cause": "Model with ID gpt-4o-mini does not exist",
+                                "response": "Model not found"
+                            },
+                            "label": "model"
+                        },
+                        {
+                            "detail": {
+                                "cause": "Rag with ID vs_7b52a8cf-0fa3-489c-beab-27e061d102f3 does not exist",
+                                "response": "Rag not found"
+                            },
+                            "label": "rag"
+                        },
+                        {
+                            "detail": {
+                                "cause": "Streaming Request with ID 123e4567-e89b-12d3-a456-426614174000 does not exist",
+                                "response": "Streaming Request not found"
+                            },
+                            "label": "streaming request"
+                        },
+                        {
+                            "detail": {
+                                "cause": "Mcp Server with ID test-mcp-server does not exist",
+                                "response": "Mcp Server not found"
+                            },
+                            "label": "mcp server"
+                        },
+                        {
+                            "detail": {
+                                "cause": "Vector Store with ID vs_abc123 does not exist",
+                                "response": "Vector Store not found"
+                            },
+                            "label": "vector store"
+                        },
+                        {
+                            "detail": {
+                                "cause": "File with ID file_abc123 does not exist",
+                                "response": "File not found"
+                            },
+                            "label": "file"
+                        },
+                        {
+                            "detail": {
+                                "cause": "Prompt with ID pmpt_0123456789abcdef0123456789abcdef01234567 does not exist",
+                                "response": "Prompt not found"
+                            },
+                            "label": "prompt"
+                        }
+                    ],
+                    "properties": {
+                        "status_code": {
+                            "description": "HTTP status code for the errors response",
+                            "title": "Status Code",
+                            "type": "integer"
+                        },
+                        "detail": {
+                            "$ref": "`#/components/schemas/`DetailModel",
+                            "description": "The detail model containing error summary and cause"
+                        }
+                    },
+                    "required": [
+                        "status_code",
+                        "detail"
+                    ],
+                    "title": "NotFoundResponse",
                     "type": "object"
                 },
                 "OkpConfiguration": {
@@ -4259,6 +4832,42 @@ def test_dump_models(tmpdir: Path) -> None:
                     "title": "PromptResourceResponse",
                     "type": "object"
                 },
+                "PromptTooLongResponse": {
+                    "description": "413 Payload Too Large - Prompt is too long.",
+                    "examples": [
+                        {
+                            "detail": {
+                                "cause": "The input exceeds the context window size of model 'gpt-4o-mini'.",
+                                "response": "Context window exceeded"
+                            },
+                            "label": "context window exceeded"
+                        },
+                        {
+                            "detail": {
+                                "cause": "The prompt exceeds the maximum allowed length.",
+                                "response": "Prompt is too long"
+                            },
+                            "label": "prompt too long"
+                        }
+                    ],
+                    "properties": {
+                        "status_code": {
+                            "description": "HTTP status code for the errors response",
+                            "title": "Status Code",
+                            "type": "integer"
+                        },
+                        "detail": {
+                            "$ref": "`#/components/schemas/`DetailModel",
+                            "description": "The detail model containing error summary and cause"
+                        }
+                    },
+                    "required": [
+                        "status_code",
+                        "detail"
+                    ],
+                    "title": "PromptTooLongResponse",
+                    "type": "object"
+                },
                 "PromptUpdateRequest": {
                     "additionalProperties": false,
                     "description": "Request body to update a stored prompt (creates a new version).\n\nAttributes:\n    prompt: Updated prompt text.\n    version: Current version being updated.\n    set_as_default: Whether the new version becomes the default.\n    variables: Updated allowed variable names.",
@@ -4841,6 +5450,77 @@ def test_dump_models(tmpdir: Path) -> None:
                     "title": "QueryResponse",
                     "type": "object"
                 },
+                "QuotaExceededResponse": {
+                    "description": "429 Too Many Requests - Quota limit exceeded.",
+                    "examples": [
+                        {
+                            "detail": {
+                                "cause": "The token quota for model gpt-4-turbo has been exceeded.",
+                                "response": "The model quota has been exceeded"
+                            },
+                            "label": "model"
+                        },
+                        {
+                            "detail": {
+                                "cause": "User 123 has no available tokens",
+                                "response": "The quota has been exceeded"
+                            },
+                            "label": "user none"
+                        },
+                        {
+                            "detail": {
+                                "cause": "Cluster has no available tokens",
+                                "response": "The quota has been exceeded"
+                            },
+                            "label": "cluster none"
+                        },
+                        {
+                            "detail": {
+                                "cause": "Unknown subject 999 has no available tokens",
+                                "response": "The quota has been exceeded"
+                            },
+                            "label": "subject none"
+                        },
+                        {
+                            "detail": {
+                                "cause": "User 123 has 5 tokens, but 10 tokens are needed",
+                                "response": "The quota has been exceeded"
+                            },
+                            "label": "user insufficient"
+                        },
+                        {
+                            "detail": {
+                                "cause": "Cluster has 500 tokens, but 900 tokens are needed",
+                                "response": "The quota has been exceeded"
+                            },
+                            "label": "cluster insufficient"
+                        },
+                        {
+                            "detail": {
+                                "cause": "Unknown subject 999 has 3 tokens, but 6 tokens are needed",
+                                "response": "The quota has been exceeded"
+                            },
+                            "label": "subject insufficient"
+                        }
+                    ],
+                    "properties": {
+                        "status_code": {
+                            "description": "HTTP status code for the errors response",
+                            "title": "Status Code",
+                            "type": "integer"
+                        },
+                        "detail": {
+                            "$ref": "`#/components/schemas/`DetailModel",
+                            "description": "The detail model containing error summary and cause"
+                        }
+                    },
+                    "required": [
+                        "status_code",
+                        "detail"
+                    ],
+                    "title": "QuotaExceededResponse",
+                    "type": "object"
+                },
                 "QuotaHandlersConfiguration": {
                     "additionalProperties": false,
                     "description": "Quota limiter configuration.\n\nIt is possible to limit quota usage per user or per service or services\n(that typically run in one cluster). Each limit is configured as a separate\n_quota limiter_. It can be of type `user_limiter` or `cluster_limiter`\n(which is name that makes sense in OpenShift deployment).",
@@ -5003,6 +5683,35 @@ def test_dump_models(tmpdir: Path) -> None:
                         "content"
                     ],
                     "title": "RAGChunk",
+                    "type": "object"
+                },
+                "RAGContext": {
+                    "description": "Result of building RAG context from all enabled pre-query RAG sources.\n\nAttributes:\n    context_text: Formatted RAG context string for injection into the query.\n    rag_chunks: RAG chunks from pre-query sources (BYOK + Solr).\n    referenced_documents: Referenced documents from pre-query sources.",
+                    "properties": {
+                        "context_text": {
+                            "default": "",
+                            "description": "Formatted context for injection",
+                            "title": "Context Text",
+                            "type": "string"
+                        },
+                        "rag_chunks": {
+                            "description": "RAG chunks from pre-query sources",
+                            "items": {
+                                "$ref": "`#/components/schemas/`RAGChunk"
+                            },
+                            "title": "Rag Chunks",
+                            "type": "array"
+                        },
+                        "referenced_documents": {
+                            "description": "Documents from pre-query sources",
+                            "items": {
+                                "$ref": "`#/components/schemas/`ReferencedDocument"
+                            },
+                            "title": "Referenced Documents",
+                            "type": "array"
+                        }
+                    },
+                    "title": "RAGContext",
                     "type": "object"
                 },
                 "RAGInfoResponse": {
@@ -5358,6 +6067,219 @@ def test_dump_models(tmpdir: Path) -> None:
                             "$ref": "`#/components/schemas/`OpenAIResponseMCPApprovalResponse"
                         }
                     ]
+                },
+                "ResponsesApiParams": {
+                    "description": "Parameters for a Llama Stack Responses API request.\n\nAll fields accepted by the Llama Stack client responses.create() body are\nincluded so that dumped model can be passed directly to response create.",
+                    "properties": {
+                        "input": {
+                            "$ref": "`#/components/schemas/`ResponseInput",
+                            "description": "The input text or structured input items"
+                        },
+                        "model": {
+                            "description": "The full model ID in format \"provider/model\"",
+                            "title": "Model",
+                            "type": "string"
+                        },
+                        "conversation": {
+                            "description": "The conversation ID in llama-stack format",
+                            "title": "Conversation",
+                            "type": "string"
+                        },
+                        "include": {
+                            "type": "array",
+                            "nullable": true,
+                            "default": null,
+                            "description": "Output item types to include in the response",
+                            "title": "Include"
+                        },
+                        "instructions": {
+                            "type": "string",
+                            "nullable": true,
+                            "default": null,
+                            "description": "The resolved system prompt",
+                            "title": "Instructions"
+                        },
+                        "max_infer_iters": {
+                            "type": "integer",
+                            "nullable": true,
+                            "default": null,
+                            "description": "Maximum number of inference iterations",
+                            "title": "Max Infer Iters"
+                        },
+                        "max_output_tokens": {
+                            "type": "integer",
+                            "nullable": true,
+                            "default": null,
+                            "description": "Maximum number of tokens allowed in the response",
+                            "title": "Max Output Tokens"
+                        },
+                        "max_tool_calls": {
+                            "type": "integer",
+                            "nullable": true,
+                            "default": null,
+                            "description": "Maximum tool calls allowed in a single response",
+                            "title": "Max Tool Calls"
+                        },
+                        "metadata": {
+                            "type": "object",
+                            "nullable": true,
+                            "default": null,
+                            "description": "Custom metadata for tracking or logging",
+                            "title": "Metadata"
+                        },
+                        "parallel_tool_calls": {
+                            "type": "boolean",
+                            "nullable": true,
+                            "default": null,
+                            "description": "Whether the model can make multiple tool calls in parallel",
+                            "title": "Parallel Tool Calls"
+                        },
+                        "previous_response_id": {
+                            "type": "string",
+                            "nullable": true,
+                            "default": null,
+                            "description": "Identifier of the previous response in a multi-turn conversation",
+                            "title": "Previous Response Id"
+                        },
+                        "prompt": {
+                            "anyOf": [
+                                {
+                                    "$ref": "`#/components/schemas/`OpenAIResponsePrompt"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "default": null,
+                            "description": "Prompt template with variables for dynamic substitution"
+                        },
+                        "reasoning": {
+                            "anyOf": [
+                                {
+                                    "$ref": "`#/components/schemas/`OpenAIResponseReasoning"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "default": null,
+                            "description": "Reasoning configuration for the response"
+                        },
+                        "safety_identifier": {
+                            "type": "string",
+                            "nullable": true,
+                            "default": null,
+                            "description": "Stable identifier for safety monitoring and abuse detection",
+                            "title": "Safety Identifier"
+                        },
+                        "store": {
+                            "description": "Whether to store the response",
+                            "title": "Store",
+                            "type": "boolean"
+                        },
+                        "stream": {
+                            "description": "Whether to stream the response",
+                            "title": "Stream",
+                            "type": "boolean"
+                        },
+                        "temperature": {
+                            "type": "number",
+                            "nullable": true,
+                            "default": null,
+                            "description": "Sampling temperature (e.g. 0.0-2.0)",
+                            "title": "Temperature"
+                        },
+                        "text": {
+                            "anyOf": [
+                                {
+                                    "$ref": "`#/components/schemas/`OpenAIResponseText"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "default": null,
+                            "description": "Text response configuration (format constraints)"
+                        },
+                        "tool_choice": {
+                            "anyOf": [
+                                {
+                                    "$ref": "`#/components/schemas/`OpenAIResponseInputToolChoiceMode"
+                                },
+                                {
+                                    "discriminator": {
+                                        "mapping": {
+                                            "allowed_tools": "`#/components/schemas/`OpenAIResponseInputToolChoiceAllowedTools",
+                                            "custom": "`#/components/schemas/`OpenAIResponseInputToolChoiceCustomTool",
+                                            "file_search": "`#/components/schemas/`OpenAIResponseInputToolChoiceFileSearch",
+                                            "function": "`#/components/schemas/`OpenAIResponseInputToolChoiceFunctionTool",
+                                            "mcp": "`#/components/schemas/`OpenAIResponseInputToolChoiceMCPTool",
+                                            "web_search": "`#/components/schemas/`OpenAIResponseInputToolChoiceWebSearch",
+                                            "web_search_2025_08_26": "`#/components/schemas/`OpenAIResponseInputToolChoiceWebSearch",
+                                            "web_search_preview": "`#/components/schemas/`OpenAIResponseInputToolChoiceWebSearch",
+                                            "web_search_preview_2025_03_11": "`#/components/schemas/`OpenAIResponseInputToolChoiceWebSearch"
+                                        },
+                                        "propertyName": "type"
+                                    },
+                                    "oneOf": [
+                                        {
+                                            "$ref": "`#/components/schemas/`OpenAIResponseInputToolChoiceAllowedTools"
+                                        },
+                                        {
+                                            "$ref": "`#/components/schemas/`OpenAIResponseInputToolChoiceFileSearch"
+                                        },
+                                        {
+                                            "$ref": "`#/components/schemas/`OpenAIResponseInputToolChoiceWebSearch"
+                                        },
+                                        {
+                                            "$ref": "`#/components/schemas/`OpenAIResponseInputToolChoiceFunctionTool"
+                                        },
+                                        {
+                                            "$ref": "`#/components/schemas/`OpenAIResponseInputToolChoiceMCPTool"
+                                        },
+                                        {
+                                            "$ref": "`#/components/schemas/`OpenAIResponseInputToolChoiceCustomTool"
+                                        }
+                                    ]
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "default": null,
+                            "description": "Tool selection strategy",
+                            "title": "Tool Choice"
+                        },
+                        "tools": {
+                            "type": "array",
+                            "nullable": true,
+                            "default": null,
+                            "description": "Prepared tool groups for Responses API (same type as ResponsesRequest.tools)",
+                            "title": "Tools"
+                        },
+                        "extra_headers": {
+                            "type": "object",
+                            "nullable": true,
+                            "default": null,
+                            "description": "Extra HTTP headers to send with the request (e.g. x-llamastack-provider-data)",
+                            "title": "Extra Headers"
+                        },
+                        "omit_conversation": {
+                            "default": false,
+                            "description": "When True, the conversation parameter is dropped from the request body while remaining on the object for identity. Set by conversation compaction (LCORE-1572): once a conversation is compacted, lightspeed-stack supplies explicit input and must not let Llama Stack reload the full history via the conversation parameter.",
+                            "title": "Omit Conversation",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "input",
+                        "model",
+                        "conversation",
+                        "store",
+                        "stream"
+                    ],
+                    "title": "ResponsesApiParams",
+                    "type": "object"
                 },
                 "ResponsesRequest": {
                     "additionalProperties": false,
@@ -6381,6 +7303,84 @@ def test_dump_models(tmpdir: Path) -> None:
                     "title": "ServiceConfiguration",
                     "type": "object"
                 },
+                "ServiceUnavailableResponse": {
+                    "description": "503 Backend Unavailable.",
+                    "examples": [
+                        {
+                            "detail": {
+                                "cause": "Connection error while trying to reach backend service.",
+                                "response": "Unable to connect to Llama Stack"
+                            },
+                            "label": "llama stack"
+                        },
+                        {
+                            "detail": {
+                                "cause": "Failed to connect to Kubernetes API: Service Unavailable (status 503)",
+                                "response": "Unable to connect to Kubernetes API"
+                            },
+                            "label": "kubernetes api"
+                        }
+                    ],
+                    "properties": {
+                        "status_code": {
+                            "description": "HTTP status code for the errors response",
+                            "title": "Status Code",
+                            "type": "integer"
+                        },
+                        "detail": {
+                            "$ref": "`#/components/schemas/`DetailModel",
+                            "description": "The detail model containing error summary and cause"
+                        }
+                    },
+                    "required": [
+                        "status_code",
+                        "detail"
+                    ],
+                    "title": "ServiceUnavailableResponse",
+                    "type": "object"
+                },
+                "ShieldModerationBlocked": {
+                    "description": "Shield moderation blocked the content; refusal details are present.",
+                    "properties": {
+                        "decision": {
+                            "const": "blocked",
+                            "default": "blocked",
+                            "title": "Decision",
+                            "type": "string"
+                        },
+                        "message": {
+                            "title": "Message",
+                            "type": "string"
+                        },
+                        "moderation_id": {
+                            "title": "Moderation Id",
+                            "type": "string"
+                        },
+                        "refusal_response": {
+                            "$ref": "`#/components/schemas/`OpenAIResponseMessage"
+                        }
+                    },
+                    "required": [
+                        "message",
+                        "moderation_id",
+                        "refusal_response"
+                    ],
+                    "title": "ShieldModerationBlocked",
+                    "type": "object"
+                },
+                "ShieldModerationPassed": {
+                    "description": "Shield moderation passed; no refusal.",
+                    "properties": {
+                        "decision": {
+                            "const": "passed",
+                            "default": "passed",
+                            "title": "Decision",
+                            "type": "string"
+                        }
+                    },
+                    "title": "ShieldModerationPassed",
+                    "type": "object"
+                },
                 "ShieldsResponse": {
                     "description": "Model representing a response to shields request.",
                     "examples": [
@@ -6546,6 +7546,45 @@ def test_dump_models(tmpdir: Path) -> None:
                     "title": "SplunkConfiguration",
                     "type": "object"
                 },
+                "StartEventData": {
+                    "description": "Payload for event: \"start\".",
+                    "properties": {
+                        "conversation_id": {
+                            "title": "Conversation Id",
+                            "type": "string"
+                        },
+                        "request_id": {
+                            "title": "Request Id",
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "conversation_id",
+                        "request_id"
+                    ],
+                    "title": "StartEventData",
+                    "type": "object"
+                },
+                "StartStreamPayload": {
+                    "additionalProperties": false,
+                    "description": "SSE stream start body.",
+                    "properties": {
+                        "event": {
+                            "const": "start",
+                            "default": "start",
+                            "title": "Event",
+                            "type": "string"
+                        },
+                        "data": {
+                            "$ref": "`#/components/schemas/`StartEventData"
+                        }
+                    },
+                    "required": [
+                        "data"
+                    ],
+                    "title": "StartStreamPayload",
+                    "type": "object"
+                },
                 "StatusResponse": {
                     "description": "Model representing a response to a status request.\n\nAttributes:\n    functionality: The functionality of the service.\n    status: The status of the service.",
                     "examples": [
@@ -6582,6 +7621,13 @@ def test_dump_models(tmpdir: Path) -> None:
                         "status"
                     ],
                     "title": "StatusResponse",
+                    "type": "object"
+                },
+                "StreamPayloadBase": {
+                    "additionalProperties": false,
+                    "description": "Base for streaming SSE JSON payloads.",
+                    "properties": {},
+                    "title": "StreamPayloadBase",
                     "type": "object"
                 },
                 "StreamingInterruptRequest": {
@@ -6689,6 +7735,92 @@ def test_dump_models(tmpdir: Path) -> None:
                     "title": "TLSConfiguration",
                     "type": "object"
                 },
+                "TokenChunkData": {
+                    "description": "Structured data for token and turn-complete stream lines.",
+                    "properties": {
+                        "id": {
+                            "title": "Id",
+                            "type": "integer"
+                        },
+                        "token": {
+                            "title": "Token",
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "id",
+                        "token"
+                    ],
+                    "title": "TokenChunkData",
+                    "type": "object"
+                },
+                "TokenCounter": {
+                    "description": "Model representing token counter.\n\nAttributes:\n    input_tokens: number of tokens sent to LLM\n    output_tokens: number of tokens received from LLM\n    input_tokens_counted: number of input tokens counted by the handler\n    llm_calls: number of LLM calls",
+                    "properties": {
+                        "input_tokens": {
+                            "default": 0,
+                            "title": "Input Tokens",
+                            "type": "integer"
+                        },
+                        "output_tokens": {
+                            "default": 0,
+                            "title": "Output Tokens",
+                            "type": "integer"
+                        },
+                        "input_tokens_counted": {
+                            "default": 0,
+                            "title": "Input Tokens Counted",
+                            "type": "integer"
+                        },
+                        "llm_calls": {
+                            "default": 0,
+                            "title": "Llm Calls",
+                            "type": "integer"
+                        }
+                    },
+                    "title": "TokenCounter",
+                    "type": "object"
+                },
+                "TokenStreamPayload": {
+                    "additionalProperties": false,
+                    "description": "SSE token delta (event: \"token\").",
+                    "properties": {
+                        "event": {
+                            "const": "token",
+                            "default": "token",
+                            "title": "Event",
+                            "type": "string"
+                        },
+                        "data": {
+                            "$ref": "`#/components/schemas/`TokenChunkData"
+                        }
+                    },
+                    "required": [
+                        "data"
+                    ],
+                    "title": "TokenStreamPayload",
+                    "type": "object"
+                },
+                "ToolCallStreamPayload": {
+                    "additionalProperties": false,
+                    "description": "SSE tool call summary.",
+                    "properties": {
+                        "event": {
+                            "const": "tool_call",
+                            "default": "tool_call",
+                            "title": "Event",
+                            "type": "string"
+                        },
+                        "data": {
+                            "$ref": "`#/components/schemas/`ToolCallSummary"
+                        }
+                    },
+                    "required": [
+                        "data"
+                    ],
+                    "title": "ToolCallStreamPayload",
+                    "type": "object"
+                },
                 "ToolCallSummary": {
                     "description": "Model representing a tool call made during response generation (for tool_calls list).",
                     "properties": {
@@ -6720,6 +7852,55 @@ def test_dump_models(tmpdir: Path) -> None:
                         "name"
                     ],
                     "title": "ToolCallSummary",
+                    "type": "object"
+                },
+                "ToolInfoSummary": {
+                    "description": "Model representing metadata for a single tool exposed by MCP list tools.",
+                    "properties": {
+                        "name": {
+                            "description": "Tool name",
+                            "title": "Name",
+                            "type": "string"
+                        },
+                        "description": {
+                            "type": "string",
+                            "nullable": true,
+                            "default": null,
+                            "description": "Human-readable tool description",
+                            "title": "Description"
+                        },
+                        "input_schema": {
+                            "type": "object",
+                            "nullable": true,
+                            "default": null,
+                            "description": "JSON schema for the tool input",
+                            "title": "Input Schema"
+                        }
+                    },
+                    "required": [
+                        "name"
+                    ],
+                    "title": "ToolInfoSummary",
+                    "type": "object"
+                },
+                "ToolResultStreamPayload": {
+                    "additionalProperties": false,
+                    "description": "SSE tool result summary.",
+                    "properties": {
+                        "event": {
+                            "const": "tool_result",
+                            "default": "tool_result",
+                            "title": "Event",
+                            "type": "string"
+                        },
+                        "data": {
+                            "$ref": "`#/components/schemas/`ToolResultSummary"
+                        }
+                    },
+                    "required": [
+                        "data"
+                    ],
+                    "title": "ToolResultStreamPayload",
                     "type": "object"
                 },
                 "ToolResultSummary": {
@@ -6803,6 +7984,118 @@ def test_dump_models(tmpdir: Path) -> None:
                     "title": "ToolsResponse",
                     "type": "object"
                 },
+                "Transcript": {
+                    "description": "Model representing a transcript entry to be stored.",
+                    "properties": {
+                        "metadata": {
+                            "$ref": "`#/components/schemas/`TranscriptMetadata"
+                        },
+                        "redacted_query": {
+                            "title": "Redacted Query",
+                            "type": "string"
+                        },
+                        "query_is_valid": {
+                            "title": "Query Is Valid",
+                            "type": "boolean"
+                        },
+                        "llm_response": {
+                            "title": "Llm Response",
+                            "type": "string"
+                        },
+                        "rag_chunks": {
+                            "items": {
+                                "additionalProperties": true,
+                                "type": "object"
+                            },
+                            "title": "Rag Chunks",
+                            "type": "array"
+                        },
+                        "truncated": {
+                            "title": "Truncated",
+                            "type": "boolean"
+                        },
+                        "attachments": {
+                            "items": {
+                                "additionalProperties": true,
+                                "type": "object"
+                            },
+                            "title": "Attachments",
+                            "type": "array"
+                        },
+                        "tool_calls": {
+                            "items": {
+                                "additionalProperties": true,
+                                "type": "object"
+                            },
+                            "title": "Tool Calls",
+                            "type": "array"
+                        },
+                        "tool_results": {
+                            "items": {
+                                "additionalProperties": true,
+                                "type": "object"
+                            },
+                            "title": "Tool Results",
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "metadata",
+                        "redacted_query",
+                        "query_is_valid",
+                        "llm_response",
+                        "truncated"
+                    ],
+                    "title": "Transcript",
+                    "type": "object"
+                },
+                "TranscriptMetadata": {
+                    "description": "Metadata for a transcript entry.",
+                    "properties": {
+                        "provider": {
+                            "type": "string",
+                            "nullable": true,
+                            "default": null,
+                            "title": "Provider"
+                        },
+                        "model": {
+                            "title": "Model",
+                            "type": "string"
+                        },
+                        "query_provider": {
+                            "type": "string",
+                            "nullable": true,
+                            "default": null,
+                            "title": "Query Provider"
+                        },
+                        "query_model": {
+                            "type": "string",
+                            "nullable": true,
+                            "default": null,
+                            "title": "Query Model"
+                        },
+                        "user_id": {
+                            "title": "User Id",
+                            "type": "string"
+                        },
+                        "conversation_id": {
+                            "title": "Conversation Id",
+                            "type": "string"
+                        },
+                        "timestamp": {
+                            "title": "Timestamp",
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "model",
+                        "user_id",
+                        "conversation_id",
+                        "timestamp"
+                    ],
+                    "title": "TranscriptMetadata",
+                    "type": "object"
+                },
                 "TrustedProxyConfiguration": {
                     "additionalProperties": false,
                     "description": "Configuration for trusted-proxy auth module.",
@@ -6844,6 +8137,216 @@ def test_dump_models(tmpdir: Path) -> None:
                         "name"
                     ],
                     "title": "TrustedProxyServiceAccount",
+                    "type": "object"
+                },
+                "TurnCompleteStreamPayload": {
+                    "additionalProperties": false,
+                    "description": "SSE turn completion (same data shape as token).",
+                    "properties": {
+                        "event": {
+                            "const": "turn_complete",
+                            "default": "turn_complete",
+                            "title": "Event",
+                            "type": "string"
+                        },
+                        "data": {
+                            "$ref": "`#/components/schemas/`TokenChunkData"
+                        }
+                    },
+                    "required": [
+                        "data"
+                    ],
+                    "title": "TurnCompleteStreamPayload",
+                    "type": "object"
+                },
+                "TurnSummary": {
+                    "description": "Summary of a turn in llama stack.",
+                    "properties": {
+                        "id": {
+                            "default": "",
+                            "description": "ID of the response",
+                            "title": "Id",
+                            "type": "string"
+                        },
+                        "llm_response": {
+                            "default": "",
+                            "title": "Llm Response",
+                            "type": "string"
+                        },
+                        "tool_calls": {
+                            "items": {
+                                "$ref": "`#/components/schemas/`ToolCallSummary"
+                            },
+                            "title": "Tool Calls",
+                            "type": "array"
+                        },
+                        "tool_results": {
+                            "items": {
+                                "$ref": "`#/components/schemas/`ToolResultSummary"
+                            },
+                            "title": "Tool Results",
+                            "type": "array"
+                        },
+                        "rag_chunks": {
+                            "items": {
+                                "$ref": "`#/components/schemas/`RAGChunk"
+                            },
+                            "title": "Rag Chunks",
+                            "type": "array"
+                        },
+                        "referenced_documents": {
+                            "items": {
+                                "$ref": "`#/components/schemas/`ReferencedDocument"
+                            },
+                            "title": "Referenced Documents",
+                            "type": "array"
+                        },
+                        "token_usage": {
+                            "$ref": "`#/components/schemas/`TokenCounter"
+                        },
+                        "output_items": {
+                            "description": "Structured response output items, captured for compacted-mode turn persistence (LCORE-1572). Empty on the non-compacted path.",
+                            "items": {
+                                "discriminator": {
+                                    "mapping": {
+                                        "file_search_call": "`#/components/schemas/`OpenAIResponseOutputMessageFileSearchToolCall",
+                                        "function_call": "`#/components/schemas/`OpenAIResponseOutputMessageFunctionToolCall",
+                                        "mcp_approval_request": "`#/components/schemas/`OpenAIResponseMCPApprovalRequest",
+                                        "mcp_call": "`#/components/schemas/`OpenAIResponseOutputMessageMCPCall",
+                                        "mcp_list_tools": "`#/components/schemas/`OpenAIResponseOutputMessageMCPListTools",
+                                        "message": "`#/components/schemas/`OpenAIResponseMessage",
+                                        "web_search_call": "`#/components/schemas/`OpenAIResponseOutputMessageWebSearchToolCall"
+                                    },
+                                    "propertyName": "type"
+                                },
+                                "oneOf": [
+                                    {
+                                        "$ref": "`#/components/schemas/`OpenAIResponseMessage"
+                                    },
+                                    {
+                                        "$ref": "`#/components/schemas/`OpenAIResponseOutputMessageWebSearchToolCall"
+                                    },
+                                    {
+                                        "$ref": "`#/components/schemas/`OpenAIResponseOutputMessageFileSearchToolCall"
+                                    },
+                                    {
+                                        "$ref": "`#/components/schemas/`OpenAIResponseOutputMessageFunctionToolCall"
+                                    },
+                                    {
+                                        "$ref": "`#/components/schemas/`OpenAIResponseOutputMessageMCPCall"
+                                    },
+                                    {
+                                        "$ref": "`#/components/schemas/`OpenAIResponseOutputMessageMCPListTools"
+                                    },
+                                    {
+                                        "$ref": "`#/components/schemas/`OpenAIResponseMCPApprovalRequest"
+                                    }
+                                ]
+                            },
+                            "title": "Output Items",
+                            "type": "array"
+                        },
+                        "partial_tokens": {
+                            "description": "Accumulated text deltas during streaming, used to reconstruct partial content on interruption.",
+                            "items": {
+                                "type": "string"
+                            },
+                            "title": "Partial Tokens",
+                            "type": "array"
+                        },
+                        "next_chunk_id": {
+                            "default": 0,
+                            "description": "Next monotonic SSE chunk index, kept in sync with the inner generator so the interrupt handler can emit a sequentially valid id.",
+                            "title": "Next Chunk Id",
+                            "type": "integer"
+                        }
+                    },
+                    "title": "TurnSummary",
+                    "type": "object"
+                },
+                "UnauthorizedResponse": {
+                    "description": "401 Unauthorized - Missing or invalid credentials.",
+                    "examples": [
+                        {
+                            "detail": {
+                                "cause": "No Authorization header found",
+                                "response": "Missing or invalid credentials provided by client"
+                            },
+                            "label": "missing header"
+                        },
+                        {
+                            "detail": {
+                                "cause": "No token found in Authorization header",
+                                "response": "Missing or invalid credentials provided by client"
+                            },
+                            "label": "missing token"
+                        },
+                        {
+                            "detail": {
+                                "cause": "Token has expired",
+                                "response": "Missing or invalid credentials provided by client"
+                            },
+                            "label": "expired token"
+                        },
+                        {
+                            "detail": {
+                                "cause": "Invalid token signature",
+                                "response": "Missing or invalid credentials provided by client"
+                            },
+                            "label": "invalid signature"
+                        },
+                        {
+                            "detail": {
+                                "cause": "Token signed by unknown key",
+                                "response": "Missing or invalid credentials provided by client"
+                            },
+                            "label": "invalid key"
+                        },
+                        {
+                            "detail": {
+                                "cause": "Token missing claim: user_id",
+                                "response": "Missing or invalid credentials provided by client"
+                            },
+                            "label": "missing claim"
+                        },
+                        {
+                            "detail": {
+                                "cause": "Invalid or expired Kubernetes token",
+                                "response": "Missing or invalid credentials provided by client"
+                            },
+                            "label": "invalid k8s token"
+                        },
+                        {
+                            "detail": {
+                                "cause": "Authentication key server returned invalid data",
+                                "response": "Missing or invalid credentials provided by client"
+                            },
+                            "label": "invalid jwk token"
+                        },
+                        {
+                            "detail": {
+                                "cause": "MCP server at https://mcp.example.com/v1 requires OAuth",
+                                "response": "Missing or invalid credentials provided by client"
+                            },
+                            "label": "mcp oauth"
+                        }
+                    ],
+                    "properties": {
+                        "status_code": {
+                            "description": "HTTP status code for the errors response",
+                            "title": "Status Code",
+                            "type": "integer"
+                        },
+                        "detail": {
+                            "$ref": "`#/components/schemas/`DetailModel",
+                            "description": "The detail model containing error summary and cause"
+                        }
+                    },
+                    "required": [
+                        "status_code",
+                        "detail"
+                    ],
+                    "title": "UnauthorizedResponse",
                     "type": "object"
                 },
                 "UnifiedInferenceProvider": {
@@ -6929,6 +8432,49 @@ def test_dump_models(tmpdir: Path) -> None:
                         }
                     },
                     "title": "UnifiedLlamaStackConfig",
+                    "type": "object"
+                },
+                "UnprocessableEntityResponse": {
+                    "description": "422 Unprocessable Entity - Request validation failed.",
+                    "examples": [
+                        {
+                            "detail": {
+                                "cause": "Invalid request format. The request body could not be parsed.",
+                                "response": "Invalid request format"
+                            },
+                            "label": "invalid format"
+                        },
+                        {
+                            "detail": {
+                                "cause": "Missing required attributes: ['query', 'model', 'provider']",
+                                "response": "Missing required attributes"
+                            },
+                            "label": "missing attributes"
+                        },
+                        {
+                            "detail": {
+                                "cause": "Invalid attachment type: must be one of ['text/plain', 'application/json', 'application/yaml', 'application/xml']",
+                                "response": "Invalid attribute value"
+                            },
+                            "label": "invalid value"
+                        }
+                    ],
+                    "properties": {
+                        "status_code": {
+                            "description": "HTTP status code for the errors response",
+                            "title": "Status Code",
+                            "type": "integer"
+                        },
+                        "detail": {
+                            "$ref": "`#/components/schemas/`DetailModel",
+                            "description": "The detail model containing error summary and cause"
+                        }
+                    },
+                    "required": [
+                        "status_code",
+                        "detail"
+                    ],
+                    "title": "UnprocessableEntityResponse",
                     "type": "object"
                 },
                 "UserDataCollection": {
@@ -7576,6 +9122,7 @@ def test_dump_models(tmpdir: Path) -> None:
         expected_schemas = (
             "A2AStateConfiguration",
             "APIKeyTokenConfiguration",
+            "AbstractErrorResponse",
             "AccessRule",
             "Action",
             "AllowedToolsFilter",
@@ -7585,11 +9132,13 @@ def test_dump_models(tmpdir: Path) -> None:
             "AuthorizationConfiguration",
             "AuthorizedResponse",
             "AzureEntraIdConfiguration",
+            "BadRequestResponse",
             "ByokRag",
             "CORSConfiguration",
             "CompactionConfiguration",
             "Configuration",
             "ConfigurationResponse",
+            "ConflictResponse",
             "ConversationData",
             "ConversationDeleteResponse",
             "ConversationDetails",
@@ -7604,18 +9153,28 @@ def test_dump_models(tmpdir: Path) -> None:
             "CustomProfile",
             "Customization",
             "DatabaseConfiguration",
+            "DetailModel",
+            "EndEventData",
+            "EndStreamPayload",
+            "ErrorEventData",
+            "ErrorStreamPayload",
             "FeedbackCategory",
             "FeedbackRequest",
             "FeedbackResponse",
             "FeedbackStatusUpdateRequest",
             "FeedbackStatusUpdateResponse",
             "FileResponse",
+            "FileTooLargeResponse",
+            "ForbiddenResponse",
             "HealthStatus",
             "InMemoryCacheConfig",
             "IncludeParameter",
             "InferenceConfiguration",
             "InfoResponse",
             "InputToolMCP",
+            "InternalServerErrorResponse",
+            "InterruptedEventData",
+            "InterruptedStreamPayload",
             "JsonPathOperator",
             "JwkConfiguration",
             "JwtConfiguration",
@@ -7623,6 +9182,7 @@ def test_dump_models(tmpdir: Path) -> None:
             "LivenessResponse",
             "LlamaStackConfiguration",
             "MCPClientAuthOptionsResponse",
+            "MCPListToolsSummary",
             "MCPListToolsTool",
             "MCPServerAuthInfo",
             "MCPServerDeleteResponse",
@@ -7634,6 +9194,7 @@ def test_dump_models(tmpdir: Path) -> None:
             "ModelContextProtocolServer",
             "ModelFilter",
             "ModelsResponse",
+            "NotFoundResponse",
             "OkpConfiguration",
             "OpenAIResponseAnnotationCitation",
             "OpenAIResponseAnnotationContainerFileCitation",
@@ -7679,6 +9240,7 @@ def test_dump_models(tmpdir: Path) -> None:
             "PromptCreateRequest",
             "PromptDeleteResponse",
             "PromptResourceResponse",
+            "PromptTooLongResponse",
             "PromptUpdateRequest",
             "PromptsListResponse",
             "ProviderHealthStatus",
@@ -7686,10 +9248,12 @@ def test_dump_models(tmpdir: Path) -> None:
             "ProvidersListResponse",
             "QueryRequest",
             "QueryResponse",
+            "QuotaExceededResponse",
             "QuotaHandlersConfiguration",
             "QuotaLimiterConfiguration",
             "QuotaSchedulerConfiguration",
             "RAGChunk",
+            "RAGContext",
             "RAGInfoResponse",
             "RAGListResponse",
             "RHIdentityConfiguration",
@@ -7699,6 +9263,7 @@ def test_dump_models(tmpdir: Path) -> None:
             "RerankerConfiguration",
             "ResponseInput",
             "ResponseItem",
+            "ResponsesApiParams",
             "ResponsesRequest",
             "ResponsesResponse",
             "RlsapiV1Attachment",
@@ -7714,22 +9279,40 @@ def test_dump_models(tmpdir: Path) -> None:
             "SavedPromptsConfiguration",
             "SearchRankingOptions",
             "ServiceConfiguration",
+            "ServiceUnavailableResponse",
+            "ShieldModerationBlocked",
+            "ShieldModerationPassed",
             "ShieldsResponse",
             "SkillsConfiguration",
             "SolrVectorSearchRequest",
             "SplunkConfiguration",
+            "StartEventData",
+            "StartStreamPayload",
             "StatusResponse",
+            "StreamPayloadBase",
             "StreamingInterruptRequest",
             "StreamingInterruptResponse",
             "StreamingQueryResponse",
             "TLSConfiguration",
+            "TokenChunkData",
+            "TokenCounter",
+            "TokenStreamPayload",
+            "ToolCallStreamPayload",
             "ToolCallSummary",
+            "ToolInfoSummary",
+            "ToolResultStreamPayload",
             "ToolResultSummary",
             "ToolsResponse",
+            "Transcript",
+            "TranscriptMetadata",
             "TrustedProxyConfiguration",
             "TrustedProxyServiceAccount",
+            "TurnCompleteStreamPayload",
+            "TurnSummary",
+            "UnauthorizedResponse",
             "UnifiedInferenceProvider",
             "UnifiedLlamaStackConfig",
+            "UnprocessableEntityResponse",
             "UserDataCollection",
             "VectorStoreCreateRequest",
             "VectorStoreDeleteResponse",

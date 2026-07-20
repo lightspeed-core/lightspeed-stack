@@ -17,7 +17,7 @@ from models.config import (
     RedactionConfig,
     RedactionRule,
 )
-from pydantic_ai_lightspeed.capabilities.redaction.capability import (
+from pydantic_ai_lightspeed.capabilities.redaction._capability import (
     PiiRedactionCapability,
     _redact_content_item,
     _redact_content_list,

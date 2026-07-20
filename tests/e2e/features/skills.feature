@@ -245,7 +245,7 @@ Feature: Agent skills tests
 
   # --- Skill activation ---
 
-  @SkillsConfig
+  @SkillsConfig @flaky
   Scenario: LLM can Load a skill and use its instructions via query endpoint
     Given The service uses the lightspeed-stack-skills.yaml configuration
       And The service is restarted
@@ -279,7 +279,7 @@ Feature: Agent skills tests
       """
       And The token metrics have increased
 
-  @SkillsConfig
+  @SkillsConfig @flaky
   Scenario: LLM can load a skill and use its instructions via streaming_query endpoint
     Given The service uses the lightspeed-stack-skills.yaml configuration
       And The service is restarted

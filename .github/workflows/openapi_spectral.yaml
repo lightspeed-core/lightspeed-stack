@@ -26,12 +26,12 @@ jobs:
       - name: Install PDM
         # scripts/generate_openapi_schema.py asserts OpenAPI info.version matches `pdm show --version`.
         run: uv pip install pdm
-      - name: Verify docs/openapi.json matches generator
+      - name: Verify docs/devel_doc/openapi.json matches generator
         run: |
           set -euo pipefail
           uv run python scripts/generate_openapi_schema.py /tmp/openapi-generated.json
-          if ! diff -u docs/openapi.json /tmp/openapi-generated.json; then
-            echo "::error::docs/openapi.json is out of date. Regenerate with: uv run scripts/generate_openapi_schema.py docs/openapi.json"
+          if ! diff -u docs/devel_doc/openapi.json /tmp/openapi-generated.json; then
+            echo "::error::docs/devel_doc/openapi.json is out of date. Regenerate with: uv run scripts/generate_openapi_schema.py docs/devel_doc/openapi.json"
             exit 1
           fi
       - name: Setup Node.js
@@ -39,4 +39,4 @@ jobs:
         with:
           node-version: "22"
       - name: Spectral lint
-        run: npx --yes @stoplight/spectral-cli@6 lint docs/openapi.json --fail-severity error --display-only-failures
+        run: npx --yes @stoplight/spectral-cli@6 lint docs/devel_doc/openapi.json --fail-severity error --display-only-failures

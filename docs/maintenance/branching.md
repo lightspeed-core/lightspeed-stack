@@ -157,15 +157,15 @@ branch naming conventions are not covered here.
 
 ### Feature and fix branches that are merged into the main branch
 
-[branching_1](https://lightspeed-core.github.io/lightspeed-stack/branching_1.svg)
+[branching_1](https://lightspeed-core.github.io/lightspeed-stack/maintenance/branching_1.svg)
 
 ### Cherry-picking changes into release (stable) branch from the main branch
 
-[branching_2](https://lightspeed-core.github.io/lightspeed-stack/branching_2.svg)
+[branching_2](https://lightspeed-core.github.io/lightspeed-stack/maintenance/branching_2.svg)
 
 ### Multiple release branches, fixes made in fix branches
 
-[branching_3](https://lightspeed-core.github.io/lightspeed-stack/branching_3.svg)
+[branching_3](https://lightspeed-core.github.io/lightspeed-stack/maintenance/branching_3.svg)
 
 
 ## Branching strategy
@@ -266,6 +266,9 @@ branch history. Key points:
    - Run `git cherry-pick` (or multiple SHAs).
    - Resolve any merge conflicts, then `git add` and `git cherry-pick --continue`.
    Test, review, and push the resulting commit into the release branch.
+
+We use `cherry_picker` to automate this process. See the
+[contributing guide](../CONTRIBUTING.md#backports) for usage instructions.
 
 NOTE: the cherry picking can be made in main -> release branch direction or
 vice versa. We prefer the first method when possible.

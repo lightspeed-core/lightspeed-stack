@@ -98,7 +98,11 @@ Happy hacking!
 
 ## PR description
 
-* Jira ticket needs to be added into PR title, for example: `LCORE-740: type hints for models unit tests`
+* PR titles must start with a JIRA issue key prefix or the target branch of a backport. CI enforces this via
+  `pr-title-checker` (config: `.github/pr-title-checker-config.json`).
+  Allowed prefixes: `LCORE-`, `RSPEED-`, `MGTM-`, `OLS-`, `RHIDP-`, `LEADS-`,
+  `CWFHEALTH-`, `[release/`
+    - for example: `LCORE-740: type hints for models unit tests`
 * Fill-in all relevant information in the PR template
     - unused parts of PR template (like information about testing etc.) can be deleted
 * Please note that CodeRabbitAI will create a summary of your pull request
@@ -183,7 +187,7 @@ at the start of each session and announce which files were loaded.
 Nontrivial and substantial AI-generated or AI-assisted content should be
 “marked” in appropriate cases. In deciding how to approach this, consider
 adopting one or more of the following recommendations. (This assumes you have
-not concluded that a suggestion is a match to some existing third-party code.) 
+not concluded that a suggestion is a match to some existing third-party code.)
 
 In a commit message, or in a pull request/merge request description field,
 identify the code assistant that you used, perhaps elaborating on how it was
@@ -329,14 +333,14 @@ Here is simple example:
 ```python
 def function_with_pep484_type_annotations(param1: int, param2: str) -> bool:
     """Example function with PEP 484 type annotations.
-    
+
     Args:
         param1: The first parameter.
         param2: The second parameter.
-    
+
     Returns:
         The return value. True for success, False otherwise.
-    
+
     Raises:
         ValueError: If the first parameter does not contain proper model name
     """
