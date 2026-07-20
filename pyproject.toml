@@ -82,6 +82,10 @@ dependencies = [
     # Used for Pydantic AI
     "pydantic-ai>=1.99.0",
     "pydantic-ai-skills>=0.11.0",
+    # Used for OpenTelemetry instrumentation
+    "opentelemetry-distro>=0.49b0",
+    "opentelemetry-exporter-otlp>=1.34.1",
+    "opentelemetry-instrumentation-fastapi>=0.49b0",
 ]
 
 
