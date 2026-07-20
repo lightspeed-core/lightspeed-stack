@@ -5,6 +5,7 @@ import models.api.responses.error as e
 import models.api.responses.successful as s
 import models.common as c
 import models.common.agents as a
+import models.common.responses as cr
 import models.compaction as models_compaction
 from utils.openapi_schema_dumper import dump_openapi_schema
 
@@ -135,6 +136,8 @@ def dump_models(filename: str) -> None:
         a.ToolCallStreamPayload,
         a.ToolResultStreamPayload,
         a.TurnCompleteStreamPayload,
+        cr.InputToolMCP,
+        cr.ResponsesApiParams,
     ]:
         models.append(model)
     dump_openapi_schema(models, filename)
