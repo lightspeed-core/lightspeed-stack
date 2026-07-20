@@ -82,6 +82,8 @@ async def tools_endpoint_handler(  # pylint: disable=too-many-locals
       server source.
     """
     _, _, _, token = auth
+
+    # Nothing interesting in the request
     _ = request
 
     check_configuration_loaded(configuration)
@@ -90,6 +92,7 @@ async def tools_endpoint_handler(  # pylint: disable=too-many-locals
         configuration, mcp_headers, request.headers, token
     )
 
+    # Check MCP auth
     await check_mcp_auth(configuration, mcp_headers, token, request.headers)
 
     client = AsyncOgxClientHolder().get_client()

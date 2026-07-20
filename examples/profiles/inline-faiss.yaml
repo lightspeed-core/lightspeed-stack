@@ -34,7 +34,6 @@ apis:
 - tool_runtime
 - vector_io
 
-image_name: starter
 external_providers_dir: ${env.EXTERNAL_PROVIDERS_DIR:=~/.llama/providers.d}
 
 providers:
@@ -63,9 +62,6 @@ providers:
   responses:
   - config:
       persistence:
-        agent_state:
-          namespace: agents_state
-          backend: kv_default
         responses:
           table_name: agents_responses
           backend: sql_default
@@ -93,12 +89,14 @@ storage:
       table_name: openai_conversations
       backend: sql_default
     prompts:
-      namespace: prompts
-      backend: kv_default
+      table_name: prompts
+      backend: sql_default
+    connectors:
+      table_name: connectors
+      backend: sql_default
 
 registered_resources:
   models: []
-  shields: []
   vector_stores: []
 
 # REQUIRED for file_search tool calls to work. Without it, llama-stack's
@@ -110,3 +108,4 @@ vector_stores:
   default_embedding_model:
     provider_id: sentence-transformers
     model_id: nomic-ai/nomic-embed-text-v1.5
+distro_name: starter

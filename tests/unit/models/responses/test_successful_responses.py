@@ -39,6 +39,7 @@ from models.common import (
     MCPServerAuthInfo,
     ProviderHealthStatus,
 )
+from models.common.shields import CatalogShield
 from models.common.tools import CatalogTool
 from models.common.turn_summary import (
     ReferencedDocument,
@@ -175,7 +176,13 @@ class TestShieldsResponse:
 
     def test_constructor(self) -> None:
         """Test ShieldsResponse with valid shields list."""
-        shields = [{"name": "shield1", "status": "active"}]
+        shields = [
+            CatalogShield(
+                identifier="lightspeed_pii_redaction",
+                provider_resource_id="lightspeed_pii_redaction",
+                provider_id="lightspeed_pii_redaction",
+            )
+        ]
         response = ShieldsResponse(shields=shields)
         assert isinstance(response, AbstractSuccessfulResponse)
         assert response.shields == shields

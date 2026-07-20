@@ -524,8 +524,13 @@ class TestBuildLlamaStackSnapshot:
         """Test snapshot from valid llama-stack config."""
         result = await build_llama_stack_snapshot(llama_stack_config_file)
         assert result["version"] == 2
-        assert result["image_name"] == "starter"
-        assert result["apis"] == ["agents", "inference", "safety", "vector_io"]
+        assert result["distro_name"] == "starter"
+        assert result["apis"] == [
+            "responses",
+            "inference",
+            "tool_runtime",
+            "vector_io",
+        ]
         assert result["external_providers_dir"] == CONFIGURED
 
     @pytest.mark.asyncio

@@ -1,5 +1,4 @@
 version: '2'
-image_name: llamastack-minimal-stack
 container_image: null
 external_providers_dir: /tmp
 
@@ -26,5 +25,9 @@ storage:
       table_name: openai_conversations
       backend: sql_default
     prompts:
-      namespace: prompts
-      backend: kv_default
+      table_name: prompts
+      backend: sql_default
+    connectors:
+      table_name: connectors
+      backend: sql_default
+distro_name: llamastack-minimal-stack

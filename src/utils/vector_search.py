@@ -631,7 +631,6 @@ async def _fetch_solr_rag(  # pylint: disable=too-many-locals
 
 async def build_rag_context(  # pylint: disable=too-many-locals,too-many-branches
     client: AsyncOgxClient,
-    moderation_decision: str,  # pylint: disable=unused-argument
     query: str,
     vector_store_ids: Optional[list[str]],
     solr: Optional[SolrVectorSearchRequest] = None,
@@ -652,9 +651,6 @@ async def build_rag_context(  # pylint: disable=too-many-locals,too-many-branche
     Returns:
         RAGContext containing formatted context text and referenced documents
     """
-    if moderation_decision == "blocked":
-        return RAGContext()
-
     top_k = constants.INLINE_RAG_MAX_CHUNKS
 
     # Fetch from each source using per-source limits for the reranking pool

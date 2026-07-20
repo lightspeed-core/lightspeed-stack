@@ -5,28 +5,23 @@
 from typing import Any
 
 import pytest
-from fastapi import HTTPException, Request
-from ogx_api.openai_responses import OpenAIResponseObject
-from ogx_client import APIConnectionError, APIStatusError, AsyncOgxClient
+from fastapi import Request
+from ogx_client import AsyncOgxClient
 from pytest_mock import MockerFixture
 
-from app.endpoints.query import query_endpoint_handler, retrieve_response
+from app.endpoints.query import query_endpoint_handler
 from configuration import AppConfig
 from models.api.requests import QueryRequest
 from models.api.responses.successful import QueryResponse
-from models.common.moderation import ShieldModerationPassed
 from models.common.query import Attachment
 from models.common.responses.responses_api_params import ResponsesApiParams
 from models.common.turn_summary import (
     RAGChunk,
     RAGContext,
     ReferencedDocument,
-    ToolCallSummary,
-    ToolResultSummary,
     TurnSummary,
 )
 from models.database.conversations import UserConversation
-from utils.token_counter import TokenCounter
 
 # User ID must be proper UUID
 MOCK_AUTH = (
@@ -130,10 +125,6 @@ class TestQueryEndpointHandler:
             "app.endpoints.query.maybe_get_topic_summary",
             new=mocker.AsyncMock(return_value=None),
         )
-        mocker.patch(
-            "app.endpoints.query.run_shield_moderation",
-            new=mocker.AsyncMock(return_value=ShieldModerationPassed()),
-        )
 
         mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
         mock_responses_params.model = "provider1/model1"
@@ -208,10 +199,6 @@ class TestQueryEndpointHandler:
         mocker.patch(
             "app.endpoints.query.AsyncOgxClientHolder",
             return_value=mock_client_holder,
-        )
-        mocker.patch(
-            "app.endpoints.query.run_shield_moderation",
-            new=mocker.AsyncMock(return_value=ShieldModerationPassed()),
         )
 
         inline_chunk = RAGChunk(content="inline chunk content", source="byok")
@@ -316,10 +303,6 @@ class TestQueryEndpointHandler:
             new=mocker.AsyncMock(return_value=mock_responses_params),
         )
         mocker.patch(
-            "app.endpoints.query.run_shield_moderation",
-            new=mocker.AsyncMock(return_value=ShieldModerationPassed()),
-        )
-        mocker.patch(
             "app.endpoints.query.retrieve_agent_response",
             new=mocker.AsyncMock(return_value=TurnSummary()),
         )
@@ -378,10 +361,6 @@ class TestQueryEndpointHandler:
         mocker.patch(
             "app.endpoints.query.maybe_get_topic_summary",
             new=mocker.AsyncMock(return_value=None),
-        )
-        mocker.patch(
-            "app.endpoints.query.run_shield_moderation",
-            new=mocker.AsyncMock(return_value=ShieldModerationPassed()),
         )
 
         mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
@@ -445,10 +424,6 @@ class TestQueryEndpointHandler:
         mocker.patch(
             "app.endpoints.query.AsyncOgxClientHolder",
             return_value=mock_client_holder,
-        )
-        mocker.patch(
-            "app.endpoints.query.run_shield_moderation",
-            new=mocker.AsyncMock(return_value=ShieldModerationPassed()),
         )
 
         mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
@@ -520,10 +495,6 @@ class TestQueryEndpointHandler:
             "app.endpoints.query.maybe_get_topic_summary",
             new=mocker.AsyncMock(return_value=None),
         )
-        mocker.patch(
-            "app.endpoints.query.run_shield_moderation",
-            new=mocker.AsyncMock(return_value=ShieldModerationPassed()),
-        )
 
         mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
         mock_responses_params.model = "azure/model1"
@@ -575,241 +546,3 @@ class TestQueryEndpointHandler:
         )
 
         mock_client_holder.update_azure_token.assert_called_once()
-
-
-class TestRetrieveResponse:
-    """Tests for retrieve_response function."""
-
-    @pytest.mark.asyncio
-    async def test_retrieve_response_success(self, mocker: MockerFixture) -> None:
-        """Test successful response retrieval."""
-        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
-        mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
-        mock_responses_params.input = "test query"
-        mock_responses_params.model = "provider1/model1"
-        mock_responses_params.tools = None
-        mock_responses_params.model_dump.return_value = {
-            "input": "test query",
-            "model": "provider1/model1",
-        }
-
-        mock_output_item = mocker.Mock()
-        mock_output_item.type = "message"
-        mock_output_item.content = "Response text"
-
-        mock_usage = mocker.Mock()
-        mock_usage.input_tokens = 10
-        mock_usage.output_tokens = 5
-        mock_response = mocker.Mock(spec=OpenAIResponseObject)
-        mock_response.output = [mock_output_item]
-        mock_response.usage = mock_usage
-
-        mock_client.responses.create = mocker.AsyncMock(return_value=mock_response)
-
-        mock_summary = TurnSummary()
-        mock_summary.llm_response = "Response text"
-        mock_summary.token_usage = TokenCounter(input_tokens=10, output_tokens=5)
-        mocker.patch(
-            "app.endpoints.query.build_turn_summary",
-            return_value=mock_summary,
-        )
-
-        result = await retrieve_response(
-            mock_client, mock_responses_params, ShieldModerationPassed()
-        )
-
-        assert isinstance(result, TurnSummary)
-        assert result.llm_response == "Response text"
-        assert result.token_usage.input_tokens == 10
-        assert result.token_usage.output_tokens == 5
-
-    @pytest.mark.asyncio
-    async def test_retrieve_response_shield_blocked(
-        self, mocker: MockerFixture
-    ) -> None:
-        """Test response retrieval when shield moderation blocks the request."""
-        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
-        mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
-        mock_responses_params.input = "test query"
-        mock_responses_params.conversation = "conv_123"
-        mock_responses_params.model_dump.return_value = {
-            "input": "test query",
-            "model": "provider1/model1",
-        }
-
-        mock_refusal = mocker.Mock()
-        mock_moderation_result = mocker.Mock()
-        mock_moderation_result.decision = "blocked"
-        mock_moderation_result.message = "Content blocked by moderation"
-        mock_moderation_result.moderation_id = "mod_123"
-        mock_moderation_result.refusal_response = mock_refusal
-        mock_append = mocker.patch(
-            "app.endpoints.query.append_turn_items_to_conversation",
-            new=mocker.AsyncMock(),
-        )
-
-        result = await retrieve_response(
-            mock_client, mock_responses_params, mock_moderation_result
-        )
-
-        assert isinstance(result, TurnSummary)
-        assert result.llm_response == "Content blocked by moderation"
-        mock_append.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_retrieve_response_connection_error(
-        self, mocker: MockerFixture
-    ) -> None:
-        """Test response retrieval raises HTTPException on connection error."""
-        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
-        mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
-        mock_responses_params.input = "test query"
-        mock_responses_params.model_dump.return_value = {
-            "input": "test query",
-            "model": "provider1/model1",
-        }
-
-        mock_client.responses.create = mocker.AsyncMock(
-            side_effect=APIConnectionError(
-                message="Connection failed", request=mocker.Mock()
-            )
-        )
-
-        with pytest.raises(HTTPException) as exc_info:
-            await retrieve_response(
-                mock_client, mock_responses_params, ShieldModerationPassed()
-            )
-
-        assert exc_info.value.status_code == 503
-
-    @pytest.mark.asyncio
-    async def test_retrieve_response_api_status_error(
-        self, mocker: MockerFixture
-    ) -> None:
-        """Test response retrieval raises HTTPException on API status error."""
-        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
-        mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
-        mock_responses_params.input = "test query"
-        mock_responses_params.model = "provider1/model1"
-        mock_responses_params.model_dump.return_value = {
-            "input": "test query",
-            "model": "provider1/model1",
-        }
-
-        mock_client.responses.create = mocker.AsyncMock(
-            side_effect=APIStatusError(
-                message="API error", response=mocker.Mock(request=None), body=None
-            )
-        )
-        mocker.patch(
-            "app.endpoints.query.handle_known_apistatus_errors",
-            return_value=mocker.Mock(
-                model_dump=lambda: {
-                    "status_code": 500,
-                    "detail": {"response": "Error", "cause": "API error"},
-                }
-            ),
-        )
-
-        with pytest.raises(HTTPException):
-            await retrieve_response(
-                mock_client, mock_responses_params, ShieldModerationPassed()
-            )
-
-    @pytest.mark.asyncio
-    async def test_retrieve_response_runtime_error_context_length(
-        self, mocker: MockerFixture
-    ) -> None:
-        """Test retrieve_response handles RuntimeError with context_length."""
-        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
-        mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
-        mock_responses_params.model = "provider1/model1"
-        mock_responses_params.input = "test query"
-        mock_responses_params.model_dump.return_value = {
-            "input": "test query",
-            "model": "provider1/model1",
-        }
-
-        mock_client.responses.create = mocker.AsyncMock(
-            side_effect=RuntimeError("context_length exceeded")
-        )
-
-        with pytest.raises(HTTPException) as exc_info:
-            await retrieve_response(
-                mock_client, mock_responses_params, ShieldModerationPassed()
-            )
-
-        assert exc_info.value.status_code == 413
-
-    @pytest.mark.asyncio
-    async def test_retrieve_response_runtime_error_other(
-        self, mocker: MockerFixture
-    ) -> None:
-        """Test retrieve_response re-raises RuntimeError without context_length."""
-        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
-        mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
-        mock_responses_params.model = "provider1/model1"
-        mock_responses_params.input = "test query"
-        mock_responses_params.model_dump.return_value = {
-            "input": "test query",
-            "model": "provider1/model1",
-        }
-
-        mock_client.responses.create = mocker.AsyncMock(
-            side_effect=RuntimeError("Some other error")
-        )
-
-        with pytest.raises(RuntimeError):
-            await retrieve_response(
-                mock_client, mock_responses_params, ShieldModerationPassed()
-            )
-
-    @pytest.mark.asyncio
-    async def test_retrieve_response_with_tool_calls(
-        self, mocker: MockerFixture
-    ) -> None:
-        """Test response retrieval processes tool calls."""
-        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
-        mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
-        mock_responses_params.input = "test query"
-        mock_responses_params.model = "provider1/model1"
-        mock_responses_params.tools = None
-        mock_responses_params.model_dump.return_value = {
-            "input": "test query",
-            "model": "provider1/model1",
-        }
-
-        mock_usage = mocker.Mock()
-        mock_usage.input_tokens = 10
-        mock_usage.output_tokens = 5
-        mock_response = mocker.Mock(spec=OpenAIResponseObject)
-        mock_response.output = [mocker.Mock(type="message")]
-        mock_response.usage = mock_usage
-
-        mock_client.responses.create = mocker.AsyncMock(return_value=mock_response)
-
-        mock_tool_call = ToolCallSummary(id="1", name="test", args={})
-        mock_tool_result = ToolResultSummary(
-            id="1", status="success", content="result", round=1
-        )
-        mock_summary = TurnSummary()
-        mock_summary.llm_response = "Response text"
-        mock_summary.tool_calls = [mock_tool_call]
-        mock_summary.tool_results = [mock_tool_result]
-        mock_summary.token_usage = TokenCounter(input_tokens=10, output_tokens=5)
-        mocker.patch(
-            "app.endpoints.query.build_turn_summary",
-            return_value=mock_summary,
-        )
-
-        result = await retrieve_response(
-            mock_client, mock_responses_params, ShieldModerationPassed()
-        )
-
-        assert result.llm_response == "Response text"
-        assert len(result.tool_calls) == 1
-        assert len(result.tool_results) == 1
-        assert result.token_usage.input_tokens == 10
-        assert result.token_usage.output_tokens == 5
-        assert result.rag_chunks == []
-        assert result.referenced_documents == []

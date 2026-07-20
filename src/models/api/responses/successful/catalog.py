@@ -5,6 +5,7 @@ from typing import Any, Optional
 from pydantic import Field
 
 from models.api.responses.successful.bases import AbstractSuccessfulResponse
+from models.common.shields import CatalogShield
 from models.common.tools import CatalogTool
 
 
@@ -78,7 +79,7 @@ class ToolsResponse(AbstractSuccessfulResponse):
 class ShieldsResponse(AbstractSuccessfulResponse):
     """Model representing a response to shields request."""
 
-    shields: list[dict[str, Any]] = Field(
+    shields: list[CatalogShield] = Field(
         ...,
         description="List of shields available",
     )
@@ -89,8 +90,8 @@ class ShieldsResponse(AbstractSuccessfulResponse):
                 {
                     "shields": [
                         {
-                            "identifier": "lightspeed_question_validity-shield",
-                            "provider_resource_id": "lightspeed_question_validity-shield",
+                            "identifier": "lightspeed_question_validity",
+                            "provider_resource_id": "gpt-4o-mini",
                             "provider_id": "lightspeed_question_validity",
                             "type": "shield",
                             "params": {},

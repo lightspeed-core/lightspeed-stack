@@ -2,15 +2,13 @@
 
 These tests exercise the handler → DB persistence path with real configuration
 and an in-memory SQLite database. The Llama Stack client is mocked (no real LLM),
-but all internal subsystems (config, DB, shield moderation, conversation storage)
-run with real code.
+but all internal subsystems (config, DB, conversation storage) run with real code.
 """
 
 from typing import Any
 
 import pytest
 from fastapi import Request
-from fastapi.responses import StreamingResponse
 from ogx_client.types import ListModelsResponse
 from pytest_mock import MockerFixture
 from sqlalchemy.orm import Session
@@ -68,8 +66,7 @@ def _build_mock_client(mocker: MockerFixture) -> Any:
     """Build a mock Llama Stack client for responses integration tests.
 
     Returns a fully-configured AsyncMock client with sensible defaults for
-    responses.create, models.list, shields.list, vector_stores.list, and
-    conversations.create.
+    responses.create, models.list, vector_stores.list, and conversations.create.
     """
     mock_client = mocker.AsyncMock()
 
@@ -98,8 +95,6 @@ def _build_mock_client(mocker: MockerFixture) -> Any:
     mock_client.models.list.return_value = ListModelsResponse.model_construct(
         data=[mock_model]
     )
-
-    mock_client.shields.list.return_value = []
 
     mock_vs_resp = mocker.MagicMock()
     mock_vs_resp.data = []
@@ -149,33 +144,6 @@ def _setup_test(mocker: MockerFixture) -> Any:
         new=mocker.AsyncMock(return_value=None),
     )
     return mock_client
-
-
-def _configure_shield_blocked(
-    mocker: MockerFixture,
-    mock_client: Any,
-    moderation_id: str,
-) -> None:
-    """Configure mock client to simulate shield-blocked moderation.
-
-    Args:
-        mocker: pytest-mock fixture.
-        mock_client: The mock Llama Stack client to configure.
-        moderation_id: The moderation ID for the blocked response.
-    """
-    mock_shield = mocker.MagicMock()
-    mock_shield.identifier = "test-shield"
-    mock_shield.provider_resource_id = "test-shield-model"
-    mock_shield.provider_id = "test-shield-provider"
-    mock_client.shields.list.return_value = [mock_shield]
-
-    mock_moderation = mocker.MagicMock()
-    mock_moderation.id = moderation_id
-    mock_result = mocker.MagicMock()
-    mock_result.flagged = True
-    mock_result.user_message = "Content blocked by safety shield"
-    mock_moderation.results = [mock_result]
-    mock_client.moderations.create = mocker.AsyncMock(return_value=mock_moderation)
 
 
 @pytest.mark.asyncio
@@ -231,54 +199,6 @@ async def test_non_streaming_success_persists_conversation_and_turn(
 
 
 @pytest.mark.asyncio
-async def test_shield_blocked_persists_moderation_turn(
-    test_config: AppConfig,
-    mocker: MockerFixture,
-    test_request: Request,
-    test_db_session: Session,
-) -> None:
-    """Test shield-blocked response persists moderation ID and skips last_response_id."""
-    _ = test_config
-    mock_client = _setup_test(mocker)
-    _configure_shield_blocked(mocker, mock_client, "modr_blocked_integ_123")
-
-    request = ResponsesRequest(
-        input="Some blocked content",
-        model="test-provider/test-model",
-        stream=False,
-        store=True,
-        generate_topic_summary=False,
-    )
-
-    response = await responses_endpoint_handler(
-        request=test_request,
-        responses_request=request,
-        auth=MOCK_AUTH,
-        mcp_headers={},
-    )
-
-    assert isinstance(response, ResponsesResponse)
-    assert response.id == "modr_blocked_integ_123"
-    assert "Content blocked by safety shield" in (response.output_text or "")
-
-    mock_client.responses.create.assert_not_called()
-
-    conversation = (
-        test_db_session.query(UserConversation).filter_by(id=NORMALIZED_CONV_ID).first()
-    )
-    assert conversation is not None
-    assert conversation.last_response_id is None
-
-    turns = (
-        test_db_session.query(UserTurn)
-        .filter_by(conversation_id=NORMALIZED_CONV_ID)
-        .all()
-    )
-    assert len(turns) == 1
-    assert turns[0].response_id == "modr_blocked_integ_123"
-
-
-@pytest.mark.asyncio
 async def test_store_false_skips_db_persistence(
     test_config: AppConfig,
     mocker: MockerFixture,
@@ -311,67 +231,3 @@ async def test_store_false_skips_db_persistence(
 
     turns = test_db_session.query(UserTurn).all()
     assert len(turns) == 0
-
-
-@pytest.mark.asyncio
-async def test_streaming_blocked_returns_sse_and_persists_turn(
-    test_config: AppConfig,
-    mocker: MockerFixture,
-    test_request: Request,
-    test_db_session: Session,
-) -> None:
-    """Test that shield-blocked streaming returns valid SSE events and persists to DB."""
-    _ = test_config
-    mock_client = _setup_test(mocker)
-    _configure_shield_blocked(mocker, mock_client, "modr_stream_blocked_123")
-
-    request = ResponsesRequest(
-        input="Some blocked content",
-        model="test-provider/test-model",
-        stream=True,
-        store=True,
-        generate_topic_summary=False,
-    )
-
-    response = await responses_endpoint_handler(
-        request=test_request,
-        responses_request=request,
-        auth=MOCK_AUTH,
-        mcp_headers={},
-    )
-
-    assert isinstance(response, StreamingResponse)
-    assert response.media_type == "text/event-stream"
-
-    body = b""
-    async for part in response.body_iterator:
-        if isinstance(part, str):
-            body += part.encode()
-        else:
-            body += bytes(part)
-    body_str = body.decode()
-
-    created_idx = body_str.find("event: response.created")
-    completed_idx = body_str.find("event: response.completed")
-    done_idx = body_str.find("data: [DONE]")
-    assert created_idx != -1
-    assert completed_idx != -1
-    assert done_idx != -1
-    assert created_idx < completed_idx < done_idx
-    assert "Content blocked by safety shield" in body_str
-
-    mock_client.responses.create.assert_not_called()
-
-    conversation = (
-        test_db_session.query(UserConversation).filter_by(id=NORMALIZED_CONV_ID).first()
-    )
-    assert conversation is not None
-    assert conversation.last_response_id is None
-
-    turns = (
-        test_db_session.query(UserTurn)
-        .filter_by(conversation_id=NORMALIZED_CONV_ID)
-        .all()
-    )
-    assert len(turns) == 1
-    assert turns[0].response_id == "modr_stream_blocked_123"

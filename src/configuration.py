@@ -32,6 +32,7 @@ from models.config import (
     RerankerConfiguration,
     RlsapiV1Configuration,
     ServiceConfiguration,
+    ShieldConfiguration,
     SkillsConfiguration,
     SplunkConfiguration,
     UserDataCollection,
@@ -213,6 +214,20 @@ class AppConfig:  # pylint: disable=too-many-public-methods
         if self._configuration is None:
             raise LogicError("logic error: configuration is not loaded")
         return self._configuration.mcp_servers
+
+    @property
+    def shields(self) -> list[ShieldConfiguration]:
+        """Return configured shields.
+
+        Returns:
+            list[ShieldConfiguration]: The list of configured shields.
+
+        Raises:
+            LogicError: If the configuration is not loaded.
+        """
+        if self._configuration is None:
+            raise LogicError("logic error: configuration is not loaded")
+        return self._configuration.shields
 
     @property
     def dynamic_mcp_server_names(self) -> set[str]:

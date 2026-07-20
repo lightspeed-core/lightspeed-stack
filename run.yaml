@@ -5,12 +5,10 @@ apis:
 - batches
 - files
 - inference
-- safety
 - tool_runtime
 - conversations
 - vector_io
       
-image_name: starter
 
 providers:
   inference:
@@ -29,11 +27,6 @@ providers:
       storage_dir: ~/.llama/storage/files
     provider_id: meta-reference-files
     provider_type: inline::localfs
-  safety:
-  - config:
-      excluded_categories: []
-    provider_id: llama-guard
-    provider_type: inline::llama-guard
   tool_runtime:
   - config: {} # Enable the RAG tool
     provider_id: file-search
@@ -51,9 +44,6 @@ providers:
   responses:
   - config:
       persistence:
-        agent_state:
-          namespace: agents_state
-          backend: kv_default
         responses:
           table_name: agents_responses
           backend: sql_default
@@ -61,9 +51,9 @@ providers:
     provider_type: inline::builtin
   batches:
   - config:
-      kvstore:
-        namespace: batches_store
-        backend: kv_default
+      sqlstore:
+        table_name: batches
+        backend: sql_default
     provider_id: reference
     provider_type: inline::reference
 server:
@@ -89,14 +79,13 @@ storage:
       table_name: openai_conversations
       backend: sql_default
     prompts:
-      namespace: prompts
-      backend: kv_default
+      table_name: prompts
+      backend: sql_default
+    connectors:
+      table_name: connectors
+      backend: sql_default
 registered_resources:
   models: []
-  shields:
-  - shield_id: llama-guard
-    provider_id: llama-guard
-    provider_shield_id: openai/gpt-4o-mini
   vector_stores: []
 # REQUIRED: This section is necessary for file_search tool calls to work.
 # Without it, llama-stack's file-search runtime silently fails all file_search operations
@@ -110,6 +99,5 @@ vector_stores:
   default_embedding_model: # Define the default embedding model for RAG
     provider_id: sentence-transformers
     model_id: nomic-ai/nomic-embed-text-v1.5
-safety:
-  default_shield_id: llama-guard
 
+distro_name: starter

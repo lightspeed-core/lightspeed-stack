@@ -79,6 +79,7 @@ from ogx_api.openai_responses import (
     OpenAIResponseUsageOutputTokensDetails as UsageOutputTokensDetails,
 )
 from ogx_client import APIConnectionError, APIStatusError, AsyncOgxClient
+from ogx_client.types import ListModelsResponse
 
 import constants
 from client import AsyncOgxClientHolder
@@ -1338,7 +1339,7 @@ async def check_model_configured(
         HTTPException: If there's a connection error or other API error
     """
     try:
-        models = (await client.models.list()).data
+        models = cast(ListModelsResponse, await client.models.list()).data
         for model in models:
             if model.id == model_id:
                 return True
@@ -1404,7 +1405,7 @@ async def select_model_for_responses(
 
     # 3. Fetch models list and select the first LLM model (model_type="llm")
     try:
-        models = (await client.models.list()).data
+        models = cast(ListModelsResponse, await client.models.list()).data
     except APIConnectionError as e:
         error_response = ServiceUnavailableResponse(
             backend_name="OGX",
@@ -1511,14 +1512,18 @@ def build_turn_summary(  # pylint: disable=too-many-arguments,too-many-positiona
         response, vector_store_ids, rag_id_mapping
     )
 
+    tool_calls: list[ToolCallSummary] = []
+    tool_results: list[ToolResultSummary] = []
     for item in response.output:
         if filter_server_tools and not is_server_deployed_output(item):
             continue
         tool_call, tool_result = build_tool_call_summary(item)
         if tool_call:
-            summary.tool_calls.append(tool_call)
+            tool_calls.append(tool_call)
         if tool_result:
-            summary.tool_results.append(tool_result)
+            tool_results.append(tool_result)
+    summary.tool_calls = tool_calls
+    summary.tool_results = tool_results
 
     summary.rag_chunks = parse_rag_chunks(response, vector_store_ids, rag_id_mapping)
     summary.token_usage = extract_token_usage(response.usage, model, endpoint_path)

@@ -9,6 +9,7 @@ import yaml
 from fastapi import HTTPException
 from ogx.core.library_client import AsyncOGXAsLibraryClient
 from ogx_client import APIConnectionError, APIStatusError, AsyncOgxClient
+from ogx_client.types import ListModelsResponse
 
 import constants
 from authorization.azure_token_manager import AzureEntraIDManager
@@ -234,7 +235,7 @@ class AsyncOgxClientHolder(metaclass=Singleton):
         """
         try:
             client = self.get_client()
-            models = (await client.models.list()).data
+            models = cast(ListModelsResponse, await client.models.list()).data
         except RuntimeError as e:
             logger.warning("Client not initialized, skipping model check: %s", e)
             return False, f"Client not initialized: {e!s}"
@@ -256,7 +257,9 @@ class AsyncOgxClientHolder(metaclass=Singleton):
             try:
                 await self.reload_library_client()
                 client = self.get_client()
-                reloaded_models = (await client.models.list()).data
+                reloaded_models = cast(
+                    ListModelsResponse, await client.models.list()
+                ).data
                 if any(m.id == model_id for m in reloaded_models):
                     logger.info(
                         "Model %s found after client reload",

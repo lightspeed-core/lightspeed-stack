@@ -18,10 +18,12 @@ from models.config import (
     QuestionValidityConfig,
 )
 from pydantic_ai_lightspeed.capabilities.question_validity._capability import (
-    SUBJECT_ALLOWED,
-    SUBJECT_REJECTED,
     QuestionValidity,
     _extract_message_str_from_user_content,
+)
+from pydantic_ai_lightspeed.capabilities.question_validity.core import (
+    SUBJECT_ALLOWED,
+    SUBJECT_REJECTED,
 )
 
 _MODULE = "pydantic_ai_lightspeed.capabilities.question_validity._capability"

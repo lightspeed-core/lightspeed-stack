@@ -61,17 +61,6 @@ Feature: Llama Stack connection disrupted
        {"detail": {"response": "Unable to connect to OGX", "cause": "Connection error."}}
     """
 
-  Scenario: Check if shields endpoint reports error when llama-stack is unreachable
-    Given The service uses the lightspeed-stack.yaml configuration
-      And The service is restarted
-    And The llama-stack connection is disrupted
-    When I access REST API endpoint "shields" using HTTP GET method
-    Then The status code of the response is 503
-    And The body of the response is the following
-    """
-       {"detail": {"response": "Unable to connect to OGX", "cause": "Connection error."}}
-    """
-
   Scenario: Check if tools endpoint reports error when llama-stack is unreachable
     Given The service uses the lightspeed-stack.yaml configuration
       And The service is restarted

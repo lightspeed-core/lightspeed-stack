@@ -1424,7 +1424,7 @@
                     "shields"
                 ],
                 "summary": "Shields Endpoint Handler",
-                "description": "Handle requests to the /shields endpoint.\n\nProcess GET requests to the /shields endpoint, returning a list of available\nshields from the Llama Stack service.\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- auth: Authentication tuple from the auth dependency (used by middleware).\n\n### Raises:\n- HTTPException: with status 401 for unauthorized access.\n- HTTPException: with status 403 if permission is denied.\n- HTTPException: with status 500 and a detail object containing `response`\n  and `cause` when service configuration is wrong or incomplete.\n- HTTPException: with status 503 and a detail object containing `response`\n  and `cause` when unable to connect to Llama Stack.\n\n### Returns:\n- ShieldsResponse: An object containing the list of available shields.",
+                "description": "Handle requests to the /shields endpoint.\n\nProcess GET requests to the /shields endpoint, returning a list of available\nshields from Lightspeed Core Stack configuration.\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- auth: Authentication tuple from the auth dependency (used by middleware).\n\n### Raises:\n- HTTPException: with status 401 for unauthorized access.\n- HTTPException: with status 403 if permission is denied.\n- HTTPException: with status 500 and a detail object containing `response`\n  and `cause` when service configuration is wrong or incomplete.\n\n### Returns:\n- ShieldsResponse: An object containing the list of available shields.",
                 "operationId": "shields_endpoint_handler_v1_shields_get",
                 "responses": {
                     "200": {
@@ -1437,10 +1437,10 @@
                                 "example": {
                                     "shields": [
                                         {
-                                            "identifier": "lightspeed_question_validity-shield",
+                                            "identifier": "lightspeed_question_validity",
                                             "params": {},
                                             "provider_id": "lightspeed_question_validity",
-                                            "provider_resource_id": "lightspeed_question_validity-shield",
+                                            "provider_resource_id": "gpt-4o-mini",
                                             "type": "shield"
                                         }
                                     ]
@@ -1557,34 +1557,6 @@
                                             "detail": {
                                                 "cause": "Lightspeed Stack configuration has not been initialized.",
                                                 "response": "Configuration is not loaded"
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    "503": {
-                        "description": "Service unavailable",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ServiceUnavailableResponse"
-                                },
-                                "examples": {
-                                    "ogx": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to OGX"
-                                            }
-                                        }
-                                    },
-                                    "kubernetes api": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Failed to connect to Kubernetes API: Service Unavailable (status 503)",
-                                                "response": "Unable to connect to Kubernetes API"
                                             }
                                         }
                                     }
@@ -12077,6 +12049,40 @@
                 "title": "CORSConfiguration",
                 "description": "CORS configuration.\n\nCORS or 'Cross-Origin Resource Sharing' refers to the situations when a\nfrontend running in a browser has JavaScript code that communicates with a\nbackend, and the backend is in a different 'origin' than the frontend.\n\nUseful resources:\n\n  - [CORS in FastAPI](https://fastapi.tiangolo.com/tutorial/cors/)\n  - [Wikipedia article](https://en.wikipedia.org/wiki/Cross-origin_resource_sharing)\n  - [What is CORS?](https://dev.to/akshay_chauhan/what-is-cors-explained-8f1)"
             },
+            "CatalogShield": {
+                "properties": {
+                    "identifier": {
+                        "type": "string",
+                        "title": "Identifier"
+                    },
+                    "provider_resource_id": {
+                        "type": "string",
+                        "title": "Provider Resource Id"
+                    },
+                    "provider_id": {
+                        "type": "string",
+                        "title": "Provider Id"
+                    },
+                    "type": {
+                        "type": "string",
+                        "title": "Type",
+                        "default": "shield"
+                    },
+                    "params": {
+                        "additionalProperties": true,
+                        "type": "object",
+                        "title": "Params"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "identifier",
+                    "provider_resource_id",
+                    "provider_id"
+                ],
+                "title": "CatalogShield",
+                "description": "Shield entry in the ``/shields`` catalog response.\n\nAccepts either catalog field names or ``ShieldConfiguration`` names\n(``shield_id`` / ``provider_shield_id``) via validation aliases."
+            },
             "CatalogTool": {
                 "properties": {
                     "identifier": {
@@ -12268,6 +12274,14 @@
                         "type": "array",
                         "title": "Model Context Protocol Server and tools configuration",
                         "description": "MCP (Model Context Protocol) servers provide tools and capabilities to the AI agents. These are configured in this section. Only MCP servers defined in the lightspeed-stack.yaml configuration are available to the agents. Tools configured in the llama-stack run.yaml are not accessible to lightspeed-core agents."
+                    },
+                    "shields": {
+                        "items": {
+                            "$ref": "#/components/schemas/ShieldConfiguration"
+                        },
+                        "type": "array",
+                        "title": "Shields configuration",
+                        "description": "Safety shields owned by Lightspeed Core Stack. Mirrors the former Llama Stack registered_resources.shields entries. Configured shields are listed by the /shields endpoint and applied via LCORE capabilities (not the Llama Stack Safety API)."
                     },
                     "authentication": {
                         "$ref": "#/components/schemas/AuthenticationConfiguration",
@@ -19897,12 +19911,48 @@
                     }
                 ]
             },
+            "ShieldConfiguration": {
+                "properties": {
+                    "shield_id": {
+                        "type": "string",
+                        "minLength": 1,
+                        "title": "Shield ID",
+                        "description": "Static shield capability identifier. Supported values: lightspeed_pii_redaction, lightspeed_question_validity."
+                    },
+                    "provider_id": {
+                        "type": "string",
+                        "minLength": 1,
+                        "title": "Provider ID",
+                        "description": "Shield provider identification."
+                    },
+                    "provider_shield_id": {
+                        "type": "string",
+                        "minLength": 1,
+                        "title": "Provider shield ID",
+                        "description": "Provider-specific shield resource identifier. For 'lightspeed_question_validity' this is the model id used by the guardrail."
+                    },
+                    "params": {
+                        "additionalProperties": true,
+                        "type": "object",
+                        "title": "Shield parameters",
+                        "description": "Optional capability-specific shield parameters."
+                    }
+                },
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                    "shield_id",
+                    "provider_id",
+                    "provider_shield_id"
+                ],
+                "title": "ShieldConfiguration",
+                "description": "Shield resource configuration owned by Lightspeed Core Stack.\n\nMirrors the former Llama Stack / OGX ``registered_resources.shields``\nentry. Shields are configured in ``lightspeed-stack.yaml`` and consumed\nby LCORE Pydantic AI capabilities, not registered with the Llama Stack\nSafety API.\n\n``shield_id`` must be one of the supported capability IDs:\n``lightspeed_question_validity`` or ``lightspeed_pii_redaction``.\n\nAttributes:\n    shield_id: Static capability identifier (see ``SUPPORTED_SHIELD_IDS``).\n    provider_id: Shield provider identification (typically matches shield_id).\n    provider_shield_id: Provider resource id; for question-validity this is\n        the model id used by the guard.\n    params: Capability-specific parameters (prompt overrides for question\n        validity; ``rules`` / ``case_sensitive`` for PII redaction)."
+            },
             "ShieldsResponse": {
                 "properties": {
                     "shields": {
                         "items": {
-                            "additionalProperties": true,
-                            "type": "object"
+                            "$ref": "#/components/schemas/CatalogShield"
                         },
                         "type": "array",
                         "title": "Shields",
@@ -19919,10 +19969,10 @@
                     {
                         "shields": [
                             {
-                                "identifier": "lightspeed_question_validity-shield",
+                                "identifier": "lightspeed_question_validity",
                                 "params": {},
                                 "provider_id": "lightspeed_question_validity",
-                                "provider_resource_id": "lightspeed_question_validity-shield",
+                                "provider_resource_id": "gpt-4o-mini",
                                 "type": "shield"
                             }
                         ]

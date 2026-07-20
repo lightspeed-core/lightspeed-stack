@@ -156,11 +156,21 @@ LIGHTSPEED_STACK_FIELDS: tuple[FieldSpec | ListFieldSpec, ...] = (
             FieldSpec("url", MaskingType.SENSITIVE),
         ),
     ),
+    ListFieldSpec(
+        "shields",
+        item_fields=(
+            FieldSpec("shield_id", MaskingType.PASSTHROUGH),
+            FieldSpec("provider_id", MaskingType.PASSTHROUGH),
+            FieldSpec("provider_shield_id", MaskingType.PASSTHROUGH),
+        ),
+    ),
 )
 
 LLAMA_STACK_FIELDS: tuple[FieldSpec | ListFieldSpec, ...] = (
     # Operational Configuration
     FieldSpec("version", MaskingType.PASSTHROUGH),
+    # OGX 1.0 renamed image_name -> distro_name; keep both for mixed fleets.
+    FieldSpec("distro_name", MaskingType.PASSTHROUGH),
     FieldSpec("image_name", MaskingType.PASSTHROUGH),
     FieldSpec("container_image", MaskingType.PASSTHROUGH),
     FieldSpec("external_providers_dir", MaskingType.SENSITIVE),
@@ -184,14 +194,6 @@ LLAMA_STACK_FIELDS: tuple[FieldSpec | ListFieldSpec, ...] = (
             FieldSpec("model_type", MaskingType.PASSTHROUGH),
         ),
     ),
-    # Shields
-    ListFieldSpec(
-        "registered_resources.shields",
-        item_fields=(
-            FieldSpec("shield_id", MaskingType.PASSTHROUGH),
-            FieldSpec("provider_id", MaskingType.PASSTHROUGH),
-        ),
-    ),
     # Vector stores
     ListFieldSpec(
         "registered_resources.vector_stores",
@@ -201,7 +203,7 @@ LLAMA_STACK_FIELDS: tuple[FieldSpec | ListFieldSpec, ...] = (
         ),
     ),
     # Providers — extract only provider_id and provider_type per entry.
-    # NOTE: Update this list when llama-stack adds new provider categories.
+    # NOTE: Update this list when OGX adds new provider categories.
     *(
         ListFieldSpec(
             f"providers.{provider_name}",
@@ -212,15 +214,14 @@ LLAMA_STACK_FIELDS: tuple[FieldSpec | ListFieldSpec, ...] = (
         )
         for provider_name in (
             "inference",
-            "safety",
             "vector_io",
-            "agents",
             "tool_runtime",
-            "datasetio",
-            "post_training",
-            "eval",
-            "telemetry",
-            "scoring",
+            "files",
+            "responses",
+            "batches",
+            "file_processors",
+            "interactions",
+            "messages",
         )
     ),
     # Simple list fields — pass through as-is (typically enums/identifiers)

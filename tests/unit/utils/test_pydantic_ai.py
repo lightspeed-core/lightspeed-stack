@@ -9,7 +9,11 @@ from pydantic_ai_skills import SkillsCapability
 from pytest_mock import MockerFixture
 
 from models.common.responses.responses_api_params import ResponsesApiParams
-from models.config import SkillsConfiguration
+from models.config import ShieldConfiguration, SkillsConfiguration
+from pydantic_ai_lightspeed.capabilities import (
+    PiiRedactionCapability,
+    QuestionValidity,
+)
 from utils.pydantic_ai_helpers import (
     _agent_capabilities,
     _skills_capability,
@@ -46,6 +50,7 @@ class TestAgentCapabilities:
         """Test that missing configuration yields None for Agent construction."""
         assert _agent_capabilities(None) is None
         assert _agent_capabilities(SkillsConfiguration(paths=[])) is None
+        assert _agent_capabilities(None, shields=[]) is None
 
     def test_returns_skills_capability_when_configured(
         self, mock_skills_configuration: SkillsConfiguration
@@ -55,6 +60,64 @@ class TestAgentCapabilities:
 
         assert len(capabilities) == 1
         assert isinstance(capabilities[0], SkillsCapability)
+
+    def test_returns_shield_capabilities_when_configured(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Instantiate QuestionValidity and PII redaction from shield config."""
+        _module = "pydantic_ai_lightspeed.capabilities.question_validity._capability"
+        mocker.patch(f"{_module}.AsyncOgxClientHolder")
+        mocker.patch(f"{_module}.OgxResponsesModel.from_ogx_client")
+
+        shields = [
+            ShieldConfiguration(
+                shield_id="lightspeed_question_validity",
+                provider_id="lightspeed_question_validity",
+                provider_shield_id="gpt-4o-mini",
+            ),
+            ShieldConfiguration(
+                shield_id="lightspeed_pii_redaction",
+                provider_id="lightspeed_pii_redaction",
+                provider_shield_id="lightspeed_pii_redaction",
+                params={
+                    "rules": [
+                        {"pattern": r"secret", "replacement": "[REDACTED]"},
+                    ]
+                },
+            ),
+        ]
+
+        capabilities = _agent_capabilities(None, shields) or []
+
+        assert len(capabilities) == 2
+        assert isinstance(capabilities[0], QuestionValidity)
+        assert capabilities[0].config.model_id == "gpt-4o-mini"
+        assert isinstance(capabilities[1], PiiRedactionCapability)
+        assert len(capabilities[1].config.compiled_patterns) == 1
+
+    def test_combines_skills_and_shield_capabilities(
+        self,
+        mocker: MockerFixture,
+        mock_skills_configuration: SkillsConfiguration,
+    ) -> None:
+        """Include both skills and shield capabilities when both are configured."""
+        _module = "pydantic_ai_lightspeed.capabilities.question_validity._capability"
+        mocker.patch(f"{_module}.AsyncOgxClientHolder")
+        mocker.patch(f"{_module}.OgxResponsesModel.from_ogx_client")
+
+        shields = [
+            ShieldConfiguration(
+                shield_id="lightspeed_question_validity",
+                provider_id="lightspeed_question_validity",
+                provider_shield_id="gpt-4o-mini",
+            ),
+        ]
+
+        capabilities = _agent_capabilities(mock_skills_configuration, shields) or []
+
+        assert len(capabilities) == 2
+        assert isinstance(capabilities[0], SkillsCapability)
+        assert isinstance(capabilities[1], QuestionValidity)
 
 
 class TestBuildAgent:
@@ -181,6 +244,43 @@ class TestBuildAgent:
             type(capability) for capability in agent._root_capability.capabilities
         }
         assert SkillsCapability not in capability_types
+
+    def test_agent_includes_shield_capabilities_when_configured(
+        self,
+        mocker: MockerFixture,
+        mock_client: AsyncOgxClient,
+        mock_params: ResponsesApiParams,
+    ) -> None:
+        """Attach shield capabilities from LCORE shields configuration."""
+        _module = "pydantic_ai_lightspeed.capabilities.question_validity._capability"
+        mocker.patch(f"{_module}.AsyncOgxClientHolder")
+        mocker.patch(f"{_module}.OgxResponsesModel.from_ogx_client")
+
+        shields = [
+            ShieldConfiguration(
+                shield_id="lightspeed_question_validity",
+                provider_id="lightspeed_question_validity",
+                provider_shield_id="gpt-4o-mini",
+            ),
+            ShieldConfiguration(
+                shield_id="lightspeed_pii_redaction",
+                provider_id="lightspeed_pii_redaction",
+                provider_shield_id="lightspeed_pii_redaction",
+                params={
+                    "rules": [
+                        {"pattern": r"secret", "replacement": "[REDACTED]"},
+                    ]
+                },
+            ),
+        ]
+
+        agent = build_agent(mock_client, mock_params, None, shields)
+
+        capability_types = {
+            type(capability) for capability in agent._root_capability.capabilities
+        }
+        assert QuestionValidity in capability_types
+        assert PiiRedactionCapability in capability_types
 
 
 class TestGetAgentCapabilityTools:

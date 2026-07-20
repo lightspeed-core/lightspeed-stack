@@ -32,6 +32,7 @@ from models.api.requests.rlsapi import (
 from models.api.responses.successful.rlsapi import RlsapiV1InferResponse
 from models.common.moderation import ShieldModerationPassed
 from tests.unit.utils.auth_helpers import mock_authorization_resolvers
+from utils.shields import InputShieldsResult
 from utils.suid import check_suid
 from version import __version__
 
@@ -81,15 +82,6 @@ def mock_authorization_fixture(mocker: MockerFixture) -> None:
     mock_authorization_resolvers(mocker)
 
 
-@pytest.fixture(autouse=True, name="mock_shield_passed")
-def mock_shield_passed_fixture(mocker: MockerFixture) -> None:
-    """Mock shield moderation to pass for all integration tests."""
-    mocker.patch(
-        "app.endpoints.rlsapi_v1.run_shield_moderation",
-        new=mocker.AsyncMock(return_value=ShieldModerationPassed()),
-    )
-
-
 @pytest.fixture(autouse=True, name="mock_model_configured")
 def mock_model_configured_fixture(mocker: MockerFixture) -> None:
     """Mock model existence check to pass for all integration tests."""
@@ -97,6 +89,23 @@ def mock_model_configured_fixture(mocker: MockerFixture) -> None:
         "app.endpoints.rlsapi_v1.check_model_configured",
         new=mocker.AsyncMock(return_value=True),
     )
+
+
+@pytest.fixture(autouse=True, name="mock_input_shields_passed")
+def mock_input_shields_passed_fixture(mocker: MockerFixture) -> None:
+    """Pass input shields for all rlsapi integration tests by default."""
+    mocker.patch(
+        "app.endpoints.rlsapi_v1.get_shields_for_request",
+        return_value=[],
+    )
+
+    async def _pass(text: str, _shields: Any, *, client: Any = None) -> Any:
+        _ = client
+        return InputShieldsResult(
+            text=text, blocked=False, moderation=ShieldModerationPassed()
+        )
+
+    mocker.patch("app.endpoints.rlsapi_v1.run_input_shields", side_effect=_pass)
 
 
 def _create_mock_response_output(mocker: MockerFixture, text: str) -> Any:

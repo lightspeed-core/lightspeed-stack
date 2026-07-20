@@ -79,9 +79,9 @@ async def register_mcp_server_handler(
 
     try:
         configuration.add_mcp_server(mcp_server)
-    except ValueError as exc:
+    except ValueError as e:
         response = ConflictResponse(resource="MCP server", resource_id=body.name)
-        raise HTTPException(**response.model_dump()) from exc
+        raise HTTPException(**response.model_dump()) from e
 
     logger.info("Dynamically registered MCP server: %s at %s", body.name, body.url)
 
@@ -178,7 +178,7 @@ async def delete_mcp_server_handler(
     check_configuration_loaded(configuration)
 
     if not configuration.is_dynamic_mcp_server(name):
-        static_mcp_names = {server.name for server in configuration.mcp_servers}
+        static_mcp_names = {s.name for s in configuration.mcp_servers}
         if name in static_mcp_names:
             response = ForbiddenResponse.mcp_server_static_config(name)
             raise HTTPException(**response.model_dump())
@@ -186,8 +186,8 @@ async def delete_mcp_server_handler(
     try:
         configuration.remove_mcp_server(name)
         local_deleted = True
-    except ValueError as exc:
-        logger.error("Failed to remove MCP server from configuration: %s", exc)
+    except ValueError as e:
+        logger.error("Failed to remove MCP server from configuration: %s", e)
         local_deleted = False
 
     return MCPServerDeleteResponse(deleted=local_deleted, name=name)

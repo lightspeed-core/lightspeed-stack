@@ -8,7 +8,6 @@ import pytest
 from fastapi import HTTPException
 from fastapi.responses import StreamingResponse
 from ogx_api import OpenAIResponseObject
-from ogx_api.openai_responses import OpenAIResponseMessage
 from ogx_client import APIConnectionError, AsyncOgxClient
 from ogx_client import APIStatusError as LLSApiStatusError
 from openai._exceptions import APIStatusError as OpenAIAPIStatusError
@@ -222,73 +221,6 @@ class TestSplunkTelemetryHooks:
     # -- Non-streaming paths ------------------------------------------------
 
     @pytest.mark.asyncio
-    async def test_non_streaming_shield_blocked(
-        self,
-        minimal_config: AppConfig,
-        mock_background_tasks: Any,
-        mocker: MockerFixture,
-    ) -> None:
-        """Blocked moderation fires responses_shield_blocked telemetry."""
-        request = _request_with_model_and_conv("Bad input")
-        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
-
-        mock_moderation = mocker.Mock()
-        mock_moderation.decision = "blocked"
-        mock_moderation.message = "Content blocked"
-        mock_moderation.moderation_id = "mod_blocked_1"
-        mock_refusal = OpenAIResponseMessage(
-            role="assistant", content="Content blocked", type="message"
-        )
-        mock_moderation.refusal_response = mock_refusal
-
-        _patch_handle_non_streaming_common(mocker, minimal_config)
-        mock_client.conversations.items.create = mocker.AsyncMock()
-        mock_api_response = mocker.Mock()
-        mock_api_response.output = [mock_refusal]
-        mock_api_response.model_dump.return_value = {
-            "id": "resp_blocked",
-            "object": "response",
-            "created_at": 0,
-            "status": "completed",
-            "model": "provider/model1",
-            "output": [],
-            "usage": {
-                "input_tokens": 0,
-                "output_tokens": 0,
-                "total_tokens": 0,
-                "input_tokens_details": {"cached_tokens": 0},
-                "output_tokens_details": {"reasoning_tokens": 0},
-            },
-        }
-        mocker.patch(
-            f"{MODULE}.OpenAIResponseObject.model_construct",
-            return_value=mock_api_response,
-        )
-        mock_queue = mocker.patch(f"{TELEMETRY_MODULE}.queue_responses_splunk_event")
-
-        api_params, context = build_api_params_and_context(
-            updated_request=request,
-            client=mock_client,
-            auth=MOCK_AUTH,
-            input_text="Bad input",
-            started_at=datetime.now(UTC),
-            moderation_result=mock_moderation,
-            inline_rag_context=RAGContext(),
-            background_tasks=mock_background_tasks,
-            rh_identity_context=("org1", "sys1"),
-        )
-        await handle_non_streaming_response(
-            original_request=request,
-            api_params=api_params,
-            context=context,
-        )
-
-        mock_queue.assert_called_once()
-        call_kwargs = mock_queue.call_args[1]
-        assert call_kwargs["sourcetype"] == "responses_shield_blocked"
-        assert call_kwargs["background_tasks"] is mock_background_tasks
-        assert call_kwargs["rh_identity_context"] == ("org1", "sys1")
-
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
         "exc_factory",
@@ -325,8 +257,6 @@ class TestSplunkTelemetryHooks:
         """Each error branch fires responses_error telemetry with fire_and_forget."""
         request = _request_with_model_and_conv("Hello")
         mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
-        mock_moderation = mocker.Mock()
-        mock_moderation.decision = "passed"
 
         mock_client.responses.create = mocker.AsyncMock(side_effect=exc_factory(mocker))
 
@@ -353,7 +283,6 @@ class TestSplunkTelemetryHooks:
                 auth=MOCK_AUTH,
                 input_text="Hello",
                 started_at=datetime.now(UTC),
-                moderation_result=mock_moderation,
                 inline_rag_context=RAGContext(),
                 background_tasks=mock_background_tasks,
                 rh_identity_context=("org1", "sys1"),
@@ -378,8 +307,6 @@ class TestSplunkTelemetryHooks:
         """Successful non-streaming response fires responses_completed with token counts."""
         request = _request_with_model_and_conv("Hello")
         mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
-        mock_moderation = mocker.Mock()
-        mock_moderation.decision = "passed"
 
         mock_api_response = mocker.Mock(spec=OpenAIResponseObject)
         mock_api_response.output = []
@@ -436,7 +363,6 @@ class TestSplunkTelemetryHooks:
             auth=MOCK_AUTH,
             input_text="Hello",
             started_at=datetime.now(UTC),
-            moderation_result=mock_moderation,
             inline_rag_context=RAGContext(),
             background_tasks=mock_background_tasks,
             rh_identity_context=("org1", "sys1"),
@@ -459,64 +385,6 @@ class TestSplunkTelemetryHooks:
     # -- Streaming paths ----------------------------------------------------
 
     @pytest.mark.asyncio
-    async def test_streaming_shield_blocked(
-        self,
-        minimal_config: AppConfig,
-        mock_background_tasks: Any,
-        mocker: MockerFixture,
-    ) -> None:
-        """Blocked moderation in streaming fires responses_shield_blocked telemetry."""
-        request = _request_with_model_and_conv("Bad", model="provider/model1")
-        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
-
-        mock_moderation = mocker.Mock()
-        mock_moderation.decision = "blocked"
-        mock_moderation.message = "Blocked"
-        mock_moderation.moderation_id = "mod_123"
-        mock_refusal = OpenAIResponseMessage(
-            role="assistant", content="Blocked", type="message"
-        )
-        mock_moderation.refusal_response = mock_refusal
-
-        mocker.patch(f"{MODULE}.configuration", minimal_config)
-        mocker.patch(f"{MODULE}.get_available_quotas", return_value={})
-        mocker.patch(
-            f"{MODULE}.normalize_conversation_id",
-            return_value=VALID_CONV_ID_NORMALIZED,
-        )
-        mocker.patch(
-            f"{MODULE}.maybe_get_topic_summary",
-            new=mocker.AsyncMock(return_value=None),
-        )
-        mocker.patch(f"{MODULE}.store_query_results")
-        mock_client.conversations.items.create = mocker.AsyncMock()
-
-        mock_queue = mocker.patch(f"{TELEMETRY_MODULE}.queue_responses_splunk_event")
-
-        api_params, context = build_api_params_and_context(
-            updated_request=request,
-            client=mock_client,
-            auth=MOCK_AUTH,
-            input_text="Bad",
-            started_at=datetime.now(UTC),
-            moderation_result=mock_moderation,
-            inline_rag_context=RAGContext(),
-            background_tasks=mock_background_tasks,
-            rh_identity_context=("org1", "sys1"),
-        )
-        response = await handle_streaming_response(
-            original_request=request,
-            api_params=api_params,
-            context=context,
-        )
-
-        assert isinstance(response, StreamingResponse)
-        # Consume the stream to trigger generate_response() completion
-        async for _chunk in response.body_iterator:
-            pass
-        mock_queue.assert_called_once()
-        assert mock_queue.call_args[1]["sourcetype"] == "responses_shield_blocked"
-
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
         "exc_factory",
@@ -553,8 +421,6 @@ class TestSplunkTelemetryHooks:
         """Each streaming error branch fires responses_error telemetry with fire_and_forget."""
         request = _request_with_model_and_conv("Hello")
         mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
-        mock_moderation = mocker.Mock()
-        mock_moderation.decision = "passed"
 
         mock_client.responses.create = mocker.AsyncMock(side_effect=exc_factory(mocker))
 
@@ -581,7 +447,6 @@ class TestSplunkTelemetryHooks:
                 auth=MOCK_AUTH,
                 input_text="Hello",
                 started_at=datetime.now(UTC),
-                moderation_result=mock_moderation,
                 inline_rag_context=RAGContext(),
                 background_tasks=mock_background_tasks,
                 rh_identity_context=("org1", "sys1"),
@@ -606,8 +471,6 @@ class TestSplunkTelemetryHooks:
         """Successful streaming fires responses_completed after consuming the stream."""
         request = _request_with_model_and_conv("Hi", model="provider/model1")
         mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
-        mock_moderation = mocker.Mock()
-        mock_moderation.decision = "passed"
 
         mock_chunk = mocker.Mock()
         mock_chunk.type = "response.completed"
@@ -666,7 +529,6 @@ class TestSplunkTelemetryHooks:
             auth=MOCK_AUTH,
             input_text="Hi",
             started_at=datetime.now(UTC),
-            moderation_result=mock_moderation,
             inline_rag_context=RAGContext(),
             background_tasks=mock_background_tasks,
             rh_identity_context=("org1", "sys1"),
@@ -703,19 +565,12 @@ class TestSplunkTelemetryHooks:
         request = _request_with_model_and_conv("Bad input")
         mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
 
-        mock_moderation = mocker.Mock()
-        mock_moderation.decision = "blocked"
-        mock_moderation.message = "Content blocked"
-        mock_moderation.moderation_id = "mod_disabled"
-        mock_refusal = OpenAIResponseMessage(
-            role="assistant", content="Content blocked", type="message"
-        )
-        mock_moderation.refusal_response = mock_refusal
-
         _patch_handle_non_streaming_common(mocker, minimal_config)
-        mock_client.conversations.items.create = mocker.AsyncMock()
-        mock_api_response = mocker.Mock()
-        mock_api_response.output = [mock_refusal]
+        mock_api_response = mocker.Mock(spec=OpenAIResponseObject)
+        mock_api_response.output = []
+        mock_api_response.usage = mocker.Mock(
+            input_tokens=0, output_tokens=0, total_tokens=0
+        )
         mock_api_response.model_dump.return_value = {
             "id": "resp_disabled",
             "object": "response",
@@ -731,10 +586,20 @@ class TestSplunkTelemetryHooks:
                 "output_tokens_details": {"reasoning_tokens": 0},
             },
         }
+        mock_client.responses.create = mocker.AsyncMock(return_value=mock_api_response)
         mocker.patch(
-            f"{MODULE}.OpenAIResponseObject.model_construct",
-            return_value=mock_api_response,
+            f"{MODULE}.extract_token_usage",
+            return_value=mocker.Mock(input_tokens=0, output_tokens=0),
         )
+        mocker.patch(f"{MODULE}.consume_query_tokens")
+        mocker.patch(
+            f"{MODULE}.build_turn_summary",
+            return_value=mocker.Mock(referenced_documents=[]),
+        )
+        mocker.patch(f"{MODULE}.extract_text_from_response_items", return_value="ok")
+        mocker.patch(f"{MODULE}.extract_vector_store_ids_from_tools", return_value=[])
+        mocker.patch(f"{MODULE}.normalize_conversation_id", return_value="conv_norm")
+        mocker.patch(f"{MODULE}._record_response_inference_result")
         mock_queue = mocker.patch(f"{TELEMETRY_MODULE}.queue_responses_splunk_event")
 
         # background_tasks=None (the default) means Splunk is disabled
@@ -744,7 +609,6 @@ class TestSplunkTelemetryHooks:
             auth=MOCK_AUTH,
             input_text="Bad input",
             started_at=datetime.now(UTC),
-            moderation_result=mock_moderation,
             inline_rag_context=RAGContext(),
             background_tasks=None,
             rh_identity_context=("org1", "sys1"),

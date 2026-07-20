@@ -63,7 +63,7 @@ from models.common.moderation import ShieldModerationBlocked
 from models.common.responses.contexts import ResponsesContext
 from models.common.responses.responses_api_params import ResponsesApiParams
 from models.common.responses.types import ResponseInput
-from models.common.turn_summary import TurnSummary
+from models.common.turn_summary import RAGContext, TurnSummary
 from models.config import Action
 from utils.conversation_compaction import (
     apply_compaction_blocking,
@@ -105,7 +105,11 @@ from utils.responses import (
     select_model_for_responses,
 )
 from utils.rh_identity import get_rh_identity_context
-from utils.shields import run_shield_moderation
+from utils.shields import (
+    get_shields_for_request,
+    run_input_shields,
+    validate_shield_ids_override,
+)
 from utils.suid import (
     normalize_conversation_id,
 )
@@ -424,12 +428,27 @@ async def responses_endpoint_handler(
     attachments_text = extract_attachments_text(original_request.input)
 
     endpoint_path = ENDPOINT_PATH_RESPONSES
-    moderation_result = await run_shield_moderation(
-        client,
-        input_text + "\n\n" + attachments_text,
-        endpoint_path,
-        original_request.shield_ids,
+    validate_shield_ids_override(original_request.shield_ids, configuration)
+    shields = get_shields_for_request(
+        configuration.shields, original_request.shield_ids
     )
+    moderation_input = (
+        input_text if not attachments_text else f"{input_text}\n\n{attachments_text}"
+    )
+    input_shields = await run_input_shields(
+        moderation_input,
+        shields,
+        client=client,
+    )
+    moderation_result = input_shields.moderation
+    # When input was plain text, apply any PII redaction back onto the request.
+    if (
+        moderation_result.decision == "passed"
+        and isinstance(original_request.input, str)
+        and input_shields.text != moderation_input
+    ):
+        input_text = input_shields.text
+        updated_request.input = input_text
 
     filter_server_tools = (
         request.headers.get("X-LCS-Merge-Server-Tools", "").lower() == "true"
@@ -451,18 +470,19 @@ async def responses_endpoint_handler(
         if original_request.tools is not None
         else None
     )
-    # Build RAG context from Inline RAG sources
-    inline_rag_context = await build_rag_context(
-        client,
-        moderation_result.decision,
-        input_text,
-        vector_store_ids,
-        original_request.solr,
-    )
+    # Build RAG context from Inline RAG sources (skip when shields blocked).
     if moderation_result.decision == "passed":
+        inline_rag_context = await build_rag_context(
+            client,
+            input_text,
+            vector_store_ids,
+            original_request.solr,
+        )
         updated_request.input = append_inline_rag_context_to_responses_input(
             original_request.input, inline_rag_context.context_text
         )
+    else:
+        inline_rag_context = RAGContext()
 
     if "max_infer_iters" not in original_request.model_fields_set:
         updated_request.max_infer_iters = configuration.inference.max_infer_iters
@@ -582,7 +602,9 @@ async def handle_streaming_response(
         inference_start_time = time.monotonic()
         try:
             response = await context.client.responses.create(
-                **api_params.model_dump(exclude_none=True)
+                **api_params.model_dump(
+                    exclude_none=True, exclude={"safety_identifier"}
+                )
             )
             generator = response_generator(
                 stream=cast(AsyncIterator[OpenAIResponseObjectStream], response),
@@ -903,6 +925,9 @@ async def response_generator(
                 chunk_dict["response"]["conversation"] = normalize_conversation_id(
                     api_params.conversation
                 )
+                chunk_dict["response"][
+                    "safety_identifier"
+                ] = api_params.safety_identifier
                 _sanitize_response_dict(
                     chunk_dict["response"],
                     configured_mcp_labels,
@@ -1082,7 +1107,9 @@ async def handle_non_streaming_response(
             api_response = cast(
                 OpenAIResponseObject,
                 await context.client.responses.create(
-                    **api_params.model_dump(exclude_none=True)
+                    **api_params.model_dump(
+                        exclude_none=True, exclude={"safety_identifier"}
+                    )
                 ),
             )
             _record_response_inference_result(
@@ -1182,6 +1209,7 @@ async def handle_non_streaming_response(
     response = ResponsesResponse.model_validate(
         {
             **response_dict,
+            "safety_identifier": api_params.safety_identifier,
             "available_quotas": available_quotas,
             "conversation": normalize_conversation_id(api_params.conversation),
             "completed_at": int(completed_at.timestamp()),

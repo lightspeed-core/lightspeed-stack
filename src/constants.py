@@ -7,7 +7,7 @@ from typing import Final, Literal
 
 # Minimal and maximal supported Llama Stack version
 MINIMAL_SUPPORTED_LLAMA_STACK_VERSION: Final[str] = "0.2.17"
-MAXIMAL_SUPPORTED_LLAMA_STACK_VERSION: Final[str] = "0.8.0"
+MAXIMAL_SUPPORTED_LLAMA_STACK_VERSION: Final[str] = "1.0.2"
 
 # Path to the lightspeed-stack.yaml, exported so uvicorn workers (separate
 # processes) can reload the configuration that the parent process selected.
@@ -266,6 +266,17 @@ LIGHTSPEED_STACK_DISABLE_RICH_HANDLER_ENV_VAR: Final[str] = (
 
 DEFAULT_VIOLATION_MESSAGE: Final[str] = (
     "I cannot process this request due to policy restrictions."
+)
+
+# Static shield_id values for LCORE-owned Pydantic AI shield capabilities.
+# Entries in lightspeed-stack.yaml ``shields`` must use one of these IDs.
+QUESTION_VALIDITY_SHIELD_ID: Final[str] = "lightspeed_question_validity"
+PII_REDACTION_SHIELD_ID: Final[str] = "lightspeed_pii_redaction"
+SUPPORTED_SHIELD_IDS: Final[frozenset[str]] = frozenset(
+    {
+        QUESTION_VALIDITY_SHIELD_ID,
+        PII_REDACTION_SHIELD_ID,
+    }
 )
 
 # The Default model prompt and the default invalid question response for QuestionValidityConfig

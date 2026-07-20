@@ -6,13 +6,11 @@ from typing import Final
 
 from fastapi import HTTPException
 from ogx_client import APIConnectionError, APIStatusError, AsyncOgxClient
-from ogx_client._base_client import make_request_options
 from ogx_client.types.shared.provider_info import ProviderInfo
 
 from log import get_logger
 from models.api.responses.error import ServiceUnavailableResponse
-from models.common.tools import CatalogTool, ListToolDefsResponse
-from utils.tool_formatter import build_catalog_tool
+from models.common.tools import CatalogTool, CatalogToolParameter
 
 logger = get_logger(__name__)
 
@@ -21,6 +19,40 @@ FILE_SEARCH_PROVIDER_TYPE: Final[str] = "inline::file-search"
 FILE_SEARCH_PROVIDER_ID: Final[str] = "file-search"
 FILE_SEARCH_TOOLGROUP_ID: Final[str] = "builtin::file_search"
 BUILTIN_SERVER_SOURCE: Final[str] = "builtin"
+
+# OGX server-mode GET /v1/admin/tools is broken (admin deps / nested routers),
+# so expose the known builtin::file_search catalog when the provider is present.
+FILE_SEARCH_CATALOG_TOOLS: Final[tuple[CatalogTool, ...]] = (
+    CatalogTool(
+        identifier="insert_into_memory",
+        description="Insert documents into memory",
+        parameters=[],
+        provider_id=FILE_SEARCH_PROVIDER_ID,
+        toolgroup_id=FILE_SEARCH_TOOLGROUP_ID,
+        server_source=BUILTIN_SERVER_SOURCE,
+        type="tool",
+    ),
+    CatalogTool(
+        identifier="file_search",
+        description="Search files for relevant information",
+        parameters=[
+            CatalogToolParameter(
+                name="query",
+                description=(
+                    "The query to search for. Can be a natural language "
+                    "sentence or keywords."
+                ),
+                parameter_type="string",
+                required=True,
+                default=None,
+            )
+        ],
+        provider_id=FILE_SEARCH_PROVIDER_ID,
+        toolgroup_id=FILE_SEARCH_TOOLGROUP_ID,
+        server_source=BUILTIN_SERVER_SOURCE,
+        type="tool",
+    ),
+)
 
 
 def _is_file_search_provider(provider: ProviderInfo) -> bool:
@@ -41,19 +73,18 @@ def _is_file_search_provider(provider: ProviderInfo) -> bool:
 async def get_file_search_tools_from_lls(
     client: AsyncOgxClient,
 ) -> list[CatalogTool]:
-    """Discover builtin file-search tools from Llama Stack when configured.
+    """Return builtin file-search tools when Llama Stack has that provider.
 
-    Llama Stack auto-registers built-in tool groups from configured
-    ``tool_runtime`` providers. The public client SDK no longer exposes
-    ``tools.list``, but the ``GET /v1/tools`` route remains available and
-    returns tool definitions from the active runtime providers.
+    Provider presence is checked via ``providers.list()``. Tool definitions are
+    not fetched from ``/v1/admin/tools`` (broken in OGX server mode); the
+    known ``builtin::file_search`` catalog is returned instead.
 
     Parameters:
         client: Initialized Llama Stack client.
 
     Returns:
         Catalog tools for the configured file-search runtime, or an empty
-        list when file search is not configured or discovery fails.
+        list when file search is not configured.
     """
     try:
         providers = await client.providers.list()
@@ -80,40 +111,9 @@ async def get_file_search_tools_from_lls(
         )
         return []
 
-    try:
-        response = await client.get(
-            "/v1/tools",
-            cast_to=ListToolDefsResponse,
-            options=make_request_options(
-                query={"toolgroup_id": FILE_SEARCH_TOOLGROUP_ID},
-            ),
-        )
-    except APIStatusError as exc:
-        logger.warning(
-            "Unable to list file-search tools for toolgroup %s: %s",
-            FILE_SEARCH_TOOLGROUP_ID,
-            exc,
-        )
-        return []
-    except APIConnectionError as e:
-        logger.error("Unable to connect to Llama Stack: %s", e)
-        response = ServiceUnavailableResponse(
-            backend_name="OGX", cause=str(e)
-        ).model_dump()
-        raise HTTPException(**response) from e
-
-    tools = [
-        build_catalog_tool(
-            tool,
-            provider_id=FILE_SEARCH_PROVIDER_ID,
-            toolgroup_id=FILE_SEARCH_TOOLGROUP_ID,
-            server_source=BUILTIN_SERVER_SOURCE,
-        )
-        for tool in response.data
-    ]
     logger.debug(
-        "Retrieved %d file-search tools from Llama Stack toolgroup %s",
-        len(tools),
+        "Using static catalog for %d file-search tools (toolgroup %s)",
+        len(FILE_SEARCH_CATALOG_TOOLS),
         FILE_SEARCH_TOOLGROUP_ID,
     )
-    return tools
+    return list(FILE_SEARCH_CATALOG_TOOLS)

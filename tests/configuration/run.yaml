@@ -1,13 +1,11 @@
 version: '2'
-image_name: minimal-viable-llama-stack-configuration
 
 apis:
-  - agents
+  - responses
   - datasetio
   - eval
   - inference
   - post_training
-  - safety
   - scoring
   - tool_runtime
   - vector_io
@@ -20,9 +18,6 @@ providers:
     provider_type: inline::builtin
     config:
       persistence:
-        agent_state:
-          namespace: agents_state
-          backend: kv_default
         responses:
           table_name: agents_responses
           backend: sql_default
@@ -42,11 +37,6 @@ providers:
       distributed_backend: null
     provider_id: huggingface
     provider_type: inline::huggingface
-  safety:
-  - config:
-      excluded_categories: []
-    provider_id: llama-guard
-    provider_type: inline::llama-guard
   telemetry:
   - config:
       service_name: ''
@@ -81,6 +71,9 @@ storage:
     kv_default:
       type: kv_sqlite
       db_path: ${env.KV_STORE_PATH:=~/.llama/storage/kv_store.db}
+    kv_rag: # Define the storage backend type for RAG
+      type: kv_sqlite
+      db_path: ${env.KV_RAG_PATH:=~/.llama/storage/rag/kv_store.db}
     sql_default:
       type: sql_sqlite
       db_path: ${env.SQL_STORE_PATH:=~/.llama/storage/sql_store.db}
@@ -95,11 +88,13 @@ storage:
       table_name: openai_conversations
       backend: sql_default
     prompts:
-      namespace: prompts
-      backend: kv_default
+      table_name: prompts
+      backend: sql_default
+    connectors:
+      table_name: connectors
+      backend: sql_default
 registered_resources:
   models: []
-  shields: []
   vector_stores: []
 telemetry:
   enabled: true
@@ -108,3 +103,4 @@ vector_stores:
   default_embedding_model:
     provider_id: sentence-transformers
     model_id: all-mpnet-base-v2
+distro_name: minimal-viable-llama-stack-configuration

@@ -25,6 +25,7 @@ from models.config import (
     ModelContextProtocolServer,
     PostgreSQLDatabaseConfiguration,
     ServiceConfiguration,
+    ShieldConfiguration,
     SQLiteDatabaseConfiguration,
     TLSConfiguration,
     UserDataCollection,
@@ -88,10 +89,10 @@ ALL_PII_VALUES = [
 
 SAMPLE_LLAMA_STACK_CONFIG: dict[str, Any] = {
     "version": 2,
-    "image_name": "starter",
+    "distro_name": "starter",
     "container_image": None,
     "external_providers_dir": "/opt/providers",
-    "apis": ["agents", "inference", "safety", "vector_io"],
+    "apis": ["responses", "inference", "tool_runtime", "vector_io"],
     "server": {"port": 8321},
     "providers": {
         "inference": [
@@ -101,14 +102,28 @@ SAMPLE_LLAMA_STACK_CONFIG: dict[str, Any] = {
                 "config": {"api_key": "sk-openai-secret-key"},
             },
         ],
-        "safety": [
+        "vector_io": [],
+        "tool_runtime": [
             {
-                "provider_id": "llama-guard",
-                "provider_type": "inline::llama-guard",
+                "provider_id": "file-search",
+                "provider_type": "inline::file-search",
                 "config": {},
             },
         ],
-        "vector_io": [],
+        "responses": [
+            {
+                "provider_id": "builtin",
+                "provider_type": "inline::builtin",
+                "config": {
+                    "persistence": {
+                        "responses": {
+                            "table_name": "agents_responses",
+                            "backend": "sql_default",
+                        }
+                    }
+                },
+            },
+        ],
     },
     "registered_resources": {
         "models": [
@@ -124,9 +139,6 @@ SAMPLE_LLAMA_STACK_CONFIG: dict[str, Any] = {
                 "provider_model_id": "all-MiniLM-L6-v2",
                 "model_type": "embedding",
             },
-        ],
-        "shields": [
-            {"shield_id": "llama-guard", "provider_id": "llama-guard"},
         ],
         "vector_stores": [],
     },
@@ -148,6 +160,14 @@ SAMPLE_LLAMA_STACK_CONFIG: dict[str, Any] = {
             },
             "inference": {
                 "table_name": "inference_store",
+                "backend": "sql_default",
+            },
+            "prompts": {
+                "table_name": "prompts",
+                "backend": "sql_default",
+            },
+            "connectors": {
+                "table_name": "connectors",
                 "backend": "sql_default",
             },
         },
@@ -286,6 +306,14 @@ def build_fully_populated_config() -> Configuration:
                 timeout=None,
             ),
         ],
+        shields=[
+            ShieldConfiguration.model_construct(
+                shield_id="lightspeed_question_validity",
+                provider_id="lightspeed_question_validity",
+                provider_shield_id="openai/gpt-4o-mini",
+                params={},
+            ),
+        ],
         conversation_cache=None,
         byok_rag=[],
         a2a_state=None,
@@ -362,6 +390,7 @@ def build_minimal_config() -> Configuration:
             postgres=None,
         ),
         mcp_servers=[],
+        shields=[],
         conversation_cache=None,
         byok_rag=[],
         a2a_state=None,

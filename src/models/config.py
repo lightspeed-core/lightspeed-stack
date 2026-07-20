@@ -2476,6 +2476,116 @@ class SavedPromptsConfiguration(ConfigurationBase):
         return self
 
 
+class ShieldConfiguration(ConfigurationBase):
+    """Shield resource configuration owned by Lightspeed Core Stack.
+
+    Mirrors the former Llama Stack / OGX ``registered_resources.shields``
+    entry. Shields are configured in ``lightspeed-stack.yaml`` and consumed
+    by LCORE Pydantic AI capabilities, not registered with the Llama Stack
+    Safety API.
+
+    ``shield_id`` must be one of the supported capability IDs:
+    ``lightspeed_question_validity`` or ``lightspeed_pii_redaction``.
+
+    Attributes:
+        shield_id: Static capability identifier (see ``SUPPORTED_SHIELD_IDS``).
+        provider_id: Shield provider identification (typically matches shield_id).
+        provider_shield_id: Provider resource id; for question-validity this is
+            the model id used by the guard.
+        params: Capability-specific parameters (prompt overrides for question
+            validity; ``rules`` / ``case_sensitive`` for PII redaction).
+    """
+
+    shield_id: str = Field(
+        ...,
+        min_length=1,
+        title="Shield ID",
+        description=(
+            "Static shield capability identifier. Supported values: "
+            f"{', '.join(sorted(constants.SUPPORTED_SHIELD_IDS))}."
+        ),
+    )
+
+    provider_id: str = Field(
+        ...,
+        min_length=1,
+        title="Provider ID",
+        description="Shield provider identification.",
+    )
+
+    provider_shield_id: str = Field(
+        ...,
+        min_length=1,
+        title="Provider shield ID",
+        description=(
+            "Provider-specific shield resource identifier. For "
+            f"'{constants.QUESTION_VALIDITY_SHIELD_ID}' this is the model id "
+            "used by the guardrail."
+        ),
+    )
+
+    params: dict[str, Any] = Field(
+        default_factory=dict,
+        title="Shield parameters",
+        description="Optional capability-specific shield parameters.",
+    )
+
+    def to_question_validity_config(self) -> "QuestionValidityConfig":
+        """Build ``QuestionValidityConfig`` from this shield entry.
+
+        Returns:
+            QuestionValidityConfig: Config with ``model_id`` from
+            ``provider_shield_id`` and optional prompt overrides from ``params``.
+
+        Raises:
+            ValueError: If ``params`` contains unsupported fields.
+        """
+        # provider_shield_id is authoritative for the guard model id.
+        # model_dump avoids pylint treating the Pydantic Field as FieldInfo.
+        shield_params: dict[str, Any] = self.model_dump().get("params") or {}
+        params = {
+            key: value for key, value in shield_params.items() if key != "model_id"
+        }
+        return QuestionValidityConfig(
+            model_id=self.provider_shield_id,
+            **params,
+        )
+
+    def to_redaction_config(self) -> "RedactionConfig":
+        """Build ``RedactionConfig`` from this shield entry's ``params``.
+
+        Returns:
+            RedactionConfig: Compiled redaction rules from ``params``.
+
+        Raises:
+            ValueError: If ``params`` is not a valid redaction configuration.
+        """
+        shield_params: dict[str, Any] = self.model_dump().get("params") or {}
+        return RedactionConfig.model_validate(shield_params)
+
+    @model_validator(mode="after")
+    def validate_supported_shield_capability(self) -> Self:
+        """Ensure ``shield_id`` is supported and ``params`` match the capability.
+
+        Returns:
+            Self: The validated shield configuration.
+
+        Raises:
+            ValueError: If ``shield_id`` is unknown or ``params`` are invalid
+                for the selected capability.
+        """
+        if self.shield_id not in constants.SUPPORTED_SHIELD_IDS:
+            raise ValueError(
+                f"Unknown shield_id '{self.shield_id}'. Supported values: "
+                + ", ".join(sorted(constants.SUPPORTED_SHIELD_IDS))
+            )
+        if self.shield_id == constants.QUESTION_VALIDITY_SHIELD_ID:
+            self.to_question_validity_config()
+        elif self.shield_id == constants.PII_REDACTION_SHIELD_ID:
+            self.to_redaction_config()
+        return self
+
+
 class QuestionValidityConfig(ConfigurationBase):
     """Configuration for the question validity guardrail."""
 
@@ -2635,6 +2745,17 @@ class Configuration(ConfigurationBase):
         "are not accessible to lightspeed-core agents.",
     )
 
+    shields: list[ShieldConfiguration] = Field(
+        default_factory=list,
+        title="Shields configuration",
+        description=(
+            "Safety shields owned by Lightspeed Core Stack. Mirrors the former "
+            "Llama Stack registered_resources.shields entries. Configured shields "
+            "are listed by the /shields endpoint and applied via LCORE "
+            "capabilities (not the Llama Stack Safety API)."
+        ),
+    )
+
     authentication: AuthenticationConfiguration = Field(
         default_factory=lambda: AuthenticationConfiguration(
             skip_for_health_probes=False,
@@ -2774,6 +2895,29 @@ class Configuration(ConfigurationBase):
         description="Configuration for saved prompts feature limits including "
         "maximum prompts per user, display name length, and content length.",
     )
+
+    @model_validator(mode="after")
+    def validate_unique_shield_ids(self) -> Self:
+        """Ensure each configured shield has a unique ``shield_id``.
+
+        Returns:
+            Self: The validated configuration instance.
+
+        Raises:
+            ValueError: If duplicate ``shield_id`` values are present.
+        """
+        seen: set[str] = set()
+        duplicates: set[str] = set()
+        for shield in self.shields:
+            if shield.shield_id in seen:
+                duplicates.add(shield.shield_id)
+            seen.add(shield.shield_id)
+        if duplicates:
+            raise ValueError(
+                "Duplicate shield_id values in shields configuration: "
+                + ", ".join(sorted(duplicates))
+            )
+        return self
 
     @model_validator(mode="after")
     def validate_mcp_auth_headers(self) -> Self:

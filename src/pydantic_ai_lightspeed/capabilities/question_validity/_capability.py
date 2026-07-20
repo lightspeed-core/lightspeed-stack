@@ -11,7 +11,6 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from string import Template
 from typing import Optional
 
 from pydantic_ai import AgentRunResult, RunContext
@@ -27,12 +26,13 @@ from log import get_logger
 from models.config import (
     QuestionValidityConfig,
 )
+from pydantic_ai_lightspeed.capabilities.question_validity.core import (
+    SUBJECT_ALLOWED,
+    build_question_validity_prompt,
+)
 from pydantic_ai_lightspeed.llamastack import OgxResponsesModel
 
 logger = get_logger(__name__)
-
-SUBJECT_REJECTED = "REJECTED"
-SUBJECT_ALLOWED = "ALLOWED"
 
 
 def _extract_message_str_from_user_content(user_content: Sequence[UserContent]) -> str:
@@ -56,7 +56,7 @@ def _extract_message_str_from_user_content(user_content: Sequence[UserContent]) 
 
 
 @dataclass
-class QuestionValidity(AbstractCapability[None]):
+class QuestionValidity(AbstractCapability[object]):
     """Block or modify user input based on a guardrail check.
 
     The guard function receives the user prompt and returns True if safe.
@@ -101,9 +101,7 @@ class QuestionValidity(AbstractCapability[None]):
             case None:
                 _message = ""
 
-        return Template(self.config.model_prompt).substitute(
-            message=_message, allowed=SUBJECT_ALLOWED, rejected=SUBJECT_REJECTED
-        )
+        return build_question_validity_prompt(_message, self.config)
 
     async def wrap_run(
         self, ctx: RunContext, *, handler: WrapRunHandler

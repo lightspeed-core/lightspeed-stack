@@ -13,7 +13,6 @@ from typing import Any, Optional
 
 import pytest
 from fastapi import HTTPException, status
-from ogx_api import OpenAIResponseMessage
 from ogx_client import APIConnectionError, APIStatusError
 from ogx_client.types import ListModelsResponse
 from pydantic import ValidationError
@@ -42,9 +41,10 @@ from models.api.requests.rlsapi import (
 )
 from models.api.responses.error import ServiceUnavailableResponse
 from models.api.responses.successful.rlsapi import RlsapiV1InferResponse
-from models.common.moderation import ShieldModerationBlocked, ShieldModerationPassed
+from models.common.moderation import ShieldModerationPassed
 from tests.unit.utils.auth_helpers import mock_authorization_resolvers
 from utils.rh_identity import get_rh_identity_context
+from utils.shields import InputShieldsResult
 from utils.suid import check_suid
 
 MOCK_AUTH: AuthTuple = ("mock_user_id", "mock_username", False, "mock_token")
@@ -54,6 +54,23 @@ MOCK_AUTH: AuthTuple = ("mock_user_id", "mock_username", False, "mock_token")
 def _clear_prompt_template_cache() -> None:
     """Clear the lru_cache on _compile_prompt_template between tests."""
     _compile_prompt_template.cache_clear()
+
+
+@pytest.fixture(autouse=True, name="mock_input_shields_passed")
+def mock_input_shields_passed_fixture(mocker: MockerFixture) -> None:
+    """Pass input shields for all rlsapi unit tests by default."""
+    mocker.patch(
+        "app.endpoints.rlsapi_v1.get_shields_for_request",
+        return_value=[],
+    )
+
+    async def _pass(text: str, _shields: Any, *, client: Any = None) -> Any:
+        _ = client
+        return InputShieldsResult(
+            text=text, blocked=False, moderation=ShieldModerationPassed()
+        )
+
+    mocker.patch("app.endpoints.rlsapi_v1.run_input_shields", side_effect=_pass)
 
 
 @pytest.fixture(name="mock_custom_prompt")
@@ -70,6 +87,7 @@ def mock_custom_prompt_fixture(mocker: MockerFixture) -> Callable[[str], None]:
         mock_config.customization = mock_customization
         mock_config.rlsapi_v1 = mock_rlsapi_v1
         mock_config.quota_limiters = []
+        mock_config.shields = []
         mocker.patch("app.endpoints.rlsapi_v1.configuration", mock_config)
 
     return _set
@@ -141,19 +159,6 @@ def mock_empty_llm_response_fixture(mocker: MockerFixture) -> None:
 def mock_auth_resolvers_fixture(mocker: MockerFixture) -> None:
     """Mock authorization resolvers for endpoint tests."""
     mock_authorization_resolvers(mocker)
-
-
-@pytest.fixture(autouse=True, name="mock_shield_passed")
-def mock_shield_passed_fixture(mocker: MockerFixture) -> None:
-    """Mock shield moderation to pass for all endpoint tests by default.
-
-    Individual tests can override this by patching run_shield_moderation
-    with a different return value.
-    """
-    mocker.patch(
-        "app.endpoints.rlsapi_v1.run_shield_moderation",
-        new=mocker.AsyncMock(return_value=ShieldModerationPassed()),
-    )
 
 
 @pytest.fixture(autouse=True, name="mock_model_configured")
@@ -660,7 +665,7 @@ async def test_infer_info_logs_omit_user_supplied_content(
     )
 
     with caplog.at_level(
-        logging.INFO, logger=f"{constants.DEFAULT_LOGGER_NAME}..app.endpoints.rlsapi_v1"
+        logging.INFO, logger=f"{constants.DEFAULT_LOGGER_NAME}.app.endpoints.rlsapi_v1"
     ):
         await infer_endpoint(
             infer_request=infer_request,
@@ -743,7 +748,7 @@ async def test_infer_api_status_error_logs_class_without_private_text(
     """Test API status error logs omit raw exception text."""
     with caplog.at_level(
         logging.ERROR,
-        logger=f"{constants.DEFAULT_LOGGER_NAME}..app.endpoints.rlsapi_v1",
+        logger=f"{constants.DEFAULT_LOGGER_NAME}.app.endpoints.rlsapi_v1",
     ):
         with pytest.raises(HTTPException) as exc_info:
             await infer_endpoint(
@@ -1223,226 +1228,11 @@ async def test_infer_quota_with_rh_identity_subject(
 
 
 @pytest.mark.asyncio
-async def test_infer_quota_shield_blocked_does_not_consume_tokens(
-    mocker: MockerFixture,
-    mock_quota_config: Callable[[str], None],
-    mock_llm_response: None,
-    mock_auth_resolvers: None,
-    mock_request_factory: Callable[..., Any],
-    mock_background_tasks: Any,
-) -> None:
-    """Test quota pre-check runs but tokens are NOT consumed when shield blocks."""
-    mock_quota_config("user_id")
-
-    blocked = ShieldModerationBlocked(
-        message="Blocked by moderation",
-        moderation_id="modr-test",
-        refusal_response=OpenAIResponseMessage(
-            role="assistant",
-            content="Blocked by moderation",
-        ),
-    )
-    mocker.patch(
-        "app.endpoints.rlsapi_v1.run_shield_moderation",
-        new=mocker.AsyncMock(return_value=blocked),
-    )
-
-    mock_check = mocker.patch("app.endpoints.rlsapi_v1.check_tokens_available")
-    mock_consume = mocker.patch("app.endpoints.rlsapi_v1.consume_query_tokens")
-
-    response = await infer_endpoint(
-        infer_request=RlsapiV1InferRequest(question="Bad question"),
-        request=mock_request_factory(),
-        background_tasks=mock_background_tasks,
-        auth=MOCK_AUTH,
-    )
-
-    assert response.data.text == "Blocked by moderation"
-    mock_check.assert_called_once_with([], "mock_user_id")
-    mock_consume.assert_not_called()
-
-
-# --- Test shield moderation ---
-
-
-def _create_blocked_moderation_result() -> ShieldModerationBlocked:
-    """Create a ShieldModerationBlocked result for testing."""
-    return ShieldModerationBlocked(
-        message="I can't answer that. Can I help with something else?",
-        moderation_id="modr-test-123",
-        refusal_response=OpenAIResponseMessage(
-            role="assistant",
-            content="I can't answer that. Can I help with something else?",
-        ),
-    )
-
-
 @pytest.mark.asyncio
-async def test_infer_shield_blocked_returns_refusal(
-    mocker: MockerFixture,
-    mock_configuration: AppConfig,
-    mock_llm_response: None,
-    mock_auth_resolvers: None,
-    mock_request_factory: Callable[..., Any],
-    mock_background_tasks: Any,
-) -> None:
-    """Test that blocked shield moderation returns refusal text without calling LLM."""
-    blocked = _create_blocked_moderation_result()
-    mocker.patch(
-        "app.endpoints.rlsapi_v1.run_shield_moderation",
-        new=mocker.AsyncMock(return_value=blocked),
-    )
-
-    infer_request = RlsapiV1InferRequest(question="How do I hack a server?")
-    mock_request = mock_request_factory()
-
-    response = await infer_endpoint(
-        infer_request=infer_request,
-        request=mock_request,
-        background_tasks=mock_background_tasks,
-        auth=MOCK_AUTH,
-    )
-
-    assert isinstance(response, RlsapiV1InferResponse)
-    assert response.data.text == blocked.message
-    assert response.data.request_id is not None
-    assert check_suid(response.data.request_id)
-    # Blocked response must not include verbose metadata
-    assert response.data.tool_calls is None
-    assert response.data.tool_results is None
-    assert response.data.rag_chunks is None
-    assert response.data.referenced_documents is None
-    assert response.data.input_tokens is None
-    assert response.data.output_tokens is None
-
-
 @pytest.mark.asyncio
-async def test_infer_shield_blocked_skips_llm_call(
-    mocker: MockerFixture,
-    mock_configuration: AppConfig,
-    mock_llm_response: None,
-    mock_auth_resolvers: None,
-    mock_request_factory: Callable[..., Any],
-    mock_background_tasks: Any,
-) -> None:
-    """Test that blocked shield moderation prevents any LLM call."""
-    blocked = _create_blocked_moderation_result()
-    mocker.patch(
-        "app.endpoints.rlsapi_v1.run_shield_moderation",
-        new=mocker.AsyncMock(return_value=blocked),
-    )
-    mock_call_llm = mocker.patch(
-        "app.endpoints.rlsapi_v1._call_llm",
-        new=mocker.AsyncMock(),
-    )
-
-    infer_request = RlsapiV1InferRequest(question="How do I hack a server?")
-
-    await infer_endpoint(
-        infer_request=infer_request,
-        request=mock_request_factory(),
-        background_tasks=mock_background_tasks,
-        auth=MOCK_AUTH,
-    )
-
-    mock_call_llm.assert_not_called()
-
-
 @pytest.mark.asyncio
-async def test_infer_shield_blocked_queues_splunk_event(
-    mocker: MockerFixture,
-    mock_configuration: AppConfig,
-    mock_llm_response: None,
-    mock_auth_resolvers: None,
-    mock_request_factory: Callable[..., Any],
-    mock_background_tasks: Any,
-) -> None:
-    """Test that blocked shield moderation queues a Splunk event with correct sourcetype."""
-    blocked = _create_blocked_moderation_result()
-    mocker.patch(
-        "app.endpoints.rlsapi_v1.run_shield_moderation",
-        new=mocker.AsyncMock(return_value=blocked),
-    )
-
-    infer_request = RlsapiV1InferRequest(question="How do I hack a server?")
-
-    await infer_endpoint(
-        infer_request=infer_request,
-        request=mock_request_factory(),
-        background_tasks=mock_background_tasks,
-        auth=MOCK_AUTH,
-    )
-
-    mock_background_tasks.add_task.assert_called_once()
-    call_args = mock_background_tasks.add_task.call_args
-    assert call_args[0][2] == "infer_shield_blocked"
-
-
 @pytest.mark.asyncio
-async def test_infer_shield_passed_proceeds_to_llm(
-    mocker: MockerFixture,
-    mock_configuration: AppConfig,
-    mock_llm_response: None,
-    mock_auth_resolvers: None,
-    mock_request_factory: Callable[..., Any],
-    mock_background_tasks: Any,
-) -> None:
-    """Test that passed shield moderation proceeds to normal LLM inference."""
-    # autouse fixture already patches with ShieldModerationPassed
-    infer_request = RlsapiV1InferRequest(question="How do I list files?")
-
-    response = await infer_endpoint(
-        infer_request=infer_request,
-        request=mock_request_factory(),
-        background_tasks=mock_background_tasks,
-        auth=MOCK_AUTH,
-    )
-
-    assert response.data.text == "This is a test LLM response."
-    # Splunk event should use normal sourcetype
-    call_args = mock_background_tasks.add_task.call_args
-    assert call_args[0][2] == "infer_with_llm"
-
-
 @pytest.mark.asyncio
-async def test_infer_shield_moderation_receives_combined_input(
-    mocker: MockerFixture,
-    mock_configuration: AppConfig,
-    mock_llm_response: None,
-    mock_auth_resolvers: None,
-    mock_request_factory: Callable[..., Any],
-    mock_background_tasks: Any,
-) -> None:
-    """Test that shield moderation receives the full combined input source."""
-    mock_moderation = mocker.AsyncMock(return_value=ShieldModerationPassed())
-    mocker.patch(
-        "app.endpoints.rlsapi_v1.run_shield_moderation",
-        new=mock_moderation,
-    )
-
-    infer_request = RlsapiV1InferRequest(
-        question="Why did this fail?",
-        context=RlsapiV1Context(
-            stdin="piped input",
-            terminal=RlsapiV1Terminal(output="permission denied"),
-        ),
-    )
-
-    await infer_endpoint(
-        infer_request=infer_request,
-        request=mock_request_factory(),
-        background_tasks=mock_background_tasks,
-        auth=MOCK_AUTH,
-    )
-
-    mock_moderation.assert_called_once()
-    # The input_text argument should be the combined input source
-    input_text = mock_moderation.call_args[0][1]
-    assert "Why did this fail?" in input_text
-    assert "piped input" in input_text
-    assert "permission denied" in input_text
-
-
 @pytest.mark.asyncio
 async def test_infer_splunk_event_includes_rh_identity_context(
     mocker: MockerFixture,

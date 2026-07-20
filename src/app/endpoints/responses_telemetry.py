@@ -145,8 +145,6 @@ def queue_completed_response_event(
         completed_at: Time when response handling completed.
         response_text: Final text sent to the client.
     """
-    if context.moderation_result.decision != "passed":
-        return
     queue_responses_splunk_event(
         background_tasks=context.background_tasks,
         input_text=context.input_text,

@@ -1,79 +1,31 @@
-# pylint: disable=redefined-outer-name,import-error, too-many-function-args
-"""Unit tests for the /streaming_query (v2) endpoint using Responses API."""
+# pylint: disable=redefined-outer-name, import-error, too-many-locals
+# pyright: reportCallIssue=false
+"""Unit tests for the /streaming_query (v2) endpoint handler."""
 
-# pylint: disable=too-many-lines,too-many-function-args
-import asyncio
 from collections.abc import AsyncIterator
 from typing import Any
 
 import pytest
-from fastapi import HTTPException, Request
+from fastapi import Request
 from fastapi.responses import StreamingResponse
-from ogx_api.openai_responses import (
-    OpenAIResponseObject,
-    OpenAIResponseObjectStream,
-)
-from ogx_api.openai_responses import (
-    OpenAIResponseObjectStreamResponseCompleted as CompletedChunk,
-)
-from ogx_api.openai_responses import (
-    OpenAIResponseObjectStreamResponseFailed as FailedChunk,
-)
-from ogx_api.openai_responses import (
-    OpenAIResponseObjectStreamResponseIncomplete as IncompleteChunk,
-)
-from ogx_api.openai_responses import (
-    OpenAIResponseObjectStreamResponseMcpCallArgumentsDone as MCPArgsDoneChunk,
-)
-from ogx_api.openai_responses import (
-    OpenAIResponseObjectStreamResponseOutputItemAdded as OutputItemAddedChunk,
-)
-from ogx_api.openai_responses import (
-    OpenAIResponseObjectStreamResponseOutputItemDone as OutputItemDoneChunk,
-)
-from ogx_api.openai_responses import (
-    OpenAIResponseObjectStreamResponseOutputTextDelta as TextDeltaChunk,
-)
-from ogx_api.openai_responses import (
-    OpenAIResponseObjectStreamResponseOutputTextDone as TextDoneChunk,
-)
-from ogx_api.openai_responses import (
-    OpenAIResponseOutputMessageMCPCall as MCPCall,
-)
-from ogx_client import APIConnectionError, APIStatusError, AsyncOgxClient
+from ogx_client import AsyncOgxClient
 from pytest_mock import MockerFixture
 
-from app.endpoints.streaming_query import (
-    generate_response,
-    response_generator,
-    retrieve_response_generator,
-    streaming_query_endpoint_handler,
-)
+from app.endpoints.streaming_query import streaming_query_endpoint_handler
 from configuration import AppConfig
-from constants import (
-    INTERRUPTED_RESPONSE_MESSAGE,
-    MEDIA_TYPE_JSON,
-    MEDIA_TYPE_TEXT,
-)
+from constants import MEDIA_TYPE_TEXT
 from models.api.requests import QueryRequest
-from models.api.responses.error import InternalServerErrorResponse
-from models.common.moderation import ShieldModerationPassed
 from models.common.query import Attachment
-from models.common.responses.contexts import ResponseGeneratorContext
 from models.common.responses.responses_api_params import ResponsesApiParams
 from models.common.turn_summary import (
-    RAGChunk,
     RAGContext,
     ReferencedDocument,
     TurnSummary,
 )
 from models.config import Action
-from utils.stream_interrupts import StreamInterruptRegistry
-from utils.token_counter import TokenCounter
+from models.database.conversations import UserConversation
 
-INTERRUPTED_INDICATOR = f"\n\n*{INTERRUPTED_RESPONSE_MESSAGE}*"
-
-MOCK_AUTH_STREAMING = (
+MOCK_AUTH = (
     "00000001-0001-0001-0001-000000000001",
     "mock_username",
     False,
@@ -81,10 +33,14 @@ MOCK_AUTH_STREAMING = (
 )
 
 
-@pytest.fixture(autouse=True, name="setup_configuration")
+@pytest.fixture(name="setup_configuration")
 def setup_configuration_fixture() -> AppConfig:
-    """Set up configuration for tests."""
-    config_dict = {
+    """Set up configuration for tests.
+
+    Returns:
+        AppConfig: Test configuration with noop conversation cache.
+    """
+    config_dict: dict[Any, Any] = {
         "name": "test",
         "service": {
             "host": "localhost",
@@ -103,6 +59,7 @@ def setup_configuration_fixture() -> AppConfig:
             "transcripts_enabled": False,
         },
         "mcp_servers": [],
+        "customization": None,
         "conversation_cache": {
             "type": "noop",
         },
@@ -112,124 +69,144 @@ def setup_configuration_fixture() -> AppConfig:
     return cfg
 
 
-class TestOLSCompatibilityIntegration:  # pylint: disable=too-few-public-methods
-    """Integration tests for OLS compatibility."""
-
-    def test_media_type_validation(self) -> None:
-        """Test that media type validation works correctly."""
-        valid_request = QueryRequest(
-            query="test", media_type="application/json"
-        )  # pyright: ignore[reportCallIssue]
-        assert valid_request.media_type == "application/json"
-
-        valid_request = QueryRequest(
-            query="test", media_type="text/plain"
-        )  # pyright: ignore[reportCallIssue]
-        assert valid_request.media_type == "text/plain"
-
-        with pytest.raises(ValueError, match="media_type must be either"):
-            QueryRequest(
-                query="test", media_type="invalid/type"
-            )  # pyright: ignore[reportCallIssue]
-
-
-# ============================================================================
-# Endpoint Handler Tests
-# ============================================================================
-
-
 @pytest.fixture(name="dummy_request")
-def dummy_request() -> Request:
-    """Dummy request fixture for testing."""
+def create_dummy_request() -> Request:
+    """Create a minimal FastAPI Request for unit tests.
+
+    Returns:
+        Request: Request with all actions authorized.
+    """
     req = Request(scope={"type": "http", "headers": []})
     req.state.authorized_actions = set(Action)
     return req
 
 
+async def _mock_sse_generator() -> AsyncIterator[str]:
+    """Yield a single SSE event for mocked agent streaming."""
+    yield "data: test\n\n"
+
+
+def _patch_streaming_handler_deps(  # pylint: disable=too-many-arguments
+    mocker: MockerFixture,
+    setup_configuration: AppConfig,
+    *,
+    responses_params: Any | None = None,
+    turn_summary: TurnSummary | None = None,
+    inline_rag_context: RAGContext | None = None,
+    azure_manager: Any | None = None,
+    client_holder: Any | None = None,
+) -> tuple[Any, Any]:
+    """Patch common streaming_query handler dependencies for the non-compaction path.
+
+    Returns:
+        tuple: ``(mock_generate_agent_response, mock_client_holder)``.
+    """
+    mocker.patch("app.endpoints.streaming_query.configuration", setup_configuration)
+    mocker.patch("app.endpoints.streaming_query.check_configuration_loaded")
+    mocker.patch(
+        "app.endpoints.streaming_query.check_mcp_auth",
+        new=mocker.AsyncMock(),
+    )
+    mocker.patch("app.endpoints.streaming_query.check_tokens_available")
+    mocker.patch("app.endpoints.streaming_query.validate_model_provider_override")
+    mocker.patch(
+        "app.endpoints.streaming_query.needs_compaction_path",
+        new=mocker.AsyncMock(return_value=False),
+    )
+    mocker.patch(
+        "app.endpoints.streaming_query.build_rag_context",
+        new=mocker.AsyncMock(return_value=inline_rag_context or RAGContext()),
+    )
+    mocker.patch(
+        "app.endpoints.streaming_query.normalize_conversation_id",
+        return_value="123",
+    )
+    mocker.patch(
+        "app.endpoints.streaming_query.get_suid",
+        return_value="req-test-id",
+    )
+    mocker.patch(
+        "app.endpoints.streaming_query.extract_provider_and_model_from_model_id",
+        return_value=("provider1", "model1"),
+    )
+    mocker.patch("app.endpoints.streaming_query.recording.record_llm_call")
+
+    if client_holder is None:
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
+        client_holder = mocker.Mock()
+        client_holder.get_client.return_value = mock_client
+    mocker.patch(
+        "app.endpoints.streaming_query.AsyncOgxClientHolder",
+        return_value=client_holder,
+    )
+
+    if responses_params is None:
+        responses_params = mocker.Mock(spec=ResponsesApiParams)
+        responses_params.model = "provider1/model1"
+        responses_params.conversation = "conv_123"
+        responses_params.tools = None
+        responses_params.model_dump.return_value = {
+            "input": "test",
+            "model": "provider1/model1",
+        }
+    mocker.patch(
+        "app.endpoints.streaming_query.prepare_responses_params",
+        new=mocker.AsyncMock(return_value=responses_params),
+    )
+
+    if azure_manager is None:
+        mocker.patch("app.endpoints.streaming_query.AzureEntraIDManager")
+    else:
+        mocker.patch(
+            "app.endpoints.streaming_query.AzureEntraIDManager",
+            return_value=azure_manager,
+        )
+
+    summary = turn_summary if turn_summary is not None else TurnSummary()
+    mocker.patch(
+        "app.endpoints.streaming_query.retrieve_agent_response_generator",
+        new=mocker.AsyncMock(return_value=(_mock_sse_generator(), summary)),
+    )
+
+    mock_generate = mocker.patch(
+        "app.endpoints.streaming_query.generate_agent_response",
+        side_effect=lambda **_kwargs: _mock_sse_generator(),
+    )
+    return mock_generate, client_holder
+
+
+class TestOLSCompatibilityIntegration:  # pylint: disable=too-few-public-methods
+    """OLS-compatible request field validation."""
+
+    def test_media_type_validation(self) -> None:
+        """Test that media type validation works correctly."""
+        valid_request = QueryRequest(query="test", media_type="application/json")
+        assert valid_request.media_type == "application/json"
+
+        valid_request = QueryRequest(query="test", media_type="text/plain")
+        assert valid_request.media_type == "text/plain"
+
+        with pytest.raises(ValueError, match="media_type must be either"):
+            QueryRequest(query="test", media_type="invalid/type")
+
+
 class TestStreamingQueryEndpointHandler:
-    """Tests for streaming_query_endpoint_handler function."""
+    """High-level tests for streaming_query_endpoint_handler."""
 
     @pytest.mark.asyncio
     async def test_successful_streaming_query(
         self,
-        dummy_request: Request,  # pylint: disable=redefined-outer-name
+        dummy_request: Request,
         setup_configuration: AppConfig,
         mocker: MockerFixture,
     ) -> None:
-        """Test successful streaming query."""
-        query_request = QueryRequest(
-            query="What is Kubernetes?"
-        )  # pyright: ignore[reportCallIssue]
-
-        mocker.patch("app.endpoints.streaming_query.configuration", setup_configuration)
-        mocker.patch("app.endpoints.streaming_query.check_configuration_loaded")
-        mocker.patch("app.endpoints.streaming_query.check_tokens_available")
-        mocker.patch("app.endpoints.streaming_query.validate_model_provider_override")
-        mocker.patch(
-            "app.endpoints.streaming_query.build_rag_context",
-            new=mocker.AsyncMock(return_value=RAGContext()),
-        )
-
-        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
-        mock_client_holder = mocker.Mock()
-        mock_client_holder.get_client.return_value = mock_client
-        mocker.patch(
-            "app.endpoints.streaming_query.AsyncOgxClientHolder",
-            return_value=mock_client_holder,
-        )
-
-        mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
-        mock_responses_params.model = "provider1/model1"
-        mock_responses_params.conversation = "conv_123"
-        mock_responses_params.tools = None
-        mock_responses_params.model_dump.return_value = {
-            "input": "test",
-            "model": "provider1/model1",
-        }
-        mocker.patch(
-            "app.endpoints.streaming_query.prepare_responses_params",
-            new=mocker.AsyncMock(return_value=mock_responses_params),
-        )
-        mocker.patch(
-            "app.endpoints.streaming_query.run_shield_moderation",
-            new=mocker.AsyncMock(return_value=ShieldModerationPassed()),
-        )
-
-        mocker.patch("app.endpoints.streaming_query.AzureEntraIDManager")
-        mocker.patch(
-            "app.endpoints.streaming_query.extract_provider_and_model_from_model_id",
-            return_value=("provider1", "model1"),
-        )
-        mocker.patch("app.endpoints.streaming_query.recording.record_llm_call")
-
-        async def mock_generator() -> AsyncIterator[str]:
-            yield "data: test\n\n"
-
-        mock_turn_summary = TurnSummary()
-        mocker.patch(
-            "app.endpoints.streaming_query.retrieve_agent_response_generator",
-            new=mocker.AsyncMock(return_value=(mock_generator(), mock_turn_summary)),
-        )
-
-        async def mock_generate_agent_response(
-            *_args: Any, **_kwargs: Any
-        ) -> AsyncIterator[str]:
-            async for item in mock_generator():
-                yield item
-
-        mocker.patch(
-            "app.endpoints.streaming_query.generate_agent_response",
-            side_effect=mock_generate_agent_response,
-        )
-        mocker.patch(
-            "app.endpoints.streaming_query.normalize_conversation_id",
-            return_value="123",
-        )
+        """Test successful streaming query returns an SSE StreamingResponse."""
+        _patch_streaming_handler_deps(mocker, setup_configuration)
 
         response = await streaming_query_endpoint_handler(
             request=dummy_request,
-            query_request=query_request,
-            auth=MOCK_AUTH_STREAMING,
+            query_request=QueryRequest(query="What is Kubernetes?"),
+            auth=MOCK_AUTH,
             mcp_headers={},
         )
 
@@ -239,84 +216,19 @@ class TestStreamingQueryEndpointHandler:
     @pytest.mark.asyncio
     async def test_streaming_query_text_media_type_header(
         self,
-        dummy_request: Request,  # pylint: disable=redefined-outer-name
+        dummy_request: Request,
         setup_configuration: AppConfig,
         mocker: MockerFixture,
     ) -> None:
-        """Test streaming query uses plain text header when requested."""
-        query_request = QueryRequest(
-            query="What is Kubernetes?", media_type=MEDIA_TYPE_TEXT
-        )  # pyright: ignore[reportCallIssue]
-
-        mocker.patch("app.endpoints.streaming_query.configuration", setup_configuration)
-        mocker.patch("app.endpoints.streaming_query.check_configuration_loaded")
-        mocker.patch("app.endpoints.streaming_query.check_tokens_available")
-        mocker.patch("app.endpoints.streaming_query.validate_model_provider_override")
-        mocker.patch(
-            "app.endpoints.streaming_query.build_rag_context",
-            new=mocker.AsyncMock(return_value=RAGContext()),
-        )
-
-        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
-        mock_client_holder = mocker.Mock()
-        mock_client_holder.get_client.return_value = mock_client
-        mocker.patch(
-            "app.endpoints.streaming_query.AsyncOgxClientHolder",
-            return_value=mock_client_holder,
-        )
-
-        mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
-        mock_responses_params.model = "provider1/model1"
-        mock_responses_params.conversation = "conv_123"
-        mock_responses_params.tools = None
-        mock_responses_params.model_dump.return_value = {
-            "input": "test",
-            "model": "provider1/model1",
-        }
-        mocker.patch(
-            "app.endpoints.streaming_query.prepare_responses_params",
-            new=mocker.AsyncMock(return_value=mock_responses_params),
-        )
-        mocker.patch(
-            "app.endpoints.streaming_query.run_shield_moderation",
-            new=mocker.AsyncMock(return_value=ShieldModerationPassed()),
-        )
-
-        mocker.patch("app.endpoints.streaming_query.AzureEntraIDManager")
-        mocker.patch(
-            "app.endpoints.streaming_query.extract_provider_and_model_from_model_id",
-            return_value=("provider1", "model1"),
-        )
-        mocker.patch("app.endpoints.streaming_query.recording.record_llm_call")
-
-        async def mock_generator() -> AsyncIterator[str]:
-            yield "data: test\n\n"
-
-        mock_turn_summary = TurnSummary()
-        mocker.patch(
-            "app.endpoints.streaming_query.retrieve_agent_response_generator",
-            new=mocker.AsyncMock(return_value=(mock_generator(), mock_turn_summary)),
-        )
-
-        async def mock_generate_agent_response(
-            *_args: Any, **_kwargs: Any
-        ) -> AsyncIterator[str]:
-            async for item in mock_generator():
-                yield item
-
-        mocker.patch(
-            "app.endpoints.streaming_query.generate_agent_response",
-            side_effect=mock_generate_agent_response,
-        )
-        mocker.patch(
-            "app.endpoints.streaming_query.normalize_conversation_id",
-            return_value="123",
-        )
+        """Test streaming query uses plain text media type when requested."""
+        _patch_streaming_handler_deps(mocker, setup_configuration)
 
         response = await streaming_query_endpoint_handler(
             request=dummy_request,
-            query_request=query_request,
-            auth=MOCK_AUTH_STREAMING,
+            query_request=QueryRequest(
+                query="What is Kubernetes?", media_type=MEDIA_TYPE_TEXT
+            ),
+            auth=MOCK_AUTH,
             mcp_headers={},
         )
 
@@ -324,97 +236,64 @@ class TestStreamingQueryEndpointHandler:
         assert response.media_type == MEDIA_TYPE_TEXT
 
     @pytest.mark.asyncio
-    async def test_streaming_query_with_conversation(
+    async def test_streaming_query_merges_inline_and_tool_referenced_documents(
         self,
-        dummy_request: Request,  # pylint: disable=redefined-outer-name
+        dummy_request: Request,
         setup_configuration: AppConfig,
         mocker: MockerFixture,
     ) -> None:
-        """Test streaming query with existing conversation."""
-        query_request = QueryRequest(
-            query="What is Kubernetes?",
-            conversation_id="123e4567-e89b-12d3-a456-426614174000",
-        )  # pyright: ignore[reportCallIssue]
-
-        mock_conversation = mocker.Mock()
-
-        mocker.patch("app.endpoints.streaming_query.configuration", setup_configuration)
-        mocker.patch("app.endpoints.streaming_query.check_configuration_loaded")
-        mocker.patch("app.endpoints.streaming_query.check_tokens_available")
-        mocker.patch("app.endpoints.streaming_query.validate_model_provider_override")
-        mocker.patch(
-            "app.endpoints.streaming_query.build_rag_context",
-            new=mocker.AsyncMock(return_value=RAGContext()),
+        """Test handler merges inline and tool RAG documents before streaming."""
+        inline_doc = ReferencedDocument(
+            doc_title="Inline Doc", document_id="inline_doc_1"
         )
-        mocker.patch(
-            "app.endpoints.streaming_query.normalize_conversation_id",
-            return_value="normalized_123",
-        )
-        mock_validate_conv = mocker.patch(
-            "app.endpoints.streaming_query.validate_and_retrieve_conversation",
-            return_value=mock_conversation,
-        )
+        tool_doc = ReferencedDocument(doc_title="Tool Doc", document_id="tool_doc_1")
+        turn_summary = TurnSummary(referenced_documents=[tool_doc])
 
-        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
-        mock_client_holder = mocker.Mock()
-        mock_client_holder.get_client.return_value = mock_client
-        mocker.patch(
-            "app.endpoints.streaming_query.AsyncOgxClientHolder",
-            return_value=mock_client_holder,
-        )
-
-        mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
-        mock_responses_params.model = "provider1/model1"
-        mock_responses_params.conversation = "conv_123"
-        mock_responses_params.tools = None
-        mock_responses_params.model_dump.return_value = {
-            "input": "test",
-            "model": "provider1/model1",
-        }
-        mocker.patch(
-            "app.endpoints.streaming_query.prepare_responses_params",
-            new=mocker.AsyncMock(return_value=mock_responses_params),
-        )
-        mocker.patch(
-            "app.endpoints.streaming_query.run_shield_moderation",
-            new=mocker.AsyncMock(return_value=ShieldModerationPassed()),
-        )
-
-        mocker.patch("app.endpoints.streaming_query.AzureEntraIDManager")
-        mocker.patch(
-            "app.endpoints.streaming_query.extract_provider_and_model_from_model_id",
-            return_value=("provider1", "model1"),
-        )
-        mocker.patch("app.endpoints.streaming_query.recording.record_llm_call")
-
-        async def mock_generator() -> AsyncIterator[str]:
-            yield "data: test\n\n"
-
-        mock_turn_summary = TurnSummary()
-        mocker.patch(
-            "app.endpoints.streaming_query.retrieve_agent_response_generator",
-            new=mocker.AsyncMock(return_value=(mock_generator(), mock_turn_summary)),
-        )
-
-        async def mock_generate_agent_response(
-            *_args: Any, **_kwargs: Any
-        ) -> AsyncIterator[str]:
-            async for item in mock_generator():
-                yield item
-
-        mocker.patch(
-            "app.endpoints.streaming_query.generate_agent_response",
-            side_effect=mock_generate_agent_response,
-        )
-        mocker.patch(
-            "app.endpoints.streaming_query.normalize_conversation_id",
-            return_value="123",
+        mock_generate, _ = _patch_streaming_handler_deps(
+            mocker,
+            setup_configuration,
+            turn_summary=turn_summary,
+            inline_rag_context=RAGContext(
+                context_text="",
+                referenced_documents=[inline_doc],
+            ),
         )
 
         await streaming_query_endpoint_handler(
             request=dummy_request,
-            query_request=query_request,
-            auth=MOCK_AUTH_STREAMING,
+            query_request=QueryRequest(query="What is Kubernetes?"),
+            auth=MOCK_AUTH,
+            mcp_headers={},
+        )
+
+        mock_generate.assert_called_once()
+        passed_summary: TurnSummary = mock_generate.call_args.kwargs["turn_summary"]
+        assert [doc.document_id for doc in passed_summary.referenced_documents] == [
+            "inline_doc_1",
+            "tool_doc_1",
+        ]
+
+    @pytest.mark.asyncio
+    async def test_streaming_query_with_conversation(
+        self,
+        dummy_request: Request,
+        setup_configuration: AppConfig,
+        mocker: MockerFixture,
+    ) -> None:
+        """Test streaming query retrieves an existing conversation."""
+        _patch_streaming_handler_deps(mocker, setup_configuration)
+        mock_validate_conv = mocker.patch(
+            "app.endpoints.streaming_query.validate_and_retrieve_conversation",
+            return_value=mocker.Mock(spec=UserConversation),
+        )
+
+        await streaming_query_endpoint_handler(
+            request=dummy_request,
+            query_request=QueryRequest(
+                query="What is Kubernetes?",
+                conversation_id="123e4567-e89b-12d3-a456-426614174000",
+            ),
+            auth=MOCK_AUTH,
             mcp_headers={},
         )
 
@@ -423,2285 +302,116 @@ class TestStreamingQueryEndpointHandler:
     @pytest.mark.asyncio
     async def test_streaming_query_with_attachments(
         self,
-        dummy_request: Request,  # pylint: disable=redefined-outer-name
+        dummy_request: Request,
         setup_configuration: AppConfig,
         mocker: MockerFixture,
     ) -> None:
-        """Test streaming query with attachments validation."""
-        query_request = QueryRequest(
-            query="What is Kubernetes?",
-            attachments=[
-                Attachment(
-                    attachment_type="log",
-                    content_type="text/plain",
-                    content="log content",
-                )
-            ],
-        )  # pyright: ignore[reportCallIssue]
-
-        mocker.patch("app.endpoints.streaming_query.configuration", setup_configuration)
-        mocker.patch("app.endpoints.streaming_query.check_configuration_loaded")
-        mocker.patch("app.endpoints.streaming_query.check_tokens_available")
-        mocker.patch("app.endpoints.streaming_query.validate_model_provider_override")
-        mocker.patch(
-            "app.endpoints.streaming_query.build_rag_context",
-            new=mocker.AsyncMock(return_value=RAGContext()),
-        )
+        """Test streaming query validates attachments metadata."""
+        _patch_streaming_handler_deps(mocker, setup_configuration)
         mock_validate = mocker.patch(
             "app.endpoints.streaming_query.validate_attachments_metadata"
         )
-
-        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
-        mock_client_holder = mocker.Mock()
-        mock_client_holder.get_client.return_value = mock_client
-        mocker.patch(
-            "app.endpoints.streaming_query.AsyncOgxClientHolder",
-            return_value=mock_client_holder,
-        )
-
-        mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
-        mock_responses_params.model = "provider1/model1"
-        mock_responses_params.conversation = "conv_123"
-        mock_responses_params.tools = None
-        mock_responses_params.model_dump.return_value = {
-            "input": "test",
-            "model": "provider1/model1",
-        }
-        mocker.patch(
-            "app.endpoints.streaming_query.prepare_responses_params",
-            new=mocker.AsyncMock(return_value=mock_responses_params),
-        )
-        mocker.patch(
-            "app.endpoints.streaming_query.run_shield_moderation",
-            new=mocker.AsyncMock(return_value=ShieldModerationPassed()),
-        )
-
-        mocker.patch("app.endpoints.streaming_query.AzureEntraIDManager")
-        mocker.patch(
-            "app.endpoints.streaming_query.extract_provider_and_model_from_model_id",
-            return_value=("provider1", "model1"),
-        )
-        mocker.patch("app.endpoints.streaming_query.recording.record_llm_call")
-
-        async def mock_generator() -> AsyncIterator[str]:
-            yield "data: test\n\n"
-
-        mock_turn_summary = TurnSummary()
-        mocker.patch(
-            "app.endpoints.streaming_query.retrieve_agent_response_generator",
-            new=mocker.AsyncMock(return_value=(mock_generator(), mock_turn_summary)),
-        )
-
-        async def mock_generate_agent_response(
-            *_args: Any, **_kwargs: Any
-        ) -> AsyncIterator[str]:
-            async for item in mock_generator():
-                yield item
-
-        mocker.patch(
-            "app.endpoints.streaming_query.generate_agent_response",
-            side_effect=mock_generate_agent_response,
-        )
-        mocker.patch(
-            "app.endpoints.streaming_query.normalize_conversation_id",
-            return_value="123",
-        )
+        attachments = [
+            Attachment(
+                attachment_type="log",
+                content_type="text/plain",
+                content="log content",
+            )
+        ]
 
         await streaming_query_endpoint_handler(
             request=dummy_request,
-            query_request=query_request,
-            auth=MOCK_AUTH_STREAMING,
+            query_request=QueryRequest(
+                query="What is Kubernetes?",
+                attachments=attachments,
+            ),
+            auth=MOCK_AUTH,
             mcp_headers={},
         )
 
-        mock_validate.assert_called_once_with(query_request.attachments)
+        mock_validate.assert_called_once_with(attachments)
 
     @pytest.mark.asyncio
     async def test_streaming_query_azure_token_refresh(
         self,
-        dummy_request: Request,  # pylint: disable=redefined-outer-name
+        dummy_request: Request,
         setup_configuration: AppConfig,
         mocker: MockerFixture,
     ) -> None:
         """Test streaming query refreshes Azure token when needed."""
-        query_request = QueryRequest(
-            query="What is Kubernetes?"
-        )  # pyright: ignore[reportCallIssue]
-
-        mocker.patch("app.endpoints.streaming_query.configuration", setup_configuration)
-        mocker.patch("app.endpoints.streaming_query.check_configuration_loaded")
-        mocker.patch("app.endpoints.streaming_query.check_tokens_available")
-        mocker.patch("app.endpoints.streaming_query.validate_model_provider_override")
-        mocker.patch(
-            "app.endpoints.streaming_query.build_rag_context",
-            new=mocker.AsyncMock(return_value=RAGContext()),
-        )
-
         mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
         mock_updated_client = mocker.AsyncMock(spec=AsyncOgxClient)
-        mock_client_holder = mocker.Mock()
-        mock_client_holder.get_client.return_value = mock_client
-        mock_client_holder.update_azure_token = mocker.AsyncMock(
+        client_holder = mocker.Mock()
+        client_holder.get_client.return_value = mock_client
+        client_holder.update_azure_token = mocker.AsyncMock(
             return_value=mock_updated_client
         )
-        mocker.patch(
-            "app.endpoints.streaming_query.AsyncOgxClientHolder",
-            return_value=mock_client_holder,
-        )
 
-        mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
-        mock_responses_params.model = "azure/model1"
-        mock_responses_params.conversation = "conv_123"
-        mock_responses_params.tools = None
-        mock_responses_params.model_dump.return_value = {
+        responses_params = mocker.Mock(spec=ResponsesApiParams)
+        responses_params.model = "azure/model1"
+        responses_params.conversation = "conv_123"
+        responses_params.tools = None
+        responses_params.model_dump.return_value = {
             "input": "test",
             "model": "azure/model1",
         }
-        mocker.patch(
-            "app.endpoints.streaming_query.prepare_responses_params",
-            new=mocker.AsyncMock(return_value=mock_responses_params),
-        )
 
-        mock_azure_manager = mocker.Mock()
-        mock_azure_manager.is_entra_id_configured = True
-        mock_azure_manager.is_token_expired = True
-        mock_azure_manager.refresh_token.return_value = True
-        mocker.patch(
-            "app.endpoints.streaming_query.AzureEntraIDManager",
-            return_value=mock_azure_manager,
-        )
+        azure_manager = mocker.Mock()
+        azure_manager.is_entra_id_configured = True
+        azure_manager.is_token_expired = True
+        azure_manager.refresh_token.return_value = True
 
+        _patch_streaming_handler_deps(
+            mocker,
+            setup_configuration,
+            responses_params=responses_params,
+            azure_manager=azure_manager,
+            client_holder=client_holder,
+        )
         mocker.patch(
             "app.endpoints.streaming_query.extract_provider_and_model_from_model_id",
             return_value=("azure", "model1"),
         )
-        mocker.patch(
-            "app.endpoints.streaming_query.run_shield_moderation",
-            new=mocker.AsyncMock(return_value=ShieldModerationPassed()),
-        )
-        mocker.patch("app.endpoints.streaming_query.recording.record_llm_call")
-
-        async def mock_generator() -> AsyncIterator[str]:
-            yield "data: test\n\n"
-
-        mock_turn_summary = TurnSummary()
-        mocker.patch(
-            "app.endpoints.streaming_query.retrieve_agent_response_generator",
-            new=mocker.AsyncMock(return_value=(mock_generator(), mock_turn_summary)),
-        )
-
-        async def mock_generate_agent_response(
-            *_args: Any, **_kwargs: Any
-        ) -> AsyncIterator[str]:
-            async for item in mock_generator():
-                yield item
-
-        mocker.patch(
-            "app.endpoints.streaming_query.generate_agent_response",
-            side_effect=mock_generate_agent_response,
-        )
-        mocker.patch(
-            "app.endpoints.streaming_query.normalize_conversation_id",
-            return_value="123",
-        )
 
         await streaming_query_endpoint_handler(
             request=dummy_request,
-            query_request=query_request,
-            auth=MOCK_AUTH_STREAMING,
+            query_request=QueryRequest(query="What is Kubernetes?"),
+            auth=MOCK_AUTH,
             mcp_headers={},
         )
 
-        mock_client_holder.update_azure_token.assert_called_once()
-
-
-class TestCreateResponseGenerator:
-    """Tests for retrieve_response_generator function."""
+        client_holder.update_azure_token.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_retrieve_response_generator_success(
-        self, mocker: MockerFixture
+    async def test_streaming_query_uses_compaction_path_when_needed(
+        self,
+        dummy_request: Request,
+        setup_configuration: AppConfig,
+        mocker: MockerFixture,
     ) -> None:
-        """Test successful response generator creation."""
-        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
-
-        mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
-        mock_responses_params.model = "provider1/model1"
-        mock_responses_params.input = "test query"
-        mock_responses_params.conversation = "conv_123"
-        mock_responses_params.model_dump.return_value = {
-            "input": "test query",
-            "model": "provider1/model1",
-        }
-
-        mock_context = mocker.Mock(spec=ResponseGeneratorContext)
-        mock_context.client = mock_client
-        mock_context.vector_store_ids = []
-        mock_context.rag_id_mapping = {}
-        mock_context.inline_rag_context = RAGContext()
-        mock_context.query_request = QueryRequest(
-            query="test"
-        )  # pyright: ignore[reportCallIssue]
-        mock_context.moderation_result = ShieldModerationPassed()
-
-        async def mock_response_gen() -> AsyncIterator[str]:
-            yield "test"
-
-        mock_client.responses = mocker.Mock()
-        mock_client.responses.create = mocker.AsyncMock(
-            return_value=mock_response_gen()
-        )
-
-        async def mock_response_generator(
-            *_args: Any, **_kwargs: Any
-        ) -> AsyncIterator[str]:
-            async for item in mock_response_gen():
-                yield item
-
-        mocker.patch(
-            "app.endpoints.streaming_query.response_generator",
-            side_effect=mock_response_generator,
-        )
-
-        generator, turn_summary = await retrieve_response_generator(
-            mock_responses_params, mock_context, endpoint_path=""
-        )
-
-        assert isinstance(turn_summary, TurnSummary)
-        assert hasattr(generator, "__aiter__")
-
-    @pytest.mark.asyncio
-    async def test_retrieve_response_generator_shield_blocked(
-        self, mocker: MockerFixture
-    ) -> None:
-        """Test response generator creation when shield blocks."""
-        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
-
-        mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
-        mock_responses_params.model = "provider1/model1"
-        mock_responses_params.input = "test query"
-        mock_responses_params.conversation = "conv_123"
-        mock_responses_params.omit_conversation = False  # non-compacted
-
-        mock_context = mocker.Mock(spec=ResponseGeneratorContext)
-        mock_context.client = mock_client
-        mock_context.vector_store_ids = []
-        mock_context.rag_id_mapping = {}
-        mock_context.inline_rag_context = RAGContext()
-        mock_context.query_request = QueryRequest(
-            query="test", media_type=MEDIA_TYPE_TEXT
-        )  # pyright: ignore[reportCallIssue]
-
-        mock_moderation_result = mocker.Mock()
-        mock_moderation_result.decision = "blocked"
-        mock_moderation_result.message = "Content blocked"
-        mock_moderation_result.moderation_id = "mod_123"
-        mock_moderation_result.refusal_response = mocker.Mock()
-        mock_context.moderation_result = mock_moderation_result
-        mock_append = mocker.patch(
-            "app.endpoints.streaming_query.append_turn_items_to_conversation",
+        """Test handler uses compaction streaming path when compaction is needed."""
+        mock_generate, _ = _patch_streaming_handler_deps(mocker, setup_configuration)
+        mock_retrieve = mocker.patch(
+            "app.endpoints.streaming_query.retrieve_agent_response_generator",
             new=mocker.AsyncMock(),
         )
-
-        _generator, turn_summary = await retrieve_response_generator(
-            mock_responses_params, mock_context, endpoint_path=""
-        )
-
-        assert isinstance(turn_summary, TurnSummary)
-        assert turn_summary.llm_response == "Content blocked"
-        # Structured refusal captured for compacted-mode persistence (LCORE-1572).
-        assert turn_summary.output_items == [mock_moderation_result.refusal_response]
-        # Non-compacted: the refusal turn is stored here.
-        mock_append.assert_awaited_once()
-
-    @pytest.mark.asyncio
-    async def test_retrieve_response_generator_shield_blocked_compacted(
-        self, mocker: MockerFixture
-    ) -> None:
-        """In compacted mode the shield refusal is not stored here (no double-store).
-
-        generate_response persists the compacted turn (with the original input),
-        so storing it again in the shield branch would duplicate it (LCORE-1572).
-        """
-        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
-
-        mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
-        mock_responses_params.model = "provider1/model1"
-        mock_responses_params.input = "explicit input"
-        mock_responses_params.conversation = "conv_123"
-        mock_responses_params.omit_conversation = True  # compacted
-
-        mock_context = mocker.Mock(spec=ResponseGeneratorContext)
-        mock_context.client = mock_client
-        mock_context.vector_store_ids = []
-        mock_context.rag_id_mapping = {}
-        mock_context.inline_rag_context = RAGContext()
-        mock_context.query_request = QueryRequest(
-            query="test", media_type=MEDIA_TYPE_TEXT
-        )  # pyright: ignore[reportCallIssue]
-
-        mock_moderation_result = mocker.Mock()
-        mock_moderation_result.decision = "blocked"
-        mock_moderation_result.message = "Content blocked"
-        mock_moderation_result.moderation_id = "mod_123"
-        mock_moderation_result.refusal_response = mocker.Mock()
-        mock_context.moderation_result = mock_moderation_result
-        mock_append = mocker.patch(
-            "app.endpoints.streaming_query.append_turn_items_to_conversation",
-            new=mocker.AsyncMock(),
-        )
-
-        _generator, turn_summary = await retrieve_response_generator(
-            mock_responses_params, mock_context, endpoint_path=""
-        )
-
-        assert turn_summary.output_items == [mock_moderation_result.refusal_response]
-        mock_append.assert_not_awaited()  # compacted: generate_response stores it
-
-    @pytest.mark.asyncio
-    async def test_retrieve_response_generator_connection_error(
-        self, mocker: MockerFixture
-    ) -> None:
-        """Test response generator creation raises HTTPException on connection error."""
-        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
-
-        mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
-        mock_responses_params.model = "provider1/model1"
-        mock_responses_params.input = "test query"
-        mock_responses_params.conversation = "conv_123"
-        mock_responses_params.model_dump.return_value = {
-            "input": "test query",
-            "model": "provider1/model1",
-            "conversation": "conv_123",
-        }
-
-        mock_context = mocker.Mock(spec=ResponseGeneratorContext)
-        mock_context.client = mock_client
-        mock_context.vector_store_ids = []
-        mock_context.rag_id_mapping = {}
-        mock_context.inline_rag_context = RAGContext()
-        mock_context.query_request = QueryRequest(
-            query="test"
-        )  # pyright: ignore[reportCallIssue]
-        mock_context.moderation_result = ShieldModerationPassed()
-
-        mock_request_obj = mocker.Mock()
-        mock_client.responses = mocker.Mock()
-        mock_client.responses.create = mocker.AsyncMock(
-            side_effect=APIConnectionError(
-                message="Connection failed", request=mock_request_obj
-            )
-        )
-
-        mock_error_response = mocker.Mock()
-        mock_error_response.model_dump.return_value = {
-            "status_code": 503,
-            "detail": {
-                "response": "Unable to connect to OGX",
-                "cause": "Connection failed",
-            },
-        }
         mocker.patch(
-            "app.endpoints.streaming_query.ServiceUnavailableResponse",
-            return_value=mock_error_response,
+            "app.endpoints.streaming_query.needs_compaction_path",
+            new=mocker.AsyncMock(return_value=True),
         )
-
-        with pytest.raises(HTTPException) as exc_info:
-            await retrieve_response_generator(
-                mock_responses_params, mock_context, endpoint_path=""
-            )
-
-        assert exc_info.value.status_code == 503
-
-    @pytest.mark.asyncio
-    async def test_retrieve_response_generator_api_status_error(
-        self, mocker: MockerFixture
-    ) -> None:
-        """Test response generator creation raises HTTPException on API status error."""
-        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
-
-        mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
-        mock_responses_params.model = "provider1/model1"
-        mock_responses_params.input = "test query"
-        mock_responses_params.conversation = "conv_123"
-        mock_responses_params.model_dump.return_value = {
-            "input": "test query",
-            "model": "provider1/model1",
-            "conversation": "conv_123",
-        }
-
-        mock_context = mocker.Mock(spec=ResponseGeneratorContext)
-        mock_context.client = mock_client
-        mock_context.vector_store_ids = []
-        mock_context.rag_id_mapping = {}
-        mock_context.inline_rag_context = RAGContext()
-        mock_context.query_request = QueryRequest(
-            query="test"
-        )  # pyright: ignore[reportCallIssue]
-        mock_context.moderation_result = ShieldModerationPassed()
-
-        mock_request_obj = mocker.Mock()
-        mock_client.responses = mocker.Mock()
-        mock_client.responses.create = mocker.AsyncMock(
-            side_effect=APIStatusError(
-                message="API error", response=mock_request_obj, body=None
-            )
-        )
-
-        mock_error_response = mocker.Mock()
-        mock_error_response.model_dump.return_value = {
-            "status_code": 500,
-            "detail": {"response": "Error", "cause": "API error"},
-        }
-        mocker.patch(
-            "app.endpoints.streaming_query.handle_known_apistatus_errors",
-            return_value=mock_error_response,
-        )
-
-        with pytest.raises(HTTPException) as exc_info:
-            await retrieve_response_generator(
-                mock_responses_params, mock_context, endpoint_path=""
-            )
-
-        assert exc_info.value.status_code == 500
-
-    @pytest.mark.asyncio
-    async def test_retrieve_response_generator_runtime_error_context_length(
-        self, mocker: MockerFixture
-    ) -> None:
-        """Test response generator raises HTTPException on RuntimeError with context_length."""
-        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
-
-        mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
-        mock_responses_params.model = "provider1/model1"
-        mock_responses_params.input = "test query"
-        mock_responses_params.conversation = "conv_123"
-        mock_responses_params.model_dump.return_value = {
-            "input": "test query",
-            "model": "provider1/model1",
-            "conversation": "conv_123",
-        }
-
-        mock_context = mocker.Mock(spec=ResponseGeneratorContext)
-        mock_context.client = mock_client
-        mock_context.vector_store_ids = []
-        mock_context.rag_id_mapping = {}
-        mock_context.inline_rag_context = RAGContext()
-        mock_context.query_request = QueryRequest(
-            query="test"
-        )  # pyright: ignore[reportCallIssue]
-        mock_context.moderation_result = ShieldModerationPassed()
-
-        mock_client.responses = mocker.Mock()
-        mock_client.responses.create = mocker.AsyncMock(
-            side_effect=RuntimeError("context_length exceeded")
-        )
-
-        mock_error_response = mocker.Mock()
-        mock_error_response.model_dump.return_value = {
-            "status_code": 413,
-            "detail": {"response": "Prompt too long", "model": "provider1/model1"},
-        }
-        mocker.patch(
-            "app.endpoints.streaming_query.PromptTooLongResponse",
-            return_value=mock_error_response,
-        )
-
-        with pytest.raises(HTTPException) as exc_info:
-            await retrieve_response_generator(
-                mock_responses_params, mock_context, endpoint_path=""
-            )
-
-        assert exc_info.value.status_code == 413
-
-    @pytest.mark.asyncio
-    async def test_retrieve_response_generator_runtime_error_other(
-        self, mocker: MockerFixture
-    ) -> None:
-        """Test response generator creation re-raises RuntimeError without context_length."""
-        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
-
-        mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
-        mock_responses_params.model = "provider1/model1"
-        mock_responses_params.input = "test query"
-        mock_responses_params.conversation = "conv_123"
-        mock_responses_params.model_dump.return_value = {
-            "input": "test query",
-            "model": "provider1/model1",
-            "conversation": "conv_123",
-        }
-
-        mock_context = mocker.Mock(spec=ResponseGeneratorContext)
-        mock_context.client = mock_client
-        mock_context.vector_store_ids = []
-        mock_context.rag_id_mapping = {}
-        mock_context.inline_rag_context = RAGContext()
-        mock_context.query_request = QueryRequest(
-            query="test"
-        )  # pyright: ignore[reportCallIssue]
-        mock_context.moderation_result = ShieldModerationPassed()
-
-        mock_client.responses = mocker.Mock()
-        mock_client.responses.create = mocker.AsyncMock(
-            side_effect=RuntimeError("Some other error")
-        )
-
-        with pytest.raises(RuntimeError):
-            await retrieve_response_generator(
-                mock_responses_params, mock_context, endpoint_path=""
-            )
-
-
-class TestGenerateResponse:
-    """Tests for generate_response function."""
-
-    @pytest.fixture(autouse=True)
-    def isolate_stream_interrupt_registry(self, mocker: MockerFixture) -> Any:
-        """Patch registry accessor with a per-test mock registry instance."""
-        test_registry = mocker.Mock(spec=StreamInterruptRegistry)
-        mocker.patch(
-            "utils.stream_interrupts.get_stream_interrupt_registry",
-            return_value=test_registry,
-        )
-        return test_registry
-
-    @pytest.mark.asyncio
-    async def test_generate_response_success(self, mocker: MockerFixture) -> None:
-        """Test successful response generation."""
-
-        async def mock_generator() -> AsyncIterator[str]:
-            yield "data: token\n\n"
-            yield "data: end\n\n"
-
-        mock_context = mocker.Mock(spec=ResponseGeneratorContext)
-        mock_context.conversation_id = "conv_123"
-        mock_context.user_id = "user_123"
-        mock_context.vector_store_ids = []
-        mock_context.rag_id_mapping = {}
-        mock_context.inline_rag_context = RAGContext()
-        mock_context.query_request = QueryRequest(
-            query="test"
-        )  # pyright: ignore[reportCallIssue]
-        mock_context.started_at = "2024-01-01T00:00:00Z"
-        mock_context.skip_userid_check = False
-        mock_context.request_id = "123e4567-e89b-12d3-a456-426614174000"
-
-        mock_response_obj = mocker.Mock()
-        mock_response_obj.output = []
-        mock_context.client = mocker.AsyncMock(spec=AsyncOgxClient)
-        mock_context.client.responses = mocker.Mock()
-        mock_context.client.responses.create = mocker.AsyncMock(
-            return_value=mock_response_obj
-        )
-
-        mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
-        mock_responses_params.model = "provider1/model1"
-
-        mock_turn_summary = TurnSummary()
-        mock_turn_summary.token_usage = TokenCounter(input_tokens=10, output_tokens=5)
-
-        mock_config = mocker.Mock()
-        mock_config.quota_limiters = []
-        mocker.patch("app.endpoints.streaming_query.configuration", mock_config)
-        mocker.patch("app.endpoints.streaming_query.consume_query_tokens")
-        mocker.patch(
-            "app.endpoints.streaming_query.get_available_quotas", return_value={}
-        )
-        mocker.patch("app.endpoints.streaming_query.store_query_results")
-
-        result = []
-        async for item in generate_response(
-            mock_generator(),
-            mock_context,
-            mock_responses_params,
-            mock_turn_summary,
-        ):
-            result.append(item)
-
-        assert len(result) > 0
-        assert any("start" in item for item in result)
-        assert any("end" in item for item in result)
-
-    @pytest.mark.asyncio
-    async def test_generate_response_compacted_persists_structured_turn(
-        self, mocker: MockerFixture
-    ) -> None:
-        """Compacted mode persists the turn via store_compacted_turn with the
-        original input and structured output items, not flattened strings
-        (LCORE-1572)."""
-
-        async def mock_generator() -> AsyncIterator[str]:
-            yield "data: token\n\n"
-
-        conv_id = "123e4567-e89b-12d3-a456-426614174000"
-        mock_context = mocker.Mock(spec=ResponseGeneratorContext)
-        mock_context.conversation_id = conv_id
-        mock_context.user_id = "user_123"
-        mock_context.query_request = QueryRequest(
-            query="test", conversation_id=conv_id
-        )  # pyright: ignore[reportCallIssue]
-        mock_context.started_at = "2024-01-01T00:00:00Z"
-        mock_context.skip_userid_check = False
-        mock_context.request_id = "223e4567-e89b-12d3-a456-426614174000"
-        mock_context.client = mocker.AsyncMock(spec=AsyncOgxClient)
-
-        mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
-        mock_responses_params.model = "provider1/model1"
-        mock_responses_params.conversation = conv_id
-
-        turn_summary = TurnSummary()
-        turn_summary.token_usage = TokenCounter(input_tokens=10, output_tokens=5)
-        output_item = mocker.Mock()
-        turn_summary.output_items = [output_item]
-
-        mock_config = mocker.Mock()
-        mock_config.quota_limiters = []
-        mocker.patch("app.endpoints.streaming_query.configuration", mock_config)
-        mocker.patch("app.endpoints.streaming_query.consume_query_tokens")
-        mocker.patch(
-            "app.endpoints.streaming_query.get_available_quotas", return_value={}
-        )
-        mocker.patch("app.endpoints.streaming_query.store_query_results")
-        store_mock = mocker.patch(
-            "app.endpoints.streaming_query.store_compacted_turn",
-            new_callable=mocker.AsyncMock,
-        )
-
-        result = [
-            item
-            async for item in generate_response(
-                mock_generator(),
-                mock_context,
-                mock_responses_params,
-                turn_summary,
-                compacted=True,
-                original_input="the original query",
-            )
-        ]
-
-        assert any("end" in item for item in result)
-        store_mock.assert_awaited_once_with(
-            mock_context.client,
-            conv_id,
-            "the original query",
-            [output_item],
-        )
-
-    @pytest.mark.asyncio
-    async def test_generate_response_with_topic_summary(
-        self, mocker: MockerFixture
-    ) -> None:
-        """Test response generation with topic summary."""
-
-        async def mock_generator() -> AsyncIterator[str]:
-            yield "data: token\n\n"
-
-        mock_context = mocker.Mock(spec=ResponseGeneratorContext)
-        mock_context.conversation_id = "conv_123"
-        mock_context.user_id = "user_123"
-        mock_context.vector_store_ids = []
-        mock_context.rag_id_mapping = {}
-        mock_context.inline_rag_context = RAGContext()
-        mock_context.query_request = QueryRequest(
-            query="test", generate_topic_summary=True
-        )  # pyright: ignore[reportCallIssue]
-        mock_context.started_at = "2024-01-01T00:00:00Z"
-        mock_context.skip_userid_check = False
-        mock_context.request_id = "123e4567-e89b-12d3-a456-426614174000"
-        mock_context.client = mocker.AsyncMock(spec=AsyncOgxClient)
-
-        mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
-        mock_responses_params.model = "provider1/model1"
-
-        mock_turn_summary = TurnSummary()
-        mock_turn_summary.token_usage = TokenCounter(input_tokens=10, output_tokens=5)
-
-        mock_config = mocker.Mock()
-        mock_config.quota_limiters = []
-        mocker.patch("app.endpoints.streaming_query.configuration", mock_config)
-        mocker.patch("app.endpoints.streaming_query.consume_query_tokens")
-        mocker.patch(
-            "app.endpoints.streaming_query.get_available_quotas", return_value={}
-        )
-        mocker.patch(
-            "app.endpoints.streaming_query.get_topic_summary",
-            new=mocker.AsyncMock(return_value="Topic summary"),
-        )
-        mocker.patch("app.endpoints.streaming_query.store_query_results")
-
-        result = []
-        async for item in generate_response(
-            mock_generator(),
-            mock_context,
-            mock_responses_params,
-            mock_turn_summary,
-        ):
-            result.append(item)
-
-        assert len(result) > 0
-
-    @pytest.mark.asyncio
-    async def test_generate_response_connection_error(
-        self, mocker: MockerFixture
-    ) -> None:
-        """Test response generation handles connection error."""
-
-        async def mock_generator() -> AsyncIterator[str]:
-            yield "data: token\n\n"
-            raise APIConnectionError(message="Connection failed", request=mocker.Mock())
-
-        mock_context = mocker.Mock(spec=ResponseGeneratorContext)
-        mock_context.conversation_id = "conv_123"
-        mock_context.vector_store_ids = []
-        mock_context.rag_id_mapping = {}
-        mock_context.inline_rag_context = RAGContext()
-        mock_context.user_id = "user_123"
-        mock_context.query_request = QueryRequest(
-            query="test"
-        )  # pyright: ignore[reportCallIssue]
-        mock_context.started_at = "2024-01-01T00:00:00Z"
-        mock_context.skip_userid_check = False
-        mock_context.request_id = "123e4567-e89b-12d3-a456-426614174000"
-
-        mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
-        mock_responses_params.model = "provider1/model1"
-
-        mock_turn_summary = TurnSummary()
-
-        result = []
-        async for item in generate_response(
-            mock_generator(),
-            mock_context,
-            mock_responses_params,
-            mock_turn_summary,
-        ):
-            result.append(item)
-
-        assert len(result) > 0
-        assert any("error" in item for item in result)
-
-    @pytest.mark.asyncio
-    async def test_generate_response_api_status_error(
-        self, mocker: MockerFixture
-    ) -> None:
-        """Test response generation handles API status error."""
-        mock_request_obj = mocker.Mock()
-
-        async def mock_generator() -> AsyncIterator[str]:
-            yield "data: token\n\n"
-            raise APIStatusError(
-                message="API error", response=mock_request_obj, body=None
-            )
-
-        mock_context = mocker.Mock(spec=ResponseGeneratorContext)
-        mock_context.conversation_id = "conv_123"
-        mock_context.vector_store_ids = []
-        mock_context.rag_id_mapping = {}
-        mock_context.inline_rag_context = RAGContext()
-        mock_context.user_id = "user_123"
-        mock_context.query_request = QueryRequest(
-            query="test"
-        )  # pyright: ignore[reportCallIssue]
-        mock_context.started_at = "2024-01-01T00:00:00Z"
-        mock_context.skip_userid_check = False
-        mock_context.request_id = "123e4567-e89b-12d3-a456-426614174000"
-
-        mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
-        mock_responses_params.model = "provider1/model1"
-
-        mock_turn_summary = TurnSummary()
-
-        mock_error_response = InternalServerErrorResponse.query_failed("API error")
-        mocker.patch(
-            "app.endpoints.streaming_query.handle_known_apistatus_errors",
-            return_value=mock_error_response,
-        )
-
-        result = []
-        async for item in generate_response(
-            mock_generator(),
-            mock_context,
-            mock_responses_params,
-            mock_turn_summary,
-        ):
-            result.append(item)
-
-        assert len(result) > 0
-        assert any("error" in item for item in result)
-
-    @pytest.mark.asyncio
-    async def test_generate_response_runtime_error_context_length(
-        self, mocker: MockerFixture
-    ) -> None:
-        """Test generate_response handles RuntimeError with context_length."""
-
-        async def mock_generator() -> AsyncIterator[str]:
-            yield "data: start\n\n"
-            raise RuntimeError("context_length exceeded")
-
-        mock_context = mocker.Mock(spec=ResponseGeneratorContext)
-        mock_context.conversation_id = "conv_123"
-        mock_context.vector_store_ids = []
-        mock_context.rag_id_mapping = {}
-        mock_context.inline_rag_context = RAGContext()
-        mock_context.user_id = "user_123"
-        mock_context.query_request = QueryRequest(
-            query="test", media_type=MEDIA_TYPE_JSON
-        )  # pyright: ignore[reportCallIssue]
-        mock_context.request_id = "123e4567-e89b-12d3-a456-426614174000"
-
-        mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
-        mock_responses_params.model = "provider1/model1"
-
-        mock_turn_summary = TurnSummary()
-
-        mock_error_response = mocker.Mock()
-        mock_error_response.status_code = 413
-        mock_error_response.detail = mocker.Mock()
-        mock_error_response.detail.response = "Prompt too long"
-        mock_error_response.detail.cause = None
-        mocker.patch(
-            "app.endpoints.streaming_query.PromptTooLongResponse",
-            return_value=mock_error_response,
-        )
-
-        result = []
-        async for item in generate_response(
-            mock_generator(),
-            mock_context,
-            mock_responses_params,
-            mock_turn_summary,
-        ):
-            result.append(item)
-
-        assert len(result) > 0
-        assert any("error" in item for item in result)
-
-    @pytest.mark.asyncio
-    async def test_generate_response_runtime_error_other(
-        self, mocker: MockerFixture
-    ) -> None:
-        """Test generate_response handles RuntimeError without context_length."""
-
-        async def mock_generator() -> AsyncIterator[str]:
-            yield "data: start\n\n"
-            raise RuntimeError("Some other error")
-
-        mock_context = mocker.Mock(spec=ResponseGeneratorContext)
-        mock_context.conversation_id = "conv_123"
-        mock_context.vector_store_ids = []
-        mock_context.rag_id_mapping = {}
-        mock_context.inline_rag_context = RAGContext()
-        mock_context.user_id = "user_123"
-        mock_context.query_request = QueryRequest(
-            query="test", media_type=MEDIA_TYPE_JSON
-        )  # pyright: ignore[reportCallIssue]
-        mock_context.request_id = "123e4567-e89b-12d3-a456-426614174000"
-
-        mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
-        mock_responses_params.model = "provider1/model1"
-
-        mock_turn_summary = TurnSummary()
-
-        mock_error_response = mocker.Mock()
-        mock_error_response.status_code = 500
-        mock_error_response.detail = mocker.Mock()
-        mock_error_response.detail.response = "Internal server error"
-        mock_error_response.detail.cause = None
-        mocker.patch(
-            "app.endpoints.streaming_query.InternalServerErrorResponse.generic",
-            return_value=mock_error_response,
-        )
-
-        result = []
-        async for item in generate_response(
-            mock_generator(),
-            mock_context,
-            mock_responses_params,
-            mock_turn_summary,
-        ):
-            result.append(item)
-
-        assert len(result) > 0
-        assert any("error" in item for item in result)
-
-    @pytest.mark.asyncio
-    async def test_generate_response_cancelled_persists_interrupted_turn(
-        self,
-        mocker: MockerFixture,
-        isolate_stream_interrupt_registry: Any,
-    ) -> None:
-        """Test cancelled stream persists user query with interrupted response."""
-
-        async def mock_generator() -> AsyncIterator[str]:
-            yield "data: token\n\n"
-            raise asyncio.CancelledError()
-
-        existing_conv_id = "123e4567-e89b-12d3-a456-426614174000"
-        mock_context = mocker.Mock(spec=ResponseGeneratorContext)
-        mock_context.conversation_id = existing_conv_id
-        mock_context.user_id = "user_123"
-        mock_context.query_request = QueryRequest(
-            query="test",
-            media_type=MEDIA_TYPE_JSON,
-            conversation_id=existing_conv_id,  # Existing conversation: no topic summary
-        )  # pyright: ignore[reportCallIssue]
-        mock_context.started_at = "2024-01-01T00:00:00Z"
-        mock_context.skip_userid_check = False
-        mock_context.client = mocker.AsyncMock(spec=AsyncOgxClient)
-
-        mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
-        mock_responses_params.model = "provider1/model1"
-        mock_responses_params.conversation = existing_conv_id
-        mock_responses_params.input = "test"
-
-        mock_turn_summary = TurnSummary()
-        mock_turn_summary.token_usage = TokenCounter(input_tokens=10, output_tokens=5)
-
-        consume_query_tokens_mock = mocker.patch(
-            "app.endpoints.streaming_query.consume_query_tokens"
-        )
-        store_query_results_mock = mocker.patch(
-            "utils.stream_interrupts.store_query_results"
-        )
-        append_turn_mock = mocker.patch(
-            "utils.stream_interrupts.append_turn_to_conversation",
-            new_callable=mocker.AsyncMock,
-        )
-
-        test_request_id = "223e4567-e89b-12d3-a456-426614174000"
-        mock_context.request_id = test_request_id
-
-        result = []
-        async for item in generate_response(
-            mock_generator(),
-            mock_context,
-            mock_responses_params,
-            mock_turn_summary,
-        ):
-            result.append(item)
-
-        assert any("start" in item for item in result)
-        assert any('"event": "token"' in item for item in result)
-        assert any('"event": "interrupted"' in item for item in result)
-        assert not any('"event": "end"' in item for item in result)
-        consume_query_tokens_mock.assert_not_called()
-
-        append_turn_mock.assert_called_once_with(
-            mock_context.client,
-            existing_conv_id,
-            "test",
-            INTERRUPTED_INDICATOR,
-        )
-        store_query_results_mock.assert_called_once()
-        call_kwargs = store_query_results_mock.call_args[1]
-        assert call_kwargs["user_id"] == "user_123"
-        assert call_kwargs["conversation_id"] == existing_conv_id
-        assert call_kwargs["summary"].llm_response == INTERRUPTED_INDICATOR
-        assert call_kwargs["topic_summary"] is None
-
-        isolate_stream_interrupt_registry.deregister_stream.assert_called_once_with(
-            test_request_id
-        )
-
-    @pytest.mark.asyncio
-    async def test_generate_response_cancelled_persists_topic_summary_for_new_conversation(
-        self,
-        mocker: MockerFixture,
-        isolate_stream_interrupt_registry: Any,
-    ) -> None:
-        """Test cancelled stream persists topic_summary when generate_topic_summary is True."""
-
-        async def mock_generator() -> AsyncIterator[str]:
-            yield "data: token\n\n"
-            raise asyncio.CancelledError()
-
-        test_request_id = "123e4567-e89b-12d3-a456-426614174001"
-        mock_context = mocker.Mock(spec=ResponseGeneratorContext)
-        mock_context.conversation_id = "conv_new_456"
-        mock_context.user_id = "user_123"
-        mock_context.query_request = QueryRequest(
-            query="What is Kubernetes?",
-            media_type=MEDIA_TYPE_JSON,
-            conversation_id=None,  # New conversation
-            generate_topic_summary=True,
-        )  # pyright: ignore[reportCallIssue]
-        mock_context.started_at = "2024-01-01T00:00:00Z"
-        mock_context.skip_userid_check = False
-        mock_context.client = mocker.AsyncMock(spec=AsyncOgxClient)
-        mock_context.request_id = test_request_id
-
-        mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
-        mock_responses_params.model = "provider1/model1"
-        mock_responses_params.conversation = "conv_new_456"
-        mock_responses_params.input = "What is Kubernetes?"
-
-        mock_turn_summary = TurnSummary()
-        mock_turn_summary.token_usage = TokenCounter(input_tokens=10, output_tokens=5)
-
-        mocker.patch("app.endpoints.streaming_query.consume_query_tokens")
-        get_topic_summary_mock = mocker.patch(
-            "utils.stream_interrupts.get_topic_summary",
-            new=mocker.AsyncMock(return_value="Kubernetes container orchestration"),
-        )
-        store_query_results_mock = mocker.patch(
-            "utils.stream_interrupts.store_query_results"
-        )
-        update_topic_summary_mock = mocker.patch(
-            "utils.stream_interrupts.update_conversation_topic_summary"
-        )
-        mocker.patch(
-            "utils.stream_interrupts.append_turn_to_conversation",
-            new_callable=mocker.AsyncMock,
-        )
-
-        result = []
-        async for item in generate_response(
-            mock_generator(),
-            mock_context,
-            mock_responses_params,
-            mock_turn_summary,
-        ):
-            result.append(item)
-
-        await asyncio.sleep(0.1)
-
-        assert any('"event": "interrupted"' in item for item in result)
-        call_kwargs = store_query_results_mock.call_args[1]
-        assert call_kwargs["topic_summary"] is None
-        get_topic_summary_mock.assert_called_once_with(
-            "What is Kubernetes?",
-            mock_context.client,
-            "provider1/model1",
-        )
-        update_topic_summary_mock.assert_called_once_with(
-            "conv_new_456",
-            "Kubernetes container orchestration",
-            user_id="user_123",
-            skip_userid_check=False,
-        )
-        isolate_stream_interrupt_registry.deregister_stream.assert_called_once_with(
-            test_request_id
-        )
-
-    @pytest.mark.asyncio
-    async def test_generate_response_cancelled_topic_summary_none_when_get_fails(
-        self,
-        mocker: MockerFixture,
-        isolate_stream_interrupt_registry: Any,
-    ) -> None:
-        """Test cancelled stream persists with topic_summary=None when get_topic_summary raises."""
-
-        async def mock_generator() -> AsyncIterator[str]:
-            yield "data: token\n\n"
-            raise asyncio.CancelledError()
-
-        test_request_id = "123e4567-e89b-12d3-a456-426614174001"
-        mock_context = mocker.Mock(spec=ResponseGeneratorContext)
-        mock_context.conversation_id = "conv_new_456"
-        mock_context.user_id = "user_123"
-        mock_context.query_request = QueryRequest(
-            query="What is Kubernetes?",
-            media_type=MEDIA_TYPE_JSON,
-            conversation_id=None,  # New conversation
-            generate_topic_summary=True,
-        )  # pyright: ignore[reportCallIssue]
-        mock_context.started_at = "2024-01-01T00:00:00Z"
-        mock_context.skip_userid_check = False
-        mock_context.client = mocker.AsyncMock(spec=AsyncOgxClient)
-        mock_context.request_id = test_request_id
-
-        mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
-        mock_responses_params.model = "provider1/model1"
-        mock_responses_params.conversation = "conv_new_456"
-        mock_responses_params.input = "What is Kubernetes?"
-
-        mock_turn_summary = TurnSummary()
-        mock_turn_summary.token_usage = TokenCounter(input_tokens=10, output_tokens=5)
-
-        mocker.patch("app.endpoints.streaming_query.consume_query_tokens")
-        mocker.patch(
-            "utils.stream_interrupts.get_topic_summary",
-            new=mocker.AsyncMock(side_effect=Exception("err")),
-        )
-        store_query_results_mock = mocker.patch(
-            "utils.stream_interrupts.store_query_results"
-        )
-        mocker.patch(
-            "utils.stream_interrupts.append_turn_to_conversation",
-            new_callable=mocker.AsyncMock,
-        )
-
-        result = []
-        async for item in generate_response(
-            mock_generator(),
-            mock_context,
-            mock_responses_params,
-            mock_turn_summary,
-        ):
-            result.append(item)
-
-        await asyncio.sleep(0.1)
-
-        assert any('"event": "interrupted"' in item for item in result)
-        store_query_results_mock.assert_called_once()
-        call_kwargs = store_query_results_mock.call_args[1]
-        assert call_kwargs["topic_summary"] is None
-        isolate_stream_interrupt_registry.deregister_stream.assert_called_once_with(
-            test_request_id
-        )
-
-    @pytest.mark.asyncio
-    async def test_generate_response_cancelled_topic_summary_none_when_generate_disabled(
-        self,
-        mocker: MockerFixture,
-        isolate_stream_interrupt_registry: Any,
-    ) -> None:
-        """Test cancelled stream uses topic_summary=None when generate_topic_summary is False."""
-
-        async def mock_generator() -> AsyncIterator[str]:
-            yield "data: token\n\n"
-            raise asyncio.CancelledError()
-
-        test_request_id = "123e4567-e89b-12d3-a456-426614174002"
-        mock_context = mocker.Mock(spec=ResponseGeneratorContext)
-        mock_context.conversation_id = "conv_new_789"
-        mock_context.user_id = "user_123"
-        mock_context.query_request = QueryRequest(
-            query="What is Docker?",
-            media_type=MEDIA_TYPE_JSON,
-            conversation_id=None,  # New conversation
-            generate_topic_summary=False,  # Explicitly disabled
-        )  # pyright: ignore[reportCallIssue]
-        mock_context.started_at = "2024-01-01T00:00:00Z"
-        mock_context.skip_userid_check = False
-        mock_context.client = mocker.AsyncMock(spec=AsyncOgxClient)
-        mock_context.request_id = test_request_id
-
-        mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
-        mock_responses_params.model = "provider1/model1"
-        mock_responses_params.conversation = "conv_new_789"
-        mock_responses_params.input = "What is Docker?"
-
-        mock_turn_summary = TurnSummary()
-        mock_turn_summary.token_usage = TokenCounter(input_tokens=10, output_tokens=5)
-
-        mocker.patch("app.endpoints.streaming_query.consume_query_tokens")
-        get_topic_summary_mock = mocker.patch(
-            "utils.stream_interrupts.get_topic_summary",
-            new=mocker.AsyncMock(return_value="Docker containerization"),
-        )
-        store_query_results_mock = mocker.patch(
-            "utils.stream_interrupts.store_query_results"
-        )
-        mocker.patch(
-            "utils.stream_interrupts.append_turn_to_conversation",
-            new_callable=mocker.AsyncMock,
-        )
-
-        result = []
-        async for item in generate_response(
-            mock_generator(),
-            mock_context,
-            mock_responses_params,
-            mock_turn_summary,
-        ):
-            result.append(item)
-
-        assert any('"event": "interrupted"' in item for item in result)
-        get_topic_summary_mock.assert_not_called()
-        call_kwargs = store_query_results_mock.call_args[1]
-        assert call_kwargs["topic_summary"] is None
-        isolate_stream_interrupt_registry.deregister_stream.assert_called_once_with(
-            test_request_id
-        )
-
-    @pytest.mark.asyncio
-    async def test_generate_response_cancelled_stores_results_when_append_fails(
-        self,
-        mocker: MockerFixture,
-        isolate_stream_interrupt_registry: Any,
-    ) -> None:
-        """Test store_query_results still runs when append_turn_to_conversation fails."""
-
-        async def mock_generator() -> AsyncIterator[str]:
-            yield "data: token\n\n"
-            raise asyncio.CancelledError()
-
-        mock_context = mocker.Mock(spec=ResponseGeneratorContext)
-        mock_context.conversation_id = "conv_123"
-        mock_context.user_id = "user_123"
-        mock_context.query_request = QueryRequest(
-            query="test", media_type=MEDIA_TYPE_JSON
-        )  # pyright: ignore[reportCallIssue]
-        mock_context.started_at = "2024-01-01T00:00:00Z"
-        mock_context.skip_userid_check = False
-        mock_context.client = mocker.AsyncMock(spec=AsyncOgxClient)
-
-        mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
-        mock_responses_params.model = "provider1/model1"
-        mock_responses_params.conversation = "conv_123"
-        mock_responses_params.input = "test"
-
-        mock_turn_summary = TurnSummary()
-
-        mocker.patch("app.endpoints.streaming_query.consume_query_tokens")
-        store_query_results_mock = mocker.patch(
-            "utils.stream_interrupts.store_query_results"
-        )
-        mocker.patch(
-            "utils.stream_interrupts.append_turn_to_conversation",
-            new_callable=mocker.AsyncMock,
-            side_effect=RuntimeError("Llama Stack unavailable"),
-        )
-
-        test_request_id = "123e4567-e89b-12d3-a456-426614174000"
-        mock_context.request_id = test_request_id
-
-        result = []
-        async for item in generate_response(
-            mock_generator(),
-            mock_context,
-            mock_responses_params,
-            mock_turn_summary,
-        ):
-            result.append(item)
-
-        assert any('"event": "interrupted"' in item for item in result)
-        store_query_results_mock.assert_called_once()
-        isolate_stream_interrupt_registry.deregister_stream.assert_called_once_with(
-            test_request_id
-        )
-
-    @pytest.mark.asyncio
-    async def test_generate_response_task_cancel_persists_results(
-        self,
-        mocker: MockerFixture,
-        isolate_stream_interrupt_registry: Any,
-    ) -> None:
-        """Test that real task.cancel() persists via CancelledError handler."""
-        cancel_event = asyncio.Event()
-
-        async def slow_generator() -> AsyncIterator[str]:
-            yield "data: token\n\n"
-            await cancel_event.wait()
-            yield "data: should not reach\n\n"
-
-        mock_context = mocker.Mock(spec=ResponseGeneratorContext)
-        mock_context.conversation_id = "conv_123"
-        mock_context.user_id = "user_123"
-        mock_context.query_request = QueryRequest(
-            query="test", media_type=MEDIA_TYPE_JSON
-        )  # pyright: ignore[reportCallIssue]
-        mock_context.started_at = "2024-01-01T00:00:00Z"
-        mock_context.skip_userid_check = False
-        mock_context.client = mocker.AsyncMock(spec=AsyncOgxClient)
-
-        mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
-        mock_responses_params.model = "provider1/model1"
-        mock_responses_params.conversation = "conv_123"
-        mock_responses_params.input = "test"
-
-        mock_turn_summary = TurnSummary()
-
-        mocker.patch("app.endpoints.streaming_query.consume_query_tokens")
-        store_query_results_mock = mocker.patch(
-            "utils.stream_interrupts.store_query_results"
-        )
-        append_turn_mock = mocker.patch(
-            "utils.stream_interrupts.append_turn_to_conversation",
-            new_callable=mocker.AsyncMock,
-        )
-
-        test_request_id = "123e4567-e89b-12d3-a456-426614174000"
-        mock_context.request_id = test_request_id
-
-        result: list[str] = []
-
-        async def consume_generator() -> None:
-            async for item in generate_response(
-                slow_generator(),
-                mock_context,
-                mock_responses_params,
-                mock_turn_summary,
-            ):
-                result.append(item)
-
-        task = asyncio.create_task(consume_generator())
-        await asyncio.sleep(0.05)
-        task.cancel()
-        await asyncio.sleep(0.05)
-
-        assert any('"event": "interrupted"' in item for item in result)
-        append_turn_mock.assert_called_once()
-        store_query_results_mock.assert_called_once()
-        isolate_stream_interrupt_registry.deregister_stream.assert_called_once_with(
-            test_request_id
-        )
-
-    @pytest.mark.asyncio
-    async def test_cancel_stream_callback_persists_when_error_hits_outside_generator(
-        self,
-    ) -> None:
-        """Test on_interrupt callback runs via cancel_stream as a separate task."""
-        registry = StreamInterruptRegistry()
-        test_request_id = "123e4567-e89b-12d3-a456-426614174099"
-        registry.deregister_stream(test_request_id)
-
-        callback_ran = False
-
-        async def mock_callback() -> None:
-            nonlocal callback_ran
-            callback_ran = True
-
-        async def pending_stream() -> None:
-            await asyncio.sleep(10)
-
-        task = asyncio.create_task(pending_stream())
-        registry.register_stream(
-            test_request_id, "user_123", task, on_interrupt=mock_callback
-        )
-
-        result = registry.cancel_stream(test_request_id, "user_123")
-        assert result.value == "cancelled"
-
-        # Let the scheduled callback task execute
-        await asyncio.sleep(0.01)
-
-        assert callback_ran is True
-
-        task.cancel()
-        with pytest.raises(asyncio.CancelledError):
-            await task
-        registry.deregister_stream(test_request_id)
-
-
-class TestResponseGenerator:
-    """Tests for response_generator function."""
-
-    @pytest.mark.asyncio
-    async def test_response_generator_text_delta(self, mocker: MockerFixture) -> None:
-        """Test response generator processes text delta events."""
-
-        async def mock_turn_response() -> AsyncIterator[OpenAIResponseObjectStream]:
-            chunk = mocker.Mock(spec=TextDeltaChunk)
-            chunk.type = "response.output_text.delta"
-            chunk.delta = "Hello"
-            yield chunk
-
-        mock_context = mocker.Mock(spec=ResponseGeneratorContext)
-        mock_context.query_request = QueryRequest(
-            query="test", media_type=MEDIA_TYPE_JSON
-        )  # pyright: ignore[reportCallIssue]
-        mock_context.model_id = "provider1/model1"
-        mock_context.vector_store_ids = []
-        mock_context.rag_id_mapping = {}
-        mock_context.inline_rag_context = RAGContext()
-
-        mock_turn_summary = TurnSummary()
-
-        result = []
-        async for item in response_generator(
-            mock_turn_response(), mock_context, mock_turn_summary, endpoint_path=""
-        ):
-            result.append(item)
-
-        assert len(result) > 0
-
-    @pytest.mark.asyncio
-    async def test_response_generator_content_part_added(
-        self, mocker: MockerFixture
-    ) -> None:
-        """Test response generator processes content part added events."""
-
-        async def mock_turn_response() -> AsyncIterator[OpenAIResponseObjectStream]:
-            chunk = mocker.Mock()
-            chunk.type = "response.content_part.added"
-            yield chunk
-
-        mock_context = mocker.Mock(spec=ResponseGeneratorContext)
-        mock_context.query_request = QueryRequest(
-            query="test", media_type=MEDIA_TYPE_JSON
-        )  # pyright: ignore[reportCallIssue]
-        mock_context.model_id = "provider1/model1"
-        mock_context.vector_store_ids = []
-        mock_context.rag_id_mapping = {}
-        mock_context.inline_rag_context = RAGContext()
-
-        mock_turn_summary = TurnSummary()
-
-        result = []
-        async for item in response_generator(
-            mock_turn_response(), mock_context, mock_turn_summary, endpoint_path=""
-        ):
-            result.append(item)
-
-        assert len(result) > 0
-
-    @pytest.mark.asyncio
-    async def test_response_generator_output_text_done(
-        self, mocker: MockerFixture
-    ) -> None:
-        """Test response generator processes output text done events."""
-
-        async def mock_turn_response() -> AsyncIterator[OpenAIResponseObjectStream]:
-            chunk = mocker.Mock(spec=TextDoneChunk)
-            chunk.type = "response.output_text.done"
-            chunk.text = "Complete response"
-            yield chunk
-
-        mock_context = mocker.Mock(spec=ResponseGeneratorContext)
-        mock_context.query_request = QueryRequest(
-            query="test", media_type=MEDIA_TYPE_JSON
-        )  # pyright: ignore[reportCallIssue]
-        mock_context.model_id = "provider1/model1"
-        mock_context.vector_store_ids = []
-        mock_context.rag_id_mapping = {}
-        mock_context.inline_rag_context = RAGContext()
-
-        mock_turn_summary = TurnSummary()
-
-        mocker.patch(
-            "app.endpoints.streaming_query.extract_token_usage",
-            return_value=TokenCounter(input_tokens=0, output_tokens=0),
-        )
-        mocker.patch(
-            "app.endpoints.streaming_query.parse_referenced_documents", return_value=[]
-        )
-
-        async for _ in response_generator(
-            mock_turn_response(), mock_context, mock_turn_summary, endpoint_path=""
-        ):
-            pass
-
-        assert mock_turn_summary.llm_response == "Complete response"
-
-    @pytest.mark.asyncio
-    async def test_response_generator_output_item_done_message_type(
-        self, mocker: MockerFixture
-    ) -> None:
-        """Test response generator skips message type items."""
-        mock_output_item = mocker.Mock()
-        mock_output_item.type = "message"
-
-        async def mock_turn_response() -> AsyncIterator[OpenAIResponseObjectStream]:
-            chunk = mocker.Mock(spec=OutputItemDoneChunk)
-            chunk.type = "response.output_item.done"
-            chunk.item = mock_output_item
-            chunk.output_index = 0
-            yield chunk
-
-        mock_context = mocker.Mock(spec=ResponseGeneratorContext)
-        mock_context.query_request = QueryRequest(
-            query="test", media_type=MEDIA_TYPE_JSON
-        )  # pyright: ignore[reportCallIssue]
-        mock_context.model_id = "provider1/model1"
-        mock_context.vector_store_ids = []
-        mock_context.rag_id_mapping = {}
-        mock_context.inline_rag_context = RAGContext()
-
-        mock_turn_summary = TurnSummary()
-
-        mocker.patch(
-            "app.endpoints.streaming_query.extract_token_usage",
-            return_value=TokenCounter(input_tokens=0, output_tokens=0),
-        )
-        mocker.patch(
-            "app.endpoints.streaming_query.parse_referenced_documents", return_value=[]
-        )
-
-        result = []
-        async for item in response_generator(
-            mock_turn_response(), mock_context, mock_turn_summary, endpoint_path=""
-        ):
-            result.append(item)
-
-        assert len(result) >= 0
-
-    @pytest.mark.asyncio
-    async def test_response_generator_output_item_done(
-        self, mocker: MockerFixture
-    ) -> None:
-        """Test response generator processes output item done events."""
-        mock_output_item = mocker.Mock()
-        mock_output_item.type = "tool_call"
-
-        async def mock_turn_response() -> AsyncIterator[OpenAIResponseObjectStream]:
-            chunk = mocker.Mock(spec=OutputItemDoneChunk)
-            chunk.type = "response.output_item.done"
-            chunk.item = mock_output_item
-            chunk.output_index = 0
-            yield chunk
-
-        mock_context = mocker.Mock(spec=ResponseGeneratorContext)
-        mock_context.query_request = QueryRequest(
-            query="test", media_type=MEDIA_TYPE_JSON
-        )  # pyright: ignore[reportCallIssue]
-        mock_context.model_id = "provider1/model1"
-        mock_context.vector_store_ids = []
-        mock_context.rag_id_mapping = {}
-        mock_context.inline_rag_context = RAGContext()
-
-        mock_turn_summary = TurnSummary()
-
-        mock_tool_call = mocker.Mock()
-        mock_tool_call.model_dump.return_value = {"tool": "test"}
-        mocker.patch(
-            "app.endpoints.streaming_query.build_tool_call_summary",
-            return_value=(mock_tool_call, None),
-        )
-
-        mocker.patch(
-            "app.endpoints.streaming_query.extract_token_usage",
-            return_value=TokenCounter(input_tokens=0, output_tokens=0),
-        )
-        mocker.patch(
-            "app.endpoints.streaming_query.parse_referenced_documents", return_value=[]
-        )
-
-        result = []
-        async for item in response_generator(
-            mock_turn_response(), mock_context, mock_turn_summary, endpoint_path=""
-        ):
-            result.append(item)
-
-        assert len(result) > 0
-
-    @pytest.mark.asyncio
-    async def test_response_generator_output_item_done_with_tool_result(
-        self, mocker: MockerFixture
-    ) -> None:
-        """Test response generator processes output item done events with tool result."""
-        mock_output_item = mocker.Mock()
-        mock_output_item.type = "tool_call"
-
-        async def mock_turn_response() -> AsyncIterator[OpenAIResponseObjectStream]:
-            chunk = mocker.Mock(spec=OutputItemDoneChunk)
-            chunk.type = "response.output_item.done"
-            chunk.item = mock_output_item
-            chunk.output_index = 0
-            yield chunk
-
-        mock_context = mocker.Mock(spec=ResponseGeneratorContext)
-        mock_context.query_request = QueryRequest(
-            query="test", media_type=MEDIA_TYPE_JSON
-        )  # pyright: ignore[reportCallIssue]
-        mock_context.model_id = "provider1/model1"
-        mock_context.vector_store_ids = []
-        mock_context.rag_id_mapping = {}
-        mock_context.inline_rag_context = RAGContext()
-
-        mock_turn_summary = TurnSummary()
-
-        mock_tool_call = mocker.Mock()
-        mock_tool_call.model_dump.return_value = {"tool": "test"}
-        mock_tool_result = mocker.Mock()
-        mock_tool_result.model_dump.return_value = {"result": "test_result"}
-        mocker.patch(
-            "app.endpoints.streaming_query.build_tool_call_summary",
-            return_value=(mock_tool_call, mock_tool_result),
-        )
-
-        mocker.patch(
-            "app.endpoints.streaming_query.extract_token_usage",
-            return_value=TokenCounter(input_tokens=0, output_tokens=0),
-        )
-        mocker.patch(
-            "app.endpoints.streaming_query.parse_referenced_documents", return_value=[]
-        )
-
-        result = []
-        async for item in response_generator(
-            mock_turn_response(), mock_context, mock_turn_summary, endpoint_path=""
-        ):
-            result.append(item)
-
-        assert len(result) > 0
-        assert len(mock_turn_summary.tool_results) == 1
-
-    @pytest.mark.asyncio
-    async def test_response_generator_response_completed(
-        self, mocker: MockerFixture
-    ) -> None:
-        """Test response generator processes response completed events."""
-        mock_response_obj = mocker.Mock(spec=OpenAIResponseObject)
-        mock_response_obj.usage = mocker.Mock(input_tokens=10, output_tokens=5)
-        mock_response_obj.output = []
-
-        async def mock_turn_response() -> AsyncIterator[OpenAIResponseObjectStream]:
-            chunk = mocker.Mock(spec=CompletedChunk)
-            chunk.type = "response.completed"
-            chunk.response = mock_response_obj
-            yield chunk
-
-        mock_context = mocker.Mock(spec=ResponseGeneratorContext)
-        mock_context.query_request = QueryRequest(
-            query="test", media_type=MEDIA_TYPE_JSON
-        )  # pyright: ignore[reportCallIssue]
-        mock_context.model_id = "provider1/model1"
-        mock_context.vector_store_ids = []
-        mock_context.rag_id_mapping = {}
-        mock_context.inline_rag_context = RAGContext()
-
-        mock_turn_summary = TurnSummary()
-        mock_turn_summary.llm_response = "Response"
-
-        mocker.patch(
-            "app.endpoints.streaming_query.extract_token_usage",
-            return_value=TokenCounter(input_tokens=10, output_tokens=5),
-        )
-        mocker.patch(
-            "app.endpoints.streaming_query.parse_referenced_documents", return_value=[]
-        )
-
-        async for _ in response_generator(
-            mock_turn_response(), mock_context, mock_turn_summary, endpoint_path=""
-        ):
-            pass
-
-        assert mock_turn_summary.token_usage.input_tokens == 10
-
-    @pytest.mark.asyncio
-    async def test_response_generator_response_completed_uses_text_parts(
-        self, mocker: MockerFixture
-    ) -> None:
-        """Test response generator uses text_parts when llm_response is empty."""
-        mock_response_obj = mocker.Mock(spec=OpenAIResponseObject)
-        mock_response_obj.usage = mocker.Mock(input_tokens=10, output_tokens=5)
-        mock_response_obj.output = []
-
-        async def mock_turn_response() -> AsyncIterator[OpenAIResponseObjectStream]:
-            # Add text delta first
-            delta_chunk = mocker.Mock(spec=TextDeltaChunk)
-            delta_chunk.type = "response.output_text.delta"
-            delta_chunk.delta = "Hello"
-            yield delta_chunk
-
-            # Then completed (without output_text.done, so llm_response is empty)
-            completed_chunk = mocker.Mock(spec=CompletedChunk)
-            completed_chunk.type = "response.completed"
-            completed_chunk.response = mock_response_obj
-            yield completed_chunk
-
-        mock_context = mocker.Mock(spec=ResponseGeneratorContext)
-        mock_context.query_request = QueryRequest(
-            query="test", media_type=MEDIA_TYPE_JSON
-        )  # pyright: ignore[reportCallIssue]
-        mock_context.model_id = "provider1/model1"
-        mock_context.vector_store_ids = []
-        mock_context.rag_id_mapping = {}
-        mock_context.inline_rag_context = RAGContext()
-
-        mock_turn_summary = TurnSummary()
-
-        mocker.patch(
-            "app.endpoints.streaming_query.extract_token_usage",
-            return_value=TokenCounter(input_tokens=10, output_tokens=5),
-        )
-        mocker.patch(
-            "app.endpoints.streaming_query.parse_referenced_documents", return_value=[]
-        )
-
-        result = []
-        async for item in response_generator(
-            mock_turn_response(), mock_context, mock_turn_summary, endpoint_path=""
-        ):
-            result.append(item)
-
-        # Should use text_parts for turn_complete event
-        assert len(result) > 0
-        assert any("turn_complete" in item for item in result)
-
-    @pytest.mark.asyncio
-    async def test_response_generator_response_incomplete(
-        self, mocker: MockerFixture
-    ) -> None:
-        """Test response generator processes incomplete response events."""
-
-        async def mock_turn_response() -> AsyncIterator[OpenAIResponseObjectStream]:
-            chunk = mocker.Mock(spec=IncompleteChunk)
-            chunk.type = "response.incomplete"
-            mock_response = mocker.Mock()
-            mock_response.output = []
-            # Create a simple object with message attribute as a string
-            mock_error = type("Error", (), {"message": "context_length exceeded"})()
-            mock_response.error = mock_error
-            chunk.response = mock_response
-            yield chunk
-
-        mock_context = mocker.Mock(spec=ResponseGeneratorContext)
-        mock_context.query_request = QueryRequest(
-            query="test", media_type=MEDIA_TYPE_JSON
-        )  # pyright: ignore[reportCallIssue]
-        mock_context.model_id = "provider1/model1"
-        mock_context.vector_store_ids = []
-        mock_context.rag_id_mapping = {}
-        mock_context.inline_rag_context = RAGContext()
-
-        mock_turn_summary = TurnSummary()
-
-        mocker.patch(
-            "app.endpoints.streaming_query.extract_token_usage",
-            return_value=TokenCounter(input_tokens=0, output_tokens=0),
-        )
-        mocker.patch(
-            "app.endpoints.streaming_query.parse_referenced_documents", return_value=[]
-        )
-
-        result = []
-        async for item in response_generator(
-            mock_turn_response(), mock_context, mock_turn_summary, endpoint_path=""
-        ):
-            result.append(item)
-
-        assert len(result) > 0
-        assert any("error" in item for item in result)
-
-    @pytest.mark.asyncio
-    async def test_response_generator_response_failed(
-        self, mocker: MockerFixture
-    ) -> None:
-        """Test response generator processes failed response events."""
-        mock_error = mocker.Mock()
-        mock_error.message = "Error message"
-
-        async def mock_turn_response() -> AsyncIterator[OpenAIResponseObjectStream]:
-            chunk = mocker.Mock(spec=FailedChunk)
-            chunk.type = "response.failed"
-            mock_response = mocker.Mock()
-            mock_response.output = []
-            mock_response.error = mock_error
-            chunk.response = mock_response
-            yield chunk
-
-        mock_context = mocker.Mock(spec=ResponseGeneratorContext)
-        mock_context.query_request = QueryRequest(
-            query="test", media_type=MEDIA_TYPE_JSON
-        )  # pyright: ignore[reportCallIssue]
-        mock_context.model_id = "provider1/model1"
-        mock_context.vector_store_ids = []
-        mock_context.rag_id_mapping = {}
-        mock_context.inline_rag_context = RAGContext()
-
-        mock_turn_summary = TurnSummary()
-
-        mocker.patch(
-            "app.endpoints.streaming_query.extract_token_usage",
-            return_value=TokenCounter(input_tokens=0, output_tokens=0),
-        )
-        mocker.patch(
-            "app.endpoints.streaming_query.parse_referenced_documents", return_value=[]
-        )
-
-        result = []
-        async for item in response_generator(
-            mock_turn_response(), mock_context, mock_turn_summary, endpoint_path=""
-        ):
-            result.append(item)
-
-        assert len(result) > 0
-        assert any("error" in item for item in result)
-
-    @pytest.mark.asyncio
-    async def test_response_generator_response_failed_no_error(
-        self, mocker: MockerFixture
-    ) -> None:
-        """Test response generator handles failed response with no error object."""
-
-        async def mock_turn_response() -> AsyncIterator[OpenAIResponseObjectStream]:
-            chunk = mocker.Mock(spec=FailedChunk)
-            chunk.type = "response.failed"
-            mock_response = mocker.Mock()
-            mock_response.output = []
-            mock_response.error = None
-            chunk.response = mock_response
-            yield chunk
-
-        mock_context = mocker.Mock(spec=ResponseGeneratorContext)
-        mock_context.query_request = QueryRequest(
-            query="test", media_type=MEDIA_TYPE_JSON
-        )  # pyright: ignore[reportCallIssue]
-        mock_context.model_id = "provider1/model1"
-        mock_context.vector_store_ids = []
-        mock_context.rag_id_mapping = {}
-        mock_context.inline_rag_context = RAGContext()
-
-        mock_turn_summary = TurnSummary()
-
-        mocker.patch(
-            "app.endpoints.streaming_query.extract_token_usage",
-            return_value=TokenCounter(input_tokens=0, output_tokens=0),
-        )
-        mocker.patch(
-            "app.endpoints.streaming_query.parse_referenced_documents", return_value=[]
-        )
-
-        result = []
-        async for item in response_generator(
-            mock_turn_response(), mock_context, mock_turn_summary, endpoint_path=""
-        ):
-            result.append(item)
-
-        assert len(result) > 0
-
-    @pytest.mark.asyncio
-    async def test_response_generator_response_failed_context_length(
-        self, mocker: MockerFixture
-    ) -> None:
-        """Test response generator handles failed response with context_length error."""
-        mock_error = mocker.Mock()
-        mock_error.message = "context_length exceeded"
-
-        async def mock_turn_response() -> AsyncIterator[OpenAIResponseObjectStream]:
-            chunk = mocker.Mock(spec=FailedChunk)
-            chunk.type = "response.failed"
-            mock_response = mocker.Mock()
-            mock_response.output = []
-            mock_response.error = mock_error
-            chunk.response = mock_response
-            yield chunk
-
-        mock_context = mocker.Mock(spec=ResponseGeneratorContext)
-        mock_context.query_request = QueryRequest(
-            query="test", media_type=MEDIA_TYPE_JSON
-        )  # pyright: ignore[reportCallIssue]
-        mock_context.model_id = "provider1/model1"
-        mock_context.vector_store_ids = []
-        mock_context.rag_id_mapping = {}
-        mock_context.inline_rag_context = RAGContext()
-
-        mock_turn_summary = TurnSummary()
-
-        mocker.patch(
-            "app.endpoints.streaming_query.extract_token_usage",
-            return_value=TokenCounter(input_tokens=0, output_tokens=0),
-        )
-        mocker.patch(
-            "app.endpoints.streaming_query.parse_referenced_documents", return_value=[]
-        )
-
-        result = []
-        async for item in response_generator(
-            mock_turn_response(), mock_context, mock_turn_summary, endpoint_path=""
-        ):
-            result.append(item)
-
-        assert len(result) > 0
-
-    @pytest.mark.asyncio
-    async def test_response_generator_response_incomplete_no_error(
-        self, mocker: MockerFixture
-    ) -> None:
-        """Test response generator handles incomplete response with no error object."""
-
-        async def mock_turn_response() -> AsyncIterator[OpenAIResponseObjectStream]:
-            chunk = mocker.Mock(spec=IncompleteChunk)
-            chunk.type = "response.incomplete"
-            mock_response = mocker.Mock()
-            mock_response.output = []
-            mock_response.error = None
-            chunk.response = mock_response
-            yield chunk
-
-        mock_context = mocker.Mock(spec=ResponseGeneratorContext)
-        mock_context.query_request = QueryRequest(
-            query="test", media_type=MEDIA_TYPE_JSON
-        )  # pyright: ignore[reportCallIssue]
-        mock_context.model_id = "provider1/model1"
-        mock_context.vector_store_ids = []
-        mock_context.rag_id_mapping = {}
-        mock_context.inline_rag_context = RAGContext()
-
-        mock_turn_summary = TurnSummary()
-
-        mocker.patch(
-            "app.endpoints.streaming_query.extract_token_usage",
-            return_value=TokenCounter(input_tokens=0, output_tokens=0),
-        )
-        mocker.patch(
-            "app.endpoints.streaming_query.parse_referenced_documents", return_value=[]
-        )
-
-        result = []
-        async for item in response_generator(
-            mock_turn_response(), mock_context, mock_turn_summary, endpoint_path=""
-        ):
-            result.append(item)
-
-        assert len(result) > 0
-        assert any("error" in item for item in result)
-
-    @pytest.mark.asyncio
-    async def test_response_generator_merges_inline_and_tool_rag_chunks_and_documents(
-        self, mocker: MockerFixture
-    ) -> None:
-        """Test that inline RAG and tool-based RAG chunks/docs are correctly merged."""
-        inline_chunk = RAGChunk(content="inline chunk content", source="byok")
-        inline_doc = ReferencedDocument(doc_title="Inline Doc")
-        inline_rag = RAGContext(
-            context_text="",
-            rag_chunks=[inline_chunk],
-            referenced_documents=[inline_doc],
-        )
-
-        tool_chunk = RAGChunk(content="tool chunk content", source="vs-1")
-        tool_ref_doc = ReferencedDocument(doc_title="Tool Doc")
-
-        mock_response_obj = mocker.Mock(spec=OpenAIResponseObject)
-        mock_response_obj.usage = mocker.Mock()
-        mock_response_obj.output = []
-
-        async def mock_turn_response() -> AsyncIterator[OpenAIResponseObjectStream]:
-            completed_chunk = mocker.Mock(spec=CompletedChunk)
-            completed_chunk.type = "response.completed"
-            completed_chunk.response = mock_response_obj
-            yield completed_chunk
-
-        mock_context = mocker.Mock(spec=ResponseGeneratorContext)
-        mock_context.query_request = QueryRequest(
-            query="test", media_type=MEDIA_TYPE_JSON
-        )  # pyright: ignore[reportCallIssue]
-        mock_context.model_id = "provider1/model1"
-        mock_context.vector_store_ids = []
-        mock_context.rag_id_mapping = {}
-        mock_context.inline_rag_context = inline_rag
-
-        mock_turn_summary = TurnSummary()
-        mocker.patch(
-            "app.endpoints.streaming_query.parse_referenced_documents",
-            return_value=[tool_ref_doc],
-        )
-        mocker.patch(
-            "app.endpoints.streaming_query.parse_rag_chunks",
-            return_value=[tool_chunk],
-        )
-
-        async for _ in response_generator(
-            mock_turn_response(), mock_context, mock_turn_summary, endpoint_path=""
-        ):
-            pass
-
-        assert len(mock_turn_summary.rag_chunks) == 2
-        assert mock_turn_summary.rag_chunks[0].content == "inline chunk content"
-        assert mock_turn_summary.rag_chunks[1].content == "tool chunk content"
-        assert len(mock_turn_summary.referenced_documents) == 2
-        assert mock_turn_summary.referenced_documents[0].doc_title == "Inline Doc"
-        assert mock_turn_summary.referenced_documents[1].doc_title == "Tool Doc"
-
-
-class TestResponseGeneratorMCPCalls:
-    """Tests for MCP call specific event handling in response_generator."""
-
-    @pytest.mark.asyncio
-    async def test_response_generator_mcp_call_output_item_added(
-        self, mocker: MockerFixture
-    ) -> None:
-        """Test response generator stores MCP call item info when output_item.added."""
-        mock_mcp_item = mocker.Mock(spec=MCPCall)
-        mock_mcp_item.type = "mcp_call"
-        mock_mcp_item.id = "mcp_call_123"
-        mock_mcp_item.name = "test_mcp_tool"
-
-        async def mock_turn_response() -> AsyncIterator[OpenAIResponseObjectStream]:
-            chunk = mocker.Mock(spec=OutputItemAddedChunk)
-            chunk.type = "response.output_item.added"
-            chunk.item = mock_mcp_item
-            chunk.output_index = 0
-            yield chunk
-
-        mock_context = mocker.Mock(spec=ResponseGeneratorContext)
-        mock_context.query_request = QueryRequest(
-            query="test", media_type=MEDIA_TYPE_JSON
-        )  # pyright: ignore[reportCallIssue]
-        mock_context.model_id = "provider1/model1"
-        mock_context.vector_store_ids = []
-        mock_context.rag_id_mapping = {}
-        mock_context.inline_rag_context = RAGContext()
-
-        mock_turn_summary = TurnSummary()
-
-        mocker.patch(
-            "app.endpoints.streaming_query.extract_token_usage",
-            return_value=TokenCounter(input_tokens=0, output_tokens=0),
-        )
-        mocker.patch(
-            "app.endpoints.streaming_query.parse_referenced_documents", return_value=[]
+        mock_compaction = mocker.patch(
+            "app.endpoints.streaming_query.generate_response_with_compaction",
+            return_value=_mock_sse_generator(),
         )
 
-        result = []
-        async for item in response_generator(
-            mock_turn_response(), mock_context, mock_turn_summary, endpoint_path=""
-        ):
-            result.append(item)
-
-        # Should process without error
-        assert True
-
-    @pytest.mark.asyncio
-    async def test_response_generator_mcp_call_arguments_done(
-        self, mocker: MockerFixture
-    ) -> None:
-        """Test response generator emits tool call when MCP arguments.done."""
-        mock_mcp_item = mocker.Mock(spec=MCPCall)
-        mock_mcp_item.type = "mcp_call"
-        mock_mcp_item.id = "mcp_call_123"
-        mock_mcp_item.name = "test_mcp_tool"
-
-        async def mock_turn_response() -> AsyncIterator[OpenAIResponseObjectStream]:
-            # First, output_item.added
-            added_chunk = mocker.Mock(spec=OutputItemAddedChunk)
-            added_chunk.type = "response.output_item.added"
-            added_chunk.item = mock_mcp_item
-            added_chunk.output_index = 0
-            yield added_chunk
-
-            # Then, arguments.done
-            args_chunk = mocker.Mock(spec=MCPArgsDoneChunk)
-            args_chunk.type = "response.mcp_call.arguments.done"
-            args_chunk.output_index = 0
-            args_chunk.arguments = '{"param": "value"}'
-            yield args_chunk
-
-        mock_context = mocker.Mock(spec=ResponseGeneratorContext)
-        mock_context.query_request = QueryRequest(
-            query="test", media_type=MEDIA_TYPE_JSON
-        )  # pyright: ignore[reportCallIssue]
-        mock_context.model_id = "provider1/model1"
-        mock_context.vector_store_ids = []
-        mock_context.rag_id_mapping = {}
-        mock_context.inline_rag_context = RAGContext()
-
-        mock_turn_summary = TurnSummary()
-
-        mock_tool_call = mocker.Mock()
-        mock_tool_call.model_dump.return_value = {
-            "id": "mcp_call_123",
-            "name": "test_mcp_tool",
-        }
-        mocker.patch(
-            "app.endpoints.streaming_query.build_mcp_tool_call_from_arguments_done",
-            return_value=mock_tool_call,
-        )
-
-        mocker.patch(
-            "app.endpoints.streaming_query.extract_token_usage",
-            return_value=TokenCounter(input_tokens=0, output_tokens=0),
-        )
-        mocker.patch(
-            "app.endpoints.streaming_query.parse_referenced_documents", return_value=[]
-        )
-
-        result = []
-        async for item in response_generator(
-            mock_turn_response(), mock_context, mock_turn_summary, endpoint_path=""
-        ):
-            result.append(item)
-
-        # Should emit tool call event
-        assert len(result) > 0
-        assert len(mock_turn_summary.tool_calls) == 1
-
-    @pytest.mark.asyncio
-    async def test_response_generator_mcp_call_output_item_done_with_arguments_done(
-        self, mocker: MockerFixture
-    ) -> None:
-        """Test response generator emits only result when MCP output_item.done after arguments."""
-        mock_mcp_item = mocker.Mock(spec=MCPCall)
-        mock_mcp_item.type = "mcp_call"
-        mock_mcp_item.id = "mcp_call_123"
-        mock_mcp_item.name = "test_mcp_tool"
-        mock_mcp_item.error = None
-        mock_mcp_item.output = "Result output"
-
-        async def mock_turn_response() -> AsyncIterator[OpenAIResponseObjectStream]:
-            # First, output_item.added
-            added_chunk = mocker.Mock(spec=OutputItemAddedChunk)
-            added_chunk.type = "response.output_item.added"
-            added_chunk.item = mock_mcp_item
-            added_chunk.output_index = 0
-            yield added_chunk
-
-            # Then, arguments.done (removes from mcp_calls dict)
-            args_chunk = mocker.Mock(spec=MCPArgsDoneChunk)
-            args_chunk.type = "response.mcp_call.arguments.done"
-            args_chunk.output_index = 0
-            args_chunk.arguments = '{"param": "value"}'
-            yield args_chunk
-
-            # Finally, output_item.done (should only emit result)
-            done_chunk = mocker.Mock(spec=OutputItemDoneChunk)
-            done_chunk.type = "response.output_item.done"
-            done_chunk.item = mock_mcp_item
-            done_chunk.output_index = 0
-            yield done_chunk
-
-        mock_context = mocker.Mock(spec=ResponseGeneratorContext)
-        mock_context.query_request = QueryRequest(
-            query="test", media_type=MEDIA_TYPE_JSON
-        )  # pyright: ignore[reportCallIssue]
-        mock_context.model_id = "provider1/model1"
-        mock_context.vector_store_ids = []
-        mock_context.rag_id_mapping = {}
-        mock_context.inline_rag_context = RAGContext()
-
-        mock_turn_summary = TurnSummary()
-
-        mock_tool_call = mocker.Mock()
-        mock_tool_call.model_dump.return_value = {"id": "mcp_call_123"}
-
-        # Use side_effect to actually remove item from mcp_calls dict
-        def build_mcp_tool_call_side_effect(
-            output_index: int,
-            arguments: str,
-            mcp_call_items: dict[int, tuple[str, str]],
-        ) -> Any:
-            # Remove item from dict to simulate real behavior
-            # arguments parameter is required by function signature but unused here
-            _ = arguments
-            mcp_call_items.pop(output_index, None)
-            return mock_tool_call
-
-        mocker.patch(
-            "app.endpoints.streaming_query.build_mcp_tool_call_from_arguments_done",
-            side_effect=build_mcp_tool_call_side_effect,
-        )
-
-        mock_tool_result = mocker.Mock()
-        mock_tool_result.model_dump.return_value = {
-            "id": "mcp_call_123",
-            "status": "success",
-        }
-        mocker.patch(
-            "app.endpoints.streaming_query.build_tool_result_from_mcp_output_item_done",
-            return_value=mock_tool_result,
-        )
-
-        mocker.patch(
-            "app.endpoints.streaming_query.extract_token_usage",
-            return_value=TokenCounter(input_tokens=0, output_tokens=0),
-        )
-        mocker.patch(
-            "app.endpoints.streaming_query.parse_referenced_documents", return_value=[]
-        )
-
-        result = []
-        async for item in response_generator(
-            mock_turn_response(), mock_context, mock_turn_summary, endpoint_path=""
-        ):
-            result.append(item)
-
-        # Should have one tool call (from arguments.done) and one tool result
-        assert len(mock_turn_summary.tool_calls) == 1
-        assert len(mock_turn_summary.tool_results) == 1
-
-    @pytest.mark.asyncio
-    async def test_response_generator_mcp_call_output_item_done_without_arguments_done(
-        self, mocker: MockerFixture
-    ) -> None:
-        """Test response generator emits both call and result when MCP output_item.done."""
-        mock_mcp_item = mocker.Mock(spec=MCPCall)
-        mock_mcp_item.type = "mcp_call"
-        mock_mcp_item.id = "mcp_call_123"
-        mock_mcp_item.name = "test_mcp_tool"
-        mock_mcp_item.error = None
-        mock_mcp_item.output = "Result output"
-        mock_mcp_item.arguments = '{"param": "value"}'
-        mock_mcp_item.server_label = None
-
-        async def mock_turn_response() -> AsyncIterator[OpenAIResponseObjectStream]:
-            # Only output_item.added (arguments.done was missed)
-            added_chunk = mocker.Mock(spec=OutputItemAddedChunk)
-            added_chunk.type = "response.output_item.added"
-            added_chunk.item = mock_mcp_item
-            added_chunk.output_index = 0
-            yield added_chunk
-
-            # output_item.done (should emit both call and result since arguments.done didn't happen)
-            done_chunk = mocker.Mock(spec=OutputItemDoneChunk)
-            done_chunk.type = "response.output_item.done"
-            done_chunk.item = mock_mcp_item
-            done_chunk.output_index = 0
-            yield done_chunk
-
-        mock_context = mocker.Mock(spec=ResponseGeneratorContext)
-        mock_context.query_request = QueryRequest(
-            query="test", media_type=MEDIA_TYPE_JSON
-        )  # pyright: ignore[reportCallIssue]
-        mock_context.model_id = "provider1/model1"
-        mock_context.vector_store_ids = []
-        mock_context.rag_id_mapping = {}
-        mock_context.inline_rag_context = RAGContext()
-
-        mock_turn_summary = TurnSummary()
-
-        mock_tool_call = mocker.Mock()
-        mock_tool_call.model_dump.return_value = {"id": "mcp_call_123"}
-        mock_tool_result = mocker.Mock()
-        mock_tool_result.model_dump.return_value = {
-            "id": "mcp_call_123",
-            "status": "success",
-        }
-        mocker.patch(
-            "app.endpoints.streaming_query.build_tool_call_summary",
-            return_value=(mock_tool_call, mock_tool_result),
-        )
-
-        mocker.patch(
-            "app.endpoints.streaming_query.extract_token_usage",
-            return_value=TokenCounter(input_tokens=0, output_tokens=0),
+        response = await streaming_query_endpoint_handler(
+            request=dummy_request,
+            query_request=QueryRequest(query="What is Kubernetes?"),
+            auth=MOCK_AUTH,
+            mcp_headers={},
         )
-        mocker.patch(
-            "app.endpoints.streaming_query.parse_referenced_documents", return_value=[]
-        )
-
-        result = []
-        async for item in response_generator(
-            mock_turn_response(), mock_context, mock_turn_summary, endpoint_path=""
-        ):
-            result.append(item)
-
-        # Should have both tool call and result (fallback behavior)
-        assert len(mock_turn_summary.tool_calls) == 1
-        assert len(mock_turn_summary.tool_results) == 1
-
-
-@pytest.mark.asyncio
-async def test_response_generator_failed_captures_output_items(
-    mocker: MockerFixture,
-) -> None:
-    """A failed terminal captures output_items for compacted persistence (LCORE-1572)."""
-    out_item = mocker.Mock()
-
-    async def mock_turn_response() -> AsyncIterator[OpenAIResponseObjectStream]:
-        chunk = mocker.Mock(spec=FailedChunk)
-        chunk.type = "response.failed"
-        mock_response = mocker.Mock()
-        mock_response.output = [out_item]
-        mock_response.error = mocker.Mock(message="boom")
-        chunk.response = mock_response
-        yield chunk
-
-    mock_context = mocker.Mock(spec=ResponseGeneratorContext)
-    mock_context.query_request = QueryRequest(
-        query="test", media_type=MEDIA_TYPE_JSON
-    )  # pyright: ignore[reportCallIssue]
-    mock_context.model_id = "provider1/model1"
-    mock_context.vector_store_ids = []
-    mock_context.rag_id_mapping = {}
-    mock_context.inline_rag_context = RAGContext()
-
-    turn_summary = TurnSummary()
-    mocker.patch(
-        "app.endpoints.streaming_query.extract_token_usage",
-        return_value=TokenCounter(input_tokens=0, output_tokens=0),
-    )
-    mocker.patch(
-        "app.endpoints.streaming_query.parse_referenced_documents", return_value=[]
-    )
-
-    async for _ in response_generator(
-        mock_turn_response(), mock_context, turn_summary, endpoint_path=""
-    ):
-        pass
 
-    assert turn_summary.output_items == [out_item]
+        assert isinstance(response, StreamingResponse)
+        mock_compaction.assert_called_once()
+        mock_retrieve.assert_not_called()
+        mock_generate.assert_not_called()

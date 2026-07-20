@@ -29,8 +29,6 @@ from utils.query import (
     consume_query_tokens,
     extract_provider_and_model_from_model_id,
     handle_known_apistatus_errors,
-    is_input_shield,
-    is_output_shield,
     is_transcripts_enabled,
     persist_user_conversation_details,
     prepare_input,
@@ -192,40 +190,6 @@ class TestValidateModelProviderOverride:
         with pytest.raises(HTTPException) as exc_info:
             validate_model_provider_override("provider1/model1", None, set())
         assert exc_info.value.status_code == 403
-
-
-class TestShieldFunctions:
-    """Tests for shield-related functions."""
-
-    def test_is_output_shield_output_prefix(self) -> None:
-        """Test is_output_shield returns True for output_ prefix."""
-        shield = type("Shield", (), {"identifier": "output_test"})()
-        assert is_output_shield(shield) is True
-
-    def test_is_output_shield_inout_prefix(self) -> None:
-        """Test is_output_shield returns True for inout_ prefix."""
-        shield = type("Shield", (), {"identifier": "inout_test"})()
-        assert is_output_shield(shield) is True
-
-    def test_is_output_shield_other(self) -> None:
-        """Test is_output_shield returns False for other prefixes."""
-        shield = type("Shield", (), {"identifier": "input_test"})()
-        assert is_output_shield(shield) is False
-
-    def test_is_input_shield_input_prefix(self) -> None:
-        """Test is_input_shield returns True for input prefix."""
-        shield = type("Shield", (), {"identifier": "input_test"})()
-        assert is_input_shield(shield) is True
-
-    def test_is_input_shield_inout_prefix(self) -> None:
-        """Test is_input_shield returns True for inout_ prefix."""
-        shield = type("Shield", (), {"identifier": "inout_test"})()
-        assert is_input_shield(shield) is True
-
-    def test_is_input_shield_output_prefix(self) -> None:
-        """Test is_input_shield returns False for output_ prefix."""
-        shield = type("Shield", (), {"identifier": "output_test"})()
-        assert is_input_shield(shield) is False
 
 
 class TestPrepareInput:
