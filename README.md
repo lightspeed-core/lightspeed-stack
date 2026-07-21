@@ -918,8 +918,9 @@ security-check                    Check the project for security issues
 format                            Format the code into unified format
 schema                            Generate OpenAPI schema file stored in docs subdirectory
 openapi-doc                       Generate OpenAPI documentation
-generate-documentation            Generate documentation
-doc                               Generate documentation for developers
+generate-documentation            Generate or regenerated content of the whole /docs subdirectory
+doc                               Generate or regenerated content of the whole /docs subdirectory
+devel-doc                         Generate documentation for developers
 docs/models                       Generate documentation about models
 docs/models/requests.puml         Generate PlantUML class diagram for requests data models
 docs/models/responses.puml        Generate PlantUML class diagram for responses data models
