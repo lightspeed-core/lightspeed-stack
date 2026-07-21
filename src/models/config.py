@@ -2196,7 +2196,10 @@ class VectorStoreProviderBase(ConfigurationBase):
         ...,
         min_length=1,
         title="Provider ID",
-        description="Llama Stack vector_io provider_id (emitted as-is).",
+        description=(
+            "Llama Stack vector_io provider_id. Surrounding whitespace is "
+            "stripped before validation and emission."
+        ),
     )
     embedding_model: str = Field(
         ...,

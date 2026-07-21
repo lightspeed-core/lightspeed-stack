@@ -642,7 +642,7 @@ def _apply_vector_stores_defaults(
     if not isinstance(vector_stores, dict):
         vector_stores = {}
         ls_config["vector_stores"] = vector_stores
-    vector_stores["default_provider_id"] = designated["id"]
+    vector_stores["default_provider_id"] = str(designated["id"]).strip()
     emb = designated.get("embedding_model")
     if emb:
         vector_stores["default_embedding_model"] = {

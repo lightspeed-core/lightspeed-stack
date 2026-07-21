@@ -442,9 +442,10 @@ rag:
 
 BYOK providers and registered resources are generated at startup from
 `byok_rag`. Dynamic providers and create defaults are generated from
-`vector_store_providers` during unified synthesis. Models and inference
-providers must still be configured separately (for example in your baseline
-/ profile `run.yaml`).
+`vector_store_providers` during unified synthesis. Embedding models for
+those providers are registered automatically when needed. Inference models
+and providers must still be configured separately (for example in your
+baseline / profile `run.yaml`).
 
 ---
 

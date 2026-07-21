@@ -324,7 +324,7 @@ Dynamic FAISS vector-store provider (runtime create capacity).
 
 | Field               | Type    | Description                                                                                                                                                         |
 |---------------------|---------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| id                  | string  | Llama Stack vector_io provider_id (emitted as-is). Must match ``[a-z0-9_-]+`` and must not start with ``byok_``.                                                     |
+| id                  | string  | Llama Stack vector_io provider_id. Surrounding whitespace is stripped before validation and emission. Must match ``[a-z0-9_-]+`` and must not start with ``byok_``. |
 | type                | string  | Product type for this dynamic vector-store provider. Must be ``faiss``.                                                                                             |
 | embedding_model     | string  | Embedding model identification used for stores created against this provider. Required.                                                                             |
 | embedding_dimension | integer | Dimensionality of embedding vectors for this provider. Required.                                                                                                    |
@@ -525,7 +525,7 @@ Dynamic pgvector vector-store provider (runtime create capacity).
 
 | Field               | Type    | Description                                                                                                                                                         |
 |---------------------|---------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| id                  | string  | Llama Stack vector_io provider_id (emitted as-is). Must match ``[a-z0-9_-]+`` and must not start with ``byok_``.                                                     |
+| id                  | string  | Llama Stack vector_io provider_id. Surrounding whitespace is stripped before validation and emission. Must match ``[a-z0-9_-]+`` and must not start with ``byok_``. |
 | type                | string  | Product type for this dynamic vector-store provider. Must be ``pgvector``.                                                                                          |
 | embedding_model     | string  | Embedding model identification used for stores created against this provider. Required.                                                                             |
 | embedding_dimension | integer | Dimensionality of embedding vectors for this provider. Required.                                                                                                    |
