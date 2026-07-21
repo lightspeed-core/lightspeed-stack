@@ -152,14 +152,34 @@ deployments whose license posture allows it; do not make it the default.
 ### Decision S4: Fate of LCORE-2710 ("AskRedHat Custom Guardrails" Epic)
 
 [LCORE-2710](https://redhat.atlassian.net/browse/LCORE-2710) is an empty
-Epic under LCORE-230. **Provenance**: the LCORE-2316 gap review shows it
-was filed mechanically as the "needs tickets" output for gap #4
-("Granite Guardian Custom Guardrails"), alongside LCORE-2709 for the
-Langfuse gap — a per-gap placeholder, not a considered scope decision.
-That explains its AskRH-specific name, and Stefan's comment on it steers
-exactly where this spike landed: guardrails should be generally
-applicable; product-specific risk configuration belongs to product teams.
-The custom-risk mechanism in the
+Epic under LCORE-230.
+
+**Provenance** (sources below, so this recommendation can be checked
+independently):
+
+1. *Filed as a per-gap placeholder, not a scope decision.* The "AskRH GAP
+   Review" document linked from
+   [LCORE-2316](https://redhat.atlassian.net/browse/LCORE-2316) contains an
+   Actions page reading: *"The document IFD-1610 (Lightspeed Core analysis)
+   was analyzed and highlighted the need for the following tickets to be
+   made"*, listing LCORE-2709 (Langfuse) and **LCORE-2710 (AskRedHat Custom
+   Guardrails)**. Its summary page marks gap #4 ("Granite Guardian Custom
+   Guardrails") **"NEED TICKETS"**. So 2710 is the mechanical output of a
+   per-gap triage — which explains its AskRH-specific name.
+   ⚠️ *Verification note*: that document is an access-restricted Google
+   Doc linked from LCORE-2316; reviewers without access cannot check this
+   directly. Treat as author-attested unless you can open it.
+
+2. *Stefan's own steer on the ticket*, quoted verbatim from the LCORE-2710
+   comment thread (2026-07-08), independently checkable in Jira:
+
+   > this ticket needs further specification. Why 'custom guardrails' ?
+   > Does the AskRH team require a specific / special model?
+   > Whatever prompt guardrails we offer should be rather generally
+   > applicable. Product specific config should be done by the particular
+   > product team.
+
+That is exactly where this spike landed. The custom-risk mechanism in the
 proposed design (per-rule `definition`, the Guardian BYOC pattern) *is* the
 generic answer to "custom guardrails".
 
