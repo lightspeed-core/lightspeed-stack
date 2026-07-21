@@ -360,14 +360,15 @@ def construct_models_section(
 
 
 def _build_vector_io_config(
-    rag_type: str, backend_name: str, brag: dict[str, Any]
+    rag_type: str, backend_name: str, extra_fields: dict[str, Any]
 ) -> dict[str, Any]:
     """Build the provider config dict from VECTOR_IO_TEMPLATES.
 
     Parameters:
         rag_type: Llama Stack provider type (e.g. 'inline::faiss', 'remote::pgvector').
         backend_name: Storage backend name (used when template has '{backend_name}').
-        brag: BYOK RAG entry dict — extra_fields are read from here.
+        extra_fields: Source values for template ``extra_fields`` (e.g. db_path,
+            host/port/db/user/password). Used by BYOK and vector_store_providers.
 
     Returns:
         dict[str, Any]: Provider config mapping.
@@ -388,7 +389,7 @@ def _build_vector_io_config(
         }
     }
     for field, default in template.get("extra_fields", {}).items():
-        value = brag.get(field)
+        value = extra_fields.get(field)
         if isinstance(value, SecretStr):
             value = value.get_secret_value()
         if value is None or (isinstance(value, str) and not value.strip()):
@@ -532,7 +533,7 @@ def _upsert_vsprov_embedding_model(
     ls_config: dict[str, Any],
     provider_id: str,
     embedding_model: str,
-    embedding_dimension: int | None,
+    embedding_dimension: int,
 ) -> None:
     """Register an embedding model if provider_model_id is not already present.
 
@@ -543,7 +544,8 @@ def _upsert_vsprov_embedding_model(
         ls_config: Llama Stack configuration modified in place.
         provider_id: Dynamic provider id used to name the model row.
         embedding_model: Configured embedding model path or id.
-        embedding_dimension: Embedding vector dimensionality.
+        embedding_dimension: Embedding vector dimensionality (required on
+            validated ``vector_store_providers`` entries).
     """
     models = ls_config.setdefault("registered_resources", {}).setdefault("models", [])
     provider_model_id = embedding_model.removeprefix("sentence-transformers/")
@@ -560,10 +562,10 @@ def _upsert_vsprov_embedding_model(
     )
 
 
-def _vsprov_brag_fields_and_backend(
+def _vsprov_fields_and_backend(
     product_type: str, provider_id: str, cfg: dict[str, Any]
 ) -> tuple[dict[str, Any], str, dict[str, Any] | None]:
-    """Build BYOK-shaped fields and optional faiss storage backend.
+    """Build template extra fields and optional faiss storage backend.
 
     Parameters:
         product_type: Product type (``faiss`` or ``pgvector``).
@@ -571,7 +573,7 @@ def _vsprov_brag_fields_and_backend(
         cfg: Nested provider ``config`` dict.
 
     Returns:
-        Tuple of (brag_fields, backend_name, backend_entry_or_None).
+        Tuple of (extra_fields, backend_name, backend_entry_or_None).
     """
     backend_name = f"vsprov_{provider_id}_storage"
     if product_type == "faiss":
@@ -665,7 +667,7 @@ def enrich_vector_store_providers(
         providers: High-level ``vector_store_providers`` entries as dicts.
     """
     if not providers:
-        logger.info("vector_store_providers not configured: skipping")
+        logger.debug("vector_store_providers not configured: skipping")
         dedupe_providers_vector_io(ls_config)
         return
 
@@ -687,7 +689,7 @@ def enrich_vector_store_providers(
         provider_id = str(entry["id"]).strip()
         product_type = entry["type"]
         ls_type = VECTOR_STORE_PROVIDER_TYPE_MAP[product_type]
-        brag_fields, backend_name, backend_entry = _vsprov_brag_fields_and_backend(
+        extra_fields, backend_name, backend_entry = _vsprov_fields_and_backend(
             product_type, provider_id, entry.get("config") or {}
         )
         if backend_entry is not None:
@@ -699,17 +701,18 @@ def enrich_vector_store_providers(
             {
                 "provider_id": provider_id,
                 "provider_type": ls_type,
-                "config": _build_vector_io_config(ls_type, backend_name, brag_fields),
+                "config": _build_vector_io_config(ls_type, backend_name, extra_fields),
             },
         )
 
         embedding_model = entry.get("embedding_model")
-        if embedding_model:
+        embedding_dimension = entry.get("embedding_dimension")
+        if embedding_model and embedding_dimension is not None:
             _upsert_vsprov_embedding_model(
                 ls_config,
                 provider_id=provider_id,
                 embedding_model=embedding_model,
-                embedding_dimension=entry.get("embedding_dimension"),
+                embedding_dimension=embedding_dimension,
             )
 
     designated = _designated_vector_store_provider(providers)

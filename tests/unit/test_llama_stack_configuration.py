@@ -1026,8 +1026,67 @@ def test_enrich_vector_store_providers_pgvector_no_kv_backend() -> None:
             }
         ],
     )
-    assert ls_config["providers"]["vector_io"][0]["provider_type"] == "remote::pgvector"
+    provider = ls_config["providers"]["vector_io"][0]
+    assert provider["provider_type"] == "remote::pgvector"
+    assert provider["config"]["persistence"]["backend"] == "kv_default"
+    assert provider["config"]["host"] == "${env.POSTGRES_HOST}"
+    assert provider["config"]["port"] == "${env.POSTGRES_PORT}"
+    assert provider["config"]["db"] == "${env.POSTGRES_DATABASE}"
+    assert provider["config"]["user"] == "${env.POSTGRES_USER}"
+    assert provider["config"]["password"] == "${env.POSTGRES_PASSWORD}"
     assert "vsprov_nb-pg_storage" not in ls_config["storage"]["backends"]
+
+
+def test_enrich_vector_store_providers_multiple_entries() -> None:
+    """Multi-entry list: both providers, faiss-only backend, one default_* winner."""
+    ls_config: dict[str, Any] = {
+        "providers": {},
+        "storage": {"backends": {}},
+        "registered_resources": {"models": [], "vector_stores": []},
+        "vector_stores": {
+            "annotation_prompt_params": {"enable_annotations": False},
+        },
+    }
+    enrich_vector_store_providers(
+        ls_config,
+        [
+            {
+                "id": "notebooks",
+                "type": "faiss",
+                "default": True,
+                "embedding_model": "/emb-faiss",
+                "embedding_dimension": 768,
+                "config": {"path": "/var/lib/notebooks.db"},
+            },
+            {
+                "id": "nb-pg",
+                "type": "pgvector",
+                "default": False,
+                "embedding_model": "/emb-pg",
+                "embedding_dimension": 768,
+                "config": {
+                    "host": "${env.POSTGRES_HOST}",
+                    "password": "${env.POSTGRES_PASSWORD}",
+                },
+            },
+        ],
+    )
+    ids = {p["provider_id"] for p in ls_config["providers"]["vector_io"]}
+    assert ids == {"notebooks", "nb-pg"}
+    assert "vsprov_notebooks_storage" in ls_config["storage"]["backends"]
+    assert "vsprov_nb-pg_storage" not in ls_config["storage"]["backends"]
+    assert ls_config["vector_stores"]["default_provider_id"] == "notebooks"
+    assert ls_config["vector_stores"]["default_embedding_model"]["model_id"] == (
+        "/emb-faiss"
+    )
+    assert (
+        ls_config["vector_stores"]["annotation_prompt_params"]["enable_annotations"]
+        is False
+    )
+    model_ids = {
+        m["provider_model_id"] for m in ls_config["registered_resources"]["models"]
+    }
+    assert model_ids == {"/emb-faiss", "/emb-pg"}
 
 
 def test_enrich_vector_store_providers_noop_without_entries() -> None:
