@@ -630,6 +630,33 @@ def test_synthesize_enriches_byok_rag_like_legacy() -> None:
     assert "vector_io" in result.get("providers", {})
 
 
+def test_synthesize_includes_vector_store_providers() -> None:
+    """vector_store_providers enrichment runs during unified synthesis."""
+    lcs_config = {
+        "llama_stack": {
+            "use_as_library_client": True,
+            "config": {"baseline": "default"},
+        },
+        "vector_store_providers": [
+            {
+                "id": "notebooks",
+                "type": "faiss",
+                "default": True,
+                "embedding_model": "/rag-content/embeddings_model",
+                "embedding_dimension": 768,
+                "config": {"path": "/tmp/notebooks.db"},
+            }
+        ],
+    }
+    result = synthesize_configuration(lcs_config)
+    ids = {p["provider_id"] for p in result["providers"]["vector_io"]}
+    assert "notebooks" in ids
+    assert result["vector_stores"]["default_provider_id"] == "notebooks"
+    assert result["vector_stores"]["default_embedding_model"]["model_id"] == (
+        "/rag-content/embeddings_model"
+    )
+
+
 # ---------------------------------------------------------------------------
 # synthesize_to_file
 # ---------------------------------------------------------------------------

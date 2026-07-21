@@ -1115,6 +1115,9 @@ def synthesize_configuration(
     #    unified output matches legacy output for equivalent inputs (R7).
     enrich_azure_entra_id_inference(ls_config, lcs_config.get("azure_entra_id"))
     enrich_byok_rag(ls_config, lcs_config.get("byok_rag", []))
+    enrich_vector_store_providers(
+        ls_config, lcs_config.get("vector_store_providers", [])
+    )
     enrich_solr(ls_config, lcs_config.get("rag", {}), lcs_config.get("okp", {}))
 
     # 5. High-level inference providers (Decision S5 — a root-level section).
