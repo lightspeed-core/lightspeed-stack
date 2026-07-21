@@ -220,6 +220,14 @@ non-empty; names unique.
   `client.moderations.create` shields path, easing config-level migration
   (spike Decision S5).
 
+**Client lifecycle**: each detector holds **one long-lived HTTP client**
+for the life of the process, not one per request. Constructing an
+`AsyncOpenAI` (or equivalent) per check creates a fresh connection pool
+each time — leaking connections if unclosed, and forfeiting connection
+reuse even when closed, which matters because guardrails add a
+round-trip to every request. The PoC constructs per call (context-managed
+so nothing leaks) and is explicitly not the production pattern.
+
 ### Request lifecycle integration
 
 - **Input**: next to the existing `run_shield_moderation` call in

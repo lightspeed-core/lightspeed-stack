@@ -581,6 +581,9 @@ the fail-closed error posture (Decision T6). No endpoint wiring yet.
 **Scope**:
 - `src/models/config.py` (`guardrails:` section) + config docs regeneration
 - New `src/guardrails/` package: models, protocol, backends, runner
+- One long-lived HTTP client per detector (not per request) — see the spec
+  doc's "Client lifecycle" note; per-call construction leaks or wastes
+  connection pools on a path that runs on every request
 - Score extraction: request `logprobs` on the Guardian call and expose
   `score` alongside `flagged`; verify score stability before advertising
   thresholds as tunable (Decision T8 is 75% confidence on this point)

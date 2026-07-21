@@ -1,5 +1,7 @@
 """Unit tests for the Granite Guardian detector PoC (LCORE-2657 spike)."""
 
+from typing import Literal
+
 import pytest
 from openai import APIConnectionError
 from pytest_mock import MockerFixture, MockType
@@ -19,7 +21,8 @@ from guardrails.models import (
 
 
 def make_config(
-    rules: list[GuardrailRule], on_detector_error: str = "block"
+    rules: list[GuardrailRule],
+    on_detector_error: Literal["block", "allow"] = "block",
 ) -> GuardrailsPocConfig:
     """Build a PoC config with a dummy detector and the given rules."""
     return GuardrailsPocConfig(
@@ -85,6 +88,7 @@ def test_rules_for_point_filters_by_point() -> None:
 async def test_check_rule_flags_on_yes(mocker: MockerFixture) -> None:
     """A 'Yes' verdict from the guardian flags the content."""
     client = mocker.AsyncMock()
+    client.__aenter__.return_value = client  # run_point uses `async with`
     client.chat.completions.create.return_value = make_completion(mocker, "Yes")
     rule = GuardrailRule(name="harm-rule", risk="harm")
 
@@ -104,6 +108,7 @@ async def test_check_rule_flags_on_yes(mocker: MockerFixture) -> None:
 async def test_check_rule_passes_on_no(mocker: MockerFixture) -> None:
     """A 'No' verdict leaves the content unflagged."""
     client = mocker.AsyncMock()
+    client.__aenter__.return_value = client  # run_point uses `async with`
     client.chat.completions.create.return_value = make_completion(mocker, "No")
     rule = GuardrailRule(name="ok", risk="harm")
 
@@ -118,6 +123,7 @@ async def test_check_rule_fails_closed_on_detector_error(
 ) -> None:
     """A detector failure blocks by default (Decision T6 fail-closed)."""
     client = mocker.AsyncMock()
+    client.__aenter__.return_value = client  # run_point uses `async with`
     client.chat.completions.create.side_effect = APIConnectionError(
         request=mocker.Mock()
     )
@@ -133,6 +139,7 @@ async def test_check_rule_fails_closed_on_detector_error(
 async def test_check_rule_fails_open_when_configured(mocker: MockerFixture) -> None:
     """With on_detector_error='allow', a detector failure does not block."""
     client = mocker.AsyncMock()
+    client.__aenter__.return_value = client  # run_point uses `async with`
     client.chat.completions.create.side_effect = APIConnectionError(
         request=mocker.Mock()
     )
@@ -152,6 +159,7 @@ async def test_run_point_blocks_when_detector_unreachable(
 ) -> None:
     """An unreachable guardian yields a blocked verdict, not an exception."""
     client = mocker.AsyncMock()
+    client.__aenter__.return_value = client  # run_point uses `async with`
     client.chat.completions.create.side_effect = APIConnectionError(
         request=mocker.Mock()
     )
@@ -181,6 +189,7 @@ async def test_run_point_no_rules_short_circuits(mocker: MockerFixture) -> None:
 async def test_run_point_blocking_rule_blocks(mocker: MockerFixture) -> None:
     """One flagged blocking rule blocks and carries the violation message."""
     client = mocker.AsyncMock()
+    client.__aenter__.return_value = client  # run_point uses `async with`
     client.chat.completions.create.side_effect = [
         make_completion(mocker, "No"),
         make_completion(mocker, "Yes"),
@@ -206,6 +215,7 @@ async def test_run_point_non_blocking_rule_records_without_blocking(
 ) -> None:
     """A flagged advisory (non-blocking) rule is recorded but does not block."""
     client = mocker.AsyncMock()
+    client.__aenter__.return_value = client  # run_point uses `async with`
     client.chat.completions.create.return_value = make_completion(mocker, "Yes")
     mocker.patch("guardrails.granite_guardian.AsyncOpenAI", return_value=client)
     config = make_config(

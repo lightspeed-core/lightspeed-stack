@@ -155,23 +155,27 @@ async def run_point(
     if not rules:
         return GuardrailsVerdict(blocked=False)
 
-    client = AsyncOpenAI(
+    # PoC constructs a client per call and closes it via the context manager
+    # so its connection pool is not leaked. Production should hold ONE
+    # long-lived client per detector instead — see the spec doc's
+    # "Detector backends" note on client lifecycle.
+    async with AsyncOpenAI(
         base_url=config.detector.url,
         api_key=config.detector.api_key.get_secret_value(),
         timeout=config.detector.timeout_seconds,
-    )
-    results = await asyncio.gather(
-        *(
-            check_rule(
-                client,
-                config.detector.model,
-                rule,
-                content,
-                config.on_detector_error,
+    ) as client:
+        results = await asyncio.gather(
+            *(
+                check_rule(
+                    client,
+                    config.detector.model,
+                    rule,
+                    content,
+                    config.on_detector_error,
+                )
+                for rule in rules
             )
-            for rule in rules
         )
-    )
     for result in results:
         logger.info(
             "Guardrail rule '%s' at point '%s': flagged=%s (%.0f ms, raw=%r)",
