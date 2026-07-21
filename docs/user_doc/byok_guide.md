@@ -416,6 +416,8 @@ The BYOK (Bring Your Own Knowledge) feature in Lightspeed Core provides powerful
 
 For additional support and advanced configurations, refer to:
 - [RAG Configuration Guide](rag_guide.md)
+- [Dynamic vector store providers](rag_guide.md#configure-dynamic-vector-store-providers) (runtime creates)
+- [Configuration schema](config.md)
 - [rag-content Tool Repository](https://github.com/lightspeed-core/rag-content)
 
 Remember to regularly update your knowledge sources and monitor system performance to maintain optimal BYOK functionality.

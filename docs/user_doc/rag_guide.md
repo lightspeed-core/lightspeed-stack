@@ -16,6 +16,7 @@ This document explains how to configure and customize your RAG pipeline. You wil
    * [Set Up the Vector Database](#set-up-the-vector-database)
    * [Download an Embedding Model](#download-an-embedding-model)
 * [Configure BYOK Knowledge Sources](#configure-byok-knowledge-sources)
+* [Configure Dynamic Vector Store Providers](#configure-dynamic-vector-store-providers)
 * [Add an Inference Model (LLM)](#add-an-inference-model-llm)
 * [Complete Configuration Reference](#complete-configuration-reference)
 * [System Prompt Guidance for RAG (as a tool)](#system-prompt-guidance-for-rag-as-a-tool)
@@ -33,6 +34,11 @@ Lightspeed Core Stack (LCS) supports two complementary RAG strategies:
 - **Tool RAG**: the LLM can call the `file_search` tool during generation to retrieve context on demand from BYOK vector stores and/or OKP.
 
 Both strategies can be enabled independently via the `rag` section of `lightspeed-stack.yaml`. See [BYOK Feature Documentation](byok_guide.md) for configuration details.
+
+For **runtime-created** vector stores (`POST /v1/vector-stores`), configure
+[`vector_store_providers`](#configure-dynamic-vector-store-providers) instead of
+`byok_rag`. BYOK registers static corpora with a fixed `vector_db_id`; dynamic
+providers only declare capacity (provider id, storage, default embeddings).
 
 The **Embedding Model** is used to convert queries and documents into vector representations for similarity matching.
 
@@ -127,6 +133,64 @@ byok_rag:
 > [!NOTE]
 > Connection fields (`host`, `port`, `db`, `user`, `password`) default to `${env.POSTGRES_*}`
 > environment variable references when omitted. Use environment variables for credentials.
+
+---
+
+## Configure Dynamic Vector Store Providers
+
+Use `vector_store_providers` when clients create vector stores at runtime
+(for example `POST /v1/vector-stores` flows). This is
+**not** BYOK: do not put a static corpus here, and do not use a `byok_`
+provider id prefix.
+
+Requirements:
+
+- Supported types: `faiss`, `pgvector`
+- `embedding_model` and `embedding_dimension` are **required** on every entry
+- When the list is non-empty, exactly one entry must set `default: true`
+  (no sole-entry convenience)
+- `id` must match `[a-z0-9_-]+` and must not start with `byok_`
+- Applied in **unified** Llama Stack synthesis only
+  (`llama_stack.use_as_library_client: true` with `llama_stack.config`)
+
+The entry with `default: true` becomes
+`vector_stores.default_provider_id` and `default_embedding_model` in the
+synthesized Llama Stack config. FAISS entries also get a dedicated storage
+backend named `vsprov_<id>_storage`.
+
+### FAISS example
+
+```yaml
+vector_store_providers:
+  - id: example
+    type: faiss
+    default: true
+    embedding_model: /example/embeddings_model
+    embedding_dimension: 768
+    config:
+      path: /example/abc/faiss_store.db
+```
+
+### pgvector example
+
+```yaml
+vector_store_providers:
+  - id: example-pg
+    type: pgvector
+    default: true
+    embedding_model: sentence-transformers/all-mpnet-base-v2
+    embedding_dimension: 768
+    config:
+      # host/port/db/user/password optional; default to ${env.POSTGRES_*}
+      host: ${env.POSTGRES_HOST}
+      port: ${env.POSTGRES_PORT}
+      db: ${env.POSTGRES_DATABASE}
+      user: ${env.POSTGRES_USER}
+      password: ${env.POSTGRES_PASSWORD}
+```
+
+Field reference is in the [configuration schema](config.md)
+(`FaissVectorStoreProvider`, `PgvectorVectorStoreProvider`).
 
 ---
 
@@ -330,12 +394,15 @@ the number of retrieved chunks, set the constants in `src/constants.py`:
 
 # Complete Configuration Reference
 
-To enable RAG functionality, configure the `byok_rag` and `rag` sections in your `lightspeed-stack.yaml`.
+To enable RAG functionality, configure the `byok_rag` and `rag` sections in
+your `lightspeed-stack.yaml`. Add `vector_store_providers` when you also need
+runtime `POST /v1/vector-stores` capacity.
 
 Below is an example of a working `lightspeed-stack.yaml` configuration with:
 
 * A local `all-mpnet-base-v2` embedding model
-* A `FAISS`-based vector store
+* A `FAISS`-based static BYOK corpus
+* Optional FAISS capacity for runtime-created stores
 * Inline and Tool RAG enabled
 
 > [!TIP]
@@ -356,6 +423,16 @@ byok_rag:
     vector_db_id: vs_3a7f9b2e-45dc-4e1a-b8f2-1c9d0e3f5a6b
     db_path: /home/USER/lightspeed-stack/vector_dbs/ocp_docs/faiss_store.db
 
+# Optional: capacity for runtime POST /v1/vector-stores (not a static corpus)
+vector_store_providers:
+  - id: example
+    type: faiss
+    default: true
+    embedding_model: sentence-transformers/all-mpnet-base-v2
+    embedding_dimension: 768
+    config:
+      path: /home/USER/lightspeed-stack/vector_dbs/example/faiss_store.db
+
 rag:
   inline:
     - ocp-docs
@@ -363,7 +440,11 @@ rag:
     - ocp-docs
 ```
 
-The BYOK vector store providers and registered resources are automatically generated at startup from the `byok_rag` entries above. Models and inference providers must be configured separately in your `run.yaml`.
+BYOK providers and registered resources are generated at startup from
+`byok_rag`. Dynamic providers and create defaults are generated from
+`vector_store_providers` during unified synthesis. Models and inference
+providers must still be configured separately (for example in your baseline
+/ profile `run.yaml`).
 
 ---
 
@@ -380,4 +461,9 @@ You are a helpful assistant with access to a 'knowledge_search' tool. When users
 # RAG annotations
 
 The top-level `vector_stores` block in [`run.yaml`](../examples/run.yaml) may include `annotation_prompt_params` to control whether extra RAG annotation instructions are injected into the model prompt (for example, citation-style markers). The default configuration sets `enable_annotations: false` under that block to avoid unwanted annotations.
+
+When `vector_store_providers` is configured, the entry with `default: true`
+overwrites `vector_stores.default_provider_id` and `default_embedding_model`
+during unified synthesis. Annotation settings are not managed by that enricher
+— keep them in the Llama Stack baseline/profile or `native_override`.
 
