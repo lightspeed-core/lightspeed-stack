@@ -185,10 +185,11 @@ openapi-doc:	docs/openapi.json scripts/fix_openapi_doc.py	## Generate OpenAPI do
 	python3 scripts/fix_openapi_doc.py < output.md > openapi2.md
 	rm output.md
 
-generate-documentation:	## Generate documentation
-	scripts/gen_doc.py
+generate-documentation:	devel-doc	## Generate or regenerated content of the whole /docs subdirectory
 
-doc:	## Generate documentation for developers
+doc:	devel-doc	## Generate or regenerated content of the whole /docs subdirectory
+
+devel-doc:	## Generate documentation for developers
 	scripts/gen_doc.py
 
 docs/models:	docs/models/requests.puml docs/models/responses.puml docs/models/database.puml docs/models/common.puml	## Generate documentation about models
