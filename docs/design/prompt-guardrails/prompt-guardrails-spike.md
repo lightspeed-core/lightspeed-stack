@@ -152,9 +152,14 @@ deployments whose license posture allows it; do not make it the default.
 ### Decision S4: Fate of LCORE-2710 ("AskRedHat Custom Guardrails" Epic)
 
 [LCORE-2710](https://redhat.atlassian.net/browse/LCORE-2710) is an empty
-Epic under LCORE-230. Stefan's comment on it steers exactly where this spike
-landed: guardrails should be generally applicable; product-specific risk
-configuration belongs to product teams. The custom-risk mechanism in the
+Epic under LCORE-230. **Provenance**: the LCORE-2316 gap review shows it
+was filed mechanically as the "needs tickets" output for gap #4
+("Granite Guardian Custom Guardrails"), alongside LCORE-2709 for the
+Langfuse gap — a per-gap placeholder, not a considered scope decision.
+That explains its AskRH-specific name, and Stefan's comment on it steers
+exactly where this spike landed: guardrails should be generally
+applicable; product-specific risk configuration belongs to product teams.
+The custom-risk mechanism in the
 proposed design (per-rule `definition`, the Guardian BYOC pattern) *is* the
 generic answer to "custom guardrails".
 
@@ -825,11 +830,15 @@ other stale references) to the new location.
 - **Ask Red Hat team** (via @sbunciak): confirm that the config schema
   (Decisions T1/T8/T9) can express their four production risks with their
   thresholds. Requirements sources used: the IFD-1610 gap analysis
-  (section 4) and [RHAIRFE-98](https://redhat.atlassian.net/browse/RHAIRFE-98)
-  comments. **Still unread**: the second document linked from
+  (section 4, obtained via both the archived PDF and the LCORE-2316 gap
+  review) and [RHAIRFE-98](https://redhat.atlassian.net/browse/RHAIRFE-98)
+  comments. **Still unread**: the first document linked from
   [LCORE-2316](https://redhat.atlassian.net/browse/LCORE-2316)
   (`docs.google.com/document/d/1mgQ9zoh…`) — access requested, not yet
-  granted; it may contain further guardrails requirements.
+  granted. Marginal risk: the guardrails content of the *other* LCORE-2316
+  document proved to be a copy of the IFD-1610 analysis already
+  incorporated here, so the unread one is unlikely to hold new guardrails
+  requirements — but it is unconfirmed.
 - **Ask Red Hat team**: confirm Guardian logprob-based scoring is how IFD
   derives its 0.65/0.80 thresholds (Decision T8 assumes this) — or whether
   they use a different scoring path.
@@ -925,6 +934,13 @@ gap: *"LCS only supports Llama Stack shields; no custom risk categories
 (CVE, leetspeak, amnesia, jailbreak)."* Decisions S1/S2 (LCS-native layer
 with custom risks), T8 (thresholds) and T9 (per-rule messages) are the
 direct responses.
+
+The team's triage of that analysis (LCORE-2316 gap review, summary page)
+classifies this gap **"NEED TICKETS"** — i.e. the work was already agreed
+as ticket-worthy; this spike scopes it rather than proposing it. The same
+review independently suggests implementing AskRH's custom tools "as a
+custom Pydantic capability", converging on the `AbstractCapability` seam
+that Decisions T5 and T7 build on.
 
 From RHAIRFE-98 (Jira comments, 2025-08-13) and the public Ask Red Hat
 technology attributions: Granite Guardian (3.2-5B then, 3.3-8B now) served
