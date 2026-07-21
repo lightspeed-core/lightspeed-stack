@@ -8,6 +8,22 @@ from pathlib import Path
 
 DIRECTORIES = ["src", "tests/unit", "tests/integration", "tests/e2e"]
 
+# README.md files won't be generated in following directories
+DIRS_TO_SKIP = [
+    "tests/integration",
+    "tests/e2e",
+    "tests/e2e/configuration",
+    "tests/e2e",
+    "tests/e2e/configuration",
+    "tests/e2e/rag",
+    "tests/e2e/secrets",
+    "tests/e2e/skills",
+    "tests/e2e/skills/echo",
+    "tests/e2e/skills/echo/references",
+    "tests/e2e/skills/summarize",
+    "tests/e2e/skills/summarize/references",
+]
+
 
 def generate_docfile(directory: Path) -> None:
     """
@@ -47,6 +63,8 @@ def generate_documentation_on_path(path: Path) -> None:
 
     This function generate README.md for Python sources in the given directory.
 
+    Directory can be skipped if it's part of DIRS_TO_SKIP global list.
+
     Parameters:
     ----------
         path (str or os.PathLike): Directory in which to generate the README.md file.
@@ -54,10 +72,13 @@ def generate_documentation_on_path(path: Path) -> None:
     directory = path
     cwd = os.getcwd()
     os.chdir(directory)
-    print(f"[gendoc] Generating README.md in: {directory}")
 
     try:
-        generate_docfile(directory)
+        if str(directory) in DIRS_TO_SKIP:
+            print(f"[gendoc] Skipping {directory}")
+        else:
+            print(f"[gendoc] Generating README.md in: {directory}")
+            generate_docfile(directory)
     finally:
         os.chdir(cwd)
 
