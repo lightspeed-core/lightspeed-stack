@@ -39,3 +39,5 @@ wheel==0.47.0
     # via oci
 
 # The following packages are considered to be unsafe in a requirements file:
+setuptools==78.1.1
+    # via oci
