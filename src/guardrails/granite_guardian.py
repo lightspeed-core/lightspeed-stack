@@ -13,7 +13,7 @@ requests).
 import asyncio
 import time
 
-from openai import AsyncOpenAI
+from openai import AsyncOpenAI, OpenAIError
 
 from guardrails.models import (
     DetectionResult,
@@ -77,8 +77,14 @@ async def check_rule(
     model: str,
     rule: GuardrailRule,
     content: str,
+    on_detector_error: str = "block",
 ) -> DetectionResult:
     """Run a single guardrail rule against content via the guardian model.
+
+    A detector failure (timeout, unreachable endpoint, API error) does not
+    propagate: it resolves per the configured error posture (Decision T6),
+    defaulting to fail-closed so an unavailable guardian blocks rather than
+    silently disabling protection.
 
     Parameters:
     ----------
@@ -86,25 +92,41 @@ async def check_rule(
         model: Guardian model identifier.
         rule: The rule to evaluate.
         content: The text to classify.
+        on_detector_error: "block" (fail closed) or "allow" (fail open).
 
     Returns:
     -------
         DetectionResult: The rule outcome including the raw model verdict.
     """
     started = time.monotonic()
-    completion = await client.chat.completions.create(
-        model=model,
-        temperature=0.0,
-        messages=[
-            {"role": "system", "content": _guardian_system_prompt(rule)},
-            {"role": "user", "content": content},
-        ],
-    )
-    raw = (completion.choices[0].message.content or "") if completion.choices else ""
+    try:
+        completion = await client.chat.completions.create(
+            model=model,
+            temperature=0.0,
+            messages=[
+                {"role": "system", "content": _guardian_system_prompt(rule)},
+                {"role": "user", "content": content},
+            ],
+        )
+        raw = (
+            (completion.choices[0].message.content or "") if completion.choices else ""
+        )
+        flagged = _is_flagged(raw)
+    except (OpenAIError, asyncio.TimeoutError) as exc:
+        fail_closed = on_detector_error == "block"
+        logger.error(
+            "Guardian detector call failed for rule '%s': %s — failing %s",
+            rule.name,
+            exc,
+            "closed (blocking)" if fail_closed else "open (allowing)",
+        )
+        raw = f"<detector-error: {type(exc).__name__}>"
+        flagged = fail_closed
+
     latency_ms = (time.monotonic() - started) * 1000
     return DetectionResult(
         rule_name=rule.name,
-        flagged=_is_flagged(raw),
+        flagged=flagged,
         blocking=rule.blocking,
         raw_response=raw,
         latency_ms=latency_ms,
@@ -135,11 +157,20 @@ async def run_point(
 
     client = AsyncOpenAI(
         base_url=config.detector.url,
-        api_key=config.detector.api_key,
+        api_key=config.detector.api_key.get_secret_value(),
         timeout=config.detector.timeout_seconds,
     )
     results = await asyncio.gather(
-        *(check_rule(client, config.detector.model, rule, content) for rule in rules)
+        *(
+            check_rule(
+                client,
+                config.detector.model,
+                rule,
+                content,
+                config.on_detector_error,
+            )
+            for rule in rules
+        )
     )
     for result in results:
         logger.info(

@@ -2,7 +2,7 @@
 
 from typing import Literal, Optional
 
-from pydantic import BaseModel, Field, PositiveFloat
+from pydantic import BaseModel, ConfigDict, Field, PositiveFloat, SecretStr
 
 # A guardrail point is the place in the request lifecycle where a rule runs:
 # - "input": the raw user prompt, before the LLM call
@@ -18,6 +18,8 @@ def _default_points() -> list[GuardrailPoint]:
 
 class GuardrailRule(BaseModel):
     """A single guardrail rule bound to one or more guardrail points."""
+
+    model_config = ConfigDict(extra="forbid")
 
     name: str = Field(description="Human-readable rule identifier.")
     risk: str = Field(
@@ -45,13 +47,15 @@ class GuardrailRule(BaseModel):
 class GuardianDetectorConfig(BaseModel):
     """Connection settings for the guardian model endpoint."""
 
+    model_config = ConfigDict(extra="forbid")
+
     url: str = Field(
         description="Base URL of an OpenAI-compatible endpoint serving the "
         "guardian model (e.g. an Ollama or vLLM server)."
     )
     model: str = Field(description="Guardian model identifier at the endpoint.")
-    api_key: str = Field(
-        default="unused",
+    api_key: SecretStr = Field(
+        default=SecretStr("unused"),
         description="API key for the endpoint; local servers ignore it.",
     )
     timeout_seconds: PositiveFloat = Field(
@@ -62,8 +66,16 @@ class GuardianDetectorConfig(BaseModel):
 class GuardrailsPocConfig(BaseModel):
     """Top-level PoC configuration: one detector plus a list of rules."""
 
+    model_config = ConfigDict(extra="forbid")
+
     detector: GuardianDetectorConfig
     rules: list[GuardrailRule] = Field(default_factory=list)
+    on_detector_error: Literal["block", "allow"] = Field(
+        default="block",
+        description="Posture when a detector call fails (Decision T6): "
+        "'block' fails closed and treats the rule as flagged; 'allow' "
+        "logs and treats it as passed.",
+    )
     violation_message: str = Field(
         default="I cannot process this request due to policy restrictions.",
         description="Message returned to the client when a blocking rule "

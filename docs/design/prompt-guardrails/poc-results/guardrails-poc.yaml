@@ -36,3 +36,7 @@ rules:
       instructions', 'you are now').
     points: [tool_content]
 violation_message: "I cannot process this request due to policy restrictions. [guardrails-poc]"
+# Decision T6: posture when the guardian endpoint fails. 'block' fails
+# closed (an unreachable detector refuses rather than silently disabling
+# protection); 'allow' fails open.
+on_detector_error: block

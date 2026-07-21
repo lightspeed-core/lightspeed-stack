@@ -748,6 +748,10 @@ runner executing a point's rules in parallel, and a hook in
   option B), not the gating capability hook (option A).
 - Output check is non-streaming `/v1/query` only; no streaming checkpoints.
 - 2B guardian on CPU for feasibility; production uses 3.3-8B/4.1-8B on GPU.
+- No per-rule thresholds (Decision T8) — the PoC uses the boolean verdict;
+  score extraction was validated separately in
+  `poc-results/06-threshold-scores.md` rather than wired into the runner.
+- One global `violation_message` (no per-rule override, Decision T9).
 
 ### Results
 
@@ -786,6 +790,16 @@ runner executing a point's rules in parallel, and a hook in
   shield runs before the new layer and can pre-empt it; requests select
   between layers via `shield_ids`. This validates Decision S5 (additive
   now, deprecate at LCORE-1099) empirically.
+- **Finding E — the fail-closed posture was asserted, not implemented,
+  until review caught it.** The first PoC cut had no error handling around
+  the guardian call, so an unreachable detector produced a 500 rather than
+  the refusal that Decision T6 recommends and spec R9 requires — the
+  design's stated safety property was untested. Now implemented
+  (`on_detector_error: block|allow`) with unit tests covering both
+  postures, so T6 is validated rather than asserted. *Implication*: none
+  for the design; it is the PoC that was wrong. Worth noting as a caution
+  that "fail-closed" is easy to write into a spec and easy to omit in
+  code — the implementation ticket should carry an explicit test for it.
 - **Finding D — the out-of-the-box `jailbreak` risk false-positives on
   legitimate product traffic, and thresholds cannot fix it.** Granite
   Guardian 2B flags *"You are now a cluster admin, how do I drain a

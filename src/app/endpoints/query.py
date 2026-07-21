@@ -261,6 +261,7 @@ async def query_endpoint_handler(
 
     # PoC (LCORE-2657): output + tool-content guardrail points.
     if poc_config is not None and moderation_result.decision == "passed":
+        blocked_by_tool_content = False
         if turn_summary.tool_results:
             tool_content = "\n\n".join(
                 result.model_dump_json() for result in turn_summary.tool_results
@@ -270,11 +271,16 @@ async def query_endpoint_handler(
             )
             if tool_verdict.blocked and tool_verdict.message is not None:
                 turn_summary.llm_response = tool_verdict.message
-        output_verdict = await run_guardrails_point(
-            poc_config, "output", turn_summary.llm_response
-        )
-        if output_verdict.blocked and output_verdict.message is not None:
-            turn_summary.llm_response = output_verdict.message
+                blocked_by_tool_content = True
+
+        # Skip the output point once tool content already produced a refusal:
+        # moderating our own policy message is meaningless and costs a call.
+        if not blocked_by_tool_content:
+            output_verdict = await run_guardrails_point(
+                poc_config, "output", turn_summary.llm_response
+            )
+            if output_verdict.blocked and output_verdict.message is not None:
+                turn_summary.llm_response = output_verdict.message
 
     if moderation_result.decision == "passed":
         # Combine inline RAG results (BYOK + Solr) with tool-based RAG results for the transcript

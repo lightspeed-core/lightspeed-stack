@@ -1,6 +1,7 @@
 """Unit tests for the Granite Guardian detector PoC (LCORE-2657 spike)."""
 
 import pytest
+from openai import APIConnectionError
 from pytest_mock import MockerFixture, MockType
 
 from guardrails.granite_guardian import (
@@ -17,13 +18,16 @@ from guardrails.models import (
 )
 
 
-def make_config(rules: list[GuardrailRule]) -> GuardrailsPocConfig:
+def make_config(
+    rules: list[GuardrailRule], on_detector_error: str = "block"
+) -> GuardrailsPocConfig:
     """Build a PoC config with a dummy detector and the given rules."""
     return GuardrailsPocConfig(
         detector=GuardianDetectorConfig(
             url="http://localhost:11434/v1", model="granite3-guardian:2b"
         ),
         rules=rules,
+        on_detector_error=on_detector_error,
         violation_message="Blocked by test guardrail.",
     )
 
@@ -106,6 +110,58 @@ async def test_check_rule_passes_on_no(mocker: MockerFixture) -> None:
     result = await check_rule(client, "granite3-guardian:2b", rule, "hello")
 
     assert result.flagged is False
+
+
+@pytest.mark.asyncio
+async def test_check_rule_fails_closed_on_detector_error(
+    mocker: MockerFixture,
+) -> None:
+    """A detector failure blocks by default (Decision T6 fail-closed)."""
+    client = mocker.AsyncMock()
+    client.chat.completions.create.side_effect = APIConnectionError(
+        request=mocker.Mock()
+    )
+    rule = GuardrailRule(name="harm", risk="harm")
+
+    result = await check_rule(client, "granite3-guardian:2b", rule, "anything")
+
+    assert result.flagged is True
+    assert "detector-error" in result.raw_response
+
+
+@pytest.mark.asyncio
+async def test_check_rule_fails_open_when_configured(mocker: MockerFixture) -> None:
+    """With on_detector_error='allow', a detector failure does not block."""
+    client = mocker.AsyncMock()
+    client.chat.completions.create.side_effect = APIConnectionError(
+        request=mocker.Mock()
+    )
+    rule = GuardrailRule(name="harm", risk="harm")
+
+    result = await check_rule(
+        client, "granite3-guardian:2b", rule, "anything", on_detector_error="allow"
+    )
+
+    assert result.flagged is False
+    assert "detector-error" in result.raw_response
+
+
+@pytest.mark.asyncio
+async def test_run_point_blocks_when_detector_unreachable(
+    mocker: MockerFixture,
+) -> None:
+    """An unreachable guardian yields a blocked verdict, not an exception."""
+    client = mocker.AsyncMock()
+    client.chat.completions.create.side_effect = APIConnectionError(
+        request=mocker.Mock()
+    )
+    mocker.patch("guardrails.granite_guardian.AsyncOpenAI", return_value=client)
+    config = make_config([GuardrailRule(name="harm", risk="harm", points=["input"])])
+
+    verdict = await run_point(config, "input", "hello")
+
+    assert verdict.blocked is True
+    assert verdict.message == "Blocked by test guardrail."
 
 
 @pytest.mark.asyncio
