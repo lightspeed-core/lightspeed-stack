@@ -10,6 +10,7 @@
 * [PR description](#pr-description)
 * [Definition of Done](#definition-of-done)
     * [A deliverable is to be considered “done” when](#a-deliverable-is-to-be-considered-done-when)
+* [Backports](#backports)
 * [AI assistants](#ai-assistants)
     * [“Mark” code with substantial AI-generated portions.](#mark-code-with-substantial-ai-generated-portions)
     * [Copyright and licence notices](#copyright-and-licence-notices)
@@ -97,10 +98,70 @@ Happy hacking!
 
 ## PR description
 
-* Jira ticket needs to be added into PR title, for example: `LCORE-740: type hints for models unit tests`
+* PR titles must start with a JIRA issue key prefix or the target branch of a backport in brackets. CI enforces this via
+  `pr-title-checker` (config: `.github/pr-title-checker-config.json`).
+  Allowed prefixes: `LCORE-`, `RSPEED-`, `MGTM-`, `OLS-`, `RHIDP-`, `LEADS-`,
+  `CWFHEALTH-`, `[release/`
+    - for example: `LCORE-740: type hints for models unit tests`
 * Fill-in all relevant information in the PR template
     - unused parts of PR template (like information about testing etc.) can be deleted
 * Please note that CodeRabbitAI will create a summary of your pull request
+
+
+
+## Backports
+
+We use [cherry_picker](https://pypi.org/project/cherry-picker/) to backport
+merged pull requests to release branches. See the
+[cherry_picker documentation](https://cherry-picker.readthedocs.io/) for full
+details.
+
+### Installation
+
+```bash
+pip install --user cherry_picker
+```
+
+### Usage
+
+After a pull request has been merged to `main`, you can backport it to one or
+more release branches:
+
+```bash
+# backport to a single release branch
+cherry_picker <commit-sha> release/0.6
+
+# backport to multiple release branches
+cherry_picker <commit-sha> release/0.5 release/0.6
+```
+
+`cherry_picker` will create a new branch, cherry-pick the commit, and open a
+pull request against the target release branch.
+
+If the commit you want to backport is a **merge commit**, append `^-` to the
+hash so that `cherry_picker` applies the correct parent diff:
+
+```bash
+cherry_picker <merge-commit-sha>^- release/0.6
+```
+
+If there are conflicts, `cherry_picker` will pause and let you resolve them.
+After resolving:
+
+```bash
+git add .
+cherry_picker --continue
+```
+
+To abort a backport in progress:
+
+```bash
+cherry_picker --abort
+```
+
+See the [branching documentation](docs/branching.md) for more details on our
+branching strategy and release workflow.
+
 
 
 ## Definition of Done
@@ -125,7 +186,7 @@ Happy hacking!
 Nontrivial and substantial AI-generated or AI-assisted content should be
 “marked” in appropriate cases. In deciding how to approach this, consider
 adopting one or more of the following recommendations. (This assumes you have
-not concluded that a suggestion is a match to some existing third-party code.) 
+not concluded that a suggestion is a match to some existing third-party code.)
 
 In a commit message, or in a pull request/merge request description field,
 identify the code assistant that you used, perhaps elaborating on how it was
@@ -271,14 +332,14 @@ Here is simple example:
 ```python
 def function_with_pep484_type_annotations(param1: int, param2: str) -> bool:
     """Example function with PEP 484 type annotations.
-    
+
     Args:
         param1: The first parameter.
         param2: The second parameter.
-    
+
     Returns:
         The return value. True for success, False otherwise.
-    
+
     Raises:
         ValueError: If the first parameter does not contain proper model name
     """
