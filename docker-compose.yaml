@@ -106,6 +106,8 @@ services:
           condition: service_healthy
         mock-mcp:
           condition: service_healthy
+        mock-mcp-no-auth:
+          condition: service_healthy
     networks:
       - lightspeednet
     healthcheck:
@@ -137,12 +139,30 @@ services:
       context: ./tests/e2e/mock_mcp_server
       dockerfile: Dockerfile
     container_name: mock-mcp
+    command: ["--port", "3000"]
     ports:
       - "3000:3000"
     networks:
       - lightspeednet
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:3000/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+      start_period: 2s
+
+  mock-mcp-no-auth:
+    build:
+      context: ./tests/e2e/mock_mcp_server
+      dockerfile: Dockerfile
+    container_name: mock-mcp-no-auth
+    command: ["--port", "3001", "--no-auth"]
+    ports:
+      - "3001:3001"
+    networks:
+      - lightspeednet
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:3001/health')"]
       interval: 5s
       timeout: 3s
       retries: 3
