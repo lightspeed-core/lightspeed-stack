@@ -52,9 +52,13 @@ class _BearerTokenInterceptor(
         Returns:
             Modified request payload and HTTP kwargs.
         """
-        headers = http_kwargs.get("headers", {})
-        headers["Authorization"] = f"Bearer {self._token}"
-        http_kwargs["headers"] = headers
+        http_kwargs = {
+            **http_kwargs,
+            "headers": {
+                **http_kwargs.get("headers", {}),
+                "Authorization": f"Bearer {self._token}",
+            },
+        }
         return request_payload, http_kwargs
 
 
@@ -88,6 +92,7 @@ class A2AClientManager(metaclass=Singleton):
         for agent_config in config.agents:
             name = agent_config.name
             url = str(agent_config.url)
+            httpx_client: httpx.AsyncClient | None = None
             try:
                 interceptors: list[ClientCallInterceptor] = []
                 if agent_config.auth_token is not None:
@@ -111,6 +116,8 @@ class A2AClientManager(metaclass=Singleton):
                 self._cards[name] = card
                 logger.info("Connected to A2A agent '%s' at %s", name, url)
             except (A2AClientError, httpx.HTTPError, OSError) as e:
+                if httpx_client is not None:
+                    await httpx_client.aclose()
                 logger.warning(
                     "Failed to connect to A2A agent '%s' at %s: %s",
                     name,

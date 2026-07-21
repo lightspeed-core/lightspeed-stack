@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
 
 from a2a.client import A2AClientError
+from a2a.client.client import Client
 from a2a.client.helpers import create_text_message_object
 from a2a.types import (
     Message,
@@ -18,6 +18,7 @@ from pydantic_ai.capabilities import AbstractCapability
 from pydantic_ai.exceptions import ModelRetry
 from pydantic_ai.toolsets import FunctionToolset
 
+from a2a_client.manager import A2AClientManager
 from log import get_logger
 
 logger = get_logger(__name__)
@@ -48,7 +49,7 @@ class A2ADelegationCapability(AbstractCapability[object]):
     - ``delegate_to_agent``: send a task to a named agent and return its response
     """
 
-    _manager: Any = field(repr=False)
+    _manager: A2AClientManager = field(repr=False)
     _toolset: FunctionToolset[object] = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
@@ -99,7 +100,7 @@ class A2ADelegationCapability(AbstractCapability[object]):
                 )
 
             try:
-                logger.debug("Delegating to agent '%s': %s", agent_name, task)
+                logger.debug("Delegating task to agent '%s'", agent_name)
                 message = create_text_message_object(role=Role.user, content=task)
                 return await _send_and_collect(client, message)
             except A2AClientError as e:
@@ -147,7 +148,7 @@ class A2ADelegationCapability(AbstractCapability[object]):
         return "\n".join(lines)
 
 
-async def _send_and_collect(client: Any, message: Message) -> str:
+async def _send_and_collect(client: Client, message: Message) -> str:
     """Send a message to an A2A client and collect the text response.
 
     Parameters:
@@ -170,9 +171,10 @@ async def _send_and_collect(client: Any, message: Message) -> str:
             elif (
                 update_event is not None
                 and hasattr(update_event, "status")
-                and update_event.status.state == TaskState.failed
+                and update_event.status.state
+                in (TaskState.failed, TaskState.rejected, TaskState.canceled)
             ):
-                fail_msg = "Agent task failed"
+                fail_msg = f"Agent task {update_event.status.state.value}"
                 if update_event.status.message:
                     for part in update_event.status.message.parts:
                         if isinstance(part.root, TextPart):
