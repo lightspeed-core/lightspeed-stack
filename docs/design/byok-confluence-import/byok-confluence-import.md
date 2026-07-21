@@ -56,8 +56,11 @@ unchanged pages).
   permission denials, and rate limiting (429 honoring `Retry-After`) are
   reported distinctly; a partial crawl never silently produces a truncated
   store.
-- **R9:** A reference Kubernetes CronJob manifest and admin guide document
-  the scheduled-refresh deployment (shared volume + rollout trigger).
+- **R9:** Reference automation and an admin guide document the
+  scheduled-refresh deployment in two shapes driving the same importer
+  container: a Kubernetes CronJob manifest (shared volume + rollout
+  trigger) and a podman-only Quadlet reference (`.container` + `.timer`
+  systemd units) for non-Kubernetes hosts.
 - **R10:** lightspeed-stack requires no code or config-schema changes; its
   BYOK guide documents the Confluence flow (spike Decision S5).
 
@@ -173,7 +176,7 @@ output:
 | R6  | Re-run, no changes: 0 body fetches, 0 re-embeds. Edit: page re-imported. Delete: gone after rebuild | e2e (mock) |
 | R7  | Missing/incomplete model fails preflight; artifact loads from a different absolute path | integration |
 | R8  | 401/403/429 produce distinct, actionable, non-zero outcomes | unit (fixtures) |
-| R9  | Reference CronJob applies cleanly; scheduled run refreshes the artifact | e2e (kind/CRC) or documented manual verification |
+| R9  | Reference CronJob applies cleanly; scheduled run refreshes the artifact; Quadlet timer does the same on a podman-only host | e2e (kind/CRC) or documented manual verification |
 | R10 | lightspeed-stack serves the artifact with existing `byok_rag` config | e2e |
 
 ## Aspect-specific concerns
@@ -201,10 +204,12 @@ multi-hour, operation at default limits.
 
 ### Rollout / deployment plan
 
-Admin-driven: deploy CronJob → first full crawl → point `byok_rag` at the
-artifact → restart. Refresh = CronJob rebuild + rollout trigger
-(documented `kubectl rollout restart` or operator-specific equivalent).
-Rollback = repoint to the previous versioned artifact and restart.
+Admin-driven: deploy the scheduler (k8s CronJob, or Quadlet systemd timer
+on podman-only hosts) → first full crawl → point `byok_rag` at the
+artifact → restart. Refresh = scheduled rebuild + restart trigger
+(documented `kubectl rollout restart`, `systemctl restart`, or
+operator-specific equivalent). Rollback = repoint to the previous
+versioned artifact and restart.
 
 ## Implementation Suggestions
 
@@ -219,6 +224,7 @@ Rollback = repoint to the previous versioned artifact and restart.
 | `scripts/import_confluence.py` (new) | One-shot orchestration: fetch → `DocumentProcessor` → optional `--output-image` |
 | `Containerfile` (modify) | Include the importer entrypoint in the tool image |
 | `examples/confluence-cronjob.yaml` (new) | Reference CronJob manifest |
+| `examples/confluence-import.container` + `.timer` (new) | Quadlet reference for podman-only hosts |
 | `docs/` (rag-content, new page) | Admin automation guide |
 | `docs/byok_guide.md` (lightspeed-stack, modify) | Confluence walkthrough, model-match + restart + permission warnings |
 | `tests/confluence/` (rag-content, new) | Unit tests on recorded Cloud/DC fixtures; integration test fixture-HTML → artifact |
@@ -267,6 +273,7 @@ env vars. No lightspeed-stack Pydantic changes (R10).
 | Date | Change | Reason |
 |------|--------|--------|
 | 2026-07-09 | Initial version | LCORE-2664 spike |
+| 2026-07-21 | R9 + rollout + key files: added podman/Quadlet reference alongside the k8s CronJob | PM review on spike PR (spike Decision S4 amended A→D) |
 
 ## Appendix A: PoC evidence summary
 

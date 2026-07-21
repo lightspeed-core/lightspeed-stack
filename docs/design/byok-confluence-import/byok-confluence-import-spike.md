@@ -103,13 +103,21 @@ LCORE-788 asks for "an automation Lightspeed admins can deploy".
 | A. Documented Kubernetes CronJob reference manifest | Wraps the importer container; portable to any k8s/OpenShift cluster |
 | B. Shipwright BuildStrategy | Extends the s2i PoC; OCP-specific, assumes image contract + registry |
 | C. Docs only | Ship the importer CLI/container; scheduling left entirely to admins |
+| D. A + podman/systemd-timer reference | A, plus a Quadlet (`.container` + `.timer` systemd units) reference for podman-only hosts |
 
-**Recommendation**: A — CronJob reference manifest + admin guide in
+**Recommendation**: D — CronJob reference manifest + admin guide in
 rag-content, documenting the DB-file flow (shared volume + rollout
-trigger). Note B as the natural OLS product-layer variant built on the
-same importer container.
+trigger), **plus a podman-only reference**: Quadlet systemd units
+(`.container` + `.timer`) running the same importer container on a
+schedule, with a plain-cron one-liner noted as the minimal fallback.
+Both references drive the identical container image and flags — the
+automation layer is thin by design. Note B as the natural OLS
+product-layer variant built on the same importer container.
 
-**Confidence**: 78%
+*2026-07-21: extended from A to D per PM review on the spike PR
+(non-Kubernetes deployments must be covered).*
+
+**Confidence**: 88% (PM-confirmed with the podman amendment)
 
 ### Decision S5: Lightspeed-stack config surface
 
@@ -416,20 +424,25 @@ in lightspeed-core/rag-content.
 
 <!-- type: Task -->
 <!-- key: LCORE-???? -->
-#### LCORE-???? CronJob reference manifest and admin automation guide
+#### LCORE-???? Scheduled-refresh references (CronJob, podman/systemd) and admin automation guide
 
-**Description**: Reference Kubernetes CronJob manifest running the importer
-container on a schedule (shared volume for the artifact + state; rollout
-trigger for lightspeed-stack), plus the admin guide covering credentials
-(Secret; service-account recommendation), scheduling, staleness
-expectations, and the security warning about permission flattening.
+**Description**: Reference automation for scheduled refresh in two
+deployment shapes, both driving the same importer container: a Kubernetes
+CronJob manifest (shared volume for the artifact + state; rollout trigger
+for lightspeed-stack) and a podman-only Quadlet reference (`.container` +
+`.timer` systemd units, plain-cron fallback noted). Plus the admin guide
+covering credentials (Secret / podman secret; service-account
+recommendation), scheduling, staleness expectations, and the security
+warning about permission flattening.
 
 **Blocked by**: LCORE-???? (end-to-end importer command)
 
 **Acceptance criteria**:
 - Manifest applies cleanly on a stock OpenShift/k8s cluster
+- Quadlet units run the same refresh on a podman-only RHEL-family host
+  (systemd timer fires, artifact refreshed, restart documented)
 - Guide walks an admin from zero to scheduled refresh with the DB-file
-  contract (image variant referenced)
+  contract in both shapes (image variant referenced)
 
 **Agentic tool instruction**:
 
