@@ -70,6 +70,7 @@ dependencies = [
     "pyasn1>=0.6.3", # LCORE-1490
     # Used for system prompt template variable rendering
     "jinja2>=3.1.0",
+    "Pillow>=12.3.0",  # CVE-2026-59205
     # To be able to fix multiple CVEs, also LCORE-1117
     "requests>=2.33.0",
 ]
