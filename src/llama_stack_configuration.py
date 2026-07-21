@@ -651,6 +651,52 @@ def _apply_vector_stores_defaults(
         }
 
 
+def _enrich_one_vector_store_provider(
+    entry: dict[str, Any],
+    backends: dict[str, Any],
+    vector_io: list[Any],
+    existing_ids: set[str],
+    ls_config: dict[str, Any],
+) -> None:
+    """Enrich LS config for a single ``vector_store_providers`` entry.
+
+    Parameters:
+        entry: One high-level provider dict from Lightspeed config.
+        backends: ``storage.backends`` map (modified in place for faiss).
+        vector_io: ``providers.vector_io`` list (modified in place).
+        existing_ids: Known ``provider_id`` values already in ``vector_io``.
+        ls_config: Full Llama Stack config (for embedding model registration).
+    """
+    provider_id = str(entry["id"]).strip()
+    product_type = entry["type"]
+    ls_type = VECTOR_STORE_PROVIDER_TYPE_MAP[product_type]
+    extra_fields, backend_name, backend_entry = _vsprov_fields_and_backend(
+        product_type, provider_id, entry.get("config") or {}
+    )
+    if backend_entry is not None:
+        backends[backend_name] = backend_entry
+
+    _replace_or_append_vector_io(
+        vector_io,
+        existing_ids,
+        {
+            "provider_id": provider_id,
+            "provider_type": ls_type,
+            "config": _build_vector_io_config(ls_type, backend_name, extra_fields),
+        },
+    )
+
+    embedding_model = entry.get("embedding_model")
+    embedding_dimension = entry.get("embedding_dimension")
+    if embedding_model and embedding_dimension is not None:
+        _upsert_vsprov_embedding_model(
+            ls_config,
+            provider_id=provider_id,
+            embedding_model=embedding_model,
+            embedding_dimension=embedding_dimension,
+        )
+
+
 def enrich_vector_store_providers(
     ls_config: dict[str, Any], providers: list[dict[str, Any]]
 ) -> None:
@@ -686,34 +732,9 @@ def enrich_vector_store_providers(
     }
 
     for entry in providers:
-        provider_id = str(entry["id"]).strip()
-        product_type = entry["type"]
-        ls_type = VECTOR_STORE_PROVIDER_TYPE_MAP[product_type]
-        extra_fields, backend_name, backend_entry = _vsprov_fields_and_backend(
-            product_type, provider_id, entry.get("config") or {}
+        _enrich_one_vector_store_provider(
+            entry, backends, vector_io, existing_ids, ls_config
         )
-        if backend_entry is not None:
-            backends[backend_name] = backend_entry
-
-        _replace_or_append_vector_io(
-            vector_io,
-            existing_ids,
-            {
-                "provider_id": provider_id,
-                "provider_type": ls_type,
-                "config": _build_vector_io_config(ls_type, backend_name, extra_fields),
-            },
-        )
-
-        embedding_model = entry.get("embedding_model")
-        embedding_dimension = entry.get("embedding_dimension")
-        if embedding_model and embedding_dimension is not None:
-            _upsert_vsprov_embedding_model(
-                ls_config,
-                provider_id=provider_id,
-                embedding_model=embedding_model,
-                embedding_dimension=embedding_dimension,
-            )
 
     designated = _designated_vector_store_provider(providers)
     if designated is not None:
