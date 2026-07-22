@@ -106,6 +106,26 @@ class TestAttachment:
                 content=large_data,
             )
 
+    def test_image_attachment_valid_base64_but_not_image(self) -> None:
+        """Test that valid base64 with non-image data is rejected."""
+        non_image_data = base64.b64encode(b"this is not an image at all").decode()
+        with pytest.raises(ValidationError, match="invalid image data"):
+            Attachment(
+                attachment_type="image",
+                content_type="image/png",
+                content=non_image_data,
+            )
+
+    def test_image_attachment_wrong_magic_bytes_for_content_type(self) -> None:
+        """Test that JPEG data with PNG content_type is rejected."""
+        jpeg_data = base64.b64encode(b"\xff\xd8\xff\xe0" + b"\x00" * 100).decode()
+        with pytest.raises(ValidationError, match="invalid image data"):
+            Attachment(
+                attachment_type="image",
+                content_type="image/png",
+                content=jpeg_data,
+            )
+
     def test_text_attachment_unchanged(self) -> None:
         """Test that existing text attachments still work without changes."""
         a = Attachment(

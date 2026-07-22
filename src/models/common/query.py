@@ -15,6 +15,29 @@ from log import get_logger
 
 logger = get_logger(__name__)
 
+_IMAGE_SIGNATURES: dict[str, bytes] = {
+    "image/png": b"\x89PNG",
+    "image/jpeg": b"\xff\xd8\xff",
+}
+
+
+def _validate_image_magic_bytes(data: bytes, content_type: str) -> None:
+    """Verify that decoded image data starts with the expected magic bytes.
+
+    Parameters:
+        data: Raw decoded image bytes.
+        content_type: Declared MIME content type.
+
+    Raises:
+        ValueError: If the data does not match the expected image format.
+    """
+    expected = _IMAGE_SIGNATURES.get(content_type)
+    if expected and not data.startswith(expected):
+        raise ValueError(
+            f"Image content does not match declared content_type "
+            f"'{content_type}': invalid image data"
+        )
+
 
 class Attachment(BaseModel):
     """Model representing an attachment that can be sent from the UI as part of query.
@@ -74,6 +97,7 @@ class Attachment(BaseModel):
                     f"Image attachment ({len(decoded)} bytes) exceeds maximum "
                     f"allowed size ({DEFAULT_MAX_FILE_UPLOAD_SIZE} bytes)"
                 )
+            _validate_image_magic_bytes(decoded, self.content_type)
 
         return self
 
