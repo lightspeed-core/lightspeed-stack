@@ -99,7 +99,7 @@ def mock_streaming_byok_client_fixture(
     )
 
     mock_holder_class = mocker.patch(
-        "app.endpoints.streaming_query.AsyncLlamaStackClientHolder"
+        "app.endpoints.streaming_query.AsyncOgxClientHolder"
     )
     mock_client = _build_base_streaming_mock_client(mocker)
 
@@ -152,7 +152,7 @@ def mock_streaming_byok_tool_client_fixture(  # pylint: disable=too-many-stateme
     )
 
     mock_holder_class = mocker.patch(
-        "app.endpoints.streaming_query.AsyncLlamaStackClientHolder"
+        "app.endpoints.streaming_query.AsyncOgxClientHolder"
     )
     mock_client = _build_base_streaming_mock_client(mocker)
 
@@ -298,7 +298,7 @@ async def test_streaming_query_byok_inline_rag_with_request_vector_store_ids(
     test_config.configuration.rag.inline = ["source-a"]
 
     mock_holder_class = mocker.patch(
-        "app.endpoints.streaming_query.AsyncLlamaStackClientHolder"
+        "app.endpoints.streaming_query.AsyncOgxClientHolder"
     )
     mock_client = _build_base_streaming_mock_client(mocker)
 
@@ -363,7 +363,7 @@ async def test_streaming_query_byok_request_vector_store_ids_filters_configured_
     test_config.configuration.rag.inline = ["source-a", "source-b"]
 
     mock_holder_class = mocker.patch(
-        "app.endpoints.streaming_query.AsyncLlamaStackClientHolder"
+        "app.endpoints.streaming_query.AsyncOgxClientHolder"
     )
     mock_client = _build_base_streaming_mock_client(mocker)
 
@@ -641,7 +641,7 @@ async def test_streaming_query_byok_combined_inline_and_tool_rag(
 
     # Mock Llama Stack client
     mock_holder_class = mocker.patch(
-        "app.endpoints.streaming_query.AsyncLlamaStackClientHolder"
+        "app.endpoints.streaming_query.AsyncOgxClientHolder"
     )
     mock_client = _build_base_streaming_mock_client(mocker)
 
@@ -719,7 +719,7 @@ async def test_streaming_query_byok_only_configured_rag_id_is_queried(
     test_config.configuration.rag.inline = ["source-a"]
 
     mock_holder_class = mocker.patch(
-        "app.endpoints.streaming_query.AsyncLlamaStackClientHolder"
+        "app.endpoints.streaming_query.AsyncOgxClientHolder"
     )
     mock_client = _build_base_streaming_mock_client(mocker)
 
@@ -797,7 +797,7 @@ async def test_streaming_query_byok_score_multiplier_shifts_priority(  # pylint:
     test_config.configuration.rag.inline = ["source-a", "source-b"]
 
     mock_holder_class = mocker.patch(
-        "app.endpoints.streaming_query.AsyncLlamaStackClientHolder"
+        "app.endpoints.streaming_query.AsyncOgxClientHolder"
     )
     mock_client = _build_base_streaming_mock_client(mocker)
 
@@ -878,7 +878,7 @@ async def test_streaming_query_rag_content_limit_caps_context(  # pylint: disabl
     test_config.configuration.rag.inline = ["big-source"]
 
     mock_holder_class = mocker.patch(
-        "app.endpoints.streaming_query.AsyncLlamaStackClientHolder"
+        "app.endpoints.streaming_query.AsyncOgxClientHolder"
     )
     mock_client = _build_base_streaming_mock_client(mocker)
 
@@ -953,7 +953,7 @@ async def test_streaming_query_rag_content_limit_caps_across_multiple_sources(  
     test_config.configuration.rag.inline = ["source-a", "source-b"]
 
     mock_holder_class = mocker.patch(
-        "app.endpoints.streaming_query.AsyncLlamaStackClientHolder"
+        "app.endpoints.streaming_query.AsyncOgxClientHolder"
     )
     mock_client = _build_base_streaming_mock_client(mocker)
 
@@ -1041,7 +1041,7 @@ async def test_streaming_query_rag_content_limit_caps_inline_rag(  # pylint: dis
     test_config.configuration.reranker.enabled = False
 
     mock_holder_class = mocker.patch(
-        "app.endpoints.streaming_query.AsyncLlamaStackClientHolder"
+        "app.endpoints.streaming_query.AsyncOgxClientHolder"
     )
     mock_client = _build_base_streaming_mock_client(mocker)
 

@@ -56,7 +56,7 @@ services:
       # AWS Bedrock
       - AWS_BEARER_TOKEN_BEDROCK=${AWS_BEARER_TOKEN_BEDROCK:-}
       # Enable debug logging if needed
-      - LLAMA_STACK_LOGGING=${LLAMA_STACK_LOGGING:-}
+      - OGX_LOGGING=${OGX_LOGGING:-}
       # FAISS test and inline RAG config
       - FAISS_VECTOR_STORE_ID=${FAISS_VECTOR_STORE_ID:-}
       # Prevent HuggingFace Hub update checks (HTTP 429 rate-limiting in CI from parallel jobs).

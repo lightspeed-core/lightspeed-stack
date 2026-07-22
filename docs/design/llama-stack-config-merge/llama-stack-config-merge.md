@@ -182,7 +182,7 @@ lightspeed-stack.yaml (unified mode)
   Library mode                       Server mode
   ────────────                       ───────────
   Write to deterministic path.       Written by LS container's entrypoint
-  AsyncLlamaStackAsLibraryClient     script (same synthesizer, same CLI,
+  AsyncOGXAsLibraryClient     script (same synthesizer, same CLI,
   reads the path and initializes.    auto-detects unified via Python).
                                      `llama stack run <path>` starts LS.
                                      LCORE connects by URL.
@@ -381,7 +381,7 @@ removed `-g/-i/-o` flags is cleaned up as part of the docs JIRA.
   from scratch with only high-level keys produces synthesized output
   with no literal secrets on disk. LS itself resolves env refs to
   values in-memory at startup via `replace_env_vars()` in
-  `llama_stack.core.library_client`.
+  `ogx.core.library_client`.
 - **`native_override` (and dumb-mode migration output) MAY carry
   literal secrets**: `native_override` is whatever raw YAML the
   operator drops in, and `migrate_config_dumb()` lifts an existing

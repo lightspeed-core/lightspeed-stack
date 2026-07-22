@@ -3,12 +3,12 @@
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from llama_stack_client import APIConnectionError
+from ogx_client import APIConnectionError
 
 from authentication import get_auth_dependency
 from authentication.interface import AuthTuple
 from authorization.middleware import authorize
-from client import AsyncLlamaStackClientHolder
+from client import AsyncOgxClientHolder
 from configuration import configuration
 from log import get_logger
 from models.api.responses.constants import UNAUTHORIZED_OPENAPI_EXAMPLES
@@ -30,7 +30,7 @@ get_info_responses: dict[int | str, dict[str, Any]] = {
     401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
     503: ServiceUnavailableResponse.openapi_response(
-        examples=["llama stack", "kubernetes api"]
+        examples=["ogx", "kubernetes api"]
     ),
 }
 
@@ -70,7 +70,7 @@ async def info_endpoint_handler(
 
     try:
         # try to get Llama Stack client
-        client = AsyncLlamaStackClientHolder().get_client()
+        client = AsyncOgxClientHolder().get_client()
         # retrieve version
         llama_stack_version_object = await client.inspect.version()
         llama_stack_version = llama_stack_version_object.version
@@ -85,5 +85,5 @@ async def info_endpoint_handler(
     # connection to Llama Stack server
     except APIConnectionError as e:
         logger.error("Unable to connect to Llama Stack: %s", e)
-        response = ServiceUnavailableResponse(backend_name="Llama Stack", cause=str(e))
+        response = ServiceUnavailableResponse(backend_name="OGX", cause=str(e))
         raise HTTPException(**response.model_dump()) from e

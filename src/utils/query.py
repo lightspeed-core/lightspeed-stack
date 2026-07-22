@@ -6,10 +6,10 @@ from typing import Optional
 
 import psycopg2
 from fastapi import HTTPException
-from llama_stack_client import (
+from ogx_client import (
     APIStatusError as LLSApiStatusError,
 )
-from llama_stack_client.types import Shield
+from ogx_client.types import Shield
 from openai._exceptions import APIStatusError as OpenAIAPIStatusError
 from pydantic_ai.messages import ImageUrl, UserContent
 from sqlalchemy import func

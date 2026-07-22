@@ -1,8 +1,8 @@
 """Source to be tokenized."""
 
-from llama_stack_client import LlamaStackClient
+from ogx_client import OgxClient
 
-client = LlamaStackClient(base_url="http://localhost:8321")
+client = OgxClient(base_url="http://localhost:8321")
 
 models = client.models.list()
 

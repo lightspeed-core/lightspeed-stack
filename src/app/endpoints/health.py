@@ -8,12 +8,12 @@ methods. For HEAD HTTP method, just the HTTP response code is used.
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Response, status
-from llama_stack_client import APIConnectionError
+from ogx_client import APIConnectionError
 
 from authentication import get_auth_dependency
 from authentication.interface import AuthTuple
 from authorization.middleware import authorize
-from client import AsyncLlamaStackClientHolder
+from client import AsyncOgxClientHolder
 from configuration import configuration
 from log import get_logger
 from models.api.responses.constants import UNAUTHORIZED_OPENAPI_EXAMPLES
@@ -42,7 +42,7 @@ get_readiness_responses: dict[int | str, dict[str, Any]] = {
     401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
     503: ServiceUnavailableResponse.openapi_response(
-        examples=["llama stack", "kubernetes api"]
+        examples=["ogx", "kubernetes api"]
     ),
 }
 
@@ -64,7 +64,7 @@ async def get_providers_health_statuses() -> list[ProviderHealthStatus]:
         determined, returns a single entry indicating an error.
     """
     try:
-        client = AsyncLlamaStackClientHolder().get_client()
+        client = AsyncOgxClientHolder().get_client()
 
         providers = await client.providers.list()
         logger.debug("Found %d providers", len(providers))
@@ -110,7 +110,7 @@ async def check_default_model_available() -> tuple[bool, str]:
 
     expected_model_id = f"{inference.default_provider}/{inference.default_model}"
 
-    client_holder = AsyncLlamaStackClientHolder()
+    client_holder = AsyncOgxClientHolder()
     return await client_holder.check_model_available(expected_model_id)
 
 

@@ -564,7 +564,7 @@ Example config files go in `examples/`.
 ### Test patterns
 
 - Framework: pytest + pytest-asyncio + pytest-mock. unittest is banned by ruff.
-- Mock Llama Stack client: `mocker.AsyncMock(spec=AsyncLlamaStackClient)`.
+- Mock Llama Stack client: `mocker.AsyncMock(spec=AsyncOgxClient)`.
 - Patch at module level: `mocker.patch("utils.module.function_name", ...)`.
 - Async mocking pattern: see `tests/unit/utils/test_shields.py`.
 - Config validation tests: see `tests/unit/models/config/`.

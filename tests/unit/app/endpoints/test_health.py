@@ -3,7 +3,7 @@
 from typing import Any
 
 import pytest
-from llama_stack_client import APIConnectionError
+from ogx_client import APIConnectionError
 from pytest_mock import MockerFixture
 
 from app.endpoints.health import (
@@ -210,7 +210,7 @@ class TestGetProvidersHealthStatuses:
         - unhealthy_provider: status ERROR, message "Connection failed"
         """
         # Mock the imports
-        mock_lsc = mocker.patch("client.AsyncLlamaStackClientHolder.get_client")
+        mock_lsc = mocker.patch("client.AsyncOgxClientHolder.get_client")
 
         # Mock the client and its methods
         mock_client = mocker.AsyncMock()
@@ -264,9 +264,9 @@ class TestGetProvidersHealthStatuses:
     ) -> None:
         """Test get_providers_health_statuses when connection fails."""
         # Mock the imports
-        mock_lsc = mocker.patch("client.AsyncLlamaStackClientHolder.get_client")
+        mock_lsc = mocker.patch("client.AsyncOgxClientHolder.get_client")
 
-        # Mock get_llama_stack_client to raise an exception
+        # Mock get_ogx_client to raise an exception
         mock_lsc.side_effect = APIConnectionError(request=mocker.Mock())
 
         result = await get_providers_health_statuses()
@@ -329,7 +329,7 @@ class TestCheckDefaultModelAvailable:
         mocker: MockerFixture,
     ) -> None:
         """Test delegates to client holder with correct model ID."""
-        mock_holder = mocker.patch("app.endpoints.health.AsyncLlamaStackClientHolder")
+        mock_holder = mocker.patch("app.endpoints.health.AsyncOgxClientHolder")
         mock_holder.return_value.check_model_available = mocker.AsyncMock(
             return_value=(True, f"Model {self.EXPECTED_MODEL_ID} is available")
         )
@@ -349,7 +349,7 @@ class TestCheckDefaultModelAvailable:
         mocker: MockerFixture,
     ) -> None:
         """Test passes through failure result from client holder."""
-        mock_holder = mocker.patch("app.endpoints.health.AsyncLlamaStackClientHolder")
+        mock_holder = mocker.patch("app.endpoints.health.AsyncOgxClientHolder")
         mock_holder.return_value.check_model_available = mocker.AsyncMock(
             return_value=(
                 False,

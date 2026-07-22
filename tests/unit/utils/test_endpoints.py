@@ -296,7 +296,7 @@ class TestResolveResponseContext:
         mock_client = mocker.Mock()
         mock_holder.get_client.return_value = mock_client
         mocker.patch(
-            "utils.endpoints.AsyncLlamaStackClientHolder",
+            "utils.endpoints.AsyncOgxClientHolder",
             return_value=mock_holder,
         )
 
@@ -336,7 +336,7 @@ class TestResolveResponseContext:
         mock_holder = mocker.Mock()
         mock_holder.get_client.return_value = mocker.Mock()
         mocker.patch(
-            "utils.endpoints.AsyncLlamaStackClientHolder",
+            "utils.endpoints.AsyncOgxClientHolder",
             return_value=mock_holder,
         )
         mocker.patch("utils.endpoints.check_turn_existence", return_value=False)
@@ -362,7 +362,7 @@ class TestResolveResponseContext:
         mock_holder = mocker.Mock()
         mock_holder.get_client.return_value = mocker.Mock()
         mocker.patch(
-            "utils.endpoints.AsyncLlamaStackClientHolder",
+            "utils.endpoints.AsyncOgxClientHolder",
             return_value=mock_holder,
         )
         mocker.patch("utils.endpoints.check_turn_existence", return_value=True)
@@ -412,7 +412,7 @@ class TestResolveResponseContext:
         mock_holder = mocker.Mock()
         mock_holder.get_client.return_value = mock_client
         mocker.patch(
-            "utils.endpoints.AsyncLlamaStackClientHolder",
+            "utils.endpoints.AsyncOgxClientHolder",
             return_value=mock_holder,
         )
         mocker.patch("utils.endpoints.check_turn_existence", return_value=True)
@@ -457,7 +457,7 @@ class TestResolveResponseContext:
         mock_holder = mocker.Mock()
         mock_holder.get_client.return_value = mock_client
         mocker.patch(
-            "utils.endpoints.AsyncLlamaStackClientHolder",
+            "utils.endpoints.AsyncOgxClientHolder",
             return_value=mock_holder,
         )
         mocker.patch("utils.endpoints.check_turn_existence", return_value=True)
@@ -500,7 +500,7 @@ class TestResolveResponseContext:
         mock_holder = mocker.Mock()
         mock_holder.get_client.return_value = mock_client
         mocker.patch(
-            "utils.endpoints.AsyncLlamaStackClientHolder",
+            "utils.endpoints.AsyncOgxClientHolder",
             return_value=mock_holder,
         )
         mocker.patch(
@@ -528,7 +528,7 @@ class TestResolveResponseContext:
         mock_holder = mocker.Mock()
         mock_holder.get_client.return_value = mocker.Mock()
         mocker.patch(
-            "utils.endpoints.AsyncLlamaStackClientHolder",
+            "utils.endpoints.AsyncOgxClientHolder",
             return_value=mock_holder,
         )
         mocker.patch(

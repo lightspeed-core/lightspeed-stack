@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Optional
 
 from fastapi import BackgroundTasks
-from llama_stack_client import AsyncLlamaStackClient
+from ogx_client import AsyncOgxClient
 from pydantic import BaseModel, ConfigDict, Field
 
 from models.api.requests import QueryRequest
@@ -20,7 +20,7 @@ class ResponsesContext(BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    client: AsyncLlamaStackClient = Field(description="The Llama Stack client")
+    client: AsyncOgxClient = Field(description="The Llama Stack client")
     auth: tuple[str, str, bool, str] = Field(
         description="Authentication tuple (user_id, username, skip_userid_check, token)",
     )
@@ -103,7 +103,7 @@ class ResponseGeneratorContext:  # pylint: disable=too-many-instance-attributes
     started_at: str
 
     # Dependencies & State
-    client: AsyncLlamaStackClient
+    client: AsyncOgxClient
     moderation_result: ShieldModerationResult
 
     # RAG index identification

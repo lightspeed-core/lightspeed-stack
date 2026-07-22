@@ -9,12 +9,12 @@ from typing import Any
 
 import pytest
 from fastapi import HTTPException
-from llama_stack_client import APIConnectionError, APIStatusError
+from ogx_client import APIConnectionError, APIStatusError
 from pydantic import AnyHttpUrl, SecretStr
 from pytest_mock import MockerFixture
 
 from authorization.azure_token_manager import AzureEntraIDManager
-from client import AsyncLlamaStackClientHolder
+from client import AsyncOgxClientHolder
 from configuration import AzureEntraIdConfiguration
 from models.config import LlamaStackConfiguration
 from utils.types import Singleton
@@ -28,12 +28,12 @@ def reset_singleton() -> None:
 
 def test_async_client_get_client_method() -> None:
     """Test how get_client method works for uninitialized client."""
-    client = AsyncLlamaStackClientHolder()
+    client = AsyncOgxClientHolder()
 
     with pytest.raises(
         RuntimeError,
         match=(
-            "AsyncLlamaStackClient has not been initialised. "
+            "AsyncOgxClient has not been initialised. "
             "Ensure 'load\\(..\\)' has been called."
         ),
     ):
@@ -50,7 +50,7 @@ async def test_get_async_llama_stack_library_client() -> None:
         library_client_config_path="./tests/configuration/minimal-stack.yaml",
         timeout=60,
     )
-    client = AsyncLlamaStackClientHolder()
+    client = AsyncOgxClientHolder()
     await client.load(cfg)
     assert client is not None
 
@@ -71,7 +71,7 @@ async def test_get_async_llama_stack_remote_client() -> None:
         library_client_config_path="./tests/configuration/minimal-stack.yaml",
         timeout=60,
     )
-    client = AsyncLlamaStackClientHolder()
+    client = AsyncOgxClientHolder()
     await client.load(cfg)
     assert client is not None
 
@@ -102,9 +102,9 @@ async def test_get_async_llama_stack_wrong_configuration(
     cfg.library_client_config_path = None
     with pytest.raises(
         ValueError,
-        match="Cannot synthesize Llama Stack config",
+        match="Cannot synthesize OGX config",
     ):
-        client = AsyncLlamaStackClientHolder()
+        client = AsyncOgxClientHolder()
         await client.load(cfg)
 
 
@@ -131,7 +131,7 @@ async def test_update_azure_token_service_client() -> None:
         library_client_config_path=None,
         timeout=60,
     )
-    holder = AsyncLlamaStackClientHolder()
+    holder = AsyncOgxClientHolder()
     await holder.load(cfg)
     original_client = holder.get_client()
 
@@ -140,7 +140,7 @@ async def test_update_azure_token_service_client() -> None:
     assert updated_client is not original_client
     assert holder.get_client() is updated_client
     provider_data_json = updated_client.default_headers.get(
-        "X-LlamaStack-Provider-Data"
+        "X-OGX-Provider-Data"
     )
     provider_data = json.loads(provider_data_json)
     assert provider_data["azure_api_key"] == "fresh-token"
@@ -170,15 +170,15 @@ async def test_load_service_client_defers_azure_provider_data() -> None:
         library_client_config_path=None,
         timeout=60,
     )
-    holder = AsyncLlamaStackClientHolder()
+    holder = AsyncOgxClientHolder()
     await holder.load(cfg)
 
     default_headers = holder.get_client().default_headers or {}
-    assert "X-LlamaStack-Provider-Data" not in default_headers
+    assert "X-OGX-Provider-Data" not in default_headers
 
     updated_client = await holder.update_azure_token()
     provider_data_json = updated_client.default_headers.get(
-        "X-LlamaStack-Provider-Data"
+        "X-OGX-Provider-Data"
     )
     assert provider_data_json is not None
     provider_data = json.loads(provider_data_json)
@@ -198,7 +198,7 @@ async def test_reload_library_client() -> None:
         library_client_config_path="./tests/configuration/minimal-stack.yaml",
         timeout=60,
     )
-    holder = AsyncLlamaStackClientHolder()
+    holder = AsyncOgxClientHolder()
     await holder.load(cfg)
 
     original_client = holder.get_client()
@@ -219,9 +219,9 @@ class TestCheckModelAvailable:
     @pytest.fixture
     def holder_with_mock_client(
         self, mocker: MockerFixture
-    ) -> tuple[AsyncLlamaStackClientHolder, Any]:
+    ) -> tuple[AsyncOgxClientHolder, Any]:
         """Create a holder with a mocked async client."""
-        holder = AsyncLlamaStackClientHolder()
+        holder = AsyncOgxClientHolder()
         mock_client = mocker.AsyncMock()
         holder._lsc = mock_client
         return holder, mock_client
@@ -236,7 +236,7 @@ class TestCheckModelAvailable:
     async def test_model_available(
         self,
         mocker: MockerFixture,
-        holder_with_mock_client: tuple[AsyncLlamaStackClientHolder, Any],
+        holder_with_mock_client: tuple[AsyncOgxClientHolder, Any],
     ) -> None:
         """Test returns True when the model is found in the registry."""
         holder, mock_client = holder_with_mock_client
@@ -253,7 +253,7 @@ class TestCheckModelAvailable:
     async def test_model_not_found_service_client(
         self,
         mocker: MockerFixture,
-        holder_with_mock_client: tuple[AsyncLlamaStackClientHolder, Any],
+        holder_with_mock_client: tuple[AsyncOgxClientHolder, Any],
     ) -> None:
         """Test returns False and skips reload for non-library (service) clients."""
         holder, mock_client = holder_with_mock_client
@@ -267,7 +267,7 @@ class TestCheckModelAvailable:
     @pytest.mark.asyncio
     async def test_client_not_initialized(self) -> None:
         """Test returns False when the client has not been initialized."""
-        holder = AsyncLlamaStackClientHolder()
+        holder = AsyncOgxClientHolder()
 
         available, reason = await holder.check_model_available(self.EXPECTED_MODEL_ID)
 
@@ -295,14 +295,14 @@ class TestCheckModelAvailable:
     async def test_api_error(
         self,
         mocker: MockerFixture,
-        holder_with_mock_client: tuple[AsyncLlamaStackClientHolder, Any],
+        holder_with_mock_client: tuple[AsyncOgxClientHolder, Any],
         exception_factory: Callable,
     ) -> None:
         """Test returns False when model list fails with API errors."""
         _, mock_client = holder_with_mock_client
         mock_client.models.list.side_effect = exception_factory(mocker)
 
-        holder = AsyncLlamaStackClientHolder()
+        holder = AsyncOgxClientHolder()
         available, reason = await holder.check_model_available(self.EXPECTED_MODEL_ID)
 
         assert available is False
@@ -312,12 +312,12 @@ class TestCheckModelAvailable:
     async def test_model_found_after_reload(
         self,
         mocker: MockerFixture,
-        holder_with_mock_client: tuple[AsyncLlamaStackClientHolder, Any],
+        holder_with_mock_client: tuple[AsyncOgxClientHolder, Any],
     ) -> None:
         """Test returns True when model is missing initially but found after reload."""
         holder, mock_client = holder_with_mock_client
         mocker.patch.object(
-            AsyncLlamaStackClientHolder,
+            AsyncOgxClientHolder,
             "is_library_client",
             new_callable=mocker.PropertyMock,
             return_value=True,
@@ -338,12 +338,12 @@ class TestCheckModelAvailable:
     async def test_reload_fails_returns_not_found(
         self,
         mocker: MockerFixture,
-        holder_with_mock_client: tuple[AsyncLlamaStackClientHolder, Any],
+        holder_with_mock_client: tuple[AsyncOgxClientHolder, Any],
     ) -> None:
         """Test returns False when model is missing and client reload fails."""
         holder, mock_client = holder_with_mock_client
         mocker.patch.object(
-            AsyncLlamaStackClientHolder,
+            AsyncOgxClientHolder,
             "is_library_client",
             new_callable=mocker.PropertyMock,
             return_value=True,
@@ -362,12 +362,12 @@ class TestCheckModelAvailable:
     async def test_reload_http_exception_returns_not_found(
         self,
         mocker: MockerFixture,
-        holder_with_mock_client: tuple[AsyncLlamaStackClientHolder, Any],
+        holder_with_mock_client: tuple[AsyncOgxClientHolder, Any],
     ) -> None:
         """Test returns False when reload raises HTTPException."""
         holder, mock_client = holder_with_mock_client
         mocker.patch.object(
-            AsyncLlamaStackClientHolder,
+            AsyncOgxClientHolder,
             "is_library_client",
             new_callable=mocker.PropertyMock,
             return_value=True,

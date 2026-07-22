@@ -3,7 +3,7 @@
 from re import Pattern
 from typing import Any
 
-from llama_stack_api import ImageContentItem, TextContentItem
+from ogx_api import ImageContentItem, TextContentItem
 
 type SingletonInstances = dict[type, Any]
 

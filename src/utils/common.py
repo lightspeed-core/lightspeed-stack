@@ -6,10 +6,10 @@ from functools import wraps
 from logging import Logger
 from typing import Any, cast
 
-from llama_stack.core.library_client import AsyncLlamaStackAsLibraryClient
-from llama_stack_client import AsyncLlamaStackClient
+from ogx.core.library_client import AsyncOGXAsLibraryClient
+from ogx_client import AsyncOgxClient
 
-from client import AsyncLlamaStackClientHolder
+from client import AsyncOgxClientHolder
 from models.config import Configuration, ModelContextProtocolServer
 
 
@@ -45,18 +45,18 @@ async def register_mcp_servers_async(
     if configuration.llama_stack.use_as_library_client:
         # Library client - use async interface
         client = cast(
-            AsyncLlamaStackAsLibraryClient, AsyncLlamaStackClientHolder().get_client()
+            AsyncOGXAsLibraryClient, AsyncOgxClientHolder().get_client()
         )
         await client.initialize()
         await _register_mcp_toolgroups_async(client, configuration.mcp_servers, logger)
     else:
         # Service client - also use async interface
-        client = AsyncLlamaStackClientHolder().get_client()
+        client = AsyncOgxClientHolder().get_client()
         await _register_mcp_toolgroups_async(client, configuration.mcp_servers, logger)
 
 
 async def _register_mcp_toolgroups_async(
-    client: AsyncLlamaStackClient,
+    client: AsyncOgxClient,
     mcp_servers: list[ModelContextProtocolServer],
     logger: Logger,
 ) -> None:
@@ -75,7 +75,7 @@ async def _register_mcp_toolgroups_async(
 
     Parameters:
     ----------
-        client (AsyncLlamaStackClient): The LlamaStack async client used to
+        client (AsyncOgxClient): The LlamaStack async client used to
                                         query and register toolgroups.
         mcp_servers (List[ModelContextProtocolServer]): MCP server descriptors
                                                         to ensure are registered.

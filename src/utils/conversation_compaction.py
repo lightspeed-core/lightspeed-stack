@@ -47,9 +47,9 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from typing import Any, Optional, cast
 
-from llama_stack_api.openai_responses import OpenAIResponseMessage
-from llama_stack_client import AsyncLlamaStackClient
-from llama_stack_client.types.conversations.item_create_params import Item
+from ogx_api.openai_responses import OpenAIResponseMessage
+from ogx_client import AsyncOgxClient
+from ogx_client.types.conversations.item_create_params import Item
 
 from cache.cache import Cache
 from cache.cache_error import CacheError
@@ -271,7 +271,7 @@ def _build_explicit_input(
 
 
 async def _write_summary_marker(
-    client: AsyncLlamaStackClient,
+    client: AsyncOgxClient,
     conversation_id: str,
     summary_text: str,
 ) -> None:
@@ -421,7 +421,7 @@ def _estimate_total_tokens(
 
 
 async def _persist_new_summary_chunk(  # pylint: disable=too-many-arguments,too-many-positional-arguments
-    client: AsyncLlamaStackClient,
+    client: AsyncOgxClient,
     conversation_id: str,
     summary: ConversationSummary,
     cache: Optional[Cache],
@@ -434,7 +434,7 @@ async def _persist_new_summary_chunk(  # pylint: disable=too-many-arguments,too-
 
 
 async def _maybe_persist_fold(  # pylint: disable=too-many-arguments,too-many-positional-arguments
-    client: AsyncLlamaStackClient,
+    client: AsyncOgxClient,
     model: str,
     conversation_id: str,
     cache: Optional[Cache],
@@ -491,7 +491,7 @@ def _compacted_result(
 
 
 async def apply_compaction(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals
-    client: AsyncLlamaStackClient,
+    client: AsyncOgxClient,
     params: ResponsesApiParams,
     inference_config: InferenceConfiguration,
     compaction_config: CompactionConfiguration,
@@ -616,7 +616,7 @@ async def apply_compaction(  # pylint: disable=too-many-arguments,too-many-posit
 
 
 async def apply_compaction_blocking(  # pylint: disable=too-many-arguments,too-many-positional-arguments
-    client: AsyncLlamaStackClient,
+    client: AsyncOgxClient,
     params: ResponsesApiParams,
     inference_config: InferenceConfiguration,
     compaction_config: CompactionConfiguration,
@@ -651,7 +651,7 @@ async def apply_compaction_blocking(  # pylint: disable=too-many-arguments,too-m
 
 
 async def needs_compaction_path(
-    client: AsyncLlamaStackClient,
+    client: AsyncOgxClient,
     params: ResponsesApiParams,
     inference_config: InferenceConfiguration,
     compaction_config: CompactionConfiguration,
@@ -693,7 +693,7 @@ async def needs_compaction_path(
 
 
 async def store_compacted_turn(
-    client: AsyncLlamaStackClient,
+    client: AsyncOgxClient,
     conversation_id: str,
     original_input: ResponseInput,
     output_items: Sequence[Any],

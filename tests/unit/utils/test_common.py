@@ -24,7 +24,7 @@ async def test_register_mcp_servers_empty_list(mocker: MockerFixture) -> None:
     mock_logger = mocker.Mock(spec=Logger)
 
     # Mock the LlamaStack client (shouldn't be called since no MCP servers)
-    mock_lsc = mocker.patch("client.AsyncLlamaStackClientHolder.get_client")
+    mock_lsc = mocker.patch("client.AsyncOgxClientHolder.get_client")
 
     # Create configuration with empty MCP servers
     config = Configuration(
@@ -58,7 +58,7 @@ async def test_register_mcp_servers_empty_list(mocker: MockerFixture) -> None:
     # Call the function
     await register_mcp_servers_async(mock_logger, config)
 
-    # Verify get_llama_stack_client was NOT called since no MCP servers
+    # Verify get_ogx_client was NOT called since no MCP servers
     mock_lsc.assert_not_called()
     # Verify debug message was logged
     mock_logger.debug.assert_called_with(
@@ -76,7 +76,7 @@ async def test_register_mcp_servers_single_server_not_registered(
 
     # Mock the LlamaStack client
     mock_client = mocker.AsyncMock()
-    mock_lsc = mocker.patch("client.AsyncLlamaStackClientHolder.get_client")
+    mock_lsc = mocker.patch("client.AsyncOgxClientHolder.get_client")
     mock_lsc.return_value = mock_client
     mock_tool = mocker.Mock()
     mock_tool.provider_resource_id = "existing-server"
@@ -146,7 +146,7 @@ async def test_register_mcp_servers_single_server_already_registered(
     mock_tool = mocker.Mock()
     mock_tool.provider_resource_id = "existing-server"
     mock_client.toolgroups.list.return_value = [mock_tool]
-    mock_lsc = mocker.patch("client.AsyncLlamaStackClientHolder.get_client")
+    mock_lsc = mocker.patch("client.AsyncOgxClientHolder.get_client")
     mock_lsc.return_value = mock_client
 
     # Create configuration with MCP server that matches existing toolgroup
@@ -201,7 +201,7 @@ async def test_register_mcp_servers_multiple_servers_mixed_registration(
 
     # Mock the LlamaStack client
     mock_client = mocker.AsyncMock()
-    mock_lsc = mocker.patch("client.AsyncLlamaStackClientHolder.get_client")
+    mock_lsc = mocker.patch("client.AsyncOgxClientHolder.get_client")
     mock_lsc.return_value = mock_client
     mock_tool1 = mocker.Mock()
     mock_tool1.provider_resource_id = "existing-server"
@@ -289,7 +289,7 @@ async def test_register_mcp_servers_with_custom_provider(mocker: MockerFixture) 
     mock_client = mocker.AsyncMock()
     mock_client.toolgroups.list.return_value = []
     mock_client.toolgroups.register.return_value = None
-    mock_lsc = mocker.patch("client.AsyncLlamaStackClientHolder.get_client")
+    mock_lsc = mocker.patch("client.AsyncOgxClientHolder.get_client")
     mock_lsc.return_value = mock_client
 
     # Create configuration with MCP server using custom provider
@@ -354,10 +354,10 @@ async def test_register_mcp_servers_async_with_library_client(
     # Mock the logger
     mock_logger = mocker.Mock(spec=Logger)
 
-    # Mock the LlamaStackAsLibraryClient
+    # Mock the OGXAsLibraryClient
     mock_async_client = mocker.AsyncMock()
     mock_async_client.initialize = mocker.AsyncMock()
-    mock_lsc = mocker.patch("client.AsyncLlamaStackClientHolder.get_client")
+    mock_lsc = mocker.patch("client.AsyncOgxClientHolder.get_client")
     mock_lsc.return_value = mock_async_client
 
     # Mock tools.list to return empty list

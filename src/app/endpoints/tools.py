@@ -3,12 +3,12 @@
 from typing import Annotated, Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from llama_stack_client import APIConnectionError, BadRequestError
+from ogx_client import APIConnectionError, BadRequestError
 
 from authentication import get_auth_dependency
 from authentication.interface import AuthTuple
 from authorization.middleware import authorize
-from client import AsyncLlamaStackClientHolder
+from client import AsyncOgxClientHolder
 from configuration import configuration
 from log import get_logger
 from models.api.responses.constants import UNAUTHORIZED_OPENAPI_EXAMPLES
@@ -98,7 +98,7 @@ tools_responses: dict[int | str, dict[str, Any]] = {
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
     500: InternalServerErrorResponse.openapi_response(examples=["configuration"]),
     503: ServiceUnavailableResponse.openapi_response(
-        examples=["llama stack", "kubernetes api"]
+        examples=["ogx", "kubernetes api"]
     ),
 }
 
@@ -152,12 +152,12 @@ async def tools_endpoint_handler(  # pylint: disable=too-many-locals,too-many-st
 
     toolgroups_response = []
     try:
-        client = AsyncLlamaStackClientHolder().get_client()
+        client = AsyncOgxClientHolder().get_client()
         logger.debug("Retrieving tools from all toolgroups")
         toolgroups_response = await client.toolgroups.list()
     except APIConnectionError as e:
         logger.error("Unable to connect to Llama Stack: %s", e)
-        response = ServiceUnavailableResponse(backend_name="Llama Stack", cause=str(e))
+        response = ServiceUnavailableResponse(backend_name="OGX", cause=str(e))
         raise HTTPException(**response.model_dump()) from e
 
     consolidated_tools = []
@@ -208,7 +208,7 @@ async def tools_endpoint_handler(  # pylint: disable=too-many-locals,too-many-st
         except APIConnectionError as e:
             logger.error("Unable to connect to Llama Stack: %s", e)
             response = ServiceUnavailableResponse(
-                backend_name="Llama Stack", cause=str(e)
+                backend_name="OGX", cause=str(e)
             )
             raise HTTPException(**response.model_dump()) from e
 

@@ -3,13 +3,13 @@
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from llama_stack_api.common.errors import ToolGroupNotFoundError
-from llama_stack_client import APIConnectionError, NotFoundError
+from ogx_api.common.errors import ToolGroupNotFoundError
+from ogx_client import APIConnectionError, NotFoundError
 
 from authentication import get_auth_dependency
 from authentication.interface import AuthTuple
 from authorization.middleware import authorize
-from client import AsyncLlamaStackClientHolder
+from client import AsyncOgxClientHolder
 from configuration import configuration
 from log import get_logger
 from models.api.requests import MCPServerRegistrationRequest
@@ -43,7 +43,7 @@ register_responses: dict[int | str, dict[str, Any]] = {
         examples=["configuration", "mcp server registration"]
     ),
     503: ServiceUnavailableResponse.openapi_response(
-        examples=["llama stack", "kubernetes api"]
+        examples=["ogx", "kubernetes api"]
     ),
 }
 
@@ -97,7 +97,7 @@ async def register_mcp_server_handler(
         raise HTTPException(**response.model_dump()) from e
 
     try:
-        client = AsyncLlamaStackClientHolder().get_client()
+        client = AsyncOgxClientHolder().get_client()
         await client.toolgroups.register(  # pyright: ignore[reportDeprecated]
             toolgroup_id=mcp_server.name,
             provider_id=mcp_server.provider_id,
@@ -106,7 +106,7 @@ async def register_mcp_server_handler(
     except APIConnectionError as e:
         configuration.remove_mcp_server(body.name)
         logger.error("Failed to register MCP server with Llama Stack: %s", e)
-        response = ServiceUnavailableResponse(backend_name="Llama Stack", cause=str(e))
+        response = ServiceUnavailableResponse(backend_name="OGX", cause=str(e))
         raise HTTPException(**response.model_dump()) from e
     except Exception as e:  # pylint: disable=broad-exception-caught
         configuration.remove_mcp_server(body.name)
@@ -180,7 +180,7 @@ delete_responses: dict[int | str, dict[str, Any]] = {
     403: ForbiddenResponse.openapi_response(examples=["endpoint", "mcp server static"]),
     500: InternalServerErrorResponse.openapi_response(examples=["configuration"]),
     503: ServiceUnavailableResponse.openapi_response(
-        examples=["llama stack", "kubernetes api"]
+        examples=["ogx", "kubernetes api"]
     ),
 }
 
@@ -222,14 +222,14 @@ async def delete_mcp_server_handler(
             raise HTTPException(**response.model_dump())
 
     try:
-        client = AsyncLlamaStackClientHolder().get_client()
+        client = AsyncOgxClientHolder().get_client()
         await client.toolgroups.unregister(  # pyright: ignore[reportDeprecated]
             toolgroup_id=name
         )
     except APIConnectionError as e:
         logger.error("Failed to connect to Llama Stack: %s", e)
         svc_response = ServiceUnavailableResponse(
-            backend_name="Llama Stack", cause=str(e)
+            backend_name="OGX", cause=str(e)
         )
         raise HTTPException(**svc_response.model_dump()) from e
     except (ToolGroupNotFoundError, NotFoundError):

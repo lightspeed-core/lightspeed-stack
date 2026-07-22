@@ -1,7 +1,7 @@
 """Unit tests for functions and types defined in utils/types.py."""
 
 import pytest
-from llama_stack_api import URL, ImageContentItem, TextContentItem, _URLOrData
+from ogx_api import URL, ImageContentItem, TextContentItem, _URLOrData
 from pydantic import AnyUrl, ValidationError
 
 from models.common.responses.responses_api_params import ResponsesApiParams

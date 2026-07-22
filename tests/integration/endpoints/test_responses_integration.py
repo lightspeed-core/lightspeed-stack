@@ -110,7 +110,7 @@ def _build_mock_client(mocker: MockerFixture) -> Any:
 
 
 def _patch_client_holders(mocker: MockerFixture, mock_client: Any) -> None:
-    """Patch AsyncLlamaStackClientHolder in all modules used by the responses endpoint.
+    """Patch AsyncOgxClientHolder in all modules used by the responses endpoint.
 
     Patches three import locations (responses endpoint, utils.endpoints,
     utils.responses) and bypasses ResponsesContext Pydantic validation.
@@ -119,7 +119,7 @@ def _patch_client_holders(mocker: MockerFixture, mock_client: Any) -> None:
         "app.endpoints.responses",
         "utils.endpoints",
     ):
-        holder = mocker.patch(f"{module}.AsyncLlamaStackClientHolder")
+        holder = mocker.patch(f"{module}.AsyncOgxClientHolder")
         holder.return_value.get_client.return_value = mock_client
 
     original_cls = ResponsesContext

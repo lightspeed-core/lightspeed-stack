@@ -17,8 +17,8 @@ from configuration import AppConfig
 from models.common import HealthStatus
 
 
-@pytest.fixture(name="mock_llama_stack_client_health")
-def mock_llama_stack_client_fixture(
+@pytest.fixture(name="mock_ogx_client_health")
+def mock_ogx_client_fixture(
     mocker: MockerFixture,
 ) -> Generator[Any, None, None]:
     """Mock only the external Llama Stack client.
@@ -30,7 +30,7 @@ def mock_llama_stack_client_fixture(
         mock_client: An AsyncMock representing the Llama Stack client whose
         `inspect.version` returns an empty list.
     """
-    mock_holder_class = mocker.patch("app.endpoints.health.AsyncLlamaStackClientHolder")
+    mock_holder_class = mocker.patch("app.endpoints.health.AsyncOgxClientHolder")
 
     mock_client = mocker.AsyncMock()
     # Mock the version endpoint to return a known version
@@ -74,7 +74,7 @@ async def test_health_liveness(
 
 @pytest.mark.asyncio
 async def test_health_readiness_provider_statuses(
-    mock_llama_stack_client_health: AsyncMockType,
+    mock_ogx_client_health: AsyncMockType,
     mocker: MockerFixture,
 ) -> None:
     """Test that get_providers_health_statuses correctly retrieves and returns
@@ -88,11 +88,11 @@ async def test_health_readiness_provider_statuses(
 
     Parameters:
     ----------
-        mock_llama_stack_client_health: Mocked Llama Stack client
+        mock_ogx_client_health: Mocked Llama Stack client
         mocker: pytest-mock fixture for creating mock objects
     """
     # Arrange: Set up mock provider list with mixed health statuses
-    mock_llama_stack_client_health.providers.list.return_value = [
+    mock_ogx_client_health.providers.list.return_value = [
         mocker.Mock(
             provider_id="unhealthy-provider-1",
             health={
@@ -150,13 +150,13 @@ async def test_health_readiness_client_error(
     with pytest.raises(RuntimeError) as exc_info:
         await readiness_probe_get_method(auth=test_auth, response=test_response)
 
-    assert "AsyncLlamaStackClient has not been initialised" in str(exc_info.value)
+    assert "AsyncOgxClient has not been initialised" in str(exc_info.value)
     assert "Ensure 'load(..)' has been called" in str(exc_info.value)
 
 
 @pytest.mark.asyncio
 async def test_health_readiness(
-    mock_llama_stack_client_health: AsyncMockType,
+    mock_ogx_client_health: AsyncMockType,
     test_response: Response,
     test_auth: AuthTuple,
     mocker: MockerFixture,
@@ -171,7 +171,7 @@ async def test_health_readiness(
 
     Parameters:
     ----------
-        mock_llama_stack_client_health: Mocked Llama Stack client
+        mock_ogx_client_health: Mocked Llama Stack client
         test_response: FastAPI response object
         test_auth: noop authentication tuple
 
@@ -179,7 +179,7 @@ async def test_health_readiness(
     -------
         None
     """
-    _ = mock_llama_stack_client_health
+    _ = mock_ogx_client_health
 
     # Mock check_default_model_available since configuration is not loaded
     mock_check_model = mocker.patch(

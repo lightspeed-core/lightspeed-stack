@@ -2,7 +2,7 @@
 
 from typing import Annotated, Literal
 
-from llama_stack_api.openai_responses import (
+from ogx_api.openai_responses import (
     OpenAIResponseMessage as ResponseMessage,
 )
 from pydantic import BaseModel, Field

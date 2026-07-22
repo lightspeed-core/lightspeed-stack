@@ -5,8 +5,8 @@ from __future__ import annotations
 import re
 from typing import Any, Final, Optional
 
-from llama_stack.core.library_client import AsyncLlamaStackAsLibraryClient
-from llama_stack_client import AsyncLlamaStackClient
+from ogx.core.library_client import AsyncOGXAsLibraryClient
+from ogx_client import AsyncOgxClient
 from pydantic_ai.agent import Agent
 from pydantic_ai.capabilities import AbstractCapability, AgentCapability
 from pydantic_ai_skills import SkillsCapability
@@ -14,7 +14,7 @@ from pydantic_ai_skills import SkillsCapability
 from models.common.responses.responses_api_params import ResponsesApiParams
 from models.config import SkillsConfiguration
 from pydantic_ai_lightspeed.llamastack import (
-    LlamaStackResponsesModel,
+    OgxResponsesModel,
 )
 
 _AGENT_SKILLS_PROVIDER_ID: Final[str] = "agent-skills"
@@ -157,20 +157,20 @@ def _agent_capabilities(
 
 
 def build_agent(
-    client: AsyncLlamaStackClient | AsyncLlamaStackAsLibraryClient,
+    client: AsyncOgxClient | AsyncOGXAsLibraryClient,
     responses_params: ResponsesApiParams,
     skills: Optional[SkillsConfiguration],
     no_tools: bool = False,
 ) -> Agent[None, str]:
     """Build a Pydantic AI agent that mirrors ``responses_params`` on the Llama Stack backend.
 
-    Uses ``LlamaStackProvider`` with the same ``AsyncLlamaStackClient`` (or library client)
+    Uses ``OgxProvider`` with the same ``AsyncOgxClient`` (or library client)
     as the query endpoint, and ``OpenAIResponsesModel`` so requests follow the Responses API.
     Llama-Stack-specific fields (conversation, tools, MCP headers, etc.) are passed via
     ``model_settings['extra_body']`` so they merge into the OpenAI client request body.
 
     Parameters:
-        client: Initialized Llama Stack client from ``AsyncLlamaStackClientHolder().get_client()``.
+        client: Initialized Llama Stack client from ``AsyncOgxClientHolder().get_client()``.
         responses_params: Parameters produced by ``prepare_responses_params`` for this turn.
         skills: Agent skills configuration from LCS, or None when skills are disabled.
         no_tools: When True, omit capabilities that expose a toolset via ``get_toolset()``.
@@ -181,7 +181,7 @@ def build_agent(
     """
     capabilities = _agent_capabilities(skills, no_tools=no_tools)
 
-    model = LlamaStackResponsesModel.from_llama_stack_client(
+    model = OgxResponsesModel.from_ogx_client(
         responses_params.model, client, responses_params=responses_params
     )
 

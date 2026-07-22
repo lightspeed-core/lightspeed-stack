@@ -8,7 +8,7 @@ from enum import Enum
 from threading import Lock
 from typing import Any, Optional, cast
 
-from llama_stack_api import OpenAIResponseMessage
+from ogx_api import OpenAIResponseMessage
 
 from constants import (
     INTERRUPTED_RESPONSE_MESSAGE,

@@ -9,7 +9,7 @@ import sentry_sdk  # pyright: ignore[reportMissingImports]
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from llama_stack_client import APIConnectionError, AsyncLlamaStackClient
+from ogx_client import APIConnectionError, AsyncOgxClient
 from starlette.routing import Mount, Route, WebSocketRoute
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
@@ -19,7 +19,7 @@ from app import routers
 from app.database import create_tables, initialize_database
 from app.endpoints.streaming_query import shutdown_background_topic_summary_tasks
 from authorization.azure_token_manager import AzureEntraIDManager
-from client import AsyncLlamaStackClientHolder
+from client import AsyncOgxClientHolder
 from configuration import configuration
 from log import get_logger
 from metrics import recording
@@ -84,8 +84,8 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     initialize_sentry()
 
     llama_stack_config = configuration.configuration.llama_stack
-    await AsyncLlamaStackClientHolder().load(llama_stack_config)
-    client: AsyncLlamaStackClient = AsyncLlamaStackClientHolder().get_client()
+    await AsyncOgxClientHolder().load(llama_stack_config)
+    client: AsyncOgxClient = AsyncOgxClientHolder().get_client()
     logger.debug("Llama Stack client initialized, trying to connect to Llama Stack")
     # Check connectivity to Llama Stack and set degraded mode if unavailable
     degraded_tracker = DegradedModeTracker()
@@ -120,7 +120,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     azure_entra_id_config = configuration.configuration.azure_entra_id
     if azure_entra_id_config is not None:
         AzureEntraIDManager().set_config(azure_entra_id_config)
-        azure_base_url = await AsyncLlamaStackClientHolder().get_azure_base_url()
+        azure_base_url = await AsyncOgxClientHolder().get_azure_base_url()
         AzureEntraIDManager().set_base_url(azure_base_url)
     logger.info("Registering MCP servers")
     await register_mcp_servers_async(logger, configuration.configuration)

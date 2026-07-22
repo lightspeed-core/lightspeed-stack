@@ -920,11 +920,11 @@ class LlamaStackConfiguration(ConfigurationBase):
             # it means that use_as_library_client attribute must be set to True
             if self.use_as_library_client is None:
                 raise ValueError(
-                    "Llama stack URL is not specified and library client mode is not specified"
+                    "Llama Stack URL is not specified and library client mode is not specified"
                 )
             if self.use_as_library_client is False:
                 raise ValueError(
-                    "Llama stack URL is not specified and library client mode is not enabled"
+                    "Llama Stack URL is not specified and library client mode is not enabled"
                 )
 
         # None -> False conversion

@@ -9,48 +9,48 @@ from typing import Any, Optional, cast
 
 import pytest
 from fastapi import HTTPException
-from llama_stack_api.openai_responses import (
+from ogx_api.openai_responses import (
     AllowedToolsFilter,
     OpenAIResponseInputToolChoiceAllowedTools,
 )
-from llama_stack_api.openai_responses import ApprovalFilter as LlamaStackApprovalFilter
-from llama_stack_api.openai_responses import (
+from ogx_api.openai_responses import ApprovalFilter as OgxApprovalFilter
+from ogx_api.openai_responses import (
     OpenAIResponseInputToolChoiceFileSearch as ToolChoiceFileSearch,
 )
-from llama_stack_api.openai_responses import (
+from ogx_api.openai_responses import (
     OpenAIResponseInputToolChoiceMode as ToolChoiceMode,
 )
-from llama_stack_api.openai_responses import (
+from ogx_api.openai_responses import (
     OpenAIResponseInputToolFileSearch as InputToolFileSearch,
 )
-from llama_stack_api.openai_responses import (
+from ogx_api.openai_responses import (
     OpenAIResponseInputToolFunction as InputToolFunction,
 )
-from llama_stack_api.openai_responses import (
+from ogx_api.openai_responses import (
     OpenAIResponseInputToolWebSearch as InputToolWebSearch,
 )
-from llama_stack_api.openai_responses import (
+from ogx_api.openai_responses import (
     OpenAIResponseMCPApprovalRequest as MCPApprovalRequest,
 )
-from llama_stack_api.openai_responses import (
+from ogx_api.openai_responses import (
     OpenAIResponseMCPApprovalResponse as MCPApprovalResponse,
 )
-from llama_stack_api.openai_responses import (
+from ogx_api.openai_responses import (
     OpenAIResponseOutputMessageFileSearchToolCall as FileSearchCall,
 )
-from llama_stack_api.openai_responses import (
+from ogx_api.openai_responses import (
     OpenAIResponseOutputMessageFunctionToolCall as FunctionCall,
 )
-from llama_stack_api.openai_responses import (
+from ogx_api.openai_responses import (
     OpenAIResponseOutputMessageMCPCall as MCPCall,
 )
-from llama_stack_api.openai_responses import (
+from ogx_api.openai_responses import (
     OpenAIResponseOutputMessageMCPListTools as MCPListTools,
 )
-from llama_stack_api.openai_responses import (
+from ogx_api.openai_responses import (
     OpenAIResponseOutputMessageWebSearchToolCall as WebSearchCall,
 )
-from llama_stack_client import APIConnectionError, APIStatusError, AsyncLlamaStackClient
+from ogx_client import APIConnectionError, APIStatusError, AsyncOgxClient
 from pydantic import AnyUrl, BaseModel
 from pytest_mock import MockerFixture
 
@@ -449,7 +449,7 @@ class TestGetMCPTools:
 
         tools = await get_mcp_tools(token=None)
         assert len(tools) == 1
-        assert isinstance(tools[0].require_approval, LlamaStackApprovalFilter)
+        assert isinstance(tools[0].require_approval, OgxApprovalFilter)
         assert tools[0].require_approval.always == ["create_issue"]
         assert tools[0].require_approval.never == ["list_repos"]
 
@@ -927,7 +927,7 @@ class TestGetTopicSummary:
     @pytest.mark.asyncio
     async def test_get_topic_summary_success(self, mocker: MockerFixture) -> None:
         """Test successful topic summary generation."""
-        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
         mock_output_item = make_output_item(
             item_type="message", role="assistant", content="Topic Summary"
         )
@@ -949,7 +949,7 @@ class TestGetTopicSummary:
         self, mocker: MockerFixture
     ) -> None:
         """Test topic summary with empty response."""
-        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
         mock_response = mocker.Mock()
         mock_response.output = []
         mock_client.responses.create = mocker.AsyncMock(return_value=mock_response)
@@ -967,7 +967,7 @@ class TestGetTopicSummary:
         self, mocker: MockerFixture
     ) -> None:
         """Test topic summary raises HTTPException on connection error."""
-        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
         mock_client.responses.create = mocker.AsyncMock(
             side_effect=APIConnectionError(
                 message="Connection failed", request=mocker.Mock()
@@ -986,7 +986,7 @@ class TestGetTopicSummary:
     @pytest.mark.asyncio
     async def test_get_topic_summary_api_error(self, mocker: MockerFixture) -> None:
         """Test topic summary raises HTTPException on API error."""
-        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
         # Create a mock exception that will be caught by except APIStatusError
         mock_error = APIStatusError(
             message="API error", response=mocker.Mock(request=None), body=None
@@ -1036,6 +1036,7 @@ class TestResolveToolChoice:
         self, mocker: MockerFixture, tools_arg: Optional[list[InputTool]]
     ) -> None:
         """ToolChoiceMode.none always yields (None, None)."""
+        mocker.patch("utils.responses.AsyncOgxClientHolder.get_client")
         mocker.patch("utils.responses.prepare_tools", new_callable=mocker.AsyncMock)
         out = await resolve_tool_choice(
             tools_arg,
@@ -1119,6 +1120,7 @@ class TestResolveToolChoice:
             new_callable=mocker.AsyncMock,
             return_value=None,
         )
+        mocker.patch("utils.responses.AsyncOgxClientHolder.get_client")
         tool_choice_obj = ToolChoiceFileSearch()
         prepared, choice = await resolve_tool_choice(
             None,
@@ -1249,6 +1251,7 @@ class TestResolveToolChoice:
             new_callable=mocker.AsyncMock,
             return_value=[fs],
         )
+        mocker.patch("utils.responses.AsyncOgxClientHolder.get_client")
         prepared, choice = await resolve_tool_choice(
             None,
             mode_choice,
@@ -1267,6 +1270,7 @@ class TestResolveToolChoice:
             new_callable=mocker.AsyncMock,
             return_value=None,
         )
+        mocker.patch("utils.responses.AsyncOgxClientHolder.get_client")
         prepared, choice = await resolve_tool_choice(
             None,
             ToolChoiceMode.auto,
@@ -1287,6 +1291,7 @@ class TestResolveToolChoice:
             new_callable=mocker.AsyncMock,
             return_value=[fs, mcp],
         )
+        mocker.patch("utils.responses.AsyncOgxClientHolder.get_client")
         allowed = OpenAIResponseInputToolChoiceAllowedTools(
             mode="auto",
             tools=[{"type": "mcp", "server_label": "s1"}],
@@ -1312,6 +1317,7 @@ class TestResolveToolChoice:
             new_callable=mocker.AsyncMock,
             return_value=[mcp],
         )
+        mocker.patch("utils.responses.AsyncOgxClientHolder.get_client")
         allowed = OpenAIResponseInputToolChoiceAllowedTools(
             mode="auto",
             tools=[{"type": "file_search"}],
@@ -1331,6 +1337,7 @@ class TestResolveToolChoice:
             new_callable=mocker.AsyncMock,
             return_value=[mcp],
         )
+        mocker.patch("utils.responses.AsyncOgxClientHolder.get_client")
         allowed = OpenAIResponseInputToolChoiceAllowedTools(
             mode="required",
             tools=[{"type": "mcp"}],
@@ -3262,6 +3269,13 @@ class TestResolveToolChoiceMerge:
         self, mocker: MockerFixture
     ) -> None:
         """Test client tools used as-is without merge header."""
+        mock_client = mocker.AsyncMock()
+        mock_holder = mocker.Mock()
+        mock_holder.get_client.return_value = mock_client
+        mocker.patch(
+            "utils.responses.AsyncOgxClientHolder",
+            return_value=mock_holder,
+        )
         mock_config = mocker.Mock()
         mock_config.configuration.byok_rag = []
         mock_config.mcp_servers = []
@@ -3280,6 +3294,13 @@ class TestResolveToolChoiceMerge:
     @pytest.mark.asyncio
     async def test_client_tools_with_merge_header(self, mocker: MockerFixture) -> None:
         """Test client tools merged with server tools when header is set."""
+        mock_client = mocker.AsyncMock()
+        mock_holder = mocker.Mock()
+        mock_holder.get_client.return_value = mock_client
+        mocker.patch(
+            "utils.responses.AsyncOgxClientHolder",
+            return_value=mock_holder,
+        )
         mock_config = mocker.Mock()
         mock_config.configuration.byok_rag = []
         mock_config.mcp_servers = []
@@ -3310,6 +3331,13 @@ class TestResolveToolChoiceMerge:
         self, mocker: MockerFixture
     ) -> None:
         """Test 409 when merge header is set and tools conflict."""
+        mock_client = mocker.AsyncMock()
+        mock_holder = mocker.Mock()
+        mock_holder.get_client.return_value = mock_client
+        mocker.patch(
+            "utils.responses.AsyncOgxClientHolder",
+            return_value=mock_holder,
+        )
         mock_config = mocker.Mock()
         mock_config.configuration.byok_rag = []
         mock_config.mcp_servers = []
@@ -3337,6 +3365,13 @@ class TestResolveToolChoiceMerge:
     @pytest.mark.asyncio
     async def test_no_tools_uses_prepare_tools(self, mocker: MockerFixture) -> None:
         """Test that no client tools falls through to prepare_tools."""
+        mock_client = mocker.AsyncMock()
+        mock_holder = mocker.Mock()
+        mock_holder.get_client.return_value = mock_client
+        mocker.patch(
+            "utils.responses.AsyncOgxClientHolder",
+            return_value=mock_holder,
+        )
         server_tool = InputToolFileSearch(type="file_search", vector_store_ids=["vs1"])
         mock_prepare = mocker.AsyncMock(return_value=[server_tool])
         mocker.patch("utils.responses.prepare_tools", new=mock_prepare)
@@ -3355,6 +3390,13 @@ class TestResolveToolChoiceMerge:
         self, mocker: MockerFixture
     ) -> None:
         """Test merge header with no server tools returns client tools unchanged."""
+        mock_client = mocker.AsyncMock()
+        mock_holder = mocker.Mock()
+        mock_holder.get_client.return_value = mock_client
+        mocker.patch(
+            "utils.responses.AsyncOgxClientHolder",
+            return_value=mock_holder,
+        )
         mock_config = mocker.Mock()
         mock_config.configuration.byok_rag = []
         mock_config.mcp_servers = []

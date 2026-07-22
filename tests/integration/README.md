@@ -66,7 +66,7 @@ def test_example(mock_request_with_auth: Request) -> None:
 
 ### Mocking Fixtures
 
-#### `mock_llama_stack_client` (function-scoped)
+#### `mock_ogx_client` (function-scoped)
 Mocks the external Llama Stack client with sensible defaults:
 - Returns a mock response with "This is a test response about Ansible."
 - Mocks `models.list`, `shields.list`, `vector_stores.list`
@@ -74,9 +74,9 @@ Mocks the external Llama Stack client with sensible defaults:
 - Can be customized in individual tests
 
 ```python
-def test_example(mock_llama_stack_client: Any) -> None:
+def test_example(mock_ogx_client: Any) -> None:
     # Customize the mock for this specific test
-    mock_llama_stack_client.responses.create.return_value = custom_response
+    mock_ogx_client.responses.create.return_value = custom_response
 ```
 
 ## Helper Functions
@@ -185,7 +185,7 @@ from configuration import AppConfig
 @pytest.mark.asyncio
 async def test_example_endpoint_success(
     test_config: AppConfig,
-    mock_llama_stack_client: Any,
+    mock_ogx_client: Any,
     test_request: Request,
     test_auth: AuthTuple,
 ) -> None:
@@ -198,7 +198,7 @@ async def test_example_endpoint_success(
 
     Parameters:
         test_config: Test configuration
-        mock_llama_stack_client: Mocked Llama Stack client
+        mock_ogx_client: Mocked Llama Stack client
         test_request: FastAPI request
         test_auth: noop authentication tuple
     """
@@ -367,9 +367,9 @@ def my_custom_client(mocker):
     # ... duplicate code
 
 # ✅ GOOD - Using common fixture
-def test_example(mock_llama_stack_client: Any):
+def test_example(mock_ogx_client: Any):
     # Customize if needed
-    mock_llama_stack_client.responses.create.return_value = custom_response
+    mock_ogx_client.responses.create.return_value = custom_response
 ```
 
 ### 2. Use Test Constants
@@ -422,7 +422,7 @@ Include what the test verifies and parameters:
 @pytest.mark.asyncio
 async def test_example(
     test_config: AppConfig,
-    mock_llama_stack_client: Any,
+    mock_ogx_client: Any,
 ) -> None:
     """Test that example endpoint handles errors correctly.
 
@@ -433,7 +433,7 @@ async def test_example(
 
     Parameters:
         test_config: Test configuration
-        mock_llama_stack_client: Mocked Llama Stack client
+        mock_ogx_client: Mocked Llama Stack client
     """
 ```
 

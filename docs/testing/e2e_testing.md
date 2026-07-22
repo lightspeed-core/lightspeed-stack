@@ -353,7 +353,7 @@ Here, **Given** sets state, **When** performs the HTTP call, **Then** and **And*
 - **"Container state improper" / restart fails**: Usually the llama-stack container is in a bad state. Ensure it is started (or recreated) before restarting lightspeed-stack; see Docker/Podman and compose usage in the project.
 - **Readonly database (SQLite) in Llama Stack**: If the RAG KV DB is on a bind-mounted path that becomes read-only (e.g. after restart), move it to a named volume (e.g. via `KV_RAG_PATH` in docker-compose) so writes succeed.
 - **ChunkedEncodingError on streaming_query**: The step for streaming_query uses `stream=True` and consumes the stream; if you add new streaming steps, avoid reading the full response with `response.content` and use the same stream-reading pattern so a server close after an error event does not raise.
-- **Event loop is closed (httpx/AsyncClient)**: In E2E, any code that creates an `AsyncLlamaStackClient` (e.g. for shields) must close it (e.g. `await client.close()`) in a `finally` block before the event loop is torn down (e.g. before `asyncio.run()` returns).
+- **Event loop is closed (httpx/AsyncClient)**: In E2E, any code that creates an `AsyncOgxClient` (e.g. for shields) must close it (e.g. `await client.close()`) in a `finally` block before the event loop is torn down (e.g. before `asyncio.run()` returns).
 - **Scenarios skipped**: Check tags (`@skip`, `@skip-in-library-mode`, `@local`) and `E2E_DEPLOYMENT_MODE`; ensure the scenario is not excluded by `--tags=-skip` (or the opposite if you intend to run only skipped scenarios for debugging).
 
 For more on test structure and commands, see the main project guide (`CLAUDE.md`) and `tests/e2e/features/steps/README.md`.

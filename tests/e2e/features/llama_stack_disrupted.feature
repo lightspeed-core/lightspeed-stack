@@ -23,7 +23,7 @@ Feature: Llama Stack connection disrupted
     Then The status code of the response is 503
     And The body of the response is the following
     """
-       {"detail": {"response": "Unable to connect to Llama Stack", "cause": "Connection error."}}
+       {"detail": {"response": "Unable to connect to OGX", "cause": "Connection error."}}
     """
 
   Scenario: Check if service report proper readiness state when llama stack is not available
@@ -58,7 +58,7 @@ Feature: Llama Stack connection disrupted
     Then The status code of the response is 503
     And The body of the response is the following
     """
-       {"detail": {"response": "Unable to connect to Llama Stack", "cause": "Connection error."}}
+       {"detail": {"response": "Unable to connect to OGX", "cause": "Connection error."}}
     """
 
   Scenario: Check if shields endpoint reports error when llama-stack is unreachable
@@ -69,7 +69,7 @@ Feature: Llama Stack connection disrupted
     Then The status code of the response is 503
     And The body of the response is the following
     """
-       {"detail": {"response": "Unable to connect to Llama Stack", "cause": "Connection error."}}
+       {"detail": {"response": "Unable to connect to OGX", "cause": "Connection error."}}
     """
 
   Scenario: Check if tools endpoint reports error when llama-stack is unreachable
@@ -80,7 +80,7 @@ Feature: Llama Stack connection disrupted
     Then The status code of the response is 503
     And The body of the response is the following
     """
-       {"detail": {"response": "Unable to connect to Llama Stack", "cause": "Connection error."}}
+       {"detail": {"response": "Unable to connect to OGX", "cause": "Connection error."}}
     """
 
 
@@ -96,7 +96,7 @@ Feature: Llama Stack connection disrupted
     {"query": "Say hello"}
     """
     Then The status code of the response is 503
-    And The body of the response contains Unable to connect to Llama Stack
+    And The body of the response contains Unable to connect to OGX
 
   Scenario: Responses returns error when unable to connect to llama-stack
     Given The service uses the lightspeed-stack-auth-noop-token.yaml configuration
@@ -109,7 +109,7 @@ Feature: Llama Stack connection disrupted
     {"input": "Say hello", "model": "{PROVIDER}/{MODEL}", "stream": false}
     """
     Then The status code of the response is 503
-    And The body of the response contains Unable to connect to Llama Stack
+    And The body of the response contains Unable to connect to OGX
 
   Scenario: Streaming responses returns error when unable to connect to llama-stack
     Given The service uses the lightspeed-stack-auth-noop-token.yaml configuration
@@ -121,7 +121,7 @@ Feature: Llama Stack connection disrupted
     {"input": "Say hello", "model": "{PROVIDER}/{MODEL}", "stream": true}
     """
     Then The status code of the response is 503
-    And The body of the response contains Unable to connect to Llama Stack
+    And The body of the response contains Unable to connect to OGX
 
   Scenario: Check if rags endpoint fails when llama-stack is unavailable
     Given The service uses the lightspeed-stack-auth-noop-token.yaml configuration
@@ -130,7 +130,7 @@ Feature: Llama Stack connection disrupted
     And The llama-stack connection is disrupted
     When I access REST API endpoint rags using HTTP GET method
     Then The status code of the response is 503
-    And The body of the response contains Unable to connect to Llama Stack
+    And The body of the response contains Unable to connect to OGX
 
   Scenario: Check if prompts list endpoint fails when llama-stack is unavailable
     Given The service uses the lightspeed-stack-auth-noop-token.yaml configuration
@@ -139,7 +139,7 @@ Feature: Llama Stack connection disrupted
     And The llama-stack connection is disrupted
     When I access REST API endpoint "prompts" using HTTP GET method
     Then The status code of the response is 503
-    And The body of the response contains Unable to connect to Llama Stack
+    And The body of the response contains Unable to connect to OGX
 
   Scenario: Check if prompts create endpoint fails when llama-stack is unavailable
     Given The service uses the lightspeed-stack-auth-noop-token.yaml configuration
@@ -151,7 +151,7 @@ Feature: Llama Stack connection disrupted
     {"prompt": "Summarize: {{text}}", "variables": ["text"]}
     """
     Then The status code of the response is 503
-    And The body of the response contains Unable to connect to Llama Stack
+    And The body of the response contains Unable to connect to OGX
 
   Scenario: Check if prompts get by id endpoint fails when llama-stack is unavailable
     Given The service uses the lightspeed-stack-auth-noop-token.yaml configuration
@@ -160,7 +160,7 @@ Feature: Llama Stack connection disrupted
     And The llama-stack connection is disrupted
     When I access REST API endpoint "prompts/pmpt_5c76d7f7c633ef97477adeb2f642150d8d08e8a6526e9909" using HTTP GET method
     Then The status code of the response is 503
-    And The body of the response contains Unable to connect to Llama Stack
+    And The body of the response contains Unable to connect to OGX
 
   Scenario: Check if prompts update endpoint fails when llama-stack is unavailable
     Given The service uses the lightspeed-stack-auth-noop-token.yaml configuration
@@ -172,7 +172,7 @@ Feature: Llama Stack connection disrupted
     {"prompt": "Summarize in bullets: {{text}}", "version": 1, "set_as_default": true, "variables": ["text"]}
     """
     Then The status code of the response is 503
-    And The body of the response contains Unable to connect to Llama Stack
+    And The body of the response contains Unable to connect to OGX
 
   Scenario: Check if prompts delete endpoint fails when llama-stack is unavailable
     Given The service uses the lightspeed-stack-auth-noop-token.yaml configuration
@@ -181,7 +181,7 @@ Feature: Llama Stack connection disrupted
     And The llama-stack connection is disrupted
     When I access REST API endpoint "prompts/pmpt_5c76d7f7c633ef97477adeb2f642150d8d08e8a6526e9909" using HTTP DELETE method
     Then The status code of the response is 503
-    And The body of the response contains Unable to connect to Llama Stack
+    And The body of the response contains Unable to connect to OGX
 
   Scenario: Check if conversations/{conversation_id} GET endpoint fails when llama-stack is unavailable
     Given Llama Stack is restarted
@@ -197,7 +197,7 @@ Feature: Llama Stack connection disrupted
     And The llama-stack connection is disrupted
     When I use REST API conversation endpoint with conversation_id from above using HTTP GET method
     Then The status code of the response is 503
-    And The body of the response contains Unable to connect to Llama Stack
+    And The body of the response contains Unable to connect to OGX
 
   Scenario: Check if conversations/{conversation_id} DELETE endpoint fails when llama-stack is unavailable
     Given Llama Stack is restarted
@@ -213,7 +213,7 @@ Feature: Llama Stack connection disrupted
     And The llama-stack connection is disrupted
     When I use REST API conversation endpoint with conversation_id from above using HTTP DELETE method
     Then The status code of the response is 503
-    And The body of the response contains Unable to connect to Llama Stack
+    And The body of the response contains Unable to connect to OGX
 
   Scenario: Check conversations/{conversation_id} works when llama-stack is down
     Given Llama Stack is restarted

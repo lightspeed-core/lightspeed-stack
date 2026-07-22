@@ -3,8 +3,8 @@
 from typing import Any
 
 import pytest
-from llama_stack_client import APIConnectionError
-from llama_stack_client.types import VersionInfo
+from ogx_client import APIConnectionError
+from ogx_client.types import VersionInfo
 from pytest_mock import MockerFixture
 from pytest_subtests import SubTests
 from semver import Version

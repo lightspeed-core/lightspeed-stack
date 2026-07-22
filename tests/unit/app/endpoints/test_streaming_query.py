@@ -9,38 +9,38 @@ from typing import Any
 import pytest
 from fastapi import HTTPException, Request
 from fastapi.responses import StreamingResponse
-from llama_stack_api.openai_responses import (
+from ogx_api.openai_responses import (
     OpenAIResponseObject,
     OpenAIResponseObjectStream,
 )
-from llama_stack_api.openai_responses import (
+from ogx_api.openai_responses import (
     OpenAIResponseObjectStreamResponseCompleted as CompletedChunk,
 )
-from llama_stack_api.openai_responses import (
+from ogx_api.openai_responses import (
     OpenAIResponseObjectStreamResponseFailed as FailedChunk,
 )
-from llama_stack_api.openai_responses import (
+from ogx_api.openai_responses import (
     OpenAIResponseObjectStreamResponseIncomplete as IncompleteChunk,
 )
-from llama_stack_api.openai_responses import (
+from ogx_api.openai_responses import (
     OpenAIResponseObjectStreamResponseMcpCallArgumentsDone as MCPArgsDoneChunk,
 )
-from llama_stack_api.openai_responses import (
+from ogx_api.openai_responses import (
     OpenAIResponseObjectStreamResponseOutputItemAdded as OutputItemAddedChunk,
 )
-from llama_stack_api.openai_responses import (
+from ogx_api.openai_responses import (
     OpenAIResponseObjectStreamResponseOutputItemDone as OutputItemDoneChunk,
 )
-from llama_stack_api.openai_responses import (
+from ogx_api.openai_responses import (
     OpenAIResponseObjectStreamResponseOutputTextDelta as TextDeltaChunk,
 )
-from llama_stack_api.openai_responses import (
+from ogx_api.openai_responses import (
     OpenAIResponseObjectStreamResponseOutputTextDone as TextDoneChunk,
 )
-from llama_stack_api.openai_responses import (
+from ogx_api.openai_responses import (
     OpenAIResponseOutputMessageMCPCall as MCPCall,
 )
-from llama_stack_client import APIConnectionError, APIStatusError, AsyncLlamaStackClient
+from ogx_client import APIConnectionError, APIStatusError, AsyncOgxClient
 from pytest_mock import MockerFixture
 
 from app.endpoints.streaming_query import (
@@ -170,11 +170,11 @@ class TestStreamingQueryEndpointHandler:
             new=mocker.AsyncMock(return_value=RAGContext()),
         )
 
-        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
         mock_client_holder = mocker.Mock()
         mock_client_holder.get_client.return_value = mock_client
         mocker.patch(
-            "app.endpoints.streaming_query.AsyncLlamaStackClientHolder",
+            "app.endpoints.streaming_query.AsyncOgxClientHolder",
             return_value=mock_client_holder,
         )
 
@@ -257,11 +257,11 @@ class TestStreamingQueryEndpointHandler:
             new=mocker.AsyncMock(return_value=RAGContext()),
         )
 
-        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
         mock_client_holder = mocker.Mock()
         mock_client_holder.get_client.return_value = mock_client
         mocker.patch(
-            "app.endpoints.streaming_query.AsyncLlamaStackClientHolder",
+            "app.endpoints.streaming_query.AsyncOgxClientHolder",
             return_value=mock_client_holder,
         )
 
@@ -355,11 +355,11 @@ class TestStreamingQueryEndpointHandler:
             return_value=mock_conversation,
         )
 
-        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
         mock_client_holder = mocker.Mock()
         mock_client_holder.get_client.return_value = mock_client
         mocker.patch(
-            "app.endpoints.streaming_query.AsyncLlamaStackClientHolder",
+            "app.endpoints.streaming_query.AsyncOgxClientHolder",
             return_value=mock_client_holder,
         )
 
@@ -451,11 +451,11 @@ class TestStreamingQueryEndpointHandler:
             "app.endpoints.streaming_query.validate_attachments_metadata"
         )
 
-        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
         mock_client_holder = mocker.Mock()
         mock_client_holder.get_client.return_value = mock_client
         mocker.patch(
-            "app.endpoints.streaming_query.AsyncLlamaStackClientHolder",
+            "app.endpoints.streaming_query.AsyncOgxClientHolder",
             return_value=mock_client_holder,
         )
 
@@ -537,15 +537,15 @@ class TestStreamingQueryEndpointHandler:
             new=mocker.AsyncMock(return_value=RAGContext()),
         )
 
-        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
-        mock_updated_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
+        mock_updated_client = mocker.AsyncMock(spec=AsyncOgxClient)
         mock_client_holder = mocker.Mock()
         mock_client_holder.get_client.return_value = mock_client
         mock_client_holder.update_azure_token = mocker.AsyncMock(
             return_value=mock_updated_client
         )
         mocker.patch(
-            "app.endpoints.streaming_query.AsyncLlamaStackClientHolder",
+            "app.endpoints.streaming_query.AsyncOgxClientHolder",
             return_value=mock_client_holder,
         )
 
@@ -623,7 +623,7 @@ class TestCreateResponseGenerator:
         self, mocker: MockerFixture
     ) -> None:
         """Test successful response generator creation."""
-        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
 
         mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
         mock_responses_params.model = "provider1/model1"
@@ -675,7 +675,7 @@ class TestCreateResponseGenerator:
         self, mocker: MockerFixture
     ) -> None:
         """Test response generator creation when shield blocks."""
-        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
 
         mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
         mock_responses_params.model = "provider1/model1"
@@ -723,7 +723,7 @@ class TestCreateResponseGenerator:
         generate_response persists the compacted turn (with the original input),
         so storing it again in the shield branch would duplicate it (LCORE-1572).
         """
-        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
 
         mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
         mock_responses_params.model = "provider1/model1"
@@ -763,7 +763,7 @@ class TestCreateResponseGenerator:
         self, mocker: MockerFixture
     ) -> None:
         """Test response generator creation raises HTTPException on connection error."""
-        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
 
         mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
         mock_responses_params.model = "provider1/model1"
@@ -797,7 +797,7 @@ class TestCreateResponseGenerator:
         mock_error_response.model_dump.return_value = {
             "status_code": 503,
             "detail": {
-                "response": "Unable to connect to Llama Stack",
+                "response": "Unable to connect to OGX",
                 "cause": "Connection failed",
             },
         }
@@ -818,7 +818,7 @@ class TestCreateResponseGenerator:
         self, mocker: MockerFixture
     ) -> None:
         """Test response generator creation raises HTTPException on API status error."""
-        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
 
         mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
         mock_responses_params.model = "provider1/model1"
@@ -870,7 +870,7 @@ class TestCreateResponseGenerator:
         self, mocker: MockerFixture
     ) -> None:
         """Test response generator raises HTTPException on RuntimeError with context_length."""
-        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
 
         mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
         mock_responses_params.model = "provider1/model1"
@@ -919,7 +919,7 @@ class TestCreateResponseGenerator:
         self, mocker: MockerFixture
     ) -> None:
         """Test response generator creation re-raises RuntimeError without context_length."""
-        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
 
         mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
         mock_responses_params.model = "provider1/model1"
@@ -988,7 +988,7 @@ class TestGenerateResponse:
 
         mock_response_obj = mocker.Mock()
         mock_response_obj.output = []
-        mock_context.client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_context.client = mocker.AsyncMock(spec=AsyncOgxClient)
         mock_context.client.responses = mocker.Mock()
         mock_context.client.responses.create = mocker.AsyncMock(
             return_value=mock_response_obj
@@ -1043,7 +1043,7 @@ class TestGenerateResponse:
         mock_context.started_at = "2024-01-01T00:00:00Z"
         mock_context.skip_userid_check = False
         mock_context.request_id = "223e4567-e89b-12d3-a456-426614174000"
-        mock_context.client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_context.client = mocker.AsyncMock(spec=AsyncOgxClient)
 
         mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
         mock_responses_params.model = "provider1/model1"
@@ -1108,7 +1108,7 @@ class TestGenerateResponse:
         mock_context.started_at = "2024-01-01T00:00:00Z"
         mock_context.skip_userid_check = False
         mock_context.request_id = "123e4567-e89b-12d3-a456-426614174000"
-        mock_context.client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_context.client = mocker.AsyncMock(spec=AsyncOgxClient)
 
         mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
         mock_responses_params.model = "provider1/model1"
@@ -1348,7 +1348,7 @@ class TestGenerateResponse:
         )  # pyright: ignore[reportCallIssue]
         mock_context.started_at = "2024-01-01T00:00:00Z"
         mock_context.skip_userid_check = False
-        mock_context.client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_context.client = mocker.AsyncMock(spec=AsyncOgxClient)
 
         mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
         mock_responses_params.model = "provider1/model1"
@@ -1428,7 +1428,7 @@ class TestGenerateResponse:
         )  # pyright: ignore[reportCallIssue]
         mock_context.started_at = "2024-01-01T00:00:00Z"
         mock_context.skip_userid_check = False
-        mock_context.client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_context.client = mocker.AsyncMock(spec=AsyncOgxClient)
         mock_context.request_id = test_request_id
 
         mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
@@ -1508,7 +1508,7 @@ class TestGenerateResponse:
         )  # pyright: ignore[reportCallIssue]
         mock_context.started_at = "2024-01-01T00:00:00Z"
         mock_context.skip_userid_check = False
-        mock_context.client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_context.client = mocker.AsyncMock(spec=AsyncOgxClient)
         mock_context.request_id = test_request_id
 
         mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
@@ -1575,7 +1575,7 @@ class TestGenerateResponse:
         )  # pyright: ignore[reportCallIssue]
         mock_context.started_at = "2024-01-01T00:00:00Z"
         mock_context.skip_userid_check = False
-        mock_context.client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_context.client = mocker.AsyncMock(spec=AsyncOgxClient)
         mock_context.request_id = test_request_id
 
         mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
@@ -1636,7 +1636,7 @@ class TestGenerateResponse:
         )  # pyright: ignore[reportCallIssue]
         mock_context.started_at = "2024-01-01T00:00:00Z"
         mock_context.skip_userid_check = False
-        mock_context.client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_context.client = mocker.AsyncMock(spec=AsyncOgxClient)
 
         mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
         mock_responses_params.model = "provider1/model1"
@@ -1695,7 +1695,7 @@ class TestGenerateResponse:
         )  # pyright: ignore[reportCallIssue]
         mock_context.started_at = "2024-01-01T00:00:00Z"
         mock_context.skip_userid_check = False
-        mock_context.client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_context.client = mocker.AsyncMock(spec=AsyncOgxClient)
 
         mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
         mock_responses_params.model = "provider1/model1"

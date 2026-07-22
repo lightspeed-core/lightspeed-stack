@@ -893,10 +893,10 @@ Summary of validation:
 
 ### Findings discovered during PoC
 
-- **`AsyncLlamaStackAsLibraryClient` takes a file path, not a dict.** The
+- **`AsyncOGXAsLibraryClient` takes a file path, not a dict.** The
   initial design assumed we could pass the synthesized configuration to the
   library client in memory and avoid touching the filesystem. In practice
-  `llama_stack.core.library_client.AsyncLlamaStackAsLibraryClient` accepts
+  `ogx.core.library_client.AsyncOGXAsLibraryClient` accepts
   only a string path (or, in newer versions, a `StackRunConfig` object that
   is itself built from a parsed YAML file). There is no dict-only entry
   point in the public API. Consequences for the implementation:
@@ -1085,7 +1085,7 @@ new list — they don't need to know a patch syntax.
 ### Process-model recap (no LCORE supervision of LS)
 
 **Library mode**: LCORE process embeds the Llama Stack library client. LCORE
-synthesizes `run.yaml` to a file, calls `AsyncLlamaStackAsLibraryClient(path)`,
+synthesizes `run.yaml` to a file, calls `AsyncOGXAsLibraryClient(path)`,
 initializes, serves. One process.
 
 **Server mode**: Llama Stack runs as a separate process (container). LCORE

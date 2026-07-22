@@ -5,8 +5,8 @@ from typing import Any
 
 import pytest
 from fastapi import HTTPException
-from llama_stack_api import OpenAIResponseMessage
-from llama_stack_client import APIConnectionError, APIStatusError
+from ogx_api import OpenAIResponseMessage
+from ogx_client import APIConnectionError, APIStatusError
 from pytest_mock import MockerFixture
 
 from constants import DEFAULT_RAG_TOOL

@@ -30,7 +30,7 @@ to disentangle a tangle of side effects.
 from datetime import UTC, datetime
 from typing import Any
 
-from llama_stack_client import AsyncLlamaStackClient
+from ogx_client import AsyncOgxClient
 
 from log import get_logger
 from models.compaction import ConversationSummary
@@ -198,7 +198,7 @@ def _extract_response_text(response: Any) -> str:
 
 
 async def summarize_chunk(
-    client: AsyncLlamaStackClient,
+    client: AsyncOgxClient,
     model: str,
     old_items: list[Any],
     summarized_through_turn: int,
@@ -310,7 +310,7 @@ preservation directives are the same.
 
 
 async def recursively_resummarize(
-    client: AsyncLlamaStackClient,
+    client: AsyncOgxClient,
     model: str,
     summaries: list[ConversationSummary],
     encoding_name: str,

@@ -13,17 +13,17 @@ import asyncio
 import os
 from typing import Optional
 
-from llama_stack_client import (
+from ogx_client import (
     APIConnectionError,
     APIStatusError,
-    AsyncLlamaStackClient,
+    AsyncOgxClient,
 )
 
 from tests.e2e.utils.utils import is_prow_environment
 
 
-def _get_llama_stack_client() -> AsyncLlamaStackClient:
-    """Build an AsyncLlamaStackClient from env (for e2e test use)."""
+def _get_ogx_client() -> AsyncOgxClient:
+    """Build an AsyncOgxClient from env (for e2e test use)."""
     base_url = os.getenv("E2E_LLAMA_STACK_URL")
     if not base_url:
         if is_prow_environment():
@@ -34,7 +34,7 @@ def _get_llama_stack_client() -> AsyncLlamaStackClient:
         base_url = f"http://{host}:{port}"
     api_key = os.getenv("E2E_LLAMA_STACK_API_KEY", "xyzzy")
     timeout = int(os.getenv("E2E_LLAMA_STACK_TIMEOUT", "60"))
-    return AsyncLlamaStackClient(base_url=base_url, api_key=api_key, timeout=timeout)
+    return AsyncOgxClient(base_url=base_url, api_key=api_key, timeout=timeout)
 
 
 # -----------------------------------------------------------------------------
@@ -44,7 +44,7 @@ def _get_llama_stack_client() -> AsyncLlamaStackClient:
 
 async def _unregister_toolgroup_async(identifier: str) -> None:
     """Unregister a toolgroup by identifier."""
-    client = _get_llama_stack_client()
+    client = _get_ogx_client()
     try:
         await client.toolgroups.unregister(identifier)
     except APIConnectionError:
@@ -60,7 +60,7 @@ async def _unregister_toolgroup_async(identifier: str) -> None:
 
 async def _unregister_mcp_toolgroups_async() -> None:
     """Unregister all MCP toolgroups."""
-    client = _get_llama_stack_client()
+    client = _get_ogx_client()
     try:
         toolgroups = await client.toolgroups.list()
         for toolgroup in toolgroups:
@@ -87,7 +87,7 @@ def unregister_mcp_toolgroups() -> None:
 
 async def _unregister_shield_async(identifier: str) -> Optional[tuple[str, str]]:
     """Unregister a shield by identifier; return (provider_id, provider_shield_id) for restore."""
-    client = _get_llama_stack_client()
+    client = _get_ogx_client()
     try:
         shields = await client.shields.list()
         provider_id = None
@@ -126,7 +126,7 @@ async def _register_shield_async(
     provider_shield_id: str,
 ) -> None:
     """Register a shield (restore after unregister)."""
-    client = _get_llama_stack_client()
+    client = _get_ogx_client()
     try:
         await client.shields.register(
             shield_id=shield_id,

@@ -6,7 +6,7 @@
 
 import pytest
 from fastapi import HTTPException, Request, status
-from llama_stack_client import APIConnectionError
+from ogx_client import APIConnectionError
 from pytest_mock import AsyncMockType, MockerFixture
 from sqlalchemy.orm import Session
 
@@ -33,7 +33,7 @@ from tests.integration.conftest import (
 SPECIFIC_CONV_ID = "c9d40813-d64d-41eb-8060-3b2446929a02"
 EXISTING_CONV_ID = "22222222-2222-2222-2222-222222222222"
 
-# Note: mock_llama_stack_client and patch_db_session are now provided by
+# Note: mock_ogx_client and patch_db_session are now provided by
 # tests/integration/conftest.py (patch_db_session is autouse for all tests)
 
 # ==========================================
@@ -44,7 +44,7 @@ EXISTING_CONV_ID = "22222222-2222-2222-2222-222222222222"
 @pytest.mark.asyncio
 async def test_query_v2_endpoint_successful_response(
     test_config: AppConfig,
-    mock_llama_stack_client: AsyncMockType,
+    mock_ogx_client: AsyncMockType,
     mock_query_agent: AsyncMockType,
     test_request: Request,
     test_auth: AuthTuple,
@@ -60,13 +60,13 @@ async def test_query_v2_endpoint_successful_response(
     Parameters:
     ----------
         test_config: Test configuration
-        mock_llama_stack_client: Mocked Llama Stack client
+        mock_ogx_client: Mocked Llama Stack client
         mock_query_agent: Mocked Pydantic AI agent for build_agent/agent.run
         test_request: FastAPI request
         test_auth: noop authentication tuple
     """
     _ = test_config
-    _ = mock_llama_stack_client
+    _ = mock_ogx_client
     _ = mock_query_agent
 
     query_request = QueryRequest(
@@ -93,7 +93,7 @@ async def test_query_v2_endpoint_successful_response(
 @pytest.mark.asyncio
 async def test_query_v2_endpoint_handles_connection_error(
     test_config: AppConfig,
-    mock_llama_stack_client: AsyncMockType,
+    mock_ogx_client: AsyncMockType,
     mock_query_agent: AsyncMockType,
     test_request: Request,
     test_auth: AuthTuple,
@@ -109,7 +109,7 @@ async def test_query_v2_endpoint_handles_connection_error(
     Parameters:
     ----------
         test_config: Test configuration
-        mock_llama_stack_client: Mocked Llama Stack client
+        mock_ogx_client: Mocked Llama Stack client
         mock_query_agent: Mocked Pydantic AI agent for build_agent/agent.run
         test_request: FastAPI request
         test_auth: noop authentication tuple
@@ -120,7 +120,7 @@ async def test_query_v2_endpoint_handles_connection_error(
         None
     """
     _ = test_config
-    _ = mock_llama_stack_client
+    _ = mock_ogx_client
     _ = mock_query_agent
 
     mock_query_agent.run.side_effect = APIConnectionError(request=mocker.Mock())
@@ -138,7 +138,7 @@ async def test_query_v2_endpoint_handles_connection_error(
     # Verify error details
     assert exc_info.value.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
     assert isinstance(exc_info.value.detail, dict)
-    expected = "Unable to connect to Llama Stack"
+    expected = "Unable to connect to OGX"
     assert exc_info.value.detail["response"] == expected  # type: ignore[reportArgumentType]
     assert "cause" in exc_info.value.detail
 
@@ -166,7 +166,7 @@ OAUTH_401_TEST_CASES = [
 async def test_query_v2_endpoint_returns_401_for_mcp_oauth(
     test_case: dict,
     test_config: AppConfig,
-    mock_llama_stack_client: AsyncMockType,
+    mock_ogx_client: AsyncMockType,
     mock_query_agent: AsyncMockType,
     test_request: Request,
     test_auth: AuthTuple,
@@ -186,14 +186,14 @@ async def test_query_v2_endpoint_returns_401_for_mcp_oauth(
         test_case: Dictionary containing test parameters (www_authenticate,
             expect_www_authenticate)
         test_config: Test configuration
-        mock_llama_stack_client: Mocked Llama Stack client
+        mock_ogx_client: Mocked Llama Stack client
         mock_query_agent: Mocked Pydantic AI agent for build_agent/agent.run
         test_request: FastAPI request
         test_auth: noop authentication tuple
         mocker: pytest-mock fixture
     """
     _ = test_config
-    _ = mock_llama_stack_client
+    _ = mock_ogx_client
     _ = mock_query_agent
 
     www_authenticate = test_case["www_authenticate"]
@@ -237,7 +237,7 @@ async def test_query_v2_endpoint_returns_401_for_mcp_oauth(
 @pytest.mark.asyncio
 async def test_query_v2_endpoint_empty_query(
     test_config: AppConfig,
-    mock_llama_stack_client: AsyncMockType,
+    mock_ogx_client: AsyncMockType,
     mock_query_agent: AsyncMockType,
     test_request: Request,
     test_auth: AuthTuple,
@@ -252,7 +252,7 @@ async def test_query_v2_endpoint_empty_query(
     Parameters:
     ----------
         test_config: Test configuration
-        mock_llama_stack_client: Mocked Llama Stack client
+        mock_ogx_client: Mocked Llama Stack client
         mock_query_agent: Mocked Pydantic AI agent for build_agent/agent.run
         test_request: FastAPI request
         test_auth: noop authentication tuple
@@ -262,7 +262,7 @@ async def test_query_v2_endpoint_empty_query(
         None
     """
     _ = test_config
-    _ = mock_llama_stack_client
+    _ = mock_ogx_client
     _ = mock_query_agent
 
     query_request = QueryRequest(query="")
@@ -370,7 +370,7 @@ ATTACHMENT_TEST_CASES = [
 async def test_query_v2_endpoint_attachment_handling(
     test_case: dict,
     test_config: AppConfig,
-    mock_llama_stack_client: AsyncMockType,
+    mock_ogx_client: AsyncMockType,
     mock_query_agent: AsyncMockType,
     test_request: Request,
     test_auth: AuthTuple,
@@ -390,13 +390,13 @@ async def test_query_v2_endpoint_attachment_handling(
         test_case: Dictionary containing test parameters (attachments,
             expected_status, expected_error)
         test_config: Test configuration
-        mock_llama_stack_client: Mocked Llama Stack client
+        mock_ogx_client: Mocked Llama Stack client
         mock_query_agent: Mocked Pydantic AI agent for build_agent/agent.run
         test_request: FastAPI request
         test_auth: noop authentication tuple
     """
     _ = test_config
-    _ = mock_llama_stack_client
+    _ = mock_ogx_client
     _ = mock_query_agent
 
     attachments = test_case["attachments"]
@@ -446,7 +446,7 @@ async def test_query_v2_endpoint_attachment_handling(
 @pytest.mark.asyncio
 async def test_query_v2_endpoint_with_tool_calls(
     test_config: AppConfig,
-    mock_llama_stack_client: AsyncMockType,
+    mock_ogx_client: AsyncMockType,
     mock_query_agent: AsyncMockType,
     test_request: Request,
     test_auth: AuthTuple,
@@ -462,14 +462,14 @@ async def test_query_v2_endpoint_with_tool_calls(
     Parameters:
     ----------
         test_config: Test configuration
-        mock_llama_stack_client: Mocked Llama Stack client
+        mock_ogx_client: Mocked Llama Stack client
         mock_query_agent: Mocked Pydantic AI agent for build_agent/agent.run
         test_request: FastAPI request
         test_auth: noop authentication tuple
         mocker: pytest-mock fixture
     """
     _ = test_config
-    _ = mock_llama_stack_client
+    _ = mock_ogx_client
     _ = mock_query_agent
 
     tool_run_result = create_file_search_agent_run_result(
@@ -508,7 +508,7 @@ async def test_query_v2_endpoint_with_tool_calls(
 @pytest.mark.asyncio
 async def test_query_v2_endpoint_with_mcp_list_tools(
     test_config: AppConfig,
-    mock_llama_stack_client: AsyncMockType,
+    mock_ogx_client: AsyncMockType,
     mock_query_agent: AsyncMockType,
     test_request: Request,
     test_auth: AuthTuple,
@@ -524,14 +524,14 @@ async def test_query_v2_endpoint_with_mcp_list_tools(
     Parameters:
     ----------
         test_config: Test configuration
-        mock_llama_stack_client: Mocked Llama Stack client
+        mock_ogx_client: Mocked Llama Stack client
         mock_query_agent: Mocked Pydantic AI agent for build_agent/agent.run
         test_request: FastAPI request
         test_auth: noop authentication tuple
         mocker: pytest-mock fixture
     """
     _ = test_config
-    _ = mock_llama_stack_client
+    _ = mock_ogx_client
     _ = mock_query_agent
 
     mcp_run_result = create_mcp_list_tools_agent_run_result(
@@ -569,7 +569,7 @@ async def test_query_v2_endpoint_with_mcp_list_tools(
 @pytest.mark.asyncio
 async def test_query_v2_endpoint_with_multiple_tool_types(
     test_config: AppConfig,
-    mock_llama_stack_client: AsyncMockType,
+    mock_ogx_client: AsyncMockType,
     mock_query_agent: AsyncMockType,
     test_request: Request,
     test_auth: AuthTuple,
@@ -585,14 +585,14 @@ async def test_query_v2_endpoint_with_multiple_tool_types(
     Parameters:
     ----------
         test_config: Test configuration
-        mock_llama_stack_client: Mocked Llama Stack client
+        mock_ogx_client: Mocked Llama Stack client
         mock_query_agent: Mocked Pydantic AI agent for build_agent/agent.run
         test_request: FastAPI request
         test_auth: noop authentication tuple
         mocker: pytest-mock fixture
     """
     _ = test_config
-    _ = mock_llama_stack_client
+    _ = mock_ogx_client
     _ = mock_query_agent
 
     mock_query_agent.run.return_value = create_multi_tool_agent_run_result(mocker)
@@ -617,7 +617,7 @@ async def test_query_v2_endpoint_with_multiple_tool_types(
 @pytest.mark.asyncio
 async def test_query_v2_endpoint_bypasses_tools_when_no_tools_true(
     test_config: AppConfig,
-    mock_llama_stack_client: AsyncMockType,
+    mock_ogx_client: AsyncMockType,
     mock_query_agent: AsyncMockType,
     test_request: Request,
     test_auth: AuthTuple,
@@ -635,7 +635,7 @@ async def test_query_v2_endpoint_bypasses_tools_when_no_tools_true(
     Parameters:
     ----------
         test_config: Test configuration
-        mock_llama_stack_client: Mocked Llama Stack client
+        mock_ogx_client: Mocked Llama Stack client
         mock_query_agent: Mocked Pydantic AI agent for build_agent/agent.run
         test_request: FastAPI request
         test_auth: noop authentication tuple
@@ -655,7 +655,7 @@ async def test_query_v2_endpoint_bypasses_tools_when_no_tools_true(
     mock_list_result = mocker.MagicMock()
     mock_list_result.data = [mock_vector_store]
 
-    mock_llama_stack_client.vector_stores.list.return_value = mock_list_result
+    mock_ogx_client.vector_stores.list.return_value = mock_list_result
 
     query_request = QueryRequest(query="What is Ansible?", no_tools=True)
 
@@ -677,7 +677,7 @@ async def test_query_v2_endpoint_bypasses_tools_when_no_tools_true(
 @pytest.mark.asyncio
 async def test_query_v2_endpoint_uses_tools_when_available(  # pylint: disable=unused-argument
     test_config: AppConfig,
-    mock_llama_stack_client: AsyncMockType,
+    mock_ogx_client: AsyncMockType,
     mock_query_agent: AsyncMockType,
     test_request: Request,
     test_auth: AuthTuple,
@@ -694,7 +694,7 @@ async def test_query_v2_endpoint_uses_tools_when_available(  # pylint: disable=u
     Parameters:
     ----------
         test_config: Test configuration
-        mock_llama_stack_client: Mocked Llama Stack client
+        mock_ogx_client: Mocked Llama Stack client
         mock_query_agent: Mocked Pydantic AI agent for build_agent/agent.run
         test_request: FastAPI request
         test_auth: noop authentication tuple
@@ -710,6 +710,18 @@ async def test_query_v2_endpoint_uses_tools_when_available(  # pylint: disable=u
     test_config.rag.tool = ["vs-test-123"]
     _ = patch_db_session
 
+<<<<<<< HEAD
+=======
+    # Mock vector stores to be available (simulating RAG tools)
+    mock_vector_store = mocker.MagicMock()
+    mock_vector_store.id = "vs-test-123"
+
+    mock_list_result = mocker.MagicMock()
+    mock_list_result.data = [mock_vector_store]
+
+    mock_ogx_client.vector_stores.list.return_value = mock_list_result
+
+>>>>>>> 4240ab79 (Rename llama stack to OGX)
     query_request = QueryRequest(query="What is Ansible?", no_tools=False)
 
     response = await query_endpoint_handler(
@@ -737,7 +749,7 @@ async def test_query_v2_endpoint_uses_tools_when_available(  # pylint: disable=u
 @pytest.mark.asyncio
 async def test_query_v2_endpoint_persists_conversation_to_database(
     test_config: AppConfig,
-    mock_llama_stack_client: AsyncMockType,
+    mock_ogx_client: AsyncMockType,
     mock_query_agent: AsyncMockType,
     test_request: Request,
     test_auth: AuthTuple,
@@ -753,14 +765,14 @@ async def test_query_v2_endpoint_persists_conversation_to_database(
     Parameters:
     ----------
         test_config: Test configuration
-        mock_llama_stack_client: Mocked Llama Stack client
+        mock_ogx_client: Mocked Llama Stack client
         mock_query_agent: Mocked Pydantic AI agent for build_agent/agent.run
         test_request: FastAPI request
         test_auth: noop authentication tuple
         patch_db_session: Test database session
     """
     _ = test_config
-    _ = mock_llama_stack_client
+    _ = mock_ogx_client
     _ = mock_query_agent
 
     query_request = QueryRequest(query="What is Ansible?")
@@ -791,7 +803,7 @@ async def test_query_v2_endpoint_persists_conversation_to_database(
 @pytest.mark.asyncio
 async def test_query_v2_endpoint_updates_existing_conversation(
     test_config: AppConfig,
-    mock_llama_stack_client: AsyncMockType,
+    mock_ogx_client: AsyncMockType,
     mock_query_agent: AsyncMockType,
     test_request: Request,
     test_auth: AuthTuple,
@@ -809,14 +821,14 @@ async def test_query_v2_endpoint_updates_existing_conversation(
     Parameters:
     ----------
         test_config: Test configuration
-        mock_llama_stack_client: Mocked Llama Stack client
+        mock_ogx_client: Mocked Llama Stack client
         mock_query_agent: Mocked Pydantic AI agent for build_agent/agent.run
         test_request: FastAPI request
         test_auth: noop authentication tuple
         patch_db_session: Test database session
     """
     _ = test_config
-    _ = mock_llama_stack_client
+    _ = mock_ogx_client
     _ = mock_query_agent
 
     # Create an existing conversation in the database
@@ -866,7 +878,7 @@ async def test_query_v2_endpoint_updates_existing_conversation(
 @pytest.mark.asyncio
 async def test_query_v2_endpoint_conversation_ownership_validation(
     test_config: AppConfig,
-    mock_llama_stack_client: AsyncMockType,
+    mock_ogx_client: AsyncMockType,
     mock_query_agent: AsyncMockType,
     test_request: Request,
     test_auth: AuthTuple,
@@ -882,14 +894,14 @@ async def test_query_v2_endpoint_conversation_ownership_validation(
     Parameters:
     ----------
         test_config: Test configuration
-        mock_llama_stack_client: Mocked Llama Stack client
+        mock_ogx_client: Mocked Llama Stack client
         mock_query_agent: Mocked Pydantic AI agent for build_agent/agent.run
         test_request: FastAPI request
         test_auth: noop authentication tuple
         patch_db_session: Test database session
     """
     _ = test_config
-    _ = mock_llama_stack_client
+    _ = mock_ogx_client
     _ = mock_query_agent
 
     # Create conversation owned by the authenticated user in database
@@ -922,7 +934,7 @@ async def test_query_v2_endpoint_conversation_ownership_validation(
 @pytest.mark.asyncio
 async def test_query_v2_endpoint_creates_valid_cache_entry(
     test_config: AppConfig,
-    mock_llama_stack_client: AsyncMockType,
+    mock_ogx_client: AsyncMockType,
     mock_query_agent: AsyncMockType,
     test_request: Request,
     test_auth: AuthTuple,
@@ -942,7 +954,7 @@ async def test_query_v2_endpoint_creates_valid_cache_entry(
     Parameters:
     ----------
         test_config: Test configuration
-        mock_llama_stack_client: Mocked Llama Stack client
+        mock_ogx_client: Mocked Llama Stack client
         mock_query_agent: Mocked Pydantic AI agent for build_agent/agent.run
         test_request: FastAPI request
         test_auth: noop authentication tuple
@@ -954,7 +966,7 @@ async def test_query_v2_endpoint_creates_valid_cache_entry(
         None
     """
     _ = test_config
-    _ = mock_llama_stack_client
+    _ = mock_ogx_client
     _ = mock_query_agent
     _ = patch_db_session
 
@@ -992,7 +1004,7 @@ async def test_query_v2_endpoint_creates_valid_cache_entry(
 @pytest.mark.asyncio
 async def test_query_v2_endpoint_conversation_not_found_returns_404(
     test_config: AppConfig,
-    mock_llama_stack_client: AsyncMockType,
+    mock_ogx_client: AsyncMockType,
     mock_query_agent: AsyncMockType,
     test_request: Request,
     test_auth: AuthTuple,
@@ -1009,14 +1021,14 @@ async def test_query_v2_endpoint_conversation_not_found_returns_404(
     Parameters:
     ----------
         test_config: Test configuration
-        mock_llama_stack_client: Mocked Llama Stack client
+        mock_ogx_client: Mocked Llama Stack client
         mock_query_agent: Mocked Pydantic AI agent for build_agent/agent.run
         test_request: FastAPI request
         test_auth: noop authentication tuple
         patch_db_session: Test database session
     """
     _ = test_config
-    _ = mock_llama_stack_client
+    _ = mock_ogx_client
     _ = mock_query_agent
 
     query_request = QueryRequest(
@@ -1047,7 +1059,7 @@ async def test_query_v2_endpoint_conversation_not_found_returns_404(
 @pytest.mark.asyncio
 async def test_query_v2_endpoint_with_shield_violation(
     test_config: AppConfig,
-    mock_llama_stack_client: AsyncMockType,
+    mock_ogx_client: AsyncMockType,
     mock_query_agent: AsyncMockType,
     test_request: Request,
     test_auth: AuthTuple,
@@ -1069,7 +1081,7 @@ async def test_query_v2_endpoint_with_shield_violation(
     Parameters:
     ----------
         test_config: Test configuration
-        mock_llama_stack_client: Mocked Llama Stack client
+        mock_ogx_client: Mocked Llama Stack client
         mock_query_agent: Mocked Pydantic AI agent for build_agent/agent.run
         test_request: FastAPI request
         test_auth: noop authentication tuple
@@ -1077,7 +1089,7 @@ async def test_query_v2_endpoint_with_shield_violation(
         mocker: pytest-mock fixture (only for Llama Stack response)
     """
     _ = test_config
-    _ = mock_llama_stack_client
+    _ = mock_ogx_client
     _ = mock_query_agent
 
     set_query_agent_run(
@@ -1110,7 +1122,7 @@ async def test_query_v2_endpoint_with_shield_violation(
 @pytest.mark.asyncio
 async def test_query_v2_endpoint_without_shields(
     test_config: AppConfig,
-    mock_llama_stack_client: AsyncMockType,
+    mock_ogx_client: AsyncMockType,
     mock_query_agent: AsyncMockType,
     test_request: Request,
     test_auth: AuthTuple,
@@ -1127,7 +1139,7 @@ async def test_query_v2_endpoint_without_shields(
     Parameters:
     ----------
         test_config: Test configuration
-        mock_llama_stack_client: Mocked Llama Stack client
+        mock_ogx_client: Mocked Llama Stack client
         mock_query_agent: Mocked Pydantic AI agent for build_agent/agent.run
         test_request: FastAPI request
         test_auth: noop authentication tuple
@@ -1137,7 +1149,7 @@ async def test_query_v2_endpoint_without_shields(
     _ = patch_db_session
 
     # Configure Llama Stack client mock to return no shields (default behavior)
-    mock_llama_stack_client.shields.list.return_value = []
+    mock_ogx_client.shields.list.return_value = []
 
     query_request = QueryRequest(query="What is Ansible?")
 
@@ -1160,7 +1172,7 @@ async def test_query_v2_endpoint_without_shields(
 @pytest.mark.asyncio
 async def test_query_v2_endpoint_handles_empty_llm_response(
     test_config: AppConfig,
-    mock_llama_stack_client: AsyncMockType,
+    mock_ogx_client: AsyncMockType,
     mock_query_agent: AsyncMockType,
     test_request: Request,
     test_auth: AuthTuple,
@@ -1177,14 +1189,14 @@ async def test_query_v2_endpoint_handles_empty_llm_response(
     Parameters:
     ----------
         test_config: Test configuration
-        mock_llama_stack_client: Mocked Llama Stack client
+        mock_ogx_client: Mocked Llama Stack client
         mock_query_agent: Mocked Pydantic AI agent for build_agent/agent.run
         test_request: FastAPI request
         test_auth: noop authentication tuple
         mocker: pytest-mock fixture
     """
     _ = test_config
-    _ = mock_llama_stack_client
+    _ = mock_ogx_client
     _ = mock_query_agent
 
     set_query_agent_run(
@@ -1217,7 +1229,7 @@ async def test_query_v2_endpoint_handles_empty_llm_response(
 @pytest.mark.asyncio
 async def test_query_v2_endpoint_quota_integration(
     test_config: AppConfig,
-    mock_llama_stack_client: AsyncMockType,
+    mock_ogx_client: AsyncMockType,
     mock_query_agent: AsyncMockType,
     test_request: Request,
     test_auth: AuthTuple,
@@ -1235,7 +1247,7 @@ async def test_query_v2_endpoint_quota_integration(
     Parameters:
     ----------
         test_config: Test configuration
-        mock_llama_stack_client: Mocked Llama Stack client
+        mock_ogx_client: Mocked Llama Stack client
         mock_query_agent: Mocked Pydantic AI agent for build_agent/agent.run
         test_request: FastAPI request
         test_auth: noop authentication tuple
@@ -1243,7 +1255,7 @@ async def test_query_v2_endpoint_quota_integration(
         mocker: pytest-mock fixture (only for spying on quota functions)
     """
     _ = test_config
-    _ = mock_llama_stack_client
+    _ = mock_ogx_client
     _ = mock_query_agent
     _ = patch_db_session
 
@@ -1286,7 +1298,7 @@ async def test_query_v2_endpoint_quota_integration(
 @pytest.mark.asyncio
 async def test_query_v2_endpoint_rejects_query_when_quota_exceeded(
     test_config: AppConfig,
-    mock_llama_stack_client: AsyncMockType,
+    mock_ogx_client: AsyncMockType,
     mock_query_agent: AsyncMockType,
     test_request: Request,
     test_auth: AuthTuple,
@@ -1304,7 +1316,7 @@ async def test_query_v2_endpoint_rejects_query_when_quota_exceeded(
     Parameters:
     ----------
         test_config: Test configuration
-        mock_llama_stack_client: Mocked Llama Stack client
+        mock_ogx_client: Mocked Llama Stack client
         mock_query_agent: Mocked Pydantic AI agent for build_agent/agent.run
         test_request: FastAPI request
         test_auth: noop authentication tuple
@@ -1316,7 +1328,7 @@ async def test_query_v2_endpoint_rejects_query_when_quota_exceeded(
         None
     """
     _ = test_config
-    _ = mock_llama_stack_client
+    _ = mock_ogx_client
     _ = mock_query_agent
 
     # Mock check_tokens_available to simulate quota exceeded
@@ -1355,7 +1367,7 @@ async def test_query_v2_endpoint_rejects_query_when_quota_exceeded(
 @pytest.mark.asyncio
 async def test_query_v2_endpoint_transcript_behavior(
     test_config: AppConfig,
-    mock_llama_stack_client: AsyncMockType,
+    mock_ogx_client: AsyncMockType,
     mock_query_agent: AsyncMockType,
     test_request: Request,
     test_auth: AuthTuple,
@@ -1373,14 +1385,14 @@ async def test_query_v2_endpoint_transcript_behavior(
     Parameters:
     ----------
         test_config: Test configuration
-        mock_llama_stack_client: Mocked Llama Stack client
+        mock_ogx_client: Mocked Llama Stack client
         mock_query_agent: Mocked Pydantic AI agent for build_agent/agent.run
         test_request: FastAPI request
         test_auth: noop authentication tuple
         patch_db_session: Test database session
         mocker: pytest-mock fixture
     """
-    _ = mock_llama_stack_client
+    _ = mock_ogx_client
     _ = mock_query_agent
     # Mock store_transcript to prevent file creation
     mocker.patch("utils.query.store_transcript")
@@ -1449,7 +1461,7 @@ async def test_query_v2_endpoint_transcript_behavior(
 @pytest.mark.asyncio
 async def test_query_v2_endpoint_uses_conversation_history_model(
     test_config: AppConfig,
-    mock_llama_stack_client: AsyncMockType,
+    mock_ogx_client: AsyncMockType,
     mock_query_agent: AsyncMockType,
     test_request: Request,
     test_auth: AuthTuple,
@@ -1467,14 +1479,14 @@ async def test_query_v2_endpoint_uses_conversation_history_model(
     Parameters:
     ----------
         test_config: Test configuration
-        mock_llama_stack_client: Mocked Llama Stack client
+        mock_ogx_client: Mocked Llama Stack client
         mock_query_agent: Mocked Pydantic AI agent for build_agent/agent.run
         test_request: FastAPI request
         test_auth: noop authentication tuple
         patch_db_session: Test database session
     """
     _ = test_config
-    _ = mock_llama_stack_client
+    _ = mock_ogx_client
     _ = mock_query_agent
 
     user_id, _, _, _ = test_auth

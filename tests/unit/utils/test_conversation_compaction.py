@@ -8,7 +8,7 @@ from types import SimpleNamespace
 from typing import Any, Optional, cast
 
 import pytest
-from llama_stack_api.openai_responses import OpenAIResponseMessage
+from ogx_api.openai_responses import OpenAIResponseMessage
 from pytest_mock import MockerFixture
 
 from models.common.responses.responses_api_params import ResponsesApiParams
