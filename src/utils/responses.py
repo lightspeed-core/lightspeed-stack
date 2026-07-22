@@ -384,7 +384,7 @@ async def prepare_responses_params(  # pylint: disable=too-many-arguments,too-ma
     )
 
     # Prepare input for Responses API
-    # Adds inline RAG context and attachments
+    # Adds inline RAG context and text attachments (images are excluded)
     input_text = prepare_input(query_request, inline_rag_context)
 
     # Handle conversation ID for Responses API

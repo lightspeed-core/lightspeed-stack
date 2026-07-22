@@ -1,10 +1,16 @@
 """Shared query-related request primitives."""
 
-from typing import Any, Literal, Optional
+import base64
+import binascii
+from typing import Any, Literal, Optional, Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from constants import SOLR_VECTOR_SEARCH_DEFAULT_MODE
+from constants import (
+    DEFAULT_MAX_FILE_UPLOAD_SIZE,
+    IMAGE_CONTENT_TYPES,
+    SOLR_VECTOR_SEARCH_DEFAULT_MODE,
+)
 from log import get_logger
 
 logger = get_logger(__name__)
@@ -16,23 +22,60 @@ class Attachment(BaseModel):
     A list of attachments can be an optional part of 'query' request.
 
     Attributes:
-        attachment_type: The attachment type, like "log", "configuration" etc.
+        attachment_type: The attachment type, like "log", "configuration", "image" etc.
         content_type: The content type as defined in MIME standard
-        content: The actual attachment content
+        content: The actual attachment content (text or base64-encoded image data)
     """
 
     attachment_type: str = Field(
-        description="The attachment type, like 'log', 'configuration' etc.",
-        examples=["log"],
+        description="The attachment type, like 'log', 'configuration', 'image' etc.",
+        examples=["log", "image"],
     )
     content_type: str = Field(
         description="The content type as defined in MIME standard",
-        examples=["text/plain"],
+        examples=["text/plain", "image/jpeg", "image/png"],
     )
     content: str = Field(
-        description="The actual attachment content",
+        description="The actual attachment content (text or base64-encoded image data)",
         examples=["warning: quota exceeded"],
     )
+
+    @model_validator(mode="after")
+    def validate_image_attachment(self) -> Self:
+        """Validate consistency between attachment_type and content_type for images.
+
+        Returns:
+            Self: The validated Attachment instance.
+
+        Raises:
+            ValueError: If attachment_type and content_type are inconsistent
+                (one indicates an image while the other does not),
+                if image content is not valid base64, or if decoded size exceeds the limit.
+        """
+        is_image_content_type = self.content_type in IMAGE_CONTENT_TYPES
+        is_image_attachment_type = self.attachment_type == "image"
+
+        if is_image_content_type != is_image_attachment_type:
+            raise ValueError(
+                f"attachment_type and content_type are inconsistent: "
+                f"attachment_type='{self.attachment_type}', "
+                f"content_type='{self.content_type}'"
+            )
+
+        if is_image_content_type:
+            try:
+                decoded = base64.b64decode(self.content, validate=True)
+            except (binascii.Error, ValueError) as exc:
+                raise ValueError(
+                    f"Invalid base64 content for image attachment: {exc}"
+                ) from exc
+            if len(decoded) > DEFAULT_MAX_FILE_UPLOAD_SIZE:
+                raise ValueError(
+                    f"Image attachment ({len(decoded)} bytes) exceeds maximum "
+                    f"allowed size ({DEFAULT_MAX_FILE_UPLOAD_SIZE} bytes)"
+                )
+
+        return self
 
     # provides examples for /docs endpoint
     model_config = {
@@ -53,6 +96,11 @@ class Attachment(BaseModel):
                     "attachment_type": "configuration",
                     "content_type": "application/yaml",
                     "content": "foo: bar",
+                },
+                {
+                    "attachment_type": "image",
+                    "content_type": "image/png",
+                    "content": "<base64-encoded image data>",
                 },
             ]
         },

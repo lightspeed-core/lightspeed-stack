@@ -3,6 +3,7 @@
 # pylint: disable=too-many-lines
 
 import asyncio
+import base64
 import json
 from collections.abc import AsyncIterator, Callable
 from typing import Any, Optional
@@ -19,6 +20,7 @@ from pydantic_ai.messages import (
     FinishReason,
     FunctionToolCallEvent,
     FunctionToolResultEvent,
+    ImageUrl,
     ModelResponse,
     NativeToolCallPart,
     NativeToolReturnPart,
@@ -50,6 +52,7 @@ from models.common.agents import (
     TurnCompleteStreamPayload,
 )
 from models.common.moderation import ShieldModerationBlocked, ShieldModerationPassed
+from models.common.query import Attachment as QueryAttachment
 from models.common.responses.contexts import ResponseGeneratorContext
 from models.common.responses.responses_api_params import ResponsesApiParams
 from models.common.turn_summary import RAGContext, TurnSummary
@@ -591,6 +594,7 @@ class TestRetrieveAgentResponseGenerator:
             context,
             turn_summary,
             ENDPOINT_PATH_STREAMING_QUERY,
+            image_attachments=None,
         )
 
     @pytest.mark.asyncio
@@ -888,6 +892,68 @@ class TestAgentResponseGenerator:
         assert turn_summary.id == "resp-stream-1"
         assert turn_summary.token_usage.input_tokens == 4
         assert turn_summary.token_usage.output_tokens == 2
+
+    @pytest.mark.asyncio
+    async def test_streams_with_image_attachments_passes_multimodal_prompt(
+        self,
+        mocker: MockerFixture,
+        make_generator_context: Callable[..., ResponseGeneratorContext],
+        make_responses_params: Callable[..., ResponsesApiParams],
+        make_agent_run_result: Callable[..., Any],
+        patch_recording_metrics: None,
+    ) -> None:
+        """Test that image attachments produce a multimodal prompt for streaming."""
+        context = make_generator_context()
+        turn_summary = TurnSummary()
+        run_result = make_agent_run_result(
+            content="I see a screenshot.",
+            response_id="resp-image-stream",
+            input_tokens=5,
+            output_tokens=3,
+        )
+        events = [
+            PartStartEvent(index=0, part=TextPart(content="I see")),
+            PartDeltaEvent(
+                index=0, delta=TextPartDelta(content_delta=" a screenshot.")
+            ),
+            AgentRunResultEvent(result=run_result),
+        ]
+        mock_agent = mocker.Mock()
+        mock_agent.run_stream_events.return_value = _mock_run_stream(events)
+        mocker.patch(
+            "utils.agents.streaming.get_agent_finish_reason",
+            return_value=AgentFinishReason.SUCCESS,
+        )
+        mocker.patch(
+            "utils.agents.streaming.deduplicate_referenced_documents",
+            side_effect=lambda docs: docs,
+        )
+
+        image_data = base64.b64encode(b"\xff\xd8\xff\xe0" + b"\x00" * 10).decode()
+        image_attachment = QueryAttachment(
+            attachment_type="image",
+            content=image_data,
+            content_type="image/jpeg",
+        )
+        params = make_responses_params(input_text="describe this")
+
+        _ = [
+            event
+            async for event in agent_response_generator(
+                mock_agent,
+                params,
+                context,
+                turn_summary,
+                ENDPOINT_PATH_STREAMING_QUERY,
+                image_attachments=[image_attachment],
+            )
+        ]
+
+        prompt_arg = mock_agent.run_stream_events.call_args[0][0]
+        assert isinstance(prompt_arg, list)
+        assert prompt_arg[0] == "describe this"
+        assert isinstance(prompt_arg[1], ImageUrl)
+        assert prompt_arg[1].url == f"data:image/jpeg;base64,{image_data}"
 
     @pytest.mark.asyncio
     async def test_non_success_finish_reason_yields_error_event(

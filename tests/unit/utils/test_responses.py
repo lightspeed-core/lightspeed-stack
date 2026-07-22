@@ -2,6 +2,7 @@
 
 # pylint: disable=line-too-long,too-many-lines
 
+import base64
 import json
 from pathlib import Path
 from typing import Any, Optional, cast
@@ -55,6 +56,7 @@ from pytest_mock import MockerFixture
 
 import constants
 from models.api.requests import QueryRequest
+from models.common.query import Attachment
 from models.common.responses.types import InputTool, InputToolMCP
 from models.config import (
     ApprovalFilter,
@@ -2225,6 +2227,53 @@ class TestPrepareResponsesParams:
         with pytest.raises(HTTPException) as exc_info:
             await prepare_responses_params(mock_client, query_request, None, "token")
         assert exc_info.value.status_code == 500
+
+    @pytest.mark.asyncio
+    async def test_image_attachments_excluded_from_input(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test that image attachments are excluded from text input."""
+        mock_client = mocker.AsyncMock()
+        mock_conversation = mocker.Mock()
+        mock_conversation.id = "new_conv_id"
+        mock_client.conversations.create = mocker.AsyncMock(
+            return_value=mock_conversation
+        )
+
+        image_data = base64.b64encode(b"\xff\xd8\xff\xe0" + b"\x00" * 10).decode()
+        text_attachment = Attachment(
+            attachment_type="log",
+            content="log output",
+            content_type="text/plain",
+        )
+        image_attachment = Attachment(
+            attachment_type="image",
+            content=image_data,
+            content_type="image/jpeg",
+        )
+        query_request = QueryRequest(
+            query="describe this",
+            attachments=[text_attachment, image_attachment],
+        )  # pyright: ignore[reportCallIssue]
+
+        mock_config = mocker.Mock()
+        mock_config.inference = InferenceConfiguration()
+        mocker.patch("utils.responses.configuration", mock_config)
+        mocker.patch("utils.responses.get_system_prompt", return_value="System prompt")
+        mocker.patch("utils.responses.prepare_tools", return_value=None)
+        mocker.patch(
+            "utils.responses.select_model_for_responses",
+            return_value="provider1/model1",
+        )
+        mocker.patch("utils.responses.check_model_configured", return_value=True)
+
+        result = await prepare_responses_params(
+            mock_client, query_request, None, "token"
+        )
+
+        assert isinstance(result.input, str)
+        assert "log output" in result.input
+        assert image_data not in result.input
 
 
 class TestParseReferencedDocuments:

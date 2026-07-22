@@ -11650,9 +11650,10 @@
                     "attachment_type": {
                         "type": "string",
                         "title": "Attachment Type",
-                        "description": "The attachment type, like 'log', 'configuration' etc.",
+                        "description": "The attachment type, like 'log', 'configuration', 'image' etc.",
                         "examples": [
-                            "log"
+                            "log",
+                            "image"
                         ]
                     },
                     "content_type": {
@@ -11660,13 +11661,15 @@
                         "title": "Content Type",
                         "description": "The content type as defined in MIME standard",
                         "examples": [
-                            "text/plain"
+                            "text/plain",
+                            "image/jpeg",
+                            "image/png"
                         ]
                     },
                     "content": {
                         "type": "string",
                         "title": "Content",
-                        "description": "The actual attachment content",
+                        "description": "The actual attachment content (text or base64-encoded image data)",
                         "examples": [
                             "warning: quota exceeded"
                         ]
@@ -11680,7 +11683,7 @@
                     "content"
                 ],
                 "title": "Attachment",
-                "description": "Model representing an attachment that can be sent from the UI as part of query.\n\nA list of attachments can be an optional part of 'query' request.\n\nAttributes:\n    attachment_type: The attachment type, like \"log\", \"configuration\" etc.\n    content_type: The content type as defined in MIME standard\n    content: The actual attachment content",
+                "description": "Model representing an attachment that can be sent from the UI as part of query.\n\nA list of attachments can be an optional part of 'query' request.\n\nAttributes:\n    attachment_type: The attachment type, like \"log\", \"configuration\", \"image\" etc.\n    content_type: The content type as defined in MIME standard\n    content: The actual attachment content (text or base64-encoded image data)",
                 "examples": [
                     {
                         "attachment_type": "log",
@@ -11696,6 +11699,11 @@
                         "attachment_type": "configuration",
                         "content": "foo: bar",
                         "content_type": "application/yaml"
+                    },
+                    {
+                        "attachment_type": "image",
+                        "content": "<base64-encoded image data>",
+                        "content_type": "image/png"
                     }
                 ]
             },

@@ -46,6 +46,7 @@ from client import AsyncLlamaStackClientHolder
 from configuration import configuration
 from constants import (
     ENDPOINT_PATH_STREAMING_QUERY,
+    IMAGE_CONTENT_TYPES,
     LLM_TOKEN_EVENT,
     LLM_TOOL_CALL_EVENT,
     LLM_TOOL_RESULT_EVENT,
@@ -69,6 +70,7 @@ from models.api.responses.error import (
     UnprocessableEntityResponse,
 )
 from models.api.responses.successful import StreamingQueryResponse
+from models.common.query import Attachment
 from models.common.responses.contexts import ResponseGeneratorContext
 from models.common.responses.responses_api_params import ResponsesApiParams
 from models.common.responses.types import ResponseInput
@@ -307,6 +309,13 @@ async def streaming_query_endpoint_handler(  # pylint: disable=too-many-locals
     )
     recording.record_llm_call(provider_id, model_id, endpoint_path)
 
+    # Extract image attachments for multimodal support
+    image_attachments = [
+        a
+        for a in (query_request.attachments or [])
+        if a.content_type in IMAGE_CONTENT_TYPES
+    ] or None
+
     response_media_type = (
         MEDIA_TYPE_TEXT
         if query_request.media_type == MEDIA_TYPE_TEXT
@@ -330,6 +339,7 @@ async def streaming_query_endpoint_handler(  # pylint: disable=too-many-locals
                 context=context,
                 responses_params=responses_params,
                 endpoint_path=endpoint_path,
+                image_attachments=image_attachments,
             ),
             media_type=response_media_type,
         )
@@ -339,6 +349,7 @@ async def streaming_query_endpoint_handler(  # pylint: disable=too-many-locals
         context=context,
         endpoint_path=endpoint_path,
         no_tools=bool(query_request.no_tools),
+        image_attachments=image_attachments,
     )
 
     # Combine inline RAG results (BYOK + Solr) with tool-based results
@@ -461,6 +472,7 @@ async def generate_response_with_compaction(
     context: ResponseGeneratorContext,
     responses_params: ResponsesApiParams,
     endpoint_path: str,
+    image_attachments: Optional[list[Attachment]] = None,
 ) -> AsyncIterator[str]:
     """Stream a response for a conversation that requires compaction.
 
@@ -475,6 +487,7 @@ async def generate_response_with_compaction(
         context: The response generator context.
         responses_params: The base Responses API parameters.
         endpoint_path: API endpoint path used for metric labeling.
+        image_attachments: Image attachments for multimodal prompt construction.
 
     Yields:
         SSE-formatted strings.
@@ -507,6 +520,7 @@ async def generate_response_with_compaction(
             responses_params=responses_params,
             context=context,
             endpoint_path=endpoint_path,
+            image_attachments=image_attachments,
         )
     except HTTPException as e:
         yield http_exception_stream_event(e)

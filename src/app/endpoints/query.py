@@ -23,7 +23,7 @@ from authorization.azure_token_manager import AzureEntraIDManager
 from authorization.middleware import authorize
 from client import AsyncLlamaStackClientHolder
 from configuration import configuration
-from constants import ENDPOINT_PATH_QUERY
+from constants import ENDPOINT_PATH_QUERY, IMAGE_CONTENT_TYPES
 from log import get_logger
 from models.api.requests import QueryRequest
 from models.api.responses.constants import UNAUTHORIZED_OPENAPI_EXAMPLES_WITH_MCP_OAUTH
@@ -227,6 +227,13 @@ async def query_endpoint_handler(
     ):
         client = await AsyncLlamaStackClientHolder().update_azure_token()
 
+    # Extract image attachments for multimodal support
+    image_attachments = [
+        a
+        for a in (query_request.attachments or [])
+        if a.content_type in IMAGE_CONTENT_TYPES
+    ] or None
+
     # Retrieve response using Responses API
     turn_summary = await retrieve_agent_response(
         client,
@@ -235,6 +242,7 @@ async def query_endpoint_handler(
         endpoint_path,
         compaction.original_input if compaction.compacted else None,
         no_tools=bool(query_request.no_tools),
+        image_attachments=image_attachments,
     )
 
     if moderation_result.decision == "passed":
