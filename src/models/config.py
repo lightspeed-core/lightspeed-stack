@@ -1307,6 +1307,9 @@ class Action(str, Enum):
     MANAGE_PROMPTS = "manage_prompts"
     READ_PROMPTS = "read_prompts"
 
+    # User saved prompts (/v1/saved-prompts)
+    LIST_SAVED_PROMPTS = "list_saved_prompts"
+
 
 class AccessRule(ConfigurationBase):
     """Rule defining what actions a role can perform."""
