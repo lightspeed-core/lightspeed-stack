@@ -7,7 +7,7 @@ from typing import Any
 
 import pytest
 from fastapi import HTTPException
-from llama_stack_client import APIConnectionError, BadRequestError
+from ogx_client import APIConnectionError, BadRequestError
 from pydantic import AnyHttpUrl, SecretStr
 from pytest_mock import MockerFixture, MockType
 
@@ -175,7 +175,7 @@ async def test_tools_endpoint_success(
     mocker.patch("app.endpoints.tools.authorize", lambda _: lambda func: func)
 
     # Mock client holder and clien
-    mock_client_holder = mocker.patch("app.endpoints.tools.AsyncLlamaStackClientHolder")
+    mock_client_holder = mocker.patch("app.endpoints.tools.AsyncOgxClientHolder")
     mock_client = mocker.AsyncMock()
     mock_client_holder.return_value.get_client.return_value = mock_client
 
@@ -296,7 +296,7 @@ async def test_tools_endpoint_no_mcp_servers(mocker: MockerFixture) -> None:
     mocker.patch("app.endpoints.tools.authorize", lambda _: lambda func: func)
 
     # Mock client holder and clien
-    mock_client_holder = mocker.patch("app.endpoints.tools.AsyncLlamaStackClientHolder")
+    mock_client_holder = mocker.patch("app.endpoints.tools.AsyncOgxClientHolder")
     mock_client = mocker.AsyncMock()
     mock_client_holder.return_value.get_client.return_value = mock_client
 
@@ -332,7 +332,7 @@ async def test_tools_endpoint_api_connection_error(
     mocker.patch("app.endpoints.tools.authorize", lambda _: lambda func: func)
 
     # Mock client holder and clien
-    mock_client_holder = mocker.patch("app.endpoints.tools.AsyncLlamaStackClientHolder")
+    mock_client_holder = mocker.patch("app.endpoints.tools.AsyncOgxClientHolder")
     mock_client = mocker.AsyncMock()
     mock_client_holder.return_value.get_client.return_value = mock_client
 
@@ -364,7 +364,7 @@ async def test_tools_endpoint_api_connection_error(
     assert exc_info.value.status_code == 503
     detail = exc_info.value.detail
     assert isinstance(detail, dict)
-    assert detail["response"] == "Unable to connect to Llama Stack"  # type: ignore
+    assert detail["response"] == "Unable to connect to OGX"  # type: ignore
 
 
 @pytest.mark.asyncio
@@ -378,7 +378,7 @@ async def test_tools_endpoint_partial_failure(  # pylint: disable=redefined-oute
     mocker.patch("app.endpoints.tools.configuration", app_config)
 
     mocker.patch("app.endpoints.tools.authorize", lambda _: lambda func: func)
-    mock_client_holder = mocker.patch("app.endpoints.tools.AsyncLlamaStackClientHolder")
+    mock_client_holder = mocker.patch("app.endpoints.tools.AsyncOgxClientHolder")
     mock_client = mocker.AsyncMock()
     mock_client_holder.return_value.get_client.return_value = mock_client
 
@@ -406,7 +406,7 @@ async def test_tools_endpoint_partial_failure(  # pylint: disable=redefined-oute
     assert exc_info.value.status_code == 503
     detail = exc_info.value.detail
     assert isinstance(detail, dict)
-    assert detail["response"] == "Unable to connect to Llama Stack"  # type: ignore
+    assert detail["response"] == "Unable to connect to OGX"  # type: ignore
 
 
 @pytest.mark.asyncio
@@ -425,7 +425,7 @@ async def test_tools_endpoint_toolgroup_not_found(  # pylint: disable=redefined-
     mocker.patch("app.endpoints.tools.authorize", lambda _: lambda func: func)
 
     # Mock client holder and clien
-    mock_client_holder = mocker.patch("app.endpoints.tools.AsyncLlamaStackClientHolder")
+    mock_client_holder = mocker.patch("app.endpoints.tools.AsyncOgxClientHolder")
     mock_client = mocker.AsyncMock()
     mock_client_holder.return_value.get_client.return_value = mock_client
 
@@ -496,7 +496,7 @@ async def test_tools_endpoint_builtin_toolgroup(
     mocker.patch("app.endpoints.tools.authorize", lambda _: lambda func: func)
 
     # Mock client holder and clien
-    mock_client_holder = mocker.patch("app.endpoints.tools.AsyncLlamaStackClientHolder")
+    mock_client_holder = mocker.patch("app.endpoints.tools.AsyncOgxClientHolder")
     mock_client = mocker.AsyncMock()
     mock_client_holder.return_value.get_client.return_value = mock_client
 
@@ -600,7 +600,7 @@ async def test_tools_endpoint_mixed_toolgroups(mocker: MockerFixture) -> None:
     mocker.patch("app.endpoints.tools.authorize", lambda _: lambda func: func)
 
     # Mock client holder and clien
-    mock_client_holder = mocker.patch("app.endpoints.tools.AsyncLlamaStackClientHolder")
+    mock_client_holder = mocker.patch("app.endpoints.tools.AsyncOgxClientHolder")
     mock_client = mocker.AsyncMock()
     mock_client_holder.return_value.get_client.return_value = mock_client
 
@@ -680,7 +680,7 @@ async def test_tools_endpoint_value_attribute_error(
     mocker.patch("app.endpoints.tools.authorize", lambda _: lambda func: func)
 
     # Mock client holder and clien
-    mock_client_holder = mocker.patch("app.endpoints.tools.AsyncLlamaStackClientHolder")
+    mock_client_holder = mocker.patch("app.endpoints.tools.AsyncOgxClientHolder")
     mock_client = mocker.AsyncMock()
     mock_client_holder.return_value.get_client.return_value = mock_client
 
@@ -710,7 +710,7 @@ async def test_tools_endpoint_apiconnection_error_toolgroups(  # pylint: disable
     mocker.patch("app.endpoints.tools.authorize", lambda _: lambda func: func)
 
     # Mock client holder and clien
-    mock_client_holder = mocker.patch("app.endpoints.tools.AsyncLlamaStackClientHolder")
+    mock_client_holder = mocker.patch("app.endpoints.tools.AsyncOgxClientHolder")
     mock_client = mocker.AsyncMock()
     mock_client_holder.return_value.get_client.return_value = mock_client
 
@@ -730,7 +730,7 @@ async def test_tools_endpoint_apiconnection_error_toolgroups(  # pylint: disable
 
     detail = exc_info.value.detail
     assert isinstance(detail, dict)
-    assert detail["response"] == "Unable to connect to Llama Stack"  # type: ignore
+    assert detail["response"] == "Unable to connect to OGX"  # type: ignore
 
 
 @pytest.mark.asyncio
@@ -747,7 +747,7 @@ async def test_tools_endpoint_client_holder_apiconnection_error(  # pylint: disa
     mocker.patch("app.endpoints.tools.authorize", lambda _: lambda func: func)
 
     # Mock client holder to raise APIConnectionError
-    mock_client_holder = mocker.patch("app.endpoints.tools.AsyncLlamaStackClientHolder")
+    mock_client_holder = mocker.patch("app.endpoints.tools.AsyncOgxClientHolder")
     api_error = APIConnectionError(request=None)  # type: ignore
     mock_client_holder.return_value.get_client.side_effect = api_error
 
@@ -763,7 +763,7 @@ async def test_tools_endpoint_client_holder_apiconnection_error(  # pylint: disa
 
     detail = exc_info.value.detail
     assert isinstance(detail, dict)
-    assert detail["response"] == "Unable to connect to Llama Stack"  # type: ignore
+    assert detail["response"] == "Unable to connect to OGX"  # type: ignore
 
 
 @pytest.mark.asyncio
@@ -781,7 +781,7 @@ async def test_tools_endpoint_general_exception(
     mocker.patch("app.endpoints.tools.authorize", lambda _: lambda func: func)
 
     # Mock client holder to raise exception
-    mock_client_holder = mocker.patch("app.endpoints.tools.AsyncLlamaStackClientHolder")
+    mock_client_holder = mocker.patch("app.endpoints.tools.AsyncOgxClientHolder")
     mock_client_holder.return_value.get_client.side_effect = Exception(
         "Unexpected error"
     )
@@ -806,7 +806,7 @@ async def test_tools_endpoint_authentication_error_with_mcp_endpoint(
     mocker.patch("app.endpoints.tools.configuration", app_config)
     mocker.patch("app.endpoints.tools.authorize", lambda _: lambda func: func)
 
-    mocker.patch("app.endpoints.tools.AsyncLlamaStackClientHolder")
+    mocker.patch("app.endpoints.tools.AsyncOgxClientHolder")
 
     expected_headers = {"WWW-Authenticate": 'Bearer error="invalid_token"'}
     probe_exception = HTTPException(
@@ -962,7 +962,7 @@ async def test_tools_endpoint_rag_builtin_toolgroup(mocker: MockerFixture) -> No
     mocker.patch("app.endpoints.tools.configuration", app_config)
     mocker.patch("app.endpoints.tools.authorize", lambda _: lambda func: func)
 
-    mock_client_holder = mocker.patch("app.endpoints.tools.AsyncLlamaStackClientHolder")
+    mock_client_holder = mocker.patch("app.endpoints.tools.AsyncOgxClientHolder")
     mock_client = mocker.AsyncMock()
     mock_client_holder.return_value.get_client.return_value = mock_client
 
@@ -1076,7 +1076,7 @@ async def test_tools_endpoint_empty_legacy_fields_overridden(
     mocker.patch("app.endpoints.tools.configuration", app_config)
     mocker.patch("app.endpoints.tools.authorize", lambda _: lambda func: func)
 
-    mock_client_holder = mocker.patch("app.endpoints.tools.AsyncLlamaStackClientHolder")
+    mock_client_holder = mocker.patch("app.endpoints.tools.AsyncOgxClientHolder")
     mock_client = mocker.AsyncMock()
     mock_client_holder.return_value.get_client.return_value = mock_client
 
@@ -1153,7 +1153,7 @@ async def test_tools_endpoint_includes_agent_capability_tools(
     mocker.patch("app.endpoints.tools.configuration", app_config)
     mocker.patch("app.endpoints.tools.authorize", lambda _: lambda func: func)
 
-    mock_client_holder = mocker.patch("app.endpoints.tools.AsyncLlamaStackClientHolder")
+    mock_client_holder = mocker.patch("app.endpoints.tools.AsyncOgxClientHolder")
     mock_client = mocker.AsyncMock()
     mock_client_holder.return_value.get_client.return_value = mock_client
     mock_client.toolgroups.list.return_value = []

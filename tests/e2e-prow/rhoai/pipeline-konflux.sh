@@ -313,7 +313,7 @@ PF_JWKS_PID=$!
 
 # Behave runs in this shell; pipeline-services-konflux.sh cannot export here. MCP hooks call
 # Llama Stack directly — mirror LCS and forward llama-stack-service-svc to localhost:8321.
-log "Starting port-forward for llama-stack (MCP / llama_stack_client hooks)..."
+log "Starting port-forward for llama-stack (MCP / ogx_client hooks)..."
 oc port-forward svc/llama-stack-service-svc 8321:8321 -n $NAMESPACE &
 PF_LLAMA_PID=$!
 echo "$PF_LLAMA_PID" >"$E2E_LLAMA_PORT_FORWARD_PID_FILE"

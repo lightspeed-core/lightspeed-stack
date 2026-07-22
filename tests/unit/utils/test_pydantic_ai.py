@@ -3,8 +3,8 @@
 # pylint: disable=protected-access
 
 import httpx
-from llama_stack.core.library_client import AsyncLlamaStackAsLibraryClient
-from llama_stack_client import AsyncLlamaStackClient
+from ogx.core.library_client import AsyncOGXAsLibraryClient
+from ogx_client import AsyncOgxClient
 from pydantic_ai_skills import SkillsCapability
 from pytest_mock import MockerFixture
 
@@ -111,7 +111,7 @@ class TestBuildAgent:
 
     def test_agent_with_library_client(self, mocker: MockerFixture) -> None:
         """Test that build_agent works with a library client."""
-        mock_lib_client = mocker.Mock(spec=AsyncLlamaStackAsLibraryClient)
+        mock_lib_client = mocker.Mock(spec=AsyncOGXAsLibraryClient)
         mock_lib_client.provider_data = None
 
         mock_params = mocker.Mock()
@@ -134,7 +134,7 @@ class TestBuildAgent:
 
     def test_agent_includes_skills_capability_when_configured(
         self,
-        mock_client: AsyncLlamaStackClient,
+        mock_client: AsyncOgxClient,
         mock_params: ResponsesApiParams,
         mock_skills_configuration: SkillsConfiguration,
     ) -> None:
@@ -152,7 +152,7 @@ class TestBuildAgent:
 
     def test_agent_has_no_skills_capability_when_not_configured(
         self,
-        mock_client: AsyncLlamaStackClient,
+        mock_client: AsyncOgxClient,
         mock_params: ResponsesApiParams,
     ) -> None:
         """Test that build_agent omits SkillsCapability when skills are not passed."""
@@ -165,7 +165,7 @@ class TestBuildAgent:
 
     def test_agent_excludes_tool_capabilities_when_no_tools(
         self,
-        mock_client: AsyncLlamaStackClient,
+        mock_client: AsyncOgxClient,
         mock_params: ResponsesApiParams,
         mock_skills_configuration: SkillsConfiguration,
     ) -> None:

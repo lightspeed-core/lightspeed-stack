@@ -8,7 +8,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 import constants
 from app.database import get_session
-from client import AsyncLlamaStackClientHolder
+from client import AsyncOgxClientHolder
 from configuration import AppConfig, LogicError
 from log import get_logger
 from models.api.responses.error import (
@@ -218,7 +218,7 @@ async def resolve_response_context(
         HTTPException: 404 if previous_response_id is set but the turn does not exist;
             other HTTP exceptions from validate_and_retrieve_conversation.
     """
-    client = AsyncLlamaStackClientHolder().get_client()
+    client = AsyncOgxClientHolder().get_client()
     # Context for the LLM passed by conversation
     if conversation_id:
         logger.info("Conversation ID specified in request: %s", conversation_id)

@@ -2,7 +2,7 @@
 
 import pytest
 from fastapi import HTTPException, status
-from llama_stack_client import APIConnectionError, APIStatusError
+from ogx_client import APIConnectionError, APIStatusError
 from pytest_mock import MockerFixture
 
 from utils.shields import (

@@ -9,7 +9,7 @@ from functools import singledispatch
 from typing import Any, Final, Optional, TypeAlias, cast
 
 from fastapi import HTTPException
-from llama_stack_client import APIConnectionError, APIStatusError
+from ogx_client import APIConnectionError, APIStatusError
 from pydantic_ai import Agent, AgentRunError, AgentRunResultEvent, ToolReturnPart
 from pydantic_ai.messages import (
     AgentStreamEvent,

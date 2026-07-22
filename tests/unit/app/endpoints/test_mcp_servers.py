@@ -7,7 +7,7 @@ from typing import Any
 
 import pytest
 from fastapi import HTTPException, status
-from llama_stack_client import APIConnectionError, NotFoundError
+from ogx_client import APIConnectionError, NotFoundError
 from pydantic import AnyHttpUrl, SecretStr
 from pytest_mock import MockerFixture
 
@@ -97,7 +97,7 @@ def _make_app_config(mocker: MockerFixture, config: Configuration) -> AppConfig:
 
 def _mock_client(mocker: MockerFixture) -> Any:
     """Create and patch a mock Llama Stack client."""
-    mock_holder = mocker.patch("app.endpoints.mcp_servers.AsyncLlamaStackClientHolder")
+    mock_holder = mocker.patch("app.endpoints.mcp_servers.AsyncOgxClientHolder")
     mock_client = mocker.AsyncMock()
     mock_holder.return_value.get_client.return_value = mock_client
     return mock_client

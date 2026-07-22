@@ -19,9 +19,9 @@ if [ -f "$LIGHTSPEED_CONFIG" ]; then
 
     if [ -f "$ENRICHED_CONFIG" ] && [ "$ENRICHMENT_FAILED" -eq 0 ]; then
         echo "Using enriched config: $ENRICHED_CONFIG"
-        exec llama stack run "$ENRICHED_CONFIG"
+        exec ogx stack run "$ENRICHED_CONFIG"
     fi
 fi
 
 echo "Using original config: $INPUT_CONFIG"
-exec llama stack run "$INPUT_CONFIG"
+exec ogx stack run "$INPUT_CONFIG"

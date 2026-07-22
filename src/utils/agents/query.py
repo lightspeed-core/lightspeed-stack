@@ -6,7 +6,7 @@ from enum import Enum
 from typing import Optional, TypeAlias, cast
 
 from fastapi import HTTPException
-from llama_stack_client import APIConnectionError, APIStatusError, AsyncLlamaStackClient
+from ogx_client import APIConnectionError, APIStatusError, AsyncOgxClient
 from pydantic_ai.exceptions import (
     AgentRunError,
     ContentFilterError,
@@ -92,7 +92,7 @@ def map_agent_inference_error(
             return handle_known_apistatus_errors(status_exc, model_id)
         case APIConnectionError() as connection_exc:
             return ServiceUnavailableResponse(
-                backend_name="Llama Stack",
+                backend_name="OGX",
                 cause=str(connection_exc),
             )
         case RuntimeError() as runtime_exc if is_context_length_error(str(runtime_exc)):
@@ -131,7 +131,7 @@ def map_pydantic_agent_run_error(
             return InternalServerErrorResponse.generic()
         case ModelAPIError() as api_exc:
             return ServiceUnavailableResponse(
-                backend_name="Llama Stack",
+                backend_name="OGX",
                 cause=str(api_exc),
             )
         case _:
@@ -281,7 +281,7 @@ def build_turn_summary_from_agent_run(
 
 
 async def retrieve_agent_response(
-    client: AsyncLlamaStackClient,
+    client: AsyncOgxClient,
     responses_params: ResponsesApiParams,
     moderation_result: ShieldModerationResult,
     endpoint_path: str,

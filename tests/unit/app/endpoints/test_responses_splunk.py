@@ -7,10 +7,10 @@ from typing import Any
 import pytest
 from fastapi import HTTPException
 from fastapi.responses import StreamingResponse
-from llama_stack_api import OpenAIResponseObject
-from llama_stack_api.openai_responses import OpenAIResponseMessage
-from llama_stack_client import APIConnectionError, AsyncLlamaStackClient
-from llama_stack_client import APIStatusError as LLSApiStatusError
+from ogx_api import OpenAIResponseObject
+from ogx_api.openai_responses import OpenAIResponseMessage
+from ogx_client import APIConnectionError, AsyncOgxClient
+from ogx_client import APIStatusError as LLSApiStatusError
 from openai._exceptions import APIStatusError as OpenAIAPIStatusError
 from pytest_mock import MockerFixture
 
@@ -230,7 +230,7 @@ class TestSplunkTelemetryHooks:
     ) -> None:
         """Blocked moderation fires responses_shield_blocked telemetry."""
         request = _request_with_model_and_conv("Bad input")
-        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
 
         mock_moderation = mocker.Mock()
         mock_moderation.decision = "blocked"
@@ -324,7 +324,7 @@ class TestSplunkTelemetryHooks:
     ) -> None:
         """Each error branch fires responses_error telemetry with fire_and_forget."""
         request = _request_with_model_and_conv("Hello")
-        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
         mock_moderation = mocker.Mock()
         mock_moderation.decision = "passed"
 
@@ -377,7 +377,7 @@ class TestSplunkTelemetryHooks:
     ) -> None:
         """Successful non-streaming response fires responses_completed with token counts."""
         request = _request_with_model_and_conv("Hello")
-        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
         mock_moderation = mocker.Mock()
         mock_moderation.decision = "passed"
 
@@ -467,7 +467,7 @@ class TestSplunkTelemetryHooks:
     ) -> None:
         """Blocked moderation in streaming fires responses_shield_blocked telemetry."""
         request = _request_with_model_and_conv("Bad", model="provider/model1")
-        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
 
         mock_moderation = mocker.Mock()
         mock_moderation.decision = "blocked"
@@ -552,7 +552,7 @@ class TestSplunkTelemetryHooks:
     ) -> None:
         """Each streaming error branch fires responses_error telemetry with fire_and_forget."""
         request = _request_with_model_and_conv("Hello")
-        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
         mock_moderation = mocker.Mock()
         mock_moderation.decision = "passed"
 
@@ -605,7 +605,7 @@ class TestSplunkTelemetryHooks:
     ) -> None:
         """Successful streaming fires responses_completed after consuming the stream."""
         request = _request_with_model_and_conv("Hi", model="provider/model1")
-        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
         mock_moderation = mocker.Mock()
         mock_moderation.decision = "passed"
 
@@ -656,7 +656,7 @@ class TestSplunkTelemetryHooks:
         )
         mock_holder = mocker.Mock()
         mock_holder.get_client.return_value = mock_client
-        mocker.patch(f"{MODULE}.AsyncLlamaStackClientHolder", return_value=mock_holder)
+        mocker.patch(f"{MODULE}.AsyncOgxClientHolder", return_value=mock_holder)
 
         mock_queue = mocker.patch(f"{TELEMETRY_MODULE}.queue_responses_splunk_event")
 
@@ -701,7 +701,7 @@ class TestSplunkTelemetryHooks:
     ) -> None:
         """When background_tasks is None, queue_responses_splunk_event is called but is a no-op."""
         request = _request_with_model_and_conv("Bad input")
-        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
 
         mock_moderation = mocker.Mock()
         mock_moderation.decision = "blocked"

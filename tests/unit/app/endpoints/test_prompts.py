@@ -4,8 +4,8 @@ from typing import Any, Optional
 
 import pytest
 from fastapi import HTTPException, Request, status
-from llama_stack_client import APIConnectionError, BadRequestError
-from llama_stack_client.types.prompt import Prompt
+from ogx_client import APIConnectionError, BadRequestError
+from ogx_client.types.prompt import Prompt
 from pytest_mock import MockerFixture
 
 from app.endpoints.prompts import (
@@ -75,7 +75,7 @@ def prompts_client_mocks_fixture(
     mock_client = mocker.AsyncMock()
     mock_client.prompts = mock_prompts
     mocker.patch(
-        "app.endpoints.prompts.AsyncLlamaStackClientHolder.get_client",
+        "app.endpoints.prompts.AsyncOgxClientHolder.get_client",
         return_value=mock_client,
     )
     return mock_client, mock_prompts

@@ -289,7 +289,7 @@
       <path d="M1282.5492,731.2213 Q1281.6273,731.2213 1280.893,731.5338 Q1280.1742,731.8463 1279.6742,732.44 Q1279.1742,733.0181 1278.893,733.8931 Q1278.6273,734.7681 1278.6273,735.8619 Q1278.6273,737.2994 1279.0648,738.3463 Q1279.518,739.3931 1280.3617,739.94 Q1281.2211,740.4869 1282.5336,740.4869 Q1283.3148,740.4869 1284.0023,740.3619 Q1284.7055,740.2213 1285.7055,739.9088 L1285.7055,741.7838 Q1284.8461,742.1119 1284.0805,742.2369 Q1283.3305,742.3619 1282.3148,742.3619 Q1280.393,742.3619 1279.0805,741.565 Q1277.7836,740.7525 1277.1273,739.2838 Q1276.4711,737.7994 1276.4711,735.8306 Q1276.4711,734.4088 1276.8617,733.2369 Q1277.268,732.0494 1278.0492,731.1744 Q1278.8305,730.2994 1279.9711,729.8306 Q1281.1117,729.3463 1282.5805,729.3463 Q1283.5336,729.3463 1284.4242,729.5494 Q1285.3305,729.7369 1286.268,730.2056 L1285.4398,731.9869 Q1284.6586,731.6119 1284.0023,731.4244 Q1283.3461,731.2213 1282.5492,731.2213 Z " fill="#000000"/>
       <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="182.6013" x="1297.202" y="741.122">ResponseGeneratorContext</text>
       <line style="stroke:#181818;stroke-width:0.5;" x1="1265.01" x2="1485.2332" y1="751.69" y2="751.69"/>
-      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="196.9512" x="1270.01" y="770.6559">client : AsyncLlamaStackClient</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="196.9512" x="1270.01" y="770.6559">client : AsyncOgxClient</text>
       <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="131.9915" x="1270.01" y="789.7239">conversation_id : str</text>
       <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="210.2232" x="1270.01" y="808.7918">inline_rag_context : RAGContext</text>
       <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="88.6897" x="1270.01" y="827.8597">model_id : str</text>
@@ -345,7 +345,7 @@
       <line style="stroke:#181818;stroke-width:0.5;" x1="8" x2="374.2427" y1="1203.92" y2="1203.92"/>
       <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="254.2531" x="13" y="1222.8859">auth : Optional[tuple[str, str, bool, str]]</text>
       <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="312.9408" x="13" y="1241.9539">background_tasks : Optional[BackgroundTasks]</text>
-      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="262.961" x="13" y="1261.0218">client : Optional[AsyncLlamaStackClient]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="262.961" x="13" y="1261.0218">client : Optional[AsyncOgxClient]</text>
       <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="346.6388" x="13" y="1280.0897">compacted_original_input : Optional[ResponseInput]</text>
       <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="190.5253" x="13" y="1299.1576">endpoint_path : Optional[str]</text>
       <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="222.8932" x="13" y="1318.2255">filter_server_tools : Optional[bool]</text>

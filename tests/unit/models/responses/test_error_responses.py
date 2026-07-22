@@ -689,12 +689,12 @@ class TestServiceUnavailableResponse:
     def test_constructor(self) -> None:
         """Test ServiceUnavailableResponse with valid parameters."""
         response = ServiceUnavailableResponse(
-            backend_name="Llama Stack", cause="Connection timeout"
+            backend_name="OGX", cause="Connection timeout"
         )
         assert isinstance(response, AbstractErrorResponse)
         assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
         assert isinstance(response.detail, DetailModel)
-        assert response.detail.response == "Unable to connect to Llama Stack"
+        assert response.detail.response == "Unable to connect to OGX"
         assert response.detail.cause == "Connection timeout"
 
     def test_different_backend_names(self) -> None:
@@ -730,12 +730,12 @@ class TestServiceUnavailableResponse:
         assert "detail" in llama_example["value"]
         assert (
             llama_example["value"]["detail"]["response"]
-            == "Unable to connect to Llama Stack"
+            == "Unable to connect to OGX"
         )
 
     def test_openapi_response_with_explicit_examples(self) -> None:
         """Test ServiceUnavailableResponse.openapi_response() with explicit examples."""
-        result = ServiceUnavailableResponse.openapi_response(examples=["llama stack"])
+        result = ServiceUnavailableResponse.openapi_response(examples=["ogx"])
         examples = result["content"]["application/json"]["examples"]
 
         # Verify only 1 example is returned when explicitly specified

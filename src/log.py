@@ -116,7 +116,7 @@ def build_logging_config() -> dict[t.Any, t.Any]:
                 "level": log_level,
                 "propagate": False,
             },
-            "llama_stack_client": {
+            "ogx_client": {
                 "handlers": [handler],
                 "level": log_level,
                 "propagate": False,

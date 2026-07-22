@@ -10,21 +10,21 @@ from typing import Annotated, Any, Final, NoReturn, Optional, cast
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
-from llama_stack_api import (
+from ogx_api import (
     OpenAIResponseObject,
     OpenAIResponseObjectStream,
     OpenAIResponseOutput,
 )
-from llama_stack_api import (
+from ogx_api import (
     OpenAIResponseObjectStreamResponseOutputItemAdded as OutputItemAddedChunk,
 )
-from llama_stack_api import (
+from ogx_api import (
     OpenAIResponseObjectStreamResponseOutputItemDone as OutputItemDoneChunk,
 )
-from llama_stack_client import (
+from ogx_client import (
     APIConnectionError,
 )
-from llama_stack_client import (
+from ogx_client import (
     APIStatusError as LLSApiStatusError,
 )
 from openai._exceptions import (
@@ -40,7 +40,7 @@ from authentication import get_auth_dependency
 from authentication.interface import AuthTuple
 from authorization.azure_token_manager import AzureEntraIDManager
 from authorization.middleware import authorize
-from client import AsyncLlamaStackClientHolder
+from client import AsyncOgxClientHolder
 from configuration import configuration
 from constants import ENDPOINT_PATH_RESPONSES, SUBSTITUTED_INSTRUCTIONS_PLACEHOLDER
 from log import get_logger
@@ -161,7 +161,7 @@ responses_response: dict[int | str, dict[str, Any]] = {
     429: QuotaExceededResponse.openapi_response(),
     500: InternalServerErrorResponse.openapi_response(examples=["configuration"]),
     503: ServiceUnavailableResponse.openapi_response(
-        examples=["llama stack", "kubernetes api"]
+        examples=["ogx", "kubernetes api"]
     ),
 }
 
@@ -185,7 +185,7 @@ def _http_exception_for_response_api_error(
         error_response = PromptTooLongResponse(model=api_params.model)
     elif isinstance(error, APIConnectionError):
         error_response = ServiceUnavailableResponse(
-            backend_name="Llama Stack",
+            backend_name="OGX",
             cause=str(error),
         )
     elif isinstance(error, (LLSApiStatusError, OpenAIAPIStatusError)):
@@ -352,7 +352,7 @@ async def responses_endpoint_handler(
             - 422: Unprocessable Entity - Request validation failed
             - 429: Quota limit exceeded - The token quota for model or user has been exceeded
             - 500: Internal Server Error - Configuration not loaded or other server errors
-            - 503: Service Unavailable - Unable to connect to Llama Stack backend
+            - 503: Service Unavailable - Unable to connect to OGX backend
     """
     original_request = responses_request  # read-only request
     updated_request = responses_request.model_copy(deep=True)
@@ -395,7 +395,7 @@ async def responses_endpoint_handler(
     )
     updated_request.conversation = response_context.conversation
     updated_request.generate_topic_summary = response_context.generate_topic_summary
-    client = AsyncLlamaStackClientHolder().get_client()
+    client = AsyncOgxClientHolder().get_client()
 
     # LCORE-specific: Automatically select model if not provided in request
     # This extends the base LLS API which requires model to be specified.
@@ -414,7 +414,7 @@ async def responses_endpoint_handler(
         and AzureEntraIDManager().is_token_expired
         and AzureEntraIDManager().refresh_token()
     ):
-        client = await AsyncLlamaStackClientHolder().update_azure_token()
+        client = await AsyncOgxClientHolder().update_azure_token()
 
     input_text = (
         original_request.input
@@ -559,7 +559,7 @@ async def handle_streaming_response(
     """Handle streaming response from Responses API.
 
     Args:
-        client: The AsyncLlamaStackClient instance
+        client: The AsyncOgxClient instance
         original_request: Original request (read-only)
         api_params: API parameters
         responses_context: Responses context

@@ -4,7 +4,7 @@ from typing import Any
 
 import pytest
 from fastapi import HTTPException, Request, status
-from llama_stack_client import APIConnectionError
+from ogx_client import APIConnectionError
 from pytest_mock import MockerFixture
 
 from app.endpoints.shields import shields_endpoint_handler
@@ -88,7 +88,7 @@ async def test_shields_endpoint_handler_improper_llama_stack_configuration(
     mocker.patch("app.endpoints.shields.configuration", cfg)
     # Mock client to avoid initialization
     mock_client_holder = mocker.patch(
-        "app.endpoints.shields.AsyncLlamaStackClientHolder"
+        "app.endpoints.shields.AsyncOgxClientHolder"
     )
     mock_client = mocker.AsyncMock()
     mock_client_holder.return_value.get_client.return_value = mock_client
@@ -122,7 +122,7 @@ async def test_shields_endpoint_handler_configuration_loaded(
     client is unreachable.
 
     Sets up an AppConfig from a valid configuration, patches the endpoint's
-    configuration and AsyncLlamaStackClientHolder to return a client whose
+    configuration and AsyncOgxClientHolder to return a client whose
     shields.list raises APIConnectionError, and asserts the handler raises an
     HTTPException with status 503 and the expected detail.
 
@@ -161,7 +161,7 @@ async def test_shields_endpoint_handler_configuration_loaded(
     mocker.patch("app.endpoints.shields.configuration", cfg)
     # Mock client to raise APIConnectionError
     mock_client_holder = mocker.patch(
-        "app.endpoints.shields.AsyncLlamaStackClientHolder"
+        "app.endpoints.shields.AsyncOgxClientHolder"
     )
     mock_client = mocker.AsyncMock()
     mock_client.shields.list.side_effect = APIConnectionError(request=None)  # type: ignore
@@ -180,7 +180,7 @@ async def test_shields_endpoint_handler_configuration_loaded(
     with pytest.raises(HTTPException) as e:
         await shields_endpoint_handler(request=request, auth=auth)
     assert e.value.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
-    assert e.value.detail["response"] == "Unable to connect to Llama Stack"  # type: ignore
+    assert e.value.detail["response"] == "Unable to connect to OGX"  # type: ignore
 
 
 @pytest.mark.asyncio
@@ -219,7 +219,7 @@ async def test_shields_endpoint_handler_unable_to_retrieve_shields_list(
     # Mock the LlamaStack client
     mock_client = mocker.AsyncMock()
     mock_client.shields.list.return_value = []
-    mock_lsc = mocker.patch("client.AsyncLlamaStackClientHolder.get_client")
+    mock_lsc = mocker.patch("client.AsyncOgxClientHolder.get_client")
     mock_lsc.return_value = mock_client
     mock_config = mocker.Mock()
     mocker.patch("app.endpoints.shields.configuration", mock_config)
@@ -250,7 +250,7 @@ async def test_shields_endpoint_llama_stack_connection_error(
 
     Simulates the Llama Stack client raising an APIConnectionError and asserts
     that calling the endpoint raises an HTTPException with status 503, a detail
-    response of "Unable to connect to Llama Stack", and a detail cause that
+    response of "Unable to connect to OGX", and a detail cause that
     contains "Connection error".
     """
     mock_authorization_resolvers(mocker)
@@ -279,12 +279,12 @@ async def test_shields_endpoint_llama_stack_connection_error(
         "authentication": {"module": "noop"},
     }
 
-    # mock AsyncLlamaStackClientHolder to raise APIConnectionError
+    # mock AsyncOgxClientHolder to raise APIConnectionError
     # when shields.list() method is called
     mock_client = mocker.AsyncMock()
     mock_client.shields.list.side_effect = APIConnectionError(request=None)  # type: ignore
     mock_client_holder = mocker.patch(
-        "app.endpoints.shields.AsyncLlamaStackClientHolder"
+        "app.endpoints.shields.AsyncOgxClientHolder"
     )
     mock_client_holder.return_value.get_client.return_value = mock_client
 
@@ -306,7 +306,7 @@ async def test_shields_endpoint_llama_stack_connection_error(
     with pytest.raises(HTTPException) as e:
         await shields_endpoint_handler(request=request, auth=auth)
     assert e.value.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
-    assert e.value.detail["response"] == "Unable to connect to Llama Stack"  # type: ignore
+    assert e.value.detail["response"] == "Unable to connect to OGX"  # type: ignore
     assert "Connection error" in e.value.detail["cause"]  # type: ignore
 
 
@@ -363,7 +363,7 @@ async def test_shields_endpoint_handler_success_with_shields_data(
 
     mock_client = mocker.AsyncMock()
     mock_client.shields.list.return_value = mock_shields_data
-    mock_lsc = mocker.patch("client.AsyncLlamaStackClientHolder.get_client")
+    mock_lsc = mocker.patch("client.AsyncOgxClientHolder.get_client")
     mock_lsc.return_value = mock_client
     mock_config = mocker.Mock()
     mocker.patch("app.endpoints.shields.configuration", mock_config)
@@ -422,7 +422,7 @@ async def test_shields_endpoint_handler_unexpected_exception(
     mock_client = mocker.AsyncMock()
     mock_client.shields.list.side_effect = RuntimeError("unexpected failure")
     mock_client_holder = mocker.patch(
-        "app.endpoints.shields.AsyncLlamaStackClientHolder"
+        "app.endpoints.shields.AsyncOgxClientHolder"
     )
     mock_client_holder.return_value.get_client.return_value = mock_client
 
@@ -478,7 +478,7 @@ async def test_shields_endpoint_handler_malformed_shield_objects(
     mock_client = mocker.AsyncMock()
     mock_client.shields.list.return_value = [mock_shield_minimal]
     mock_client_holder = mocker.patch(
-        "app.endpoints.shields.AsyncLlamaStackClientHolder"
+        "app.endpoints.shields.AsyncOgxClientHolder"
     )
     mock_client_holder.return_value.get_client.return_value = mock_client
 
