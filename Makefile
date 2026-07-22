@@ -176,18 +176,18 @@ format: ## Format the code into unified format
 	uv run black --line-length 88 src tests
 	uv run ruff check src tests --fix
 
-schema:	## Generate OpenAPI schema file stored in docs subdirectory
-	uv run scripts/generate_openapi_schema.py docs/openapi.json
+schema:	## Generate OpenAPI schema file stored in docs/devel_doc subdirectory
+	uv run scripts/generate_openapi_schema.py docs/devel_doc/openapi.json
 
-openapi-doc:	docs/openapi.json scripts/fix_openapi_doc.py	## Generate OpenAPI documentation
-	openapi-to-markdown --input_file docs/openapi.json --output_file output.md
+openapi-doc:	docs/devel_doc/openapi.json scripts/fix_openapi_doc.py	## Generate OpenAPI documentation
+	openapi-to-markdown --input_file docs/devel_doc/openapi.json --output_file output.md
 	# LCORE-1494: don't overwrite the original docs/output.md for now
 	python3 scripts/fix_openapi_doc.py < output.md > openapi2.md
 	rm output.md
 
-generate-documentation:	devel-doc	## Generate or regenerated content of the whole /docs subdirectory
+generate-documentation:	devel-doc schema	## Generate or regenerated content of the whole /docs subdirectory
 
-doc:	devel-doc	## Generate or regenerated content of the whole /docs subdirectory
+doc:	generate-documentation	## Generate or regenerated content of the whole /docs subdirectory
 
 devel-doc:	## Generate documentation for developers
 	scripts/gen_doc.py
