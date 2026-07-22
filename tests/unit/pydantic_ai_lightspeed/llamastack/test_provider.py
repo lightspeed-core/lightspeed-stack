@@ -9,11 +9,13 @@ from llama_stack_client import AsyncLlamaStackClient
 from openai import AsyncOpenAI
 from pytest_mock import MockerFixture
 
-from pydantic_ai_lightspeed.llamastack._provider import (
+from lightspeed_stack.pydantic_ai_lightspeed.llamastack._provider import (
     DEFAULT_BASE_URL,
     LlamaStackProvider,
 )
-from pydantic_ai_lightspeed.llamastack._transport import LlamaStackServerTransport
+from lightspeed_stack.pydantic_ai_lightspeed.llamastack._transport import (
+    LlamaStackServerTransport,
+)
 
 
 class TestLlamaStackProviderProperties:

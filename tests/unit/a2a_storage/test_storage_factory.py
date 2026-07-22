@@ -10,10 +10,13 @@ import pytest
 from a2a.server.tasks import DatabaseTaskStore, InMemoryTaskStore
 from pytest_mock import MockerFixture
 
-from a2a_storage import A2AStorageFactory
-from a2a_storage.in_memory_context_store import InMemoryA2AContextStore
-from a2a_storage.sqlite_context_store import SQLiteA2AContextStore
-from models.config import A2AStateConfiguration, SQLiteDatabaseConfiguration
+from lightspeed_stack.a2a_storage import A2AStorageFactory
+from lightspeed_stack.a2a_storage.in_memory_context_store import InMemoryA2AContextStore
+from lightspeed_stack.a2a_storage.sqlite_context_store import SQLiteA2AContextStore
+from lightspeed_stack.models.config import (
+    A2AStateConfiguration,
+    SQLiteDatabaseConfiguration,
+)
 
 
 class _FakeProperty:  # pylint: disable=too-few-public-methods

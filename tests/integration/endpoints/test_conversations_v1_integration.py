@@ -12,16 +12,16 @@ from llama_stack_client import APIConnectionError, APIStatusError
 from pytest_mock import AsyncMockType, MockerFixture
 from sqlalchemy.orm import Session
 
-from app.endpoints.conversations_v1 import (
+from lightspeed_stack.app.endpoints.conversations_v1 import (
     delete_conversation_endpoint_handler,
     get_conversation_endpoint_handler,
     get_conversations_list_endpoint_handler,
     update_conversation_endpoint_handler,
 )
-from authentication.interface import AuthTuple
-from configuration import AppConfig
-from models.api.requests import ConversationUpdateRequest
-from models.database.conversations import UserConversation, UserTurn
+from lightspeed_stack.authentication.interface import AuthTuple
+from lightspeed_stack.configuration import AppConfig
+from lightspeed_stack.models.api.requests import ConversationUpdateRequest
+from lightspeed_stack.models.database.conversations import UserConversation, UserTurn
 from tests.integration.conftest import (
     TEST_CONVERSATION_ID,
     TEST_INVALID_ID,

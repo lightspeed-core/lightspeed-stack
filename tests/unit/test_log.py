@@ -4,11 +4,11 @@ import logging
 
 import pytest
 
-from constants import (
+from lightspeed_stack.constants import (
     DEFAULT_LOGGER_NAME,
     LIGHTSPEED_STACK_LOG_LEVEL_ENV_VAR,
 )
-from log import get_logger, resolve_log_level, setup_logging
+from lightspeed_stack.log import get_logger, resolve_log_level, setup_logging
 
 
 def test_get_logger() -> None:

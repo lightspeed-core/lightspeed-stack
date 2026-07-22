@@ -6,9 +6,9 @@ from typing import Optional
 from pytest_benchmark.fixture import BenchmarkFixture
 from sqlalchemy.orm import Session
 
-from app.database import get_session
-from models.database.conversations import UserConversation
-from utils.suid import get_suid
+from lightspeed_stack.app.database import get_session
+from lightspeed_stack.models.database.conversations import UserConversation
+from lightspeed_stack.utils.suid import get_suid
 
 from .data_generators import (
     generate_model_for_provider,

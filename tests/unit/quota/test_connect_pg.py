@@ -5,9 +5,9 @@ from psycopg2 import OperationalError
 from pydantic import SecretStr
 from pytest_mock import MockerFixture
 
-import constants
-from models.config import PostgreSQLDatabaseConfiguration
-from quota.connect_pg import connect_pg
+from lightspeed_stack import constants
+from lightspeed_stack.models.config import PostgreSQLDatabaseConfiguration
+from lightspeed_stack.quota.connect_pg import connect_pg
 
 
 def test_connect_pg_when_connection_established(mocker: MockerFixture) -> None:

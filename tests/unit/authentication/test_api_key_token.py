@@ -6,9 +6,9 @@ import pytest
 from fastapi import HTTPException, Request
 from pydantic import SecretStr
 
-from authentication.api_key_token import APIKeyTokenAuthDependency
-from constants import DEFAULT_USER_NAME, DEFAULT_USER_UID
-from models.config import APIKeyTokenConfiguration
+from lightspeed_stack.authentication.api_key_token import APIKeyTokenAuthDependency
+from lightspeed_stack.constants import DEFAULT_USER_NAME, DEFAULT_USER_UID
+from lightspeed_stack.models.config import APIKeyTokenConfiguration
 
 
 @pytest.fixture

@@ -12,8 +12,8 @@ from fastapi import HTTPException, Request
 from pydantic import AnyHttpUrl
 from pytest_mock import MockerFixture
 
-from authentication.jwk_token import JwkTokenAuthDependency, _jwk_cache
-from models.config import JwkConfiguration, JwtConfiguration
+from lightspeed_stack.authentication.jwk_token import JwkTokenAuthDependency, _jwk_cache
+from lightspeed_stack.models.config import JwkConfiguration, JwtConfiguration
 
 TEST_USER_ID = "test-user-123"
 TEST_USER_NAME = "testuser"

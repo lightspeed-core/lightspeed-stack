@@ -2,7 +2,7 @@
 
 import subprocess
 
-from version import __version__
+from lightspeed_stack.version import __version__
 
 
 def read_version_from_pyproject() -> str:

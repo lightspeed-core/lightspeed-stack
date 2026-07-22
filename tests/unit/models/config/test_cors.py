@@ -2,7 +2,7 @@
 
 import pytest
 
-from models.config import CORSConfiguration
+from lightspeed_stack.models.config import CORSConfiguration
 
 
 def test_cors_default_configuration() -> None:

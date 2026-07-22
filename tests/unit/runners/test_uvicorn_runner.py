@@ -6,10 +6,10 @@ from pathlib import Path
 import pytest
 from pytest_mock import MockerFixture
 
-from constants import LIGHTSPEED_STACK_LOG_LEVEL_ENV_VAR
-from log import resolve_log_level
-from models.config import ServiceConfiguration, TLSConfiguration
-from runners.uvicorn import start_uvicorn
+from lightspeed_stack.constants import LIGHTSPEED_STACK_LOG_LEVEL_ENV_VAR
+from lightspeed_stack.log import resolve_log_level
+from lightspeed_stack.models.config import ServiceConfiguration, TLSConfiguration
+from lightspeed_stack.runners.uvicorn import start_uvicorn
 
 
 def test_start_uvicorn(mocker: MockerFixture) -> None:
@@ -22,7 +22,7 @@ def test_start_uvicorn(mocker: MockerFixture) -> None:
     mocked_run = mocker.patch("uvicorn.run")
     start_uvicorn(configuration, log_config={})
     mocked_run.assert_called_once_with(
-        "app.main:app",
+        "lightspeed_stack.app.main:app",
         host="localhost",
         port=8080,
         workers=1,
@@ -45,7 +45,7 @@ def test_start_uvicorn_different_host_port(mocker: MockerFixture) -> None:
     mocked_run = mocker.patch("uvicorn.run")
     start_uvicorn(configuration, log_config={})
     mocked_run.assert_called_once_with(
-        "app.main:app",
+        "lightspeed_stack.app.main:app",
         host="x.y.com",
         port=1234,
         workers=10,
@@ -69,7 +69,7 @@ def test_start_uvicorn_empty_tls_configuration(mocker: MockerFixture) -> None:
     mocked_run = mocker.patch("uvicorn.run")
     start_uvicorn(configuration, log_config={})
     mocked_run.assert_called_once_with(
-        "app.main:app",
+        "lightspeed_stack.app.main:app",
         host="x.y.com",
         port=1234,
         workers=10,
@@ -97,7 +97,7 @@ def test_start_uvicorn_tls_configuration(mocker: MockerFixture) -> None:
     mocked_run = mocker.patch("uvicorn.run")
     start_uvicorn(configuration, log_config={})
     mocked_run.assert_called_once_with(
-        "app.main:app",
+        "lightspeed_stack.app.main:app",
         host="x.y.com",
         port=1234,
         workers=10,
@@ -120,7 +120,7 @@ def test_start_uvicorn_with_root_path(mocker: MockerFixture) -> None:
     mocked_run = mocker.patch("uvicorn.run")
     start_uvicorn(configuration, log_config={})
     mocked_run.assert_called_once_with(
-        "app.main:app",
+        "lightspeed_stack.app.main:app",
         host="localhost",
         port=8080,
         workers=1,
@@ -172,7 +172,7 @@ def test_start_uvicorn_respects_debug_log_level(
     mocked_run = mocker.patch("uvicorn.run")
     start_uvicorn(configuration, log_config={})
     mocked_run.assert_called_once_with(
-        "app.main:app",
+        "lightspeed_stack.app.main:app",
         host="localhost",
         port=8080,
         workers=1,
@@ -191,7 +191,9 @@ def test_start_uvicorn_no_log_config(mocker: MockerFixture) -> None:
         host="localhost", port=8080, workers=1
     )  # pyright: ignore[reportCallIssue]
 
-    mock_setup_logging = mocker.patch("runners.uvicorn.build_logging_config")
+    mock_setup_logging = mocker.patch(
+        "lightspeed_stack.runners.uvicorn.build_logging_config"
+    )
     mock_setup_logging.side_effect = ValueError("Raised intentionally")
 
     with pytest.raises(ValueError, match="Raised intentionally"):

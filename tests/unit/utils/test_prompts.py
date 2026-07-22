@@ -4,12 +4,12 @@ import pytest
 from fastapi import HTTPException
 from pytest_mock import MockerFixture
 
-import constants
-from configuration import AppConfig
-from models.api.requests import QueryRequest
-from models.config import CustomProfile
+from lightspeed_stack import constants
+from lightspeed_stack.configuration import AppConfig
+from lightspeed_stack.models.api.requests import QueryRequest
+from lightspeed_stack.models.config import CustomProfile
+from lightspeed_stack.utils import prompts
 from tests.unit import config_dict
-from utils import prompts
 
 CONFIGURED_SYSTEM_PROMPT = "This is a configured system prompt"
 
@@ -151,7 +151,9 @@ def test_get_default_system_prompt(
     mocker: MockerFixture,
 ) -> None:
     """Test that default system prompt is returned when other prompts are not provided."""
-    mocker.patch("utils.prompts.configuration", config_without_system_prompt)
+    mocker.patch(
+        "lightspeed_stack.utils.prompts.configuration", config_without_system_prompt
+    )
     system_prompt = prompts.get_system_prompt(
         query_request_without_system_prompt.system_prompt
     )
@@ -164,7 +166,9 @@ def test_get_customized_system_prompt(
     mocker: MockerFixture,
 ) -> None:
     """Test that customized system prompt is used when system prompt is not provided in query."""
-    mocker.patch("utils.prompts.configuration", config_with_custom_system_prompt)
+    mocker.patch(
+        "lightspeed_stack.utils.prompts.configuration", config_with_custom_system_prompt
+    )
     system_prompt = prompts.get_system_prompt(
         query_request_without_system_prompt.system_prompt
     )
@@ -177,7 +181,9 @@ def test_get_query_system_prompt(
     mocker: MockerFixture,
 ) -> None:
     """Test that system prompt from query is returned."""
-    mocker.patch("utils.prompts.configuration", config_without_system_prompt)
+    mocker.patch(
+        "lightspeed_stack.utils.prompts.configuration", config_without_system_prompt
+    )
     system_prompt = prompts.get_system_prompt(
         query_request_with_system_prompt.system_prompt
     )
@@ -190,7 +196,9 @@ def test_get_query_system_prompt_not_customized_one(
     mocker: MockerFixture,
 ) -> None:
     """Test that system prompt from query is returned even when customized one is specified."""
-    mocker.patch("utils.prompts.configuration", config_with_custom_system_prompt)
+    mocker.patch(
+        "lightspeed_stack.utils.prompts.configuration", config_with_custom_system_prompt
+    )
     system_prompt = prompts.get_system_prompt(
         query_request_with_system_prompt.system_prompt
     )
@@ -204,7 +212,7 @@ def test_get_system_prompt_with_disable_query_system_prompt(
 ) -> None:
     """Test that query system prompt is disallowed when disable_query_system_prompt is True."""
     mocker.patch(
-        "utils.prompts.configuration",
+        "lightspeed_stack.utils.prompts.configuration",
         config_with_custom_system_prompt_and_disable_query_system_prompt,
     )
     with pytest.raises(HTTPException) as exc_info:
@@ -219,7 +227,7 @@ def test_get_system_prompt_with_disable_query_system_prompt_and_non_system_promp
 ) -> None:
     """Test that query without system prompt is allowed when disable_query_system_prompt is True."""
     mocker.patch(
-        "utils.prompts.configuration",
+        "lightspeed_stack.utils.prompts.configuration",
         config_with_custom_system_prompt_and_disable_query_system_prompt,
     )
     system_prompt = prompts.get_system_prompt(
@@ -235,7 +243,7 @@ def test_get_profile_prompt_with_disable_query_system_prompt(
 ) -> None:
     """Test that system prompt is set if profile enabled and query system prompt disabled."""
     mocker.patch(
-        "utils.prompts.configuration",
+        "lightspeed_stack.utils.prompts.configuration",
         config_with_custom_profile_prompt_and_disable_query_system_prompt,
     )
     custom_profile = CustomProfile(path="tests/profiles/test/profile.py")
@@ -253,7 +261,7 @@ def test_get_profile_prompt_with_enabled_query_system_prompt(
 ) -> None:
     """Test that profile system prompt is overridden by query system prompt enabled."""
     mocker.patch(
-        "utils.prompts.configuration",
+        "lightspeed_stack.utils.prompts.configuration",
         config_with_custom_profile_prompt_and_enabled_query_system_prompt,
     )
     system_prompt = prompts.get_system_prompt(
@@ -269,7 +277,7 @@ def test_get_topic_summary_system_prompt_default(
     """Test that default topic summary system prompt is returned when no custom
     profile is configured.
     """
-    mocker.patch("utils.prompts.configuration", setup_configuration)
+    mocker.patch("lightspeed_stack.utils.prompts.configuration", setup_configuration)
     topic_summary_prompt = prompts.get_topic_summary_system_prompt()
     assert topic_summary_prompt == constants.DEFAULT_TOPIC_SUMMARY_SYSTEM_PROMPT
 
@@ -284,7 +292,7 @@ def test_get_topic_summary_system_prompt_with_custom_profile(
     }
     cfg = AppConfig()
     cfg.init_from_dict(test_config)
-    mocker.patch("utils.prompts.configuration", cfg)
+    mocker.patch("lightspeed_stack.utils.prompts.configuration", cfg)
 
     # Mock the custom profile to return a topic_summary prompt
     custom_profile = CustomProfile(path="tests/profiles/test/profile.py")
@@ -315,7 +323,7 @@ def test_get_topic_summary_system_prompt_with_custom_profile_no_topic_summary(
 
     # Patch the custom_profile property to return our mock
     mocker.patch.object(cfg.customization, "custom_profile", mock_profile)
-    mocker.patch("utils.prompts.configuration", cfg)
+    mocker.patch("lightspeed_stack.utils.prompts.configuration", cfg)
 
     topic_summary_prompt = prompts.get_topic_summary_system_prompt()
     assert topic_summary_prompt == constants.DEFAULT_TOPIC_SUMMARY_SYSTEM_PROMPT
@@ -329,7 +337,7 @@ def test_get_topic_summary_system_prompt_no_customization(
     test_config["customization"] = None
     cfg = AppConfig()
     cfg.init_from_dict(test_config)
-    mocker.patch("utils.prompts.configuration", cfg)
+    mocker.patch("lightspeed_stack.utils.prompts.configuration", cfg)
 
     topic_summary_prompt = prompts.get_topic_summary_system_prompt()
     assert topic_summary_prompt == constants.DEFAULT_TOPIC_SUMMARY_SYSTEM_PROMPT

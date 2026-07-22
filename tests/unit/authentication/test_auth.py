@@ -1,20 +1,20 @@
 """Unit tests for functions defined in authentication/__init__.py"""
 
-from authentication import (
+from lightspeed_stack.authentication import (
     get_auth_dependency,
     k8s,
     noop,
     noop_with_token,
     trusted_proxy,
 )
-from configuration import configuration
-from constants import (
+from lightspeed_stack.configuration import configuration
+from lightspeed_stack.constants import (
     AUTH_MOD_K8S,
     AUTH_MOD_NOOP,
     AUTH_MOD_NOOP_WITH_TOKEN,
     AUTH_MOD_TRUSTED_PROXY,
 )
-from models.config import TrustedProxyConfiguration
+from lightspeed_stack.models.config import TrustedProxyConfiguration
 
 
 def test_get_auth_dependency_noop() -> None:

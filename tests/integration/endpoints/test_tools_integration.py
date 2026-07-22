@@ -7,9 +7,9 @@ import pytest
 from fastapi import HTTPException, Request, status
 from pytest_mock import MockerFixture
 
-from app.endpoints import tools
-from authentication.interface import AuthTuple
-from configuration import AppConfig
+from lightspeed_stack.app.endpoints import tools
+from lightspeed_stack.authentication.interface import AuthTuple
+from lightspeed_stack.configuration import AppConfig
 
 
 @pytest.fixture(name="mock_llama_stack_tools")
@@ -21,7 +21,9 @@ def mock_llama_stack_tools_fixture(
     Returns:
         Mock client with toolgroups.list and tools.list configured.
     """
-    mock_holder_class = mocker.patch("app.endpoints.tools.AsyncLlamaStackClientHolder")
+    mock_holder_class = mocker.patch(
+        "lightspeed_stack.app.endpoints.tools.AsyncLlamaStackClientHolder"
+    )
     mock_client = mocker.AsyncMock()
     mock_holder_class.return_value.get_client.return_value = mock_client
     yield mock_client
@@ -85,7 +87,7 @@ async def test_tools_endpoint_returns_401_for_mcp_oauth(  # pylint: disable=too-
         headers={"WWW-Authenticate": www_authenticate} if www_authenticate else None,
     )
     mocker.patch(
-        "app.endpoints.tools.check_mcp_auth",
+        "lightspeed_stack.app.endpoints.tools.check_mcp_auth",
         new_callable=mocker.AsyncMock,
         side_effect=probe_exception,
     )

@@ -90,22 +90,20 @@ dependencies = [
 
 
 [tool.pyright]
-exclude = [
-]
-extraPaths = ["./src"]
+include = ["src", "tests"]
 
 [tool.pdm]
 distribution = true
 
 [tool.pdm.version]
 source = "file"
-path = "src/version.py"
+path = "src/lightspeed_stack/version.py"
 
 [tool.behave]
 paths = ["tests/e2e/features"]
 
 [project.scripts]
-lightspeed-stack = "lightspeed_stack:main"
+lightspeed-stack = "lightspeed_stack.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/lightspeed-core/lightspeed-stack"
@@ -240,7 +238,7 @@ requires = ["pdm-backend"]
 build-backend = "pdm.backend"
 
 [tool.pylint."MESSAGES CONTROL"]
-disable = ["R0801"]
+disable = ["R0801", "C0301"]
 
 [tool.ruff]
 line-length = 88

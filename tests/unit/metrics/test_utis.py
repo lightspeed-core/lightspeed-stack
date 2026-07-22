@@ -3,7 +3,7 @@
 import pytest
 from pytest_mock import MockerFixture
 
-from metrics.utils import setup_model_metrics
+from lightspeed_stack.metrics.utils import setup_model_metrics
 
 
 @pytest.mark.asyncio
@@ -11,23 +11,24 @@ async def test_setup_model_metrics(mocker: MockerFixture) -> None:
     """Test the setup_model_metrics function."""
     # Mock the LlamaStackAsLibraryClient
     mock_client = mocker.patch(
-        "client.AsyncLlamaStackClientHolder.get_client"
+        "lightspeed_stack.client.AsyncLlamaStackClientHolder.get_client"
     ).return_value
     # Make sure the client is an AsyncMock for async methods
     mock_client = mocker.AsyncMock()
     mocker.patch(
-        "client.AsyncLlamaStackClientHolder.get_client", return_value=mock_client
+        "lightspeed_stack.client.AsyncLlamaStackClientHolder.get_client",
+        return_value=mock_client,
     )
     mocker.patch(
-        "metrics.utils.configuration.inference.default_provider",
+        "lightspeed_stack.metrics.utils.configuration.inference.default_provider",
         "default_provider",
     )
     mocker.patch(
-        "metrics.utils.configuration.inference.default_model",
+        "lightspeed_stack.metrics.utils.configuration.inference.default_model",
         "default_model",
     )
 
-    mock_metric = mocker.patch("metrics.provider_model_configuration")
+    mock_metric = mocker.patch("lightspeed_stack.metrics.provider_model_configuration")
     # Mock a model that is the default
     model_default = mocker.Mock(
         id="default_model",

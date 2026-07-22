@@ -4,14 +4,19 @@ import pytest
 from llama_stack_api import URL, ImageContentItem, TextContentItem, _URLOrData
 from pydantic import AnyUrl, ValidationError
 
-from models.common.responses.responses_api_params import ResponsesApiParams
-from models.common.responses.types import InputToolFileSearch, InputToolMCP
-from models.common.turn_summary import (
+from lightspeed_stack.models.common.responses.responses_api_params import (
+    ResponsesApiParams,
+)
+from lightspeed_stack.models.common.responses.types import (
+    InputToolFileSearch,
+    InputToolMCP,
+)
+from lightspeed_stack.models.common.turn_summary import (
     ReferencedDocument,
     ToolCallSummary,
     ToolResultSummary,
 )
-from utils.types import content_to_str
+from lightspeed_stack.utils.types import content_to_str
 
 
 class TestContentToStr:

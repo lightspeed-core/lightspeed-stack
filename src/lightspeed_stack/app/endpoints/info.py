@@ -1,0 +1,91 @@
+"""Handler for REST API call to provide info."""
+
+from typing import Annotated, Any
+
+from fastapi import APIRouter, Depends, HTTPException, Request
+from llama_stack_client import APIConnectionError
+
+from lightspeed_stack.authentication import get_auth_dependency
+from lightspeed_stack.authentication.interface import AuthTuple
+from lightspeed_stack.authorization.middleware import authorize
+from lightspeed_stack.client import AsyncLlamaStackClientHolder
+from lightspeed_stack.configuration import configuration
+from lightspeed_stack.log import get_logger
+from lightspeed_stack.models.api.responses.constants import (
+    UNAUTHORIZED_OPENAPI_EXAMPLES,
+)
+from lightspeed_stack.models.api.responses.error import (
+    ForbiddenResponse,
+    ServiceUnavailableResponse,
+    UnauthorizedResponse,
+)
+from lightspeed_stack.models.api.responses.successful import InfoResponse
+from lightspeed_stack.models.config import Action
+from lightspeed_stack.version import __version__
+
+logger = get_logger(__name__)
+router = APIRouter(tags=["info"])
+
+
+get_info_responses: dict[int | str, dict[str, Any]] = {
+    200: InfoResponse.openapi_response(),
+    401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
+    403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
+    503: ServiceUnavailableResponse.openapi_response(
+        examples=["llama stack", "kubernetes api"]
+    ),
+}
+
+
+@router.get("/info", responses=get_info_responses)
+@authorize(Action.INFO)
+async def info_endpoint_handler(
+    auth: Annotated[AuthTuple, Depends(get_auth_dependency())],
+    request: Request,
+) -> InfoResponse:
+    """
+    Handle request to the /info endpoint.
+
+    Process GET requests to the /info endpoint, returning the
+    service name, version and Llama-stack version.
+
+    ### Parameters:
+    - request: The incoming HTTP request (used by middleware).
+    - auth: Authentication tuple from the auth dependency (used by middleware).
+
+    ### Raises:
+    - HTTPException: with status 401 for unauthorized access.
+    - HTTPException: with status 403 if permission is denied.
+    - HTTPException: with status 503 and a detail object containing `response`
+      and `cause` when unable to connect to Llama Stack.
+
+    ### Returns:
+    - InfoResponse: An object containing the service's name and version.
+    """
+    # Used only for authorization
+    _ = auth
+
+    # Nothing interesting in the request
+    _ = request
+
+    logger.info("Response to /v1/info endpoint")
+
+    try:
+        # try to get Llama Stack client
+        client = AsyncLlamaStackClientHolder().get_client()
+        # retrieve version
+        llama_stack_version_object = await client.inspect.version()
+        llama_stack_version = llama_stack_version_object.version
+        logger.debug("Service name: %s", configuration.configuration.name)
+        logger.debug("Service version: %s", __version__)
+        logger.debug("Llama Stack version: %s", llama_stack_version)
+        return InfoResponse(
+            name=configuration.configuration.name,
+            service_version=__version__,
+            llama_stack_version=llama_stack_version,
+        )
+    # connection to Llama Stack server
+    except APIConnectionError as e:
+        logger.error("Unable to connect to Llama Stack: %s", e)
+        response = ServiceUnavailableResponse(backend_name="Llama Stack", cause=str(e))
+        raise HTTPException(**response.model_dump()) from e

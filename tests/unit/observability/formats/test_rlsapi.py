@@ -3,8 +3,11 @@
 import pytest
 from pytest_mock import MockerFixture
 
-from observability.formats.rlsapi import InferenceEventData, build_inference_event
-from version import __version__
+from lightspeed_stack.observability.formats.rlsapi import (
+    InferenceEventData,
+    build_inference_event,
+)
+from lightspeed_stack.version import __version__
 
 
 @pytest.fixture(name="sample_event_data")
@@ -29,7 +32,9 @@ def test_builds_event_with_all_fields(
     mocker: MockerFixture, sample_event_data: InferenceEventData
 ) -> None:
     """Test event contains all required fields and placeholders."""
-    mock_config = mocker.patch("observability.formats.rlsapi.configuration")
+    mock_config = mocker.patch(
+        "lightspeed_stack.observability.formats.rlsapi.configuration"
+    )
     mock_config.deployment_environment = "production"
 
     event = build_inference_event(sample_event_data)
@@ -54,7 +59,7 @@ def test_builds_event_with_all_fields(
 def test_builds_event_with_token_counts(mocker: MockerFixture) -> None:
     """Test total_llm_tokens is computed from input and output token counts."""
     mocker.patch(
-        "observability.formats.rlsapi.configuration"
+        "lightspeed_stack.observability.formats.rlsapi.configuration"
     ).deployment_environment = "production"
 
     data = InferenceEventData(
@@ -94,7 +99,9 @@ def test_handles_auth_disabled_values(mocker: MockerFixture) -> None:
         system_arch="",
     )
 
-    mock_config = mocker.patch("observability.formats.rlsapi.configuration")
+    mock_config = mocker.patch(
+        "lightspeed_stack.observability.formats.rlsapi.configuration"
+    )
     mock_config.deployment_environment = "test"
 
     event = build_inference_event(data)

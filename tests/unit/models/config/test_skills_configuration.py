@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from models.config import SkillsConfiguration
+from lightspeed_stack.models.config import SkillsConfiguration
 
 
 class TestSkillsConfiguration:

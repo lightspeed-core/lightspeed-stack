@@ -9,8 +9,8 @@ from typing import Any
 
 from pydantic import SecretStr
 
-import constants
-from models.config import (
+from lightspeed_stack import constants
+from lightspeed_stack.models.config import (
     ByokRag,
     CompactionConfiguration,
     Configuration,

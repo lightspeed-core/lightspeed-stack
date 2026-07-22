@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from models.config import ServiceConfiguration, TLSConfiguration
+from lightspeed_stack.models.config import ServiceConfiguration, TLSConfiguration
 
 
 def test_tls_configuration() -> None:

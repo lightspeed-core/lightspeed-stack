@@ -2,7 +2,7 @@
 
 from pytest_mock import MockerFixture
 
-from models.config import Action
+from lightspeed_stack.models.config import Action
 
 
 def mock_authorization_resolvers(mocker: MockerFixture) -> None:
@@ -15,7 +15,7 @@ def mock_authorization_resolvers(mocker: MockerFixture) -> None:
         mocker: The pytest-mock mocker fixture
     """
     mock_resolvers = mocker.patch(
-        "authorization.middleware.get_authorization_resolvers"
+        "lightspeed_stack.authorization.middleware.get_authorization_resolvers"
     )
     mock_role_resolver = mocker.AsyncMock()
     mock_access_resolver = mocker.Mock()

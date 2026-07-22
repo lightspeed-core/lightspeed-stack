@@ -2,7 +2,7 @@
 
 import pytest
 
-from models.compaction import ConversationSummary
+from lightspeed_stack.models.compaction import ConversationSummary
 
 
 def _valid_kwargs() -> dict:

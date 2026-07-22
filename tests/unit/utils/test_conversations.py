@@ -9,10 +9,10 @@ from llama_stack_api import OpenAIResponseMessage
 from llama_stack_client import APIConnectionError, APIStatusError
 from pytest_mock import MockerFixture
 
-from constants import DEFAULT_RAG_TOOL
-from models.common.turn_summary import ToolCallSummary
-from models.database.conversations import UserTurn
-from utils.conversations import (
+from lightspeed_stack.constants import DEFAULT_RAG_TOOL
+from lightspeed_stack.models.common.turn_summary import ToolCallSummary
+from lightspeed_stack.models.database.conversations import UserTurn
+from lightspeed_stack.utils.conversations import (
     _build_tool_call_summary_from_item,
     _extract_text_from_content,
     append_turn_items_to_conversation,

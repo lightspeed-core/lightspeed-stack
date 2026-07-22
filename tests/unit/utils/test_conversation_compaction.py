@@ -11,10 +11,15 @@ import pytest
 from llama_stack_api.openai_responses import OpenAIResponseMessage
 from pytest_mock import MockerFixture
 
-from models.common.responses.responses_api_params import ResponsesApiParams
-from models.compaction import ConversationSummary
-from models.config import CompactionConfiguration, InferenceConfiguration
-from utils import conversation_compaction as cc
+from lightspeed_stack.models.common.responses.responses_api_params import (
+    ResponsesApiParams,
+)
+from lightspeed_stack.models.compaction import ConversationSummary
+from lightspeed_stack.models.config import (
+    CompactionConfiguration,
+    InferenceConfiguration,
+)
+from lightspeed_stack.utils import conversation_compaction as cc
 
 MODEL = "openai/gpt-4o-mini"
 CONV = "conv_abc123"

@@ -17,8 +17,10 @@ from pydantic_ai.models.openai import (
 from pydantic_ai.settings import ModelSettings
 from pytest_mock import MockerFixture
 
-from models.common.responses.responses_api_params import ResponsesApiParams
-from pydantic_ai_lightspeed.llamastack._model import (
+from lightspeed_stack.models.common.responses.responses_api_params import (
+    ResponsesApiParams,
+)
+from lightspeed_stack.pydantic_ai_lightspeed.llamastack._model import (
     _LLS_RESPONSES_EXTRA_FIELDS,
     LlamaStackResponsesModel,
     _FilteredResponseStream,
@@ -126,7 +128,7 @@ class TestFromLlamaStackClient:
         """Test that responses_params is converted and forwarded."""
         mock_provider = mocker.Mock()
         mocker.patch(
-            "pydantic_ai_lightspeed.llamastack._model.LlamaStackProvider"
+            "lightspeed_stack.pydantic_ai_lightspeed.llamastack._model.LlamaStackProvider"
             ".from_llama_stack_client",
             return_value=mock_provider,
         )
@@ -150,7 +152,7 @@ class TestFromLlamaStackClient:
         """Test that model_settings is forwarded directly."""
         mock_provider = mocker.Mock()
         mocker.patch(
-            "pydantic_ai_lightspeed.llamastack._model.LlamaStackProvider"
+            "lightspeed_stack.pydantic_ai_lightspeed.llamastack._model.LlamaStackProvider"
             ".from_llama_stack_client",
             return_value=mock_provider,
         )
@@ -175,7 +177,7 @@ class TestFromLlamaStackClient:
         """Test that settings is None when neither param is provided."""
         mock_provider = mocker.Mock()
         mocker.patch(
-            "pydantic_ai_lightspeed.llamastack._model.LlamaStackProvider"
+            "lightspeed_stack.pydantic_ai_lightspeed.llamastack._model.LlamaStackProvider"
             ".from_llama_stack_client",
             return_value=mock_provider,
         )
@@ -196,7 +198,7 @@ class TestFromLlamaStackClient:
     def test_both_raises_value_error(self, mocker: MockerFixture) -> None:
         """Test that providing both raises ValueError."""
         mocker.patch(
-            "pydantic_ai_lightspeed.llamastack._model.LlamaStackProvider"
+            "lightspeed_stack.pydantic_ai_lightspeed.llamastack._model.LlamaStackProvider"
             ".from_llama_stack_client",
             return_value=mocker.Mock(),
         )
@@ -479,7 +481,7 @@ class TestRequestStream:
         model._provider.name = "test-provider"
         model._provider.base_url = "http://localhost"
         mocker.patch(
-            "pydantic_ai_lightspeed.llamastack._model.check_allow_model_requests"
+            "lightspeed_stack.pydantic_ai_lightspeed.llamastack._model.check_allow_model_requests"
         )
         return model
 

@@ -13,11 +13,11 @@ from pydantic_ai.messages import (
 from pydantic_ai.models import ModelRequestContext
 from pytest_mock import MockerFixture
 
-from models.config import (
+from lightspeed_stack.models.config import (
     RedactionConfig,
     RedactionRule,
 )
-from pydantic_ai_lightspeed.capabilities.redaction._capability import (
+from lightspeed_stack.pydantic_ai_lightspeed.capabilities.redaction._capability import (
     PiiRedactionCapability,
     _redact_content_item,
     _redact_content_list,
@@ -27,7 +27,7 @@ from pydantic_ai_lightspeed.capabilities.redaction._capability import (
     _redact_response,
     _redact_user_prompt_part,
 )
-from pydantic_ai_lightspeed.capabilities.redaction.core import (
+from lightspeed_stack.pydantic_ai_lightspeed.capabilities.redaction.core import (
     CompiledPatterns,
 )
 

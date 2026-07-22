@@ -6,7 +6,7 @@ import pytest
 from pydantic import ValidationError
 from pytest_subtests import SubTests
 
-from models.config import (
+from lightspeed_stack.models.config import (
     DatabaseConfiguration,
     PostgreSQLDatabaseConfiguration,
     SQLiteDatabaseConfiguration,

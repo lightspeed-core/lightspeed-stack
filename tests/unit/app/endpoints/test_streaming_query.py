@@ -43,33 +43,35 @@ from llama_stack_api.openai_responses import (
 from llama_stack_client import APIConnectionError, APIStatusError, AsyncLlamaStackClient
 from pytest_mock import MockerFixture
 
-from app.endpoints.streaming_query import (
+from lightspeed_stack.app.endpoints.streaming_query import (
     generate_response,
     response_generator,
     retrieve_response_generator,
     streaming_query_endpoint_handler,
 )
-from configuration import AppConfig
-from constants import (
+from lightspeed_stack.configuration import AppConfig
+from lightspeed_stack.constants import (
     INTERRUPTED_RESPONSE_MESSAGE,
     MEDIA_TYPE_JSON,
     MEDIA_TYPE_TEXT,
 )
-from models.api.requests import QueryRequest
-from models.api.responses.error import InternalServerErrorResponse
-from models.common.moderation import ShieldModerationPassed
-from models.common.query import Attachment
-from models.common.responses.contexts import ResponseGeneratorContext
-from models.common.responses.responses_api_params import ResponsesApiParams
-from models.common.turn_summary import (
+from lightspeed_stack.models.api.requests import QueryRequest
+from lightspeed_stack.models.api.responses.error import InternalServerErrorResponse
+from lightspeed_stack.models.common.moderation import ShieldModerationPassed
+from lightspeed_stack.models.common.query import Attachment
+from lightspeed_stack.models.common.responses.contexts import ResponseGeneratorContext
+from lightspeed_stack.models.common.responses.responses_api_params import (
+    ResponsesApiParams,
+)
+from lightspeed_stack.models.common.turn_summary import (
     RAGChunk,
     RAGContext,
     ReferencedDocument,
     TurnSummary,
 )
-from models.config import Action
-from utils.stream_interrupts import StreamInterruptRegistry
-from utils.token_counter import TokenCounter
+from lightspeed_stack.models.config import Action
+from lightspeed_stack.utils.stream_interrupts import StreamInterruptRegistry
+from lightspeed_stack.utils.token_counter import TokenCounter
 
 INTERRUPTED_INDICATOR = f"\n\n*{INTERRUPTED_RESPONSE_MESSAGE}*"
 
@@ -161,12 +163,21 @@ class TestStreamingQueryEndpointHandler:
             query="What is Kubernetes?"
         )  # pyright: ignore[reportCallIssue]
 
-        mocker.patch("app.endpoints.streaming_query.configuration", setup_configuration)
-        mocker.patch("app.endpoints.streaming_query.check_configuration_loaded")
-        mocker.patch("app.endpoints.streaming_query.check_tokens_available")
-        mocker.patch("app.endpoints.streaming_query.validate_model_provider_override")
         mocker.patch(
-            "app.endpoints.streaming_query.build_rag_context",
+            "lightspeed_stack.app.endpoints.streaming_query.configuration",
+            setup_configuration,
+        )
+        mocker.patch(
+            "lightspeed_stack.app.endpoints.streaming_query.check_configuration_loaded"
+        )
+        mocker.patch(
+            "lightspeed_stack.app.endpoints.streaming_query.check_tokens_available"
+        )
+        mocker.patch(
+            "lightspeed_stack.app.endpoints.streaming_query.validate_model_provider_override"
+        )
+        mocker.patch(
+            "lightspeed_stack.app.endpoints.streaming_query.build_rag_context",
             new=mocker.AsyncMock(return_value=RAGContext()),
         )
 
@@ -174,7 +185,7 @@ class TestStreamingQueryEndpointHandler:
         mock_client_holder = mocker.Mock()
         mock_client_holder.get_client.return_value = mock_client
         mocker.patch(
-            "app.endpoints.streaming_query.AsyncLlamaStackClientHolder",
+            "lightspeed_stack.app.endpoints.streaming_query.AsyncLlamaStackClientHolder",
             return_value=mock_client_holder,
         )
 
@@ -187,27 +198,31 @@ class TestStreamingQueryEndpointHandler:
             "model": "provider1/model1",
         }
         mocker.patch(
-            "app.endpoints.streaming_query.prepare_responses_params",
+            "lightspeed_stack.app.endpoints.streaming_query.prepare_responses_params",
             new=mocker.AsyncMock(return_value=mock_responses_params),
         )
         mocker.patch(
-            "app.endpoints.streaming_query.run_shield_moderation",
+            "lightspeed_stack.app.endpoints.streaming_query.run_shield_moderation",
             new=mocker.AsyncMock(return_value=ShieldModerationPassed()),
         )
 
-        mocker.patch("app.endpoints.streaming_query.AzureEntraIDManager")
         mocker.patch(
-            "app.endpoints.streaming_query.extract_provider_and_model_from_model_id",
+            "lightspeed_stack.app.endpoints.streaming_query.AzureEntraIDManager"
+        )
+        mocker.patch(
+            "lightspeed_stack.app.endpoints.streaming_query.extract_provider_and_model_from_model_id",
             return_value=("provider1", "model1"),
         )
-        mocker.patch("app.endpoints.streaming_query.recording.record_llm_call")
+        mocker.patch(
+            "lightspeed_stack.app.endpoints.streaming_query.recording.record_llm_call"
+        )
 
         async def mock_generator() -> AsyncIterator[str]:
             yield "data: test\n\n"
 
         mock_turn_summary = TurnSummary()
         mocker.patch(
-            "app.endpoints.streaming_query.retrieve_agent_response_generator",
+            "lightspeed_stack.app.endpoints.streaming_query.retrieve_agent_response_generator",
             new=mocker.AsyncMock(return_value=(mock_generator(), mock_turn_summary)),
         )
 
@@ -218,11 +233,11 @@ class TestStreamingQueryEndpointHandler:
                 yield item
 
         mocker.patch(
-            "app.endpoints.streaming_query.generate_agent_response",
+            "lightspeed_stack.app.endpoints.streaming_query.generate_agent_response",
             side_effect=mock_generate_agent_response,
         )
         mocker.patch(
-            "app.endpoints.streaming_query.normalize_conversation_id",
+            "lightspeed_stack.app.endpoints.streaming_query.normalize_conversation_id",
             return_value="123",
         )
 
@@ -248,12 +263,21 @@ class TestStreamingQueryEndpointHandler:
             query="What is Kubernetes?", media_type=MEDIA_TYPE_TEXT
         )  # pyright: ignore[reportCallIssue]
 
-        mocker.patch("app.endpoints.streaming_query.configuration", setup_configuration)
-        mocker.patch("app.endpoints.streaming_query.check_configuration_loaded")
-        mocker.patch("app.endpoints.streaming_query.check_tokens_available")
-        mocker.patch("app.endpoints.streaming_query.validate_model_provider_override")
         mocker.patch(
-            "app.endpoints.streaming_query.build_rag_context",
+            "lightspeed_stack.app.endpoints.streaming_query.configuration",
+            setup_configuration,
+        )
+        mocker.patch(
+            "lightspeed_stack.app.endpoints.streaming_query.check_configuration_loaded"
+        )
+        mocker.patch(
+            "lightspeed_stack.app.endpoints.streaming_query.check_tokens_available"
+        )
+        mocker.patch(
+            "lightspeed_stack.app.endpoints.streaming_query.validate_model_provider_override"
+        )
+        mocker.patch(
+            "lightspeed_stack.app.endpoints.streaming_query.build_rag_context",
             new=mocker.AsyncMock(return_value=RAGContext()),
         )
 
@@ -261,7 +285,7 @@ class TestStreamingQueryEndpointHandler:
         mock_client_holder = mocker.Mock()
         mock_client_holder.get_client.return_value = mock_client
         mocker.patch(
-            "app.endpoints.streaming_query.AsyncLlamaStackClientHolder",
+            "lightspeed_stack.app.endpoints.streaming_query.AsyncLlamaStackClientHolder",
             return_value=mock_client_holder,
         )
 
@@ -274,27 +298,31 @@ class TestStreamingQueryEndpointHandler:
             "model": "provider1/model1",
         }
         mocker.patch(
-            "app.endpoints.streaming_query.prepare_responses_params",
+            "lightspeed_stack.app.endpoints.streaming_query.prepare_responses_params",
             new=mocker.AsyncMock(return_value=mock_responses_params),
         )
         mocker.patch(
-            "app.endpoints.streaming_query.run_shield_moderation",
+            "lightspeed_stack.app.endpoints.streaming_query.run_shield_moderation",
             new=mocker.AsyncMock(return_value=ShieldModerationPassed()),
         )
 
-        mocker.patch("app.endpoints.streaming_query.AzureEntraIDManager")
         mocker.patch(
-            "app.endpoints.streaming_query.extract_provider_and_model_from_model_id",
+            "lightspeed_stack.app.endpoints.streaming_query.AzureEntraIDManager"
+        )
+        mocker.patch(
+            "lightspeed_stack.app.endpoints.streaming_query.extract_provider_and_model_from_model_id",
             return_value=("provider1", "model1"),
         )
-        mocker.patch("app.endpoints.streaming_query.recording.record_llm_call")
+        mocker.patch(
+            "lightspeed_stack.app.endpoints.streaming_query.recording.record_llm_call"
+        )
 
         async def mock_generator() -> AsyncIterator[str]:
             yield "data: test\n\n"
 
         mock_turn_summary = TurnSummary()
         mocker.patch(
-            "app.endpoints.streaming_query.retrieve_agent_response_generator",
+            "lightspeed_stack.app.endpoints.streaming_query.retrieve_agent_response_generator",
             new=mocker.AsyncMock(return_value=(mock_generator(), mock_turn_summary)),
         )
 
@@ -305,11 +333,11 @@ class TestStreamingQueryEndpointHandler:
                 yield item
 
         mocker.patch(
-            "app.endpoints.streaming_query.generate_agent_response",
+            "lightspeed_stack.app.endpoints.streaming_query.generate_agent_response",
             side_effect=mock_generate_agent_response,
         )
         mocker.patch(
-            "app.endpoints.streaming_query.normalize_conversation_id",
+            "lightspeed_stack.app.endpoints.streaming_query.normalize_conversation_id",
             return_value="123",
         )
 
@@ -338,20 +366,29 @@ class TestStreamingQueryEndpointHandler:
 
         mock_conversation = mocker.Mock()
 
-        mocker.patch("app.endpoints.streaming_query.configuration", setup_configuration)
-        mocker.patch("app.endpoints.streaming_query.check_configuration_loaded")
-        mocker.patch("app.endpoints.streaming_query.check_tokens_available")
-        mocker.patch("app.endpoints.streaming_query.validate_model_provider_override")
         mocker.patch(
-            "app.endpoints.streaming_query.build_rag_context",
+            "lightspeed_stack.app.endpoints.streaming_query.configuration",
+            setup_configuration,
+        )
+        mocker.patch(
+            "lightspeed_stack.app.endpoints.streaming_query.check_configuration_loaded"
+        )
+        mocker.patch(
+            "lightspeed_stack.app.endpoints.streaming_query.check_tokens_available"
+        )
+        mocker.patch(
+            "lightspeed_stack.app.endpoints.streaming_query.validate_model_provider_override"
+        )
+        mocker.patch(
+            "lightspeed_stack.app.endpoints.streaming_query.build_rag_context",
             new=mocker.AsyncMock(return_value=RAGContext()),
         )
         mocker.patch(
-            "app.endpoints.streaming_query.normalize_conversation_id",
+            "lightspeed_stack.app.endpoints.streaming_query.normalize_conversation_id",
             return_value="normalized_123",
         )
         mock_validate_conv = mocker.patch(
-            "app.endpoints.streaming_query.validate_and_retrieve_conversation",
+            "lightspeed_stack.app.endpoints.streaming_query.validate_and_retrieve_conversation",
             return_value=mock_conversation,
         )
 
@@ -359,7 +396,7 @@ class TestStreamingQueryEndpointHandler:
         mock_client_holder = mocker.Mock()
         mock_client_holder.get_client.return_value = mock_client
         mocker.patch(
-            "app.endpoints.streaming_query.AsyncLlamaStackClientHolder",
+            "lightspeed_stack.app.endpoints.streaming_query.AsyncLlamaStackClientHolder",
             return_value=mock_client_holder,
         )
 
@@ -372,27 +409,31 @@ class TestStreamingQueryEndpointHandler:
             "model": "provider1/model1",
         }
         mocker.patch(
-            "app.endpoints.streaming_query.prepare_responses_params",
+            "lightspeed_stack.app.endpoints.streaming_query.prepare_responses_params",
             new=mocker.AsyncMock(return_value=mock_responses_params),
         )
         mocker.patch(
-            "app.endpoints.streaming_query.run_shield_moderation",
+            "lightspeed_stack.app.endpoints.streaming_query.run_shield_moderation",
             new=mocker.AsyncMock(return_value=ShieldModerationPassed()),
         )
 
-        mocker.patch("app.endpoints.streaming_query.AzureEntraIDManager")
         mocker.patch(
-            "app.endpoints.streaming_query.extract_provider_and_model_from_model_id",
+            "lightspeed_stack.app.endpoints.streaming_query.AzureEntraIDManager"
+        )
+        mocker.patch(
+            "lightspeed_stack.app.endpoints.streaming_query.extract_provider_and_model_from_model_id",
             return_value=("provider1", "model1"),
         )
-        mocker.patch("app.endpoints.streaming_query.recording.record_llm_call")
+        mocker.patch(
+            "lightspeed_stack.app.endpoints.streaming_query.recording.record_llm_call"
+        )
 
         async def mock_generator() -> AsyncIterator[str]:
             yield "data: test\n\n"
 
         mock_turn_summary = TurnSummary()
         mocker.patch(
-            "app.endpoints.streaming_query.retrieve_agent_response_generator",
+            "lightspeed_stack.app.endpoints.streaming_query.retrieve_agent_response_generator",
             new=mocker.AsyncMock(return_value=(mock_generator(), mock_turn_summary)),
         )
 
@@ -403,11 +444,11 @@ class TestStreamingQueryEndpointHandler:
                 yield item
 
         mocker.patch(
-            "app.endpoints.streaming_query.generate_agent_response",
+            "lightspeed_stack.app.endpoints.streaming_query.generate_agent_response",
             side_effect=mock_generate_agent_response,
         )
         mocker.patch(
-            "app.endpoints.streaming_query.normalize_conversation_id",
+            "lightspeed_stack.app.endpoints.streaming_query.normalize_conversation_id",
             return_value="123",
         )
 
@@ -439,23 +480,32 @@ class TestStreamingQueryEndpointHandler:
             ],
         )  # pyright: ignore[reportCallIssue]
 
-        mocker.patch("app.endpoints.streaming_query.configuration", setup_configuration)
-        mocker.patch("app.endpoints.streaming_query.check_configuration_loaded")
-        mocker.patch("app.endpoints.streaming_query.check_tokens_available")
-        mocker.patch("app.endpoints.streaming_query.validate_model_provider_override")
         mocker.patch(
-            "app.endpoints.streaming_query.build_rag_context",
+            "lightspeed_stack.app.endpoints.streaming_query.configuration",
+            setup_configuration,
+        )
+        mocker.patch(
+            "lightspeed_stack.app.endpoints.streaming_query.check_configuration_loaded"
+        )
+        mocker.patch(
+            "lightspeed_stack.app.endpoints.streaming_query.check_tokens_available"
+        )
+        mocker.patch(
+            "lightspeed_stack.app.endpoints.streaming_query.validate_model_provider_override"
+        )
+        mocker.patch(
+            "lightspeed_stack.app.endpoints.streaming_query.build_rag_context",
             new=mocker.AsyncMock(return_value=RAGContext()),
         )
         mock_validate = mocker.patch(
-            "app.endpoints.streaming_query.validate_attachments_metadata"
+            "lightspeed_stack.app.endpoints.streaming_query.validate_attachments_metadata"
         )
 
         mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
         mock_client_holder = mocker.Mock()
         mock_client_holder.get_client.return_value = mock_client
         mocker.patch(
-            "app.endpoints.streaming_query.AsyncLlamaStackClientHolder",
+            "lightspeed_stack.app.endpoints.streaming_query.AsyncLlamaStackClientHolder",
             return_value=mock_client_holder,
         )
 
@@ -468,27 +518,31 @@ class TestStreamingQueryEndpointHandler:
             "model": "provider1/model1",
         }
         mocker.patch(
-            "app.endpoints.streaming_query.prepare_responses_params",
+            "lightspeed_stack.app.endpoints.streaming_query.prepare_responses_params",
             new=mocker.AsyncMock(return_value=mock_responses_params),
         )
         mocker.patch(
-            "app.endpoints.streaming_query.run_shield_moderation",
+            "lightspeed_stack.app.endpoints.streaming_query.run_shield_moderation",
             new=mocker.AsyncMock(return_value=ShieldModerationPassed()),
         )
 
-        mocker.patch("app.endpoints.streaming_query.AzureEntraIDManager")
         mocker.patch(
-            "app.endpoints.streaming_query.extract_provider_and_model_from_model_id",
+            "lightspeed_stack.app.endpoints.streaming_query.AzureEntraIDManager"
+        )
+        mocker.patch(
+            "lightspeed_stack.app.endpoints.streaming_query.extract_provider_and_model_from_model_id",
             return_value=("provider1", "model1"),
         )
-        mocker.patch("app.endpoints.streaming_query.recording.record_llm_call")
+        mocker.patch(
+            "lightspeed_stack.app.endpoints.streaming_query.recording.record_llm_call"
+        )
 
         async def mock_generator() -> AsyncIterator[str]:
             yield "data: test\n\n"
 
         mock_turn_summary = TurnSummary()
         mocker.patch(
-            "app.endpoints.streaming_query.retrieve_agent_response_generator",
+            "lightspeed_stack.app.endpoints.streaming_query.retrieve_agent_response_generator",
             new=mocker.AsyncMock(return_value=(mock_generator(), mock_turn_summary)),
         )
 
@@ -499,11 +553,11 @@ class TestStreamingQueryEndpointHandler:
                 yield item
 
         mocker.patch(
-            "app.endpoints.streaming_query.generate_agent_response",
+            "lightspeed_stack.app.endpoints.streaming_query.generate_agent_response",
             side_effect=mock_generate_agent_response,
         )
         mocker.patch(
-            "app.endpoints.streaming_query.normalize_conversation_id",
+            "lightspeed_stack.app.endpoints.streaming_query.normalize_conversation_id",
             return_value="123",
         )
 
@@ -528,12 +582,21 @@ class TestStreamingQueryEndpointHandler:
             query="What is Kubernetes?"
         )  # pyright: ignore[reportCallIssue]
 
-        mocker.patch("app.endpoints.streaming_query.configuration", setup_configuration)
-        mocker.patch("app.endpoints.streaming_query.check_configuration_loaded")
-        mocker.patch("app.endpoints.streaming_query.check_tokens_available")
-        mocker.patch("app.endpoints.streaming_query.validate_model_provider_override")
         mocker.patch(
-            "app.endpoints.streaming_query.build_rag_context",
+            "lightspeed_stack.app.endpoints.streaming_query.configuration",
+            setup_configuration,
+        )
+        mocker.patch(
+            "lightspeed_stack.app.endpoints.streaming_query.check_configuration_loaded"
+        )
+        mocker.patch(
+            "lightspeed_stack.app.endpoints.streaming_query.check_tokens_available"
+        )
+        mocker.patch(
+            "lightspeed_stack.app.endpoints.streaming_query.validate_model_provider_override"
+        )
+        mocker.patch(
+            "lightspeed_stack.app.endpoints.streaming_query.build_rag_context",
             new=mocker.AsyncMock(return_value=RAGContext()),
         )
 
@@ -545,7 +608,7 @@ class TestStreamingQueryEndpointHandler:
             return_value=mock_updated_client
         )
         mocker.patch(
-            "app.endpoints.streaming_query.AsyncLlamaStackClientHolder",
+            "lightspeed_stack.app.endpoints.streaming_query.AsyncLlamaStackClientHolder",
             return_value=mock_client_holder,
         )
 
@@ -558,7 +621,7 @@ class TestStreamingQueryEndpointHandler:
             "model": "azure/model1",
         }
         mocker.patch(
-            "app.endpoints.streaming_query.prepare_responses_params",
+            "lightspeed_stack.app.endpoints.streaming_query.prepare_responses_params",
             new=mocker.AsyncMock(return_value=mock_responses_params),
         )
 
@@ -567,26 +630,28 @@ class TestStreamingQueryEndpointHandler:
         mock_azure_manager.is_token_expired = True
         mock_azure_manager.refresh_token.return_value = True
         mocker.patch(
-            "app.endpoints.streaming_query.AzureEntraIDManager",
+            "lightspeed_stack.app.endpoints.streaming_query.AzureEntraIDManager",
             return_value=mock_azure_manager,
         )
 
         mocker.patch(
-            "app.endpoints.streaming_query.extract_provider_and_model_from_model_id",
+            "lightspeed_stack.app.endpoints.streaming_query.extract_provider_and_model_from_model_id",
             return_value=("azure", "model1"),
         )
         mocker.patch(
-            "app.endpoints.streaming_query.run_shield_moderation",
+            "lightspeed_stack.app.endpoints.streaming_query.run_shield_moderation",
             new=mocker.AsyncMock(return_value=ShieldModerationPassed()),
         )
-        mocker.patch("app.endpoints.streaming_query.recording.record_llm_call")
+        mocker.patch(
+            "lightspeed_stack.app.endpoints.streaming_query.recording.record_llm_call"
+        )
 
         async def mock_generator() -> AsyncIterator[str]:
             yield "data: test\n\n"
 
         mock_turn_summary = TurnSummary()
         mocker.patch(
-            "app.endpoints.streaming_query.retrieve_agent_response_generator",
+            "lightspeed_stack.app.endpoints.streaming_query.retrieve_agent_response_generator",
             new=mocker.AsyncMock(return_value=(mock_generator(), mock_turn_summary)),
         )
 
@@ -597,11 +662,11 @@ class TestStreamingQueryEndpointHandler:
                 yield item
 
         mocker.patch(
-            "app.endpoints.streaming_query.generate_agent_response",
+            "lightspeed_stack.app.endpoints.streaming_query.generate_agent_response",
             side_effect=mock_generate_agent_response,
         )
         mocker.patch(
-            "app.endpoints.streaming_query.normalize_conversation_id",
+            "lightspeed_stack.app.endpoints.streaming_query.normalize_conversation_id",
             return_value="123",
         )
 
@@ -659,7 +724,7 @@ class TestCreateResponseGenerator:
                 yield item
 
         mocker.patch(
-            "app.endpoints.streaming_query.response_generator",
+            "lightspeed_stack.app.endpoints.streaming_query.response_generator",
             side_effect=mock_response_generator,
         )
 
@@ -699,7 +764,7 @@ class TestCreateResponseGenerator:
         mock_moderation_result.refusal_response = mocker.Mock()
         mock_context.moderation_result = mock_moderation_result
         mock_append = mocker.patch(
-            "app.endpoints.streaming_query.append_turn_items_to_conversation",
+            "lightspeed_stack.app.endpoints.streaming_query.append_turn_items_to_conversation",
             new=mocker.AsyncMock(),
         )
 
@@ -747,7 +812,7 @@ class TestCreateResponseGenerator:
         mock_moderation_result.refusal_response = mocker.Mock()
         mock_context.moderation_result = mock_moderation_result
         mock_append = mocker.patch(
-            "app.endpoints.streaming_query.append_turn_items_to_conversation",
+            "lightspeed_stack.app.endpoints.streaming_query.append_turn_items_to_conversation",
             new=mocker.AsyncMock(),
         )
 
@@ -802,7 +867,7 @@ class TestCreateResponseGenerator:
             },
         }
         mocker.patch(
-            "app.endpoints.streaming_query.ServiceUnavailableResponse",
+            "lightspeed_stack.app.endpoints.streaming_query.ServiceUnavailableResponse",
             return_value=mock_error_response,
         )
 
@@ -854,7 +919,7 @@ class TestCreateResponseGenerator:
             "detail": {"response": "Error", "cause": "API error"},
         }
         mocker.patch(
-            "app.endpoints.streaming_query.handle_known_apistatus_errors",
+            "lightspeed_stack.app.endpoints.streaming_query.handle_known_apistatus_errors",
             return_value=mock_error_response,
         )
 
@@ -903,7 +968,7 @@ class TestCreateResponseGenerator:
             "detail": {"response": "Prompt too long", "model": "provider1/model1"},
         }
         mocker.patch(
-            "app.endpoints.streaming_query.PromptTooLongResponse",
+            "lightspeed_stack.app.endpoints.streaming_query.PromptTooLongResponse",
             return_value=mock_error_response,
         )
 
@@ -960,7 +1025,7 @@ class TestGenerateResponse:
         """Patch registry accessor with a per-test mock registry instance."""
         test_registry = mocker.Mock(spec=StreamInterruptRegistry)
         mocker.patch(
-            "utils.stream_interrupts.get_stream_interrupt_registry",
+            "lightspeed_stack.utils.stream_interrupts.get_stream_interrupt_registry",
             return_value=test_registry,
         )
         return test_registry
@@ -1002,12 +1067,19 @@ class TestGenerateResponse:
 
         mock_config = mocker.Mock()
         mock_config.quota_limiters = []
-        mocker.patch("app.endpoints.streaming_query.configuration", mock_config)
-        mocker.patch("app.endpoints.streaming_query.consume_query_tokens")
         mocker.patch(
-            "app.endpoints.streaming_query.get_available_quotas", return_value={}
+            "lightspeed_stack.app.endpoints.streaming_query.configuration", mock_config
         )
-        mocker.patch("app.endpoints.streaming_query.store_query_results")
+        mocker.patch(
+            "lightspeed_stack.app.endpoints.streaming_query.consume_query_tokens"
+        )
+        mocker.patch(
+            "lightspeed_stack.app.endpoints.streaming_query.get_available_quotas",
+            return_value={},
+        )
+        mocker.patch(
+            "lightspeed_stack.app.endpoints.streaming_query.store_query_results"
+        )
 
         result = []
         async for item in generate_response(
@@ -1056,14 +1128,21 @@ class TestGenerateResponse:
 
         mock_config = mocker.Mock()
         mock_config.quota_limiters = []
-        mocker.patch("app.endpoints.streaming_query.configuration", mock_config)
-        mocker.patch("app.endpoints.streaming_query.consume_query_tokens")
         mocker.patch(
-            "app.endpoints.streaming_query.get_available_quotas", return_value={}
+            "lightspeed_stack.app.endpoints.streaming_query.configuration", mock_config
         )
-        mocker.patch("app.endpoints.streaming_query.store_query_results")
+        mocker.patch(
+            "lightspeed_stack.app.endpoints.streaming_query.consume_query_tokens"
+        )
+        mocker.patch(
+            "lightspeed_stack.app.endpoints.streaming_query.get_available_quotas",
+            return_value={},
+        )
+        mocker.patch(
+            "lightspeed_stack.app.endpoints.streaming_query.store_query_results"
+        )
         store_mock = mocker.patch(
-            "app.endpoints.streaming_query.store_compacted_turn",
+            "lightspeed_stack.app.endpoints.streaming_query.store_compacted_turn",
             new_callable=mocker.AsyncMock,
         )
 
@@ -1118,16 +1197,23 @@ class TestGenerateResponse:
 
         mock_config = mocker.Mock()
         mock_config.quota_limiters = []
-        mocker.patch("app.endpoints.streaming_query.configuration", mock_config)
-        mocker.patch("app.endpoints.streaming_query.consume_query_tokens")
         mocker.patch(
-            "app.endpoints.streaming_query.get_available_quotas", return_value={}
+            "lightspeed_stack.app.endpoints.streaming_query.configuration", mock_config
         )
         mocker.patch(
-            "app.endpoints.streaming_query.get_topic_summary",
+            "lightspeed_stack.app.endpoints.streaming_query.consume_query_tokens"
+        )
+        mocker.patch(
+            "lightspeed_stack.app.endpoints.streaming_query.get_available_quotas",
+            return_value={},
+        )
+        mocker.patch(
+            "lightspeed_stack.app.endpoints.streaming_query.get_topic_summary",
             new=mocker.AsyncMock(return_value="Topic summary"),
         )
-        mocker.patch("app.endpoints.streaming_query.store_query_results")
+        mocker.patch(
+            "lightspeed_stack.app.endpoints.streaming_query.store_query_results"
+        )
 
         result = []
         async for item in generate_response(
@@ -1213,7 +1299,7 @@ class TestGenerateResponse:
 
         mock_error_response = InternalServerErrorResponse.query_failed("API error")
         mocker.patch(
-            "app.endpoints.streaming_query.handle_known_apistatus_errors",
+            "lightspeed_stack.app.endpoints.streaming_query.handle_known_apistatus_errors",
             return_value=mock_error_response,
         )
 
@@ -1261,7 +1347,7 @@ class TestGenerateResponse:
         mock_error_response.detail.response = "Prompt too long"
         mock_error_response.detail.cause = None
         mocker.patch(
-            "app.endpoints.streaming_query.PromptTooLongResponse",
+            "lightspeed_stack.app.endpoints.streaming_query.PromptTooLongResponse",
             return_value=mock_error_response,
         )
 
@@ -1309,7 +1395,7 @@ class TestGenerateResponse:
         mock_error_response.detail.response = "Internal server error"
         mock_error_response.detail.cause = None
         mocker.patch(
-            "app.endpoints.streaming_query.InternalServerErrorResponse.generic",
+            "lightspeed_stack.app.endpoints.streaming_query.InternalServerErrorResponse.generic",
             return_value=mock_error_response,
         )
 
@@ -1359,13 +1445,13 @@ class TestGenerateResponse:
         mock_turn_summary.token_usage = TokenCounter(input_tokens=10, output_tokens=5)
 
         consume_query_tokens_mock = mocker.patch(
-            "app.endpoints.streaming_query.consume_query_tokens"
+            "lightspeed_stack.app.endpoints.streaming_query.consume_query_tokens"
         )
         store_query_results_mock = mocker.patch(
-            "utils.stream_interrupts.store_query_results"
+            "lightspeed_stack.utils.stream_interrupts.store_query_results"
         )
         append_turn_mock = mocker.patch(
-            "utils.stream_interrupts.append_turn_to_conversation",
+            "lightspeed_stack.utils.stream_interrupts.append_turn_to_conversation",
             new_callable=mocker.AsyncMock,
         )
 
@@ -1439,19 +1525,21 @@ class TestGenerateResponse:
         mock_turn_summary = TurnSummary()
         mock_turn_summary.token_usage = TokenCounter(input_tokens=10, output_tokens=5)
 
-        mocker.patch("app.endpoints.streaming_query.consume_query_tokens")
+        mocker.patch(
+            "lightspeed_stack.app.endpoints.streaming_query.consume_query_tokens"
+        )
         get_topic_summary_mock = mocker.patch(
-            "utils.stream_interrupts.get_topic_summary",
+            "lightspeed_stack.utils.stream_interrupts.get_topic_summary",
             new=mocker.AsyncMock(return_value="Kubernetes container orchestration"),
         )
         store_query_results_mock = mocker.patch(
-            "utils.stream_interrupts.store_query_results"
+            "lightspeed_stack.utils.stream_interrupts.store_query_results"
         )
         update_topic_summary_mock = mocker.patch(
-            "utils.stream_interrupts.update_conversation_topic_summary"
+            "lightspeed_stack.utils.stream_interrupts.update_conversation_topic_summary"
         )
         mocker.patch(
-            "utils.stream_interrupts.append_turn_to_conversation",
+            "lightspeed_stack.utils.stream_interrupts.append_turn_to_conversation",
             new_callable=mocker.AsyncMock,
         )
 
@@ -1519,16 +1607,18 @@ class TestGenerateResponse:
         mock_turn_summary = TurnSummary()
         mock_turn_summary.token_usage = TokenCounter(input_tokens=10, output_tokens=5)
 
-        mocker.patch("app.endpoints.streaming_query.consume_query_tokens")
         mocker.patch(
-            "utils.stream_interrupts.get_topic_summary",
+            "lightspeed_stack.app.endpoints.streaming_query.consume_query_tokens"
+        )
+        mocker.patch(
+            "lightspeed_stack.utils.stream_interrupts.get_topic_summary",
             new=mocker.AsyncMock(side_effect=Exception("err")),
         )
         store_query_results_mock = mocker.patch(
-            "utils.stream_interrupts.store_query_results"
+            "lightspeed_stack.utils.stream_interrupts.store_query_results"
         )
         mocker.patch(
-            "utils.stream_interrupts.append_turn_to_conversation",
+            "lightspeed_stack.utils.stream_interrupts.append_turn_to_conversation",
             new_callable=mocker.AsyncMock,
         )
 
@@ -1586,16 +1676,18 @@ class TestGenerateResponse:
         mock_turn_summary = TurnSummary()
         mock_turn_summary.token_usage = TokenCounter(input_tokens=10, output_tokens=5)
 
-        mocker.patch("app.endpoints.streaming_query.consume_query_tokens")
+        mocker.patch(
+            "lightspeed_stack.app.endpoints.streaming_query.consume_query_tokens"
+        )
         get_topic_summary_mock = mocker.patch(
-            "utils.stream_interrupts.get_topic_summary",
+            "lightspeed_stack.utils.stream_interrupts.get_topic_summary",
             new=mocker.AsyncMock(return_value="Docker containerization"),
         )
         store_query_results_mock = mocker.patch(
-            "utils.stream_interrupts.store_query_results"
+            "lightspeed_stack.utils.stream_interrupts.store_query_results"
         )
         mocker.patch(
-            "utils.stream_interrupts.append_turn_to_conversation",
+            "lightspeed_stack.utils.stream_interrupts.append_turn_to_conversation",
             new_callable=mocker.AsyncMock,
         )
 
@@ -1645,12 +1737,14 @@ class TestGenerateResponse:
 
         mock_turn_summary = TurnSummary()
 
-        mocker.patch("app.endpoints.streaming_query.consume_query_tokens")
+        mocker.patch(
+            "lightspeed_stack.app.endpoints.streaming_query.consume_query_tokens"
+        )
         store_query_results_mock = mocker.patch(
-            "utils.stream_interrupts.store_query_results"
+            "lightspeed_stack.utils.stream_interrupts.store_query_results"
         )
         mocker.patch(
-            "utils.stream_interrupts.append_turn_to_conversation",
+            "lightspeed_stack.utils.stream_interrupts.append_turn_to_conversation",
             new_callable=mocker.AsyncMock,
             side_effect=RuntimeError("Llama Stack unavailable"),
         )
@@ -1704,12 +1798,14 @@ class TestGenerateResponse:
 
         mock_turn_summary = TurnSummary()
 
-        mocker.patch("app.endpoints.streaming_query.consume_query_tokens")
+        mocker.patch(
+            "lightspeed_stack.app.endpoints.streaming_query.consume_query_tokens"
+        )
         store_query_results_mock = mocker.patch(
-            "utils.stream_interrupts.store_query_results"
+            "lightspeed_stack.utils.stream_interrupts.store_query_results"
         )
         append_turn_mock = mocker.patch(
-            "utils.stream_interrupts.append_turn_to_conversation",
+            "lightspeed_stack.utils.stream_interrupts.append_turn_to_conversation",
             new_callable=mocker.AsyncMock,
         )
 
@@ -1862,11 +1958,12 @@ class TestResponseGenerator:
         mock_turn_summary = TurnSummary()
 
         mocker.patch(
-            "app.endpoints.streaming_query.extract_token_usage",
+            "lightspeed_stack.app.endpoints.streaming_query.extract_token_usage",
             return_value=TokenCounter(input_tokens=0, output_tokens=0),
         )
         mocker.patch(
-            "app.endpoints.streaming_query.parse_referenced_documents", return_value=[]
+            "lightspeed_stack.app.endpoints.streaming_query.parse_referenced_documents",
+            return_value=[],
         )
 
         async for _ in response_generator(
@@ -1903,11 +2000,12 @@ class TestResponseGenerator:
         mock_turn_summary = TurnSummary()
 
         mocker.patch(
-            "app.endpoints.streaming_query.extract_token_usage",
+            "lightspeed_stack.app.endpoints.streaming_query.extract_token_usage",
             return_value=TokenCounter(input_tokens=0, output_tokens=0),
         )
         mocker.patch(
-            "app.endpoints.streaming_query.parse_referenced_documents", return_value=[]
+            "lightspeed_stack.app.endpoints.streaming_query.parse_referenced_documents",
+            return_value=[],
         )
 
         result = []
@@ -1947,16 +2045,17 @@ class TestResponseGenerator:
         mock_tool_call = mocker.Mock()
         mock_tool_call.model_dump.return_value = {"tool": "test"}
         mocker.patch(
-            "app.endpoints.streaming_query.build_tool_call_summary",
+            "lightspeed_stack.app.endpoints.streaming_query.build_tool_call_summary",
             return_value=(mock_tool_call, None),
         )
 
         mocker.patch(
-            "app.endpoints.streaming_query.extract_token_usage",
+            "lightspeed_stack.app.endpoints.streaming_query.extract_token_usage",
             return_value=TokenCounter(input_tokens=0, output_tokens=0),
         )
         mocker.patch(
-            "app.endpoints.streaming_query.parse_referenced_documents", return_value=[]
+            "lightspeed_stack.app.endpoints.streaming_query.parse_referenced_documents",
+            return_value=[],
         )
 
         result = []
@@ -1998,16 +2097,17 @@ class TestResponseGenerator:
         mock_tool_result = mocker.Mock()
         mock_tool_result.model_dump.return_value = {"result": "test_result"}
         mocker.patch(
-            "app.endpoints.streaming_query.build_tool_call_summary",
+            "lightspeed_stack.app.endpoints.streaming_query.build_tool_call_summary",
             return_value=(mock_tool_call, mock_tool_result),
         )
 
         mocker.patch(
-            "app.endpoints.streaming_query.extract_token_usage",
+            "lightspeed_stack.app.endpoints.streaming_query.extract_token_usage",
             return_value=TokenCounter(input_tokens=0, output_tokens=0),
         )
         mocker.patch(
-            "app.endpoints.streaming_query.parse_referenced_documents", return_value=[]
+            "lightspeed_stack.app.endpoints.streaming_query.parse_referenced_documents",
+            return_value=[],
         )
 
         result = []
@@ -2047,11 +2147,12 @@ class TestResponseGenerator:
         mock_turn_summary.llm_response = "Response"
 
         mocker.patch(
-            "app.endpoints.streaming_query.extract_token_usage",
+            "lightspeed_stack.app.endpoints.streaming_query.extract_token_usage",
             return_value=TokenCounter(input_tokens=10, output_tokens=5),
         )
         mocker.patch(
-            "app.endpoints.streaming_query.parse_referenced_documents", return_value=[]
+            "lightspeed_stack.app.endpoints.streaming_query.parse_referenced_documents",
+            return_value=[],
         )
 
         async for _ in response_generator(
@@ -2095,11 +2196,12 @@ class TestResponseGenerator:
         mock_turn_summary = TurnSummary()
 
         mocker.patch(
-            "app.endpoints.streaming_query.extract_token_usage",
+            "lightspeed_stack.app.endpoints.streaming_query.extract_token_usage",
             return_value=TokenCounter(input_tokens=10, output_tokens=5),
         )
         mocker.patch(
-            "app.endpoints.streaming_query.parse_referenced_documents", return_value=[]
+            "lightspeed_stack.app.endpoints.streaming_query.parse_referenced_documents",
+            return_value=[],
         )
 
         result = []
@@ -2141,11 +2243,12 @@ class TestResponseGenerator:
         mock_turn_summary = TurnSummary()
 
         mocker.patch(
-            "app.endpoints.streaming_query.extract_token_usage",
+            "lightspeed_stack.app.endpoints.streaming_query.extract_token_usage",
             return_value=TokenCounter(input_tokens=0, output_tokens=0),
         )
         mocker.patch(
-            "app.endpoints.streaming_query.parse_referenced_documents", return_value=[]
+            "lightspeed_stack.app.endpoints.streaming_query.parse_referenced_documents",
+            return_value=[],
         )
 
         result = []
@@ -2186,11 +2289,12 @@ class TestResponseGenerator:
         mock_turn_summary = TurnSummary()
 
         mocker.patch(
-            "app.endpoints.streaming_query.extract_token_usage",
+            "lightspeed_stack.app.endpoints.streaming_query.extract_token_usage",
             return_value=TokenCounter(input_tokens=0, output_tokens=0),
         )
         mocker.patch(
-            "app.endpoints.streaming_query.parse_referenced_documents", return_value=[]
+            "lightspeed_stack.app.endpoints.streaming_query.parse_referenced_documents",
+            return_value=[],
         )
 
         result = []
@@ -2229,11 +2333,12 @@ class TestResponseGenerator:
         mock_turn_summary = TurnSummary()
 
         mocker.patch(
-            "app.endpoints.streaming_query.extract_token_usage",
+            "lightspeed_stack.app.endpoints.streaming_query.extract_token_usage",
             return_value=TokenCounter(input_tokens=0, output_tokens=0),
         )
         mocker.patch(
-            "app.endpoints.streaming_query.parse_referenced_documents", return_value=[]
+            "lightspeed_stack.app.endpoints.streaming_query.parse_referenced_documents",
+            return_value=[],
         )
 
         result = []
@@ -2273,11 +2378,12 @@ class TestResponseGenerator:
         mock_turn_summary = TurnSummary()
 
         mocker.patch(
-            "app.endpoints.streaming_query.extract_token_usage",
+            "lightspeed_stack.app.endpoints.streaming_query.extract_token_usage",
             return_value=TokenCounter(input_tokens=0, output_tokens=0),
         )
         mocker.patch(
-            "app.endpoints.streaming_query.parse_referenced_documents", return_value=[]
+            "lightspeed_stack.app.endpoints.streaming_query.parse_referenced_documents",
+            return_value=[],
         )
 
         result = []
@@ -2315,11 +2421,12 @@ class TestResponseGenerator:
         mock_turn_summary = TurnSummary()
 
         mocker.patch(
-            "app.endpoints.streaming_query.extract_token_usage",
+            "lightspeed_stack.app.endpoints.streaming_query.extract_token_usage",
             return_value=TokenCounter(input_tokens=0, output_tokens=0),
         )
         mocker.patch(
-            "app.endpoints.streaming_query.parse_referenced_documents", return_value=[]
+            "lightspeed_stack.app.endpoints.streaming_query.parse_referenced_documents",
+            return_value=[],
         )
 
         result = []
@@ -2368,11 +2475,11 @@ class TestResponseGenerator:
 
         mock_turn_summary = TurnSummary()
         mocker.patch(
-            "app.endpoints.streaming_query.parse_referenced_documents",
+            "lightspeed_stack.app.endpoints.streaming_query.parse_referenced_documents",
             return_value=[tool_ref_doc],
         )
         mocker.patch(
-            "app.endpoints.streaming_query.parse_rag_chunks",
+            "lightspeed_stack.app.endpoints.streaming_query.parse_rag_chunks",
             return_value=[tool_chunk],
         )
 
@@ -2421,11 +2528,12 @@ class TestResponseGeneratorMCPCalls:
         mock_turn_summary = TurnSummary()
 
         mocker.patch(
-            "app.endpoints.streaming_query.extract_token_usage",
+            "lightspeed_stack.app.endpoints.streaming_query.extract_token_usage",
             return_value=TokenCounter(input_tokens=0, output_tokens=0),
         )
         mocker.patch(
-            "app.endpoints.streaming_query.parse_referenced_documents", return_value=[]
+            "lightspeed_stack.app.endpoints.streaming_query.parse_referenced_documents",
+            return_value=[],
         )
 
         result = []
@@ -2479,16 +2587,17 @@ class TestResponseGeneratorMCPCalls:
             "name": "test_mcp_tool",
         }
         mocker.patch(
-            "app.endpoints.streaming_query.build_mcp_tool_call_from_arguments_done",
+            "lightspeed_stack.app.endpoints.streaming_query.build_mcp_tool_call_from_arguments_done",
             return_value=mock_tool_call,
         )
 
         mocker.patch(
-            "app.endpoints.streaming_query.extract_token_usage",
+            "lightspeed_stack.app.endpoints.streaming_query.extract_token_usage",
             return_value=TokenCounter(input_tokens=0, output_tokens=0),
         )
         mocker.patch(
-            "app.endpoints.streaming_query.parse_referenced_documents", return_value=[]
+            "lightspeed_stack.app.endpoints.streaming_query.parse_referenced_documents",
+            return_value=[],
         )
 
         result = []
@@ -2562,7 +2671,7 @@ class TestResponseGeneratorMCPCalls:
             return mock_tool_call
 
         mocker.patch(
-            "app.endpoints.streaming_query.build_mcp_tool_call_from_arguments_done",
+            "lightspeed_stack.app.endpoints.streaming_query.build_mcp_tool_call_from_arguments_done",
             side_effect=build_mcp_tool_call_side_effect,
         )
 
@@ -2572,16 +2681,17 @@ class TestResponseGeneratorMCPCalls:
             "status": "success",
         }
         mocker.patch(
-            "app.endpoints.streaming_query.build_tool_result_from_mcp_output_item_done",
+            "lightspeed_stack.app.endpoints.streaming_query.build_tool_result_from_mcp_output_item_done",
             return_value=mock_tool_result,
         )
 
         mocker.patch(
-            "app.endpoints.streaming_query.extract_token_usage",
+            "lightspeed_stack.app.endpoints.streaming_query.extract_token_usage",
             return_value=TokenCounter(input_tokens=0, output_tokens=0),
         )
         mocker.patch(
-            "app.endpoints.streaming_query.parse_referenced_documents", return_value=[]
+            "lightspeed_stack.app.endpoints.streaming_query.parse_referenced_documents",
+            return_value=[],
         )
 
         result = []
@@ -2642,16 +2752,17 @@ class TestResponseGeneratorMCPCalls:
             "status": "success",
         }
         mocker.patch(
-            "app.endpoints.streaming_query.build_tool_call_summary",
+            "lightspeed_stack.app.endpoints.streaming_query.build_tool_call_summary",
             return_value=(mock_tool_call, mock_tool_result),
         )
 
         mocker.patch(
-            "app.endpoints.streaming_query.extract_token_usage",
+            "lightspeed_stack.app.endpoints.streaming_query.extract_token_usage",
             return_value=TokenCounter(input_tokens=0, output_tokens=0),
         )
         mocker.patch(
-            "app.endpoints.streaming_query.parse_referenced_documents", return_value=[]
+            "lightspeed_stack.app.endpoints.streaming_query.parse_referenced_documents",
+            return_value=[],
         )
 
         result = []
@@ -2692,11 +2803,12 @@ async def test_response_generator_failed_captures_output_items(
 
     turn_summary = TurnSummary()
     mocker.patch(
-        "app.endpoints.streaming_query.extract_token_usage",
+        "lightspeed_stack.app.endpoints.streaming_query.extract_token_usage",
         return_value=TokenCounter(input_tokens=0, output_tokens=0),
     )
     mocker.patch(
-        "app.endpoints.streaming_query.parse_referenced_documents", return_value=[]
+        "lightspeed_stack.app.endpoints.streaming_query.parse_referenced_documents",
+        return_value=[],
     )
 
     async for _ in response_generator(

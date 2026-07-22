@@ -5,7 +5,7 @@ import re
 import pytest
 from pydantic import ValidationError
 
-from pydantic_ai_lightspeed.capabilities.redaction.core import (
+from lightspeed_stack.pydantic_ai_lightspeed.capabilities.redaction.core import (
     CompiledPatterns,
     RedactionResult,
     redact_text,

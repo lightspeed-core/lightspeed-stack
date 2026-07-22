@@ -6,23 +6,23 @@ import pytest
 from pydantic import AnyUrl
 from pytest_mock import MockerFixture
 
-from constants import (
+from lightspeed_stack.constants import (
     LLM_TOKEN_EVENT,
     LLM_TOOL_CALL_EVENT,
     LLM_TOOL_RESULT_EVENT,
     MEDIA_TYPE_JSON,
     MEDIA_TYPE_TEXT,
 )
-from models.api.responses.error import InternalServerErrorResponse
-from models.common.turn_summary import ReferencedDocument
-from utils.streaming_sse import (
+from lightspeed_stack.models.api.responses.error import InternalServerErrorResponse
+from lightspeed_stack.models.common.turn_summary import ReferencedDocument
+from lightspeed_stack.utils.streaming_sse import (
     shield_violation_generator,
     stream_end_event,
     stream_event,
     stream_http_error_event,
     stream_start_event,
 )
-from utils.token_counter import TokenCounter
+from lightspeed_stack.utils.token_counter import TokenCounter
 
 
 class TestOLSStreamEventFormatting:
@@ -209,7 +209,7 @@ class TestStreamHttpErrorEvent:
     def test_stream_http_error_event_json(self, mocker: MockerFixture) -> None:
         """Test HTTP error event formatting for JSON media type."""
         error = InternalServerErrorResponse.query_failed("Test error")
-        mocker.patch("utils.streaming_sse.logger")
+        mocker.patch("lightspeed_stack.utils.streaming_sse.logger")
 
         result = stream_http_error_event(error, MEDIA_TYPE_JSON)
 
@@ -219,7 +219,7 @@ class TestStreamHttpErrorEvent:
     def test_stream_http_error_event_text(self, mocker: MockerFixture) -> None:
         """Test HTTP error event formatting for text media type."""
         error = InternalServerErrorResponse.query_failed("Test error")
-        mocker.patch("utils.streaming_sse.logger")
+        mocker.patch("lightspeed_stack.utils.streaming_sse.logger")
 
         result = stream_http_error_event(error, MEDIA_TYPE_TEXT)
 
@@ -230,7 +230,7 @@ class TestStreamHttpErrorEvent:
     def test_stream_http_error_event_default(self, mocker: MockerFixture) -> None:
         """Test HTTP error event formatting with default media type."""
         error = InternalServerErrorResponse.query_failed("Test error")
-        mocker.patch("utils.streaming_sse.logger")
+        mocker.patch("lightspeed_stack.utils.streaming_sse.logger")
 
         result = stream_http_error_event(error)
 

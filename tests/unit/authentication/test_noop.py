@@ -3,8 +3,12 @@
 import pytest
 from fastapi import HTTPException, Request
 
-from authentication.noop import NoopAuthDependency
-from constants import DEFAULT_USER_NAME, DEFAULT_USER_UID, NO_USER_TOKEN
+from lightspeed_stack.authentication.noop import NoopAuthDependency
+from lightspeed_stack.constants import (
+    DEFAULT_USER_NAME,
+    DEFAULT_USER_UID,
+    NO_USER_TOKEN,
+)
 
 
 @pytest.mark.asyncio

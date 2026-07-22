@@ -3,8 +3,8 @@
 import pytest
 from pydantic import ValidationError
 
-import constants
-from models.config import RerankerConfiguration
+from lightspeed_stack import constants
+from lightspeed_stack.models.config import RerankerConfiguration
 
 
 class TestRerankerConfiguration:

@@ -9,11 +9,13 @@ from fastapi.responses import StreamingResponse
 from fastapi.testclient import TestClient
 from pytest_mock import AsyncMockType, MockerFixture
 
-from app.endpoints.streaming_query import streaming_query_endpoint_handler
-from authentication.interface import AuthTuple
-from configuration import AppConfig
-from models.api.requests import QueryRequest
-from models.common.query import Attachment
+from lightspeed_stack.app.endpoints.streaming_query import (
+    streaming_query_endpoint_handler,
+)
+from lightspeed_stack.authentication.interface import AuthTuple
+from lightspeed_stack.configuration import AppConfig
+from lightspeed_stack.models.api.requests import QueryRequest
+from lightspeed_stack.models.common.query import Attachment
 
 
 @pytest.fixture(name="mock_streaming_llama_stack_client")
@@ -29,7 +31,7 @@ def mock_llama_stack_streaming_fixture(
     """
     _ = mock_streaming_query_agent
     mock_holder_class = mocker.patch(
-        "app.endpoints.streaming_query.AsyncLlamaStackClientHolder"
+        "lightspeed_stack.app.endpoints.streaming_query.AsyncLlamaStackClientHolder"
     )
     mock_client = mocker.AsyncMock()
 
@@ -290,7 +292,7 @@ async def test_streaming_query_endpoint_returns_401_for_mcp_oauth(  # pylint: di
     )
 
     mocker.patch(
-        "utils.responses.get_mcp_tools",
+        "lightspeed_stack.utils.responses.get_mcp_tools",
         new_callable=mocker.AsyncMock,
         side_effect=oauth_401,
     )

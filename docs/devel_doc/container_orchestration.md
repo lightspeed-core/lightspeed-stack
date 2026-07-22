@@ -459,7 +459,7 @@ Container logs:
 3. **Test config enrichment:**
    ```bash
    # Run enrichment script manually to check for errors
-   uv run src/llama_stack_configuration.py \
+   uv run src/lightspeed_stack/llama_stack_configuration.py \
      -c lightspeed-stack.yaml \
      -i run.yaml \
      -o /tmp/enriched-run.yaml
@@ -685,7 +685,7 @@ When the llama-stack container starts, it automatically enriches the `run.yaml` 
 
 1. **Entrypoint script** (`scripts/llama-stack-entrypoint.sh`) is mounted at `/opt/app-root/enrich-entrypoint.sh`
 2. **Script runs** `/opt/app-root/.venv/bin/python3 /opt/app-root/llama_stack_configuration.py`
-3. **Enrichment logic** (`src/llama_stack_configuration.py`) reads both configs and merges them
+3. **Enrichment logic** (`src/lightspeed_stack/llama_stack_configuration.py`) reads both configs and merges them
 4. **Output** is written to `/tmp/enriched-run.yaml` inside the container
 5. **Llama Stack starts** with the enriched config
 
@@ -699,7 +699,7 @@ When the llama-stack container starts, it automatically enriches the `run.yaml` 
 
 ```bash
 # Run enrichment locally to see output
-uv run src/llama_stack_configuration.py \
+uv run src/lightspeed_stack/llama_stack_configuration.py \
   -c lightspeed-stack.yaml \
   -i run.yaml \
   -o enriched-run.yaml
@@ -717,7 +717,7 @@ The container uses these volume mounts:
 | `$(PWD)/run.yaml` | `/opt/app-root/run.yaml` | rw | Llama Stack config (enriched version written here) |
 | `$(PWD)/lightspeed-stack.yaml` | `/opt/app-root/lightspeed-stack.yaml` | ro | LCORE config (read for enrichment) |
 | `$(PWD)/scripts/llama-stack-entrypoint.sh` | `/opt/app-root/enrich-entrypoint.sh` | ro | Entrypoint script with enrichment logic |
-| `$(PWD)/src/llama_stack_configuration.py` | `/opt/app-root/llama_stack_configuration.py` | ro | Python enrichment script |
+| `$(PWD)/src/lightspeed_stack/llama_stack_configuration.py` | `/opt/app-root/llama_stack_configuration.py` | ro | Python enrichment script |
 
 **SELinux labels:**
 - `:z`: Relabels for sharing between host and container (read-write)

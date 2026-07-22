@@ -13,11 +13,11 @@ from llama_stack_client import APIConnectionError, APIStatusError
 from pydantic import AnyHttpUrl, SecretStr
 from pytest_mock import MockerFixture
 
-from authorization.azure_token_manager import AzureEntraIDManager
-from client import AsyncLlamaStackClientHolder
-from configuration import AzureEntraIdConfiguration
-from models.config import LlamaStackConfiguration
-from utils.types import Singleton
+from lightspeed_stack.authorization.azure_token_manager import AzureEntraIDManager
+from lightspeed_stack.client import AsyncLlamaStackClientHolder
+from lightspeed_stack.configuration import AzureEntraIdConfiguration
+from lightspeed_stack.models.config import LlamaStackConfiguration
+from lightspeed_stack.utils.types import Singleton
 
 
 @pytest.fixture(autouse=True)

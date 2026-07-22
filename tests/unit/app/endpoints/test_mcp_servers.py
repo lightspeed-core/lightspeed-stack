@@ -11,16 +11,16 @@ from llama_stack_client import APIConnectionError, NotFoundError
 from pydantic import AnyHttpUrl, SecretStr
 from pytest_mock import MockerFixture
 
-from app.endpoints import mcp_servers
-from authentication.interface import AuthTuple
-from configuration import AppConfig
-from models.api.requests import MCPServerRegistrationRequest
-from models.api.responses.successful import (
+from lightspeed_stack.app.endpoints import mcp_servers
+from lightspeed_stack.authentication.interface import AuthTuple
+from lightspeed_stack.configuration import AppConfig
+from lightspeed_stack.models.api.requests import MCPServerRegistrationRequest
+from lightspeed_stack.models.api.responses.successful import (
     MCPServerDeleteResponse,
     MCPServerListResponse,
     MCPServerRegistrationResponse,
 )
-from models.config import (
+from lightspeed_stack.models.config import (
     Configuration,
     CORSConfiguration,
     LlamaStackConfiguration,
@@ -90,14 +90,19 @@ def _make_app_config(mocker: MockerFixture, config: Configuration) -> AppConfig:
     app_config = AppConfig()
     app_config._configuration = config
     app_config._dynamic_mcp_server_names = set()
-    mocker.patch("app.endpoints.mcp_servers.configuration", app_config)
-    mocker.patch("app.endpoints.mcp_servers.authorize", lambda _: lambda func: func)
+    mocker.patch("lightspeed_stack.app.endpoints.mcp_servers.configuration", app_config)
+    mocker.patch(
+        "lightspeed_stack.app.endpoints.mcp_servers.authorize",
+        lambda _: lambda func: func,
+    )
     return app_config
 
 
 def _mock_client(mocker: MockerFixture) -> Any:
     """Create and patch a mock Llama Stack client."""
-    mock_holder = mocker.patch("app.endpoints.mcp_servers.AsyncLlamaStackClientHolder")
+    mock_holder = mocker.patch(
+        "lightspeed_stack.app.endpoints.mcp_servers.AsyncLlamaStackClientHolder"
+    )
     mock_client = mocker.AsyncMock()
     mock_holder.return_value.get_client.return_value = mock_client
     return mock_client
@@ -433,8 +438,13 @@ async def test_list_mcp_servers_configuration_not_loaded(
     """Test listing MCP servers returns 500 when configuration is not loaded."""
     mock_config = AppConfig()
     mock_config._configuration = None  # pylint: disable=protected-access
-    mocker.patch("app.endpoints.mcp_servers.configuration", mock_config)
-    mocker.patch("app.endpoints.mcp_servers.authorize", lambda _: lambda func: func)
+    mocker.patch(
+        "lightspeed_stack.app.endpoints.mcp_servers.configuration", mock_config
+    )
+    mocker.patch(
+        "lightspeed_stack.app.endpoints.mcp_servers.authorize",
+        lambda _: lambda func: func,
+    )
 
     with pytest.raises(HTTPException) as exc_info:
         await mcp_servers.list_mcp_servers_handler(

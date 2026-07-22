@@ -7,7 +7,7 @@ import pytest
 import yaml
 from pydantic import SecretStr
 
-from models.config import (
+from lightspeed_stack.models.config import (
     AccessRule,
     Action,
     AuthenticationConfiguration,

@@ -7,8 +7,8 @@ from typing import Any
 import pytest
 from pytest_mock import MockerFixture
 
-from models.compaction import ConversationSummary
-from utils.compaction import (
+from lightspeed_stack.models.compaction import ConversationSummary
+from lightspeed_stack.utils.compaction import (
     RECURSIVE_RESUMMARIZATION_PROMPT,
     SUMMARIZATION_PROMPT,
     _extract_response_text,
@@ -19,7 +19,7 @@ from utils.compaction import (
     recursively_resummarize,
     summarize_chunk,
 )
-from utils.token_estimator import (
+from lightspeed_stack.utils.token_estimator import (
     DEFAULT_ENCODING_NAME,
     estimate_conversation_tokens,
 )

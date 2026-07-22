@@ -7,10 +7,12 @@ import pytest
 from fastapi import HTTPException, status
 from fastapi.testclient import TestClient
 
-from app.endpoints.stream_interrupt import stream_interrupt_endpoint_handler
-from configuration import AppConfig
-from models.api.requests import StreamingInterruptRequest
-from utils.stream_interrupts import StreamInterruptRegistry
+from lightspeed_stack.app.endpoints.stream_interrupt import (
+    stream_interrupt_endpoint_handler,
+)
+from lightspeed_stack.configuration import AppConfig
+from lightspeed_stack.models.api.requests import StreamingInterruptRequest
+from lightspeed_stack.utils.stream_interrupts import StreamInterruptRegistry
 
 TEST_REQUEST_ID = "123e4567-e89b-12d3-a456-426614174003"
 REQUEST_ID_NOT_IN_REGISTRY = "00000000-0000-0000-0000-000000000000"

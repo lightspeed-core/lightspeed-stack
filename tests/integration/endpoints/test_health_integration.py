@@ -7,14 +7,14 @@ import pytest
 from fastapi import Response
 from pytest_mock import AsyncMockType, MockerFixture
 
-from app.endpoints.health import (
+from lightspeed_stack.app.endpoints.health import (
     get_providers_health_statuses,
     liveness_probe_get_method,
     readiness_probe_get_method,
 )
-from authentication.interface import AuthTuple
-from configuration import AppConfig
-from models.common import HealthStatus
+from lightspeed_stack.authentication.interface import AuthTuple
+from lightspeed_stack.configuration import AppConfig
+from lightspeed_stack.models.common import HealthStatus
 
 
 @pytest.fixture(name="mock_llama_stack_client_health")
@@ -30,7 +30,9 @@ def mock_llama_stack_client_fixture(
         mock_client: An AsyncMock representing the Llama Stack client whose
         `inspect.version` returns an empty list.
     """
-    mock_holder_class = mocker.patch("app.endpoints.health.AsyncLlamaStackClientHolder")
+    mock_holder_class = mocker.patch(
+        "lightspeed_stack.app.endpoints.health.AsyncLlamaStackClientHolder"
+    )
 
     mock_client = mocker.AsyncMock()
     # Mock the version endpoint to return a known version
@@ -183,7 +185,7 @@ async def test_health_readiness(
 
     # Mock check_default_model_available since configuration is not loaded
     mock_check_model = mocker.patch(
-        "app.endpoints.health.check_default_model_available"
+        "lightspeed_stack.app.endpoints.health.check_default_model_available"
     )
     mock_check_model.return_value = (True, "Default model is available")
 

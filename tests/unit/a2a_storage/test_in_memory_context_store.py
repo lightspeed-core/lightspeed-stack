@@ -2,7 +2,7 @@
 
 import pytest
 
-from a2a_storage.in_memory_context_store import InMemoryA2AContextStore
+from lightspeed_stack.a2a_storage.in_memory_context_store import InMemoryA2AContextStore
 
 
 class TestInMemoryA2AContextStore:

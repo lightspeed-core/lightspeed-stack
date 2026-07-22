@@ -5,7 +5,7 @@ from fastapi import HTTPException, status
 from llama_stack_client import APIConnectionError, APIStatusError
 from pytest_mock import MockerFixture
 
-from utils.shields import (
+from lightspeed_stack.utils.shields import (
     DEFAULT_VIOLATION_MESSAGE,
     append_turn_to_conversation,
     detect_shield_violations,
@@ -55,7 +55,7 @@ class TestDetectShieldViolations:
     ) -> None:
         """Test that detect_shield_violations returns True when refusal is present."""
         mock_record_error = mocker.patch(
-            "utils.shields.recording.record_llm_validation_error"
+            "lightspeed_stack.utils.shields.recording.record_llm_validation_error"
         )
 
         output_item = mocker.Mock(type="message", refusal="Content blocked")
@@ -69,7 +69,7 @@ class TestDetectShieldViolations:
     def test_returns_false_when_no_violation(self, mocker: MockerFixture) -> None:
         """Test that detect_shield_violations returns False when no refusal."""
         mock_record_error = mocker.patch(
-            "utils.shields.recording.record_llm_validation_error"
+            "lightspeed_stack.utils.shields.recording.record_llm_validation_error"
         )
 
         output_item = mocker.Mock(type="message", refusal=None)
@@ -83,7 +83,7 @@ class TestDetectShieldViolations:
     def test_returns_false_for_non_message_items(self, mocker: MockerFixture) -> None:
         """Test that detect_shield_violations ignores non-message items."""
         mock_record_error = mocker.patch(
-            "utils.shields.recording.record_llm_validation_error"
+            "lightspeed_stack.utils.shields.recording.record_llm_validation_error"
         )
 
         output_item = mocker.Mock(type="tool_call", refusal="Content blocked")
@@ -97,7 +97,7 @@ class TestDetectShieldViolations:
     def test_returns_false_for_empty_list(self, mocker: MockerFixture) -> None:
         """Test that detect_shield_violations returns False for empty list."""
         mock_record_error = mocker.patch(
-            "utils.shields.recording.record_llm_validation_error"
+            "lightspeed_stack.utils.shields.recording.record_llm_validation_error"
         )
 
         result = detect_shield_violations([])
@@ -164,7 +164,7 @@ class TestRunShieldModeration:
     ) -> None:
         """Test that run_shield_moderation returns blocked when content is flagged."""
         mock_record_error = mocker.patch(
-            "utils.shields.recording.record_llm_validation_error"
+            "lightspeed_stack.utils.shields.recording.record_llm_validation_error"
         )
         mock_client = mocker.Mock()
 
@@ -205,7 +205,7 @@ class TestRunShieldModeration:
     ) -> None:
         """Test that run_shield_moderation uses default message when user_message is None."""
         mock_record_error = mocker.patch(
-            "utils.shields.recording.record_llm_validation_error"
+            "lightspeed_stack.utils.shields.recording.record_llm_validation_error"
         )
         mock_client = mocker.Mock()
 

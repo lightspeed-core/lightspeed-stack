@@ -11,12 +11,12 @@ from pydantic import AnyUrl
 from pytest_mock import MockerFixture
 from sqlalchemy.exc import SQLAlchemyError
 
-from models.common.responses.responses_conversation_context import (
+from lightspeed_stack.models.common.responses.responses_conversation_context import (
     ResponsesConversationContext,
 )
-from models.common.turn_summary import ReferencedDocument
-from models.database.conversations import UserConversation, UserTurn
-from utils import endpoints
+from lightspeed_stack.models.common.turn_summary import ReferencedDocument
+from lightspeed_stack.models.database.conversations import UserConversation, UserTurn
+from lightspeed_stack.utils import endpoints
 
 
 @pytest.fixture(name="input_file")
@@ -178,9 +178,13 @@ class TestValidateAndRetrieveConversation:
         mock_conversation.id = normalized_conv_id
         mock_conversation.user_id = user_id
 
-        mocker.patch("utils.endpoints.can_access_conversation", return_value=True)
         mocker.patch(
-            "utils.endpoints.retrieve_conversation", return_value=mock_conversation
+            "lightspeed_stack.utils.endpoints.can_access_conversation",
+            return_value=True,
+        )
+        mocker.patch(
+            "lightspeed_stack.utils.endpoints.retrieve_conversation",
+            return_value=mock_conversation,
         )
 
         result = endpoints.validate_and_retrieve_conversation(
@@ -196,8 +200,11 @@ class TestValidateAndRetrieveConversation:
         normalized_conv_id = "123e4567-e89b-12d3-a456-426614174000"
         user_id = "user-123"
 
-        mocker.patch("utils.endpoints.can_access_conversation", return_value=False)
-        mocker.patch("utils.endpoints.logger")
+        mocker.patch(
+            "lightspeed_stack.utils.endpoints.can_access_conversation",
+            return_value=False,
+        )
+        mocker.patch("lightspeed_stack.utils.endpoints.logger")
 
         with pytest.raises(HTTPException) as exc_info:
             endpoints.validate_and_retrieve_conversation(
@@ -217,9 +224,14 @@ class TestValidateAndRetrieveConversation:
         normalized_conv_id = "123e4567-e89b-12d3-a456-426614174000"
         user_id = "user-123"
 
-        mocker.patch("utils.endpoints.can_access_conversation", return_value=True)
-        mocker.patch("utils.endpoints.retrieve_conversation", return_value=None)
-        mocker.patch("utils.endpoints.logger")
+        mocker.patch(
+            "lightspeed_stack.utils.endpoints.can_access_conversation",
+            return_value=True,
+        )
+        mocker.patch(
+            "lightspeed_stack.utils.endpoints.retrieve_conversation", return_value=None
+        )
+        mocker.patch("lightspeed_stack.utils.endpoints.logger")
 
         with pytest.raises(HTTPException) as exc_info:
             endpoints.validate_and_retrieve_conversation(
@@ -239,12 +251,15 @@ class TestValidateAndRetrieveConversation:
         normalized_conv_id = "123e4567-e89b-12d3-a456-426614174000"
         user_id = "user-123"
 
-        mocker.patch("utils.endpoints.can_access_conversation", return_value=True)
         mocker.patch(
-            "utils.endpoints.retrieve_conversation",
+            "lightspeed_stack.utils.endpoints.can_access_conversation",
+            return_value=True,
+        )
+        mocker.patch(
+            "lightspeed_stack.utils.endpoints.retrieve_conversation",
             side_effect=SQLAlchemyError("Database connection error", None, None),
         )
-        mocker.patch("utils.endpoints.logger")
+        mocker.patch("lightspeed_stack.utils.endpoints.logger")
 
         with pytest.raises(HTTPException) as exc_info:
             endpoints.validate_and_retrieve_conversation(
@@ -270,9 +285,13 @@ class TestValidateAndRetrieveConversation:
         mock_conversation.id = normalized_conv_id
         mock_conversation.user_id = "other-user"  # Different user
 
-        mocker.patch("utils.endpoints.can_access_conversation", return_value=True)
         mocker.patch(
-            "utils.endpoints.retrieve_conversation", return_value=mock_conversation
+            "lightspeed_stack.utils.endpoints.can_access_conversation",
+            return_value=True,
+        )
+        mocker.patch(
+            "lightspeed_stack.utils.endpoints.retrieve_conversation",
+            return_value=mock_conversation,
         )
 
         result = endpoints.validate_and_retrieve_conversation(
@@ -296,22 +315,22 @@ class TestResolveResponseContext:
         mock_client = mocker.Mock()
         mock_holder.get_client.return_value = mock_client
         mocker.patch(
-            "utils.endpoints.AsyncLlamaStackClientHolder",
+            "lightspeed_stack.utils.endpoints.AsyncLlamaStackClientHolder",
             return_value=mock_holder,
         )
 
         mock_conv = mocker.Mock(spec=UserConversation)
         mock_conv.id = "conv-normalized-123"
         mocker.patch(
-            "utils.endpoints.normalize_conversation_id",
+            "lightspeed_stack.utils.endpoints.normalize_conversation_id",
             return_value="conv-normalized-123",
         )
         mocker.patch(
-            "utils.endpoints.to_llama_stack_conversation_id",
+            "lightspeed_stack.utils.endpoints.to_llama_stack_conversation_id",
             return_value="conv_conv-normalized-123",
         )
         mocker.patch(
-            "utils.endpoints.validate_and_retrieve_conversation",
+            "lightspeed_stack.utils.endpoints.validate_and_retrieve_conversation",
             return_value=mock_conv,
         )
 
@@ -336,10 +355,12 @@ class TestResolveResponseContext:
         mock_holder = mocker.Mock()
         mock_holder.get_client.return_value = mocker.Mock()
         mocker.patch(
-            "utils.endpoints.AsyncLlamaStackClientHolder",
+            "lightspeed_stack.utils.endpoints.AsyncLlamaStackClientHolder",
             return_value=mock_holder,
         )
-        mocker.patch("utils.endpoints.check_turn_existence", return_value=False)
+        mocker.patch(
+            "lightspeed_stack.utils.endpoints.check_turn_existence", return_value=False
+        )
 
         with pytest.raises(HTTPException) as exc_info:
             await endpoints.resolve_response_context(
@@ -362,15 +383,17 @@ class TestResolveResponseContext:
         mock_holder = mocker.Mock()
         mock_holder.get_client.return_value = mocker.Mock()
         mocker.patch(
-            "utils.endpoints.AsyncLlamaStackClientHolder",
+            "lightspeed_stack.utils.endpoints.AsyncLlamaStackClientHolder",
             return_value=mock_holder,
         )
-        mocker.patch("utils.endpoints.check_turn_existence", return_value=True)
+        mocker.patch(
+            "lightspeed_stack.utils.endpoints.check_turn_existence", return_value=True
+        )
 
         mock_turn = mocker.Mock(spec=UserTurn)
         mock_turn.conversation_id = "conv-existing"
         mocker.patch(
-            "utils.endpoints.retrieve_turn_by_response_id",
+            "lightspeed_stack.utils.endpoints.retrieve_turn_by_response_id",
             return_value=mock_turn,
         )
 
@@ -378,15 +401,15 @@ class TestResolveResponseContext:
         mock_conv.id = "conv-existing"
         mock_conv.last_response_id = "resp-123"  # same as previous_response_id
         mocker.patch(
-            "utils.endpoints.validate_and_retrieve_conversation",
+            "lightspeed_stack.utils.endpoints.validate_and_retrieve_conversation",
             return_value=mock_conv,
         )
         mocker.patch(
-            "utils.endpoints.to_llama_stack_conversation_id",
+            "lightspeed_stack.utils.endpoints.to_llama_stack_conversation_id",
             return_value="conv_conv-existing",
         )
         mock_create = mocker.patch(
-            "utils.endpoints.create_new_conversation",
+            "lightspeed_stack.utils.endpoints.create_new_conversation",
             new=mocker.AsyncMock(),
         )
 
@@ -412,15 +435,17 @@ class TestResolveResponseContext:
         mock_holder = mocker.Mock()
         mock_holder.get_client.return_value = mock_client
         mocker.patch(
-            "utils.endpoints.AsyncLlamaStackClientHolder",
+            "lightspeed_stack.utils.endpoints.AsyncLlamaStackClientHolder",
             return_value=mock_holder,
         )
-        mocker.patch("utils.endpoints.check_turn_existence", return_value=True)
+        mocker.patch(
+            "lightspeed_stack.utils.endpoints.check_turn_existence", return_value=True
+        )
 
         mock_turn = mocker.Mock(spec=UserTurn)
         mock_turn.conversation_id = "conv-existing"
         mocker.patch(
-            "utils.endpoints.retrieve_turn_by_response_id",
+            "lightspeed_stack.utils.endpoints.retrieve_turn_by_response_id",
             return_value=mock_turn,
         )
 
@@ -428,11 +453,11 @@ class TestResolveResponseContext:
         mock_conv.id = "conv-existing"
         mock_conv.last_response_id = "resp-latest"  # fork: different from prev
         mocker.patch(
-            "utils.endpoints.validate_and_retrieve_conversation",
+            "lightspeed_stack.utils.endpoints.validate_and_retrieve_conversation",
             return_value=mock_conv,
         )
         mocker.patch(
-            "utils.endpoints.create_new_conversation",
+            "lightspeed_stack.utils.endpoints.create_new_conversation",
             new=mocker.AsyncMock(return_value="conv_new_fork"),
         )
 
@@ -457,15 +482,17 @@ class TestResolveResponseContext:
         mock_holder = mocker.Mock()
         mock_holder.get_client.return_value = mock_client
         mocker.patch(
-            "utils.endpoints.AsyncLlamaStackClientHolder",
+            "lightspeed_stack.utils.endpoints.AsyncLlamaStackClientHolder",
             return_value=mock_holder,
         )
-        mocker.patch("utils.endpoints.check_turn_existence", return_value=True)
+        mocker.patch(
+            "lightspeed_stack.utils.endpoints.check_turn_existence", return_value=True
+        )
 
         mock_turn = mocker.Mock(spec=UserTurn)
         mock_turn.conversation_id = "conv-existing"
         mocker.patch(
-            "utils.endpoints.retrieve_turn_by_response_id",
+            "lightspeed_stack.utils.endpoints.retrieve_turn_by_response_id",
             return_value=mock_turn,
         )
 
@@ -473,11 +500,11 @@ class TestResolveResponseContext:
         mock_conv.id = "conv-existing"
         mock_conv.last_response_id = "resp-latest"
         mocker.patch(
-            "utils.endpoints.validate_and_retrieve_conversation",
+            "lightspeed_stack.utils.endpoints.validate_and_retrieve_conversation",
             return_value=mock_conv,
         )
         mocker.patch(
-            "utils.endpoints.create_new_conversation",
+            "lightspeed_stack.utils.endpoints.create_new_conversation",
             new=mocker.AsyncMock(return_value="conv_new"),
         )
 
@@ -500,11 +527,11 @@ class TestResolveResponseContext:
         mock_holder = mocker.Mock()
         mock_holder.get_client.return_value = mock_client
         mocker.patch(
-            "utils.endpoints.AsyncLlamaStackClientHolder",
+            "lightspeed_stack.utils.endpoints.AsyncLlamaStackClientHolder",
             return_value=mock_holder,
         )
         mocker.patch(
-            "utils.endpoints.create_new_conversation",
+            "lightspeed_stack.utils.endpoints.create_new_conversation",
             new=mocker.AsyncMock(return_value="conv_brand_new"),
         )
 
@@ -528,11 +555,11 @@ class TestResolveResponseContext:
         mock_holder = mocker.Mock()
         mock_holder.get_client.return_value = mocker.Mock()
         mocker.patch(
-            "utils.endpoints.AsyncLlamaStackClientHolder",
+            "lightspeed_stack.utils.endpoints.AsyncLlamaStackClientHolder",
             return_value=mock_holder,
         )
         mocker.patch(
-            "utils.endpoints.create_new_conversation",
+            "lightspeed_stack.utils.endpoints.create_new_conversation",
             new=mocker.AsyncMock(return_value="conv_new"),
         )
 

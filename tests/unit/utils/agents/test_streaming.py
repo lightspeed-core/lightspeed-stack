@@ -36,28 +36,33 @@ from pydantic_ai.native_tools import WebSearchTool
 from pydantic_ai.usage import RunUsage
 from pytest_mock import MockerFixture
 
-from constants import (
+from lightspeed_stack.constants import (
     ENDPOINT_PATH_STREAMING_QUERY,
     INTERRUPTED_RESPONSE_MESSAGE,
     MEDIA_TYPE_JSON,
     MEDIA_TYPE_TEXT,
 )
-from models.api.requests import QueryRequest
-from models.api.responses.error import PromptTooLongResponse
-from models.common.agents import (
+from lightspeed_stack.models.api.requests import QueryRequest
+from lightspeed_stack.models.api.responses.error import PromptTooLongResponse
+from lightspeed_stack.models.common.agents import (
     AgentTurnAccumulator,
     TokenStreamPayload,
     ToolCallStreamPayload,
     ToolResultStreamPayload,
     TurnCompleteStreamPayload,
 )
-from models.common.moderation import ShieldModerationBlocked, ShieldModerationPassed
-from models.common.query import Attachment as QueryAttachment
-from models.common.responses.contexts import ResponseGeneratorContext
-from models.common.responses.responses_api_params import ResponsesApiParams
-from models.common.turn_summary import RAGContext, TurnSummary
-from utils.agents.query import AgentFinishReason
-from utils.agents.streaming import (
+from lightspeed_stack.models.common.moderation import (
+    ShieldModerationBlocked,
+    ShieldModerationPassed,
+)
+from lightspeed_stack.models.common.query import Attachment as QueryAttachment
+from lightspeed_stack.models.common.responses.contexts import ResponseGeneratorContext
+from lightspeed_stack.models.common.responses.responses_api_params import (
+    ResponsesApiParams,
+)
+from lightspeed_stack.models.common.turn_summary import RAGContext, TurnSummary
+from lightspeed_stack.utils.agents.query import AgentFinishReason
+from lightspeed_stack.utils.agents.streaming import (
     DEFAULT_REFUSAL_RESPONSE,
     agent_response_generator,
     dispatch_stream_event,
@@ -65,7 +70,7 @@ from utils.agents.streaming import (
     retrieve_agent_response_generator,
     serialize_event,
 )
-from utils.token_counter import TokenCounter
+from lightspeed_stack.utils.token_counter import TokenCounter
 
 INTERRUPTED_INDICATOR = f"\n\n*{INTERRUPTED_RESPONSE_MESSAGE}*"
 
@@ -204,8 +209,8 @@ def make_agent_run_result_fixture(mocker: MockerFixture) -> Callable[..., Any]:
 @pytest.fixture(name="patch_recording_metrics")
 def patch_recording_metrics_fixture(mocker: MockerFixture) -> None:
     """Patch LLM recording helpers so agent streaming tests stay isolated."""
-    mocker.patch("utils.agents.query.recording.record_llm_token_usage")
-    mocker.patch("utils.agents.query.recording.record_llm_call")
+    mocker.patch("lightspeed_stack.utils.agents.query.recording.record_llm_token_usage")
+    mocker.patch("lightspeed_stack.utils.agents.query.recording.record_llm_call")
 
 
 @pytest.fixture(name="patch_streaming_configuration")
@@ -213,7 +218,7 @@ def patch_streaming_configuration_fixture(mocker: MockerFixture) -> None:
     """Patch streaming module configuration for isolated agent streaming tests."""
     mock_config = mocker.MagicMock()
     mock_config.skills = None
-    mocker.patch("utils.agents.streaming.configuration", mock_config)
+    mocker.patch("lightspeed_stack.utils.agents.streaming.configuration", mock_config)
 
 
 @pytest.fixture(autouse=True, name="stream_interrupt_mocks")
@@ -221,10 +226,12 @@ def stream_interrupt_mocks_fixture(mocker: MockerFixture) -> dict[str, Any]:
     """Patch stream interrupt registry and deregister for wrapper tests."""
     registry = mocker.Mock()
     mocker.patch(
-        "utils.stream_interrupts.get_stream_interrupt_registry",
+        "lightspeed_stack.utils.stream_interrupts.get_stream_interrupt_registry",
         return_value=registry,
     )
-    deregister = mocker.patch("utils.agents.streaming.deregister_stream")
+    deregister = mocker.patch(
+        "lightspeed_stack.utils.agents.streaming.deregister_stream"
+    )
     return {"registry": registry, "deregister": deregister}
 
 
@@ -441,7 +448,7 @@ class TestDispatchStreamEvent:
         mocker: MockerFixture,
     ) -> None:
         """Test unknown native tool returns at part start are ignored."""
-        mocker.patch("utils.agents.tool_processor.logger.warning")
+        mocker.patch("lightspeed_stack.utils.agents.tool_processor.logger.warning")
         part = NativeToolReturnPart(
             tool_name="unknown",
             tool_call_id="unk-return",
@@ -478,7 +485,7 @@ class TestDispatchStreamEvent:
         mocker: MockerFixture,
     ) -> None:
         """Test unknown native tool calls at part end are ignored."""
-        mocker.patch("utils.agents.tool_processor.logger.warning")
+        mocker.patch("lightspeed_stack.utils.agents.tool_processor.logger.warning")
         part = NativeToolCallPart(
             tool_name="unknown",
             args={},
@@ -508,11 +515,11 @@ class TestRetrieveAgentResponseGenerator:
         context = make_generator_context(moderation_result=blocked_moderation)
         responses_params = make_responses_params()
         mock_shield = mocker.patch(
-            "utils.agents.streaming.shield_violation_generator",
+            "lightspeed_stack.utils.agents.streaming.shield_violation_generator",
             return_value=_async_iter(["shield-event"]),
         )
         mock_append = mocker.patch(
-            "utils.agents.streaming.append_turn_items_to_conversation",
+            "lightspeed_stack.utils.agents.streaming.append_turn_items_to_conversation",
             new=mocker.AsyncMock(),
         )
 
@@ -544,11 +551,11 @@ class TestRetrieveAgentResponseGenerator:
         context = make_generator_context(moderation_result=blocked_moderation)
         responses_params = make_responses_params(omit_conversation=True)
         mocker.patch(
-            "utils.agents.streaming.shield_violation_generator",
+            "lightspeed_stack.utils.agents.streaming.shield_violation_generator",
             return_value=_async_iter([]),
         )
         mock_append = mocker.patch(
-            "utils.agents.streaming.append_turn_items_to_conversation",
+            "lightspeed_stack.utils.agents.streaming.append_turn_items_to_conversation",
             new=mocker.AsyncMock(),
         )
 
@@ -571,11 +578,11 @@ class TestRetrieveAgentResponseGenerator:
         context = make_generator_context()
         mock_agent = mocker.Mock()
         mocker.patch(
-            "utils.agents.streaming.build_agent",
+            "lightspeed_stack.utils.agents.streaming.build_agent",
             return_value=mock_agent,
         )
         mock_agent_gen = mocker.patch(
-            "utils.agents.streaming.agent_response_generator",
+            "lightspeed_stack.utils.agents.streaming.agent_response_generator",
             return_value=_async_iter(["agent-event"]),
         )
 
@@ -607,7 +614,7 @@ class TestRetrieveAgentResponseGenerator:
         """Test agent inference errors are mapped to HTTPException."""
         context = make_generator_context()
         mocker.patch(
-            "utils.agents.streaming.build_agent",
+            "lightspeed_stack.utils.agents.streaming.build_agent",
             side_effect=AgentRunError("agent failed"),
         )
         mock_error = mocker.Mock()
@@ -616,7 +623,7 @@ class TestRetrieveAgentResponseGenerator:
             "detail": {"response": "Error", "cause": "agent failed"},
         }
         mocker.patch(
-            "utils.agents.streaming.map_agent_inference_error",
+            "lightspeed_stack.utils.agents.streaming.map_agent_inference_error",
             return_value=mock_error,
         )
 
@@ -652,19 +659,25 @@ class TestGenerateAgentResponse:
                 MEDIA_TYPE_JSON,
             )
 
-        consume_mock = mocker.patch("utils.agents.streaming.consume_query_tokens")
+        consume_mock = mocker.patch(
+            "lightspeed_stack.utils.agents.streaming.consume_query_tokens"
+        )
         mocker.patch(
-            "utils.agents.streaming.get_available_quotas",
+            "lightspeed_stack.utils.agents.streaming.get_available_quotas",
             return_value={"daily": 100},
         )
         mocker.patch(
-            "utils.agents.streaming.maybe_get_topic_summary",
+            "lightspeed_stack.utils.agents.streaming.maybe_get_topic_summary",
             new=mocker.AsyncMock(return_value=None),
         )
-        store_mock = mocker.patch("utils.agents.streaming.store_query_results")
+        store_mock = mocker.patch(
+            "lightspeed_stack.utils.agents.streaming.store_query_results"
+        )
         mock_config = mocker.Mock()
         mock_config.quota_limiters = []
-        mocker.patch("utils.agents.streaming.configuration", mock_config)
+        mocker.patch(
+            "lightspeed_stack.utils.agents.streaming.configuration", mock_config
+        )
 
         result = [
             event
@@ -702,11 +715,11 @@ class TestGenerateAgentResponse:
             raise asyncio.CancelledError()
 
         persist_mock = mocker.patch(
-            "utils.agents.streaming.persist_interrupted_turn",
+            "lightspeed_stack.utils.agents.streaming.persist_interrupted_turn",
             new=mocker.AsyncMock(),
         )
         mocker.patch(
-            "utils.agents.streaming.register_interrupt_callback",
+            "lightspeed_stack.utils.agents.streaming.register_interrupt_callback",
             return_value=[False],
         )
 
@@ -753,11 +766,11 @@ class TestGenerateAgentResponse:
         mock_error.detail.response = "Quota exceeded"
         mock_error.detail.cause = "quota exceeded"
         mocker.patch(
-            "utils.agents.streaming.map_agent_inference_error",
+            "lightspeed_stack.utils.agents.streaming.map_agent_inference_error",
             return_value=mock_error,
         )
         mocker.patch(
-            "utils.agents.streaming.register_interrupt_callback",
+            "lightspeed_stack.utils.agents.streaming.register_interrupt_callback",
             return_value=[False],
         )
 
@@ -795,11 +808,11 @@ class TestGenerateAgentResponse:
             raise asyncio.CancelledError()
 
         persist_mock = mocker.patch(
-            "utils.agents.streaming.persist_interrupted_turn",
+            "lightspeed_stack.utils.agents.streaming.persist_interrupted_turn",
             new=mocker.AsyncMock(),
         )
         mocker.patch(
-            "utils.agents.streaming.register_interrupt_callback",
+            "lightspeed_stack.utils.agents.streaming.register_interrupt_callback",
             return_value=[True],
         )
 
@@ -863,11 +876,11 @@ class TestAgentResponseGenerator:
         mock_agent = mocker.Mock()
         mock_agent.run_stream_events.return_value = _mock_run_stream(events)
         mocker.patch(
-            "utils.agents.streaming.get_agent_finish_reason",
+            "lightspeed_stack.utils.agents.streaming.get_agent_finish_reason",
             return_value=AgentFinishReason.SUCCESS,
         )
         mocker.patch(
-            "utils.agents.streaming.deduplicate_referenced_documents",
+            "lightspeed_stack.utils.agents.streaming.deduplicate_referenced_documents",
             side_effect=lambda docs: docs,
         )
 
@@ -921,11 +934,11 @@ class TestAgentResponseGenerator:
         mock_agent = mocker.Mock()
         mock_agent.run_stream_events.return_value = _mock_run_stream(events)
         mocker.patch(
-            "utils.agents.streaming.get_agent_finish_reason",
+            "lightspeed_stack.utils.agents.streaming.get_agent_finish_reason",
             return_value=AgentFinishReason.SUCCESS,
         )
         mocker.patch(
-            "utils.agents.streaming.deduplicate_referenced_documents",
+            "lightspeed_stack.utils.agents.streaming.deduplicate_referenced_documents",
             side_effect=lambda docs: docs,
         )
 
@@ -973,16 +986,16 @@ class TestAgentResponseGenerator:
             [AgentRunResultEvent(result=run_result)]
         )
         mocker.patch(
-            "utils.agents.streaming.get_agent_finish_reason",
+            "lightspeed_stack.utils.agents.streaming.get_agent_finish_reason",
             return_value=AgentFinishReason.LENGTH,
         )
         mock_error = PromptTooLongResponse(model=responses_params.model)
         mocker.patch(
-            "utils.agents.streaming.get_finish_reason_error",
+            "lightspeed_stack.utils.agents.streaming.get_finish_reason_error",
             return_value=mock_error,
         )
         mocker.patch(
-            "utils.agents.streaming.deduplicate_referenced_documents",
+            "lightspeed_stack.utils.agents.streaming.deduplicate_referenced_documents",
             side_effect=lambda docs: docs,
         )
 
@@ -1074,11 +1087,11 @@ class TestInterruptPartialTokenAccumulation:
         )
 
         persist_mock = mocker.patch(
-            "utils.agents.streaming.persist_interrupted_turn",
+            "lightspeed_stack.utils.agents.streaming.persist_interrupted_turn",
             new=mocker.AsyncMock(),
         )
         mocker.patch(
-            "utils.agents.streaming.register_interrupt_callback",
+            "lightspeed_stack.utils.agents.streaming.register_interrupt_callback",
             return_value=[False],
         )
 
@@ -1143,11 +1156,11 @@ class TestInterruptPartialTokenAccumulation:
             yield ""  # pragma: no cover
 
         persist_mock = mocker.patch(
-            "utils.agents.streaming.persist_interrupted_turn",
+            "lightspeed_stack.utils.agents.streaming.persist_interrupted_turn",
             new=mocker.AsyncMock(),
         )
         mocker.patch(
-            "utils.agents.streaming.register_interrupt_callback",
+            "lightspeed_stack.utils.agents.streaming.register_interrupt_callback",
             return_value=[False],
         )
 

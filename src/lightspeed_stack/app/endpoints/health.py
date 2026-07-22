@@ -1,0 +1,257 @@
+"""Handlers for health REST API endpoints.
+
+These endpoints are used to check if service is live and prepared to accept
+requests. Note that these endpoints can be accessed using GET or HEAD HTTP
+methods. For HEAD HTTP method, just the HTTP response code is used.
+"""
+
+from typing import Annotated, Any
+
+from fastapi import APIRouter, Depends, Response, status
+from llama_stack_client import APIConnectionError
+
+from lightspeed_stack.authentication import get_auth_dependency
+from lightspeed_stack.authentication.interface import AuthTuple
+from lightspeed_stack.authorization.middleware import authorize
+from lightspeed_stack.client import AsyncLlamaStackClientHolder
+from lightspeed_stack.configuration import configuration
+from lightspeed_stack.log import get_logger
+from lightspeed_stack.models.api.responses.constants import (
+    UNAUTHORIZED_OPENAPI_EXAMPLES,
+)
+from lightspeed_stack.models.api.responses.error import (
+    ForbiddenResponse,
+    ServiceUnavailableResponse,
+    UnauthorizedResponse,
+)
+from lightspeed_stack.models.api.responses.successful import (
+    LivenessResponse,
+    ReadinessResponse,
+)
+from lightspeed_stack.models.common import (
+    HealthStatus,
+    ProviderHealthStatus,
+)
+from lightspeed_stack.models.config import Action
+from lightspeed_stack.utils.degraded_mode import DegradedModeTracker
+
+logger = get_logger(__name__)
+router = APIRouter(tags=["health"])
+
+
+get_readiness_responses: dict[int | str, dict[str, Any]] = {
+    200: ReadinessResponse.openapi_response(),
+    401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
+    403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
+    503: ServiceUnavailableResponse.openapi_response(
+        examples=["llama stack", "kubernetes api"]
+    ),
+}
+
+get_liveness_responses: dict[int | str, dict[str, Any]] = {
+    200: LivenessResponse.openapi_response(),
+    401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
+    403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
+    503: ServiceUnavailableResponse.openapi_response(examples=["kubernetes api"]),
+}
+
+
+async def get_providers_health_statuses() -> list[ProviderHealthStatus]:
+    """
+    Retrieve the health status of all configured providers.
+
+    Returns:
+        list[ProviderHealthStatus]: A list containing the health
+        status of each provider. If provider health cannot be
+        determined, returns a single entry indicating an error.
+    """
+    try:
+        client = AsyncLlamaStackClientHolder().get_client()
+
+        providers = await client.providers.list()
+        logger.debug("Found %d providers", len(providers))
+
+        return [
+            ProviderHealthStatus(
+                provider_id=provider.provider_id,
+                status=str(provider.health.get("status", "unknown")),
+                message=str(provider.health.get("message", "")),
+            )
+            for provider in providers
+        ]
+
+    except APIConnectionError as e:
+        logger.error("Failed to check providers health: %s", e)
+        return [
+            ProviderHealthStatus(
+                provider_id="unknown",
+                status=HealthStatus.ERROR.value,
+                message=f"Failed to initialize health check: {e!s}",
+            )
+        ]
+
+
+async def check_default_model_available() -> tuple[bool, str]:
+    """Check that the configured default model is registered in the model registry.
+
+    Retrieves the default model and provider from configuration and delegates
+    the availability check to the client holder.
+
+    Returns:
+        A tuple of (available, reason) where available is True if the default
+        model was found or no default model is configured, and reason describes
+        the outcome.
+    """
+    inference = configuration.inference
+    if (
+        inference is None
+        or not inference.default_model
+        or not inference.default_provider
+    ):
+        return True, "No default model configured"
+
+    expected_model_id = f"{inference.default_provider}/{inference.default_model}"
+
+    client_holder = AsyncLlamaStackClientHolder()
+    return await client_holder.check_model_available(expected_model_id)
+
+
+@router.get("/readiness", responses=get_readiness_responses)
+@authorize(Action.INFO)
+async def readiness_probe_get_method(
+    auth: Annotated[AuthTuple, Depends(get_auth_dependency())],
+    response: Response,
+) -> ReadinessResponse:
+    """
+    Handle the readiness probe endpoint, returning service readiness and health status.
+
+    Returns comprehensive health information including overall service status,
+    provider health, and functional impacts. The service is considered "ready" even
+    in degraded mode (returns 200), but reports reduced functionality.
+
+    ### Parameters:
+    - response: The outgoing HTTP response (used by middleware).
+    - auth: Authentication tuple from the auth dependency (used by middleware).
+
+    ### Raises:
+    - HTTPException: with status 401 for unauthorized access.
+    - HTTPException: with status 403 if permission is denied.
+    - HTTPException: with status 503 when service is unhealthy (providers down,
+      models unavailable) and degraded mode is not enabled.
+
+    ### Returns:
+    - ReadinessResponse: Object with comprehensive health status including:
+      - ready: True if service can handle requests (even in degraded mode)
+      - reason: Description of service state
+      - overall_status: healthy, degraded, or unhealthy
+      - impacts: Functional limitations when degraded/unhealthy
+      - providers: List of unhealthy providers
+    """
+    # Used only for authorization
+    _ = auth
+
+    logger.info("Response to /readiness endpoint")
+
+    degraded_tracker = DegradedModeTracker()
+    is_degraded = degraded_tracker.is_degraded()
+
+    # Determine overall status
+    if is_degraded:
+        # Service is ready (can serve health checks, metrics, etc.) but degraded
+        impacts = [
+            "LLM inference unavailable",
+            "RAG functionality unavailable",
+            "Agent tools unavailable",
+        ]
+        return ReadinessResponse(
+            ready=True,
+            reason="Service running in degraded mode",
+            overall_status=HealthStatus.DEGRADED,
+            impacts=impacts,
+            providers=[],
+        )
+
+    # Not in degraded mode - check provider health
+    provider_statuses = await get_providers_health_statuses()
+    unhealthy_providers = [
+        p for p in provider_statuses if p.status == HealthStatus.ERROR.value
+    ]
+
+    if unhealthy_providers:
+        # Check if this is a connection error (provider_id="unknown")
+        is_connection_error = any(
+            p.provider_id == "unknown" for p in unhealthy_providers
+        )
+
+        if is_connection_error:
+            reason = "Cannot connect to backend service"
+            impacts = [
+                "LLM inference unavailable",
+                "Provider health checks unavailable",
+            ]
+        else:
+            unhealthy_provider_names = [p.provider_id for p in unhealthy_providers]
+            reason = f"Providers not healthy: {', '.join(unhealthy_provider_names)}"
+            impacts = [
+                f"Provider {p.provider_id}: {p.message}" for p in unhealthy_providers
+            ]
+
+        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+        return ReadinessResponse(
+            ready=False,
+            reason=reason,
+            overall_status=HealthStatus.UNHEALTHY,
+            impacts=impacts,
+            providers=unhealthy_providers if not is_connection_error else [],
+        )
+
+    # Check that the default model is registered in the model registry
+    model_available, model_reason = await check_default_model_available()
+    if not model_available:
+        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+        return ReadinessResponse(
+            ready=False,
+            reason=model_reason,
+            overall_status=HealthStatus.UNHEALTHY,
+            impacts=["Default model not available in registry"],
+            providers=[],
+        )
+
+    # All healthy
+    return ReadinessResponse(
+        ready=True,
+        reason="All providers are healthy",
+        overall_status=HealthStatus.HEALTHY,
+        impacts=None,
+        providers=[],
+    )
+
+
+@router.get("/liveness", responses=get_liveness_responses)
+@authorize(Action.INFO)
+async def liveness_probe_get_method(
+    auth: Annotated[AuthTuple, Depends(get_auth_dependency())],
+) -> LivenessResponse:
+    """
+    Return the liveness status of the service.
+
+    ### Parameters:
+    - auth: Authentication tuple from the auth dependency (used by middleware).
+
+    ### Raises:
+    - HTTPException: with status 401 for unauthorized access.
+    - HTTPException: with status 403 if permission is denied.
+    - HTTPException: with status 500 and a detail object containing `response`
+      and `cause` when service configuration is wrong or incomplete.
+    - HTTPException: with status 503 and a detail object containing `response`
+      and `cause` when unable to connect to Llama Stack.
+
+    ### Returns:
+    - LivenessResponse: Indicates that the service is alive.
+    """
+    # Used only for authorization
+    _ = auth
+
+    logger.info("Response to /v1/liveness endpoint")
+
+    return LivenessResponse(alive=True)

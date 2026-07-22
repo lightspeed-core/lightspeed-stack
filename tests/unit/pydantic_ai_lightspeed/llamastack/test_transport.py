@@ -10,7 +10,7 @@ import httpx
 import pytest
 from pytest_mock import MockerFixture
 
-from pydantic_ai_lightspeed.llamastack._transport import (
+from lightspeed_stack.pydantic_ai_lightspeed.llamastack._transport import (
     LlamaStackLibraryTransport,
     LlamaStackServerTransport,
     _AsyncByteStream,
@@ -221,7 +221,7 @@ class TestHandleAsyncRequest:
 
         mock_func = mocker.AsyncMock(return_value={"id": "resp-1", "choices": []})
         mocker.patch(
-            "pydantic_ai_lightspeed.llamastack._transport.find_matching_route",
+            "lightspeed_stack.pydantic_ai_lightspeed.llamastack._transport.find_matching_route",
             return_value=(mock_func, {}, None, None),
         )
         transport._client._convert_body = mocker.Mock(side_effect=lambda f, b: b)
@@ -251,7 +251,7 @@ class TestHandleAsyncRequest:
 
         mock_func = mocker.AsyncMock(return_value=mock_stream_result())
         mocker.patch(
-            "pydantic_ai_lightspeed.llamastack._transport.find_matching_route",
+            "lightspeed_stack.pydantic_ai_lightspeed.llamastack._transport.find_matching_route",
             return_value=(mock_func, {}, None, None),
         )
         transport._client._convert_body = mocker.Mock(side_effect=lambda f, b: b)
@@ -270,7 +270,7 @@ class TestHandleAsyncRequest:
 
         mock_func = mocker.AsyncMock(return_value=[])
         mocker.patch(
-            "pydantic_ai_lightspeed.llamastack._transport.find_matching_route",
+            "lightspeed_stack.pydantic_ai_lightspeed.llamastack._transport.find_matching_route",
             return_value=(mock_func, {}, None, None),
         )
         transport._client._convert_body = mocker.Mock(side_effect=lambda f, b: b)
@@ -297,13 +297,13 @@ class TestHandleAsyncRequest:
 
         mock_func = mocker.AsyncMock(return_value={"id": "resp-1"})
         mocker.patch(
-            "pydantic_ai_lightspeed.llamastack._transport.find_matching_route",
+            "lightspeed_stack.pydantic_ai_lightspeed.llamastack._transport.find_matching_route",
             return_value=(mock_func, {}, None, None),
         )
         client._convert_body = mocker.Mock(side_effect=lambda f, b: b)
 
         mock_ctx = mocker.patch(
-            "pydantic_ai_lightspeed.llamastack._transport.request_provider_data_context"
+            "lightspeed_stack.pydantic_ai_lightspeed.llamastack._transport.request_provider_data_context"
         )
 
         await transport.handle_async_request(request)
@@ -334,13 +334,13 @@ class TestHandleAsyncRequest:
 
         mock_func = mocker.AsyncMock(return_value={"id": "resp-1"})
         mocker.patch(
-            "pydantic_ai_lightspeed.llamastack._transport.find_matching_route",
+            "lightspeed_stack.pydantic_ai_lightspeed.llamastack._transport.find_matching_route",
             return_value=(mock_func, {}, None, None),
         )
         client._convert_body = mocker.Mock(side_effect=lambda f, b: b)
 
         mock_ctx = mocker.patch(
-            "pydantic_ai_lightspeed.llamastack._transport.request_provider_data_context"
+            "lightspeed_stack.pydantic_ai_lightspeed.llamastack._transport.request_provider_data_context"
         )
 
         await transport.handle_async_request(request)
@@ -366,7 +366,7 @@ class TestHandleNonStreaming:
 
         mock_func = mocker.AsyncMock(return_value={"id": "model-1"})
         mocker.patch(
-            "pydantic_ai_lightspeed.llamastack._transport.find_matching_route",
+            "lightspeed_stack.pydantic_ai_lightspeed.llamastack._transport.find_matching_route",
             return_value=(mock_func, {"model_id": "test-model"}, None, None),
         )
         transport._client._convert_body = mocker.Mock(side_effect=lambda f, b: b)
@@ -386,7 +386,7 @@ class TestHandleNonStreaming:
 
         mock_func = mocker.AsyncMock(return_value=None)
         mocker.patch(
-            "pydantic_ai_lightspeed.llamastack._transport.find_matching_route",
+            "lightspeed_stack.pydantic_ai_lightspeed.llamastack._transport.find_matching_route",
             return_value=(mock_func, {}, None, None),
         )
         transport._client._convert_body = mocker.Mock(side_effect=lambda f, b: b)
@@ -407,7 +407,7 @@ class TestHandleNonStreaming:
 
         mock_func = mocker.AsyncMock(return_value={"deleted": True})
         mocker.patch(
-            "pydantic_ai_lightspeed.llamastack._transport.find_matching_route",
+            "lightspeed_stack.pydantic_ai_lightspeed.llamastack._transport.find_matching_route",
             return_value=(mock_func, {}, None, None),
         )
         transport._client._convert_body = mocker.Mock(side_effect=lambda f, b: b)
@@ -440,7 +440,7 @@ class TestHandleStreaming:  # pylint: disable=too-few-public-methods
 
         mock_func = mocker.AsyncMock(return_value=mock_stream())
         mocker.patch(
-            "pydantic_ai_lightspeed.llamastack._transport.find_matching_route",
+            "lightspeed_stack.pydantic_ai_lightspeed.llamastack._transport.find_matching_route",
             return_value=(mock_func, {}, None, None),
         )
         transport._client._convert_body = mocker.Mock(side_effect=lambda f, b: b)

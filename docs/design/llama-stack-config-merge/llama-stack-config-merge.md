@@ -3,7 +3,7 @@
 |                    |                                                                                  |
 |--------------------|----------------------------------------------------------------------------------|
 | **Date**           | 2026-04-23                                                                       |
-| **Component**      | Lightspeed Core Stack (src/models/config.py, src/llama_stack_configuration.py, src/client.py, src/lightspeed_stack.py, scripts/llama-stack-entrypoint.sh) |
+| **Component**      | Lightspeed Core Stack (src/models/config.py, src/lightspeed_stack/llama_stack_configuration.py, src/client.py, src/lightspeed_stack.py, scripts/llama-stack-entrypoint.sh) |
 | **Authors**        | Maxim Svistunov                                                                   |
 | **Feature**        | [LCORE-836](https://redhat.atlassian.net/browse/LCORE-836)                       |
 | **Spike**          | [llama-stack-config-merge-spike.md](llama-stack-config-merge-spike.md)           |
@@ -328,7 +328,7 @@ class Configuration(ConfigurationBase):
 ### API changes
 
 None at the REST API surface. Internal API additions in
-`src/llama_stack_configuration.py`:
+`src/lightspeed_stack/llama_stack_configuration.py`:
 
 - `synthesize_configuration(lcs_config, config_file_dir, default_baseline)
   -> dict` — the synthesis pipeline.
@@ -430,7 +430,7 @@ September 2026.
 | File | What to do |
 |---|---|
 | `src/models/config.py` | Add `UnifiedInferenceProvider`. Extend the existing `InferenceConfiguration` with `providers: list[UnifiedInferenceProvider]`. Add `UnifiedLlamaStackConfig` (`baseline`/`profile`/`native_override`) and a `config` field on `LlamaStackConfiguration`. Put the unified-vs-legacy `model_validator` on the **root** `Configuration` model (spans `inference.providers` + `llama_stack.*`). |
-| `src/llama_stack_configuration.py` | Add `synthesize_configuration`, `deep_merge_list_replace`, `apply_high_level_inference`, `load_default_baseline`, `synthesize_to_file`, `migrate_config_dumb`, `PROVIDER_TYPE_MAP`, `DEFAULT_BASELINE_RESOURCE`. Update `main()` to auto-detect unified vs legacy. |
+| `src/lightspeed_stack/llama_stack_configuration.py` | Add `synthesize_configuration`, `deep_merge_list_replace`, `apply_high_level_inference`, `load_default_baseline`, `synthesize_to_file`, `migrate_config_dumb`, `PROVIDER_TYPE_MAP`, `DEFAULT_BASELINE_RESOURCE`. Update `main()` to auto-detect unified vs legacy. |
 | `src/data/default_run.yaml` | New file — a thinner baseline than today's repo-root `run.yaml`. Notably do **not** reference `${env.EXTERNAL_PROVIDERS_DIR}` without a default (see "Findings discovered during PoC" in the spike doc). |
 | `src/client.py` | In `_load_library_client`: branch on `config.config` presence. Add `_synthesize_library_config()` that calls the synthesizer and writes to the deterministic path (R10). Keep `_enrich_library_config` for legacy. |
 | `src/lightspeed_stack.py` | Add `--migrate-config`, `--run-yaml`, `--migrate-output`, `--synthesized-config-output` flags. Add an early-exit branch in `main()` that dispatches to `migrate_config_dumb` when `--migrate-config` is set. Clean up stale docstring. |

@@ -5,8 +5,8 @@ import json
 import pytest
 from pydantic import ValidationError
 
-from constants import RESPONSES_REQUEST_MAX_SIZE
-from models.api.requests import ResponsesRequest
+from lightspeed_stack.constants import RESPONSES_REQUEST_MAX_SIZE
+from lightspeed_stack.models.api.requests import ResponsesRequest
 
 _LIMIT = RESPONSES_REQUEST_MAX_SIZE
 _OVERHEAD = len(json.dumps({"input": ""}))  # 13

@@ -7,8 +7,8 @@ from typing import Any
 import pytest
 import tiktoken
 
-from models.config import InferenceConfiguration
-from utils.token_estimator import (
+from lightspeed_stack.models.config import InferenceConfiguration
+from lightspeed_stack.utils.token_estimator import (
     DEFAULT_ENCODING_NAME,
     estimate_conversation_tokens,
     estimate_tokens,

@@ -10,14 +10,19 @@ from llama_stack_api.openai_responses import OpenAIResponseObject
 from llama_stack_client import APIConnectionError, APIStatusError, AsyncLlamaStackClient
 from pytest_mock import MockerFixture
 
-from app.endpoints.query import query_endpoint_handler, retrieve_response
-from configuration import AppConfig
-from models.api.requests import QueryRequest
-from models.api.responses.successful import QueryResponse
-from models.common.moderation import ShieldModerationPassed
-from models.common.query import Attachment
-from models.common.responses.responses_api_params import ResponsesApiParams
-from models.common.turn_summary import (
+from lightspeed_stack.app.endpoints.query import (
+    query_endpoint_handler,
+    retrieve_response,
+)
+from lightspeed_stack.configuration import AppConfig
+from lightspeed_stack.models.api.requests import QueryRequest
+from lightspeed_stack.models.api.responses.successful import QueryResponse
+from lightspeed_stack.models.common.moderation import ShieldModerationPassed
+from lightspeed_stack.models.common.query import Attachment
+from lightspeed_stack.models.common.responses.responses_api_params import (
+    ResponsesApiParams,
+)
+from lightspeed_stack.models.common.turn_summary import (
     RAGChunk,
     RAGContext,
     ReferencedDocument,
@@ -25,8 +30,8 @@ from models.common.turn_summary import (
     ToolResultSummary,
     TurnSummary,
 )
-from models.database.conversations import UserConversation
-from utils.token_counter import TokenCounter
+from lightspeed_stack.models.database.conversations import UserConversation
+from lightspeed_stack.utils.token_counter import TokenCounter
 
 # User ID must be proper UUID
 MOCK_AUTH = (
@@ -110,10 +115,14 @@ class TestQueryEndpointHandler:
             query="What is Kubernetes?"
         )  # pyright: ignore[reportCallIssue]
 
-        mocker.patch("app.endpoints.query.configuration", setup_configuration)
-        mocker.patch("app.endpoints.query.check_configuration_loaded")
-        mocker.patch("app.endpoints.query.check_tokens_available")
-        mocker.patch("app.endpoints.query.validate_model_provider_override")
+        mocker.patch(
+            "lightspeed_stack.app.endpoints.query.configuration", setup_configuration
+        )
+        mocker.patch("lightspeed_stack.app.endpoints.query.check_configuration_loaded")
+        mocker.patch("lightspeed_stack.app.endpoints.query.check_tokens_available")
+        mocker.patch(
+            "lightspeed_stack.app.endpoints.query.validate_model_provider_override"
+        )
 
         mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
         mock_response_obj = mocker.Mock()
@@ -123,15 +132,15 @@ class TestQueryEndpointHandler:
         mock_client_holder = mocker.Mock()
         mock_client_holder.get_client.return_value = mock_client
         mocker.patch(
-            "app.endpoints.query.AsyncLlamaStackClientHolder",
+            "lightspeed_stack.app.endpoints.query.AsyncLlamaStackClientHolder",
             return_value=mock_client_holder,
         )
         mocker.patch(
-            "app.endpoints.query.maybe_get_topic_summary",
+            "lightspeed_stack.app.endpoints.query.maybe_get_topic_summary",
             new=mocker.AsyncMock(return_value=None),
         )
         mocker.patch(
-            "app.endpoints.query.run_shield_moderation",
+            "lightspeed_stack.app.endpoints.query.run_shield_moderation",
             new=mocker.AsyncMock(return_value=ShieldModerationPassed()),
         )
 
@@ -144,7 +153,7 @@ class TestQueryEndpointHandler:
             "model": "provider1/model1",
         }
         mocker.patch(
-            "app.endpoints.query.prepare_responses_params",
+            "lightspeed_stack.app.endpoints.query.prepare_responses_params",
             new=mocker.AsyncMock(return_value=mock_responses_params),
         )
 
@@ -159,16 +168,19 @@ class TestQueryEndpointHandler:
             return mock_turn_summary
 
         mocker.patch(
-            "app.endpoints.query.retrieve_agent_response",
+            "lightspeed_stack.app.endpoints.query.retrieve_agent_response",
             side_effect=mock_retrieve_agent_response,
         )
 
         mocker.patch(
-            "app.endpoints.query.normalize_conversation_id", return_value="123"
+            "lightspeed_stack.app.endpoints.query.normalize_conversation_id",
+            return_value="123",
         )
-        mocker.patch("app.endpoints.query.store_query_results")
-        mocker.patch("app.endpoints.query.consume_query_tokens")
-        mocker.patch("app.endpoints.query.get_available_quotas", return_value={})
+        mocker.patch("lightspeed_stack.app.endpoints.query.store_query_results")
+        mocker.patch("lightspeed_stack.app.endpoints.query.consume_query_tokens")
+        mocker.patch(
+            "lightspeed_stack.app.endpoints.query.get_available_quotas", return_value={}
+        )
 
         response = await query_endpoint_handler(
             request=dummy_request,
@@ -193,10 +205,14 @@ class TestQueryEndpointHandler:
             query="What is Kubernetes?"
         )  # pyright: ignore[reportCallIssue]
 
-        mocker.patch("app.endpoints.query.configuration", setup_configuration)
-        mocker.patch("app.endpoints.query.check_configuration_loaded")
-        mocker.patch("app.endpoints.query.check_tokens_available")
-        mocker.patch("app.endpoints.query.validate_model_provider_override")
+        mocker.patch(
+            "lightspeed_stack.app.endpoints.query.configuration", setup_configuration
+        )
+        mocker.patch("lightspeed_stack.app.endpoints.query.check_configuration_loaded")
+        mocker.patch("lightspeed_stack.app.endpoints.query.check_tokens_available")
+        mocker.patch(
+            "lightspeed_stack.app.endpoints.query.validate_model_provider_override"
+        )
 
         mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
         mock_response_obj = mocker.Mock()
@@ -206,11 +222,11 @@ class TestQueryEndpointHandler:
         mock_client_holder = mocker.Mock()
         mock_client_holder.get_client.return_value = mock_client
         mocker.patch(
-            "app.endpoints.query.AsyncLlamaStackClientHolder",
+            "lightspeed_stack.app.endpoints.query.AsyncLlamaStackClientHolder",
             return_value=mock_client_holder,
         )
         mocker.patch(
-            "app.endpoints.query.run_shield_moderation",
+            "lightspeed_stack.app.endpoints.query.run_shield_moderation",
             new=mocker.AsyncMock(return_value=ShieldModerationPassed()),
         )
 
@@ -224,7 +240,7 @@ class TestQueryEndpointHandler:
             referenced_documents=[inline_doc],
         )
         mocker.patch(
-            "app.endpoints.query.build_rag_context",
+            "lightspeed_stack.app.endpoints.query.build_rag_context",
             new=mocker.AsyncMock(return_value=inline_rag),
         )
 
@@ -237,7 +253,7 @@ class TestQueryEndpointHandler:
             "model": "provider1/model1",
         }
         mocker.patch(
-            "app.endpoints.query.prepare_responses_params",
+            "lightspeed_stack.app.endpoints.query.prepare_responses_params",
             new=mocker.AsyncMock(return_value=mock_responses_params),
         )
 
@@ -248,12 +264,14 @@ class TestQueryEndpointHandler:
         mock_turn_summary.referenced_documents = [tool_doc]
 
         mocker.patch(
-            "app.endpoints.query.retrieve_agent_response",
+            "lightspeed_stack.app.endpoints.query.retrieve_agent_response",
             new=mocker.AsyncMock(return_value=mock_turn_summary),
         )
-        mocker.patch("app.endpoints.query.store_query_results")
-        mocker.patch("app.endpoints.query.consume_query_tokens")
-        mocker.patch("app.endpoints.query.get_available_quotas", return_value={})
+        mocker.patch("lightspeed_stack.app.endpoints.query.store_query_results")
+        mocker.patch("lightspeed_stack.app.endpoints.query.consume_query_tokens")
+        mocker.patch(
+            "lightspeed_stack.app.endpoints.query.get_available_quotas", return_value={}
+        )
 
         response = await query_endpoint_handler(
             request=dummy_request,
@@ -283,15 +301,20 @@ class TestQueryEndpointHandler:
             conversation_id="123e4567-e89b-12d3-a456-426614174000",
         )  # pyright: ignore[reportCallIssue]
 
-        mocker.patch("app.endpoints.query.configuration", setup_configuration)
-        mocker.patch("app.endpoints.query.check_configuration_loaded")
-        mocker.patch("app.endpoints.query.check_tokens_available")
-        mocker.patch("app.endpoints.query.validate_model_provider_override")
         mocker.patch(
-            "app.endpoints.query.normalize_conversation_id", return_value="123"
+            "lightspeed_stack.app.endpoints.query.configuration", setup_configuration
+        )
+        mocker.patch("lightspeed_stack.app.endpoints.query.check_configuration_loaded")
+        mocker.patch("lightspeed_stack.app.endpoints.query.check_tokens_available")
+        mocker.patch(
+            "lightspeed_stack.app.endpoints.query.validate_model_provider_override"
+        )
+        mocker.patch(
+            "lightspeed_stack.app.endpoints.query.normalize_conversation_id",
+            return_value="123",
         )
         mock_validate_conv = mocker.patch(
-            "app.endpoints.query.validate_and_retrieve_conversation",
+            "lightspeed_stack.app.endpoints.query.validate_and_retrieve_conversation",
             return_value=mocker.Mock(spec=UserConversation),
         )
 
@@ -299,7 +322,7 @@ class TestQueryEndpointHandler:
         mock_client_holder = mocker.Mock()
         mock_client_holder.get_client.return_value = mock_client
         mocker.patch(
-            "app.endpoints.query.AsyncLlamaStackClientHolder",
+            "lightspeed_stack.app.endpoints.query.AsyncLlamaStackClientHolder",
             return_value=mock_client_holder,
         )
 
@@ -312,20 +335,22 @@ class TestQueryEndpointHandler:
             "model": "provider1/model1",
         }
         mocker.patch(
-            "app.endpoints.query.prepare_responses_params",
+            "lightspeed_stack.app.endpoints.query.prepare_responses_params",
             new=mocker.AsyncMock(return_value=mock_responses_params),
         )
         mocker.patch(
-            "app.endpoints.query.run_shield_moderation",
+            "lightspeed_stack.app.endpoints.query.run_shield_moderation",
             new=mocker.AsyncMock(return_value=ShieldModerationPassed()),
         )
         mocker.patch(
-            "app.endpoints.query.retrieve_agent_response",
+            "lightspeed_stack.app.endpoints.query.retrieve_agent_response",
             new=mocker.AsyncMock(return_value=TurnSummary()),
         )
-        mocker.patch("app.endpoints.query.store_query_results")
-        mocker.patch("app.endpoints.query.consume_query_tokens")
-        mocker.patch("app.endpoints.query.get_available_quotas", return_value={})
+        mocker.patch("lightspeed_stack.app.endpoints.query.store_query_results")
+        mocker.patch("lightspeed_stack.app.endpoints.query.consume_query_tokens")
+        mocker.patch(
+            "lightspeed_stack.app.endpoints.query.get_available_quotas", return_value={}
+        )
 
         response = await query_endpoint_handler(
             request=dummy_request,
@@ -356,12 +381,16 @@ class TestQueryEndpointHandler:
             ],
         )  # pyright: ignore[reportCallIssue]
 
-        mocker.patch("app.endpoints.query.configuration", setup_configuration)
-        mocker.patch("app.endpoints.query.check_configuration_loaded")
-        mocker.patch("app.endpoints.query.check_tokens_available")
-        mocker.patch("app.endpoints.query.validate_model_provider_override")
+        mocker.patch(
+            "lightspeed_stack.app.endpoints.query.configuration", setup_configuration
+        )
+        mocker.patch("lightspeed_stack.app.endpoints.query.check_configuration_loaded")
+        mocker.patch("lightspeed_stack.app.endpoints.query.check_tokens_available")
+        mocker.patch(
+            "lightspeed_stack.app.endpoints.query.validate_model_provider_override"
+        )
         mock_validate = mocker.patch(
-            "app.endpoints.query.validate_attachments_metadata"
+            "lightspeed_stack.app.endpoints.query.validate_attachments_metadata"
         )
 
         mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
@@ -372,15 +401,15 @@ class TestQueryEndpointHandler:
         mock_client_holder = mocker.Mock()
         mock_client_holder.get_client.return_value = mock_client
         mocker.patch(
-            "app.endpoints.query.AsyncLlamaStackClientHolder",
+            "lightspeed_stack.app.endpoints.query.AsyncLlamaStackClientHolder",
             return_value=mock_client_holder,
         )
         mocker.patch(
-            "app.endpoints.query.maybe_get_topic_summary",
+            "lightspeed_stack.app.endpoints.query.maybe_get_topic_summary",
             new=mocker.AsyncMock(return_value=None),
         )
         mocker.patch(
-            "app.endpoints.query.run_shield_moderation",
+            "lightspeed_stack.app.endpoints.query.run_shield_moderation",
             new=mocker.AsyncMock(return_value=ShieldModerationPassed()),
         )
 
@@ -393,7 +422,7 @@ class TestQueryEndpointHandler:
             "model": "provider1/model1",
         }
         mocker.patch(
-            "app.endpoints.query.prepare_responses_params",
+            "lightspeed_stack.app.endpoints.query.prepare_responses_params",
             new=mocker.AsyncMock(return_value=mock_responses_params),
         )
 
@@ -403,15 +432,18 @@ class TestQueryEndpointHandler:
             return TurnSummary()
 
         mocker.patch(
-            "app.endpoints.query.retrieve_agent_response",
+            "lightspeed_stack.app.endpoints.query.retrieve_agent_response",
             side_effect=mock_retrieve_agent_response,
         )
         mocker.patch(
-            "app.endpoints.query.normalize_conversation_id", return_value="123"
+            "lightspeed_stack.app.endpoints.query.normalize_conversation_id",
+            return_value="123",
         )
-        mocker.patch("app.endpoints.query.store_query_results")
-        mocker.patch("app.endpoints.query.consume_query_tokens")
-        mocker.patch("app.endpoints.query.get_available_quotas", return_value={})
+        mocker.patch("lightspeed_stack.app.endpoints.query.store_query_results")
+        mocker.patch("lightspeed_stack.app.endpoints.query.consume_query_tokens")
+        mocker.patch(
+            "lightspeed_stack.app.endpoints.query.get_available_quotas", return_value={}
+        )
 
         await query_endpoint_handler(
             request=dummy_request,
@@ -434,20 +466,24 @@ class TestQueryEndpointHandler:
             query="What is Kubernetes?", generate_topic_summary=True
         )  # pyright: ignore[reportCallIssue]
 
-        mocker.patch("app.endpoints.query.configuration", setup_configuration)
-        mocker.patch("app.endpoints.query.check_configuration_loaded")
-        mocker.patch("app.endpoints.query.check_tokens_available")
-        mocker.patch("app.endpoints.query.validate_model_provider_override")
+        mocker.patch(
+            "lightspeed_stack.app.endpoints.query.configuration", setup_configuration
+        )
+        mocker.patch("lightspeed_stack.app.endpoints.query.check_configuration_loaded")
+        mocker.patch("lightspeed_stack.app.endpoints.query.check_tokens_available")
+        mocker.patch(
+            "lightspeed_stack.app.endpoints.query.validate_model_provider_override"
+        )
 
         mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
         mock_client_holder = mocker.Mock()
         mock_client_holder.get_client.return_value = mock_client
         mocker.patch(
-            "app.endpoints.query.AsyncLlamaStackClientHolder",
+            "lightspeed_stack.app.endpoints.query.AsyncLlamaStackClientHolder",
             return_value=mock_client_holder,
         )
         mocker.patch(
-            "app.endpoints.query.run_shield_moderation",
+            "lightspeed_stack.app.endpoints.query.run_shield_moderation",
             new=mocker.AsyncMock(return_value=ShieldModerationPassed()),
         )
 
@@ -460,24 +496,27 @@ class TestQueryEndpointHandler:
             "model": "provider1/model1",
         }
         mocker.patch(
-            "app.endpoints.query.prepare_responses_params",
+            "lightspeed_stack.app.endpoints.query.prepare_responses_params",
             new=mocker.AsyncMock(return_value=mock_responses_params),
         )
 
         mocker.patch(
-            "app.endpoints.query.retrieve_agent_response",
+            "lightspeed_stack.app.endpoints.query.retrieve_agent_response",
             new=mocker.AsyncMock(return_value=TurnSummary()),
         )
         mock_maybe_get_topic_summary = mocker.patch(
-            "app.endpoints.query.maybe_get_topic_summary",
+            "lightspeed_stack.app.endpoints.query.maybe_get_topic_summary",
             new=mocker.AsyncMock(return_value="Topic: Kubernetes"),
         )
         mocker.patch(
-            "app.endpoints.query.normalize_conversation_id", return_value="123"
+            "lightspeed_stack.app.endpoints.query.normalize_conversation_id",
+            return_value="123",
         )
-        mocker.patch("app.endpoints.query.store_query_results")
-        mocker.patch("app.endpoints.query.consume_query_tokens")
-        mocker.patch("app.endpoints.query.get_available_quotas", return_value={})
+        mocker.patch("lightspeed_stack.app.endpoints.query.store_query_results")
+        mocker.patch("lightspeed_stack.app.endpoints.query.consume_query_tokens")
+        mocker.patch(
+            "lightspeed_stack.app.endpoints.query.get_available_quotas", return_value={}
+        )
 
         await query_endpoint_handler(
             request=dummy_request,
@@ -500,10 +539,14 @@ class TestQueryEndpointHandler:
             query="What is Kubernetes?"
         )  # pyright: ignore[reportCallIssue]
 
-        mocker.patch("app.endpoints.query.configuration", setup_configuration)
-        mocker.patch("app.endpoints.query.check_configuration_loaded")
-        mocker.patch("app.endpoints.query.check_tokens_available")
-        mocker.patch("app.endpoints.query.validate_model_provider_override")
+        mocker.patch(
+            "lightspeed_stack.app.endpoints.query.configuration", setup_configuration
+        )
+        mocker.patch("lightspeed_stack.app.endpoints.query.check_configuration_loaded")
+        mocker.patch("lightspeed_stack.app.endpoints.query.check_tokens_available")
+        mocker.patch(
+            "lightspeed_stack.app.endpoints.query.validate_model_provider_override"
+        )
 
         mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
         mock_response_obj = mocker.Mock()
@@ -513,15 +556,15 @@ class TestQueryEndpointHandler:
         mock_client_holder = mocker.Mock()
         mock_client_holder.get_client.return_value = mock_client
         mocker.patch(
-            "app.endpoints.query.AsyncLlamaStackClientHolder",
+            "lightspeed_stack.app.endpoints.query.AsyncLlamaStackClientHolder",
             return_value=mock_client_holder,
         )
         mocker.patch(
-            "app.endpoints.query.maybe_get_topic_summary",
+            "lightspeed_stack.app.endpoints.query.maybe_get_topic_summary",
             new=mocker.AsyncMock(return_value=None),
         )
         mocker.patch(
-            "app.endpoints.query.run_shield_moderation",
+            "lightspeed_stack.app.endpoints.query.run_shield_moderation",
             new=mocker.AsyncMock(return_value=ShieldModerationPassed()),
         )
 
@@ -534,7 +577,7 @@ class TestQueryEndpointHandler:
             "model": "azure/model1",
         }
         mocker.patch(
-            "app.endpoints.query.prepare_responses_params",
+            "lightspeed_stack.app.endpoints.query.prepare_responses_params",
             new=mocker.AsyncMock(return_value=mock_responses_params),
         )
 
@@ -543,7 +586,8 @@ class TestQueryEndpointHandler:
         mock_azure_manager.is_token_expired = True
         mock_azure_manager.refresh_token.return_value = True
         mocker.patch(
-            "app.endpoints.query.AzureEntraIDManager", return_value=mock_azure_manager
+            "lightspeed_stack.app.endpoints.query.AzureEntraIDManager",
+            return_value=mock_azure_manager,
         )
 
         mock_updated_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
@@ -557,15 +601,18 @@ class TestQueryEndpointHandler:
             return TurnSummary()
 
         mocker.patch(
-            "app.endpoints.query.retrieve_agent_response",
+            "lightspeed_stack.app.endpoints.query.retrieve_agent_response",
             side_effect=mock_retrieve_agent_response,
         )
         mocker.patch(
-            "app.endpoints.query.normalize_conversation_id", return_value="123"
+            "lightspeed_stack.app.endpoints.query.normalize_conversation_id",
+            return_value="123",
         )
-        mocker.patch("app.endpoints.query.store_query_results")
-        mocker.patch("app.endpoints.query.consume_query_tokens")
-        mocker.patch("app.endpoints.query.get_available_quotas", return_value={})
+        mocker.patch("lightspeed_stack.app.endpoints.query.store_query_results")
+        mocker.patch("lightspeed_stack.app.endpoints.query.consume_query_tokens")
+        mocker.patch(
+            "lightspeed_stack.app.endpoints.query.get_available_quotas", return_value={}
+        )
 
         await query_endpoint_handler(
             request=dummy_request,
@@ -610,7 +657,7 @@ class TestRetrieveResponse:
         mock_summary.llm_response = "Response text"
         mock_summary.token_usage = TokenCounter(input_tokens=10, output_tokens=5)
         mocker.patch(
-            "app.endpoints.query.build_turn_summary",
+            "lightspeed_stack.app.endpoints.query.build_turn_summary",
             return_value=mock_summary,
         )
 
@@ -644,7 +691,7 @@ class TestRetrieveResponse:
         mock_moderation_result.moderation_id = "mod_123"
         mock_moderation_result.refusal_response = mock_refusal
         mock_append = mocker.patch(
-            "app.endpoints.query.append_turn_items_to_conversation",
+            "lightspeed_stack.app.endpoints.query.append_turn_items_to_conversation",
             new=mocker.AsyncMock(),
         )
 
@@ -702,7 +749,7 @@ class TestRetrieveResponse:
             )
         )
         mocker.patch(
-            "app.endpoints.query.handle_known_apistatus_errors",
+            "lightspeed_stack.app.endpoints.query.handle_known_apistatus_errors",
             return_value=mocker.Mock(
                 model_dump=lambda: {
                     "status_code": 500,
@@ -798,7 +845,7 @@ class TestRetrieveResponse:
         mock_summary.tool_results = [mock_tool_result]
         mock_summary.token_usage = TokenCounter(input_tokens=10, output_tokens=5)
         mocker.patch(
-            "app.endpoints.query.build_turn_summary",
+            "lightspeed_stack.app.endpoints.query.build_turn_summary",
             return_value=mock_summary,
         )
 

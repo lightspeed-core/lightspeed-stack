@@ -8,10 +8,18 @@ from typing import Any
 
 import pytest
 
-import constants
-from authentication.interface import AuthTuple
-from authorization.resolvers import GenericAccessResolver, JwtRolesResolver
-from models.config import AccessRule, Action, JsonPathOperator, JwtRoleRule
+from lightspeed_stack import constants
+from lightspeed_stack.authentication.interface import AuthTuple
+from lightspeed_stack.authorization.resolvers import (
+    GenericAccessResolver,
+    JwtRolesResolver,
+)
+from lightspeed_stack.models.config import (
+    AccessRule,
+    Action,
+    JsonPathOperator,
+    JwtRoleRule,
+)
 
 
 def claims_to_token(claims: dict) -> str:

@@ -19,7 +19,7 @@ from llama_stack_api.openai_responses import (
 from llama_stack_client import APIConnectionError, APIStatusError, AsyncLlamaStackClient
 from pytest_mock import MockerFixture
 
-from app.endpoints.responses import (
+from lightspeed_stack.app.endpoints.responses import (
     _append_previous_response_turn,
     _is_server_mcp_output_item,
     _persist_blocked_response_turn,
@@ -30,21 +30,29 @@ from app.endpoints.responses import (
     response_generator,
     responses_endpoint_handler,
 )
-from authentication.interface import AuthTuple
-from configuration import AppConfig
-from constants import DEFAULT_SYSTEM_PROMPT, SUBSTITUTED_INSTRUCTIONS_PLACEHOLDER
-from models.api.requests import ResponsesRequest
-from models.api.responses.successful import ResponsesResponse
-from models.common.moderation import ShieldModerationBlocked, ShieldModerationPassed
-from models.common.responses.contexts import ResponsesContext
-from models.common.responses.responses_api_params import ResponsesApiParams
-from models.common.responses.responses_conversation_context import (
+from lightspeed_stack.authentication.interface import AuthTuple
+from lightspeed_stack.configuration import AppConfig
+from lightspeed_stack.constants import (
+    DEFAULT_SYSTEM_PROMPT,
+    SUBSTITUTED_INSTRUCTIONS_PLACEHOLDER,
+)
+from lightspeed_stack.models.api.requests import ResponsesRequest
+from lightspeed_stack.models.api.responses.successful import ResponsesResponse
+from lightspeed_stack.models.common.moderation import (
+    ShieldModerationBlocked,
+    ShieldModerationPassed,
+)
+from lightspeed_stack.models.common.responses.contexts import ResponsesContext
+from lightspeed_stack.models.common.responses.responses_api_params import (
+    ResponsesApiParams,
+)
+from lightspeed_stack.models.common.responses.responses_conversation_context import (
     ResponsesConversationContext,
 )
-from models.common.responses.types import InputToolMCP
-from models.common.turn_summary import RAGContext, TurnSummary
-from models.config import Action, ModelContextProtocolServer
-from models.database.conversations import UserConversation
+from lightspeed_stack.models.common.responses.types import InputToolMCP
+from lightspeed_stack.models.common.turn_summary import RAGContext, TurnSummary
+from lightspeed_stack.models.config import Action, ModelContextProtocolServer
+from lightspeed_stack.models.database.conversations import UserConversation
 
 MOCK_AUTH = (
     "00000001-0001-0001-0001-000000000001",
@@ -54,9 +62,9 @@ MOCK_AUTH = (
 )
 VALID_CONV_ID = "conv_e6afd7aaa97b49ce8f4f96a801b07893d9cb784d72e53e3c"
 VALID_CONV_ID_NORMALIZED = "e6afd7aaa97b49ce8f4f96a801b07893d9cb784d72e53e3c"
-MODULE = "app.endpoints.responses"
-ENDPOINTS_MODULE = "utils.endpoints"
-UTILS_RESPONSES_MODULE = "utils.responses"
+MODULE = "lightspeed_stack.app.endpoints.responses"
+ENDPOINTS_MODULE = "lightspeed_stack.utils.endpoints"
+UTILS_RESPONSES_MODULE = "lightspeed_stack.utils.responses"
 MODEL = "google-vertex/publishers/google/models/gemini-2.5-flash"
 SERVER_INSTRUCTIONS = "Server instructions"
 
@@ -735,7 +743,7 @@ class TestResponsesEndpointHandler:
         mock_access_resolver.check_access.return_value = False
 
         mocker.patch(
-            "authorization.middleware.get_authorization_resolvers",
+            "lightspeed_stack.authorization.middleware.get_authorization_resolvers",
             return_value=(mock_role_resolver, mock_access_resolver),
         )
 
@@ -1648,7 +1656,7 @@ class TestResponsesInstructionResolution:
         assert responses_request.instructions is None
 
         _patch_base(mocker, minimal_config)
-        mocker.patch("utils.prompts.configuration", minimal_config)
+        mocker.patch("lightspeed_stack.utils.prompts.configuration", minimal_config)
         _patch_client(mocker)
         _patch_resolve_response_context(mocker, conversation="conv_new_123")
         mocker.patch(
@@ -1695,7 +1703,7 @@ class TestResponsesInstructionResolution:
         )
 
         _patch_base(mocker, minimal_config)
-        mocker.patch("utils.prompts.configuration", minimal_config)
+        mocker.patch("lightspeed_stack.utils.prompts.configuration", minimal_config)
         _patch_client(mocker)
         _patch_resolve_response_context(mocker, conversation="conv_new_123")
         mocker.patch(
@@ -1756,7 +1764,7 @@ class TestResponsesInstructionResolution:
 
         _patch_base(mocker, cfg)
         # Also patch configuration in prompts module so get_system_prompt sees it
-        mocker.patch("utils.prompts.configuration", cfg)
+        mocker.patch("lightspeed_stack.utils.prompts.configuration", cfg)
         _patch_client(mocker)
         _patch_resolve_response_context(mocker, conversation="conv_new_123")
         mocker.patch(
@@ -1820,7 +1828,7 @@ class TestResponsesInstructionResolution:
         )
 
         _patch_base(mocker, cfg)
-        mocker.patch("utils.prompts.configuration", cfg)
+        mocker.patch("lightspeed_stack.utils.prompts.configuration", cfg)
 
         with pytest.raises(HTTPException) as exc_info:
             await responses_endpoint_handler(
@@ -1846,7 +1854,7 @@ class TestResponsesInstructionResolution:
         assert responses_request.instructions is None
 
         _patch_base(mocker, minimal_config)
-        mocker.patch("utils.prompts.configuration", minimal_config)
+        mocker.patch("lightspeed_stack.utils.prompts.configuration", minimal_config)
         _patch_client(mocker)
         _patch_resolve_response_context(mocker, conversation="conv_new_123")
         mocker.patch(
@@ -2797,7 +2805,7 @@ async def test_append_previous_response_turn_compacted(mocker: MockerFixture) ->
     rewritten explicit input on api_params.
     """
     append = mocker.patch(
-        "app.endpoints.responses.append_turn_items_to_conversation",
+        "lightspeed_stack.app.endpoints.responses.append_turn_items_to_conversation",
         new=mocker.AsyncMock(),
     )
     api_params = mocker.Mock(
@@ -2824,7 +2832,7 @@ async def test_append_previous_response_turn_not_stored_when_store_false(
 ) -> None:
     """No append happens when store is disabled, even in compacted mode."""
     append = mocker.patch(
-        "app.endpoints.responses.append_turn_items_to_conversation",
+        "lightspeed_stack.app.endpoints.responses.append_turn_items_to_conversation",
         new=mocker.AsyncMock(),
     )
     api_params = mocker.Mock(
@@ -2846,7 +2854,7 @@ async def test_persist_blocked_response_turn_compacted(mocker: MockerFixture) ->
     against the original user input carried on the context (LCORE-1572).
     """
     append = mocker.patch(
-        "app.endpoints.responses.append_turn_items_to_conversation",
+        "lightspeed_stack.app.endpoints.responses.append_turn_items_to_conversation",
         new=mocker.AsyncMock(),
     )
     refusal = mocker.Mock()

@@ -2,7 +2,7 @@
 
 import pytest
 
-from models.config import CompactionConfiguration, Configuration
+from lightspeed_stack.models.config import CompactionConfiguration, Configuration
 
 
 def test_default_values() -> None:

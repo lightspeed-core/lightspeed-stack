@@ -5,7 +5,7 @@ from typing import Any
 import pytest
 from pydantic import ValidationError
 
-from models.config import QuotaSchedulerConfiguration
+from lightspeed_stack.models.config import QuotaSchedulerConfiguration
 
 
 def test_quota_scheduler_default_configuration() -> None:

@@ -8,10 +8,10 @@ from llama_stack_client import APIConnectionError
 from pytest_mock import MockerFixture
 from pytest_subtests import SubTests
 
-from app.endpoints.models import models_endpoint_handler
-from authentication.interface import AuthTuple
-from configuration import AppConfig
-from models.api.requests import ModelFilter
+from lightspeed_stack.app.endpoints.models import models_endpoint_handler
+from lightspeed_stack.authentication.interface import AuthTuple
+from lightspeed_stack.configuration import AppConfig
+from lightspeed_stack.models.api.requests import ModelFilter
 from tests.unit.utils.auth_helpers import mock_authorization_resolvers
 
 
@@ -37,7 +37,7 @@ async def test_models_endpoint_handler_configuration_not_loaded(
 
     # simulate state when no configuration is loaded
     mock_config = AppConfig()
-    mocker.patch("app.endpoints.models.configuration", mock_config)
+    mocker.patch("lightspeed_stack.app.endpoints.models.configuration", mock_config)
 
     request = Request(
         scope={
@@ -100,9 +100,9 @@ async def test_models_endpoint_handler_configuration_loaded(
     cfg = AppConfig()
     cfg.init_from_dict(config_dict)
 
-    mocker.patch("app.endpoints.models.configuration", cfg)
+    mocker.patch("lightspeed_stack.app.endpoints.models.configuration", cfg)
     mock_client_holder = mocker.patch(
-        "app.endpoints.models.AsyncLlamaStackClientHolder"
+        "lightspeed_stack.app.endpoints.models.AsyncLlamaStackClientHolder"
     )
     mock_client_holder.return_value.get_client.side_effect = APIConnectionError(
         request=mocker.Mock()
@@ -163,11 +163,11 @@ async def test_models_endpoint_handler_unable_to_retrieve_models_list(
     mock_client = mocker.AsyncMock()
     mock_client.models.list.return_value = []
     mock_lsc = mocker.patch(
-        "app.endpoints.models.AsyncLlamaStackClientHolder.get_client"
+        "lightspeed_stack.app.endpoints.models.AsyncLlamaStackClientHolder.get_client"
     )
     mock_lsc.return_value = mock_client
     mock_config = mocker.Mock()
-    mocker.patch("app.endpoints.models.configuration", mock_config)
+    mocker.patch("lightspeed_stack.app.endpoints.models.configuration", mock_config)
 
     request = Request(
         scope={
@@ -222,11 +222,11 @@ async def test_models_endpoint_handler_model_type_query_parameter(
     mock_client = mocker.AsyncMock()
     mock_client.models.list.return_value = []
     mock_lsc = mocker.patch(
-        "app.endpoints.models.AsyncLlamaStackClientHolder.get_client"
+        "lightspeed_stack.app.endpoints.models.AsyncLlamaStackClientHolder.get_client"
     )
     mock_lsc.return_value = mock_client
     mock_config = mocker.Mock()
-    mocker.patch("app.endpoints.models.configuration", mock_config)
+    mocker.patch("lightspeed_stack.app.endpoints.models.configuration", mock_config)
 
     request = Request(
         scope={
@@ -285,11 +285,11 @@ async def test_models_endpoint_handler_model_list_retrieved(
         Model("model4", "provider4", "embedding"),
     ]
     mock_lsc = mocker.patch(
-        "app.endpoints.models.AsyncLlamaStackClientHolder.get_client"
+        "lightspeed_stack.app.endpoints.models.AsyncLlamaStackClientHolder.get_client"
     )
     mock_lsc.return_value = mock_client
     mock_config = mocker.Mock()
-    mocker.patch("app.endpoints.models.configuration", mock_config)
+    mocker.patch("lightspeed_stack.app.endpoints.models.configuration", mock_config)
 
     request = Request(
         scope={
@@ -359,11 +359,11 @@ async def test_models_endpoint_handler_model_list_retrieved_with_query_parameter
         Model("model4", "provider4", "embedding"),
     ]
     mock_lsc = mocker.patch(
-        "app.endpoints.models.AsyncLlamaStackClientHolder.get_client"
+        "lightspeed_stack.app.endpoints.models.AsyncLlamaStackClientHolder.get_client"
     )
     mock_lsc.return_value = mock_client
     mock_config = mocker.Mock()
-    mocker.patch("app.endpoints.models.configuration", mock_config)
+    mocker.patch("lightspeed_stack.app.endpoints.models.configuration", mock_config)
 
     request = Request(
         scope={
@@ -448,7 +448,7 @@ async def test_models_endpoint_llama_stack_connection_error(
     mock_client = mocker.AsyncMock()
     mock_client.models.list.side_effect = APIConnectionError(request=None)  # type: ignore
     mock_client_holder = mocker.patch(
-        "app.endpoints.models.AsyncLlamaStackClientHolder"
+        "lightspeed_stack.app.endpoints.models.AsyncLlamaStackClientHolder"
     )
     mock_client_holder.return_value.get_client.return_value = mock_client
 

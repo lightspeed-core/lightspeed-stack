@@ -1,0 +1,81 @@
+"""REST API routers."""
+
+from fastapi import FastAPI
+
+from lightspeed_stack.app.endpoints import (
+    # A2A (Agent-to-Agent) protocol support
+    a2a,
+    authorized,
+    config,
+    conversations_v1,
+    conversations_v2,
+    feedback,
+    health,
+    info,
+    mcp_auth,
+    mcp_servers,
+    metrics,
+    models,
+    prompts,
+    providers,
+    # Query endpoints for Response API support
+    query,
+    rags,
+    responses,
+    # RHEL Lightspeed rlsapi v1 compatibility
+    rlsapi_v1,
+    root,
+    saved_prompts,
+    shields,
+    stream_interrupt,
+    streaming_query,
+    tools,
+    vector_stores,
+)
+
+
+def include_routers(app: FastAPI) -> None:
+    """Include FastAPI routers for different endpoints.
+
+    Register and mount project routers on the given FastAPI application.
+
+    Registers endpoint routers and assigns URL prefixes: most endpoints are
+    mounted under "/v1", v2 routers under "/v2", and core endpoints (health,
+    authorized, metrics) are mounted without a version prefix.
+
+    Parameters:
+    ----------
+        app (FastAPI): The FastAPI application to which routers will be attached.
+    """
+    app.include_router(root.router)
+
+    app.include_router(info.router, prefix="/v1")
+    app.include_router(models.router, prefix="/v1")
+    app.include_router(tools.router, prefix="/v1")
+    app.include_router(mcp_auth.router, prefix="/v1")
+    app.include_router(mcp_servers.router, prefix="/v1")
+    app.include_router(shields.router, prefix="/v1")
+    app.include_router(providers.router, prefix="/v1")
+    app.include_router(prompts.router, prefix="/v1")
+    app.include_router(rags.router, prefix="/v1")
+    app.include_router(vector_stores.router, prefix="/v1")
+    # Query endpoints
+    app.include_router(query.router, prefix="/v1")
+    app.include_router(streaming_query.router, prefix="/v1")
+    app.include_router(stream_interrupt.router, prefix="/v1")
+    app.include_router(config.router, prefix="/v1")
+    app.include_router(saved_prompts.router, prefix="/v1")
+    app.include_router(feedback.router, prefix="/v1")
+    app.include_router(conversations_v1.router, prefix="/v1")
+    app.include_router(conversations_v2.router, prefix="/v2")
+    app.include_router(responses.router, prefix="/v1")
+    # RHEL Lightspeed rlsapi v1 compatibility - stateless CLA (Command Line Assistant) endpoint
+    app.include_router(rlsapi_v1.router, prefix="/v1")
+
+    # road-core does not version these endpoints
+    app.include_router(health.router)
+    app.include_router(authorized.router)
+    app.include_router(metrics.router)
+
+    # A2A (Agent-to-Agent) protocol endpoint
+    app.include_router(a2a.router)

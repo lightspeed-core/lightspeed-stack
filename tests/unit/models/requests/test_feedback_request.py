@@ -3,8 +3,8 @@
 import pytest
 from pydantic import ValidationError
 
-from models.api.requests import FeedbackRequest
-from models.common import FeedbackCategory
+from lightspeed_stack.models.api.requests import FeedbackRequest
+from lightspeed_stack.models.common import FeedbackCategory
 
 
 class TestFeedbackRequest:

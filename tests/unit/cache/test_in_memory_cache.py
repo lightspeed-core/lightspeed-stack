@@ -8,10 +8,10 @@ the same contract: ``store_summary`` validates the key but does not persist, and
 
 import pytest
 
-from cache.in_memory_cache import InMemoryCache
-from models.compaction import ConversationSummary
-from models.config import InMemoryCacheConfig
-from utils import suid
+from lightspeed_stack.cache.in_memory_cache import InMemoryCache
+from lightspeed_stack.models.compaction import ConversationSummary
+from lightspeed_stack.models.config import InMemoryCacheConfig
+from lightspeed_stack.utils import suid
 
 USER_ID = suid.get_suid()
 CONVERSATION_ID = suid.get_suid()

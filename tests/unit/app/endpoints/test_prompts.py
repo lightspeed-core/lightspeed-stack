@@ -8,17 +8,20 @@ from llama_stack_client import APIConnectionError, BadRequestError
 from llama_stack_client.types.prompt import Prompt
 from pytest_mock import MockerFixture
 
-from app.endpoints.prompts import (
+from lightspeed_stack.app.endpoints.prompts import (
     create_prompt_handler,
     delete_prompt_handler,
     get_prompt_handler,
     list_prompts_handler,
     update_prompt_handler,
 )
-from authentication.interface import AuthTuple
-from configuration import AppConfig
-from models.api.requests import PromptCreateRequest, PromptUpdateRequest
-from models.api.responses.successful import PromptDeleteResponse
+from lightspeed_stack.authentication.interface import AuthTuple
+from lightspeed_stack.configuration import AppConfig
+from lightspeed_stack.models.api.requests import (
+    PromptCreateRequest,
+    PromptUpdateRequest,
+)
+from lightspeed_stack.models.api.responses.successful import PromptDeleteResponse
 from tests.unit.utils.auth_helpers import mock_authorization_resolvers
 
 MOCK_AUTH: AuthTuple = ("mock_user_id", "mock_username", False, "mock_token")
@@ -70,12 +73,12 @@ def prompts_client_mocks_fixture(
     minimal_config: AppConfig,
 ) -> tuple[Any, Any]:
     """Patch loaded configuration and mocked Llama Stack client with ``.prompts`` API."""
-    mocker.patch("app.endpoints.prompts.configuration", minimal_config)
+    mocker.patch("lightspeed_stack.app.endpoints.prompts.configuration", minimal_config)
     mock_prompts = mocker.AsyncMock()
     mock_client = mocker.AsyncMock()
     mock_client.prompts = mock_prompts
     mocker.patch(
-        "app.endpoints.prompts.AsyncLlamaStackClientHolder.get_client",
+        "lightspeed_stack.app.endpoints.prompts.AsyncLlamaStackClientHolder.get_client",
         return_value=mock_client,
     )
     return mock_client, mock_prompts
@@ -88,7 +91,7 @@ async def test_create_prompt_configuration_not_loaded(
 ) -> None:
     """create_prompt returns 500 when configuration is not loaded."""
     mock_config = AppConfig()
-    mocker.patch("app.endpoints.prompts.configuration", mock_config)
+    mocker.patch("lightspeed_stack.app.endpoints.prompts.configuration", mock_config)
 
     with pytest.raises(HTTPException) as exc_info:
         await create_prompt_handler(

@@ -1,0 +1,634 @@
+"""Configuration loader."""
+
+from typing import Any, Optional
+
+import yaml
+
+# We want to support environment variable replacement in the configuration
+# similarly to how it is done in llama-stack, so we use their function directly
+from llama_stack.core.stack import replace_env_vars
+
+from lightspeed_stack import constants
+from lightspeed_stack.cache.cache import Cache
+from lightspeed_stack.cache.cache_factory import CacheFactory
+from lightspeed_stack.log import get_logger
+from lightspeed_stack.models.config import (
+    A2AStateConfiguration,
+    ApprovalsConfiguration,
+    AuthenticationConfiguration,
+    AuthorizationConfiguration,
+    AzureEntraIdConfiguration,
+    CompactionConfiguration,
+    Configuration,
+    ConversationHistoryConfiguration,
+    Customization,
+    DatabaseConfiguration,
+    InferenceConfiguration,
+    LlamaStackConfiguration,
+    ModelContextProtocolServer,
+    OkpConfiguration,
+    QuotaHandlersConfiguration,
+    RagConfiguration,
+    RerankerConfiguration,
+    RlsapiV1Configuration,
+    ServiceConfiguration,
+    SkillsConfiguration,
+    SplunkConfiguration,
+    UserDataCollection,
+)
+from lightspeed_stack.quota.quota_limiter import QuotaLimiter
+from lightspeed_stack.quota.quota_limiter_factory import QuotaLimiterFactory
+from lightspeed_stack.quota.token_usage_history import TokenUsageHistory
+
+logger = get_logger(__name__)
+
+
+def replace_env_vars_preserving_native_override(
+    config_dict: dict[Any, Any],
+) -> dict[Any, Any]:
+    """Resolve ${env.*} references in the config, except in native_override.
+
+    LCORE resolves environment-variable references throughout
+    lightspeed-stack.yaml so typed fields receive concrete values. But
+    ``llama_stack.config.native_override`` is raw Llama Stack schema that Llama
+    Stack resolves itself, in memory, at its own startup. Resolving it eagerly
+    here would (a) defeat the ${env.*} pattern LCORE recommends for secrets and
+    (b) pull resolved secrets into the loaded Configuration model, which is
+    logged at startup. So native_override is held aside, the rest of the config
+    is resolved, and the raw (unresolved) native_override is restored verbatim.
+    Synthesis reads native_override from the raw YAML, so this does not change
+    the generated run.yaml.
+
+    Parameters:
+        config_dict: The parsed lightspeed-stack.yaml.
+
+    Returns:
+        dict[Any, Any]: The config with env refs resolved everywhere except
+        inside native_override.
+    """
+    if not isinstance(config_dict, dict):
+        return replace_env_vars(config_dict)
+
+    llama_stack = config_dict.get("llama_stack")
+    ls_config = llama_stack.get("config") if isinstance(llama_stack, dict) else None
+    if not (isinstance(ls_config, dict) and "native_override" in ls_config):
+        return replace_env_vars(config_dict)
+
+    raw_override = ls_config["native_override"]
+    ls_config["native_override"] = {}  # keep secrets out of env resolution
+    resolved = replace_env_vars(config_dict)
+    ls_config["native_override"] = raw_override  # restore source dict if reused
+    resolved_ls = (resolved.get("llama_stack") or {}).get("config")
+    if isinstance(resolved_ls, dict):
+        resolved_ls["native_override"] = raw_override
+    return resolved
+
+
+class LogicError(Exception):
+    """Error in application logic."""
+
+
+class AppConfig:  # pylint: disable=too-many-public-methods
+    """Singleton class to load and store the configuration."""
+
+    _instance = None
+
+    def __new__(cls, *args: Any, **kwargs: Any) -> "AppConfig":
+        """Create a new instance of the class."""
+        if not isinstance(cls._instance, cls):
+            cls._instance = super().__new__(cls, *args, **kwargs)
+        return cls._instance
+
+    def __init__(self) -> None:
+        """Initialize the class instance.
+
+        Sets placeholders for the loaded configuration and lazily-created
+        runtime resources (conversation cache, quota limiters, and token usage
+        history).
+        """
+        self._configuration: Optional[Configuration] = None
+        self._conversation_cache: Optional[Cache] = None
+        self._quota_limiters: list[QuotaLimiter] = []
+        self._token_usage_history: Optional[TokenUsageHistory] = None
+        self._dynamic_mcp_server_names: set[str] = set()
+
+    def load_configuration(self, filename: str) -> None:
+        """Load configuration from YAML file.
+
+        Parameters:
+        ----------
+            filename (str): Path to the YAML configuration file to load.
+        """
+        with open(filename, encoding="utf-8") as fin:
+            config_dict = yaml.safe_load(fin)
+            config_dict = replace_env_vars_preserving_native_override(config_dict)
+            self.init_from_dict(config_dict)
+
+    def init_from_dict(self, config_dict: dict[Any, Any]) -> None:
+        """Initialize configuration from a dictionary.
+
+        Parameters:
+        ----------
+            config_dict (dict[Any, Any]): Mapping of configuration values
+            (typically parsed from YAML) to construct a new Configuration
+            instance. The method sets the internal configuration to
+            Configuration(**config_dict) and clears any cached conversation
+            cache, quota limiters, and token usage history so they will be
+            reinitialized on next access.
+        """
+        # clear cached values when configuration changes
+        self._conversation_cache = None
+        self._quota_limiters = []
+        self._token_usage_history = None
+        # now it is possible to re-read configuration
+        self._configuration = Configuration(**config_dict)
+
+    @property
+    def configuration(self) -> Configuration:
+        """Return the whole configuration.
+
+        Returns:
+            Configuration: The loaded configuration object.
+
+        Raises:
+            LogicError: If the configuration has not been loaded.
+        """
+        if self._configuration is None:
+            raise LogicError("logic error: configuration is not loaded")
+        return self._configuration
+
+    @property
+    def service_configuration(self) -> ServiceConfiguration:
+        """Return service configuration.
+
+        Returns:
+            ServiceConfiguration: The service configuration stored in the current configuration.
+
+        Raises:
+            LogicError: If the configuration has not been loaded.
+        """
+        if self._configuration is None:
+            raise LogicError("logic error: configuration is not loaded")
+        return self._configuration.service
+
+    @property
+    def llama_stack_configuration(self) -> LlamaStackConfiguration:
+        """Return Llama stack configuration.
+
+        Returns:
+            LlamaStackConfiguration: The configured Llama stack settings.
+
+        Raises:
+            LogicError: If the application configuration has not been loaded.
+        """
+        if self._configuration is None:
+            raise LogicError("logic error: configuration is not loaded")
+        return self._configuration.llama_stack
+
+    @property
+    def user_data_collection_configuration(self) -> UserDataCollection:
+        """Return user data collection configuration.
+
+        Returns:
+            UserDataCollection: The configured UserDataCollection object from
+            the loaded configuration.
+
+        Raises:
+            LogicError: If the application configuration has not been loaded.
+        """
+        if self._configuration is None:
+            raise LogicError("logic error: configuration is not loaded")
+        return self._configuration.user_data_collection
+
+    @property
+    def mcp_servers(self) -> list[ModelContextProtocolServer]:
+        """Return model context protocol servers configuration.
+
+        Returns:
+            list[ModelContextProtocolServer]: The list of configured MCP servers.
+
+        Raises:
+            LogicError: If the configuration is not loaded.
+        """
+        if self._configuration is None:
+            raise LogicError("logic error: configuration is not loaded")
+        return self._configuration.mcp_servers
+
+    @property
+    def dynamic_mcp_server_names(self) -> set[str]:
+        """Return the set of dynamically registered MCP server names.
+
+        Returns:
+            set[str]: Names of MCP servers added via the API (not from config file).
+        """
+        return self._dynamic_mcp_server_names
+
+    def add_mcp_server(self, mcp_server: ModelContextProtocolServer) -> None:
+        """Add an MCP server to the runtime configuration.
+
+        Parameters:
+        ----------
+            mcp_server: The MCP server configuration to add.
+
+        Raises:
+        ------
+            LogicError: If the configuration has not been loaded.
+            ValueError: If an MCP server with the same name already exists.
+        """
+        if self._configuration is None:
+            raise LogicError("logic error: configuration is not loaded")
+        for existing in self._configuration.mcp_servers:
+            if existing.name == mcp_server.name:
+                raise ValueError(
+                    f"MCP server with name '{mcp_server.name}' already exists"
+                )
+        self._configuration.mcp_servers.append(mcp_server)
+        self._dynamic_mcp_server_names.add(mcp_server.name)
+
+    def remove_mcp_server(self, name: str) -> None:
+        """Remove a dynamically registered MCP server from the runtime configuration.
+
+        Parameters:
+        ----------
+            name: The name of the MCP server to remove.
+
+        Raises:
+        ------
+            LogicError: If the configuration has not been loaded.
+            ValueError: If the server was not found or was statically configured.
+        """
+        if self._configuration is None:
+            raise LogicError("logic error: configuration is not loaded")
+        if name not in self._dynamic_mcp_server_names:
+            raise ValueError(
+                f"MCP server '{name}' was not dynamically registered or does not exist"
+            )
+        self._configuration.mcp_servers = [
+            s for s in self._configuration.mcp_servers if s.name != name
+        ]
+        self._dynamic_mcp_server_names.discard(name)
+
+    def is_dynamic_mcp_server(self, name: str) -> bool:
+        """Check if an MCP server was dynamically registered.
+
+        Parameters:
+        ----------
+            name: The name of the MCP server.
+
+        Returns:
+        -------
+            bool: True if the server was registered via the API.
+        """
+        return name in self._dynamic_mcp_server_names
+
+    @property
+    def authentication_configuration(self) -> AuthenticationConfiguration:
+        """Return authentication configuration.
+
+        Returns:
+            AuthenticationConfiguration: The authentication configuration from
+            the loaded application configuration.
+
+        Raises:
+            LogicError: If the configuration has not been loaded.
+        """
+        if self._configuration is None:
+            raise LogicError("logic error: configuration is not loaded")
+
+        return self._configuration.authentication
+
+    @property
+    def authorization_configuration(self) -> AuthorizationConfiguration:
+        """Return authorization configuration or default no-op configuration.
+
+        Returns:
+            AuthorizationConfiguration: The configured authorization settings,
+            or a default no-op AuthorizationConfiguration when none is
+            configured.
+
+        Raises:
+            LogicError: If the configuration has not been loaded.
+        """
+        if self._configuration is None:
+            raise LogicError("logic error: configuration is not loaded")
+
+        if self._configuration.authorization is None:
+            return AuthorizationConfiguration()
+
+        return self._configuration.authorization
+
+    @property
+    def customization(self) -> Optional[Customization]:
+        """Return customization configuration.
+
+        Returns:
+            customization (Optional[Customization]): The customization
+            configuration if present, otherwise None.
+
+        Raises:
+            LogicError: If the configuration has not been loaded.
+        """
+        if self._configuration is None:
+            raise LogicError("logic error: configuration is not loaded")
+        return self._configuration.customization
+
+    @property
+    def rlsapi_v1(self) -> RlsapiV1Configuration:
+        """Return rlsapi v1 endpoint configuration.
+
+        Returns:
+            RlsapiV1Configuration: Configuration for the rlsapi v1 /infer
+            endpoint (CLA-specific settings).
+
+        Raises:
+            LogicError: If the configuration has not been loaded.
+        """
+        if self._configuration is None:
+            raise LogicError("logic error: configuration is not loaded")
+        return self._configuration.rlsapi_v1
+
+    @property
+    def inference(self) -> InferenceConfiguration:
+        """Return inference configuration.
+
+        Returns:
+            InferenceConfiguration: The inference configuration from the loaded
+            application configuration.
+
+        Raises:
+            LogicError: If the configuration has not been loaded.
+        """
+        if self._configuration is None:
+            raise LogicError("logic error: configuration is not loaded")
+        return self._configuration.inference
+
+    @property
+    def compaction(self) -> CompactionConfiguration:
+        """Return conversation compaction configuration.
+
+        Returns:
+            CompactionConfiguration: The compaction configuration from the
+            loaded application configuration.
+
+        Raises:
+            LogicError: If the configuration has not been loaded.
+        """
+        if self._configuration is None:
+            raise LogicError("logic error: configuration is not loaded")
+        return self._configuration.compaction
+
+    @property
+    def conversation_cache_configuration(self) -> ConversationHistoryConfiguration:
+        """Return conversation cache configuration.
+
+        Returns:
+            ConversationHistoryConfiguration: The conversation cache
+            configuration from the loaded application configuration.
+
+        Raises:
+            LogicError: If the configuration has not been loaded.
+        """
+        if self._configuration is None:
+            raise LogicError("logic error: configuration is not loaded")
+        return self._configuration.conversation_cache
+
+    @property
+    def database_configuration(self) -> DatabaseConfiguration:
+        """Return database configuration.
+
+        Returns:
+            DatabaseConfiguration: The configured database settings.
+
+        Raises:
+            LogicError: If the configuration has not been loaded.
+        """
+        if self._configuration is None:
+            raise LogicError("logic error: configuration is not loaded")
+        return self._configuration.database
+
+    @property
+    def quota_handlers_configuration(self) -> QuotaHandlersConfiguration:
+        """Return quota handlers configuration.
+
+        Returns:
+            quota_handlers (QuotaHandlersConfiguration): The configured quota handlers.
+
+        Raises:
+            LogicError: If configuration has not been loaded.
+        """
+        if self._configuration is None:
+            raise LogicError("logic error: configuration is not loaded")
+        return self._configuration.quota_handlers
+
+    @property
+    def a2a_state(self) -> "A2AStateConfiguration":
+        """Return A2A state configuration."""
+        if self._configuration is None:
+            raise LogicError("logic error: configuration is not loaded")
+        return self._configuration.a2a_state
+
+    @property
+    def conversation_cache(self) -> Cache:
+        """Return the conversation cache.
+
+        Returns:
+            Cache: The conversation cache instance configured by the loaded configuration.
+
+        Raises:
+            LogicError: If the configuration has not been loaded.
+        """
+        if self._configuration is None:
+            raise LogicError("logic error: configuration is not loaded")
+        if self._conversation_cache is None:
+            self._conversation_cache = CacheFactory.conversation_cache(
+                self._configuration.conversation_cache
+            )
+        return self._conversation_cache
+
+    @property
+    def quota_limiters(self) -> list[QuotaLimiter]:
+        """Return list of all setup quota limiters.
+
+        Returns:
+            list[QuotaLimiter]: The quota limiter instances configured for the application.
+
+        Raises:
+            LogicError: If the configuration has not been loaded.
+        """
+        if self._configuration is None:
+            raise LogicError("logic error: configuration is not loaded")
+        if not self._quota_limiters:
+            self._quota_limiters = QuotaLimiterFactory.quota_limiters(
+                self._configuration.quota_handlers
+            )
+        return self._quota_limiters
+
+    @property
+    def token_usage_history(self) -> Optional[TokenUsageHistory]:
+        """
+        Provide the token usage history object for the application.
+
+        If token history is enabled in the loaded quota handlers configuration,
+        creates and caches a TokenUsageHistory instance and returns it. If
+        token history is disabled, returns None.
+
+        Returns:
+            Optional[TokenUsageHistory]: The cached TokenUsageHistory instance
+            when enabled, otherwise `None`.
+
+        Raises:
+            LogicError: If the configuration has not been loaded.
+        """
+        if self._configuration is None:
+            raise LogicError("logic error: configuration is not loaded")
+        if (
+            self._token_usage_history is None
+            and self._configuration.quota_handlers.enable_token_history  # pylint: disable=no-member
+        ):
+            self._token_usage_history = TokenUsageHistory(
+                self._configuration.quota_handlers
+            )
+        return self._token_usage_history
+
+    @property
+    def azure_entra_id(self) -> Optional[AzureEntraIdConfiguration]:
+        """Return Azure Entra ID configuration, or None if not provided."""
+        if self._configuration is None:
+            raise LogicError("logic error: configuration is not loaded")
+        return self._configuration.azure_entra_id
+
+    @property
+    def splunk(self) -> Optional[SplunkConfiguration]:
+        """Return Splunk configuration, or None if not provided."""
+        if self._configuration is None:
+            raise LogicError("logic error: configuration is not loaded")
+        return self._configuration.splunk
+
+    @property
+    def deployment_environment(self) -> str:
+        """Return deployment environment name."""
+        if self._configuration is None:
+            raise LogicError("logic error: configuration is not loaded")
+        return self._configuration.deployment_environment
+
+    @property
+    def rag(self) -> "RagConfiguration":
+        """Return RAG configuration."""
+        if self._configuration is None:
+            raise LogicError("logic error: configuration is not loaded")
+        return self._configuration.rag
+
+    @property
+    def approvals_configuration(self) -> ApprovalsConfiguration:
+        """Return human-in-the-loop approvals configuration.
+
+        Returns:
+            ApprovalsConfiguration: Settings for MCP tool approval workflow.
+
+        Raises:
+            LogicError: If the configuration has not been loaded.
+        """
+        if self._configuration is None:
+            raise LogicError("logic error: configuration is not loaded")
+        return self._configuration.approvals
+
+    @property
+    def okp(self) -> "OkpConfiguration":
+        """Return OKP configuration."""
+        if self._configuration is None:
+            raise LogicError("logic error: configuration is not loaded")
+        return self._configuration.okp
+
+    @property
+    def reranker(self) -> "RerankerConfiguration":
+        """Return reranker configuration."""
+        if self._configuration is None:
+            raise LogicError("logic error: configuration is not loaded")
+        return self._configuration.reranker
+
+    @property
+    def skills(self) -> Optional[SkillsConfiguration]:
+        """Return agent skills configuration, or None if not provided."""
+        if self._configuration is None:
+            raise LogicError("logic error: configuration is not loaded")
+        return self._configuration.skills
+
+    @property
+    def rag_id_mapping(self) -> dict[str, str]:
+        """Return mapping from vector_db_id to rag_id from BYOK and OKP RAG config.
+
+        Returns:
+            dict[str, str]: Mapping where keys are llama-stack vector_store_ids
+            (old vector_db_id) and values are user-facing rag_ids from configuration.
+
+        Raises:
+            LogicError: If the configuration has not been loaded.
+        """
+        if self._configuration is None:
+            raise LogicError("logic error: configuration is not loaded")
+        byok_mapping = {
+            brag.vector_db_id: brag.rag_id for brag in self._configuration.byok_rag
+        }
+
+        rag = self._configuration.rag
+        okp_id = constants.OKP_RAG_ID
+        okp_enabled = okp_id in (rag.inline or []) or okp_id in (rag.tool or [])
+        okp_mapping = (
+            {constants.SOLR_DEFAULT_VECTOR_STORE_ID: okp_id} if okp_enabled else {}
+        )
+        return {**byok_mapping, **okp_mapping}
+
+    @property
+    def score_multiplier_mapping(self) -> dict[str, float]:
+        """Return mapping from vector_db_id to score_multiplier from BYOK RAG config.
+
+        Returns:
+            dict[str, float]: Mapping where keys are llama-stack vector_db_ids
+            and values are score multipliers from configuration.
+
+        Raises:
+            LogicError: If the configuration has not been loaded.
+        """
+        if self._configuration is None:
+            raise LogicError("logic error: configuration is not loaded")
+        return {
+            brag.vector_db_id: brag.score_multiplier
+            for brag in self._configuration.byok_rag
+        }
+
+    @property
+    def inline_solr_enabled(self) -> bool:
+        """Return whether OKP is included in the inline RAG list.
+
+        Returns:
+            bool: True if 'okp' appears in rag.inline, False otherwise.
+
+        Raises:
+            LogicError: If the configuration has not been loaded.
+        """
+        if self._configuration is None:
+            raise LogicError("logic error: configuration is not loaded")
+        return constants.OKP_RAG_ID in self._configuration.rag.inline
+
+    def resolve_index_name(
+        self, vector_store_id: str, rag_id_mapping: Optional[dict[str, str]] = None
+    ) -> str:
+        """Resolve a vector store ID to its user-facing index name.
+
+        Uses the provided mapping or falls back to the BYOK RAG config.
+        If no mapping exists, returns the vector_store_id unchanged.
+
+        Parameters:
+        ----------
+            vector_store_id: The llama-stack vector store identifier.
+            rag_id_mapping: Optional pre-built mapping to avoid repeated lookups.
+
+        Returns:
+        -------
+            str: The user-facing index name from config, or the original ID.
+        """
+        mapping = rag_id_mapping if rag_id_mapping is not None else self.rag_id_mapping
+        return mapping.get(vector_store_id, vector_store_id)
+
+
+configuration: AppConfig = AppConfig()

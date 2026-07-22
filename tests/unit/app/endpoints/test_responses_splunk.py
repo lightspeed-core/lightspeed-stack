@@ -14,21 +14,23 @@ from llama_stack_client import APIStatusError as LLSApiStatusError
 from openai._exceptions import APIStatusError as OpenAIAPIStatusError
 from pytest_mock import MockerFixture
 
-from app.endpoints.responses import (
+from lightspeed_stack.app.endpoints.responses import (
     _get_user_agent,
     handle_non_streaming_response,
     handle_streaming_response,
 )
-from app.endpoints.responses_telemetry import queue_responses_splunk_event
-from configuration import AppConfig
-from models.api.requests import ResponsesRequest
-from models.common.turn_summary import RAGContext, TurnSummary
-from observability.formats.responses import ResponsesEventData
-from observability.splunk import _fire_and_forget_tasks
+from lightspeed_stack.app.endpoints.responses_telemetry import (
+    queue_responses_splunk_event,
+)
+from lightspeed_stack.configuration import AppConfig
+from lightspeed_stack.models.api.requests import ResponsesRequest
+from lightspeed_stack.models.common.turn_summary import RAGContext, TurnSummary
+from lightspeed_stack.observability.formats.responses import ResponsesEventData
+from lightspeed_stack.observability.splunk import _fire_and_forget_tasks
 from tests.unit.app.endpoints.test_responses import build_api_params_and_context
 
-MODULE = "app.endpoints.responses"
-TELEMETRY_MODULE = "app.endpoints.responses_telemetry"
+MODULE = "lightspeed_stack.app.endpoints.responses"
+TELEMETRY_MODULE = "lightspeed_stack.app.endpoints.responses_telemetry"
 MOCK_AUTH = (
     "00000001-0001-0001-0001-000000000001",
     "mock_username",
@@ -177,7 +179,8 @@ class TestQueueResponsesSplunkEvent:
         # Use MagicMock (not AsyncMock) so send_splunk_event() returns a
         # comparable return_value instead of a coroutine object.
         mock_send = mocker.patch(
-            "observability.splunk.send_splunk_event", new=mocker.MagicMock()
+            "lightspeed_stack.observability.splunk.send_splunk_event",
+            new=mocker.MagicMock(),
         )
         mock_task = mocker.MagicMock()
         mock_create_task = mocker.patch("asyncio.create_task", return_value=mock_task)

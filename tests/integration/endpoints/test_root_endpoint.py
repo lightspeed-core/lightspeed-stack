@@ -8,9 +8,9 @@ from fastapi import Request, status
 from llama_stack_client.types import VersionInfo
 from pytest_mock import MockerFixture
 
-from app.endpoints.root import root_endpoint_handler
-from authentication.interface import AuthTuple
-from configuration import AppConfig
+from lightspeed_stack.app.endpoints.root import root_endpoint_handler
+from lightspeed_stack.authentication.interface import AuthTuple
+from lightspeed_stack.configuration import AppConfig
 
 
 @pytest.fixture(name="mock_llama_stack_client")
@@ -30,7 +30,9 @@ def mock_llama_stack_client_fixture(
     ------
         AsyncMock: A mocked Llama Stack client configured for tests.
     """
-    mock_holder_class = mocker.patch("app.endpoints.info.AsyncLlamaStackClientHolder")
+    mock_holder_class = mocker.patch(
+        "lightspeed_stack.app.endpoints.info.AsyncLlamaStackClientHolder"
+    )
 
     mock_client = mocker.AsyncMock()
     # Mock the version endpoint to return a known version

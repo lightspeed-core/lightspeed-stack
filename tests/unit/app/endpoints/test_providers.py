@@ -6,12 +6,12 @@ from llama_stack_client import APIConnectionError, BadRequestError
 from llama_stack_client.types import ProviderInfo
 from pytest_mock import MockerFixture
 
-from app.endpoints.providers import (
+from lightspeed_stack.app.endpoints.providers import (
     get_provider_endpoint_handler,
     providers_endpoint_handler,
 )
-from authentication.interface import AuthTuple
-from configuration import AppConfig
+from lightspeed_stack.authentication.interface import AuthTuple
+from lightspeed_stack.configuration import AppConfig
 from tests.unit.utils.auth_helpers import mock_authorization_resolvers
 
 
@@ -23,7 +23,7 @@ async def test_providers_endpoint_configuration_not_loaded(
     mock_authorization_resolvers(mocker)
     mock_config = AppConfig()
     mock_config._configuration = None  # pylint: disable=protected-access
-    mocker.patch("app.endpoints.providers.configuration", mock_config)
+    mocker.patch("lightspeed_stack.app.endpoints.providers.configuration", mock_config)
     request = Request(scope={"type": "http"})
 
     # Authorization tuple required by URL endpoint handler
@@ -40,10 +40,12 @@ async def test_providers_endpoint_connection_error(
     mocker: MockerFixture, minimal_config: AppConfig
 ) -> None:
     """Test that /providers endpoint raises HTTP 503 if Llama Stack connection fails."""
-    mocker.patch("app.endpoints.providers.configuration", minimal_config)
+    mocker.patch(
+        "lightspeed_stack.app.endpoints.providers.configuration", minimal_config
+    )
 
     mocker.patch(
-        "app.endpoints.providers.AsyncLlamaStackClientHolder"
+        "lightspeed_stack.app.endpoints.providers.AsyncLlamaStackClientHolder"
     ).return_value.get_client.side_effect = APIConnectionError(request=mocker.Mock())
 
     request = Request(scope={"type": "http"})
@@ -64,7 +66,9 @@ async def test_providers_endpoint_success(
     mocker: MockerFixture, minimal_config: AppConfig
 ) -> None:
     """Test that /providers endpoint returns a grouped list of providers on success."""
-    mocker.patch("app.endpoints.providers.configuration", minimal_config)
+    mocker.patch(
+        "lightspeed_stack.app.endpoints.providers.configuration", minimal_config
+    )
 
     provider_list = [
         ProviderInfo(
@@ -92,7 +96,7 @@ async def test_providers_endpoint_success(
     mock_client = mocker.AsyncMock()
     mock_client.providers.list.return_value = provider_list
     mocker.patch(
-        "app.endpoints.providers.AsyncLlamaStackClientHolder"
+        "lightspeed_stack.app.endpoints.providers.AsyncLlamaStackClientHolder"
     ).return_value.get_client.return_value = mock_client
 
     request = Request(scope={"type": "http"})
@@ -111,11 +115,13 @@ async def test_get_provider_not_found(
     mocker: MockerFixture, minimal_config: AppConfig
 ) -> None:
     """Test that /providers/{provider_id} endpoint raises HTTP 404 if the provider is not found."""
-    mocker.patch("app.endpoints.providers.configuration", minimal_config)
+    mocker.patch(
+        "lightspeed_stack.app.endpoints.providers.configuration", minimal_config
+    )
 
     # Mock AsyncLlamaStackClientHolder to return a client that raises BadRequestError
     mock_client_holder = mocker.patch(
-        "app.endpoints.providers.AsyncLlamaStackClientHolder"
+        "lightspeed_stack.app.endpoints.providers.AsyncLlamaStackClientHolder"
     )
     mock_client = mocker.AsyncMock()
     mock_client.providers.retrieve = mocker.AsyncMock(
@@ -148,7 +154,9 @@ async def test_get_provider_success(
     mocker: MockerFixture, minimal_config: AppConfig
 ) -> None:
     """Test that /providers/{provider_id} endpoint returns provider details on success."""
-    mocker.patch("app.endpoints.providers.configuration", minimal_config)
+    mocker.patch(
+        "lightspeed_stack.app.endpoints.providers.configuration", minimal_config
+    )
 
     provider = ProviderInfo(
         api="inference",
@@ -160,7 +168,7 @@ async def test_get_provider_success(
     mock_client = mocker.AsyncMock()
     mock_client.providers.retrieve = mocker.AsyncMock(return_value=provider)
     mocker.patch(
-        "app.endpoints.providers.AsyncLlamaStackClientHolder"
+        "lightspeed_stack.app.endpoints.providers.AsyncLlamaStackClientHolder"
     ).return_value.get_client.return_value = mock_client
 
     request = Request(scope={"type": "http"})
@@ -180,11 +188,13 @@ async def test_get_provider_connection_error(
     mocker: MockerFixture, minimal_config: AppConfig
 ) -> None:
     """Test that /providers/{provider_id} raises HTTP 500 if Llama Stack connection fails."""
-    mocker.patch("app.endpoints.providers.configuration", minimal_config)
+    mocker.patch(
+        "lightspeed_stack.app.endpoints.providers.configuration", minimal_config
+    )
     mock_authorization_resolvers(mocker)
 
     mocker.patch(
-        "app.endpoints.providers.AsyncLlamaStackClientHolder"
+        "lightspeed_stack.app.endpoints.providers.AsyncLlamaStackClientHolder"
     ).return_value.get_client.side_effect = APIConnectionError(request=mocker.Mock())
 
     request = Request(scope={"type": "http"})

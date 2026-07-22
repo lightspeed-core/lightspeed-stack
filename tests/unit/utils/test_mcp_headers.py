@@ -6,10 +6,10 @@ import pytest
 from fastapi import Request
 from pytest_mock import MockerFixture
 
-import constants
-from models.config import ModelContextProtocolServer
-from utils import mcp_headers
-from utils.mcp_headers import (
+from lightspeed_stack import constants
+from lightspeed_stack.models.config import ModelContextProtocolServer
+from lightspeed_stack.utils import mcp_headers
+from lightspeed_stack.utils.mcp_headers import (
     build_server_headers,
     extract_propagated_headers,
     find_unresolved_auth_headers,

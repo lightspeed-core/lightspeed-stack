@@ -9,7 +9,7 @@ import pytest
 import requests
 from fastapi.testclient import TestClient
 
-from configuration import configuration
+from lightspeed_stack.configuration import configuration
 
 # Strategy:
 # - Load the OpenAPI document from docs/openapi.json and from endpoint handler
@@ -57,10 +57,10 @@ def _load_openapi_spec_from_url() -> dict[str, Any]:
     configuration_filename = "tests/configuration/lightspeed-stack-proper-name.yaml"
     cfg = configuration
     cfg.load_configuration(configuration_filename)
-    import app.main as app_main  # pylint: disable=C0415
+    import lightspeed_stack.app.main  # pylint: disable=C0415
 
-    importlib.reload(app_main)
-    app = app_main.app
+    importlib.reload(lightspeed_stack.app.main)
+    app = lightspeed_stack.app.main.app
     client = TestClient(app)
     response = client.get("/openapi.json")
     assert response.status_code == requests.codes.ok  # pylint: disable=no-member

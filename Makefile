@@ -20,7 +20,7 @@ CONTAINER_RUNTIME ?= $(shell command -v podman 2>/dev/null || command -v docker 
 .PHONY: run run-stack build-llama-stack-image remove-llama-stack-container stop-llama-stack-container start-llama-stack-container wait-for-llama-stack-health clean-llama-stack
 
 run-stack: ## Run lightspeed-stack directly, without building dependent service/s
-	uv run src/lightspeed_stack.py -c $(CONFIG)
+	uv run lightspeed_stack -c $(CONFIG)
 
 run: start-llama-stack-container ## Run the service locally with dependent services
 	@echo "Starting Lightspeed Core Stack..."
@@ -70,7 +70,7 @@ start-llama-stack-container: build-llama-stack-image ## Start llama-stack contai
 		-v $(PWD)/$(LLAMA_STACK_CONFIG):/opt/app-root/run.yaml:z \
 		-v $(PWD)/$(CONFIG):/opt/app-root/lightspeed-stack.yaml:ro,z \
 		-v $(PWD)/scripts/llama-stack-entrypoint.sh:/opt/app-root/enrich-entrypoint.sh:ro,z \
-		-v $(PWD)/src/llama_stack_configuration.py:/opt/app-root/llama_stack_configuration.py:ro,z \
+		-v $(PWD)/src/lightspeed_stack/llama_stack_configuration.py:/opt/app-root/llama_stack_configuration.py:ro,z \
 		-e OPENAI_API_KEY \
 		-e BRAVE_SEARCH_API_KEY \
 		-e TAVILY_SEARCH_API_KEY \
@@ -129,7 +129,7 @@ clean-llama-stack: remove-llama-stack-container ## Remove container and image
 	fi
 
 run-llama-stack: ## Start Llama Stack with enriched config (for local service mode)
-	uv run src/llama_stack_configuration.py -c $(CONFIG) -i $(LLAMA_STACK_CONFIG) -o $(LLAMA_STACK_CONFIG) && \
+	uv run src/lightspeed_stack/llama_stack_configuration.py -c $(CONFIG) -i $(LLAMA_STACK_CONFIG) -o $(LLAMA_STACK_CONFIG) && \
 	uv run llama stack run $(LLAMA_STACK_CONFIG)
 
 test-unit: ## Run the unit tests

@@ -17,11 +17,11 @@ from fastapi.testclient import TestClient
 from llama_stack_client import APIConnectionError
 from pytest_mock import MockerFixture
 
-import constants
-from app.endpoints.rlsapi_v1 import infer_endpoint
-from authentication.interface import AuthTuple
-from configuration import AppConfig
-from models.api.requests.rlsapi import (
+from lightspeed_stack import constants
+from lightspeed_stack.app.endpoints.rlsapi_v1 import infer_endpoint
+from lightspeed_stack.authentication.interface import AuthTuple
+from lightspeed_stack.configuration import AppConfig
+from lightspeed_stack.models.api.requests.rlsapi import (
     RlsapiV1Attachment,
     RlsapiV1CLA,
     RlsapiV1Context,
@@ -29,11 +29,13 @@ from models.api.requests.rlsapi import (
     RlsapiV1SystemInfo,
     RlsapiV1Terminal,
 )
-from models.api.responses.successful.rlsapi import RlsapiV1InferResponse
-from models.common.moderation import ShieldModerationPassed
+from lightspeed_stack.models.api.responses.successful.rlsapi import (
+    RlsapiV1InferResponse,
+)
+from lightspeed_stack.models.common.moderation import ShieldModerationPassed
+from lightspeed_stack.utils.suid import check_suid
+from lightspeed_stack.version import __version__
 from tests.unit.utils.auth_helpers import mock_authorization_resolvers
-from utils.suid import check_suid
-from version import __version__
 
 # ==========================================
 # Shared Fixtures
@@ -71,7 +73,7 @@ def rlsapi_config_fixture(test_config: AppConfig, mocker: MockerFixture) -> AppC
     """Extend test_config with inference defaults required by rlsapi v1."""
     test_config.inference.default_model = "test-model"
     test_config.inference.default_provider = "test-provider"
-    mocker.patch("app.endpoints.rlsapi_v1.configuration", test_config)
+    mocker.patch("lightspeed_stack.app.endpoints.rlsapi_v1.configuration", test_config)
     return test_config
 
 
@@ -85,7 +87,7 @@ def mock_authorization_fixture(mocker: MockerFixture) -> None:
 def mock_shield_passed_fixture(mocker: MockerFixture) -> None:
     """Mock shield moderation to pass for all integration tests."""
     mocker.patch(
-        "app.endpoints.rlsapi_v1.run_shield_moderation",
+        "lightspeed_stack.app.endpoints.rlsapi_v1.run_shield_moderation",
         new=mocker.AsyncMock(return_value=ShieldModerationPassed()),
     )
 
@@ -94,7 +96,7 @@ def mock_shield_passed_fixture(mocker: MockerFixture) -> None:
 def mock_model_configured_fixture(mocker: MockerFixture) -> None:
     """Mock model existence check to pass for all integration tests."""
     mocker.patch(
-        "app.endpoints.rlsapi_v1.check_model_configured",
+        "lightspeed_stack.app.endpoints.rlsapi_v1.check_model_configured",
         new=mocker.AsyncMock(return_value=True),
     )
 
@@ -127,7 +129,7 @@ def _setup_responses_mock(
     mock_client.responses = mock_responses
 
     mock_holder_class = mocker.patch(
-        "app.endpoints.rlsapi_v1.AsyncLlamaStackClientHolder"
+        "lightspeed_stack.app.endpoints.rlsapi_v1.AsyncLlamaStackClientHolder"
     )
     mock_holder_class.return_value.get_client.return_value = mock_client
 
@@ -276,7 +278,7 @@ async def test_rlsapi_v1_infer_connection_error_returns_503(
     mock_client.responses = mock_responses
 
     mock_holder_class = mocker.patch(
-        "app.endpoints.rlsapi_v1.AsyncLlamaStackClientHolder"
+        "lightspeed_stack.app.endpoints.rlsapi_v1.AsyncLlamaStackClientHolder"
     )
     mock_holder_class.return_value.get_client.return_value = mock_client
 
@@ -319,7 +321,7 @@ async def test_rlsapi_v1_infer_fallback_response_empty_output(
     mock_client.responses = mock_responses
 
     mock_holder_class = mocker.patch(
-        "app.endpoints.rlsapi_v1.AsyncLlamaStackClientHolder"
+        "lightspeed_stack.app.endpoints.rlsapi_v1.AsyncLlamaStackClientHolder"
     )
     mock_holder_class.return_value.get_client.return_value = mock_client
 
@@ -362,7 +364,7 @@ async def test_rlsapi_v1_infer_input_source_combination(
     mock_client.responses = mock_responses
 
     mock_holder_class = mocker.patch(
-        "app.endpoints.rlsapi_v1.AsyncLlamaStackClientHolder"
+        "lightspeed_stack.app.endpoints.rlsapi_v1.AsyncLlamaStackClientHolder"
     )
     mock_holder_class.return_value.get_client.return_value = mock_client
 
@@ -425,12 +427,12 @@ async def test_rlsapi_v1_infer_no_mcp_servers_passes_empty_tools(
     mock_client.responses = mock_responses
 
     mock_holder_class = mocker.patch(
-        "app.endpoints.rlsapi_v1.AsyncLlamaStackClientHolder"
+        "lightspeed_stack.app.endpoints.rlsapi_v1.AsyncLlamaStackClientHolder"
     )
     mock_holder_class.return_value.get_client.return_value = mock_client
 
     mocker.patch(
-        "app.endpoints.rlsapi_v1.get_mcp_tools",
+        "lightspeed_stack.app.endpoints.rlsapi_v1.get_mcp_tools",
         new_callable=mocker.AsyncMock,
         return_value=[],
     )
@@ -470,7 +472,7 @@ async def test_rlsapi_v1_infer_mcp_tools_passed_to_llm(
     mock_client.responses = mock_responses
 
     mock_holder_class = mocker.patch(
-        "app.endpoints.rlsapi_v1.AsyncLlamaStackClientHolder"
+        "lightspeed_stack.app.endpoints.rlsapi_v1.AsyncLlamaStackClientHolder"
     )
     mock_holder_class.return_value.get_client.return_value = mock_client
 
@@ -483,7 +485,7 @@ async def test_rlsapi_v1_infer_mcp_tools_passed_to_llm(
         }
     ]
     mocker.patch(
-        "app.endpoints.rlsapi_v1.get_mcp_tools",
+        "lightspeed_stack.app.endpoints.rlsapi_v1.get_mcp_tools",
         new_callable=mocker.AsyncMock,
         return_value=mcp_tools,
     )
