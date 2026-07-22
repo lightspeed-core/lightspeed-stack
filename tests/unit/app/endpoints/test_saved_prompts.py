@@ -2,6 +2,7 @@
 
 from datetime import UTC, datetime
 from types import SimpleNamespace
+from typing import Final
 
 import pytest
 from fastapi import FastAPI, HTTPException, Request, status
@@ -20,7 +21,7 @@ from models.config import Action
 from tests.unit.utils.auth_helpers import mock_authorization_resolvers
 
 MOCK_AUTH: AuthTuple = ("test_user_id", "test_user", True, "test_token")
-MOCK_LIST_AUTH: AuthTuple = ("user-1", "test_user", True, "test_token")
+MOCK_LIST_AUTH: Final[AuthTuple] = ("user-1", "test_user", True, "test_token")
 
 CUSTOM_MAX_PROMPTS_PER_USER = 100
 CUSTOM_MAX_DISPLAY_NAME_LENGTH = 128
@@ -273,7 +274,19 @@ def _prompt_row(  # pylint: disable=too-many-arguments
     created_at: datetime,
     updated_at: datetime,
 ) -> SimpleNamespace:
-    """Build a SavedPrompt-like object for handler mapping tests."""
+    """Build a SavedPrompt-like object for handler mapping tests.
+
+    Parameters:
+        prompt_id: Saved prompt identifier mapped to ``id``.
+        user_id: Owning user identifier (not exposed in API responses).
+        name: Prompt display name.
+        content: Prompt body text.
+        created_at: Creation timestamp.
+        updated_at: Last-update timestamp.
+
+    Returns:
+        A ``SimpleNamespace`` with attributes matching a ``SavedPrompt`` row.
+    """
     return SimpleNamespace(
         id=prompt_id,
         user_id=user_id,

@@ -134,7 +134,7 @@ async def list_saved_prompts_handler(
     check_configuration_loaded(configuration)
 
     user_id = auth[0]
-    logger.info("Retrieving saved prompts for user %s", user_id)
+    logger.info("Retrieving saved prompts")
 
     try:
         rows = list_saved_prompts_by_user(user_id)
@@ -149,9 +149,9 @@ async def list_saved_prompts_handler(
             for row in rows
         ]
     except SQLAlchemyError as exc:
-        logger.exception("Error retrieving saved prompts for user %s: %s", user_id, exc)
+        logger.exception("Error retrieving saved prompts")
         error_response = InternalServerErrorResponse.database_error()
         raise HTTPException(**error_response.model_dump()) from exc
 
-    logger.info("Saved prompts for user %s: %s", user_id, len(prompts))
+    logger.info("Retrieved %s saved prompts", len(prompts))
     return SavedPromptsListResponse(prompts=prompts)
