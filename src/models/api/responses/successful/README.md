@@ -37,7 +37,7 @@ Successful response model for the OpenAI-compatible Responses API.
 Models for rlsapi v1 REST API responses.
 
 ## [saved_prompts.py](saved_prompts.py)
-Successful responses for saved prompts configuration.
+Successful responses for saved prompts configuration and listing.
 
 ## [vector_stores.py](vector_stores.py)
 Successful responses for vector stores and vector store files.

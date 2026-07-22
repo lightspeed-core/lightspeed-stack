@@ -49,7 +49,11 @@ from models.api.responses.successful.rlsapi import (
     RlsapiV1InferData,
     RlsapiV1InferResponse,
 )
-from models.api.responses.successful.saved_prompts import SavedPromptsConfigResponse
+from models.api.responses.successful.saved_prompts import (
+    SavedPromptResponse,
+    SavedPromptsConfigResponse,
+    SavedPromptsListResponse,
+)
 from models.api.responses.successful.vector_stores import (
     FileResponse,
     VectorStoreDeleteResponse,
@@ -90,7 +94,9 @@ __all__ = [
     "ResponsesResponse",
     "RlsapiV1InferData",
     "RlsapiV1InferResponse",
+    "SavedPromptResponse",
     "SavedPromptsConfigResponse",
+    "SavedPromptsListResponse",
     "ShieldsResponse",
     "StatusResponse",
     "StreamingInterruptResponse",
