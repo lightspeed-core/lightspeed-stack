@@ -9,3 +9,6 @@ Unit tests for the ConversationSummary model.
 ## [test_saved_prompts_config.py](test_saved_prompts_config.py)
 Unit tests for SavedPromptsConfiguration.
 
+## [test_saved_prompts_list_response.py](test_saved_prompts_list_response.py)
+Unit tests for saved prompts list response models.
+
