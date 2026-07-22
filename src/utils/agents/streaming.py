@@ -121,7 +121,11 @@ async def retrieve_agent_response_generator(
             )
 
         agent = build_agent(
-            context.client, responses_params, configuration.skills, no_tools=no_tools
+            context.client,
+            responses_params,
+            configuration.skills,
+            shields=configuration.shields,
+            no_tools=no_tools,
         )
 
         return (
