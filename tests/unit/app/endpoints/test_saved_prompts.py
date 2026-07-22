@@ -263,7 +263,8 @@ async def test_get_saved_prompts_config_uses_get_config_action(
     assert await_args.args[0] == Action.GET_CONFIG
 
 
-def _prompt_row(
+# Test helper; explicit fields keep call sites readable.
+def _prompt_row(  # pylint: disable=too-many-arguments
     *,
     prompt_id: str,
     user_id: str,
