@@ -3,6 +3,7 @@
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.concurrency import run_in_threadpool
 from sqlalchemy.exc import SQLAlchemyError
 
 from authentication import get_auth_dependency
@@ -137,7 +138,7 @@ async def list_saved_prompts_handler(
     logger.info("Retrieving saved prompts")
 
     try:
-        rows = list_saved_prompts_by_user(user_id)
+        rows = await run_in_threadpool(list_saved_prompts_by_user, user_id)
         prompts = [
             SavedPromptResponse(
                 id=row.id,
