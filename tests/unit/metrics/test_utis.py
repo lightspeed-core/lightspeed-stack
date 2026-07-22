@@ -1,6 +1,7 @@
 """Unit tests for functions defined in metrics/utils.py"""
 
 import pytest
+from ogx_client.types import ListModelsResponse
 from pytest_mock import MockerFixture
 
 from metrics.utils import setup_model_metrics
@@ -9,15 +10,11 @@ from metrics.utils import setup_model_metrics
 @pytest.mark.asyncio
 async def test_setup_model_metrics(mocker: MockerFixture) -> None:
     """Test the setup_model_metrics function."""
-    # Mock the LlamaStackAsLibraryClient
-    mock_client = mocker.patch(
-        "client.AsyncLlamaStackClientHolder.get_client"
-    ).return_value
+    # Mock the OGXAsLibraryClient
+    mock_client = mocker.patch("client.AsyncOgxClientHolder.get_client").return_value
     # Make sure the client is an AsyncMock for async methods
     mock_client = mocker.AsyncMock()
-    mocker.patch(
-        "client.AsyncLlamaStackClientHolder.get_client", return_value=mock_client
-    )
+    mocker.patch("client.AsyncOgxClientHolder.get_client", return_value=mock_client)
     mocker.patch(
         "metrics.utils.configuration.inference.default_provider",
         "default_provider",
@@ -50,12 +47,14 @@ async def test_setup_model_metrics(mocker: MockerFixture) -> None:
     )
 
     # Mock the list of models returned by the client
-    mock_client.models.list.return_value = [
-        model_0,
-        model_default,
-        not_llm_model,
-        model_1,
-    ]
+    mock_client.models.list.return_value = ListModelsResponse.model_construct(
+        data=[
+            model_0,
+            model_default,
+            not_llm_model,
+            model_1,
+        ]
+    )
 
     await setup_model_metrics()
 

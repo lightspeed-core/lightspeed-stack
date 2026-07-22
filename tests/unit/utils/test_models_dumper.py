@@ -2282,7 +2282,7 @@ def test_dump_models(tmpdir: Path) -> None:
                                     "type": "string"
                                 },
                                 {
-                                    "$ref": "`#/components/schemas/`llama_stack_api__openai_responses__ApprovalFilter"
+                                    "$ref": "`#/components/schemas/`ogx_api__openai_responses__ApprovalFilter"
                                 }
                             ],
                             "default": "never",
@@ -2569,7 +2569,7 @@ def test_dump_models(tmpdir: Path) -> None:
                 },
                 "LlamaStackConfiguration": {
                     "additionalProperties": false,
-                    "description": "Llama stack configuration.\n\nLlama Stack is a comprehensive system that provides a uniform set of tools\nfor building, scaling, and deploying generative AI applications, enabling\ndevelopers to create, integrate, and orchestrate multiple AI services and\ncapabilities into an adaptable setup.\n\nUseful resources:\n\n  - [Llama Stack](https://www.llama.com/products/llama-stack/)\n  - [Python Llama Stack client](https://github.com/llamastack/llama-stack-client-python)\n  - [Build AI Applications with Llama Stack](https://llamastack.github.io/)",
+                    "description": "Llama stack configuration.\n\nLlama Stack is a comprehensive system that provides a uniform set of tools\nfor building, scaling, and deploying generative AI applications, enabling\ndevelopers to create, integrate, and orchestrate multiple AI services and\ncapabilities into an adaptable setup.\n\nUseful resources:\n\n  - [Llama Stack](https://ogx-ai.github.io/)\n  - [Python Llama Stack client](https://github.com/llamastack/llama-stack-client-python)\n  - [Build AI Applications with Llama Stack](https://ogx-ai.github.io/docs)",
                     "properties": {
                         "url": {
                             "type": "string",
@@ -5061,7 +5061,7 @@ def test_dump_models(tmpdir: Path) -> None:
                                 "agents": [
                                     {
                                         "provider_id": "meta-reference",
-                                        "provider_type": "inline::meta-reference"
+                                        "provider_type": "inline::builtin"
                                     }
                                 ],
                                 "inference": [
@@ -7309,9 +7309,9 @@ def test_dump_models(tmpdir: Path) -> None:
                         {
                             "detail": {
                                 "cause": "Connection error while trying to reach backend service.",
-                                "response": "Unable to connect to Llama Stack"
+                                "response": "Unable to connect to OGX"
                             },
-                            "label": "llama stack"
+                            "label": "ogx"
                         },
                         {
                             "detail": {
@@ -9048,7 +9048,7 @@ def test_dump_models(tmpdir: Path) -> None:
                     "title": "VectorStoresListResponse",
                     "type": "object"
                 },
-                "llama_stack_api__openai_responses__ApprovalFilter": {
+                "ogx_api__openai_responses__ApprovalFilter": {
                     "description": "Filter configuration for MCP tool approval requirements.\n\n:param always: (Optional) List of tool names that always require approval\n:param never: (Optional) List of tool names that never require approval",
                     "properties": {
                         "always": {

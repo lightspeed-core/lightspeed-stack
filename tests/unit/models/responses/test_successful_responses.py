@@ -39,6 +39,8 @@ from models.common import (
     MCPServerAuthInfo,
     ProviderHealthStatus,
 )
+from models.common.shields import CatalogShield
+from models.common.tools import CatalogTool
 from models.common.turn_summary import (
     ReferencedDocument,
     ToolCallSummary,
@@ -131,13 +133,13 @@ class TestToolsResponse:
     def test_constructor(self) -> None:
         """Test ToolsResponse with valid tools list."""
         tools = [
-            {
-                "identifier": "filesystem_read",
-                "description": "Read contents of a file",
-                "parameters": [],
-                "provider_id": "mcp",
-                "type": "tool",
-            }
+            CatalogTool(
+                identifier="filesystem_read",
+                description="Read contents of a file",
+                parameters=[],
+                provider_id="mcp",
+                type="tool",
+            )
         ]
         response = ToolsResponse(tools=tools)
         assert isinstance(response, AbstractSuccessfulResponse)
@@ -174,7 +176,13 @@ class TestShieldsResponse:
 
     def test_constructor(self) -> None:
         """Test ShieldsResponse with valid shields list."""
-        shields = [{"name": "shield1", "status": "active"}]
+        shields = [
+            CatalogShield(
+                identifier="lightspeed_pii_redaction",
+                provider_resource_id="lightspeed_pii_redaction",
+                provider_id="lightspeed_pii_redaction",
+            )
+        ]
         response = ShieldsResponse(shields=shields)
         assert isinstance(response, AbstractSuccessfulResponse)
         assert response.shields == shields

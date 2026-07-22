@@ -294,11 +294,11 @@
                                     "$ref": "#/components/schemas/ServiceUnavailableResponse"
                                 },
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -494,11 +494,11 @@
                         "content": {
                             "application/json": {
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -693,11 +693,11 @@
                                     "$ref": "#/components/schemas/ServiceUnavailableResponse"
                                 },
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -1041,26 +1041,6 @@
                                 }
                             }
                         }
-                    },
-                    "503": {
-                        "description": "Service unavailable",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ServiceUnavailableResponse"
-                                },
-                                "examples": {
-                                    "kubernetes api": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Failed to connect to Kubernetes API: Service Unavailable (status 503)",
-                                                "response": "Unable to connect to Kubernetes API"
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
                     }
                 }
             },
@@ -1069,7 +1049,7 @@
                     "mcp-servers"
                 ],
                 "summary": "Register Mcp Server Handler",
-                "description": "Register an MCP server dynamically at runtime.\n\nAdds the MCP server to the runtime configuration and registers it\nas a toolgroup with Llama Stack so it becomes available for queries.\n\n### Parameters:\n- request: Model containing attributes to dynamically registering an MCP server.\n- auth: Authentication tuple from the auth dependency (used by middleware).\n- body: Headers that should be passed to MCP servers.\n\n### Raises:\n- HTTPException: On duplicate name, Llama Stack connection error, or\n  registration failure.\n\n### Returns:\n- MCPServerRegistrationResponse: Details of the newly registered server.",
+                "description": "Register an MCP server dynamically at runtime.\n\nAdds the MCP server to the runtime configuration so it becomes available\nfor queries.\n\n### Parameters:\n- request: Model containing attributes to dynamically registering an MCP server.\n- auth: Authentication tuple from the auth dependency (used by middleware).\n- body: Headers that should be passed to MCP servers.\n\n### Raises:\n- HTTPException: On duplicate name or registration failure.\n\n### Returns:\n- MCPServerRegistrationResponse: Details of the newly registered server.",
                 "operationId": "register_mcp_server_handler_v1_mcp_servers_post",
                 "requestBody": {
                     "content": {
@@ -1242,34 +1222,6 @@
                             }
                         }
                     },
-                    "503": {
-                        "description": "Service unavailable",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ServiceUnavailableResponse"
-                                },
-                                "examples": {
-                                    "llama stack": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
-                                            }
-                                        }
-                                    },
-                                    "kubernetes api": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Failed to connect to Kubernetes API: Service Unavailable (status 503)",
-                                                "response": "Unable to connect to Kubernetes API"
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    },
                     "422": {
                         "description": "Validation Error",
                         "content": {
@@ -1289,7 +1241,7 @@
                     "mcp-servers"
                 ],
                 "summary": "Delete Mcp Server Handler",
-                "description": "Unregister a dynamically registered MCP server.\n\nRemoves the MCP server from the runtime configuration and unregisters\nits toolgroup from Llama Stack. Only servers registered via the API\ncan be deleted; statically configured servers cannot be removed.\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- auth: Authentication tuple from the auth dependency (used by middleware).\n- name: MCP server name\n\n### Raises:\n- HTTPException: If the server is not found, is statically configured, or\n  Llama Stack unregistration fails.\n\n### Returns:\n- MCPServerDeleteResponse: Confirmation of the deletion.",
+                "description": "Unregister a dynamically registered MCP server.\n\nRemoves the MCP server from the runtime configuration. Only servers\nregistered via the API can be deleted; statically configured servers\ncannot be removed.\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- auth: Authentication tuple from the auth dependency (used by middleware).\n- name: MCP server name\n\n### Raises:\n- HTTPException: If the server is not found or is statically configured.\n\n### Returns:\n- MCPServerDeleteResponse: Confirmation of the deletion.",
                 "operationId": "delete_mcp_server_handler_v1_mcp_servers__name__delete",
                 "parameters": [
                     {
@@ -1453,34 +1405,6 @@
                             }
                         }
                     },
-                    "503": {
-                        "description": "Service unavailable",
-                        "content": {
-                            "application/json": {
-                                "examples": {
-                                    "llama stack": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
-                                            }
-                                        }
-                                    },
-                                    "kubernetes api": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Failed to connect to Kubernetes API: Service Unavailable (status 503)",
-                                                "response": "Unable to connect to Kubernetes API"
-                                            }
-                                        }
-                                    }
-                                },
-                                "schema": {
-                                    "$ref": "#/components/schemas/ServiceUnavailableResponse"
-                                }
-                            }
-                        }
-                    },
                     "422": {
                         "description": "Validation Error",
                         "content": {
@@ -1500,7 +1424,7 @@
                     "shields"
                 ],
                 "summary": "Shields Endpoint Handler",
-                "description": "Handle requests to the /shields endpoint.\n\nProcess GET requests to the /shields endpoint, returning a list of available\nshields from the Llama Stack service.\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- auth: Authentication tuple from the auth dependency (used by middleware).\n\n### Raises:\n- HTTPException: with status 401 for unauthorized access.\n- HTTPException: with status 403 if permission is denied.\n- HTTPException: with status 500 and a detail object containing `response`\n  and `cause` when service configuration is wrong or incomplete.\n- HTTPException: with status 503 and a detail object containing `response`\n  and `cause` when unable to connect to Llama Stack.\n\n### Returns:\n- ShieldsResponse: An object containing the list of available shields.",
+                "description": "Handle requests to the /shields endpoint.\n\nProcess GET requests to the /shields endpoint, returning a list of available\nshields from Lightspeed Core Stack configuration.\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- auth: Authentication tuple from the auth dependency (used by middleware).\n\n### Raises:\n- HTTPException: with status 401 for unauthorized access.\n- HTTPException: with status 403 if permission is denied.\n- HTTPException: with status 500 and a detail object containing `response`\n  and `cause` when service configuration is wrong or incomplete.\n\n### Returns:\n- ShieldsResponse: An object containing the list of available shields.",
                 "operationId": "shields_endpoint_handler_v1_shields_get",
                 "responses": {
                     "200": {
@@ -1513,10 +1437,10 @@
                                 "example": {
                                     "shields": [
                                         {
-                                            "identifier": "lightspeed_question_validity-shield",
+                                            "identifier": "lightspeed_question_validity",
                                             "params": {},
                                             "provider_id": "lightspeed_question_validity",
-                                            "provider_resource_id": "lightspeed_question_validity-shield",
+                                            "provider_resource_id": "gpt-4o-mini",
                                             "type": "shield"
                                         }
                                     ]
@@ -1639,34 +1563,6 @@
                                 }
                             }
                         }
-                    },
-                    "503": {
-                        "description": "Service unavailable",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ServiceUnavailableResponse"
-                                },
-                                "examples": {
-                                    "llama stack": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
-                                            }
-                                        }
-                                    },
-                                    "kubernetes api": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Failed to connect to Kubernetes API: Service Unavailable (status 503)",
-                                                "response": "Unable to connect to Kubernetes API"
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
                     }
                 }
             }
@@ -1692,7 +1588,7 @@
                                         "agents": [
                                             {
                                                 "provider_id": "meta-reference",
-                                                "provider_type": "inline::meta-reference"
+                                                "provider_type": "inline::builtin"
                                             }
                                         ],
                                         "inference": [
@@ -1834,11 +1730,11 @@
                                     "$ref": "#/components/schemas/ServiceUnavailableResponse"
                                 },
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -2040,11 +1936,11 @@
                         "content": {
                             "application/json": {
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -2240,11 +2136,11 @@
                                     "$ref": "#/components/schemas/ServiceUnavailableResponse"
                                 },
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -2431,11 +2327,11 @@
                                     "$ref": "#/components/schemas/ServiceUnavailableResponse"
                                 },
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -2688,11 +2584,11 @@
                         "content": {
                             "application/json": {
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -2940,11 +2836,11 @@
                         "content": {
                             "application/json": {
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -3169,11 +3065,11 @@
                         "content": {
                             "application/json": {
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -3355,11 +3251,11 @@
                                     "$ref": "#/components/schemas/ServiceUnavailableResponse"
                                 },
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -3558,11 +3454,11 @@
                         "content": {
                             "application/json": {
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -3761,11 +3657,11 @@
                                     "$ref": "#/components/schemas/ServiceUnavailableResponse"
                                 },
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -3970,11 +3866,11 @@
                                     "$ref": "#/components/schemas/ServiceUnavailableResponse"
                                 },
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -4189,11 +4085,11 @@
                         "content": {
                             "application/json": {
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -4419,11 +4315,11 @@
                         "content": {
                             "application/json": {
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -4620,11 +4516,11 @@
                         "content": {
                             "application/json": {
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -4845,11 +4741,11 @@
                                     "$ref": "#/components/schemas/ServiceUnavailableResponse"
                                 },
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -5069,11 +4965,11 @@
                         "content": {
                             "application/json": {
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -5294,11 +5190,11 @@
                         "content": {
                             "application/json": {
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -5520,11 +5416,11 @@
                         "content": {
                             "application/json": {
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -5730,11 +5626,11 @@
                         "content": {
                             "application/json": {
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -6137,11 +6033,11 @@
                                     "$ref": "#/components/schemas/ServiceUnavailableResponse"
                                 },
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -6498,11 +6394,11 @@
                                     "$ref": "#/components/schemas/ServiceUnavailableResponse"
                                 },
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -7695,11 +7591,11 @@
                                     "$ref": "#/components/schemas/ServiceUnavailableResponse"
                                 },
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -7948,11 +7844,11 @@
                         "content": {
                             "application/json": {
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -8185,11 +8081,11 @@
                         "content": {
                             "application/json": {
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -8433,11 +8329,11 @@
                         "content": {
                             "application/json": {
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -9772,11 +9668,11 @@
                                     "$ref": "#/components/schemas/ServiceUnavailableResponse"
                                 },
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -10098,11 +9994,11 @@
                                     "$ref": "#/components/schemas/ServiceUnavailableResponse"
                                 },
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -10250,11 +10146,11 @@
                                     "$ref": "#/components/schemas/ServiceUnavailableResponse"
                                 },
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -10703,11 +10599,11 @@
                         "content": {
                             "application/json": {
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -12153,6 +12049,124 @@
                 "title": "CORSConfiguration",
                 "description": "CORS configuration.\n\nCORS or 'Cross-Origin Resource Sharing' refers to the situations when a\nfrontend running in a browser has JavaScript code that communicates with a\nbackend, and the backend is in a different 'origin' than the frontend.\n\nUseful resources:\n\n  - [CORS in FastAPI](https://fastapi.tiangolo.com/tutorial/cors/)\n  - [Wikipedia article](https://en.wikipedia.org/wiki/Cross-origin_resource_sharing)\n  - [What is CORS?](https://dev.to/akshay_chauhan/what-is-cors-explained-8f1)"
             },
+            "CatalogShield": {
+                "properties": {
+                    "identifier": {
+                        "type": "string",
+                        "title": "Identifier"
+                    },
+                    "provider_resource_id": {
+                        "type": "string",
+                        "title": "Provider Resource Id"
+                    },
+                    "provider_id": {
+                        "type": "string",
+                        "title": "Provider Id"
+                    },
+                    "type": {
+                        "type": "string",
+                        "title": "Type",
+                        "default": "shield"
+                    },
+                    "params": {
+                        "additionalProperties": true,
+                        "type": "object",
+                        "title": "Params"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "identifier",
+                    "provider_resource_id",
+                    "provider_id"
+                ],
+                "title": "CatalogShield",
+                "description": "Shield entry in the ``/shields`` catalog response.\n\nAccepts either catalog field names or ``ShieldConfiguration`` names\n(``shield_id`` / ``provider_shield_id``) via validation aliases."
+            },
+            "CatalogTool": {
+                "properties": {
+                    "identifier": {
+                        "type": "string",
+                        "title": "Identifier"
+                    },
+                    "description": {
+                        "type": "string",
+                        "title": "Description",
+                        "default": ""
+                    },
+                    "parameters": {
+                        "items": {
+                            "$ref": "#/components/schemas/CatalogToolParameter"
+                        },
+                        "type": "array",
+                        "title": "Parameters"
+                    },
+                    "provider_id": {
+                        "type": "string",
+                        "title": "Provider Id",
+                        "default": ""
+                    },
+                    "toolgroup_id": {
+                        "type": "string",
+                        "title": "Toolgroup Id",
+                        "default": ""
+                    },
+                    "server_source": {
+                        "type": "string",
+                        "title": "Server Source",
+                        "default": ""
+                    },
+                    "type": {
+                        "type": "string",
+                        "title": "Type",
+                        "default": "tool"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "identifier"
+                ],
+                "title": "CatalogTool",
+                "description": "Tool entry in the ``/tools`` catalog response."
+            },
+            "CatalogToolParameter": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Name"
+                    },
+                    "description": {
+                        "type": "string",
+                        "title": "Description",
+                        "default": ""
+                    },
+                    "parameter_type": {
+                        "type": "string",
+                        "title": "Parameter Type",
+                        "default": "string"
+                    },
+                    "required": {
+                        "type": "boolean",
+                        "title": "Required",
+                        "default": false
+                    },
+                    "default": {
+                        "anyOf": [
+                            {},
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Default"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name"
+                ],
+                "title": "CatalogToolParameter",
+                "description": "Parameter entry for a tool in the ``/tools`` catalog response."
+            },
             "ClientCredentialsOAuthFlow": {
                 "properties": {
                     "refreshUrl": {
@@ -12260,6 +12274,14 @@
                         "type": "array",
                         "title": "Model Context Protocol Server and tools configuration",
                         "description": "MCP (Model Context Protocol) servers provide tools and capabilities to the AI agents. These are configured in this section. Only MCP servers defined in the lightspeed-stack.yaml configuration are available to the agents. Tools configured in the llama-stack run.yaml are not accessible to lightspeed-core agents."
+                    },
+                    "shields": {
+                        "items": {
+                            "$ref": "#/components/schemas/ShieldConfiguration"
+                        },
+                        "type": "array",
+                        "title": "Shields configuration",
+                        "description": "Safety shields owned by Lightspeed Core Stack. Mirrors the former Llama Stack registered_resources.shields entries. Configured shields are listed by the /shields endpoint and applied via LCORE capabilities (not the Llama Stack Safety API)."
                     },
                     "authentication": {
                         "$ref": "#/components/schemas/AuthenticationConfiguration",
@@ -13736,8 +13758,7 @@
                     "computer_call_output.output.image_url",
                     "file_search_call.results",
                     "message.input_image.image_url",
-                    "message.output_text.logprobs",
-                    "reasoning.encrypted_content"
+                    "message.output_text.logprobs"
                 ]
             },
             "InferenceConfiguration": {
@@ -15145,7 +15166,8 @@
                     "filename",
                     "start_index"
                 ],
-                "title": "OpenAIResponseAnnotationContainerFileCitation"
+                "title": "OpenAIResponseAnnotationContainerFileCitation",
+                "description": "Container file citation annotation referencing a file within a container."
             },
             "OpenAIResponseAnnotationFileCitation": {
                 "properties": {
@@ -15199,7 +15221,8 @@
                     "file_id",
                     "index"
                 ],
-                "title": "OpenAIResponseAnnotationFilePath"
+                "title": "OpenAIResponseAnnotationFilePath",
+                "description": "File path annotation referencing a generated file in response content."
             },
             "OpenAIResponseContentPartRefusal": {
                 "properties": {
@@ -15571,7 +15594,8 @@
                     "required",
                     "none"
                 ],
-                "title": "OpenAIResponseInputToolChoiceMode"
+                "title": "OpenAIResponseInputToolChoiceMode",
+                "description": "Enumeration of simple tool choice modes for response generation."
             },
             "OpenAIResponseInputToolChoiceWebSearch": {
                 "properties": {
@@ -16012,7 +16036,8 @@
                 "required": [
                     "text"
                 ],
-                "title": "OpenAIResponseOutputMessageContentOutputText"
+                "title": "OpenAIResponseOutputMessageContentOutputText",
+                "description": "Text content within an output message of an OpenAI response."
             },
             "OpenAIResponseOutputMessageFileSearchToolCall": {
                 "properties": {
@@ -16238,6 +16263,113 @@
                 "title": "OpenAIResponseOutputMessageMCPListTools",
                 "description": "MCP list tools output message containing available tools from an MCP server.\n\n:param id: Unique identifier for this MCP list tools operation\n:param type: Tool call type identifier, always \"mcp_list_tools\"\n:param server_label: Label identifying the MCP server providing the tools\n:param tools: List of available tools provided by the MCP server"
             },
+            "OpenAIResponseOutputMessageReasoningContent": {
+                "properties": {
+                    "text": {
+                        "type": "string",
+                        "title": "Text",
+                        "description": "The reasoning text content from the model."
+                    },
+                    "type": {
+                        "type": "string",
+                        "const": "reasoning_text",
+                        "title": "Type",
+                        "description": "The type identifier, always 'reasoning_text'.",
+                        "default": "reasoning_text"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "text"
+                ],
+                "title": "OpenAIResponseOutputMessageReasoningContent",
+                "description": "Reasoning text from the model."
+            },
+            "OpenAIResponseOutputMessageReasoningItem": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "title": "Id",
+                        "description": "Unique identifier for the reasoning output item."
+                    },
+                    "summary": {
+                        "items": {
+                            "$ref": "#/components/schemas/OpenAIResponseOutputMessageReasoningSummary"
+                        },
+                        "type": "array",
+                        "title": "Summary",
+                        "description": "Summary of the reasoning output."
+                    },
+                    "type": {
+                        "type": "string",
+                        "const": "reasoning",
+                        "title": "Type",
+                        "description": "The type identifier, always 'reasoning'.",
+                        "default": "reasoning"
+                    },
+                    "content": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/OpenAIResponseOutputMessageReasoningContent"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Content",
+                        "description": "The reasoning content from the model."
+                    },
+                    "status": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "enum": [
+                                    "in_progress",
+                                    "completed",
+                                    "incomplete"
+                                ]
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Status",
+                        "description": "The status of the reasoning output."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "summary"
+                ],
+                "title": "OpenAIResponseOutputMessageReasoningItem",
+                "description": "Reasoning output from the model, representing the model's thinking process."
+            },
+            "OpenAIResponseOutputMessageReasoningSummary": {
+                "properties": {
+                    "text": {
+                        "type": "string",
+                        "title": "Text",
+                        "description": "The summary text of the reasoning output."
+                    },
+                    "type": {
+                        "type": "string",
+                        "const": "summary_text",
+                        "title": "Type",
+                        "description": "The type identifier, always 'summary_text'.",
+                        "default": "summary_text"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "text"
+                ],
+                "title": "OpenAIResponseOutputMessageReasoningSummary",
+                "description": "A summary of reasoning output from the model."
+            },
             "OpenAIResponseOutputMessageWebSearchToolCall": {
                 "properties": {
                     "id": {
@@ -16340,6 +16472,23 @@
                             }
                         ],
                         "title": "Effort"
+                    },
+                    "summary": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "enum": [
+                                    "auto",
+                                    "concise",
+                                    "detailed"
+                                ]
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Summary",
+                        "description": "Summary mode for reasoning output. One of 'auto', 'concise', or 'detailed'."
                     }
                 },
                 "type": "object",
@@ -16357,11 +16506,27 @@
                                 "type": "null"
                             }
                         ]
+                    },
+                    "verbosity": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "enum": [
+                                    "low",
+                                    "medium",
+                                    "high"
+                                ]
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Verbosity"
                     }
                 },
                 "type": "object",
                 "title": "OpenAIResponseText",
-                "description": "Text response configuration for OpenAI responses.\n\n:param format: (Optional) Text format configuration specifying output format requirements"
+                "description": "Text response configuration for OpenAI responses.\n\n:param format: (Optional) Text format configuration specifying output format requirements\n:param verbosity: (Optional) Controls response verbosity level"
             },
             "OpenAIResponseTextFormat": {
                 "properties": {
@@ -17213,7 +17378,7 @@
                             "agents": [
                                 {
                                     "provider_id": "meta-reference",
-                                    "provider_type": "inline::meta-reference"
+                                    "provider_type": "inline::builtin"
                                 }
                             ],
                             "inference": [
@@ -18299,6 +18464,9 @@
                     },
                     {
                         "$ref": "#/components/schemas/OpenAIResponseMCPApprovalResponse"
+                    },
+                    {
+                        "$ref": "#/components/schemas/OpenAIResponseOutputMessageReasoningItem"
                     }
                 ]
             },
@@ -18690,6 +18858,9 @@
                                 },
                                 {
                                     "$ref": "#/components/schemas/OpenAIResponseMCPApprovalRequest"
+                                },
+                                {
+                                    "$ref": "#/components/schemas/OpenAIResponseOutputMessageReasoningItem"
                                 }
                             ],
                             "discriminator": {
@@ -18701,6 +18872,7 @@
                                     "mcp_call": "#/components/schemas/OpenAIResponseOutputMessageMCPCall",
                                     "mcp_list_tools": "#/components/schemas/OpenAIResponseOutputMessageMCPListTools",
                                     "message": "#/components/schemas/OpenAIResponseMessage",
+                                    "reasoning": "#/components/schemas/OpenAIResponseOutputMessageReasoningItem",
                                     "web_search_call": "#/components/schemas/OpenAIResponseOutputMessageWebSearchToolCall"
                                 }
                             }
@@ -19607,7 +19779,7 @@
                 },
                 "type": "object",
                 "title": "SearchRankingOptions",
-                "description": "Options for ranking and filtering search results.\n\nThis class configures how search results are ranked and filtered. You can use algorithm-based\nrerankers (weighted, RRF) or neural rerankers. Defaults from VectorStoresConfig are\nused when parameters are not provided.\n\nExamples:\n    # Weighted ranker with custom alpha\n    SearchRankingOptions(ranker=\"weighted\", alpha=0.7)\n\n    # RRF ranker with custom impact factor\n    SearchRankingOptions(ranker=\"rrf\", impact_factor=50.0)\n\n    # Use config defaults (just specify ranker type)\n    SearchRankingOptions(ranker=\"weighted\")  # Uses alpha from VectorStoresConfig\n\n    # Score threshold filtering\n    SearchRankingOptions(ranker=\"weighted\", score_threshold=0.5)\n\n:param ranker: (Optional) Name of the ranking algorithm to use. Supported values:\n    - \"weighted\": Weighted combination of vector and keyword scores\n    - \"rrf\": Reciprocal Rank Fusion algorithm\n    - \"neural\": Neural reranking model (requires model parameter, Part II)\n    Note: For OpenAI API compatibility, any string value is accepted, but only the above values are supported.\n:param score_threshold: (Optional) Minimum relevance score threshold for results. Default: 0.0\n:param alpha: (Optional) Weight factor for weighted ranker (0-1).\n    - 0.0 = keyword only\n    - 0.5 = equal weight (default)\n    - 1.0 = vector only\n    Only used when ranker=\"weighted\" and weights is not provided.\n    Falls back to VectorStoresConfig.chunk_retrieval_params.weighted_search_alpha if not provided.\n:param impact_factor: (Optional) Impact factor (k) for RRF algorithm.\n    Lower values emphasize higher-ranked results. Default: 60.0 (optimal from research).\n    Only used when ranker=\"rrf\".\n    Falls back to VectorStoresConfig.chunk_retrieval_params.rrf_impact_factor if not provided.\n:param weights: (Optional) Dictionary of weights for combining different signal types.\n    Keys can be \"vector\", \"keyword\", \"neural\". Values should sum to 1.0.\n    Used when combining algorithm-based reranking with neural reranking (Part II).\n    Example: {\"vector\": 0.3, \"keyword\": 0.3, \"neural\": 0.4}\n:param model: (Optional) Model identifier for neural reranker (e.g., \"vllm/Qwen3-Reranker-0.6B\").\n    Required when ranker=\"neural\" or when weights contains \"neural\" (Part II)."
+                "description": "Options for ranking and filtering search results.\n\nThis class configures how search results are ranked and filtered. You can use algorithm-based\nrerankers (weighted, RRF) or neural rerankers. Defaults from VectorStoresConfig are\nused when parameters are not provided.\n\nExamples:\n    # Weighted ranker with custom alpha\n    SearchRankingOptions(ranker=\"weighted\", alpha=0.7)\n\n    # RRF ranker with custom impact factor\n    SearchRankingOptions(ranker=\"rrf\", impact_factor=50.0)\n\n    # Use config defaults (just specify ranker type)\n    SearchRankingOptions(ranker=\"weighted\")  # Uses alpha from VectorStoresConfig\n\n    # Score threshold filtering\n    SearchRankingOptions(ranker=\"weighted\", score_threshold=0.5)\n\n:param ranker: (Optional) Name of the ranking algorithm to use. Supported values:\n    - \"weighted\": Weighted combination of vector and keyword scores\n    - \"rrf\": Reciprocal Rank Fusion algorithm\n    - \"neural\": Neural reranking model (requires model parameter)\n    Note: For OpenAI API compatibility, any string value is accepted, but only the above values are supported.\n:param score_threshold: (Optional) Minimum relevance score threshold for results. Default: 0.0\n:param alpha: (Optional) Weight factor for weighted ranker (0-1).\n    - 0.0 = keyword only\n    - 0.5 = equal weight (default)\n    - 1.0 = vector only\n    Only used when ranker=\"weighted\" and weights is not provided.\n    Falls back to VectorStoresConfig.chunk_retrieval_params.weighted_search_alpha if not provided.\n:param impact_factor: (Optional) Impact factor (k) for RRF algorithm.\n    Lower values emphasize higher-ranked results. Default: 60.0 (optimal from research).\n    Only used when ranker=\"rrf\".\n    Falls back to VectorStoresConfig.chunk_retrieval_params.rrf_impact_factor if not provided.\n:param weights: (Optional) Dictionary of weights for combining different signal types.\n    Keys can be \"vector\", \"keyword\", \"neural\". Values should sum to 1.0.\n    Used when combining algorithm-based reranking with neural reranking.\n    Example: {\"vector\": 0.3, \"keyword\": 0.3, \"neural\": 0.4}\n:param model: (Optional) Model identifier for neural reranker (e.g., \"transformers/Qwen/Qwen3-Reranker-0.6B\").\n    Required when ranker=\"neural\" or when weights contains \"neural\"."
             },
             "SecurityScheme": {
                 "anyOf": [
@@ -19726,9 +19898,9 @@
                     {
                         "detail": {
                             "cause": "Connection error while trying to reach backend service.",
-                            "response": "Unable to connect to Llama Stack"
+                            "response": "Unable to connect to OGX"
                         },
-                        "label": "llama stack"
+                        "label": "ogx"
                     },
                     {
                         "detail": {
@@ -19739,12 +19911,48 @@
                     }
                 ]
             },
+            "ShieldConfiguration": {
+                "properties": {
+                    "shield_id": {
+                        "type": "string",
+                        "minLength": 1,
+                        "title": "Shield ID",
+                        "description": "Static shield capability identifier. Supported values: lightspeed_pii_redaction, lightspeed_question_validity."
+                    },
+                    "provider_id": {
+                        "type": "string",
+                        "minLength": 1,
+                        "title": "Provider ID",
+                        "description": "Shield provider identification."
+                    },
+                    "provider_shield_id": {
+                        "type": "string",
+                        "minLength": 1,
+                        "title": "Provider shield ID",
+                        "description": "Provider-specific shield resource identifier. For 'lightspeed_question_validity' this is the model id used by the guardrail."
+                    },
+                    "params": {
+                        "additionalProperties": true,
+                        "type": "object",
+                        "title": "Shield parameters",
+                        "description": "Optional capability-specific shield parameters."
+                    }
+                },
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                    "shield_id",
+                    "provider_id",
+                    "provider_shield_id"
+                ],
+                "title": "ShieldConfiguration",
+                "description": "Shield resource configuration owned by Lightspeed Core Stack.\n\nMirrors the former Llama Stack / OGX ``registered_resources.shields``\nentry. Shields are configured in ``lightspeed-stack.yaml`` and consumed\nby LCORE Pydantic AI capabilities, not registered with the Llama Stack\nSafety API.\n\n``shield_id`` must be one of the supported capability IDs:\n``lightspeed_question_validity`` or ``lightspeed_pii_redaction``.\n\nAttributes:\n    shield_id: Static capability identifier (see ``SUPPORTED_SHIELD_IDS``).\n    provider_id: Shield provider identification (typically matches shield_id).\n    provider_shield_id: Provider resource id; for question-validity this is\n        the model id used by the guard.\n    params: Capability-specific parameters (prompt overrides for question\n        validity; ``rules`` / ``case_sensitive`` for PII redaction)."
+            },
             "ShieldsResponse": {
                 "properties": {
                     "shields": {
                         "items": {
-                            "additionalProperties": true,
-                            "type": "object"
+                            "$ref": "#/components/schemas/CatalogShield"
                         },
                         "type": "array",
                         "title": "Shields",
@@ -19761,10 +19969,10 @@
                     {
                         "shields": [
                             {
-                                "identifier": "lightspeed_question_validity-shield",
+                                "identifier": "lightspeed_question_validity",
                                 "params": {},
                                 "provider_id": "lightspeed_question_validity",
-                                "provider_resource_id": "lightspeed_question_validity-shield",
+                                "provider_resource_id": "gpt-4o-mini",
                                 "type": "shield"
                             }
                         ]
@@ -20164,8 +20372,7 @@
                 "properties": {
                     "tools": {
                         "items": {
-                            "additionalProperties": true,
-                            "type": "object"
+                            "$ref": "#/components/schemas/CatalogTool"
                         },
                         "type": "array",
                         "title": "Tools",

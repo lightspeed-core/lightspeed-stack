@@ -258,7 +258,7 @@ make run CONFIG=examples/lightspeed-stack-azure-entraid-service.yaml
 
 | Name                   | Type   | Pip Dependencies                                                                                     | Supported in LCS |
 |------------------------|--------|------------------------------------------------------------------------------------------------------|:----------------:|
-| rag-runtime            | inline | `chardet`,`pypdf`, `tqdm`, `numpy`, `scikit-learn`, `scipy`, `nltk`, `sentencepiece`, `transformers` | ✅               |
+| file-search            | inline | `chardet`,`pypdf`, `tqdm`, `numpy`, `scikit-learn`, `scipy`, `nltk`, `sentencepiece`, `transformers` | ✅               |
 | bing-search            | remote | `requests`                                                                                           | ❌               |
 | brave-search           | remote | `requests`                                                                                           | ❌               |
 | model-context-protocol | remote | `mcp>=1.8.1`                                                                                         | ✅               |

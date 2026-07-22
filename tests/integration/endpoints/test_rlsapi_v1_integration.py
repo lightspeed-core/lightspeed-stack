@@ -14,7 +14,7 @@ from typing import Any, cast
 import pytest
 from fastapi import HTTPException, status
 from fastapi.testclient import TestClient
-from llama_stack_client import APIConnectionError
+from ogx_client import APIConnectionError
 from pytest_mock import MockerFixture
 
 import constants
@@ -32,6 +32,7 @@ from models.api.requests.rlsapi import (
 from models.api.responses.successful.rlsapi import RlsapiV1InferResponse
 from models.common.moderation import ShieldModerationPassed
 from tests.unit.utils.auth_helpers import mock_authorization_resolvers
+from utils.shields import InputShieldsResult
 from utils.suid import check_suid
 from version import __version__
 
@@ -81,15 +82,6 @@ def mock_authorization_fixture(mocker: MockerFixture) -> None:
     mock_authorization_resolvers(mocker)
 
 
-@pytest.fixture(autouse=True, name="mock_shield_passed")
-def mock_shield_passed_fixture(mocker: MockerFixture) -> None:
-    """Mock shield moderation to pass for all integration tests."""
-    mocker.patch(
-        "app.endpoints.rlsapi_v1.run_shield_moderation",
-        new=mocker.AsyncMock(return_value=ShieldModerationPassed()),
-    )
-
-
 @pytest.fixture(autouse=True, name="mock_model_configured")
 def mock_model_configured_fixture(mocker: MockerFixture) -> None:
     """Mock model existence check to pass for all integration tests."""
@@ -97,6 +89,23 @@ def mock_model_configured_fixture(mocker: MockerFixture) -> None:
         "app.endpoints.rlsapi_v1.check_model_configured",
         new=mocker.AsyncMock(return_value=True),
     )
+
+
+@pytest.fixture(autouse=True, name="mock_input_shields_passed")
+def mock_input_shields_passed_fixture(mocker: MockerFixture) -> None:
+    """Pass input shields for all rlsapi integration tests by default."""
+    mocker.patch(
+        "app.endpoints.rlsapi_v1.get_shields_for_request",
+        return_value=[],
+    )
+
+    async def _pass(text: str, _shields: Any, *, client: Any = None) -> Any:
+        _ = client
+        return InputShieldsResult(
+            text=text, blocked=False, moderation=ShieldModerationPassed()
+        )
+
+    mocker.patch("app.endpoints.rlsapi_v1.run_input_shields", side_effect=_pass)
 
 
 def _create_mock_response_output(mocker: MockerFixture, text: str) -> Any:
@@ -126,9 +135,7 @@ def _setup_responses_mock(
     mock_client = mocker.Mock()
     mock_client.responses = mock_responses
 
-    mock_holder_class = mocker.patch(
-        "app.endpoints.rlsapi_v1.AsyncLlamaStackClientHolder"
-    )
+    mock_holder_class = mocker.patch("app.endpoints.rlsapi_v1.AsyncOgxClientHolder")
     mock_holder_class.return_value.get_client.return_value = mock_client
 
     return mock_client
@@ -275,9 +282,7 @@ async def test_rlsapi_v1_infer_connection_error_returns_503(
     mock_client = mocker.Mock()
     mock_client.responses = mock_responses
 
-    mock_holder_class = mocker.patch(
-        "app.endpoints.rlsapi_v1.AsyncLlamaStackClientHolder"
-    )
+    mock_holder_class = mocker.patch("app.endpoints.rlsapi_v1.AsyncOgxClientHolder")
     mock_holder_class.return_value.get_client.return_value = mock_client
 
     with pytest.raises(HTTPException) as exc_info:
@@ -292,7 +297,7 @@ async def test_rlsapi_v1_infer_connection_error_returns_503(
     assert isinstance(exc_info.value.detail, dict)
     assert "response" in exc_info.value.detail
     detail = cast(dict[str, str], exc_info.value.detail)
-    assert "Llama Stack" in detail["response"]
+    assert "OGX" in detail["response"]
 
 
 @pytest.mark.asyncio
@@ -318,9 +323,7 @@ async def test_rlsapi_v1_infer_fallback_response_empty_output(
     mock_client = mocker.Mock()
     mock_client.responses = mock_responses
 
-    mock_holder_class = mocker.patch(
-        "app.endpoints.rlsapi_v1.AsyncLlamaStackClientHolder"
-    )
+    mock_holder_class = mocker.patch("app.endpoints.rlsapi_v1.AsyncOgxClientHolder")
     mock_holder_class.return_value.get_client.return_value = mock_client
 
     response = await infer_endpoint(
@@ -361,9 +364,7 @@ async def test_rlsapi_v1_infer_input_source_combination(
     mock_client = mocker.Mock()
     mock_client.responses = mock_responses
 
-    mock_holder_class = mocker.patch(
-        "app.endpoints.rlsapi_v1.AsyncLlamaStackClientHolder"
-    )
+    mock_holder_class = mocker.patch("app.endpoints.rlsapi_v1.AsyncOgxClientHolder")
     mock_holder_class.return_value.get_client.return_value = mock_client
 
     await infer_endpoint(
@@ -424,9 +425,7 @@ async def test_rlsapi_v1_infer_no_mcp_servers_passes_empty_tools(
     mock_client = mocker.Mock()
     mock_client.responses = mock_responses
 
-    mock_holder_class = mocker.patch(
-        "app.endpoints.rlsapi_v1.AsyncLlamaStackClientHolder"
-    )
+    mock_holder_class = mocker.patch("app.endpoints.rlsapi_v1.AsyncOgxClientHolder")
     mock_holder_class.return_value.get_client.return_value = mock_client
 
     mocker.patch(
@@ -469,9 +468,7 @@ async def test_rlsapi_v1_infer_mcp_tools_passed_to_llm(
     mock_client = mocker.Mock()
     mock_client.responses = mock_responses
 
-    mock_holder_class = mocker.patch(
-        "app.endpoints.rlsapi_v1.AsyncLlamaStackClientHolder"
-    )
+    mock_holder_class = mocker.patch("app.endpoints.rlsapi_v1.AsyncOgxClientHolder")
     mock_holder_class.return_value.get_client.return_value = mock_client
 
     mcp_tools = [

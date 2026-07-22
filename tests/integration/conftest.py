@@ -8,8 +8,8 @@ from typing import Any, Optional
 import pytest
 from fastapi import Request, Response
 from fastapi.testclient import TestClient
-from llama_stack_api.openai_responses import OpenAIResponseObject
-from llama_stack_client.types import VersionInfo
+from ogx_api.openai_responses import OpenAIResponseObject
+from ogx_client.types import ListModelsResponse, VersionInfo
 from pydantic_ai import AgentRunResultEvent
 from pydantic_ai.messages import (
     ModelMessage,
@@ -714,8 +714,8 @@ def mock_request_with_auth_fixture() -> Request:
     return request
 
 
-@pytest.fixture(name="mock_llama_stack_client")
-def mock_llama_stack_client_fixture(
+@pytest.fixture(name="mock_ogx_client")
+def mock_ogx_client_fixture(
     mocker: MockerFixture,
 ) -> Generator[Any, None, None]:
     """Mock only the external Llama Stack client for integration tests.
@@ -724,7 +724,7 @@ def mock_llama_stack_client_fixture(
     defaults for integration tests. Individual tests can override specific
     behaviors as needed.
 
-    Patches AsyncLlamaStackClientHolder in both app.endpoints.query and app.main
+    Patches AsyncOgxClientHolder in both app.endpoints.query and app.main
     to ensure the mock is active during TestClient startup (when app.main imports
     and initializes the client) and during endpoint execution.
 
@@ -734,13 +734,13 @@ def mock_llama_stack_client_fixture(
     Yields:
         mock_client: The mocked Llama Stack client instance.
     """
-    # Patch AsyncLlamaStackClientHolder at multiple import locations
+    # Patch AsyncOgxClientHolder at multiple import locations
     # This ensures the mock is active both during app startup (app.main)
     # and during endpoint execution (query, conversations_v1, responses, etc.)
-    mock_holder_class = mocker.patch("app.endpoints.query.AsyncLlamaStackClientHolder")
-    mocker.patch("app.main.AsyncLlamaStackClientHolder", mock_holder_class)
+    mock_holder_class = mocker.patch("app.endpoints.query.AsyncOgxClientHolder")
+    mocker.patch("app.main.AsyncOgxClientHolder", mock_holder_class)
     mocker.patch(
-        "app.endpoints.conversations_v1.AsyncLlamaStackClientHolder", mock_holder_class
+        "app.endpoints.conversations_v1.AsyncOgxClientHolder", mock_holder_class
     )
 
     mock_client = mocker.AsyncMock()
@@ -773,7 +773,9 @@ def mock_llama_stack_client_fixture(
         "provider_id": "test-provider",
         "model_type": "llm",
     }
-    mock_client.models.list.return_value = [mock_model]
+    mock_client.models.list.return_value = ListModelsResponse.model_construct(
+        data=[mock_model]
+    )
 
     # Mock shields.list (empty by default)
     mock_client.shields.list.return_value = []

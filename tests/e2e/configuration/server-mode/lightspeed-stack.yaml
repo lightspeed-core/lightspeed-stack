@@ -33,3 +33,14 @@ byok_rag:
 rag:
   tool:
     - e2e-test-docs
+
+# Shields are owned by LCORE (not Llama Stack Safety API).
+shields:
+  - shield_id: lightspeed_pii_redaction
+    provider_id: lightspeed_pii_redaction
+    provider_shield_id: lightspeed_pii_redaction
+    params:
+      case_sensitive: false
+      rules:
+        - pattern: '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}'
+          replacement: '[REDACTED_EMAIL]'

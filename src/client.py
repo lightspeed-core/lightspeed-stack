@@ -7,8 +7,9 @@ from typing import Optional, cast
 
 import yaml
 from fastapi import HTTPException
-from llama_stack.core.library_client import AsyncLlamaStackAsLibraryClient
-from llama_stack_client import APIConnectionError, APIStatusError, AsyncLlamaStackClient
+from ogx.core.library_client import AsyncOGXAsLibraryClient
+from ogx_client import APIConnectionError, APIStatusError, AsyncOgxClient
+from ogx_client.types import ListModelsResponse
 
 import constants
 from authorization.azure_token_manager import AzureEntraIDManager
@@ -28,16 +29,16 @@ from utils.types import Singleton
 logger = get_logger(__name__)
 
 
-class AsyncLlamaStackClientHolder(metaclass=Singleton):
-    """Container for an initialised AsyncLlamaStackClient."""
+class AsyncOgxClientHolder(metaclass=Singleton):
+    """Container for an initialised AsyncOgxClient."""
 
-    _lsc: Optional[AsyncLlamaStackClient] = None
+    _lsc: Optional[AsyncOgxClient] = None
     _config_path: Optional[str] = None
 
     @property
     def is_library_client(self) -> bool:
         """Check if using library mode client."""
-        return isinstance(self._lsc, AsyncLlamaStackAsLibraryClient)
+        return isinstance(self._lsc, AsyncOGXAsLibraryClient)
 
     async def load(self, llama_stack_config: LlamaStackConfiguration) -> None:
         """Initialize the Llama Stack client based on configuration."""
@@ -62,7 +63,7 @@ class AsyncLlamaStackClientHolder(metaclass=Singleton):
         inference.providers (with no config block) correctly falls through to
         synthesis. Stores the final config path for use in reload.
         """
-        logger.info("Using Llama stack as library client")
+        logger.info("Using Llama Stack as library client")
 
         # Configure logging before synthesis/enrichment so INFO lines from those
         # steps are not dropped. Without handlers, Python's lastResort only
@@ -77,13 +78,13 @@ class AsyncLlamaStackClientHolder(metaclass=Singleton):
         else:
             self._config_path = self._synthesize_library_config()
 
-        client = AsyncLlamaStackAsLibraryClient(self._config_path)
+        client = AsyncOGXAsLibraryClient(self._config_path)
         await client.initialize()
         self._lsc = client
 
-        # Re-apply logging configuration after ogx's setup_logging() is called.
+        # Re-apply logging configuration after llama-stack's setup_logging() is called.
         # This ensures the desired logging configuration is applied when
-        # using AsyncLlamaStackAsLibraryClient.
+        # using AsyncOGXAsLibraryClient.
         setup_logging()
 
     def _synthesize_library_config(self) -> str:
@@ -100,7 +101,7 @@ class AsyncLlamaStackClientHolder(metaclass=Singleton):
         config_file = os.environ.get(constants.CONFIG_PATH_ENV_VAR)
         if not config_file:
             raise ValueError(
-                f"Cannot synthesize Llama Stack config: {constants.CONFIG_PATH_ENV_VAR} "
+                f"Cannot synthesize OGX config: {constants.CONFIG_PATH_ENV_VAR} "
                 "is not set"
             )
 
@@ -119,14 +120,14 @@ class AsyncLlamaStackClientHolder(metaclass=Singleton):
 
     def _load_service_client(self, config: LlamaStackConfiguration) -> None:
         """Initialize client in service mode (remote HTTP)."""
-        logger.info("Using Llama stack running as a service")
+        logger.info("Using Llama Stack running as a service")
         logger.info(
             "Using timeout of %d seconds for Llama Stack requests", config.timeout
         )
         api_key = config.api_key.get_secret_value() if config.api_key else None
         # Convert AnyHttpUrl to string for the client
         base_url = str(config.url) if config.url else None
-        self._lsc = AsyncLlamaStackClient(
+        self._lsc = AsyncOgxClient(
             base_url=base_url, api_key=api_key, timeout=config.timeout
         )
 
@@ -166,23 +167,23 @@ class AsyncLlamaStackClientHolder(metaclass=Singleton):
             logger.warning("Failed to write enriched config: %s", e)
             return input_config_path
 
-    def get_client(self) -> AsyncLlamaStackClient:
+    def get_client(self) -> AsyncOgxClient:
         """
         Get the initialized client held by this holder.
 
         Returns:
-            AsyncLlamaStackClient: The initialized client instance.
+            AsyncOgxClient: The initialized client instance.
 
         Raises:
             RuntimeError: If the client has not been initialized; call `load(...)` first.
         """
         if not self._lsc:
             raise RuntimeError(
-                "AsyncLlamaStackClient has not been initialised. Ensure 'load(..)' has been called."
+                "AsyncOgxClient has not been initialised. Ensure 'load(..)' has been called."
             )
         return self._lsc
 
-    async def reload_library_client(self) -> AsyncLlamaStackClient:
+    async def reload_library_client(self) -> AsyncOgxClient:
         """Reload library client to pick up env var changes.
 
         For use with library mode only.
@@ -193,18 +194,18 @@ class AsyncLlamaStackClientHolder(metaclass=Singleton):
         if not self._config_path:
             raise RuntimeError("Cannot reload: config path not set")
         try:
-            client = AsyncLlamaStackAsLibraryClient(self._config_path)
+            client = AsyncOGXAsLibraryClient(self._config_path)
             await client.initialize()
         except APIConnectionError as e:
             error_response = ServiceUnavailableResponse(
-                backend_name="Llama Stack",
+                backend_name="OGX",
                 cause=str(e),
             )
             raise HTTPException(**error_response.model_dump()) from e
         self._lsc = client
-        # Re-apply logging configuration after ogx's setup_logging() is called.
+        # Re-apply logging configuration after llama-stack's setup_logging() is called.
         # This ensures the desired logging configuration is applied when
-        # using AsyncLlamaStackAsLibraryClient.
+        # using AsyncOGXAsLibraryClient.
         setup_logging()
 
         return client
@@ -234,7 +235,7 @@ class AsyncLlamaStackClientHolder(metaclass=Singleton):
         """
         try:
             client = self.get_client()
-            models = await client.models.list()
+            models = cast(ListModelsResponse, await client.models.list()).data
         except RuntimeError as e:
             logger.warning("Client not initialized, skipping model check: %s", e)
             return False, f"Client not initialized: {e!s}"
@@ -256,7 +257,9 @@ class AsyncLlamaStackClientHolder(metaclass=Singleton):
             try:
                 await self.reload_library_client()
                 client = self.get_client()
-                reloaded_models = await client.models.list()
+                reloaded_models = cast(
+                    ListModelsResponse, await client.models.list()
+                ).data
                 if any(m.id == model_id for m in reloaded_models):
                     logger.info(
                         "Model %s found after client reload",
@@ -279,7 +282,7 @@ class AsyncLlamaStackClientHolder(metaclass=Singleton):
         )
         return False, f"Model {model_id} not found in model registry"
 
-    async def update_azure_token(self) -> AsyncLlamaStackClient:
+    async def update_azure_token(self) -> AsyncOgxClient:
         """Apply cached Azure credentials and replace the held client.
 
         Returns:
@@ -295,17 +298,17 @@ class AsyncLlamaStackClientHolder(metaclass=Singleton):
                 return self.get_client()
 
             current_provider_data = dict(
-                cast(AsyncLlamaStackAsLibraryClient, self._lsc).provider_data or {}
+                cast(AsyncOGXAsLibraryClient, self._lsc).provider_data or {}
             )
             current_provider_data.update(updates)
-            client = AsyncLlamaStackAsLibraryClient(
+            client = AsyncOGXAsLibraryClient(
                 self._config_path, provider_data=current_provider_data
             )
             await client.initialize()
             self._lsc = client
-            # Re-apply logging configuration after ogx's setup_logging() is called.
+            # Re-apply logging configuration after llama-stack's setup_logging() is called.
             # This ensures the desired logging configuration is applied when
-            # using AsyncLlamaStackAsLibraryClient.
+            # using AsyncOGXAsLibraryClient.
             setup_logging()
 
             return client
@@ -313,7 +316,7 @@ class AsyncLlamaStackClientHolder(metaclass=Singleton):
         # Service client mode
         current_client = self.get_client()
         current_headers = current_client.default_headers or {}
-        provider_data_json = current_headers.get("X-LlamaStack-Provider-Data")
+        provider_data_json = current_headers.get("X-OGX-Provider-Data")
 
         try:
             provider_data = json.loads(provider_data_json) if provider_data_json else {}
@@ -324,7 +327,7 @@ class AsyncLlamaStackClientHolder(metaclass=Singleton):
 
         updated_headers = {
             **current_headers,
-            "X-LlamaStack-Provider-Data": json.dumps(provider_data),
+            "X-OGX-Provider-Data": json.dumps(provider_data),
         }
 
         updated_client = current_client.copy(

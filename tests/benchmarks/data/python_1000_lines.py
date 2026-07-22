@@ -439,8 +439,8 @@ from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_openai import ChatOpenAI
-from llama_stack.distribution.library_client import LlamaStackAsLibraryClient
-from llama_stack_client import LlamaStackClient
+from ogx.distribution.library_client import OGXAsLibraryClient
+from ogx_client import OgxClient
 from openai import OpenAI
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -678,7 +678,7 @@ for model in models:
 # Získání seznamu všech dostupných modelů
 
 
-client = LlamaStackClient(base_url="http://localhost:8321")
+client = OgxClient(base_url="http://localhost:8321")
 
 print(f"Using Llama Stack version {client._version}")
 
@@ -695,7 +695,7 @@ for model in models:
 # Získání seznamu všech dostupných modelů
 
 
-client = LlamaStackAsLibraryClient("run.yaml")
+client = OGXAsLibraryClient("run.yaml")
 client.initialize()
 
 print(f"Using Llama Stack version {client._version}")
@@ -709,7 +709,7 @@ for model in models:
 #
 # ### Komunikace s LLM
 
-client = LlamaStackClient(base_url="http://localhost:8321")
+client = OgxClient(base_url="http://localhost:8321")
 
 print(f"Using Llama Stack version {client._version}")
 
@@ -739,7 +739,7 @@ print(response.to_json())
 
 # ### Využití novějšího API
 
-client = LlamaStackClient(base_url="http://localhost:8321")
+client = OgxClient(base_url="http://localhost:8321")
 
 print(f"Using Llama Stack version {client._version}")
 
@@ -774,7 +774,7 @@ print(response.to_json())
 # * vytvoření nové vektorové databáze
 # * inicializace vektorové databáze
 
-client = LlamaStackClient(base_url="http://localhost:8321")
+client = OgxClient(base_url="http://localhost:8321")
 print(f"Using Llama Stack version {client._version}")
 
 vector_store_name = f"vec_{str(uuid.uuid4())[0:8]}"

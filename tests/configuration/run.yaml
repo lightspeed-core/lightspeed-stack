@@ -1,53 +1,26 @@
 version: '2'
-image_name: minimal-viable-llama-stack-configuration
 
 apis:
-  - agents
+  - responses
   - datasetio
   - eval
   - inference
   - post_training
-  - safety
   - scoring
   - tool_runtime
   - vector_io
-benchmarks: []
 container_image: null
-datasets: []
 external_providers_dir: null
 logging: null
 providers:
-  agents:
-  - provider_id: meta-reference
-    provider_type: inline::meta-reference
+  responses:
+  - provider_id: builtin
+    provider_type: inline::builtin
     config:
       persistence:
-        agent_state:
-          namespace: agents_state
-          backend: kv_default
         responses:
           table_name: agents_responses
           backend: sql_default
-  datasetio:
-  - provider_id: huggingface
-    provider_type: remote::huggingface
-    config:
-      kvstore:
-        namespace: huggingface_datasetio
-        backend: kv_default
-  - provider_id: localfs
-    provider_type: inline::localfs
-    config:
-      kvstore:
-        namespace: localfs_datasetio
-        backend: kv_default
-  eval:
-  - provider_id: meta-reference
-    provider_type: inline::meta-reference
-    config:
-      kvstore:
-        namespace: eval_store
-        backend: kv_default
   inference:
   - provider_id: openai
     provider_type: remote::openai
@@ -64,32 +37,16 @@ providers:
       distributed_backend: null
     provider_id: huggingface
     provider_type: inline::huggingface
-  safety:
-  - config:
-      excluded_categories: []
-    provider_id: llama-guard
-    provider_type: inline::llama-guard
-  scoring:
-  - config: {}
-    provider_id: basic
-    provider_type: inline::basic
-  - config: {}
-    provider_id: llm-as-judge
-    provider_type: inline::llm-as-judge
-  - config:
-      openai_api_key: '********'
-    provider_id: braintrust
-    provider_type: inline::braintrust
   telemetry:
   - config:
       service_name: ''
       sinks: sqlite
       sqlite_db_path: .llama/distributions/ollama/trace_store.db
-    provider_id: meta-reference
-    provider_type: inline::meta-reference
+    provider_id: builtin
+    provider_type: inline::builtin
   tool_runtime:
-  - provider_id: rag-runtime
-    provider_type: inline::rag-runtime
+  - provider_id: file-search
+    provider_type: inline::file-search
     config: {}
   - provider_id: model-context-protocol
     provider_type: remote::model-context-protocol
@@ -101,7 +58,6 @@ providers:
         backend: kv_rag
     provider_id: faiss
     provider_type: inline::faiss
-scoring_fns: []
 server:
   auth: null
   host: null
@@ -115,6 +71,9 @@ storage:
     kv_default:
       type: kv_sqlite
       db_path: ${env.KV_STORE_PATH:=~/.llama/storage/kv_store.db}
+    kv_rag: # Define the storage backend type for RAG
+      type: kv_sqlite
+      db_path: ${env.KV_RAG_PATH:=~/.llama/storage/rag/kv_store.db}
     sql_default:
       type: sql_sqlite
       db_path: ${env.SQL_STORE_PATH:=~/.llama/storage/sql_store.db}
@@ -129,18 +88,14 @@ storage:
       table_name: openai_conversations
       backend: sql_default
     prompts:
-      namespace: prompts
-      backend: kv_default
+      table_name: prompts
+      backend: sql_default
+    connectors:
+      table_name: connectors
+      backend: sql_default
 registered_resources:
   models: []
-  shields: []
   vector_stores: []
-  datasets: []
-  scoring_fns: []
-  benchmarks: []
-  tool_groups:
-  - toolgroup_id: builtin::rag
-    provider_id: rag-runtime
 telemetry:
   enabled: true
 vector_stores:
@@ -148,3 +103,4 @@ vector_stores:
   default_embedding_model:
     provider_id: sentence-transformers
     model_id: all-mpnet-base-v2
+distro_name: minimal-viable-llama-stack-configuration

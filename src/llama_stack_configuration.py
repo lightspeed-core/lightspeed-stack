@@ -26,7 +26,7 @@ from typing import Any, Optional
 from urllib.parse import urljoin
 
 import yaml
-from llama_stack.core.stack import replace_env_vars
+from ogx.core.stack import replace_env_vars
 from pydantic import SecretStr
 
 import constants

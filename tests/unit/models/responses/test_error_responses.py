@@ -689,12 +689,12 @@ class TestServiceUnavailableResponse:
     def test_constructor(self) -> None:
         """Test ServiceUnavailableResponse with valid parameters."""
         response = ServiceUnavailableResponse(
-            backend_name="Llama Stack", cause="Connection timeout"
+            backend_name="OGX", cause="Connection timeout"
         )
         assert isinstance(response, AbstractErrorResponse)
         assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
         assert isinstance(response.detail, DetailModel)
-        assert response.detail.response == "Unable to connect to Llama Stack"
+        assert response.detail.response == "Unable to connect to OGX"
         assert response.detail.cause == "Connection timeout"
 
     def test_different_backend_names(self) -> None:
@@ -723,24 +723,21 @@ class TestServiceUnavailableResponse:
         assert expected_count == 2
 
         # Verify example structure
-        assert "llama stack" in examples
+        assert "ogx" in examples
         assert "kubernetes api" in examples
-        llama_example = examples["llama stack"]
-        assert "value" in llama_example
-        assert "detail" in llama_example["value"]
-        assert (
-            llama_example["value"]["detail"]["response"]
-            == "Unable to connect to Llama Stack"
-        )
+        ogx_example = examples["ogx"]
+        assert "value" in ogx_example
+        assert "detail" in ogx_example["value"]
+        assert ogx_example["value"]["detail"]["response"] == "Unable to connect to OGX"
 
     def test_openapi_response_with_explicit_examples(self) -> None:
         """Test ServiceUnavailableResponse.openapi_response() with explicit examples."""
-        result = ServiceUnavailableResponse.openapi_response(examples=["llama stack"])
+        result = ServiceUnavailableResponse.openapi_response(examples=["ogx"])
         examples = result["content"]["application/json"]["examples"]
 
         # Verify only 1 example is returned when explicitly specified
         assert len(examples) == 1
-        assert "llama stack" in examples
+        assert "ogx" in examples
 
 
 class TestPromptTooLongResponse:

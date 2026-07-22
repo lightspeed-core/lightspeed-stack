@@ -5,6 +5,8 @@ from typing import Any, Optional
 from pydantic import Field
 
 from models.api.responses.successful.bases import AbstractSuccessfulResponse
+from models.common.shields import CatalogShield
+from models.common.tools import CatalogTool
 
 
 class ModelsResponse(AbstractSuccessfulResponse):
@@ -39,7 +41,7 @@ class ModelsResponse(AbstractSuccessfulResponse):
 class ToolsResponse(AbstractSuccessfulResponse):
     """Model representing a response to tools request."""
 
-    tools: list[dict[str, Any]] = Field(
+    tools: list[CatalogTool] = Field(
         description=(
             "List of tools available from all configured MCP servers and built-in toolgroups"
         ),
@@ -77,7 +79,7 @@ class ToolsResponse(AbstractSuccessfulResponse):
 class ShieldsResponse(AbstractSuccessfulResponse):
     """Model representing a response to shields request."""
 
-    shields: list[dict[str, Any]] = Field(
+    shields: list[CatalogShield] = Field(
         ...,
         description="List of shields available",
     )
@@ -88,8 +90,8 @@ class ShieldsResponse(AbstractSuccessfulResponse):
                 {
                     "shields": [
                         {
-                            "identifier": "lightspeed_question_validity-shield",
-                            "provider_resource_id": "lightspeed_question_validity-shield",
+                            "identifier": "lightspeed_question_validity",
+                            "provider_resource_id": "gpt-4o-mini",
                             "provider_id": "lightspeed_question_validity",
                             "type": "shield",
                             "params": {},
@@ -215,7 +217,7 @@ class ProvidersListResponse(AbstractSuccessfulResponse):
                         "agents": [
                             {
                                 "provider_id": "meta-reference",
-                                "provider_type": "inline::meta-reference",
+                                "provider_type": "inline::builtin",
                             },
                         ],
                     },

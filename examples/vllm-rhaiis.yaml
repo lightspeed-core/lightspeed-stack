@@ -1,20 +1,13 @@
 version: 2
-image_name: rhaiis-configuration
 
 apis:
-- agents
+- responses
 - batches
-- datasetio
-- eval
 - files
 - inference
-- safety
-- scoring
 - tool_runtime
 - vector_io
       
-benchmarks: []
-datasets: []
 # external_providers_dir: /opt/app-root/src/.llama/providers.d
 
 providers:
@@ -41,19 +34,10 @@ providers:
       storage_dir: ~/.llama/storage/files
     provider_id: meta-reference-files
     provider_type: inline::localfs
-  safety:
-  - config:
-      excluded_categories: []
-    provider_id: llama-guard
-    provider_type: inline::llama-guard
-  scoring:
-  - config: {}
-    provider_id: basic
-    provider_type: inline::basic
   tool_runtime:
   - config: {}
-    provider_id: rag-runtime
-    provider_type: inline::rag-runtime
+    provider_id: file-search
+    provider_type: inline::file-search
   vector_io:
   - config:
       persistence:
@@ -61,45 +45,21 @@ providers:
         backend: kv_default
     provider_id: faiss
     provider_type: inline::faiss
-  agents:
+  responses:
   - config:
       persistence:
-        agent_state:
-          namespace: agents_state
-          backend: kv_default
         responses:
           table_name: agents_responses
           backend: sql_default
     provider_id: meta-reference
-    provider_type: inline::meta-reference
+    provider_type: inline::builtin
   batches:
   - config:
-      kvstore:
-        namespace: batches_store
-        backend: kv_default
+      sqlstore:
+        table_name: batches
+        backend: sql_default
     provider_id: reference
     provider_type: inline::reference
-  datasetio:
-  - config:
-      kvstore:
-        namespace: huggingface_datasetio
-        backend: kv_default
-    provider_id: huggingface
-    provider_type: remote::huggingface
-  - config:
-      kvstore:
-        namespace: localfs_datasetio
-        backend: kv_default
-    provider_id: localfs
-    provider_type: inline::localfs
-  eval:
-  - config:
-      kvstore:
-        namespace: eval_store
-        backend: kv_default
-    provider_id: meta-reference
-    provider_type: inline::meta-reference
-scoring_fns: []
 server:
   port: 8321
 storage:
@@ -123,30 +83,22 @@ storage:
       table_name: openai_conversations
       backend: sql_default
     prompts:
-      namespace: prompts
-      backend: kv_default
+      table_name: prompts
+      backend: sql_default
+    connectors:
+      table_name: connectors
+      backend: sql_default
 registered_resources:
   models:
   - model_id: ${env.RHAIIS_MODEL}
     provider_id: vllm
     model_type: llm
     provider_model_id: ${env.RHAIIS_MODEL}
-  shields:
-  - shield_id: llama-guard
-    provider_id: llama-guard
-    provider_shield_id: openai/gpt-4o-mini
-  datasets: []
-  scoring_fns: []
-  benchmarks: []
-  tool_groups:
-  - toolgroup_id: builtin::rag
-    provider_id: rag-runtime
 vector_stores:
   default_provider_id: faiss
   default_embedding_model:
     provider_id: sentence-transformers
     model_id: nomic-ai/nomic-embed-text-v1.5
-safety:
-  default_shield_id: llama-guard
 telemetry:
   enabled: true
+distro_name: rhaiis-configuration

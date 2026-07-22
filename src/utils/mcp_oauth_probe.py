@@ -56,7 +56,10 @@ async def check_mcp_auth(
     probes = []
     for mcp_server in configuration.mcp_servers:
         headers = complete_headers.get(mcp_server.name, {})
-        auth_header = headers.get("Authorization")
+        auth_header = next(
+            (value for key, value in headers.items() if key.lower() == "authorization"),
+            None,
+        )
         if auth_header is not None:
             authorization = (
                 auth_header

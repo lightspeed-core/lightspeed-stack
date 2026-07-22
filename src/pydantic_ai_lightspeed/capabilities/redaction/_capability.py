@@ -257,7 +257,7 @@ def _redact_response(
 
 
 @dataclass
-class PiiRedactionCapability(AbstractCapability[Any]):
+class PiiRedactionCapability(AbstractCapability[object]):
     """Pydantic AI capability that redacts PII from agent messages.
 
     Applies configurable regex-based redaction rules to user prompt

@@ -33,7 +33,7 @@ from a2a.types import (
 )
 from a2a.utils import new_agent_text_message, new_task
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from llama_stack_client import APIConnectionError, APIStatusError
+from ogx_client import APIConnectionError, APIStatusError
 from pydantic_ai import AgentRunResultEvent
 from pydantic_ai.exceptions import AgentRunError
 from pydantic_ai.messages import (
@@ -54,7 +54,7 @@ from app.endpoints.a2a_openapi import a2a_jsonrpc_responses
 from authentication import get_auth_dependency
 from authentication.interface import AuthTuple
 from authorization.middleware import authorize
-from client import AsyncLlamaStackClientHolder
+from client import AsyncOgxClientHolder
 from configuration import configuration
 from constants import MEDIA_TYPE_EVENT_STREAM
 from log import get_logger
@@ -346,7 +346,7 @@ class A2AAgentExecutor(AgentExecutor):
         )
 
         # Get LLM client and select model
-        client = AsyncLlamaStackClientHolder().get_client()
+        client = AsyncOgxClientHolder().get_client()
         try:
             responses_params = await prepare_responses_params(
                 client,
@@ -372,7 +372,12 @@ class A2AAgentExecutor(AgentExecutor):
             )
             responses_params = compaction.params
 
-            agent = build_agent(client, responses_params, configuration.skills)
+            agent = build_agent(
+                client,
+                responses_params,
+                configuration.skills,
+                configuration.shields,
+            )
         except (AgentRunError, APIStatusError, APIConnectionError, RuntimeError) as e:
             error_response = map_agent_inference_error(e, query_request.model or "")
             logger.error("Error preparing A2A agent: %s", str(e), exc_info=True)

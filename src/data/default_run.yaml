@@ -8,8 +8,8 @@
 #
 # It is intentionally thinner than the repo-root run.yaml: it carries only the
 # APIs and providers needed to boot a minimal, queryable stack (inference,
-# safety, vector_io, agents, tool_runtime, files) plus the storage backends
-# those providers reference. tool_runtime includes rag-runtime (file_search /
+# vector_io, responses, tool_runtime, files) plus the storage backends
+# those providers reference. tool_runtime includes file-search (file_search /
 # RAG) and model-context-protocol (MCP) so those capabilities work when
 # operators enable them. Operators extend it via high-level sections or
 # `native_override`.
@@ -20,14 +20,13 @@
 version: 2
 
 apis:
-- agents
+- responses
+- conversations
 - files
 - inference
-- safety
 - tool_runtime
 - vector_io
 
-image_name: starter
 external_providers_dir: ${env.EXTERNAL_PROVIDERS_DIR:=~/.llama/providers.d}
 
 providers:
@@ -47,18 +46,13 @@ providers:
       storage_dir: ${env.SQLITE_STORE_DIR:=~/.llama/storage/files}
     provider_id: meta-reference-files
     provider_type: inline::localfs
-  safety:
-  - config:
-      excluded_categories: []
-    provider_id: llama-guard
-    provider_type: inline::llama-guard
   tool_runtime:
-  - config: {}
-    provider_id: rag-runtime
-    provider_type: inline::rag-runtime
   - config: {}
     provider_id: model-context-protocol
     provider_type: remote::model-context-protocol
+  - config: {}
+    provider_id: file-search
+    provider_type: inline::file-search
   vector_io:
   - config:
       persistence:
@@ -66,17 +60,14 @@ providers:
         backend: kv_default
     provider_id: faiss
     provider_type: inline::faiss
-  agents:
+  responses:
   - config:
       persistence:
-        agent_state:
-          namespace: agents_state
-          backend: kv_default
         responses:
           table_name: agents_responses
           backend: sql_default
     provider_id: meta-reference
-    provider_type: inline::meta-reference
+    provider_type: inline::builtin
 
 storage:
   backends:
@@ -99,29 +90,18 @@ storage:
       table_name: openai_conversations
       backend: sql_default
     prompts:
-      namespace: prompts
-      backend: kv_default
+      table_name: prompts
+      backend: sql_default
+    connectors:
+      table_name: connectors
+      backend: sql_default
 
 registered_resources:
   models: []
-  shields:
-  # NOTE: this is a minimal placeholder shield for the zero-dependency default
-  # baseline (it mirrors the repo's root run.yaml). provider_shield_id points at
-  # a chat model, NOT a real Llama Guard checkpoint, so it does not perform real
-  # safety gating. A real guard model (e.g. meta-llama/Llama-Guard-3-8B) is
-  # configured per deployment via the high-level schema or native_override, and
-  # real shield gating is exercised by the e2e suite — deliberately not pinned
-  # here so the default baseline boots with only an OPENAI_API_KEY.
-  - shield_id: llama-guard
-    provider_id: llama-guard
-    provider_shield_id: openai/gpt-4o-mini
   vector_stores: []
-  tool_groups:
-  - toolgroup_id: builtin::rag
-    provider_id: rag-runtime
 
 # REQUIRED for file_search tool calls to work. Without it, llama-stack's
-# rag-runtime silently fails all file_search operations with no error logged.
+# file-search runtime silently fails all file_search operations with no error logged.
 vector_stores:
   # LCORE-1498: Disables Llama Stack RAG annotation generation that causes
   # unwanted citation/file markers in model output.
@@ -132,5 +112,4 @@ vector_stores:
     provider_id: sentence-transformers
     model_id: nomic-ai/nomic-embed-text-v1.5
 
-safety:
-  default_shield_id: llama-guard
+distro_name: starter

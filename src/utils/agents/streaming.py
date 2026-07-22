@@ -9,7 +9,7 @@ from functools import singledispatch
 from typing import Any, Final, Optional, TypeAlias, cast
 
 from fastapi import HTTPException
-from llama_stack_client import APIConnectionError, APIStatusError
+from ogx_client import APIConnectionError, APIStatusError
 from pydantic_ai import Agent, AgentRunError, AgentRunResultEvent, ToolReturnPart
 from pydantic_ai.messages import (
     AgentStreamEvent,
@@ -56,7 +56,6 @@ from utils.agents.tool_processor import (
     process_native_tool_call,
     process_native_tool_result,
 )
-from utils.conversations import append_turn_items_to_conversation
 from utils.pydantic_ai_helpers import build_agent
 from utils.query import consume_query_tokens, store_query_results
 from utils.quota_utils import get_available_quotas
@@ -64,13 +63,13 @@ from utils.responses import (
     deduplicate_referenced_documents,
     maybe_get_topic_summary,
 )
+from utils.shields import get_shields_for_request
 from utils.stream_interrupts import (
     build_interrupted_response,
     deregister_stream,
     persist_interrupted_turn,
     register_interrupt_callback,
 )
-from utils.streaming_sse import shield_violation_generator
 
 AgentDispatchEvent: TypeAlias = AgentStreamEvent | AgentRunResultEvent
 
@@ -91,7 +90,7 @@ async def retrieve_agent_response_generator(
 
     Args:
         responses_params: Prepared Responses API parameters.
-        context: Streaming request context and moderation result.
+        context: Streaming request context.
         endpoint_path: Endpoint path used for metric labeling.
         no_tools: Whether to skip tool processing.
 
@@ -99,29 +98,16 @@ async def retrieve_agent_response_generator(
         Tuple of SSE async iterator and mutable turn summary.
     """
     turn_summary = TurnSummary()
+    shields = get_shields_for_request(
+        configuration.shields, context.query_request.shield_ids
+    )
     try:
-        if context.moderation_result.decision == "blocked":
-            turn_summary.llm_response = context.moderation_result.message
-            turn_summary.id = context.moderation_result.moderation_id
-            turn_summary.output_items = [context.moderation_result.refusal_response]
-            if not responses_params.omit_conversation:
-                await append_turn_items_to_conversation(
-                    context.client,
-                    responses_params.conversation,
-                    responses_params.input,
-                    [context.moderation_result.refusal_response],
-                )
-            media_type = context.query_request.media_type or MEDIA_TYPE_JSON
-            return (
-                shield_violation_generator(
-                    context.moderation_result.message,
-                    media_type,
-                ),
-                turn_summary,
-            )
-
         agent = build_agent(
-            context.client, responses_params, configuration.skills, no_tools=no_tools
+            context.client,
+            responses_params,
+            configuration.skills,
+            shields,
+            no_tools=no_tools,
         )
 
         return (

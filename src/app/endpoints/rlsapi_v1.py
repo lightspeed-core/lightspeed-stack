@@ -12,8 +12,8 @@ from typing import Annotated, Any, Optional, cast
 import jinja2
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from jinja2.sandbox import SandboxedEnvironment
-from llama_stack_api.openai_responses import OpenAIResponseObject
-from llama_stack_client import APIConnectionError, APIStatusError, RateLimitError
+from ogx_api.openai_responses import OpenAIResponseObject
+from ogx_client import APIConnectionError, APIStatusError, RateLimitError
 from openai._exceptions import APIStatusError as OpenAIAPIStatusError
 
 import constants
@@ -21,7 +21,7 @@ from authentication import get_auth_dependency
 from authentication.interface import AuthTuple
 from authorization.azure_token_manager import AzureEntraIDManager
 from authorization.middleware import authorize
-from client import AsyncLlamaStackClientHolder
+from client import AsyncOgxClientHolder
 from configuration import configuration
 from constants import ENDPOINT_PATH_INFER
 from log import get_logger
@@ -61,7 +61,7 @@ from utils.responses import (
     get_mcp_tools,
 )
 from utils.rh_identity import AUTH_DISABLED, get_rh_identity_context
-from utils.shields import run_shield_moderation
+from utils.shields import get_shields_for_request, run_input_shields
 from utils.suid import get_suid
 
 logger = get_logger(__name__)
@@ -94,7 +94,7 @@ infer_responses: dict[int | str, dict[str, Any]] = {
     429: QuotaExceededResponse.openapi_response(),
     500: InternalServerErrorResponse.openapi_response(examples=["configuration"]),
     503: ServiceUnavailableResponse.openapi_response(
-        examples=["llama stack", "kubernetes api"]
+        examples=["ogx", "kubernetes api"]
     ),
 }
 
@@ -184,12 +184,12 @@ async def _get_default_model_id() -> str:
         "No complete default model configured for rlsapi v1, "
         "auto-discovering LLM model"
     )
-    client = AsyncLlamaStackClientHolder().get_client()
+    client = AsyncOgxClientHolder().get_client()
     try:
-        models = await client.models.list()
+        models = (await client.models.list()).data
     except APIConnectionError as e:
         error_response = ServiceUnavailableResponse(
-            backend_name="Llama Stack",
+            backend_name="OGX",
             cause=str(e),
         )
         raise HTTPException(**error_response.model_dump()) from e
@@ -230,7 +230,7 @@ async def _resolve_validated_model_id() -> str:
         HTTPException: 503 if Llama Stack is unreachable during resolution or validation.
     """
     model_id = await _get_default_model_id()
-    client = AsyncLlamaStackClientHolder().get_client()
+    client = AsyncOgxClientHolder().get_client()
     if not await check_model_configured(client, model_id):
         _, model_name = extract_provider_and_model_from_model_id(model_id)
         error_response = NotFoundResponse(resource="model", resource_id=model_name)
@@ -264,7 +264,7 @@ async def _call_llm(
         APIConnectionError: If the Llama Stack service is unreachable.
         HTTPException: 503 if no default model is configured.
     """
-    client = AsyncLlamaStackClientHolder().get_client()
+    client = AsyncOgxClientHolder().get_client()
     resolved_model_id = model_id or await _get_default_model_id()
 
     # Handle Azure token refresh if needed
@@ -274,7 +274,7 @@ async def _call_llm(
         and AzureEntraIDManager().is_token_expired
         and AzureEntraIDManager().refresh_token()
     ):
-        client = await AsyncLlamaStackClientHolder().update_azure_token()
+        client = await AsyncOgxClientHolder().update_azure_token()
 
     logger.debug("Using model %s for rlsapi v1 inference", resolved_model_id)
 
@@ -348,52 +348,51 @@ def _queue_splunk_event(  # pylint: disable=too-many-arguments,too-many-position
     )
 
 
-async def _check_shield_moderation(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+async def _check_input_shields(
     input_text: str,
     request_id: str,
     background_tasks: BackgroundTasks,
     infer_request: RlsapiV1InferRequest,
     request: Request,
-    endpoint_path: str,
-) -> Optional[RlsapiV1InferResponse]:
-    """Run shield moderation and return a refusal response if blocked.
-
-    Uses all configured shields in Llama Stack. When no shields are
-    registered, moderation is a no-op and returns None immediately.
+) -> tuple[str, Optional[RlsapiV1InferResponse]]:
+    """Run LCORE input shields and return a refusal response if blocked.
 
     Args:
-        input_text: The combined user input to moderate.
+        input_text: The combined user input to shield.
         request_id: Unique identifier for the request.
         background_tasks: FastAPI background tasks for async Splunk event sending.
         infer_request: The original inference request (for Splunk event context).
         request: The FastAPI request object (for Splunk event context).
-        endpoint_path: The API endpoint path for metric labeling.
 
     Returns:
-        An RlsapiV1InferResponse containing the refusal message if the input
-        was blocked, or None if moderation passed.
+        Tuple of (possibly redacted input text, refusal response or None).
     """
-    client = AsyncLlamaStackClientHolder().get_client()
-    logger.info("Running shield moderation for rlsapi v1 request %s", request_id)
-    moderation_result = await run_shield_moderation(client, input_text, endpoint_path)
+    client = AsyncOgxClientHolder().get_client()
+    logger.info("Running input shields for rlsapi v1 request %s", request_id)
+    shields = get_shields_for_request(configuration.shields, shield_ids=None)
+    result = await run_input_shields(input_text, shields, client=client)
+    if not result.blocked:
+        logger.info("Input shields passed for rlsapi v1 request %s", request_id)
+        return result.text, None
 
-    if moderation_result.decision != "blocked":
-        logger.info("Shield moderation passed for rlsapi v1 request %s", request_id)
-        return None
-
-    logger.info("Shield moderation blocked rlsapi v1 request %s", request_id)
+    logger.info("Input shields blocked rlsapi v1 request %s", request_id)
+    refusal_message = (
+        result.moderation.message
+        if result.moderation.decision == "blocked"
+        else constants.DEFAULT_VIOLATION_MESSAGE
+    )
     _queue_splunk_event(
         background_tasks,
         infer_request,
         request,
         request_id,
-        moderation_result.message,
+        refusal_message,
         0.0,
         "infer_shield_blocked",
     )
-    return RlsapiV1InferResponse(
+    return result.text, RlsapiV1InferResponse(
         data=RlsapiV1InferData(
-            text=moderation_result.message,
+            text=refusal_message,
             request_id=request_id,
             tool_calls=None,
             tool_results=None,
@@ -600,7 +599,7 @@ def _map_inference_error_to_http_exception(  # pylint: disable=too-many-return-s
             type(error).__name__,
         )
         error_response = ServiceUnavailableResponse(
-            backend_name="Llama Stack",
+            backend_name="OGX",
             cause="Unable to connect to the inference backend",
         )
         return HTTPException(**error_response.model_dump())
@@ -682,17 +681,15 @@ async def infer_endpoint(  # pylint: disable=R0914,R0915
         infer_request.include_metadata,
     )
 
-    # Run shield moderation on user input before inference.
-    # Uses all configured shields; no-op when no shields are registered.
-    # Runs before model/tool discovery so blocked requests short-circuit
-    # without incurring external I/O.
-    blocked_response = await _check_shield_moderation(
+    # Run LCORE input shields before inference. No-op when no shields are
+    # configured. Runs before model/tool discovery so blocked requests
+    # short-circuit without incurring external I/O.
+    input_source, blocked_response = await _check_input_shields(
         input_source,
         request_id,
         background_tasks,
         infer_request,
         request,
-        endpoint_path,
     )
     if blocked_response is not None:
         return blocked_response

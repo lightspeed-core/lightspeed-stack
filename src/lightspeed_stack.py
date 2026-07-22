@@ -165,7 +165,7 @@ def main() -> None:
     configuration.load_configuration(args.config_file)
     logger.info("Configuration: %s", configuration.configuration)
     logger.info(
-        "Llama stack configuration: %s", configuration.llama_stack_configuration
+        "Llama Stack configuration: %s", configuration.llama_stack_configuration
     )
 
     # Deprecation schedule (Decision S2): the legacy two-file path keeps

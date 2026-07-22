@@ -1,20 +1,14 @@
 version: 2
 
 apis:
-- agents
+- responses
 - batches
-- datasetio
-- eval
 - files
 - inference
-- safety
-- scoring
 - tool_runtime
+- conversations
 - vector_io
       
-benchmarks: []
-datasets: []
-image_name: starter
 # external_providers_dir: /opt/app-root/src/.llama/providers.d
 
 providers:
@@ -41,26 +35,10 @@ providers:
       storage_dir: ${env.SQLITE_STORE_DIR:=~/.llama/storage/files}
     provider_id: meta-reference-files
     provider_type: inline::localfs
-  safety:
-  - config:
-      excluded_categories: []
-    provider_id: llama-guard
-    provider_type: inline::llama-guard
-  scoring:
-  - provider_id: basic
-    provider_type: inline::basic
-    config: {}
-  - provider_id: llm-as-judge
-    provider_type: inline::llm-as-judge
-    config: {}
-  - provider_id: braintrust
-    provider_type: inline::braintrust
-    config:
-      openai_api_key: '********'
   tool_runtime:
   - config: {} # Enable the RAG tool
-    provider_id: rag-runtime
-    provider_type: inline::rag-runtime
+    provider_id: file-search
+    provider_type: inline::file-search
   - config: {} # Enable MCP (Model Context Protocol) support
     provider_id: model-context-protocol
     provider_type: remote::model-context-protocol
@@ -71,45 +49,21 @@ providers:
         backend: kv_rag
     provider_id: faiss
     provider_type: inline::faiss
-  agents:
+  responses:
   - config:
       persistence:
-        agent_state:
-          namespace: agents_state
-          backend: kv_default
         responses:
           table_name: agents_responses
           backend: sql_default
-    provider_id: meta-reference
-    provider_type: inline::meta-reference
+    provider_id: builtin
+    provider_type: inline::builtin
   batches:
   - config:
-      kvstore:
-        namespace: batches_store
-        backend: kv_default
+      sqlstore:
+        table_name: batches
+        backend: sql_default
     provider_id: reference
     provider_type: inline::reference
-  datasetio:
-  - config:
-      kvstore:
-        namespace: huggingface_datasetio
-        backend: kv_default
-    provider_id: huggingface
-    provider_type: remote::huggingface
-  - config:
-      kvstore:
-        namespace: localfs_datasetio
-        backend: kv_default
-    provider_id: localfs
-    provider_type: inline::localfs
-  eval:
-  - config:
-      kvstore:
-        namespace: eval_store
-        backend: kv_default
-    provider_id: meta-reference
-    provider_type: inline::meta-reference
-scoring_fns: []
 server:
   port: 8321
 storage:
@@ -136,8 +90,11 @@ storage:
       table_name: openai_conversations
       backend: sql_default
     prompts:
-      namespace: prompts
-      backend: kv_default
+      table_name: prompts
+      backend: sql_default
+    connectors:
+      table_name: connectors
+      backend: sql_default
 registered_resources:
   models: 
   - model_id: custom-watsonx-model
@@ -150,23 +107,14 @@ registered_resources:
     provider_model_id: all-mpnet-base-v2
     metadata:
       embedding_dimension: 768
-  shields:
-  - shield_id: llama-guard
-    provider_id: llama-guard
-    provider_shield_id: openai/gpt-4o-mini
   vector_stores: 
   - embedding_dimension: 768
     embedding_model: sentence-transformers/all-mpnet-base-v2
     provider_id: faiss
     vector_store_id: ${env.FAISS_VECTOR_STORE_ID}
-  datasets: []
-  scoring_fns: []
-  benchmarks: []
-  tool_groups:
-  - toolgroup_id: builtin::rag # Register the RAG tool
-    provider_id: rag-runtime
 vector_stores:
   default_provider_id: faiss
   default_embedding_model: # Define the default embedding model for RAG
     provider_id: sentence-transformers
     model_id: all-mpnet-base-v2
+distro_name: starter

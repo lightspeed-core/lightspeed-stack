@@ -22,7 +22,8 @@ from a2a.types import (
 )
 from a2a.utils import new_agent_text_message
 from fastapi import HTTPException, Request
-from llama_stack_client import APIConnectionError
+from ogx_client import APIConnectionError
+from ogx_client.types import ListModelsResponse
 from pydantic_ai import AgentRunResultEvent
 from pydantic_ai.exceptions import AgentRunError
 from pydantic_ai.messages import (
@@ -724,7 +725,7 @@ class TestA2AAgentExecutor:
             request=mock_request,
         )
         mocker.patch(
-            "app.endpoints.a2a.AsyncLlamaStackClientHolder"
+            "app.endpoints.a2a.AsyncOgxClientHolder"
         ).return_value.get_client.return_value = mock_client
 
         # prepare_responses_params raises HTTPException when APIConnectionError occurs
@@ -735,7 +736,7 @@ class TestA2AAgentExecutor:
 
         assert exc_info.value.status_code == 503
         # Verify error detail contains helpful info
-        assert "Unable to connect to Llama Stack" in str(exc_info.value.detail)
+        assert "Unable to connect to OGX" in str(exc_info.value.detail)
 
     @pytest.mark.asyncio
     async def test_process_task_streaming_handles_api_connection_error(  # pylint: disable=too-many-locals
@@ -775,10 +776,10 @@ class TestA2AAgentExecutor:
 
         # Mock the client
         mock_client = mocker.AsyncMock()
-        mock_models = [mocker.MagicMock()]
+        mock_models = ListModelsResponse.model_construct(data=[mocker.MagicMock()])
         mock_client.models.list = mocker.AsyncMock(return_value=mock_models)
         mocker.patch(
-            "app.endpoints.a2a.AsyncLlamaStackClientHolder"
+            "app.endpoints.a2a.AsyncOgxClientHolder"
         ).return_value.get_client.return_value = mock_client
 
         # Mock prepare_responses_params
@@ -860,9 +861,11 @@ class TestA2AAgentExecutor:
         )
 
         mock_client = mocker.AsyncMock()
-        mock_client.models.list = mocker.AsyncMock(return_value=[mocker.MagicMock()])
+        mock_client.models.list = mocker.AsyncMock(
+            return_value=ListModelsResponse.model_construct(data=[mocker.MagicMock()])
+        )
         mocker.patch(
-            "app.endpoints.a2a.AsyncLlamaStackClientHolder"
+            "app.endpoints.a2a.AsyncOgxClientHolder"
         ).return_value.get_client.return_value = mock_client
 
         mock_responses_params = mocker.Mock()
@@ -935,9 +938,11 @@ class TestA2AAgentExecutor:
         )
 
         mock_client = mocker.AsyncMock()
-        mock_client.models.list = mocker.AsyncMock(return_value=[mocker.MagicMock()])
+        mock_client.models.list = mocker.AsyncMock(
+            return_value=ListModelsResponse.model_construct(data=[mocker.MagicMock()])
+        )
         mocker.patch(
-            "app.endpoints.a2a.AsyncLlamaStackClientHolder"
+            "app.endpoints.a2a.AsyncOgxClientHolder"
         ).return_value.get_client.return_value = mock_client
 
         mock_params = mocker.Mock()

@@ -10,21 +10,21 @@ from typing import Annotated, Any, Final, NoReturn, Optional, cast
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
-from llama_stack_api import (
+from ogx_api import (
     OpenAIResponseObject,
     OpenAIResponseObjectStream,
     OpenAIResponseOutput,
 )
-from llama_stack_api import (
+from ogx_api import (
     OpenAIResponseObjectStreamResponseOutputItemAdded as OutputItemAddedChunk,
 )
-from llama_stack_api import (
+from ogx_api import (
     OpenAIResponseObjectStreamResponseOutputItemDone as OutputItemDoneChunk,
 )
-from llama_stack_client import (
+from ogx_client import (
     APIConnectionError,
 )
-from llama_stack_client import (
+from ogx_client import (
     APIStatusError as LLSApiStatusError,
 )
 from openai._exceptions import (
@@ -40,7 +40,7 @@ from authentication import get_auth_dependency
 from authentication.interface import AuthTuple
 from authorization.azure_token_manager import AzureEntraIDManager
 from authorization.middleware import authorize
-from client import AsyncLlamaStackClientHolder
+from client import AsyncOgxClientHolder
 from configuration import configuration
 from constants import ENDPOINT_PATH_RESPONSES, SUBSTITUTED_INSTRUCTIONS_PLACEHOLDER
 from log import get_logger
@@ -63,7 +63,7 @@ from models.common.moderation import ShieldModerationBlocked
 from models.common.responses.contexts import ResponsesContext
 from models.common.responses.responses_api_params import ResponsesApiParams
 from models.common.responses.types import ResponseInput
-from models.common.turn_summary import TurnSummary
+from models.common.turn_summary import RAGContext, TurnSummary
 from models.config import Action
 from utils.conversation_compaction import (
     apply_compaction_blocking,
@@ -105,7 +105,11 @@ from utils.responses import (
     select_model_for_responses,
 )
 from utils.rh_identity import get_rh_identity_context
-from utils.shields import run_shield_moderation
+from utils.shields import (
+    get_shields_for_request,
+    run_input_shields,
+    validate_shield_ids_override,
+)
 from utils.suid import (
     normalize_conversation_id,
 )
@@ -161,7 +165,7 @@ responses_response: dict[int | str, dict[str, Any]] = {
     429: QuotaExceededResponse.openapi_response(),
     500: InternalServerErrorResponse.openapi_response(examples=["configuration"]),
     503: ServiceUnavailableResponse.openapi_response(
-        examples=["llama stack", "kubernetes api"]
+        examples=["ogx", "kubernetes api"]
     ),
 }
 
@@ -185,7 +189,7 @@ def _http_exception_for_response_api_error(
         error_response = PromptTooLongResponse(model=api_params.model)
     elif isinstance(error, APIConnectionError):
         error_response = ServiceUnavailableResponse(
-            backend_name="Llama Stack",
+            backend_name="OGX",
             cause=str(error),
         )
     elif isinstance(error, (LLSApiStatusError, OpenAIAPIStatusError)):
@@ -395,7 +399,7 @@ async def responses_endpoint_handler(
     )
     updated_request.conversation = response_context.conversation
     updated_request.generate_topic_summary = response_context.generate_topic_summary
-    client = AsyncLlamaStackClientHolder().get_client()
+    client = AsyncOgxClientHolder().get_client()
 
     # LCORE-specific: Automatically select model if not provided in request
     # This extends the base LLS API which requires model to be specified.
@@ -414,7 +418,7 @@ async def responses_endpoint_handler(
         and AzureEntraIDManager().is_token_expired
         and AzureEntraIDManager().refresh_token()
     ):
-        client = await AsyncLlamaStackClientHolder().update_azure_token()
+        client = await AsyncOgxClientHolder().update_azure_token()
 
     input_text = (
         original_request.input
@@ -424,12 +428,27 @@ async def responses_endpoint_handler(
     attachments_text = extract_attachments_text(original_request.input)
 
     endpoint_path = ENDPOINT_PATH_RESPONSES
-    moderation_result = await run_shield_moderation(
-        client,
-        input_text + "\n\n" + attachments_text,
-        endpoint_path,
-        original_request.shield_ids,
+    validate_shield_ids_override(original_request.shield_ids, configuration)
+    shields = get_shields_for_request(
+        configuration.shields, original_request.shield_ids
     )
+    moderation_input = (
+        input_text if not attachments_text else f"{input_text}\n\n{attachments_text}"
+    )
+    input_shields = await run_input_shields(
+        moderation_input,
+        shields,
+        client=client,
+    )
+    moderation_result = input_shields.moderation
+    # When input was plain text, apply any PII redaction back onto the request.
+    if (
+        moderation_result.decision == "passed"
+        and isinstance(original_request.input, str)
+        and input_shields.text != moderation_input
+    ):
+        input_text = input_shields.text
+        updated_request.input = input_text
 
     filter_server_tools = (
         request.headers.get("X-LCS-Merge-Server-Tools", "").lower() == "true"
@@ -451,18 +470,19 @@ async def responses_endpoint_handler(
         if original_request.tools is not None
         else None
     )
-    # Build RAG context from Inline RAG sources
-    inline_rag_context = await build_rag_context(
-        client,
-        moderation_result.decision,
-        input_text,
-        vector_store_ids,
-        original_request.solr,
-    )
+    # Build RAG context from Inline RAG sources (skip when shields blocked).
     if moderation_result.decision == "passed":
+        inline_rag_context = await build_rag_context(
+            client,
+            input_text,
+            vector_store_ids,
+            original_request.solr,
+        )
         updated_request.input = append_inline_rag_context_to_responses_input(
             original_request.input, inline_rag_context.context_text
         )
+    else:
+        inline_rag_context = RAGContext()
 
     if "max_infer_iters" not in original_request.model_fields_set:
         updated_request.max_infer_iters = configuration.inference.max_infer_iters
@@ -559,7 +579,7 @@ async def handle_streaming_response(
     """Handle streaming response from Responses API.
 
     Args:
-        client: The AsyncLlamaStackClient instance
+        client: The AsyncOgxClient instance
         original_request: Original request (read-only)
         api_params: API parameters
         responses_context: Responses context
@@ -582,7 +602,9 @@ async def handle_streaming_response(
         inference_start_time = time.monotonic()
         try:
             response = await context.client.responses.create(
-                **api_params.model_dump(exclude_none=True)
+                **api_params.model_dump(
+                    exclude_none=True, exclude={"safety_identifier"}
+                )
             )
             generator = response_generator(
                 stream=cast(AsyncIterator[OpenAIResponseObjectStream], response),
@@ -903,6 +925,9 @@ async def response_generator(
                 chunk_dict["response"]["conversation"] = normalize_conversation_id(
                     api_params.conversation
                 )
+                chunk_dict["response"][
+                    "safety_identifier"
+                ] = api_params.safety_identifier
                 _sanitize_response_dict(
                     chunk_dict["response"],
                     configured_mcp_labels,
@@ -1082,7 +1107,9 @@ async def handle_non_streaming_response(
             api_response = cast(
                 OpenAIResponseObject,
                 await context.client.responses.create(
-                    **api_params.model_dump(exclude_none=True)
+                    **api_params.model_dump(
+                        exclude_none=True, exclude={"safety_identifier"}
+                    )
                 ),
             )
             _record_response_inference_result(
@@ -1182,6 +1209,7 @@ async def handle_non_streaming_response(
     response = ResponsesResponse.model_validate(
         {
             **response_dict,
+            "safety_identifier": api_params.safety_identifier,
             "available_quotas": available_quotas,
             "conversation": normalize_conversation_id(api_params.conversation),
             "completed_at": int(completed_at.timestamp()),

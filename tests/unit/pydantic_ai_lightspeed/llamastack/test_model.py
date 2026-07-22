@@ -20,7 +20,7 @@ from pytest_mock import MockerFixture
 from models.common.responses.responses_api_params import ResponsesApiParams
 from pydantic_ai_lightspeed.llamastack._model import (
     _LLS_RESPONSES_EXTRA_FIELDS,
-    LlamaStackResponsesModel,
+    OgxResponsesModel,
     _FilteredResponseStream,
     _model_settings_from_responses_params,
 )
@@ -119,27 +119,26 @@ class TestModelSettingsFromResponsesParams:
         assert "openai_previous_response_id" not in settings
 
 
-class TestFromLlamaStackClient:
-    """Tests for LlamaStackResponsesModel.from_llama_stack_client factory."""
+class TestFromOgxClient:
+    """Tests for OgxResponsesModel.from_ogx_client factory."""
 
     def test_with_responses_params(self, mocker: MockerFixture) -> None:
         """Test that responses_params is converted and forwarded."""
         mock_provider = mocker.Mock()
         mocker.patch(
-            "pydantic_ai_lightspeed.llamastack._model.LlamaStackProvider"
-            ".from_llama_stack_client",
+            "pydantic_ai_lightspeed.llamastack._model.OgxProvider.from_ogx_client",
             return_value=mock_provider,
         )
         mock_init = mocker.patch.object(
-            LlamaStackResponsesModel, "__init__", return_value=None
+            OgxResponsesModel, "__init__", return_value=None
         )
 
         params = _make_params(temperature=0.5)
         client = mocker.Mock()
-        result = LlamaStackResponsesModel.from_llama_stack_client(
+        result = OgxResponsesModel.from_ogx_client(
             "test-model", client, responses_params=params
         )
-        assert isinstance(result, LlamaStackResponsesModel)
+        assert isinstance(result, OgxResponsesModel)
         args, kwargs = mock_init.call_args
         assert kwargs["settings"]["temperature"] == 0.5
         assert kwargs["provider"] is mock_provider
@@ -150,21 +149,20 @@ class TestFromLlamaStackClient:
         """Test that model_settings is forwarded directly."""
         mock_provider = mocker.Mock()
         mocker.patch(
-            "pydantic_ai_lightspeed.llamastack._model.LlamaStackProvider"
-            ".from_llama_stack_client",
+            "pydantic_ai_lightspeed.llamastack._model.OgxProvider.from_ogx_client",
             return_value=mock_provider,
         )
         mock_init = mocker.patch.object(
-            LlamaStackResponsesModel, "__init__", return_value=None
+            OgxResponsesModel, "__init__", return_value=None
         )
 
         settings: ModelSettings = {"temperature": 0.9}
         client = mocker.Mock()
-        result = LlamaStackResponsesModel.from_llama_stack_client(
+        result = OgxResponsesModel.from_ogx_client(
             "test-model", client, model_settings=settings
         )
 
-        assert isinstance(result, LlamaStackResponsesModel)
+        assert isinstance(result, OgxResponsesModel)
         args, kwargs = mock_init.call_args
         assert kwargs["settings"] is settings
         assert kwargs["provider"] is mock_provider
@@ -175,18 +173,17 @@ class TestFromLlamaStackClient:
         """Test that settings is None when neither param is provided."""
         mock_provider = mocker.Mock()
         mocker.patch(
-            "pydantic_ai_lightspeed.llamastack._model.LlamaStackProvider"
-            ".from_llama_stack_client",
+            "pydantic_ai_lightspeed.llamastack._model.OgxProvider.from_ogx_client",
             return_value=mock_provider,
         )
         mock_init = mocker.patch.object(
-            LlamaStackResponsesModel, "__init__", return_value=None
+            OgxResponsesModel, "__init__", return_value=None
         )
 
         client = mocker.Mock()
-        result = LlamaStackResponsesModel.from_llama_stack_client("test-model", client)
+        result = OgxResponsesModel.from_ogx_client("test-model", client)
 
-        assert isinstance(result, LlamaStackResponsesModel)
+        assert isinstance(result, OgxResponsesModel)
         args, kwargs = mock_init.call_args
         assert kwargs["settings"] is None
         assert kwargs["provider"] is mock_provider
@@ -196,8 +193,7 @@ class TestFromLlamaStackClient:
     def test_both_raises_value_error(self, mocker: MockerFixture) -> None:
         """Test that providing both raises ValueError."""
         mocker.patch(
-            "pydantic_ai_lightspeed.llamastack._model.LlamaStackProvider"
-            ".from_llama_stack_client",
+            "pydantic_ai_lightspeed.llamastack._model.OgxProvider.from_ogx_client",
             return_value=mocker.Mock(),
         )
 
@@ -206,7 +202,7 @@ class TestFromLlamaStackClient:
         client = mocker.Mock()
 
         with pytest.raises(ValueError, match="ResponsesApiParams or ModelSetting"):
-            LlamaStackResponsesModel.from_llama_stack_client(
+            OgxResponsesModel.from_ogx_client(
                 "test-model",
                 client,
                 responses_params=params,
@@ -215,16 +211,16 @@ class TestFromLlamaStackClient:
 
 
 class TestPrepareConversationContinuation:
-    """Tests for LlamaStackResponsesModel._prepare_conversation_continuation."""
+    """Tests for OgxResponsesModel._prepare_conversation_continuation."""
 
     @pytest.fixture(name="model")
-    def model_fixture(self, mocker: MockerFixture) -> LlamaStackResponsesModel:
-        """Create a LlamaStackResponsesModel with mocked __init__."""
-        mocker.patch.object(LlamaStackResponsesModel, "__init__", return_value=None)
-        return LlamaStackResponsesModel("test-model")
+    def model_fixture(self, mocker: MockerFixture) -> OgxResponsesModel:
+        """Create a OgxResponsesModel with mocked __init__."""
+        mocker.patch.object(OgxResponsesModel, "__init__", return_value=None)
+        return OgxResponsesModel("test-model")
 
     def test_none_settings_returns_unchanged(
-        self, model: LlamaStackResponsesModel, mocker: MockerFixture
+        self, model: OgxResponsesModel, mocker: MockerFixture
     ) -> None:
         """Test that None model_settings returns messages and settings unchanged."""
         messages = [mocker.Mock()]
@@ -234,9 +230,7 @@ class TestPrepareConversationContinuation:
         assert result_msgs is messages
         assert result_settings is None
 
-    def test_empty_settings_returns_unchanged(
-        self, model: LlamaStackResponsesModel
-    ) -> None:
+    def test_empty_settings_returns_unchanged(self, model: OgxResponsesModel) -> None:
         """Test that empty dict model_settings returns unchanged."""
         messages: list = []
         settings: ModelSettings = {}
@@ -247,7 +241,7 @@ class TestPrepareConversationContinuation:
         assert result_settings is settings
 
     def test_no_extra_body_returns_unchanged(
-        self, model: LlamaStackResponsesModel, mocker: MockerFixture
+        self, model: OgxResponsesModel, mocker: MockerFixture
     ) -> None:
         """Test that settings without extra_body returns unchanged."""
         messages = [mocker.Mock()]
@@ -259,7 +253,7 @@ class TestPrepareConversationContinuation:
         assert result_settings is settings
 
     def test_extra_body_without_conversation_returns_unchanged(
-        self, model: LlamaStackResponsesModel, mocker: MockerFixture
+        self, model: OgxResponsesModel, mocker: MockerFixture
     ) -> None:
         """Test that extra_body without 'conversation' key returns unchanged."""
         messages = [mocker.Mock()]
@@ -271,7 +265,7 @@ class TestPrepareConversationContinuation:
         assert result_settings is settings
 
     def test_no_model_response_returns_unchanged(
-        self, model: LlamaStackResponsesModel, mocker: MockerFixture
+        self, model: OgxResponsesModel, mocker: MockerFixture
     ) -> None:
         """Test that messages without ModelResponse returns unchanged."""
         messages = [mocker.Mock(), mocker.Mock()]
@@ -283,7 +277,7 @@ class TestPrepareConversationContinuation:
         assert result_settings is settings
 
     def test_model_response_without_provider_id_returns_unchanged(
-        self, model: LlamaStackResponsesModel
+        self, model: OgxResponsesModel
     ) -> None:
         """Test that ModelResponse without provider_response_id is ignored."""
         response_msg = ModelResponse(parts=[], provider_response_id=None)
@@ -296,7 +290,7 @@ class TestPrepareConversationContinuation:
         assert result_settings is settings
 
     def test_trims_messages_and_strips_previous_response_id(
-        self, model: LlamaStackResponsesModel, mocker: MockerFixture
+        self, model: OgxResponsesModel, mocker: MockerFixture
     ) -> None:
         """Test that messages are trimmed and previous_response_id is removed."""
         msg_before = mocker.Mock()
@@ -317,7 +311,7 @@ class TestPrepareConversationContinuation:
         assert result_settings["extra_body"] == {"conversation": "conv-1"}
 
     def test_trims_without_previous_response_id_in_settings(
-        self, model: LlamaStackResponsesModel, mocker: MockerFixture
+        self, model: OgxResponsesModel, mocker: MockerFixture
     ) -> None:
         """Test trimming works when settings lacks previous_response_id."""
         response_msg = ModelResponse(parts=[], provider_response_id="resp-1")
@@ -332,7 +326,7 @@ class TestPrepareConversationContinuation:
         assert "openai_previous_response_id" not in result_settings
 
     def test_uses_last_model_response_when_multiple(
-        self, model: LlamaStackResponsesModel, mocker: MockerFixture
+        self, model: OgxResponsesModel, mocker: MockerFixture
     ) -> None:
         """Test that the last ModelResponse with provider_response_id is used."""
         msg1 = mocker.Mock()
@@ -353,7 +347,7 @@ class TestPrepareConversationContinuation:
         assert "openai_previous_response_id" not in result_settings
 
     def test_only_skip_model_response_with_provider_response_id(
-        self, model: LlamaStackResponsesModel, mocker: MockerFixture
+        self, model: OgxResponsesModel, mocker: MockerFixture
     ) -> None:
         """Test that the last ModelResponse with provider_response_id is used."""
         msg1 = mocker.Mock()
@@ -374,7 +368,7 @@ class TestPrepareConversationContinuation:
         assert "openai_previous_response_id" not in result_settings
 
     def test_does_not_mutate_original_settings(
-        self, model: LlamaStackResponsesModel, mocker: MockerFixture
+        self, model: OgxResponsesModel, mocker: MockerFixture
     ) -> None:
         """Test that the original settings dict is not modified."""
         response_msg = ModelResponse(parts=[], provider_response_id="resp-1")
@@ -388,15 +382,15 @@ class TestPrepareConversationContinuation:
 
 
 class TestRequest:
-    """Tests for LlamaStackResponsesModel.request."""
+    """Tests for OgxResponsesModel.request."""
 
     @pytest.mark.asyncio
     async def test_calls_prepare_and_delegates_to_super(
         self, mocker: MockerFixture
     ) -> None:
         """Test that request calls _prepare_conversation_continuation and delegates."""
-        mocker.patch.object(LlamaStackResponsesModel, "__init__", return_value=None)
-        model = LlamaStackResponsesModel("test-model")
+        mocker.patch.object(OgxResponsesModel, "__init__", return_value=None)
+        model = OgxResponsesModel("test-model")
 
         original_msgs = [mocker.Mock()]
         original_settings: OpenAIResponsesModelSettings = {
@@ -462,13 +456,13 @@ def _make_response_created_event() -> responses.ResponseCreatedEvent:
 
 
 class TestRequestStream:
-    """Tests for LlamaStackResponsesModel.request_stream."""
+    """Tests for OgxResponsesModel.request_stream."""
 
     @pytest.fixture(name="model")
-    def model_fixture(self, mocker: MockerFixture) -> LlamaStackResponsesModel:
-        """Create a LlamaStackResponsesModel with stream-related attributes set."""
-        mocker.patch.object(LlamaStackResponsesModel, "__init__", return_value=None)
-        model = LlamaStackResponsesModel("test-model")
+    def model_fixture(self, mocker: MockerFixture) -> OgxResponsesModel:
+        """Create a OgxResponsesModel with stream-related attributes set."""
+        mocker.patch.object(OgxResponsesModel, "__init__", return_value=None)
+        model = OgxResponsesModel("test-model")
         mocker.patch.object(
             type(model),
             "model_name",
@@ -485,7 +479,7 @@ class TestRequestStream:
 
     @pytest.mark.asyncio
     async def test_calls_prepare_continuation(
-        self, model: LlamaStackResponsesModel, mocker: MockerFixture
+        self, model: OgxResponsesModel, mocker: MockerFixture
     ) -> None:
         """Test that request_stream calls _prepare_conversation_continuation."""
         original_msgs = [mocker.Mock()]
@@ -510,7 +504,7 @@ class TestRequestStream:
 
     @pytest.mark.asyncio
     async def test_empty_stream_raises(
-        self, model: LlamaStackResponsesModel, mocker: MockerFixture
+        self, model: OgxResponsesModel, mocker: MockerFixture
     ) -> None:
         """Test that an empty stream raises UnexpectedModelBehavior."""
         mocker.patch.object(
@@ -527,7 +521,7 @@ class TestRequestStream:
 
     @pytest.mark.asyncio
     async def test_wrong_first_event_raises(
-        self, model: LlamaStackResponsesModel, mocker: MockerFixture
+        self, model: OgxResponsesModel, mocker: MockerFixture
     ) -> None:
         """Test that a non-ResponseCreatedEvent first event raises."""
         mocker.patch.object(
@@ -561,7 +555,7 @@ class TestRequestStream:
 
     @pytest.mark.asyncio
     async def test_happy_path_yields_streamed_response(
-        self, model: LlamaStackResponsesModel, mocker: MockerFixture
+        self, model: OgxResponsesModel, mocker: MockerFixture
     ) -> None:
         """Test that a valid stream yields an OpenAIResponsesStreamedResponse."""
         mocker.patch.object(

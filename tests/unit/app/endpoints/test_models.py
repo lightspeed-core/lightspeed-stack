@@ -4,7 +4,8 @@ from typing import Any
 
 import pytest
 from fastapi import HTTPException, Request, status
-from llama_stack_client import APIConnectionError
+from ogx_client import APIConnectionError
+from ogx_client.types import ListModelsResponse
 from pytest_mock import MockerFixture
 from pytest_subtests import SubTests
 
@@ -67,10 +68,10 @@ async def test_models_endpoint_handler_configuration_loaded(
     the Llama Stack client cannot connect.
 
     Loads an AppConfig from a test dictionary, patches the endpoint's
-    configuration and AsyncLlamaStackClientHolder so that get_client raises
+    configuration and AsyncOgxClientHolder so that get_client raises
     APIConnectionError, issues a request with an authorization header, and
     asserts that calling the handler raises an HTTPException with status 503
-    and a detail response of "Unable to connect to Llama Stack".
+    and a detail response of "Unable to connect to OGX".
     """
     mock_authorization_resolvers(mocker)
 
@@ -101,9 +102,7 @@ async def test_models_endpoint_handler_configuration_loaded(
     cfg.init_from_dict(config_dict)
 
     mocker.patch("app.endpoints.models.configuration", cfg)
-    mock_client_holder = mocker.patch(
-        "app.endpoints.models.AsyncLlamaStackClientHolder"
-    )
+    mock_client_holder = mocker.patch("app.endpoints.models.AsyncOgxClientHolder")
     mock_client_holder.return_value.get_client.side_effect = APIConnectionError(
         request=mocker.Mock()
     )
@@ -123,7 +122,7 @@ async def test_models_endpoint_handler_configuration_loaded(
             request=request, auth=auth, model_type=ModelFilter(model_type=None)
         )
     assert e.value.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
-    assert e.value.detail["response"] == "Unable to connect to Llama Stack"  # type: ignore
+    assert e.value.detail["response"] == "Unable to connect to OGX"  # type: ignore
 
 
 @pytest.mark.asyncio
@@ -161,10 +160,8 @@ async def test_models_endpoint_handler_unable_to_retrieve_models_list(
 
     # Mock the LlamaStack client
     mock_client = mocker.AsyncMock()
-    mock_client.models.list.return_value = []
-    mock_lsc = mocker.patch(
-        "app.endpoints.models.AsyncLlamaStackClientHolder.get_client"
-    )
+    mock_client.models.list.return_value = ListModelsResponse.model_construct(data=[])
+    mock_lsc = mocker.patch("app.endpoints.models.AsyncOgxClientHolder.get_client")
     mock_lsc.return_value = mock_client
     mock_config = mocker.Mock()
     mocker.patch("app.endpoints.models.configuration", mock_config)
@@ -220,10 +217,8 @@ async def test_models_endpoint_handler_model_type_query_parameter(
 
     # Mock the LlamaStack client
     mock_client = mocker.AsyncMock()
-    mock_client.models.list.return_value = []
-    mock_lsc = mocker.patch(
-        "app.endpoints.models.AsyncLlamaStackClientHolder.get_client"
-    )
+    mock_client.models.list.return_value = ListModelsResponse.model_construct(data=[])
+    mock_lsc = mocker.patch("app.endpoints.models.AsyncOgxClientHolder.get_client")
     mock_lsc.return_value = mock_client
     mock_config = mocker.Mock()
     mocker.patch("app.endpoints.models.configuration", mock_config)
@@ -278,15 +273,15 @@ async def test_models_endpoint_handler_model_list_retrieved(
 
     # Mock the LlamaStack client
     mock_client = mocker.AsyncMock()
-    mock_client.models.list.return_value = [
-        Model("model1", "provider1", "llm"),
-        Model("model2", "provider2", "embedding"),
-        Model("model3", "provider3", "llm"),
-        Model("model4", "provider4", "embedding"),
-    ]
-    mock_lsc = mocker.patch(
-        "app.endpoints.models.AsyncLlamaStackClientHolder.get_client"
+    mock_client.models.list.return_value = ListModelsResponse.model_construct(
+        data=[
+            Model("model1", "provider1", "llm"),
+            Model("model2", "provider2", "embedding"),
+            Model("model3", "provider3", "llm"),
+            Model("model4", "provider4", "embedding"),
+        ]
     )
+    mock_lsc = mocker.patch("app.endpoints.models.AsyncOgxClientHolder.get_client")
     mock_lsc.return_value = mock_client
     mock_config = mocker.Mock()
     mocker.patch("app.endpoints.models.configuration", mock_config)
@@ -352,15 +347,15 @@ async def test_models_endpoint_handler_model_list_retrieved_with_query_parameter
 
     # Mock the LlamaStack client
     mock_client = mocker.AsyncMock()
-    mock_client.models.list.return_value = [
-        Model("model1", "provider1", "llm"),
-        Model("model2", "provider2", "embedding"),
-        Model("model3", "provider3", "llm"),
-        Model("model4", "provider4", "embedding"),
-    ]
-    mock_lsc = mocker.patch(
-        "app.endpoints.models.AsyncLlamaStackClientHolder.get_client"
+    mock_client.models.list.return_value = ListModelsResponse.model_construct(
+        data=[
+            Model("model1", "provider1", "llm"),
+            Model("model2", "provider2", "embedding"),
+            Model("model3", "provider3", "llm"),
+            Model("model4", "provider4", "embedding"),
+        ]
     )
+    mock_lsc = mocker.patch("app.endpoints.models.AsyncOgxClientHolder.get_client")
     mock_lsc.return_value = mock_client
     mock_config = mocker.Mock()
     mocker.patch("app.endpoints.models.configuration", mock_config)
@@ -443,13 +438,11 @@ async def test_models_endpoint_llama_stack_connection_error(
         "authentication": {"module": "noop"},
     }
 
-    # mock AsyncLlamaStackClientHolder to raise APIConnectionError
+    # mock AsyncOgxClientHolder to raise APIConnectionError
     # when models.list() method is called
     mock_client = mocker.AsyncMock()
     mock_client.models.list.side_effect = APIConnectionError(request=None)  # type: ignore
-    mock_client_holder = mocker.patch(
-        "app.endpoints.models.AsyncLlamaStackClientHolder"
-    )
+    mock_client_holder = mocker.patch("app.endpoints.models.AsyncOgxClientHolder")
     mock_client_holder.return_value.get_client.return_value = mock_client
 
     cfg = AppConfig()
@@ -470,5 +463,5 @@ async def test_models_endpoint_llama_stack_connection_error(
             request=request, auth=auth, model_type=ModelFilter(model_type=None)
         )
         assert e.value.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
-        assert e.value.detail["response"] == "Unable to connect to Llama Stack"  # type: ignore
-        assert "Unable to connect to Llama Stack" in e.value.detail["cause"]  # type: ignore
+        assert e.value.detail["response"] == "Unable to connect to OGX"  # type: ignore
+        assert "Unable to connect to OGX" in e.value.detail["cause"]  # type: ignore

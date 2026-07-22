@@ -6,7 +6,7 @@ from enum import Enum
 from typing import Optional, TypeAlias, cast
 
 from fastapi import HTTPException
-from llama_stack_client import APIConnectionError, APIStatusError, AsyncLlamaStackClient
+from ogx_client import APIConnectionError, APIStatusError, AsyncOgxClient
 from pydantic_ai.exceptions import (
     AgentRunError,
     ContentFilterError,
@@ -31,7 +31,6 @@ from models.api.responses.error import (
     ServiceUnavailableResponse,
 )
 from models.common.agents import AgentTurnAccumulator
-from models.common.moderation import ShieldModerationResult
 from models.common.responses.responses_api_params import ResponsesApiParams
 from models.common.responses.types import ResponseInput
 from models.common.turn_summary import TurnSummary
@@ -41,7 +40,6 @@ from utils.agents.tool_processor import (
     process_native_tool_call,
     process_native_tool_result,
 )
-from utils.conversations import append_turn_items_to_conversation
 from utils.pydantic_ai_helpers import build_agent
 from utils.query import (
     extract_provider_and_model_from_model_id,
@@ -49,6 +47,7 @@ from utils.query import (
     is_context_length_error,
 )
 from utils.responses import extract_vector_store_ids_from_tools
+from utils.shields import get_shields_for_request
 from utils.token_counter import TokenCounter
 
 logger = get_logger(__name__)
@@ -92,7 +91,7 @@ def map_agent_inference_error(
             return handle_known_apistatus_errors(status_exc, model_id)
         case APIConnectionError() as connection_exc:
             return ServiceUnavailableResponse(
-                backend_name="Llama Stack",
+                backend_name="OGX",
                 cause=str(connection_exc),
             )
         case RuntimeError() as runtime_exc if is_context_length_error(str(runtime_exc)):
@@ -131,7 +130,7 @@ def map_pydantic_agent_run_error(
             return InternalServerErrorResponse.generic()
         case ModelAPIError() as api_exc:
             return ServiceUnavailableResponse(
-                backend_name="Llama Stack",
+                backend_name="OGX",
                 cause=str(api_exc),
             )
         case _:
@@ -281,12 +280,12 @@ def build_turn_summary_from_agent_run(
 
 
 async def retrieve_agent_response(
-    client: AsyncLlamaStackClient,
+    client: AsyncOgxClient,
     responses_params: ResponsesApiParams,
-    moderation_result: ShieldModerationResult,
     endpoint_path: str,
     _original_input: Optional[ResponseInput] = None,
     no_tools: bool = False,
+    shield_ids: Optional[list[str]] = None,
 ) -> TurnSummary:
     """Retrieve a turn summary from a blocking agent run.
 
@@ -295,30 +294,24 @@ async def retrieve_agent_response(
     Args:
         client: Llama Stack client for conversation persistence on moderation block.
         responses_params: Prepared Responses API parameters.
-        moderation_result: Shield moderation outcome for the turn.
         endpoint_path: Endpoint path used for metric labeling.
         _original_input: Original user input before the explicit-input rewrite.
         no_tools: Whether to skip tool processing.
+        shield_ids: List of shield identifiers to run for this request.
     Returns:
         Turn summary for the completed agent run.
 
     Raises:
         HTTPException: On moderation is not applicable; on agent or provider failure.
     """
-    if moderation_result.decision == "blocked":
-        await append_turn_items_to_conversation(
-            client,
-            responses_params.conversation,
-            responses_params.input,
-            [moderation_result.refusal_response],
-        )
-        return TurnSummary(
-            id=moderation_result.moderation_id,
-            llm_response=moderation_result.message,
-        )
+    shields = get_shields_for_request(configuration.shields, shield_ids)
     try:
         agent = build_agent(
-            client, responses_params, configuration.skills, no_tools=no_tools
+            client,
+            responses_params,
+            configuration.skills,
+            shields,
+            no_tools=no_tools,
         )
         logger.debug("Starting agent non-streaming response processing")
         run_result = await agent.run(cast(str, responses_params.input))

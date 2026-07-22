@@ -789,7 +789,7 @@ class TestBuildRagContext:
         mocker.patch("utils.vector_search.configuration", config_mock)
 
         client_mock = mocker.AsyncMock()
-        context = await build_rag_context(client_mock, "passed", "test query", None)
+        context = await build_rag_context(client_mock, "test query", None)
 
         assert context.context_text == ""
         assert context.rag_chunks == []
@@ -824,7 +824,7 @@ class TestBuildRagContext:
         client_mock = mocker.AsyncMock()
         client_mock.vector_io.query.return_value = search_response
 
-        context = await build_rag_context(client_mock, "passed", "test query", None)
+        context = await build_rag_context(client_mock, "test query", None)
 
         assert len(context.rag_chunks) > 0
         assert "BYOK content" in context.context_text
@@ -871,7 +871,7 @@ class TestBuildRagContext:
             RAGChunk(content="BYOK content", source="rag_1", score=0.95)
         ]
 
-        context = await build_rag_context(client_mock, "passed", "test query", None)
+        context = await build_rag_context(client_mock, "test query", None)
 
         # Verify cross-encoder was called
         mock_rerank.assert_called_once()
@@ -915,7 +915,7 @@ class TestBuildRagContext:
         # Mock cross-encoder reranking function
         mock_rerank = mocker.patch("utils.reranker.rerank_chunks_with_cross_encoder")
 
-        context = await build_rag_context(client_mock, "passed", "test query", None)
+        context = await build_rag_context(client_mock, "test query", None)
 
         # Verify cross-encoder was NOT called
         mock_rerank.assert_not_called()

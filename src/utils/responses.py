@@ -7,81 +7,82 @@ from collections.abc import Mapping, Sequence
 from typing import Any, Optional, cast
 
 from fastapi import HTTPException
-from llama_stack_api import OpenAIResponseObject
-from llama_stack_api.openai_responses import ApprovalFilter
-from llama_stack_api.openai_responses import (
+from ogx_api import OpenAIResponseObject
+from ogx_api.openai_responses import ApprovalFilter
+from ogx_api.openai_responses import (
     OpenAIResponseContentPartRefusal as ContentPartRefusal,
 )
-from llama_stack_api.openai_responses import (
+from ogx_api.openai_responses import (
     OpenAIResponseInputMessageContent as InputMessageContent,
 )
-from llama_stack_api.openai_responses import (
+from ogx_api.openai_responses import (
     OpenAIResponseInputMessageContentFile as InputFilePart,
 )
-from llama_stack_api.openai_responses import (
+from ogx_api.openai_responses import (
     OpenAIResponseInputMessageContentText as InputTextPart,
 )
-from llama_stack_api.openai_responses import (
+from ogx_api.openai_responses import (
     OpenAIResponseInputToolChoice as ToolChoice,
 )
-from llama_stack_api.openai_responses import (
+from ogx_api.openai_responses import (
     OpenAIResponseInputToolChoiceAllowedTools as AllowedTools,
 )
-from llama_stack_api.openai_responses import (
+from ogx_api.openai_responses import (
     OpenAIResponseInputToolChoiceMode as ToolChoiceMode,
 )
-from llama_stack_api.openai_responses import (
+from ogx_api.openai_responses import (
     OpenAIResponseInputToolFileSearch as InputToolFileSearch,
 )
-from llama_stack_api.openai_responses import (
+from ogx_api.openai_responses import (
     OpenAIResponseMCPApprovalRequest as MCPApprovalRequest,
 )
-from llama_stack_api.openai_responses import (
+from ogx_api.openai_responses import (
     OpenAIResponseMCPApprovalResponse as MCPApprovalResponse,
 )
-from llama_stack_api.openai_responses import (
+from ogx_api.openai_responses import (
     OpenAIResponseMessage as ResponseMessage,
 )
-from llama_stack_api.openai_responses import (
+from ogx_api.openai_responses import (
     OpenAIResponseObject as ResponseObject,
 )
-from llama_stack_api.openai_responses import (
+from ogx_api.openai_responses import (
     OpenAIResponseOutput as ResponseOutput,
 )
-from llama_stack_api.openai_responses import (
+from ogx_api.openai_responses import (
     OpenAIResponseOutputMessageContent as OutputMessageContent,
 )
-from llama_stack_api.openai_responses import (
+from ogx_api.openai_responses import (
     OpenAIResponseOutputMessageContentOutputText as OutputTextPart,
 )
-from llama_stack_api.openai_responses import (
+from ogx_api.openai_responses import (
     OpenAIResponseOutputMessageFileSearchToolCall as FileSearchCall,
 )
-from llama_stack_api.openai_responses import (
+from ogx_api.openai_responses import (
     OpenAIResponseOutputMessageFunctionToolCall as FunctionCall,
 )
-from llama_stack_api.openai_responses import (
+from ogx_api.openai_responses import (
     OpenAIResponseOutputMessageMCPCall as MCPCall,
 )
-from llama_stack_api.openai_responses import (
+from ogx_api.openai_responses import (
     OpenAIResponseOutputMessageMCPListTools as MCPListTools,
 )
-from llama_stack_api.openai_responses import (
+from ogx_api.openai_responses import (
     OpenAIResponseOutputMessageWebSearchToolCall as WebSearchCall,
 )
-from llama_stack_api.openai_responses import (
+from ogx_api.openai_responses import (
     OpenAIResponseUsage as ResponseUsage,
 )
-from llama_stack_api.openai_responses import (
+from ogx_api.openai_responses import (
     OpenAIResponseUsageInputTokensDetails as UsageInputTokensDetails,
 )
-from llama_stack_api.openai_responses import (
+from ogx_api.openai_responses import (
     OpenAIResponseUsageOutputTokensDetails as UsageOutputTokensDetails,
 )
-from llama_stack_client import APIConnectionError, APIStatusError, AsyncLlamaStackClient
+from ogx_client import APIConnectionError, APIStatusError, AsyncOgxClient
+from ogx_client.types import ListModelsResponse
 
 import constants
-from client import AsyncLlamaStackClientHolder
+from client import AsyncOgxClientHolder
 from configuration import configuration
 from constants import DEFAULT_RAG_TOOL
 from log import get_logger
@@ -128,7 +129,7 @@ logger = get_logger(__name__)
 
 
 async def get_vector_store_ids(
-    client: AsyncLlamaStackClient,
+    client: AsyncOgxClient,
     vector_store_ids: Optional[list[str]] = None,
 ) -> list[str]:
     """Get vector store IDs for querying.
@@ -137,7 +138,7 @@ async def get_vector_store_ids(
     available vector stores from Llama Stack.
 
     Args:
-        client: The AsyncLlamaStackClient to use for fetching stores
+        client: The AsyncOgxClient to use for fetching stores
         vector_store_ids: Optional list of vector store IDs. If provided,
             returns this list. If None, fetches all available vector stores.
 
@@ -156,7 +157,7 @@ async def get_vector_store_ids(
         return [vector_store.id for vector_store in vector_stores.data]
     except APIConnectionError as e:
         error_response = ServiceUnavailableResponse(
-            backend_name="Llama Stack",
+            backend_name="OGX",
             cause=str(e),
         )
         raise HTTPException(**error_response.model_dump()) from e
@@ -166,13 +167,13 @@ async def get_vector_store_ids(
 
 
 async def get_topic_summary(  # pylint: disable=too-many-nested-blocks
-    question: str, client: AsyncLlamaStackClient, model_id: str
+    question: str, client: AsyncOgxClient, model_id: str
 ) -> str:
     """Get a topic summary for a question using Responses API.
 
     Args:
         question: The question to generate a topic summary for
-        client: The AsyncLlamaStackClient to use for the request
+        client: The AsyncOgxClient to use for the request
         model_id: The llama stack model ID (full format: provider/model)
 
     Returns:
@@ -194,7 +195,7 @@ async def get_topic_summary(  # pylint: disable=too-many-nested-blocks
         )
     except APIConnectionError as e:
         error_response = ServiceUnavailableResponse(
-            backend_name="Llama Stack",
+            backend_name="OGX",
             cause=str(e),
         )
         raise HTTPException(**error_response.model_dump()) from e
@@ -208,7 +209,7 @@ async def get_topic_summary(  # pylint: disable=too-many-nested-blocks
 async def maybe_get_topic_summary(
     generate_topic_summary: bool,
     input_text: str,
-    client: AsyncLlamaStackClient,
+    client: AsyncOgxClient,
     model_id: str,
 ) -> Optional[str]:
     """Generate a topic summary when requested for the current response.
@@ -229,7 +230,7 @@ async def maybe_get_topic_summary(
 
 
 async def prepare_tools(  # pylint: disable=too-many-arguments,too-many-positional-arguments
-    client: AsyncLlamaStackClient,
+    client: AsyncOgxClient,
     vector_store_ids: Optional[list[str]],
     no_tools: Optional[bool],
     token: str,
@@ -303,14 +304,14 @@ def _build_provider_data_headers(
     """Build extra HTTP headers containing MCP provider data for Llama Stack.
 
     Extracts per-server auth headers from MCP tool definitions and encodes
-    them as a JSON ``x-llamastack-provider-data`` header that Llama Stack
+    them as a JSON ``x-ogx-provider-data`` header that Llama Stack
     uses to authenticate with downstream MCP servers.
 
     Args:
         tools: Prepared tool definitions (may include MCP and non-MCP tools).
 
     Returns:
-        Dict with a single ``x-llamastack-provider-data`` key, or None when
+        Dict with a single ``x-ogx-provider-data`` key, or None when
         no MCP tools carry headers.
     """
     if not tools:
@@ -325,11 +326,11 @@ def _build_provider_data_headers(
     if not mcp_headers:
         return None
 
-    return {"x-llamastack-provider-data": json.dumps({"mcp_headers": mcp_headers})}
+    return {"x-ogx-provider-data": json.dumps({"mcp_headers": mcp_headers})}
 
 
 async def prepare_responses_params(  # pylint: disable=too-many-arguments,too-many-locals,too-many-positional-arguments
-    client: AsyncLlamaStackClient,
+    client: AsyncOgxClient,
     query_request: QueryRequest,
     user_conversation: Optional[UserConversation],
     token: str,
@@ -342,7 +343,7 @@ async def prepare_responses_params(  # pylint: disable=too-many-arguments,too-ma
     """Prepare API request parameters for Responses API.
 
     Args:
-        client: The AsyncLlamaStackClient instance (must be initialized by caller)
+        client: The AsyncOgxClient instance (must be initialized by caller)
         query_request: The query request containing the user's question
         user_conversation: The user conversation if conversation_id was provided, None otherwise
         token: The authentication token for authorization
@@ -400,7 +401,7 @@ async def prepare_responses_params(  # pylint: disable=too-many-arguments,too-ma
             conversation = await client.conversations.create(metadata={})
         except APIConnectionError as e:
             error_response = ServiceUnavailableResponse(
-                backend_name="Llama Stack",
+                backend_name="OGX",
                 cause=str(e),
             )
             raise HTTPException(**error_response.model_dump()) from e
@@ -414,7 +415,7 @@ async def prepare_responses_params(  # pylint: disable=too-many-arguments,too-ma
             llama_stack_conv_id,
         )
 
-    # Build x-llamastack-provider-data header from MCP tool headers
+    # Build x-ogx-provider-data header from MCP tool headers
     extra_headers = _build_provider_data_headers(tools)
 
     # Normalize Vertex AI model IDs to work around llama-stack 0.6.x bug
@@ -1322,13 +1323,13 @@ def parse_arguments_string(arguments_str: str) -> dict[str, Any]:
 
 
 async def check_model_configured(
-    client: AsyncLlamaStackClient,
+    client: AsyncOgxClient,
     model_id: str,
 ) -> bool:
     """Validate that a model is configured and available.
 
     Args:
-        client: The AsyncLlamaStackClient instance
+        client: The AsyncOgxClient instance
         model_id: The model identifier in "provider/model" format
 
     Returns:
@@ -1338,7 +1339,7 @@ async def check_model_configured(
         HTTPException: If there's a connection error or other API error
     """
     try:
-        models = await client.models.list()
+        models = cast(ListModelsResponse, await client.models.list()).data
         for model in models:
             if model.id == model_id:
                 return True
@@ -1354,7 +1355,7 @@ async def check_model_configured(
         raise HTTPException(**response.model_dump()) from e
     except APIConnectionError as e:
         error_response = ServiceUnavailableResponse(
-            backend_name="Llama Stack",
+            backend_name="OGX",
             cause=str(e),
         )
         raise HTTPException(**error_response.model_dump()) from e
@@ -1362,7 +1363,7 @@ async def check_model_configured(
 
 async def select_model_for_responses(
     request_model: Optional[str],
-    client: AsyncLlamaStackClient,
+    client: AsyncOgxClient,
     user_conversation: Optional[UserConversation],
 ) -> str:
     """Select model for Responses API if not explicitly specified in the request.
@@ -1375,7 +1376,7 @@ async def select_model_for_responses(
 
     Args:
         request_model: The model explicitly specified in the request, or None if not specified
-        client: The AsyncLlamaStackClient instance
+        client: The AsyncOgxClient instance
         user_conversation: The user conversation if conversation_id was provided, None otherwise
 
     Returns:
@@ -1404,10 +1405,10 @@ async def select_model_for_responses(
 
     # 3. Fetch models list and select the first LLM model (model_type="llm")
     try:
-        models = await client.models.list()
+        models = cast(ListModelsResponse, await client.models.list()).data
     except APIConnectionError as e:
         error_response = ServiceUnavailableResponse(
-            backend_name="Llama Stack",
+            backend_name="OGX",
             cause=str(e),
         )
         raise HTTPException(**error_response.model_dump()) from e
@@ -1511,14 +1512,18 @@ def build_turn_summary(  # pylint: disable=too-many-arguments,too-many-positiona
         response, vector_store_ids, rag_id_mapping
     )
 
+    tool_calls: list[ToolCallSummary] = []
+    tool_results: list[ToolResultSummary] = []
     for item in response.output:
         if filter_server_tools and not is_server_deployed_output(item):
             continue
         tool_call, tool_result = build_tool_call_summary(item)
         if tool_call:
-            summary.tool_calls.append(tool_call)
+            tool_calls.append(tool_call)
         if tool_result:
-            summary.tool_results.append(tool_result)
+            tool_results.append(tool_result)
+    summary.tool_calls = tool_calls
+    summary.tool_results = tool_results
 
     summary.rag_chunks = parse_rag_chunks(response, vector_store_ids, rag_id_mapping)
     summary.token_usage = extract_token_usage(response.usage, model, endpoint_path)
@@ -1615,7 +1620,7 @@ def deduplicate_referenced_documents(
 
 
 async def create_new_conversation(
-    client: AsyncLlamaStackClient,
+    client: AsyncOgxClient,
 ) -> str:
     """Create a new conversation via the Llama Stack Conversations API.
 
@@ -1630,7 +1635,7 @@ async def create_new_conversation(
         return conversation.id
     except APIConnectionError as e:
         error_response = ServiceUnavailableResponse(
-            backend_name="Llama Stack",
+            backend_name="OGX",
             cause=str(e),
         )
         raise HTTPException(**error_response.model_dump()) from e
@@ -1754,7 +1759,7 @@ async def _resolve_client_tools(
 
     # Optionally merge server-configured tools (RAG, MCP) with client tools
     if merge_server_tools:
-        client = AsyncLlamaStackClientHolder().get_client()
+        client = AsyncOgxClientHolder().get_client()
         server_tools = await prepare_tools(
             client=client,
             vector_store_ids=vector_store_ids,
@@ -1784,7 +1789,7 @@ async def _resolve_server_tools(
     Returns:
         List of server-configured tools, or None if none are configured.
     """
-    client = AsyncLlamaStackClientHolder().get_client()
+    client = AsyncOgxClientHolder().get_client()
     return await prepare_tools(
         client=client,
         vector_store_ids=None,  # allow all vector stores configured
@@ -1830,7 +1835,7 @@ async def resolve_tool_choice(
 
     if tools is None:
         # Register all tools configured in LCORE configuration
-        client = AsyncLlamaStackClientHolder().get_client()
+        client = AsyncOgxClientHolder().get_client()
         prepared_tools = await prepare_tools(
             client=client,
             vector_store_ids=None,  # allow all vector stores configured

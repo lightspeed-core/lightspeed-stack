@@ -11,7 +11,6 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from string import Template
 from typing import Optional
 
 from pydantic_ai import AgentRunResult, RunContext
@@ -22,17 +21,18 @@ from pydantic_ai.messages import ModelRequest, TextContent, UserContent
 from pydantic_ai.models import Model
 from pydantic_ai.models.openai import OpenAIResponsesModelSettings
 
-from client import AsyncLlamaStackClientHolder
+from client import AsyncOgxClientHolder
 from log import get_logger
 from models.config import (
     QuestionValidityConfig,
 )
-from pydantic_ai_lightspeed.llamastack import LlamaStackResponsesModel
+from pydantic_ai_lightspeed.capabilities.question_validity.core import (
+    SUBJECT_ALLOWED,
+    build_question_validity_prompt,
+)
+from pydantic_ai_lightspeed.llamastack import OgxResponsesModel
 
 logger = get_logger(__name__)
-
-SUBJECT_REJECTED = "REJECTED"
-SUBJECT_ALLOWED = "ALLOWED"
 
 
 def _extract_message_str_from_user_content(user_content: Sequence[UserContent]) -> str:
@@ -56,7 +56,7 @@ def _extract_message_str_from_user_content(user_content: Sequence[UserContent]) 
 
 
 @dataclass
-class QuestionValidity(AbstractCapability[None]):
+class QuestionValidity(AbstractCapability[object]):
     """Block or modify user input based on a guardrail check.
 
     The guard function receives the user prompt and returns True if safe.
@@ -76,11 +76,11 @@ class QuestionValidity(AbstractCapability[None]):
 
     def __post_init__(self) -> None:
         """Initialize the model instance from the configured model ID."""
-        llama_stack_client = AsyncLlamaStackClientHolder().get_client()
+        ogx_client = AsyncOgxClientHolder().get_client()
 
-        self._model = LlamaStackResponsesModel.from_llama_stack_client(
+        self._model = OgxResponsesModel.from_ogx_client(
             self.config.model_id,
-            llama_stack_client,
+            ogx_client,
             model_settings=OpenAIResponsesModelSettings(openai_store=False),
         )
 
@@ -101,9 +101,7 @@ class QuestionValidity(AbstractCapability[None]):
             case None:
                 _message = ""
 
-        return Template(self.config.model_prompt).substitute(
-            message=_message, allowed=SUBJECT_ALLOWED, rejected=SUBJECT_REJECTED
-        )
+        return build_question_validity_prompt(_message, self.config)
 
     async def wrap_run(
         self, ctx: RunContext, *, handler: WrapRunHandler

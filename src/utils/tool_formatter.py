@@ -1,54 +1,46 @@
 """Utility functions for formatting and parsing MCP tool descriptions."""
 
+from __future__ import annotations
+
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, Optional
 
 from log import get_logger
+from models.common.tools import (
+    CatalogTool,
+    CatalogToolParameter,
+    ListedMcpTool,
+    ToolDef,
+)
 
 logger = get_logger(__name__)
 
 
-def format_tool_response(tool_dict: dict[str, Any]) -> dict[str, Any]:
-    """
-    Format a tool dictionary to include only required fields.
-
-    If the input description contains structured metadata (e.g.,
-    lines starting with `TOOL_NAME=` or `DISPLAY_NAME=`), the
-    description will be replaced with a cleaned, human-readable
-    version extracted by `extract_clean_description`.
+def input_schema_to_parameters(
+    schema: Optional[dict[str, Any]],
+) -> list[CatalogToolParameter]:
+    """Convert a JSON Schema object to the flat parameter list used by ``/tools``.
 
     Parameters:
-    ----------
-        tool_dict: Raw tool dictionary from Llama Stack
+        schema: JSON Schema dict with ``properties`` and ``required`` keys.
 
     Returns:
-    -------
-        dict[str, Any]: Formatted tool dictionary containing the following keys:
-            - identifier: tool identifier string (defaults to "").
-            - description: cleaned or original description string.
-            - parameters: list of parameter definitions (defaults to empty list).
-            - provider_id: provider identifier string (defaults to "").
-            - toolgroup_id: tool group identifier string (defaults to "").
-            - server_source: server source string (defaults to "").
-            - type: tool type string (defaults to "").
+        Flat parameter models for the tools endpoint response.
     """
-    # Clean up description if it contains structured metadata
-    description = tool_dict.get("description", "")
-    if description and ("TOOL_NAME=" in description or "DISPLAY_NAME=" in description):
-        # Extract clean description from structured metadata
-        clean_description = extract_clean_description(description)
-        description = clean_description
+    if not schema or "properties" not in schema:
+        return []
 
-    # Extract only the required fields
-    return {
-        "identifier": tool_dict.get("identifier", ""),
-        "description": description,
-        "parameters": tool_dict.get("parameters", []),
-        "provider_id": tool_dict.get("provider_id", ""),
-        "toolgroup_id": tool_dict.get("toolgroup_id", ""),
-        "server_source": tool_dict.get("server_source", ""),
-        "type": tool_dict.get("type", ""),
-    }
+    required_params = set(schema.get("required", []))
+    return [
+        CatalogToolParameter(
+            name=name,
+            description=prop.get("description", ""),
+            parameter_type=prop.get("type", "string"),
+            required=name in required_params,
+            default=prop.get("default"),
+        )
+        for name, prop in schema["properties"].items()
+    ]
 
 
 def extract_clean_description(description: str) -> str:
@@ -123,20 +115,38 @@ def extract_clean_description(description: str) -> str:
         )
 
 
-def format_tools_list(tools: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """
-    Format a list of tools with structured description parsing.
+def build_catalog_tool(
+    tool: ListedMcpTool | ToolDef,
+    *,
+    provider_id: str,
+    toolgroup_id: str,
+    server_source: str,
+) -> CatalogTool:
+    """Build a ``/tools`` catalog entry from discovered tool metadata.
 
     Parameters:
-    ----------
-        tools: (list[dict[str, Any]]): List of raw tool dictionaries
+        tool: MCP or Llama Stack tool definition with name, description, and schema.
+        provider_id: Provider ID serving the tool.
+        toolgroup_id: Tool group identifier.
+        server_source: Human-readable source label for the tool.
 
     Returns:
-    -------
-        list[dict[str, Any]]: Formatted tool dictionaries with normalized
-                              fields and cleaned descriptions.
+        Typed catalog tool entry.
     """
-    return [format_tool_response(tool) for tool in tools]
+    cleaned_description = tool.description or ""
+    if cleaned_description and (
+        "TOOL_NAME=" in cleaned_description or "DISPLAY_NAME=" in cleaned_description
+    ):
+        cleaned_description = extract_clean_description(cleaned_description)
+
+    return CatalogTool(
+        identifier=tool.name,
+        description=cleaned_description,
+        parameters=input_schema_to_parameters(tool.input_schema),
+        provider_id=provider_id,
+        toolgroup_id=toolgroup_id,
+        server_source=server_source,
+    )
 
 
 def translate_vector_store_ids_to_user_facing(

@@ -28,9 +28,9 @@ dependencies = [
     # Used by authentication/k8s integration
     "kubernetes>=30.1.0",
     # Used to call Llama Stack APIs
-    "llama-stack==0.6.0",
-    "llama-stack-client==0.6.0",
-    "llama-stack-api==0.6.0",
+    "ogx==1.0.2",
+    "ogx-client==1.0.2",
+    "ogx-api==1.0.2",
     # Used by Logger
     "rich>=14.0.0",
     # Used by JWK token auth handler
@@ -152,17 +152,17 @@ dev = [
     "pytest-benchmark>=5.2.3",
 ]
 llslibdev = [
-    # To check llama-stack API provider dependecies:
+    # To check Llama Stack API provider dependencies:
     #
-    #    $ uv run llama stack list-providers
+    #    $ uv run ogx stack list-providers
     #
-    # API agents: inline::meta-reference
+    # API responses: inline::builtin
     # commented out because they are not used in the project
     # "matplotlib>=3.10.0",
     # "pillow>=11.1.0",
     # "pandas>=2.2.3",
     # "scikit-learn>=1.5.2",
-    # API eval: inline::meta-reference
+    # API eval: inline::builtin
     "tree_sitter>=0.24.0",
     "pythainlp>=3.0.10",
     "langdetect>=1.0.9",
@@ -181,10 +181,10 @@ llslibdev = [
     "aiosqlite>=0.21.0",
     # API datasetio: remote::huggingface
     "datasets>=3.6.0",
-    # API telemetry: inline::meta-reference
+    # API telemetry: inline::builtin
     "opentelemetry-sdk>=1.34.1",
     "opentelemetry-exporter-otlp>=1.34.1",
-    # API tool_runtime: inline::rag-runtime
+    # API tool_runtime: inline::file-search
     "transformers>=4.34.0",
     "numpy==2.3.5",
     # API tool_runtime: remote::model-context-protocol

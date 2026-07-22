@@ -116,10 +116,10 @@ def test_load_default_baseline_returns_usable_dict() -> None:
 
 
 def test_load_default_baseline_includes_mcp_tool_runtime() -> None:
-    """Default stack ships MCP beside rag-runtime (same rationale as RAG)."""
+    """Default stack ships MCP beside file-search (same rationale as RAG)."""
     baseline = load_default_baseline()
     ids = _tool_runtime_ids(baseline)
-    assert "rag-runtime" in ids
+    assert "file-search" in ids
     assert "model-context-protocol" in ids
 
 

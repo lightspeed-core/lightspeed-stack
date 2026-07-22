@@ -1,14 +1,13 @@
 """Handler for REST API call to list available tools from MCP servers."""
 
-from typing import Annotated, Any, Optional
+from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, Request
-from llama_stack_client import APIConnectionError, BadRequestError
+from fastapi import APIRouter, Depends, Request
 
 from authentication import get_auth_dependency
 from authentication.interface import AuthTuple
 from authorization.middleware import authorize
-from client import AsyncLlamaStackClientHolder
+from client import AsyncOgxClientHolder
 from configuration import configuration
 from log import get_logger
 from models.api.responses.constants import UNAUTHORIZED_OPENAPI_EXAMPLES
@@ -19,7 +18,9 @@ from models.api.responses.error import (
     UnauthorizedResponse,
 )
 from models.api.responses.successful import ToolsResponse
-from models.config import Action
+from models.common.tools import CatalogTool
+from models.config import Action, ModelContextProtocolServer
+from utils.builtin_tools import get_file_search_tools_from_lls
 from utils.endpoints import check_configuration_loaded
 from utils.mcp_headers import (
     McpHeaders,
@@ -28,68 +29,12 @@ from utils.mcp_headers import (
     mcp_headers_dependency,
 )
 from utils.mcp_oauth_probe import check_mcp_auth
+from utils.mcp_tools import list_mcp_tools
 from utils.pydantic_ai_helpers import get_agent_capability_tools
-from utils.tool_formatter import format_tools_list
+from utils.tool_formatter import build_catalog_tool
 
 logger = get_logger(__name__)
 router = APIRouter(tags=["tools"])
-
-
-def _input_schema_to_parameters(
-    schema: Optional[dict[str, Any]],
-) -> list[dict[str, Any]]:
-    """Convert a JSON Schema input_schema to a flat list of parameter dicts.
-
-    The Llama Stack SDK returns tool parameters as a JSON Schema object
-    (``input_schema``).  This function converts that representation into
-    the flat parameter list format used by the tools endpoint response.
-
-    Parameters:
-    ----------
-        schema: JSON Schema dict with ``properties`` and ``required`` keys,
-                or ``None`` if the tool has no parameters.
-
-    Returns:
-    -------
-        A list of parameter dicts, each containing ``name``, ``description``,
-        ``parameter_type``, ``required``, and ``default`` keys.
-    """
-    if not schema or "properties" not in schema:
-        return []
-
-    required_params = set(schema.get("required", []))
-    return [
-        {
-            "name": name,
-            "description": prop.get("description", ""),
-            "parameter_type": prop.get("type", "string"),
-            "required": name in required_params,
-            "default": prop.get("default"),
-        }
-        for name, prop in schema["properties"].items()
-    ]
-
-
-def _normalize_tool_dict(tool_dict: dict[str, Any], toolgroup: Any) -> None:
-    """Normalize a ToolDef dict to the endpoint's response format.
-
-    Remaps field names (``name`` -> ``identifier``, ``input_schema`` ->
-    ``parameters``) and propagates ``provider_id``/``type`` from the
-    parent toolgroup.  Handles both missing keys and empty legacy
-    placeholders.
-    """
-    if "name" in tool_dict and not tool_dict.get("identifier"):
-        tool_dict["identifier"] = tool_dict["name"]
-    tool_dict.pop("name", None)
-
-    if "input_schema" in tool_dict and not tool_dict.get("parameters"):
-        tool_dict["parameters"] = _input_schema_to_parameters(tool_dict["input_schema"])
-    tool_dict.pop("input_schema", None)
-
-    if not tool_dict.get("provider_id"):
-        tool_dict["provider_id"] = toolgroup.provider_id
-    if not tool_dict.get("type"):
-        tool_dict["type"] = getattr(toolgroup, "type", None) or "tool"
 
 
 tools_responses: dict[int | str, dict[str, Any]] = {
@@ -98,14 +43,14 @@ tools_responses: dict[int | str, dict[str, Any]] = {
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
     500: InternalServerErrorResponse.openapi_response(examples=["configuration"]),
     503: ServiceUnavailableResponse.openapi_response(
-        examples=["llama stack", "kubernetes api"]
+        examples=["ogx", "kubernetes api"]
     ),
 }
 
 
 @router.get("/tools", responses=tools_responses)
 @authorize(Action.GET_TOOLS)
-async def tools_endpoint_handler(  # pylint: disable=too-many-locals,too-many-statements
+async def tools_endpoint_handler(  # pylint: disable=too-many-locals
     request: Request,
     auth: Annotated[AuthTuple, Depends(get_auth_dependency())],
     mcp_headers: McpHeaders = Depends(mcp_headers_dependency),
@@ -147,120 +92,90 @@ async def tools_endpoint_handler(  # pylint: disable=too-many-locals,too-many-st
         configuration, mcp_headers, request.headers, token
     )
 
-    # Check MCP Auth
+    # Check MCP auth
     await check_mcp_auth(configuration, mcp_headers, token, request.headers)
 
-    toolgroups_response = []
-    try:
-        client = AsyncLlamaStackClientHolder().get_client()
-        logger.debug("Retrieving tools from all toolgroups")
-        toolgroups_response = await client.toolgroups.list()
-    except APIConnectionError as e:
-        logger.error("Unable to connect to Llama Stack: %s", e)
-        response = ServiceUnavailableResponse(backend_name="Llama Stack", cause=str(e))
-        raise HTTPException(**response.model_dump()) from e
-
-    consolidated_tools = []
-    mcp_server_names = (
-        {mcp_server.name for mcp_server in configuration.mcp_servers}
-        if configuration.mcp_servers
-        else set()
+    client = AsyncOgxClientHolder().get_client()
+    consolidated_tools: list[CatalogTool] = list(
+        await get_file_search_tools_from_lls(client)
     )
 
-    for toolgroup in toolgroups_response:
-        mcp_server = None
-        if toolgroup.identifier in mcp_server_names:
-            mcp_server = next(
-                (
-                    s
-                    for s in configuration.mcp_servers
-                    if s.name == toolgroup.identifier
-                ),
-                None,
+    for mcp_server in configuration.mcp_servers:
+        consolidated_tools.extend(
+            await _list_tools_for_mcp_server(
+                mcp_server,
+                complete_mcp_headers.get(mcp_server.name, {}),
             )
-
-        headers = complete_mcp_headers.get(toolgroup.identifier, {})
-        if mcp_server is not None:
-            unresolved = find_unresolved_auth_headers(
-                mcp_server.authorization_headers, headers
-            )
-            if unresolved:
-                logger.warning(
-                    "Skipping MCP server %s: required %d auth headers "
-                    "but only resolved %d",
-                    mcp_server.name,
-                    len(mcp_server.authorization_headers),
-                    len(mcp_server.authorization_headers) - len(unresolved),
-                )
-                continue
-
-        try:
-            authorization = headers.pop("Authorization", None)
-
-            tools_response = await client.tools.list(
-                toolgroup_id=toolgroup.identifier,
-                extra_headers=headers,
-                extra_query={"authorization": authorization},
-            )
-        except BadRequestError:
-            logger.error("Toolgroup %s is not found", toolgroup.identifier)
-            continue
-        except APIConnectionError as e:
-            logger.error("Unable to connect to Llama Stack: %s", e)
-            response = ServiceUnavailableResponse(
-                backend_name="Llama Stack", cause=str(e)
-            )
-            raise HTTPException(**response.model_dump()) from e
-
-        # Convert tools to dict format
-        tools_count = 0
-        server_source = "unknown"
-
-        for tool in tools_response:
-            tool_dict = dict(tool)
-
-            _normalize_tool_dict(tool_dict, toolgroup)
-
-            # Determine server source based on toolgroup type
-            if mcp_server:
-                tool_dict["server_source"] = mcp_server.url or toolgroup.identifier
-            else:
-                # This is a built-in toolgroup
-                tool_dict["server_source"] = "builtin"
-
-            consolidated_tools.append(tool_dict)
-            tools_count += 1
-            server_source = tool_dict["server_source"]
-
-        logger.debug(
-            "Retrieved %d tools from toolgroup %s (source: %s)",
-            tools_count,
-            toolgroup.identifier,
-            server_source,
         )
 
     existing_tool_ids = {
-        tool.get("identifier") for tool in consolidated_tools if tool.get("identifier")
+        tool.identifier for tool in consolidated_tools if tool.identifier
     }
-    capability_tools = get_agent_capability_tools(configuration.skills)
-    for tool_dict in capability_tools:
-        identifier = tool_dict.get("identifier")
-        if identifier and identifier not in existing_tool_ids:
-            consolidated_tools.append(tool_dict)
-            existing_tool_ids.add(identifier)
+    for tool in get_agent_capability_tools(configuration.skills):
+        if tool.identifier and tool.identifier not in existing_tool_ids:
+            consolidated_tools.append(tool)
+            existing_tool_ids.add(tool.identifier)
 
     builtin_tool_count = len(
-        [t for t in consolidated_tools if t.get("server_source") == "builtin"]
+        [tool for tool in consolidated_tools if tool.server_source == "builtin"]
     )
     mcp_tool_count = len(consolidated_tools) - builtin_tool_count
     logger.info(
-        "Retrieved total of %d tools (%d from built-in toolgroups, %d from MCP servers)",
+        "Retrieved total of %d tools (%d builtin, %d from MCP servers)",
         len(consolidated_tools),
         builtin_tool_count,
         mcp_tool_count,
     )
 
-    # Format tools with structured description parsing
-    formatted_tools = format_tools_list(consolidated_tools)
+    return ToolsResponse(tools=consolidated_tools)
 
-    return ToolsResponse(tools=formatted_tools)
+
+async def _list_tools_for_mcp_server(
+    mcp_server: ModelContextProtocolServer,
+    headers: dict[str, str],
+) -> list[CatalogTool]:
+    """Discover tools from a single configured MCP server.
+
+    ### Parameters:
+    - mcp_server: MCP server configuration entry.
+    - headers: Resolved request headers for the server.
+
+    ### Returns:
+    - Catalog tools for the server, or an empty list when skipped or failing.
+    """
+    unresolved = find_unresolved_auth_headers(
+        mcp_server.authorization_headers,
+        headers,
+    )
+    if unresolved:
+        logger.warning(
+            "Skipping MCP server %s: required %d auth headers but only resolved %d",
+            mcp_server.name,
+            len(mcp_server.authorization_headers),
+            len(mcp_server.authorization_headers) - len(unresolved),
+        )
+        return []
+
+    discovered_tools = await list_mcp_tools(
+        endpoint=mcp_server.url,
+        headers=headers,
+    )
+    if not discovered_tools:
+        return []
+
+    tools = [
+        build_catalog_tool(
+            tool,
+            provider_id=mcp_server.provider_id,
+            toolgroup_id=mcp_server.name,
+            server_source=mcp_server.url,
+        )
+        for tool in discovered_tools
+    ]
+    logger.debug(
+        "Retrieved %d tools from MCP server %s (source: %s)",
+        len(tools),
+        mcp_server.name,
+        mcp_server.url,
+    )
+    return tools

@@ -9,20 +9,19 @@ from typing import Any, Optional, cast
 import pytest
 from fastapi import HTTPException, Request
 from fastapi.responses import StreamingResponse
-from llama_stack_api import OpenAIResponseObject
-from llama_stack_api.openai_responses import (
+from ogx_api import OpenAIResponseObject
+from ogx_api.openai_responses import (
     OpenAIResponseInputToolChoiceMode as ToolChoiceMode,
 )
-from llama_stack_api.openai_responses import (
+from ogx_api.openai_responses import (
     OpenAIResponseMessage,
 )
-from llama_stack_client import APIConnectionError, APIStatusError, AsyncLlamaStackClient
+from ogx_client import APIConnectionError, APIStatusError, AsyncOgxClient
 from pytest_mock import MockerFixture
 
 from app.endpoints.responses import (
     _append_previous_response_turn,
     _is_server_mcp_output_item,
-    _persist_blocked_response_turn,
     _sanitize_response_dict,
     _should_filter_mcp_chunk,
     handle_non_streaming_response,
@@ -35,7 +34,10 @@ from configuration import AppConfig
 from constants import DEFAULT_SYSTEM_PROMPT, SUBSTITUTED_INSTRUCTIONS_PLACEHOLDER
 from models.api.requests import ResponsesRequest
 from models.api.responses.successful import ResponsesResponse
-from models.common.moderation import ShieldModerationBlocked, ShieldModerationPassed
+from models.common.moderation import (
+    ShieldModerationBlocked,
+    ShieldModerationPassed,
+)
 from models.common.responses.contexts import ResponsesContext
 from models.common.responses.responses_api_params import ResponsesApiParams
 from models.common.responses.responses_conversation_context import (
@@ -45,6 +47,7 @@ from models.common.responses.types import InputToolMCP
 from models.common.turn_summary import RAGContext, TurnSummary
 from models.config import Action, ModelContextProtocolServer
 from models.database.conversations import UserConversation
+from utils.shields import InputShieldsResult, create_refusal_response
 
 MOCK_AUTH = (
     "00000001-0001-0001-0001-000000000001",
@@ -68,7 +71,6 @@ def build_api_params_and_context(  # pylint: disable=too-many-arguments
     auth: AuthTuple,
     input_text: str,
     started_at: datetime,
-    moderation_result: Any,
     inline_rag_context: RAGContext,
     background_tasks: Any = None,
     rh_identity_context: tuple[str, str] = ("", ""),
@@ -84,7 +86,7 @@ def build_api_params_and_context(  # pylint: disable=too-many-arguments
         auth=auth,
         input_text=input_text,
         started_at=started_at,
-        moderation_result=moderation_result,
+        moderation_result=ShieldModerationPassed(),
         inline_rag_context=inline_rag_context,
         filter_server_tools=filter_server_tools,
         background_tasks=background_tasks,
@@ -122,10 +124,30 @@ def _patch_base(mocker: MockerFixture, config: AppConfig) -> None:
     mocker.patch(f"{MODULE}.check_configuration_loaded")
     mocker.patch(f"{MODULE}.check_tokens_available")
     mocker.patch(f"{MODULE}.validate_model_provider_override")
+    mocker.patch(f"{MODULE}.validate_shield_ids_override")
+    mocker.patch(
+        f"{MODULE}.get_shields_for_request",
+        return_value=[],
+    )
+
+    async def _pass_input_shields(
+        text: str, _shields: Any, *, client: Any = None
+    ) -> InputShieldsResult:
+        _ = client
+        return InputShieldsResult(
+            text=text,
+            blocked=False,
+            moderation=ShieldModerationPassed(),
+        )
+
+    mocker.patch(
+        f"{MODULE}.run_input_shields",
+        side_effect=_pass_input_shields,
+    )
     mock_holder = mocker.Mock()
     mock_holder.get_client.return_value = mocker.Mock()
     mocker.patch(
-        f"{UTILS_RESPONSES_MODULE}.AsyncLlamaStackClientHolder",
+        f"{UTILS_RESPONSES_MODULE}.AsyncOgxClientHolder",
         return_value=mock_holder,
     )
     mocker.patch(
@@ -135,14 +157,14 @@ def _patch_base(mocker: MockerFixture, config: AppConfig) -> None:
 
 
 def _patch_client(mocker: MockerFixture) -> Any:
-    """Patch AsyncLlamaStackClientHolder; return (mock_client, mock_holder)."""
-    mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+    """Patch AsyncOgxClientHolder; return (mock_client, mock_holder)."""
+    mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
     mock_vector_stores = mocker.Mock()
     mock_vector_stores.list = mocker.AsyncMock(return_value=mocker.Mock(data=[]))
     mock_client.vector_stores = mock_vector_stores
     mock_holder = mocker.Mock()
     mock_holder.get_client.return_value = mock_client
-    mocker.patch(f"{MODULE}.AsyncLlamaStackClientHolder", return_value=mock_holder)
+    mocker.patch(f"{MODULE}.AsyncOgxClientHolder", return_value=mock_holder)
     return mock_client, mock_holder
 
 
@@ -181,27 +203,6 @@ def _patch_rag(
             ),
         ),
     )
-
-
-def _patch_moderation(mocker: MockerFixture, decision: str = "passed") -> Any:
-    """Patch run_shield_moderation; return typed moderation result."""
-    if decision == "blocked":
-        moderation_result = ShieldModerationBlocked(
-            message="Content blocked",
-            moderation_id="mod_blocked",
-            refusal_response=OpenAIResponseMessage(
-                role="assistant",
-                content="Content blocked",
-                type="message",
-            ),
-        )
-    else:
-        moderation_result = ShieldModerationPassed()
-    mocker.patch(
-        f"{MODULE}.run_shield_moderation",
-        new=mocker.AsyncMock(return_value=moderation_result),
-    )
-    return moderation_result
 
 
 def _make_responses_response(
@@ -322,7 +323,6 @@ class TestResponsesEndpointHandler:
             new=mocker.AsyncMock(return_value=True),
         )
         _patch_rag(mocker)
-        _patch_moderation(mocker, decision="passed")
 
         mock_response = _make_responses_response(
             output_text="Kubernetes is a container orchestration platform.",
@@ -366,7 +366,7 @@ class TestResponsesEndpointHandler:
         )
         _, mock_holder = _patch_client(mocker)
         mocker.patch(
-            f"{ENDPOINTS_MODULE}.AsyncLlamaStackClientHolder",
+            f"{ENDPOINTS_MODULE}.AsyncOgxClientHolder",
             return_value=mock_holder,
         )
         mocker.patch(
@@ -386,7 +386,6 @@ class TestResponsesEndpointHandler:
             new=mocker.AsyncMock(return_value=True),
         )
         _patch_rag(mocker)
-        _patch_moderation(mocker, decision="passed")
         mocker.patch(
             f"{MODULE}.handle_non_streaming_response",
             new=mocker.AsyncMock(
@@ -461,7 +460,6 @@ class TestResponsesEndpointHandler:
             new=mocker.AsyncMock(return_value=True),
         )
         _patch_rag(mocker)
-        _patch_moderation(mocker, decision="passed")
         mock_streaming = mocker.Mock(spec=StreamingResponse)
         mocker.patch(
             f"{MODULE}.handle_streaming_response",
@@ -501,10 +499,9 @@ class TestResponsesEndpointHandler:
         mock_azure.is_token_expired = True
         mock_azure.refresh_token.return_value = True
         mocker.patch(f"{MODULE}.AzureEntraIDManager", return_value=mock_azure)
-        updated_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        updated_client = mocker.AsyncMock(spec=AsyncOgxClient)
         mock_holder.update_azure_token = mocker.AsyncMock(return_value=updated_client)
         _patch_rag(mocker)
-        _patch_moderation(mocker, decision="passed")
         mocker.patch(
             f"{MODULE}.handle_non_streaming_response",
             new=mocker.AsyncMock(
@@ -558,7 +555,6 @@ class TestResponsesEndpointHandler:
                 ),
             ),
         )
-        _patch_moderation(mocker, decision="passed")
         mocker.patch(
             f"{MODULE}.handle_non_streaming_response",
             new=mocker.AsyncMock(
@@ -579,81 +575,8 @@ class TestResponsesEndpointHandler:
         mock_build_rag.assert_called_once()
         call_args = mock_build_rag.call_args[0]
         assert (
-            call_args[2] == "What is K8s?"
-        )  # input_text (3rd arg to build_rag_context)
-
-    @pytest.mark.asyncio
-    async def test_responses_blocked_with_conversation_appends_refusal(
-        self,
-        dummy_request: Request,
-        minimal_config: AppConfig,
-        mocker: MockerFixture,
-    ) -> None:
-        """Blocked moderation with conversation calls append_turn_items_to_conversation."""
-        responses_request = ResponsesRequest(
-            input="Bad",
-            conversation=VALID_CONV_ID,
-            stream=False,
-            model="provider/model1",
-        )
-        _patch_base(mocker, minimal_config)
-        mock_user_conv = mocker.Mock(spec=UserConversation)
-        mock_user_conv.id = VALID_CONV_ID_NORMALIZED
-        mocker.patch(
-            f"{ENDPOINTS_MODULE}.validate_and_retrieve_conversation",
-            return_value=mock_user_conv,
-        )
-        mock_client, mock_holder = _patch_client(mocker)
-        mocker.patch(
-            f"{ENDPOINTS_MODULE}.AsyncLlamaStackClientHolder",
-            return_value=mock_holder,
-        )
-        mocker.patch(
-            f"{ENDPOINTS_MODULE}.normalize_conversation_id",
-            return_value=VALID_CONV_ID_NORMALIZED,
-        )
-        mocker.patch(
-            f"{ENDPOINTS_MODULE}.to_llama_stack_conversation_id",
-            return_value=VALID_CONV_ID,
-        )
-        mocker.patch(
-            f"{MODULE}.select_model_for_responses",
-            new=mocker.AsyncMock(return_value="provider/model1"),
-        )
-        mocker.patch(
-            f"{MODULE}.check_model_configured",
-            new=mocker.AsyncMock(return_value=True),
-        )
-        _patch_rag(mocker)
-        mock_moderation = _patch_moderation(mocker, decision="blocked")
-        mock_moderation.message = "Blocked"
-        mock_moderation.moderation_id = "resp_blocked_123"
-        mock_moderation.refusal_response = OpenAIResponseMessage(
-            type="message", role="assistant", content="Blocked"
-        )
-        mock_append = mocker.patch(
-            f"{MODULE}.append_turn_items_to_conversation",
-            new=mocker.AsyncMock(),
-        )
-        mocker.patch(f"{MODULE}.store_query_results")
-
-        response = await responses_endpoint_handler(
-            request=dummy_request,
-            responses_request=responses_request,
-            auth=MOCK_AUTH,
-            mcp_headers={},
-        )
-
-        mock_append.assert_awaited_once_with(
-            client=mock_client,
-            conversation_id=VALID_CONV_ID,
-            user_input=responses_request.input,
-            llm_output=[mock_moderation.refusal_response],
-        )
-        assert isinstance(response, ResponsesResponse)
-        payload = response.model_dump()
-        assert "model" in payload, "Handler must set model on the response payload"
-        ResponsesResponse.model_validate(payload)
+            call_args[1] == "What is K8s?"
+        )  # input_text (2nd arg to build_rag_context)
 
     @pytest.mark.asyncio
     async def test_tool_choice_none_without_tools_does_not_load_server_tools(
@@ -680,7 +603,6 @@ class TestResponsesEndpointHandler:
             new=mocker.AsyncMock(return_value=True),
         )
         _patch_rag(mocker)
-        _patch_moderation(mocker, decision="passed")
 
         mock_handle = mocker.patch(
             f"{MODULE}.handle_non_streaming_response",
@@ -753,67 +675,6 @@ class TestHandleNonStreamingResponse:
     """Unit tests for handle_non_streaming_response."""
 
     @pytest.mark.asyncio
-    async def test_handle_non_streaming_blocked_returns_refusal(
-        self,
-        minimal_config: AppConfig,
-        mocker: MockerFixture,
-    ) -> None:
-        """Test that blocked moderation returns response with refusal message."""
-        request = _request_with_model_and_conv("Bad input")
-        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
-        mock_moderation = mocker.Mock()
-        mock_moderation.decision = "blocked"
-        mock_moderation.message = "Content blocked"
-        mock_refusal = mocker.Mock(spec=OpenAIResponseMessage)
-        mock_refusal.type = "message"
-        mock_refusal.role = "assistant"
-        mock_refusal.content = "Content blocked"
-        mock_moderation.refusal_response = mock_refusal
-
-        _patch_handle_non_streaming_common(mocker, minimal_config)
-        mock_client.conversations.items.create = mocker.AsyncMock()
-        mock_api_response = mocker.Mock()
-        mock_api_response.output = [mock_refusal]
-        mock_api_response.model_dump.return_value = {
-            "id": "resp_blocked",
-            "object": "response",
-            "created_at": 0,
-            "status": "completed",
-            "model": "provider/model1",
-            "output": [
-                {"type": "message", "role": "assistant", "content": "Content blocked"}
-            ],
-            "usage": {
-                "input_tokens": 0,
-                "output_tokens": 0,
-                "total_tokens": 0,
-                "input_tokens_details": {"cached_tokens": 0},
-                "output_tokens_details": {"reasoning_tokens": 0},
-            },
-        }
-        mocker.patch(
-            f"{MODULE}.OpenAIResponseObject.model_construct",
-            return_value=mock_api_response,
-        )
-
-        api_params, context = build_api_params_and_context(
-            updated_request=request,
-            client=mock_client,
-            auth=MOCK_AUTH,
-            input_text="Bad input",
-            started_at=datetime.now(UTC),
-            moderation_result=mock_moderation,
-            inline_rag_context=RAGContext(),
-        )
-        response = await handle_non_streaming_response(
-            original_request=request,
-            api_params=api_params,
-            context=context,
-        )
-        assert isinstance(response, ResponsesResponse)
-        assert response.output_text == "Content blocked"
-        mock_client.responses.create.assert_not_called()
-
     @pytest.mark.asyncio
     async def test_handle_non_streaming_success_returns_response(
         self,
@@ -822,9 +683,7 @@ class TestHandleNonStreamingResponse:
     ) -> None:
         """Test successful handle_non_streaming_response returns ResponsesResponse."""
         request = _request_with_model_and_conv("Hello")
-        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
-        mock_moderation = mocker.Mock()
-        mock_moderation.decision = "passed"
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
 
         mock_api_response = mocker.Mock(spec=OpenAIResponseObject)
         mock_api_response.output = []
@@ -878,7 +737,6 @@ class TestHandleNonStreamingResponse:
             auth=MOCK_AUTH,
             input_text="Hello",
             started_at=datetime.now(UTC),
-            moderation_result=mock_moderation,
             inline_rag_context=RAGContext(),
         )
         response = await handle_non_streaming_response(
@@ -895,6 +753,61 @@ class TestHandleNonStreamingResponse:
         assert mock_record.call_args.kwargs.get("record_failure") is None
 
     @pytest.mark.asyncio
+    async def test_handle_non_streaming_blocked_returns_refusal(
+        self,
+        minimal_config: AppConfig,
+        mocker: MockerFixture,
+    ) -> None:
+        """Blocked shields return a modr_* refusal without calling the LLM."""
+        request = _request_with_model_and_conv("blocked content")
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
+        mock_client.responses.create = mocker.AsyncMock()
+
+        _patch_handle_non_streaming_common(mocker, minimal_config)
+        mocker.patch(f"{MODULE}.queue_blocked_response_event")
+        mocker.patch(
+            f"{MODULE}._persist_blocked_response_turn",
+            new=mocker.AsyncMock(),
+        )
+        mocker.patch(
+            f"{MODULE}.normalize_conversation_id",
+            return_value=VALID_CONV_ID_NORMALIZED,
+        )
+        mocker.patch(
+            f"{MODULE}.build_turn_summary",
+            return_value=mocker.Mock(referenced_documents=[]),
+        )
+        mocker.patch(
+            f"{MODULE}.extract_vector_store_ids_from_tools",
+            return_value=[],
+        )
+
+        api_params, context = build_api_params_and_context(
+            updated_request=request,
+            client=mock_client,
+            auth=MOCK_AUTH,
+            input_text="blocked content",
+            started_at=datetime.now(UTC),
+            inline_rag_context=RAGContext(),
+        )
+        context.moderation_result = ShieldModerationBlocked(
+            message="Not allowed",
+            moderation_id="modr_test123",
+            refusal_response=create_refusal_response("Not allowed"),
+        )
+
+        response = await handle_non_streaming_response(
+            original_request=request,
+            api_params=api_params,
+            context=context,
+        )
+
+        assert isinstance(response, ResponsesResponse)
+        assert response.id == "modr_test123"
+        assert response.output_text == "Not allowed"
+        mock_client.responses.create.assert_not_called()
+
+    @pytest.mark.asyncio
     async def test_handle_non_streaming_with_previous_response_id_appends_turn(
         self,
         minimal_config: AppConfig,
@@ -902,9 +815,7 @@ class TestHandleNonStreamingResponse:
     ) -> None:
         """Test append_turn_items_to_conversation triggers with store and previous_response_id."""
         request = _request_with_previous_response_id("Hi", previous_response_id="r1")
-        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
-        mock_moderation = mocker.Mock()
-        mock_moderation.decision = "passed"
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
 
         mock_api_response = mocker.Mock(spec=OpenAIResponseObject)
         mock_api_response.output = []
@@ -962,7 +873,6 @@ class TestHandleNonStreamingResponse:
             auth=MOCK_AUTH,
             input_text="Hi",
             started_at=datetime.now(UTC),
-            moderation_result=mock_moderation,
             inline_rag_context=RAGContext(),
         )
         await handle_non_streaming_response(
@@ -984,12 +894,10 @@ class TestHandleNonStreamingResponse:
     ) -> None:
         """Test that RuntimeError with context_length raises 413."""
         request = _request_with_model_and_conv("Long input")
-        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
         mock_client.responses.create = mocker.AsyncMock(
             side_effect=RuntimeError("context_length exceeded")
         )
-        mock_moderation = mocker.Mock()
-        mock_moderation.decision = "passed"
 
         _patch_handle_non_streaming_common(mocker, minimal_config)
         mocker.patch(
@@ -1004,7 +912,6 @@ class TestHandleNonStreamingResponse:
                 auth=MOCK_AUTH,
                 input_text="Long input",
                 started_at=datetime.now(UTC),
-                moderation_result=mock_moderation,
                 inline_rag_context=RAGContext(),
             )
             await handle_non_streaming_response(
@@ -1023,15 +930,13 @@ class TestHandleNonStreamingResponse:
     ) -> None:
         """Test that APIConnectionError raises 503."""
         request = _request_with_model_and_conv("Hi")
-        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
         mock_client.responses.create = mocker.AsyncMock(
             side_effect=APIConnectionError(
                 message="Connection failed",
                 request=mocker.Mock(),
             )
         )
-        mock_moderation = mocker.Mock()
-        mock_moderation.decision = "passed"
 
         _patch_handle_non_streaming_common(mocker, minimal_config)
         mocker.patch(
@@ -1047,7 +952,6 @@ class TestHandleNonStreamingResponse:
                 auth=MOCK_AUTH,
                 input_text="Hi",
                 started_at=datetime.now(UTC),
-                moderation_result=mock_moderation,
                 inline_rag_context=RAGContext(),
             )
             await handle_non_streaming_response(
@@ -1069,7 +973,7 @@ class TestHandleNonStreamingResponse:
     ) -> None:
         """Test that APIStatusError is handled and re-raised as HTTPException."""
         request = _request_with_model_and_conv("Hi")
-        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
         mock_client.responses.create = mocker.AsyncMock(
             side_effect=APIStatusError(
                 message="API error",
@@ -1077,8 +981,6 @@ class TestHandleNonStreamingResponse:
                 body=None,
             )
         )
-        mock_moderation = mocker.Mock()
-        mock_moderation.decision = "passed"
 
         _patch_handle_non_streaming_common(mocker, minimal_config)
         mocker.patch(
@@ -1102,7 +1004,6 @@ class TestHandleNonStreamingResponse:
                 auth=MOCK_AUTH,
                 input_text="Hi",
                 started_at=datetime.now(UTC),
-                moderation_result=mock_moderation,
                 inline_rag_context=RAGContext(),
             )
             await handle_non_streaming_response(
@@ -1121,12 +1022,10 @@ class TestHandleNonStreamingResponse:
     ) -> None:
         """Test that RuntimeError without context_length is re-raised."""
         request = _request_with_model_and_conv("Hi")
-        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
         mock_client.responses.create = mocker.AsyncMock(
             side_effect=RuntimeError("Some other error")
         )
-        mock_moderation = mocker.Mock()
-        mock_moderation.decision = "passed"
 
         _patch_handle_non_streaming_common(mocker, minimal_config)
         mocker.patch(
@@ -1141,7 +1040,6 @@ class TestHandleNonStreamingResponse:
                 auth=MOCK_AUTH,
                 input_text="Hi",
                 started_at=datetime.now(UTC),
-                moderation_result=mock_moderation,
                 inline_rag_context=RAGContext(),
             )
             await handle_non_streaming_response(
@@ -1155,69 +1053,6 @@ class TestHandleStreamingResponse:
     """Unit tests for handle_streaming_response and streaming generators."""
 
     @pytest.mark.asyncio
-    async def test_handle_streaming_blocked_returns_sse_consumes_shield_generator(
-        self,
-        minimal_config: AppConfig,
-        mocker: MockerFixture,
-    ) -> None:
-        """Test streaming with blocked moderation yields SSE from shield_violation_generator."""
-        request = _request_with_model_and_conv("Bad", model="provider/model1")
-        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
-        mock_moderation = mocker.Mock()
-        mock_moderation.decision = "blocked"
-        mock_moderation.message = "Blocked"
-        mock_moderation.moderation_id = "mod_123"
-        mock_refusal = OpenAIResponseMessage(
-            role="assistant", content="Blocked", type="message"
-        )
-        mock_moderation.refusal_response = mock_refusal
-
-        mocker.patch(f"{MODULE}.configuration", minimal_config)
-        mocker.patch(f"{MODULE}.get_available_quotas", return_value={})
-        mocker.patch(
-            f"{MODULE}.normalize_conversation_id",
-            return_value=VALID_CONV_ID_NORMALIZED,
-        )
-        mocker.patch(
-            f"{MODULE}.maybe_get_topic_summary",
-            new=mocker.AsyncMock(return_value=None),
-        )
-        mocker.patch(f"{MODULE}.store_query_results")
-
-        mock_client.conversations.items.create = mocker.AsyncMock()
-        api_params, context = build_api_params_and_context(
-            updated_request=request,
-            client=mock_client,
-            auth=MOCK_AUTH,
-            input_text="Bad",
-            started_at=datetime.now(UTC),
-            moderation_result=mock_moderation,
-            inline_rag_context=RAGContext(),
-        )
-        response = await handle_streaming_response(
-            original_request=request,
-            api_params=api_params,
-            context=context,
-        )
-
-        assert isinstance(response, StreamingResponse)
-        assert response.media_type == "text/event-stream"
-        collected: list[str] = []
-        async for part in response.body_iterator:
-            chunk_str = (
-                part.decode("utf-8")
-                if isinstance(part, bytes)
-                else (part if isinstance(part, str) else bytes(part).decode("utf-8"))
-            )
-            collected.append(chunk_str)
-        body = "".join(collected)
-        assert "event: response.created" in body
-        assert "event: response.output_item.added" in body
-        assert "event: response.output_item.done" in body
-        assert "event: response.completed" in body
-        assert "[DONE]" in body
-        mock_client.responses.create.assert_not_called()
-
     @pytest.mark.asyncio
     async def test_handle_streaming_success_returns_sse_consumes_response_generator(
         self,
@@ -1226,9 +1061,7 @@ class TestHandleStreamingResponse:
     ) -> None:
         """Test streaming with passed moderation yields SSE from response_generator."""
         request = _request_with_model_and_conv("Hi", model="provider/model1")
-        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
-        mock_moderation = mocker.Mock()
-        mock_moderation.decision = "passed"
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
 
         mock_chunk = mocker.Mock()
         mock_chunk.type = "response.completed"
@@ -1268,14 +1101,13 @@ class TestHandleStreamingResponse:
         )
         mock_holder = mocker.Mock()
         mock_holder.get_client.return_value = mock_client
-        mocker.patch(f"{MODULE}.AsyncLlamaStackClientHolder", return_value=mock_holder)
+        mocker.patch(f"{MODULE}.AsyncOgxClientHolder", return_value=mock_holder)
         api_params, context = build_api_params_and_context(
             updated_request=request,
             client=mock_client,
             auth=MOCK_AUTH,
             input_text="Hi",
             started_at=datetime.now(UTC),
-            moderation_result=mock_moderation,
             inline_rag_context=RAGContext(),
         )
         response = await handle_streaming_response(
@@ -1305,9 +1137,7 @@ class TestHandleStreamingResponse:
     ) -> None:
         """Test in_progress chunk includes available_quotas and output_text."""
         request = _request_with_model_and_conv("Hi", model="provider/model1")
-        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
-        mock_moderation = mocker.Mock()
-        mock_moderation.decision = "passed"
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
 
         in_progress_chunk = mocker.Mock()
         in_progress_chunk.type = "response.in_progress"
@@ -1355,7 +1185,7 @@ class TestHandleStreamingResponse:
         )
         mock_holder = mocker.Mock()
         mock_holder.get_client.return_value = mock_client
-        mocker.patch(f"{MODULE}.AsyncLlamaStackClientHolder", return_value=mock_holder)
+        mocker.patch(f"{MODULE}.AsyncOgxClientHolder", return_value=mock_holder)
 
         api_params, context = build_api_params_and_context(
             updated_request=request,
@@ -1363,7 +1193,6 @@ class TestHandleStreamingResponse:
             auth=MOCK_AUTH,
             input_text="Hi",
             started_at=datetime.now(UTC),
-            moderation_result=mock_moderation,
             inline_rag_context=RAGContext(),
         )
         response = await handle_streaming_response(
@@ -1392,9 +1221,7 @@ class TestHandleStreamingResponse:
     ) -> None:
         """Test that response output items are passed to build_tool_call_summary."""
         request = _request_with_model_and_conv("Hi", model="provider/model1")
-        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
-        mock_moderation = mocker.Mock()
-        mock_moderation.decision = "passed"
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
 
         mock_output_item = mocker.Mock()
         completed_chunk = mocker.Mock()
@@ -1443,7 +1270,7 @@ class TestHandleStreamingResponse:
         )
         mock_holder = mocker.Mock()
         mock_holder.get_client.return_value = mock_client
-        mocker.patch(f"{MODULE}.AsyncLlamaStackClientHolder", return_value=mock_holder)
+        mocker.patch(f"{MODULE}.AsyncOgxClientHolder", return_value=mock_holder)
 
         api_params, context = build_api_params_and_context(
             updated_request=request,
@@ -1451,7 +1278,6 @@ class TestHandleStreamingResponse:
             auth=MOCK_AUTH,
             input_text="Hi",
             started_at=datetime.now(UTC),
-            moderation_result=mock_moderation,
             inline_rag_context=RAGContext(),
         )
         response = await handle_streaming_response(
@@ -1479,9 +1305,7 @@ class TestHandleStreamingResponse:
         request = _request_with_previous_response_id(
             "Hi", previous_response_id="r_prev"
         )
-        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
-        mock_moderation = mocker.Mock()
-        mock_moderation.decision = "passed"
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
 
         completed_chunk = mocker.Mock()
         completed_chunk.type = "response.completed"
@@ -1525,7 +1349,7 @@ class TestHandleStreamingResponse:
         )
         mock_holder = mocker.Mock()
         mock_holder.get_client.return_value = mock_client
-        mocker.patch(f"{MODULE}.AsyncLlamaStackClientHolder", return_value=mock_holder)
+        mocker.patch(f"{MODULE}.AsyncOgxClientHolder", return_value=mock_holder)
 
         api_params, context = build_api_params_and_context(
             updated_request=request,
@@ -1533,7 +1357,6 @@ class TestHandleStreamingResponse:
             auth=MOCK_AUTH,
             input_text="Hi",
             started_at=datetime.now(UTC),
-            moderation_result=mock_moderation,
             inline_rag_context=RAGContext(),
         )
         response = await handle_streaming_response(
@@ -1562,12 +1385,10 @@ class TestHandleStreamingResponse:
     ) -> None:
         """Test streaming raises 413 when create raises RuntimeError context_length."""
         request = _request_with_model_and_conv("Long", model="provider/model1")
-        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
         mock_client.responses.create = mocker.AsyncMock(
             side_effect=RuntimeError("context_length exceeded")
         )
-        mock_moderation = mocker.Mock()
-        mock_moderation.decision = "passed"
 
         mocker.patch(f"{MODULE}.configuration", minimal_config)
         mocker.patch(
@@ -1581,7 +1402,6 @@ class TestHandleStreamingResponse:
                 auth=MOCK_AUTH,
                 input_text="Long",
                 started_at=datetime.now(UTC),
-                moderation_result=mock_moderation,
                 inline_rag_context=RAGContext(),
             )
             await handle_streaming_response(
@@ -1599,15 +1419,13 @@ class TestHandleStreamingResponse:
     ) -> None:
         """Test streaming raises 503 when create raises APIConnectionError."""
         request = _request_with_model_and_conv("Hi", model="provider/model1")
-        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
         mock_client.responses.create = mocker.AsyncMock(
             side_effect=APIConnectionError(
                 message="Connection failed",
                 request=mocker.Mock(),
             )
         )
-        mock_moderation = mocker.Mock()
-        mock_moderation.decision = "passed"
 
         mocker.patch(f"{MODULE}.configuration", minimal_config)
         mocker.patch(
@@ -1621,7 +1439,6 @@ class TestHandleStreamingResponse:
                 auth=MOCK_AUTH,
                 input_text="Hi",
                 started_at=datetime.now(UTC),
-                moderation_result=mock_moderation,
                 inline_rag_context=RAGContext(),
             )
             await handle_streaming_response(
@@ -1660,7 +1477,6 @@ class TestResponsesInstructionResolution:
             new=mocker.AsyncMock(return_value=True),
         )
         _patch_rag(mocker)
-        _patch_moderation(mocker, decision="passed")
 
         mock_handler = mocker.AsyncMock(
             return_value=_make_responses_response(
@@ -1707,7 +1523,6 @@ class TestResponsesInstructionResolution:
             new=mocker.AsyncMock(return_value=True),
         )
         _patch_rag(mocker)
-        _patch_moderation(mocker, decision="passed")
 
         mock_handler = mocker.AsyncMock(
             return_value=_make_responses_response(
@@ -1768,7 +1583,6 @@ class TestResponsesInstructionResolution:
             new=mocker.AsyncMock(return_value=True),
         )
         _patch_rag(mocker)
-        _patch_moderation(mocker, decision="passed")
 
         mock_handler = mocker.AsyncMock(
             return_value=_make_responses_response(
@@ -1858,7 +1672,6 @@ class TestResponsesInstructionResolution:
             new=mocker.AsyncMock(return_value=True),
         )
         _patch_rag(mocker)
-        _patch_moderation(mocker, decision="passed")
 
         mock_handler = mocker.AsyncMock(
             return_value=mocker.Mock(spec=StreamingResponse)
@@ -2286,9 +2099,7 @@ class TestSanitizesOutputAndModel:
             conversation=VALID_CONV_ID_NORMALIZED,
         )
 
-        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
-        mock_moderation = mocker.Mock()
-        mock_moderation.decision = "passed"
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
 
         mock_api_response = mocker.Mock(spec=OpenAIResponseObject)
         mock_api_response.output = []
@@ -2363,7 +2174,6 @@ class TestSanitizesOutputAndModel:
             auth=MOCK_AUTH,
             input_text="Hi",
             started_at=datetime.now(UTC),
-            moderation_result=mock_moderation,
             inline_rag_context=RAGContext(),
         )
         response = await handle_non_streaming_response(
@@ -2442,9 +2252,7 @@ class TestSanitizesOutputAndModel:
             instructions=SERVER_INSTRUCTIONS,
             conversation=VALID_CONV_ID_NORMALIZED,
         )
-        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
-        mock_moderation = mocker.Mock()
-        mock_moderation.decision = "passed"
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
 
         completed_chunk = self._make_streaming_completed_chunk(mocker)
 
@@ -2477,7 +2285,7 @@ class TestSanitizesOutputAndModel:
         )
         mock_holder = mocker.Mock()
         mock_holder.get_client.return_value = mock_client
-        mocker.patch(f"{MODULE}.AsyncLlamaStackClientHolder", return_value=mock_holder)
+        mocker.patch(f"{MODULE}.AsyncOgxClientHolder", return_value=mock_holder)
 
         api_params, context = build_api_params_and_context(
             updated_request=updated_request,
@@ -2485,7 +2293,6 @@ class TestSanitizesOutputAndModel:
             auth=MOCK_AUTH,
             input_text="Hi",
             started_at=datetime.now(UTC),
-            moderation_result=mock_moderation,
             inline_rag_context=RAGContext(),
             filter_server_tools=False,
         )
@@ -2543,9 +2350,7 @@ class TestMcpEventsFilteredUnconditionally:
         mock_config.rag_id_mapping = {}
 
         request = _request_with_model_and_conv("Hi", model="provider/model1")
-        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
-        mock_moderation = mocker.Mock()
-        mock_moderation.decision = "passed"
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
 
         mcp_item = mocker.Mock()
         mcp_item.type = "mcp_call"
@@ -2599,7 +2404,7 @@ class TestMcpEventsFilteredUnconditionally:
         )
         mock_holder = mocker.Mock()
         mock_holder.get_client.return_value = mock_client
-        mocker.patch(f"{MODULE}.AsyncLlamaStackClientHolder", return_value=mock_holder)
+        mocker.patch(f"{MODULE}.AsyncOgxClientHolder", return_value=mock_holder)
 
         api_params, context = build_api_params_and_context(
             updated_request=request,
@@ -2607,7 +2412,6 @@ class TestMcpEventsFilteredUnconditionally:
             auth=MOCK_AUTH,
             input_text="Hi",
             started_at=datetime.now(UTC),
-            moderation_result=mock_moderation,
             inline_rag_context=RAGContext(),
             filter_server_tools=False,
         )
@@ -2640,9 +2444,7 @@ class TestMcpEventsFilteredUnconditionally:
         are filtered.
         """
         request = _request_with_model_and_conv("Hi", model="provider/model1")
-        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
-        mock_moderation = mocker.Mock()
-        mock_moderation.decision = "passed"
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
 
         text_item = mocker.Mock()
         text_item.type = "message"
@@ -2695,7 +2497,7 @@ class TestMcpEventsFilteredUnconditionally:
         )
         mock_holder = mocker.Mock()
         mock_holder.get_client.return_value = mock_client
-        mocker.patch(f"{MODULE}.AsyncLlamaStackClientHolder", return_value=mock_holder)
+        mocker.patch(f"{MODULE}.AsyncOgxClientHolder", return_value=mock_holder)
 
         api_params, context = build_api_params_and_context(
             updated_request=request,
@@ -2703,7 +2505,6 @@ class TestMcpEventsFilteredUnconditionally:
             auth=MOCK_AUTH,
             input_text="Hi",
             started_at=datetime.now(UTC),
-            moderation_result=mock_moderation,
             inline_rag_context=RAGContext(),
             filter_server_tools=False,
         )
@@ -2734,9 +2535,7 @@ async def test_response_generator_records_failure_when_stream_iteration_raises(
 ) -> None:
     """Test that response_generator records a failure metric when the stream raises."""
     request = _request_with_model_and_conv("Hi", model="provider/model1")
-    mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
-    mock_moderation = mocker.Mock()
-    mock_moderation.decision = "passed"
+    mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
 
     ok_chunk = mocker.Mock()
     ok_chunk.type = "response.output_item.added"
@@ -2764,7 +2563,6 @@ async def test_response_generator_records_failure_when_stream_iteration_raises(
         auth=MOCK_AUTH,
         input_text="Hi",
         started_at=datetime.now(UTC),
-        moderation_result=mock_moderation,
         inline_rag_context=RAGContext(),
     )
 
@@ -2835,35 +2633,3 @@ async def test_append_previous_response_turn_not_stored_when_store_false(
     await _append_previous_response_turn(api_params, context, ["out"])
 
     append.assert_not_awaited()
-
-
-@pytest.mark.asyncio
-async def test_persist_blocked_response_turn_compacted(mocker: MockerFixture) -> None:
-    """A shield-blocked compacted turn is stored against the original input.
-
-    In compacted mode the conversation parameter was dropped and api_params.input
-    is the explicit-input rewrite, so the blocked refusal turn must be persisted
-    against the original user input carried on the context (LCORE-1572).
-    """
-    append = mocker.patch(
-        "app.endpoints.responses.append_turn_items_to_conversation",
-        new=mocker.AsyncMock(),
-    )
-    refusal = mocker.Mock()
-    api_params = mocker.Mock(
-        store=True, conversation="conv_x", input=["rewritten explicit input"]
-    )
-    context = mocker.Mock(
-        client=mocker.AsyncMock(),
-        compacted_original_input="the original query",
-        moderation_result=mocker.Mock(refusal_response=refusal),
-    )
-
-    await _persist_blocked_response_turn(api_params, context)
-
-    append.assert_awaited_once_with(
-        client=context.client,
-        conversation_id="conv_x",
-        user_input="the original query",
-        llm_output=[refusal],
-    )

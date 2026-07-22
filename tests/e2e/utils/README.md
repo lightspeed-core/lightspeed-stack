@@ -7,7 +7,7 @@ Helpers for reading and updating Llama Stack run.yaml across environments.
 Thin Prow/OpenShift wrappers for Llama Stack run.yaml ConfigMap operations.
 
 ## [llama_stack_utils.py](llama_stack_utils.py)
-E2E test utilities for Llama Stack (toolgroups and shields).
+E2E test utilities for Llama Stack shields.
 
 ## [prow_utils.py](prow_utils.py)
 Prow/OpenShift-specific utility functions for E2E tests.

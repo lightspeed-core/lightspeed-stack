@@ -17,6 +17,7 @@ from configuration import (
     LogicError,
     replace_env_vars_preserving_native_override,
 )
+from models.common.shields import CatalogShield
 from models.config import CustomProfile, ModelContextProtocolServer
 from utils.checks import InvalidConfigurationError
 
@@ -286,6 +287,64 @@ def test_init_from_dict_with_mcp_servers() -> None:
     assert cfg.mcp_servers[1].name == "server2"
     assert cfg.mcp_servers[1].provider_id == "custom-provider"
     assert cfg.mcp_servers[1].url == "https://api.example.com"
+
+
+def test_init_from_dict_with_shields() -> None:
+    """Test initialization with shields configuration."""
+    config_dict = {
+        "name": "foo",
+        "service": {
+            "host": "localhost",
+            "port": 8080,
+            "auth_enabled": False,
+            "workers": 1,
+            "color_log": True,
+            "access_log": True,
+        },
+        "llama_stack": {
+            "api_key": "xyzzy",
+            "url": "http://x.y.com:1234",
+            "use_as_library_client": False,
+        },
+        "user_data_collection": {
+            "feedback_enabled": False,
+        },
+        "shields": [
+            {
+                "shield_id": "lightspeed_question_validity",
+                "provider_id": "lightspeed_question_validity",
+                "provider_shield_id": "openai/gpt-4o-mini",
+            },
+            {
+                "shield_id": "lightspeed_pii_redaction",
+                "provider_id": "lightspeed_pii_redaction",
+                "provider_shield_id": "lightspeed_pii_redaction",
+                "params": {
+                    "rules": [
+                        {
+                            "pattern": r"\d+",
+                            "replacement": "[NUM]",
+                        }
+                    ]
+                },
+            },
+        ],
+        "customization": None,
+    }
+    cfg = AppConfig()
+    cfg.init_from_dict(config_dict)
+
+    assert len(cfg.shields) == 2
+    assert cfg.shields[0].shield_id == "lightspeed_question_validity"
+    assert cfg.shields[0].provider_id == "lightspeed_question_validity"
+    assert cfg.shields[0].provider_shield_id == "openai/gpt-4o-mini"
+    assert cfg.shields[0].params == {}
+    assert cfg.shields[1].shield_id == "lightspeed_pii_redaction"
+    assert len(cfg.shields[1].params["rules"]) == 1
+    assert (
+        CatalogShield.model_validate(cfg.shields[1]).identifier
+        == "lightspeed_pii_redaction"
+    )
 
 
 def test_init_from_dict_with_authorization_configuration() -> None:

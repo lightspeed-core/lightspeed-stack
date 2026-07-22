@@ -97,7 +97,7 @@ def test_llama_stack_configuration_no_run_yaml() -> None:
     """
     with pytest.raises(
         InvalidConfigurationError,
-        match="Llama Stack configuration file 'not a file' is not a file",
+        match="OGX configuration file 'not a file' is not a file",
     ):
         LlamaStackConfiguration(
             use_as_library_client=True,
@@ -113,7 +113,7 @@ def test_llama_stack_wrong_configuration_constructor_no_url() -> None:
     """
     with pytest.raises(
         ValueError,
-        match="Llama stack URL is not specified and library client mode is not specified",
+        match="OGX URL is not specified and library client mode is not specified",
     ):
         LlamaStackConfiguration()  # pyright: ignore[reportCallIssue]
 
@@ -122,7 +122,7 @@ def test_llama_stack_wrong_configuration_constructor_library_mode_off() -> None:
     """Test the LlamaStackConfiguration constructor."""
     with pytest.raises(
         ValueError,
-        match="Llama stack URL is not specified and library client mode is not enabled",
+        match="OGX URL is not specified and library client mode is not enabled",
     ):
         LlamaStackConfiguration(
             use_as_library_client=False

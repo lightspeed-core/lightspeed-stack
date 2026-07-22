@@ -2,8 +2,8 @@
 
 import pytest
 from fastapi import HTTPException, Request, status
-from llama_stack_client import APIConnectionError, BadRequestError
-from llama_stack_client.types import ProviderInfo
+from ogx_client import APIConnectionError, BadRequestError
+from ogx_client.types import ProviderInfo
 from pytest_mock import MockerFixture
 
 from app.endpoints.providers import (
@@ -43,7 +43,7 @@ async def test_providers_endpoint_connection_error(
     mocker.patch("app.endpoints.providers.configuration", minimal_config)
 
     mocker.patch(
-        "app.endpoints.providers.AsyncLlamaStackClientHolder"
+        "app.endpoints.providers.AsyncOgxClientHolder"
     ).return_value.get_client.side_effect = APIConnectionError(request=mocker.Mock())
 
     request = Request(scope={"type": "http"})
@@ -56,7 +56,7 @@ async def test_providers_endpoint_connection_error(
     assert e.value.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
     detail = e.value.detail
     assert isinstance(detail, dict)
-    assert detail["response"] == "Unable to connect to Llama Stack"  # type: ignore
+    assert detail["response"] == "Unable to connect to OGX"  # type: ignore
 
 
 @pytest.mark.asyncio
@@ -92,7 +92,7 @@ async def test_providers_endpoint_success(
     mock_client = mocker.AsyncMock()
     mock_client.providers.list.return_value = provider_list
     mocker.patch(
-        "app.endpoints.providers.AsyncLlamaStackClientHolder"
+        "app.endpoints.providers.AsyncOgxClientHolder"
     ).return_value.get_client.return_value = mock_client
 
     request = Request(scope={"type": "http"})
@@ -113,10 +113,8 @@ async def test_get_provider_not_found(
     """Test that /providers/{provider_id} endpoint raises HTTP 404 if the provider is not found."""
     mocker.patch("app.endpoints.providers.configuration", minimal_config)
 
-    # Mock AsyncLlamaStackClientHolder to return a client that raises BadRequestError
-    mock_client_holder = mocker.patch(
-        "app.endpoints.providers.AsyncLlamaStackClientHolder"
-    )
+    # Mock AsyncOgxClientHolder to return a client that raises BadRequestError
+    mock_client_holder = mocker.patch("app.endpoints.providers.AsyncOgxClientHolder")
     mock_client = mocker.AsyncMock()
     mock_client.providers.retrieve = mocker.AsyncMock(
         side_effect=BadRequestError(
@@ -160,7 +158,7 @@ async def test_get_provider_success(
     mock_client = mocker.AsyncMock()
     mock_client.providers.retrieve = mocker.AsyncMock(return_value=provider)
     mocker.patch(
-        "app.endpoints.providers.AsyncLlamaStackClientHolder"
+        "app.endpoints.providers.AsyncOgxClientHolder"
     ).return_value.get_client.return_value = mock_client
 
     request = Request(scope={"type": "http"})
@@ -184,7 +182,7 @@ async def test_get_provider_connection_error(
     mock_authorization_resolvers(mocker)
 
     mocker.patch(
-        "app.endpoints.providers.AsyncLlamaStackClientHolder"
+        "app.endpoints.providers.AsyncOgxClientHolder"
     ).return_value.get_client.side_effect = APIConnectionError(request=mocker.Mock())
 
     request = Request(scope={"type": "http"})
@@ -199,4 +197,4 @@ async def test_get_provider_connection_error(
     assert e.value.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
     detail = e.value.detail
     assert isinstance(detail, dict)
-    assert detail["response"] == "Unable to connect to Llama Stack"  # type: ignore
+    assert detail["response"] == "Unable to connect to OGX"  # type: ignore

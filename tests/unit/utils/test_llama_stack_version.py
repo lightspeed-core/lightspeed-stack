@@ -3,8 +3,8 @@
 from typing import Any
 
 import pytest
-from llama_stack_client import APIConnectionError
-from llama_stack_client.types import VersionInfo
+from ogx_client import APIConnectionError
+from ogx_client.types import VersionInfo
 from pytest_mock import MockerFixture
 from pytest_subtests import SubTests
 from semver import Version
@@ -61,7 +61,7 @@ async def test_check_llama_stack_version_too_small_version(
     mock_client.inspect.version.return_value = VersionInfo(version="0.0.0")
 
     expected_exception_msg = (
-        f"Llama Stack version >= {MINIMAL_SUPPORTED_LLAMA_STACK_VERSION} "
+        f"OGX version >= {MINIMAL_SUPPORTED_LLAMA_STACK_VERSION} "
         + "is required, but 0.0.0 is used"
     )
     # test if the version is checked
@@ -83,7 +83,7 @@ async def _check_version_must_fail(mock_client: Any, bigger_version: Version) ->
     mock_client.inspect.version.return_value = VersionInfo(version=str(bigger_version))
 
     expected_exception_msg = (
-        f"Llama Stack version <= {MAXIMAL_SUPPORTED_LLAMA_STACK_VERSION} is required, "
+        f"OGX version <= {MAXIMAL_SUPPORTED_LLAMA_STACK_VERSION} is required, "
         + f"but {bigger_version} is used"
     )
     # test if the version is checked

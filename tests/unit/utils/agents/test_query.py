@@ -5,10 +5,7 @@ from typing import Any, Optional
 
 import pytest
 from fastapi import HTTPException
-from llama_stack_api.openai_responses import (
-    OpenAIResponseMessage as ResponseMessage,
-)
-from llama_stack_client import APIConnectionError, APIStatusError
+from ogx_client import APIConnectionError, APIStatusError
 from pydantic_ai.messages import (
     FinishReason,
     ModelRequest,
@@ -24,10 +21,8 @@ from pydantic_ai.usage import RunUsage
 from pytest_mock import MockerFixture
 
 from constants import ENDPOINT_PATH_QUERY
-from models.common.moderation import ShieldModerationBlocked, ShieldModerationPassed
 from models.common.responses.responses_api_params import ResponsesApiParams
 from models.common.responses.types import ResponseInput
-from models.common.turn_summary import TurnSummary
 from utils.agents.query import (
     AgentFinishReason,
     build_turn_summary_from_agent_run,
@@ -103,24 +98,12 @@ def responses_params_fixture(
     return make_responses_params()
 
 
-@pytest.fixture(name="blocked_moderation")
-def blocked_moderation_fixture() -> ShieldModerationBlocked:
-    """Blocked shield moderation result for tests."""
-    return ShieldModerationBlocked(
-        message="Content blocked by shield.",
-        moderation_id="modr-test-456",
-        refusal_response=ResponseMessage(
-            role="assistant",
-            content="Content blocked by shield.",
-        ),
-    )
-
-
 @pytest.fixture(name="patch_query_configuration")
 def patch_query_configuration_fixture(mocker: MockerFixture) -> None:
     """Patch query module configuration for isolated agent query tests."""
     mock_config = mocker.MagicMock()
     mock_config.skills = None
+    mock_config.shields = []
     mock_config.rag_id_mapping = {}
     mocker.patch("utils.agents.query.configuration", mock_config)
 
@@ -130,6 +113,7 @@ def patch_recording_metrics_fixture(mocker: MockerFixture) -> None:
     """Patch LLM recording helpers so token usage tests stay isolated."""
     mock_config = mocker.MagicMock()
     mock_config.skills = None
+    mock_config.shields = []
     mock_config.rag_id_mapping = {}
     mocker.patch("utils.agents.query.configuration", mock_config)
     mocker.patch(
@@ -369,38 +353,6 @@ class TestRetrieveAgentResponse:
     """Tests for retrieve_agent_response."""
 
     @pytest.mark.asyncio
-    async def test_blocked_moderation_returns_refusal_summary(
-        self,
-        mocker: MockerFixture,
-        responses_params: ResponsesApiParams,
-        blocked_moderation: ShieldModerationBlocked,
-    ) -> None:
-        """Test blocked moderation persists refusal and returns a turn summary."""
-        mock_client = mocker.AsyncMock()
-        mock_append = mocker.patch(
-            "utils.agents.query.append_turn_items_to_conversation",
-            new=mocker.AsyncMock(),
-        )
-
-        summary = await retrieve_agent_response(
-            client=mock_client,
-            responses_params=responses_params,
-            moderation_result=blocked_moderation,
-            endpoint_path=ENDPOINT_PATH_QUERY,
-        )
-
-        mock_append.assert_awaited_once_with(
-            mock_client,
-            responses_params.conversation,
-            responses_params.input,
-            [blocked_moderation.refusal_response],
-        )
-        assert summary == TurnSummary(
-            id="modr-test-456",
-            llm_response="Content blocked by shield.",
-        )
-
-    @pytest.mark.asyncio
     async def test_success_returns_turn_summary(
         self,
         mocker: MockerFixture,
@@ -423,7 +375,6 @@ class TestRetrieveAgentResponse:
         summary = await retrieve_agent_response(
             client=mocker.AsyncMock(),
             responses_params=make_responses_params(input_text="Say hello"),
-            moderation_result=ShieldModerationPassed(),
             endpoint_path=ENDPOINT_PATH_QUERY,
         )
 
@@ -452,7 +403,6 @@ class TestRetrieveAgentResponse:
             await retrieve_agent_response(
                 client=mocker.AsyncMock(),
                 responses_params=responses_params,
-                moderation_result=ShieldModerationPassed(),
                 endpoint_path=ENDPOINT_PATH_QUERY,
             )
 
@@ -492,8 +442,57 @@ class TestRetrieveAgentResponse:
             await retrieve_agent_response(
                 client=mocker.AsyncMock(),
                 responses_params=responses_params,
-                moderation_result=ShieldModerationPassed(),
                 endpoint_path=ENDPOINT_PATH_QUERY,
             )
 
         assert exc_info.value.status_code == 429
+
+    @pytest.mark.asyncio
+    @pytest.mark.usefixtures("patch_query_configuration")
+    async def test_context_length_runtime_error_raises_http_exception(
+        self,
+        mocker: MockerFixture,
+        responses_params: ResponsesApiParams,
+    ) -> None:
+        """Map context-length RuntimeError from the agent run to HTTP 413."""
+        mock_agent = mocker.AsyncMock()
+        mock_agent.run = mocker.AsyncMock(
+            side_effect=RuntimeError("context_length exceeded")
+        )
+        mocker.patch(
+            "utils.agents.query.build_agent",
+            return_value=mock_agent,
+        )
+
+        with pytest.raises(HTTPException) as exc_info:
+            await retrieve_agent_response(
+                client=mocker.AsyncMock(),
+                responses_params=responses_params,
+                endpoint_path=ENDPOINT_PATH_QUERY,
+            )
+
+        assert exc_info.value.status_code == 413
+
+    @pytest.mark.asyncio
+    @pytest.mark.usefixtures("patch_query_configuration")
+    async def test_other_runtime_error_raises_http_exception(
+        self,
+        mocker: MockerFixture,
+        responses_params: ResponsesApiParams,
+    ) -> None:
+        """Map non-context-length RuntimeError from the agent run to HTTP 500."""
+        mock_agent = mocker.AsyncMock()
+        mock_agent.run = mocker.AsyncMock(side_effect=RuntimeError("Some other error"))
+        mocker.patch(
+            "utils.agents.query.build_agent",
+            return_value=mock_agent,
+        )
+
+        with pytest.raises(HTTPException) as exc_info:
+            await retrieve_agent_response(
+                client=mocker.AsyncMock(),
+                responses_params=responses_params,
+                endpoint_path=ENDPOINT_PATH_QUERY,
+            )
+
+        assert exc_info.value.status_code == 500
