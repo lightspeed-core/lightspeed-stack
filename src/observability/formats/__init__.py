@@ -9,7 +9,7 @@ from observability.formats.rlsapi import InferenceEventData, build_inference_eve
 
 __all__ = [
     "InferenceEventData",
-    "build_inference_event",
     "ResponsesEventData",
+    "build_inference_event",
     "build_responses_event",
 ]
