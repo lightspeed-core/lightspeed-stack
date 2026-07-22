@@ -149,9 +149,7 @@ async def list_saved_prompts_handler(
             for row in rows
         ]
     except SQLAlchemyError as exc:
-        logger.exception(
-            "Error retrieving saved prompts for user %s: %s", user_id, exc
-        )
+        logger.exception("Error retrieving saved prompts for user %s: %s", user_id, exc)
         error_response = InternalServerErrorResponse.database_error()
         raise HTTPException(**error_response.model_dump()) from exc
 
