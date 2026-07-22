@@ -372,7 +372,12 @@ class A2AAgentExecutor(AgentExecutor):
             )
             responses_params = compaction.params
 
-            agent = build_agent(client, responses_params, configuration.skills)
+            agent = build_agent(
+                client,
+                responses_params,
+                configuration.skills,
+                shields=configuration.shields,
+            )
         except (AgentRunError, APIStatusError, APIConnectionError, RuntimeError) as e:
             error_response = map_agent_inference_error(e, query_request.model or "")
             logger.error("Error preparing A2A agent: %s", str(e), exc_info=True)
