@@ -87,9 +87,7 @@ async def test_shields_endpoint_handler_improper_llama_stack_configuration(
 
     mocker.patch("app.endpoints.shields.configuration", cfg)
     # Mock client to avoid initialization
-    mock_client_holder = mocker.patch(
-        "app.endpoints.shields.AsyncOgxClientHolder"
-    )
+    mock_client_holder = mocker.patch("app.endpoints.shields.AsyncOgxClientHolder")
     mock_client = mocker.AsyncMock()
     mock_client_holder.return_value.get_client.return_value = mock_client
 
@@ -160,9 +158,7 @@ async def test_shields_endpoint_handler_configuration_loaded(
 
     mocker.patch("app.endpoints.shields.configuration", cfg)
     # Mock client to raise APIConnectionError
-    mock_client_holder = mocker.patch(
-        "app.endpoints.shields.AsyncOgxClientHolder"
-    )
+    mock_client_holder = mocker.patch("app.endpoints.shields.AsyncOgxClientHolder")
     mock_client = mocker.AsyncMock()
     mock_client.shields.list.side_effect = APIConnectionError(request=None)  # type: ignore
     mock_client_holder.return_value.get_client.return_value = mock_client
@@ -283,9 +279,7 @@ async def test_shields_endpoint_llama_stack_connection_error(
     # when shields.list() method is called
     mock_client = mocker.AsyncMock()
     mock_client.shields.list.side_effect = APIConnectionError(request=None)  # type: ignore
-    mock_client_holder = mocker.patch(
-        "app.endpoints.shields.AsyncOgxClientHolder"
-    )
+    mock_client_holder = mocker.patch("app.endpoints.shields.AsyncOgxClientHolder")
     mock_client_holder.return_value.get_client.return_value = mock_client
 
     cfg = AppConfig()
@@ -421,9 +415,7 @@ async def test_shields_endpoint_handler_unexpected_exception(
 
     mock_client = mocker.AsyncMock()
     mock_client.shields.list.side_effect = RuntimeError("unexpected failure")
-    mock_client_holder = mocker.patch(
-        "app.endpoints.shields.AsyncOgxClientHolder"
-    )
+    mock_client_holder = mocker.patch("app.endpoints.shields.AsyncOgxClientHolder")
     mock_client_holder.return_value.get_client.return_value = mock_client
 
     request = Request(
@@ -477,9 +469,7 @@ async def test_shields_endpoint_handler_malformed_shield_objects(
 
     mock_client = mocker.AsyncMock()
     mock_client.shields.list.return_value = [mock_shield_minimal]
-    mock_client_holder = mocker.patch(
-        "app.endpoints.shields.AsyncOgxClientHolder"
-    )
+    mock_client_holder = mocker.patch("app.endpoints.shields.AsyncOgxClientHolder")
     mock_client_holder.return_value.get_client.return_value = mock_client
 
     request = Request(

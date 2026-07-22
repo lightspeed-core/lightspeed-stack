@@ -13,6 +13,7 @@ from pydantic_ai.messages import (
 from pydantic_ai.models import ModelRequestContext
 from pytest_mock import MockerFixture
 
+from models.common.moderation import ShieldModerationBlocked, ShieldModerationPassed
 from models.config import (
     RedactionConfig,
     RedactionRule,
@@ -314,3 +315,46 @@ class TestPiiRedactionCapability:
         )
         assert result is resp
         assert resp.parts[0].content == "clean response"
+
+
+class TestPiiRedactionCapabilityRun:
+    """Tests for PiiRedactionCapability.run method."""
+
+    @pytest.fixture(name="capability")
+    def capability_fixture(self) -> PiiRedactionCapability:
+        """Create a PiiRedactionCapability with an email redaction rule.
+
+        Returns:
+            A configured PiiRedactionCapability instance.
+        """
+        config = RedactionConfig(
+            rules=[
+                RedactionRule(
+                    pattern=r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}",
+                    replacement="[REDACTED_EMAIL]",
+                )
+            ],
+            case_sensitive=True,
+        )
+        return PiiRedactionCapability(config=config)
+
+    @pytest.mark.asyncio()
+    async def test_clean_text_returns_passed(
+        self, capability: PiiRedactionCapability
+    ) -> None:
+        """Test that clean text returns ShieldModerationPassed."""
+        result = await capability.run("no sensitive content here")
+
+        assert isinstance(result, ShieldModerationPassed)
+        assert result.decision == "passed"
+
+    @pytest.mark.asyncio()
+    async def test_pii_text_returns_blocked(
+        self, capability: PiiRedactionCapability
+    ) -> None:
+        """Test that text with PII returns ShieldModerationBlocked."""
+        result = await capability.run("contact user@example.com for details")
+
+        assert isinstance(result, ShieldModerationBlocked)
+        assert result.message == "Sensitive content detected."
+        assert result.moderation_id.startswith("modr-")

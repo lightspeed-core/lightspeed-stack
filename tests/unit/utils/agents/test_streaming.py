@@ -1048,9 +1048,9 @@ class TestInterruptPartialTokenAccumulation:
         num_chunks = len(chunk_ids)
         assert chunk_ids == sorted(chunk_ids), "chunk_ids must be monotonically ordered"
         assert all(cid >= 0 for cid in chunk_ids), "all chunk_ids must be non-negative"
-        assert num_chunks == len(set(chunk_ids)), (
-            "chunk_ids must not contain duplicates"
-        )
+        assert num_chunks == len(
+            set(chunk_ids)
+        ), "chunk_ids must not contain duplicates"
         assert chunk_ids[-1] == num_chunks - 1
 
     @pytest.mark.asyncio
