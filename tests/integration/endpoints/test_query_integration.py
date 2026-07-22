@@ -4,7 +4,6 @@
 # pylint: disable=too-many-arguments  # Integration tests need many fixtures
 # pylint: disable=too-many-positional-arguments  # Integration tests need many fixtures
 
-
 import pytest
 from fastapi import HTTPException, Request, status
 from llama_stack_client import APIConnectionError
@@ -676,14 +675,13 @@ async def test_query_v2_endpoint_bypasses_tools_when_no_tools_true(
 
 
 @pytest.mark.asyncio
-async def test_query_v2_endpoint_uses_tools_when_available(
+async def test_query_v2_endpoint_uses_tools_when_available(  # pylint: disable=unused-argument
     test_config: AppConfig,
     mock_llama_stack_client: AsyncMockType,
     mock_query_agent: AsyncMockType,
     test_request: Request,
     test_auth: AuthTuple,
     patch_db_session: Session,
-    mocker: MockerFixture,
 ) -> None:
     """Test that tools are used when no_tools=False and vector stores are available.
 
@@ -707,17 +705,10 @@ async def test_query_v2_endpoint_uses_tools_when_available(
     -------
         None
     """
-    _ = test_config
+    # prepare_tools does not require llama-stack client anymore so the way to
+    # enable RAG tools is through config
+    test_config.rag.tool = ["vs-test-123"]
     _ = patch_db_session
-
-    # Mock vector stores to be available (simulating RAG tools)
-    mock_vector_store = mocker.MagicMock()
-    mock_vector_store.id = "vs-test-123"
-
-    mock_list_result = mocker.MagicMock()
-    mock_list_result.data = [mock_vector_store]
-
-    mock_llama_stack_client.vector_stores.list.return_value = mock_list_result
 
     query_request = QueryRequest(query="What is Ansible?", no_tools=False)
 

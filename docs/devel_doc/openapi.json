@@ -18084,13 +18084,13 @@
                         },
                         "type": "array",
                         "title": "Tool RAG IDs",
-                        "description": "RAG IDs made available to the LLM as a file_search tool. Use 'okp' to include the OKP vector store. When omitted, all registered BYOK vector stores are used (backward compatibility)."
+                        "description": "RAG IDs made available to the LLM as a file_search tool. Use 'okp' to include the OKP vector store. When omitted, tool RAG is disabled."
                     }
                 },
                 "additionalProperties": false,
                 "type": "object",
                 "title": "RagConfiguration",
-                "description": "RAG strategy configuration.\n\nControls which RAG sources are used for inline and tool-based retrieval.\n\nEach strategy lists RAG IDs to include. The special ID ``\"okp\"`` defined in constants,\nactivates the OKP provider; all other IDs refer to entries in ``byok_rag``.\n\nBackward compatibility:\n    - ``inline`` defaults to ``[]`` (no inline RAG).\n    - ``tool`` defaults to ``[]`` (no tool RAG).\n\nIf no RAG strategy is defined (inline and tool are empty),\nthe RAG tool will register all stores available to llama-stack."
+                "description": "RAG strategy configuration.\n\nControls which RAG sources are used for inline and tool-based retrieval.\n\nEach strategy lists RAG IDs to include. The special ID ``\"okp\"`` defined in constants,\nactivates the OKP provider; all other IDs refer to entries in ``byok_rag``.\n\nBoth ``inline`` and ``tool`` default to ``[]`` (disabled).\nEach must be explicitly configured to activate its respective RAG strategy."
             },
             "ReadinessResponse": {
                 "properties": {

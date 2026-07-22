@@ -81,7 +81,6 @@ from llama_stack_api.openai_responses import (
 from llama_stack_client import APIConnectionError, APIStatusError, AsyncLlamaStackClient
 
 import constants
-from client import AsyncLlamaStackClientHolder
 from configuration import configuration
 from constants import DEFAULT_RAG_TOOL
 from log import get_logger
@@ -125,44 +124,6 @@ from utils.suid import to_llama_stack_conversation_id
 from utils.token_counter import TokenCounter
 
 logger = get_logger(__name__)
-
-
-async def get_vector_store_ids(
-    client: AsyncLlamaStackClient,
-    vector_store_ids: Optional[list[str]] = None,
-) -> list[str]:
-    """Get vector store IDs for querying.
-
-    If vector_store_ids are provided, returns them. Otherwise fetches all
-    available vector stores from Llama Stack.
-
-    Args:
-        client: The AsyncLlamaStackClient to use for fetching stores
-        vector_store_ids: Optional list of vector store IDs. If provided,
-            returns this list. If None, fetches all available vector stores.
-
-    Returns:
-        List of vector store IDs to query
-
-    Raises:
-        HTTPException: With ServiceUnavailableResponse if connection fails,
-            or InternalServerErrorResponse if API returns an error status
-    """
-    if vector_store_ids is not None:
-        return vector_store_ids
-
-    try:
-        vector_stores = await client.vector_stores.list()
-        return [vector_store.id for vector_store in vector_stores.data]
-    except APIConnectionError as e:
-        error_response = ServiceUnavailableResponse(
-            backend_name="Llama Stack",
-            cause=str(e),
-        )
-        raise HTTPException(**error_response.model_dump()) from e
-    except APIStatusError as e:
-        error_response = InternalServerErrorResponse.generic()
-        raise HTTPException(**error_response.model_dump()) from e
 
 
 async def get_topic_summary(  # pylint: disable=too-many-nested-blocks
@@ -229,7 +190,6 @@ async def maybe_get_topic_summary(
 
 
 async def prepare_tools(  # pylint: disable=too-many-arguments,too-many-positional-arguments
-    client: AsyncLlamaStackClient,
     vector_store_ids: Optional[list[str]],
     no_tools: Optional[bool],
     token: str,
@@ -239,9 +199,8 @@ async def prepare_tools(  # pylint: disable=too-many-arguments,too-many-position
     """Prepare tools for Responses API including RAG and MCP tools.
 
     Args:
-        client: The Llama Stack client instance
         vector_store_ids: The list of vector store IDs to use for RAG tools
-            or None if all vector stores should be used
+            or None to fall back to rag.tool configuration
         no_tools: Whether to skip tool preparation
         token: Authentication token for MCP tools
         mcp_headers: Per-request headers for MCP servers
@@ -259,13 +218,9 @@ async def prepare_tools(  # pylint: disable=too-many-arguments,too-many-position
     # Vector store ID resolution priority:
     #   1. Per-request IDs: highest prio; customer-facing rag_ids are translated to vector_db_ids.
     #   2. rag.tool config IDs: used when no per-request IDs provided, and rag.tool is configured.
-    #      If rag.inline is configured, but not rag.tool, tool RAG is disabled.
-    #   3. All registered vector DBs: fallback when neither rag.tool nor rag.inline are configured.
-    #      IDs fetched from llama-stack are already internal and need no translation.
     byok_rags = configuration.configuration.byok_rag
 
     is_tool_rag_enabled = len(configuration.configuration.rag.tool) > 0
-    is_inline_rag_enabled = len(configuration.configuration.rag.inline) > 0
 
     if vector_store_ids is not None:
         effective_ids = resolve_vector_store_ids(vector_store_ids, byok_rags)
@@ -273,8 +228,6 @@ async def prepare_tools(  # pylint: disable=too-many-arguments,too-many-position
         effective_ids = resolve_vector_store_ids(
             configuration.configuration.rag.tool, byok_rags
         )
-    elif not is_inline_rag_enabled:
-        effective_ids = await get_vector_store_ids(client, None)
 
     # Add RAG tools if vector stores are available
     rag_tools = get_rag_tools(effective_ids)
@@ -375,7 +328,6 @@ async def prepare_responses_params(  # pylint: disable=too-many-arguments,too-ma
 
     # Prepare tools for responses API
     tools = await prepare_tools(
-        client,
         query_request.vector_store_ids,
         query_request.no_tools,
         token,
@@ -1754,9 +1706,7 @@ async def _resolve_client_tools(
 
     # Optionally merge server-configured tools (RAG, MCP) with client tools
     if merge_server_tools:
-        client = AsyncLlamaStackClientHolder().get_client()
         server_tools = await prepare_tools(
-            client=client,
             vector_store_ids=vector_store_ids,
             no_tools=False,
             token=token,
@@ -1784,9 +1734,7 @@ async def _resolve_server_tools(
     Returns:
         List of server-configured tools, or None if none are configured.
     """
-    client = AsyncLlamaStackClientHolder().get_client()
     return await prepare_tools(
-        client=client,
         vector_store_ids=None,  # allow all vector stores configured
         no_tools=False,
         token=token,
@@ -1830,9 +1778,7 @@ async def resolve_tool_choice(
 
     if tools is None:
         # Register all tools configured in LCORE configuration
-        client = AsyncLlamaStackClientHolder().get_client()
         prepared_tools = await prepare_tools(
-            client=client,
             vector_store_ids=None,  # allow all vector stores configured
             no_tools=False,
             token=token,

@@ -606,18 +606,14 @@ Controls which RAG sources are used for inline and tool-based retrieval.
 Each strategy lists RAG IDs to include. The special ID ``"okp"`` defined in constants,
 activates the OKP provider; all other IDs refer to entries in ``byok_rag``.
 
-Backward compatibility:
-    - ``inline`` defaults to ``[]`` (no inline RAG).
-    - ``tool`` defaults to ``[]`` (no tool RAG).
-
-If no RAG strategy is defined (inline and tool are empty),
-the RAG tool will register all stores available to llama-stack.
+Both ``inline`` and ``tool`` default to ``[]`` (disabled).
+Each must be explicitly configured to activate its respective RAG strategy.
 
 
 | Field  | Type  | Description                                                                                                                                                                            |
 |--------|-------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | inline | array | RAG IDs whose sources are injected as context before the LLM call. Use 'okp' to enable OKP inline RAG. Empty by default (no inline RAG).                                               |
-| tool   | array | RAG IDs made available to the LLM as a file_search tool. Use 'okp' to include the OKP vector store. When omitted, all registered BYOK vector stores are used (backward compatibility). |
+| tool   | array | RAG IDs made available to the LLM as a file_search tool. Use 'okp' to include the OKP vector store. When omitted, tool RAG is disabled.                                               |
 
 
 ## RerankerConfiguration

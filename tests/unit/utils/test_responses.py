@@ -78,7 +78,6 @@ from utils.responses import (
     get_mcp_tools,
     get_rag_tools,
     get_topic_summary,
-    get_vector_store_ids,
     is_server_deployed_output,
     parse_arguments_string,
     parse_referenced_documents,
@@ -1035,7 +1034,6 @@ class TestResolveToolChoice:
         self, mocker: MockerFixture, tools_arg: Optional[list[InputTool]]
     ) -> None:
         """ToolChoiceMode.none always yields (None, None)."""
-        mocker.patch("utils.responses.AsyncLlamaStackClientHolder.get_client")
         mocker.patch("utils.responses.prepare_tools", new_callable=mocker.AsyncMock)
         out = await resolve_tool_choice(
             tools_arg,
@@ -1119,7 +1117,6 @@ class TestResolveToolChoice:
             new_callable=mocker.AsyncMock,
             return_value=None,
         )
-        mocker.patch("utils.responses.AsyncLlamaStackClientHolder.get_client")
         tool_choice_obj = ToolChoiceFileSearch()
         prepared, choice = await resolve_tool_choice(
             None,
@@ -1250,7 +1247,6 @@ class TestResolveToolChoice:
             new_callable=mocker.AsyncMock,
             return_value=[fs],
         )
-        mocker.patch("utils.responses.AsyncLlamaStackClientHolder.get_client")
         prepared, choice = await resolve_tool_choice(
             None,
             mode_choice,
@@ -1269,7 +1265,6 @@ class TestResolveToolChoice:
             new_callable=mocker.AsyncMock,
             return_value=None,
         )
-        mocker.patch("utils.responses.AsyncLlamaStackClientHolder.get_client")
         prepared, choice = await resolve_tool_choice(
             None,
             ToolChoiceMode.auto,
@@ -1290,7 +1285,6 @@ class TestResolveToolChoice:
             new_callable=mocker.AsyncMock,
             return_value=[fs, mcp],
         )
-        mocker.patch("utils.responses.AsyncLlamaStackClientHolder.get_client")
         allowed = OpenAIResponseInputToolChoiceAllowedTools(
             mode="auto",
             tools=[{"type": "mcp", "server_label": "s1"}],
@@ -1316,7 +1310,6 @@ class TestResolveToolChoice:
             new_callable=mocker.AsyncMock,
             return_value=[mcp],
         )
-        mocker.patch("utils.responses.AsyncLlamaStackClientHolder.get_client")
         allowed = OpenAIResponseInputToolChoiceAllowedTools(
             mode="auto",
             tools=[{"type": "file_search"}],
@@ -1336,7 +1329,6 @@ class TestResolveToolChoice:
             new_callable=mocker.AsyncMock,
             return_value=[mcp],
         )
-        mocker.patch("utils.responses.AsyncLlamaStackClientHolder.get_client")
         allowed = OpenAIResponseInputToolChoiceAllowedTools(
             mode="required",
             tools=[{"type": "mcp"}],
@@ -1605,106 +1597,43 @@ class TestPrepareTools:
         self, mocker: MockerFixture
     ) -> None:
         """Test prepare_tools with specified vector store IDs."""
-        mock_client = mocker.AsyncMock()
         mocker.patch("utils.responses.get_mcp_tools", return_value=None)
 
-        result = await prepare_tools(mock_client, ["vs1", "vs2"], False, "token")
+        result = await prepare_tools(["vs1", "vs2"], False, "token")
         assert result is not None
         assert len(result) == 1
         assert result[0].type == "file_search"
         assert result[0].vector_store_ids == ["vs1", "vs2"]
 
     @pytest.mark.asyncio
-    async def test_prepare_tools_fetch_vector_stores(
-        self, mocker: MockerFixture
-    ) -> None:
-        """Test prepare_tools fetches vector stores when not specified."""
-        mock_client = mocker.AsyncMock()
-        mock_vector_store1 = mocker.Mock()
-        mock_vector_store1.id = "vs1"
-        mock_vector_store2 = mocker.Mock()
-        mock_vector_store2.id = "vs2"
-        mock_vector_stores = mocker.Mock()
-        mock_vector_stores.data = [mock_vector_store1, mock_vector_store2]
-        mock_client.vector_stores.list = mocker.AsyncMock(
-            return_value=mock_vector_stores
-        )
-        mocker.patch("utils.responses.get_mcp_tools", return_value=None)
-
-        result = await prepare_tools(mock_client, None, False, "token")
-        assert result is not None
-        assert len(result) == 1
-        assert isinstance(result[0], InputToolFileSearch)
-        assert result[0].vector_store_ids == ["vs1", "vs2"]
-
-    @pytest.mark.asyncio
-    async def test_prepare_tools_connection_error(self, mocker: MockerFixture) -> None:
-        """Test prepare_tools raises HTTPException on connection error."""
-        mock_client = mocker.AsyncMock()
-        mock_client.vector_stores.list = mocker.AsyncMock(
-            side_effect=APIConnectionError(
-                message="Connection failed", request=mocker.Mock()
-            )
-        )
-
-        with pytest.raises(HTTPException) as exc_info:
-            await prepare_tools(mock_client, None, False, "token")
-        assert exc_info.value.status_code == 503
-
-    @pytest.mark.asyncio
     async def test_prepare_tools_with_mcp_servers(self, mocker: MockerFixture) -> None:
         """Test prepare_tools includes MCP tools."""
-        mock_client = mocker.AsyncMock()
         mock_mcp_tool = InputToolMCP(
             server_label="test-server",
             server_url="http://test",
         )
         mocker.patch("utils.responses.get_mcp_tools", return_value=[mock_mcp_tool])
 
-        result = await prepare_tools(mock_client, ["vs1"], False, "token")
+        result = await prepare_tools(["vs1"], False, "token")
         assert result is not None
         assert len(result) == 2  # RAG tool + MCP tool
         assert any(tool.type == "mcp" for tool in result)
 
     @pytest.mark.asyncio
-    async def test_prepare_tools_api_status_error(self, mocker: MockerFixture) -> None:
-        """Test prepare_tools raises HTTPException on API status error when fetching vector stores."""
-        mock_client = mocker.AsyncMock()
-        mock_client.vector_stores.list = mocker.AsyncMock(
-            side_effect=APIStatusError(
-                message="API error", response=mocker.Mock(request=None), body=None
-            )
-        )
-
-        with pytest.raises(HTTPException) as exc_info:
-            await prepare_tools(mock_client, None, False, "token")
-        assert exc_info.value.status_code == 500
-
-    @pytest.mark.asyncio
     async def test_prepare_tools_empty_toolgroups(self, mocker: MockerFixture) -> None:
         """Test prepare_tools returns None when no tools are available."""
-        mock_client = mocker.AsyncMock()
-        mock_vector_stores = mocker.Mock()
-        mock_vector_stores.data = []  # No vector stores
-        mock_client.vector_stores.list = mocker.AsyncMock(
-            return_value=mock_vector_stores
-        )
         mocker.patch("utils.responses.get_mcp_tools", return_value=None)
 
-        result = await prepare_tools(mock_client, None, False, "token")
+        result = await prepare_tools(None, False, "token")
         assert result is None
 
     @pytest.mark.asyncio
-    async def test_prepare_tools_no_tools_true(self, mocker: MockerFixture) -> None:
+    async def test_prepare_tools_no_tools_true(self) -> None:
         """Test prepare_tools returns None when no_tools=True."""
-        mock_client = mocker.AsyncMock()
-
         # Should return None immediately without fetching vector stores or MCP tools
-        result = await prepare_tools(mock_client, ["vs1", "vs2"], True, "token")
+        result = await prepare_tools(["vs1", "vs2"], True, "token")
 
         assert result is None
-        # Verify that vector_stores.list was not called
-        mock_client.vector_stores.list.assert_not_called()
 
 
 class TestResolveVectorStoreIds:
@@ -1773,7 +1702,6 @@ class TestPrepareToolsTranslatesVectorStoreIds:
         self, mocker: MockerFixture
     ) -> None:
         """Test that prepare_tools translates customer-facing IDs to internal IDs."""
-        mock_client = mocker.AsyncMock()
         mocker.patch("utils.responses.get_mcp_tools", return_value=None)
 
         # Configure BYOK RAG mapping
@@ -1786,7 +1714,7 @@ class TestPrepareToolsTranslatesVectorStoreIds:
         mock_config.configuration.rag.inline = []
         mocker.patch("utils.responses.configuration", mock_config)
 
-        result = await prepare_tools(mock_client, ["ocp_docs"], False, "token")
+        result = await prepare_tools(["ocp_docs"], False, "token")
         assert result is not None
         assert len(result) == 1
         assert result[0].type == "file_search"
@@ -1797,7 +1725,6 @@ class TestPrepareToolsTranslatesVectorStoreIds:
         self, mocker: MockerFixture
     ) -> None:
         """Test that prepare_tools passes through IDs not in BYOK config."""
-        mock_client = mocker.AsyncMock()
         mocker.patch("utils.responses.get_mcp_tools", return_value=None)
 
         # Configure empty BYOK RAG
@@ -1807,42 +1734,10 @@ class TestPrepareToolsTranslatesVectorStoreIds:
         mock_config.configuration.rag.inline = []
         mocker.patch("utils.responses.configuration", mock_config)
 
-        result = await prepare_tools(mock_client, ["raw-internal-id"], False, "token")
+        result = await prepare_tools(["raw-internal-id"], False, "token")
         assert result is not None
         assert isinstance(result[0], InputToolFileSearch)
         assert result[0].vector_store_ids == ["raw-internal-id"]
-
-    @pytest.mark.asyncio
-    async def test_does_not_translate_when_ids_fetched_from_llama_stack(
-        self, mocker: MockerFixture
-    ) -> None:
-        """Test that IDs fetched from llama-stack (None path) are not translated."""
-        mock_client = mocker.AsyncMock()
-        mock_vector_store = mocker.Mock()
-        mock_vector_store.id = "vs-internal"
-        mock_vector_stores = mocker.Mock()
-        mock_vector_stores.data = [mock_vector_store]
-        mock_client.vector_stores.list = mocker.AsyncMock(
-            return_value=mock_vector_stores
-        )
-        mocker.patch("utils.responses.get_mcp_tools", return_value=None)
-
-        # Configure BYOK RAG whose rag_id matches the fetched ID so that
-        # accidental translation would change the result and fail the assertion
-        mock_byok_rag = mocker.Mock()
-        mock_byok_rag.rag_id = "vs-internal"
-        mock_byok_rag.vector_db_id = "vs-translated"
-        mock_config = mocker.Mock()
-        mock_config.configuration.byok_rag = [mock_byok_rag]
-        mock_config.configuration.rag.tool = []
-        mock_config.configuration.rag.inline = []
-        mocker.patch("utils.responses.configuration", mock_config)
-
-        result = await prepare_tools(mock_client, None, False, "token")
-        assert result is not None
-        # The IDs from llama-stack should be used as-is (no BYOK translation on None path)
-        assert isinstance(result[0], InputToolFileSearch)
-        assert result[0].vector_store_ids == ["vs-internal"]
 
 
 class TestPrepareToolsVectorStoreResolution:
@@ -1853,7 +1748,6 @@ class TestPrepareToolsVectorStoreResolution:
         self, mocker: MockerFixture
     ) -> None:
         """Test that rag.tool config IDs are used when no per-request IDs are provided."""
-        mock_client = mocker.AsyncMock()
         mocker.patch("utils.responses.get_mcp_tools", return_value=None)
 
         mock_config = mocker.Mock()
@@ -1862,20 +1756,18 @@ class TestPrepareToolsVectorStoreResolution:
         mock_config.configuration.rag.inline = []
         mocker.patch("utils.responses.configuration", mock_config)
 
-        result = await prepare_tools(mock_client, None, False, "token")
+        result = await prepare_tools(None, False, "token")
 
         assert result is not None
         assert len(result) == 1
         assert result[0].type == "file_search"
         assert result[0].vector_store_ids == ["rag-tool-id-1", "rag-tool-id-2"]
-        mock_client.vector_stores.list.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_rag_tool_config_ids_are_translated(
         self, mocker: MockerFixture
     ) -> None:
         """Test that rag.tool config IDs are translated from rag_ids to vector_db_ids."""
-        mock_client = mocker.AsyncMock()
         mocker.patch("utils.responses.get_mcp_tools", return_value=None)
 
         mock_byok_rag = mocker.Mock()
@@ -1887,17 +1779,17 @@ class TestPrepareToolsVectorStoreResolution:
         mock_config.configuration.rag.inline = []
         mocker.patch("utils.responses.configuration", mock_config)
 
-        result = await prepare_tools(mock_client, None, False, "token")
+        result = await prepare_tools(None, False, "token")
 
         assert result is not None
         assert isinstance(result[0], InputToolFileSearch)
         assert result[0].vector_store_ids == ["vs-001"]
-        mock_client.vector_stores.list.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_inline_rag_disables_tool_rag(self, mocker: MockerFixture) -> None:
-        """Test that configuring rag.inline without rag.tool disables tool RAG."""
-        mock_client = mocker.AsyncMock()
+    async def test_inline_rag_config_does_not_affect_tool_rag(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test that configuring rag.inline have no effect on tool rag."""
         mocker.patch("utils.responses.get_mcp_tools", return_value=None)
 
         mock_config = mocker.Mock()
@@ -1908,18 +1800,15 @@ class TestPrepareToolsVectorStoreResolution:
         ]  # inline is configured
         mocker.patch("utils.responses.configuration", mock_config)
 
-        result = await prepare_tools(mock_client, None, False, "token")
+        result = await prepare_tools(None, False, "token")
 
-        # Tool RAG should be disabled — no RAG tool in result, no llama-stack fetch
         assert result is None
-        mock_client.vector_stores.list.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_per_request_ids_override_rag_tool_config(
         self, mocker: MockerFixture
     ) -> None:
         """Test that per-request vector_store_ids take priority over rag.tool config."""
-        mock_client = mocker.AsyncMock()
         mocker.patch("utils.responses.get_mcp_tools", return_value=None)
 
         mock_config = mocker.Mock()
@@ -1928,38 +1817,27 @@ class TestPrepareToolsVectorStoreResolution:
         mock_config.configuration.rag.inline = []
         mocker.patch("utils.responses.configuration", mock_config)
 
-        result = await prepare_tools(mock_client, ["request-id-1"], False, "token")
+        result = await prepare_tools(["request-id-1"], False, "token")
 
         assert result is not None
         assert isinstance(result[0], InputToolFileSearch)
         assert result[0].vector_store_ids == ["request-id-1"]
-        mock_client.vector_stores.list.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_all_registered_dbs_used_when_neither_tool_nor_inline_configured(
+    async def test_tool_rag_disabled_when_tool_not_configured(
         self, mocker: MockerFixture
     ) -> None:
-        """Test fallback to all registered vector DBs when neither rag.tool nor rag.inline are set."""
-        mock_client = mocker.AsyncMock()
-        mock_vs = mocker.Mock()
-        mock_vs.id = "vs-registered"
-        mock_list = mocker.Mock()
-        mock_list.data = [mock_vs]
-        mock_client.vector_stores.list = mocker.AsyncMock(return_value=mock_list)
+        """Test no rag tools is returned when rag.tool is not set and there is no per-request vector ids."""
         mocker.patch("utils.responses.get_mcp_tools", return_value=None)
 
         mock_config = mocker.Mock()
         mock_config.configuration.byok_rag = []
         mock_config.configuration.rag.tool = []
-        mock_config.configuration.rag.inline = []
         mocker.patch("utils.responses.configuration", mock_config)
 
-        result = await prepare_tools(mock_client, None, False, "token")
+        result = await prepare_tools(None, False, "token")
 
-        assert result is not None
-        assert isinstance(result[0], InputToolFileSearch)
-        assert result[0].vector_store_ids == ["vs-registered"]
-        mock_client.vector_stores.list.assert_called_once()
+        assert result is None
 
 
 class TestPrepareResponsesParams:
@@ -3145,67 +3023,6 @@ class TestParseReferencedDocumentsWithSource:
         assert docs[0].source is None
 
 
-class TestGetVectorStoreIds:
-    """Tests for get_vector_store_ids utility function."""
-
-    @pytest.mark.asyncio
-    async def test_returns_provided_ids_directly(self, mocker: MockerFixture) -> None:
-        """Test that provided vector_store_ids are returned without fetching."""
-        client_mock = mocker.AsyncMock()
-        result = await get_vector_store_ids(client_mock, ["vs1", "vs2"])
-        assert result == ["vs1", "vs2"]
-        client_mock.vector_stores.list.assert_not_called()
-
-    @pytest.mark.asyncio
-    async def test_fetches_all_when_no_ids_provided(
-        self, mocker: MockerFixture
-    ) -> None:
-        """Test that all vector stores are fetched when no IDs provided."""
-        mock_store1 = mocker.Mock()
-        mock_store1.id = "vs-fetched-1"
-        mock_store2 = mocker.Mock()
-        mock_store2.id = "vs-fetched-2"
-
-        mock_list_result = mocker.Mock()
-        mock_list_result.data = [mock_store1, mock_store2]
-
-        client_mock = mocker.AsyncMock()
-        client_mock.vector_stores.list.return_value = mock_list_result
-
-        result = await get_vector_store_ids(client_mock, None)
-        assert result == ["vs-fetched-1", "vs-fetched-2"]
-        client_mock.vector_stores.list.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_raises_on_connection_error(self, mocker: MockerFixture) -> None:
-        """Test that APIConnectionError raises HTTPException 503."""
-        client_mock = mocker.AsyncMock()
-        client_mock.vector_stores.list.side_effect = APIConnectionError.__new__(
-            APIConnectionError
-        )
-
-        with pytest.raises(HTTPException) as exc_info:
-            await get_vector_store_ids(client_mock, None)
-        assert exc_info.value.status_code == 503
-
-    @pytest.mark.asyncio
-    async def test_raises_on_api_status_error(self, mocker: MockerFixture) -> None:
-        """Test that APIStatusError raises HTTPException 500."""
-        mock_response = mocker.Mock()
-        mock_response.status_code = 500
-        mock_response.headers = {}
-        mock_response.text = "error"
-
-        client_mock = mocker.AsyncMock()
-        client_mock.vector_stores.list.side_effect = APIStatusError(
-            "error", response=mock_response, body=None
-        )
-
-        with pytest.raises(HTTPException) as exc_info:
-            await get_vector_store_ids(client_mock, None)
-        assert exc_info.value.status_code == 500
-
-
 class TestGetRAGToolsWithConfig:
     """Tests for get_rag_tools with configuration checks."""
 
@@ -3396,13 +3213,6 @@ class TestResolveToolChoiceMerge:
         self, mocker: MockerFixture
     ) -> None:
         """Test client tools used as-is without merge header."""
-        mock_client = mocker.AsyncMock()
-        mock_holder = mocker.Mock()
-        mock_holder.get_client.return_value = mock_client
-        mocker.patch(
-            "utils.responses.AsyncLlamaStackClientHolder",
-            return_value=mock_holder,
-        )
         mock_config = mocker.Mock()
         mock_config.configuration.byok_rag = []
         mock_config.mcp_servers = []
@@ -3421,13 +3231,6 @@ class TestResolveToolChoiceMerge:
     @pytest.mark.asyncio
     async def test_client_tools_with_merge_header(self, mocker: MockerFixture) -> None:
         """Test client tools merged with server tools when header is set."""
-        mock_client = mocker.AsyncMock()
-        mock_holder = mocker.Mock()
-        mock_holder.get_client.return_value = mock_client
-        mocker.patch(
-            "utils.responses.AsyncLlamaStackClientHolder",
-            return_value=mock_holder,
-        )
         mock_config = mocker.Mock()
         mock_config.configuration.byok_rag = []
         mock_config.mcp_servers = []
@@ -3458,13 +3261,6 @@ class TestResolveToolChoiceMerge:
         self, mocker: MockerFixture
     ) -> None:
         """Test 409 when merge header is set and tools conflict."""
-        mock_client = mocker.AsyncMock()
-        mock_holder = mocker.Mock()
-        mock_holder.get_client.return_value = mock_client
-        mocker.patch(
-            "utils.responses.AsyncLlamaStackClientHolder",
-            return_value=mock_holder,
-        )
         mock_config = mocker.Mock()
         mock_config.configuration.byok_rag = []
         mock_config.mcp_servers = []
@@ -3492,13 +3288,6 @@ class TestResolveToolChoiceMerge:
     @pytest.mark.asyncio
     async def test_no_tools_uses_prepare_tools(self, mocker: MockerFixture) -> None:
         """Test that no client tools falls through to prepare_tools."""
-        mock_client = mocker.AsyncMock()
-        mock_holder = mocker.Mock()
-        mock_holder.get_client.return_value = mock_client
-        mocker.patch(
-            "utils.responses.AsyncLlamaStackClientHolder",
-            return_value=mock_holder,
-        )
         server_tool = InputToolFileSearch(type="file_search", vector_store_ids=["vs1"])
         mock_prepare = mocker.AsyncMock(return_value=[server_tool])
         mocker.patch("utils.responses.prepare_tools", new=mock_prepare)
@@ -3517,13 +3306,6 @@ class TestResolveToolChoiceMerge:
         self, mocker: MockerFixture
     ) -> None:
         """Test merge header with no server tools returns client tools unchanged."""
-        mock_client = mocker.AsyncMock()
-        mock_holder = mocker.Mock()
-        mock_holder.get_client.return_value = mock_client
-        mocker.patch(
-            "utils.responses.AsyncLlamaStackClientHolder",
-            return_value=mock_holder,
-        )
         mock_config = mocker.Mock()
         mock_config.configuration.byok_rag = []
         mock_config.mcp_servers = []

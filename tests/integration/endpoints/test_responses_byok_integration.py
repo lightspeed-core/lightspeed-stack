@@ -79,7 +79,6 @@ def _patch_all_client_holders(mocker: MockerFixture, mock_client: Any) -> None:
     for module in (
         "app.endpoints.responses",
         "utils.endpoints",
-        "utils.responses",
     ):
         holder = mocker.patch(f"{module}.AsyncLlamaStackClientHolder")
         holder.return_value.get_client.return_value = mock_client

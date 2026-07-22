@@ -60,7 +60,7 @@ rag:
     - okp
   # Tool RAG: LLM can call file_search on demand to retrieve context
   # List rag_ids from byok_rag, or 'okp' to include OKP
-  # Omit to use all registered BYOK stores (backward compatibility)
+  # Omit to disable tool RAG
   tool:
     - ocp-docs
     - knowledge-base
