@@ -1,5 +1,7 @@
 """Agent streaming helpers for the streaming_query flow."""
 
+# pylint: disable=R0913,R0914, R0917
+
 from __future__ import annotations
 
 import asyncio
@@ -403,7 +405,7 @@ def _process_token(
 
 
 @singledispatch
-def dispatch_stream_event(
+def dispatch_stream_event(  # pylint: disable=useless-return
     event: AgentDispatchEvent,
     _state: AgentTurnAccumulator,
 ) -> Optional[StreamEventPayload]:
@@ -417,6 +419,7 @@ def dispatch_stream_event(
         None when the event does not map to an SSE payload.
     """
     logger.debug("Ignoring event kind=%s", event.event_kind)
+
     return None
 
 
