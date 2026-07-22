@@ -18,7 +18,7 @@ class ServiceUnavailableResponse(AbstractErrorResponse):
                 {
                     "label": "llama stack",
                     "detail": {
-                        "response": "Unable to connect to Llama Stack",
+                        "response": "Unable to connect to OGX",
                         "cause": "Connection error while trying to reach backend service.",
                     },
                 },

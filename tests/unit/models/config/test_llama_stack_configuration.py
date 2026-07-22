@@ -113,7 +113,7 @@ def test_llama_stack_wrong_configuration_constructor_no_url() -> None:
     """
     with pytest.raises(
         ValueError,
-        match="Llama stack URL is not specified and library client mode is not specified",
+        match="Llama Stack URL is not specified and library client mode is not specified",
     ):
         LlamaStackConfiguration()  # pyright: ignore[reportCallIssue]
 
@@ -122,7 +122,7 @@ def test_llama_stack_wrong_configuration_constructor_library_mode_off() -> None:
     """Test the LlamaStackConfiguration constructor."""
     with pytest.raises(
         ValueError,
-        match="Llama stack URL is not specified and library client mode is not enabled",
+        match="Llama Stack URL is not specified and library client mode is not enabled",
     ):
         LlamaStackConfiguration(
             use_as_library_client=False

@@ -5,7 +5,7 @@ Used on query and streaming paths.
 
 from typing import Any, Optional
 
-from llama_stack_api import OpenAIResponseOutput
+from ogx_api import OpenAIResponseOutput
 from pydantic import AnyUrl, BaseModel, Field
 
 from utils.token_counter import TokenCounter

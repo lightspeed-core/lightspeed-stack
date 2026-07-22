@@ -4,12 +4,12 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.params import Depends
-from llama_stack_client import APIConnectionError, BadRequestError
+from ogx_client import APIConnectionError, BadRequestError
 
 from authentication import get_auth_dependency
 from authentication.interface import AuthTuple
 from authorization.middleware import authorize
-from client import AsyncLlamaStackClientHolder
+from client import AsyncOgxClientHolder
 from configuration import configuration
 from log import get_logger
 from models.api.responses.constants import UNAUTHORIZED_OPENAPI_EXAMPLES
@@ -37,7 +37,7 @@ rags_responses: dict[int | str, dict[str, Any]] = {
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
     500: InternalServerErrorResponse.openapi_response(examples=["configuration"]),
     503: ServiceUnavailableResponse.openapi_response(
-        examples=["llama stack", "kubernetes api"]
+        examples=["ogx", "kubernetes api"]
     ),
 }
 
@@ -48,7 +48,7 @@ rag_responses: dict[int | str, dict[str, Any]] = {
     404: NotFoundResponse.openapi_response(examples=["rag"]),
     500: InternalServerErrorResponse.openapi_response(examples=["configuration"]),
     503: ServiceUnavailableResponse.openapi_response(
-        examples=["llama stack", "kubernetes api"]
+        examples=["ogx", "kubernetes api"]
     ),
 }
 
@@ -87,11 +87,11 @@ async def rags_endpoint_handler(
     check_configuration_loaded(configuration)
 
     llama_stack_configuration = configuration.llama_stack_configuration
-    logger.info("Llama stack config: %s", llama_stack_configuration)
+    logger.info("Llama Stack config: %s", llama_stack_configuration)
 
     try:
         # try to get Llama Stack client
-        client = AsyncLlamaStackClientHolder().get_client()
+        client = AsyncOgxClientHolder().get_client()
         # retrieve list of RAGs
         rags = await client.vector_stores.list()
         logger.info("List of rags: %d", len(rags.data))
@@ -108,7 +108,7 @@ async def rags_endpoint_handler(
     # connection to Llama Stack server
     except APIConnectionError as e:
         logger.error("Unable to connect to Llama Stack: %s", e)
-        response = ServiceUnavailableResponse(backend_name="Llama Stack", cause=str(e))
+        response = ServiceUnavailableResponse(backend_name="OGX", cause=str(e))
         raise HTTPException(**response.model_dump()) from e
 
 
@@ -174,7 +174,7 @@ async def get_rag_endpoint_handler(
     check_configuration_loaded(configuration)
 
     llama_stack_configuration = configuration.llama_stack_configuration
-    logger.info("Llama stack config: %s", llama_stack_configuration)
+    logger.info("Llama Stack config: %s", llama_stack_configuration)
 
     # Resolve user-facing rag_id to llama-stack vector_db_id
     vector_db_id = _resolve_rag_id_to_vector_db_id(
@@ -183,7 +183,7 @@ async def get_rag_endpoint_handler(
 
     try:
         # try to get Llama Stack client
-        client = AsyncLlamaStackClientHolder().get_client()
+        client = AsyncOgxClientHolder().get_client()
         # retrieve info about RAG
         rag_info = await client.vector_stores.retrieve(vector_db_id)
 
@@ -204,7 +204,7 @@ async def get_rag_endpoint_handler(
         )
     except APIConnectionError as e:
         logger.error("Unable to connect to Llama Stack: %s", e)
-        response = ServiceUnavailableResponse(backend_name="Llama Stack", cause=str(e))
+        response = ServiceUnavailableResponse(backend_name="OGX", cause=str(e))
         raise HTTPException(**response.model_dump()) from e
     except BadRequestError as e:
         logger.error("RAG not found: %s", e)

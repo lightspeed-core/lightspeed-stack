@@ -7,7 +7,7 @@ import sys
 
 from fastapi.openapi.utils import get_openapi
 
-from client import AsyncLlamaStackClientHolder
+from client import AsyncOgxClientHolder
 
 # it is needed to read proper configuration in order to start the app to generate schema
 from configuration import configuration
@@ -18,7 +18,7 @@ configuration.load_configuration(cfg_file)
 # Llama Stack client needs to be loaded before REST API is fully initialized
 import asyncio  # noqa: E402
 
-asyncio.run(AsyncLlamaStackClientHolder().load(configuration.configuration.llama_stack))
+asyncio.run(AsyncOgxClientHolder().load(configuration.configuration.llama_stack))
 
 from app.main import app  # noqa: E402  pylint: disable=C0413
 

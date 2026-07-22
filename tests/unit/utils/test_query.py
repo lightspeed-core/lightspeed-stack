@@ -8,7 +8,7 @@ from typing import Any
 import psycopg2
 import pytest
 from fastapi import HTTPException
-from llama_stack_client.types import ModelListResponse
+from ogx_client.types import ModelListResponse
 from pytest_mock import MockerFixture
 from sqlalchemy.exc import SQLAlchemyError
 

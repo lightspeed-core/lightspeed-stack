@@ -5,7 +5,7 @@ from typing import Any
 
 import pytest
 from fastapi import HTTPException, Request, status
-from llama_stack_client import APIConnectionError, BadRequestError
+from ogx_client import APIConnectionError, BadRequestError
 from pytest_mock import MockerFixture
 
 from app.endpoints.rags import (
@@ -46,7 +46,7 @@ async def test_rags_endpoint_connection_error(
     mock_client = mocker.AsyncMock()
     mock_client.vector_stores.list.side_effect = APIConnectionError(request=None)  # type: ignore
     mocker.patch(
-        "app.endpoints.rags.AsyncLlamaStackClientHolder"
+        "app.endpoints.rags.AsyncOgxClientHolder"
     ).return_value.get_client.return_value = mock_client
 
     request = Request(scope={"type": "http"})
@@ -60,7 +60,7 @@ async def test_rags_endpoint_connection_error(
     detail = e.value.detail
     assert isinstance(detail, dict)
     assert "response" in detail
-    assert "Unable to connect to Llama Stack" in detail["response"]  # type: ignore[index]
+    assert "Unable to connect to OGX" in detail["response"]  # type: ignore[index]
 
 
 @pytest.mark.asyncio
@@ -103,7 +103,7 @@ async def test_rags_endpoint_success(
     mock_client = mocker.AsyncMock()
     mock_client.vector_stores.list.return_value = RagList()
     mocker.patch(
-        "app.endpoints.rags.AsyncLlamaStackClientHolder"
+        "app.endpoints.rags.AsyncOgxClientHolder"
     ).return_value.get_client.return_value = mock_client
 
     request = Request(scope={"type": "http"})
@@ -149,7 +149,7 @@ async def test_rag_info_endpoint_rag_not_found(
         )
     )  # type: ignore
     mocker.patch(
-        "app.endpoints.rags.AsyncLlamaStackClientHolder"
+        "app.endpoints.rags.AsyncOgxClientHolder"
     ).return_value.get_client.return_value = mock_client
 
     request = Request(scope={"type": "http"})
@@ -177,7 +177,7 @@ async def test_rag_info_endpoint_connection_error(
         request=None  # type: ignore
     )
     mocker.patch(
-        "app.endpoints.rags.AsyncLlamaStackClientHolder"
+        "app.endpoints.rags.AsyncOgxClientHolder"
     ).return_value.get_client.return_value = mock_client
 
     request = Request(scope={"type": "http"})
@@ -191,7 +191,7 @@ async def test_rag_info_endpoint_connection_error(
     detail = e.value.detail
     assert isinstance(detail, dict)
     assert "response" in detail
-    assert "Unable to connect to Llama Stack" in detail["response"]  # type: ignore[index]
+    assert "Unable to connect to OGX" in detail["response"]  # type: ignore[index]
 
 
 @pytest.mark.asyncio
@@ -231,7 +231,7 @@ async def test_rag_info_endpoint_success(
     mock_client = mocker.AsyncMock()
     mock_client.vector_stores.retrieve.return_value = RagInfo()
     mocker.patch(
-        "app.endpoints.rags.AsyncLlamaStackClientHolder"
+        "app.endpoints.rags.AsyncOgxClientHolder"
     ).return_value.get_client.return_value = mock_client
 
     request = Request(scope={"type": "http"})
@@ -323,7 +323,7 @@ async def test_rags_endpoint_returns_rag_ids_from_config(
     mock_client = mocker.AsyncMock()
     mock_client.vector_stores.list.return_value = RagList()
     mocker.patch(
-        "app.endpoints.rags.AsyncLlamaStackClientHolder"
+        "app.endpoints.rags.AsyncOgxClientHolder"
     ).return_value.get_client.return_value = mock_client
 
     request = Request(scope={"type": "http"})
@@ -359,7 +359,7 @@ async def test_rag_info_endpoint_accepts_rag_id_from_config(
     mock_client = mocker.AsyncMock()
     mock_client.vector_stores.retrieve.return_value = RagInfo()
     mocker.patch(
-        "app.endpoints.rags.AsyncLlamaStackClientHolder"
+        "app.endpoints.rags.AsyncOgxClientHolder"
     ).return_value.get_client.return_value = mock_client
 
     request = Request(scope={"type": "http"})

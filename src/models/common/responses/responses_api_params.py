@@ -3,19 +3,19 @@
 from collections.abc import Mapping
 from typing import Any, Final, Optional
 
-from llama_stack_api.openai_responses import (
+from ogx_api.openai_responses import (
     OpenAIResponseInputToolChoice as ToolChoice,
 )
-from llama_stack_api.openai_responses import (
+from ogx_api.openai_responses import (
     OpenAIResponsePrompt as Prompt,
 )
-from llama_stack_api.openai_responses import (
+from ogx_api.openai_responses import (
     OpenAIResponseReasoning as Reasoning,
 )
-from llama_stack_api.openai_responses import (
+from ogx_api.openai_responses import (
     OpenAIResponseText as Text,
 )
-from llama_stack_api.openai_responses import (
+from ogx_api.openai_responses import (
     OpenAIResponseToolMCP as OutputToolMCP,
 )
 from pydantic import BaseModel, Field

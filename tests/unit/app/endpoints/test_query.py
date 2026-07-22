@@ -6,8 +6,8 @@ from typing import Any
 
 import pytest
 from fastapi import HTTPException, Request
-from llama_stack_api.openai_responses import OpenAIResponseObject
-from llama_stack_client import APIConnectionError, APIStatusError, AsyncLlamaStackClient
+from ogx_api.openai_responses import OpenAIResponseObject
+from ogx_client import APIConnectionError, APIStatusError, AsyncOgxClient
 from pytest_mock import MockerFixture
 
 from app.endpoints.query import query_endpoint_handler, retrieve_response
@@ -115,7 +115,7 @@ class TestQueryEndpointHandler:
         mocker.patch("app.endpoints.query.check_tokens_available")
         mocker.patch("app.endpoints.query.validate_model_provider_override")
 
-        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
         mock_response_obj = mocker.Mock()
         mock_response_obj.output = []
         mock_client.responses = mocker.Mock()
@@ -123,7 +123,7 @@ class TestQueryEndpointHandler:
         mock_client_holder = mocker.Mock()
         mock_client_holder.get_client.return_value = mock_client
         mocker.patch(
-            "app.endpoints.query.AsyncLlamaStackClientHolder",
+            "app.endpoints.query.AsyncOgxClientHolder",
             return_value=mock_client_holder,
         )
         mocker.patch(
@@ -198,7 +198,7 @@ class TestQueryEndpointHandler:
         mocker.patch("app.endpoints.query.check_tokens_available")
         mocker.patch("app.endpoints.query.validate_model_provider_override")
 
-        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
         mock_response_obj = mocker.Mock()
         mock_response_obj.output = []
         mock_client.responses = mocker.Mock()
@@ -206,7 +206,7 @@ class TestQueryEndpointHandler:
         mock_client_holder = mocker.Mock()
         mock_client_holder.get_client.return_value = mock_client
         mocker.patch(
-            "app.endpoints.query.AsyncLlamaStackClientHolder",
+            "app.endpoints.query.AsyncOgxClientHolder",
             return_value=mock_client_holder,
         )
         mocker.patch(
@@ -295,11 +295,11 @@ class TestQueryEndpointHandler:
             return_value=mocker.Mock(spec=UserConversation),
         )
 
-        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
         mock_client_holder = mocker.Mock()
         mock_client_holder.get_client.return_value = mock_client
         mocker.patch(
-            "app.endpoints.query.AsyncLlamaStackClientHolder",
+            "app.endpoints.query.AsyncOgxClientHolder",
             return_value=mock_client_holder,
         )
 
@@ -364,7 +364,7 @@ class TestQueryEndpointHandler:
             "app.endpoints.query.validate_attachments_metadata"
         )
 
-        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
         mock_response_obj = mocker.Mock()
         mock_response_obj.output = []
         mock_client.responses = mocker.Mock()
@@ -372,7 +372,7 @@ class TestQueryEndpointHandler:
         mock_client_holder = mocker.Mock()
         mock_client_holder.get_client.return_value = mock_client
         mocker.patch(
-            "app.endpoints.query.AsyncLlamaStackClientHolder",
+            "app.endpoints.query.AsyncOgxClientHolder",
             return_value=mock_client_holder,
         )
         mocker.patch(
@@ -439,11 +439,11 @@ class TestQueryEndpointHandler:
         mocker.patch("app.endpoints.query.check_tokens_available")
         mocker.patch("app.endpoints.query.validate_model_provider_override")
 
-        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
         mock_client_holder = mocker.Mock()
         mock_client_holder.get_client.return_value = mock_client
         mocker.patch(
-            "app.endpoints.query.AsyncLlamaStackClientHolder",
+            "app.endpoints.query.AsyncOgxClientHolder",
             return_value=mock_client_holder,
         )
         mocker.patch(
@@ -505,7 +505,7 @@ class TestQueryEndpointHandler:
         mocker.patch("app.endpoints.query.check_tokens_available")
         mocker.patch("app.endpoints.query.validate_model_provider_override")
 
-        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
         mock_response_obj = mocker.Mock()
         mock_response_obj.output = []
         mock_client.responses = mocker.Mock()
@@ -513,7 +513,7 @@ class TestQueryEndpointHandler:
         mock_client_holder = mocker.Mock()
         mock_client_holder.get_client.return_value = mock_client
         mocker.patch(
-            "app.endpoints.query.AsyncLlamaStackClientHolder",
+            "app.endpoints.query.AsyncOgxClientHolder",
             return_value=mock_client_holder,
         )
         mocker.patch(
@@ -546,7 +546,7 @@ class TestQueryEndpointHandler:
             "app.endpoints.query.AzureEntraIDManager", return_value=mock_azure_manager
         )
 
-        mock_updated_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_updated_client = mocker.AsyncMock(spec=AsyncOgxClient)
         mock_client_holder.update_azure_token = mocker.AsyncMock(
             return_value=mock_updated_client
         )
@@ -583,7 +583,7 @@ class TestRetrieveResponse:
     @pytest.mark.asyncio
     async def test_retrieve_response_success(self, mocker: MockerFixture) -> None:
         """Test successful response retrieval."""
-        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
         mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
         mock_responses_params.input = "test query"
         mock_responses_params.model = "provider1/model1"
@@ -628,7 +628,7 @@ class TestRetrieveResponse:
         self, mocker: MockerFixture
     ) -> None:
         """Test response retrieval when shield moderation blocks the request."""
-        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
         mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
         mock_responses_params.input = "test query"
         mock_responses_params.conversation = "conv_123"
@@ -661,7 +661,7 @@ class TestRetrieveResponse:
         self, mocker: MockerFixture
     ) -> None:
         """Test response retrieval raises HTTPException on connection error."""
-        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
         mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
         mock_responses_params.input = "test query"
         mock_responses_params.model_dump.return_value = {
@@ -687,7 +687,7 @@ class TestRetrieveResponse:
         self, mocker: MockerFixture
     ) -> None:
         """Test response retrieval raises HTTPException on API status error."""
-        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
         mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
         mock_responses_params.input = "test query"
         mock_responses_params.model = "provider1/model1"
@@ -721,7 +721,7 @@ class TestRetrieveResponse:
         self, mocker: MockerFixture
     ) -> None:
         """Test retrieve_response handles RuntimeError with context_length."""
-        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
         mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
         mock_responses_params.model = "provider1/model1"
         mock_responses_params.input = "test query"
@@ -746,7 +746,7 @@ class TestRetrieveResponse:
         self, mocker: MockerFixture
     ) -> None:
         """Test retrieve_response re-raises RuntimeError without context_length."""
-        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
         mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
         mock_responses_params.model = "provider1/model1"
         mock_responses_params.input = "test query"
@@ -769,7 +769,7 @@ class TestRetrieveResponse:
         self, mocker: MockerFixture
     ) -> None:
         """Test response retrieval processes tool calls."""
-        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
         mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
         mock_responses_params.input = "test query"
         mock_responses_params.model = "provider1/model1"

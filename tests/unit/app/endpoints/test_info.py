@@ -4,8 +4,8 @@ from typing import Any
 
 import pytest
 from fastapi import HTTPException, Request, status
-from llama_stack_client import APIConnectionError
-from llama_stack_client.types import VersionInfo
+from ogx_client import APIConnectionError
+from ogx_client.types import VersionInfo
 from pytest_mock import MockerFixture
 
 from app.endpoints.info import info_endpoint_handler
@@ -48,7 +48,7 @@ async def test_info_endpoint(mocker: MockerFixture) -> None:
     # Mock the LlamaStack client
     mock_client = mocker.AsyncMock()
     mock_client.inspect.version.return_value = VersionInfo(version="0.1.2")
-    mock_lsc = mocker.patch("client.AsyncLlamaStackClientHolder.get_client")
+    mock_lsc = mocker.patch("client.AsyncOgxClientHolder.get_client")
     mock_lsc.return_value = mock_client
     mock_config = mocker.Mock()
     mocker.patch("app.endpoints.models.configuration", mock_config)
@@ -120,7 +120,7 @@ async def test_info_endpoint_connection_error(mocker: MockerFixture) -> None:
     # Mock the LlamaStack client
     mock_client = mocker.AsyncMock()
     mock_client.inspect.version.side_effect = APIConnectionError(request=None)  # type: ignore
-    mock_lsc = mocker.patch("client.AsyncLlamaStackClientHolder.get_client")
+    mock_lsc = mocker.patch("client.AsyncOgxClientHolder.get_client")
     mock_lsc.return_value = mock_client
     mock_config = mocker.Mock()
     mocker.patch("app.endpoints.models.configuration", mock_config)
@@ -144,4 +144,4 @@ async def test_info_endpoint_connection_error(mocker: MockerFixture) -> None:
         await info_endpoint_handler(auth=auth, request=request)
         assert e.value.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
         assert e.value.detail["response"] == "Service unavailable"  # type: ignore
-        assert "Unable to connect to Llama Stack" in e.value.detail["cause"]  # type: ignore
+        assert "Unable to connect to OGX" in e.value.detail["cause"]  # type: ignore

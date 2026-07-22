@@ -9,14 +9,14 @@ from typing import Any, Optional, cast
 import pytest
 from fastapi import HTTPException, Request
 from fastapi.responses import StreamingResponse
-from llama_stack_api import OpenAIResponseObject
-from llama_stack_api.openai_responses import (
+from ogx_api import OpenAIResponseObject
+from ogx_api.openai_responses import (
     OpenAIResponseInputToolChoiceMode as ToolChoiceMode,
 )
-from llama_stack_api.openai_responses import (
+from ogx_api.openai_responses import (
     OpenAIResponseMessage,
 )
-from llama_stack_client import APIConnectionError, APIStatusError, AsyncLlamaStackClient
+from ogx_client import APIConnectionError, APIStatusError, AsyncOgxClient
 from pytest_mock import MockerFixture
 
 from app.endpoints.responses import (
@@ -125,7 +125,7 @@ def _patch_base(mocker: MockerFixture, config: AppConfig) -> None:
     mock_holder = mocker.Mock()
     mock_holder.get_client.return_value = mocker.Mock()
     mocker.patch(
-        f"{UTILS_RESPONSES_MODULE}.AsyncLlamaStackClientHolder",
+        f"{UTILS_RESPONSES_MODULE}.AsyncOgxClientHolder",
         return_value=mock_holder,
     )
     mocker.patch(
@@ -135,14 +135,14 @@ def _patch_base(mocker: MockerFixture, config: AppConfig) -> None:
 
 
 def _patch_client(mocker: MockerFixture) -> Any:
-    """Patch AsyncLlamaStackClientHolder; return (mock_client, mock_holder)."""
-    mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+    """Patch AsyncOgxClientHolder; return (mock_client, mock_holder)."""
+    mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
     mock_vector_stores = mocker.Mock()
     mock_vector_stores.list = mocker.AsyncMock(return_value=mocker.Mock(data=[]))
     mock_client.vector_stores = mock_vector_stores
     mock_holder = mocker.Mock()
     mock_holder.get_client.return_value = mock_client
-    mocker.patch(f"{MODULE}.AsyncLlamaStackClientHolder", return_value=mock_holder)
+    mocker.patch(f"{MODULE}.AsyncOgxClientHolder", return_value=mock_holder)
     return mock_client, mock_holder
 
 
@@ -366,7 +366,7 @@ class TestResponsesEndpointHandler:
         )
         _, mock_holder = _patch_client(mocker)
         mocker.patch(
-            f"{ENDPOINTS_MODULE}.AsyncLlamaStackClientHolder",
+            f"{ENDPOINTS_MODULE}.AsyncOgxClientHolder",
             return_value=mock_holder,
         )
         mocker.patch(
@@ -501,7 +501,7 @@ class TestResponsesEndpointHandler:
         mock_azure.is_token_expired = True
         mock_azure.refresh_token.return_value = True
         mocker.patch(f"{MODULE}.AzureEntraIDManager", return_value=mock_azure)
-        updated_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        updated_client = mocker.AsyncMock(spec=AsyncOgxClient)
         mock_holder.update_azure_token = mocker.AsyncMock(return_value=updated_client)
         _patch_rag(mocker)
         _patch_moderation(mocker, decision="passed")
@@ -605,7 +605,7 @@ class TestResponsesEndpointHandler:
         )
         mock_client, mock_holder = _patch_client(mocker)
         mocker.patch(
-            f"{ENDPOINTS_MODULE}.AsyncLlamaStackClientHolder",
+            f"{ENDPOINTS_MODULE}.AsyncOgxClientHolder",
             return_value=mock_holder,
         )
         mocker.patch(
@@ -760,7 +760,7 @@ class TestHandleNonStreamingResponse:
     ) -> None:
         """Test that blocked moderation returns response with refusal message."""
         request = _request_with_model_and_conv("Bad input")
-        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
         mock_moderation = mocker.Mock()
         mock_moderation.decision = "blocked"
         mock_moderation.message = "Content blocked"
@@ -822,7 +822,7 @@ class TestHandleNonStreamingResponse:
     ) -> None:
         """Test successful handle_non_streaming_response returns ResponsesResponse."""
         request = _request_with_model_and_conv("Hello")
-        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
         mock_moderation = mocker.Mock()
         mock_moderation.decision = "passed"
 
@@ -902,7 +902,7 @@ class TestHandleNonStreamingResponse:
     ) -> None:
         """Test append_turn_items_to_conversation triggers with store and previous_response_id."""
         request = _request_with_previous_response_id("Hi", previous_response_id="r1")
-        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
         mock_moderation = mocker.Mock()
         mock_moderation.decision = "passed"
 
@@ -984,7 +984,7 @@ class TestHandleNonStreamingResponse:
     ) -> None:
         """Test that RuntimeError with context_length raises 413."""
         request = _request_with_model_and_conv("Long input")
-        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
         mock_client.responses.create = mocker.AsyncMock(
             side_effect=RuntimeError("context_length exceeded")
         )
@@ -1023,7 +1023,7 @@ class TestHandleNonStreamingResponse:
     ) -> None:
         """Test that APIConnectionError raises 503."""
         request = _request_with_model_and_conv("Hi")
-        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
         mock_client.responses.create = mocker.AsyncMock(
             side_effect=APIConnectionError(
                 message="Connection failed",
@@ -1069,7 +1069,7 @@ class TestHandleNonStreamingResponse:
     ) -> None:
         """Test that APIStatusError is handled and re-raised as HTTPException."""
         request = _request_with_model_and_conv("Hi")
-        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
         mock_client.responses.create = mocker.AsyncMock(
             side_effect=APIStatusError(
                 message="API error",
@@ -1121,7 +1121,7 @@ class TestHandleNonStreamingResponse:
     ) -> None:
         """Test that RuntimeError without context_length is re-raised."""
         request = _request_with_model_and_conv("Hi")
-        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
         mock_client.responses.create = mocker.AsyncMock(
             side_effect=RuntimeError("Some other error")
         )
@@ -1162,7 +1162,7 @@ class TestHandleStreamingResponse:
     ) -> None:
         """Test streaming with blocked moderation yields SSE from shield_violation_generator."""
         request = _request_with_model_and_conv("Bad", model="provider/model1")
-        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
         mock_moderation = mocker.Mock()
         mock_moderation.decision = "blocked"
         mock_moderation.message = "Blocked"
@@ -1226,7 +1226,7 @@ class TestHandleStreamingResponse:
     ) -> None:
         """Test streaming with passed moderation yields SSE from response_generator."""
         request = _request_with_model_and_conv("Hi", model="provider/model1")
-        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
         mock_moderation = mocker.Mock()
         mock_moderation.decision = "passed"
 
@@ -1268,7 +1268,7 @@ class TestHandleStreamingResponse:
         )
         mock_holder = mocker.Mock()
         mock_holder.get_client.return_value = mock_client
-        mocker.patch(f"{MODULE}.AsyncLlamaStackClientHolder", return_value=mock_holder)
+        mocker.patch(f"{MODULE}.AsyncOgxClientHolder", return_value=mock_holder)
         api_params, context = build_api_params_and_context(
             updated_request=request,
             client=mock_client,
@@ -1305,7 +1305,7 @@ class TestHandleStreamingResponse:
     ) -> None:
         """Test in_progress chunk includes available_quotas and output_text."""
         request = _request_with_model_and_conv("Hi", model="provider/model1")
-        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
         mock_moderation = mocker.Mock()
         mock_moderation.decision = "passed"
 
@@ -1355,7 +1355,7 @@ class TestHandleStreamingResponse:
         )
         mock_holder = mocker.Mock()
         mock_holder.get_client.return_value = mock_client
-        mocker.patch(f"{MODULE}.AsyncLlamaStackClientHolder", return_value=mock_holder)
+        mocker.patch(f"{MODULE}.AsyncOgxClientHolder", return_value=mock_holder)
 
         api_params, context = build_api_params_and_context(
             updated_request=request,
@@ -1392,7 +1392,7 @@ class TestHandleStreamingResponse:
     ) -> None:
         """Test that response output items are passed to build_tool_call_summary."""
         request = _request_with_model_and_conv("Hi", model="provider/model1")
-        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
         mock_moderation = mocker.Mock()
         mock_moderation.decision = "passed"
 
@@ -1443,7 +1443,7 @@ class TestHandleStreamingResponse:
         )
         mock_holder = mocker.Mock()
         mock_holder.get_client.return_value = mock_client
-        mocker.patch(f"{MODULE}.AsyncLlamaStackClientHolder", return_value=mock_holder)
+        mocker.patch(f"{MODULE}.AsyncOgxClientHolder", return_value=mock_holder)
 
         api_params, context = build_api_params_and_context(
             updated_request=request,
@@ -1479,7 +1479,7 @@ class TestHandleStreamingResponse:
         request = _request_with_previous_response_id(
             "Hi", previous_response_id="r_prev"
         )
-        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
         mock_moderation = mocker.Mock()
         mock_moderation.decision = "passed"
 
@@ -1525,7 +1525,7 @@ class TestHandleStreamingResponse:
         )
         mock_holder = mocker.Mock()
         mock_holder.get_client.return_value = mock_client
-        mocker.patch(f"{MODULE}.AsyncLlamaStackClientHolder", return_value=mock_holder)
+        mocker.patch(f"{MODULE}.AsyncOgxClientHolder", return_value=mock_holder)
 
         api_params, context = build_api_params_and_context(
             updated_request=request,
@@ -1562,7 +1562,7 @@ class TestHandleStreamingResponse:
     ) -> None:
         """Test streaming raises 413 when create raises RuntimeError context_length."""
         request = _request_with_model_and_conv("Long", model="provider/model1")
-        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
         mock_client.responses.create = mocker.AsyncMock(
             side_effect=RuntimeError("context_length exceeded")
         )
@@ -1599,7 +1599,7 @@ class TestHandleStreamingResponse:
     ) -> None:
         """Test streaming raises 503 when create raises APIConnectionError."""
         request = _request_with_model_and_conv("Hi", model="provider/model1")
-        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
         mock_client.responses.create = mocker.AsyncMock(
             side_effect=APIConnectionError(
                 message="Connection failed",
@@ -2286,7 +2286,7 @@ class TestSanitizesOutputAndModel:
             conversation=VALID_CONV_ID_NORMALIZED,
         )
 
-        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
         mock_moderation = mocker.Mock()
         mock_moderation.decision = "passed"
 
@@ -2442,7 +2442,7 @@ class TestSanitizesOutputAndModel:
             instructions=SERVER_INSTRUCTIONS,
             conversation=VALID_CONV_ID_NORMALIZED,
         )
-        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
         mock_moderation = mocker.Mock()
         mock_moderation.decision = "passed"
 
@@ -2477,7 +2477,7 @@ class TestSanitizesOutputAndModel:
         )
         mock_holder = mocker.Mock()
         mock_holder.get_client.return_value = mock_client
-        mocker.patch(f"{MODULE}.AsyncLlamaStackClientHolder", return_value=mock_holder)
+        mocker.patch(f"{MODULE}.AsyncOgxClientHolder", return_value=mock_holder)
 
         api_params, context = build_api_params_and_context(
             updated_request=updated_request,
@@ -2543,7 +2543,7 @@ class TestMcpEventsFilteredUnconditionally:
         mock_config.rag_id_mapping = {}
 
         request = _request_with_model_and_conv("Hi", model="provider/model1")
-        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
         mock_moderation = mocker.Mock()
         mock_moderation.decision = "passed"
 
@@ -2599,7 +2599,7 @@ class TestMcpEventsFilteredUnconditionally:
         )
         mock_holder = mocker.Mock()
         mock_holder.get_client.return_value = mock_client
-        mocker.patch(f"{MODULE}.AsyncLlamaStackClientHolder", return_value=mock_holder)
+        mocker.patch(f"{MODULE}.AsyncOgxClientHolder", return_value=mock_holder)
 
         api_params, context = build_api_params_and_context(
             updated_request=request,
@@ -2640,7 +2640,7 @@ class TestMcpEventsFilteredUnconditionally:
         are filtered.
         """
         request = _request_with_model_and_conv("Hi", model="provider/model1")
-        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
         mock_moderation = mocker.Mock()
         mock_moderation.decision = "passed"
 
@@ -2695,7 +2695,7 @@ class TestMcpEventsFilteredUnconditionally:
         )
         mock_holder = mocker.Mock()
         mock_holder.get_client.return_value = mock_client
-        mocker.patch(f"{MODULE}.AsyncLlamaStackClientHolder", return_value=mock_holder)
+        mocker.patch(f"{MODULE}.AsyncOgxClientHolder", return_value=mock_holder)
 
         api_params, context = build_api_params_and_context(
             updated_request=request,
@@ -2734,7 +2734,7 @@ async def test_response_generator_records_failure_when_stream_iteration_raises(
 ) -> None:
     """Test that response_generator records a failure metric when the stream raises."""
     request = _request_with_model_and_conv("Hi", model="provider/model1")
-    mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+    mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
     mock_moderation = mocker.Mock()
     mock_moderation.decision = "passed"
 

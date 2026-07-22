@@ -154,7 +154,7 @@ dev = [
 llslibdev = [
     # To check llama-stack API provider dependecies:
     #
-    #    $ uv run llama stack list-providers
+    #    $ uv run ogx stack list-providers
     #
     # API agents: inline::meta-reference
     # commented out because they are not used in the project

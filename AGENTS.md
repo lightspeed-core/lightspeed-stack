@@ -234,7 +234,7 @@ src/
 #### Imports & Dependencies
 - Use absolute imports for internal modules: `from authentication import get_auth_dependency`
 - FastAPI dependencies: `from fastapi import APIRouter, HTTPException, Request, status, Depends`
-- Llama Stack imports: `from llama_stack_client import AsyncLlamaStackClient`
+- Llama Stack imports: `from ogx_client import AsyncOgxClient`
 - **ALWAYS** check `pyproject.toml` for existing dependencies before adding new ones
 - **ALWAYS** verify current library versions in `pyproject.toml` rather than assuming versions
 - Check `constants.py` for shared constants before defining new ones

@@ -8,7 +8,7 @@ from datetime import UTC, datetime
 
 import pytest
 from fastapi import HTTPException, Request, status
-from llama_stack_client import APIConnectionError, APIStatusError
+from ogx_client import APIConnectionError, APIStatusError
 from pytest_mock import AsyncMockType, MockerFixture
 from sqlalchemy.orm import Session
 
@@ -316,7 +316,7 @@ ERROR_HANDLING_TEST_CASES = [
 async def test_conversation_error_handling(  # pylint: disable=too-many-locals
     test_case: dict,
     test_config: AppConfig,
-    mock_llama_stack_client: AsyncMockType,
+    mock_ogx_client: AsyncMockType,
     non_admin_test_request: Request,
     test_auth: AuthTuple,
     patch_db_session: Session,
@@ -332,7 +332,7 @@ async def test_conversation_error_handling(  # pylint: disable=too-many-locals
     Parameters:
         test_case: Dictionary containing test parameters
         test_config: Test configuration
-        mock_llama_stack_client: Mocked Llama Stack client
+        mock_ogx_client: Mocked Llama Stack client
         non_admin_test_request: FastAPI request with standard user permissions
         test_auth: noop authentication tuple
         patch_db_session: Test database session
@@ -360,7 +360,7 @@ async def test_conversation_error_handling(  # pylint: disable=too-many-locals
     patch_db_session.commit()
 
     # Configure mock to raise appropriate error
-    mock_method = mock_llama_stack_client
+    mock_method = mock_ogx_client
     for attr in mock_path.split("."):
         mock_method = getattr(mock_method, attr)
 
@@ -403,7 +403,7 @@ async def test_conversation_error_handling(  # pylint: disable=too-many-locals
 @pytest.mark.asyncio
 async def test_get_conversation_returns_chat_history(
     test_config: AppConfig,
-    mock_llama_stack_client: AsyncMockType,
+    mock_ogx_client: AsyncMockType,
     non_admin_test_request: Request,
     test_auth: AuthTuple,
     patch_db_session: Session,
@@ -419,7 +419,7 @@ async def test_get_conversation_returns_chat_history(
 
     Parameters:
         test_config: Test configuration
-        mock_llama_stack_client: Mocked Llama Stack client
+        mock_ogx_client: Mocked Llama Stack client
         non_admin_test_request: FastAPI request with standard user permissions
         test_auth: noop authentication tuple
         patch_db_session: Test database session
@@ -454,7 +454,7 @@ async def test_get_conversation_returns_chat_history(
     mock_items = mocker.Mock()
     mock_items.data = [mock_user_message, mock_assistant_message]
     mock_items.has_next_page.return_value = False
-    mock_llama_stack_client.conversations.items.list = mocker.AsyncMock(
+    mock_ogx_client.conversations.items.list = mocker.AsyncMock(
         return_value=mock_items
     )
 
@@ -485,7 +485,7 @@ async def test_get_conversation_returns_chat_history(
 @pytest.mark.asyncio
 async def test_get_conversation_with_turns_metadata(
     test_config: AppConfig,
-    mock_llama_stack_client: AsyncMockType,
+    mock_ogx_client: AsyncMockType,
     non_admin_test_request: Request,
     test_auth: AuthTuple,
     patch_db_session: Session,
@@ -500,7 +500,7 @@ async def test_get_conversation_with_turns_metadata(
 
     Parameters:
         test_config: Test configuration
-        mock_llama_stack_client: Mocked Llama Stack client
+        mock_ogx_client: Mocked Llama Stack client
         non_admin_test_request: FastAPI request with standard user permissions
         test_auth: noop authentication tuple
         patch_db_session: Test database session
@@ -546,7 +546,7 @@ async def test_get_conversation_with_turns_metadata(
     mock_items = mocker.Mock()
     mock_items.data = [mock_user_message, mock_assistant_message]
     mock_items.has_next_page.return_value = False
-    mock_llama_stack_client.conversations.items.list = mocker.AsyncMock(
+    mock_ogx_client.conversations.items.list = mocker.AsyncMock(
         return_value=mock_items
     )
 
@@ -588,7 +588,7 @@ async def test_get_conversation_with_turns_metadata(
 @pytest.mark.asyncio
 async def test_delete_conversation_deletes_from_database_and_llama_stack(
     test_config: AppConfig,
-    mock_llama_stack_client: AsyncMockType,
+    mock_ogx_client: AsyncMockType,
     non_admin_test_request: Request,
     test_auth: AuthTuple,
     patch_db_session: Session,
@@ -604,7 +604,7 @@ async def test_delete_conversation_deletes_from_database_and_llama_stack(
 
     Parameters:
         test_config: Test configuration
-        mock_llama_stack_client: Mocked Llama Stack client
+        mock_ogx_client: Mocked Llama Stack client
         non_admin_test_request: FastAPI request with standard user permissions
         test_auth: noop authentication tuple
         patch_db_session: Test database session
@@ -629,7 +629,7 @@ async def test_delete_conversation_deletes_from_database_and_llama_stack(
     # Mock Llama Stack delete response
     mock_delete_response = mocker.MagicMock()
     mock_delete_response.deleted = True
-    mock_llama_stack_client.conversations.delete.return_value = mock_delete_response
+    mock_ogx_client.conversations.delete.return_value = mock_delete_response
 
     response = await delete_conversation_endpoint_handler(
         request=non_admin_test_request,
@@ -654,7 +654,7 @@ async def test_delete_conversation_deletes_from_database_and_llama_stack(
 @pytest.mark.asyncio
 async def test_delete_conversation_handles_not_found_in_llama_stack(
     test_config: AppConfig,
-    mock_llama_stack_client: AsyncMockType,
+    mock_ogx_client: AsyncMockType,
     non_admin_test_request: Request,
     test_auth: AuthTuple,
     patch_db_session: Session,
@@ -669,7 +669,7 @@ async def test_delete_conversation_handles_not_found_in_llama_stack(
 
     Parameters:
         test_config: Test configuration
-        mock_llama_stack_client: Mocked Llama Stack client
+        mock_ogx_client: Mocked Llama Stack client
         non_admin_test_request: FastAPI request with standard user permissions
         test_auth: noop authentication tuple
         patch_db_session: Test database session
@@ -692,7 +692,7 @@ async def test_delete_conversation_handles_not_found_in_llama_stack(
     patch_db_session.commit()
 
     # Configure mock to raise not found error
-    mock_llama_stack_client.conversations.delete.side_effect = APIStatusError(
+    mock_ogx_client.conversations.delete.side_effect = APIStatusError(
         message="Not found",
         response=mocker.Mock(status_code=404),
         body=None,
@@ -721,7 +721,7 @@ async def test_delete_conversation_handles_not_found_in_llama_stack(
 @pytest.mark.asyncio
 async def test_delete_conversation_non_existent_returns_success(
     test_config: AppConfig,
-    mock_llama_stack_client: AsyncMockType,
+    mock_ogx_client: AsyncMockType,
     non_admin_test_request: Request,
     test_auth: AuthTuple,
     patch_db_session: Session,
@@ -736,7 +736,7 @@ async def test_delete_conversation_non_existent_returns_success(
 
     Parameters:
         test_config: Test configuration
-        mock_llama_stack_client: Mocked Llama Stack client
+        mock_ogx_client: Mocked Llama Stack client
         non_admin_test_request: FastAPI request with standard user permissions
         test_auth: noop authentication tuple
         patch_db_session: Test database session
@@ -748,7 +748,7 @@ async def test_delete_conversation_non_existent_returns_success(
     # Mock Llama Stack delete response
     mock_delete_response = mocker.MagicMock()
     mock_delete_response.deleted = False
-    mock_llama_stack_client.conversations.delete.return_value = mock_delete_response
+    mock_ogx_client.conversations.delete.return_value = mock_delete_response
 
     response = await delete_conversation_endpoint_handler(
         request=non_admin_test_request,
@@ -769,7 +769,7 @@ async def test_delete_conversation_non_existent_returns_success(
 @pytest.mark.asyncio
 async def test_update_conversation_updates_topic_summary(
     test_config: AppConfig,
-    mock_llama_stack_client: AsyncMockType,
+    mock_ogx_client: AsyncMockType,
     non_admin_test_request: Request,
     test_auth: AuthTuple,
     patch_db_session: Session,
@@ -784,7 +784,7 @@ async def test_update_conversation_updates_topic_summary(
 
     Parameters:
         test_config: Test configuration
-        mock_llama_stack_client: Mocked Llama Stack client
+        mock_ogx_client: Mocked Llama Stack client
         non_admin_test_request: FastAPI request with standard user permissions
         test_auth: noop authentication tuple
         patch_db_session: Test database session
@@ -806,7 +806,7 @@ async def test_update_conversation_updates_topic_summary(
     patch_db_session.commit()
 
     # Mock Llama Stack update response
-    mock_llama_stack_client.conversations.update.return_value = None
+    mock_ogx_client.conversations.update.return_value = None
 
     update_request = ConversationUpdateRequest(topic_summary="New topic summary")
 

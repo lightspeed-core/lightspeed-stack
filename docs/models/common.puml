@@ -127,7 +127,7 @@ class "ReferencedDocument" as src.models.common.turn_summary.ReferencedDocument 
   source : Optional[str]
 }
 class "ResponseGeneratorContext" as src.models.common.responses.contexts.ResponseGeneratorContext {
-  client : AsyncLlamaStackClient
+  client : AsyncOgxClient
   conversation_id : str
   inline_rag_context : RAGContext
   model_id : str
@@ -169,7 +169,7 @@ class "ResponsesApiParams" as src.models.common.responses.responses_api_params.R
 class "ResponsesContext" as src.models.common.responses.contexts.ResponsesContext {
   auth : Optional[tuple[str, str, bool, str]]
   background_tasks : Optional[BackgroundTasks]
-  client : Optional[AsyncLlamaStackClient]
+  client : Optional[AsyncOgxClient]
   compacted_original_input : Optional[ResponseInput]
   endpoint_path : Optional[str]
   filter_server_tools : Optional[bool]

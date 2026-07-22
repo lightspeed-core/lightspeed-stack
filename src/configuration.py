@@ -6,7 +6,7 @@ import yaml
 
 # We want to support environment variable replacement in the configuration
 # similarly to how it is done in llama-stack, so we use their function directly
-from llama_stack.core.stack import replace_env_vars
+from ogx.core.stack import replace_env_vars
 
 import constants
 from cache.cache import Cache
@@ -173,10 +173,10 @@ class AppConfig:  # pylint: disable=too-many-public-methods
 
     @property
     def llama_stack_configuration(self) -> LlamaStackConfiguration:
-        """Return Llama stack configuration.
+        """Return Llama Stack configuration.
 
         Returns:
-            LlamaStackConfiguration: The configured Llama stack settings.
+            LlamaStackConfiguration: The configured Llama Stack settings.
 
         Raises:
             LogicError: If the application configuration has not been loaded.

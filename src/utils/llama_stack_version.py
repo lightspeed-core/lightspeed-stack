@@ -4,7 +4,7 @@ import asyncio
 import re
 from typing import Optional
 
-from llama_stack_client import APIConnectionError, AsyncLlamaStackClient
+from ogx_client import APIConnectionError, AsyncOgxClient
 from semver import Version
 
 from constants import (
@@ -23,7 +23,7 @@ class InvalidLlamaStackVersionException(Exception):
 
 
 async def check_llama_stack_version(
-    client: AsyncLlamaStackClient,
+    client: AsyncOgxClient,
     max_retries: int = DEFAULT_MAX_RETRIES,
     retry_delay: int = DEFAULT_RETRY_DELAY,
 ) -> Optional[str]:

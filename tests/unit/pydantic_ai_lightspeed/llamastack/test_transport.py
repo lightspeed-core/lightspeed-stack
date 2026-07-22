@@ -11,8 +11,8 @@ import pytest
 from pytest_mock import MockerFixture
 
 from pydantic_ai_lightspeed.llamastack._transport import (
-    LlamaStackLibraryTransport,
-    LlamaStackServerTransport,
+    OgxLibraryTransport,
+    OgxServerTransport,
     _AsyncByteStream,
     decode_request_headers,
     inject_provider_data_into_headers,
@@ -22,7 +22,7 @@ from pydantic_ai_lightspeed.llamastack._transport import (
 
 @pytest.fixture(name="mock_library_client")
 def mock_library_client_fixture(mocker: MockerFixture) -> Any:
-    """Create a mock AsyncLlamaStackAsLibraryClient.
+    """Create a mock AsyncOGXAsLibraryClient.
 
     Returns:
         A mocked library client with route_impls set to an empty dict.
@@ -34,13 +34,13 @@ def mock_library_client_fixture(mocker: MockerFixture) -> Any:
 
 
 @pytest.fixture(name="transport")
-def transport_fixture(mock_library_client: Any) -> LlamaStackLibraryTransport:
-    """Create a LlamaStackLibraryTransport with a mocked library client.
+def transport_fixture(mock_library_client: Any) -> OgxLibraryTransport:
+    """Create a OgxLibraryTransport with a mocked library client.
 
     Returns:
-        An initialized LlamaStackLibraryTransport.
+        An initialized OgxLibraryTransport.
     """
-    return LlamaStackLibraryTransport(mock_library_client)
+    return OgxLibraryTransport(mock_library_client)
 
 
 class TestAsyncByteStream:
@@ -81,16 +81,16 @@ class TestInjectProviderDataIntoHeaders:
         """Test provider data is serialized into the canonical header."""
         headers = inject_provider_data_into_headers({}, {"api_key": "test-key"})
 
-        assert headers["X-LlamaStack-Provider-Data"] == '{"api_key": "test-key"}'
+        assert headers["X-OGX-Provider-Data"] == '{"api_key": "test-key"}'
 
     def test_does_not_override_existing_header(self) -> None:
         """Test an existing provider data header is left unchanged."""
         headers = inject_provider_data_into_headers(
-            {"X-LlamaStack-Provider-Data": '{"existing": true}'},
+            {"X-OGX-Provider-Data": '{"existing": true}'},
             {"api_key": "ignored"},
         )
 
-        assert headers["X-LlamaStack-Provider-Data"] == '{"existing": true}'
+        assert headers["X-OGX-Provider-Data"] == '{"existing": true}'
 
     def test_request_with_provider_data_headers_returns_copy(self) -> None:
         """Test request helper returns a new request when headers are injected."""
@@ -107,12 +107,12 @@ class TestInjectProviderDataIntoHeaders:
 
         assert updated is not request
         assert (
-            updated.headers["X-LlamaStack-Provider-Data"] == '{"api_key": "test-key"}'
+            updated.headers["X-OGX-Provider-Data"] == '{"api_key": "test-key"}'
         )
 
 
-class TestLlamaStackServerTransport:
-    """Tests for LlamaStackServerTransport."""
+class TestOgxServerTransport:
+    """Tests for OgxServerTransport."""
 
     @pytest.mark.asyncio
     async def test_injects_provider_data_before_delegating(
@@ -121,7 +121,7 @@ class TestLlamaStackServerTransport:
         """Test provider data is added to outbound HTTP requests."""
         wrapped = mocker.AsyncMock()
         wrapped.handle_async_request.return_value = httpx.Response(200)
-        transport = LlamaStackServerTransport(
+        transport = OgxServerTransport(
             wrapped,
             provider_data={"api_key": "test-key"},
         )
@@ -135,7 +135,7 @@ class TestLlamaStackServerTransport:
 
         delegated_request = wrapped.handle_async_request.await_args.args[0]
         assert (
-            delegated_request.headers["X-LlamaStack-Provider-Data"]
+            delegated_request.headers["X-OGX-Provider-Data"]
             == '{"api_key": "test-key"}'
         )
 
@@ -146,7 +146,7 @@ class TestLlamaStackServerTransport:
         """Test per-request provider data headers are not overwritten."""
         wrapped = mocker.AsyncMock()
         wrapped.handle_async_request.return_value = httpx.Response(200)
-        transport = LlamaStackServerTransport(
+        transport = OgxServerTransport(
             wrapped,
             provider_data={"api_key": "ignored"},
         )
@@ -155,13 +155,13 @@ class TestLlamaStackServerTransport:
             "POST",
             "http://localhost/v1/responses",
             content=b"{}",
-            headers={"X-LlamaStack-Provider-Data": '{"existing": true}'},
+            headers={"X-OGX-Provider-Data": '{"existing": true}'},
         )
         await transport.handle_async_request(request)
 
         delegated_request = wrapped.handle_async_request.await_args.args[0]
         assert (
-            delegated_request.headers["X-LlamaStack-Provider-Data"]
+            delegated_request.headers["X-OGX-Provider-Data"]
             == '{"existing": true}'
         )
 
@@ -180,24 +180,24 @@ class TestDecodeRequestHeaders:  # pylint: disable=too-few-public-methods
         assert decode_request_headers(request)["X-Test"] == "value"
 
 
-class TestLlamaStackLibraryTransportInit:  # pylint: disable=too-few-public-methods
-    """Tests for LlamaStackLibraryTransport initialization."""
+class TestOgxLibraryTransportInit:  # pylint: disable=too-few-public-methods
+    """Tests for OgxLibraryTransport initialization."""
 
     def test_stores_client(self, mock_library_client: Any) -> None:
         """Test that the transport stores the provided library client."""
-        transport = LlamaStackLibraryTransport(mock_library_client)
+        transport = OgxLibraryTransport(mock_library_client)
         assert transport._client is mock_library_client
 
 
 class TestHandleAsyncRequest:
-    """Tests for LlamaStackLibraryTransport.handle_async_request."""
+    """Tests for OgxLibraryTransport.handle_async_request."""
 
     @pytest.mark.asyncio
     async def test_raises_when_route_impls_is_none(self, mocker: MockerFixture) -> None:
         """Test RuntimeError is raised when the library client is not initialized."""
         client = mocker.Mock()
         client.route_impls = None
-        transport = LlamaStackLibraryTransport(client)
+        transport = OgxLibraryTransport(client)
 
         request = httpx.Request("POST", "http://localhost/v1/responses")
 
@@ -209,7 +209,7 @@ class TestHandleAsyncRequest:
 
     @pytest.mark.asyncio
     async def test_non_streaming_request(
-        self, mocker: MockerFixture, transport: LlamaStackLibraryTransport
+        self, mocker: MockerFixture, transport: OgxLibraryTransport
     ) -> None:
         """Test a non-streaming request is dispatched correctly."""
         body = {"model": "test-model", "messages": []}
@@ -235,7 +235,7 @@ class TestHandleAsyncRequest:
 
     @pytest.mark.asyncio
     async def test_streaming_request(
-        self, mocker: MockerFixture, transport: LlamaStackLibraryTransport
+        self, mocker: MockerFixture, transport: OgxLibraryTransport
     ) -> None:
         """Test a streaming request returns an event-stream response."""
         body = {"model": "test-model", "stream": True}
@@ -263,7 +263,7 @@ class TestHandleAsyncRequest:
 
     @pytest.mark.asyncio
     async def test_empty_body_request(
-        self, mocker: MockerFixture, transport: LlamaStackLibraryTransport
+        self, mocker: MockerFixture, transport: OgxLibraryTransport
     ) -> None:
         """Test that a request with no content body passes an empty dict."""
         request = httpx.Request("GET", "http://localhost/v1/models")
@@ -286,7 +286,7 @@ class TestHandleAsyncRequest:
         client = mocker.Mock()
         client.route_impls = {}
         client.provider_data = {"api_key": "test-key"}
-        transport = LlamaStackLibraryTransport(client)
+        transport = OgxLibraryTransport(client)
 
         body = {"model": "test-model"}
         request = httpx.Request(
@@ -309,8 +309,8 @@ class TestHandleAsyncRequest:
         await transport.handle_async_request(request)
 
         call_args = mock_ctx.call_args[0][0]
-        assert "X-LlamaStack-Provider-Data" in call_args
-        assert json.loads(call_args["X-LlamaStack-Provider-Data"]) == {
+        assert "X-OGX-Provider-Data" in call_args
+        assert json.loads(call_args["X-OGX-Provider-Data"]) == {
             "api_key": "test-key"
         }
 
@@ -322,14 +322,14 @@ class TestHandleAsyncRequest:
         client = mocker.Mock()
         client.route_impls = {}
         client.provider_data = {"api_key": "should-not-override"}
-        transport = LlamaStackLibraryTransport(client)
+        transport = OgxLibraryTransport(client)
 
         body = {"model": "test-model"}
         request = httpx.Request(
             "POST",
             "http://localhost/v1/responses",
             content=json.dumps(body).encode("utf-8"),
-            headers={"X-LlamaStack-Provider-Data": '{"existing": true}'},
+            headers={"X-OGX-Provider-Data": '{"existing": true}'},
         )
 
         mock_func = mocker.AsyncMock(return_value={"id": "resp-1"})
@@ -346,15 +346,15 @@ class TestHandleAsyncRequest:
         await transport.handle_async_request(request)
 
         call_args = mock_ctx.call_args[0][0]
-        assert json.loads(call_args["X-LlamaStack-Provider-Data"]) == {"existing": True}
+        assert json.loads(call_args["X-OGX-Provider-Data"]) == {"existing": True}
 
 
 class TestHandleNonStreaming:
-    """Tests for LlamaStackLibraryTransport._handle_non_streaming."""
+    """Tests for OgxLibraryTransport._handle_non_streaming."""
 
     @pytest.mark.asyncio
     async def test_merges_path_params(
-        self, mocker: MockerFixture, transport: LlamaStackLibraryTransport
+        self, mocker: MockerFixture, transport: OgxLibraryTransport
     ) -> None:
         """Test that path parameters are merged into the request body."""
         body: dict[str, Any] = {"model": "test"}
@@ -379,7 +379,7 @@ class TestHandleNonStreaming:
 
     @pytest.mark.asyncio
     async def test_delete_returns_no_content(
-        self, mocker: MockerFixture, transport: LlamaStackLibraryTransport
+        self, mocker: MockerFixture, transport: OgxLibraryTransport
     ) -> None:
         """Test that DELETE with None result returns 204 No Content."""
         request = httpx.Request("DELETE", "http://localhost/v1/resource/123")
@@ -400,7 +400,7 @@ class TestHandleNonStreaming:
 
     @pytest.mark.asyncio
     async def test_delete_with_result_returns_ok(
-        self, mocker: MockerFixture, transport: LlamaStackLibraryTransport
+        self, mocker: MockerFixture, transport: OgxLibraryTransport
     ) -> None:
         """Test that DELETE with a non-None result returns 200 OK."""
         request = httpx.Request("DELETE", "http://localhost/v1/resource/123")
@@ -420,11 +420,11 @@ class TestHandleNonStreaming:
 
 
 class TestHandleStreaming:  # pylint: disable=too-few-public-methods
-    """Tests for LlamaStackLibraryTransport._handle_streaming."""
+    """Tests for OgxLibraryTransport._handle_streaming."""
 
     @pytest.mark.asyncio
     async def test_produces_sse_format(
-        self, mocker: MockerFixture, transport: LlamaStackLibraryTransport
+        self, mocker: MockerFixture, transport: OgxLibraryTransport
     ) -> None:
         """Test that streaming responses produce SSE-formatted byte chunks."""
 
