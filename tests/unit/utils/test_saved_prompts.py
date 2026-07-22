@@ -317,7 +317,7 @@ class TestListSavedPromptsByUser:
         """Test list is user-scoped and ordered by created_at descending."""
         older = create_saved_prompt("user-1", "first", "c1", max_prompts_per_user=50)
         newer = create_saved_prompt("user-1", "second", "c2", max_prompts_per_user=50)
-        create_saved_prompt("user-2", "other", "c3", max_prompts_per_user=50)
+        create_saved_prompt("user-11", "other", "c3", max_prompts_per_user=50)
 
         # Concurrent inserts can share the same created_at; force a clear order.
         session_factory = sessionmaker(
@@ -335,6 +335,25 @@ class TestListSavedPromptsByUser:
 
         assert [p.id for p in results] == [newer.id, older.id]
         assert all(p.user_id == "user-1" for p in results)
+
+    def test_list_excludes_near_collision_user_ids(self) -> None:
+        """Test list does not match nearby user_id strings (prefix/substring)."""
+        owned = create_saved_prompt(
+            "user-1", "deploy", "owned-body", max_prompts_per_user=50
+        )
+        create_saved_prompt(
+            "user-11", "deploy-1", "other-11-body", max_prompts_per_user=50
+        )
+        create_saved_prompt(
+            "user-1a", "deploy", "other-1a-body", max_prompts_per_user=50
+        )
+
+        results = list_saved_prompts_by_user("user-1")
+
+        assert len(results) == 1
+        assert results[0].id == owned.id
+        assert results[0].user_id == "user-1"
+        assert results[0].content == "owned-body"
 
     def test_list_caps_at_configured_upper_bound(
         self, mocker: MockerFixture, sqlite_engine: Engine
