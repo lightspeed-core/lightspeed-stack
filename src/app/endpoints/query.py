@@ -24,6 +24,10 @@ from authorization.middleware import authorize
 from client import AsyncLlamaStackClientHolder
 from configuration import configuration
 from constants import ENDPOINT_PATH_QUERY
+
+# PoC wiring (LCORE-2657 spike) — inert unless LCS_GUARDRAILS_POC_CONFIG is set
+from guardrails.granite_guardian import run_point as run_guardrails_point
+from guardrails.poc_loader import load_poc_config
 from log import get_logger
 from models.api.requests import QueryRequest
 from models.api.responses.constants import UNAUTHORIZED_OPENAPI_EXAMPLES_WITH_MCP_OAUTH
@@ -38,7 +42,7 @@ from models.api.responses.error import (
     UnprocessableEntityResponse,
 )
 from models.api.responses.successful import QueryResponse
-from models.common.moderation import ShieldModerationResult
+from models.common.moderation import ShieldModerationBlocked, ShieldModerationResult
 from models.common.responses.responses_api_params import ResponsesApiParams
 from models.common.responses.types import ResponseInput
 from models.common.turn_summary import TurnSummary
@@ -73,7 +77,11 @@ from utils.responses import (
     maybe_get_topic_summary,
     prepare_responses_params,
 )
-from utils.shields import run_shield_moderation, validate_shield_ids_override
+from utils.shields import (
+    create_refusal_response,
+    run_shield_moderation,
+    validate_shield_ids_override,
+)
 from utils.suid import normalize_conversation_id
 from utils.vector_search import build_rag_context
 
@@ -182,6 +190,20 @@ async def query_endpoint_handler(
         client, moderation_input, endpoint_path, query_request.shield_ids
     )
 
+    # PoC (LCORE-2657): LCS-native input guardrail feeding the same
+    # moderation-result seam so the existing blocked path is reused.
+    poc_config = load_poc_config()
+    if poc_config is not None and moderation_result.decision == "passed":
+        input_verdict = await run_guardrails_point(
+            poc_config, "input", moderation_input
+        )
+        if input_verdict.blocked and input_verdict.message is not None:
+            moderation_result = ShieldModerationBlocked(
+                message=input_verdict.message,
+                moderation_id="guardrails-poc-input",
+                refusal_response=create_refusal_response(input_verdict.message),
+            )
+
     # Build RAG context from Inline RAG sources
     inline_rag_context = await build_rag_context(
         client,
@@ -236,6 +258,29 @@ async def query_endpoint_handler(
         compaction.original_input if compaction.compacted else None,
         no_tools=bool(query_request.no_tools),
     )
+
+    # PoC (LCORE-2657): output + tool-content guardrail points.
+    if poc_config is not None and moderation_result.decision == "passed":
+        blocked_by_tool_content = False
+        if turn_summary.tool_results:
+            tool_content = "\n\n".join(
+                result.model_dump_json() for result in turn_summary.tool_results
+            )
+            tool_verdict = await run_guardrails_point(
+                poc_config, "tool_content", tool_content
+            )
+            if tool_verdict.blocked and tool_verdict.message is not None:
+                turn_summary.llm_response = tool_verdict.message
+                blocked_by_tool_content = True
+
+        # Skip the output point once tool content already produced a refusal:
+        # moderating our own policy message is meaningless and costs a call.
+        if not blocked_by_tool_content:
+            output_verdict = await run_guardrails_point(
+                poc_config, "output", turn_summary.llm_response
+            )
+            if output_verdict.blocked and output_verdict.message is not None:
+                turn_summary.llm_response = output_verdict.message
 
     if moderation_result.decision == "passed":
         # Combine inline RAG results (BYOK + Solr) with tool-based RAG results for the transcript

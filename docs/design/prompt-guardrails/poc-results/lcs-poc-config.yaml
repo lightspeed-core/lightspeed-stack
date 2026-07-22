@@ -1,0 +1,18 @@
+# PoC lightspeed-stack config (LCORE-2657) — minimal local stack, no auth
+name: Lightspeed Core Service (LCS) - prompt guardrails PoC
+service:
+  host: localhost
+  port: 8080
+  auth_enabled: false
+  workers: 1
+  color_log: true
+  access_log: true
+llama_stack:
+  use_as_library_client: false
+  url: http://localhost:8321
+  api_key: xyzzy
+user_data_collection:
+  feedback_enabled: false
+  transcripts_enabled: false
+authentication:
+  module: "noop"
