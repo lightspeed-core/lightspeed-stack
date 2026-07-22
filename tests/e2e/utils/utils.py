@@ -181,7 +181,7 @@ def validate_json(message: Any, schema: Any) -> None:
         assert False, "The provided schema is faulty:" + str(e)
 
 
-def wait_for_container_health(container_name: str, max_attempts: int = 6) -> None:
+def wait_for_container_health(container_name: str, max_attempts: int = 20) -> None:
     """Wait for container to be healthy.
 
     Polls a Docker container until its health status becomes `healthy` or the
@@ -192,6 +192,9 @@ def wait_for_container_health(container_name: str, max_attempts: int = 6) -> Non
     inspect errors or timeouts are ignored and retried; the function returns
     after the container is observed healthy or after all attempts complete.
 
+    OpenTelemetry instrumentation adds initialization overhead, so the default
+    has been set to 20 attempts (40 seconds) to prevent timeouts.
+
     Returns:
     -------
         None
@@ -199,7 +202,7 @@ def wait_for_container_health(container_name: str, max_attempts: int = 6) -> Non
     Parameters:
     ----------
         container_name (str): Docker container name or ID to check.
-        max_attempts (int): Maximum number of health check attempts (default 6).
+        max_attempts (int): Maximum number of health check attempts (default 20).
     """
     if is_prow_environment():
         wait_for_pod_health(container_name, max_attempts)
@@ -468,9 +471,10 @@ def restart_container(container_name: str) -> None:
 
     # Wait for container to be healthy.
     # Library mode embeds llama-stack, so the container takes longer to start
-    # (~45-60s vs ~10s in server mode).  Use a generous attempt count so
-    # MCP-auth scenarios that restart the container don't time out.
-    wait_for_container_health(container_name, max_attempts=12)
+    # (~45-60s vs ~10s in server mode). OpenTelemetry instrumentation adds
+    # initialization overhead. Use a generous attempt count so MCP-auth scenarios
+    # that restart the container don't time out.
+    wait_for_container_health(container_name, max_attempts=20)
 
     if container_name == "llama-stack":
         from tests.e2e.features.steps.health import (

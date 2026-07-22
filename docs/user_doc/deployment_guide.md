@@ -468,7 +468,7 @@ make run
 ```
 
 ```
-uv run src/lightspeed_stack.py
+uv run opentelemetry-instrument python3.12 src/lightspeed_stack.py
 [07/29/25 15:43:35] INFO     Initializing app                                                                                 main.py:19
                     INFO     Including routers                                                                                main.py:68
 INFO:     Started server process [1922983]
@@ -561,7 +561,7 @@ cp examples/lightspeed-stack-lls-library.yaml lightspeed-stack.yaml
     ```
 1. Check the output
     ```text
-    uv run src/lightspeed_stack.py
+    uv run opentelemetry-instrument python3.12 src/lightspeed_stack.py
     Using config run.yaml:
     apis:
     - agents

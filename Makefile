@@ -36,7 +36,7 @@ CONTAINER_RUNTIME ?= $(shell command -v podman 2>/dev/null || command -v docker 
 	docs/models/database.svg
 
 run-stack: ## Run lightspeed-stack directly, without building dependent service/s
-	uv run src/lightspeed_stack.py -c $(CONFIG)
+	uv run opentelemetry-instrument python3.12 src/lightspeed_stack.py -c $(CONFIG)
 
 run: start-llama-stack-container ## Run the service locally with dependent services
 	@echo "Starting Lightspeed Core Stack..."
