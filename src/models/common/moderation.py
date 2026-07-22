@@ -23,7 +23,7 @@ class ShieldModerationBlocked(BaseModel):
 
     @property
     def refusal_response(self) -> ResponseMessage:
-
+        """Build a ResponseMessage carrying the shield's refusal text."""
         return ResponseMessage(
             role="assistant",
             content=self.message,

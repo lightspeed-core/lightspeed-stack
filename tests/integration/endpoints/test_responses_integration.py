@@ -11,7 +11,6 @@ from typing import Any
 import pytest
 from fastapi import Request
 from fastapi.responses import StreamingResponse
-from ogx_api.openai_responses import OpenAIResponseMessage
 from ogx_client.types import ListModelsResponse
 from ogx_client.types.model import Model
 from pytest_mock import MockerFixture
@@ -171,10 +170,6 @@ def _configure_shield_blocked(
     blocked = ShieldModerationBlocked(
         message="Content blocked by safety shield",
         moderation_id=moderation_id,
-        refusal_response=OpenAIResponseMessage(
-            role="assistant",
-            content="Content blocked by safety shield",
-        ),
     )
     mocker.patch(
         "app.endpoints.responses.run_shield_moderation",
