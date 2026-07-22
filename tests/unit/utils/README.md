@@ -64,7 +64,7 @@ Unit tests for utils/responses.py functions.
 Unit tests for utils/rh_identity module.
 
 ## [test_saved_prompts.py](test_saved_prompts.py)
-Unit tests for saved prompt validation helpers.
+Unit tests for saved prompt validation helpers and data access.
 
 ## [test_shields.py](test_shields.py)
 Unit tests for utils/shields.py functions.

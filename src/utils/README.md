@@ -76,7 +76,7 @@ Utility functions for processing Responses API output.
 Utility functions for extracting RH Identity context for telemetry.
 
 ## [saved_prompts.py](saved_prompts.py)
-Validation helpers for saved prompts.
+Validation helpers and data access for saved prompts.
 
 ## [shields.py](shields.py)
 Utility functions for working with Llama Stack shields.
