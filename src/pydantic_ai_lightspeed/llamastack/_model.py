@@ -12,6 +12,9 @@ streamed ``tool_args`` content to the correct part.
 
 This module provides ``OgxResponsesModel`` which wraps the event stream to
 buffer those early delta events and replay them correctly once the item is announced.
+
+Additionally overrides ``_responses_create`` to filter out ``reasoning.encrypted_content``
+from the include parameter, which llama-stack / OGX doesn't support.
 """
 
 from __future__ import annotations as _annotations
@@ -226,7 +229,49 @@ class OgxResponsesModel(OpenAIResponsesModel):
     Overrides the streaming response processing to buffer and replay
     ``ResponseFunctionCallArgumentsDeltaEvent`` events that Llama Stack emits
     before the corresponding ``McpCall`` or ``ResponseFunctionToolCall`` item.
+
+    Also filters ``reasoning.encrypted_content`` from the include parameter since
+    OGX doesn't support it.
     """
+
+    async def _responses_create(
+        self,
+        messages: list[ModelMessage],
+        stream: bool,
+        model_settings: OpenAIResponsesModelSettings,
+        model_request_parameters: ModelRequestParameters,
+    ) -> Any:
+        """Call parent's ``_responses_create``, filtering encrypted reasoning include.
+
+        OGX doesn't support ``reasoning.encrypted_content`` in the include
+        parameter. pydantic-ai adds it automatically based on the model profile, so we
+        disable that profile flag before sending.
+
+        Args:
+            messages: Model messages for the request.
+            stream: Whether this is a streaming request.
+            model_settings: Model-specific settings.
+            model_request_parameters: Request parameters for the model.
+
+        Returns:
+            Response from the Responses API.
+        """
+        # Parent gates include on this profile flag; disable it for OGX.
+        self.profile["openai_supports_encrypted_reasoning_content"] = False
+        # Branch on stream so mypy matches OpenAIResponsesModel overloads
+        if stream:
+            return await super()._responses_create(
+                messages,
+                True,
+                model_settings,
+                model_request_parameters,
+            )
+        return await super()._responses_create(
+            messages,
+            False,
+            model_settings,
+            model_request_parameters,
+        )
 
     async def request(  # pylint: disable=unused-argument
         self,
