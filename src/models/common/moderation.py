@@ -27,3 +27,22 @@ ShieldModerationResult = Annotated[
     ShieldModerationPassed | ShieldModerationBlocked,
     Field(discriminator="decision"),
 ]
+
+
+class ShieldModerationPassedV2(BaseModel):
+    """Shield moderation passed; no refusal."""
+
+    decision: Literal["passed"] = "passed"
+
+
+class ShieldModerationBlockedV2(BaseModel):
+    """Shield moderation blocked the content; refusal details are present."""
+
+    decision: Literal["blocked"] = "blocked"
+    message: str
+
+
+ShieldModerationResultV2 = Annotated[
+    ShieldModerationPassedV2 | ShieldModerationBlockedV2,
+    Field(discriminator="decision"),
+]
