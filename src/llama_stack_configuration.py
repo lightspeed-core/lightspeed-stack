@@ -81,6 +81,11 @@ VECTOR_IO_TEMPLATES: dict[str, dict[str, Any]] = {
     },
 }
 
+VECTOR_STORE_PROVIDER_TYPE_MAP: dict[str, str] = {
+    "faiss": "inline::faiss",
+    "pgvector": "remote::pgvector",
+}
+
 
 class YamlDumper(yaml.Dumper):  # pylint: disable=too-many-ancestors
     """Custom YAML dumper with proper indentation levels."""
@@ -355,14 +360,15 @@ def construct_models_section(
 
 
 def _build_vector_io_config(
-    rag_type: str, backend_name: str, brag: dict[str, Any]
+    rag_type: str, backend_name: str, extra_fields: dict[str, Any]
 ) -> dict[str, Any]:
     """Build the provider config dict from VECTOR_IO_TEMPLATES.
 
     Parameters:
         rag_type: Llama Stack provider type (e.g. 'inline::faiss', 'remote::pgvector').
         backend_name: Storage backend name (used when template has '{backend_name}').
-        brag: BYOK RAG entry dict — extra_fields are read from here.
+        extra_fields: Source values for template ``extra_fields`` (e.g. db_path,
+            host/port/db/user/password). Used by BYOK and vector_store_providers.
 
     Returns:
         dict[str, Any]: Provider config mapping.
@@ -383,7 +389,7 @@ def _build_vector_io_config(
         }
     }
     for field, default in template.get("extra_fields", {}).items():
-        value = brag.get(field)
+        value = extra_fields.get(field)
         if isinstance(value, SecretStr):
             value = value.get_secret_value()
         if value is None or (isinstance(value, str) and not value.strip()):
@@ -499,6 +505,242 @@ def enrich_byok_rag(ls_config: dict[str, Any], byok_rag: list[dict[str, Any]]) -
     ls_config["registered_resources"]["models"] = construct_models_section(
         ls_config, byok_rag
     )
+
+
+# =============================================================================
+# Enrichment: vector_store_providers
+# =============================================================================
+
+
+def _designated_vector_store_provider(
+    providers: list[dict[str, Any]],
+) -> dict[str, Any] | None:
+    """Return the provider that should drive vector_stores.default_*.
+
+    Parameters:
+        providers: High-level vector_store_providers entries.
+
+    Returns:
+        The entry with ``default: true``, or None when none is marked.
+    """
+    for provider in providers:
+        if provider.get("default"):
+            return provider
+    return None
+
+
+def _upsert_vsprov_embedding_model(
+    ls_config: dict[str, Any],
+    provider_id: str,
+    embedding_model: str,
+    embedding_dimension: int,
+) -> None:
+    """Register an embedding model if provider_model_id is not already present.
+
+    Dedupes against BYOK/baseline rows by ``provider_model_id`` (after stripping
+    a leading ``sentence-transformers/`` prefix).
+
+    Parameters:
+        ls_config: Llama Stack configuration modified in place.
+        provider_id: Dynamic provider id used to name the model row.
+        embedding_model: Configured embedding model path or id.
+        embedding_dimension: Embedding vector dimensionality (required on
+            validated ``vector_store_providers`` entries).
+    """
+    models = ls_config.setdefault("registered_resources", {}).setdefault("models", [])
+    provider_model_id = embedding_model.removeprefix("sentence-transformers/")
+    if any(model.get("provider_model_id") == provider_model_id for model in models):
+        return
+    models.append(
+        {
+            "model_id": f"vsprov_{provider_id}_embedding",
+            "model_type": "embedding",
+            "provider_id": "sentence-transformers",
+            "provider_model_id": provider_model_id,
+            "metadata": {"embedding_dimension": embedding_dimension},
+        }
+    )
+
+
+def _vsprov_fields_and_backend(
+    product_type: str, provider_id: str, cfg: dict[str, Any]
+) -> tuple[dict[str, Any], str, dict[str, Any] | None]:
+    """Build template extra fields and optional faiss storage backend.
+
+    Parameters:
+        product_type: Product type (``faiss`` or ``pgvector``).
+        provider_id: Dynamic provider id.
+        cfg: Nested provider ``config`` dict.
+
+    Returns:
+        Tuple of (extra_fields, backend_name, backend_entry_or_None).
+    """
+    backend_name = f"vsprov_{provider_id}_storage"
+    if product_type == "faiss":
+        return (
+            {"db_path": cfg["path"]},
+            backend_name,
+            {"type": "kv_sqlite", "db_path": cfg["path"]},
+        )
+    if product_type == "pgvector":
+        return (
+            {
+                "host": cfg.get("host"),
+                "port": cfg.get("port"),
+                "db": cfg.get("db"),
+                "user": cfg.get("user"),
+                "password": cfg.get("password"),
+            },
+            backend_name,
+            None,
+        )
+    raise ValueError(
+        f"Unsupported vector_store_providers type '{product_type}'. "
+        f"Supported types: {list(VECTOR_STORE_PROVIDER_TYPE_MAP)}"
+    )
+
+
+def _replace_or_append_vector_io(
+    vector_io: list[dict[str, Any]],
+    existing_ids: set[str],
+    provider_entry: dict[str, Any],
+) -> None:
+    """Replace a vector_io entry with the same provider_id, else append.
+
+    Parameters:
+        vector_io: Mutable providers.vector_io list.
+        existing_ids: Set of provider_ids already present (updated on append).
+        provider_entry: New provider entry to install.
+    """
+    provider_id = provider_entry["provider_id"]
+    if provider_id not in existing_ids:
+        vector_io.append(provider_entry)
+        existing_ids.add(provider_id)
+        return
+
+    for index, existing in enumerate(vector_io):
+        if isinstance(existing, dict) and existing.get("provider_id") == provider_id:
+            logger.info(
+                "Replacing existing vector_io provider with "
+                "provider_id=%r from vector_store_providers",
+                provider_id,
+            )
+            vector_io[index] = provider_entry
+            return
+
+
+def _apply_vector_stores_defaults(
+    ls_config: dict[str, Any], designated: dict[str, Any]
+) -> None:
+    """Write vector_stores.default_* from the designated provider entry.
+
+    Parameters:
+        ls_config: Llama Stack configuration modified in place.
+        designated: Provider entry with ``default: true``.
+    """
+    vector_stores = ls_config.get("vector_stores")
+    if not isinstance(vector_stores, dict):
+        vector_stores = {}
+        ls_config["vector_stores"] = vector_stores
+    vector_stores["default_provider_id"] = str(designated["id"]).strip()
+    emb = designated.get("embedding_model")
+    if emb:
+        vector_stores["default_embedding_model"] = {
+            "provider_id": "sentence-transformers",
+            "model_id": emb,
+        }
+
+
+def _enrich_one_vector_store_provider(
+    entry: dict[str, Any],
+    backends: dict[str, Any],
+    vector_io: list[Any],
+    existing_ids: set[str],
+    ls_config: dict[str, Any],
+) -> None:
+    """Enrich LS config for a single ``vector_store_providers`` entry.
+
+    Parameters:
+        entry: One high-level provider dict from Lightspeed config.
+        backends: ``storage.backends`` map (modified in place for faiss).
+        vector_io: ``providers.vector_io`` list (modified in place).
+        existing_ids: Known ``provider_id`` values already in ``vector_io``.
+        ls_config: Full Llama Stack config (for embedding model registration).
+    """
+    provider_id = str(entry["id"]).strip()
+    product_type = entry["type"]
+    ls_type = VECTOR_STORE_PROVIDER_TYPE_MAP[product_type]
+    extra_fields, backend_name, backend_entry = _vsprov_fields_and_backend(
+        product_type, provider_id, entry.get("config") or {}
+    )
+    if backend_entry is not None:
+        backends[backend_name] = backend_entry
+
+    _replace_or_append_vector_io(
+        vector_io,
+        existing_ids,
+        {
+            "provider_id": provider_id,
+            "provider_type": ls_type,
+            "config": _build_vector_io_config(ls_type, backend_name, extra_fields),
+        },
+    )
+
+    embedding_model = entry.get("embedding_model")
+    embedding_dimension = entry.get("embedding_dimension")
+    if embedding_model and embedding_dimension is not None:
+        _upsert_vsprov_embedding_model(
+            ls_config,
+            provider_id=provider_id,
+            embedding_model=embedding_model,
+            embedding_dimension=embedding_dimension,
+        )
+
+
+def enrich_vector_store_providers(
+    ls_config: dict[str, Any], providers: list[dict[str, Any]]
+) -> None:
+    """Enrich LS config with dynamic vector-store provider capacity.
+
+    Appends or replaces ``providers.vector_io`` entries and faiss storage
+    backends, registers embedding models when needed, and writes
+    ``vector_stores.default_provider_id`` / ``default_embedding_model`` from
+    the entry marked ``default: true``. Does not register
+    ``registered_resources.vector_stores``.
+
+    Parameters:
+        ls_config: Llama Stack configuration dictionary (modified in place).
+        providers: High-level ``vector_store_providers`` entries as dicts.
+    """
+    if not providers:
+        logger.debug("vector_store_providers not configured: skipping")
+        dedupe_providers_vector_io(ls_config)
+        return
+
+    backends = ls_config.setdefault("storage", {}).setdefault("backends", {})
+    providers_section = ls_config.setdefault("providers", {})
+    vector_io = providers_section.get("vector_io")
+    if not isinstance(vector_io, list):
+        vector_io = []
+        providers_section["vector_io"] = vector_io
+    ls_config.setdefault("registered_resources", {}).setdefault("models", [])
+
+    existing_ids = {
+        str(entry.get("provider_id")).strip()
+        for entry in vector_io
+        if isinstance(entry, dict) and entry.get("provider_id")
+    }
+
+    for entry in providers:
+        _enrich_one_vector_store_provider(
+            entry, backends, vector_io, existing_ids, ls_config
+        )
+
+    designated = _designated_vector_store_provider(providers)
+    if designated is not None:
+        _apply_vector_stores_defaults(ls_config, designated)
+
+    dedupe_providers_vector_io(ls_config)
 
 
 # =============================================================================
@@ -897,6 +1139,9 @@ def synthesize_configuration(
     #    unified output matches legacy output for equivalent inputs (R7).
     enrich_azure_entra_id_inference(ls_config, lcs_config.get("azure_entra_id"))
     enrich_byok_rag(ls_config, lcs_config.get("byok_rag", []))
+    enrich_vector_store_providers(
+        ls_config, lcs_config.get("vector_store_providers", [])
+    )
     enrich_solr(ls_config, lcs_config.get("rag", {}), lcs_config.get("okp", {}))
 
     # 5. High-level inference providers (Decision S5 — a root-level section).

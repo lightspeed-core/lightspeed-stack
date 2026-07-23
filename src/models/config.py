@@ -7,7 +7,7 @@ from enum import Enum
 from functools import cached_property
 from pathlib import Path
 from re import Pattern
-from typing import Any, Literal, Optional, Self
+from typing import Annotated, Any, Literal, Optional, Self
 
 import jsonpath_ng
 import yaml
@@ -2129,6 +2129,162 @@ class ByokRag(ConfigurationBase):
         return self
 
 
+class FaissVectorStoreProviderConfig(ConfigurationBase):
+    """Storage config for a FAISS dynamic vector-store provider."""
+
+    path: str = Field(
+        ...,
+        min_length=1,
+        title="DB path",
+        description="On-disk FAISS/SQLite path for this provider.",
+    )
+
+
+class PgvectorVectorStoreProviderConfig(ConfigurationBase):
+    """Storage config for a pgvector dynamic vector-store provider."""
+
+    host: Optional[str] = Field(
+        default=None,
+        title="PostgreSQL host",
+        description="PostgreSQL host. Defaults to ${env.POSTGRES_HOST}.",
+    )
+
+    port: Optional[str] = Field(
+        default=None,
+        title="PostgreSQL port",
+        description="PostgreSQL port. Defaults to ${env.POSTGRES_PORT}.",
+    )
+
+    db: Optional[str] = Field(
+        default=None,
+        title="PostgreSQL database",
+        description="PostgreSQL database name. Defaults to ${env.POSTGRES_DATABASE}.",
+    )
+
+    user: Optional[str] = Field(
+        default=None,
+        title="PostgreSQL user",
+        description="PostgreSQL user. Defaults to ${env.POSTGRES_USER}.",
+    )
+
+    password: Optional[SecretStr] = Field(
+        default=None,
+        title="PostgreSQL password",
+        description="PostgreSQL password. Defaults to ${env.POSTGRES_PASSWORD}.",
+    )
+
+    @model_validator(mode="after")
+    def apply_pgvector_env_defaults(self) -> Self:
+        """Fill unset connection fields with ${env.POSTGRES_*} references."""
+        pgvector_defaults: dict[str, str | SecretStr] = {
+            "host": "${env.POSTGRES_HOST}",
+            "port": "${env.POSTGRES_PORT}",
+            "db": "${env.POSTGRES_DATABASE}",
+            "user": "${env.POSTGRES_USER}",
+            "password": SecretStr("${env.POSTGRES_PASSWORD}"),
+        }
+        for field_name, default_value in pgvector_defaults.items():
+            if getattr(self, field_name) is None:
+                object.__setattr__(self, field_name, default_value)
+        return self
+
+
+class VectorStoreProviderBase(ConfigurationBase):
+    """Shared fields for dynamic vector-store provider capacity entries."""
+
+    id: str = Field(
+        ...,
+        min_length=1,
+        title="Provider ID",
+        description=(
+            "Llama Stack vector_io provider_id. Surrounding whitespace is "
+            "stripped before validation and emission."
+        ),
+    )
+    embedding_model: str = Field(
+        ...,
+        min_length=1,
+        title="Embedding model",
+        description="Embedding model identification used for stores created "
+        "against this provider.",
+    )
+    embedding_dimension: PositiveInt = Field(
+        ...,
+        title="Embedding dimension",
+        description="Dimensionality of embedding vectors for this provider.",
+    )
+    default: bool = Field(
+        False,
+        title="Default provider",
+        description="When true, this entry drives vector_stores.default_* "
+        "in the synthesized Llama Stack config. Exactly one entry must set "
+        "this when vector_store_providers is non-empty.",
+    )
+
+    @field_validator("id")
+    @classmethod
+    def validate_id(cls, value: str) -> str:
+        """Validate and normalize the provider id.
+
+        Parameters:
+            value: Raw provider id from configuration.
+
+        Returns:
+            Stripped provider id.
+
+        Raises:
+            ValueError: If the id is empty, uses the reserved ``byok_`` prefix,
+                or contains characters outside ``[a-z0-9_-]``.
+        """
+        stripped = value.strip()
+        if not stripped:
+            raise ValueError("id must be non-empty after stripping whitespace")
+        if stripped.startswith("byok_"):
+            raise ValueError("id must not start with 'byok_' (reserved for BYOK RAG)")
+        if not re.fullmatch(r"[a-z0-9_-]+", stripped):
+            raise ValueError(
+                "id may contain only lowercase letters, digits, "
+                "underscores, and hyphens"
+            )
+        return stripped
+
+
+class FaissVectorStoreProvider(VectorStoreProviderBase):
+    """Dynamic FAISS vector-store provider (runtime create capacity)."""
+
+    type: Literal["faiss"] = Field(
+        "faiss",
+        title="Provider type",
+        description="Product type for this dynamic vector-store provider.",
+    )
+    config: FaissVectorStoreProviderConfig = Field(
+        ...,
+        title="Storage config",
+        description="FAISS storage settings for this provider.",
+    )
+
+
+class PgvectorVectorStoreProvider(VectorStoreProviderBase):
+    """Dynamic pgvector vector-store provider (runtime create capacity)."""
+
+    type: Literal["pgvector"] = Field(
+        "pgvector",
+        title="Provider type",
+        description="Product type for this dynamic vector-store provider.",
+    )
+    config: PgvectorVectorStoreProviderConfig = Field(
+        ...,
+        title="Storage config",
+        description="pgvector connection settings for this provider.",
+    )
+
+
+VectorStoreProvider = Annotated[
+    FaissVectorStoreProvider | PgvectorVectorStoreProvider,
+    Field(discriminator="type"),
+]
+
+
 class QuotaLimiterConfiguration(ConfigurationBase):
     """Configuration for one quota limiter.
 
@@ -2708,6 +2864,16 @@ class Configuration(ConfigurationBase):
         "reconfigure Llama Stack through its run.yaml configuration file",
     )
 
+    vector_store_providers: list[VectorStoreProvider] = Field(
+        default_factory=list,
+        title="Vector store providers",
+        description=(
+            "Dynamic vector-store provider capacity for runtime "
+            "POST /v1/vector-stores creates. "
+            "Not the same as byok_rag (static registered corpora)."
+        ),
+    )
+
     a2a_state: A2AStateConfiguration = Field(
         default_factory=A2AStateConfiguration,
         title="A2A state configuration",
@@ -2774,6 +2940,36 @@ class Configuration(ConfigurationBase):
         description="Configuration for saved prompts feature limits including "
         "maximum prompts per user, display name length, and content length.",
     )
+
+    @model_validator(mode="after")
+    def validate_vector_store_providers(self) -> Self:
+        """Validate vector_store_providers list constraints.
+
+        When the list is non-empty, requires unique ids and exactly one
+        entry with ``default: true``.
+
+        Returns:
+            Self: The validated configuration instance.
+
+        Raises:
+            ValueError: If ids are duplicated or the default count is not
+                exactly one for a non-empty list.
+        """
+        providers = self.vector_store_providers
+        if not providers:
+            return self
+
+        ids = [provider.id for provider in providers]
+        if len(ids) != len(set(ids)):
+            raise ValueError(f"vector_store_providers ids must be unique; got {ids}")
+
+        defaults = [provider.id for provider in providers if provider.default]
+        if len(defaults) != 1:
+            raise ValueError(
+                "vector_store_providers must set default: true on exactly one "
+                f"entry when the list is non-empty; found defaults on: {defaults}"
+            )
+        return self
 
     @model_validator(mode="after")
     def validate_mcp_auth_headers(self) -> Self:
