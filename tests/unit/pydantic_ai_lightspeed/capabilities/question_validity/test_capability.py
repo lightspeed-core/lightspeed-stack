@@ -14,6 +14,7 @@ from constants import (
     DEFAULT_INVALID_QUESTION_RESPONSE,
     DEFAULT_MODEL_PROMPT,
 )
+from models.common.moderation import ShieldModerationBlocked, ShieldModerationPassed
 from models.config import (
     QuestionValidityConfig,
 )
@@ -532,3 +533,108 @@ class TestWrapRun:
         prompt_str = str(messages[0])
         assert "How to" in prompt_str
         assert "scale a deployment?" in prompt_str
+
+
+class TestQuestionValidityRun:
+    """Tests for QuestionValidity.run method."""
+
+    @pytest.fixture(autouse=True)
+    def _mock_create_model(self, mocker: MockerFixture) -> None:
+        """Mock model creation for all tests."""
+        mocker.patch(f"{_MODULE}.AsyncOgxClientHolder")
+        mocker.patch(f"{_MODULE}.OgxResponsesModel.from_ogx_client")
+
+    @pytest.mark.asyncio
+    async def test_allowed_returns_passed(self, mocker: MockerFixture) -> None:
+        """Test that an allowed response returns ShieldModerationPassed."""
+        mock_response = ModelResponse(
+            parts=[TextPart(content=SUBJECT_ALLOWED)],
+            usage=RequestUsage(input_tokens=10, output_tokens=1),
+        )
+        mocker.patch(f"{_MODULE}.model_request", return_value=mock_response)
+
+        config = QuestionValidityConfig(model_id="test")
+        qv = QuestionValidity(config=config)
+        result = await qv.run("How do I create a pod?")
+
+        assert isinstance(result, ShieldModerationPassed)
+        assert result.decision == "passed"
+
+    @pytest.mark.asyncio
+    async def test_rejected_returns_blocked(self, mocker: MockerFixture) -> None:
+        """Test that a rejected response returns ShieldModerationBlocked."""
+        mock_response = ModelResponse(
+            parts=[TextPart(content=SUBJECT_REJECTED)],
+            usage=RequestUsage(input_tokens=10, output_tokens=1),
+        )
+        mocker.patch(f"{_MODULE}.model_request", return_value=mock_response)
+
+        config = QuestionValidityConfig(model_id="test")
+        qv = QuestionValidity(config=config)
+        result = await qv.run("What is the meaning of life?")
+
+        assert isinstance(result, ShieldModerationBlocked)
+        assert result.message == DEFAULT_INVALID_QUESTION_RESPONSE
+        assert result.moderation_id.startswith("modr-")
+        assert result.refusal_response.role == "assistant"
+        assert result.refusal_response.content == DEFAULT_INVALID_QUESTION_RESPONSE
+
+    @pytest.mark.asyncio
+    async def test_unexpected_response_returns_blocked(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test that an unexpected model response is treated as blocked."""
+        mock_response = ModelResponse(
+            parts=[TextPart(content="I don't understand")],
+            usage=RequestUsage(input_tokens=10, output_tokens=5),
+        )
+        mocker.patch(f"{_MODULE}.model_request", return_value=mock_response)
+
+        config = QuestionValidityConfig(model_id="test")
+        qv = QuestionValidity(config=config)
+        result = await qv.run("some input")
+
+        assert isinstance(result, ShieldModerationBlocked)
+        assert result.message == DEFAULT_INVALID_QUESTION_RESPONSE
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "response_text",
+        [" ALLOWED", "ALLOWED ", " ALLOWED ", "ALLOWED\n"],
+        ids=["leading-space", "trailing-space", "both-spaces", "trailing-newline"],
+    )
+    async def test_allowed_with_whitespace_returns_passed(
+        self, mocker: MockerFixture, response_text: str
+    ) -> None:
+        """Test that ALLOWED with surrounding whitespace still returns passed."""
+        mock_response = ModelResponse(
+            parts=[TextPart(content=response_text)],
+            usage=RequestUsage(input_tokens=10, output_tokens=1),
+        )
+        mocker.patch(f"{_MODULE}.model_request", return_value=mock_response)
+
+        config = QuestionValidityConfig(model_id="test")
+        qv = QuestionValidity(config=config)
+        result = await qv.run("How do I scale pods?")
+
+        assert isinstance(result, ShieldModerationPassed)
+
+    @pytest.mark.asyncio
+    async def test_custom_invalid_response_message(self, mocker: MockerFixture) -> None:
+        """Test that a custom rejection message is used in the blocked result."""
+        mock_response = ModelResponse(
+            parts=[TextPart(content=SUBJECT_REJECTED)],
+            usage=RequestUsage(),
+        )
+        mocker.patch(f"{_MODULE}.model_request", return_value=mock_response)
+
+        config = QuestionValidityConfig(
+            model_id="test", invalid_question_response="Custom rejection."
+        )
+        qv = QuestionValidity(config=config)
+        result = await qv.run("off-topic question")
+
+        assert isinstance(result, ShieldModerationBlocked)
+        assert result.message == "Custom rejection."
+        assert result.refusal_response.role == "assistant"
+        assert result.refusal_response.content == "Custom rejection."

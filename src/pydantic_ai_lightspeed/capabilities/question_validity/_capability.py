@@ -13,10 +13,11 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from string import Template
 from typing import Optional
+from uuid import uuid4
 
 from pydantic_ai import AgentRunResult, RunContext
 from pydantic_ai._agent_graph import GraphAgentState
-from pydantic_ai.capabilities import AbstractCapability, WrapRunHandler
+from pydantic_ai.capabilities import WrapRunHandler
 from pydantic_ai.direct import model_request
 from pydantic_ai.messages import ModelRequest, TextContent, UserContent
 from pydantic_ai.models import Model
@@ -24,9 +25,15 @@ from pydantic_ai.models.openai import OpenAIResponsesModelSettings
 
 from client import AsyncOgxClientHolder
 from log import get_logger
+from models.common.moderation import (
+    ShieldModerationBlocked,
+    ShieldModerationPassed,
+    ShieldModerationResult,
+)
 from models.config import (
     QuestionValidityConfig,
 )
+from pydantic_ai_lightspeed.capabilities.base import AbstractSafetyCapability
 from pydantic_ai_lightspeed.llamastack import OgxResponsesModel
 
 logger = get_logger(__name__)
@@ -56,7 +63,7 @@ def _extract_message_str_from_user_content(user_content: Sequence[UserContent]) 
 
 
 @dataclass
-class QuestionValidity(AbstractCapability[None]):
+class QuestionValidity(AbstractSafetyCapability):
     """Block or modify user input based on a guardrail check.
 
     The guard function receives the user prompt and returns True if safe.
@@ -139,4 +146,17 @@ class QuestionValidity(AbstractCapability[None]):
         state = GraphAgentState(usage=ctx.usage)
         return AgentRunResult(
             output=self.config.invalid_question_response, _state=state
+        )
+
+    async def run(self, input_text: str) -> ShieldModerationResult:
+        result = await model_request(
+            model=self._model, messages=[ModelRequest.user_text_prompt(input_text)]
+        )
+
+        if result.text is not None and result.text.strip() == SUBJECT_ALLOWED:
+            return ShieldModerationPassed()
+
+        return ShieldModerationBlocked(
+            message=self.config.invalid_question_response,
+            moderation_id=f"modr-{uuid4()}",
         )

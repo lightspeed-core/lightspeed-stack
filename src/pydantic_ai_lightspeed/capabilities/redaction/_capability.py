@@ -3,9 +3,9 @@
 from collections.abc import Sequence
 from dataclasses import dataclass, replace
 from typing import Any, Optional
+from uuid import uuid4
 
 from pydantic_ai import RunContext
-from pydantic_ai.capabilities import AbstractCapability
 from pydantic_ai.messages import (
     ModelMessage,
     ModelRequest,
@@ -19,7 +19,13 @@ from pydantic_ai.messages import (
 )
 from pydantic_ai.models import ModelRequestContext
 
+from models.common.moderation import (
+    ShieldModerationBlocked,
+    ShieldModerationPassed,
+    ShieldModerationResult,
+)
 from models.config import RedactionConfig
+from pydantic_ai_lightspeed.capabilities.base import AbstractSafetyCapability
 from pydantic_ai_lightspeed.capabilities.redaction.core import (
     CompiledPatterns,
     redact_text,
@@ -257,7 +263,7 @@ def _redact_response(
 
 
 @dataclass
-class PiiRedactionCapability(AbstractCapability[Any]):
+class PiiRedactionCapability(AbstractSafetyCapability):
     """Pydantic AI capability that redacts PII from agent messages.
 
     Applies configurable regex-based redaction rules to user prompt
@@ -321,3 +327,13 @@ class PiiRedactionCapability(AbstractCapability[Any]):
         )
 
         return new_response
+
+    async def run(self, input_text: str) -> ShieldModerationResult:
+        result = redact_text(input_text, self.config.compiled_patterns)
+
+        if result.redacted:
+            return ShieldModerationBlocked(
+                message="Sensitive content detected.", moderation_id=f"modr-{uuid4()}"
+            )
+
+        return ShieldModerationPassed()
