@@ -13,7 +13,6 @@ from typing import Any, Optional
 
 import pytest
 from fastapi import HTTPException, status
-from ogx_api import OpenAIResponseMessage
 from ogx_client import APIConnectionError, APIStatusError
 from pydantic import ValidationError
 from pytest_mock import MockerFixture
@@ -1230,10 +1229,6 @@ async def test_infer_quota_shield_blocked_does_not_consume_tokens(
     blocked = ShieldModerationBlocked(
         message="Blocked by moderation",
         moderation_id="modr-test",
-        refusal_response=OpenAIResponseMessage(
-            role="assistant",
-            content="Blocked by moderation",
-        ),
     )
     mocker.patch(
         "app.endpoints.rlsapi_v1.run_shield_moderation",
@@ -1263,10 +1258,6 @@ def _create_blocked_moderation_result() -> ShieldModerationBlocked:
     return ShieldModerationBlocked(
         message="I can't answer that. Can I help with something else?",
         moderation_id="modr-test-123",
-        refusal_response=OpenAIResponseMessage(
-            role="assistant",
-            content="I can't answer that. Can I help with something else?",
-        ),
     )
 
 

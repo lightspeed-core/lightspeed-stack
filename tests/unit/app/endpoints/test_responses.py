@@ -189,11 +189,6 @@ def _patch_moderation(mocker: MockerFixture, decision: str = "passed") -> Any:
         moderation_result = ShieldModerationBlocked(
             message="Content blocked",
             moderation_id="mod_blocked",
-            refusal_response=OpenAIResponseMessage(
-                role="assistant",
-                content="Content blocked",
-                type="message",
-            ),
         )
     else:
         moderation_result = ShieldModerationPassed()

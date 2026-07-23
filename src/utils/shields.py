@@ -3,7 +3,6 @@
 from typing import Any, Optional
 
 from fastapi import HTTPException
-from ogx_api import OpenAIResponseMessage
 from ogx_client import (
     APIConnectionError,
     AsyncOgxClient,
@@ -190,7 +189,6 @@ async def run_shield_moderation(
             return ShieldModerationBlocked(
                 message=violation_message,
                 moderation_id=moderation_result.id,
-                refusal_response=create_refusal_response(violation_message),
             )
 
     return ShieldModerationPassed()
@@ -232,21 +230,6 @@ async def append_turn_to_conversation(
     except LLSApiStatusError as e:
         error_response = InternalServerErrorResponse.generic()
         raise HTTPException(**error_response.model_dump()) from e
-
-
-def create_refusal_response(refusal_message: str) -> OpenAIResponseMessage:
-    """Create a refusal response message object.
-
-    Args:
-        refusal_message: The refusal message text.
-
-    Returns:
-        OpenAIResponseMessage with refusal message.
-    """
-    return OpenAIResponseMessage(
-        role="assistant",
-        content=refusal_message,
-    )
 
 
 async def get_shields_for_request(
