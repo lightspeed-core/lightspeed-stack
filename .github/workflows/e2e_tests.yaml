@@ -136,14 +136,6 @@ jobs:
           python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('sentence-transformers/all-mpnet-base-v2')"
           echo "HF_CACHE_PATH=/tmp/hf-cache" >> $GITHUB_ENV
 
-      - name: Docker Login for quay access
-        if: matrix.mode == 'server'
-        env:
-          QUAY_ROBOT_USERNAME: ${{ secrets.QUAY_DOWNSTREAM_USERNAME }}
-          QUAY_ROBOT_TOKEN: ${{ secrets.QUAY_DOWNSTREAM_TOKEN }}
-        run: |
-          echo $QUAY_ROBOT_TOKEN | docker login quay.io -u=$QUAY_ROBOT_USERNAME --password-stdin
-
       - name: Create dummy GCP keys directory
         if: matrix.environment != 'vertexai'
         run: |
