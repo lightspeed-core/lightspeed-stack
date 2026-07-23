@@ -100,7 +100,7 @@ authorization:
 | `query` | Submit queries | `/v1/query` |
 | `streaming_query` | Submit streaming queries | `/v1/streaming_query` |
 | `info` | Access service info | `/`, `/info`, `/readiness`, `/liveness` |
-| `get_config` | View configuration | `/config` |
+| `get_config` | View configuration | `/v1/config`, `/v1/saved-prompts/config` |
 | `get_models` | List available models | `/models` |
 | `get_tools` | List available tools | `/tools`, `/mcp-auth/client-options` |
 | `get_shields` | List safety shields | `/shields` |
@@ -111,7 +111,7 @@ authorization:
 | `model_override` | Override model in queries | N/A (permission flag) |
 | `read_prompts` | List and get prompts | `/v1/prompts`, `/v1/prompts/{prompt_id}` |
 | `manage_prompts` | Manage prompts | `/v1/prompts`, `/v1/prompts/{prompt_id}` |
-| `manage_saved_prompts` | Manage own saved prompts | `/v1/saved-prompts` |
+| `manage_saved_prompts` | Manage own saved prompts | `/v1/saved-prompts`, `/v1/saved-prompts/{prompt_id}` |
 
 ### Conversation Actions
 

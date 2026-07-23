@@ -7484,6 +7484,278 @@
                 }
             }
         },
+        "/v1/saved-prompts/{prompt_id}": {
+            "delete": {
+                "tags": [
+                    "saved-prompts"
+                ],
+                "summary": "Delete Saved Prompts Handler",
+                "description": "Handle requests to the DELETE /saved-prompts/{prompt_id} endpoint.\n\nProcess DELETE requests that remove a saved prompt belonging to the\nauthenticated user. Missing prompts and prompts owned by another user\nboth return 404 so foreign ids cannot be probed. For example:\n\n    curl -X DELETE http://localhost:8080/v1/saved-prompts/{prompt_id}\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- prompt_id: Identifier of the saved prompt to delete.\n- auth: Authentication tuple from the auth dependency.\n\n### Raises:\n- HTTPException: with status 400 when ``prompt_id`` has an invalid format.\n- HTTPException: with status 401 for unauthorized access.\n- HTTPException: with status 403 if permission is denied.\n- HTTPException: with status 404 when the prompt does not exist for this user.\n- HTTPException: with status 500 when configuration is not loaded or the\n  database delete fails.\n\n### Returns:\n- Response: Empty 204 No Content on successful deletion.",
+                "operationId": "delete_saved_prompts_handler_v1_saved_prompts__prompt_id__delete",
+                "parameters": [
+                    {
+                        "name": "prompt_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Prompt Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Saved prompt deleted"
+                    },
+                    "400": {
+                        "description": "Invalid request format",
+                        "content": {
+                            "application/json": {
+                                "examples": {
+                                    "conversation_id": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "The conversation ID 123e4567-e89b-12d3-a456-426614174000 has invalid format.",
+                                                "response": "Invalid conversation ID format"
+                                            }
+                                        }
+                                    },
+                                    "prompt_id": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "The prompt ID pmpt_1234567890abcdef has invalid format.",
+                                                "response": "Invalid prompt ID format"
+                                            }
+                                        }
+                                    }
+                                },
+                                "schema": {
+                                    "$ref": "#/components/schemas/BadRequestResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "examples": {
+                                    "missing header": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "No Authorization header found",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "missing token": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "No token found in Authorization header",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "expired token": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Token has expired",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "invalid signature": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Invalid token signature",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "invalid key": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Token signed by unknown key",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "missing claim": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Token missing claim: user_id",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "invalid k8s token": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Invalid or expired Kubernetes token",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "invalid jwk token": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Authentication key server returned invalid data",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    }
+                                },
+                                "schema": {
+                                    "$ref": "#/components/schemas/UnauthorizedResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Permission denied",
+                        "content": {
+                            "application/json": {
+                                "examples": {
+                                    "endpoint": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "User 6789 is not authorized to access this endpoint.",
+                                                "response": "User does not have permission to access this endpoint"
+                                            }
+                                        }
+                                    }
+                                },
+                                "schema": {
+                                    "$ref": "#/components/schemas/ForbiddenResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Resource not found",
+                        "content": {
+                            "application/json": {
+                                "examples": {
+                                    "conversation": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Conversation with ID 123e4567-e89b-12d3-a456-426614174000 does not exist",
+                                                "response": "Conversation not found"
+                                            }
+                                        }
+                                    },
+                                    "provider": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Provider with ID openai does not exist",
+                                                "response": "Provider not found"
+                                            }
+                                        }
+                                    },
+                                    "model": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Model with ID gpt-4o-mini does not exist",
+                                                "response": "Model not found"
+                                            }
+                                        }
+                                    },
+                                    "rag": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Rag with ID vs_7b52a8cf-0fa3-489c-beab-27e061d102f3 does not exist",
+                                                "response": "Rag not found"
+                                            }
+                                        }
+                                    },
+                                    "streaming request": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Streaming Request with ID 123e4567-e89b-12d3-a456-426614174000 does not exist",
+                                                "response": "Streaming Request not found"
+                                            }
+                                        }
+                                    },
+                                    "mcp server": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Mcp Server with ID test-mcp-server does not exist",
+                                                "response": "Mcp Server not found"
+                                            }
+                                        }
+                                    },
+                                    "vector store": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Vector Store with ID vs_abc123 does not exist",
+                                                "response": "Vector Store not found"
+                                            }
+                                        }
+                                    },
+                                    "file": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "File with ID file_abc123 does not exist",
+                                                "response": "File not found"
+                                            }
+                                        }
+                                    },
+                                    "prompt": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Prompt with ID pmpt_0123456789abcdef0123456789abcdef01234567 does not exist",
+                                                "response": "Prompt not found"
+                                            }
+                                        }
+                                    }
+                                },
+                                "schema": {
+                                    "$ref": "#/components/schemas/NotFoundResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "content": {
+                            "application/json": {
+                                "examples": {
+                                    "configuration": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Lightspeed Stack configuration has not been initialized.",
+                                                "response": "Configuration is not loaded"
+                                            }
+                                        }
+                                    },
+                                    "database": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Failed to query the database",
+                                                "response": "Database query failed"
+                                            }
+                                        }
+                                    }
+                                },
+                                "schema": {
+                                    "$ref": "#/components/schemas/InternalServerErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/v1/feedback": {
             "post": {
                 "tags": [
