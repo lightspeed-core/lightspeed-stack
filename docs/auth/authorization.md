@@ -111,7 +111,7 @@ authorization:
 | `model_override` | Override model in queries | N/A (permission flag) |
 | `read_prompts` | List and get prompts | `/v1/prompts`, `/v1/prompts/{prompt_id}` |
 | `manage_prompts` | Manage prompts | `/v1/prompts`, `/v1/prompts/{prompt_id}` |
-| `list_saved_prompts` | List own saved prompts | `/v1/saved-prompts` |
+| `manage_saved_prompts` | Manage own saved prompts | `/v1/saved-prompts` |
 
 ### Conversation Actions
 
