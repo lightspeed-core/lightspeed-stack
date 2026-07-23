@@ -352,7 +352,8 @@ jobs:
           uv sync
 
           echo "Running comprehensive e2e test suite..."
-          make test-e2e
+          set -o pipefail
+          make test-e2e 2>&1 | tee e2e-test-output.log
 
       - name: Show logs on failure
         if: failure()
@@ -368,4 +369,97 @@ jobs:
           else
             echo "=== lightspeed-stack (library mode) logs ==="
             docker compose -f docker-compose-library.yaml logs lightspeed-stack
+          fi
+
+      - name: Record result for Slack summary
+        if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          mkdir -p ./e2e-result
+
+          # Extract the "Failing scenarios:" block that behave prints on failure.
+          FAILING_SCENARIOS=""
+          if [ -f e2e-test-output.log ]; then
+            FAILING_SCENARIOS=$(sed 's/\x1b\[[0-9;]*m//g' e2e-test-output.log \
+              | awk '/^Failing scenarios:/{flag=1; next} /^$/{flag=0} flag' \
+              | sed 's/^[[:space:]]*//')
+          fi
+
+          if [ -z "${FAILING_SCENARIOS}" ]; then
+            if [ "${JOB_STATUS}" == "success" ]; then
+              FAILING_SCENARIOS="None"
+            else
+              FAILING_SCENARIOS="Job ${JOB_STATUS} - no failing scenarios captured (see run logs)"
+            fi
+          fi
+
+          jq -n \
+            --arg mode "${{ matrix.mode }}" \
+            --arg environment "${{ matrix.environment }}" \
+            --arg status "${JOB_STATUS}" \
+            --arg failing_scenarios "${FAILING_SCENARIOS}" \
+            '{mode: $mode, environment: $environment, status: $status, failing_scenarios: $failing_scenarios}' \
+            > ./e2e-result/result.json
+
+      - name: Upload result artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-result-${{ matrix.mode }}-${{ matrix.environment }}
+          path: ./e2e-result/result.json
+          retention-days: 1
+
+  notify:
+    name: Notify Slack
+    needs: [e2e_tests]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all result artifacts
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          pattern: e2e-result-*
+          path: ./results
+
+      - name: Build and send consolidated Slack report
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          WORKFLOW_RESULT: ${{ needs.e2e_tests.result }}
+        run: |
+          if [ -z "${SLACK_WEBHOOK_URL}" ]; then
+            echo "SLACK_WEBHOOK_URL is not set, skipping Slack notification"
+            exit 0
+          fi
+
+          ALL_RESULTS=$(find ./results -name 'result.json' 2>/dev/null -exec cat {} \; | jq -s '.' 2>/dev/null || echo '[]')
+
+          echo "Workflow result: ${WORKFLOW_RESULT}"
+
+          # Base payload guarantees every mode/environment key is present even if a
+          # matrix job never uploaded a result artifact (e.g. it was skipped/cancelled).
+          BASE_FIELDS='{
+            "server_azure": "N/A",
+            "server_vertexai": "N/A",
+            "server_watsonx": "N/A",
+            "server_bedrock": "N/A",
+            "library_azure": "N/A",
+            "library_vertexai": "N/A",
+            "library_watsonx": "N/A",
+            "library_bedrock": "N/A"
+          }'
+
+          # Build one field per "<mode>_<environment>" key holding that job's failing scenarios.
+          payload=$(echo "${ALL_RESULTS}" | jq \
+            --argjson fields "${BASE_FIELDS}" \
+            --arg run "${RUN_URL}" \
+            '{run_url: $run} + (reduce .[] as $r ($fields; . + {(($r.mode + "_" + $r.environment)): $r.failing_scenarios}))')
+
+          echo "Payload: ${payload}"
+
+          if ! curl -fsSL -X POST -H 'Content-type: application/json' \
+            --data "${payload}" "${SLACK_WEBHOOK_URL}"; then
+            echo "::warning::Failed to post Slack notification (workflow result unchanged)"
           fi
