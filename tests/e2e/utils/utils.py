@@ -406,9 +406,8 @@ def remove_config_backup(backup_path: str) -> None:
 def clear_llama_stack_storage(container_name: str = "lightspeed-stack") -> None:
     """Clear Llama Stack storage in library mode (embedded Llama Stack).
 
-    Removes the ~/.llama directory so that toolgroups and other persisted
-    state are reset. Used before MCP config scenarios when not running in
-    server mode (no separate Llama Stack to unregister toolgroups from).
+    Removes the ~/.llama directory so embedded Llama Stack persisted state is
+    reset. Used before MCP config scenarios in library mode.
     Only runs when using Docker (skipped in Prow).
 
     Parameters:

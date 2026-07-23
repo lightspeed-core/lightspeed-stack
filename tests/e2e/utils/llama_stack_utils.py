@@ -1,9 +1,8 @@
-"""E2E test utilities for Llama Stack (toolgroups and shields).
+"""E2E test utilities for Llama Stack shields.
 
-This module provides functions to manage MCP toolgroups and shields on a running
-Llama Stack instance during end-to-end tests: unregister MCP toolgroups when
-switching configurations or testing MCP auth, and unregister/re-register shields
-(e.g. from the ``Given shields are disabled for this scenario`` step).
+This module provides functions to manage shields on a running Llama Stack
+instance during end-to-end tests: unregister/re-register shields (e.g. from the
+``Given shields are disabled for this scenario`` step).
 
 Only applies when running Llama Stack as a separate service (server mode).
 Requires E2E_LLAMA_STACK_URL or E2E_LLAMA_HOSTNAME and E2E_LLAMA_PORT.
@@ -35,49 +34,6 @@ def _get_ogx_client() -> AsyncOgxClient:
     api_key = os.getenv("E2E_LLAMA_STACK_API_KEY", "xyzzy")
     timeout = int(os.getenv("E2E_LLAMA_STACK_TIMEOUT", "60"))
     return AsyncOgxClient(base_url=base_url, api_key=api_key, timeout=timeout)
-
-
-# -----------------------------------------------------------------------------
-# Toolgroups
-# -----------------------------------------------------------------------------
-
-
-async def _unregister_toolgroup_async(identifier: str) -> None:
-    """Unregister a toolgroup by identifier."""
-    client = _get_ogx_client()
-    try:
-        await client.toolgroups.unregister(identifier)
-    except APIConnectionError:
-        raise
-    except APIStatusError as e:
-        # 400 "not found": toolgroup already absent, scenario can proceed
-        if e.status_code == 400 and "not found" in str(e).lower():
-            return None
-        raise
-    finally:
-        await client.close()
-
-
-async def _unregister_mcp_toolgroups_async() -> None:
-    """Unregister all MCP toolgroups."""
-    client = _get_ogx_client()
-    try:
-        toolgroups = await client.toolgroups.list()
-        for toolgroup in toolgroups:
-            if (
-                toolgroup.identifier
-                and toolgroup.provider_id == "model-context-protocol"
-            ):
-                await _unregister_toolgroup_async(toolgroup.identifier)
-    except APIConnectionError:
-        raise
-    finally:
-        await client.close()
-
-
-def unregister_mcp_toolgroups() -> None:
-    """Unregister all MCP toolgroups."""
-    asyncio.run(_unregister_mcp_toolgroups_async())
 
 
 # -----------------------------------------------------------------------------
