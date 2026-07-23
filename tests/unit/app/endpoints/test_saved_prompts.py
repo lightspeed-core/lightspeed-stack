@@ -503,6 +503,32 @@ async def test_list_saved_prompts_configuration_not_loaded(
 
 
 @pytest.mark.asyncio
+async def test_list_saved_prompts_database_error(
+    mocker: MockerFixture,
+    minimal_config: AppConfig,
+    saved_prompts_http_request: Request,
+) -> None:
+    """GET /saved-prompts returns 500 when the database query fails."""
+    mock_authorization_resolvers(mocker)
+    mocker.patch("app.endpoints.saved_prompts.configuration", minimal_config)
+    mocker.patch(
+        "app.endpoints.saved_prompts.list_saved_prompts_by_user",
+        side_effect=SQLAlchemyError("db down"),
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        await list_saved_prompts_handler(
+            auth=MOCK_LIST_AUTH,
+            request=saved_prompts_http_request,
+        )
+
+    assert exc_info.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+    detail = exc_info.value.detail
+    assert isinstance(detail, dict)
+    assert detail["response"] == "Database query failed"  # type: ignore[index]
+
+
+@pytest.mark.asyncio
 async def test_create_saved_prompts_happy_path(
     mocker: MockerFixture,
     minimal_config: AppConfig,

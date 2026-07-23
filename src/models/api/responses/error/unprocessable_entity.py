@@ -37,6 +37,23 @@ class UnprocessableEntityResponse(AbstractErrorResponse):
                         "'application/json', 'application/yaml', 'application/xml']",
                     },
                 },
+                {
+                    "label": "saved prompt invalid",
+                    "detail": {
+                        "response": "Invalid attribute value",
+                        "cause": "Saved prompt name must not be empty",
+                    },
+                },
+                {
+                    "label": "saved prompt limit",
+                    "detail": {
+                        "response": "Saved prompt limit exceeded",
+                        "cause": (
+                            "Saved prompt limit exceeded: 50 existing prompts, "
+                            "maximum is 50"
+                        ),
+                    },
+                },
             ]
         }
     }

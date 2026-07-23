@@ -28,6 +28,7 @@ Request model for the OpenAI-compatible Responses API.
 Models for rlsapi v1 REST API requests.
 
 ## [saved_prompts.py](saved_prompts.py)
+
 Request models for saved prompts endpoints.
 
 ## [vector_stores.py](vector_stores.py)

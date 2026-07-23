@@ -83,11 +83,12 @@ class TestBadRequestResponse:
 
         # Verify example count matches schema examples count
         assert len(examples) == expected_count
-        assert expected_count == 2
+        assert expected_count == 3
 
         # Verify example structure
         assert "conversation_id" in examples
         assert "prompt_id" in examples
+        assert "saved_prompt_id" in examples
         conversation_example = examples["conversation_id"]
         assert "value" in conversation_example
         assert "detail" in conversation_example["value"]
@@ -97,6 +98,10 @@ class TestBadRequestResponse:
         prompt_example = examples["prompt_id"]
         assert (
             prompt_example["value"]["detail"]["response"] == "Invalid prompt ID format"
+        )
+        saved_prompt_example = examples["saved_prompt_id"]
+        assert saved_prompt_example["value"]["detail"]["response"] == (
+            "Invalid saved prompt ID format"
         )
 
     def test_openapi_response_with_explicit_examples(self) -> None:
@@ -376,12 +381,14 @@ class TestUnprocessableEntityResponse:
 
         # Verify example count matches schema examples count
         assert len(examples) == expected_count
-        assert expected_count == 3
+        assert expected_count == 5
 
         # Verify all labeled examples are present
         assert "invalid format" in examples
         assert "missing attributes" in examples
         assert "invalid value" in examples
+        assert "saved prompt invalid" in examples
+        assert "saved prompt limit" in examples
 
         # Verify example structure for one example
         invalid_format_example = examples["invalid format"]
@@ -518,7 +525,7 @@ class TestNotFoundResponse:
 
         # Verify example count matches schema examples count
         assert len(examples) == expected_count
-        assert expected_count == 9
+        assert expected_count == 10
 
         # Verify all labeled examples are present
         assert "conversation" in examples
@@ -530,6 +537,7 @@ class TestNotFoundResponse:
         assert "file" in examples
         assert "prompt" in examples
         assert "mcp server" in examples
+        assert "saved prompt" in examples
 
         # Verify example structure for one example
         conversation_example = examples["conversation"]

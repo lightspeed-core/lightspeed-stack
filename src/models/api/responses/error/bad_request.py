@@ -32,6 +32,16 @@ class BadRequestResponse(AbstractErrorResponse):
                         "cause": "The prompt ID pmpt_1234567890abcdef has invalid format.",
                     },
                 },
+                {
+                    "label": "saved_prompt_id",
+                    "detail": {
+                        "response": "Invalid saved prompt ID format",
+                        "cause": (
+                            "The saved prompt ID "
+                            "123e4567-e89b-12d3-a456-426614174000 has invalid format."
+                        ),
+                    },
+                },
             ]
         }
     }

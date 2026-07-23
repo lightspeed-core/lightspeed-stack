@@ -88,8 +88,10 @@ create_saved_prompts_responses: dict[int | str, dict[str, Any]] = {
     201: SavedPromptResponse.openapi_response(),
     401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
-    409: ConflictResponse.openapi_response(),
-    422: UnprocessableEntityResponse.openapi_response(),
+    409: ConflictResponse.openapi_response(examples=["saved prompt"]),
+    422: UnprocessableEntityResponse.openapi_response(
+        examples=["saved prompt invalid", "saved prompt limit"]
+    ),
     500: InternalServerErrorResponse.openapi_response(
         examples=["configuration", "database"]
     ),
@@ -97,10 +99,10 @@ create_saved_prompts_responses: dict[int | str, dict[str, Any]] = {
 
 delete_saved_prompts_responses: dict[int | str, dict[str, Any]] = {
     204: {"description": "Saved prompt deleted"},
-    400: BadRequestResponse.openapi_response(),
+    400: BadRequestResponse.openapi_response(examples=["saved_prompt_id"]),
     401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
-    404: NotFoundResponse.openapi_response(),
+    404: NotFoundResponse.openapi_response(examples=["saved prompt"]),
     500: InternalServerErrorResponse.openapi_response(
         examples=["configuration", "database"]
     ),
