@@ -27,12 +27,10 @@ Feature: Info tests
       And The body of the response has proper shield structure
 
 
-  #https://issues.redhat.com/browse/LCORE-1211
-  @skip
   Scenario: Check if tools endpoint is working
      When I access REST API endpoint "tools" using HTTP GET method
      Then The status code of the response is 200
-      And The response contains 2 tools listed for provider rag-runtime
+      And The response contains 2 tools listed for provider file-search
       And The body of the response has the following schema
       """
          {
@@ -61,13 +59,13 @@ Feature: Info tests
           }
         }
       """
-      And The body of the response has proper structure for provider rag-runtime
+      And The body of the response has proper structure for provider file-search
       """
       {
         "identifier": "insert_into_memory",
         "description": "Insert documents into memory",
-        "provider_id": "rag-runtime",
-        "toolgroup_id": "builtin::rag",
+        "provider_id": "file-search",
+        "toolgroup_id": "builtin::file_search",
         "server_source": "builtin",
         "type": "tool"
       }
