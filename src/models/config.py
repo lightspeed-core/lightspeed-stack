@@ -7,7 +7,7 @@ from enum import Enum
 from functools import cached_property
 from pathlib import Path
 from re import Pattern
-from typing import Any, Literal, Optional, Self
+from typing import Annotated, Any, Literal, Optional, Self
 
 import jsonpath_ng
 import yaml
@@ -2590,6 +2590,87 @@ class RedactionConfig(ConfigurationBase):
         return list(self._compiled_patterns)
 
 
+class QuestionValidityShieldConfiguration(ConfigurationBase):
+    """Configuration for a named question-validity guardrail shield.
+
+    Attributes:
+        name: Unique, user-facing name identifying this shield instance.
+        type: Discriminator identifying this as a question-validity shield.
+        config: Question-validity-specific configuration.
+    """
+
+    name: str = Field(
+        ...,
+        title="Shield name",
+        description="Unique, user-facing name identifying this shield instance.",
+    )
+
+    type: Literal["question_validity"] = Field(
+        ...,
+        title="Shield type",
+        description="Discriminator identifying this as a question-validity shield.",
+    )
+
+    config: QuestionValidityConfig = Field(
+        ...,
+        title="Shield configuration",
+        description="Question-validity-specific configuration for this shield.",
+    )
+
+
+class RedactionShieldConfiguration(ConfigurationBase):
+    """Configuration for a named PII-redaction guardrail shield.
+
+    Attributes:
+        name: Unique, user-facing name identifying this shield instance.
+        type: Discriminator identifying this as a redaction shield.
+        config: Redaction-specific configuration.
+    """
+
+    name: str = Field(
+        ...,
+        title="Shield name",
+        description="Unique, user-facing name identifying this shield instance.",
+    )
+
+    type: Literal["redaction"] = Field(
+        ...,
+        title="Shield type",
+        description="Discriminator identifying this as a redaction shield.",
+    )
+
+    config: RedactionConfig = Field(
+        ...,
+        title="Shield configuration",
+        description="Redaction-specific configuration for this shield.",
+    )
+
+
+ShieldConfiguration = Annotated[
+    QuestionValidityShieldConfiguration | RedactionShieldConfiguration,
+    Field(discriminator="type"),
+]
+"""Configuration for a single named pydantic-ai-lightspeed guardrail shield.
+
+Each entry configures one instance of an agent guardrail capability
+implemented in ``pydantic_ai_lightspeed.capabilities``: question validity
+filtering or PII redaction. Multiple shields of the same ``type`` may be
+listed (each with a distinct ``name``) to run several independently-
+configured instances, e.g. two question validity checks against different
+topics, or two separate redaction rule sets.
+
+This is a discriminated union on the ``type`` field: Pydantic selects
+``QuestionValidityShieldConfiguration`` or ``RedactionShieldConfiguration``
+based on its value and validates ``config`` against the matching model,
+rejecting unknown ``type`` values and config shapes mismatched with ``type``.
+
+These guardrails run inside the pydantic-ai agent and are distinct from
+Llama Stack's own safety shields, which are configured in Llama Stack's
+``run.yaml`` and exposed through the ``/v1/shields`` endpoint. Both kinds
+of shields can be used together.
+"""
+
+
 class Configuration(ConfigurationBase):
     """Global service configuration."""
 
@@ -2774,6 +2855,34 @@ class Configuration(ConfigurationBase):
         description="Configuration for saved prompts feature limits including "
         "maximum prompts per user, display name length, and content length.",
     )
+
+    shields: list[ShieldConfiguration] = Field(
+        default_factory=list,
+        title="Shields configuration",
+        description="List of pydantic-ai-lightspeed agent guardrail shields "
+        "(question validity and PII redaction). Each entry has a unique 'name', "
+        "a 'type' ('question_validity' or 'redaction'), and a type-specific "
+        "'config'. Distinct from Llama Stack's own safety shields configured "
+        "in run.yaml.",
+    )
+
+    @model_validator(mode="after")
+    def validate_shield_names_unique(self) -> Self:
+        """Reject shields lists containing duplicate names.
+
+        Returns:
+            Self: The model instance after validation.
+
+        Raises:
+            ValueError: If two or more shields share the same name.
+        """
+        names = [shield.name for shield in self.shields]
+        duplicates = {name for name in names if names.count(name) > 1}
+        if duplicates:
+            raise ValueError(
+                f"Shield names must be unique, found duplicates: {sorted(duplicates)}"
+            )
+        return self
 
     @model_validator(mode="after")
     def validate_mcp_auth_headers(self) -> Self:
