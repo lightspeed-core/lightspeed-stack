@@ -6036,6 +6036,22 @@
                                                 "response": "Invalid attribute value"
                                             }
                                         }
+                                    },
+                                    "saved prompt invalid": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Saved prompt name must not be empty",
+                                                "response": "Invalid attribute value"
+                                            }
+                                        }
+                                    },
+                                    "saved prompt limit": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Saved prompt limit exceeded: 50 existing prompts, maximum is 50",
+                                                "response": "Saved prompt limit exceeded"
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -6395,6 +6411,22 @@
                                             "detail": {
                                                 "cause": "Invalid attachment type: must be one of ['text/plain', 'application/json', 'application/yaml', 'application/xml']",
                                                 "response": "Invalid attribute value"
+                                            }
+                                        }
+                                    },
+                                    "saved prompt invalid": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Saved prompt name must not be empty",
+                                                "response": "Invalid attribute value"
+                                            }
+                                        }
+                                    },
+                                    "saved prompt limit": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Saved prompt limit exceeded: 50 existing prompts, maximum is 50",
+                                                "response": "Saved prompt limit exceeded"
                                             }
                                         }
                                     }
@@ -6937,7 +6969,7 @@
                     "saved-prompts"
                 ],
                 "summary": "Get Saved Prompts Config Handler",
-                "description": "Handle requests to the GET /saved-prompts/config endpoint.\n\nProcess GET requests that return saved prompts configuration limits so\nconsuming services can provide limits consistent with what the server\nwill enforce. For example:\n\n    curl http://localhost:8080/v1/saved-prompts/config\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- auth: Authentication tuple from the auth dependency (used by middleware).\n\n### Raises:\n- HTTPException: with status 401 for unauthorized access.\n- HTTPException: with status 403 if permission is denied.\n- HTTPException: with status 500 and a detail object containing `response`\n  and `cause` when service configuration is wrong or incomplete.\n- HTTPException: with status 503 and a detail object containing `response`\n  and `cause` when unable to connect to backend services.\n\n### Returns:\n- SavedPromptsConfigResponse: Saved prompts configuration limits.",
+                "description": "Handle requests to the GET /saved-prompts/config endpoint.\n\nProcess GET requests that return saved prompts configuration limits so\nconsuming services can provide limits consistent with what the server\nwill enforce. For example:\n\n    curl http://localhost:8080/v1/saved-prompts/config\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- auth: Authentication tuple from the auth dependency (used by middleware).\n\n### Raises:\n- HTTPException: with status 401 for unauthorized access.\n- HTTPException: with status 403 if permission is denied.\n- HTTPException: with status 500 and a detail object containing `response`\n  and `cause` when service configuration is not loaded.\n- HTTPException: with status 503 and a detail object containing `response`\n  and `cause` when unable to connect to backend services.\n\n### Returns:\n- SavedPromptsConfigResponse: Saved prompts configuration limits.",
                 "operationId": "get_saved_prompts_config_handler_v1_saved_prompts_config_get",
                 "responses": {
                     "200": {
@@ -7087,6 +7119,572 @@
                                             }
                                         }
                                     }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/saved-prompts": {
+            "get": {
+                "tags": [
+                    "saved-prompts"
+                ],
+                "summary": "List Saved Prompts Handler",
+                "description": "Handle requests to the GET /saved-prompts endpoint.\n\nProcess GET requests that return all saved prompts belonging to the\nauthenticated user, ordered by creation timestamp descending. For example:\n\n    curl http://localhost:8080/v1/saved-prompts\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- auth: Authentication tuple from the auth dependency.\n\n### Raises:\n- HTTPException: with status 401 for unauthorized access.\n- HTTPException: with status 403 if permission is denied.\n- HTTPException: with status 500 when configuration is not loaded or the\n  database query fails.\n\n### Returns:\n- SavedPromptsListResponse: Saved prompts for the authenticated user.",
+                "operationId": "list_saved_prompts_handler_v1_saved_prompts_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SavedPromptsListResponse"
+                                },
+                                "example": {
+                                    "prompts": [
+                                        {
+                                            "content": "Help me write a deployment checklist\u2026",
+                                            "created_at": "2026-07-22T16:00:00+00:00",
+                                            "id": "abc123",
+                                            "name": "Deploy to staging",
+                                            "updated_at": "2026-07-22T16:00:00+00:00"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UnauthorizedResponse"
+                                },
+                                "examples": {
+                                    "missing header": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "No Authorization header found",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "missing token": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "No token found in Authorization header",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "expired token": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Token has expired",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "invalid signature": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Invalid token signature",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "invalid key": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Token signed by unknown key",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "missing claim": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Token missing claim: user_id",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "invalid k8s token": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Invalid or expired Kubernetes token",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "invalid jwk token": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Authentication key server returned invalid data",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Permission denied",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ForbiddenResponse"
+                                },
+                                "examples": {
+                                    "endpoint": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "User 6789 is not authorized to access this endpoint.",
+                                                "response": "User does not have permission to access this endpoint"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/InternalServerErrorResponse"
+                                },
+                                "examples": {
+                                    "configuration": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Lightspeed Stack configuration has not been initialized.",
+                                                "response": "Configuration is not loaded"
+                                            }
+                                        }
+                                    },
+                                    "database": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Failed to query the database",
+                                                "response": "Database query failed"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "saved-prompts"
+                ],
+                "summary": "Create Saved Prompts Handler",
+                "description": "Handle requests to the POST /saved-prompts endpoint.\n\nProcess POST requests that create a saved prompt for the authenticated\nuser after validating name/content against configured limits. For example:\n\n    curl -X POST http://localhost:8080/v1/saved-prompts \\\n      -H 'Content-Type: application/json' \\\n      -d '{\"name\":\"Deploy to staging\",\"content\":\"Help me write a checklist\"}'\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- body: Saved prompt name and content.\n- auth: Authentication tuple from the auth dependency.\n\n### Raises:\n- HTTPException: with status 401 for unauthorized access.\n- HTTPException: with status 403 if permission is denied.\n- HTTPException: with status 409 when a prompt with the same name exists.\n- HTTPException: with status 422 when validation fails or the per-user\n  limit would be exceeded.\n- HTTPException: with status 500 when configuration is not loaded or the\n  database write fails.\n\n### Returns:\n- SavedPromptResponse: The created saved prompt.",
+                "operationId": "create_saved_prompts_handler_v1_saved_prompts_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SavedPromptCreateRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "description": "Successful response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SavedPromptResponse"
+                                },
+                                "example": {
+                                    "content": "Help me write a deployment checklist\u2026",
+                                    "created_at": "2026-07-22T16:00:00+00:00",
+                                    "id": "abc123",
+                                    "name": "Deploy to staging",
+                                    "updated_at": "2026-07-22T16:00:00+00:00"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UnauthorizedResponse"
+                                },
+                                "examples": {
+                                    "missing header": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "No Authorization header found",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "missing token": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "No token found in Authorization header",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "expired token": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Token has expired",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "invalid signature": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Invalid token signature",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "invalid key": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Token signed by unknown key",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "missing claim": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Token missing claim: user_id",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "invalid k8s token": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Invalid or expired Kubernetes token",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "invalid jwk token": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Authentication key server returned invalid data",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Permission denied",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ForbiddenResponse"
+                                },
+                                "examples": {
+                                    "endpoint": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "User 6789 is not authorized to access this endpoint.",
+                                                "response": "User does not have permission to access this endpoint"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Resource already exists",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ConflictResponse"
+                                },
+                                "examples": {
+                                    "saved prompt": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Saved Prompt with name 'Deploy to staging' is already registered",
+                                                "response": "Saved Prompt already exists"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Request validation failed",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UnprocessableEntityResponse"
+                                },
+                                "examples": {
+                                    "saved prompt invalid": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Saved prompt name must not be empty",
+                                                "response": "Invalid attribute value"
+                                            }
+                                        }
+                                    },
+                                    "saved prompt limit": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Saved prompt limit exceeded: 50 existing prompts, maximum is 50",
+                                                "response": "Saved prompt limit exceeded"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/InternalServerErrorResponse"
+                                },
+                                "examples": {
+                                    "configuration": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Lightspeed Stack configuration has not been initialized.",
+                                                "response": "Configuration is not loaded"
+                                            }
+                                        }
+                                    },
+                                    "database": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Failed to query the database",
+                                                "response": "Database query failed"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/saved-prompts/{prompt_id}": {
+            "delete": {
+                "tags": [
+                    "saved-prompts"
+                ],
+                "summary": "Delete Saved Prompts Handler",
+                "description": "Handle requests to the DELETE /saved-prompts/{prompt_id} endpoint.\n\nProcess DELETE requests that remove a saved prompt belonging to the\nauthenticated user. Missing prompts and prompts owned by another user\nboth return 404 so foreign ids cannot be probed. For example:\n\n    curl -X DELETE http://localhost:8080/v1/saved-prompts/{prompt_id}\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- prompt_id: Identifier of the saved prompt to delete.\n- auth: Authentication tuple from the auth dependency.\n\n### Raises:\n- HTTPException: with status 400 when ``prompt_id`` has an invalid format.\n- HTTPException: with status 401 for unauthorized access.\n- HTTPException: with status 403 if permission is denied.\n- HTTPException: with status 404 when the prompt does not exist for this user.\n- HTTPException: with status 500 when configuration is not loaded or the\n  database delete fails.\n\n### Returns:\n- Response: Empty 204 No Content on successful deletion.",
+                "operationId": "delete_saved_prompts_handler_v1_saved_prompts__prompt_id__delete",
+                "parameters": [
+                    {
+                        "name": "prompt_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Prompt Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Saved prompt deleted"
+                    },
+                    "400": {
+                        "description": "Invalid request format",
+                        "content": {
+                            "application/json": {
+                                "examples": {
+                                    "saved_prompt_id": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "The saved prompt ID 123e4567-e89b-12d3-a456-426614174000 has invalid format.",
+                                                "response": "Invalid saved prompt ID format"
+                                            }
+                                        }
+                                    }
+                                },
+                                "schema": {
+                                    "$ref": "#/components/schemas/BadRequestResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "examples": {
+                                    "missing header": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "No Authorization header found",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "missing token": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "No token found in Authorization header",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "expired token": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Token has expired",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "invalid signature": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Invalid token signature",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "invalid key": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Token signed by unknown key",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "missing claim": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Token missing claim: user_id",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "invalid k8s token": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Invalid or expired Kubernetes token",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "invalid jwk token": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Authentication key server returned invalid data",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    }
+                                },
+                                "schema": {
+                                    "$ref": "#/components/schemas/UnauthorizedResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Permission denied",
+                        "content": {
+                            "application/json": {
+                                "examples": {
+                                    "endpoint": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "User 6789 is not authorized to access this endpoint.",
+                                                "response": "User does not have permission to access this endpoint"
+                                            }
+                                        }
+                                    }
+                                },
+                                "schema": {
+                                    "$ref": "#/components/schemas/ForbiddenResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Resource not found",
+                        "content": {
+                            "application/json": {
+                                "examples": {
+                                    "saved prompt": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Saved Prompt with ID 123e4567-e89b-12d3-a456-426614174000 does not exist",
+                                                "response": "Saved Prompt not found"
+                                            }
+                                        }
+                                    }
+                                },
+                                "schema": {
+                                    "$ref": "#/components/schemas/NotFoundResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "content": {
+                            "application/json": {
+                                "examples": {
+                                    "configuration": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Lightspeed Stack configuration has not been initialized.",
+                                                "response": "Configuration is not loaded"
+                                            }
+                                        }
+                                    },
+                                    "database": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Failed to query the database",
+                                                "response": "Database query failed"
+                                            }
+                                        }
+                                    }
+                                },
+                                "schema": {
+                                    "$ref": "#/components/schemas/InternalServerErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
                                 }
                             }
                         }
@@ -9671,6 +10269,22 @@
                                                 "response": "Invalid attribute value"
                                             }
                                         }
+                                    },
+                                    "saved prompt invalid": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Saved prompt name must not be empty",
+                                                "response": "Invalid attribute value"
+                                            }
+                                        }
+                                    },
+                                    "saved prompt limit": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Saved prompt limit exceeded: 50 existing prompts, maximum is 50",
+                                                "response": "Saved prompt limit exceeded"
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -9995,6 +10609,22 @@
                                             "detail": {
                                                 "cause": "Invalid attachment type: must be one of ['text/plain', 'application/json', 'application/yaml', 'application/xml']",
                                                 "response": "Invalid attribute value"
+                                            }
+                                        }
+                                    },
+                                    "saved prompt invalid": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Saved prompt name must not be empty",
+                                                "response": "Invalid attribute value"
+                                            }
+                                        }
+                                    },
+                                    "saved prompt limit": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Saved prompt limit exceeded: 50 existing prompts, maximum is 50",
+                                                "response": "Saved prompt limit exceeded"
                                             }
                                         }
                                     }
@@ -11026,7 +11656,8 @@
                     "read_vector_stores",
                     "manage_files",
                     "manage_prompts",
-                    "read_prompts"
+                    "read_prompts",
+                    "manage_saved_prompts"
                 ],
                 "title": "Action",
                 "description": "Available actions in the system.\n\nNote: this is not a real model, just an enumeration of all action names."
@@ -11971,6 +12602,13 @@
                             "response": "Invalid prompt ID format"
                         },
                         "label": "prompt_id"
+                    },
+                    {
+                        "detail": {
+                            "cause": "The saved prompt ID 123e4567-e89b-12d3-a456-426614174000 has invalid format.",
+                            "response": "Invalid saved prompt ID format"
+                        },
+                        "label": "saved_prompt_id"
                     }
                 ]
             },
@@ -12536,6 +13174,13 @@
                             "response": "Tool conflict"
                         },
                         "label": "file search conflict"
+                    },
+                    {
+                        "detail": {
+                            "cause": "Saved Prompt with name 'Deploy to staging' is already registered",
+                            "response": "Saved Prompt already exists"
+                        },
+                        "label": "saved prompt"
                     }
                 ]
             },
@@ -14950,6 +15595,13 @@
                             "response": "Prompt not found"
                         },
                         "label": "prompt"
+                    },
+                    {
+                        "detail": {
+                            "cause": "Saved Prompt with ID 123e4567-e89b-12d3-a456-426614174000 does not exist",
+                            "response": "Saved Prompt not found"
+                        },
+                        "label": "saved prompt"
                     }
                 ]
             },
@@ -19442,6 +20094,106 @@
                 "title": "SQLiteDatabaseConfiguration",
                 "description": "SQLite database configuration."
             },
+            "SavedPromptCreateRequest": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Display name of the saved prompt",
+                        "examples": [
+                            "Deploy to staging"
+                        ]
+                    },
+                    "content": {
+                        "type": "string",
+                        "title": "Content",
+                        "description": "Prompt body text",
+                        "examples": [
+                            "Help me write a deployment checklist\u2026"
+                        ]
+                    }
+                },
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                    "name",
+                    "content"
+                ],
+                "title": "SavedPromptCreateRequest",
+                "description": "Request body to create a user-scoped saved prompt.\n\nLength and emptiness limits are enforced by the endpoint using configured\nsaved-prompts limits, not by static field constraints here.\n\nAttributes:\n    name: Display name of the saved prompt.\n    content: Prompt body text.",
+                "examples": [
+                    {
+                        "content": "Help me write a deployment checklist\u2026",
+                        "name": "Deploy to staging"
+                    }
+                ]
+            },
+            "SavedPromptResponse": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "title": "Id",
+                        "description": "Unique identifier of the saved prompt",
+                        "examples": [
+                            "abc123"
+                        ]
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Display name of the saved prompt",
+                        "examples": [
+                            "Deploy to staging"
+                        ]
+                    },
+                    "content": {
+                        "type": "string",
+                        "title": "Content",
+                        "description": "Prompt body text",
+                        "examples": [
+                            "Help me write a deployment checklist\u2026"
+                        ]
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Created At",
+                        "description": "When the prompt was created",
+                        "examples": [
+                            "2026-07-22T16:00:00+00:00"
+                        ]
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Updated At",
+                        "description": "When the prompt was last updated",
+                        "examples": [
+                            "2026-07-22T16:00:00+00:00"
+                        ]
+                    }
+                },
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                    "id",
+                    "name",
+                    "content",
+                    "created_at",
+                    "updated_at"
+                ],
+                "title": "SavedPromptResponse",
+                "description": "Single saved prompt returned to an authenticated user.\n\nAttributes:\n    id: Unique identifier of the saved prompt.\n    name: Display name of the saved prompt.\n    content: Prompt body text.\n    created_at: When the prompt was created.\n    updated_at: When the prompt was last updated.",
+                "examples": [
+                    {
+                        "content": "Help me write a deployment checklist\u2026",
+                        "created_at": "2026-07-22T16:00:00+00:00",
+                        "id": "abc123",
+                        "name": "Deploy to staging",
+                        "updated_at": "2026-07-22T16:00:00+00:00"
+                    }
+                ]
+            },
             "SavedPromptsConfigResponse": {
                 "properties": {
                     "max_prompts_per_user": {
@@ -19489,49 +20241,69 @@
             "SavedPromptsConfiguration": {
                 "properties": {
                     "max_prompts_per_user": {
-                        "anyOf": [
-                            {
-                                "type": "integer",
-                                "exclusiveMinimum": 0.0
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
+                        "type": "integer",
+                        "maximum": 200.0,
+                        "exclusiveMinimum": 0.0,
                         "title": "Max prompts per user",
-                        "description": "Maximum number of saved prompts a user can create. Defaults to 50. Cannot exceed 200."
+                        "description": "Maximum number of saved prompts a user can create. Defaults to 50. Cannot exceed 200.",
+                        "default": 50
                     },
                     "max_display_name_length": {
-                        "anyOf": [
-                            {
-                                "type": "integer",
-                                "exclusiveMinimum": 0.0
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
+                        "type": "integer",
+                        "maximum": 255.0,
+                        "exclusiveMinimum": 0.0,
                         "title": "Max display name length",
-                        "description": "Maximum character length for prompt display name (title). Defaults to 255. Cannot exceed 255."
+                        "description": "Maximum character length for prompt display name (title). Defaults to 255. Cannot exceed 255.",
+                        "default": 255
                     },
                     "max_content_length": {
-                        "anyOf": [
-                            {
-                                "type": "integer",
-                                "exclusiveMinimum": 0.0
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
+                        "type": "integer",
+                        "maximum": 30000.0,
+                        "exclusiveMinimum": 0.0,
                         "title": "Max content length",
-                        "description": "Maximum character length for the prompt content body. Defaults to 10000. Cannot exceed 30000."
+                        "description": "Maximum character length for the prompt content body. Defaults to 10000. Cannot exceed 30000.",
+                        "default": 10000
                     }
                 },
                 "additionalProperties": false,
                 "type": "object",
                 "title": "SavedPromptsConfiguration",
-                "description": "Configuration for saved prompts feature limits.\n\nControls the maximum number of prompts a user can save, the maximum\ndisplay name (title) length, and the maximum prompt content length.\nAll fields are optional and default to values defined in constants.\n\nAttributes:\n    max_prompts_per_user: Maximum number of saved prompts allowed per user.\n    max_display_name_length: Maximum character length for the prompt display name.\n    max_content_length: Maximum character length for the prompt content body."
+                "description": "Configuration for saved prompts feature limits.\n\nControls the maximum number of prompts a user can save, the maximum\ndisplay name (title) length, and the maximum prompt content length.\nOmitted fields use the defaults defined in constants.\n\nAttributes:\n    max_prompts_per_user: Maximum number of saved prompts allowed per user.\n    max_display_name_length: Maximum character length for the prompt display name.\n    max_content_length: Maximum character length for the prompt content body."
+            },
+            "SavedPromptsListResponse": {
+                "properties": {
+                    "prompts": {
+                        "items": {
+                            "$ref": "#/components/schemas/SavedPromptResponse"
+                        },
+                        "type": "array",
+                        "title": "Prompts",
+                        "description": "Saved prompts for the authenticated user"
+                    }
+                },
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                    "prompts"
+                ],
+                "title": "SavedPromptsListResponse",
+                "description": "List of saved prompts belonging to the authenticated user.\n\nAttributes:\n    prompts: Saved prompts ordered by created_at descending (newest first).",
+                "examples": [
+                    {
+                        "prompts": [
+                            {
+                                "content": "Help me write a deployment checklist\u2026",
+                                "created_at": "2026-07-22T16:00:00+00:00",
+                                "id": "abc123",
+                                "name": "Deploy to staging",
+                                "updated_at": "2026-07-22T16:00:00+00:00"
+                            }
+                        ]
+                    },
+                    {
+                        "prompts": []
+                    }
+                ]
             },
             "SearchRankingOptions": {
                 "properties": {
@@ -20493,6 +21265,20 @@
                             "response": "Invalid attribute value"
                         },
                         "label": "invalid value"
+                    },
+                    {
+                        "detail": {
+                            "cause": "Saved prompt name must not be empty",
+                            "response": "Invalid attribute value"
+                        },
+                        "label": "saved prompt invalid"
+                    },
+                    {
+                        "detail": {
+                            "cause": "Saved prompt limit exceeded: 50 existing prompts, maximum is 50",
+                            "response": "Saved prompt limit exceeded"
+                        },
+                        "label": "saved prompt limit"
                     }
                 ]
             },

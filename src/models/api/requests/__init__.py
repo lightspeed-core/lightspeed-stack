@@ -15,6 +15,7 @@ from models.api.requests.rlsapi import (
     RlsapiV1SystemInfo,
     RlsapiV1Terminal,
 )
+from models.api.requests.saved_prompts import SavedPromptCreateRequest
 from models.api.requests.vector_stores import (
     VectorStoreCreateRequest,
     VectorStoreFileCreateRequest,
@@ -37,6 +38,7 @@ __all__ = [
     "RlsapiV1InferRequest",
     "RlsapiV1SystemInfo",
     "RlsapiV1Terminal",
+    "SavedPromptCreateRequest",
     "StreamingInterruptRequest",
     "VectorStoreCreateRequest",
     "VectorStoreFileCreateRequest",
