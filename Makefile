@@ -17,7 +17,23 @@ LLAMA_STACK_IMAGE ?= lightspeed-llama-stack:local
 LLAMA_STACK_PORT ?= 8321
 CONTAINER_RUNTIME ?= $(shell command -v podman 2>/dev/null || command -v docker 2>/dev/null)
 
-.PHONY: run run-stack build-llama-stack-image remove-llama-stack-container stop-llama-stack-container start-llama-stack-container wait-for-llama-stack-health clean-llama-stack
+.PHONY: run \
+	run-stack \
+	build-llama-stack-image \
+	remove-llama-stack-container \
+	stop-llama-stack-container \
+	start-llama-stack-container \
+	wait-for-llama-stack-health \
+	clean-llama-stack \
+	docs/models \
+	docs/models/requests.puml \
+	docs/models/responses.puml \
+	docs/models/common.puml \
+	docs/models/database.puml \
+	docs/models/requests.svg \
+	docs/models/responses.svg \
+	docs/models/common.svg \
+	docs/models/database.svg
 
 run-stack: ## Run lightspeed-stack directly, without building dependent service/s
 	uv run src/lightspeed_stack.py -c $(CONFIG)
@@ -193,6 +209,7 @@ devel-doc:	## Generate documentation for developers
 	scripts/gen_doc.py
 
 docs/models:	docs/models/requests.puml docs/models/responses.puml docs/models/database.puml docs/models/common.puml	## Generate documentation about models
+	rm docs/models/packages.puml
 
 docs/models/requests.puml: ## Generate PlantUML class diagram for requests data models
 	uv run pyreverse src/models/api/requests/ --output puml --output-directory=docs/models/
