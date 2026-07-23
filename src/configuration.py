@@ -32,6 +32,7 @@ from models.config import (
     RerankerConfiguration,
     RlsapiV1Configuration,
     ServiceConfiguration,
+    ShieldConfiguration,
     SkillsConfiguration,
     SplunkConfiguration,
     UserDataCollection,
@@ -552,6 +553,13 @@ class AppConfig:  # pylint: disable=too-many-public-methods
         if self._configuration is None:
             raise LogicError("logic error: configuration is not loaded")
         return self._configuration.skills
+
+    @property
+    def shields(self) -> list[ShieldConfiguration]:
+        """Return the list of configured guardrail shields."""
+        if self._configuration is None:
+            raise LogicError("logic error: configuration is not loaded")
+        return self._configuration.shields
 
     @property
     def rag_id_mapping(self) -> dict[str, str]:

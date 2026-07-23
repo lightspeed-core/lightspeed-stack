@@ -130,6 +130,10 @@ def test_default_configuration() -> None:
         # try to read property
         _ = cfg.deployment_environment  # pylint: disable=pointless-statement
 
+    with pytest.raises(LogicError, match="logic error: configuration is not loaded"):
+        # try to read property
+        _ = cfg.shields  # pylint: disable=pointless-statement
+
 
 def test_configuration_is_singleton() -> None:
     """Test that configuration is singleton."""
@@ -241,6 +245,70 @@ def test_init_from_dict() -> None:
 
     # check token usage history
     assert cfg.token_usage_history is None
+
+    # check shields - not configured in config_dict, defaults to empty list
+    assert cfg.shields == []
+
+
+def test_init_from_dict_with_shields() -> None:
+    """Test initialization with guardrail shields configuration."""
+    config_dict: dict[str, Any] = {
+        "name": "foo",
+        "service": {
+            "host": "localhost",
+            "port": 8080,
+            "auth_enabled": False,
+            "workers": 1,
+            "color_log": True,
+            "access_log": True,
+        },
+        "llama_stack": {
+            "api_key": "xyzzy",
+            "url": "http://x.y.com:1234",
+            "use_as_library_client": False,
+        },
+        "user_data_collection": {
+            "feedback_enabled": False,
+        },
+        "mcp_servers": [],
+        "customization": None,
+        "authentication": {
+            "module": "noop",
+        },
+        "shields": [
+            {
+                "name": "topic-guard-a",
+                "type": "question_validity",
+                "config": {"model_id": "test-model"},
+            },
+            {
+                "name": "topic-guard-b",
+                "type": "question_validity",
+                "config": {"model_id": "test-model-2"},
+            },
+            {
+                "name": "pii-guard",
+                "type": "redaction",
+                "config": {
+                    "rules": [
+                        {"pattern": r"\d+", "replacement": "[NUM]"},
+                    ],
+                },
+            },
+        ],
+    }
+    cfg = AppConfig()
+    cfg.init_from_dict(config_dict)
+
+    assert len(cfg.shields) == 3
+    assert cfg.shields[0].name == "topic-guard-a"
+    assert cfg.shields[0].type == "question_validity"
+    assert cfg.shields[0].config.model_id == "test-model"  # type: ignore[union-attr]
+    assert cfg.shields[1].name == "topic-guard-b"
+    assert cfg.shields[1].config.model_id == "test-model-2"  # type: ignore[union-attr]
+    assert cfg.shields[2].name == "pii-guard"
+    assert cfg.shields[2].type == "redaction"
+    assert len(cfg.shields[2].config.compiled_patterns) == 1  # type: ignore[union-attr]
 
 
 def test_init_from_dict_with_mcp_servers() -> None:
