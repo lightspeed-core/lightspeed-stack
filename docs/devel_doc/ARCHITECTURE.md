@@ -201,7 +201,7 @@ The system defines 30+ actions that can be authorized. Examples (see `docs/auth.
 - `DELETE_CONVERSATION` - Delete conversations
 
 **Saved Prompts:**
-- `LIST_SAVED_PROMPTS` - List user's saved prompts
+- `MANAGE_SAVED_PROMPTS` - Manage user's saved prompts (list, create; delete later)
 
 **Administrative Actions:**
 - `ADMIN` - Administrative operations
