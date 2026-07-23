@@ -12,7 +12,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from string import Template
-from typing import Optional
+from typing import Any, Optional
 
 from pydantic_ai import AgentRunResult, RunContext
 from pydantic_ai._agent_graph import GraphAgentState
@@ -56,7 +56,7 @@ def _extract_message_str_from_user_content(user_content: Sequence[UserContent]) 
 
 
 @dataclass
-class QuestionValidity(AbstractCapability[None]):
+class QuestionValidity(AbstractCapability[Any]):
     """Block or modify user input based on a guardrail check.
 
     The guard function receives the user prompt and returns True if safe.
