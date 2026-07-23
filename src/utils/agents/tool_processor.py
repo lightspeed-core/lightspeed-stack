@@ -101,7 +101,7 @@ def summarize_native_tool_call(
                 type="mcp_call",
             )
         case _:
-            logger.warning(f"Unknown tool name: {part.tool_name}")
+            logger.warning("Unknown tool name: %s", part.tool_name)
             return None
 
 
@@ -184,7 +184,7 @@ def process_native_tool_result(
         case tool_name if tool_name.startswith(_MCP_SERVER_TOOL_PREFIX):
             tool_result = summarize_mcp_tool_result(part, state.tool_round)
         case _:
-            logger.warning(f"Unknown tool name: {part.tool_name}")
+            logger.warning("Unknown tool name: %s", part.tool_name)
             return None
 
     state.emitted_tool_result_ids.add(tool_result.id)
