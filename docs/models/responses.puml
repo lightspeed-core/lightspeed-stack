@@ -213,7 +213,9 @@ class "RAGListResponse" as src.models.api.responses.successful.catalog.RAGListRe
   rags : Optional[list[str]]
 }
 class "ReadinessResponse" as src.models.api.responses.successful.probes.ReadinessResponse {
+  impacts : Optional[list[str]]
   model_config : dict
+  overall_status : Optional[HealthStatus]
   providers : Optional[list[ProviderHealthStatus]]
   ready : Optional[bool]
   reason : Optional[str]
@@ -262,6 +264,12 @@ class "RlsapiV1InferData" as src.models.api.responses.successful.rlsapi.RlsapiV1
 }
 class "RlsapiV1InferResponse" as src.models.api.responses.successful.rlsapi.RlsapiV1InferResponse {
   data : Optional[RlsapiV1InferData]
+  model_config : dict
+}
+class "SavedPromptsConfigResponse" as src.models.api.responses.successful.saved_prompts.SavedPromptsConfigResponse {
+  max_content_length : Optional[int]
+  max_display_name_length : Optional[int]
+  max_prompts_per_user : Optional[int]
   model_config : dict
 }
 class "ServiceUnavailableResponse" as src.models.api.responses.error.service_unavailable.ServiceUnavailableResponse {

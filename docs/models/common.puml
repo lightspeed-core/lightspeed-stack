@@ -283,7 +283,9 @@ class "TurnCompleteStreamPayload" as src.models.common.agents.stream_payloads.Tu
 class "TurnSummary" as src.models.common.turn_summary.TurnSummary {
   id : Optional[str]
   llm_response : str
+  next_chunk_id : Optional[int]
   output_items : Optional[list[OpenAIResponseOutput]]
+  partial_tokens : Optional[list[str]]
   rag_chunks : Optional[list[RAGChunk]]
   referenced_documents : Optional[list[ReferencedDocument]]
   token_usage : Optional[TokenCounter]
