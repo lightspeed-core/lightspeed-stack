@@ -6036,6 +6036,22 @@
                                                 "response": "Invalid attribute value"
                                             }
                                         }
+                                    },
+                                    "saved prompt invalid": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Saved prompt name must not be empty",
+                                                "response": "Invalid attribute value"
+                                            }
+                                        }
+                                    },
+                                    "saved prompt limit": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Saved prompt limit exceeded: 50 existing prompts, maximum is 50",
+                                                "response": "Saved prompt limit exceeded"
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -6395,6 +6411,22 @@
                                             "detail": {
                                                 "cause": "Invalid attachment type: must be one of ['text/plain', 'application/json', 'application/yaml', 'application/xml']",
                                                 "response": "Invalid attribute value"
+                                            }
+                                        }
+                                    },
+                                    "saved prompt invalid": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Saved prompt name must not be empty",
+                                                "response": "Invalid attribute value"
+                                            }
+                                        }
+                                    },
+                                    "saved prompt limit": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Saved prompt limit exceeded: 50 existing prompts, maximum is 50",
+                                                "response": "Saved prompt limit exceeded"
                                             }
                                         }
                                     }
@@ -7389,27 +7421,11 @@
                                     "$ref": "#/components/schemas/ConflictResponse"
                                 },
                                 "examples": {
-                                    "mcp server": {
+                                    "saved prompt": {
                                         "value": {
                                             "detail": {
-                                                "cause": "Mcp Server with name 'test-mcp-server' is already registered",
-                                                "response": "Mcp Server already exists"
-                                            }
-                                        }
-                                    },
-                                    "mcp tool conflict": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Client MCP tool with server_label 'my-server' conflicts with a server-configured MCP tool. Rename the client tool to avoid the conflict.",
-                                                "response": "Tool conflict"
-                                            }
-                                        }
-                                    },
-                                    "file search conflict": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Client file_search tool conflicts with a server-configured file_search tool. Remove the client file_search to use the server's configuration.",
-                                                "response": "Tool conflict"
+                                                "cause": "Saved Prompt with name 'Deploy to staging' is already registered",
+                                                "response": "Saved Prompt already exists"
                                             }
                                         }
                                     }
@@ -7425,27 +7441,19 @@
                                     "$ref": "#/components/schemas/UnprocessableEntityResponse"
                                 },
                                 "examples": {
-                                    "invalid format": {
+                                    "saved prompt invalid": {
                                         "value": {
                                             "detail": {
-                                                "cause": "Invalid request format. The request body could not be parsed.",
-                                                "response": "Invalid request format"
-                                            }
-                                        }
-                                    },
-                                    "missing attributes": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Missing required attributes: ['query', 'model', 'provider']",
-                                                "response": "Missing required attributes"
-                                            }
-                                        }
-                                    },
-                                    "invalid value": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Invalid attachment type: must be one of ['text/plain', 'application/json', 'application/yaml', 'application/xml']",
+                                                "cause": "Saved prompt name must not be empty",
                                                 "response": "Invalid attribute value"
+                                            }
+                                        }
+                                    },
+                                    "saved prompt limit": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Saved prompt limit exceeded: 50 existing prompts, maximum is 50",
+                                                "response": "Saved prompt limit exceeded"
                                             }
                                         }
                                     }
@@ -7512,19 +7520,11 @@
                         "content": {
                             "application/json": {
                                 "examples": {
-                                    "conversation_id": {
+                                    "saved_prompt_id": {
                                         "value": {
                                             "detail": {
-                                                "cause": "The conversation ID 123e4567-e89b-12d3-a456-426614174000 has invalid format.",
-                                                "response": "Invalid conversation ID format"
-                                            }
-                                        }
-                                    },
-                                    "prompt_id": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "The prompt ID pmpt_1234567890abcdef has invalid format.",
-                                                "response": "Invalid prompt ID format"
+                                                "cause": "The saved prompt ID 123e4567-e89b-12d3-a456-426614174000 has invalid format.",
+                                                "response": "Invalid saved prompt ID format"
                                             }
                                         }
                                     }
@@ -7636,75 +7636,11 @@
                         "content": {
                             "application/json": {
                                 "examples": {
-                                    "conversation": {
+                                    "saved prompt": {
                                         "value": {
                                             "detail": {
-                                                "cause": "Conversation with ID 123e4567-e89b-12d3-a456-426614174000 does not exist",
-                                                "response": "Conversation not found"
-                                            }
-                                        }
-                                    },
-                                    "provider": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Provider with ID openai does not exist",
-                                                "response": "Provider not found"
-                                            }
-                                        }
-                                    },
-                                    "model": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Model with ID gpt-4o-mini does not exist",
-                                                "response": "Model not found"
-                                            }
-                                        }
-                                    },
-                                    "rag": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Rag with ID vs_7b52a8cf-0fa3-489c-beab-27e061d102f3 does not exist",
-                                                "response": "Rag not found"
-                                            }
-                                        }
-                                    },
-                                    "streaming request": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Streaming Request with ID 123e4567-e89b-12d3-a456-426614174000 does not exist",
-                                                "response": "Streaming Request not found"
-                                            }
-                                        }
-                                    },
-                                    "mcp server": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Mcp Server with ID test-mcp-server does not exist",
-                                                "response": "Mcp Server not found"
-                                            }
-                                        }
-                                    },
-                                    "vector store": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Vector Store with ID vs_abc123 does not exist",
-                                                "response": "Vector Store not found"
-                                            }
-                                        }
-                                    },
-                                    "file": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "File with ID file_abc123 does not exist",
-                                                "response": "File not found"
-                                            }
-                                        }
-                                    },
-                                    "prompt": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Prompt with ID pmpt_0123456789abcdef0123456789abcdef01234567 does not exist",
-                                                "response": "Prompt not found"
+                                                "cause": "Saved Prompt with ID 123e4567-e89b-12d3-a456-426614174000 does not exist",
+                                                "response": "Saved Prompt not found"
                                             }
                                         }
                                     }
@@ -10333,6 +10269,22 @@
                                                 "response": "Invalid attribute value"
                                             }
                                         }
+                                    },
+                                    "saved prompt invalid": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Saved prompt name must not be empty",
+                                                "response": "Invalid attribute value"
+                                            }
+                                        }
+                                    },
+                                    "saved prompt limit": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Saved prompt limit exceeded: 50 existing prompts, maximum is 50",
+                                                "response": "Saved prompt limit exceeded"
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -10657,6 +10609,22 @@
                                             "detail": {
                                                 "cause": "Invalid attachment type: must be one of ['text/plain', 'application/json', 'application/yaml', 'application/xml']",
                                                 "response": "Invalid attribute value"
+                                            }
+                                        }
+                                    },
+                                    "saved prompt invalid": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Saved prompt name must not be empty",
+                                                "response": "Invalid attribute value"
+                                            }
+                                        }
+                                    },
+                                    "saved prompt limit": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Saved prompt limit exceeded: 50 existing prompts, maximum is 50",
+                                                "response": "Saved prompt limit exceeded"
                                             }
                                         }
                                     }
@@ -12634,6 +12602,13 @@
                             "response": "Invalid prompt ID format"
                         },
                         "label": "prompt_id"
+                    },
+                    {
+                        "detail": {
+                            "cause": "The saved prompt ID 123e4567-e89b-12d3-a456-426614174000 has invalid format.",
+                            "response": "Invalid saved prompt ID format"
+                        },
+                        "label": "saved_prompt_id"
                     }
                 ]
             },
@@ -13199,6 +13174,13 @@
                             "response": "Tool conflict"
                         },
                         "label": "file search conflict"
+                    },
+                    {
+                        "detail": {
+                            "cause": "Saved Prompt with name 'Deploy to staging' is already registered",
+                            "response": "Saved Prompt already exists"
+                        },
+                        "label": "saved prompt"
                     }
                 ]
             },
@@ -15613,6 +15595,13 @@
                             "response": "Prompt not found"
                         },
                         "label": "prompt"
+                    },
+                    {
+                        "detail": {
+                            "cause": "Saved Prompt with ID 123e4567-e89b-12d3-a456-426614174000 does not exist",
+                            "response": "Saved Prompt not found"
+                        },
+                        "label": "saved prompt"
                     }
                 ]
             },
@@ -21276,6 +21265,20 @@
                             "response": "Invalid attribute value"
                         },
                         "label": "invalid value"
+                    },
+                    {
+                        "detail": {
+                            "cause": "Saved prompt name must not be empty",
+                            "response": "Invalid attribute value"
+                        },
+                        "label": "saved prompt invalid"
+                    },
+                    {
+                        "detail": {
+                            "cause": "Saved prompt limit exceeded: 50 existing prompts, maximum is 50",
+                            "response": "Saved prompt limit exceeded"
+                        },
+                        "label": "saved prompt limit"
                     }
                 ]
             },

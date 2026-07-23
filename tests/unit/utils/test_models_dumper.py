@@ -453,6 +453,13 @@ def test_dump_models(tmpdir: Path) -> None:
                                 "response": "Invalid prompt ID format"
                             },
                             "label": "prompt_id"
+                        },
+                        {
+                            "detail": {
+                                "cause": "The saved prompt ID 123e4567-e89b-12d3-a456-426614174000 has invalid format.",
+                                "response": "Invalid saved prompt ID format"
+                            },
+                            "label": "saved_prompt_id"
                         }
                     ],
                     "properties": {
@@ -958,6 +965,13 @@ def test_dump_models(tmpdir: Path) -> None:
                                 "response": "Tool conflict"
                             },
                             "label": "file search conflict"
+                        },
+                        {
+                            "detail": {
+                                "cause": "Saved Prompt with name 'Deploy to staging' is already registered",
+                                "response": "Saved Prompt already exists"
+                            },
+                            "label": "saved prompt"
                         }
                     ],
                     "properties": {
@@ -3248,6 +3262,13 @@ def test_dump_models(tmpdir: Path) -> None:
                                 "response": "Prompt not found"
                             },
                             "label": "prompt"
+                        },
+                        {
+                            "detail": {
+                                "cause": "Saved Prompt with ID 123e4567-e89b-12d3-a456-426614174000 does not exist",
+                                "response": "Saved Prompt not found"
+                            },
+                            "label": "saved prompt"
                         }
                     ],
                     "properties": {
@@ -8457,6 +8478,20 @@ def test_dump_models(tmpdir: Path) -> None:
                                 "response": "Invalid attribute value"
                             },
                             "label": "invalid value"
+                        },
+                        {
+                            "detail": {
+                                "cause": "Saved prompt name must not be empty",
+                                "response": "Invalid attribute value"
+                            },
+                            "label": "saved prompt invalid"
+                        },
+                        {
+                            "detail": {
+                                "cause": "Saved prompt limit exceeded: 50 existing prompts, maximum is 50",
+                                "response": "Saved prompt limit exceeded"
+                            },
+                            "label": "saved prompt limit"
                         }
                     ],
                     "properties": {

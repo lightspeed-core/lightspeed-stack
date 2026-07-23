@@ -47,6 +47,16 @@ class ConflictResponse(AbstractErrorResponse):
                         ),
                     },
                 },
+                {
+                    "label": "saved prompt",
+                    "detail": {
+                        "response": "Saved Prompt already exists",
+                        "cause": (
+                            "Saved Prompt with name 'Deploy to staging' "
+                            "is already registered"
+                        ),
+                    },
+                },
             ]
         }
     }
