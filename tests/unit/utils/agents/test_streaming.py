@@ -9,9 +9,6 @@ from typing import Any, Optional
 
 import pytest
 from fastapi import HTTPException
-from ogx_api.openai_responses import (
-    OpenAIResponseMessage as ResponseMessage,
-)
 from ogx_client import APIStatusError
 from pydantic_ai import AgentRunResultEvent
 from pydantic_ai.exceptions import AgentRunError
@@ -118,10 +115,6 @@ def blocked_moderation_fixture() -> ShieldModerationBlocked:
     return ShieldModerationBlocked(
         message="Content blocked by shield.",
         moderation_id="modr-test-456",
-        refusal_response=ResponseMessage(
-            role="assistant",
-            content="Content blocked by shield.",
-        ),
     )
 
 
@@ -1055,9 +1048,9 @@ class TestInterruptPartialTokenAccumulation:
         num_chunks = len(chunk_ids)
         assert chunk_ids == sorted(chunk_ids), "chunk_ids must be monotonically ordered"
         assert all(cid >= 0 for cid in chunk_ids), "all chunk_ids must be non-negative"
-        assert num_chunks == len(
-            set(chunk_ids)
-        ), "chunk_ids must not contain duplicates"
+        assert num_chunks == len(set(chunk_ids)), (
+            "chunk_ids must not contain duplicates"
+        )
         assert chunk_ids[-1] == num_chunks - 1
 
     @pytest.mark.asyncio

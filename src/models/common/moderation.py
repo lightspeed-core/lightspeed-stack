@@ -20,7 +20,14 @@ class ShieldModerationBlocked(BaseModel):
     decision: Literal["blocked"] = "blocked"
     message: str
     moderation_id: str
-    refusal_response: ResponseMessage
+
+    @property
+    def refusal_response(self) -> ResponseMessage:
+
+        return ResponseMessage(
+            role="assistant",
+            content=self.message,
+        )
 
 
 ShieldModerationResult = Annotated[
