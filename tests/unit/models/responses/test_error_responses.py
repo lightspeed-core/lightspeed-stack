@@ -729,8 +729,7 @@ class TestServiceUnavailableResponse:
         assert "value" in llama_example
         assert "detail" in llama_example["value"]
         assert (
-            llama_example["value"]["detail"]["response"]
-            == "Unable to connect to OGX"
+            llama_example["value"]["detail"]["response"] == "Unable to connect to OGX"
         )
 
     def test_openapi_response_with_explicit_examples(self) -> None:

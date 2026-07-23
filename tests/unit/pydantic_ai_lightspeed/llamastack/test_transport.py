@@ -106,9 +106,7 @@ class TestInjectProviderDataIntoHeaders:
         )
 
         assert updated is not request
-        assert (
-            updated.headers["X-OGX-Provider-Data"] == '{"api_key": "test-key"}'
-        )
+        assert updated.headers["X-OGX-Provider-Data"] == '{"api_key": "test-key"}'
 
 
 class TestOgxServerTransport:
@@ -160,10 +158,7 @@ class TestOgxServerTransport:
         await transport.handle_async_request(request)
 
         delegated_request = wrapped.handle_async_request.await_args.args[0]
-        assert (
-            delegated_request.headers["X-OGX-Provider-Data"]
-            == '{"existing": true}'
-        )
+        assert delegated_request.headers["X-OGX-Provider-Data"] == '{"existing": true}'
 
 
 class TestDecodeRequestHeaders:  # pylint: disable=too-few-public-methods
@@ -310,9 +305,7 @@ class TestHandleAsyncRequest:
 
         call_args = mock_ctx.call_args[0][0]
         assert "X-OGX-Provider-Data" in call_args
-        assert json.loads(call_args["X-OGX-Provider-Data"]) == {
-            "api_key": "test-key"
-        }
+        assert json.loads(call_args["X-OGX-Provider-Data"]) == {"api_key": "test-key"}
 
     @pytest.mark.asyncio
     async def test_provider_data_header_not_injected_when_present(

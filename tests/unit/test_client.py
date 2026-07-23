@@ -139,9 +139,7 @@ async def test_update_azure_token_service_client() -> None:
 
     assert updated_client is not original_client
     assert holder.get_client() is updated_client
-    provider_data_json = updated_client.default_headers.get(
-        "X-OGX-Provider-Data"
-    )
+    provider_data_json = updated_client.default_headers.get("X-OGX-Provider-Data")
     provider_data = json.loads(provider_data_json)
     assert provider_data["azure_api_key"] == "fresh-token"
     assert provider_data["azure_api_base"] == "https://api.example.com"
@@ -177,9 +175,7 @@ async def test_load_service_client_defers_azure_provider_data() -> None:
     assert "X-OGX-Provider-Data" not in default_headers
 
     updated_client = await holder.update_azure_token()
-    provider_data_json = updated_client.default_headers.get(
-        "X-OGX-Provider-Data"
-    )
+    provider_data_json = updated_client.default_headers.get("X-OGX-Provider-Data")
     assert provider_data_json is not None
     provider_data = json.loads(provider_data_json)
     assert provider_data["azure_api_key"] == "startup-token"
