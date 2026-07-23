@@ -28,7 +28,17 @@ from models.api.responses.error import (
 from models.common.moderation import (
     ShieldModerationBlocked,
     ShieldModerationPassed,
+    ShieldModerationPassedV2,
     ShieldModerationResult,
+    ShieldModerationResultV2,
+)
+from models.config import QuestionValidityConfig, RedactionConfig, ShieldConfiguration
+from pydantic_ai_lightspeed.capabilities.base import AbstractSafetyCapability
+from pydantic_ai_lightspeed.capabilities.question_validity._capability import (
+    QuestionValidity,
+)
+from pydantic_ai_lightspeed.capabilities.redaction._capability import (
+    PiiRedactionCapability,
 )
 from utils.query import handle_known_apistatus_errors
 
@@ -117,6 +127,35 @@ def validate_shield_ids_override(
             ),
         )
         raise HTTPException(**response.model_dump())
+
+
+async def run_shield_moderation_v2(
+    input_text: str,
+    shield_configs: list[ShieldConfiguration],
+    selected_shield_ids: Optional[list[str]] = None,
+) -> ShieldModerationResultV2:
+    selected_shield_configs = (
+        [c for c in shield_configs if c.name in selected_shield_ids]
+        if selected_shield_ids is not None
+        else shield_configs
+    )
+
+    for shield_config in selected_shield_configs:
+        shield = build_shield(shield_config)
+        shield_result = await shield.run(input_text)
+
+        if shield_result.decision == "blocked":
+            return shield_result
+
+    return ShieldModerationPassedV2()
+
+
+def build_shield(shield_config: ShieldConfiguration) -> AbstractSafetyCapability[Any]:
+    match shield_config.config:
+        case QuestionValidityConfig():
+            return QuestionValidity(shield_config.config)
+        case RedactionConfig():
+            return PiiRedactionCapability(shield_config.config)
 
 
 async def run_shield_moderation(
