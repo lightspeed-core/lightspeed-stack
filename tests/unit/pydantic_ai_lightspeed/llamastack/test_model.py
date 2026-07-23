@@ -106,7 +106,9 @@ class TestModelSettingsFromResponsesParams:
 
         assert "openai_native_tools" in settings
         assert settings["openai_native_tools"] is params.tools
-        assert "tools" not in settings.get("extra_body", {})
+        extra_body = settings.get("extra_body", {})
+        assert isinstance(extra_body, dict)
+        assert "tools" not in extra_body
 
     def test_none_fields_excluded(self) -> None:
         """Test that None optional fields do not appear in the result."""
@@ -126,8 +128,7 @@ class TestFromOgxClient:
         """Test that responses_params is converted and forwarded."""
         mock_provider = mocker.Mock()
         mocker.patch(
-            "pydantic_ai_lightspeed.llamastack._model.OgxProvider"
-            ".from_ogx_client",
+            "pydantic_ai_lightspeed.llamastack._model.OgxProvider.from_ogx_client",
             return_value=mock_provider,
         )
         mock_init = mocker.patch.object(
@@ -150,8 +151,7 @@ class TestFromOgxClient:
         """Test that model_settings is forwarded directly."""
         mock_provider = mocker.Mock()
         mocker.patch(
-            "pydantic_ai_lightspeed.llamastack._model.OgxProvider"
-            ".from_ogx_client",
+            "pydantic_ai_lightspeed.llamastack._model.OgxProvider.from_ogx_client",
             return_value=mock_provider,
         )
         mock_init = mocker.patch.object(
@@ -175,8 +175,7 @@ class TestFromOgxClient:
         """Test that settings is None when neither param is provided."""
         mock_provider = mocker.Mock()
         mocker.patch(
-            "pydantic_ai_lightspeed.llamastack._model.OgxProvider"
-            ".from_ogx_client",
+            "pydantic_ai_lightspeed.llamastack._model.OgxProvider.from_ogx_client",
             return_value=mock_provider,
         )
         mock_init = mocker.patch.object(
@@ -196,8 +195,7 @@ class TestFromOgxClient:
     def test_both_raises_value_error(self, mocker: MockerFixture) -> None:
         """Test that providing both raises ValueError."""
         mocker.patch(
-            "pydantic_ai_lightspeed.llamastack._model.OgxProvider"
-            ".from_ogx_client",
+            "pydantic_ai_lightspeed.llamastack._model.OgxProvider.from_ogx_client",
             return_value=mocker.Mock(),
         )
 
@@ -234,9 +232,7 @@ class TestPrepareConversationContinuation:
         assert result_msgs is messages
         assert result_settings is None
 
-    def test_empty_settings_returns_unchanged(
-        self, model: OgxResponsesModel
-    ) -> None:
+    def test_empty_settings_returns_unchanged(self, model: OgxResponsesModel) -> None:
         """Test that empty dict model_settings returns unchanged."""
         messages: list = []
         settings: ModelSettings = {}

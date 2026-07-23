@@ -10,14 +10,10 @@ from metrics.utils import setup_model_metrics
 async def test_setup_model_metrics(mocker: MockerFixture) -> None:
     """Test the setup_model_metrics function."""
     # Mock the OGXAsLibraryClient
-    mock_client = mocker.patch(
-        "client.AsyncOgxClientHolder.get_client"
-    ).return_value
+    mock_client = mocker.patch("client.AsyncOgxClientHolder.get_client").return_value
     # Make sure the client is an AsyncMock for async methods
     mock_client = mocker.AsyncMock()
-    mocker.patch(
-        "client.AsyncOgxClientHolder.get_client", return_value=mock_client
-    )
+    mocker.patch("client.AsyncOgxClientHolder.get_client", return_value=mock_client)
     mocker.patch(
         "metrics.utils.configuration.inference.default_provider",
         "default_provider",

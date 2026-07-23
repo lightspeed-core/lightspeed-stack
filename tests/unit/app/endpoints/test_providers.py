@@ -114,9 +114,7 @@ async def test_get_provider_not_found(
     mocker.patch("app.endpoints.providers.configuration", minimal_config)
 
     # Mock AsyncOgxClientHolder to return a client that raises BadRequestError
-    mock_client_holder = mocker.patch(
-        "app.endpoints.providers.AsyncOgxClientHolder"
-    )
+    mock_client_holder = mocker.patch("app.endpoints.providers.AsyncOgxClientHolder")
     mock_client = mocker.AsyncMock()
     mock_client.providers.retrieve = mocker.AsyncMock(
         side_effect=BadRequestError(

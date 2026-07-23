@@ -101,9 +101,7 @@ async def test_models_endpoint_handler_configuration_loaded(
     cfg.init_from_dict(config_dict)
 
     mocker.patch("app.endpoints.models.configuration", cfg)
-    mock_client_holder = mocker.patch(
-        "app.endpoints.models.AsyncOgxClientHolder"
-    )
+    mock_client_holder = mocker.patch("app.endpoints.models.AsyncOgxClientHolder")
     mock_client_holder.return_value.get_client.side_effect = APIConnectionError(
         request=mocker.Mock()
     )
@@ -162,9 +160,7 @@ async def test_models_endpoint_handler_unable_to_retrieve_models_list(
     # Mock the LlamaStack client
     mock_client = mocker.AsyncMock()
     mock_client.models.list.return_value = []
-    mock_lsc = mocker.patch(
-        "app.endpoints.models.AsyncOgxClientHolder.get_client"
-    )
+    mock_lsc = mocker.patch("app.endpoints.models.AsyncOgxClientHolder.get_client")
     mock_lsc.return_value = mock_client
     mock_config = mocker.Mock()
     mocker.patch("app.endpoints.models.configuration", mock_config)
@@ -221,9 +217,7 @@ async def test_models_endpoint_handler_model_type_query_parameter(
     # Mock the LlamaStack client
     mock_client = mocker.AsyncMock()
     mock_client.models.list.return_value = []
-    mock_lsc = mocker.patch(
-        "app.endpoints.models.AsyncOgxClientHolder.get_client"
-    )
+    mock_lsc = mocker.patch("app.endpoints.models.AsyncOgxClientHolder.get_client")
     mock_lsc.return_value = mock_client
     mock_config = mocker.Mock()
     mocker.patch("app.endpoints.models.configuration", mock_config)
@@ -284,9 +278,7 @@ async def test_models_endpoint_handler_model_list_retrieved(
         Model("model3", "provider3", "llm"),
         Model("model4", "provider4", "embedding"),
     ]
-    mock_lsc = mocker.patch(
-        "app.endpoints.models.AsyncOgxClientHolder.get_client"
-    )
+    mock_lsc = mocker.patch("app.endpoints.models.AsyncOgxClientHolder.get_client")
     mock_lsc.return_value = mock_client
     mock_config = mocker.Mock()
     mocker.patch("app.endpoints.models.configuration", mock_config)
@@ -358,9 +350,7 @@ async def test_models_endpoint_handler_model_list_retrieved_with_query_parameter
         Model("model3", "provider3", "llm"),
         Model("model4", "provider4", "embedding"),
     ]
-    mock_lsc = mocker.patch(
-        "app.endpoints.models.AsyncOgxClientHolder.get_client"
-    )
+    mock_lsc = mocker.patch("app.endpoints.models.AsyncOgxClientHolder.get_client")
     mock_lsc.return_value = mock_client
     mock_config = mocker.Mock()
     mocker.patch("app.endpoints.models.configuration", mock_config)
@@ -447,9 +437,7 @@ async def test_models_endpoint_llama_stack_connection_error(
     # when models.list() method is called
     mock_client = mocker.AsyncMock()
     mock_client.models.list.side_effect = APIConnectionError(request=None)  # type: ignore
-    mock_client_holder = mocker.patch(
-        "app.endpoints.models.AsyncOgxClientHolder"
-    )
+    mock_client_holder = mocker.patch("app.endpoints.models.AsyncOgxClientHolder")
     mock_client_holder.return_value.get_client.return_value = mock_client
 
     cfg = AppConfig()
