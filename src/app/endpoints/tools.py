@@ -109,12 +109,10 @@ async def tools_endpoint_handler(  # pylint: disable=too-many-locals
     existing_tool_ids = {
         tool.identifier for tool in consolidated_tools if tool.identifier
     }
-    capability_tools = get_agent_capability_tools(configuration.skills)
-    for tool_dict in capability_tools:
-        identifier = tool_dict.get("identifier")
-        if identifier and identifier not in existing_tool_ids:
-            consolidated_tools.append(tool_dict)
-            existing_tool_ids.add(identifier)
+    for tool in get_agent_capability_tools(configuration.skills):
+        if tool.identifier not in existing_tool_ids:
+            consolidated_tools.append(tool)
+            existing_tool_ids.add(tool.identifier)
 
     builtin_tool_count = len(
         [tool for tool in consolidated_tools if tool.server_source == "builtin"]

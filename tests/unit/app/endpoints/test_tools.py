@@ -329,7 +329,6 @@ async def test_tools_endpoint_includes_agent_capability_tools(
     app_config = AppConfig()
     app_config._configuration = config_with_skills
     mocker.patch("app.endpoints.tools.configuration", app_config)
-    mocker.patch("app.endpoints.tools.authorize", lambda _: lambda func: func)
 
     mock_client_holder = mocker.patch("app.endpoints.tools.AsyncOgxClientHolder")
     mock_client = mocker.AsyncMock()
@@ -337,21 +336,23 @@ async def test_tools_endpoint_includes_agent_capability_tools(
     mock_client.toolgroups.list.return_value = []
 
     mock_request = mocker.Mock()
-    mock_auth = MOCK_AUTH
+    mock_request.headers = {}
 
-    response = await tools.tools_endpoint_handler.__wrapped__(
-        mock_request, mock_auth, {}
-    )  # pyright: ignore[reportFunctionMemberAccess]
+    response = await tools.tools_endpoint_handler(
+        request=mock_request,
+        auth=MOCK_AUTH,
+        mcp_headers={},
+    )
 
-    tool_ids = [tool["identifier"] for tool in response.tools]
+    tool_ids = [tool.identifier for tool in response.tools]
     assert "list_skills" in tool_ids
     assert "load_skill" in tool_ids
     assert "read_skill_resource" in tool_ids
     assert "run_skill_script" in tool_ids
 
     list_skills = next(
-        tool for tool in response.tools if tool["identifier"] == "list_skills"
+        tool for tool in response.tools if tool.identifier == "list_skills"
     )
-    assert list_skills["provider_id"] == "agent-skills"
-    assert list_skills["toolgroup_id"] == "builtin::agent-skills"
-    assert list_skills["server_source"] == "builtin"
+    assert list_skills.provider_id == "agent-skills"
+    assert list_skills.toolgroup_id == "builtin::agent-skills"
+    assert list_skills.server_source == "builtin"

@@ -197,22 +197,22 @@ class TestGetAgentCapabilityTools:
         """Test that configured skills expose pydantic-ai skill tools."""
         tools = get_agent_capability_tools(mock_skills_configuration)
 
-        assert [tool["identifier"] for tool in tools] == [
+        assert [tool.identifier for tool in tools] == [
             "list_skills",
             "load_skill",
             "read_skill_resource",
             "run_skill_script",
         ]
         assert all(
-            tool["provider_id"] == "agent-skills"
-            and tool["toolgroup_id"] == "builtin::agent-skills"
-            and tool["server_source"] == "builtin"
-            and tool["type"] == "tool"
+            tool.provider_id == "agent-skills"
+            and tool.toolgroup_id == "builtin::agent-skills"
+            and tool.server_source == "builtin"
+            and tool.type == "tool"
             for tool in tools
         )
 
-        load_skill = next(tool for tool in tools if tool["identifier"] == "load_skill")
-        assert load_skill["parameters"] == [
+        load_skill = next(tool for tool in tools if tool.identifier == "load_skill")
+        assert [parameter.model_dump() for parameter in load_skill.parameters] == [
             {
                 "name": "skill_name",
                 "description": (
