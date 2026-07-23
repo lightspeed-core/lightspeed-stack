@@ -37,6 +37,9 @@ from ogx_api.openai_responses import (
     OpenAIResponseOutputMessageMCPListTools as McpListTools,
 )
 from ogx_api.openai_responses import (
+    OpenAIResponseOutputMessageReasoningItem as ReasoningItem,
+)
+from ogx_api.openai_responses import (
     OpenAIResponseOutputMessageWebSearchToolCall as WebSearchToolCall,
 )
 from pydantic import Field
@@ -60,7 +63,6 @@ type IncludeParameter = Literal[
     "file_search_call.results",
     "message.input_image.image_url",
     "message.output_text.logprobs",
-    "reasoning.encrypted_content",
 ]
 
 type ResponseItem = (
@@ -73,6 +75,7 @@ type ResponseItem = (
     | McpApprovalRequest
     | FunctionToolCall
     | McpApprovalResponse
+    | ReasoningItem
 )
 
 type ResponseInput = str | list[ResponseItem]
