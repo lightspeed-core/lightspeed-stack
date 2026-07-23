@@ -3,7 +3,6 @@
 from typing import Optional
 
 from fastapi import HTTPException
-from ogx_api import OpenAIResponseMessage
 from ogx_client import (
     APIConnectionError,
     AsyncOgxClient,
@@ -128,21 +127,6 @@ async def append_turn_to_conversation(
     except LLSApiStatusError as e:
         error_response = InternalServerErrorResponse.generic()
         raise HTTPException(**error_response.model_dump()) from e
-
-
-def create_refusal_response(refusal_message: str) -> OpenAIResponseMessage:
-    """Create a refusal response message object.
-
-    Args:
-        refusal_message: The refusal message text.
-
-    Returns:
-        OpenAIResponseMessage with refusal message.
-    """
-    return OpenAIResponseMessage(
-        role="assistant",
-        content=refusal_message,
-    )
 
 
 def get_shields_for_request(

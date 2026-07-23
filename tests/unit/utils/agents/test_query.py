@@ -6,9 +6,6 @@ from typing import Any, Optional
 
 import pytest
 from fastapi import HTTPException
-from ogx_api.openai_responses import (
-    OpenAIResponseMessage as ResponseMessage,
-)
 from ogx_client import APIConnectionError, APIStatusError
 from pydantic_ai.messages import (
     FinishReason,
@@ -112,10 +109,6 @@ def blocked_moderation_fixture() -> ShieldModerationBlocked:
     return ShieldModerationBlocked(
         message="Content blocked by shield.",
         moderation_id="modr-test-456",
-        refusal_response=ResponseMessage(
-            role="assistant",
-            content="Content blocked by shield.",
-        ),
     )
 
 
