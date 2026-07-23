@@ -2,7 +2,7 @@
 
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.concurrency import run_in_threadpool
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -14,9 +14,11 @@ from log import get_logger
 from models.api.requests import SavedPromptCreateRequest
 from models.api.responses.constants import UNAUTHORIZED_OPENAPI_EXAMPLES
 from models.api.responses.error import (
+    BadRequestResponse,
     ConflictResponse,
     ForbiddenResponse,
     InternalServerErrorResponse,
+    NotFoundResponse,
     ServiceUnavailableResponse,
     UnauthorizedResponse,
     UnprocessableEntityResponse,
@@ -30,14 +32,18 @@ from models.config import Action
 from models.database.saved_prompts import SavedPrompt
 from utils.endpoints import check_configuration_loaded
 from utils.saved_prompts import (
+    SavedPromptAccessDeniedError,
     SavedPromptConflictError,
     SavedPromptLimitExceededError,
+    SavedPromptNotFoundError,
     SavedPromptValidationError,
     create_saved_prompt,
+    delete_saved_prompt_by_id_and_user,
     list_saved_prompts_by_user,
     validate_saved_prompt_content,
     validate_saved_prompt_name,
 )
+from utils.suid import check_suid
 
 logger = get_logger(__name__)
 router = APIRouter(tags=["saved-prompts"])
@@ -84,6 +90,17 @@ create_saved_prompts_responses: dict[int | str, dict[str, Any]] = {
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
     409: ConflictResponse.openapi_response(),
     422: UnprocessableEntityResponse.openapi_response(),
+    500: InternalServerErrorResponse.openapi_response(
+        examples=["configuration", "database"]
+    ),
+}
+
+delete_saved_prompts_responses: dict[int | str, dict[str, Any]] = {
+    204: {"description": "Saved prompt deleted"},
+    400: BadRequestResponse.openapi_response(),
+    401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
+    403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
+    404: NotFoundResponse.openapi_response(),
     500: InternalServerErrorResponse.openapi_response(
         examples=["configuration", "database"]
     ),
@@ -267,3 +284,74 @@ async def create_saved_prompts_handler(
 
     logger.info("Created saved prompt id=%s", row.id)
     return _to_saved_prompt_response(row)
+
+
+@router.delete(
+    "/saved-prompts/{prompt_id}",
+    responses=delete_saved_prompts_responses,
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+@authorize(Action.MANAGE_SAVED_PROMPTS)
+async def delete_saved_prompts_handler(
+    request: Request,
+    prompt_id: str,
+    auth: Annotated[AuthTuple, Depends(get_auth_dependency())],
+) -> Response:
+    """
+    Handle requests to the DELETE /saved-prompts/{prompt_id} endpoint.
+
+    Process DELETE requests that remove a saved prompt belonging to the
+    authenticated user. Missing prompts and prompts owned by another user
+    both return 404 so foreign ids cannot be probed. For example:
+
+        curl -X DELETE http://localhost:8080/v1/saved-prompts/{prompt_id}
+
+    ### Parameters:
+    - request: The incoming HTTP request (used by middleware).
+    - prompt_id: Identifier of the saved prompt to delete.
+    - auth: Authentication tuple from the auth dependency.
+
+    ### Raises:
+    - HTTPException: with status 400 when ``prompt_id`` has an invalid format.
+    - HTTPException: with status 401 for unauthorized access.
+    - HTTPException: with status 403 if permission is denied.
+    - HTTPException: with status 404 when the prompt does not exist for this user.
+    - HTTPException: with status 500 when configuration is not loaded or the
+      database delete fails.
+
+    ### Returns:
+    - Response: Empty 204 No Content on successful deletion.
+    """
+    _ = request
+    check_configuration_loaded(configuration)
+
+    if not check_suid(prompt_id):
+        logger.error("Invalid saved prompt ID format: %s", prompt_id)
+        error_response = BadRequestResponse(
+            resource="saved prompt",
+            resource_id=prompt_id,
+        )
+        raise HTTPException(**error_response.model_dump())
+
+    user_id = auth[0]
+    logger.info("Deleting saved prompt id=%s", prompt_id)
+
+    try:
+        await run_in_threadpool(
+            delete_saved_prompt_by_id_and_user,
+            prompt_id,
+            user_id,
+        )
+    except (SavedPromptNotFoundError, SavedPromptAccessDeniedError) as exc:
+        error_response = NotFoundResponse(
+            resource="saved prompt",
+            resource_id=prompt_id,
+        )
+        raise HTTPException(**error_response.model_dump()) from exc
+    except SQLAlchemyError as exc:
+        logger.exception("Error deleting saved prompt id=%s", prompt_id)
+        error_response = InternalServerErrorResponse.database_error()
+        raise HTTPException(**error_response.model_dump()) from exc
+
+    logger.info("Deleted saved prompt id=%s", prompt_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
