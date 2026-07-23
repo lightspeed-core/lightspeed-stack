@@ -22,6 +22,7 @@ from pydantic import (
     PositiveInt,
     PrivateAttr,
     SecretStr,
+    ValidationError,
     field_validator,
     model_validator,
 )
@@ -2590,6 +2591,94 @@ class RedactionConfig(ConfigurationBase):
         return list(self._compiled_patterns)
 
 
+class ShieldConfiguration(ConfigurationBase):
+    """Configuration for a single named pydantic-ai-lightspeed guardrail shield.
+
+    Each entry configures one instance of an agent guardrail capability
+    implemented in ``pydantic_ai_lightspeed.capabilities``: question
+    validity filtering or PII redaction. Multiple shields of the same
+    ``type`` may be listed (each with a distinct ``name``) to run several
+    independently-configured instances, e.g. two question validity checks
+    against different topics, or two separate redaction rule sets.
+
+    These guardrails run inside the pydantic-ai agent and are distinct from
+    Llama Stack's own safety shields, which are configured in Llama Stack's
+    ``run.yaml`` and exposed through the ``/v1/shields`` endpoint. Both kinds
+    of shields can be used together.
+
+    Attributes:
+        name: Unique, user-facing name identifying this shield instance.
+        type: Which guardrail capability this shield configures.
+        config: Type-specific configuration matching ``type``: a
+            ``QuestionValidityConfig`` when ``type`` is
+            ``"question_validity"``, or a ``RedactionConfig`` when ``type``
+            is ``"redaction"``.
+    """
+
+    name: str = Field(
+        ...,
+        title="Shield name",
+        description="Unique, user-facing name identifying this shield instance.",
+    )
+
+    type: Literal["question_validity", "redaction"] = Field(
+        ...,
+        title="Shield type",
+        description="Which guardrail capability this shield configures: "
+        "'question_validity' or 'redaction'.",
+    )
+
+    config: QuestionValidityConfig | RedactionConfig = Field(
+        ...,
+        title="Shield configuration",
+        description="Type-specific configuration for this shield. Must match "
+        "the schema for the selected 'type': QuestionValidityConfig for "
+        "'question_validity', or RedactionConfig for 'redaction'.",
+    )
+
+    @model_validator(mode="before")
+    @classmethod
+    def parse_config_by_type(cls, data: Any) -> Any:
+        """Parse ``config`` using the model that matches ``type``.
+
+        Runs before standard field validation so ``config`` is built with
+        the concrete model selected by the sibling ``type`` field, rather
+        than relying on ambiguous union matching.
+
+        Parameters:
+            data: Raw input data for this model.
+
+        Returns:
+            The input data, with ``config`` replaced by a parsed instance
+            of the matching configuration model when possible.
+        """
+        if not isinstance(data, dict):
+            return data
+        shield_type = data.get("type")
+        raw_config = data.get("config")
+        if not isinstance(raw_config, dict):
+            return data
+
+        if shield_type == "question_validity":
+            model_cls: type[QuestionValidityConfig | RedactionConfig] = (
+                QuestionValidityConfig
+            )
+        elif shield_type == "redaction":
+            model_cls = RedactionConfig
+        else:
+            return data
+
+        try:
+            parsed_config = model_cls(**raw_config)
+        except ValidationError as e:
+            shield_name = data.get("name", "<unnamed>")
+            raise ValueError(
+                f"Invalid config for shield '{shield_name}' of type "
+                f"'{shield_type}': {e}"
+            ) from e
+        return {**data, "config": parsed_config}
+
+
 class Configuration(ConfigurationBase):
     """Global service configuration."""
 
@@ -2774,6 +2863,34 @@ class Configuration(ConfigurationBase):
         description="Configuration for saved prompts feature limits including "
         "maximum prompts per user, display name length, and content length.",
     )
+
+    shields: list[ShieldConfiguration] = Field(
+        default_factory=list,
+        title="Shields configuration",
+        description="List of pydantic-ai-lightspeed agent guardrail shields "
+        "(question validity and PII redaction). Each entry has a unique 'name', "
+        "a 'type' ('question_validity' or 'redaction'), and a type-specific "
+        "'config'. Distinct from Llama Stack's own safety shields configured "
+        "in run.yaml.",
+    )
+
+    @model_validator(mode="after")
+    def validate_shield_names_unique(self) -> Self:
+        """Reject shields lists containing duplicate names.
+
+        Returns:
+            Self: The model instance after validation.
+
+        Raises:
+            ValueError: If two or more shields share the same name.
+        """
+        names = [shield.name for shield in self.shields]
+        duplicates = {name for name in names if names.count(name) > 1}
+        if duplicates:
+            raise ValueError(
+                f"Shield names must be unique, found duplicates: {sorted(duplicates)}"
+            )
+        return self
 
     @model_validator(mode="after")
     def validate_mcp_auth_headers(self) -> Self:

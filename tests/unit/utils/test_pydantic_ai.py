@@ -3,19 +3,39 @@
 # pylint: disable=protected-access
 
 import httpx
+import pytest
 from ogx.core.library_client import AsyncOGXAsLibraryClient
 from ogx_client import AsyncOgxClient
 from pydantic_ai_skills import SkillsCapability
 from pytest_mock import MockerFixture
 
 from models.common.responses.responses_api_params import ResponsesApiParams
-from models.config import SkillsConfiguration
+from models.config import (
+    QuestionValidityConfig,
+    RedactionConfig,
+    ShieldConfiguration,
+    SkillsConfiguration,
+)
+from pydantic_ai_lightspeed.capabilities import QuestionValidity
+from pydantic_ai_lightspeed.capabilities.redaction import PiiRedactionCapability
 from utils.pydantic_ai_helpers import (
     _agent_capabilities,
+    _shield_capability,
     _skills_capability,
     build_agent,
     get_agent_capability_tools,
 )
+
+_QUESTION_VALIDITY_MODULE = (
+    "pydantic_ai_lightspeed.capabilities.question_validity._capability"
+)
+
+
+@pytest.fixture(autouse=True)
+def _mock_question_validity_model(mocker: MockerFixture) -> None:
+    """Avoid constructing a real client/model when building QuestionValidity."""
+    mocker.patch(f"{_QUESTION_VALIDITY_MODULE}.AsyncOgxClientHolder")
+    mocker.patch(f"{_QUESTION_VALIDITY_MODULE}.OgxResponsesModel.from_ogx_client")
 
 
 class TestSkillsCapability:
@@ -39,6 +59,49 @@ class TestSkillsCapability:
         assert list(capability.toolset.skills) == ["test-skill"]
 
 
+class TestShieldCapability:
+    """Tests for _shield_capability."""
+
+    def test_question_validity_shield_builds_question_validity_capability(
+        self,
+    ) -> None:
+        """Test that a question_validity shield builds a QuestionValidity capability."""
+        shield = ShieldConfiguration(
+            name="topic-guard",
+            type="question_validity",
+            config=QuestionValidityConfig(model_id="test-model"),
+        )
+
+        capability = _shield_capability(shield)
+
+        assert isinstance(capability, QuestionValidity)
+        assert capability.config is shield.config
+
+    def test_redaction_shield_builds_pii_redaction_capability(self) -> None:
+        """Test that a redaction shield builds a PiiRedactionCapability."""
+        shield = ShieldConfiguration(
+            name="pii-guard",
+            type="redaction",
+            config=RedactionConfig(rules=[]),
+        )
+
+        capability = _shield_capability(shield)
+
+        assert isinstance(capability, PiiRedactionCapability)
+        assert capability.config is shield.config
+
+    def test_unsupported_config_type_raises_value_error(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test that an unrecognized shield config type raises ValueError."""
+        shield = mocker.Mock(name="bad-shield")
+        shield.name = "bad-shield"
+        shield.config = object()
+
+        with pytest.raises(ValueError, match="Unsupported shield config type"):
+            _shield_capability(shield)
+
+
 class TestAgentCapabilities:
     """Tests for _agent_capabilities."""
 
@@ -46,6 +109,7 @@ class TestAgentCapabilities:
         """Test that missing configuration yields None for Agent construction."""
         assert _agent_capabilities(None) is None
         assert _agent_capabilities(SkillsConfiguration(paths=[])) is None
+        assert _agent_capabilities(None, shields=[]) is None
 
     def test_returns_skills_capability_when_configured(
         self, mock_skills_configuration: SkillsConfiguration
@@ -55,6 +119,46 @@ class TestAgentCapabilities:
 
         assert len(capabilities) == 1
         assert isinstance(capabilities[0], SkillsCapability)
+
+    def test_returns_shield_capabilities_when_configured(self) -> None:
+        """Test that configured shields are included in the capability list."""
+        shields = [
+            ShieldConfiguration(
+                name="topic-guard",
+                type="question_validity",
+                config=QuestionValidityConfig(model_id="test-model"),
+            ),
+            ShieldConfiguration(
+                name="pii-guard",
+                type="redaction",
+                config=RedactionConfig(rules=[]),
+            ),
+        ]
+
+        capabilities = _agent_capabilities(None, shields=shields) or []
+
+        assert len(capabilities) == 2
+        assert isinstance(capabilities[0], QuestionValidity)
+        assert isinstance(capabilities[1], PiiRedactionCapability)
+
+    def test_combines_shields_and_skills(
+        self, mock_skills_configuration: SkillsConfiguration
+    ) -> None:
+        """Test that shield and skill capabilities are both included together."""
+        shields = [
+            ShieldConfiguration(
+                name="pii-guard",
+                type="redaction",
+                config=RedactionConfig(rules=[]),
+            ),
+        ]
+
+        capabilities = (
+            _agent_capabilities(mock_skills_configuration, shields=shields) or []
+        )
+
+        capability_types = {type(capability) for capability in capabilities}
+        assert capability_types == {PiiRedactionCapability, SkillsCapability}
 
 
 class TestBuildAgent:
@@ -162,6 +266,47 @@ class TestBuildAgent:
             type(capability) for capability in agent._root_capability.capabilities
         }
         assert SkillsCapability not in capability_types
+
+    def test_agent_includes_shield_capabilities_when_configured(
+        self,
+        mock_client: AsyncOgxClient,
+        mock_params: ResponsesApiParams,
+    ) -> None:
+        """Test that build_agent attaches shield capabilities when shields are passed."""
+        shields = [
+            ShieldConfiguration(
+                name="topic-guard",
+                type="question_validity",
+                config=QuestionValidityConfig(model_id="test-model"),
+            ),
+            ShieldConfiguration(
+                name="pii-guard",
+                type="redaction",
+                config=RedactionConfig(rules=[]),
+            ),
+        ]
+
+        agent = build_agent(mock_client, mock_params, None, shields=shields)
+
+        capability_types = {
+            type(capability) for capability in agent._root_capability.capabilities
+        }
+        assert QuestionValidity in capability_types
+        assert PiiRedactionCapability in capability_types
+
+    def test_agent_has_no_shield_capabilities_when_not_configured(
+        self,
+        mock_client: AsyncOgxClient,
+        mock_params: ResponsesApiParams,
+    ) -> None:
+        """Test that build_agent omits shield capabilities when shields are not passed."""
+        agent = build_agent(mock_client, mock_params, None)
+
+        capability_types = {
+            type(capability) for capability in agent._root_capability.capabilities
+        }
+        assert QuestionValidity not in capability_types
+        assert PiiRedactionCapability not in capability_types
 
     def test_agent_excludes_tool_capabilities_when_no_tools(
         self,
