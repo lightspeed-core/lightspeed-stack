@@ -3,8 +3,8 @@ Feature: Llama Stack connection disrupted
 
   End-to-end scenarios that stop the Llama Stack container (or simulate disconnect) and
   assert degraded responses (503, readiness, etc.). Config order matches test_list.txt:
-  default stack, then noop-token (query/conversations/…), then rbac (rlsapi errors), then
-  mcp (immediately before mcp.feature). Skipped in library mode.
+  default stack, then noop-token (query/conversations/…), then rbac (rlsapi errors).
+  Skipped in library mode.
 
   Background:
     Given The service is started locally
@@ -274,21 +274,6 @@ Feature: Llama Stack connection disrupted
     When I use "infer" to ask question with authorization header
     """
     {"question": "How do I list files?"}
-    """
-    Then The status code of the response is 503
-    And The body of the response contains Llama Stack
-
-
-  # --- lightspeed-stack-mcp.yaml (aligned with mcp.feature / mcp_servers_api.feature next in test_list) ---
-  @MCP
-  Scenario: Register MCP server returns 503 when Llama Stack is unreachable
-    Given Llama Stack is restarted
-    And The service uses the lightspeed-stack-mcp.yaml configuration
-      And The service is restarted
-    And The llama-stack connection is disrupted
-    When I access REST API endpoint "mcp-servers" using HTTP POST method
-    """
-    {"name": "unreachable-server", "url": "http://mock-mcp:3000", "provider_id": "model-context-protocol"}
     """
     Then The status code of the response is 503
     And The body of the response contains Llama Stack

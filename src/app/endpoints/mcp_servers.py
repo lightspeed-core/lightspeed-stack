@@ -3,13 +3,10 @@
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from ogx_api.common.errors import ToolGroupNotFoundError
-from ogx_client import APIConnectionError, NotFoundError
 
 from authentication import get_auth_dependency
 from authentication.interface import AuthTuple
 from authorization.middleware import authorize
-from client import AsyncOgxClientHolder
 from configuration import configuration
 from log import get_logger
 from models.api.requests import MCPServerRegistrationRequest
@@ -18,7 +15,6 @@ from models.api.responses.error import (
     ConflictResponse,
     ForbiddenResponse,
     InternalServerErrorResponse,
-    ServiceUnavailableResponse,
     UnauthorizedResponse,
 )
 from models.api.responses.successful import (
@@ -42,9 +38,6 @@ register_responses: dict[int | str, dict[str, Any]] = {
     500: InternalServerErrorResponse.openapi_response(
         examples=["configuration", "mcp server registration"]
     ),
-    503: ServiceUnavailableResponse.openapi_response(
-        examples=["ogx", "kubernetes api"]
-    ),
 }
 
 
@@ -61,8 +54,8 @@ async def register_mcp_server_handler(
 ) -> MCPServerRegistrationResponse:
     """Register an MCP server dynamically at runtime.
 
-    Adds the MCP server to the runtime configuration and registers it
-    as a toolgroup with Llama Stack so it becomes available for queries.
+    Adds the MCP server to the runtime configuration so it becomes available
+    for queries.
 
     ### Parameters:
     - request: Model containing attributes to dynamically registering an MCP server.
@@ -70,8 +63,7 @@ async def register_mcp_server_handler(
     - body: Headers that should be passed to MCP servers.
 
     ### Raises:
-    - HTTPException: On duplicate name, Llama Stack connection error, or
-      registration failure.
+    - HTTPException: On duplicate name or registration failure.
 
     ### Returns:
     - MCPServerRegistrationResponse: Details of the newly registered server.
@@ -81,13 +73,8 @@ async def register_mcp_server_handler(
 
     check_configuration_loaded(configuration)
 
-    mcp_server = ModelContextProtocolServer(
-        name=body.name,
-        url=body.url,
-        provider_id=body.provider_id,
-        authorization_headers=body.authorization_headers or {},
-        headers=body.headers or [],
-        timeout=body.timeout,
+    mcp_server = ModelContextProtocolServer.model_validate(
+        body.model_dump(exclude_none=True)
     )
 
     try:
@@ -95,24 +82,6 @@ async def register_mcp_server_handler(
     except ValueError as e:
         response = ConflictResponse(resource="MCP server", resource_id=body.name)
         raise HTTPException(**response.model_dump()) from e
-
-    try:
-        client = AsyncOgxClientHolder().get_client()
-        await client.toolgroups.register(  # pyright: ignore[reportDeprecated]
-            toolgroup_id=mcp_server.name,
-            provider_id=mcp_server.provider_id,
-            mcp_endpoint={"uri": mcp_server.url},
-        )
-    except APIConnectionError as e:
-        configuration.remove_mcp_server(body.name)
-        logger.error("Failed to register MCP server with Llama Stack: %s", e)
-        response = ServiceUnavailableResponse(backend_name="OGX", cause=str(e))
-        raise HTTPException(**response.model_dump()) from e
-    except Exception as e:  # pylint: disable=broad-exception-caught
-        configuration.remove_mcp_server(body.name)
-        logger.error("Failed to register MCP toolgroup: %s", e)
-        error_response = InternalServerErrorResponse.mcp_server_registration_failed()
-        raise HTTPException(**error_response.model_dump()) from e
 
     logger.info("Dynamically registered MCP server: %s at %s", body.name, body.url)
 
@@ -129,7 +98,6 @@ list_responses: dict[int | str, dict[str, Any]] = {
     401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
     500: InternalServerErrorResponse.openapi_response(examples=["configuration"]),
-    503: ServiceUnavailableResponse.openapi_response(examples=["kubernetes api"]),
 }
 
 
@@ -159,17 +127,15 @@ async def list_mcp_servers_handler(
 
     check_configuration_loaded(configuration)
 
-    servers = []
-    for mcp in configuration.mcp_servers:
-        source = "api" if configuration.is_dynamic_mcp_server(mcp.name) else "config"
-        servers.append(
-            MCPServerInfo(
-                name=mcp.name,
-                url=mcp.url,
-                provider_id=mcp.provider_id,
-                source=source,
-            )
+    servers = [
+        MCPServerInfo(
+            name=mcp.name,
+            url=mcp.url,
+            provider_id=mcp.provider_id,
+            source="api" if configuration.is_dynamic_mcp_server(mcp.name) else "config",
         )
+        for mcp in configuration.mcp_servers
+    ]
 
     return MCPServerListResponse(servers=servers)
 
@@ -179,9 +145,6 @@ delete_responses: dict[int | str, dict[str, Any]] = {
     401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
     403: ForbiddenResponse.openapi_response(examples=["endpoint", "mcp server static"]),
     500: InternalServerErrorResponse.openapi_response(examples=["configuration"]),
-    503: ServiceUnavailableResponse.openapi_response(
-        examples=["ogx", "kubernetes api"]
-    ),
 }
 
 
@@ -194,9 +157,9 @@ async def delete_mcp_server_handler(
 ) -> MCPServerDeleteResponse:
     """Unregister a dynamically registered MCP server.
 
-    Removes the MCP server from the runtime configuration and unregisters
-    its toolgroup from Llama Stack. Only servers registered via the API
-    can be deleted; statically configured servers cannot be removed.
+    Removes the MCP server from the runtime configuration. Only servers
+    registered via the API can be deleted; statically configured servers
+    cannot be removed.
 
     ### Parameters:
     - request: The incoming HTTP request (used by middleware).
@@ -204,8 +167,7 @@ async def delete_mcp_server_handler(
     - name: MCP server name
 
     ### Raises:
-    - HTTPException: If the server is not found, is statically configured, or
-      Llama Stack unregistration fails.
+    - HTTPException: If the server is not found or is statically configured.
 
     ### Returns:
     - MCPServerDeleteResponse: Confirmation of the deletion.
@@ -220,20 +182,6 @@ async def delete_mcp_server_handler(
         if name in static_mcp_names:
             response = ForbiddenResponse.mcp_server_static_config(name)
             raise HTTPException(**response.model_dump())
-
-    try:
-        client = AsyncOgxClientHolder().get_client()
-        await client.toolgroups.unregister(  # pyright: ignore[reportDeprecated]
-            toolgroup_id=name
-        )
-    except APIConnectionError as e:
-        logger.error("Failed to connect to Llama Stack: %s", e)
-        svc_response = ServiceUnavailableResponse(
-            backend_name="OGX", cause=str(e)
-        )
-        raise HTTPException(**svc_response.model_dump()) from e
-    except (ToolGroupNotFoundError, NotFoundError):
-        logger.warning("MCP server not found, treating as already deleted.")
 
     try:
         configuration.remove_mcp_server(name)
