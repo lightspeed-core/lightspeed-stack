@@ -316,7 +316,11 @@ async def retrieve_agent_response(
         )
     try:
         agent = build_agent(
-            client, responses_params, configuration.skills, no_tools=no_tools
+            client,
+            responses_params,
+            configuration.skills,
+            shields=configuration.shields,
+            no_tools=no_tools,
         )
         logger.debug("Starting agent non-streaming response processing")
         run_result = await agent.run(cast(str, responses_params.input))
