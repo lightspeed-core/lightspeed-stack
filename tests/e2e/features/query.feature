@@ -157,7 +157,116 @@ Scenario: Check if LLM responds for query request with error for missing query
     """
     Then The status code of the response is 200
 
-  Scenario: Check if query with shields returns 413 when question is too long for model context 
+  @flaky
+  Scenario: Check if LLM responds properly when a valid image attachment is sent
+    When I use "query" to ask question with authorization header
+    """
+    {
+      "query": "Describe this image",
+      "attachments": [
+        {
+          "attachment_type": "image",
+          "content": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC",
+          "content_type": "image/png"
+        }
+      ],
+      "model": "{MODEL}",
+      "provider": "{PROVIDER}",
+      "system_prompt": "You are a helpful assistant"
+    }
+    """
+    Then The status code of the response is 200
+      And The response contains following fragments
+          | Fragments in LLM response |
+          | image                     |
+
+  Scenario: Check if query rejects image attachment with mismatched attachment_type and content_type
+    When I use "query" to ask question with authorization header
+    """
+    {
+      "query": "Describe this image",
+      "attachments": [
+        {
+          "attachment_type": "configuration",
+          "content": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC",
+          "content_type": "image/png"
+        }
+      ],
+      "model": "{MODEL}",
+      "provider": "{PROVIDER}"
+    }
+    """
+    Then The status code of the response is 422
+      And The body of the response contains attachment_type and content_type are inconsistent
+
+  Scenario: Check if query rejects image attachment with valid base64 but non-image data
+    When I use "query" to ask question with authorization header
+    """
+    {
+      "query": "Describe this image",
+      "attachments": [
+        {
+          "attachment_type": "image",
+          "content": "dGhpcyBpcyBub3QgYW4gaW1hZ2UgYXQgYWxs",
+          "content_type": "image/png"
+        }
+      ],
+      "model": "{MODEL}",
+      "provider": "{PROVIDER}"
+    }
+    """
+    Then The status code of the response is 422
+      And The body of the response contains invalid image data
+
+  Scenario: Check if query rejects image attachment with invalid base64 content
+    When I use "query" to ask question with authorization header
+    """
+    {
+      "query": "Describe this image",
+      "attachments": [
+        {
+          "attachment_type": "image",
+          "content": "not-valid-base64!!!",
+          "content_type": "image/png"
+        }
+      ],
+      "model": "{MODEL}",
+      "provider": "{PROVIDER}"
+    }
+    """
+    Then The status code of the response is 422
+      And The body of the response contains Invalid base64 content for image attachment
+
+  @flaky
+  Scenario: Check if LLM responds properly when text and image attachments are sent together
+    When I use "query" to ask question with authorization header
+    """
+    {
+      "query": "Summarize the log and describe the image",
+      "attachments": [
+        {
+          "attachment_type": "log",
+          "content": "error: something went wrong",
+          "content_type": "text/plain"
+        },
+        {
+          "attachment_type": "image",
+          "content": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC",
+          "content_type": "image/png"
+        }
+      ],
+      "model": "{MODEL}",
+      "provider": "{PROVIDER}",
+      "system_prompt": "You are a helpful assistant"
+    }
+    """
+    Then The status code of the response is 200
+      And The response contains following fragments
+          | Fragments in LLM response |
+          | error                     |
+          | image                     |
+
+  Scenario: Check if query with shields returns 413 when question is too long for model context
     When I use "query" to ask question with too-long query and authorization header
     Then The status code of the response is 413
     And The body of the response contains Prompt is too long
