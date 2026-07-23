@@ -126,9 +126,7 @@ def _setup_responses_mock(
     mock_client = mocker.Mock()
     mock_client.responses = mock_responses
 
-    mock_holder_class = mocker.patch(
-        "app.endpoints.rlsapi_v1.AsyncOgxClientHolder"
-    )
+    mock_holder_class = mocker.patch("app.endpoints.rlsapi_v1.AsyncOgxClientHolder")
     mock_holder_class.return_value.get_client.return_value = mock_client
 
     return mock_client
@@ -275,9 +273,7 @@ async def test_rlsapi_v1_infer_connection_error_returns_503(
     mock_client = mocker.Mock()
     mock_client.responses = mock_responses
 
-    mock_holder_class = mocker.patch(
-        "app.endpoints.rlsapi_v1.AsyncOgxClientHolder"
-    )
+    mock_holder_class = mocker.patch("app.endpoints.rlsapi_v1.AsyncOgxClientHolder")
     mock_holder_class.return_value.get_client.return_value = mock_client
 
     with pytest.raises(HTTPException) as exc_info:
@@ -318,9 +314,7 @@ async def test_rlsapi_v1_infer_fallback_response_empty_output(
     mock_client = mocker.Mock()
     mock_client.responses = mock_responses
 
-    mock_holder_class = mocker.patch(
-        "app.endpoints.rlsapi_v1.AsyncOgxClientHolder"
-    )
+    mock_holder_class = mocker.patch("app.endpoints.rlsapi_v1.AsyncOgxClientHolder")
     mock_holder_class.return_value.get_client.return_value = mock_client
 
     response = await infer_endpoint(
@@ -361,9 +355,7 @@ async def test_rlsapi_v1_infer_input_source_combination(
     mock_client = mocker.Mock()
     mock_client.responses = mock_responses
 
-    mock_holder_class = mocker.patch(
-        "app.endpoints.rlsapi_v1.AsyncOgxClientHolder"
-    )
+    mock_holder_class = mocker.patch("app.endpoints.rlsapi_v1.AsyncOgxClientHolder")
     mock_holder_class.return_value.get_client.return_value = mock_client
 
     await infer_endpoint(
@@ -424,9 +416,7 @@ async def test_rlsapi_v1_infer_no_mcp_servers_passes_empty_tools(
     mock_client = mocker.Mock()
     mock_client.responses = mock_responses
 
-    mock_holder_class = mocker.patch(
-        "app.endpoints.rlsapi_v1.AsyncOgxClientHolder"
-    )
+    mock_holder_class = mocker.patch("app.endpoints.rlsapi_v1.AsyncOgxClientHolder")
     mock_holder_class.return_value.get_client.return_value = mock_client
 
     mocker.patch(
@@ -469,9 +459,7 @@ async def test_rlsapi_v1_infer_mcp_tools_passed_to_llm(
     mock_client = mocker.Mock()
     mock_client.responses = mock_responses
 
-    mock_holder_class = mocker.patch(
-        "app.endpoints.rlsapi_v1.AsyncOgxClientHolder"
-    )
+    mock_holder_class = mocker.patch("app.endpoints.rlsapi_v1.AsyncOgxClientHolder")
     mock_holder_class.return_value.get_client.return_value = mock_client
 
     mcp_tools = [
