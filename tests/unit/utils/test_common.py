@@ -3,6 +3,7 @@
 from logging import Logger
 
 import pytest
+from llama_stack_client import APIConnectionError
 from pydantic import AnyHttpUrl
 from pytest_mock import MockerFixture
 
@@ -14,6 +15,7 @@ from models.config import (
     UserDataCollection,
 )
 from utils.common import (
+    _register_mcp_toolgroups_async,
     register_mcp_servers_async,
 )
 
@@ -412,3 +414,199 @@ async def test_register_mcp_servers_async_with_library_client(
         provider_id="model-context-protocol",
         mcp_endpoint={"uri": "http://localhost:8080"},
     )
+
+
+@pytest.mark.asyncio
+async def test_register_mcp_toolgroups_retries_on_connection_error(
+    mocker: MockerFixture,
+) -> None:
+    """Test that _register_mcp_toolgroups_async retries on APIConnectionError."""
+    mock_client = mocker.AsyncMock()
+    mock_logger = mocker.Mock(spec=Logger)
+    mock_sleep = mocker.patch("utils.common.asyncio.sleep")
+
+    mock_tool = mocker.Mock()
+    mock_tool.provider_resource_id = "existing-server"
+
+    mock_client.toolgroups.list.side_effect = [
+        APIConnectionError(request=mocker.MagicMock()),
+        APIConnectionError(request=mocker.MagicMock()),
+        [mock_tool],
+    ]
+
+    mcp_servers = [
+        ModelContextProtocolServer(
+            name="new-server",
+            url="http://localhost:8080",
+        ),  # pyright: ignore[reportCallIssue]
+    ]
+
+    await _register_mcp_toolgroups_async(
+        mock_client, mcp_servers, mock_logger, max_retries=5, retry_delay=1
+    )
+
+    assert mock_client.toolgroups.list.call_count == 3
+    assert mock_sleep.call_count == 2
+    mock_sleep.assert_called_with(1)
+    assert mock_logger.warning.call_count == 2
+
+
+@pytest.mark.asyncio
+async def test_register_mcp_toolgroups_raises_after_max_retries(
+    mocker: MockerFixture,
+) -> None:
+    """Test that _register_mcp_toolgroups_async raises after all retries are exhausted."""
+    mock_client = mocker.AsyncMock()
+    mock_logger = mocker.Mock(spec=Logger)
+    mock_sleep = mocker.patch("utils.common.asyncio.sleep")
+
+    mock_client.toolgroups.list.side_effect = APIConnectionError(
+        request=mocker.MagicMock()
+    )
+
+    mcp_servers = [
+        ModelContextProtocolServer(
+            name="new-server",
+            url="http://localhost:8080",
+        ),  # pyright: ignore[reportCallIssue]
+    ]
+
+    with pytest.raises(APIConnectionError):
+        await _register_mcp_toolgroups_async(
+            mock_client, mcp_servers, mock_logger, max_retries=3, retry_delay=1
+        )
+
+    assert mock_client.toolgroups.list.call_count == 3
+    assert mock_sleep.call_count == 2
+
+
+@pytest.mark.asyncio
+async def test_register_mcp_toolgroups_retries_on_register_error(
+    mocker: MockerFixture,
+) -> None:
+    """Test retry when register() raises APIConnectionError."""
+    mock_client = mocker.AsyncMock()
+    mock_logger = mocker.Mock(spec=Logger)
+    mock_sleep = mocker.patch("utils.common.asyncio.sleep")
+
+    mock_client.toolgroups.list.return_value = []
+    mock_client.toolgroups.register.side_effect = [
+        APIConnectionError(request=mocker.MagicMock()),
+        None,
+    ]
+
+    mcp_servers = [
+        ModelContextProtocolServer(
+            name="new-server",
+            url="http://localhost:8080",
+        ),  # pyright: ignore[reportCallIssue]
+    ]
+
+    await _register_mcp_toolgroups_async(
+        mock_client, mcp_servers, mock_logger, max_retries=3, retry_delay=1
+    )
+
+    assert mock_client.toolgroups.list.call_count == 2
+    assert mock_client.toolgroups.register.call_count == 2
+    assert mock_sleep.call_count == 1
+    mock_sleep.assert_called_with(1)
+
+
+@pytest.mark.asyncio
+async def test_register_mcp_toolgroups_single_attempt_success(
+    mocker: MockerFixture,
+) -> None:
+    """Test max_retries=1 with successful first attempt."""
+    mock_client = mocker.AsyncMock()
+    mock_logger = mocker.Mock(spec=Logger)
+    mock_sleep = mocker.patch("utils.common.asyncio.sleep")
+
+    mock_client.toolgroups.list.return_value = []
+    mock_client.toolgroups.register.return_value = None
+
+    mcp_servers = [
+        ModelContextProtocolServer(
+            name="new-server",
+            url="http://localhost:8080",
+        ),  # pyright: ignore[reportCallIssue]
+    ]
+
+    await _register_mcp_toolgroups_async(
+        mock_client, mcp_servers, mock_logger, max_retries=1, retry_delay=1
+    )
+
+    mock_client.toolgroups.list.assert_called_once()
+    mock_client.toolgroups.register.assert_called_once()
+    mock_sleep.assert_not_called()
+    mock_logger.warning.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_register_mcp_toolgroups_single_attempt_failure(
+    mocker: MockerFixture,
+) -> None:
+    """Test max_retries=1 raises immediately without sleeping."""
+    mock_client = mocker.AsyncMock()
+    mock_logger = mocker.Mock(spec=Logger)
+    mock_sleep = mocker.patch("utils.common.asyncio.sleep")
+
+    mock_client.toolgroups.list.side_effect = APIConnectionError(
+        request=mocker.MagicMock()
+    )
+
+    mcp_servers = [
+        ModelContextProtocolServer(
+            name="new-server",
+            url="http://localhost:8080",
+        ),  # pyright: ignore[reportCallIssue]
+    ]
+
+    with pytest.raises(APIConnectionError):
+        await _register_mcp_toolgroups_async(
+            mock_client, mcp_servers, mock_logger, max_retries=1, retry_delay=1
+        )
+
+    mock_client.toolgroups.list.assert_called_once()
+    mock_sleep.assert_not_called()
+    mock_logger.warning.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_register_mcp_toolgroups_non_connection_error_propagates(
+    mocker: MockerFixture,
+) -> None:
+    """Test that non-APIConnectionError exceptions propagate without retry."""
+    mock_client = mocker.AsyncMock()
+    mock_logger = mocker.Mock(spec=Logger)
+    mock_sleep = mocker.patch("utils.common.asyncio.sleep")
+
+    mock_client.toolgroups.list.side_effect = RuntimeError("unexpected")
+
+    mcp_servers = [
+        ModelContextProtocolServer(
+            name="new-server",
+            url="http://localhost:8080",
+        ),  # pyright: ignore[reportCallIssue]
+    ]
+
+    with pytest.raises(RuntimeError, match="unexpected"):
+        await _register_mcp_toolgroups_async(
+            mock_client, mcp_servers, mock_logger, max_retries=5, retry_delay=1
+        )
+
+    mock_client.toolgroups.list.assert_called_once()
+    mock_sleep.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_register_mcp_toolgroups_invalid_max_retries(
+    mocker: MockerFixture,
+) -> None:
+    """Test that max_retries < 1 raises ValueError."""
+    mock_client = mocker.AsyncMock()
+    mock_logger = mocker.Mock(spec=Logger)
+
+    with pytest.raises(ValueError, match="max_retries must be >= 1"):
+        await _register_mcp_toolgroups_async(
+            mock_client, [], mock_logger, max_retries=0
+        )

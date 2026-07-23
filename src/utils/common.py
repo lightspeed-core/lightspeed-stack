@@ -7,9 +7,10 @@ from logging import Logger
 from typing import Any, cast
 
 from llama_stack.core.library_client import AsyncLlamaStackAsLibraryClient
-from llama_stack_client import AsyncLlamaStackClient
+from llama_stack_client import APIConnectionError, AsyncLlamaStackClient
 
 from client import AsyncLlamaStackClientHolder
+from constants import DEFAULT_MAX_RETRIES, DEFAULT_RETRY_DELAY
 from models.config import Configuration, ModelContextProtocolServer
 
 
@@ -48,17 +49,31 @@ async def register_mcp_servers_async(
             AsyncLlamaStackAsLibraryClient, AsyncLlamaStackClientHolder().get_client()
         )
         await client.initialize()
-        await _register_mcp_toolgroups_async(client, configuration.mcp_servers, logger)
+        await _register_mcp_toolgroups_async(
+            client,
+            configuration.mcp_servers,
+            logger,
+            max_retries=configuration.llama_stack.max_retries,
+            retry_delay=configuration.llama_stack.retry_delay,
+        )
     else:
         # Service client - also use async interface
         client = AsyncLlamaStackClientHolder().get_client()
-        await _register_mcp_toolgroups_async(client, configuration.mcp_servers, logger)
+        await _register_mcp_toolgroups_async(
+            client,
+            configuration.mcp_servers,
+            logger,
+            max_retries=configuration.llama_stack.max_retries,
+            retry_delay=configuration.llama_stack.retry_delay,
+        )
 
 
 async def _register_mcp_toolgroups_async(
     client: AsyncLlamaStackClient,
     mcp_servers: list[ModelContextProtocolServer],
     logger: Logger,
+    max_retries: int = DEFAULT_MAX_RETRIES,
+    retry_delay: int = DEFAULT_RETRY_DELAY,
 ) -> None:
     """
     Register MCP (Model Context Protocol) toolgroups with a LlamaStack async client.
@@ -69,9 +84,9 @@ async def _register_mcp_toolgroups_async(
     `toolgroup_id`=`mcp.name`, `provider_id`=`mcp.provider_id`, and
     `mcp_endpoint` containing the server `url`.
 
-    This function performs network calls against the provided async client and does not
-    catch exceptions raised by those calls — any exceptions from the client (e.g., RPC
-    or HTTP errors) will propagate to the caller.
+    This function performs network calls against the provided async client and retries
+    on ``APIConnectionError`` up to ``max_retries`` times with a fixed ``retry_delay``
+    between attempts. All other exceptions propagate immediately.
 
     Parameters:
     ----------
@@ -81,27 +96,45 @@ async def _register_mcp_toolgroups_async(
                                                         to ensure are registered.
         logger (Logger): Logger used for debug messages about registration
                          progress.
+        max_retries (int): Maximum number of connection attempts before giving up.
+        retry_delay (int): Delay in seconds between retry attempts.
+
+    Raises:
+    ------
+        APIConnectionError: If the client is unreachable after all retries.
     """
-    # Get registered tools
-    registered_toolgroups = await client.toolgroups.list()
-    registered_toolgroups_ids = [
-        tool_group.provider_resource_id for tool_group in registered_toolgroups
-    ]
-    logger.debug("Registered toolgroups: %s", registered_toolgroups_ids)
+    if max_retries < 1:
+        raise ValueError("max_retries must be >= 1")
 
-    # Register toolgroups for MCP servers if not already registered
-    for mcp in mcp_servers:
-        if mcp.name not in registered_toolgroups_ids:
-            logger.debug("Registering MCP server: %s, %s", mcp.name, mcp.url)
+    for attempt in range(max_retries):
+        try:
+            registered_toolgroups = await client.toolgroups.list()
+            registered_toolgroups_ids = [
+                tool_group.provider_resource_id for tool_group in registered_toolgroups
+            ]
+            logger.debug("Registered toolgroups: %s", registered_toolgroups_ids)
 
-            registration_params = {
-                "toolgroup_id": mcp.name,
-                "provider_id": mcp.provider_id,
-                "mcp_endpoint": {"uri": mcp.url},
-            }
-
-            await client.toolgroups.register(**registration_params)
-            logger.debug("MCP server %s registered successfully", mcp.name)
+            for mcp in mcp_servers:
+                if mcp.name not in registered_toolgroups_ids:
+                    logger.debug("Registering MCP server: %s, %s", mcp.name, mcp.url)
+                    registration_params = {
+                        "toolgroup_id": mcp.name,
+                        "provider_id": mcp.provider_id,
+                        "mcp_endpoint": {"uri": mcp.url},
+                    }
+                    await client.toolgroups.register(**registration_params)
+                    logger.debug("MCP server %s registered successfully", mcp.name)
+            return
+        except APIConnectionError:
+            if attempt == max_retries - 1:
+                raise
+            logger.warning(
+                "MCP server registration failed (attempt %d/%d), retrying in %ds...",
+                attempt + 1,
+                max_retries,
+                retry_delay,
+            )
+            await asyncio.sleep(retry_delay)
 
 
 def run_once_async(func: Callable[..., Any]) -> Callable[..., Any]:
