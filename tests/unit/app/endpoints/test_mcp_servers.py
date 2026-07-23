@@ -7,7 +7,6 @@ from typing import Any
 
 import pytest
 from fastapi import HTTPException, status
-from ogx_client import APIConnectionError, NotFoundError
 from pydantic import AnyHttpUrl, SecretStr
 from pytest_mock import MockerFixture
 
@@ -35,7 +34,7 @@ MOCK_AUTH: AuthTuple = ("mock_user_id", "mock_username", False, "mock_token")
 
 @pytest.fixture
 def mock_configuration() -> Configuration:
-    """Create a mock configuration with MCP servers."""
+    """Create a mock configuration with one static MCP server."""
     return Configuration(
         name="test",
         service=ServiceConfiguration(
@@ -95,126 +94,59 @@ def _make_app_config(mocker: MockerFixture, config: Configuration) -> AppConfig:
     return app_config
 
 
-def _mock_client(mocker: MockerFixture) -> Any:
-    """Create and patch a mock Llama Stack client."""
-    mock_holder = mocker.patch("app.endpoints.mcp_servers.AsyncOgxClientHolder")
-    mock_client = mocker.AsyncMock()
-    mock_holder.return_value.get_client.return_value = mock_client
-    return mock_client
-
-
 @pytest.mark.asyncio
 async def test_register_mcp_server_success(
     mocker: MockerFixture,
     mock_configuration: Configuration,
 ) -> None:
-    """Test successful MCP server registration."""
+    """Register a dynamic MCP server in local configuration only."""
     app_config = _make_app_config(mocker, mock_configuration)
-    client = _mock_client(mocker)
-    client.toolgroups.register.return_value = None
 
     body = MCPServerRegistrationRequest(
         name="new-mcp-server",
-        url="http://localhost:8888/mcp",
-        provider_id="MCP provider ID",
+        url="http://localhost:4000",
+        provider_id="model-context-protocol",
+    )
+    request = mocker.Mock()
+
+    response = await mcp_servers.register_mcp_server_handler(
+        request=request,
+        body=body,
+        auth=MOCK_AUTH,
     )
 
-    result = await mcp_servers.register_mcp_server_handler(
-        request=mocker.Mock(), body=body, auth=MOCK_AUTH
-    )
-
-    assert isinstance(result, MCPServerRegistrationResponse)
-    assert result.name == "new-mcp-server"
-    assert result.url == "http://localhost:8888/mcp"
-    assert result.provider_id == "MCP provider ID"
-    assert "registered successfully" in result.message
-
-    client.toolgroups.register.assert_called_once_with(
-        toolgroup_id="new-mcp-server",
-        provider_id="MCP provider ID",
-        mcp_endpoint={"uri": "http://localhost:8888/mcp"},
-    )
-
+    assert isinstance(response, MCPServerRegistrationResponse)
+    assert response.name == "new-mcp-server"
+    assert response.url == "http://localhost:4000"
+    assert response.provider_id == "model-context-protocol"
+    assert "registered successfully" in response.message
     assert app_config.is_dynamic_mcp_server("new-mcp-server")
-    assert any(s.name == "new-mcp-server" for s in app_config.mcp_servers)
+    assert any(server.name == "new-mcp-server" for server in app_config.mcp_servers)
 
 
 @pytest.mark.asyncio
-async def test_register_mcp_server_duplicate_name(
+async def test_register_mcp_server_conflict(
     mocker: MockerFixture,
     mock_configuration: Configuration,
 ) -> None:
-    """Test registration fails when name already exists."""
+    """Return 409 when the MCP server name already exists."""
     _make_app_config(mocker, mock_configuration)
-    _mock_client(mocker)
 
     body = MCPServerRegistrationRequest(
         name="static-mcp",
-        url="http://localhost:9999/mcp",
-        provider_id="MCP provider ID",
+        url="http://localhost:4000",
+        provider_id="model-context-protocol",
     )
+    request = mocker.Mock()
 
     with pytest.raises(HTTPException) as exc_info:
         await mcp_servers.register_mcp_server_handler(
-            request=mocker.Mock(), body=body, auth=MOCK_AUTH
+            request=request,
+            body=body,
+            auth=MOCK_AUTH,
         )
-    assert exc_info.value.status_code == 409
 
-
-@pytest.mark.asyncio
-async def test_register_mcp_server_llama_stack_failure(
-    mocker: MockerFixture,
-    mock_configuration: Configuration,
-) -> None:
-    """Test registration rolls back on Llama Stack connection failure."""
-    app_config = _make_app_config(mocker, mock_configuration)
-    client = _mock_client(mocker)
-    client.toolgroups.register.side_effect = APIConnectionError(request=mocker.Mock())
-
-    body = MCPServerRegistrationRequest(
-        name="failing-server",
-        url="http://localhost:8888/mcp",
-        provider_id="MCP provider ID",
-    )
-
-    with pytest.raises(HTTPException) as exc_info:
-        await mcp_servers.register_mcp_server_handler(
-            request=mocker.Mock(), body=body, auth=MOCK_AUTH
-        )
-    assert exc_info.value.status_code == 503
-
-    assert not app_config.is_dynamic_mcp_server("failing-server")
-    assert not any(s.name == "failing-server" for s in app_config.mcp_servers)
-
-
-@pytest.mark.asyncio
-async def test_register_mcp_server_toolgroup_failure_returns_500(
-    mocker: MockerFixture,
-    mock_configuration: Configuration,
-) -> None:
-    """Registration returns generic 500 without leaking toolgroup exception text."""
-    app_config = _make_app_config(mocker, mock_configuration)
-    client = _mock_client(mocker)
-    client.toolgroups.register.side_effect = RuntimeError("upstream secret detail")
-
-    body = MCPServerRegistrationRequest(
-        name="boom-server",
-        url="http://localhost:8888/mcp",
-        provider_id="MCP provider ID",
-    )
-
-    with pytest.raises(HTTPException) as exc_info:
-        await mcp_servers.register_mcp_server_handler(
-            request=mocker.Mock(), body=body, auth=MOCK_AUTH
-        )
-    assert exc_info.value.status_code == 500
-    raw_detail = exc_info.value.detail
-    assert isinstance(raw_detail, dict)
-    detail: dict[str, Any] = raw_detail
-    assert detail["response"] == "Failed to register MCP server"
-
-    assert not app_config.is_dynamic_mcp_server("boom-server")
-    assert not any(s.name == "boom-server" for s in app_config.mcp_servers)
+    assert exc_info.value.status_code == status.HTTP_409_CONFLICT
 
 
 @pytest.mark.asyncio
@@ -224,8 +156,6 @@ async def test_register_mcp_server_with_all_fields(
 ) -> None:
     """Test registration with all optional fields provided."""
     _make_app_config(mocker, mock_configuration)
-    client = _mock_client(mocker)
-    client.toolgroups.register.return_value = None
 
     body = MCPServerRegistrationRequest(
         name="full-mcp-server",
@@ -245,11 +175,38 @@ async def test_register_mcp_server_with_all_fields(
 
 
 @pytest.mark.asyncio
+async def test_list_mcp_servers(
+    mocker: MockerFixture,
+    mock_configuration: Configuration,
+) -> None:
+    """List MCP servers from local configuration."""
+    app_config = _make_app_config(mocker, mock_configuration)
+    app_config.add_mcp_server(
+        ModelContextProtocolServer(
+            name="dynamic-mcp",
+            provider_id="model-context-protocol",
+            url="http://localhost:4001",
+        )
+    )
+
+    request = mocker.Mock()
+    response = await mcp_servers.list_mcp_servers_handler(
+        request=request,
+        auth=MOCK_AUTH,
+    )
+
+    assert isinstance(response, MCPServerListResponse)
+    sources = {server.name: server.source for server in response.servers}
+    assert sources["static-mcp"] == "config"
+    assert sources["dynamic-mcp"] == "api"
+
+
+@pytest.mark.asyncio
 async def test_list_mcp_servers_empty(
     mocker: MockerFixture,
     mock_configuration: Configuration,
 ) -> None:
-    """Test listing servers returns static servers."""
+    """Test listing servers returns static servers only."""
     _make_app_config(mocker, mock_configuration)
 
     result = await mcp_servers.list_mcp_servers_handler(
@@ -263,84 +220,52 @@ async def test_list_mcp_servers_empty(
 
 
 @pytest.mark.asyncio
-async def test_list_mcp_servers_with_dynamic(
+async def test_delete_mcp_server_static_forbidden(
     mocker: MockerFixture,
     mock_configuration: Configuration,
 ) -> None:
-    """Test listing shows both static and dynamic servers."""
+    """Reject deletion of statically configured MCP servers."""
     _make_app_config(mocker, mock_configuration)
-    client = _mock_client(mocker)
-    client.toolgroups.register.return_value = None
-
-    body = MCPServerRegistrationRequest(
-        name="dynamic-server",
-        url="http://localhost:9999/mcp",
-        provider_id="MCP provider ID",
-    )
-    await mcp_servers.register_mcp_server_handler(
-        request=mocker.Mock(), body=body, auth=MOCK_AUTH
-    )
-
-    result = await mcp_servers.list_mcp_servers_handler(
-        request=mocker.Mock(), auth=MOCK_AUTH
-    )
-
-    assert len(result.servers) == 2
-    sources = {s.name: s.source for s in result.servers}
-    assert sources["static-mcp"] == "config"
-    assert sources["dynamic-server"] == "api"
-
-
-@pytest.mark.asyncio
-async def test_delete_dynamic_mcp_server_success(
-    mocker: MockerFixture,
-    mock_configuration: Configuration,
-) -> None:
-    """Test successful deletion of a dynamically registered server."""
-    app_config = _make_app_config(mocker, mock_configuration)
-    client = _mock_client(mocker)
-    client.toolgroups.register.return_value = None
-    client.toolgroups.unregister.return_value = None
-
-    body = MCPServerRegistrationRequest(
-        name="to-delete",
-        url="http://localhost:7777/mcp",
-        provider_id="MCP provider ID",
-    )
-    await mcp_servers.register_mcp_server_handler(
-        request=mocker.Mock(), body=body, auth=MOCK_AUTH
-    )
-    assert app_config.is_dynamic_mcp_server("to-delete")
-
-    result = await mcp_servers.delete_mcp_server_handler(
-        request=mocker.Mock(), name="to-delete", auth=MOCK_AUTH
-    )
-
-    assert isinstance(result, MCPServerDeleteResponse)
-    assert result.name == "to-delete"
-    assert result.deleted is True
-    assert result.response == "MCP server deleted successfully"
-
-    assert not app_config.is_dynamic_mcp_server("to-delete")
-    assert not any(s.name == "to-delete" for s in app_config.mcp_servers)
-
-    client.toolgroups.unregister.assert_called_once_with(toolgroup_id="to-delete")
-
-
-@pytest.mark.asyncio
-async def test_delete_static_mcp_server_forbidden(
-    mocker: MockerFixture,
-    mock_configuration: Configuration,
-) -> None:
-    """Test that deleting a statically configured server is forbidden."""
-    _make_app_config(mocker, mock_configuration)
-    _mock_client(mocker)
+    request = mocker.Mock()
 
     with pytest.raises(HTTPException) as exc_info:
         await mcp_servers.delete_mcp_server_handler(
-            request=mocker.Mock(), name="static-mcp", auth=MOCK_AUTH
+            request=request,
+            name="static-mcp",
+            auth=MOCK_AUTH,
         )
-    assert exc_info.value.status_code == 403
+
+    assert exc_info.value.status_code == status.HTTP_403_FORBIDDEN
+
+
+@pytest.mark.asyncio
+async def test_delete_mcp_server_dynamic_success(
+    mocker: MockerFixture,
+    mock_configuration: Configuration,
+) -> None:
+    """Delete a dynamic MCP server from local configuration only."""
+    app_config = _make_app_config(mocker, mock_configuration)
+    app_config.add_mcp_server(
+        ModelContextProtocolServer(
+            name="dynamic-mcp",
+            provider_id="model-context-protocol",
+            url="http://localhost:4001",
+        )
+    )
+
+    request = mocker.Mock()
+    response = await mcp_servers.delete_mcp_server_handler(
+        request=request,
+        name="dynamic-mcp",
+        auth=MOCK_AUTH,
+    )
+
+    assert isinstance(response, MCPServerDeleteResponse)
+    assert response.deleted is True
+    assert response.name == "dynamic-mcp"
+    assert response.response == "MCP server deleted successfully"
+    assert not app_config.is_dynamic_mcp_server("dynamic-mcp")
+    assert not any(server.name == "dynamic-mcp" for server in app_config.mcp_servers)
 
 
 @pytest.mark.asyncio
@@ -350,7 +275,6 @@ async def test_delete_nonexistent_mcp_server(
 ) -> None:
     """Deleting an unknown name returns 200 with deleted=False (idempotent delete)."""
     _make_app_config(mocker, mock_configuration)
-    client = _mock_client(mocker)
 
     result = await mcp_servers.delete_mcp_server_handler(
         request=mocker.Mock(), name="no-such-server", auth=MOCK_AUTH
@@ -360,70 +284,6 @@ async def test_delete_nonexistent_mcp_server(
     assert result.name == "no-such-server"
     assert result.deleted is False
     assert result.response == "MCP server not found"
-    client.toolgroups.unregister.assert_called_once_with(toolgroup_id="no-such-server")
-
-
-@pytest.mark.asyncio
-async def test_delete_mcp_server_llama_stack_failure(
-    mocker: MockerFixture,
-    mock_configuration: Configuration,
-) -> None:
-    """Test deletion handles Llama Stack connection failure gracefully."""
-    _make_app_config(mocker, mock_configuration)
-    client = _mock_client(mocker)
-    client.toolgroups.register.return_value = None
-    client.toolgroups.unregister.side_effect = APIConnectionError(request=mocker.Mock())
-
-    body = MCPServerRegistrationRequest(
-        name="to-delete-fail",
-        url="http://localhost:7777/mcp",
-        provider_id="MCP provider ID",
-    )
-    await mcp_servers.register_mcp_server_handler(
-        request=mocker.Mock(), body=body, auth=MOCK_AUTH
-    )
-
-    with pytest.raises(HTTPException) as exc_info:
-        await mcp_servers.delete_mcp_server_handler(
-            request=mocker.Mock(), name="to-delete-fail", auth=MOCK_AUTH
-        )
-    assert exc_info.value.status_code == 503
-
-
-@pytest.mark.asyncio
-async def test_delete_mcp_server_toolgroup_not_found_is_idempotent(
-    mocker: MockerFixture,
-    mock_configuration: Configuration,
-) -> None:
-    """Deleting a dynamic server succeeds when Llama Stack toolgroup is already gone."""
-    app_config = _make_app_config(mocker, mock_configuration)
-    client = _mock_client(mocker)
-    client.toolgroups.register.return_value = None
-    client.toolgroups.unregister.side_effect = NotFoundError(
-        message="Toolgroup not found",
-        response=mocker.Mock(request=None),
-        body=None,
-    )
-
-    body = MCPServerRegistrationRequest(
-        name="orphan-server",
-        url="http://localhost:7777/mcp",
-        provider_id="MCP provider ID",
-    )
-    await mcp_servers.register_mcp_server_handler(
-        request=mocker.Mock(), body=body, auth=MOCK_AUTH
-    )
-    assert app_config.is_dynamic_mcp_server("orphan-server")
-
-    result = await mcp_servers.delete_mcp_server_handler(
-        request=mocker.Mock(), name="orphan-server", auth=MOCK_AUTH
-    )
-
-    assert isinstance(result, MCPServerDeleteResponse)
-    assert result.name == "orphan-server"
-    assert result.deleted is True
-    assert not app_config.is_dynamic_mcp_server("orphan-server")
-    assert not any(s.name == "orphan-server" for s in app_config.mcp_servers)
 
 
 @pytest.mark.asyncio
@@ -446,6 +306,39 @@ async def test_list_mcp_servers_configuration_not_loaded(
     assert isinstance(raw_detail, dict)
     detail: dict[str, Any] = raw_detail
     assert detail["response"] == "Configuration is not loaded"
+
+
+@pytest.mark.asyncio
+async def test_register_and_delete_roundtrip(
+    mocker: MockerFixture,
+    mock_configuration: Configuration,
+) -> None:
+    """Test full register -> list -> delete -> list cycle."""
+    _make_app_config(mocker, mock_configuration)
+
+    body = MCPServerRegistrationRequest(
+        name="roundtrip-server",
+        url="http://localhost:5555/mcp",
+        provider_id="MCP provider ID",
+    )
+    await mcp_servers.register_mcp_server_handler(
+        request=mocker.Mock(), body=body, auth=MOCK_AUTH
+    )
+
+    list_result = await mcp_servers.list_mcp_servers_handler(
+        request=mocker.Mock(), auth=MOCK_AUTH
+    )
+    assert len(list_result.servers) == 2
+
+    await mcp_servers.delete_mcp_server_handler(
+        request=mocker.Mock(), name="roundtrip-server", auth=MOCK_AUTH
+    )
+
+    list_result = await mcp_servers.list_mcp_servers_handler(
+        request=mocker.Mock(), auth=MOCK_AUTH
+    )
+    assert len(list_result.servers) == 1
+    assert list_result.servers[0].name == "static-mcp"
 
 
 def test_mcp_server_registration_request_validation() -> None:
@@ -504,39 +397,3 @@ def test_mcp_server_registration_rejects_arbitrary_value() -> None:
             authorization_headers={"Authorization": "Bearer my-static-token"},
             provider_id="MCP provider ID",
         )
-
-
-@pytest.mark.asyncio
-async def test_register_and_delete_roundtrip(
-    mocker: MockerFixture,
-    mock_configuration: Configuration,
-) -> None:
-    """Test full register -> list -> delete -> list cycle."""
-    _make_app_config(mocker, mock_configuration)
-    client = _mock_client(mocker)
-    client.toolgroups.register.return_value = None
-    client.toolgroups.unregister.return_value = None
-
-    body = MCPServerRegistrationRequest(
-        name="roundtrip-server",
-        url="http://localhost:5555/mcp",
-        provider_id="MCP provider ID",
-    )
-    await mcp_servers.register_mcp_server_handler(
-        request=mocker.Mock(), body=body, auth=MOCK_AUTH
-    )
-
-    list_result = await mcp_servers.list_mcp_servers_handler(
-        request=mocker.Mock(), auth=MOCK_AUTH
-    )
-    assert len(list_result.servers) == 2
-
-    await mcp_servers.delete_mcp_server_handler(
-        request=mocker.Mock(), name="roundtrip-server", auth=MOCK_AUTH
-    )
-
-    list_result = await mcp_servers.list_mcp_servers_handler(
-        request=mocker.Mock(), auth=MOCK_AUTH
-    )
-    assert len(list_result.servers) == 1
-    assert list_result.servers[0].name == "static-mcp"
