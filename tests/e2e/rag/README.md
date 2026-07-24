@@ -2,6 +2,22 @@
 
 This directory holds committed BYOK vector stores used by the e2e suite.
 
+## OGX 1.0 KV key namespace
+
+OGX 1.0 FAISS persistence uses
+`persistence.namespace: vector_io::faiss` (see `run-ci.yaml` and LCS BYOK
+enrichment). SQLite KV keys are therefore stored as:
+
+```text
+vector_io::faiss:vector_stores:v3::<vector_store_id>
+vector_io::faiss:faiss_index:v3::<vector_store_id>
+…
+```
+
+Fixtures committed here must use that prefix. Pre-1.0 un-namespaced keys
+(`vector_stores:v3::…`) are invisible to OGX 1.0 and yield empty search
+results even when file_search / `vector_io.query` run successfully.
+
 ## `kv_store.db`
 
 Faiss BYOK store used by `faiss.feature` and `inline_rag.feature` (the
