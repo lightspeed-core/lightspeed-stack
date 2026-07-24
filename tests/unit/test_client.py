@@ -10,6 +10,8 @@ from typing import Any
 import pytest
 from fastapi import HTTPException
 from ogx_client import APIConnectionError, APIStatusError
+from ogx_client.types import ListModelsResponse
+from ogx_client.types.model import Model
 from pydantic import AnyHttpUrl, SecretStr
 from pytest_mock import MockerFixture
 
@@ -222,11 +224,16 @@ class TestCheckModelAvailable:
         holder._lsc = mock_client
         return holder, mock_client
 
-    def _make_model(self, mocker: MockerFixture, model_id: str) -> Any:
-        """Create a mock model with the given ID."""
-        model = mocker.Mock()
-        model.id = model_id
-        return model
+    def _make_model(self, mocker: MockerFixture, model_id: str) -> Model:
+        """Create an OGX Model with the given ID."""
+        _ = mocker
+        return Model.model_construct(
+            id=model_id,
+            created=0,
+            owned_by="test",
+            object="model",
+            custom_metadata={},
+        )
 
     @pytest.mark.asyncio
     async def test_model_available(
@@ -236,9 +243,9 @@ class TestCheckModelAvailable:
     ) -> None:
         """Test returns True when the model is found in the registry."""
         holder, mock_client = holder_with_mock_client
-        mock_client.models.list.return_value = [
-            self._make_model(mocker, self.EXPECTED_MODEL_ID)
-        ]
+        mock_client.models.list.return_value = ListModelsResponse.model_construct(
+            data=[self._make_model(mocker, self.EXPECTED_MODEL_ID)]
+        )
 
         available, reason = await holder.check_model_available(self.EXPECTED_MODEL_ID)
 
@@ -253,7 +260,9 @@ class TestCheckModelAvailable:
     ) -> None:
         """Test returns False and skips reload for non-library (service) clients."""
         holder, mock_client = holder_with_mock_client
-        mock_client.models.list.return_value = [self._make_model(mocker, "other/model")]
+        mock_client.models.list.return_value = ListModelsResponse.model_construct(
+            data=[self._make_model(mocker, "other/model")]
+        )
 
         available, reason = await holder.check_model_available(self.EXPECTED_MODEL_ID)
 
@@ -322,7 +331,10 @@ class TestCheckModelAvailable:
 
         wrong_model = self._make_model(mocker, "other/model")
         correct_model = self._make_model(mocker, self.EXPECTED_MODEL_ID)
-        mock_client.models.list.side_effect = [[wrong_model], [correct_model]]
+        mock_client.models.list.side_effect = [
+            ListModelsResponse.model_construct(data=[wrong_model]),
+            ListModelsResponse.model_construct(data=[correct_model]),
+        ]
 
         available, reason = await holder.check_model_available(self.EXPECTED_MODEL_ID)
 
@@ -347,7 +359,9 @@ class TestCheckModelAvailable:
         holder.reload_library_client = mocker.AsyncMock(
             side_effect=RuntimeError("Cannot reload: config path not set")
         )
-        mock_client.models.list.return_value = [self._make_model(mocker, "other/model")]
+        mock_client.models.list.return_value = ListModelsResponse.model_construct(
+            data=[self._make_model(mocker, "other/model")]
+        )
 
         available, reason = await holder.check_model_available(self.EXPECTED_MODEL_ID)
 
@@ -371,7 +385,9 @@ class TestCheckModelAvailable:
         holder.reload_library_client = mocker.AsyncMock(
             side_effect=HTTPException(status_code=503, detail="Llama Stack unavailable")
         )
-        mock_client.models.list.return_value = [self._make_model(mocker, "other/model")]
+        mock_client.models.list.return_value = ListModelsResponse.model_construct(
+            data=[self._make_model(mocker, "other/model")]
+        )
 
         available, reason = await holder.check_model_available(self.EXPECTED_MODEL_ID)
 

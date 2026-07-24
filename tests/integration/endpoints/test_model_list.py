@@ -7,6 +7,8 @@ import pytest
 from fastapi import Request
 from fastapi.exceptions import HTTPException
 from ogx_client import APIConnectionError
+from ogx_client.types import ListModelsResponse
+from ogx_client.types.model import Model
 from pytest_mock import AsyncMockType, MockerFixture
 
 from app.endpoints.models import models_endpoint_handler
@@ -38,19 +40,30 @@ def mock_ogx_client_fixture(
     mock_client = mocker.AsyncMock()
 
     # Mock models list (required for model selection)
-    mock_model1 = mocker.MagicMock()
-    mock_model1.id = "test-provider/test-model-1"
-    mock_model1.custom_metadata = {
-        "provider_id": "test-provider",
-        "model_type": "llm",
-    }
-    mock_model2 = mocker.MagicMock()
-    mock_model2.id = "test-provider/test-model-2"
-    mock_model2.custom_metadata = {
-        "provider_id": "test-provider",
-        "model_type": "embedding",
-    }
-    mock_client.models.list.return_value = [mock_model1, mock_model2]
+    mock_client.models.list.return_value = ListModelsResponse.model_construct(
+        data=[
+            Model.model_construct(
+                id="test-provider/test-model-1",
+                created=0,
+                owned_by="test",
+                object="model",
+                custom_metadata={
+                    "provider_id": "test-provider",
+                    "model_type": "llm",
+                },
+            ),
+            Model.model_construct(
+                id="test-provider/test-model-2",
+                created=0,
+                owned_by="test",
+                object="model",
+                custom_metadata={
+                    "provider_id": "test-provider",
+                    "model_type": "embedding",
+                },
+            ),
+        ]
+    )
 
     # Create a mock holder instance
     mock_holder_instance = mock_holder_class.return_value
@@ -170,8 +183,8 @@ async def test_models_list_with_filter(
 
     # Verify each expected model
     for i, expected_model in enumerate(expected_models):
-        assert response.models[i]["identifier"] == expected_model["identifier"]
-        assert response.models[i]["api_model_type"] == expected_model["api_model_type"]
+        assert response.models[i].identifier == expected_model["identifier"]
+        assert response.models[i].api_model_type == expected_model["api_model_type"]
 
 
 @pytest.mark.asyncio

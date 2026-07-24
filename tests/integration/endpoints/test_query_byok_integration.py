@@ -7,7 +7,8 @@ from typing import Any
 
 import pytest
 from fastapi import Request
-from ogx_client.types import VersionInfo
+from ogx_client.types import ListModelsResponse, VersionInfo
+from ogx_client.types.model import Model
 from pytest_mock import AsyncMockType, MockerFixture
 
 import constants
@@ -98,13 +99,20 @@ def _build_base_mock_client(mocker: MockerFixture) -> Any:
     mock_client = mocker.AsyncMock()
 
     # Model list
-    mock_model = mocker.MagicMock()
-    mock_model.id = "test-provider/test-model"
-    mock_model.custom_metadata = {
-        "provider_id": "test-provider",
-        "model_type": "llm",
-    }
-    mock_client.models.list.return_value = [mock_model]
+    mock_client.models.list.return_value = ListModelsResponse.model_construct(
+        data=[
+            Model.model_construct(
+                id="test-provider/test-model",
+                created=0,
+                owned_by="test",
+                object="model",
+                custom_metadata={
+                    "provider_id": "test-provider",
+                    "model_type": "llm",
+                },
+            )
+        ]
+    )
 
     # Shields (empty)
     mock_client.shields.list.return_value = []

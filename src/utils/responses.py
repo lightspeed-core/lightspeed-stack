@@ -114,6 +114,7 @@ from utils.mcp_headers import (
     build_mcp_headers,
     find_unresolved_auth_headers,
 )
+from utils.model_list import parse_model_list_response
 from utils.prompts import get_system_prompt, get_topic_summary_system_prompt
 from utils.query import (
     extract_provider_and_model_from_model_id,
@@ -1338,15 +1339,15 @@ async def check_model_configured(
         HTTPException: If there's a connection error or other API error
     """
     try:
-        models = await client.models.list()
+        models = parse_model_list_response(await client.models.list())
         for model in models:
-            if model.id == model_id:
+            if model.identifier == model_id:
                 return True
 
             # Workaround to llama-stack watsonx bug
-            if model_id.startswith("watsonx/") and model.id == model_id.removeprefix(
+            if model_id.startswith(
                 "watsonx/"
-            ):
+            ) and model.identifier == model_id.removeprefix("watsonx/"):
                 return True
         return False
     except APIStatusError as e:
@@ -1404,7 +1405,7 @@ async def select_model_for_responses(
 
     # 3. Fetch models list and select the first LLM model (model_type="llm")
     try:
-        models = await client.models.list()
+        models = parse_model_list_response(await client.models.list())
     except APIConnectionError as e:
         error_response = ServiceUnavailableResponse(
             backend_name="OGX",
@@ -1415,27 +1416,20 @@ async def select_model_for_responses(
         error_response = InternalServerErrorResponse.generic()
         raise HTTPException(**error_response.model_dump()) from e
 
-    llm_models = [
-        m
-        for m in models
-        if m.custom_metadata and m.custom_metadata.get("model_type") == "llm"
-    ]
+    llm_models = [m for m in models if m.model_type == "llm"]
     if not llm_models:
         logger.error("No LLM model found in available models")
         response = NotFoundResponse(resource="model", resource_id=None)
         raise HTTPException(**response.model_dump())
 
     model = llm_models[0]
-    logger.info("Selected first LLM model: %s", model.id)
+    logger.info("Selected first LLM model: %s", model.identifier)
 
     # Workaround to llama-stack bug for watsonx
     # model needs to be "watsonx/<model_id>" in the response request
-    metadata = model.custom_metadata or {}
-    if metadata.get("provider_id") == "watsonx":
-        provider_resource_id = metadata.get("provider_resource_id")
-        if isinstance(provider_resource_id, str):
-            return provider_resource_id
-    return model.id
+    if model.provider_id == "watsonx" and model.provider_resource_id:
+        return model.provider_resource_id
+    return model.identifier
 
 
 def is_server_deployed_output(output_item: ResponseOutput) -> bool:

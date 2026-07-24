@@ -5,6 +5,7 @@ from client import AsyncOgxClientHolder
 from configuration import configuration
 from log import get_logger
 from utils.endpoints import check_configuration_loaded
+from utils.model_list import parse_model_list_response
 
 logger = get_logger(__name__)
 
@@ -17,13 +18,11 @@ async def setup_model_metrics() -> None:
     """
     logger.info("Setting up model metrics")
     check_configuration_loaded(configuration)
-    model_list = await AsyncOgxClientHolder().get_client().models.list()
+    model_list = parse_model_list_response(
+        await AsyncOgxClientHolder().get_client().models.list()
+    )
 
-    models = [
-        model
-        for model in model_list
-        if model.custom_metadata and model.custom_metadata.get("model_type") == "llm"
-    ]
+    models = [model for model in model_list if model.model_type == "llm"]
 
     default_model_label = (
         configuration.inference.default_provider,
@@ -31,12 +30,8 @@ async def setup_model_metrics() -> None:
     )
 
     for model in models:
-        provider = (
-            str(model.custom_metadata.get("provider_id", ""))
-            if model.custom_metadata
-            else ""
-        )
-        model_name = model.id
+        provider = str(model.provider_id or "")
+        model_name = model.identifier
         if provider and model_name:
             # If the model/provider combination is the default, set the metric value to 1
             # Otherwise, set it to 0
