@@ -276,4 +276,4 @@ Feature: Llama Stack connection disrupted
     {"question": "How do I list files?"}
     """
     Then The status code of the response is 503
-    And The body of the response contains Llama Stack
+    And The body of the response contains OGX

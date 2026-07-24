@@ -582,7 +582,9 @@ async def handle_streaming_response(
         inference_start_time = time.monotonic()
         try:
             response = await context.client.responses.create(
-                **api_params.model_dump(exclude_none=True)
+                **api_params.model_dump(
+                    exclude_none=True, exclude={"safety_identifier"}
+                )
             )
             generator = response_generator(
                 stream=cast(AsyncIterator[OpenAIResponseObjectStream], response),
@@ -903,6 +905,9 @@ async def response_generator(
                 chunk_dict["response"]["conversation"] = normalize_conversation_id(
                     api_params.conversation
                 )
+                chunk_dict["response"][
+                    "safety_identifier"
+                ] = api_params.safety_identifier
                 _sanitize_response_dict(
                     chunk_dict["response"],
                     configured_mcp_labels,
@@ -1082,7 +1087,9 @@ async def handle_non_streaming_response(
             api_response = cast(
                 OpenAIResponseObject,
                 await context.client.responses.create(
-                    **api_params.model_dump(exclude_none=True)
+                    **api_params.model_dump(
+                        exclude_none=True, exclude={"safety_identifier"}
+                    )
                 ),
             )
             _record_response_inference_result(
@@ -1182,6 +1189,7 @@ async def handle_non_streaming_response(
     response = ResponsesResponse.model_validate(
         {
             **response_dict,
+            "safety_identifier": api_params.safety_identifier,
             "available_quotas": available_quotas,
             "conversation": normalize_conversation_id(api_params.conversation),
             "completed_at": int(completed_at.timestamp()),
