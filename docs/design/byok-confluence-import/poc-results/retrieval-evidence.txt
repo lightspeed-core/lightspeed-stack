@@ -1,0 +1,20 @@
+Query: "What is the policy for using API scripts and bots in the Atlassian Cloud environment?"
+Store: llamastack-faiss, top_k=3, mode=vector
+
+chunk 1 | score=2.2482
+  title: APIs, Scripts, and Bots: Policy for Cloud Environment
+  docs_url: https://redhat.atlassian.net/wiki/spaces/RHAT/pages/303600805/APIs+Scripts+and+Bots+Policy+for+Cloud+Environment
+  text: "## Policy Statement\n\n- Personal experimentation using Atlassian REST APIs may use API tokens in a user's own account.\n- Team-supporting integrations must use a registered bot user or approved service account, not a personal token. [...]"
+
+chunk 2 | score=1.6468
+  title: APIs, Scripts, and Bots: Policy for Cloud Environment
+  docs_url: (same page as chunk 1)
+  text: [Purpose section — redacted, internal]
+
+chunk 3 | score=1.5955
+  title: API, Script, and Bot Policy - public
+  docs_url: https://redhat.atlassian.net/wiki/spaces/RHAT/pages/297468192/API+Script+and+Bot+Policy+-+public
+  text: "## Policy Statement\n\n- Users using Atlassian API, bots, or scripts against Jira or Confluence must have a bot user. All bots need to be registered with the PME team. [...]"
+
+All three chunks: correct pages for the query; every chunk carries title +
+canonical per-page Confluence URL in metadata (citation path proven).
