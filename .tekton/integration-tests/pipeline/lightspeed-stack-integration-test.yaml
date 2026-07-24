@@ -233,7 +233,10 @@ spec:
               - name: credentials
                 value: credentials
           - name: run-e2e-tests
-            onError: continue
+            #onError: continue
+            # Do not use onError: continue here unless a later step like
+            # fail-if-any-step-failed is enabled; otherwise the PipelineRun stays green
+            # even when pipeline-konflux.sh / behave exit non-zero.
             resources:
               requests:
                 cpu: '1'

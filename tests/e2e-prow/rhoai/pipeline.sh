@@ -296,6 +296,19 @@ else
     echo "⚠️  No kv_store.db found at $RAG_DB_PATH"
 fi
 
+# Agent skills E2E: same fixture docker-compose mounts at /app-root/skills
+SKILLS_DIR="$REPO_ROOT/tests/e2e/skills"
+if [ -d "$SKILLS_DIR" ]; then
+  tar czf /tmp/e2e-skills.tgz -C "$SKILLS_DIR" .
+  oc create configmap e2e-skills -n "$NAMESPACE" \
+    --from-file=skills.tgz=/tmp/e2e-skills.tgz \
+    --dry-run=client -o yaml | oc apply -f -
+  rm -f /tmp/e2e-skills.tgz
+  echo "✅ e2e-skills ConfigMap created from $SKILLS_DIR"
+else
+  echo "⚠️  No skills directory at $SKILLS_DIR — skills.feature will fail"
+fi
+
 ./pipeline-services.sh
 
 echo "--> Final wait for both lightspeed-stack-service and llama-stack-service pods..."

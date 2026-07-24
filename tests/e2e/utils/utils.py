@@ -265,7 +265,7 @@ def validate_json_partially(actual: Any, expected: Any) -> None:
                     continue
             assert (
                 matched
-            ), f"No matching element found in list for schema item {schema_item}"
+            ), f"No matching element found in list for schema item {schema_item}, got {actual}"
 
     else:
         assert actual == expected, f"Value mismatch: expected {expected}, got {actual}"

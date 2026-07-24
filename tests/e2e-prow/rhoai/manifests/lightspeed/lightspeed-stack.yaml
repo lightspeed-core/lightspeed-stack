@@ -6,6 +6,32 @@ spec:
   securityContext:
     seccompProfile:
       type: RuntimeDefault
+  # Seed agent-skills fixtures (docker-compose: ./tests/e2e/skills -> /app-root/skills).
+  # ConfigMap cannot preserve nested skill dirs; extract tarball into emptyDir.
+  initContainers:
+    - name: seed-skills
+      image: busybox:latest
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: ["ALL"]
+        runAsNonRoot: true
+        runAsUser: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      command:
+        - /bin/sh
+        - -c
+        - |
+          set -e
+          tar xzf /skills-seed/skills.tgz -C /skills-dest
+          ls -la /skills-dest
+      volumeMounts:
+        - name: skills-seed
+          mountPath: /skills-seed
+          readOnly: true
+        - name: skills
+          mountPath: /skills-dest
   containers:
     - name: lightspeed-stack-container
       securityContext:
@@ -58,6 +84,10 @@ spec:
         - name: config
           mountPath: /app-root/lightspeed-stack.yaml
           subPath: lightspeed-stack.yaml
+        # Agent skills E2E (skills.feature): matches docker-compose mount path
+        - name: skills
+          mountPath: /app-root/skills
+          readOnly: true
         # MCPFileAuth E2E: must match authorization_headers paths in lightspeed-stack-mcp-file-auth.yaml (/tmp/mcp-token)
         - name: mcp-file-auth-token
           mountPath: /tmp/mcp-token
@@ -72,6 +102,11 @@ spec:
     - name: config
       configMap:
         name: lightspeed-stack-config
+    - name: skills-seed
+      configMap:
+        name: e2e-skills
+    - name: skills
+      emptyDir: {}
     - name: mcp-file-auth-token
       secret:
         secretName: mcp-file-auth-token
