@@ -10874,6 +10874,74 @@
     },
     "components": {
         "schemas": {
+            "A2AAgentEndpointConfiguration": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Agent name",
+                        "description": "Unique identifier for this agent, used by the delegation tool."
+                    },
+                    "url": {
+                        "type": "string",
+                        "minLength": 1,
+                        "format": "uri",
+                        "title": "Agent URL",
+                        "description": "Base URL of the external A2A agent."
+                    },
+                    "auth_token": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "password",
+                                "writeOnly": true
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Auth token",
+                        "description": "Static bearer token for authenticating with this agent."
+                    },
+                    "timeout": {
+                        "type": "integer",
+                        "exclusiveMinimum": 0.0,
+                        "title": "Request timeout",
+                        "description": "Timeout in seconds for requests to this agent. Default is 30 seconds.",
+                        "default": 30
+                    },
+                    "max_retries": {
+                        "type": "integer",
+                        "minimum": 0.0,
+                        "title": "Maximum retries",
+                        "description": "Maximum number of retry attempts on transient failures. Set to 0 to disable retries.",
+                        "default": 3
+                    }
+                },
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                    "name",
+                    "url"
+                ],
+                "title": "A2AAgentEndpointConfiguration",
+                "description": "Configuration for a single external A2A agent endpoint.\n\nAttributes:\n    name: Agent identifier used in delegation tool calls.\n    url: Base URL of the A2A agent.\n    auth_token: Optional static bearer token for authenticating with this agent.\n    timeout: Request timeout in seconds for this agent.\n    max_retries: Maximum retry attempts on transient failures."
+            },
+            "A2AAgentsConfiguration": {
+                "properties": {
+                    "agents": {
+                        "items": {
+                            "$ref": "#/components/schemas/A2AAgentEndpointConfiguration"
+                        },
+                        "type": "array",
+                        "title": "A2A agent endpoints",
+                        "description": "External A2A agents available for task delegation."
+                    }
+                },
+                "additionalProperties": false,
+                "type": "object",
+                "title": "A2AAgentsConfiguration",
+                "description": "Configuration for external A2A agent connections.\n\nAttributes:\n    agents: List of external A2A agent endpoint configurations."
+            },
             "A2AStateConfiguration": {
                 "properties": {
                     "sqlite": {
@@ -12329,6 +12397,18 @@
                         "$ref": "#/components/schemas/A2AStateConfiguration",
                         "title": "A2A state configuration",
                         "description": "Configuration for A2A protocol persistent state storage."
+                    },
+                    "a2a_agents": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/A2AAgentsConfiguration"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "A2A clients configuration",
+                        "description": "External A2A agents available for task delegation."
                     },
                     "quota_handlers": {
                         "$ref": "#/components/schemas/QuotaHandlersConfiguration",

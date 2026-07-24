@@ -14,6 +14,7 @@ from starlette.routing import Mount, Route, WebSocketRoute
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 import version
+from a2a_client.manager import A2AClientManager
 from a2a_storage import A2AStorageFactory
 from app import routers
 from app.database import create_tables, initialize_database
@@ -132,6 +133,14 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         except APIConnectionError as e:
             logger.warning("Failed to set up model metrics: %s", e, exc_info=True)
 
+    # Initialize A2A client connections to remote agents
+    if configuration.a2a_agents is not None:
+        logger.info(
+            "Connecting to A2A remote agents: %s",
+            [a.name for a in configuration.a2a_agents.agents],
+        )
+        await A2AClientManager().initialize(configuration.a2a_agents)
+
     logger.info("App startup complete")
 
     initialize_database()
@@ -143,6 +152,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     try:
         await shutdown_background_topic_summary_tasks()
         await A2AStorageFactory.cleanup()
+        await A2AClientManager().close()
     finally:
         # Flush pending Sentry events after cleanup so any errors during
         # shutdown are captured before the process exits.

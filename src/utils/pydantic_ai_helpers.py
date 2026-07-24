@@ -11,6 +11,8 @@ from pydantic_ai.agent import Agent
 from pydantic_ai.capabilities import AbstractCapability, AgentCapability
 from pydantic_ai_skills import SkillsCapability
 
+from a2a_client.capability import A2ADelegationCapability
+from a2a_client.manager import A2AClientManager
 from models.common.responses.responses_api_params import ResponsesApiParams
 from models.config import SkillsConfiguration
 from pydantic_ai_lightspeed.llamastack import (
@@ -128,6 +130,18 @@ def get_agent_capability_tools(
     return tools
 
 
+def _a2a_delegation_capability() -> Optional[AgentCapability[object]]:
+    """Return an A2A delegation capability if the client manager is initialized.
+
+    Returns:
+        A2ADelegationCapability when external agents are configured, or None.
+    """
+    manager = A2AClientManager()
+    if not manager.is_initialized or not manager.list_agents():
+        return None
+    return A2ADelegationCapability(manager)
+
+
 def _agent_capabilities(
     skills: Optional[SkillsConfiguration],
     no_tools: bool = False,
@@ -144,6 +158,8 @@ def _agent_capabilities(
     capabilities: list[AgentCapability[object]] = []
     if skills_capability := _skills_capability(skills):
         capabilities.append(skills_capability)
+    if a2a_capability := _a2a_delegation_capability():
+        capabilities.append(a2a_capability)
     if no_tools:
         capabilities = [
             capability
