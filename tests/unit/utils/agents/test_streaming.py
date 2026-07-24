@@ -605,7 +605,7 @@ class TestRetrieveAgentResponseGenerator:
             "detail": {"response": "Error", "cause": "agent failed"},
         }
         mocker.patch(
-            "utils.agents.streaming.map_agent_inference_error",
+            "utils.agents.error_handler.map_agent_inference_error",
             return_value=mock_error,
         )
 
@@ -742,7 +742,7 @@ class TestGenerateAgentResponse:
         mock_error.detail.response = "Quota exceeded"
         mock_error.detail.cause = "quota exceeded"
         mocker.patch(
-            "utils.agents.streaming.map_agent_inference_error",
+            "utils.agents.error_handler.map_agent_inference_error",
             return_value=mock_error,
         )
         mocker.patch(

@@ -477,7 +477,7 @@ class TestRetrieveAgentResponse:
             "detail": {"response": "Quota exceeded", "cause": "quota exceeded"},
         }
         mocker.patch(
-            "utils.agents.query.handle_known_apistatus_errors",
+            "utils.agents.error_handler.handle_known_apistatus_errors",
             return_value=mock_error,
         )
 

@@ -193,7 +193,7 @@ def _patch_moderation(mocker: MockerFixture, decision: str = "passed") -> Any:
     else:
         moderation_result = ShieldModerationPassed()
     mocker.patch(
-        f"{MODULE}.run_shield_moderation",
+        f"{MODULE}.run_shield_moderation_v2",
         new=mocker.AsyncMock(return_value=moderation_result),
     )
     return moderation_result
