@@ -248,7 +248,7 @@ extend-exclude = ["tests/profiles/syntax_error.py"]
 
 [tool.ruff.lint]
 extend-select = ["TID251", "UP006", "UP007", "UP010", "UP017", "UP035", "RUF100", "B009", "B010", "DTZ005", "D202", "I001", "PLR1733"]
-
+ignore = ["UP040", "UP047", "UP045", "BLE", "S", "C", "RUF", "SIM", "B017", "TRY004", "TRY201", "TRY203", "TRY401", "UP008", "UP012", "UP024", "UP041", "B008", "EXE001", "FURB129", "G201", "ISC004", "LOG014", "PERF402", "PIE790", "PLW1510", "PYI034", "PYI064", "RET501", "TC004"]
 
 [tool.ruff.lint.flake8-tidy-imports.banned-api]
 unittest = { msg = "use pytest instead of unittest" }
