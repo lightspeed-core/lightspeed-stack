@@ -70,7 +70,7 @@ class TestModelsResponse:
         ]
         response = ModelsResponse(models=models)
         assert isinstance(response, AbstractSuccessfulResponse)
-        assert response.models == models
+        assert [model.model_dump() for model in response.models] == models
         assert len(response.models) == 1
 
     def test_empty_models_list(self) -> None:
@@ -82,8 +82,18 @@ class TestModelsResponse:
     def test_multiple_models(self) -> None:
         """Test ModelsResponse with multiple models."""
         models = [
-            {"identifier": "model1", "provider_id": "provider1"},
-            {"identifier": "model2", "provider_id": "provider2"},
+            {
+                "identifier": "model1",
+                "provider_id": "provider1",
+                "api_model_type": "llm",
+                "model_type": "llm",
+            },
+            {
+                "identifier": "model2",
+                "provider_id": "provider2",
+                "api_model_type": "embedding",
+                "model_type": "embedding",
+            },
         ]
         response = ModelsResponse(models=models)
         assert len(response.models) == 2
@@ -135,13 +145,15 @@ class TestToolsResponse:
                 "identifier": "filesystem_read",
                 "description": "Read contents of a file",
                 "parameters": [],
-                "provider_id": "mcp",
+                "provider_id": "model-context-protocol",
+                "toolgroup_id": "filesystem-tools",
+                "server_source": "http://localhost:3000",
                 "type": "tool",
             }
         ]
         response = ToolsResponse(tools=tools)
         assert isinstance(response, AbstractSuccessfulResponse)
-        assert response.tools == tools
+        assert [tool.model_dump() for tool in response.tools] == tools
 
     def test_empty_tools_list(self) -> None:
         """Test ToolsResponse with empty tools list."""
@@ -174,10 +186,22 @@ class TestShieldsResponse:
 
     def test_constructor(self) -> None:
         """Test ShieldsResponse with valid shields list."""
-        shields = [{"name": "shield1", "status": "active"}]
+        shields = [
+            {
+                "name": "question-validity",
+                "type": "question_validity",
+                "config": {
+                    "model_id": "openai/gpt-4o-mini",
+                    "model_prompt": "Is this question valid?",
+                    "invalid_question_response": (
+                        "I can only answer questions about the product."
+                    ),
+                },
+            }
+        ]
         response = ShieldsResponse(shields=shields)
         assert isinstance(response, AbstractSuccessfulResponse)
-        assert response.shields == shields
+        assert [shield.model_dump() for shield in response.shields] == shields
 
     def test_missing_required_parameter(self) -> None:
         """Test ShieldsResponse raises ValidationError when shields is missing."""

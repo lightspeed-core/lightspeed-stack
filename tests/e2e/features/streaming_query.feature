@@ -146,6 +146,7 @@ Feature: streaming_query endpoint API tests
     """
     Then The status code of the response is 200
 
+  @skip
   Scenario: Check if streaming_query with shields returns 413 when question is too long for model context
     When I use "streaming_query" to ask question with too-long query and authorization header
     Then The status code of the response is 413

@@ -3,7 +3,7 @@
 # pylint: disable=no-member
 
 import pytest
-from pydantic import TypeAdapter, ValidationError
+from pydantic import ValidationError
 
 from models.config import (
     CompactionConfiguration,
@@ -15,19 +15,16 @@ from models.config import (
     RedactionRule,
     RedactionShieldConfiguration,
     ServiceConfiguration,
-    ShieldConfiguration,
     UserDataCollection,
 )
 
-ShieldConfigurationAdapter = TypeAdapter(ShieldConfiguration)
-
 
 class TestShieldConfiguration:
-    """Tests for the ShieldConfiguration discriminated union."""
+    """Tests for the ShieldConfiguration discriminated union variants."""
 
     def test_question_validity_shield(self) -> None:
         """A question_validity shield parses config into QuestionValidityConfig."""
-        shield = ShieldConfigurationAdapter.validate_python(
+        shield = QuestionValidityShieldConfiguration.model_validate(
             {
                 "name": "topic-guard",
                 "type": "question_validity",
@@ -41,7 +38,7 @@ class TestShieldConfiguration:
 
     def test_redaction_shield(self) -> None:
         """A redaction shield parses config into RedactionConfig."""
-        shield = ShieldConfigurationAdapter.validate_python(
+        shield = RedactionShieldConfiguration.model_validate(
             {
                 "name": "pii-guard",
                 "type": "redaction",
@@ -55,19 +52,17 @@ class TestShieldConfiguration:
 
     def test_accepts_already_constructed_config_instance(self) -> None:
         """config may be passed as an already-constructed model instance."""
-        shield = ShieldConfigurationAdapter.validate_python(
-            {
-                "name": "topic-guard",
-                "type": "question_validity",
-                "config": QuestionValidityConfig(model_id="test-model"),
-            }
+        shield = QuestionValidityShieldConfiguration(
+            name="topic-guard",
+            type="question_validity",
+            config=QuestionValidityConfig(model_id="test-model"),
         )
         assert isinstance(shield.config, QuestionValidityConfig)
 
     def test_rejects_config_mismatched_with_type(self) -> None:
         """A redaction type with question_validity-shaped config is rejected."""
         with pytest.raises(ValidationError, match="model_id"):
-            ShieldConfigurationAdapter.validate_python(
+            RedactionShieldConfiguration.model_validate(
                 {
                     "name": "bad",
                     "type": "redaction",
@@ -76,20 +71,25 @@ class TestShieldConfiguration:
             )
 
     def test_rejects_unknown_type(self) -> None:
-        """An unrecognized shield type is rejected."""
+        """An unrecognized shield type is rejected by the root Configuration union."""
         with pytest.raises(ValidationError):
-            ShieldConfigurationAdapter.validate_python(
+            Configuration.model_validate(
                 {
-                    "name": "bad",
-                    "type": "unknown_type",
-                    "config": {"model_id": "test-model"},
+                    **_minimal_configuration_kwargs(),
+                    "shields": [
+                        {
+                            "name": "bad",
+                            "type": "unknown_type",
+                            "config": {"model_id": "test-model"},
+                        }
+                    ],
                 }
             )
 
     def test_rejects_unknown_fields(self) -> None:
-        """Unknown fields are forbidden on ShieldConfiguration."""
+        """Unknown fields are forbidden on shield configuration variants."""
         with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
-            ShieldConfigurationAdapter.validate_python(
+            QuestionValidityShieldConfiguration.model_validate(
                 {
                     "name": "topic-guard",
                     "type": "question_validity",

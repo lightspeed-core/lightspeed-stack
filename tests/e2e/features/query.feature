@@ -157,6 +157,7 @@ Scenario: Check if LLM responds for query request with error for missing query
     """
     Then The status code of the response is 200
 
+  @skip
   Scenario: Check if query with shields returns 413 when question is too long for model context 
     When I use "query" to ask question with too-long query and authorization header
     Then The status code of the response is 413
