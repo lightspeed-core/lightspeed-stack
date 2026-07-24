@@ -4,7 +4,6 @@ from typing import Any
 
 import pytest
 from fastapi import HTTPException, Request, status
-from ogx_client import APIConnectionError
 from pytest_mock import MockerFixture
 
 from app.endpoints.shields import shields_endpoint_handler
@@ -14,52 +13,9 @@ from models.api.responses.successful import ShieldsResponse
 from tests.unit.utils.auth_helpers import mock_authorization_resolvers
 
 
-@pytest.mark.asyncio
-async def test_shields_endpoint_handler_configuration_not_loaded(
-    mocker: MockerFixture,
-) -> None:
-    """Test the shields endpoint handler if configuration is not loaded."""
-    mock_authorization_resolvers(mocker)
-
-    # simulate state when no configuration is loaded
-    mock_config = AppConfig()
-    mock_config._configuration = None  # pylint: disable=protected-access
-    mocker.patch("app.endpoints.shields.configuration", mock_config)
-
-    request = Request(
-        scope={
-            "type": "http",
-            "headers": [(b"authorization", b"Bearer invalid-token")],
-        }
-    )
-
-    # Authorization tuple required by URL endpoint handler
-    auth: AuthTuple = ("test_user_id", "test_user", True, "test_token")
-
-    with pytest.raises(HTTPException) as e:
-        await shields_endpoint_handler(request=request, auth=auth)
-    assert e.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
-    assert e.value.detail["response"] == "Configuration is not loaded"  # type: ignore
-
-
-@pytest.mark.asyncio
-async def test_shields_endpoint_handler_improper_llama_stack_configuration(
-    mocker: MockerFixture,
-) -> None:
-    """Test the shields endpoint handler if Llama Stack configuration is not proper.
-
-    Verify shields_endpoint_handler returns an empty ShieldsResponse when Llama
-    Stack is configured minimally and the client provides no shields.
-
-    Patches the endpoint configuration and client holder to supply a mocked
-    Llama Stack client whose `shields.list` returns an empty list, then calls
-    the handler with a test request and authorization tuple and asserts the
-    response is a ShieldsResponse with an empty `shields` list.
-    """
-    mock_authorization_resolvers(mocker)
-
-    # configuration for tests
-    config_dict: dict[str, Any] = {
+def _base_config_dict() -> dict[str, Any]:
+    """Return a minimal valid AppConfig dictionary."""
+    return {
         "name": "test",
         "service": {
             "host": "localhost",
@@ -82,157 +38,51 @@ async def test_shields_endpoint_handler_improper_llama_stack_configuration(
         "authorization": {"access_rules": []},
         "authentication": {"module": "noop"},
     }
-    cfg = AppConfig()
-    cfg.init_from_dict(config_dict)
 
-    mocker.patch("app.endpoints.shields.configuration", cfg)
-    # Mock client to avoid initialization
-    mock_client_holder = mocker.patch(
-        "app.endpoints.shields.AsyncOgxClientHolder"
-    )
-    mock_client = mocker.AsyncMock()
-    mock_client_holder.return_value.get_client.return_value = mock_client
 
+def _auth_request() -> tuple[Request, AuthTuple]:
+    """Return a dummy request and auth tuple for the shields handler."""
     request = Request(
         scope={
             "type": "http",
             "headers": [(b"authorization", b"Bearer invalid-token")],
         }
     )
-
-    # Authorization tuple required by URL endpoint handler
     auth: AuthTuple = ("test_user_id", "test_user", True, "test_token")
-
-    # Mock shields.list to return empty list
-    mock_client.shields.list.return_value = []
-
-    response = await shields_endpoint_handler(request=request, auth=auth)
-    assert isinstance(response, ShieldsResponse)
-    assert response.shields == []
+    return request, auth
 
 
 @pytest.mark.asyncio
-async def test_shields_endpoint_handler_configuration_loaded(
+async def test_shields_endpoint_handler_configuration_not_loaded(
     mocker: MockerFixture,
 ) -> None:
-    """Test the shields endpoint handler if configuration is loaded.
-
-    Verify shields_endpoint_handler raises an HTTP 503 with detail "Unable to
-    connect to Llama Stack" when configuration is loaded but the Llama Stack
-    client is unreachable.
-
-    Sets up an AppConfig from a valid configuration, patches the endpoint's
-    configuration and AsyncOgxClientHolder to return a client whose
-    shields.list raises APIConnectionError, and asserts the handler raises an
-    HTTPException with status 503 and the expected detail.
-
-    Parameters:
-    ----------
-        mocker (MockerFixture): pytest-mock fixture used to create patches and mocks.
-    """
+    """Test the shields endpoint handler if configuration is not loaded."""
     mock_authorization_resolvers(mocker)
 
-    # configuration for tests
-    config_dict: dict[str, Any] = {
-        "name": "foo",
-        "service": {
-            "host": "localhost",
-            "port": 8080,
-            "auth_enabled": False,
-            "workers": 1,
-            "color_log": True,
-            "access_log": True,
-        },
-        "llama_stack": {
-            "api_key": "xyzzy",
-            "url": "http://x.y.com:1234",
-            "use_as_library_client": False,
-        },
-        "user_data_collection": {
-            "feedback_enabled": False,
-        },
-        "customization": None,
-        "authorization": {"access_rules": []},
-        "authentication": {"module": "noop"},
-    }
-    cfg = AppConfig()
-    cfg.init_from_dict(config_dict)
-
-    mocker.patch("app.endpoints.shields.configuration", cfg)
-    # Mock client to raise APIConnectionError
-    mock_client_holder = mocker.patch(
-        "app.endpoints.shields.AsyncOgxClientHolder"
-    )
-    mock_client = mocker.AsyncMock()
-    mock_client.shields.list.side_effect = APIConnectionError(request=None)  # type: ignore
-    mock_client_holder.return_value.get_client.return_value = mock_client
-
-    request = Request(
-        scope={
-            "type": "http",
-            "headers": [(b"authorization", b"Bearer invalid-token")],
-        }
-    )
-
-    # Authorization tuple required by URL endpoint handler
-    auth: AuthTuple = ("test_user_id", "test_user", True, "test_token")
-
-    with pytest.raises(HTTPException) as e:
-        await shields_endpoint_handler(request=request, auth=auth)
-    assert e.value.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
-    assert e.value.detail["response"] == "Unable to connect to OGX"  # type: ignore
-
-
-@pytest.mark.asyncio
-async def test_shields_endpoint_handler_unable_to_retrieve_shields_list(
-    mocker: MockerFixture,
-) -> None:
-    """Test the shields endpoint handler if configuration is loaded."""
-    mock_authorization_resolvers(mocker)
-
-    # configuration for tests
-    config_dict: dict[str, Any] = {
-        "name": "foo",
-        "service": {
-            "host": "localhost",
-            "port": 8080,
-            "auth_enabled": False,
-            "workers": 1,
-            "color_log": True,
-            "access_log": True,
-        },
-        "llama_stack": {
-            "api_key": "xyzzy",
-            "url": "http://x.y.com:1234",
-            "use_as_library_client": False,
-        },
-        "user_data_collection": {
-            "feedback_enabled": False,
-        },
-        "customization": None,
-        "authorization": {"access_rules": []},
-        "authentication": {"module": "noop"},
-    }
-    cfg = AppConfig()
-    cfg.init_from_dict(config_dict)
-
-    # Mock the LlamaStack client
-    mock_client = mocker.AsyncMock()
-    mock_client.shields.list.return_value = []
-    mock_lsc = mocker.patch("client.AsyncOgxClientHolder.get_client")
-    mock_lsc.return_value = mock_client
-    mock_config = mocker.Mock()
+    mock_config = AppConfig()
+    mock_config._configuration = None  # pylint: disable=protected-access
     mocker.patch("app.endpoints.shields.configuration", mock_config)
 
-    request = Request(
-        scope={
-            "type": "http",
-            "headers": [(b"authorization", b"Bearer invalid-token")],
-        }
-    )
+    request, auth = _auth_request()
 
-    # Authorization tuple required by URL endpoint handler
-    auth: AuthTuple = ("test_user_id", "test_user", True, "test_token")
+    with pytest.raises(HTTPException) as e:
+        await shields_endpoint_handler(request=request, auth=auth)
+    assert e.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+    assert e.value.detail["response"] == "Configuration is not loaded"  # type: ignore
+
+
+@pytest.mark.asyncio
+async def test_shields_endpoint_handler_empty_shields(
+    mocker: MockerFixture,
+) -> None:
+    """Test the shields endpoint returns an empty list when none are configured."""
+    mock_authorization_resolvers(mocker)
+
+    cfg = AppConfig()
+    cfg.init_from_dict(_base_config_dict())
+    mocker.patch("app.endpoints.shields.configuration", cfg)
+
+    request, auth = _auth_request()
 
     response = await shields_endpoint_handler(request=request, auth=auth)
     assert isinstance(response, ShieldsResponse)
@@ -240,259 +90,50 @@ async def test_shields_endpoint_handler_unable_to_retrieve_shields_list(
 
 
 @pytest.mark.asyncio
-async def test_shields_endpoint_llama_stack_connection_error(
+async def test_shields_endpoint_handler_configured_shields(
     mocker: MockerFixture,
 ) -> None:
-    """Test the shields endpoint when LlamaStack connection fails.
-
-    Verifies that the shields endpoint responds with HTTP 503 and an
-    appropriate cause when the Llama Stack client cannot be reached.
-
-    Simulates the Llama Stack client raising an APIConnectionError and asserts
-    that calling the endpoint raises an HTTPException with status 503, a detail
-    response of "Unable to connect to OGX", and a detail cause that
-    contains "Connection error".
-    """
+    """Test the shields endpoint lists shields from LCS configuration."""
     mock_authorization_resolvers(mocker)
 
-    # configuration for tests
-    config_dict: dict[str, Any] = {
-        "name": "foo",
-        "service": {
-            "host": "localhost",
-            "port": 8080,
-            "auth_enabled": False,
-            "workers": 1,
-            "color_log": True,
-            "access_log": True,
-        },
-        "llama_stack": {
-            "api_key": "xyzzy",
-            "url": "http://x.y.com:1234",
-            "use_as_library_client": False,
-        },
-        "user_data_collection": {
-            "feedback_enabled": False,
-        },
-        "customization": None,
-        "authorization": {"access_rules": []},
-        "authentication": {"module": "noop"},
-    }
-
-    # mock AsyncOgxClientHolder to raise APIConnectionError
-    # when shields.list() method is called
-    mock_client = mocker.AsyncMock()
-    mock_client.shields.list.side_effect = APIConnectionError(request=None)  # type: ignore
-    mock_client_holder = mocker.patch(
-        "app.endpoints.shields.AsyncOgxClientHolder"
-    )
-    mock_client_holder.return_value.get_client.return_value = mock_client
-
-    cfg = AppConfig()
-    cfg.init_from_dict(config_dict)
-
-    mocker.patch("app.endpoints.shields.configuration", cfg)
-
-    request = Request(
-        scope={
-            "type": "http",
-            "headers": [(b"authorization", b"Bearer invalid-token")],
-        }
-    )
-
-    # Authorization tuple required by URL endpoint handler
-    auth: AuthTuple = ("test_user_id", "test_user", True, "test_token")
-
-    with pytest.raises(HTTPException) as e:
-        await shields_endpoint_handler(request=request, auth=auth)
-    assert e.value.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
-    assert e.value.detail["response"] == "Unable to connect to OGX"  # type: ignore
-    assert "Connection error" in e.value.detail["cause"]  # type: ignore
-
-
-@pytest.mark.asyncio
-async def test_shields_endpoint_handler_success_with_shields_data(
-    mocker: MockerFixture,
-) -> None:
-    """Test the shields endpoint handler with successful response and shields data."""
-    mock_authorization_resolvers(mocker)
-
-    # configuration for tests
-    config_dict: dict[str, Any] = {
-        "name": "foo",
-        "service": {
-            "host": "localhost",
-            "port": 8080,
-            "auth_enabled": False,
-            "workers": 1,
-            "color_log": True,
-            "access_log": True,
-        },
-        "llama_stack": {
-            "api_key": "xyzzy",
-            "url": "http://x.y.com:1234",
-            "use_as_library_client": False,
-        },
-        "user_data_collection": {
-            "feedback_enabled": False,
-        },
-        "customization": None,
-        "authorization": {"access_rules": []},
-        "authentication": {"module": "noop"},
-    }
-    cfg = AppConfig()
-    cfg.init_from_dict(config_dict)
-
-    # Mock the LlamaStack client with sample shields data
-    mock_shields_data = [
+    config_dict = _base_config_dict()
+    config_dict["shields"] = [
         {
-            "identifier": "lightspeed_question_validity-shield",
-            "provider_resource_id": "lightspeed_question_validity-shield",
-            "provider_id": "lightspeed_question_validity",
-            "type": "shield",
-            "params": {},
+            "name": "question-validity",
+            "type": "question_validity",
+            "config": {
+                "model_id": "openai/gpt-4o-mini",
+                "model_prompt": "Is this question valid?",
+                "invalid_question_response": "I can only answer product questions.",
+            },
         },
         {
-            "identifier": "content_filter-shield",
-            "provider_resource_id": "content_filter-shield",
-            "provider_id": "content_filter",
-            "type": "shield",
-            "params": {"threshold": 0.8},
+            "name": "pii-redaction",
+            "type": "redaction",
+            "config": {
+                "rules": [
+                    {
+                        "pattern": r"\b\d{3}-\d{2}-\d{4}\b",
+                        "replacement": "[REDACTED]",
+                    }
+                ],
+                "case_sensitive": False,
+            },
         },
     ]
-
-    mock_client = mocker.AsyncMock()
-    mock_client.shields.list.return_value = mock_shields_data
-    mock_lsc = mocker.patch("client.AsyncOgxClientHolder.get_client")
-    mock_lsc.return_value = mock_client
-    mock_config = mocker.Mock()
-    mocker.patch("app.endpoints.shields.configuration", mock_config)
-
-    request = Request(
-        scope={
-            "type": "http",
-            "headers": [(b"authorization", b"Bearer invalid-token")],
-        }
-    )
-
-    # Authorization tuple required by URL endpoint handler
-    auth: AuthTuple = ("test_user_id", "test_user", True, "test_token")
-
-    response = await shields_endpoint_handler(request=request, auth=auth)
-
-    assert response is not None
-    assert hasattr(response, "shields")
-    assert len(response.shields) == 2
-    assert response.shields[0]["identifier"] == "lightspeed_question_validity-shield"
-    assert response.shields[1]["identifier"] == "content_filter-shield"
-
-
-@pytest.mark.asyncio
-async def test_shields_endpoint_handler_unexpected_exception(
-    mocker: MockerFixture,
-) -> None:
-    """Test the shields endpoint when an unexpected exception is raised."""
-    mock_authorization_resolvers(mocker)
-
-    config_dict: dict[str, Any] = {
-        "name": "foo",
-        "service": {
-            "host": "localhost",
-            "port": 8080,
-            "auth_enabled": False,
-            "workers": 1,
-            "color_log": True,
-            "access_log": True,
-        },
-        "llama_stack": {
-            "api_key": "xyzzy",
-            "url": "http://x.y.com:1234",
-            "use_as_library_client": False,
-        },
-        "user_data_collection": {
-            "feedback_enabled": False,
-        },
-        "customization": None,
-        "authorization": {"access_rules": []},
-        "authentication": {"module": "noop"},
-    }
     cfg = AppConfig()
     cfg.init_from_dict(config_dict)
+    mocker.patch("app.endpoints.shields.configuration", cfg)
 
-    mock_client = mocker.AsyncMock()
-    mock_client.shields.list.side_effect = RuntimeError("unexpected failure")
-    mock_client_holder = mocker.patch(
-        "app.endpoints.shields.AsyncOgxClientHolder"
-    )
-    mock_client_holder.return_value.get_client.return_value = mock_client
-
-    request = Request(
-        scope={
-            "type": "http",
-            "headers": [(b"authorization", b"Bearer invalid-token")],
-        }
-    )
-
-    auth: AuthTuple = ("test_user_id", "test_user", True, "test_token")
-
-    with pytest.raises(RuntimeError, match="unexpected failure"):
-        await shields_endpoint_handler(request=request, auth=auth)
-
-
-@pytest.mark.asyncio
-async def test_shields_endpoint_handler_malformed_shield_objects(
-    mocker: MockerFixture,
-) -> None:
-    """Test the shields endpoint handles shields that may have missing fields."""
-    mock_authorization_resolvers(mocker)
-
-    config_dict: dict[str, Any] = {
-        "name": "foo",
-        "service": {
-            "host": "localhost",
-            "port": 8080,
-            "auth_enabled": False,
-            "workers": 1,
-            "color_log": True,
-            "access_log": True,
-        },
-        "llama_stack": {
-            "api_key": "xyzzy",
-            "url": "http://x.y.com:1234",
-            "use_as_library_client": False,
-        },
-        "user_data_collection": {
-            "feedback_enabled": False,
-        },
-        "customization": None,
-        "authorization": {"access_rules": []},
-        "authentication": {"module": "noop"},
-    }
-    cfg = AppConfig()
-    cfg.init_from_dict(config_dict)
-
-    mock_shield_minimal = {
-        "identifier": "minimal-shield",
-    }
-
-    mock_client = mocker.AsyncMock()
-    mock_client.shields.list.return_value = [mock_shield_minimal]
-    mock_client_holder = mocker.patch(
-        "app.endpoints.shields.AsyncOgxClientHolder"
-    )
-    mock_client_holder.return_value.get_client.return_value = mock_client
-
-    request = Request(
-        scope={
-            "type": "http",
-            "headers": [(b"authorization", b"Bearer invalid-token")],
-        }
-    )
-
-    auth: AuthTuple = ("test_user_id", "test_user", True, "test_token")
+    request, auth = _auth_request()
 
     response = await shields_endpoint_handler(request=request, auth=auth)
 
     assert isinstance(response, ShieldsResponse)
-    assert len(response.shields) == 1
-    assert response.shields[0]["identifier"] == "minimal-shield"
+    assert len(response.shields) == 2
+    assert response.shields[0].name == "question-validity"
+    assert response.shields[0].type == "question_validity"
+    assert response.shields[0].config["model_id"] == "openai/gpt-4o-mini"
+    assert response.shields[1].name == "pii-redaction"
+    assert response.shields[1].type == "redaction"
+    assert response.shields[1].config["rules"][0]["replacement"] == "[REDACTED]"

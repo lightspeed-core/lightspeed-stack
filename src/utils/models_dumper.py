@@ -113,6 +113,7 @@ def dump_models(filename: str) -> None:
         c.RAGChunk,
         c.RAGContext,
         c.ReferencedDocument,
+        c.CatalogShield,
         c.ShieldModerationBlocked,
         c.ShieldModerationPassed,
         c.SolrVectorSearchRequest,

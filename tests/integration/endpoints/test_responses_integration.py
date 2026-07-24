@@ -11,6 +11,7 @@ from typing import Any
 import pytest
 from fastapi import Request
 from fastapi.responses import StreamingResponse
+from ogx_api.openai_responses import OpenAIResponseMessage
 from ogx_client.types import ListModelsResponse
 from ogx_client.types.model import Model
 from pytest_mock import MockerFixture
@@ -21,6 +22,7 @@ from authentication.interface import AuthTuple
 from configuration import AppConfig
 from models.api.requests import ResponsesRequest
 from models.api.responses.successful import ResponsesResponse
+from models.common.moderation import ShieldModerationBlocked
 from models.common.responses.contexts import ResponsesContext
 from models.database.conversations import UserConversation, UserTurn
 
@@ -159,29 +161,26 @@ def _setup_test(mocker: MockerFixture) -> Any:
 
 def _configure_shield_blocked(
     mocker: MockerFixture,
-    mock_client: Any,
     moderation_id: str,
 ) -> None:
-    """Configure mock client to simulate shield-blocked moderation.
+    """Configure stub moderation to return a blocked result.
 
     Args:
         mocker: pytest-mock fixture.
-        mock_client: The mock Llama Stack client to configure.
         moderation_id: The moderation ID for the blocked response.
     """
-    mock_shield = mocker.MagicMock()
-    mock_shield.identifier = "test-shield"
-    mock_shield.provider_resource_id = "test-shield-model"
-    mock_shield.provider_id = "test-shield-provider"
-    mock_client.shields.list.return_value = [mock_shield]
-
-    mock_moderation = mocker.MagicMock()
-    mock_moderation.id = moderation_id
-    mock_result = mocker.MagicMock()
-    mock_result.flagged = True
-    mock_result.user_message = "Content blocked by safety shield"
-    mock_moderation.results = [mock_result]
-    mock_client.moderations.create = mocker.AsyncMock(return_value=mock_moderation)
+    blocked = ShieldModerationBlocked(
+        message="Content blocked by safety shield",
+        moderation_id=moderation_id,
+        refusal_response=OpenAIResponseMessage(
+            role="assistant",
+            content="Content blocked by safety shield",
+        ),
+    )
+    mocker.patch(
+        "app.endpoints.responses.run_shield_moderation",
+        return_value=blocked,
+    )
 
 
 @pytest.mark.asyncio
@@ -246,7 +245,7 @@ async def test_shield_blocked_persists_moderation_turn(
     """Test shield-blocked response persists moderation ID and skips last_response_id."""
     _ = test_config
     mock_client = _setup_test(mocker)
-    _configure_shield_blocked(mocker, mock_client, "modr_blocked_integ_123")
+    _configure_shield_blocked(mocker, "modr_blocked_integ_123")
 
     request = ResponsesRequest(
         input="Some blocked content",
@@ -329,7 +328,7 @@ async def test_streaming_blocked_returns_sse_and_persists_turn(
     """Test that shield-blocked streaming returns valid SSE events and persists to DB."""
     _ = test_config
     mock_client = _setup_test(mocker)
-    _configure_shield_blocked(mocker, mock_client, "modr_stream_blocked_123")
+    _configure_shield_blocked(mocker, "modr_stream_blocked_123")
 
     request = ResponsesRequest(
         input="Some blocked content",

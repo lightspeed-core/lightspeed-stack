@@ -1510,9 +1510,9 @@ def build_turn_summary(  # pylint: disable=too-many-arguments,too-many-positiona
             continue
         tool_call, tool_result = build_tool_call_summary(item)
         if tool_call:
-            summary.tool_calls.append(tool_call)
+            summary.tool_calls.append(tool_call)  # pylint: disable=no-member
         if tool_result:
-            summary.tool_results.append(tool_result)
+            summary.tool_results.append(tool_result)  # pylint: disable=no-member
 
     summary.rag_chunks = parse_rag_chunks(response, vector_store_ids, rag_id_mapping)
     summary.token_usage = extract_token_usage(response.usage, model, endpoint_path)
