@@ -50,6 +50,8 @@ from ogx_api.openai_responses import (
     OpenAIResponseOutputMessageWebSearchToolCall as WebSearchCall,
 )
 from ogx_client import APIConnectionError, APIStatusError, AsyncOgxClient
+from ogx_client.types import ListModelsResponse
+from ogx_client.types.model import Model
 from pydantic import AnyUrl, BaseModel
 from pytest_mock import MockerFixture
 
@@ -1971,10 +1973,22 @@ class TestPrepareResponsesParams:
     ) -> None:
         """Test prepare_responses_params with existing conversation ID."""
         mock_client = mocker.AsyncMock()
-        mock_model = mocker.Mock()
-        mock_model.id = "provider1/model1"
-        mock_model.custom_metadata = {"model_type": "llm", "provider_id": "provider1"}
-        mock_client.models.list = mocker.AsyncMock(return_value=[mock_model])
+        mock_client.models.list = mocker.AsyncMock(
+            return_value=ListModelsResponse.model_construct(
+                data=[
+                    Model.model_construct(
+                        id="provider1/model1",
+                        created=0,
+                        owned_by="test",
+                        object="model",
+                        custom_metadata={
+                            "model_type": "llm",
+                            "provider_id": "provider1",
+                        },
+                    )
+                ]
+            )
+        )
 
         query_request = QueryRequest(
             query="test", conversation_id="123e4567-e89b-12d3-a456-426614174000"
@@ -2003,10 +2017,22 @@ class TestPrepareResponsesParams:
     ) -> None:
         """Test prepare_responses_params creates new conversation when ID not provided."""
         mock_client = mocker.AsyncMock()
-        mock_model = mocker.Mock()
-        mock_model.id = "provider1/model1"
-        mock_model.custom_metadata = {"model_type": "llm", "provider_id": "provider1"}
-        mock_client.models.list = mocker.AsyncMock(return_value=[mock_model])
+        mock_client.models.list = mocker.AsyncMock(
+            return_value=ListModelsResponse.model_construct(
+                data=[
+                    Model.model_construct(
+                        id="provider1/model1",
+                        created=0,
+                        owned_by="test",
+                        object="model",
+                        custom_metadata={
+                            "model_type": "llm",
+                            "provider_id": "provider1",
+                        },
+                    )
+                ]
+            )
+        )
 
         mock_conversation = mocker.Mock()
         mock_conversation.id = "new_conv_id"
@@ -2056,10 +2082,22 @@ class TestPrepareResponsesParams:
     ) -> None:
         """Test prepare_responses_params raises HTTPException on connection error when creating conversation."""
         mock_client = mocker.AsyncMock()
-        mock_model = mocker.Mock()
-        mock_model.id = "provider1/model1"
-        mock_model.custom_metadata = {"model_type": "llm", "provider_id": "provider1"}
-        mock_client.models.list = mocker.AsyncMock(return_value=[mock_model])
+        mock_client.models.list = mocker.AsyncMock(
+            return_value=ListModelsResponse.model_construct(
+                data=[
+                    Model.model_construct(
+                        id="provider1/model1",
+                        created=0,
+                        owned_by="test",
+                        object="model",
+                        custom_metadata={
+                            "model_type": "llm",
+                            "provider_id": "provider1",
+                        },
+                    )
+                ]
+            )
+        )
         mock_client.conversations.create = mocker.AsyncMock(
             side_effect=APIConnectionError(
                 message="Connection failed", request=mocker.Mock()
@@ -2106,10 +2144,22 @@ class TestPrepareResponsesParams:
     ) -> None:
         """Test that extra_headers with x-llamastack-provider-data is set when MCP tools have headers."""
         mock_client = mocker.AsyncMock()
-        mock_model = mocker.Mock()
-        mock_model.id = "provider1/model1"
-        mock_model.custom_metadata = {"model_type": "llm", "provider_id": "provider1"}
-        mock_client.models.list = mocker.AsyncMock(return_value=[mock_model])
+        mock_client.models.list = mocker.AsyncMock(
+            return_value=ListModelsResponse.model_construct(
+                data=[
+                    Model.model_construct(
+                        id="provider1/model1",
+                        created=0,
+                        owned_by="test",
+                        object="model",
+                        custom_metadata={
+                            "model_type": "llm",
+                            "provider_id": "provider1",
+                        },
+                    )
+                ]
+            )
+        )
 
         mock_conversation = mocker.Mock()
         mock_conversation.id = "new_conv_id"
@@ -2170,10 +2220,22 @@ class TestPrepareResponsesParams:
     ) -> None:
         """Test that extra_headers is None when no MCP tools have headers."""
         mock_client = mocker.AsyncMock()
-        mock_model = mocker.Mock()
-        mock_model.id = "provider1/model1"
-        mock_model.custom_metadata = {"model_type": "llm", "provider_id": "provider1"}
-        mock_client.models.list = mocker.AsyncMock(return_value=[mock_model])
+        mock_client.models.list = mocker.AsyncMock(
+            return_value=ListModelsResponse.model_construct(
+                data=[
+                    Model.model_construct(
+                        id="provider1/model1",
+                        created=0,
+                        owned_by="test",
+                        object="model",
+                        custom_metadata={
+                            "model_type": "llm",
+                            "provider_id": "provider1",
+                        },
+                    )
+                ]
+            )
+        )
 
         mock_conversation = mocker.Mock()
         mock_conversation.id = "new_conv_id"
@@ -2203,10 +2265,22 @@ class TestPrepareResponsesParams:
     ) -> None:
         """Test prepare_responses_params raises HTTPException on API status error when creating conversation."""
         mock_client = mocker.AsyncMock()
-        mock_model = mocker.Mock()
-        mock_model.id = "provider1/model1"
-        mock_model.custom_metadata = {"model_type": "llm", "provider_id": "provider1"}
-        mock_client.models.list = mocker.AsyncMock(return_value=[mock_model])
+        mock_client.models.list = mocker.AsyncMock(
+            return_value=ListModelsResponse.model_construct(
+                data=[
+                    Model.model_construct(
+                        id="provider1/model1",
+                        created=0,
+                        owned_by="test",
+                        object="model",
+                        custom_metadata={
+                            "model_type": "llm",
+                            "provider_id": "provider1",
+                        },
+                    )
+                ]
+            )
+        )
         mock_client.conversations.create = mocker.AsyncMock(
             side_effect=APIStatusError(
                 message="API error", response=mocker.Mock(request=None), body=None

@@ -7,6 +7,8 @@ import pytest
 from fastapi import HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 from fastapi.testclient import TestClient
+from ogx_client.types import ListModelsResponse
+from ogx_client.types.model import Model
 from pytest_mock import AsyncMockType, MockerFixture
 
 from app.endpoints.streaming_query import streaming_query_endpoint_handler
@@ -33,13 +35,20 @@ def mock_llama_stack_streaming_fixture(
     )
     mock_client = mocker.AsyncMock()
 
-    mock_model = mocker.MagicMock()
-    mock_model.id = "test-provider/test-model"
-    mock_model.custom_metadata = {
-        "provider_id": "test-provider",
-        "model_type": "llm",
-    }
-    mock_client.models.list.return_value = [mock_model]
+    mock_client.models.list.return_value = ListModelsResponse.model_construct(
+        data=[
+            Model.model_construct(
+                id="test-provider/test-model",
+                created=0,
+                owned_by="test",
+                object="model",
+                custom_metadata={
+                    "provider_id": "test-provider",
+                    "model_type": "llm",
+                },
+            )
+        ]
+    )
 
     mock_vector_stores_response = mocker.MagicMock()
     mock_vector_stores_response.data = []
