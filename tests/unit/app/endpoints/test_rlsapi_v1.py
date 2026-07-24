@@ -15,6 +15,8 @@ import pytest
 from fastapi import HTTPException, status
 from ogx_api import OpenAIResponseMessage
 from ogx_client import APIConnectionError, APIStatusError
+from ogx_client.types import ListModelsResponse
+from ogx_client.types.model import Model
 from pydantic import ValidationError
 from pytest_mock import MockerFixture
 
@@ -352,15 +354,21 @@ async def test_get_default_model_id_errors(
     """Test _get_default_model_id fallback failures raise 503 responses."""
     mocker.patch("app.endpoints.rlsapi_v1.configuration", minimal_config)
 
-    mock_embedding_model = mocker.Mock()
-    mock_embedding_model.custom_metadata = {"model_type": "embedding"}
-    mock_embedding_model.id = "sentence-transformers/all-mpnet-base-v2"
+    mock_embedding_model = Model.model_construct(
+        id="sentence-transformers/all-mpnet-base-v2",
+        created=0,
+        owned_by="test",
+        object="model",
+        custom_metadata={"model_type": "embedding"},
+    )
 
     mock_client = mocker.Mock()
     mock_client.models = mocker.Mock()
 
     if failure_mode == "no_llm_models":
-        mock_client.models.list = mocker.AsyncMock(return_value=[mock_embedding_model])
+        mock_client.models.list = mocker.AsyncMock(
+            return_value=ListModelsResponse.model_construct(data=[mock_embedding_model])
+        )
     else:
         mock_client.models.list = mocker.AsyncMock(
             side_effect=APIConnectionError(request=mocker.Mock())
@@ -394,13 +402,19 @@ async def test_config_error_503_matches_llm_error_503_shape(
     """
     mocker.patch("app.endpoints.rlsapi_v1.configuration", minimal_config)
 
-    mock_embedding_model = mocker.Mock()
-    mock_embedding_model.custom_metadata = {"model_type": "embedding"}
-    mock_embedding_model.id = "sentence-transformers/all-mpnet-base-v2"
+    mock_embedding_model = Model.model_construct(
+        id="sentence-transformers/all-mpnet-base-v2",
+        created=0,
+        owned_by="test",
+        object="model",
+        custom_metadata={"model_type": "embedding"},
+    )
 
     mock_client = mocker.Mock()
     mock_client.models = mocker.Mock()
-    mock_client.models.list = mocker.AsyncMock(return_value=[mock_embedding_model])
+    mock_client.models.list = mocker.AsyncMock(
+        return_value=ListModelsResponse.model_construct(data=[mock_embedding_model])
+    )
 
     mock_client_holder = mocker.Mock()
     mock_client_holder.get_client.return_value = mock_client
@@ -432,18 +446,28 @@ async def test_get_default_model_id_auto_discovery_success(
     """Test _get_default_model_id returns first discovered LLM model ID."""
     mocker.patch("app.endpoints.rlsapi_v1.configuration", minimal_config)
 
-    mock_llm_model = mocker.Mock()
-    mock_llm_model.custom_metadata = {"model_type": "llm"}
-    mock_llm_model.id = "openai/gpt-4o-mini"
+    mock_llm_model = Model.model_construct(
+        id="openai/gpt-4o-mini",
+        created=0,
+        owned_by="test",
+        object="model",
+        custom_metadata={"model_type": "llm"},
+    )
 
-    mock_embedding_model = mocker.Mock()
-    mock_embedding_model.custom_metadata = {"model_type": "embedding"}
-    mock_embedding_model.id = "sentence-transformers/all-mpnet-base-v2"
+    mock_embedding_model = Model.model_construct(
+        id="sentence-transformers/all-mpnet-base-v2",
+        created=0,
+        owned_by="test",
+        object="model",
+        custom_metadata={"model_type": "embedding"},
+    )
 
     mock_client = mocker.Mock()
     mock_client.models = mocker.Mock()
     mock_client.models.list = mocker.AsyncMock(
-        return_value=[mock_embedding_model, mock_llm_model]
+        return_value=ListModelsResponse.model_construct(
+            data=[mock_embedding_model, mock_llm_model]
+        )
     )
 
     mock_client_holder = mocker.Mock()

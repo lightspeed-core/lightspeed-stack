@@ -11,6 +11,8 @@ from typing import Any
 import pytest
 from fastapi import Request
 from fastapi.responses import StreamingResponse
+from ogx_client.types import ListModelsResponse
+from ogx_client.types.model import Model
 from pytest_mock import MockerFixture
 from sqlalchemy.orm import Session
 
@@ -88,13 +90,20 @@ def _build_mock_client(mocker: MockerFixture) -> Any:
     mock_response.model_dump.return_value = _RESPONSE_DUMP.copy()
     mock_client.responses.create = mocker.AsyncMock(return_value=mock_response)
 
-    mock_model = mocker.MagicMock()
-    mock_model.id = "test-provider/test-model"
-    mock_model.custom_metadata = {
-        "provider_id": "test-provider",
-        "model_type": "llm",
-    }
-    mock_client.models.list.return_value = [mock_model]
+    mock_client.models.list.return_value = ListModelsResponse.model_construct(
+        data=[
+            Model.model_construct(
+                id="test-provider/test-model",
+                created=0,
+                owned_by="test",
+                object="model",
+                custom_metadata={
+                    "provider_id": "test-provider",
+                    "model_type": "llm",
+                },
+            )
+        ]
+    )
 
     mock_client.shields.list.return_value = []
 

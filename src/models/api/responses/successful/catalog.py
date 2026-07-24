@@ -5,13 +5,14 @@ from typing import Any, Optional
 from pydantic import Field
 
 from models.api.responses.successful.bases import AbstractSuccessfulResponse
+from models.common.models import CatalogModel
 from models.common.tools import CatalogTool
 
 
 class ModelsResponse(AbstractSuccessfulResponse):
     """Model representing a response to models request."""
 
-    models: list[dict[str, Any]] = Field(
+    models: list[CatalogModel] = Field(
         ...,
         description="List of models available",
     )

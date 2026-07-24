@@ -23,6 +23,7 @@ from llama_stack_configuration import (
 from log import get_logger, setup_logging
 from models.api.responses.error import ServiceUnavailableResponse
 from models.config import LlamaStackConfiguration
+from utils.model_list import parse_model_list_response
 from utils.types import Singleton
 
 logger = get_logger(__name__)
@@ -234,7 +235,7 @@ class AsyncOgxClientHolder(metaclass=Singleton):
         """
         try:
             client = self.get_client()
-            models = await client.models.list()
+            models = parse_model_list_response(await client.models.list())
         except RuntimeError as e:
             logger.warning("Client not initialized, skipping model check: %s", e)
             return False, f"Client not initialized: {e!s}"
@@ -242,7 +243,7 @@ class AsyncOgxClientHolder(metaclass=Singleton):
             logger.error("Error checking model availability: %s", e)
             return False, f"Error checking model availability: {e!s}"
 
-        if any(m.id == model_id for m in models):
+        if any(m.identifier == model_id for m in models):
             return True, f"Model {model_id} is available"
 
         # Model not found - attempt self-healing reload for library clients.
@@ -256,8 +257,8 @@ class AsyncOgxClientHolder(metaclass=Singleton):
             try:
                 await self.reload_library_client()
                 client = self.get_client()
-                reloaded_models = await client.models.list()
-                if any(m.id == model_id for m in reloaded_models):
+                reloaded_models = parse_model_list_response(await client.models.list())
+                if any(m.identifier == model_id for m in reloaded_models):
                     logger.info(
                         "Model %s found after client reload",
                         model_id,
@@ -271,7 +272,7 @@ class AsyncOgxClientHolder(metaclass=Singleton):
             ) as err:
                 logger.error("Client reload failed: %s", err)
 
-        registered_ids = [m.id for m in models]
+        registered_ids = [m.identifier for m in models]
         logger.error(
             "Model %s not found in registry. Registered models: %s",
             model_id,

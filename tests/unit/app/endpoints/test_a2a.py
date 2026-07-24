@@ -23,6 +23,7 @@ from a2a.types import (
 from a2a.utils import new_agent_text_message
 from fastapi import HTTPException, Request
 from ogx_client import APIConnectionError
+from ogx_client.types import ListModelsResponse
 from pydantic_ai import AgentRunResultEvent
 from pydantic_ai.exceptions import AgentRunError
 from pydantic_ai.messages import (
@@ -776,7 +777,9 @@ class TestA2AAgentExecutor:
         # Mock the client
         mock_client = mocker.AsyncMock()
         mock_models = [mocker.MagicMock()]
-        mock_client.models.list = mocker.AsyncMock(return_value=mock_models)
+        mock_client.models.list = mocker.AsyncMock(
+            return_value=ListModelsResponse.model_construct(data=mock_models)
+        )
         mocker.patch(
             "app.endpoints.a2a.AsyncOgxClientHolder"
         ).return_value.get_client.return_value = mock_client
@@ -860,7 +863,9 @@ class TestA2AAgentExecutor:
         )
 
         mock_client = mocker.AsyncMock()
-        mock_client.models.list = mocker.AsyncMock(return_value=[mocker.MagicMock()])
+        mock_client.models.list = mocker.AsyncMock(
+            return_value=ListModelsResponse.model_construct(data=[mocker.MagicMock()])
+        )
         mocker.patch(
             "app.endpoints.a2a.AsyncOgxClientHolder"
         ).return_value.get_client.return_value = mock_client
@@ -935,7 +940,9 @@ class TestA2AAgentExecutor:
         )
 
         mock_client = mocker.AsyncMock()
-        mock_client.models.list = mocker.AsyncMock(return_value=[mocker.MagicMock()])
+        mock_client.models.list = mocker.AsyncMock(
+            return_value=ListModelsResponse.model_construct(data=[mocker.MagicMock()])
+        )
         mocker.patch(
             "app.endpoints.a2a.AsyncOgxClientHolder"
         ).return_value.get_client.return_value = mock_client

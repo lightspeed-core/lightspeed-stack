@@ -45,6 +45,7 @@ from models.api.responses.successful.rlsapi import (
 from models.config import Action
 from observability import InferenceEventData, build_inference_event, send_splunk_event
 from utils.endpoints import check_configuration_loaded
+from utils.model_list import parse_model_list_response
 from utils.query import (
     consume_query_tokens,
     extract_provider_and_model_from_model_id,
@@ -186,7 +187,7 @@ async def _get_default_model_id() -> str:
     )
     client = AsyncOgxClientHolder().get_client()
     try:
-        models = await client.models.list()
+        models = parse_model_list_response(await client.models.list())
     except APIConnectionError as e:
         error_response = ServiceUnavailableResponse(
             backend_name="OGX",
@@ -197,11 +198,7 @@ async def _get_default_model_id() -> str:
         error_response = InternalServerErrorResponse.generic()
         raise HTTPException(**error_response.model_dump()) from e
 
-    llm_models = [
-        m
-        for m in models
-        if m.custom_metadata and m.custom_metadata.get("model_type") == "llm"
-    ]
+    llm_models = [m for m in models if m.model_type == "llm"]
     if not llm_models:
         msg = "No LLM model found in available models"
         logger.error(msg)
@@ -212,8 +209,8 @@ async def _get_default_model_id() -> str:
         raise HTTPException(**error_response.model_dump())
 
     model = llm_models[0]
-    logger.info("Auto-discovered LLM model for rlsapi v1: %s", model.id)
-    return model.id
+    logger.info("Auto-discovered LLM model for rlsapi v1: %s", model.identifier)
+    return model.identifier
 
 
 async def _resolve_validated_model_id() -> str:
