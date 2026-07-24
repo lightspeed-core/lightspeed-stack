@@ -723,14 +723,12 @@ class TestServiceUnavailableResponse:
         assert expected_count == 2
 
         # Verify example structure
-        assert "llama stack" in examples
+        assert "ogx" in examples
         assert "kubernetes api" in examples
-        llama_example = examples["llama stack"]
-        assert "value" in llama_example
-        assert "detail" in llama_example["value"]
-        assert (
-            llama_example["value"]["detail"]["response"] == "Unable to connect to OGX"
-        )
+        ogx_example = examples["ogx"]
+        assert "value" in ogx_example
+        assert "detail" in ogx_example["value"]
+        assert ogx_example["value"]["detail"]["response"] == "Unable to connect to OGX"
 
     def test_openapi_response_with_explicit_examples(self) -> None:
         """Test ServiceUnavailableResponse.openapi_response() with explicit examples."""
@@ -739,7 +737,7 @@ class TestServiceUnavailableResponse:
 
         # Verify only 1 example is returned when explicitly specified
         assert len(examples) == 1
-        assert "llama stack" in examples
+        assert "ogx" in examples
 
 
 class TestPromptTooLongResponse:

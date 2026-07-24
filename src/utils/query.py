@@ -9,7 +9,6 @@ from fastapi import HTTPException
 from ogx_client import (
     APIStatusError as LLSApiStatusError,
 )
-from ogx_client.types import Shield
 from openai._exceptions import APIStatusError as OpenAIAPIStatusError
 from sqlalchemy import func
 from sqlalchemy.exc import SQLAlchemyError
@@ -118,52 +117,6 @@ def validate_model_provider_override(
     if has_override and Action.MODEL_OVERRIDE not in authorized_actions:
         response = ForbiddenResponse.model_override()
         raise HTTPException(**response.model_dump())
-
-
-def _is_inout_shield(shield: Shield) -> bool:
-    """
-    Determine if the shield identifier indicates an input/output shield.
-
-    Parameters:
-    ----------
-        shield (Shield): The shield to check.
-
-    Returns:
-    -------
-        bool: True if the shield identifier starts with "inout_", otherwise False.
-    """
-    return shield.identifier.startswith("inout_")
-
-
-def is_output_shield(shield: Shield) -> bool:
-    """
-    Determine if the shield is for monitoring output.
-
-    Return True if the given shield is classified as an output or
-    inout shield.
-
-    A shield is considered an output shield if its identifier
-    starts with "output_" or "inout_".
-    """
-    return _is_inout_shield(shield) or shield.identifier.startswith("output_")
-
-
-def is_input_shield(shield: Shield) -> bool:
-    """
-    Determine if the shield is for monitoring input.
-
-    Return True if the shield is classified as an input or inout
-    shield.
-
-    Parameters:
-    ----------
-        shield (Shield): The shield identifier to classify.
-
-    Returns:
-    -------
-        bool: True if the shield is for input or both input/output monitoring; False otherwise.
-    """
-    return _is_inout_shield(shield) or not is_output_shield(shield)
 
 
 def prepare_input(

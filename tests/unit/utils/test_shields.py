@@ -2,393 +2,23 @@
 
 import pytest
 from fastapi import HTTPException, status
-from ogx_client import APIConnectionError, APIStatusError
 from pytest_mock import MockerFixture
 
+from models.config import QuestionValidityConfig, QuestionValidityShieldConfiguration
 from utils.shields import (
-    DEFAULT_VIOLATION_MESSAGE,
     append_turn_to_conversation,
-    detect_shield_violations,
-    get_available_shields,
     get_shields_for_request,
-    run_shield_moderation,
     validate_shield_ids_override,
 )
 
 
-class TestGetAvailableShields:
-    """Tests for get_available_shields function."""
-
-    @pytest.mark.asyncio
-    async def test_returns_shield_identifiers(self, mocker: MockerFixture) -> None:
-        """Test that get_available_shields returns list of shield identifiers."""
-        mock_client = mocker.Mock()
-        shield1 = mocker.Mock()
-        shield1.identifier = "shield-1"
-        shield2 = mocker.Mock()
-        shield2.identifier = "shield-2"
-        mock_client.shields.list = mocker.AsyncMock(return_value=[shield1, shield2])
-
-        result = await get_available_shields(mock_client)
-
-        assert result == ["shield-1", "shield-2"]
-        mock_client.shields.list.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_returns_empty_list_when_no_shields(
-        self, mocker: MockerFixture
-    ) -> None:
-        """Test that get_available_shields returns empty list when no shields available."""
-        mock_client = mocker.Mock()
-        mock_client.shields.list = mocker.AsyncMock(return_value=[])
-
-        result = await get_available_shields(mock_client)
-
-        assert result == []
-
-
-class TestDetectShieldViolations:
-    """Tests for detect_shield_violations function."""
-
-    def test_detects_violation_when_refusal_present(
-        self, mocker: MockerFixture
-    ) -> None:
-        """Test that detect_shield_violations returns True when refusal is present."""
-        mock_record_error = mocker.patch(
-            "utils.shields.recording.record_llm_validation_error"
-        )
-
-        output_item = mocker.Mock(type="message", refusal="Content blocked")
-        output_items = [output_item]
-
-        result = detect_shield_violations(output_items)
-
-        assert result is True
-        mock_record_error.assert_called_once()
-
-    def test_returns_false_when_no_violation(self, mocker: MockerFixture) -> None:
-        """Test that detect_shield_violations returns False when no refusal."""
-        mock_record_error = mocker.patch(
-            "utils.shields.recording.record_llm_validation_error"
-        )
-
-        output_item = mocker.Mock(type="message", refusal=None)
-        output_items = [output_item]
-
-        result = detect_shield_violations(output_items)
-
-        assert result is False
-        mock_record_error.assert_not_called()
-
-    def test_returns_false_for_non_message_items(self, mocker: MockerFixture) -> None:
-        """Test that detect_shield_violations ignores non-message items."""
-        mock_record_error = mocker.patch(
-            "utils.shields.recording.record_llm_validation_error"
-        )
-
-        output_item = mocker.Mock(type="tool_call", refusal="Content blocked")
-        output_items = [output_item]
-
-        result = detect_shield_violations(output_items)
-
-        assert result is False
-        mock_record_error.assert_not_called()
-
-    def test_returns_false_for_empty_list(self, mocker: MockerFixture) -> None:
-        """Test that detect_shield_violations returns False for empty list."""
-        mock_record_error = mocker.patch(
-            "utils.shields.recording.record_llm_validation_error"
-        )
-
-        result = detect_shield_violations([])
-
-        assert result is False
-        mock_record_error.assert_not_called()
-
-
-class TestRunShieldModeration:
-    """Tests for run_shield_moderation function."""
-
-    @pytest.mark.asyncio
-    async def test_returns_not_blocked_when_no_shields(
-        self, mocker: MockerFixture
-    ) -> None:
-        """Test that run_shield_moderation returns not blocked when no shields."""
-        mock_client = mocker.Mock()
-        mock_client.shields.list = mocker.AsyncMock(return_value=[])
-        mock_client.models.list = mocker.AsyncMock(return_value=[])
-
-        result = await run_shield_moderation(
-            mock_client, "test input", "/test-endpoint"
-        )
-
-        assert result.decision == "passed"
-
-    @pytest.mark.asyncio
-    async def test_returns_not_blocked_when_moderation_passes(
-        self, mocker: MockerFixture
-    ) -> None:
-        """Test that run_shield_moderation returns not blocked when content is safe."""
-        mock_client = mocker.Mock()
-
-        # Setup shield
-        shield = mocker.Mock()
-        shield.identifier = "test-shield"
-        shield.provider_resource_id = "moderation-model"
-        mock_client.shields.list = mocker.AsyncMock(return_value=[shield])
-
-        # Setup model
-        model = mocker.Mock()
-        model.id = "moderation-model"
-        mock_client.models.list = mocker.AsyncMock(return_value=[model])
-
-        # Setup moderation result (not flagged)
-        moderation_result = mocker.Mock()
-        moderation_result.results = [mocker.Mock(flagged=False)]
-        mock_client.moderations.create = mocker.AsyncMock(
-            return_value=moderation_result
-        )
-
-        result = await run_shield_moderation(
-            mock_client, "safe input", "/test-endpoint"
-        )
-
-        assert result.decision == "passed"
-        mock_client.moderations.create.assert_called_once_with(
-            input="safe input", model="moderation-model"
-        )
-
-    @pytest.mark.asyncio
-    async def test_returns_blocked_when_content_flagged(
-        self, mocker: MockerFixture
-    ) -> None:
-        """Test that run_shield_moderation returns blocked when content is flagged."""
-        mock_record_error = mocker.patch(
-            "utils.shields.recording.record_llm_validation_error"
-        )
-        mock_client = mocker.Mock()
-
-        # Setup shield
-        shield = mocker.Mock()
-        shield.identifier = "test-shield"
-        shield.provider_resource_id = "moderation-model"
-        mock_client.shields.list = mocker.AsyncMock(return_value=[shield])
-
-        # Setup model
-        model = mocker.Mock()
-        model.id = "moderation-model"
-        mock_client.models.list = mocker.AsyncMock(return_value=[model])
-
-        # Setup moderation result (flagged)
-        flagged_result = mocker.Mock()
-        flagged_result.flagged = True
-        flagged_result.categories = ["violence"]
-        flagged_result.user_message = "Content blocked for violence"
-        moderation_result = mocker.Mock()
-        moderation_result.id = "mod_123"
-        moderation_result.results = [flagged_result]
-        mock_client.moderations.create = mocker.AsyncMock(
-            return_value=moderation_result
-        )
-
-        result = await run_shield_moderation(
-            mock_client, "violent content", "/test-endpoint"
-        )
-
-        assert result.decision == "blocked"
-        assert result.message == "Content blocked for violence"
-        mock_record_error.assert_called_once_with("/test-endpoint")
-
-    @pytest.mark.asyncio
-    async def test_returns_blocked_with_default_message_when_no_user_message(
-        self, mocker: MockerFixture
-    ) -> None:
-        """Test that run_shield_moderation uses default message when user_message is None."""
-        mock_record_error = mocker.patch(
-            "utils.shields.recording.record_llm_validation_error"
-        )
-        mock_client = mocker.Mock()
-
-        # Setup shield
-        shield = mocker.Mock()
-        shield.identifier = "test-shield"
-        shield.provider_resource_id = "moderation-model"
-        mock_client.shields.list = mocker.AsyncMock(return_value=[shield])
-
-        # Setup model
-        model = mocker.Mock()
-        model.id = "moderation-model"
-        mock_client.models.list = mocker.AsyncMock(return_value=[model])
-
-        # Setup moderation result (flagged, no user_message)
-        flagged_result = mocker.Mock()
-        flagged_result.flagged = True
-        flagged_result.categories = ["spam"]
-        flagged_result.user_message = None
-        moderation_result = mocker.Mock()
-        moderation_result.id = "mod_456"
-        moderation_result.results = [flagged_result]
-        mock_client.moderations.create = mocker.AsyncMock(
-            return_value=moderation_result
-        )
-
-        result = await run_shield_moderation(
-            mock_client, "spam content", "/test-endpoint"
-        )
-
-        assert result.decision == "blocked"
-        assert result.message == DEFAULT_VIOLATION_MESSAGE
-        mock_record_error.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_skips_model_check_for_non_llama_guard_shields(
-        self, mocker: MockerFixture
-    ) -> None:
-        """Test that non-llama-guard shields skip model validation and proceed to moderation."""
-        mock_client = mocker.Mock()
-
-        # Setup custom shield (not llama-guard) with provider_resource_id not in models
-        shield = mocker.Mock()
-        shield.identifier = "custom-shield"
-        shield.provider_id = "lightspeed_question_validity"
-        shield.provider_resource_id = "not-a-model-id"
-        mock_client.shields.list = mocker.AsyncMock(return_value=[shield])
-
-        # No matching models - should NOT raise for non-llama-guard
-        mock_client.models.list = mocker.AsyncMock(return_value=[])
-
-        # Setup moderation result (not flagged)
-        moderation_result = mocker.Mock()
-        moderation_result.results = [mocker.Mock(flagged=False)]
-        mock_client.moderations.create = mocker.AsyncMock(
-            return_value=moderation_result
-        )
-
-        result = await run_shield_moderation(
-            mock_client, "test input", "/test-endpoint"
-        )
-
-        assert result.decision == "passed"
-        mock_client.moderations.create.assert_called_once_with(
-            input="test input", model="not-a-model-id"
-        )
-
-    @pytest.mark.asyncio
-    async def test_raises_http_exception_when_shield_model_not_found(
-        self, mocker: MockerFixture
-    ) -> None:
-        """Test that run_shield_moderation raises HTTPException when shield model not in models."""
-        mock_client = mocker.Mock()
-
-        # Setup llama-guard shield with provider_resource_id not in models
-        shield = mocker.Mock()
-        shield.identifier = "test-shield"
-        shield.provider_id = "llama-guard"
-        shield.provider_resource_id = "missing-model"
-        mock_client.shields.list = mocker.AsyncMock(return_value=[shield])
-
-        # Setup models (doesn't include the shield's model)
-        model = mocker.Mock()
-        model.id = "other-model"
-        mock_client.models.list = mocker.AsyncMock(return_value=[model])
-
-        with pytest.raises(HTTPException) as exc_info:
-            await run_shield_moderation(mock_client, "test input", "/test-endpoint")
-
-        assert exc_info.value.status_code == status.HTTP_404_NOT_FOUND
-        assert "missing-model" in exc_info.value.detail["cause"]  # type: ignore[index]
-
-    @pytest.mark.asyncio
-    async def test_raises_http_exception_when_shield_has_no_provider_resource_id(
-        self, mocker: MockerFixture
-    ) -> None:
-        """Test that run_shield_moderation raises HTTPException when no provider_resource_id."""
-        mock_client = mocker.Mock()
-
-        # Setup llama-guard shield without provider_resource_id
-        shield = mocker.Mock()
-        shield.identifier = "test-shield"
-        shield.provider_id = "llama-guard"
-        shield.provider_resource_id = None
-        mock_client.shields.list = mocker.AsyncMock(return_value=[shield])
-
-        mock_client.models.list = mocker.AsyncMock(return_value=[])
-
-        with pytest.raises(HTTPException) as exc_info:
-            await run_shield_moderation(mock_client, "test input", "/test-endpoint")
-
-        assert exc_info.value.status_code == status.HTTP_404_NOT_FOUND
-
-    @pytest.mark.asyncio
-    async def test_shield_ids_empty_list_runs_no_shields_returns_passed(
-        self, mocker: MockerFixture
-    ) -> None:
-        """Test that shield_ids=[] runs no shields and returns passed."""
-        mock_client = mocker.Mock()
-        shield = mocker.Mock()
-        shield.identifier = "shield-1"
-        mock_client.shields.list = mocker.AsyncMock(return_value=[shield])
-        mock_client.models.list = mocker.AsyncMock(return_value=[])
-
-        result = await run_shield_moderation(
-            mock_client, "test input", "/test-endpoint", shield_ids=[]
-        )
-
-        assert result.decision == "passed"
-
-    @pytest.mark.asyncio
-    async def test_shield_ids_raises_404_when_no_shields_found(
-        self, mocker: MockerFixture
-    ) -> None:
-        """Test shield_ids raises HTTPException 404 when requested shield not configured."""
-        mock_client = mocker.Mock()
-        shield = mocker.Mock()
-        shield.identifier = "shield-1"
-        mock_client.shields.list = mocker.AsyncMock(return_value=[shield])
-
-        with pytest.raises(HTTPException) as exc_info:
-            await run_shield_moderation(
-                mock_client, "test input", "/test-endpoint", shield_ids=["typo-shield"]
-            )
-
-        assert exc_info.value.status_code == status.HTTP_404_NOT_FOUND
-        assert "Shield" in exc_info.value.detail["response"]  # type: ignore[index]
-        assert "typo-shield" in exc_info.value.detail["cause"]  # type: ignore[index]
-
-    @pytest.mark.asyncio
-    async def test_shield_ids_filters_to_specific_shield(
-        self, mocker: MockerFixture
-    ) -> None:
-        """Test that shield_ids filters to only specified shields."""
-        mock_client = mocker.Mock()
-
-        shield1 = mocker.Mock()
-        shield1.identifier = "shield-1"
-        shield1.provider_resource_id = "model-1"
-        shield2 = mocker.Mock()
-        shield2.identifier = "shield-2"
-        shield2.provider_resource_id = "model-2"
-        mock_client.shields.list = mocker.AsyncMock(return_value=[shield1, shield2])
-
-        model1 = mocker.Mock()
-        model1.id = "model-1"
-        mock_client.models.list = mocker.AsyncMock(return_value=[model1])
-
-        moderation_result = mocker.Mock()
-        moderation_result.results = [mocker.Mock(flagged=False)]
-        mock_client.moderations.create = mocker.AsyncMock(
-            return_value=moderation_result
-        )
-
-        result = await run_shield_moderation(
-            mock_client, "test input", "/test-endpoint", shield_ids=["shield-1"]
-        )
-
-        assert result.decision == "passed"
-        assert mock_client.moderations.create.call_count == 1
-        mock_client.moderations.create.assert_called_with(
-            input="test input", model="model-1"
-        )
+def _shield(name: str) -> QuestionValidityShieldConfiguration:
+    """Build a minimal question-validity shield configuration for tests."""
+    return QuestionValidityShieldConfiguration(
+        name=name,
+        type="question_validity",
+        config=QuestionValidityConfig(model_id="test-model"),
+    )
 
 
 class TestAppendTurnToConversation:  # pylint: disable=too-few-public-methods
@@ -506,127 +136,55 @@ class TestValidateShieldIdsOverride:
 class TestGetShieldsForRequest:
     """Tests for get_shields_for_request function."""
 
-    @pytest.mark.asyncio
-    async def test_returns_all_shields_when_shield_ids_none(
-        self, mocker: MockerFixture
-    ) -> None:
+    def test_returns_all_shields_when_shield_ids_none(self) -> None:
         """Return all configured shields when shield_ids is None."""
-        mock_client = mocker.Mock()
-        shield1 = mocker.Mock()
-        shield1.identifier = "shield-1"
-        shield2 = mocker.Mock()
-        shield2.identifier = "shield-2"
-        mock_client.shields.list = mocker.AsyncMock(return_value=[shield1, shield2])
+        shields = [_shield("shield-1"), _shield("shield-2")]
 
-        result = await get_shields_for_request(mock_client, shield_ids=None)
+        result = get_shields_for_request(shields, shield_ids=None)
 
-        assert len(result) == 2
-        assert result[0].identifier == "shield-1"
-        assert result[1].identifier == "shield-2"
-        mock_client.shields.list.assert_called_once()
+        assert result == shields
 
-    @pytest.mark.asyncio
-    async def test_returns_empty_list_when_no_shields_configured(
-        self, mocker: MockerFixture
-    ) -> None:
-        """Test that get_shields_for_request returns empty list when no shields configured."""
-        mock_client = mocker.Mock()
-        mock_client.shields.list = mocker.AsyncMock(return_value=[])
+    def test_returns_empty_list_when_shield_ids_empty(self) -> None:
+        """Return no shields when an empty shield_ids list is provided."""
+        shields = [_shield("shield-1"), _shield("shield-2")]
 
-        result = await get_shields_for_request(mock_client, shield_ids=None)
+        result = get_shields_for_request(shields, shield_ids=[])
 
         assert result == []
 
-    @pytest.mark.asyncio
-    async def test_filters_to_requested_shields_when_all_exist(
-        self, mocker: MockerFixture
-    ) -> None:
-        """Test that get_shields_for_request returns only requested shields when all exist."""
-        mock_client = mocker.Mock()
-        shield1 = mocker.Mock()
-        shield1.identifier = "shield-1"
-        shield2 = mocker.Mock()
-        shield2.identifier = "shield-2"
-        shield3 = mocker.Mock()
-        shield3.identifier = "shield-3"
-        mock_client.shields.list = mocker.AsyncMock(
-            return_value=[shield1, shield2, shield3]
+    def test_filters_to_requested_shields_when_all_exist(self) -> None:
+        """Return only shields whose names appear in shield_ids."""
+        shield1 = _shield("shield-1")
+        shield2 = _shield("shield-2")
+        shield3 = _shield("shield-3")
+
+        result = get_shields_for_request(
+            [shield1, shield2, shield3], shield_ids=["shield-1", "shield-3"]
         )
 
-        result = await get_shields_for_request(
-            mock_client, shield_ids=["shield-1", "shield-3"]
-        )
+        assert result == [shield1, shield3]
 
-        assert len(result) == 2
-        assert result[0].identifier == "shield-1"
-        assert result[1].identifier == "shield-3"
-
-    @pytest.mark.asyncio
-    async def test_raises_404_when_requested_shield_not_configured(
-        self, mocker: MockerFixture
-    ) -> None:
-        """Raise 404 when a requested shield is not configured."""
-        mock_client = mocker.Mock()
-        shield = mocker.Mock()
-        shield.identifier = "shield-1"
-        mock_client.shields.list = mocker.AsyncMock(return_value=[shield])
-
+    def test_raises_404_when_requested_shield_not_configured(self) -> None:
+        """Raise 404 when a requested shield name is not configured."""
         with pytest.raises(HTTPException) as exc_info:
-            await get_shields_for_request(
-                mock_client, shield_ids=["shield-1", "missing-shield"]
+            get_shields_for_request(
+                [_shield("shield-1")], shield_ids=["shield-1", "missing-shield"]
             )
 
         assert exc_info.value.status_code == status.HTTP_404_NOT_FOUND
-        assert "Shield" in exc_info.value.detail["response"]  # type: ignore[index]
-        assert "missing-shield" in exc_info.value.detail["cause"]  # type: ignore[index]
+        detail = exc_info.value.detail
+        assert isinstance(detail, dict)
+        assert "Shield" in detail["response"]
+        assert "missing-shield" in detail["cause"]
 
-    @pytest.mark.asyncio
-    async def test_raises_404_when_multiple_requested_shields_not_configured(
-        self, mocker: MockerFixture
-    ) -> None:
-        """Raise 404 with all missing ids when multiple shields not configured."""
-        mock_client = mocker.Mock()
-        mock_client.shields.list = mocker.AsyncMock(return_value=[])
-
+    def test_raises_404_when_multiple_requested_shields_not_configured(self) -> None:
+        """Raise 404 listing all missing shield names."""
         with pytest.raises(HTTPException) as exc_info:
-            await get_shields_for_request(
-                mock_client, shield_ids=["missing-1", "missing-2"]
-            )
+            get_shields_for_request([], shield_ids=["missing-1", "missing-2"])
 
         assert exc_info.value.status_code == status.HTTP_404_NOT_FOUND
-        assert "Shields" in exc_info.value.detail["response"]  # type: ignore[index]
-        cause = exc_info.value.detail["cause"]  # type: ignore[index]
-        assert "missing-1" in cause
-        assert "missing-2" in cause
-
-    @pytest.mark.asyncio
-    async def test_raises_503_on_connection_error(self, mocker: MockerFixture) -> None:
-        """Raise 503 on APIConnectionError."""
-        mock_client = mocker.Mock()
-        mock_client.shields.list = mocker.AsyncMock(
-            side_effect=APIConnectionError(
-                message="Connection failed", request=mocker.Mock()
-            )
-        )
-
-        with pytest.raises(HTTPException) as exc_info:
-            await get_shields_for_request(mock_client, shield_ids=None)
-
-        assert exc_info.value.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
-
-    @pytest.mark.asyncio
-    async def test_raises_500_on_api_status_error(self, mocker: MockerFixture) -> None:
-        """Raise 500 on APIStatusError."""
-        mock_client = mocker.Mock()
-        mock_client.shields.list = mocker.AsyncMock(
-            side_effect=APIStatusError(
-                message="Server error",
-                response=mocker.Mock(request=None),
-                body=None,
-            )
-        )
-
-        with pytest.raises(HTTPException) as exc_info:
-            await get_shields_for_request(mock_client, shield_ids=None)
-
-        assert exc_info.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+        detail = exc_info.value.detail
+        assert isinstance(detail, dict)
+        assert "Shields" in detail["response"]
+        assert "missing-1" in detail["cause"]
+        assert "missing-2" in detail["cause"]

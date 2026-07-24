@@ -16,7 +16,7 @@ class ServiceUnavailableResponse(AbstractErrorResponse):
         "json_schema_extra": {
             "examples": [
                 {
-                    "label": "llama stack",
+                    "label": "ogx",
                     "detail": {
                         "response": "Unable to connect to OGX",
                         "cause": "Connection error while trying to reach backend service.",

@@ -12,12 +12,14 @@ from models.common.health import (
     ProviderHealthStatus,
 )
 from models.common.mcp import MCPServerAuthInfo, MCPServerInfo
+from models.common.models import CatalogModel
 from models.common.moderation import (
     ShieldModerationBlocked,
     ShieldModerationPassed,
     ShieldModerationResult,
 )
 from models.common.query import Attachment, SolrVectorSearchRequest
+from models.common.shields import CatalogShield
 from models.common.transcripts import Transcript, TranscriptMetadata
 from models.common.turn_summary import (
     MCPListToolsSummary,
@@ -33,6 +35,7 @@ from models.common.turn_summary import (
 __all__ = [
     "Attachment",
     "ConversationData",
+    "CatalogModel",
     "FeedbackCategory",
     "ConversationDetails",
     "ConversationTurn",
@@ -44,6 +47,7 @@ __all__ = [
     "RAGChunk",
     "RAGContext",
     "ReferencedDocument",
+    "CatalogShield",
     "ShieldModerationBlocked",
     "ShieldModerationPassed",
     "ShieldModerationResult",

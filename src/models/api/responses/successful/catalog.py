@@ -5,7 +5,7 @@ from typing import Any, Optional
 from pydantic import Field
 
 from models.api.responses.successful.bases import AbstractSuccessfulResponse
-from models.common.models import CatalogModel
+from models.common import CatalogModel, CatalogShield
 from models.common.tools import CatalogTool
 
 
@@ -79,9 +79,9 @@ class ToolsResponse(AbstractSuccessfulResponse):
 class ShieldsResponse(AbstractSuccessfulResponse):
     """Model representing a response to shields request."""
 
-    shields: list[dict[str, Any]] = Field(
+    shields: list[CatalogShield] = Field(
         ...,
-        description="List of shields available",
+        description="List of shields configured in Lightspeed Core Stack",
     )
 
     model_config = {
@@ -90,12 +90,30 @@ class ShieldsResponse(AbstractSuccessfulResponse):
                 {
                     "shields": [
                         {
-                            "identifier": "lightspeed_question_validity-shield",
-                            "provider_resource_id": "lightspeed_question_validity-shield",
-                            "provider_id": "lightspeed_question_validity",
-                            "type": "shield",
-                            "params": {},
-                        }
+                            "name": "question-validity",
+                            "type": "question_validity",
+                            "config": {
+                                "model_id": "openai/gpt-4o-mini",
+                                "model_prompt": "Is this question valid?",
+                                "invalid_question_response": (
+                                    "I can only answer questions about the product."
+                                ),
+                            },
+                        },
+                        {
+                            "name": "pii-redaction",
+                            "type": "redaction",
+                            "config": {
+                                "rules": [
+                                    {
+                                        "pattern": r"\b\d{3}-\d{2}-\d{4}\b",
+                                        "replacement": "[REDACTED]",
+                                        "case_sensitive": None,
+                                    }
+                                ],
+                                "case_sensitive": False,
+                            },
+                        },
                     ],
                 }
             ]
