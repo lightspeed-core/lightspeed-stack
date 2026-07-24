@@ -2,24 +2,22 @@
 
 from typing import Annotated, Any
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Request
 from fastapi.params import Depends
-from ogx_client import APIConnectionError
 
 from authentication import get_auth_dependency
 from authentication.interface import AuthTuple
 from authorization.middleware import authorize
-from client import AsyncOgxClientHolder
 from configuration import configuration
 from log import get_logger
 from models.api.responses.constants import UNAUTHORIZED_OPENAPI_EXAMPLES
 from models.api.responses.error import (
     ForbiddenResponse,
     InternalServerErrorResponse,
-    ServiceUnavailableResponse,
     UnauthorizedResponse,
 )
 from models.api.responses.successful import ShieldsResponse
+from models.common.shields import CatalogShield
 from models.config import Action
 from utils.endpoints import check_configuration_loaded
 
@@ -32,9 +30,6 @@ shields_responses: dict[int | str, dict[str, Any]] = {
     401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
     500: InternalServerErrorResponse.openapi_response(examples=["configuration"]),
-    503: ServiceUnavailableResponse.openapi_response(
-        examples=["ogx", "kubernetes api"]
-    ),
 }
 
 
@@ -48,7 +43,7 @@ async def shields_endpoint_handler(
     Handle requests to the /shields endpoint.
 
     Process GET requests to the /shields endpoint, returning a list of available
-    shields from the Llama Stack service.
+    shields from Lightspeed Core Stack configuration.
 
     ### Parameters:
     - request: The incoming HTTP request (used by middleware).
@@ -59,8 +54,6 @@ async def shields_endpoint_handler(
     - HTTPException: with status 403 if permission is denied.
     - HTTPException: with status 500 and a detail object containing `response`
       and `cause` when service configuration is wrong or incomplete.
-    - HTTPException: with status 503 and a detail object containing `response`
-      and `cause` when unable to connect to Llama Stack.
 
     ### Returns:
     - ShieldsResponse: An object containing the list of available shields.
@@ -73,19 +66,9 @@ async def shields_endpoint_handler(
 
     check_configuration_loaded(configuration)
 
-    llama_stack_configuration = configuration.llama_stack_configuration
-    logger.info("Llama Stack config: %s", llama_stack_configuration)
-
-    try:
-        # try to get Llama Stack client
-        client = AsyncOgxClientHolder().get_client()
-        # retrieve shields
-        shields = await client.shields.list()
-        s = [dict(s) for s in shields]
-        return ShieldsResponse(shields=s)
-
-    # connection to Llama Stack server
-    except APIConnectionError as e:
-        logger.error("Unable to connect to Llama Stack: %s", e)
-        response = ServiceUnavailableResponse(backend_name="OGX", cause=str(e))
-        raise HTTPException(**response.model_dump()) from e
+    shields = [
+        CatalogShield.model_validate(shield.model_dump())
+        for shield in configuration.shields
+    ]
+    logger.info("Returning %d configured shield(s)", len(shields))
+    return ShieldsResponse(shields=shields)

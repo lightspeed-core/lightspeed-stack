@@ -262,7 +262,7 @@ async def test_rlsapi_v1_infer_connection_error_returns_503(
     test_auth: AuthTuple,
     mocker: MockerFixture,
 ) -> None:
-    """Test /v1/infer returns 503 when Llama Stack is unavailable."""
+    """Test /v1/infer returns 503 when OGX is unavailable."""
     _ = rlsapi_config
 
     mock_responses = mocker.Mock()
@@ -288,7 +288,7 @@ async def test_rlsapi_v1_infer_connection_error_returns_503(
     assert isinstance(exc_info.value.detail, dict)
     assert "response" in exc_info.value.detail
     detail = cast(dict[str, str], exc_info.value.detail)
-    assert "Llama Stack" in detail["response"]
+    assert "OGX" in detail["response"]
 
 
 @pytest.mark.asyncio

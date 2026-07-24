@@ -9171,6 +9171,7 @@ def test_dump_models(tmpdir: Path) -> None:
             "BadRequestResponse",
             "ByokRag",
             "CORSConfiguration",
+            "CatalogShield",
             "CompactionConfiguration",
             "Configuration",
             "ConfigurationResponse",
