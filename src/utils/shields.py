@@ -3,15 +3,11 @@
 from typing import Optional
 
 from fastapi import HTTPException
-from ogx_client import (
-    APIConnectionError,
-    AsyncOgxClient,
-)
-from ogx_client import (
-    APIStatusError as LLSApiStatusError,
-)
+from ogx_client import APIConnectionError, APIStatusError, AsyncOgxClient
+from pydantic_ai.exceptions import AgentRunError
 
 from configuration import AppConfig
+from log import get_logger
 from models.api.requests import QueryRequest
 from models.api.responses.error import (
     InternalServerErrorResponse,
@@ -19,8 +15,21 @@ from models.api.responses.error import (
     ServiceUnavailableResponse,
     UnprocessableEntityResponse,
 )
-from models.common import ShieldModerationPassed, ShieldModerationResult
-from models.config import ShieldConfiguration
+from models.common.moderation import (
+    ShieldModerationPassed,
+    ShieldModerationResult,
+)
+from models.config import QuestionValidityConfig, RedactionConfig, ShieldConfiguration
+from pydantic_ai_lightspeed.capabilities.base import AbstractSafetyCapability
+from pydantic_ai_lightspeed.capabilities.question_validity._capability import (
+    QuestionValidity,
+)
+from pydantic_ai_lightspeed.capabilities.redaction._capability import (
+    PiiRedactionCapability,
+)
+from utils.agents.error_handler import map_agent_inference_error
+
+logger = get_logger(__name__)
 
 
 def validate_shield_ids_override(
@@ -57,6 +66,63 @@ def validate_shield_ids_override(
             ),
         )
         raise HTTPException(**response.model_dump())
+
+
+async def run_shield_moderation_v2(
+    input_text: str,
+    shield_configs: list[ShieldConfiguration],
+    selected_shield_ids: Optional[list[str]] = None,
+) -> ShieldModerationResult:
+    """Run v2 shield moderation on input text.
+
+    Iterates through configured shields and runs moderation checks.
+
+    Parameters:
+        input_text: The text to moderate.
+        shield_configs: List of shield configurations to evaluate.
+        selected_shield_ids: Optional list of shield names to filter by.
+
+    Returns:
+        Result indicating if content was blocked or passed.
+    """
+    selected_shield_configs = get_shields_for_request(
+        shield_configs, selected_shield_ids
+    )
+
+    for shield_config in selected_shield_configs:
+        shield = build_shield(shield_config)
+
+        try:
+            shield_result = await shield.run(input_text)
+        # APIConnectionError and APIStatusError from ogx should not be raised from model_request,
+        # because they will be caught inside AsyncOpenAI and transferred into openai's
+        # APIConnectionError. The openai's exceptions will further transferred into ModelHTTPError
+        # or ModelAPIError by _map_api_errors in OpenAIResponseModel.
+        except (AgentRunError, RuntimeError) as exc:
+            model_id = getattr(shield_config.config, "model_id", "unknown-shield-model")
+            response = map_agent_inference_error(exc, model_id)
+            raise HTTPException(**response.model_dump()) from exc
+
+        if shield_result.decision == "blocked":
+            return shield_result
+
+    return ShieldModerationPassed()
+
+
+def build_shield(shield_config: ShieldConfiguration) -> AbstractSafetyCapability:
+    """Build a safety capability instance from a shield configuration.
+
+    Parameters:
+        shield_config: The shield configuration to build from.
+
+    Returns:
+        The constructed safety capability.
+    """
+    match shield_config.config:
+        case QuestionValidityConfig():
+            return QuestionValidity(shield_config.config)
+        case RedactionConfig():
+            return PiiRedactionCapability(shield_config.config)
 
 
 async def run_shield_moderation(
@@ -124,7 +190,7 @@ async def append_turn_to_conversation(
             cause=str(e),
         )
         raise HTTPException(**error_response.model_dump()) from e
-    except LLSApiStatusError as e:
+    except APIStatusError as e:
         error_response = InternalServerErrorResponse.generic()
         raise HTTPException(**error_response.model_dump()) from e
 

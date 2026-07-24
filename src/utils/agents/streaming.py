@@ -46,12 +46,12 @@ from models.common.responses import ResponseInput
 from models.common.responses.contexts import ResponseGeneratorContext
 from models.common.responses.responses_api_params import ResponsesApiParams
 from models.common.turn_summary import TurnSummary
+from utils.agents.error_handler import map_agent_inference_error
 from utils.agents.query import (
     AgentFinishReason,
     extract_agent_token_usage,
     get_agent_finish_reason,
     get_finish_reason_error,
-    map_agent_inference_error,
 )
 from utils.agents.tool_processor import (
     process_function_tool_call,

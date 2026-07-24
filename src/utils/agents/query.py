@@ -9,12 +9,6 @@ from fastapi import HTTPException
 from ogx_client import APIConnectionError, APIStatusError, AsyncOgxClient
 from pydantic_ai.exceptions import (
     AgentRunError,
-    ContentFilterError,
-    IncompleteToolCall,
-    ModelAPIError,
-    ModelHTTPError,
-    UnexpectedModelBehavior,
-    UsageLimitExceeded,
 )
 from pydantic_ai.messages import ModelRequest, ModelResponse, ToolReturnPart
 from pydantic_ai.run import AgentRunResult
@@ -27,8 +21,6 @@ from models.api.responses.error import (
     AbstractErrorResponse,
     InternalServerErrorResponse,
     PromptTooLongResponse,
-    QuotaExceededResponse,
-    ServiceUnavailableResponse,
 )
 from models.common.agents import AgentTurnAccumulator
 from models.common.moderation import ShieldModerationResult
@@ -36,6 +28,7 @@ from models.common.query import Attachment
 from models.common.responses.responses_api_params import ResponsesApiParams
 from models.common.responses.types import ResponseInput
 from models.common.turn_summary import TurnSummary
+from utils.agents.error_handler import map_agent_inference_error
 from utils.agents.tool_processor import (
     process_function_tool_call,
     process_function_tool_result,
@@ -47,8 +40,6 @@ from utils.pydantic_ai_helpers import build_agent
 from utils.query import (
     build_multimodal_input,
     extract_provider_and_model_from_model_id,
-    handle_known_apistatus_errors,
-    is_context_length_error,
 )
 from utils.responses import extract_vector_store_ids_from_tools
 from utils.token_counter import TokenCounter
@@ -68,76 +59,6 @@ class AgentFinishReason(str, Enum):
     SUCCESS = "stop"
     LENGTH = "length"
     ERROR = "error"
-
-
-def map_agent_inference_error(
-    exc: AgentInferenceError,
-    model_id: str,
-) -> AbstractErrorResponse:
-    """Map agent run failures from pydantic-ai or Llama Stack to an LCS error response.
-
-    Args:
-        exc: Agent, HTTP status, connection, or context-length runtime error.
-        model_id: Model identifier in provider/model format.
-
-    Returns:
-        Structured error response for HTTP or SSE error events.
-
-    Raises:
-        RuntimeError: Re-raised when ``exc`` is a non-agent ``RuntimeError`` that is
-            not a recognized context-length failure.
-    """
-    match exc:
-        case AgentRunError() as agent_exc:
-            return map_pydantic_agent_run_error(agent_exc, model_id)
-        case APIStatusError() as status_exc:
-            return handle_known_apistatus_errors(status_exc, model_id)
-        case APIConnectionError() as connection_exc:
-            return ServiceUnavailableResponse(
-                backend_name="OGX",
-                cause=str(connection_exc),
-            )
-        case RuntimeError() as runtime_exc if is_context_length_error(str(runtime_exc)):
-            return PromptTooLongResponse(model=model_id)
-        case _:
-            return InternalServerErrorResponse.generic()
-
-
-def map_pydantic_agent_run_error(
-    exc: AgentRunError, model_id: str
-) -> AbstractErrorResponse:
-    """Map pydantic-ai ``AgentRunError`` subclasses to LCS error responses.
-
-    Args:
-        exc: Agent exception to map.
-        model_id: Model identifier in provider/model format.
-
-    Returns:
-        Structured error response for HTTP or SSE error events.
-    """
-    match exc:
-        case ContentFilterError() as filter_exc:
-            return InternalServerErrorResponse.query_failed(str(filter_exc))
-        case IncompleteToolCall():
-            return PromptTooLongResponse(model=model_id)
-        case UnexpectedModelBehavior():
-            logger.error("Unexpected model behavior: %s", exc, exc_info=True)
-            return InternalServerErrorResponse.generic()
-        case UsageLimitExceeded():
-            return QuotaExceededResponse.model(model_id)
-        case ModelHTTPError() as http_exc if is_context_length_error(str(http_exc)):
-            return PromptTooLongResponse(model=model_id)
-        case ModelHTTPError(status_code=429):
-            return QuotaExceededResponse.model(model_id)
-        case ModelHTTPError():
-            return InternalServerErrorResponse.generic()
-        case ModelAPIError() as api_exc:
-            return ServiceUnavailableResponse(
-                backend_name="OGX",
-                cause=str(api_exc),
-            )
-        case _:
-            return InternalServerErrorResponse.query_failed(str(exc))
 
 
 def get_agent_finish_reason(response: ModelResponse) -> AgentFinishReason:

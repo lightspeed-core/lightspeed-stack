@@ -105,7 +105,7 @@ from utils.responses import (
     select_model_for_responses,
 )
 from utils.rh_identity import get_rh_identity_context
-from utils.shields import run_shield_moderation
+from utils.shields import run_shield_moderation_v2
 from utils.suid import (
     normalize_conversation_id,
 )
@@ -424,11 +424,11 @@ async def responses_endpoint_handler(
     attachments_text = extract_attachments_text(original_request.input)
 
     endpoint_path = ENDPOINT_PATH_RESPONSES
-    moderation_result = await run_shield_moderation(
-        client,
+
+    moderation_result = await run_shield_moderation_v2(
         input_text + "\n\n" + attachments_text,
-        endpoint_path,
-        original_request.shield_ids,
+        configuration.configuration.shields,
+        responses_request.shield_ids,
     )
 
     filter_server_tools = (

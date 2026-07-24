@@ -172,7 +172,7 @@ def _configure_shield_blocked(
         moderation_id=moderation_id,
     )
     mocker.patch(
-        "app.endpoints.responses.run_shield_moderation",
+        "app.endpoints.responses.run_shield_moderation_v2",
         return_value=blocked,
     )
 
