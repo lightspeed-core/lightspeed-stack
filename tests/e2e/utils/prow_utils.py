@@ -62,8 +62,12 @@ def run_e2e_ops(
     )
 
 
-def wait_for_pod_health(pod_name: str, max_attempts: int = 12) -> None:
-    """Wait for pod to be ready in OpenShift/Prow environment."""
+def wait_for_pod_health(pod_name: str, max_attempts: int = 20) -> None:
+    """Wait for pod to be ready in OpenShift/Prow environment.
+
+    Generous number of attempts to account for OpenTelemetry instrumentation
+    initialization overhead during service startup.
+    """
     actual_pod_name = get_pod_name(pod_name)
     try:
         result = run_e2e_ops("wait-for-pod", [actual_pod_name, str(max_attempts)])

@@ -135,7 +135,7 @@ ENV PYTHONPATH="/app-root"
 
 # Run the application
 EXPOSE 8080
-ENTRYPOINT ["python3.12", "src/lightspeed_stack.py"]
+ENTRYPOINT ["opentelemetry-instrument", "python3.12", "src/lightspeed_stack.py"]
 
 LABEL vendor="Red Hat, Inc." \
     name="lightspeed-core/lightspeed-stack-rhel9" \
