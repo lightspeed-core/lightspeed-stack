@@ -221,6 +221,19 @@ else
     log "⚠️  No kv_store.db found at $RAG_DB_PATH"
 fi
 
+# Agent skills E2E: same fixture docker-compose mounts at /app-root/skills
+SKILLS_DIR="$REPO_ROOT/tests/e2e/skills"
+if [ -d "$SKILLS_DIR" ]; then
+  tar czf /tmp/e2e-skills.tgz -C "$SKILLS_DIR" .
+  oc create configmap e2e-skills -n "$NAMESPACE" \
+    --from-file=skills.tgz=/tmp/e2e-skills.tgz \
+    --dry-run=client -o yaml | oc apply -f -
+  rm -f /tmp/e2e-skills.tgz
+  log "✅ e2e-skills ConfigMap created from $SKILLS_DIR"
+else
+  log "⚠️  No skills directory at $SKILLS_DIR — skills.feature will fail"
+fi
+
 
 # ConfigMap for Llama Stack run-from-source (init container clones this repo @ this revision)
 REPO_URL="${REPO_URL:-$(cd "$REPO_ROOT" && git config --get remote.origin.url 2>/dev/null)}"
