@@ -27,6 +27,9 @@ def create_argument_parser() -> ArgumentParser:
     - -v / --verbose: enable verbose output
     - -d / --dump-configuration: dump the loaded configuration to JSON and exit
     - -s / --dump-schema: dump the configuration schema to OpenAPI JSON and exit
+    - -m / --dump-models: dump schemas for all models into OpenAPI-compatible file and quit
+    - -g / --dump-models-group DUMP_MODELS_GROUP
+                        dump schemas for selected models group into OpenAPI-compatible file and quit
     - -c / --config: path to the configuration file (default "lightspeed-stack.yaml")
     - -g / --generate-llama-stack-configuration: generate a Llama Stack
                                                  configuration from the service configuration
@@ -67,6 +70,14 @@ def create_argument_parser() -> ArgumentParser:
         dest="dump_models",
         help="dump schemas for all models into OpenAPI-compatible file and quit",
         action="store_true",
+        default=False,
+    )
+    parser.add_argument(
+        "-g",
+        "--dump-models-group",
+        dest="dump_models_group",
+        help="dump schemas for selected models group into OpenAPI-compatible file and quit",
+        action="store",
         default=False,
     )
     parser.add_argument(
@@ -208,6 +219,18 @@ def main() -> None:
         try:
             models_dumper.dump_models("models.json")
             logger.info("Schema for all models dumped to models.json")
+        except Exception as e:
+            logger.error("Failed to dump schema for models: %s", e)
+            raise SystemExit(1) from e
+        return
+
+    # -g or --dump-models-group CLI parameter is used to dump schema for
+    # selected models into a JSON file that is compatible with OpenAPI schema
+    # specification
+    if args.dump_models_group is not None:
+        try:
+            models_dumper.dump_models_group(args.dump_models_group)
+            logger.info("Schema for group %s of models dumped", args.dump_models_group)
         except Exception as e:
             logger.error("Failed to dump schema for models: %s", e)
             raise SystemExit(1) from e
