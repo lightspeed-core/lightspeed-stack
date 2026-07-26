@@ -5,7 +5,9 @@
 from json import load
 from pathlib import Path
 
-from utils.models_dumper import dump_models
+import pytest
+
+from utils.models_dumper import dump_models, dump_models_group
 
 
 def test_dump_models(tmpdir: Path) -> None:
@@ -9326,3 +9328,215 @@ def test_dump_models(tmpdir: Path) -> None:
         )
         for expected_schema in expected_schemas:
             assert expected_schema in schemas
+
+
+def check_json_file_content(filename: str, expected_schemas: list[str]) -> None:
+    """Check the content of provided JSON file with OpenAPI-compatible schema."""
+    with open(filename, "r", encoding="utf-8") as fin:
+        # schema should be stored in JSON format
+        content = load(fin)
+        assert content is not None
+
+        # top-level keys test
+        keys = ("openapi", "info", "components", "paths")
+        for key in keys:
+            assert key in content
+
+        # components should be top-level node
+        components = content["components"]
+        assert components is not None
+
+        # schemas should be a node stored inside components node
+        assert "schemas" in components
+        schemas = components["schemas"]
+        assert schemas is not None
+
+        for expected_schema in expected_schemas:
+            assert expected_schema in schemas
+
+
+def test_dump_models_group_requests(tmpdir: Path) -> None:
+    """Test that selected models can be dump into a JSON file."""
+    group = "requests"
+    filename = tmpdir / "foo.json"
+    dump_models_group(group, filename)
+
+    # list of schemas expected in a dump
+    expected_schemas = (
+        "ConversationUpdateRequest",
+        "FeedbackRequest",
+        "FeedbackStatusUpdateRequest",
+        "MCPServerRegistrationRequest",
+        "ModelFilter",
+        "PromptCreateRequest",
+        "PromptUpdateRequest",
+        "QueryRequest",
+        "ResponsesRequest",
+        "RlsapiV1Attachment",
+        "RlsapiV1CLA",
+        "RlsapiV1Context",
+        "RlsapiV1InferRequest",
+        "RlsapiV1SystemInfo",
+        "RlsapiV1Terminal",
+        "StreamingInterruptRequest",
+        "VectorStoreCreateRequest",
+        "VectorStoreFileCreateRequest",
+        "VectorStoreUpdateRequest",
+    )
+    check_json_file_content(filename, expected_schemas)
+
+
+def test_dump_models_group_successful_responses(tmpdir: Path) -> None:
+    """Test that selected models can be dump into a JSON file."""
+    group = "successful_responses"
+    filename = tmpdir / "foo.json"
+    dump_models_group(group, filename)
+
+    # list of schemas expected in a dump
+    expected_schemas = (
+        "AuthorizedResponse",
+        "ConfigurationResponse",
+        "ConversationDeleteResponse",
+        "ConversationResponse",
+        "ConversationUpdateResponse",
+        "ConversationsListResponse",
+        "ConversationsListResponseV2",
+        "FeedbackResponse",
+        "FeedbackStatusUpdateResponse",
+        "FileResponse",
+        "InfoResponse",
+        "LivenessResponse",
+        "MCPClientAuthOptionsResponse",
+        "MCPServerDeleteResponse",
+        "MCPServerListResponse",
+        "MCPServerRegistrationResponse",
+        "ModelsResponse",
+        "PromptDeleteResponse",
+        "PromptResourceResponse",
+        "PromptsListResponse",
+        "ProviderResponse",
+        "ProvidersListResponse",
+        "QueryResponse",
+        "RAGInfoResponse",
+        "RAGListResponse",
+        "ReadinessResponse",
+        "ResponsesResponse",
+        "RlsapiV1InferData",
+        "RlsapiV1InferResponse",
+        "ShieldsResponse",
+        "StatusResponse",
+        "StreamingInterruptResponse",
+        "StreamingQueryResponse",
+        "ToolsResponse",
+        "VectorStoreDeleteResponse",
+        "VectorStoreFileDeleteResponse",
+        "VectorStoreFileResponse",
+        "VectorStoreFilesListResponse",
+        "VectorStoreResponse",
+        "VectorStoresListResponse",
+    )
+    check_json_file_content(filename, expected_schemas)
+
+
+def test_dump_models_group_error_responses(tmpdir: Path) -> None:
+    """Test that selected models can be dump into a JSON file."""
+    group = "error_responses"
+    filename = tmpdir / "foo.json"
+    dump_models_group(group, filename)
+
+    # list of schemas expected in a dump
+    expected_schemas = (
+        "AbstractErrorResponse",
+        "BadRequestResponse",
+        "ConflictResponse",
+        "DetailModel",
+        "FileTooLargeResponse",
+        "ForbiddenResponse",
+        "InternalServerErrorResponse",
+        "NotFoundResponse",
+        "PromptTooLongResponse",
+        "QuotaExceededResponse",
+        "ServiceUnavailableResponse",
+        "UnauthorizedResponse",
+        "UnprocessableEntityResponse",
+    )
+    check_json_file_content(filename, expected_schemas)
+
+
+def test_dump_models_group_common_models(tmpdir: Path) -> None:
+    """Test that selected models can be dump into a JSON file."""
+    group = "common"
+    filename = tmpdir / "foo.json"
+    dump_models_group(group, filename)
+
+    # list of schemas expected in a dump
+    expected_schemas = (
+        "Attachment",
+        "ConversationData",
+        "ConversationDetails",
+        "ConversationTurn",
+        "MCPListToolsSummary",
+        "MCPServerAuthInfo",
+        "MCPServerInfo",
+        "Message",
+        "ProviderHealthStatus",
+        "RAGChunk",
+        "RAGContext",
+        "ReferencedDocument",
+        "ShieldModerationBlocked",
+        "ShieldModerationPassed",
+        "SolrVectorSearchRequest",
+        "ToolCallSummary",
+        "ToolInfoSummary",
+        "ToolResultSummary",
+        "Transcript",
+        "TranscriptMetadata",
+        "TurnSummary",
+    )
+    check_json_file_content(filename, expected_schemas)
+
+
+def test_dump_models_group_agent_models(tmpdir: Path) -> None:
+    """Test that selected models can be dump into a JSON file."""
+    group = "agents"
+    filename = tmpdir / "foo.json"
+    dump_models_group(group, filename)
+
+    # list of schemas expected in a dump
+    expected_schemas = (
+        "EndEventData",
+        "EndStreamPayload",
+        "ErrorEventData",
+        "ErrorStreamPayload",
+        "InterruptedEventData",
+        "InterruptedStreamPayload",
+        "StartEventData",
+        "StartStreamPayload",
+        "StreamPayloadBase",
+        "TokenChunkData",
+        "TokenStreamPayload",
+        "ToolCallStreamPayload",
+        "ToolResultStreamPayload",
+        "TurnCompleteStreamPayload",
+    )
+    check_json_file_content(filename, expected_schemas)
+
+
+def test_dump_models_common_responses_models(tmpdir: Path) -> None:
+    """Test that selected models can be dump into a JSON file."""
+    group = "common_responses"
+    filename = tmpdir / "foo.json"
+    dump_models_group(group, filename)
+
+    # list of schemas expected in a dump
+    expected_schemas = (
+        "InputToolMCP",
+        "ResponsesApiParams",
+    )
+    check_json_file_content(filename, expected_schemas)
+
+
+def test_dump_models_unknown_group(tmpdir: Path) -> None:
+    """Test that exception is raised for unknown model group."""
+    with pytest.raises(Exception, match="Unknown model group provided: unknown"):
+        dump_models_group("unknown")
