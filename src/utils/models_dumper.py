@@ -1,5 +1,9 @@
 """Function to dump the schema of all data models into OpenAPI-compatible format."""
 
+from typing import Optional
+
+from pydantic import BaseModel
+
 import models.api.requests as r
 import models.api.responses.error as e
 import models.api.responses.successful as s
@@ -11,7 +15,7 @@ from utils.openapi_schema_dumper import dump_openapi_schema
 
 conversation_summary_models = [models_compaction.ConversationSummary]
 
-requests_models = [
+requests_models: list[type[BaseModel]] = [
     r.ConversationUpdateRequest,
     r.FeedbackRequest,
     r.FeedbackStatusUpdateRequest,
@@ -33,7 +37,7 @@ requests_models = [
     r.VectorStoreUpdateRequest,
 ]
 
-successful_responses_models = [
+successful_responses_models: list[type[BaseModel]] = [
     s.AuthorizedResponse,
     s.ConfigurationResponse,
     s.ConversationDeleteResponse,
@@ -76,7 +80,7 @@ successful_responses_models = [
     s.VectorStoresListResponse,
 ]
 
-error_responses_models = [
+error_responses_models: list[type[BaseModel]] = [
     e.AbstractErrorResponse,
     e.BadRequestResponse,
     e.ConflictResponse,
@@ -92,7 +96,7 @@ error_responses_models = [
     e.UnprocessableEntityResponse,
 ]
 
-common_models = [
+common_models: list[type[BaseModel]] = [
     c.Attachment,
     c.ConversationData,
     c.ConversationDetails,
@@ -116,7 +120,7 @@ common_models = [
     c.TurnSummary,
 ]
 
-agents_models = [
+agents_models: list[type[BaseModel]] = [
     a.EndEventData,
     a.EndStreamPayload,
     a.ErrorEventData,
@@ -133,7 +137,7 @@ agents_models = [
     a.TurnCompleteStreamPayload,
 ]
 
-common_responses_models = [
+common_responses_models: list[type[BaseModel]] = [
     cr.InputToolMCP,
     cr.ResponsesApiParams,
 ]
@@ -169,7 +173,29 @@ def dump_models(filename: str) -> None:
     dump_openapi_schema(models, filename)
 
 
-def get_models_for_group(model_group: str) -> list[str]:
+def get_models_for_group(model_group: str) -> list[type[BaseModel]]:
+    """Return the list of Pydantic model classes for the given model group.
+
+    Supported groups:
+    - "requests"
+    - "successful_responses"
+    - "error_responses"
+    - "common"
+    - "agents"
+    - "common_responses"
+
+    Parameters:
+    ----------
+        model_group: The name of the model group to look up.
+
+    Returns:
+    -------
+        A list of Pydantic model classes belonging to the requested group.
+
+    Raises:
+    ------
+        Exception: If model_group is not a recognized group name.
+    """
     match model_group:
         case "requests":
             return requests_models
@@ -181,13 +207,13 @@ def get_models_for_group(model_group: str) -> list[str]:
             return common_models
         case "agents":
             return agents_models
-        case "common_responses_models":
+        case "common_responses":
             return common_responses_models
         case _:
-            raise Exception("Unknown model group provided %", model_group)
+            raise Exception(f"Unknown model group provided: {model_group}")
 
 
-def dump_models_group(model_group: str) -> None:
+def dump_models_group(model_group: str, filename: Optional[str] = None) -> None:
     """Dump the schema of selected models group into OpenAPI-compatible JSON file.
 
     Parameters:
@@ -202,25 +228,10 @@ def dump_models_group(model_group: str) -> None:
     ------
         IOError: If the file cannot be written.
     """
-    models = []
+    models = get_models_for_group(model_group)
 
-    match model_group:
-        case "requests":
-            models = requests_models
-        case "successful_responses":
-            models = successful_responses_models
-        case "error_responses":
-            models = error_responses_models
-        case "common":
-            models = common_models
-        case "agents":
-            models = agents_models
-        case "common_responses_models":
-            models = common_responses_models
-        case _:
-            raise Exception("Unknown model group provided %", model_group)
-
-    filename = f"{model_group}.json"
+    if filename is None:
+        filename = f"{model_group}.json"
 
     # dump all selected models into one OpenAPI-compatible JSON file
     dump_openapi_schema(models, filename)
