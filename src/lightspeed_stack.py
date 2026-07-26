@@ -28,7 +28,7 @@ def create_argument_parser() -> ArgumentParser:
     - -d / --dump-configuration: dump the loaded configuration to JSON and exit
     - -s / --dump-schema: dump the configuration schema to OpenAPI JSON and exit
     - -m / --dump-models: dump schemas for all models into OpenAPI-compatible file and quit
-    - -g / --dump-models-group DUMP_MODELS_GROUP
+    - -r / --dump-models-group DUMP_MODELS_GROUP
                         dump schemas for selected models group into OpenAPI-compatible file and quit
     - -c / --config: path to the configuration file (default "lightspeed-stack.yaml")
     - -g / --generate-llama-stack-configuration: generate a Llama Stack
@@ -73,7 +73,7 @@ def create_argument_parser() -> ArgumentParser:
         default=False,
     )
     parser.add_argument(
-        "-g",
+        "-r",
         "--dump-models-group",
         dest="dump_models_group",
         help="dump schemas for selected models group into OpenAPI-compatible file and quit",
