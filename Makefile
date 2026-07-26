@@ -194,6 +194,15 @@ devel-doc:	## Generate documentation for developers
 
 docs/models:	docs/models/requests.puml docs/models/responses.puml docs/models/database.puml docs/models/common.puml	## Generate documentation about models
 
+docs/models/models.json:
+	uv run src/lightspeed_stack.py -m
+	mv models.json docs/models/models.json
+
+docs/models/models.md:	docs/models/models.json	## Generate documentation with all models
+	openapi-to-markdown --input_file docs/models/models.json --output_file output.md
+	python3 scripts/fix_openapi_doc.py < output.md > docs/models/models.md
+	rm output.md
+
 docs/models/requests.puml: ## Generate PlantUML class diagram for requests data models
 	uv run pyreverse src/models/api/requests/ --output puml --output-directory=docs/models/
 	mv docs/models/classes.puml docs/models/requests.puml
