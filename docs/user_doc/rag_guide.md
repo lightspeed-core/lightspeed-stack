@@ -149,9 +149,11 @@ Requirements:
 - `embedding_model` and `embedding_dimension` are **required** on every provider entry
 - When `providers` is non-empty, `default_provider` is **required** and must
   match one of `providers[].id`
+- When `providers` is empty, `default_provider` must be omitted
 - Provider `id` must match `[a-z0-9_-]+` and must not start with `byok_`
 - Applied in **unified** Llama Stack synthesis only
-  (`llama_stack.use_as_library_client: true` with `llama_stack.config`)
+  (`llama_stack.use_as_library_client: true` with a synthesis input such as
+  `llama_stack.config`, `inference.providers`, or `vector_store.providers`)
 
 `default_provider` becomes `vector_stores.default_provider_id` and that
 provider's embedding model becomes `default_embedding_model` in the

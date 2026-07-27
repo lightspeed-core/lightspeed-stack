@@ -936,5 +936,5 @@ Mirrors ``InferenceConfiguration``: a providers list plus a sibling
 
 | Field            | Type   | Description                                                                                                                                                                                   |
 |------------------|--------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| default_provider | string | Provider id used for vector_stores.default_* in the synthesized Llama Stack config. Required when providers is non-empty; must match one of providers[].id.                                  |
-| providers        | array  | Dynamic vector-store provider capacity for runtime POST /v1/vector-stores creates. Not the same as byok_rag (static registered corpora).                                                      |
+| default_provider | string | Provider id used for vector_stores.default_* in the synthesized Llama Stack config. Required when providers is non-empty; must match one of providers[].id. Must be omitted when providers is empty. |
+| providers        | array  | Dynamic vector-store provider capacity for runtime POST /v1/vector-stores creates. Not the same as byok_rag (static registered corpora).                                                              |

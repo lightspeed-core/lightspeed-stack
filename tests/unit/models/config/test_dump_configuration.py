@@ -16,6 +16,8 @@ from models.config import (
     Configuration,
     CORSConfiguration,
     DatabaseConfiguration,
+    FaissVectorStoreProvider,
+    FaissVectorStoreProviderConfig,
     InferenceConfiguration,
     LlamaStackConfiguration,
     ModelContextProtocolServer,
@@ -26,7 +28,9 @@ from models.config import (
     ServiceConfiguration,
     SkillsConfiguration,
     TLSConfiguration,
+    UnifiedLlamaStackConfig,
     UserDataCollection,
+    VectorStoreConfiguration,
 )
 
 _DEFAULT_APPROVALS_DUMP: dict[str, int] = {
@@ -1103,6 +1107,59 @@ def test_dump_configuration_with_quota_limiters_different_values(
             "saved_prompts": _DEFAULT_SAVED_PROMPTS_DUMP,
             "skills": None,
         }
+
+
+def test_dump_configuration_with_vector_store(tmp_path: Path) -> None:
+    """Dump preserves a configured vector_store default_provider and providers."""
+    cfg = Configuration(
+        name="test_name",
+        service=ServiceConfiguration(
+            tls_config=TLSConfiguration(
+                tls_certificate_path=Path("tests/configuration/server.crt"),
+                tls_key_path=Path("tests/configuration/server.key"),
+                tls_key_password=Path("tests/configuration/password"),
+            ),
+            cors=CORSConfiguration(),
+        ),
+        llama_stack=LlamaStackConfiguration(
+            use_as_library_client=True,
+            config=UnifiedLlamaStackConfig(baseline="default"),
+            api_key=SecretStr("whatever"),
+        ),
+        user_data_collection=UserDataCollection(
+            feedback_enabled=False, feedback_storage=None
+        ),
+        vector_store=VectorStoreConfiguration(
+            default_provider="notebooks",
+            providers=[
+                FaissVectorStoreProvider(
+                    id="notebooks",
+                    type="faiss",
+                    embedding_model="/rag-content/embeddings_model",
+                    embedding_dimension=768,
+                    config=FaissVectorStoreProviderConfig(path="/var/lib/notebooks.db"),
+                )
+            ],
+        ),
+    )
+    dump_file = tmp_path / "test.json"
+    cfg.dump(dump_file)
+
+    with open(dump_file, "r", encoding="utf-8") as fin:
+        content = json.load(fin)
+
+    assert content["vector_store"] == {
+        "default_provider": "notebooks",
+        "providers": [
+            {
+                "id": "notebooks",
+                "type": "faiss",
+                "embedding_model": "/rag-content/embeddings_model",
+                "embedding_dimension": 768,
+                "config": {"path": "/var/lib/notebooks.db"},
+            }
+        ],
+    }
 
 
 def test_dump_configuration_byok(tmp_path: Path) -> None:

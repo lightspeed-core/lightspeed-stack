@@ -259,6 +259,53 @@ def test_root_rejects_inference_providers_and_legacy_path_together() -> None:
         Configuration(**config_dict)
 
 
+def test_root_rejects_vector_store_providers_and_legacy_path_together() -> None:
+    """Non-empty vector_store.providers plus a legacy path fail at load."""
+    config_dict = _base_config_dict()
+    config_dict["llama_stack"] = {
+        "use_as_library_client": True,
+        "library_client_config_path": "tests/configuration/run.yaml",
+    }
+    config_dict["vector_store"] = {
+        "default_provider": "notebooks",
+        "providers": [
+            {
+                "id": "notebooks",
+                "type": "faiss",
+                "embedding_model": "/rag-content/embeddings_model",
+                "embedding_dimension": 768,
+                "config": {"path": "/var/lib/notebooks.db"},
+            }
+        ],
+    }
+    with pytest.raises(ValidationError, match="mutually exclusive"):
+        Configuration(**config_dict)
+
+
+def test_root_accepts_vector_store_providers_only_no_config_block() -> None:
+    """Library mode driven by vector_store.providers alone is valid."""
+    config_dict = _base_config_dict()
+    config_dict["llama_stack"] = {"use_as_library_client": True}
+    config_dict["inference"] = {"providers": []}
+    config_dict["vector_store"] = {
+        "default_provider": "notebooks",
+        "providers": [
+            {
+                "id": "notebooks",
+                "type": "faiss",
+                "embedding_model": "/rag-content/embeddings_model",
+                "embedding_dimension": 768,
+                "config": {"path": "/var/lib/notebooks.db"},
+            }
+        ],
+    }
+    cfg = Configuration(**config_dict)
+    # pylint: disable=no-member
+    assert cfg.llama_stack.config is None
+    assert cfg.vector_store.default_provider == "notebooks"
+    assert len(cfg.vector_store.providers) == 1
+
+
 def test_root_accepts_unified_library_config() -> None:
     """A unified library-mode config (no legacy path) loads cleanly (R1)."""
     config_dict = _base_config_dict()

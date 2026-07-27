@@ -2190,7 +2190,16 @@ class PgvectorVectorStoreProviderConfig(ConfigurationBase):
 
 
 class VectorStoreProviderBase(ConfigurationBase):
-    """Shared fields for dynamic vector-store provider capacity entries."""
+    """Shared fields for dynamic vector-store provider capacity entries.
+
+    Attributes:
+        id: Llama Stack vector_io provider_id. Surrounding whitespace is
+            stripped before validation and emission.
+        embedding_model: Embedding model identification used for stores
+            created against this provider.
+        embedding_dimension: Dimensionality of embedding vectors for this
+            provider.
+    """
 
     id: str = Field(
         ...,
@@ -2283,6 +2292,15 @@ class VectorStoreConfiguration(ConfigurationBase):
 
     Mirrors ``InferenceConfiguration``: a providers list plus a sibling
     ``default_provider`` pointer, rather than a per-entry default flag.
+
+    Attributes:
+        default_provider: Provider id used for vector_stores.default_* in the
+            synthesized Llama Stack config. Required when providers is
+            non-empty; must match one of providers[].id. Must be omitted when
+            providers is empty.
+        providers: Dynamic vector-store provider capacity for runtime
+            POST /v1/vector-stores creates. Not the same as byok_rag (static
+            registered corpora).
     """
 
     default_provider: Optional[str] = Field(
@@ -3160,17 +3178,18 @@ class Configuration(ConfigurationBase):
         """Reconcile unified synthesis inputs, legacy mode, and library-mode needs.
 
         Unified-mode *synthesis inputs* span the configuration root: a non-empty
-        top-level ``inference.providers`` (Decision S5) and/or a
-        ``llama_stack.config`` block. The legacy path is
-        ``llama_stack.library_client_config_path`` pointing at an external
-        run.yaml. Both checks live here on the root model rather than on
-        ``LlamaStackConfiguration`` (which cannot see ``inference.providers``):
+        top-level ``inference.providers`` (Decision S5), a non-empty
+        ``vector_store.providers``, and/or a ``llama_stack.config`` block. The
+        legacy path is ``llama_stack.library_client_config_path`` pointing at an
+        external run.yaml. Both checks live here on the root model rather than
+        on ``LlamaStackConfiguration`` (which cannot see root-level provider
+        lists):
 
         - A synthesis input and the legacy path are mutually exclusive — a
           single file must pick one shape.
         - Library mode needs *some* run source — a synthesis input or the
-          legacy path. ``inference.providers`` alone is sufficient; no
-          ``llama_stack.config`` block is required.
+          legacy path. ``inference.providers`` or ``vector_store.providers``
+          alone is sufficient; no ``llama_stack.config`` block is required.
 
         Returns:
             Self: The validated configuration instance.
@@ -3182,14 +3201,17 @@ class Configuration(ConfigurationBase):
         """
         # pylint: disable=no-member
         synthesis_input = (
-            bool(self.inference.providers) or self.llama_stack.config is not None
+            bool(self.inference.providers)
+            or bool(self.vector_store.providers)
+            or self.llama_stack.config is not None
         )
         legacy_input = self.llama_stack.library_client_config_path is not None
         if synthesis_input and legacy_input:
             raise ValueError(
                 "Llama Stack configuration is ambiguous: unified synthesis "
-                "inputs (a non-empty inference.providers or a llama_stack.config "
-                "block) are mutually exclusive with the legacy "
+                "inputs (a non-empty inference.providers, a non-empty "
+                "vector_store.providers, or a llama_stack.config block) are "
+                "mutually exclusive with the legacy "
                 "llama_stack.library_client_config_path. Use one or the other. "
                 "To convert a legacy two-file setup to unified mode, run "
                 "`lightspeed-stack --migrate-config`."
@@ -3201,8 +3223,9 @@ class Configuration(ConfigurationBase):
         ):
             raise ValueError(
                 "Llama Stack library mode requires a run-configuration source: "
-                "set a non-empty inference.providers, a llama_stack.config "
-                "block, or library_client_config_path."
+                "set a non-empty inference.providers, a non-empty "
+                "vector_store.providers, a llama_stack.config block, or "
+                "library_client_config_path."
             )
         return self
 

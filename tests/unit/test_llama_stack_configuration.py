@@ -1147,6 +1147,63 @@ def test_enrich_vector_store_dedupes_embedding_model() -> None:
     assert len(ls_config["registered_resources"]["models"]) == 1
 
 
+def test_enrich_vector_store_skips_embedding_without_dimension() -> None:
+    """embedding_model without embedding_dimension does not register a model."""
+    ls_config: dict[str, Any] = {
+        "providers": {},
+        "storage": {"backends": {}},
+        "registered_resources": {"models": []},
+        "vector_stores": {"default_provider_id": "faiss"},
+    }
+    enrich_vector_store(
+        ls_config,
+        {
+            "default_provider": "notebooks",
+            "providers": [
+                {
+                    "id": "notebooks",
+                    "type": "faiss",
+                    "embedding_model": "/emb",
+                    "config": {"path": "/var/lib/notebooks.db"},
+                }
+            ],
+        },
+    )
+    assert ls_config["providers"]["vector_io"][0]["provider_id"] == "notebooks"
+    assert not ls_config["registered_resources"]["models"]
+    assert ls_config["vector_stores"]["default_provider_id"] == "notebooks"
+    assert "default_embedding_model" in ls_config["vector_stores"]
+
+
+def test_enrich_vector_store_unmatched_default_provider_skips_defaults() -> None:
+    """Unmatched default_provider still enriches providers but skips default_*."""
+    ls_config: dict[str, Any] = {
+        "providers": {},
+        "storage": {"backends": {}},
+        "registered_resources": {"models": []},
+        "vector_stores": {"default_provider_id": "faiss"},
+    }
+    enrich_vector_store(
+        ls_config,
+        {
+            "default_provider": "missing",
+            "providers": [
+                {
+                    "id": "notebooks",
+                    "type": "faiss",
+                    "embedding_model": "/emb",
+                    "embedding_dimension": 768,
+                    "config": {"path": "/var/lib/notebooks.db"},
+                }
+            ],
+        },
+    )
+    assert ls_config["providers"]["vector_io"][0]["provider_id"] == "notebooks"
+    assert ls_config["vector_stores"]["default_provider_id"] == "faiss"
+    assert "default_embedding_model" not in ls_config["vector_stores"]
+    assert len(ls_config["registered_resources"]["models"]) == 1
+
+
 # =============================================================================
 # Test _build_vector_io_config
 # =============================================================================

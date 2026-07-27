@@ -372,6 +372,9 @@ def _build_vector_io_config(
 
     Returns:
         dict[str, Any]: Provider config mapping.
+
+    Raises:
+        ValueError: If ``rag_type`` is not present in VECTOR_IO_TEMPLATES.
     """
     template = VECTOR_IO_TEMPLATES.get(rag_type)
     if template is None:
@@ -580,6 +583,10 @@ def _vsprov_fields_and_backend(
 
     Returns:
         Tuple of (extra_fields, backend_name, backend_entry_or_None).
+
+    Raises:
+        ValueError: If ``product_type`` is not a supported vector-store
+            provider type.
     """
     backend_name = f"vsprov_{provider_id}_storage"
     if product_type == "faiss":
