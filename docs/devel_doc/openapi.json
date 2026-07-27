@@ -294,11 +294,11 @@
                                     "$ref": "#/components/schemas/ServiceUnavailableResponse"
                                 },
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -494,11 +494,11 @@
                         "content": {
                             "application/json": {
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -693,11 +693,11 @@
                                     "$ref": "#/components/schemas/ServiceUnavailableResponse"
                                 },
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -1041,26 +1041,6 @@
                                 }
                             }
                         }
-                    },
-                    "503": {
-                        "description": "Service unavailable",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ServiceUnavailableResponse"
-                                },
-                                "examples": {
-                                    "kubernetes api": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Failed to connect to Kubernetes API: Service Unavailable (status 503)",
-                                                "response": "Unable to connect to Kubernetes API"
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
                     }
                 }
             },
@@ -1069,7 +1049,7 @@
                     "mcp-servers"
                 ],
                 "summary": "Register Mcp Server Handler",
-                "description": "Register an MCP server dynamically at runtime.\n\nAdds the MCP server to the runtime configuration and registers it\nas a toolgroup with Llama Stack so it becomes available for queries.\n\n### Parameters:\n- request: Model containing attributes to dynamically registering an MCP server.\n- auth: Authentication tuple from the auth dependency (used by middleware).\n- body: Headers that should be passed to MCP servers.\n\n### Raises:\n- HTTPException: On duplicate name, Llama Stack connection error, or\n  registration failure.\n\n### Returns:\n- MCPServerRegistrationResponse: Details of the newly registered server.",
+                "description": "Register an MCP server dynamically at runtime.\n\nAdds the MCP server to the runtime configuration so it becomes available\nfor queries.\n\n### Parameters:\n- request: Model containing attributes to dynamically registering an MCP server.\n- auth: Authentication tuple from the auth dependency (used by middleware).\n- body: Headers that should be passed to MCP servers.\n\n### Raises:\n- HTTPException: On duplicate name or registration failure.\n\n### Returns:\n- MCPServerRegistrationResponse: Details of the newly registered server.",
                 "operationId": "register_mcp_server_handler_v1_mcp_servers_post",
                 "requestBody": {
                     "content": {
@@ -1242,34 +1222,6 @@
                             }
                         }
                     },
-                    "503": {
-                        "description": "Service unavailable",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ServiceUnavailableResponse"
-                                },
-                                "examples": {
-                                    "llama stack": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
-                                            }
-                                        }
-                                    },
-                                    "kubernetes api": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Failed to connect to Kubernetes API: Service Unavailable (status 503)",
-                                                "response": "Unable to connect to Kubernetes API"
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    },
                     "422": {
                         "description": "Validation Error",
                         "content": {
@@ -1289,7 +1241,7 @@
                     "mcp-servers"
                 ],
                 "summary": "Delete Mcp Server Handler",
-                "description": "Unregister a dynamically registered MCP server.\n\nRemoves the MCP server from the runtime configuration and unregisters\nits toolgroup from Llama Stack. Only servers registered via the API\ncan be deleted; statically configured servers cannot be removed.\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- auth: Authentication tuple from the auth dependency (used by middleware).\n- name: MCP server name\n\n### Raises:\n- HTTPException: If the server is not found, is statically configured, or\n  Llama Stack unregistration fails.\n\n### Returns:\n- MCPServerDeleteResponse: Confirmation of the deletion.",
+                "description": "Unregister a dynamically registered MCP server.\n\nRemoves the MCP server from the runtime configuration. Only servers\nregistered via the API can be deleted; statically configured servers\ncannot be removed.\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- auth: Authentication tuple from the auth dependency (used by middleware).\n- name: MCP server name\n\n### Raises:\n- HTTPException: If the server is not found or is statically configured.\n\n### Returns:\n- MCPServerDeleteResponse: Confirmation of the deletion.",
                 "operationId": "delete_mcp_server_handler_v1_mcp_servers__name__delete",
                 "parameters": [
                     {
@@ -1453,34 +1405,6 @@
                             }
                         }
                     },
-                    "503": {
-                        "description": "Service unavailable",
-                        "content": {
-                            "application/json": {
-                                "examples": {
-                                    "llama stack": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
-                                            }
-                                        }
-                                    },
-                                    "kubernetes api": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Failed to connect to Kubernetes API: Service Unavailable (status 503)",
-                                                "response": "Unable to connect to Kubernetes API"
-                                            }
-                                        }
-                                    }
-                                },
-                                "schema": {
-                                    "$ref": "#/components/schemas/ServiceUnavailableResponse"
-                                }
-                            }
-                        }
-                    },
                     "422": {
                         "description": "Validation Error",
                         "content": {
@@ -1500,7 +1424,7 @@
                     "shields"
                 ],
                 "summary": "Shields Endpoint Handler",
-                "description": "Handle requests to the /shields endpoint.\n\nProcess GET requests to the /shields endpoint, returning a list of available\nshields from the Llama Stack service.\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- auth: Authentication tuple from the auth dependency (used by middleware).\n\n### Raises:\n- HTTPException: with status 401 for unauthorized access.\n- HTTPException: with status 403 if permission is denied.\n- HTTPException: with status 500 and a detail object containing `response`\n  and `cause` when service configuration is wrong or incomplete.\n- HTTPException: with status 503 and a detail object containing `response`\n  and `cause` when unable to connect to Llama Stack.\n\n### Returns:\n- ShieldsResponse: An object containing the list of available shields.",
+                "description": "Handle requests to the /shields endpoint.\n\nProcess GET requests to the /shields endpoint, returning a list of available\nshields from Lightspeed Core Stack configuration.\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- auth: Authentication tuple from the auth dependency (used by middleware).\n\n### Raises:\n- HTTPException: with status 401 for unauthorized access.\n- HTTPException: with status 403 if permission is denied.\n- HTTPException: with status 500 and a detail object containing `response`\n  and `cause` when service configuration is wrong or incomplete.\n\n### Returns:\n- ShieldsResponse: An object containing the list of available shields.",
                 "operationId": "shields_endpoint_handler_v1_shields_get",
                 "responses": {
                     "200": {
@@ -1513,11 +1437,26 @@
                                 "example": {
                                     "shields": [
                                         {
-                                            "identifier": "lightspeed_question_validity-shield",
-                                            "params": {},
-                                            "provider_id": "lightspeed_question_validity",
-                                            "provider_resource_id": "lightspeed_question_validity-shield",
-                                            "type": "shield"
+                                            "config": {
+                                                "invalid_question_response": "I can only answer questions about the product.",
+                                                "model_id": "openai/gpt-4o-mini",
+                                                "model_prompt": "Is this question valid?"
+                                            },
+                                            "name": "question-validity",
+                                            "type": "question_validity"
+                                        },
+                                        {
+                                            "config": {
+                                                "case_sensitive": false,
+                                                "rules": [
+                                                    {
+                                                        "pattern": "\\b\\d{3}-\\d{2}-\\d{4}\\b",
+                                                        "replacement": "[REDACTED]"
+                                                    }
+                                                ]
+                                            },
+                                            "name": "pii-redaction",
+                                            "type": "redaction"
                                         }
                                     ]
                                 }
@@ -1633,34 +1572,6 @@
                                             "detail": {
                                                 "cause": "Lightspeed Stack configuration has not been initialized.",
                                                 "response": "Configuration is not loaded"
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    "503": {
-                        "description": "Service unavailable",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ServiceUnavailableResponse"
-                                },
-                                "examples": {
-                                    "llama stack": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
-                                            }
-                                        }
-                                    },
-                                    "kubernetes api": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Failed to connect to Kubernetes API: Service Unavailable (status 503)",
-                                                "response": "Unable to connect to Kubernetes API"
                                             }
                                         }
                                     }
@@ -1834,11 +1745,11 @@
                                     "$ref": "#/components/schemas/ServiceUnavailableResponse"
                                 },
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -2040,11 +1951,11 @@
                         "content": {
                             "application/json": {
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -2240,11 +2151,11 @@
                                     "$ref": "#/components/schemas/ServiceUnavailableResponse"
                                 },
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -2431,11 +2342,11 @@
                                     "$ref": "#/components/schemas/ServiceUnavailableResponse"
                                 },
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -2688,11 +2599,11 @@
                         "content": {
                             "application/json": {
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -2940,11 +2851,11 @@
                         "content": {
                             "application/json": {
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -3169,11 +3080,11 @@
                         "content": {
                             "application/json": {
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -3355,11 +3266,11 @@
                                     "$ref": "#/components/schemas/ServiceUnavailableResponse"
                                 },
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -3558,11 +3469,11 @@
                         "content": {
                             "application/json": {
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -3600,7 +3511,7 @@
                     "vector-stores"
                 ],
                 "summary": "List Vector Stores",
-                "description": "List all vector stores.\n\nParameters:\n    request: The incoming HTTP request.\n    auth: Authentication tuple from the auth dependency.\n\nReturns:\n    VectorStoresListResponse: List of all vector stores.\n\nRaises:\n    HTTPException:\n        - 401: Authentication failed\n        - 403: Authorization failed\n        - 500: Lightspeed Stack configuration not loaded\n        - 503: Unable to connect to Llama Stack",
+                "description": "List all vector stores.\n\nParameters:\n    request: The incoming HTTP request.\n    auth: Authentication tuple from the auth dependency.\n\nReturns:\n    VectorStoresListResponse: List of all vector stores.\n\nRaises:\n    HTTPException:\n        - 401: Authentication failed\n        - 403: Authorization failed\n        - 500: Lightspeed Stack configuration not loaded\n        - 503: Unable to connect to OGX",
                 "operationId": "list_vector_stores_v1_vector_stores_get",
                 "responses": {
                     "200": {
@@ -3761,11 +3672,11 @@
                                     "$ref": "#/components/schemas/ServiceUnavailableResponse"
                                 },
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -3788,7 +3699,7 @@
                     "vector-stores"
                 ],
                 "summary": "Create Vector Store",
-                "description": "Create a new vector store.\n\nParameters:\n    request: The incoming HTTP request.\n    auth: Authentication tuple from the auth dependency.\n    body: Vector store creation parameters.\n\nReturns:\n    VectorStoreResponse: The created vector store object.\n\nRaises:\n    HTTPException:\n        - 401: Authentication failed\n        - 403: Authorization failed\n        - 500: Lightspeed Stack configuration not loaded\n        - 503: Unable to connect to Llama Stack",
+                "description": "Create a new vector store.\n\nParameters:\n    request: The incoming HTTP request.\n    auth: Authentication tuple from the auth dependency.\n    body: Vector store creation parameters.\n\nReturns:\n    VectorStoreResponse: The created vector store object.\n\nRaises:\n    HTTPException:\n        - 401: Authentication failed\n        - 403: Authorization failed\n        - 500: Lightspeed Stack configuration not loaded\n        - 503: Unable to connect to OGX",
                 "operationId": "create_vector_store_v1_vector_stores_post",
                 "requestBody": {
                     "content": {
@@ -3970,11 +3881,11 @@
                                     "$ref": "#/components/schemas/ServiceUnavailableResponse"
                                 },
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -4009,7 +3920,7 @@
                     "vector-stores"
                 ],
                 "summary": "Get Vector Store",
-                "description": "Retrieve a vector store by ID.\n\nParameters:\n    request: The incoming HTTP request.\n    vector_store_id: ID of the vector store to retrieve.\n    auth: Authentication tuple from the auth dependency.\n\nReturns:\n    VectorStoreResponse: The vector store object.\n\nRaises:\n    HTTPException:\n        - 401: Authentication failed\n        - 403: Authorization failed\n        - 404: Vector store not found\n        - 500: Lightspeed Stack configuration not loaded\n        - 503: Unable to connect to Llama Stack",
+                "description": "Retrieve a vector store by ID.\n\nParameters:\n    request: The incoming HTTP request.\n    vector_store_id: ID of the vector store to retrieve.\n    auth: Authentication tuple from the auth dependency.\n\nReturns:\n    VectorStoreResponse: The vector store object.\n\nRaises:\n    HTTPException:\n        - 401: Authentication failed\n        - 403: Authorization failed\n        - 404: Vector store not found\n        - 500: Lightspeed Stack configuration not loaded\n        - 503: Unable to connect to OGX",
                 "operationId": "get_vector_store_v1_vector_stores__vector_store_id__get",
                 "parameters": [
                     {
@@ -4189,11 +4100,11 @@
                         "content": {
                             "application/json": {
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -4229,7 +4140,7 @@
                     "vector-stores"
                 ],
                 "summary": "Update Vector Store",
-                "description": "Update a vector store.\n\nParameters:\n    request: The incoming HTTP request.\n    vector_store_id: ID of the vector store to update.\n    auth: Authentication tuple from the auth dependency.\n    body: Vector store update parameters.\n\nReturns:\n    VectorStoreResponse: The updated vector store object.\n\nRaises:\n    HTTPException:\n        - 401: Authentication failed\n        - 403: Authorization failed\n        - 404: Vector store not found\n        - 500: Lightspeed Stack configuration not loaded\n        - 503: Unable to connect to Llama Stack",
+                "description": "Update a vector store.\n\nParameters:\n    request: The incoming HTTP request.\n    vector_store_id: ID of the vector store to update.\n    auth: Authentication tuple from the auth dependency.\n    body: Vector store update parameters.\n\nReturns:\n    VectorStoreResponse: The updated vector store object.\n\nRaises:\n    HTTPException:\n        - 401: Authentication failed\n        - 403: Authorization failed\n        - 404: Vector store not found\n        - 500: Lightspeed Stack configuration not loaded\n        - 503: Unable to connect to OGX",
                 "operationId": "update_vector_store_v1_vector_stores__vector_store_id__put",
                 "parameters": [
                     {
@@ -4419,11 +4330,11 @@
                         "content": {
                             "application/json": {
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -4459,7 +4370,7 @@
                     "vector-stores"
                 ],
                 "summary": "Delete Vector Store",
-                "description": "Delete a vector store.\n\nParameters:\n    request: The incoming HTTP request.\n    vector_store_id: ID of the vector store to delete.\n    auth: Authentication tuple from the auth dependency.\n\nRaises:\n    HTTPException:\n        - 401: Authentication failed\n        - 403: Authorization failed\n        - 500: Lightspeed Stack configuration not loaded\n        - 503: Unable to connect to Llama Stack\n\nReturns:\n    VectorStoreDeleteResponse: Delete outcome for the requested vector store.",
+                "description": "Delete a vector store.\n\nParameters:\n    request: The incoming HTTP request.\n    vector_store_id: ID of the vector store to delete.\n    auth: Authentication tuple from the auth dependency.\n\nRaises:\n    HTTPException:\n        - 401: Authentication failed\n        - 403: Authorization failed\n        - 500: Lightspeed Stack configuration not loaded\n        - 503: Unable to connect to OGX\n\nReturns:\n    VectorStoreDeleteResponse: Delete outcome for the requested vector store.",
                 "operationId": "delete_vector_store_v1_vector_stores__vector_store_id__delete",
                 "parameters": [
                     {
@@ -4620,11 +4531,11 @@
                         "content": {
                             "application/json": {
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -4662,7 +4573,7 @@
                     "vector-stores"
                 ],
                 "summary": "Create File",
-                "description": "Upload a file.\n\nParameters:\n    request: The incoming HTTP request.\n    auth: Authentication tuple from the auth dependency.\n    file: The file to upload.\n\nReturns:\n    FileResponse: The uploaded file object.\n\nRaises:\n    HTTPException:\n        - 400: Bad request (e.g., file too large, invalid format)\n        - 401: Authentication failed\n        - 403: Authorization failed\n        - 500: Lightspeed Stack configuration not loaded\n        - 503: Unable to connect to Llama Stack",
+                "description": "Upload a file.\n\nParameters:\n    request: The incoming HTTP request.\n    auth: Authentication tuple from the auth dependency.\n    file: The file to upload.\n\nReturns:\n    FileResponse: The uploaded file object.\n\nRaises:\n    HTTPException:\n        - 400: Bad request (e.g., file too large, invalid format)\n        - 401: Authentication failed\n        - 403: Authorization failed\n        - 500: Lightspeed Stack configuration not loaded\n        - 503: Unable to connect to OGX",
                 "operationId": "create_file_v1_files_post",
                 "requestBody": {
                     "content": {
@@ -4845,11 +4756,11 @@
                                     "$ref": "#/components/schemas/ServiceUnavailableResponse"
                                 },
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -4884,7 +4795,7 @@
                     "vector-stores"
                 ],
                 "summary": "Add File To Vector Store",
-                "description": "Add a file to a vector store.\n\nParameters:\n    request: The incoming HTTP request.\n    vector_store_id: ID of the vector store.\n    auth: Authentication tuple from the auth dependency.\n    body: File addition parameters.\n\nReturns:\n    VectorStoreFileResponse: The vector store file object.\n\nRaises:\n    HTTPException:\n        - 401: Authentication failed\n        - 403: Authorization failed\n        - 404: Vector store or file not found\n        - 500: Lightspeed Stack configuration not loaded\n        - 503: Unable to connect to Llama Stack",
+                "description": "Add a file to a vector store.\n\nParameters:\n    request: The incoming HTTP request.\n    vector_store_id: ID of the vector store.\n    auth: Authentication tuple from the auth dependency.\n    body: File addition parameters.\n\nReturns:\n    VectorStoreFileResponse: The vector store file object.\n\nRaises:\n    HTTPException:\n        - 401: Authentication failed\n        - 403: Authorization failed\n        - 404: Vector store or file not found\n        - 500: Lightspeed Stack configuration not loaded\n        - 503: Unable to connect to OGX",
                 "operationId": "add_file_to_vector_store_v1_vector_stores__vector_store_id__files_post",
                 "parameters": [
                     {
@@ -5069,11 +4980,11 @@
                         "content": {
                             "application/json": {
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -5109,7 +5020,7 @@
                     "vector-stores"
                 ],
                 "summary": "List Vector Store Files",
-                "description": "List files in a vector store.\n\nParameters:\n    request: The incoming HTTP request.\n    vector_store_id: ID of the vector store.\n    auth: Authentication tuple from the auth dependency.\n\nReturns:\n    VectorStoreFilesListResponse: List of files in the vector store.\n\nRaises:\n    HTTPException:\n        - 401: Authentication failed\n        - 403: Authorization failed\n        - 404: Vector store not found\n        - 500: Lightspeed Stack configuration not loaded\n        - 503: Unable to connect to Llama Stack",
+                "description": "List files in a vector store.\n\nParameters:\n    request: The incoming HTTP request.\n    vector_store_id: ID of the vector store.\n    auth: Authentication tuple from the auth dependency.\n\nReturns:\n    VectorStoreFilesListResponse: List of files in the vector store.\n\nRaises:\n    HTTPException:\n        - 401: Authentication failed\n        - 403: Authorization failed\n        - 404: Vector store not found\n        - 500: Lightspeed Stack configuration not loaded\n        - 503: Unable to connect to OGX",
                 "operationId": "list_vector_store_files_v1_vector_stores__vector_store_id__files_get",
                 "parameters": [
                     {
@@ -5294,11 +5205,11 @@
                         "content": {
                             "application/json": {
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -5336,7 +5247,7 @@
                     "vector-stores"
                 ],
                 "summary": "Get Vector Store File",
-                "description": "Retrieve a file from a vector store.\n\nParameters:\n    request: The incoming HTTP request.\n    vector_store_id: ID of the vector store.\n    file_id: ID of the file.\n    auth: Authentication tuple from the auth dependency.\n\nReturns:\n    VectorStoreFileResponse: The vector store file object.\n\nRaises:\n    HTTPException:\n        - 401: Authentication failed\n        - 403: Authorization failed\n        - 404: File not found in vector store\n        - 500: Lightspeed Stack configuration not loaded\n        - 503: Unable to connect to Llama Stack",
+                "description": "Retrieve a file from a vector store.\n\nParameters:\n    request: The incoming HTTP request.\n    vector_store_id: ID of the vector store.\n    file_id: ID of the file.\n    auth: Authentication tuple from the auth dependency.\n\nReturns:\n    VectorStoreFileResponse: The vector store file object.\n\nRaises:\n    HTTPException:\n        - 401: Authentication failed\n        - 403: Authorization failed\n        - 404: File not found in vector store\n        - 500: Lightspeed Stack configuration not loaded\n        - 503: Unable to connect to OGX",
                 "operationId": "get_vector_store_file_v1_vector_stores__vector_store_id__files__file_id__get",
                 "parameters": [
                     {
@@ -5520,11 +5431,11 @@
                         "content": {
                             "application/json": {
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -5560,7 +5471,7 @@
                     "vector-stores"
                 ],
                 "summary": "Delete Vector Store File",
-                "description": "Delete a file from a vector store.\n\nParameters:\n    request: The incoming HTTP request.\n    vector_store_id: ID of the vector store.\n    file_id: ID of the file to delete.\n    auth: Authentication tuple from the auth dependency.\n\nRaises:\n    HTTPException:\n        - 401: Authentication failed\n        - 403: Authorization failed\n        - 500: Lightspeed Stack configuration not loaded\n        - 503: Unable to connect to Llama Stack\n\nReturns:\n    VectorStoreFileDeleteResponse: Delete outcome for the requested file.",
+                "description": "Delete a file from a vector store.\n\nParameters:\n    request: The incoming HTTP request.\n    vector_store_id: ID of the vector store.\n    file_id: ID of the file to delete.\n    auth: Authentication tuple from the auth dependency.\n\nRaises:\n    HTTPException:\n        - 401: Authentication failed\n        - 403: Authorization failed\n        - 500: Lightspeed Stack configuration not loaded\n        - 503: Unable to connect to OGX\n\nReturns:\n    VectorStoreFileDeleteResponse: Delete outcome for the requested file.",
                 "operationId": "delete_vector_store_file_v1_vector_stores__vector_store_id__files__file_id__delete",
                 "parameters": [
                     {
@@ -5730,11 +5641,11 @@
                         "content": {
                             "application/json": {
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -5772,7 +5683,7 @@
                     "query"
                 ],
                 "summary": "Query Endpoint Handler",
-                "description": "Handle request to the /query endpoint using Responses API.\n\nProcesses a POST request to a query endpoint, forwarding the\nuser's query to a selected Llama Stack LLM and returning the generated response.\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- query_request: Request to the LLM.\n- auth: Auth context tuple resolved from the authentication dependency.\n- mcp_headers: Headers that should be passed to MCP servers.\n\n### Returns:\n- QueryResponse: Contains the conversation ID and the LLM-generated response.\n\n### Raises:\n- HTTPException:\n- 401: Unauthorized - Missing or invalid credentials\n- 403: Forbidden - Insufficient permissions or model override not allowed\n- 404: Not Found - Conversation, model, or provider not found\n- 413: Prompt too long - Prompt exceeded model's context window size\n- 422: Unprocessable Entity - Request validation failed\n- 429: Quota limit exceeded - The token quota for model or user has been exceeded\n- 500: Internal Server Error - Configuration not loaded or other server errors\n- 503: Service Unavailable - Unable to connect to Llama Stack backend",
+                "description": "Handle request to the /query endpoint using Responses API.\n\nProcesses a POST request to a query endpoint, forwarding the\nuser's query to a selected Llama Stack LLM and returning the generated response.\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- query_request: Request to the LLM.\n- auth: Auth context tuple resolved from the authentication dependency.\n- mcp_headers: Headers that should be passed to MCP servers.\n\n### Returns:\n- QueryResponse: Contains the conversation ID and the LLM-generated response.\n\n### Raises:\n- HTTPException:\n- 401: Unauthorized - Missing or invalid credentials\n- 403: Forbidden - Insufficient permissions or model override not allowed\n- 404: Not Found - Conversation, model, or provider not found\n- 413: Prompt too long - Prompt exceeded model's context window size\n- 422: Unprocessable Entity - Request validation failed\n- 429: Quota limit exceeded - The token quota for model or user has been exceeded\n- 500: Internal Server Error - Configuration not loaded or other server errors\n- 503: Service Unavailable - Unable to connect to OGX backend",
                 "operationId": "query_endpoint_handler_v1_query_post",
                 "requestBody": {
                     "content": {
@@ -6137,11 +6048,11 @@
                                     "$ref": "#/components/schemas/ServiceUnavailableResponse"
                                 },
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -6166,7 +6077,7 @@
                     "streaming_query"
                 ],
                 "summary": "Streaming Query Endpoint Handler",
-                "description": "Handle request to the /streaming_query endpoint using Responses API.\n\nReturns a streaming response using Server-Sent Events (SSE) format with\ncontent type text/event-stream.\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- query_request: Request to the LLM.\n- auth: Auth context tuple resolved from the authentication dependency.\n- mcp_headers: Headers that should be passed to MCP servers.\n\n### Returns:\n- SSE-formatted events for the query lifecycle.\n\n### Raises:\n- HTTPException:\n- 401: Unauthorized - Missing or invalid credentials\n- 403: Forbidden - Insufficient permissions or model override not allowed\n- 404: Not Found - Conversation, model, or provider not found\n- 413: Prompt too long - Prompt exceeded model's context window size\n- 422: Unprocessable Entity - Request validation failed\n- 429: Quota limit exceeded - The token quota for model or user has been exceeded\n- 500: Internal Server Error - Configuration not loaded or other server errors\n- 503: Service Unavailable - Unable to connect to Llama Stack backend",
+                "description": "Handle request to the /streaming_query endpoint using Responses API.\n\nReturns a streaming response using Server-Sent Events (SSE) format with\ncontent type text/event-stream.\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- query_request: Request to the LLM.\n- auth: Auth context tuple resolved from the authentication dependency.\n- mcp_headers: Headers that should be passed to MCP servers.\n\n### Returns:\n- SSE-formatted events for the query lifecycle.\n\n### Raises:\n- HTTPException:\n- 401: Unauthorized - Missing or invalid credentials\n- 403: Forbidden - Insufficient permissions or model override not allowed\n- 404: Not Found - Conversation, model, or provider not found\n- 413: Prompt too long - Prompt exceeded model's context window size\n- 422: Unprocessable Entity - Request validation failed\n- 429: Quota limit exceeded - The token quota for model or user has been exceeded\n- 500: Internal Server Error - Configuration not loaded or other server errors\n- 503: Service Unavailable - Unable to connect to OGX backend",
                 "operationId": "streaming_query_endpoint_handler_v1_streaming_query_post",
                 "requestBody": {
                     "content": {
@@ -6498,11 +6409,11 @@
                                     "$ref": "#/components/schemas/ServiceUnavailableResponse"
                                 },
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -7695,11 +7606,11 @@
                                     "$ref": "#/components/schemas/ServiceUnavailableResponse"
                                 },
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -7948,11 +7859,11 @@
                         "content": {
                             "application/json": {
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -8185,11 +8096,11 @@
                         "content": {
                             "application/json": {
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -8433,11 +8344,11 @@
                         "content": {
                             "application/json": {
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -9361,7 +9272,7 @@
                     "responses"
                 ],
                 "summary": "Responses Endpoint Handler",
-                "description": "Handle request to the /responses endpoint using Responses API (LCORE specification).\n\nProcesses a POST request to the responses endpoint, forwarding the\nuser's request to a selected Llama Stack LLM and returning the generated response\nfollowing the LCORE OpenAPI specification.\n\nReturns:\n    ResponsesResponse: Contains the response following LCORE specification (non-streaming).\n    StreamingResponse: SSE-formatted streaming response with enriched events (streaming).\n        - response.created event includes conversation attribute\n        - response.completed event includes available_quotas attribute\n\nRaises:\n    HTTPException:\n        - 401: Unauthorized - Missing or invalid credentials\n        - 403: Forbidden - Insufficient permissions or model override not allowed\n        - 404: Not Found - Conversation, model, or provider not found\n        - 413: Prompt too long - Prompt exceeded model's context window size\n        - 422: Unprocessable Entity - Request validation failed\n        - 429: Quota limit exceeded - The token quota for model or user has been exceeded\n        - 500: Internal Server Error - Configuration not loaded or other server errors\n        - 503: Service Unavailable - Unable to connect to Llama Stack backend",
+                "description": "Handle request to the /responses endpoint using Responses API (LCORE specification).\n\nProcesses a POST request to the responses endpoint, forwarding the\nuser's request to a selected Llama Stack LLM and returning the generated response\nfollowing the LCORE OpenAPI specification.\n\nReturns:\n    ResponsesResponse: Contains the response following LCORE specification (non-streaming).\n    StreamingResponse: SSE-formatted streaming response with enriched events (streaming).\n        - response.created event includes conversation attribute\n        - response.completed event includes available_quotas attribute\n\nRaises:\n    HTTPException:\n        - 401: Unauthorized - Missing or invalid credentials\n        - 403: Forbidden - Insufficient permissions or model override not allowed\n        - 404: Not Found - Conversation, model, or provider not found\n        - 413: Prompt too long - Prompt exceeded model's context window size\n        - 422: Unprocessable Entity - Request validation failed\n        - 429: Quota limit exceeded - The token quota for model or user has been exceeded\n        - 500: Internal Server Error - Configuration not loaded or other server errors\n        - 503: Service Unavailable - Unable to connect to OGX backend",
                 "operationId": "responses_endpoint_handler_v1_responses_post",
                 "requestBody": {
                     "content": {
@@ -9772,11 +9683,11 @@
                                     "$ref": "#/components/schemas/ServiceUnavailableResponse"
                                 },
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -10098,11 +10009,11 @@
                                     "$ref": "#/components/schemas/ServiceUnavailableResponse"
                                 },
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -10250,11 +10161,11 @@
                                     "$ref": "#/components/schemas/ServiceUnavailableResponse"
                                 },
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -10703,11 +10614,11 @@
                         "content": {
                             "application/json": {
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -12153,6 +12064,174 @@
                 "title": "CORSConfiguration",
                 "description": "CORS configuration.\n\nCORS or 'Cross-Origin Resource Sharing' refers to the situations when a\nfrontend running in a browser has JavaScript code that communicates with a\nbackend, and the backend is in a different 'origin' than the frontend.\n\nUseful resources:\n\n  - [CORS in FastAPI](https://fastapi.tiangolo.com/tutorial/cors/)\n  - [Wikipedia article](https://en.wikipedia.org/wiki/Cross-origin_resource_sharing)\n  - [What is CORS?](https://dev.to/akshay_chauhan/what-is-cors-explained-8f1)"
             },
+            "CatalogModel": {
+                "properties": {
+                    "identifier": {
+                        "type": "string",
+                        "title": "Identifier",
+                        "description": "Model identifier"
+                    },
+                    "metadata": {
+                        "additionalProperties": true,
+                        "type": "object",
+                        "title": "Metadata",
+                        "description": "Provider-specific metadata excluding core catalog fields"
+                    },
+                    "api_model_type": {
+                        "type": "string",
+                        "title": "Api Model Type",
+                        "description": "API model type (typically mirrors model_type)"
+                    },
+                    "provider_id": {
+                        "type": "string",
+                        "title": "Provider Id",
+                        "description": "Provider identifier"
+                    },
+                    "type": {
+                        "type": "string",
+                        "title": "Type",
+                        "description": "Object type, always 'model'",
+                        "default": "model"
+                    },
+                    "provider_resource_id": {
+                        "type": "string",
+                        "title": "Provider Resource Id",
+                        "description": "Provider-native resource identifier for the model",
+                        "default": ""
+                    },
+                    "model_type": {
+                        "type": "string",
+                        "title": "Model Type",
+                        "description": "Model type such as 'llm' or 'embedding'"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "identifier",
+                    "api_model_type",
+                    "provider_id",
+                    "model_type"
+                ],
+                "title": "CatalogModel",
+                "description": "Normalized model entry used by ``/models`` and internal model resolution.\n\nUnifies OpenAI-style, Anthropic, and Google ``models.list()`` payloads into\none catalog shape."
+            },
+            "CatalogShield": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Unique, user-facing name of the shield instance"
+                    },
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "question_validity",
+                            "redaction"
+                        ],
+                        "title": "Type",
+                        "description": "Shield type discriminator"
+                    },
+                    "config": {
+                        "additionalProperties": true,
+                        "type": "object",
+                        "title": "Config",
+                        "description": "Type-specific shield configuration"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name",
+                    "type",
+                    "config"
+                ],
+                "title": "CatalogShield",
+                "description": "Shield entry in the ``/shields`` catalog response.\n\nMirrors the LCS-owned ``ShieldConfiguration`` shape (name / type / config)."
+            },
+            "CatalogTool": {
+                "properties": {
+                    "identifier": {
+                        "type": "string",
+                        "title": "Identifier"
+                    },
+                    "description": {
+                        "type": "string",
+                        "title": "Description"
+                    },
+                    "parameters": {
+                        "items": {
+                            "$ref": "#/components/schemas/CatalogToolParameter"
+                        },
+                        "type": "array",
+                        "title": "Parameters"
+                    },
+                    "provider_id": {
+                        "type": "string",
+                        "title": "Provider Id"
+                    },
+                    "toolgroup_id": {
+                        "type": "string",
+                        "title": "Toolgroup Id"
+                    },
+                    "server_source": {
+                        "type": "string",
+                        "title": "Server Source"
+                    },
+                    "type": {
+                        "type": "string",
+                        "title": "Type",
+                        "default": "tool"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "identifier",
+                    "description",
+                    "parameters",
+                    "provider_id",
+                    "toolgroup_id",
+                    "server_source"
+                ],
+                "title": "CatalogTool",
+                "description": "Tool entry in the ``/tools`` catalog response."
+            },
+            "CatalogToolParameter": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Name"
+                    },
+                    "description": {
+                        "type": "string",
+                        "title": "Description"
+                    },
+                    "parameter_type": {
+                        "type": "string",
+                        "title": "Parameter Type"
+                    },
+                    "required": {
+                        "type": "boolean",
+                        "title": "Required",
+                        "default": false
+                    },
+                    "default": {
+                        "anyOf": [
+                            {},
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Default"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name",
+                    "description",
+                    "parameter_type"
+                ],
+                "title": "CatalogToolParameter",
+                "description": "Parameter entry for a tool in the ``/tools`` catalog response."
+            },
             "ClientCredentialsOAuthFlow": {
                 "properties": {
                     "refreshUrl": {
@@ -12391,6 +12470,28 @@
                         "$ref": "#/components/schemas/SavedPromptsConfiguration",
                         "title": "Saved prompts configuration",
                         "description": "Configuration for saved prompts feature limits including maximum prompts per user, display name length, and content length."
+                    },
+                    "shields": {
+                        "items": {
+                            "oneOf": [
+                                {
+                                    "$ref": "#/components/schemas/QuestionValidityShieldConfiguration"
+                                },
+                                {
+                                    "$ref": "#/components/schemas/RedactionShieldConfiguration"
+                                }
+                            ],
+                            "discriminator": {
+                                "propertyName": "type",
+                                "mapping": {
+                                    "question_validity": "#/components/schemas/QuestionValidityShieldConfiguration",
+                                    "redaction": "#/components/schemas/RedactionShieldConfiguration"
+                                }
+                            }
+                        },
+                        "type": "array",
+                        "title": "Shields configuration",
+                        "description": "List of pydantic-ai-lightspeed agent guardrail shields (question validity and PII redaction). Each entry has a unique 'name', a 'type' ('question_validity' or 'redaction'), and a type-specific 'config'."
                     }
                 },
                 "additionalProperties": false,
@@ -13736,8 +13837,7 @@
                     "computer_call_output.output.image_url",
                     "file_search_call.results",
                     "message.input_image.image_url",
-                    "message.output_text.logprobs",
-                    "reasoning.encrypted_content"
+                    "message.output_text.logprobs"
                 ]
             },
             "InferenceConfiguration": {
@@ -14806,8 +14906,7 @@
                 "properties": {
                     "models": {
                         "items": {
-                            "additionalProperties": true,
-                            "type": "object"
+                            "$ref": "#/components/schemas/CatalogModel"
                         },
                         "type": "array",
                         "title": "Models",
@@ -15145,7 +15244,8 @@
                     "filename",
                     "start_index"
                 ],
-                "title": "OpenAIResponseAnnotationContainerFileCitation"
+                "title": "OpenAIResponseAnnotationContainerFileCitation",
+                "description": "Container file citation annotation referencing a file within a container."
             },
             "OpenAIResponseAnnotationFileCitation": {
                 "properties": {
@@ -15199,7 +15299,8 @@
                     "file_id",
                     "index"
                 ],
-                "title": "OpenAIResponseAnnotationFilePath"
+                "title": "OpenAIResponseAnnotationFilePath",
+                "description": "File path annotation referencing a generated file in response content."
             },
             "OpenAIResponseContentPartRefusal": {
                 "properties": {
@@ -15571,7 +15672,8 @@
                     "required",
                     "none"
                 ],
-                "title": "OpenAIResponseInputToolChoiceMode"
+                "title": "OpenAIResponseInputToolChoiceMode",
+                "description": "Enumeration of simple tool choice modes for response generation."
             },
             "OpenAIResponseInputToolChoiceWebSearch": {
                 "properties": {
@@ -16012,7 +16114,8 @@
                 "required": [
                     "text"
                 ],
-                "title": "OpenAIResponseOutputMessageContentOutputText"
+                "title": "OpenAIResponseOutputMessageContentOutputText",
+                "description": "Text content within an output message of an OpenAI response."
             },
             "OpenAIResponseOutputMessageFileSearchToolCall": {
                 "properties": {
@@ -16238,6 +16341,113 @@
                 "title": "OpenAIResponseOutputMessageMCPListTools",
                 "description": "MCP list tools output message containing available tools from an MCP server.\n\n:param id: Unique identifier for this MCP list tools operation\n:param type: Tool call type identifier, always \"mcp_list_tools\"\n:param server_label: Label identifying the MCP server providing the tools\n:param tools: List of available tools provided by the MCP server"
             },
+            "OpenAIResponseOutputMessageReasoningContent": {
+                "properties": {
+                    "text": {
+                        "type": "string",
+                        "title": "Text",
+                        "description": "The reasoning text content from the model."
+                    },
+                    "type": {
+                        "type": "string",
+                        "const": "reasoning_text",
+                        "title": "Type",
+                        "description": "The type identifier, always 'reasoning_text'.",
+                        "default": "reasoning_text"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "text"
+                ],
+                "title": "OpenAIResponseOutputMessageReasoningContent",
+                "description": "Reasoning text from the model."
+            },
+            "OpenAIResponseOutputMessageReasoningItem": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "title": "Id",
+                        "description": "Unique identifier for the reasoning output item."
+                    },
+                    "summary": {
+                        "items": {
+                            "$ref": "#/components/schemas/OpenAIResponseOutputMessageReasoningSummary"
+                        },
+                        "type": "array",
+                        "title": "Summary",
+                        "description": "Summary of the reasoning output."
+                    },
+                    "type": {
+                        "type": "string",
+                        "const": "reasoning",
+                        "title": "Type",
+                        "description": "The type identifier, always 'reasoning'.",
+                        "default": "reasoning"
+                    },
+                    "content": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/OpenAIResponseOutputMessageReasoningContent"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Content",
+                        "description": "The reasoning content from the model."
+                    },
+                    "status": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "enum": [
+                                    "in_progress",
+                                    "completed",
+                                    "incomplete"
+                                ]
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Status",
+                        "description": "The status of the reasoning output."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "summary"
+                ],
+                "title": "OpenAIResponseOutputMessageReasoningItem",
+                "description": "Reasoning output from the model, representing the model's thinking process."
+            },
+            "OpenAIResponseOutputMessageReasoningSummary": {
+                "properties": {
+                    "text": {
+                        "type": "string",
+                        "title": "Text",
+                        "description": "The summary text of the reasoning output."
+                    },
+                    "type": {
+                        "type": "string",
+                        "const": "summary_text",
+                        "title": "Type",
+                        "description": "The type identifier, always 'summary_text'.",
+                        "default": "summary_text"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "text"
+                ],
+                "title": "OpenAIResponseOutputMessageReasoningSummary",
+                "description": "A summary of reasoning output from the model."
+            },
             "OpenAIResponseOutputMessageWebSearchToolCall": {
                 "properties": {
                     "id": {
@@ -16340,6 +16550,23 @@
                             }
                         ],
                         "title": "Effort"
+                    },
+                    "summary": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "enum": [
+                                    "auto",
+                                    "concise",
+                                    "detailed"
+                                ]
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Summary",
+                        "description": "Summary mode for reasoning output. One of 'auto', 'concise', or 'detailed'."
                     }
                 },
                 "type": "object",
@@ -16357,11 +16584,27 @@
                                 "type": "null"
                             }
                         ]
+                    },
+                    "verbosity": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "enum": [
+                                    "low",
+                                    "medium",
+                                    "high"
+                                ]
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Verbosity"
                     }
                 },
                 "type": "object",
                 "title": "OpenAIResponseText",
-                "description": "Text response configuration for OpenAI responses.\n\n:param format: (Optional) Text format configuration specifying output format requirements"
+                "description": "Text response configuration for OpenAI responses.\n\n:param format: (Optional) Text format configuration specifying output format requirements\n:param verbosity: (Optional) Controls response verbosity level"
             },
             "OpenAIResponseTextFormat": {
                 "properties": {
@@ -17648,6 +17891,63 @@
                     }
                 ]
             },
+            "QuestionValidityConfig": {
+                "properties": {
+                    "model_id": {
+                        "type": "string",
+                        "title": "Model id",
+                        "description": "The model_id to use for the guard"
+                    },
+                    "model_prompt": {
+                        "type": "string",
+                        "title": "Model prompt",
+                        "description": "The default prompt sent to the LLM used to validate the Users' question.",
+                        "default": "\nInstructions:\n- You are a question classifying tool\n- You are an expert in kubernetes and openshift\n- Your job is to determine where or a user's question is related to kubernetes and/or openshift technologies and to provide a one-word response.\n- If a question appears to be related to kubernetes or openshift technologies, answer with the word ${allowed}, otherwise answer with the word ${rejected}.\n- Do not explain your answer, just provide the one-word response. Do not give any other response.\n- If the given question is an empty string, answer with the word ${rejected}\n\n\nExample Question:\nWhy is the sky blue?\nExample Response:\n${rejected}\n\nExample Question:\nWhy is the grass green?\nExample Response:\n${rejected}\n\nExample Question:\nWhy is sand yellow?\nExample Response:\n${rejected}\n\nExample Question:\nCan you help configure my cluster to automatically scale?\nExample Response:\n${allowed}\n\nQuestion:\n${message}\nResponse:\n"
+                    },
+                    "invalid_question_response": {
+                        "type": "string",
+                        "title": "Invalid question response",
+                        "description": "The default response when the Users' question is determined to be invalid.",
+                        "default": "\nHi, I'm the OpenShift Lightspeed assistant, I can help you with questions about OpenShift, \nplease ask me a question related to OpenShift.\n"
+                    }
+                },
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                    "model_id"
+                ],
+                "title": "QuestionValidityConfig",
+                "description": "Configuration for the question validity guardrail."
+            },
+            "QuestionValidityShieldConfiguration": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Shield name",
+                        "description": "Unique, user-facing name identifying this shield instance."
+                    },
+                    "type": {
+                        "type": "string",
+                        "const": "question_validity",
+                        "title": "Shield type",
+                        "description": "Discriminator identifying this as a question-validity shield."
+                    },
+                    "config": {
+                        "$ref": "#/components/schemas/QuestionValidityConfig",
+                        "title": "Shield configuration",
+                        "description": "Question-validity-specific configuration for this shield."
+                    }
+                },
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                    "name",
+                    "type",
+                    "config"
+                ],
+                "title": "QuestionValidityShieldConfiguration",
+                "description": "Configuration for a named question-validity guardrail shield.\n\nAttributes:\n    name: Unique, user-facing name identifying this shield instance.\n    type: Discriminator identifying this as a question-validity shield.\n    config: Question-validity-specific configuration."
+            },
             "QuotaExceededResponse": {
                 "properties": {
                     "status_code": {
@@ -18181,6 +18481,91 @@
                     }
                 ]
             },
+            "RedactionConfig": {
+                "properties": {
+                    "rules": {
+                        "items": {
+                            "$ref": "#/components/schemas/RedactionRule"
+                        },
+                        "type": "array",
+                        "title": "Redaction rules",
+                        "description": "Ordered list of PII redaction rules"
+                    },
+                    "case_sensitive": {
+                        "type": "boolean",
+                        "title": "Case sensitive",
+                        "description": "When False, patterns are compiled with re.IGNORECASE",
+                        "default": false
+                    }
+                },
+                "additionalProperties": false,
+                "type": "object",
+                "title": "RedactionConfig",
+                "description": "Configuration for PII redaction with regex-based rules.\n\nRules are validated and compiled at construction time. Invalid\nregex patterns raise a ``ValueError`` immediately.\n\nAttributes:\n    rules: Ordered list of redaction rules applied sequentially.\n    case_sensitive: When False, patterns are compiled with\n        ``re.IGNORECASE``. Defaults to False."
+            },
+            "RedactionRule": {
+                "properties": {
+                    "pattern": {
+                        "type": "string",
+                        "title": "Pattern",
+                        "description": "Regex pattern to match sensitive data"
+                    },
+                    "replacement": {
+                        "type": "string",
+                        "title": "Replacement",
+                        "description": "Replacement string for matched text"
+                    },
+                    "case_sensitive": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Case sensitive",
+                        "description": "Per-rule case sensitivity override. When None, the global config flag applies."
+                    }
+                },
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                    "pattern",
+                    "replacement"
+                ],
+                "title": "RedactionRule",
+                "description": "A single regex-based redaction rule.\n\nAttributes:\n    pattern: Raw regex pattern string to match sensitive data.\n    replacement: Text to substitute for each match.\n    case_sensitive: Per-rule override for case sensitivity.\n        When None, the global ``RedactionConfig.case_sensitive``\n        flag applies."
+            },
+            "RedactionShieldConfiguration": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Shield name",
+                        "description": "Unique, user-facing name identifying this shield instance."
+                    },
+                    "type": {
+                        "type": "string",
+                        "const": "redaction",
+                        "title": "Shield type",
+                        "description": "Discriminator identifying this as a redaction shield."
+                    },
+                    "config": {
+                        "$ref": "#/components/schemas/RedactionConfig",
+                        "title": "Shield configuration",
+                        "description": "Redaction-specific configuration for this shield."
+                    }
+                },
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                    "name",
+                    "type",
+                    "config"
+                ],
+                "title": "RedactionShieldConfiguration",
+                "description": "Configuration for a named PII-redaction guardrail shield.\n\nAttributes:\n    name: Unique, user-facing name identifying this shield instance.\n    type: Discriminator identifying this as a redaction shield.\n    config: Redaction-specific configuration."
+            },
             "ReferencedDocument": {
                 "properties": {
                     "doc_url": {
@@ -18299,6 +18684,9 @@
                     },
                     {
                         "$ref": "#/components/schemas/OpenAIResponseMCPApprovalResponse"
+                    },
+                    {
+                        "$ref": "#/components/schemas/OpenAIResponseOutputMessageReasoningItem"
                     }
                 ]
             },
@@ -18690,6 +19078,9 @@
                                 },
                                 {
                                     "$ref": "#/components/schemas/OpenAIResponseMCPApprovalRequest"
+                                },
+                                {
+                                    "$ref": "#/components/schemas/OpenAIResponseOutputMessageReasoningItem"
                                 }
                             ],
                             "discriminator": {
@@ -18701,6 +19092,7 @@
                                     "mcp_call": "#/components/schemas/OpenAIResponseOutputMessageMCPCall",
                                     "mcp_list_tools": "#/components/schemas/OpenAIResponseOutputMessageMCPListTools",
                                     "message": "#/components/schemas/OpenAIResponseMessage",
+                                    "reasoning": "#/components/schemas/OpenAIResponseOutputMessageReasoningItem",
                                     "web_search_call": "#/components/schemas/OpenAIResponseOutputMessageWebSearchToolCall"
                                 }
                             }
@@ -19607,7 +19999,7 @@
                 },
                 "type": "object",
                 "title": "SearchRankingOptions",
-                "description": "Options for ranking and filtering search results.\n\nThis class configures how search results are ranked and filtered. You can use algorithm-based\nrerankers (weighted, RRF) or neural rerankers. Defaults from VectorStoresConfig are\nused when parameters are not provided.\n\nExamples:\n    # Weighted ranker with custom alpha\n    SearchRankingOptions(ranker=\"weighted\", alpha=0.7)\n\n    # RRF ranker with custom impact factor\n    SearchRankingOptions(ranker=\"rrf\", impact_factor=50.0)\n\n    # Use config defaults (just specify ranker type)\n    SearchRankingOptions(ranker=\"weighted\")  # Uses alpha from VectorStoresConfig\n\n    # Score threshold filtering\n    SearchRankingOptions(ranker=\"weighted\", score_threshold=0.5)\n\n:param ranker: (Optional) Name of the ranking algorithm to use. Supported values:\n    - \"weighted\": Weighted combination of vector and keyword scores\n    - \"rrf\": Reciprocal Rank Fusion algorithm\n    - \"neural\": Neural reranking model (requires model parameter, Part II)\n    Note: For OpenAI API compatibility, any string value is accepted, but only the above values are supported.\n:param score_threshold: (Optional) Minimum relevance score threshold for results. Default: 0.0\n:param alpha: (Optional) Weight factor for weighted ranker (0-1).\n    - 0.0 = keyword only\n    - 0.5 = equal weight (default)\n    - 1.0 = vector only\n    Only used when ranker=\"weighted\" and weights is not provided.\n    Falls back to VectorStoresConfig.chunk_retrieval_params.weighted_search_alpha if not provided.\n:param impact_factor: (Optional) Impact factor (k) for RRF algorithm.\n    Lower values emphasize higher-ranked results. Default: 60.0 (optimal from research).\n    Only used when ranker=\"rrf\".\n    Falls back to VectorStoresConfig.chunk_retrieval_params.rrf_impact_factor if not provided.\n:param weights: (Optional) Dictionary of weights for combining different signal types.\n    Keys can be \"vector\", \"keyword\", \"neural\". Values should sum to 1.0.\n    Used when combining algorithm-based reranking with neural reranking (Part II).\n    Example: {\"vector\": 0.3, \"keyword\": 0.3, \"neural\": 0.4}\n:param model: (Optional) Model identifier for neural reranker (e.g., \"vllm/Qwen3-Reranker-0.6B\").\n    Required when ranker=\"neural\" or when weights contains \"neural\" (Part II)."
+                "description": "Options for ranking and filtering search results.\n\nThis class configures how search results are ranked and filtered. You can use algorithm-based\nrerankers (weighted, RRF) or neural rerankers. Defaults from VectorStoresConfig are\nused when parameters are not provided.\n\nExamples:\n    # Weighted ranker with custom alpha\n    SearchRankingOptions(ranker=\"weighted\", alpha=0.7)\n\n    # RRF ranker with custom impact factor\n    SearchRankingOptions(ranker=\"rrf\", impact_factor=50.0)\n\n    # Use config defaults (just specify ranker type)\n    SearchRankingOptions(ranker=\"weighted\")  # Uses alpha from VectorStoresConfig\n\n    # Score threshold filtering\n    SearchRankingOptions(ranker=\"weighted\", score_threshold=0.5)\n\n:param ranker: (Optional) Name of the ranking algorithm to use. Supported values:\n    - \"weighted\": Weighted combination of vector and keyword scores\n    - \"rrf\": Reciprocal Rank Fusion algorithm\n    - \"neural\": Neural reranking model (requires model parameter)\n    Note: For OpenAI API compatibility, any string value is accepted, but only the above values are supported.\n:param score_threshold: (Optional) Minimum relevance score threshold for results. Default: 0.0\n:param alpha: (Optional) Weight factor for weighted ranker (0-1).\n    - 0.0 = keyword only\n    - 0.5 = equal weight (default)\n    - 1.0 = vector only\n    Only used when ranker=\"weighted\" and weights is not provided.\n    Falls back to VectorStoresConfig.chunk_retrieval_params.weighted_search_alpha if not provided.\n:param impact_factor: (Optional) Impact factor (k) for RRF algorithm.\n    Lower values emphasize higher-ranked results. Default: 60.0 (optimal from research).\n    Only used when ranker=\"rrf\".\n    Falls back to VectorStoresConfig.chunk_retrieval_params.rrf_impact_factor if not provided.\n:param weights: (Optional) Dictionary of weights for combining different signal types.\n    Keys can be \"vector\", \"keyword\", \"neural\". Values should sum to 1.0.\n    Used when combining algorithm-based reranking with neural reranking.\n    Example: {\"vector\": 0.3, \"keyword\": 0.3, \"neural\": 0.4}\n:param model: (Optional) Model identifier for neural reranker (e.g., \"transformers/Qwen/Qwen3-Reranker-0.6B\").\n    Required when ranker=\"neural\" or when weights contains \"neural\"."
             },
             "SecurityScheme": {
                 "anyOf": [
@@ -19726,9 +20118,9 @@
                     {
                         "detail": {
                             "cause": "Connection error while trying to reach backend service.",
-                            "response": "Unable to connect to Llama Stack"
+                            "response": "Unable to connect to OGX"
                         },
-                        "label": "llama stack"
+                        "label": "ogx"
                     },
                     {
                         "detail": {
@@ -19743,12 +20135,11 @@
                 "properties": {
                     "shields": {
                         "items": {
-                            "additionalProperties": true,
-                            "type": "object"
+                            "$ref": "#/components/schemas/CatalogShield"
                         },
                         "type": "array",
                         "title": "Shields",
-                        "description": "List of shields available"
+                        "description": "List of shields configured in Lightspeed Core Stack"
                     }
                 },
                 "type": "object",
@@ -19761,11 +20152,26 @@
                     {
                         "shields": [
                             {
-                                "identifier": "lightspeed_question_validity-shield",
-                                "params": {},
-                                "provider_id": "lightspeed_question_validity",
-                                "provider_resource_id": "lightspeed_question_validity-shield",
-                                "type": "shield"
+                                "config": {
+                                    "invalid_question_response": "I can only answer questions about the product.",
+                                    "model_id": "openai/gpt-4o-mini",
+                                    "model_prompt": "Is this question valid?"
+                                },
+                                "name": "question-validity",
+                                "type": "question_validity"
+                            },
+                            {
+                                "config": {
+                                    "case_sensitive": false,
+                                    "rules": [
+                                        {
+                                            "pattern": "\\b\\d{3}-\\d{2}-\\d{4}\\b",
+                                            "replacement": "[REDACTED]"
+                                        }
+                                    ]
+                                },
+                                "name": "pii-redaction",
+                                "type": "redaction"
                             }
                         ]
                     }
@@ -20164,8 +20570,7 @@
                 "properties": {
                     "tools": {
                         "items": {
-                            "additionalProperties": true,
-                            "type": "object"
+                            "$ref": "#/components/schemas/CatalogTool"
                         },
                         "type": "array",
                         "title": "Tools",
