@@ -100,7 +100,7 @@ async def test_shields_endpoint_handler_configured_shields(
     config_dict["shields"] = [
         {
             "name": "question-validity",
-            "type": "question_validity",
+            "provider_id": "question_validity",
             "config": {
                 "model_id": "openai/gpt-4o-mini",
                 "model_prompt": "Is this question valid?",
@@ -109,7 +109,7 @@ async def test_shields_endpoint_handler_configured_shields(
         },
         {
             "name": "pii-redaction",
-            "type": "redaction",
+            "provider_id": "redaction",
             "config": {
                 "rules": [
                     {
@@ -132,8 +132,10 @@ async def test_shields_endpoint_handler_configured_shields(
     assert isinstance(response, ShieldsResponse)
     assert len(response.shields) == 2
     assert response.shields[0].name == "question-validity"
-    assert response.shields[0].type == "question_validity"
+    assert response.shields[0].provider_id == "question_validity"
+    assert response.shields[0].type == "shield"
     assert response.shields[0].config["model_id"] == "openai/gpt-4o-mini"
     assert response.shields[1].name == "pii-redaction"
-    assert response.shields[1].type == "redaction"
+    assert response.shields[1].provider_id == "redaction"
+    assert response.shields[1].type == "shield"
     assert response.shields[1].config["rules"][0]["replacement"] == "[REDACTED]"

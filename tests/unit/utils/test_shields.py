@@ -16,7 +16,7 @@ def _shield(name: str) -> QuestionValidityShieldConfiguration:
     """Build a minimal question-validity shield configuration for tests."""
     return QuestionValidityShieldConfiguration(
         name=name,
-        type="question_validity",
+        provider_id="question_validity",
         config=QuestionValidityConfig(model_id="test-model"),
     )
 

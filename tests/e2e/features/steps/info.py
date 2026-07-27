@@ -58,15 +58,11 @@ def check_shield_structure(context: Context) -> None:
     # Validate structure and values
     assert found_shield["type"] == "shield", "type should be 'shield'"
     assert (
-        found_shield["provider_id"] == "llama-guard"
-    ), "provider_id should be 'llama-guard'"
-    assert found_shield["provider_resource_id"] == "openai/gpt-4o-mini", (
-        f"provider_resource_id should be 'openai/gpt-4o-mini', "
-        f"but is '{found_shield['provider_resource_id']}'"
+        found_shield["provider_id"] == "redaction"
+    ), "provider_id should be 'redaction'"
+    assert found_shield["name"] == "pii-redaction", (
+        f"name should be 'pii-redaction', " f"but is '{found_shield['name']}'"
     )
-    assert (
-        found_shield["identifier"] == "llama-guard"
-    ), f"identifier should be 'llama-guard', but is '{found_shield["identifier"]}'"
 
 
 @then("The response contains {count:d} tools listed for provider {provider_name}")
