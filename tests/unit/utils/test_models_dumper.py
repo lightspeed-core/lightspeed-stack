@@ -9318,6 +9318,7 @@ def test_dump_models(tmpdir: Path) -> None:
             "UnifiedLlamaStackConfig",
             "UnprocessableEntityResponse",
             "UserDataCollection",
+            "VectorStoreConfiguration",
             "VectorStoreCreateRequest",
             "VectorStoreDeleteResponse",
             "VectorStoreFileCreateRequest",

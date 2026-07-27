@@ -2213,13 +2213,6 @@ class VectorStoreProviderBase(ConfigurationBase):
         title="Embedding dimension",
         description="Dimensionality of embedding vectors for this provider.",
     )
-    default: bool = Field(
-        False,
-        title="Default provider",
-        description="When true, this entry drives vector_stores.default_* "
-        "in the synthesized Llama Stack config. Exactly one entry must set "
-        "this when vector_store_providers is non-empty.",
-    )
 
     @field_validator("id")
     @classmethod
@@ -2283,6 +2276,83 @@ VectorStoreProvider = Annotated[
     FaissVectorStoreProvider | PgvectorVectorStoreProvider,
     Field(discriminator="type"),
 ]
+
+
+class VectorStoreConfiguration(ConfigurationBase):
+    """Configuration for dynamic vector-store providers.
+
+    Mirrors ``InferenceConfiguration``: a providers list plus a sibling
+    ``default_provider`` pointer, rather than a per-entry default flag.
+    """
+
+    default_provider: Optional[str] = Field(
+        None,
+        title="Default provider",
+        description=(
+            "Provider id used for vector_stores.default_* in the synthesized "
+            "Llama Stack config. Required when providers is non-empty; must "
+            "match one of providers[].id."
+        ),
+    )
+
+    providers: list[VectorStoreProvider] = Field(
+        default_factory=list,
+        title="Vector store providers",
+        description=(
+            "Dynamic vector-store provider capacity for runtime "
+            "POST /v1/vector-stores creates. "
+            "Not the same as byok_rag (static registered corpora)."
+        ),
+    )
+
+    @model_validator(mode="after")
+    def validate_providers_and_default(self) -> Self:
+        """Validate providers list and default_provider pointer.
+
+        When providers is empty, default_provider must be unset. When
+        providers is non-empty, default_provider is required and must match
+        exactly one providers[].id. Provider ids must be unique.
+
+        Returns:
+            Self: The validated configuration instance.
+
+        Raises:
+            ValueError: If ids are duplicated, default_provider is missing
+                for a non-empty list, is set for an empty list, or does not
+                match a provider id.
+        """
+        # pylint: disable=no-member
+        if not self.providers:
+            if self.default_provider is not None:
+                raise ValueError(
+                    "vector_store.default_provider must not be set when "
+                    "providers is empty"
+                )
+            return self
+
+        if self.default_provider is None:
+            raise ValueError(
+                "vector_store.default_provider is required when providers "
+                "is non-empty"
+            )
+
+        ids = [provider.id for provider in self.providers]
+        if len(ids) != len(set(ids)):
+            raise ValueError(f"vector_store.providers ids must be unique; got {ids}")
+
+        default_provider = self.default_provider.strip()
+        if not default_provider:
+            raise ValueError(
+                "vector_store.default_provider must be non-empty after "
+                "stripping whitespace"
+            )
+        if default_provider not in ids:
+            raise ValueError(
+                "vector_store.default_provider must match one of "
+                f"providers[].id; got {default_provider!r}, known ids: {ids}"
+            )
+        object.__setattr__(self, "default_provider", default_provider)
+        return self
 
 
 class QuotaLimiterConfiguration(ConfigurationBase):
@@ -2864,13 +2934,18 @@ class Configuration(ConfigurationBase):
         "reconfigure Llama Stack through its run.yaml configuration file",
     )
 
-    vector_store_providers: list[VectorStoreProvider] = Field(
-        default_factory=list,
-        title="Vector store providers",
+    vector_store: VectorStoreConfiguration = Field(
+        default_factory=lambda: VectorStoreConfiguration(
+            default_provider=None, providers=[]
+        ),
+        title="Vector store configuration",
         description=(
             "Dynamic vector-store provider capacity for runtime "
             "POST /v1/vector-stores creates. "
-            "Not the same as byok_rag (static registered corpora)."
+            "Not the same as byok_rag (static registered corpora). "
+            "When providers is non-empty, default_provider is required and "
+            "must match one of providers[].id. Applied in unified synthesis "
+            "only."
         ),
     )
 
@@ -2940,36 +3015,6 @@ class Configuration(ConfigurationBase):
         description="Configuration for saved prompts feature limits including "
         "maximum prompts per user, display name length, and content length.",
     )
-
-    @model_validator(mode="after")
-    def validate_vector_store_providers(self) -> Self:
-        """Validate vector_store_providers list constraints.
-
-        When the list is non-empty, requires unique ids and exactly one
-        entry with ``default: true``.
-
-        Returns:
-            Self: The validated configuration instance.
-
-        Raises:
-            ValueError: If ids are duplicated or the default count is not
-                exactly one for a non-empty list.
-        """
-        providers = self.vector_store_providers
-        if not providers:
-            return self
-
-        ids = [provider.id for provider in providers]
-        if len(ids) != len(set(ids)):
-            raise ValueError(f"vector_store_providers ids must be unique; got {ids}")
-
-        defaults = [provider.id for provider in providers if provider.default]
-        if len(defaults) != 1:
-            raise ValueError(
-                "vector_store_providers must set default: true on exactly one "
-                f"entry when the list is non-empty; found defaults on: {defaults}"
-            )
-        return self
 
     @model_validator(mode="after")
     def validate_mcp_auth_headers(self) -> Self:

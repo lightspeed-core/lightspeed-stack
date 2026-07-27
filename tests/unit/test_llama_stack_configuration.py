@@ -18,7 +18,7 @@ from llama_stack_configuration import (
     enrich_azure_entra_id_inference,
     enrich_byok_rag,
     enrich_solr,
-    enrich_vector_store_providers,
+    enrich_vector_store,
     generate_configuration,
 )
 from models.config import (
@@ -885,11 +885,11 @@ def test_enrich_solr_user_chunk_filter_query_is_conjoined() -> None:
 
 
 # =============================================================================
-# Test enrich_vector_store_providers
+# Test enrich_vector_store
 # =============================================================================
 
 
-def test_enrich_vector_store_providers_faiss_appends() -> None:
+def test_enrich_vector_store_faiss_appends() -> None:
     """Faiss provider appends vector_io, backend, and default_* settings."""
     ls_config: dict[str, Any] = {
         "providers": {
@@ -915,18 +915,20 @@ def test_enrich_vector_store_providers_faiss_appends() -> None:
             "default_provider_id": "faiss",
         },
     }
-    enrich_vector_store_providers(
+    enrich_vector_store(
         ls_config,
-        [
-            {
-                "id": "notebooks",
-                "type": "faiss",
-                "default": True,
-                "embedding_model": "/rag-content/embeddings_model",
-                "embedding_dimension": 768,
-                "config": {"path": "/var/lib/notebooks.db"},
-            }
-        ],
+        {
+            "default_provider": "notebooks",
+            "providers": [
+                {
+                    "id": "notebooks",
+                    "type": "faiss",
+                    "embedding_model": "/rag-content/embeddings_model",
+                    "embedding_dimension": 768,
+                    "config": {"path": "/var/lib/notebooks.db"},
+                }
+            ],
+        },
     )
     ids = {p["provider_id"] for p in ls_config["providers"]["vector_io"]}
     assert ids == {"faiss", "notebooks"}
@@ -945,7 +947,7 @@ def test_enrich_vector_store_providers_faiss_appends() -> None:
     assert not ls_config["registered_resources"]["vector_stores"]
 
 
-def test_enrich_vector_store_providers_replaces_same_provider_id() -> None:
+def test_enrich_vector_store_replaces_same_provider_id() -> None:
     """Same provider_id replaces the baseline entry and leaves orphan backends."""
     ls_config: dict[str, Any] = {
         "providers": {
@@ -973,18 +975,20 @@ def test_enrich_vector_store_providers_replaces_same_provider_id() -> None:
         "registered_resources": {"models": []},
         "vector_stores": {},
     }
-    enrich_vector_store_providers(
+    enrich_vector_store(
         ls_config,
-        [
-            {
-                "id": "notebooks",
-                "type": "faiss",
-                "default": True,
-                "embedding_model": "/emb",
-                "embedding_dimension": 768,
-                "config": {"path": "/new/notebooks.db"},
-            }
-        ],
+        {
+            "default_provider": "notebooks",
+            "providers": [
+                {
+                    "id": "notebooks",
+                    "type": "faiss",
+                    "embedding_model": "/emb",
+                    "embedding_dimension": 768,
+                    "config": {"path": "/new/notebooks.db"},
+                }
+            ],
+        },
     )
     providers = ls_config["providers"]["vector_io"]
     assert len(providers) == 1
@@ -999,7 +1003,7 @@ def test_enrich_vector_store_providers_replaces_same_provider_id() -> None:
     )
 
 
-def test_enrich_vector_store_providers_pgvector_no_kv_backend() -> None:
+def test_enrich_vector_store_pgvector_no_kv_backend() -> None:
     """Pgvector provider does not create a kv_sqlite storage backend."""
     ls_config: dict[str, Any] = {
         "providers": {},
@@ -1007,24 +1011,26 @@ def test_enrich_vector_store_providers_pgvector_no_kv_backend() -> None:
         "registered_resources": {},
         "vector_stores": {},
     }
-    enrich_vector_store_providers(
+    enrich_vector_store(
         ls_config,
-        [
-            {
-                "id": "nb-pg",
-                "type": "pgvector",
-                "default": True,
-                "embedding_model": "/emb",
-                "embedding_dimension": 768,
-                "config": {
-                    "host": "${env.POSTGRES_HOST}",
-                    "port": "${env.POSTGRES_PORT}",
-                    "db": "${env.POSTGRES_DATABASE}",
-                    "user": "${env.POSTGRES_USER}",
-                    "password": "${env.POSTGRES_PASSWORD}",
-                },
-            }
-        ],
+        {
+            "default_provider": "nb-pg",
+            "providers": [
+                {
+                    "id": "nb-pg",
+                    "type": "pgvector",
+                    "embedding_model": "/emb",
+                    "embedding_dimension": 768,
+                    "config": {
+                        "host": "${env.POSTGRES_HOST}",
+                        "port": "${env.POSTGRES_PORT}",
+                        "db": "${env.POSTGRES_DATABASE}",
+                        "user": "${env.POSTGRES_USER}",
+                        "password": "${env.POSTGRES_PASSWORD}",
+                    },
+                }
+            ],
+        },
     )
     provider = ls_config["providers"]["vector_io"][0]
     assert provider["provider_type"] == "remote::pgvector"
@@ -1037,8 +1043,8 @@ def test_enrich_vector_store_providers_pgvector_no_kv_backend() -> None:
     assert "vsprov_nb-pg_storage" not in ls_config["storage"]["backends"]
 
 
-def test_enrich_vector_store_providers_multiple_entries() -> None:
-    """Multi-entry list: both providers, faiss-only backend, one default_* winner."""
+def test_enrich_vector_store_multiple_entries() -> None:
+    """Multi-entry list: both providers, faiss-only backend, default_provider winner."""
     ls_config: dict[str, Any] = {
         "providers": {},
         "storage": {"backends": {}},
@@ -1047,29 +1053,30 @@ def test_enrich_vector_store_providers_multiple_entries() -> None:
             "annotation_prompt_params": {"enable_annotations": False},
         },
     }
-    enrich_vector_store_providers(
+    enrich_vector_store(
         ls_config,
-        [
-            {
-                "id": "notebooks",
-                "type": "faiss",
-                "default": True,
-                "embedding_model": "/emb-faiss",
-                "embedding_dimension": 768,
-                "config": {"path": "/var/lib/notebooks.db"},
-            },
-            {
-                "id": "nb-pg",
-                "type": "pgvector",
-                "default": False,
-                "embedding_model": "/emb-pg",
-                "embedding_dimension": 768,
-                "config": {
-                    "host": "${env.POSTGRES_HOST}",
-                    "password": "${env.POSTGRES_PASSWORD}",
+        {
+            "default_provider": "notebooks",
+            "providers": [
+                {
+                    "id": "notebooks",
+                    "type": "faiss",
+                    "embedding_model": "/emb-faiss",
+                    "embedding_dimension": 768,
+                    "config": {"path": "/var/lib/notebooks.db"},
                 },
-            },
-        ],
+                {
+                    "id": "nb-pg",
+                    "type": "pgvector",
+                    "embedding_model": "/emb-pg",
+                    "embedding_dimension": 768,
+                    "config": {
+                        "host": "${env.POSTGRES_HOST}",
+                        "password": "${env.POSTGRES_PASSWORD}",
+                    },
+                },
+            ],
+        },
     )
     ids = {p["provider_id"] for p in ls_config["providers"]["vector_io"]}
     assert ids == {"notebooks", "nb-pg"}
@@ -1089,7 +1096,7 @@ def test_enrich_vector_store_providers_multiple_entries() -> None:
     assert model_ids == {"/emb-faiss", "/emb-pg"}
 
 
-def test_enrich_vector_store_providers_noop_without_entries() -> None:
+def test_enrich_vector_store_noop_without_entries() -> None:
     """Empty list leaves baseline vector_stores defaults unchanged."""
     ls_config: dict[str, Any] = {
         "providers": {
@@ -1099,11 +1106,11 @@ def test_enrich_vector_store_providers_noop_without_entries() -> None:
         },
         "vector_stores": {"default_provider_id": "faiss"},
     }
-    enrich_vector_store_providers(ls_config, [])
+    enrich_vector_store(ls_config, {"providers": []})
     assert ls_config["vector_stores"]["default_provider_id"] == "faiss"
 
 
-def test_enrich_vector_store_providers_dedupes_embedding_model() -> None:
+def test_enrich_vector_store_dedupes_embedding_model() -> None:
     """Same provider_model_id as an existing model does not add a second row."""
     ls_config: dict[str, Any] = {
         "providers": {},
@@ -1122,18 +1129,20 @@ def test_enrich_vector_store_providers_dedupes_embedding_model() -> None:
         },
         "vector_stores": {},
     }
-    enrich_vector_store_providers(
+    enrich_vector_store(
         ls_config,
-        [
-            {
-                "id": "notebooks",
-                "type": "faiss",
-                "default": True,
-                "embedding_model": "/rag-content/embeddings_model",
-                "embedding_dimension": 768,
-                "config": {"path": "/tmp/n.db"},
-            }
-        ],
+        {
+            "default_provider": "notebooks",
+            "providers": [
+                {
+                    "id": "notebooks",
+                    "type": "faiss",
+                    "embedding_model": "/rag-content/embeddings_model",
+                    "embedding_dimension": 768,
+                    "config": {"path": "/tmp/n.db"},
+                }
+            ],
+        },
     )
     assert len(ls_config["registered_resources"]["models"]) == 1
 

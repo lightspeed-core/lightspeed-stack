@@ -247,7 +247,7 @@ Global service configuration.
 | compaction             |        | Controls when conversation history is summarized to keep the model's input below the context window limit. Disabled by default — when disabled, requests that exceed the window continue to surface as HTTP 413.                                                                                                        |
 | approvals              |        | Settings for human-in-the-loop approval of MCP tool invocations                                                                                                                                                                                                                                                         |
 | byok_rag               | array  | BYOK RAG configuration. This configuration can be used to reconfigure Llama Stack through its run.yaml configuration file                                                                                                                                                                                               |
-| vector_store_providers | array  | Dynamic vector-store provider capacity for runtime POST /v1/vector-stores creates. Not the same as byok_rag (static registered corpora). When non-empty, exactly one entry must set default: true. Applied in unified synthesis only.                                                                                    |
+| vector_store           |        | Dynamic vector-store provider capacity for runtime POST /v1/vector-stores creates. Not the same as byok_rag (static registered corpora). When providers is non-empty, default_provider is required and must match one of providers[].id. Applied in unified synthesis only.                                          |
 | a2a_state              |        | Configuration for A2A protocol persistent state storage.                                                                                                                                                                                                                                                                |
 | quota_handlers         |        | Quota handlers configuration                                                                                                                                                                                                                                                                                            |
 | azure_entra_id         |        |                                                                                                                                                                                                                                                                                                                         |
@@ -328,7 +328,6 @@ Dynamic FAISS vector-store provider (runtime create capacity).
 | type                | string  | Product type for this dynamic vector-store provider. Must be ``faiss``.                                                                                             |
 | embedding_model     | string  | Embedding model identification used for stores created against this provider. Required.                                                                             |
 | embedding_dimension | integer | Dimensionality of embedding vectors for this provider. Required.                                                                                                    |
-| default             | boolean | When true, this entry drives vector_stores.default_* in the synthesized Llama Stack config. Exactly one entry must set this when vector_store_providers is non-empty. |
 | config              |         | FAISS storage settings for this provider.                                                                                                                           |
 
 
@@ -529,7 +528,6 @@ Dynamic pgvector vector-store provider (runtime create capacity).
 | type                | string  | Product type for this dynamic vector-store provider. Must be ``pgvector``.                                                                                          |
 | embedding_model     | string  | Embedding model identification used for stores created against this provider. Required.                                                                             |
 | embedding_dimension | integer | Dimensionality of embedding vectors for this provider. Required.                                                                                                    |
-| default             | boolean | When true, this entry drives vector_stores.default_* in the synthesized Llama Stack config. Exactly one entry must set this when vector_store_providers is non-empty. |
 | config              |         | pgvector connection settings for this provider.                                                                                                                     |
 
 
@@ -925,3 +923,18 @@ User data collection configuration.
 | feedback_storage    | string  | Path to directory where feedback will be saved for further processing.             |
 | transcripts_enabled | boolean | When set to true the conversation history is stored and later sent for analysis.   |
 | transcripts_storage | string  | Path to directory where conversation history will be saved for further processing. |
+
+
+## VectorStoreConfiguration
+
+
+Configuration for dynamic vector-store providers.
+
+Mirrors ``InferenceConfiguration``: a providers list plus a sibling
+``default_provider`` pointer, rather than a per-entry default flag.
+
+
+| Field            | Type   | Description                                                                                                                                                                                   |
+|------------------|--------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| default_provider | string | Provider id used for vector_stores.default_* in the synthesized Llama Stack config. Required when providers is non-empty; must match one of providers[].id.                                  |
+| providers        | array  | Dynamic vector-store provider capacity for runtime POST /v1/vector-stores creates. Not the same as byok_rag (static registered corpora).                                                      |

@@ -12317,27 +12317,10 @@
                         "title": "BYOK RAG configuration",
                         "description": "BYOK RAG configuration. This configuration can be used to reconfigure Llama Stack through its run.yaml configuration file"
                     },
-                    "vector_store_providers": {
-                        "items": {
-                            "oneOf": [
-                                {
-                                    "$ref": "#/components/schemas/FaissVectorStoreProvider"
-                                },
-                                {
-                                    "$ref": "#/components/schemas/PgvectorVectorStoreProvider"
-                                }
-                            ],
-                            "discriminator": {
-                                "propertyName": "type",
-                                "mapping": {
-                                    "faiss": "#/components/schemas/FaissVectorStoreProvider",
-                                    "pgvector": "#/components/schemas/PgvectorVectorStoreProvider"
-                                }
-                            }
-                        },
-                        "type": "array",
-                        "title": "Vector store providers",
-                        "description": "Dynamic vector-store provider capacity for runtime POST /v1/vector-stores creates. Not the same as byok_rag (static registered corpora)."
+                    "vector_store": {
+                        "$ref": "#/components/schemas/VectorStoreConfiguration",
+                        "title": "Vector store configuration",
+                        "description": "Dynamic vector-store provider capacity for runtime POST /v1/vector-stores creates. Not the same as byok_rag (static registered corpora). When providers is non-empty, default_provider is required and must match one of providers[].id. Applied in unified synthesis only."
                     },
                     "a2a_state": {
                         "$ref": "#/components/schemas/A2AStateConfiguration",
@@ -13272,12 +13255,6 @@
                         "exclusiveMinimum": 0.0,
                         "title": "Embedding dimension",
                         "description": "Dimensionality of embedding vectors for this provider."
-                    },
-                    "default": {
-                        "type": "boolean",
-                        "title": "Default provider",
-                        "description": "When true, this entry drives vector_stores.default_* in the synthesized Llama Stack config. Exactly one entry must set this when vector_store_providers is non-empty.",
-                        "default": false
                     },
                     "type": {
                         "type": "string",
@@ -16788,12 +16765,6 @@
                         "exclusiveMinimum": 0.0,
                         "title": "Embedding dimension",
                         "description": "Dimensionality of embedding vectors for this provider."
-                    },
-                    "default": {
-                        "type": "boolean",
-                        "title": "Default provider",
-                        "description": "When true, this entry drives vector_stores.default_* in the synthesized Llama Stack config. Exactly one entry must set this when vector_store_providers is non-empty.",
-                        "default": false
                     },
                     "type": {
                         "type": "string",
@@ -20780,6 +20751,48 @@
                     "type"
                 ],
                 "title": "ValidationError"
+            },
+            "VectorStoreConfiguration": {
+                "properties": {
+                    "default_provider": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Default provider",
+                        "description": "Provider id used for vector_stores.default_* in the synthesized Llama Stack config. Required when providers is non-empty; must match one of providers[].id."
+                    },
+                    "providers": {
+                        "items": {
+                            "oneOf": [
+                                {
+                                    "$ref": "#/components/schemas/FaissVectorStoreProvider"
+                                },
+                                {
+                                    "$ref": "#/components/schemas/PgvectorVectorStoreProvider"
+                                }
+                            ],
+                            "discriminator": {
+                                "propertyName": "type",
+                                "mapping": {
+                                    "faiss": "#/components/schemas/FaissVectorStoreProvider",
+                                    "pgvector": "#/components/schemas/PgvectorVectorStoreProvider"
+                                }
+                            }
+                        },
+                        "type": "array",
+                        "title": "Vector store providers",
+                        "description": "Dynamic vector-store provider capacity for runtime POST /v1/vector-stores creates. Not the same as byok_rag (static registered corpora)."
+                    }
+                },
+                "additionalProperties": false,
+                "type": "object",
+                "title": "VectorStoreConfiguration",
+                "description": "Configuration for dynamic vector-store providers.\n\nMirrors ``InferenceConfiguration``: a providers list plus a sibling\n``default_provider`` pointer, rather than a per-entry default flag."
             },
             "VectorStoreCreateRequest": {
                 "properties": {

@@ -368,7 +368,7 @@ def _build_vector_io_config(
         rag_type: Llama Stack provider type (e.g. 'inline::faiss', 'remote::pgvector').
         backend_name: Storage backend name (used when template has '{backend_name}').
         extra_fields: Source values for template ``extra_fields`` (e.g. db_path,
-            host/port/db/user/password). Used by BYOK and vector_store_providers.
+            host/port/db/user/password). Used by BYOK and vector_store.providers.
 
     Returns:
         dict[str, Any]: Provider config mapping.
@@ -508,23 +508,29 @@ def enrich_byok_rag(ls_config: dict[str, Any], byok_rag: list[dict[str, Any]]) -
 
 
 # =============================================================================
-# Enrichment: vector_store_providers
+# Enrichment: vector_store
 # =============================================================================
 
 
-def _designated_vector_store_provider(
-    providers: list[dict[str, Any]],
+def _vector_store_provider_by_id(
+    providers: list[dict[str, Any]], provider_id: str | None
 ) -> dict[str, Any] | None:
-    """Return the provider that should drive vector_stores.default_*.
+    """Return the provider entry matching ``provider_id``.
 
     Parameters:
-        providers: High-level vector_store_providers entries.
+        providers: High-level ``vector_store.providers`` entries.
+        provider_id: Id from ``vector_store.default_provider``.
 
     Returns:
-        The entry with ``default: true``, or None when none is marked.
+        Matching provider dict, or None when unset / not found.
     """
+    if provider_id is None:
+        return None
+    cleaned = provider_id.strip()
+    if not cleaned:
+        return None
     for provider in providers:
-        if provider.get("default"):
+        if str(provider.get("id", "")).strip() == cleaned:
             return provider
     return None
 
@@ -545,7 +551,7 @@ def _upsert_vsprov_embedding_model(
         provider_id: Dynamic provider id used to name the model row.
         embedding_model: Configured embedding model path or id.
         embedding_dimension: Embedding vector dimensionality (required on
-            validated ``vector_store_providers`` entries).
+            validated ``vector_store.providers`` entries).
     """
     models = ls_config.setdefault("registered_resources", {}).setdefault("models", [])
     provider_model_id = embedding_model.removeprefix("sentence-transformers/")
@@ -595,7 +601,7 @@ def _vsprov_fields_and_backend(
             None,
         )
     raise ValueError(
-        f"Unsupported vector_store_providers type '{product_type}'. "
+        f"Unsupported vector_store.providers type '{product_type}'. "
         f"Supported types: {list(VECTOR_STORE_PROVIDER_TYPE_MAP)}"
     )
 
@@ -622,7 +628,7 @@ def _replace_or_append_vector_io(
         if isinstance(existing, dict) and existing.get("provider_id") == provider_id:
             logger.info(
                 "Replacing existing vector_io provider with "
-                "provider_id=%r from vector_store_providers",
+                "provider_id=%r from vector_store.providers",
                 provider_id,
             )
             vector_io[index] = provider_entry
@@ -636,7 +642,7 @@ def _apply_vector_stores_defaults(
 
     Parameters:
         ls_config: Llama Stack configuration modified in place.
-        designated: Provider entry with ``default: true``.
+        designated: Provider entry selected by ``vector_store.default_provider``.
     """
     vector_stores = ls_config.get("vector_stores")
     if not isinstance(vector_stores, dict):
@@ -658,7 +664,7 @@ def _enrich_one_vector_store_provider(
     existing_ids: set[str],
     ls_config: dict[str, Any],
 ) -> None:
-    """Enrich LS config for a single ``vector_store_providers`` entry.
+    """Enrich LS config for a single ``vector_store.providers`` entry.
 
     Parameters:
         entry: One high-level provider dict from Lightspeed config.
@@ -697,23 +703,27 @@ def _enrich_one_vector_store_provider(
         )
 
 
-def enrich_vector_store_providers(
-    ls_config: dict[str, Any], providers: list[dict[str, Any]]
+def enrich_vector_store(
+    ls_config: dict[str, Any],
+    vector_store: dict[str, Any] | None = None,
 ) -> None:
     """Enrich LS config with dynamic vector-store provider capacity.
 
     Appends or replaces ``providers.vector_io`` entries and faiss storage
     backends, registers embedding models when needed, and writes
     ``vector_stores.default_provider_id`` / ``default_embedding_model`` from
-    the entry marked ``default: true``. Does not register
+    ``vector_store.default_provider``. Does not register
     ``registered_resources.vector_stores``.
 
     Parameters:
         ls_config: Llama Stack configuration dictionary (modified in place).
-        providers: High-level ``vector_store_providers`` entries as dicts.
+        vector_store: High-level ``vector_store`` section
+            (``default_provider`` + ``providers``) as a dict.
     """
+    vector_store = vector_store or {}
+    providers = vector_store.get("providers") or []
     if not providers:
-        logger.debug("vector_store_providers not configured: skipping")
+        logger.debug("vector_store.providers not configured: skipping")
         dedupe_providers_vector_io(ls_config)
         return
 
@@ -736,7 +746,9 @@ def enrich_vector_store_providers(
             entry, backends, vector_io, existing_ids, ls_config
         )
 
-    designated = _designated_vector_store_provider(providers)
+    designated = _vector_store_provider_by_id(
+        providers, vector_store.get("default_provider")
+    )
     if designated is not None:
         _apply_vector_stores_defaults(ls_config, designated)
 
@@ -1139,9 +1151,7 @@ def synthesize_configuration(
     #    unified output matches legacy output for equivalent inputs (R7).
     enrich_azure_entra_id_inference(ls_config, lcs_config.get("azure_entra_id"))
     enrich_byok_rag(ls_config, lcs_config.get("byok_rag", []))
-    enrich_vector_store_providers(
-        ls_config, lcs_config.get("vector_store_providers", [])
-    )
+    enrich_vector_store(ls_config, lcs_config.get("vector_store"))
     enrich_solr(ls_config, lcs_config.get("rag", {}), lcs_config.get("okp", {}))
 
     # 5. High-level inference providers (Decision S5 — a root-level section).

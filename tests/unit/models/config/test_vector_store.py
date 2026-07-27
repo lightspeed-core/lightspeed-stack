@@ -1,4 +1,4 @@
-"""Unit tests for vector_store_providers config models."""
+"""Unit tests for vector_store configuration models."""
 
 import copy
 from typing import Any
@@ -23,14 +23,12 @@ def _base_config_dict() -> dict[str, Any]:
 def _faiss_provider(
     *,
     provider_id: str = "notebooks",
-    default: bool = False,
     path: str = "/var/lib/notebooks.db",
 ) -> dict[str, Any]:
-    """Return a minimal valid faiss vector_store_providers entry."""
+    """Return a minimal valid faiss vector_store.providers entry."""
     return {
         "id": provider_id,
         "type": "faiss",
-        "default": default,
         "embedding_model": "/rag-content/embeddings_model",
         "embedding_dimension": 768,
         "config": {"path": path},
@@ -45,7 +43,6 @@ def test_faiss_provider_accepts_nested_config() -> None:
             "type": "faiss",
             "embedding_model": "/rag-content/embeddings_model",
             "embedding_dimension": 768,
-            "default": True,
             "config": {"path": "/var/lib/notebooks.db"},
         }
     )
@@ -53,7 +50,6 @@ def test_faiss_provider_accepts_nested_config() -> None:
     assert provider.type == "faiss"
     assert provider.config.path == "/var/lib/notebooks.db"
     assert provider.embedding_dimension == 768
-    assert provider.default is True
 
 
 def test_faiss_requires_path() -> None:
@@ -90,7 +86,6 @@ def test_pgvector_applies_env_defaults() -> None:
             "type": "pgvector",
             "embedding_model": "/emb",
             "embedding_dimension": 768,
-            "default": True,
             "config": {},
         }
     )
@@ -140,51 +135,85 @@ def test_rejects_unknown_type() -> None:
         )
 
 
-def test_rejects_non_empty_list_with_no_default() -> None:
-    """Non-empty list with no default: true is rejected."""
+def test_rejects_non_empty_providers_without_default_provider() -> None:
+    """Non-empty providers without default_provider is rejected."""
     config_dict = _base_config_dict()
-    config_dict["vector_store_providers"] = [_faiss_provider(default=False)]
-    with pytest.raises(ValidationError, match="default"):
+    config_dict["vector_store"] = {"providers": [_faiss_provider()]}
+    with pytest.raises(ValidationError, match="default_provider"):
         Configuration(**config_dict)
 
 
-def test_rejects_multiple_defaults() -> None:
-    """Non-empty list with more than one default: true is rejected."""
+def test_rejects_default_provider_not_in_providers() -> None:
+    """default_provider must match one of providers[].id."""
     config_dict = _base_config_dict()
-    config_dict["vector_store_providers"] = [
-        _faiss_provider(provider_id="a", default=True, path="/tmp/a.db"),
-        _faiss_provider(provider_id="b", default=True, path="/tmp/b.db"),
-    ]
-    with pytest.raises(ValidationError, match="default"):
+    config_dict["vector_store"] = {
+        "default_provider": "missing",
+        "providers": [_faiss_provider(provider_id="notebooks")],
+    }
+    with pytest.raises(ValidationError, match="default_provider"):
+        Configuration(**config_dict)
+
+
+def test_rejects_default_provider_when_providers_empty() -> None:
+    """default_provider must not be set when providers is empty."""
+    config_dict = _base_config_dict()
+    config_dict["vector_store"] = {
+        "default_provider": "notebooks",
+        "providers": [],
+    }
+    with pytest.raises(ValidationError, match="default_provider"):
         Configuration(**config_dict)
 
 
 def test_duplicate_ids_rejected() -> None:
-    """Provider ids must be unique within vector_store_providers."""
+    """Provider ids must be unique within vector_store.providers."""
     config_dict = _base_config_dict()
-    config_dict["vector_store_providers"] = [
-        _faiss_provider(provider_id="notebooks", default=True, path="/tmp/a.db"),
-        _faiss_provider(provider_id="notebooks", default=False, path="/tmp/b.db"),
-    ]
+    config_dict["vector_store"] = {
+        "default_provider": "notebooks",
+        "providers": [
+            _faiss_provider(provider_id="notebooks", path="/tmp/a.db"),
+            _faiss_provider(provider_id="notebooks", path="/tmp/b.db"),
+        ],
+    }
     with pytest.raises(ValidationError, match="unique|duplicate"):
         Configuration(**config_dict)
 
 
-def test_empty_list_ok_without_default() -> None:
-    """Empty vector_store_providers list is valid without a designated default."""
+def test_rejects_whitespace_only_default_provider() -> None:
+    """Whitespace-only default_provider is rejected."""
     config_dict = _base_config_dict()
-    config_dict["vector_store_providers"] = []
+    config_dict["vector_store"] = {
+        "default_provider": "   ",
+        "providers": [_faiss_provider(provider_id="notebooks")],
+    }
+    with pytest.raises(ValidationError, match="default_provider"):
+        Configuration(**config_dict)
+
+
+def test_empty_providers_ok_without_default_provider() -> None:
+    """Empty providers list is valid without a designated default."""
+    config_dict = _base_config_dict()
+    config_dict["vector_store"] = {"providers": []}
     cfg = Configuration(**config_dict)
-    assert cfg.vector_store_providers == []
+    # pylint: disable=no-member
+    assert cfg.vector_store.providers == []
+    assert cfg.vector_store.default_provider is None
 
 
-def test_single_default_provider_accepted() -> None:
-    """Non-empty list with exactly one default: true validates."""
+def test_default_provider_accepted() -> None:
+    """Non-empty providers with matching default_provider validates."""
     config_dict = _base_config_dict()
-    config_dict["vector_store_providers"] = [
-        _faiss_provider(provider_id="notebooks", default=True),
-        _faiss_provider(provider_id="other", default=False, path="/tmp/other.db"),
+    config_dict["vector_store"] = {
+        "default_provider": "notebooks",
+        "providers": [
+            _faiss_provider(provider_id="notebooks"),
+            _faiss_provider(provider_id="other", path="/tmp/other.db"),
+        ],
+    }
+    cfg = Configuration(**config_dict)
+    # pylint: disable=no-member
+    assert cfg.vector_store.default_provider == "notebooks"
+    assert [provider.id for provider in cfg.vector_store.providers] == [
+        "notebooks",
+        "other",
     ]
-    cfg = Configuration(**config_dict)
-    by_id = {provider.id: provider.default for provider in cfg.vector_store_providers}
-    assert by_id == {"notebooks": True, "other": False}
