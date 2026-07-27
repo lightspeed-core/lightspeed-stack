@@ -198,14 +198,12 @@ make run CONFIG=examples/lightspeed-stack-azure-entraid-service.yaml
 
 ## Safety Providers
 
-| Name         | Type   | Pip Dependencies                                                                     | Supported in LCS |
-|--------------|--------|--------------------------------------------------------------------------------------|:----------------:|
-| code-scanner | inline | `codeshield`                                                                         | ❌               |
-| llama-guard  | inline | —                                                                                    | ❌               |
-| prompt-guard | inline | `transformers[accelerate]`, `torch --index-url https://download.pytorch.org/whl/cpu` | ❌               |
-| bedrock      | remote | `boto3`                                                                              | ❌               |
-| nvidia       | remote | `requests`                                                                           | ❌               |
-| sambanova    | remote | `litellm`, `requests`                                                                | ❌               |
+Shields are owned by LCORE (configured under `shields:` block), not as OGX `providers.safety` entries.
+
+| Name               | Type  | Pip Dependencies | Supported in LCS |
+|--------------------|-------|------------------|:----------------:|
+| question_validity  | lcore | —                | ✅               |
+| redaction          | lcore | —                | ✅               |
 
 ---
 
@@ -342,7 +340,6 @@ make run CONFIG=examples/lightspeed-stack-azure-entraid-service.yaml
     Some of APIs are associated with a set of **Resources**. Here is the mapping of APIs to resources:
 
     - **Inference**, **Eval** and **Post Training** are associated with **Model** resources.
-    - **Safety** is associated with **Shield** resources.
     - **Tool Runtime** is associated with **ToolGroup** resources.
     - **DatasetIO** is associated with **Dataset** resources.
     - **VectorIO** is associated with **VectorDB** resources.
@@ -359,9 +356,6 @@ make run CONFIG=examples/lightspeed-stack-azure-entraid-service.yaml
         provider_id: openai
         model_type: llm
         provider_model_id: gpt-4-turbo  # provider label
-    
-    shields:
-        ...
     ```
     **Note** It is necessary for llama-stack to know which resources to use for a given provider. This means you need to explicitly register resources (including models) before you can use them with the associated APIs.
 

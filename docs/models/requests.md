@@ -844,7 +844,7 @@ Attributes:
     generate_topic_summary: Whether to generate topic summary for new conversations.
     media_type: The optional media type for response format (application/json or text/plain).
     vector_store_ids: The optional list of specific vector store IDs to query for RAG.
-    shield_ids: The optional list of safety shield IDs to apply.
+    shield_ids: The optional list of configured shield names to apply.
     solr: Optional Solr inline RAG options (mode, filters) or legacy filter-only dict.
 
 
@@ -860,7 +860,7 @@ Attributes:
 | generate_topic_summary | boolean | Whether to generate topic summary for new conversations |
 | media_type | string | Media type for the response format |
 | vector_store_ids | array | Optional list of specific vector store IDs to query for RAG. If not provided, all available vector stores will be queried. |
-| shield_ids | array | Optional list of safety shield IDs to apply. If None, all configured shields are used.  |
+| shield_ids | array | Optional list of configured shield names to apply. If None, all configured shields are used. |
 | solr |  | Solr inline RAG config: mode (semantic, hybrid, lexical) and filters; a legacy filter-only object (e.g. fq) is still accepted. |
 
 
@@ -912,8 +912,8 @@ Attributes:
         calls, MCP tools). Defaults to all tools available to the model.
     generate_topic_summary: LCORE-specific flag indicating whether to generate a
         topic summary for new conversations. Defaults to True.
-    shield_ids: LCORE-specific list of safety shield IDs to apply. If None, all
-        configured shields are used.
+    shield_ids: LCORE-specific list of configured shield names to apply.
+            If None, all configured shields are used.
     solr: Optional Solr inline RAG options (mode, filters) or legacy filter-only dict.
 
 

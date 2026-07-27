@@ -770,21 +770,28 @@ For the configuration guide, skill authoring instructions, and examples, see the
 
 ## Safety Shields
 
-A single Llama Stack configuration file can include multiple safety shields, which are utilized in agent
-configurations to monitor input and/or output streams. LCS uses the following naming convention to specify how each safety shield is
-utilized:
+Safety shields used by `/query`, `/streaming_query`, `/responses`, and `/rlsapi`
+are **owned by Lightspeed Core Stack** and configured in `lightspeed-stack.yaml`
+(not via the Llama Stack / OGX Safety or Moderations APIs).
 
-1. If the `shield_id` starts with `input_`, it will be used for input only.
-1. If the `shield_id` starts with `output_`, it will be used for output only.
-1. If the `shield_id` starts with `inout_`, it will be used both for input and output.
-1. Otherwise, it will be used for input only.
+Supported shield types (`provider_id`):
 
-Additionally, an optional list parameter `shield_ids` can be specified in `/query` and `/streaming_query` endpoints to override which shields are applied. You can use this config to disable shield overrides:
+- `question_validity` — topic / off-topic classification
+- `redaction` — regex-based PII redaction
+
+List configured shields with `GET /v1/shields`. Optionally override which
+shields apply with the `shield_ids` request field (`null` = all, `[]` = none,
+or a list of configured `identifier` values). To forbid client overrides on
+`/query` and `/streaming_query`:
 
 ```yaml
 customization:
   disable_shield_ids_override: true
 ```
+
+For configuration details, endpoint application (direct-run vs agent
+capabilities), and examples, see the
+[Safety Shields Guide](docs/user_doc/shields_guide.md).
 
 ## Authentication
 

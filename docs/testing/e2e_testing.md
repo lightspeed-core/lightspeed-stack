@@ -24,7 +24,7 @@ This guide describes how to run, extend, and understand the Lightspeed Core Stac
 
 - **Framework**: [Behave](https://behave.readthedocs.io/) (Python BDD).
 - **Scope**: REST API of the Lightspeed Core Stack (query, streaming_query, models, info, health, feedback, conversations, RBAC, MCP, etc.).
-- **Execution**: Tests run in a **separate process** from the app. They send HTTP requests to the service and (in server mode) optionally talk to the Llama Stack service for shield setup.
+- **Execution**: Tests run in a **separate process** from the app. They send HTTP requests to the service. LCORE shields are configured in `lightspeed-stack.yaml` (not via Llama Stack Safety APIs).
 - **Environments**: Local (Docker Compose) or Prow/OpenShift (containers/pods). Mode is detected via `E2E_DEPLOYMENT_MODE` and `RUNNING_PROW`.
 
 ---
@@ -206,8 +206,8 @@ You can put several tags on one scenario. To document why a scenario is skipped,
 
 - **before_all**: Sets `deployment_mode`, `is_library_mode`, detects or overrides `default_model` / `default_provider`, sets `faiss_vector_store_id`.
 - **before_feature**: Applies feature-level config and restarts container for `Authorized`, `RBAC`, `RHIdentity`, `Feedback`, `MCP`.
-- **before_scenario**: Skips scenarios for `@skip`, `@local`, `@skip-in-library-mode`; applies scenario config for `InvalidFeedbackStorageConfig` / `NoCacheConfig`; for `@disable-shields` (server mode) unregisters the shield.
-- **after_scenario**: Restores Llama Stack if it was disrupted; restores config and restarts for scenario config tags; for `@disable-shields` re-registers the shield.
+- **before_scenario**: Skips scenarios for `@skip`, `@local`, `@skip-in-library-mode`; applies scenario config for `InvalidFeedbackStorageConfig` / `NoCacheConfig`.
+- **after_scenario**: Restores Llama Stack if it was disrupted; restores config and restarts for scenario config tags.
 - **after_feature**: Restores config and restarts for `Authorized`, `RBAC`, `RHIdentity`, `MCP`; deletes feedback conversations for `Feedback`.
 
 ---
