@@ -133,22 +133,20 @@ def get_shields_for_request(
     shields: list[ShieldConfiguration],
     shield_ids: Optional[list[str]] = None,
 ) -> list[ShieldConfiguration]:
-    """Return configured shields, optionally filtered by request ``shield_ids``.
-
-    Shield identifiers in the request map to each shield's configured ``name``.
+    """Return configured shields, optionally filtered by request shield_ids.
 
     Args:
         shields: Configured LCS shields.
-        shield_ids: Optional list of shield names. If ``None``, all ``shields``
-            are returned. An empty list skips all shields. Otherwise only
-            shields whose ``name`` is in this list are returned.
+        shield_ids: Optional list of shield names. If None, all shields are
+            returned. An empty list skips all shields. Otherwise only shields
+            whose name is in this list are returned.
 
     Returns:
         list[ShieldConfiguration]: Shield configurations to run for this request.
 
     Raises:
-        HTTPException: 404 if ``shield_ids`` is provided and any requested
-            shield name is not present in ``shields``.
+        HTTPException: 404 if shield_ids is provided and any requested shield
+            name is not present in shields.
     """
     if shield_ids is None:
         return list(shields)
@@ -157,8 +155,8 @@ def get_shields_for_request(
         return []
 
     requested = set(shield_ids)
-    configured_ids = {shield.name for shield in shields}
-    missing = requested - configured_ids
+    configured_names = {shield.name for shield in shields}
+    missing = requested - configured_names
     if missing:
         response = NotFoundResponse(
             resource=f"Shield{'s' if len(missing) > 1 else ''}",

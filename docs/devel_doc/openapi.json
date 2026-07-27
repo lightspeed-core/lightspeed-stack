@@ -1443,7 +1443,8 @@
                                                 "model_prompt": "Is this question valid?"
                                             },
                                             "name": "question-validity",
-                                            "type": "question_validity"
+                                            "provider_id": "question_validity",
+                                            "type": "shield"
                                         },
                                         {
                                             "config": {
@@ -1456,7 +1457,8 @@
                                                 ]
                                             },
                                             "name": "pii-redaction",
-                                            "type": "redaction"
+                                            "provider_id": "redaction",
+                                            "type": "shield"
                                         }
                                     ]
                                 }
@@ -12122,14 +12124,21 @@
                         "title": "Name",
                         "description": "Unique, user-facing name of the shield instance"
                     },
-                    "type": {
+                    "provider_id": {
                         "type": "string",
                         "enum": [
                             "question_validity",
                             "redaction"
                         ],
+                        "title": "Provider Id",
+                        "description": "Shield provider / type discriminator"
+                    },
+                    "type": {
+                        "type": "string",
+                        "const": "shield",
                         "title": "Type",
-                        "description": "Shield type discriminator"
+                        "description": "Catalog entry type; always shield",
+                        "default": "shield"
                     },
                     "config": {
                         "additionalProperties": true,
@@ -12141,11 +12150,11 @@
                 "type": "object",
                 "required": [
                     "name",
-                    "type",
+                    "provider_id",
                     "config"
                 ],
                 "title": "CatalogShield",
-                "description": "Shield entry in the ``/shields`` catalog response.\n\nMirrors the LCS-owned ``ShieldConfiguration`` shape (name / type / config)."
+                "description": "Shield entry in the ``/shields`` catalog response.\n\nAttributes:\n    name: Unique, user-facing name identifying this shield instance.\n    provider_id: Shield provider / type discriminator.\n    type: Catalog entry type; always shield.\n    config: Type-specific shield configuration."
             },
             "CatalogTool": {
                 "properties": {
@@ -12482,7 +12491,7 @@
                                 }
                             ],
                             "discriminator": {
-                                "propertyName": "type",
+                                "propertyName": "provider_id",
                                 "mapping": {
                                     "question_validity": "#/components/schemas/QuestionValidityShieldConfiguration",
                                     "redaction": "#/components/schemas/RedactionShieldConfiguration"
@@ -12491,7 +12500,7 @@
                         },
                         "type": "array",
                         "title": "Shields configuration",
-                        "description": "List of pydantic-ai-lightspeed agent guardrail shields (question validity and PII redaction). Each entry has a unique 'name', a 'type' ('question_validity' or 'redaction'), and a type-specific 'config'."
+                        "description": "List of pydantic-ai-lightspeed agent guardrail shields (question validity and PII redaction). Each entry has a unique 'name', a 'provider_id' ('question_validity' or 'redaction'), and a type-specific 'config'."
                     }
                 },
                 "additionalProperties": false,
@@ -17660,10 +17669,10 @@
                             }
                         ],
                         "title": "Shield Ids",
-                        "description": "Optional list of safety shield IDs to apply. If None, all configured shields are used. ",
+                        "description": "Optional list of configured shield names to apply. If None, all configured shields are used.",
                         "examples": [
-                            "llama-guard",
-                            "custom-shield"
+                            "topic-guard",
+                            "pii-redaction"
                         ]
                     },
                     "solr": {
@@ -17702,7 +17711,7 @@
                     "query"
                 ],
                 "title": "QueryRequest",
-                "description": "Model representing a request for the LLM (Language Model).\n\nAttributes:\n    query: The query string.\n    conversation_id: The optional conversation ID (UUID).\n    provider: The optional provider.\n    model: The optional model.\n    system_prompt: The optional system prompt.\n    attachments: The optional attachments.\n    no_tools: Whether to bypass all tools and MCP servers (default: False).\n    generate_topic_summary: Whether to generate topic summary for new conversations.\n    media_type: The optional media type for response format (application/json or text/plain).\n    vector_store_ids: The optional list of specific vector store IDs to query for RAG.\n    shield_ids: The optional list of safety shield IDs to apply.\n    solr: Optional Solr inline RAG options (mode, filters) or legacy filter-only dict.",
+                "description": "Model representing a request for the LLM (Language Model).\n\nAttributes:\n    query: The query string.\n    conversation_id: The optional conversation ID (UUID).\n    provider: The optional provider.\n    model: The optional model.\n    system_prompt: The optional system prompt.\n    attachments: The optional attachments.\n    no_tools: Whether to bypass all tools and MCP servers (default: False).\n    generate_topic_summary: Whether to generate topic summary for new conversations.\n    media_type: The optional media type for response format (application/json or text/plain).\n    vector_store_ids: The optional list of specific vector store IDs to query for RAG.\n    shield_ids: The optional list of configured shield names to apply.\n    solr: Optional Solr inline RAG options (mode, filters) or legacy filter-only dict.",
                 "examples": [
                     {
                         "attachments": [
@@ -17926,10 +17935,10 @@
                         "title": "Shield name",
                         "description": "Unique, user-facing name identifying this shield instance."
                     },
-                    "type": {
+                    "provider_id": {
                         "type": "string",
                         "const": "question_validity",
-                        "title": "Shield type",
+                        "title": "Shield provider id",
                         "description": "Discriminator identifying this as a question-validity shield."
                     },
                     "config": {
@@ -17942,11 +17951,11 @@
                 "type": "object",
                 "required": [
                     "name",
-                    "type",
+                    "provider_id",
                     "config"
                 ],
                 "title": "QuestionValidityShieldConfiguration",
-                "description": "Configuration for a named question-validity guardrail shield.\n\nAttributes:\n    name: Unique, user-facing name identifying this shield instance.\n    type: Discriminator identifying this as a question-validity shield.\n    config: Question-validity-specific configuration."
+                "description": "Configuration for a named question-validity guardrail shield.\n\nAttributes:\n    name: Unique, user-facing name identifying this shield instance.\n    provider_id: Discriminator identifying this as a question-validity shield.\n    config: Question-validity-specific configuration."
             },
             "QuotaExceededResponse": {
                 "properties": {
@@ -18544,10 +18553,10 @@
                         "title": "Shield name",
                         "description": "Unique, user-facing name identifying this shield instance."
                     },
-                    "type": {
+                    "provider_id": {
                         "type": "string",
                         "const": "redaction",
-                        "title": "Shield type",
+                        "title": "Shield provider id",
                         "description": "Discriminator identifying this as a redaction shield."
                     },
                     "config": {
@@ -18560,11 +18569,11 @@
                 "type": "object",
                 "required": [
                     "name",
-                    "type",
+                    "provider_id",
                     "config"
                 ],
                 "title": "RedactionShieldConfiguration",
-                "description": "Configuration for a named PII-redaction guardrail shield.\n\nAttributes:\n    name: Unique, user-facing name identifying this shield instance.\n    type: Discriminator identifying this as a redaction shield.\n    config: Redaction-specific configuration."
+                "description": "Configuration for a named PII-redaction guardrail shield.\n\nAttributes:\n    name: Unique, user-facing name identifying this shield instance.\n    provider_id: Discriminator identifying this as a redaction shield.\n    config: Redaction-specific configuration."
             },
             "ReferencedDocument": {
                 "properties": {
@@ -19002,7 +19011,7 @@
                     "input"
                 ],
                 "title": "ResponsesRequest",
-                "description": "Model representing a request for the Responses API following LCORE specification.\n\nAttributes:\n    input: Input text or structured input items containing the query.\n    model: Model identifier in format \"provider/model\". Auto-selected if not provided.\n    conversation: Conversation ID linking to an existing conversation. Accepts both\n        OpenAI and LCORE formats. Mutually exclusive with previous_response_id.\n    include: Explicitly specify output item types that are excluded by default but\n        should be included in the response.\n    instructions: System instructions or guidelines provided to the model (acts as\n        the system prompt).\n    max_infer_iters: Maximum number of inference iterations the model can perform.\n    max_output_tokens: Maximum number of tokens allowed in the response.\n    max_tool_calls: Maximum number of tool calls allowed in a single response.\n    metadata: Custom metadata dictionary with key-value pairs for tracking or logging.\n    parallel_tool_calls: Whether the model can make multiple tool calls in parallel.\n    previous_response_id: Identifier of the previous response in a multi-turn\n        conversation. Mutually exclusive with conversation.\n    prompt: Prompt object containing a template with variables for dynamic\n        substitution.\n    reasoning: Reasoning configuration for the response.\n    safety_identifier: Safety identifier for the response.\n    store: Whether to store the response in conversation history. Defaults to True.\n    stream: Whether to stream the response as it is generated. Defaults to False.\n    temperature: Sampling temperature controlling randomness (typically 0.0\u20132.0).\n    text: Text response configuration specifying output format constraints (JSON\n        schema, JSON object, or plain text).\n    tool_choice: Tool selection strategy (\"auto\", \"required\", \"none\", or specific\n        tool configuration).\n    tools: List of tools available to the model (file search, web search, function\n        calls, MCP tools). Defaults to all tools available to the model.\n    generate_topic_summary: LCORE-specific flag indicating whether to generate a\n        topic summary for new conversations. Defaults to True.\n    shield_ids: LCORE-specific list of safety shield IDs to apply. If None, all\n        configured shields are used.\n    solr: Optional Solr inline RAG options (mode, filters) or legacy filter-only dict.",
+                "description": "Model representing a request for the Responses API following LCORE specification.\n\nAttributes:\n    input: Input text or structured input items containing the query.\n    model: Model identifier in format \"provider/model\". Auto-selected if not provided.\n    conversation: Conversation ID linking to an existing conversation. Accepts both\n        OpenAI and LCORE formats. Mutually exclusive with previous_response_id.\n    include: Explicitly specify output item types that are excluded by default but\n        should be included in the response.\n    instructions: System instructions or guidelines provided to the model (acts as\n        the system prompt).\n    max_infer_iters: Maximum number of inference iterations the model can perform.\n    max_output_tokens: Maximum number of tokens allowed in the response.\n    max_tool_calls: Maximum number of tool calls allowed in a single response.\n    metadata: Custom metadata dictionary with key-value pairs for tracking or logging.\n    parallel_tool_calls: Whether the model can make multiple tool calls in parallel.\n    previous_response_id: Identifier of the previous response in a multi-turn\n        conversation. Mutually exclusive with conversation.\n    prompt: Prompt object containing a template with variables for dynamic\n        substitution.\n    reasoning: Reasoning configuration for the response.\n    safety_identifier: Safety identifier for the response.\n    store: Whether to store the response in conversation history. Defaults to True.\n    stream: Whether to stream the response as it is generated. Defaults to False.\n    temperature: Sampling temperature controlling randomness (typically 0.0\u20132.0).\n    text: Text response configuration specifying output format constraints (JSON\n        schema, JSON object, or plain text).\n    tool_choice: Tool selection strategy (\"auto\", \"required\", \"none\", or specific\n        tool configuration).\n    tools: List of tools available to the model (file search, web search, function\n        calls, MCP tools). Defaults to all tools available to the model.\n    generate_topic_summary: LCORE-specific flag indicating whether to generate a\n        topic summary for new conversations. Defaults to True.\n    shield_ids: LCORE-specific list of configured shield names to apply.\n        If None, all configured shields are used.\n    solr: Optional Solr inline RAG options (mode, filters) or legacy filter-only dict.",
                 "examples": [
                     {
                         "generate_topic_summary": true,
@@ -20158,7 +20167,8 @@
                                     "model_prompt": "Is this question valid?"
                                 },
                                 "name": "question-validity",
-                                "type": "question_validity"
+                                "provider_id": "question_validity",
+                                "type": "shield"
                             },
                             {
                                 "config": {
@@ -20171,7 +20181,8 @@
                                     ]
                                 },
                                 "name": "pii-redaction",
-                                "type": "redaction"
+                                "provider_id": "redaction",
+                                "type": "shield"
                             }
                         ]
                     }

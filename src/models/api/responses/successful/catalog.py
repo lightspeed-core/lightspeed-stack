@@ -91,7 +91,8 @@ class ShieldsResponse(AbstractSuccessfulResponse):
                     "shields": [
                         {
                             "name": "question-validity",
-                            "type": "question_validity",
+                            "provider_id": "question_validity",
+                            "type": "shield",
                             "config": {
                                 "model_id": "openai/gpt-4o-mini",
                                 "model_prompt": "Is this question valid?",
@@ -102,7 +103,8 @@ class ShieldsResponse(AbstractSuccessfulResponse):
                         },
                         {
                             "name": "pii-redaction",
-                            "type": "redaction",
+                            "provider_id": "redaction",
+                            "type": "shield",
                             "config": {
                                 "rules": [
                                     {

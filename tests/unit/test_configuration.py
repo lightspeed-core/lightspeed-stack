@@ -278,17 +278,17 @@ def test_init_from_dict_with_shields() -> None:
         "shields": [
             {
                 "name": "topic-guard-a",
-                "type": "question_validity",
+                "provider_id": "question_validity",
                 "config": {"model_id": "test-model"},
             },
             {
                 "name": "topic-guard-b",
-                "type": "question_validity",
+                "provider_id": "question_validity",
                 "config": {"model_id": "test-model-2"},
             },
             {
                 "name": "pii-guard",
-                "type": "redaction",
+                "provider_id": "redaction",
                 "config": {
                     "rules": [
                         {"pattern": r"\d+", "replacement": "[NUM]"},
@@ -302,12 +302,12 @@ def test_init_from_dict_with_shields() -> None:
 
     assert len(cfg.shields) == 3
     assert cfg.shields[0].name == "topic-guard-a"
-    assert cfg.shields[0].type == "question_validity"
+    assert cfg.shields[0].provider_id == "question_validity"
     assert cfg.shields[0].config.model_id == "test-model"  # type: ignore[union-attr]
     assert cfg.shields[1].name == "topic-guard-b"
     assert cfg.shields[1].config.model_id == "test-model-2"  # type: ignore[union-attr]
     assert cfg.shields[2].name == "pii-guard"
-    assert cfg.shields[2].type == "redaction"
+    assert cfg.shields[2].provider_id == "redaction"
     assert len(cfg.shields[2].config.compiled_patterns) == 1  # type: ignore[union-attr]
 
 

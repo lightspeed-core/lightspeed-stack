@@ -57,8 +57,8 @@ class ResponsesRequest(BaseModel):
             calls, MCP tools). Defaults to all tools available to the model.
         generate_topic_summary: LCORE-specific flag indicating whether to generate a
             topic summary for new conversations. Defaults to True.
-        shield_ids: LCORE-specific list of safety shield IDs to apply. If None, all
-            configured shields are used.
+        shield_ids: LCORE-specific list of configured shield names to apply.
+            If None, all configured shields are used.
         solr: Optional Solr inline RAG options (mode, filters) or legacy filter-only dict.
     """
 

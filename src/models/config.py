@@ -2595,7 +2595,7 @@ class QuestionValidityShieldConfiguration(ConfigurationBase):
 
     Attributes:
         name: Unique, user-facing name identifying this shield instance.
-        type: Discriminator identifying this as a question-validity shield.
+        provider_id: Discriminator identifying this as a question-validity shield.
         config: Question-validity-specific configuration.
     """
 
@@ -2605,9 +2605,9 @@ class QuestionValidityShieldConfiguration(ConfigurationBase):
         description="Unique, user-facing name identifying this shield instance.",
     )
 
-    type: Literal["question_validity"] = Field(
+    provider_id: Literal["question_validity"] = Field(
         ...,
-        title="Shield type",
+        title="Shield provider id",
         description="Discriminator identifying this as a question-validity shield.",
     )
 
@@ -2623,7 +2623,7 @@ class RedactionShieldConfiguration(ConfigurationBase):
 
     Attributes:
         name: Unique, user-facing name identifying this shield instance.
-        type: Discriminator identifying this as a redaction shield.
+        provider_id: Discriminator identifying this as a redaction shield.
         config: Redaction-specific configuration.
     """
 
@@ -2633,9 +2633,9 @@ class RedactionShieldConfiguration(ConfigurationBase):
         description="Unique, user-facing name identifying this shield instance.",
     )
 
-    type: Literal["redaction"] = Field(
+    provider_id: Literal["redaction"] = Field(
         ...,
-        title="Shield type",
+        title="Shield provider id",
         description="Discriminator identifying this as a redaction shield.",
     )
 
@@ -2648,11 +2648,11 @@ class RedactionShieldConfiguration(ConfigurationBase):
 
 ShieldConfiguration = Annotated[
     QuestionValidityShieldConfiguration | RedactionShieldConfiguration,
-    Field(discriminator="type"),
+    Field(discriminator="provider_id"),
 ]
 """Configuration for a single named guardrail shield (question validity or redaction).
 
-A discriminated union on ``type``: Pydantic selects
+A discriminated union on ``provider_id``: Pydantic selects
 ``QuestionValidityShieldConfiguration`` or ``RedactionShieldConfiguration``
 and validates ``config`` against the matching model.
 """
@@ -2847,9 +2847,9 @@ class Configuration(ConfigurationBase):
         default_factory=list,
         title="Shields configuration",
         description="List of pydantic-ai-lightspeed agent guardrail shields "
-        "(question validity and PII redaction). Each entry has a unique 'name', "
-        "a 'type' ('question_validity' or 'redaction'), and a type-specific "
-        "'config'.",
+        "(question validity and PII redaction). Each entry has a unique "
+        "'name', a 'provider_id' ('question_validity' or 'redaction'), "
+        "and a type-specific 'config'.",
     )
 
     @model_validator(mode="after")
