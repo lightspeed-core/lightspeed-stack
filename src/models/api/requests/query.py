@@ -23,7 +23,7 @@ class QueryRequest(BaseModel):
         generate_topic_summary: Whether to generate topic summary for new conversations.
         media_type: The optional media type for response format (application/json or text/plain).
         vector_store_ids: The optional list of specific vector store IDs to query for RAG.
-        shield_ids: The optional list of safety shield IDs to apply.
+        shield_ids: The optional list of configured shield names to apply.
         solr: Optional Solr inline RAG options (mode, filters) or legacy filter-only dict.
     """
 
@@ -105,9 +105,9 @@ class QueryRequest(BaseModel):
 
     shield_ids: Optional[list[str]] = Field(
         None,
-        description="Optional list of safety shield IDs to apply. "
-        "If None, all configured shields are used. ",
-        examples=["llama-guard", "custom-shield"],
+        description="Optional list of configured shield names to apply. "
+        "If None, all configured shields are used.",
+        examples=["topic-guard", "pii-redaction"],
     )
 
     solr: Optional[SolrVectorSearchRequest] = Field(

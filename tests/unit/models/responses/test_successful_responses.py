@@ -189,7 +189,8 @@ class TestShieldsResponse:
         shields = [
             {
                 "name": "question-validity",
-                "type": "question_validity",
+                "provider_id": "question_validity",
+                "type": "shield",
                 "config": {
                     "model_id": "openai/gpt-4o-mini",
                     "model_prompt": "Is this question valid?",

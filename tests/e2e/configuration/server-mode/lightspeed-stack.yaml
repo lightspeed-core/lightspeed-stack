@@ -33,3 +33,11 @@ byok_rag:
 rag:
   tool:
     - e2e-test-docs
+
+shields:
+  - name: pii-redaction
+    provider_id: redaction
+    config:
+      rules:
+        - pattern: '\d+'
+          replacement: '[NUM]'
