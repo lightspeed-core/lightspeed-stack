@@ -189,11 +189,6 @@ def _patch_moderation(mocker: MockerFixture, decision: str = "passed") -> Any:
         moderation_result = ShieldModerationBlocked(
             message="Content blocked",
             moderation_id="mod_blocked",
-            refusal_response=OpenAIResponseMessage(
-                role="assistant",
-                content="Content blocked",
-                type="message",
-            ),
         )
     else:
         moderation_result = ShieldModerationPassed()
@@ -628,9 +623,6 @@ class TestResponsesEndpointHandler:
         mock_moderation = _patch_moderation(mocker, decision="blocked")
         mock_moderation.message = "Blocked"
         mock_moderation.moderation_id = "resp_blocked_123"
-        mock_moderation.refusal_response = OpenAIResponseMessage(
-            type="message", role="assistant", content="Blocked"
-        )
         mock_append = mocker.patch(
             f"{MODULE}.append_turn_items_to_conversation",
             new=mocker.AsyncMock(),
