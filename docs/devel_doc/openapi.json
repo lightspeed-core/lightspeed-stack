@@ -20792,7 +20792,7 @@
                 "additionalProperties": false,
                 "type": "object",
                 "title": "VectorStoreConfiguration",
-                "description": "Configuration for dynamic vector-store providers.\n\nMirrors ``InferenceConfiguration``: a providers list plus a sibling\n``default_provider`` pointer, rather than a per-entry default flag."
+                "description": "Configuration for dynamic vector-store providers.\n\nMirrors ``InferenceConfiguration``: a providers list plus a sibling\n``default_provider`` pointer, rather than a per-entry default flag.\n\nAttributes:\n    default_provider: Provider id used for vector_stores.default_* in the\n        synthesized Llama Stack config. Required when providers is\n        non-empty; must match one of providers[].id. Must be omitted when\n        providers is empty.\n    providers: Dynamic vector-store provider capacity for runtime\n        POST /v1/vector-stores creates. Not the same as byok_rag (static\n        registered corpora)."
             },
             "VectorStoreCreateRequest": {
                 "properties": {
