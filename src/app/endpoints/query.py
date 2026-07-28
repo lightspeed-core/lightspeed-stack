@@ -219,6 +219,7 @@ async def query_endpoint_handler(
         moderation_result,
         endpoint_path,
         compaction.original_input if compaction.compacted else None,
+        shield_ids=query_request.shield_ids,
         no_tools=bool(query_request.no_tools),
         image_attachments=image_attachments,
     )
