@@ -19,7 +19,10 @@ services:
       - ${GCP_KEYS_PATH:-./tmp/.gcp-keys-dummy}:/opt/app-root/.gcp-keys:ro
       - ./lightspeed-stack.yaml:/opt/app-root/lightspeed-stack.yaml:ro,z
       - llama-storage:/opt/app-root/src/.llama/storage
-      - ./tests/e2e/rag:/opt/app-root/src/.llama/storage/rag:z
+      # Deliver the seeded RAG kvstore read-only; the entrypoint copies it into
+      # the writable storage volume so llama-stack can write to it as a non-root
+      # user (the registry shares this kvstore and must be writable at startup).
+      - ./tests/e2e/rag:/opt/app-root/rag-seed:ro,z
       - mock-tls-certs:/certs:ro
       - ${HF_CACHE_PATH:-./tmp/.hf-cache}:/opt/app-root/src/.cache/huggingface
     environment:
