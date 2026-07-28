@@ -29,7 +29,6 @@ from models.api.responses.successful import (
     SavedPromptsListResponse,
 )
 from models.config import Action
-from models.database.saved_prompts import SavedPrompt
 from utils.endpoints import check_configuration_loaded
 from utils.saved_prompts import (
     SavedPromptAccessDeniedError,
@@ -47,24 +46,6 @@ from utils.suid import check_suid
 
 logger = get_logger(__name__)
 router = APIRouter(tags=["saved-prompts"])
-
-
-def _to_saved_prompt_response(row: SavedPrompt) -> SavedPromptResponse:
-    """Map a persisted saved-prompt row to the API response model.
-
-    Parameters:
-        row: Saved prompt entity loaded from the database.
-
-    Returns:
-        API response for a single saved prompt (excludes ``user_id``).
-    """
-    return SavedPromptResponse(
-        id=row.id,
-        name=row.name,
-        content=row.content,
-        created_at=row.created_at,
-        updated_at=row.updated_at,
-    )
 
 
 get_saved_prompts_config_responses: dict[int | str, dict[str, Any]] = {
@@ -187,7 +168,7 @@ async def list_saved_prompts_handler(
 
     try:
         rows = await run_in_threadpool(list_saved_prompts_by_user, user_id)
-        prompts = [_to_saved_prompt_response(row) for row in rows]
+        prompts = [SavedPromptResponse.model_validate(row) for row in rows]
     except SQLAlchemyError as exc:
         logger.exception("Error retrieving saved prompts")
         error_response = InternalServerErrorResponse.database_error()
@@ -285,7 +266,7 @@ async def create_saved_prompts_handler(
         raise HTTPException(**error_response.model_dump()) from exc
 
     logger.info("Created saved prompt id=%s", row.id)
-    return _to_saved_prompt_response(row)
+    return SavedPromptResponse.model_validate(row)
 
 
 @router.delete(

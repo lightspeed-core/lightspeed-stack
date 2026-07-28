@@ -85,6 +85,7 @@ class SavedPromptResponse(AbstractSuccessfulResponse):
 
     model_config = {
         "extra": "forbid",
+        "from_attributes": True,
         "json_schema_extra": {
             "examples": [
                 {

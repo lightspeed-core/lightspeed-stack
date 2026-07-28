@@ -1,6 +1,7 @@
 """Unit tests for saved prompts list response models."""
 
 from datetime import UTC, datetime
+from types import SimpleNamespace
 
 import pytest
 from pydantic import ValidationError
@@ -52,6 +53,27 @@ def test_saved_prompt_response_forbids_extra_fields() -> None:
             updated_at=created,
             user_id="user-1",  # type: ignore[call-arg]
         )
+
+
+def test_saved_prompt_response_model_validate_from_orm_omits_user_id() -> None:
+    """model_validate maps ORM-like attributes and omits user_id from the payload."""
+    created = datetime(2026, 7, 22, 16, 0, 0, tzinfo=UTC)
+    updated = datetime(2026, 7, 22, 16, 5, 0, tzinfo=UTC)
+    row = SimpleNamespace(
+        id="prompt-1",
+        user_id="user-1",
+        name="Deploy to staging",
+        content="Help me write a deployment checklist",
+        created_at=created,
+        updated_at=updated,
+    )
+
+    item = SavedPromptResponse.model_validate(row)
+    payload = item.model_dump(mode="json")
+
+    assert payload["id"] == "prompt-1"
+    assert payload["name"] == "Deploy to staging"
+    assert "user_id" not in payload
 
 
 def test_saved_prompts_list_response_empty_and_populated() -> None:
