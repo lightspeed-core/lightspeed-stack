@@ -43,7 +43,7 @@ The A2A protocol is an open standard for agent-to-agent communication that allow
 │  ┌──────────────────────────────────────────────────────────┐   │
 │  │                  Llama Stack Client                      │   │
 │  │  - Responses API (streaming responses)                   │   │
-│  │  - Tools, Shields, RAG integration                       │   │
+│  │  - Tools, RAG integration                                │   │
 │  └──────────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────────┘
 ```

@@ -19,6 +19,8 @@ See the full documentation at [`../README.md`](../README.md) or browse sub-pages
 
 [Agent skills](https://lightspeed-core.github.io/lightspeed-stack/user_doc/skills_guide.html)
 
+[Safety shields](https://lightspeed-core.github.io/lightspeed-stack/user_doc/shields_guide.html)
+
 [A2A [Agent-to-Agent] Protocol](https://lightspeed-core.github.io/lightspeed-stack/user_doc/a2a_protocol.html)
 
 [RAG configuration guide](https://lightspeed-core.github.io/lightspeed-stack/user_doc/rag_guide.html)

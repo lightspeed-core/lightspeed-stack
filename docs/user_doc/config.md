@@ -257,6 +257,7 @@ Global service configuration.
 | okp                    |        | OKP provider settings. Only used when 'okp' is listed in rag.inline or rag.tool.                                                                                                                                                                                                                                        |
 | reranker               |        | Configuration for neural reranking of RAG chunks using cross-encoder.                                                                                                                                                                                                                                                   |
 | skills                 |        | Agent skills configuration. Specifies paths to skill directories.                                                                                                                                                                                                                                                       |
+| shields                | array  | Configuration for a single named guardrail shield (question validity or redaction).                                                                           |
 
 
 ## ConversationHistoryConfiguration
@@ -702,6 +703,70 @@ Paths are validated at startup to ensure they exist and contain valid SKILL.md f
 | Field | Type  | Description                                                                |
 |-------|-------|----------------------------------------------------------------------------|
 | paths | array | Paths to skill directories or directories containing skill subdirectories. |
+
+
+## QuestionValidityConfig
+
+
+Configuration for the question validity guardrail.
+
+
+| Field                     | Type   | Description                                                   |
+|---------------------------|--------|---------------------------------------------------------------|
+| model_id                  | string | The model_id to use for the guard                             |
+| model_prompt              | string | Prompt sent to the LLM used to validate the user's question   |
+| invalid_question_response | string | Response when the user's question is determined to be invalid |
+
+
+## QuestionValidityShieldConfiguration
+
+
+Configuration for a named question-validity guardrail shield.
+
+
+| Field       | Type   | Description                                                  |
+|-------------|--------|--------------------------------------------------------------|
+| name        | string | Unique, user-facing name identifying this shield instance    |
+| provider_id | string | Discriminator identifying this as a question-validity shield |
+| config      |        | Question-validity-specific configuration for this shield     |
+
+
+## RedactionRule
+
+
+A single regex-based redaction rule.
+
+
+| Field          | Type    | Description                                                           |
+|----------------|---------|-----------------------------------------------------------------------|
+| pattern        | string  | Regex pattern to match sensitive data                                 |
+| replacement    | string  | Replacement string for matched text                                   |
+| case_sensitive | boolean | Per-rule override; when null, the global RedactionConfig flag applies |
+
+
+## RedactionConfig
+
+
+Configuration for PII redaction with regex-based rules.
+
+
+| Field          | Type    | Description                                            |
+|----------------|---------|--------------------------------------------------------|
+| rules          | array   | Ordered list of PII redaction rules                    |
+| case_sensitive | boolean | When false, patterns are compiled with `re.IGNORECASE` |
+
+
+## RedactionShieldConfiguration
+
+
+Configuration for a named PII-redaction guardrail shield.
+
+
+| Field       | Type   | Description                                               |
+|-------------|--------|-----------------------------------------------------------|
+| name        | string | Unique, user-facing name identifying this shield instance |
+| provider_id | string | Discriminator identifying this as a redaction shield      |
+| config      |        | Redaction-specific configuration for this shield          |
 
 
 ## SplunkConfiguration

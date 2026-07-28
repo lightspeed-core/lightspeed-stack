@@ -1,0 +1,38 @@
+name: Lightspeed Core Service (LCS) with Shields
+service:
+  host: localhost
+  port: 8080
+  auth_enabled: false
+  workers: 1
+  color_log: true
+  access_log: true
+llama_stack:
+  use_as_library_client: true
+  library_client_config_path: run.yaml
+user_data_collection:
+  feedback_enabled: true
+  feedback_storage: "/tmp/data/feedback"
+  transcripts_enabled: true
+  transcripts_storage: "/tmp/data/transcripts"
+authentication:
+  module: "noop"
+# LCORE-owned safety shields (not Llama Stack / OGX Safety API resources).
+# Listed via GET /v1/shields; selected per request with optional shield_ids.
+shields:
+  - identifier: topic-guard
+    provider_id: question_validity
+    config:
+      model_id: openai/gpt-4o-mini
+      # Optional; omit to use built-in defaults:
+      model_prompt: "Classify whether the question is about OpenShift. Reply ALLOWED or REJECTED."
+      invalid_question_response: "I can only answer questions about OpenShift."
+  - identifier: pii-redaction
+    provider_id: redaction
+    config:
+      rules:
+        - pattern: '\b\d{3}-\d{2}-\d{4}\b'
+          replacement: "[REDACTED]"
+      case_sensitive: false
+# Optional: reject client shield_ids overrides on /query and /streaming_query
+# customization:
+#   disable_shield_ids_override: true

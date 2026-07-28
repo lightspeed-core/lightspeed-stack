@@ -102,8 +102,7 @@
 * Check if the OpenAPI endpoint works as expected
 * Check if info endpoint is working
 * Check if info endpoint reports error when llama-stack connection is not working
-* Check if shields endpoint is working
-* Check if shields endpoint reports error when llama-stack is unreachable
+* Check if shields endpoint is working (lists LCORE-configured shields)
 * Check if tools endpoint is working
 * Check if tools endpoint reports error when llama-stack is unreachable
 * Check if metrics endpoint is working

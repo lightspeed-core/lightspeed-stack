@@ -24,9 +24,11 @@
 
 **Lightspeed Core Stack (LCORE)** is an enterprise-grade middleware service that provides a robust layer between client applications and AI Large Language Model (LLM) backends. It adds essential enterprise features such as authentication, authorization, quota management, caching, and observability to LLM interactions.
 
-LCore is built on **Llama Stack** - Meta's open-source framework that provides standardized APIs for building LLM applications. Llama Stack offers a unified interface for models, RAG (vector stores), tools, and safety (shields) across different providers. LCore communicates with Llama Stack to orchestrate all LLM operations.
+LCore is built on **Llama Stack / OGX** - an open-source framework that provides standardized APIs for building LLM applications. It offers a unified interface for models, RAG (vector stores), and tools across different providers. LCore communicates with the stack to orchestrate all LLM operations.
 
 To enhance LLM responses, LCore leverages **RAG (Retrieval-Augmented Generation)**, which retrieves relevant context from vector databases before generating answers. Llama Stack manages the vector stores, and LCore queries them to inject relevant documentation, knowledge bases, or previous conversations into the LLM prompt.
+
+To keep requests on-topic and protect sensitive data, LCore applies **safety shields**, which validate user questions and redact PII from model traffic. Shields are owned by LCore and configured in the service configuration.
 
 ### 1.2 Key Features
 
@@ -61,6 +63,7 @@ To enhance LLM responses, LCore leverages **RAG (Retrieval-Augmented Generation)
 │  ┌───────────────────────────────────────────────────┐  │
 │  │          Request Processing                       │  │
 │  │  • LLM Orchestration (via Llama Stack)            │  │
+│  │  • Safety Shields                                 │  │
 │  │  • Tool Integration (MCP servers)                 │  │
 │  │  • RAG & Context Management                       │  │
 │  └───────────────────────────────────────────────────┘  │
@@ -79,8 +82,8 @@ To enhance LLM responses, LCore leverages **RAG (Retrieval-Augmented Generation)
           │                  │
           │  • Models & LLMs │
           │  • RAG Stores    │
-          │  • Shields       │
-          └────────┬─────────┘
+          └──────────────────┘
+                   │
                    │ (manages & invokes)
                    ▼
           ┌──────────────────┐
@@ -229,7 +232,6 @@ The system defines 30+ actions that can be authorized. Examples (see `docs/auth.
 - **Models**: List available LLM models
 - **Responses**: Generate LLM responses (OpenAI-compatible)
 - **Conversations**: Manage conversation history
-- **Shields**: List and apply guardrails (content filtering, safety checks)
 - **Vector Stores**: Access RAG databases for context injection
 - **Toolgroups**: Register MCP servers as tools
 
@@ -394,11 +396,12 @@ Here's how a real query flows through the system:
 4. **Quota Check** - User has 50,000 tokens available ✅
 5. **Model Selection** - Use configured default model (e.g., `meta-llama/Llama-3.1-8B-Instruct`)
 6. **Context Building** - Retrieve conversation history, query RAG vector stores for relevant docs, determine available MCP tools
-7. **Llama Stack Call** - Send complete request with system prompt, RAG context, MCP tools, and shields
-8. **LLM Processing** - Llama Stack generates response, may invoke MCP tools, returns token counts
-9. **Post-Processing** - Apply shields, generate conversation summary if new
-10. **Store Results** - Save to Cache DB, User DB, consume quota, update metrics
-11. **Return Response** - Complete LLM response with referenced documents, token usage, and remaining quota
+7. **Shield moderation** - LCore-owned direct-run moderation (and agent capabilities where applicable) using shields configured in LCORE config
+8. **Llama Stack / agent call** - Send request with system prompt, RAG context, and MCP tools
+9. **LLM Processing** - Stack / agent generates response, may invoke MCP tools, returns token counts
+10. **Post-Processing** - Generate conversation summary if new
+11. **Store Results** - Save to Cache DB, User DB, consume quota, update metrics
+12. **Return Response** - Complete LLM response with referenced documents, token usage, and remaining quota
 
 **Key Takeaways:**
 - RAG enhances responses with relevant documentation
@@ -497,8 +500,8 @@ This section documents the REST API endpoints exposed by LCore for client intera
 - `GET /v1/mcp-servers` - List all registered MCP servers (static and dynamic)
 - `DELETE /v1/mcp-servers/{name}` - Unregister a dynamically registered MCP server
 
-**List Shields:** `GET /shields`
-- Returns available guardrails
+**List Shields:** `GET /v1/shields`
+- Returns list of shields configured in LCORE
 
 **List RAG Databases:** `GET /rags`
 - Returns configured vector stores

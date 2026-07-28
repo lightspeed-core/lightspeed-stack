@@ -107,7 +107,7 @@ The following fields are LCORE-specific request extensions and are not part of t
 | Field | Type | Description | Required |
 |-------|------|-------------|----------|
 | `generate_topic_summary` | boolean | Generate topic summary for new conversations. Default: true | No |
-| `shield_ids` | array[string] | Shield IDs to apply. If omitted, all configured shields in LCORE are used | No |
+| `shield_ids` | array[string] | LCORE-configured shield `name` values to apply. If omitted, all configured shields are used. Not Llama Stack Safety resource names. | No |
 | `solr` | object | Optional `mode` and `filters`. Legacy top-level filter-only objects are still accepted. | No |
 
 
@@ -600,7 +600,7 @@ In streaming mode, server-deployed MCP events (e.g. `mcp_call`, `mcp_list_tools`
 The API introduces extensions that are not part of the OpenResponses specification:
 
 - `generate_topic_summary` (request) — When set to `true` and a new conversation is created, a topic summary is automatically generated and stored in conversation metadata.
-- `shield_ids` (request) — Optional list of safety shield IDs to apply. If omitted, all configured shields are used.
+- `shield_ids` (request) — Optional list of LCORE shield `name` values to apply. If omitted, all shields from `lightspeed-stack.yaml` are used. See the [Safety Shields Guide](../user_doc/shields_guide.md).
 - `solr` (request) — Object with optional `mode` (`semantic`, `hybrid`, or `lexical`) and `filters` (Solr vector_io provider payload). Legacy filter-only objects (no `mode`/`filters` wrapper) still work.
 - `available_quotas` (response) — Provides real-time quota information from all configured quota limiters.
 
