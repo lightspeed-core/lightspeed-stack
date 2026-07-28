@@ -290,6 +290,7 @@ async def retrieve_agent_response(
     _original_input: Optional[ResponseInput] = None,
     no_tools: bool = False,
     image_attachments: Optional[list[Attachment]] = None,
+    shield_ids: Optional[list[str]] = None,
 ) -> TurnSummary:
     """Retrieve a turn summary from a blocking agent run.
 
@@ -301,6 +302,8 @@ async def retrieve_agent_response(
         _original_input: Original user input before the explicit-input rewrite.
         no_tools: Whether to skip tool processing.
         image_attachments: Image attachments for multimodal prompt construction.
+        shield_ids: Optional list of shield names to run for this turn, mirroring
+            ``QueryRequest.shield_ids``. If ``None``, all configured shields run.
     Returns:
         Turn summary for the completed agent run.
 
@@ -320,7 +323,11 @@ async def retrieve_agent_response(
         )
     try:
         agent = build_agent(
-            client, responses_params, configuration.skills, no_tools=no_tools
+            client,
+            responses_params,
+            configuration,
+            shields=shield_ids,
+            no_tools=no_tools,
         )
         logger.debug("Starting agent non-streaming response processing")
         if image_attachments:

@@ -11,12 +11,21 @@ from pydantic_ai.agent import Agent
 from pydantic_ai.capabilities import AbstractCapability, AgentCapability
 from pydantic_ai_skills import SkillsCapability
 
+from configuration import AppConfig
 from models.common.responses.responses_api_params import ResponsesApiParams
 from models.common.tools import CatalogTool, CatalogToolParameter
-from models.config import SkillsConfiguration
+from models.config import (
+    QuestionValidityConfig,
+    RedactionConfig,
+    ShieldConfiguration,
+    SkillsConfiguration,
+)
+from pydantic_ai_lightspeed.capabilities import QuestionValidity
+from pydantic_ai_lightspeed.capabilities.redaction import PiiRedactionCapability
 from pydantic_ai_lightspeed.llamastack import (
     OgxResponsesModel,
 )
+from utils.shields import get_shields_for_request
 
 _AGENT_SKILLS_PROVIDER_ID: Final[str] = "agent-skills"
 _AGENT_SKILLS_TOOLGROUP_ID: Final[str] = "builtin::agent-skills"
@@ -127,20 +136,51 @@ def get_agent_capability_tools(
     return tools
 
 
+def _shield_capability(shield: ShieldConfiguration) -> AgentCapability[object]:
+    """Build the pydantic-ai capability instance for a single configured shield.
+
+    Parameters:
+        shield: A single guardrail shield configuration entry.
+
+    Returns:
+        A ``QuestionValidity`` capability when ``shield.provider_id`` is
+        ``"question_validity"``, or a ``PiiRedactionCapability`` when it is
+        ``"redaction"``.
+
+    Raises:
+        ValueError: If ``shield.config`` doesn't match a known shield config type.
+    """
+    match shield.config:
+        case QuestionValidityConfig():
+            return QuestionValidity(config=shield.config)
+        case RedactionConfig():
+            return PiiRedactionCapability(config=shield.config)
+        case _:
+            raise ValueError(
+                f"Unsupported shield config type for shield '{shield.name}': "
+                f"{type(shield.config).__name__}"
+            )
+
+
 def _agent_capabilities(
     skills: Optional[SkillsConfiguration],
+    shields: Optional[list[ShieldConfiguration]] = None,
     no_tools: bool = False,
 ) -> Optional[list[AgentCapability[object]]]:
     """Assemble pydantic-ai capabilities for an LCS agent.
 
     Args:
         skills: Agent skills configuration from LCS, or None when skills are disabled.
+        shields: Configured guardrail shields (question validity, redaction), or
+            None/empty when no shields are enabled.
         no_tools: When True, omit capabilities that expose a toolset via ``get_toolset()``.
 
     Returns:
         Configured capabilities, or None when no capabilities are enabled.
     """
     capabilities: list[AgentCapability[object]] = []
+    for shield in shields or []:
+        capabilities.append(_shield_capability(shield))
     if skills_capability := _skills_capability(skills):
         capabilities.append(skills_capability)
     if no_tools:
@@ -158,7 +198,8 @@ def _agent_capabilities(
 def build_agent(
     client: AsyncOgxClient | AsyncOGXAsLibraryClient,
     responses_params: ResponsesApiParams,
-    skills: Optional[SkillsConfiguration],
+    config: AppConfig,
+    shields: Optional[list[str]] = None,
     no_tools: bool = False,
 ) -> Agent[None, str]:
     """Build a Pydantic AI agent that mirrors ``responses_params`` on the Llama Stack backend.
@@ -171,14 +212,20 @@ def build_agent(
     Parameters:
         client: Initialized Llama Stack client from ``AsyncOgxClientHolder().get_client()``.
         responses_params: Parameters produced by ``prepare_responses_params`` for this turn.
-        skills: Agent skills configuration from LCS, or None when skills are disabled.
+        config: Application configuration. Agent skills (``config.skills``) and the
+            configured guardrail shields (``config.shields``) are extracted from it.
+        shields: Optional list of shield names to run for this turn, matching each
+            shield's configured ``name``. Mirrors ``QueryRequest.shield_ids``: if
+            ``None``, all shields configured in ``config.shields`` run; an empty
+            list disables all shields.
         no_tools: When True, omit capabilities that expose a toolset via ``get_toolset()``.
 
     Returns:
         ``Agent`` configured for ``await agent.run(...)`` (or streaming) against the same
         stack configuration as ``client.responses.create(**responses_params.model_dump())``.
     """
-    capabilities = _agent_capabilities(skills, no_tools=no_tools)
+    shield_configs = get_shields_for_request(config.shields, shields)
+    capabilities = _agent_capabilities(config.skills, shield_configs, no_tools=no_tools)
 
     model = OgxResponsesModel.from_ogx_client(
         responses_params.model, client, responses_params=responses_params
