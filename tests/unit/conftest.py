@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 from pathlib import Path
+from typing import Optional
 
 import httpx
 import pytest
@@ -14,7 +15,7 @@ from pytest_mock import AsyncMockType, MockerFixture
 from configuration import AppConfig
 from constants import DEFAULT_LOGGER_NAME
 from models.common.responses.responses_api_params import ResponsesApiParams
-from models.config import SkillsConfiguration
+from models.config import ShieldConfiguration, SkillsConfiguration
 
 type AgentFixtures = Generator[
     tuple[
@@ -143,3 +144,26 @@ def mock_skills_configuration_fixture(tmp_path: Path) -> SkillsConfiguration:
         encoding="utf-8",
     )
     return SkillsConfiguration(paths=[skills_root])
+
+
+@pytest.fixture(name="make_agent_config")
+def make_agent_config_fixture(
+    mocker: MockerFixture,
+) -> Callable[..., AppConfig]:
+    """Return a factory building a duck-typed AppConfig stand-in for build_agent.
+
+    ``build_agent`` only reads ``config.skills`` and ``config.shields`` off the
+    config object it receives, so tests can pass a lightweight mock instead of
+    a fully-initialized ``AppConfig``.
+    """
+
+    def _make(
+        skills: Optional[SkillsConfiguration] = None,
+        shields: Optional[list[ShieldConfiguration]] = None,
+    ) -> AppConfig:
+        config = mocker.Mock()
+        config.skills = skills
+        config.shields = shields or []
+        return config
+
+    return _make

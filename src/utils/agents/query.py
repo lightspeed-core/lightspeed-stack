@@ -287,6 +287,7 @@ async def retrieve_agent_response(
     endpoint_path: str,
     _original_input: Optional[ResponseInput] = None,
     no_tools: bool = False,
+    shield_ids: Optional[list[str]] = None,
 ) -> TurnSummary:
     """Retrieve a turn summary from a blocking agent run.
 
@@ -297,6 +298,8 @@ async def retrieve_agent_response(
         endpoint_path: Endpoint path used for metric labeling.
         _original_input: Original user input before the explicit-input rewrite.
         no_tools: Whether to skip tool processing.
+        shield_ids: Optional list of shield names to run for this turn, mirroring
+            ``QueryRequest.shield_ids``. If ``None``, all configured shields run.
     Returns:
         Turn summary for the completed agent run.
 
@@ -316,7 +319,11 @@ async def retrieve_agent_response(
         )
     try:
         agent = build_agent(
-            client, responses_params, configuration.skills, no_tools=no_tools
+            client,
+            responses_params,
+            configuration,
+            shields=shield_ids,
+            no_tools=no_tools,
         )
         logger.debug("Starting agent non-streaming response processing")
         run_result = await agent.run(cast(str, responses_params.input))
