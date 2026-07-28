@@ -133,7 +133,7 @@ class ForbiddenResponse(AbstractErrorResponse):
     def saved_prompt(cls, action: str, resource_id: str, user_id: str) -> Self:
         """Create a ForbiddenResponse for a denied saved-prompt action.
 
-        Args:
+        Parameters:
             action: The attempted action (e.g. delete).
             resource_id: The saved prompt identifier targeted by the action.
             user_id: The identifier of the user who attempted the action.
