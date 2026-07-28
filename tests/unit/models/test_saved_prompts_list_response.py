@@ -7,6 +7,7 @@ import pytest
 from pydantic import ValidationError
 
 from models.api.responses.successful.saved_prompts import (
+    SavedPromptDeleteResponse,
     SavedPromptResponse,
     SavedPromptsListResponse,
 )
@@ -94,3 +95,20 @@ def test_saved_prompts_list_response_empty_and_populated() -> None:
     )
     assert len(response.prompts) == 1
     assert response.prompts[0].name == "one"
+
+
+def test_saved_prompt_delete_response_deleted_and_not_found() -> None:
+    """SavedPromptDeleteResponse reports deleted and not-found outcomes."""
+    deleted = SavedPromptDeleteResponse(deleted=True, prompt_id="prompt-1")
+    assert deleted.model_dump() == {
+        "prompt_id": "prompt-1",
+        "deleted": True,
+        "response": "Saved prompt deleted successfully",
+    }
+
+    missing = SavedPromptDeleteResponse(deleted=False, prompt_id="prompt-1")
+    assert missing.model_dump() == {
+        "prompt_id": "prompt-1",
+        "deleted": False,
+        "response": "Saved prompt not found",
+    }

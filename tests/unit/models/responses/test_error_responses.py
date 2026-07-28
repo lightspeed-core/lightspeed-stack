@@ -240,6 +240,21 @@ class TestForbiddenResponse:
             "with ID conv-123"
         )
 
+    def test_factory_saved_prompt(self) -> None:
+        """Test ForbiddenResponse.saved_prompt() factory method."""
+        response = ForbiddenResponse.saved_prompt("delete", "prompt-123", "user-456")
+        assert isinstance(response, AbstractErrorResponse)
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert isinstance(response.detail, DetailModel)
+        assert (
+            response.detail.response
+            == "User does not have permission to perform this action"
+        )
+        assert response.detail.cause == (
+            "User user-456 does not have permission to delete saved prompt "
+            "with ID prompt-123"
+        )
+
     def test_factory_endpoint(self) -> None:
         """Test ForbiddenResponse.endpoint() factory method."""
         response = ForbiddenResponse.endpoint("user-789")
@@ -282,11 +297,12 @@ class TestForbiddenResponse:
 
         # Verify example count matches schema examples count
         assert len(examples) == expected_count
-        assert expected_count == 8
+        assert expected_count == 9
 
         # Verify all labeled examples are present
         assert "conversation read" in examples
         assert "conversation delete" in examples
+        assert "saved prompt delete" in examples
         assert "endpoint" in examples
         assert "prompt read" in examples
         assert "prompt manage" in examples
@@ -525,7 +541,7 @@ class TestNotFoundResponse:
 
         # Verify example count matches schema examples count
         assert len(examples) == expected_count
-        assert expected_count == 10
+        assert expected_count == 9
 
         # Verify all labeled examples are present
         assert "conversation" in examples
@@ -537,7 +553,6 @@ class TestNotFoundResponse:
         assert "file" in examples
         assert "prompt" in examples
         assert "mcp server" in examples
-        assert "saved prompt" in examples
 
         # Verify example structure for one example
         conversation_example = examples["conversation"]

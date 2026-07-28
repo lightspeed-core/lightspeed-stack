@@ -1,10 +1,14 @@
-"""Successful responses for saved prompts configuration and listing."""
+"""Successful responses for saved prompts configuration, listing, and delete."""
 
 from datetime import datetime
+from typing import ClassVar
 
 from pydantic import Field
 
-from models.api.responses.successful.bases import AbstractSuccessfulResponse
+from models.api.responses.successful.bases import (
+    AbstractDeleteResponse,
+    AbstractSuccessfulResponse,
+)
 
 
 class SavedPromptsConfigResponse(AbstractSuccessfulResponse):
@@ -130,4 +134,44 @@ class SavedPromptsListResponse(AbstractSuccessfulResponse):
                 {"prompts": []},
             ]
         },
+    }
+
+
+class SavedPromptDeleteResponse(AbstractDeleteResponse):
+    """Result of deleting a saved prompt (always HTTP 200).
+
+    Attributes:
+        prompt_id: Saved prompt identifier that was passed to delete.
+        deleted: Whether the prompt was deleted successfully.
+        response: Human-readable outcome of the delete operation.
+    """
+
+    resource_name: ClassVar[str] = "Saved prompt"
+    prompt_id: str = Field(
+        ...,
+        description="Saved prompt identifier that was passed to delete.",
+        examples=["abc123"],
+    )
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "label": "deleted",
+                    "value": {
+                        "prompt_id": "abc123",
+                        "deleted": True,
+                        "response": "Saved prompt deleted successfully",
+                    },
+                },
+                {
+                    "label": "not found",
+                    "value": {
+                        "prompt_id": "abc123",
+                        "deleted": False,
+                        "response": "Saved prompt not found",
+                    },
+                },
+            ]
+        }
     }

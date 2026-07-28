@@ -1,6 +1,6 @@
 """Unit tests for the /saved-prompts REST API endpoints."""
 
-# pylint: disable=too-many-lines
+# pylint: disable=too-many-lines,line-too-long
 
 from datetime import UTC, datetime
 from types import SimpleNamespace
@@ -855,7 +855,7 @@ async def test_delete_saved_prompts_happy_path(
     minimal_config: AppConfig,
     saved_prompts_http_request: Request,
 ) -> None:
-    """DELETE /saved-prompts/{prompt_id} returns 204 and scopes DAL to auth user."""
+    """DELETE /saved-prompts/{prompt_id} returns 200 deleted=true for owner."""
     mock_authorization_resolvers(mocker)
     mocker.patch("app.endpoints.saved_prompts.configuration", minimal_config)
     mock_delete = mocker.patch(
@@ -870,8 +870,9 @@ async def test_delete_saved_prompts_happy_path(
     )
 
     mock_delete.assert_called_once_with(VALID_PROMPT_ID, "user-1")
-    assert response.status_code == status.HTTP_204_NO_CONTENT
-    assert response.body == b""
+    assert response.deleted is True
+    assert response.prompt_id == VALID_PROMPT_ID
+    assert response.response == "Saved prompt deleted successfully"
 
 
 @pytest.mark.asyncio
@@ -931,7 +932,7 @@ async def test_delete_saved_prompts_not_found(
     minimal_config: AppConfig,
     saved_prompts_http_request: Request,
 ) -> None:
-    """DELETE returns 404 when the prompt does not exist."""
+    """DELETE returns 200 with deleted=false when the prompt does not exist."""
     mock_authorization_resolvers(mocker)
     mocker.patch("app.endpoints.saved_prompts.configuration", minimal_config)
     mocker.patch(
@@ -939,27 +940,24 @@ async def test_delete_saved_prompts_not_found(
         side_effect=SavedPromptNotFoundError("Saved prompt not found"),
     )
 
-    with pytest.raises(HTTPException) as exc_info:
-        await delete_saved_prompts_handler(
-            request=saved_prompts_http_request,
-            prompt_id=VALID_PROMPT_ID,
-            auth=MOCK_DELETE_AUTH,
-        )
+    response = await delete_saved_prompts_handler(
+        request=saved_prompts_http_request,
+        prompt_id=VALID_PROMPT_ID,
+        auth=MOCK_DELETE_AUTH,
+    )
 
-    assert exc_info.value.status_code == status.HTTP_404_NOT_FOUND
-    detail = exc_info.value.detail
-    assert isinstance(detail, dict)
-    assert detail["response"] == "Saved Prompt not found"  # type: ignore[index]
-    assert VALID_PROMPT_ID in detail["cause"]  # type: ignore[index]
+    assert response.deleted is False
+    assert response.prompt_id == VALID_PROMPT_ID
+    assert response.response == "Saved prompt not found"
 
 
 @pytest.mark.asyncio
-async def test_delete_saved_prompts_access_denied_as_not_found(
+async def test_delete_saved_prompts_access_denied_returns_403(
     mocker: MockerFixture,
     minimal_config: AppConfig,
     saved_prompts_http_request: Request,
 ) -> None:
-    """DELETE maps non-owner access denied to 404 (same as missing)."""
+    """DELETE maps non-owner access denied to 403."""
     mock_authorization_resolvers(mocker)
     mocker.patch("app.endpoints.saved_prompts.configuration", minimal_config)
     mocker.patch(
@@ -974,10 +972,12 @@ async def test_delete_saved_prompts_access_denied_as_not_found(
             auth=MOCK_DELETE_AUTH,
         )
 
-    assert exc_info.value.status_code == status.HTTP_404_NOT_FOUND
+    assert exc_info.value.status_code == status.HTTP_403_FORBIDDEN
     detail = exc_info.value.detail
     assert isinstance(detail, dict)
-    assert detail["response"] == "Saved Prompt not found"  # type: ignore[index]
+    assert detail["response"] == "User does not have permission to perform this action"  # type: ignore[index]
+    assert "user-1" in detail["cause"]  # type: ignore[index]
+    assert VALID_PROMPT_ID in detail["cause"]  # type: ignore[index]
 
 
 @pytest.mark.asyncio

@@ -50,6 +50,7 @@ from models.api.responses.successful.rlsapi import (
     RlsapiV1InferResponse,
 )
 from models.api.responses.successful.saved_prompts import (
+    SavedPromptDeleteResponse,
     SavedPromptResponse,
     SavedPromptsConfigResponse,
     SavedPromptsListResponse,
@@ -94,6 +95,7 @@ __all__ = [
     "ResponsesResponse",
     "RlsapiV1InferData",
     "RlsapiV1InferResponse",
+    "SavedPromptDeleteResponse",
     "SavedPromptResponse",
     "SavedPromptsConfigResponse",
     "SavedPromptsListResponse",

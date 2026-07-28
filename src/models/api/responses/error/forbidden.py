@@ -38,6 +38,16 @@ class ForbiddenResponse(AbstractErrorResponse):
                     },
                 },
                 {
+                    "label": "saved prompt delete",
+                    "detail": {
+                        "response": "User does not have permission to perform this action",
+                        "cause": (
+                            "User 6789 does not have permission to delete saved prompt "
+                            "with ID abc123"
+                        ),
+                    },
+                },
+                {
                     "label": "endpoint",
                     "detail": {
                         "response": "User does not have permission to access this endpoint",
@@ -116,6 +126,26 @@ class ForbiddenResponse(AbstractErrorResponse):
         cause = (
             f"User {user_id} does not have permission to "
             f"{action} conversation with ID {resource_id}"
+        )
+        return cls(response=response, cause=cause)
+
+    @classmethod
+    def saved_prompt(cls, action: str, resource_id: str, user_id: str) -> Self:
+        """Create a ForbiddenResponse for a denied saved-prompt action.
+
+        Args:
+            action: The attempted action (e.g. delete).
+            resource_id: The saved prompt identifier targeted by the action.
+            user_id: The identifier of the user who attempted the action.
+
+        Returns:
+            Error response indicating the user is not permitted to perform the
+            specified action on the saved prompt.
+        """
+        response = "User does not have permission to perform this action"
+        cause = (
+            f"User {user_id} does not have permission to "
+            f"{action} saved prompt with ID {resource_id}"
         )
         return cls(response=response, cause=cause)
 

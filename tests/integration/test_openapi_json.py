@@ -266,7 +266,7 @@ def test_servers_section_present_from_url(spec_from_url: dict[str, Any]) -> None
         (
             "/v1/saved-prompts/{prompt_id}",
             "delete",
-            {"204", "400", "401", "403", "404", "500"},
+            {"200", "400", "401", "403", "500"},
         ),
         ("/v1/feedback", "post", {"200", "401", "403", "404", "500"}),
         ("/v1/feedback/status", "get", {"200"}),
@@ -382,7 +382,7 @@ def test_paths_and_responses_exist_from_file(
         (
             "/v1/saved-prompts/{prompt_id}",
             "delete",
-            {"204", "400", "401", "403", "404", "500"},
+            {"200", "400", "401", "403", "500"},
         ),
         ("/v1/feedback", "post", {"200", "401", "403", "404", "500"}),
         ("/v1/feedback/status", "get", {"200"}),
