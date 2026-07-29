@@ -87,6 +87,14 @@ class ConfigurationResponse(AbstractSuccessfulResponse):
                             "scheduler": {"period": 1},
                             "enable_token_history": False,
                         },
+                        "observability": {
+                            "otel": {
+                                "OTEL_SDK_DISABLED": "true",
+                                "OTEL_EXPORTER_OTLP_ENDPOINT": "",
+                                "OTEL_EXPORTER_OTLP_PROTOCOL": "",
+                                "OTEL_SERVICE_NAME": "",
+                            }
+                        },
                     }
                 }
             ]

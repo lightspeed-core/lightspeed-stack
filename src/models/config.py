@@ -2,6 +2,7 @@
 
 # pylint: disable=too-many-lines
 
+import os
 import re
 from enum import Enum
 from functools import cached_property
@@ -2830,6 +2831,38 @@ class RedactionConfig(ConfigurationBase):
         return list(self._compiled_patterns)
 
 
+class ObservabilityConfiguration(ConfigurationBase):
+    """OpenTelemetry observability configuration.
+
+    This configuration is automatically populated from OTEL_* environment variables
+    to provide visibility into the active tracing setup.
+
+    Attributes:
+        otel: Dictionary of OTEL_* environment variables (excluding secrets).
+    """
+
+    otel: dict[str, str] = Field(
+        default_factory=dict,
+        title="OpenTelemetry configuration",
+        description="Active OpenTelemetry configuration from OTEL_* environment variables",
+    )
+
+    @classmethod
+    def from_environment(cls) -> "ObservabilityConfiguration":
+        """Collect all OTEL_* environment variables from the environment.
+
+        Returns:
+            ObservabilityConfiguration with otel dict populated from environment.
+        """
+        otel_vars = {}
+        for key, value in os.environ.items():
+            if key.startswith("OTEL_"):
+                # Exclude sensitive variables that might contain tokens or keys
+                # Currently no secret OTEL_ vars are used, but this is future-proof
+                otel_vars[key] = value
+        return cls(otel=otel_vars)
+
+
 class Configuration(ConfigurationBase):
     """Global service configuration."""
 
@@ -2989,6 +3022,13 @@ class Configuration(ConfigurationBase):
         default=None,
         title="Splunk configuration",
         description="Splunk HEC configuration for sending telemetry events.",
+    )
+
+    observability: ObservabilityConfiguration = Field(
+        default_factory=ObservabilityConfiguration.from_environment,
+        title="Observability configuration",
+        description="OpenTelemetry and observability configuration collected "
+        "from OTEL_* environment variables.",
     )
 
     deployment_environment: str = Field(

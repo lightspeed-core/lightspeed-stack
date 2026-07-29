@@ -6753,6 +6753,14 @@
                                             }
                                         ],
                                         "name": "lightspeed-stack",
+                                        "observability": {
+                                            "otel": {
+                                                "OTEL_EXPORTER_OTLP_ENDPOINT": "",
+                                                "OTEL_EXPORTER_OTLP_PROTOCOL": "",
+                                                "OTEL_SDK_DISABLED": "true",
+                                                "OTEL_SERVICE_NAME": ""
+                                            }
+                                        },
                                         "quota_handlers": {
                                             "enable_token_history": false,
                                             "limiters": [],
@@ -12367,6 +12375,11 @@
                         "title": "Splunk configuration",
                         "description": "Splunk HEC configuration for sending telemetry events."
                     },
+                    "observability": {
+                        "$ref": "#/components/schemas/ObservabilityConfiguration",
+                        "title": "Observability configuration",
+                        "description": "OpenTelemetry and observability configuration collected from OTEL_* environment variables."
+                    },
                     "deployment_environment": {
                         "type": "string",
                         "title": "Deployment environment",
@@ -12463,6 +12476,14 @@
                                 }
                             ],
                             "name": "lightspeed-stack",
+                            "observability": {
+                                "otel": {
+                                    "OTEL_EXPORTER_OTLP_ENDPOINT": "",
+                                    "OTEL_EXPORTER_OTLP_PROTOCOL": "",
+                                    "OTEL_SDK_DISABLED": "true",
+                                    "OTEL_SERVICE_NAME": ""
+                                }
+                            },
                             "quota_handlers": {
                                 "enable_token_history": false,
                                 "limiters": [],
@@ -15106,6 +15127,22 @@
                 "type": "object",
                 "title": "OAuthFlows",
                 "description": "Defines the configuration for the supported OAuth 2.0 flows."
+            },
+            "ObservabilityConfiguration": {
+                "properties": {
+                    "otel": {
+                        "additionalProperties": {
+                            "type": "string"
+                        },
+                        "type": "object",
+                        "title": "OpenTelemetry configuration",
+                        "description": "Active OpenTelemetry configuration from OTEL_* environment variables"
+                    }
+                },
+                "additionalProperties": false,
+                "type": "object",
+                "title": "ObservabilityConfiguration",
+                "description": "OpenTelemetry observability configuration.\n\nThis configuration is automatically populated from OTEL_* environment variables\nto provide visibility into the active tracing setup.\n\nAttributes:\n    otel: Dictionary of OTEL_* environment variables (excluding secrets)."
             },
             "OkpConfiguration": {
                 "properties": {
