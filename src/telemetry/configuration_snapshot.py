@@ -79,6 +79,8 @@ LIGHTSPEED_STACK_FIELDS: tuple[FieldSpec | ListFieldSpec, ...] = (
     FieldSpec("service.workers", MaskingType.PASSTHROUGH),
     FieldSpec("service.host", MaskingType.SENSITIVE),
     FieldSpec("service.port", MaskingType.PASSTHROUGH),
+    FieldSpec("service.base_url", MaskingType.SENSITIVE),
+    FieldSpec("service.root_path", MaskingType.PASSTHROUGH),
     FieldSpec("service.auth_enabled", MaskingType.PASSTHROUGH),
     FieldSpec("service.color_log", MaskingType.PASSTHROUGH),
     FieldSpec("service.access_log", MaskingType.PASSTHROUGH),
@@ -154,8 +156,170 @@ LIGHTSPEED_STACK_FIELDS: tuple[FieldSpec | ListFieldSpec, ...] = (
             FieldSpec("name", MaskingType.PASSTHROUGH),
             FieldSpec("provider_id", MaskingType.PASSTHROUGH),
             FieldSpec("url", MaskingType.SENSITIVE),
+            FieldSpec("authorization_headers", MaskingType.SENSITIVE),
+            FieldSpec("headers", MaskingType.PASSTHROUGH),
+            FieldSpec("require_approval", MaskingType.SENSITIVE),
+            FieldSpec("timeout", MaskingType.PASSTHROUGH),
         ),
     ),
+    # Conversation Compaction
+    FieldSpec("compaction.enabled", MaskingType.PASSTHROUGH),
+    FieldSpec("compaction.threshold_ratio", MaskingType.PASSTHROUGH),
+    FieldSpec("compaction.token_floor", MaskingType.PASSTHROUGH),
+    FieldSpec("compaction.buffer_turns", MaskingType.PASSTHROUGH),
+    FieldSpec("compaction.buffer_max_ratio", MaskingType.PASSTHROUGH),
+    # Conversation Cache
+    FieldSpec("conversation_cache.type", MaskingType.PASSTHROUGH),
+    FieldSpec("conversation_cache.memory.max_entries", MaskingType.PASSTHROUGH),
+    FieldSpec("conversation_cache.sqlite.db_path", MaskingType.SENSITIVE),
+    FieldSpec("conversation_cache.postgres.host", MaskingType.SENSITIVE),
+    FieldSpec("conversation_cache.postgres.port", MaskingType.PASSTHROUGH),
+    FieldSpec("conversation_cache.postgres.db", MaskingType.SENSITIVE),
+    FieldSpec("conversation_cache.postgres.user", MaskingType.SENSITIVE),
+    FieldSpec("conversation_cache.postgres.password", MaskingType.SENSITIVE),
+    FieldSpec("conversation_cache.postgres.namespace", MaskingType.SENSITIVE),
+    FieldSpec("conversation_cache.postgres.ssl_mode", MaskingType.PASSTHROUGH),
+    FieldSpec("conversation_cache.postgres.gss_encmode", MaskingType.PASSTHROUGH),
+    FieldSpec("conversation_cache.postgres.ca_cert_path", MaskingType.SENSITIVE),
+    # Quota Handlers
+    FieldSpec("quota_handlers.sqlite.db_path", MaskingType.SENSITIVE),
+    FieldSpec("quota_handlers.postgres.host", MaskingType.SENSITIVE),
+    FieldSpec("quota_handlers.postgres.port", MaskingType.PASSTHROUGH),
+    FieldSpec("quota_handlers.postgres.db", MaskingType.SENSITIVE),
+    FieldSpec("quota_handlers.postgres.user", MaskingType.SENSITIVE),
+    FieldSpec("quota_handlers.postgres.password", MaskingType.SENSITIVE),
+    FieldSpec("quota_handlers.postgres.namespace", MaskingType.SENSITIVE),
+    FieldSpec("quota_handlers.postgres.ssl_mode", MaskingType.PASSTHROUGH),
+    FieldSpec("quota_handlers.postgres.gss_encmode", MaskingType.PASSTHROUGH),
+    FieldSpec("quota_handlers.postgres.ca_cert_path", MaskingType.SENSITIVE),
+    ListFieldSpec(
+        "quota_handlers.limiters",
+        item_fields=(
+            FieldSpec("type", MaskingType.PASSTHROUGH),
+            FieldSpec("name", MaskingType.PASSTHROUGH),
+            FieldSpec("initial_quota", MaskingType.PASSTHROUGH),
+            FieldSpec("quota_increase", MaskingType.PASSTHROUGH),
+            FieldSpec("period", MaskingType.PASSTHROUGH),
+        ),
+    ),
+    FieldSpec("quota_handlers.scheduler.period", MaskingType.PASSTHROUGH),
+    FieldSpec(
+        "quota_handlers.scheduler.database_reconnection_count", MaskingType.PASSTHROUGH
+    ),
+    FieldSpec(
+        "quota_handlers.scheduler.database_reconnection_delay", MaskingType.PASSTHROUGH
+    ),
+    FieldSpec("quota_handlers.enable_token_history", MaskingType.PASSTHROUGH),
+    # BYOK RAG
+    ListFieldSpec(
+        "byok_rag",
+        item_fields=(
+            FieldSpec("rag_id", MaskingType.PASSTHROUGH),
+            FieldSpec("rag_type", MaskingType.PASSTHROUGH),
+            FieldSpec("embedding_model", MaskingType.PASSTHROUGH),
+            FieldSpec("embedding_dimension", MaskingType.PASSTHROUGH),
+            FieldSpec("vector_db_id", MaskingType.PASSTHROUGH),
+            FieldSpec("db_path", MaskingType.SENSITIVE),
+            FieldSpec("score_multiplier", MaskingType.PASSTHROUGH),
+            FieldSpec("host", MaskingType.SENSITIVE),
+            FieldSpec("port", MaskingType.SENSITIVE),
+            FieldSpec("db", MaskingType.SENSITIVE),
+            FieldSpec("user", MaskingType.SENSITIVE),
+            FieldSpec("password", MaskingType.SENSITIVE),
+        ),
+    ),
+    # A2A State Storage
+    FieldSpec("a2a_state.sqlite.db_path", MaskingType.SENSITIVE),
+    FieldSpec("a2a_state.postgres.host", MaskingType.SENSITIVE),
+    FieldSpec("a2a_state.postgres.port", MaskingType.PASSTHROUGH),
+    FieldSpec("a2a_state.postgres.db", MaskingType.SENSITIVE),
+    FieldSpec("a2a_state.postgres.user", MaskingType.SENSITIVE),
+    FieldSpec("a2a_state.postgres.password", MaskingType.SENSITIVE),
+    FieldSpec("a2a_state.postgres.namespace", MaskingType.SENSITIVE),
+    FieldSpec("a2a_state.postgres.ssl_mode", MaskingType.PASSTHROUGH),
+    FieldSpec("a2a_state.postgres.gss_encmode", MaskingType.PASSTHROUGH),
+    FieldSpec("a2a_state.postgres.ca_cert_path", MaskingType.SENSITIVE),
+    # Splunk HEC Telemetry
+    FieldSpec("splunk.enabled", MaskingType.PASSTHROUGH),
+    FieldSpec("splunk.url", MaskingType.SENSITIVE),
+    FieldSpec("splunk.token_path", MaskingType.SENSITIVE),
+    FieldSpec("splunk.index", MaskingType.PASSTHROUGH),
+    FieldSpec("splunk.source", MaskingType.PASSTHROUGH),
+    FieldSpec("splunk.timeout", MaskingType.PASSTHROUGH),
+    FieldSpec("splunk.verify_ssl", MaskingType.PASSTHROUGH),
+    # Inference — additional subfields
+    FieldSpec("inference.context_windows", MaskingType.PASSTHROUGH),
+    FieldSpec("inference.max_infer_iters", MaskingType.PASSTHROUGH),
+    FieldSpec("inference.max_tool_calls", MaskingType.PASSTHROUGH),
+    ListFieldSpec(
+        "inference.providers",
+        item_fields=(
+            FieldSpec("type", MaskingType.PASSTHROUGH),
+            FieldSpec("api_key_env", MaskingType.PASSTHROUGH),
+            FieldSpec("allowed_models", MaskingType.PASSTHROUGH),
+        ),
+    ),
+    # Llama Stack — additional subfields
+    FieldSpec("llama_stack.timeout", MaskingType.PASSTHROUGH),
+    FieldSpec("llama_stack.max_retries", MaskingType.PASSTHROUGH),
+    FieldSpec("llama_stack.retry_delay", MaskingType.PASSTHROUGH),
+    FieldSpec("llama_stack.allow_degraded_mode", MaskingType.PASSTHROUGH),
+    FieldSpec("llama_stack.config.baseline", MaskingType.PASSTHROUGH),
+    FieldSpec("llama_stack.config.profile", MaskingType.SENSITIVE),
+    # Authentication — additional subfields
+    FieldSpec("authentication.skip_for_health_probes", MaskingType.PASSTHROUGH),
+    FieldSpec("authentication.skip_for_metrics", MaskingType.PASSTHROUGH),
+    FieldSpec("authentication.api_key_config.api_key", MaskingType.SENSITIVE),
+    FieldSpec(
+        "authentication.rh_identity_config.required_entitlements",
+        MaskingType.PASSTHROUGH,
+    ),
+    FieldSpec(
+        "authentication.rh_identity_config.max_header_size", MaskingType.PASSTHROUGH
+    ),
+    FieldSpec(
+        "authentication.trusted_proxy_config.user_header", MaskingType.PASSTHROUGH
+    ),
+    ListFieldSpec(
+        "authentication.trusted_proxy_config.allowed_service_accounts",
+        item_fields=(
+            FieldSpec("namespace", MaskingType.PASSTHROUGH),
+            FieldSpec("name", MaskingType.PASSTHROUGH),
+        ),
+    ),
+    # Azure Entra ID
+    FieldSpec("azure_entra_id.tenant_id", MaskingType.SENSITIVE),
+    FieldSpec("azure_entra_id.client_id", MaskingType.SENSITIVE),
+    FieldSpec("azure_entra_id.client_secret", MaskingType.SENSITIVE),
+    FieldSpec("azure_entra_id.scope", MaskingType.PASSTHROUGH),
+    # Customization — additional subfields
+    FieldSpec("customization.profile_path", MaskingType.SENSITIVE),
+    FieldSpec("customization.disable_shield_ids_override", MaskingType.PASSTHROUGH),
+    FieldSpec("customization.agent_card_path", MaskingType.SENSITIVE),
+    # OKP RAG Provider
+    FieldSpec("okp.rhokp_url", MaskingType.SENSITIVE),
+    FieldSpec("okp.offline", MaskingType.PASSTHROUGH),
+    FieldSpec("okp.chunk_filter_query", MaskingType.PASSTHROUGH),
+    # RAG Strategy
+    FieldSpec("rag.inline", MaskingType.PASSTHROUGH),
+    FieldSpec("rag.tool", MaskingType.PASSTHROUGH),
+    # Reranker
+    FieldSpec("reranker.enabled", MaskingType.PASSTHROUGH),
+    FieldSpec("reranker.model", MaskingType.PASSTHROUGH),
+    # Approvals
+    FieldSpec("approvals.approval_timeout_seconds", MaskingType.PASSTHROUGH),
+    FieldSpec("approvals.approval_retention_days", MaskingType.PASSTHROUGH),
+    # rlsapi v1
+    FieldSpec("rlsapi_v1.allow_verbose_infer", MaskingType.PASSTHROUGH),
+    FieldSpec("rlsapi_v1.quota_subject", MaskingType.PASSTHROUGH),
+    # Saved Prompts
+    FieldSpec("saved_prompts.max_prompts_per_user", MaskingType.PASSTHROUGH),
+    FieldSpec("saved_prompts.max_display_name_length", MaskingType.PASSTHROUGH),
+    FieldSpec("saved_prompts.max_content_length", MaskingType.PASSTHROUGH),
+    # Agent Skills
+    FieldSpec("skills.paths", MaskingType.SENSITIVE),
+    # Deployment Environment
+    FieldSpec("deployment_environment", MaskingType.PASSTHROUGH),
 )
 
 LLAMA_STACK_FIELDS: tuple[FieldSpec | ListFieldSpec, ...] = (

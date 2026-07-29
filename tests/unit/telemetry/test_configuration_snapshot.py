@@ -1,5 +1,7 @@
 """Tests for configuration snapshot with PII masking."""
 
+# pylint: disable=too-many-lines
+
 import json
 from enum import Enum
 from pathlib import Path, PurePosixPath
@@ -9,7 +11,13 @@ import pytest
 import yaml
 from pydantic import SecretStr
 
-from models.config import Action, JsonPathOperator
+from models.config import (
+    Action,
+    AzureEntraIdConfiguration,
+    Configuration,
+    JsonPathOperator,
+    ServiceConfiguration,
+)
 from telemetry.configuration_snapshot import (
     CONFIGURED,
     LIGHTSPEED_STACK_FIELDS,
@@ -33,6 +41,10 @@ from telemetry.configuration_snapshot import (
 from tests.unit.telemetry.conftest import (
     ALL_PII_VALUES,
     LLAMA_STACK_PII_VALUES,
+    PII_AZURE_CLIENT_ID,
+    PII_AZURE_CLIENT_SECRET,
+    PII_AZURE_TENANT_ID,
+    PII_SPLUNK_INDEX,
     SAMPLE_LLAMA_STACK_CONFIG,
     build_fully_populated_config,
     build_minimal_config,
@@ -388,6 +400,7 @@ class TestBuildLightspeedStackSnapshot:
         """Test all sensitive fields are masked in fully-populated config."""
         snapshot = build_lightspeed_stack_snapshot(build_fully_populated_config())
         assert snapshot["service"]["host"] == CONFIGURED
+        assert snapshot["service"]["base_url"] == CONFIGURED
         assert snapshot["service"]["tls_config"]["tls_certificate_path"] == CONFIGURED
         assert snapshot["service"]["tls_config"]["tls_key_path"] == CONFIGURED
         assert snapshot["service"]["tls_config"]["tls_key_password"] == CONFIGURED
@@ -725,3 +738,725 @@ class TestRegistryValidation:
         assert len(paths) == len(
             set(paths)
         ), f"Duplicate paths: {set(p for p in paths if paths.count(p) > 1)}"
+
+
+# =============================================================================
+# Tests: New sections — Compaction
+# =============================================================================
+
+
+class TestCompactionSnapshot:
+    """Tests for compaction section in the snapshot."""
+
+    def test_compaction_passthrough_fields(self) -> None:
+        """Test compaction fields pass through correctly."""
+        snapshot = build_lightspeed_stack_snapshot(build_fully_populated_config())
+        assert snapshot["compaction"]["enabled"] is True
+        assert snapshot["compaction"]["threshold_ratio"] == 0.8
+        assert snapshot["compaction"]["token_floor"] == 2048
+        assert snapshot["compaction"]["buffer_turns"] == 6
+        assert snapshot["compaction"]["buffer_max_ratio"] == 0.4
+
+    def test_compaction_none_when_not_configured(self) -> None:
+        """Test compaction fields are None when compaction is not configured."""
+        snapshot = build_lightspeed_stack_snapshot(build_minimal_config())
+        assert snapshot["compaction"]["enabled"] is None
+        assert snapshot["compaction"]["threshold_ratio"] is None
+        assert snapshot["compaction"]["token_floor"] is None
+        assert snapshot["compaction"]["buffer_turns"] is None
+        assert snapshot["compaction"]["buffer_max_ratio"] is None
+
+
+# =============================================================================
+# Tests: New sections — Conversation Cache
+# =============================================================================
+
+
+class TestConversationCacheSnapshot:
+    """Tests for conversation_cache section in the snapshot."""
+
+    def test_cache_type_passthrough(self) -> None:
+        """Test cache type passes through."""
+        snapshot = build_lightspeed_stack_snapshot(build_fully_populated_config())
+        assert snapshot["conversation_cache"]["type"] == "postgres"
+
+    def test_cache_postgres_sensitive_fields_masked(self) -> None:
+        """Test conversation cache postgres sensitive fields are masked."""
+        snapshot = build_lightspeed_stack_snapshot(build_fully_populated_config())
+        pg = snapshot["conversation_cache"]["postgres"]
+        assert pg["host"] == CONFIGURED
+        assert pg["db"] == CONFIGURED
+        assert pg["user"] == CONFIGURED
+        assert pg["password"] == CONFIGURED
+        assert pg["namespace"] == CONFIGURED
+        assert pg["ca_cert_path"] == CONFIGURED
+
+    def test_cache_postgres_passthrough_fields(self) -> None:
+        """Test conversation cache postgres passthrough fields."""
+        snapshot = build_lightspeed_stack_snapshot(build_fully_populated_config())
+        pg = snapshot["conversation_cache"]["postgres"]
+        assert pg["port"] == 5432
+        assert pg["ssl_mode"] == "require"
+        assert pg["gss_encmode"] == "disable"
+
+    def test_cache_sqlite_sensitive(self) -> None:
+        """Test conversation cache sqlite db_path is masked."""
+        snapshot = build_lightspeed_stack_snapshot(build_fully_populated_config())
+        assert snapshot["conversation_cache"]["sqlite"]["db_path"] == CONFIGURED
+
+    def test_cache_memory_passthrough(self) -> None:
+        """Test conversation cache memory max_entries passes through."""
+        snapshot = build_lightspeed_stack_snapshot(build_minimal_config())
+        assert snapshot["conversation_cache"]["memory"]["max_entries"] is None
+
+    def test_cache_none_when_not_configured(self) -> None:
+        """Test conversation cache fields are None/not_configured when not set."""
+        snapshot = build_lightspeed_stack_snapshot(build_minimal_config())
+        assert snapshot["conversation_cache"]["type"] is None
+
+
+# =============================================================================
+# Tests: New sections — Quota Handlers
+# =============================================================================
+
+
+class TestQuotaHandlersSnapshot:
+    """Tests for quota_handlers section in the snapshot."""
+
+    def test_quota_sqlite_sensitive(self) -> None:
+        """Test quota handlers sqlite db_path is masked."""
+        snapshot = build_lightspeed_stack_snapshot(build_fully_populated_config())
+        assert snapshot["quota_handlers"]["sqlite"]["db_path"] == CONFIGURED
+
+    def test_quota_postgres_sensitive_fields_masked(self) -> None:
+        """Test quota handlers postgres sensitive fields are masked."""
+        snapshot = build_lightspeed_stack_snapshot(build_fully_populated_config())
+        pg = snapshot["quota_handlers"]["postgres"]
+        assert pg["host"] == CONFIGURED
+        assert pg["db"] == CONFIGURED
+        assert pg["user"] == CONFIGURED
+        assert pg["password"] == CONFIGURED
+        assert pg["namespace"] == CONFIGURED
+        assert pg["ca_cert_path"] == CONFIGURED
+
+    def test_quota_postgres_passthrough_fields(self) -> None:
+        """Test quota handlers postgres passthrough fields."""
+        snapshot = build_lightspeed_stack_snapshot(build_fully_populated_config())
+        pg = snapshot["quota_handlers"]["postgres"]
+        assert pg["port"] == 5432
+        assert pg["ssl_mode"] == "prefer"
+        assert pg["gss_encmode"] == "require"
+
+    def test_quota_limiters_extraction(self) -> None:
+        """Test quota limiters list extraction."""
+        snapshot = build_lightspeed_stack_snapshot(build_fully_populated_config())
+        limiters = snapshot["quota_handlers"]["limiters"]
+        assert isinstance(limiters, list)
+        assert len(limiters) == 1
+        assert limiters[0]["type"] == "user_limiter"
+        assert limiters[0]["name"] == "daily-user-quota"
+        assert limiters[0]["initial_quota"] == 10000
+        assert limiters[0]["quota_increase"] == 0
+        assert limiters[0]["period"] == "1 day"
+
+    def test_quota_scheduler_passthrough(self) -> None:
+        """Test quota scheduler fields pass through."""
+        snapshot = build_lightspeed_stack_snapshot(build_fully_populated_config())
+        sched = snapshot["quota_handlers"]["scheduler"]
+        assert sched["period"] == 5
+        assert sched["database_reconnection_count"] == 20
+        assert sched["database_reconnection_delay"] == 2
+
+    def test_quota_enable_token_history_passthrough(self) -> None:
+        """Test enable_token_history passes through."""
+        snapshot = build_lightspeed_stack_snapshot(build_fully_populated_config())
+        assert snapshot["quota_handlers"]["enable_token_history"] is True
+
+    def test_quota_none_when_not_configured(self) -> None:
+        """Test quota handlers fields are not_configured/None when not configured."""
+        snapshot = build_lightspeed_stack_snapshot(build_minimal_config())
+        # sqlite.db_path is SENSITIVE — returns NOT_CONFIGURED when quota_handlers is None
+        assert snapshot["quota_handlers"]["sqlite"]["db_path"] == NOT_CONFIGURED
+        assert snapshot["quota_handlers"]["enable_token_history"] is None
+
+
+# =============================================================================
+# Tests: New sections — BYOK RAG
+# =============================================================================
+
+
+class TestByokRagSnapshot:
+    """Tests for byok_rag section in the snapshot."""
+
+    def test_byok_rag_passthrough_fields(self) -> None:
+        """Test BYOK RAG passthrough fields."""
+        snapshot = build_lightspeed_stack_snapshot(build_fully_populated_config())
+        byok = snapshot["byok_rag"]
+        assert isinstance(byok, list)
+        assert len(byok) == 1
+        assert byok[0]["rag_id"] == "my-rag"
+        assert byok[0]["rag_type"] == "inline::faiss"
+        assert byok[0]["embedding_model"] == "all-MiniLM-L6-v2"
+        assert byok[0]["embedding_dimension"] == 384
+        assert byok[0]["vector_db_id"] == "my-vector-db"
+        assert byok[0]["score_multiplier"] == 1.5
+
+    def test_byok_rag_sensitive_fields_masked(self) -> None:
+        """Test BYOK RAG sensitive fields are masked."""
+        snapshot = build_lightspeed_stack_snapshot(build_fully_populated_config())
+        byok = snapshot["byok_rag"]
+        assert byok[0]["db_path"] == CONFIGURED
+        assert byok[0]["host"] == CONFIGURED
+        assert byok[0]["port"] == CONFIGURED
+        assert byok[0]["db"] == CONFIGURED
+        assert byok[0]["user"] == CONFIGURED
+        assert byok[0]["password"] == CONFIGURED
+
+    def test_byok_rag_empty_list(self) -> None:
+        """Test empty BYOK RAG list."""
+        snapshot = build_lightspeed_stack_snapshot(build_minimal_config())
+        assert snapshot["byok_rag"] == []
+
+
+# =============================================================================
+# Tests: New sections — A2A State
+# =============================================================================
+
+
+class TestA2AStateSnapshot:
+    """Tests for a2a_state section in the snapshot."""
+
+    def test_a2a_sqlite_sensitive(self) -> None:
+        """Test A2A state sqlite db_path is masked."""
+        snapshot = build_lightspeed_stack_snapshot(build_fully_populated_config())
+        assert snapshot["a2a_state"]["sqlite"]["db_path"] == CONFIGURED
+
+    def test_a2a_postgres_sensitive_fields_masked(self) -> None:
+        """Test A2A state postgres sensitive fields are masked."""
+        snapshot = build_lightspeed_stack_snapshot(build_fully_populated_config())
+        pg = snapshot["a2a_state"]["postgres"]
+        assert pg["host"] == CONFIGURED
+        assert pg["db"] == CONFIGURED
+        assert pg["user"] == CONFIGURED
+        assert pg["password"] == CONFIGURED
+        assert pg["namespace"] == CONFIGURED
+        assert pg["ca_cert_path"] == CONFIGURED
+
+    def test_a2a_postgres_passthrough_fields(self) -> None:
+        """Test A2A state postgres passthrough fields."""
+        snapshot = build_lightspeed_stack_snapshot(build_fully_populated_config())
+        pg = snapshot["a2a_state"]["postgres"]
+        assert pg["port"] == 5432
+        assert pg["ssl_mode"] == "verify-ca"
+        assert pg["gss_encmode"] == "prefer"
+
+    def test_a2a_state_none_when_not_configured(self) -> None:
+        """Test A2A state fields are not_configured when not configured."""
+        snapshot = build_lightspeed_stack_snapshot(build_minimal_config())
+        # sqlite.db_path is SENSITIVE — returns NOT_CONFIGURED when a2a_state is None
+        assert snapshot["a2a_state"]["sqlite"]["db_path"] == NOT_CONFIGURED
+        assert snapshot["a2a_state"]["postgres"]["host"] == NOT_CONFIGURED
+
+
+# =============================================================================
+# Tests: New sections — Splunk
+# =============================================================================
+
+
+class TestSplunkSnapshot:
+    """Tests for splunk section in the snapshot."""
+
+    def test_splunk_passthrough_fields(self) -> None:
+        """Test Splunk passthrough fields."""
+        snapshot = build_lightspeed_stack_snapshot(build_fully_populated_config())
+        assert snapshot["splunk"]["enabled"] is True
+        assert snapshot["splunk"]["source"] == "lightspeed-stack"
+        assert snapshot["splunk"]["timeout"] == 10
+        assert snapshot["splunk"]["verify_ssl"] is False
+
+    def test_splunk_sensitive_fields_masked(self) -> None:
+        """Test Splunk sensitive fields are masked."""
+        snapshot = build_lightspeed_stack_snapshot(build_fully_populated_config())
+        assert snapshot["splunk"]["url"] == CONFIGURED
+        assert snapshot["splunk"]["token_path"] == CONFIGURED
+
+    def test_splunk_index_passthrough(self) -> None:
+        """Test Splunk index passes through (non-secret identifier)."""
+        snapshot = build_lightspeed_stack_snapshot(build_fully_populated_config())
+        assert snapshot["splunk"]["index"] == PII_SPLUNK_INDEX
+
+    def test_splunk_none_when_not_configured(self) -> None:
+        """Test Splunk fields are not_configured when splunk is None."""
+        snapshot = build_lightspeed_stack_snapshot(build_minimal_config())
+        assert snapshot["splunk"]["enabled"] is None
+        assert snapshot["splunk"]["url"] == NOT_CONFIGURED
+        assert snapshot["splunk"]["token_path"] == NOT_CONFIGURED
+        assert snapshot["splunk"]["index"] is None
+
+
+# =============================================================================
+# Tests: New sections — Inference additional subfields
+# =============================================================================
+
+
+class TestInferenceAdditionalSnapshot:
+    """Tests for additional inference subfields in the snapshot."""
+
+    def test_inference_context_windows_passthrough(self) -> None:
+        """Test inference context_windows passes through."""
+        snapshot = build_lightspeed_stack_snapshot(build_fully_populated_config())
+        assert snapshot["inference"]["context_windows"] == {
+            "openai/gpt-4o-mini": 128000
+        }
+
+    def test_inference_max_iters_passthrough(self) -> None:
+        """Test inference max_infer_iters and max_tool_calls pass through."""
+        snapshot = build_lightspeed_stack_snapshot(build_fully_populated_config())
+        assert snapshot["inference"]["max_infer_iters"] == 10
+        assert snapshot["inference"]["max_tool_calls"] == 30
+
+    def test_inference_providers_passthrough(self) -> None:
+        """Test inference providers list extraction."""
+        snapshot = build_lightspeed_stack_snapshot(build_fully_populated_config())
+        providers = snapshot["inference"]["providers"]
+        assert isinstance(providers, list)
+        assert len(providers) == 1
+        assert providers[0]["type"] == "openai"
+        assert providers[0]["api_key_env"] == "OPENAI_API_KEY"
+        assert providers[0]["allowed_models"] == ["gpt-4o-mini"]
+
+    def test_inference_providers_empty(self) -> None:
+        """Test inference providers empty list."""
+        snapshot = build_lightspeed_stack_snapshot(build_minimal_config())
+        assert snapshot["inference"]["providers"] == []
+
+
+# =============================================================================
+# Tests: New sections — Llama Stack additional subfields
+# =============================================================================
+
+
+class TestLlamaStackAdditionalSnapshot:
+    """Tests for additional llama_stack subfields in the snapshot."""
+
+    def test_llama_stack_timeout_passthrough(self) -> None:
+        """Test llama_stack timeout passes through."""
+        snapshot = build_lightspeed_stack_snapshot(build_fully_populated_config())
+        assert snapshot["llama_stack"]["timeout"] == 180
+
+    def test_llama_stack_retries_passthrough(self) -> None:
+        """Test llama_stack max_retries and retry_delay pass through."""
+        snapshot = build_lightspeed_stack_snapshot(build_fully_populated_config())
+        assert snapshot["llama_stack"]["max_retries"] == 5
+        assert snapshot["llama_stack"]["retry_delay"] == 3
+
+    def test_llama_stack_degraded_mode_passthrough(self) -> None:
+        """Test llama_stack allow_degraded_mode passes through."""
+        snapshot = build_lightspeed_stack_snapshot(build_fully_populated_config())
+        assert snapshot["llama_stack"]["allow_degraded_mode"] is True
+
+    def test_llama_stack_config_baseline_passthrough(self) -> None:
+        """Test llama_stack.config.baseline passes through."""
+        snapshot = build_lightspeed_stack_snapshot(build_fully_populated_config())
+        assert snapshot["llama_stack"]["config"]["baseline"] == "default"
+
+    def test_llama_stack_config_profile_sensitive(self) -> None:
+        """Test llama_stack.config.profile is masked."""
+        snapshot = build_lightspeed_stack_snapshot(build_fully_populated_config())
+        assert snapshot["llama_stack"]["config"]["profile"] == CONFIGURED
+
+    def test_llama_stack_config_none_when_not_set(self) -> None:
+        """Test llama_stack.config fields are None when config is None."""
+        snapshot = build_lightspeed_stack_snapshot(build_minimal_config())
+        assert snapshot["llama_stack"]["config"]["baseline"] is None
+        assert snapshot["llama_stack"]["config"]["profile"] == NOT_CONFIGURED
+
+
+# =============================================================================
+# Tests: New sections — Authentication additional subfields
+# =============================================================================
+
+
+class TestAuthenticationAdditionalSnapshot:
+    """Tests for additional authentication subfields in the snapshot."""
+
+    def test_auth_skip_for_health_probes_passthrough(self) -> None:
+        """Test skip_for_health_probes passes through."""
+        snapshot = build_lightspeed_stack_snapshot(build_fully_populated_config())
+        assert snapshot["authentication"]["skip_for_health_probes"] is True
+
+    def test_auth_skip_for_metrics_passthrough(self) -> None:
+        """Test skip_for_metrics passes through."""
+        snapshot = build_lightspeed_stack_snapshot(build_fully_populated_config())
+        assert snapshot["authentication"]["skip_for_metrics"] is True
+
+    def test_auth_api_key_sensitive(self) -> None:
+        """Test api_key_config.api_key is masked."""
+        snapshot = build_lightspeed_stack_snapshot(build_fully_populated_config())
+        assert snapshot["authentication"]["api_key_config"]["api_key"] == CONFIGURED
+
+    def test_auth_rh_identity_passthrough(self) -> None:
+        """Test rh_identity_config fields pass through."""
+        snapshot = build_lightspeed_stack_snapshot(build_fully_populated_config())
+        rh = snapshot["authentication"]["rh_identity_config"]
+        assert rh["required_entitlements"] == ["insights", "openshift"]
+        assert rh["max_header_size"] == 65536
+
+    def test_auth_trusted_proxy_passthrough(self) -> None:
+        """Test trusted_proxy_config fields pass through."""
+        snapshot = build_lightspeed_stack_snapshot(build_fully_populated_config())
+        tp = snapshot["authentication"]["trusted_proxy_config"]
+        assert tp["user_header"] == "X-Forwarded-User"
+
+    def test_auth_trusted_proxy_service_accounts(self) -> None:
+        """Test trusted_proxy_config allowed_service_accounts extraction."""
+        snapshot = build_lightspeed_stack_snapshot(build_fully_populated_config())
+        accounts = snapshot["authentication"]["trusted_proxy_config"][
+            "allowed_service_accounts"
+        ]
+        assert isinstance(accounts, list)
+        assert len(accounts) == 1
+        assert accounts[0]["namespace"] == "default"
+        assert accounts[0]["name"] == "my-proxy"
+
+    def test_auth_api_key_none_when_not_configured(self) -> None:
+        """Test api_key_config.api_key is not_configured when api_key_config is None."""
+        snapshot = build_lightspeed_stack_snapshot(build_minimal_config())
+        assert snapshot["authentication"]["api_key_config"]["api_key"] == NOT_CONFIGURED
+
+    def test_auth_rh_identity_none_when_not_configured(self) -> None:
+        """Test rh_identity_config fields are None when not configured."""
+        snapshot = build_lightspeed_stack_snapshot(build_minimal_config())
+        rh = snapshot["authentication"]["rh_identity_config"]
+        assert rh["required_entitlements"] is None
+        assert rh["max_header_size"] is None
+
+    def test_auth_trusted_proxy_none_when_not_configured(self) -> None:
+        """Test trusted_proxy_config fields are None when not configured."""
+        snapshot = build_lightspeed_stack_snapshot(build_minimal_config())
+        tp = snapshot["authentication"]["trusted_proxy_config"]
+        assert tp["user_header"] is None
+        assert tp["allowed_service_accounts"] == NOT_CONFIGURED
+
+
+# =============================================================================
+# Tests: New sections — Azure Entra ID
+# =============================================================================
+
+
+class TestAzureEntraIdSnapshot:
+    """Tests for azure_entra_id section in the snapshot."""
+
+    def test_azure_entra_id_none_when_not_configured(self) -> None:
+        """Test azure_entra_id fields are not_configured when None."""
+        snapshot = build_lightspeed_stack_snapshot(build_minimal_config())
+        assert snapshot["azure_entra_id"]["tenant_id"] == NOT_CONFIGURED
+        assert snapshot["azure_entra_id"]["client_id"] == NOT_CONFIGURED
+        assert snapshot["azure_entra_id"]["client_secret"] == NOT_CONFIGURED
+        assert snapshot["azure_entra_id"]["scope"] is None
+
+    def test_azure_entra_id_sensitive_when_configured(self) -> None:
+        """Test azure_entra_id sensitive fields are masked when configured."""
+        config = build_fully_populated_config()
+        config_with_azure = Configuration.model_construct(
+            **{
+                **config.__dict__,
+                "azure_entra_id": AzureEntraIdConfiguration.model_construct(
+                    tenant_id=SecretStr(PII_AZURE_TENANT_ID),
+                    client_id=SecretStr(PII_AZURE_CLIENT_ID),
+                    client_secret=SecretStr(PII_AZURE_CLIENT_SECRET),
+                    scope="https://cognitiveservices.azure.com/.default",
+                ),
+            }
+        )
+        snapshot = build_lightspeed_stack_snapshot(config_with_azure)
+        assert snapshot["azure_entra_id"]["tenant_id"] == CONFIGURED
+        assert snapshot["azure_entra_id"]["client_id"] == CONFIGURED
+        assert snapshot["azure_entra_id"]["client_secret"] == CONFIGURED
+        assert (
+            snapshot["azure_entra_id"]["scope"]
+            == "https://cognitiveservices.azure.com/.default"
+        )
+
+
+# =============================================================================
+# Tests: New sections — Customization additional subfields
+# =============================================================================
+
+
+class TestCustomizationAdditionalSnapshot:
+    """Tests for additional customization subfields in the snapshot."""
+
+    def test_customization_profile_path_sensitive(self) -> None:
+        """Test customization profile_path is masked."""
+        snapshot = build_lightspeed_stack_snapshot(build_fully_populated_config())
+        assert snapshot["customization"]["profile_path"] == CONFIGURED
+
+    def test_customization_disable_shield_ids_override_passthrough(self) -> None:
+        """Test customization disable_shield_ids_override passes through."""
+        snapshot = build_lightspeed_stack_snapshot(build_fully_populated_config())
+        assert snapshot["customization"]["disable_shield_ids_override"] is True
+
+    def test_customization_agent_card_path_sensitive(self) -> None:
+        """Test customization agent_card_path is masked."""
+        snapshot = build_lightspeed_stack_snapshot(build_fully_populated_config())
+        assert snapshot["customization"]["agent_card_path"] == CONFIGURED
+
+    def test_customization_none_when_not_configured(self) -> None:
+        """Test customization fields are None/not_configured when customization is None."""
+        snapshot = build_lightspeed_stack_snapshot(build_minimal_config())
+        assert snapshot["customization"]["profile_path"] == NOT_CONFIGURED
+        assert snapshot["customization"]["disable_shield_ids_override"] is None
+        assert snapshot["customization"]["agent_card_path"] == NOT_CONFIGURED
+
+
+# =============================================================================
+# Tests: New sections — OKP
+# =============================================================================
+
+
+class TestOkpSnapshot:
+    """Tests for okp section in the snapshot."""
+
+    def test_okp_sensitive_fields_masked(self) -> None:
+        """Test OKP rhokp_url is masked."""
+        snapshot = build_lightspeed_stack_snapshot(build_fully_populated_config())
+        assert snapshot["okp"]["rhokp_url"] == CONFIGURED
+
+    def test_okp_passthrough_fields(self) -> None:
+        """Test OKP passthrough fields."""
+        snapshot = build_lightspeed_stack_snapshot(build_fully_populated_config())
+        assert snapshot["okp"]["offline"] is True
+        assert snapshot["okp"]["chunk_filter_query"] == "product:ansible"
+
+    def test_okp_none_when_not_configured(self) -> None:
+        """Test OKP fields are None when okp is None."""
+        snapshot = build_lightspeed_stack_snapshot(build_minimal_config())
+        assert snapshot["okp"]["rhokp_url"] == NOT_CONFIGURED
+        assert snapshot["okp"]["offline"] is None
+        assert snapshot["okp"]["chunk_filter_query"] is None
+
+
+# =============================================================================
+# Tests: New sections — RAG
+# =============================================================================
+
+
+class TestRagSnapshot:
+    """Tests for rag section in the snapshot."""
+
+    def test_rag_passthrough_fields(self) -> None:
+        """Test RAG inline and tool lists pass through."""
+        snapshot = build_lightspeed_stack_snapshot(build_fully_populated_config())
+        assert snapshot["rag"]["inline"] == ["okp"]
+        assert snapshot["rag"]["tool"] == ["my-rag"]
+
+    def test_rag_none_when_not_configured(self) -> None:
+        """Test RAG fields are None when rag is None."""
+        snapshot = build_lightspeed_stack_snapshot(build_minimal_config())
+        assert snapshot["rag"]["inline"] is None
+        assert snapshot["rag"]["tool"] is None
+
+
+# =============================================================================
+# Tests: New sections — Reranker
+# =============================================================================
+
+
+class TestRerankerSnapshot:
+    """Tests for reranker section in the snapshot."""
+
+    def test_reranker_passthrough_fields(self) -> None:
+        """Test reranker fields pass through."""
+        snapshot = build_lightspeed_stack_snapshot(build_fully_populated_config())
+        assert snapshot["reranker"]["enabled"] is True
+        assert snapshot["reranker"]["model"] == "cross-encoder/ms-marco-MiniLM-L6-v2"
+
+    def test_reranker_none_when_not_configured(self) -> None:
+        """Test reranker fields are None when reranker is None."""
+        snapshot = build_lightspeed_stack_snapshot(build_minimal_config())
+        assert snapshot["reranker"]["enabled"] is None
+        assert snapshot["reranker"]["model"] is None
+
+
+# =============================================================================
+# Tests: New sections — Approvals
+# =============================================================================
+
+
+class TestApprovalsSnapshot:
+    """Tests for approvals section in the snapshot."""
+
+    def test_approvals_passthrough_fields(self) -> None:
+        """Test approvals fields pass through."""
+        snapshot = build_lightspeed_stack_snapshot(build_fully_populated_config())
+        assert snapshot["approvals"]["approval_timeout_seconds"] == 600
+        assert snapshot["approvals"]["approval_retention_days"] == 60
+
+    def test_approvals_none_when_not_configured(self) -> None:
+        """Test approvals fields are None when approvals is None."""
+        snapshot = build_lightspeed_stack_snapshot(build_minimal_config())
+        assert snapshot["approvals"]["approval_timeout_seconds"] is None
+        assert snapshot["approvals"]["approval_retention_days"] is None
+
+
+# =============================================================================
+# Tests: New sections — rlsapi_v1
+# =============================================================================
+
+
+class TestRlsapiV1Snapshot:
+    """Tests for rlsapi_v1 section in the snapshot."""
+
+    def test_rlsapi_v1_passthrough_fields(self) -> None:
+        """Test rlsapi_v1 fields pass through."""
+        snapshot = build_lightspeed_stack_snapshot(build_fully_populated_config())
+        assert snapshot["rlsapi_v1"]["allow_verbose_infer"] is True
+        assert snapshot["rlsapi_v1"]["quota_subject"] == "user_id"
+
+    def test_rlsapi_v1_none_when_not_configured(self) -> None:
+        """Test rlsapi_v1 fields are None when rlsapi_v1 is None."""
+        snapshot = build_lightspeed_stack_snapshot(build_minimal_config())
+        assert snapshot["rlsapi_v1"]["allow_verbose_infer"] is None
+        assert snapshot["rlsapi_v1"]["quota_subject"] is None
+
+
+# =============================================================================
+# Tests: New sections — Saved Prompts
+# =============================================================================
+
+
+class TestSavedPromptsSnapshot:
+    """Tests for saved_prompts section in the snapshot."""
+
+    def test_saved_prompts_passthrough_fields(self) -> None:
+        """Test saved_prompts fields pass through."""
+        snapshot = build_lightspeed_stack_snapshot(build_fully_populated_config())
+        assert snapshot["saved_prompts"]["max_prompts_per_user"] == 50
+        assert snapshot["saved_prompts"]["max_display_name_length"] == 200
+        assert snapshot["saved_prompts"]["max_content_length"] == 5000
+
+    def test_saved_prompts_none_when_not_configured(self) -> None:
+        """Test saved_prompts fields are None when saved_prompts is None."""
+        snapshot = build_lightspeed_stack_snapshot(build_minimal_config())
+        assert snapshot["saved_prompts"]["max_prompts_per_user"] is None
+        assert snapshot["saved_prompts"]["max_display_name_length"] is None
+        assert snapshot["saved_prompts"]["max_content_length"] is None
+
+
+# =============================================================================
+# Tests: New sections — Skills
+# =============================================================================
+
+
+class TestSkillsSnapshot:
+    """Tests for skills section in the snapshot."""
+
+    def test_skills_paths_sensitive(self) -> None:
+        """Test skills paths are masked."""
+        snapshot = build_lightspeed_stack_snapshot(build_fully_populated_config())
+        assert snapshot["skills"]["paths"] == CONFIGURED
+
+    def test_skills_none_when_not_configured(self) -> None:
+        """Test skills fields are not_configured when skills is None."""
+        snapshot = build_lightspeed_stack_snapshot(build_minimal_config())
+        assert snapshot["skills"]["paths"] == NOT_CONFIGURED
+
+
+# =============================================================================
+# Tests: New sections — Deployment Environment
+# =============================================================================
+
+
+class TestDeploymentEnvironmentSnapshot:
+    """Tests for deployment_environment field in the snapshot."""
+
+    def test_deployment_environment_passthrough(self) -> None:
+        """Test deployment_environment passes through."""
+        snapshot = build_lightspeed_stack_snapshot(build_fully_populated_config())
+        assert snapshot["deployment_environment"] == "production"
+
+    def test_deployment_environment_default(self) -> None:
+        """Test deployment_environment default value."""
+        snapshot = build_lightspeed_stack_snapshot(build_minimal_config())
+        assert snapshot["deployment_environment"] == "development"
+
+
+# =============================================================================
+# Tests: New sections — MCP Servers additional fields
+# =============================================================================
+
+
+class TestMcpServersAdditionalSnapshot:
+    """Tests for additional MCP server fields in the snapshot."""
+
+    def test_mcp_authorization_headers_sensitive(self) -> None:
+        """Test MCP server authorization_headers is masked."""
+        snapshot = build_lightspeed_stack_snapshot(build_fully_populated_config())
+        mcp = snapshot["mcp_servers"]
+        assert mcp[0]["authorization_headers"] == CONFIGURED
+
+    def test_mcp_headers_passthrough(self) -> None:
+        """Test MCP server headers list passes through."""
+        snapshot = build_lightspeed_stack_snapshot(build_fully_populated_config())
+        mcp = snapshot["mcp_servers"]
+        assert mcp[0]["headers"] == ["x-rh-identity"]
+
+    def test_mcp_require_approval_sensitive(self) -> None:
+        """Test MCP server require_approval is masked (may contain ApprovalFilter tool names)."""
+        snapshot = build_lightspeed_stack_snapshot(build_fully_populated_config())
+        mcp = snapshot["mcp_servers"]
+        assert mcp[0]["require_approval"] == CONFIGURED
+
+    def test_mcp_timeout_passthrough(self) -> None:
+        """Test MCP server timeout passes through."""
+        snapshot = build_lightspeed_stack_snapshot(build_fully_populated_config())
+        mcp = snapshot["mcp_servers"]
+        assert mcp[0]["timeout"] == 30
+
+
+# =============================================================================
+# Tests: New fields — service.base_url and service.root_path
+# =============================================================================
+
+
+class TestServiceAdditionalFieldsSnapshot:
+    """Tests for service.base_url and service.root_path in the snapshot."""
+
+    def test_service_base_url_sensitive_when_configured(self) -> None:
+        """Test service.base_url is masked when set (it is a URL)."""
+        snapshot = build_lightspeed_stack_snapshot(build_fully_populated_config())
+        assert snapshot["service"]["base_url"] == CONFIGURED
+
+    def test_service_base_url_not_configured_when_none(self) -> None:
+        """Test service.base_url is not_configured when None."""
+        snapshot = build_lightspeed_stack_snapshot(build_minimal_config())
+        assert snapshot["service"]["base_url"] == NOT_CONFIGURED
+
+    def test_service_root_path_passthrough_when_set(self) -> None:
+        """Test service.root_path passes through when set."""
+        config = build_minimal_config()
+        config_with_root_path = Configuration.model_construct(
+            **{
+                **config.__dict__,
+                "service": ServiceConfiguration.model_construct(
+                    **{
+                        **config.service.__dict__,
+                        "root_path": "/api/v1",
+                    }
+                ),
+            }
+        )
+        snapshot = build_lightspeed_stack_snapshot(config_with_root_path)
+        assert snapshot["service"]["root_path"] == "/api/v1"
+
+    def test_service_root_path_passthrough_empty_string(self) -> None:
+        """Test service.root_path passes through as empty string when not set."""
+        snapshot = build_lightspeed_stack_snapshot(build_minimal_config())
+        assert snapshot["service"]["root_path"] == ""
+
+    def test_service_fields_present_in_snapshot_structure(self) -> None:
+        """Test service.base_url and service.root_path keys are present in snapshot."""
+        snapshot = build_lightspeed_stack_snapshot(build_minimal_config())
+        assert "base_url" in snapshot["service"]
+        assert "root_path" in snapshot["service"]
