@@ -26,6 +26,7 @@ from utils.conversations import (
     _extract_text_from_content,
     _function_call_output_to_str,
     append_turn_items_to_conversation,
+    append_turn_to_conversation,
     build_conversation_turns_from_items,
     get_all_conversation_items,
 )
@@ -823,6 +824,37 @@ class TestAppendTurnItemsToConversation:  # pylint: disable=too-few-public-metho
         assert items[0]["content"] == "Hello"
         assert items[1]["type"] == "message" and items[1]["role"] == "assistant"
         assert items[1]["content"] == "I cannot help with that"
+
+
+class TestAppendTurnToConversation:  # pylint: disable=too-few-public-methods
+    """Tests for append_turn_to_conversation function."""
+
+    @pytest.mark.asyncio
+    async def test_appends_user_and_assistant_messages(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test that append_turn_to_conversation creates conversation items correctly."""
+        mock_client = mocker.Mock()
+        mock_client.conversations.items.create = mocker.AsyncMock(return_value=None)
+
+        await append_turn_to_conversation(
+            mock_client,
+            conversation_id="conv-123",
+            user_message="Hello",
+            assistant_message="I cannot help with that",
+        )
+
+        mock_client.conversations.items.create.assert_called_once_with(
+            "conv-123",
+            items=[
+                {"type": "message", "role": "user", "content": "Hello"},
+                {
+                    "type": "message",
+                    "role": "assistant",
+                    "content": "I cannot help with that",
+                },
+            ],
+        )
 
 
 class TestGetAllConversationItems:
