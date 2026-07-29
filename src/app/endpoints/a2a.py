@@ -60,7 +60,7 @@ from constants import MEDIA_TYPE_EVENT_STREAM
 from log import get_logger
 from models.api.requests import QueryRequest
 from models.config import Action
-from utils.agents.query import map_agent_inference_error
+from utils.agents.error_handler import map_agent_inference_error
 from utils.conversation_compaction import apply_compaction_blocking
 from utils.mcp_headers import McpHeaders, mcp_headers_dependency
 from utils.pydantic_ai_helpers import build_agent
