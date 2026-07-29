@@ -553,3 +553,41 @@ async def get_all_conversation_items(
     except APIStatusError as e:
         error_response = InternalServerErrorResponse.generic()
         raise HTTPException(**error_response.model_dump()) from e
+
+
+async def append_turn_to_conversation(
+    client: AsyncOgxClient,
+    conversation_id: str,
+    user_message: str,
+    assistant_message: str,
+) -> None:
+    """
+    Append a user/assistant turn to a conversation.
+
+    Used to record a conversation turn when a shield blocks the request,
+    storing both the user's original message and the violation response.
+
+    Parameters:
+    ----------
+        client: The Llama Stack client.
+        conversation_id: The Llama Stack conversation ID.
+        user_message: The user's input message.
+        assistant_message: The shield violation response message.
+    """
+    try:
+        await client.conversations.items.create(
+            conversation_id,
+            items=[
+                {"type": "message", "role": "user", "content": user_message},
+                {"type": "message", "role": "assistant", "content": assistant_message},
+            ],
+        )
+    except APIConnectionError as e:
+        error_response = ServiceUnavailableResponse(
+            backend_name="OGX",
+            cause=str(e),
+        )
+        raise HTTPException(**error_response.model_dump()) from e
+    except APIStatusError as e:
+        error_response = InternalServerErrorResponse.generic()
+        raise HTTPException(**error_response.model_dump()) from e

@@ -12,7 +12,6 @@ from models.config import (
     ShieldConfiguration,
 )
 from utils.shields import (
-    append_turn_to_conversation,
     get_shields_for_request,
     run_shield_moderation_v2,
     validate_shield_ids_override,
@@ -26,37 +25,6 @@ def _shield_config(name: str) -> QuestionValidityShieldConfiguration:
         provider_id="question_validity",
         config=QuestionValidityConfig(model_id="test-model"),
     )
-
-
-class TestAppendTurnToConversation:  # pylint: disable=too-few-public-methods
-    """Tests for append_turn_to_conversation function."""
-
-    @pytest.mark.asyncio
-    async def test_appends_user_and_assistant_messages(
-        self, mocker: MockerFixture
-    ) -> None:
-        """Test that append_turn_to_conversation creates conversation items correctly."""
-        mock_client = mocker.Mock()
-        mock_client.conversations.items.create = mocker.AsyncMock(return_value=None)
-
-        await append_turn_to_conversation(
-            mock_client,
-            conversation_id="conv-123",
-            user_message="Hello",
-            assistant_message="I cannot help with that",
-        )
-
-        mock_client.conversations.items.create.assert_called_once_with(
-            "conv-123",
-            items=[
-                {"type": "message", "role": "user", "content": "Hello"},
-                {
-                    "type": "message",
-                    "role": "assistant",
-                    "content": "I cannot help with that",
-                },
-            ],
-        )
 
 
 class TestValidateShieldIdsOverride:

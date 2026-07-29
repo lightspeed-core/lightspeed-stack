@@ -41,7 +41,7 @@ from models.config import (
 )
 from pydantic_ai_lightspeed.capabilities.base import AbstractSafetyCapability
 from pydantic_ai_lightspeed.llamastack import OgxResponsesModel
-from utils.shields import append_turn_to_conversation
+from utils.conversations import append_turn_to_conversation
 
 logger = get_logger(__name__)
 
