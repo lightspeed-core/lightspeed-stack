@@ -1,18 +1,16 @@
-"""Utility helpers for shield override validation and conversation persistence."""
+"""Utility helpers for shield override validation and moderation."""
 
 from typing import Optional
 
 from fastapi import HTTPException
-from ogx_client import APIConnectionError, APIStatusError, AsyncOgxClient
+from ogx_client import AsyncOgxClient
 from pydantic_ai.exceptions import AgentRunError
 
 from configuration import AppConfig
 from log import get_logger
 from models.api.requests import QueryRequest
 from models.api.responses.error import (
-    InternalServerErrorResponse,
     NotFoundResponse,
-    ServiceUnavailableResponse,
     UnprocessableEntityResponse,
 )
 from models.common.moderation import (
@@ -155,44 +153,6 @@ async def run_shield_moderation(
     """
     # Currently stubbed to always pass until LCS-owned input shields are wired.
     return ShieldModerationPassed()
-
-
-async def append_turn_to_conversation(
-    client: AsyncOgxClient,
-    conversation_id: str,
-    user_message: str,
-    assistant_message: str,
-) -> None:
-    """
-    Append a user/assistant turn to a conversation after shield violation.
-
-    Used to record the conversation turn when a shield blocks the request,
-    storing both the user's original message and the violation response.
-
-    Parameters:
-    ----------
-        client: The Llama Stack client.
-        conversation_id: The Llama Stack conversation ID.
-        user_message: The user's input message.
-        assistant_message: The shield violation response message.
-    """
-    try:
-        await client.conversations.items.create(
-            conversation_id,
-            items=[
-                {"type": "message", "role": "user", "content": user_message},
-                {"type": "message", "role": "assistant", "content": assistant_message},
-            ],
-        )
-    except APIConnectionError as e:
-        error_response = ServiceUnavailableResponse(
-            backend_name="OGX",
-            cause=str(e),
-        )
-        raise HTTPException(**error_response.model_dump()) from e
-    except APIStatusError as e:
-        error_response = InternalServerErrorResponse.generic()
-        raise HTTPException(**error_response.model_dump()) from e
 
 
 def get_shields_for_request(
