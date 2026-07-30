@@ -32,19 +32,30 @@ Fields: `summary,status,assignee,priority,labels`. Limit: 50. Paginate if needed
 
 ## Step 4: Cross-reference and classify
 
-Cross-reference each Dependabot alert to its LCORE ticket(s) and classify as:
-- **Covered**: open/in-progress ticket exists
+Group all Dependabot alerts by **package name**. For each package, cross-reference against LCORE tickets and classify the package as:
+- **Covered**: open/in-progress ticket exists that addresses upgrading this package, and the ticket's remediation version covers all current CVEs
+- **Stale**: open/in-progress ticket exists, but Dependabot now reports additional CVEs or a higher fix version not reflected in the ticket (e.g., ticket says "upgrade to >= 1.2" but Dependabot now requires >= 1.5)
 - **Closed**: ticket done
-- **Missing**: no ticket
+- **Missing**: no ticket covers this package
 
 Present:
-1. A coverage table: Vulnerability | Sev. | Dependabot # | LCORE Ticket(s) | Status | Assignee
-2. A **gaps table** listing only the missing vulnerabilities with their GitHub alert title (from `security_advisory.summary`), severity, CVE, and fix version
-3. Key findings: coverage ratio, unassigned high/critical items, duplicate tickets that could be consolidated
+1. A coverage table: Package | Highest Sev. | CVE(s) | Dependabot #(s) | LCORE Ticket(s) | Status | Assignee
+2. A **stale table** listing packages with existing tickets that need updating: Package | LCORE Ticket | Current Fix Version in Ticket | Required Fix Version | New CVE(s) to Add
+3. A **gaps table** listing only the missing **packages** (not individual CVEs) with their highest severity, all associated CVEs, and the fix version needed to resolve all of them
+4. Key findings: coverage ratio, unassigned high/critical items, stale tickets needing updates, duplicate tickets that could be consolidated
 
 ## Step 5: Verify gaps
 
 For each gap, cross-reference in JIRA (full-text search by CVE ID) and GitHub (confirm alert is still open) to verify it is a real missing issue. Drop false positives (e.g., already-closed tickets, stale alerts).
+
+## Step 5b: Update stale tickets
+
+For each **stale** package (existing ticket that doesn't cover all current CVEs), propose an update:
+- Add any missing CVE IDs to the ticket's labels
+- Update the description to include the new CVE(s) — append new CVE sections and update the remediation line to the highest fix version
+- Update the ticket summary to reflect the new CVE count (e.g., "Upgrade <package> to address <N> CVE(s)")
+
+Present the proposed updates in a table: LCORE Ticket | Package | Changes (new labels, updated description, updated summary). Ask the user to confirm before applying updates via `jira_update_issue`.
 
 ## Step 6: Ask user which gaps to file
 
@@ -54,25 +65,25 @@ Ask the user:
 - The target fix version (look up available versions from `jira_get_project_versions` for LCORE)
 - The component to assign (look up available components from `jira_get_project_components` for LCORE)
 
-## Step 7: Fetch full advisory details and draft tickets
+## Step 7: Fetch full advisory details and draft tickets (one per package)
 
-For each vulnerability the user wants to file, fetch the full Dependabot advisory description:
+For each **package** the user wants to file, fetch the full Dependabot advisory details for every alert on that package:
 
 ```
 gh api "repos/$repo/dependabot/alerts/$alert_number" --jq '{summary: .security_advisory.summary, description: .security_advisory.description, cve: (.security_advisory.cve_id // "N/A"), remediation: (.security_vulnerability.first_patched_version.identifier // "No fix available"), vulnerable_range: .security_vulnerability.vulnerable_version_range}'
 ```
 
-Structure each ticket as:
+Create **one ticket per package**, consolidating all its CVEs. Structure each ticket as:
 
 | Field | Value |
 |-------|-------|
 | **Project** | LCORE |
 | **Type** | Vulnerability |
-| **Title** | The original GitHub advisory summary (from `security_advisory.summary`) |
+| **Title** | `Upgrade <package> to address <N> CVE(s)` (e.g. "Upgrade cryptography to address 3 CVE(s)") |
 | **Component** | As chosen by user |
 | **Fix Version** | As chosen by user |
-| **Labels** | The CVE ID (if available), Security |
-| **Description** | The full `security_advisory.description` from Dependabot, followed by `**Remediation:** Upgrade <package> to >= <fix_version>` (or "No upstream fix available yet" if no fix exists, including the vulnerable range). |
+| **Labels** | All CVE IDs for this package (if available), Security |
+| **Description** | For each CVE in the package, include: a heading with the CVE ID and advisory summary, the full `security_advisory.description`, and the vulnerable version range. End the description with `**Remediation:** Upgrade <package> to >= <highest_fix_version>` (use the highest fix version across all CVEs for the package, or "No upstream fix available yet" if none exists). |
 
 Present all drafted tickets in a table to the user for review before creating them.
 
@@ -82,13 +93,13 @@ Search for the parent epic: `project = LCORE AND issuetype = Epic AND summary ~ 
 
 ## Step 9: Create tickets after user confirmation
 
-Only after the user explicitly confirms the drafts, create the tickets using `jira_create_issue` with:
+Only after the user explicitly confirms the drafts, create one ticket per package using `jira_create_issue` with:
 - `project_key`: LCORE
 - `issue_type`: Vulnerability
-- `summary`: the GitHub advisory title
+- `summary`: `Upgrade <package> to address <N> CVE(s)`
 - `description`: as structured above
 - `components`: user's chosen component
-- `additional_fields`: `{"fixVersions": [{"id": "<version_id>"}], "labels": ["<CVE-ID>", "Security"], "parent": "<EPIC_KEY>"}`
+- `additional_fields`: `{"fixVersions": [{"id": "<version_id>"}], "labels": ["<CVE-ID-1>", "<CVE-ID-2>", ..., "Security"], "parent": "<EPIC_KEY>"}`
 
 Omit `parent` only if the user chose to skip it.
 
