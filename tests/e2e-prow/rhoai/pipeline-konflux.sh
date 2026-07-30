@@ -189,13 +189,14 @@ RAG_DB_PATH="$REPO_ROOT/tests/e2e/rag/kv_store.db"
 if [ -f "$RAG_DB_PATH" ]; then
     # Extract vector store ID from kv_store.db using Python (sqlite3 CLI may not be available)
     log "Extracting vector store ID from kv_store.db..."
-    # Key format is: vector_stores:v3::vs_xxx or openai_vector_stores:v3::vs_xxx
+    # OGX 1.0 FAISS keys use persistence.namespace prefix, e.g.:
+    #   vector_io::faiss:vector_stores:v3::vs_xxx
     export FAISS_VECTOR_STORE_ID=$(python3 -c "
 import sqlite3
 import re
 conn = sqlite3.connect('$RAG_DB_PATH')
 cursor = conn.cursor()
-cursor.execute(\"SELECT key FROM kvstore WHERE key LIKE 'vector_stores:v%::%' LIMIT 1\")
+cursor.execute(\"SELECT key FROM kvstore WHERE key LIKE 'vector_io::faiss:vector_stores:v%::%' LIMIT 1\")
 row = cursor.fetchone()
 if row:
     # Extract the vs_xxx ID from the key
