@@ -710,18 +710,6 @@ async def test_query_v2_endpoint_uses_tools_when_available(  # pylint: disable=u
     test_config.rag.tool = ["vs-test-123"]
     _ = patch_db_session
 
-<<<<<<< HEAD
-=======
-    # Mock vector stores to be available (simulating RAG tools)
-    mock_vector_store = mocker.MagicMock()
-    mock_vector_store.id = "vs-test-123"
-
-    mock_list_result = mocker.MagicMock()
-    mock_list_result.data = [mock_vector_store]
-
-    mock_ogx_client.vector_stores.list.return_value = mock_list_result
-
->>>>>>> 4240ab79 (Rename llama stack to OGX)
     query_request = QueryRequest(query="What is Ansible?", no_tools=False)
 
     response = await query_endpoint_handler(

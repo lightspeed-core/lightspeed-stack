@@ -9,9 +9,9 @@ from typing import Any
 import psycopg2
 import pytest
 from fastapi import HTTPException
-from pydantic_ai.messages import ImageUrl
 from ogx_client.types import ListModelsResponse, ModelListResponse
 from ogx_client.types.model import Model
+from pydantic_ai.messages import ImageUrl
 from pytest_mock import MockerFixture
 from sqlalchemy.exc import SQLAlchemyError
 

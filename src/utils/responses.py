@@ -81,7 +81,6 @@ from ogx_api.openai_responses import (
 from ogx_client import APIConnectionError, APIStatusError, AsyncOgxClient
 
 import constants
-from client import AsyncOgxClientHolder
 from configuration import configuration
 from constants import DEFAULT_RAG_TOOL
 from log import get_logger
@@ -230,7 +229,6 @@ async def maybe_get_topic_summary(
 
 
 async def prepare_tools(  # pylint: disable=too-many-arguments,too-many-positional-arguments
-    client: AsyncOgxClient,
     vector_store_ids: Optional[list[str]],
     no_tools: Optional[bool],
     token: str,
@@ -369,7 +367,6 @@ async def prepare_responses_params(  # pylint: disable=too-many-arguments,too-ma
 
     # Prepare tools for responses API
     tools = await prepare_tools(
-        client,
         query_request.vector_store_ids,
         query_request.no_tools,
         token,
@@ -1741,9 +1738,7 @@ async def _resolve_client_tools(
 
     # Optionally merge server-configured tools (RAG, MCP) with client tools
     if merge_server_tools:
-        client = AsyncOgxClientHolder().get_client()
         server_tools = await prepare_tools(
-            client=client,
             vector_store_ids=vector_store_ids,
             no_tools=False,
             token=token,
@@ -1771,9 +1766,7 @@ async def _resolve_server_tools(
     Returns:
         List of server-configured tools, or None if none are configured.
     """
-    client = AsyncOgxClientHolder().get_client()
     return await prepare_tools(
-        client=client,
         vector_store_ids=None,  # allow all vector stores configured
         no_tools=False,
         token=token,
@@ -1817,9 +1810,7 @@ async def resolve_tool_choice(
 
     if tools is None:
         # Register all tools configured in LCORE configuration
-        client = AsyncOgxClientHolder().get_client()
         prepared_tools = await prepare_tools(
-            client=client,
             vector_store_ids=None,  # allow all vector stores configured
             no_tools=False,
             token=token,

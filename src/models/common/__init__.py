@@ -35,6 +35,7 @@ from models.common.turn_summary import (
 __all__ = [
     "Attachment",
     "CatalogModel",
+    "CatalogShield",
     "ConversationData",
     "ConversationDetails",
     "ConversationTurn",
@@ -48,7 +49,6 @@ __all__ = [
     "RAGChunk",
     "RAGContext",
     "ReferencedDocument",
-    "CatalogShield",
     "ShieldModerationBlocked",
     "ShieldModerationPassed",
     "ShieldModerationResult",

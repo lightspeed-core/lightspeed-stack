@@ -66,7 +66,7 @@ def map_agent_inference_error(
             return InternalServerErrorResponse.generic()
 
 
-def map_pydantic_agent_run_error(
+def map_pydantic_agent_run_error(  # pylint: disable=too-many-return-statements
     exc: AgentRunError, model_id: str
 ) -> AbstractErrorResponse:
     """Map pydantic-ai ``AgentRunError`` subclasses to LCS error responses.

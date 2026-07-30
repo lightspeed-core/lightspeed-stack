@@ -1038,7 +1038,6 @@ class TestResolveToolChoice:
         self, mocker: MockerFixture, tools_arg: Optional[list[InputTool]]
     ) -> None:
         """ToolChoiceMode.none always yields (None, None)."""
-        mocker.patch("utils.responses.AsyncOgxClientHolder.get_client")
         mocker.patch("utils.responses.prepare_tools", new_callable=mocker.AsyncMock)
         out = await resolve_tool_choice(
             tools_arg,
@@ -1122,7 +1121,6 @@ class TestResolveToolChoice:
             new_callable=mocker.AsyncMock,
             return_value=None,
         )
-        mocker.patch("utils.responses.AsyncOgxClientHolder.get_client")
         tool_choice_obj = ToolChoiceFileSearch()
         prepared, choice = await resolve_tool_choice(
             None,
@@ -1253,7 +1251,6 @@ class TestResolveToolChoice:
             new_callable=mocker.AsyncMock,
             return_value=[fs],
         )
-        mocker.patch("utils.responses.AsyncOgxClientHolder.get_client")
         prepared, choice = await resolve_tool_choice(
             None,
             mode_choice,
@@ -1272,7 +1269,6 @@ class TestResolveToolChoice:
             new_callable=mocker.AsyncMock,
             return_value=None,
         )
-        mocker.patch("utils.responses.AsyncOgxClientHolder.get_client")
         prepared, choice = await resolve_tool_choice(
             None,
             ToolChoiceMode.auto,
@@ -1293,7 +1289,6 @@ class TestResolveToolChoice:
             new_callable=mocker.AsyncMock,
             return_value=[fs, mcp],
         )
-        mocker.patch("utils.responses.AsyncOgxClientHolder.get_client")
         allowed = OpenAIResponseInputToolChoiceAllowedTools(
             mode="auto",
             tools=[{"type": "mcp", "server_label": "s1"}],
@@ -1319,7 +1314,6 @@ class TestResolveToolChoice:
             new_callable=mocker.AsyncMock,
             return_value=[mcp],
         )
-        mocker.patch("utils.responses.AsyncOgxClientHolder.get_client")
         allowed = OpenAIResponseInputToolChoiceAllowedTools(
             mode="auto",
             tools=[{"type": "file_search"}],
@@ -1339,7 +1333,6 @@ class TestResolveToolChoice:
             new_callable=mocker.AsyncMock,
             return_value=[mcp],
         )
-        mocker.patch("utils.responses.AsyncOgxClientHolder.get_client")
         allowed = OpenAIResponseInputToolChoiceAllowedTools(
             mode="required",
             tools=[{"type": "mcp"}],
@@ -3343,13 +3336,6 @@ class TestResolveToolChoiceMerge:
         self, mocker: MockerFixture
     ) -> None:
         """Test client tools used as-is without merge header."""
-        mock_client = mocker.AsyncMock()
-        mock_holder = mocker.Mock()
-        mock_holder.get_client.return_value = mock_client
-        mocker.patch(
-            "utils.responses.AsyncOgxClientHolder",
-            return_value=mock_holder,
-        )
         mock_config = mocker.Mock()
         mock_config.configuration.byok_rag = []
         mock_config.mcp_servers = []
@@ -3368,13 +3354,6 @@ class TestResolveToolChoiceMerge:
     @pytest.mark.asyncio
     async def test_client_tools_with_merge_header(self, mocker: MockerFixture) -> None:
         """Test client tools merged with server tools when header is set."""
-        mock_client = mocker.AsyncMock()
-        mock_holder = mocker.Mock()
-        mock_holder.get_client.return_value = mock_client
-        mocker.patch(
-            "utils.responses.AsyncOgxClientHolder",
-            return_value=mock_holder,
-        )
         mock_config = mocker.Mock()
         mock_config.configuration.byok_rag = []
         mock_config.mcp_servers = []
@@ -3405,13 +3384,6 @@ class TestResolveToolChoiceMerge:
         self, mocker: MockerFixture
     ) -> None:
         """Test 409 when merge header is set and tools conflict."""
-        mock_client = mocker.AsyncMock()
-        mock_holder = mocker.Mock()
-        mock_holder.get_client.return_value = mock_client
-        mocker.patch(
-            "utils.responses.AsyncOgxClientHolder",
-            return_value=mock_holder,
-        )
         mock_config = mocker.Mock()
         mock_config.configuration.byok_rag = []
         mock_config.mcp_servers = []
@@ -3439,13 +3411,6 @@ class TestResolveToolChoiceMerge:
     @pytest.mark.asyncio
     async def test_no_tools_uses_prepare_tools(self, mocker: MockerFixture) -> None:
         """Test that no client tools falls through to prepare_tools."""
-        mock_client = mocker.AsyncMock()
-        mock_holder = mocker.Mock()
-        mock_holder.get_client.return_value = mock_client
-        mocker.patch(
-            "utils.responses.AsyncOgxClientHolder",
-            return_value=mock_holder,
-        )
         server_tool = InputToolFileSearch(type="file_search", vector_store_ids=["vs1"])
         mock_prepare = mocker.AsyncMock(return_value=[server_tool])
         mocker.patch("utils.responses.prepare_tools", new=mock_prepare)
@@ -3464,13 +3429,6 @@ class TestResolveToolChoiceMerge:
         self, mocker: MockerFixture
     ) -> None:
         """Test merge header with no server tools returns client tools unchanged."""
-        mock_client = mocker.AsyncMock()
-        mock_holder = mocker.Mock()
-        mock_holder.get_client.return_value = mock_client
-        mocker.patch(
-            "utils.responses.AsyncOgxClientHolder",
-            return_value=mock_holder,
-        )
         mock_config = mocker.Mock()
         mock_config.configuration.byok_rag = []
         mock_config.mcp_servers = []
