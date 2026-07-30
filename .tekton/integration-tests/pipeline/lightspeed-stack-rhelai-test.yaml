@@ -362,7 +362,6 @@ spec:
               - name: credentials
                 value: credentials
           - name: run-e2e-tests
-            onError: continue
             resources:
               requests:
                 cpu: '1'
