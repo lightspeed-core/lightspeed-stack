@@ -99,15 +99,6 @@ google-cloud-bigquery==3.42.2 \
 google-cloud-resource-manager==1.18.0 \
     --hash=sha256:69bab144acd75878ebe44b720903dc3d140cb7d3be3261eaa8bc81e48afaff33 \
     --hash=sha256:db689f800a14c66d041196a7fbb8bb8aae8dc87f28c2929e101a5ec766b15512
-llama-stack==0.6.0 \
-    --hash=sha256:b804830664dc91e54c7225a7a081cb1874c48fc18573569c19fac4a9397e8076 \
-    --hash=sha256:d92711791633f5505a4473ffba3f3e26acb700716fddab5aec419d99e614c802
-llama-stack-api==0.6.0 \
-    --hash=sha256:b99a03aba3659736b6b540c9e5e674b1daac2bf5eeb2a68795113d62b8250672 \
-    --hash=sha256:f0f3a1a6239a5d3b8c7ef02cefdf817c96c6461dcd8a82c1689ac67ec3107270
-llama-stack-client==0.6.0 \
-    --hash=sha256:3290aac36dcafbd1bc0baaf995522e2037f57056672b5a1516af112a4210f3ea \
-    --hash=sha256:7e514a6ffd92f237aceb062dadc4db44e24a3cd9c4ea35e25173d1e0739beb8e
 oci==2.182.1 \
     --hash=sha256:0c616a6bc3bc458464bc3456469d8da63a1a2d2277e9314b41a1c4e76d5df523 \
     --hash=sha256:9862de221f2abe9cf8319393eec58ea59c014fd9b61afaf0a3cca163e2a508b0

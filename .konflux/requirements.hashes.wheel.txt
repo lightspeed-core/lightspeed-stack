@@ -222,6 +222,12 @@ oauthlib==3.3.1 \
     --hash=sha256:c6fbab4f1a77a539f01175e2ea74b9552806bd0a849c70e744fda4ab801031c0
 openai==2.44.0 \
     --hash=sha256:87429e9a4d15b2918a03b040b6330fa03fc175bbf0bc6eaff7ae61c93cd42c53
+ogx==1.0.2+rhaiv.0 \
+    --hash=sha256:52c891af9dfb22f884d2dae150e5e94d04e492f452ec811bbc61ba84257de000
+ogx-api==1.0.2+rhaiv.0 \
+    --hash=sha256:265dff54f2367f4f366952e7a17abe06ceeef777a809259a5fba4715f4df4e90
+ogx-client==1.0.2 \
+    --hash=sha256:3ac249fb8365a4cb801815c95113fc6954a16193db5247d9b9f053398a80add9
 opentelemetry-api==1.42.1 \
     --hash=sha256:078a23234520ddf8654a48045b8f582c4a73c9bd5da2f0d23e05aba6e40a7c91
 opentelemetry-distro==0.63b1 \
@@ -374,6 +380,8 @@ sse-starlette==3.4.5 \
     --hash=sha256:c1f701f19f43c181be2d62c6164e90b7e8e4d5d67956fface4c794ac7a784962
 starlette==1.3.1 \
     --hash=sha256:19acd5bfb037734bb027cb753f36379bca5f72da9b79fa7fb3ef4639b1999f6b
+structlog==26.1.0 \
+    --hash=sha256:0054592356113edd68e13e9be1be5062566ddbf15a24bb3f400ab764a26b0b36
 sympy==1.14.0 \
     --hash=sha256:6cf6a1e379dbba75ca560e2cbd4394144f9e7e7335ee1be872c224f004eeb172
 tenacity==9.1.4 \
@@ -439,3 +447,6 @@ yarl==1.24.2 \
     --hash=sha256:c72aabbf544bceb3fa895376a188a90b7152efd47045b589fd358505ad8a85d4
 zipp==4.1.0 \
     --hash=sha256:f04782919048b93bac92fa1d20b2dd8a062b30ebee718e834cf663874884c645
+zstandard==0.25.0 \
+    --hash=sha256:3f12f3143d2dba84081a79932a30e8179df5c655134d1ae613cc760aab9e4ff2 \
+    --hash=sha256:c734ffe543d7aaf7ff9848fb06fcc4c251e2c1670eab845b8983b6ff24f993fd
