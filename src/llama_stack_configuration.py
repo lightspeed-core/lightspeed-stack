@@ -469,6 +469,80 @@ def construct_vector_io_providers_section(
     return output
 
 
+def _extract_byok_rag_list(config: dict[str, Any]) -> list[dict[str, Any]]:
+    """Extract BYOK RAG store list from either new or old config format.
+
+    Supports both the new ``rag.byok.stores`` path and the deprecated
+    top-level ``byok_rag`` key.
+
+    Parameters:
+        config: Raw lightspeed-stack.yaml dict.
+
+    Returns:
+        List of BYOK RAG store dicts (may be empty).
+    """
+    # New format: rag.byok.stores
+    rag = config.get("rag")
+    if isinstance(rag, dict):
+        byok = rag.get("byok")
+        if isinstance(byok, dict):
+            stores = byok.get("stores")
+            if isinstance(stores, list) and stores:
+                return stores
+    # Old format: top-level byok_rag
+    return config.get("byok_rag") or []
+
+
+def _extract_okp_dict(config: dict[str, Any]) -> dict[str, Any]:
+    """Extract OKP configuration from either new or old config format.
+
+    Supports both the new ``rag.okp`` path and the deprecated top-level
+    ``okp`` key.
+
+    Parameters:
+        config: Raw lightspeed-stack.yaml dict.
+
+    Returns:
+        OKP configuration dict (may be empty).
+    """
+    # New format: rag.okp
+    rag = config.get("rag")
+    if isinstance(rag, dict):
+        okp = rag.get("okp")
+        if isinstance(okp, dict) and okp:
+            return okp
+    # Old format: top-level okp
+    return config.get("okp") or {}
+
+
+def _extract_rag_source_ids(
+    rag_config: dict[str, Any],
+) -> tuple[list[str], list[str]]:
+    """Extract inline and tool RAG source IDs from either config format.
+
+    Supports both the new ``retrieval.inline.sources`` / ``retrieval.tool.sources``
+    path and the deprecated ``inline`` / ``tool`` keys.
+
+    Parameters:
+        rag_config: RAG configuration dict.
+
+    Returns:
+        Tuple of (inline_ids, tool_ids).
+    """
+    retrieval = rag_config.get("retrieval")
+    if isinstance(retrieval, dict):
+        inline_cfg = retrieval.get("inline") or {}
+        tool_cfg = retrieval.get("tool") or {}
+        inline_ids = (
+            inline_cfg.get("sources") or [] if isinstance(inline_cfg, dict) else []
+        )
+        tool_ids = tool_cfg.get("sources") or [] if isinstance(tool_cfg, dict) else []
+    else:
+        inline_ids = rag_config.get("inline") or []
+        tool_ids = rag_config.get("tool") or []
+    return inline_ids, tool_ids
+
+
 def enrich_byok_rag(ls_config: dict[str, Any], byok_rag: list[dict[str, Any]]) -> None:
     """Enrich Llama Stack config with BYOK RAG settings.
 
@@ -783,8 +857,7 @@ def enrich_solr(  # pylint: disable=too-many-locals
             - chunk_filter_query (str): Solr filter query for chunk retrieval
             - rhokp_url (str): OKP/Solr base URL (e.g. from ${env.RH_SERVER_OKP})
     """
-    inline_ids = rag_config.get("inline") or []
-    tool_ids = rag_config.get("tool") or []
+    inline_ids, tool_ids = _extract_rag_source_ids(rag_config)
     okp_enabled = constants.OKP_RAG_ID in inline_ids or constants.OKP_RAG_ID in tool_ids
 
     if not okp_enabled:
@@ -1157,9 +1230,12 @@ def synthesize_configuration(
     # 4. Existing enrichment — same calls as legacy generate_configuration so
     #    unified output matches legacy output for equivalent inputs (R7).
     enrich_azure_entra_id_inference(ls_config, lcs_config.get("azure_entra_id"))
-    enrich_byok_rag(ls_config, lcs_config.get("byok_rag", []))
+    byok_rag_list = _extract_byok_rag_list(lcs_config)
+    enrich_byok_rag(ls_config, byok_rag_list)
     enrich_vector_store(ls_config, lcs_config.get("vector_store"))
-    enrich_solr(ls_config, lcs_config.get("rag", {}), lcs_config.get("okp", {}))
+    rag_dict = lcs_config.get("rag", {})
+    okp_dict = _extract_okp_dict(lcs_config)
+    enrich_solr(ls_config, rag_dict, okp_dict)
 
     # 5. High-level inference providers (Decision S5 — a root-level section).
     inference = lcs_config.get("inference") or {}
@@ -1328,10 +1404,13 @@ def generate_configuration(
     enrich_azure_entra_id_inference(ls_config, config.get("azure_entra_id"))
 
     # Enrichment: BYOK RAG
-    enrich_byok_rag(ls_config, config.get("byok_rag", []))
+    byok_rag_list = _extract_byok_rag_list(config)
+    enrich_byok_rag(ls_config, byok_rag_list)
 
     # Enrichment: Solr - enabled when "okp" appears in either inline or tool list
-    enrich_solr(ls_config, config.get("rag", {}), config.get("okp", {}))
+    rag_dict = config.get("rag", {})
+    okp_dict = _extract_okp_dict(config)
+    enrich_solr(ls_config, rag_dict, okp_dict)
 
     dedupe_providers_vector_io(ls_config)
 

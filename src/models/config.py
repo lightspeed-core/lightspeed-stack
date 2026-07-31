@@ -3,6 +3,7 @@
 # pylint: disable=too-many-lines
 
 import re
+import warnings
 from enum import Enum
 from functools import cached_property
 from pathlib import Path
@@ -2026,7 +2027,17 @@ class A2AStateConfiguration(ConfigurationBase):
 
 
 class ByokRag(ConfigurationBase):
-    """BYOK (Bring Your Own Knowledge) RAG configuration."""
+    """BYOK (Bring Your Own Knowledge) RAG configuration.
+
+    Attributes:
+        rag_id: Unique RAG identifier.
+        backend: Short backend name (e.g. ``"faiss"``, ``"pgvector"``).
+            Preferred over the deprecated ``rag_type`` field.
+        rag_type: Deprecated — use ``backend`` instead. Full Llama Stack
+            provider type string (e.g. ``"inline::faiss"``).
+    """
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
     rag_id: str = Field(
         ...,
@@ -2035,11 +2046,20 @@ class ByokRag(ConfigurationBase):
         description="Unique RAG ID",
     )
 
-    rag_type: str = Field(
-        constants.DEFAULT_RAG_TYPE,
+    backend: Optional[str] = Field(
+        default=None,
         min_length=1,
-        title="RAG type",
-        description="Type of RAG database (e.g. 'inline::faiss', 'remote::pgvector').",
+        title="Backend",
+        description="Short backend name (e.g. 'faiss', 'pgvector'). "
+        "Preferred over the deprecated 'rag_type' field.",
+    )
+
+    rag_type: Optional[str] = Field(
+        default=None,
+        min_length=1,
+        title="RAG type (deprecated)",
+        description="Deprecated — use 'backend' instead. "
+        "Type of RAG database (e.g. 'inline::faiss', 'remote::pgvector').",
     )
 
     embedding_model: str = Field(
@@ -2113,6 +2133,53 @@ class ByokRag(ConfigurationBase):
     )
 
     @model_validator(mode="after")
+    def reconcile_backend_and_rag_type(self) -> Self:
+        """Reconcile ``backend`` and ``rag_type``, emitting a deprecation warning.
+
+        When only ``rag_type`` is provided, ``backend`` is derived by stripping
+        the ``inline::`` or ``remote::`` prefix and a deprecation warning is
+        emitted.  When only ``backend`` is provided, ``rag_type`` is synthesized
+        using the canonical prefix mapping.  When neither is provided, the
+        default backend ``"faiss"`` is used.  When both are provided, they must
+        be consistent.
+
+        Returns:
+            Self: The validated model instance.
+
+        Raises:
+            ValueError: If both ``backend`` and ``rag_type`` are provided and
+                they are inconsistent.
+        """
+        if self.rag_type is not None and self.backend is None:
+            warnings.warn(
+                "ByokRag field 'rag_type' is deprecated; use 'backend' instead "
+                f"(e.g. backend='{_strip_rag_type_prefix(self.rag_type)}')",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            self.backend = _strip_rag_type_prefix(self.rag_type)
+        elif self.backend is not None and self.rag_type is None:
+            self.rag_type = _synthesize_rag_type(self.backend)
+        elif self.backend is not None and self.rag_type is not None:
+            expected_backend = _strip_rag_type_prefix(self.rag_type)
+            if self.backend != expected_backend:
+                raise ValueError(
+                    f"'backend' ({self.backend}) and 'rag_type' "
+                    f"({self.rag_type}) are inconsistent; expected "
+                    f"backend='{expected_backend}'"
+                )
+            warnings.warn(
+                "ByokRag field 'rag_type' is deprecated; use 'backend' instead",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+        else:
+            # Neither provided — use default
+            self.backend = "faiss"
+            self.rag_type = constants.DEFAULT_RAG_TYPE
+        return self
+
+    @model_validator(mode="after")
     def validate_rag_type_fields(self) -> Self:
         """Validate and populate fields based on rag_type."""
         if self.rag_type == "inline::faiss":
@@ -2130,6 +2197,39 @@ class ByokRag(ConfigurationBase):
                 if getattr(self, field_name) is None:
                     object.__setattr__(self, field_name, default_value)
         return self
+
+
+def _strip_rag_type_prefix(rag_type: str) -> str:
+    """Strip the ``inline::`` or ``remote::`` prefix from a rag_type string.
+
+    Parameters:
+        rag_type: Full Llama Stack provider type (e.g. ``"inline::faiss"``).
+
+    Returns:
+        The short backend name (e.g. ``"faiss"``).
+    """
+    if "::" in rag_type:
+        return rag_type.split("::", 1)[1]
+    return rag_type
+
+
+_BACKEND_TO_PREFIX: dict[str, str] = {
+    "faiss": "inline",
+    "pgvector": "remote",
+}
+
+
+def _synthesize_rag_type(backend: str) -> str:
+    """Synthesize a full ``rag_type`` from a short backend name.
+
+    Parameters:
+        backend: Short backend name (e.g. ``"faiss"``).
+
+    Returns:
+        Full Llama Stack provider type (e.g. ``"inline::faiss"``).
+    """
+    prefix = _BACKEND_TO_PREFIX.get(backend, "inline")
+    return f"{prefix}::{backend}"
 
 
 class FaissVectorStoreProviderConfig(ConfigurationBase):
@@ -2497,31 +2597,103 @@ class QuotaHandlersConfiguration(ConfigurationBase):
     )
 
 
-class RagConfiguration(ConfigurationBase):
-    """RAG strategy configuration.
+class RetrievalInlineConfiguration(ConfigurationBase):
+    """Inline retrieval strategy configuration.
 
-    Controls which RAG sources are used for inline and tool-based retrieval.
+    Controls which RAG sources are injected as context before the LLM call.
 
-    Each strategy lists RAG IDs to include. The special ID ``"okp"`` defined in constants,
-    activates the OKP provider; all other IDs refer to entries in ``byok_rag``.
-
-    Both ``inline`` and ``tool`` default to ``[]`` (disabled).
-    Each must be explicitly configured to activate its respective RAG strategy.
+    Attributes:
+        sources: RAG IDs whose chunks are injected inline.
+        max_chunks: Hard cap on total inline RAG chunks delivered to the LLM.
     """
 
-    inline: list[str] = Field(
+    sources: list[str] = Field(
         default_factory=list,
-        title="Inline RAG IDs",
+        title="Inline RAG source IDs",
         description="RAG IDs whose sources are injected as context before the LLM call. "
-        f"Use '{constants.OKP_RAG_ID}' to enable OKP inline RAG. Empty by default (no inline RAG).",
+        f"Use '{constants.OKP_RAG_ID}' to enable OKP inline RAG. "
+        "Empty by default (no inline RAG).",
     )
 
-    tool: list[str] = Field(
+    max_chunks: PositiveInt = Field(
+        default=constants.INLINE_RAG_MAX_CHUNKS,
+        title="Inline max chunks",
+        description="Hard cap on total RAG chunks delivered to the LLM across all "
+        f"inline sources. Default: {constants.INLINE_RAG_MAX_CHUNKS}.",
+    )
+
+
+class RetrievalToolConfiguration(ConfigurationBase):
+    """Tool-based retrieval strategy configuration.
+
+    Controls which RAG sources are made available to the LLM as a
+    ``file_search`` tool.
+
+    Attributes:
+        sources: RAG IDs made available as tool RAG.
+        max_chunks: Maximum number of chunks returned by the tool.
+    """
+
+    sources: list[str] = Field(
         default_factory=list,
-        title="Tool RAG IDs",
+        title="Tool RAG source IDs",
         description="RAG IDs made available to the LLM as a file_search tool. "
         f"Use '{constants.OKP_RAG_ID}' to include the OKP vector store. "
         "When omitted, tool RAG is disabled.",
+    )
+
+    max_chunks: PositiveInt = Field(
+        default=constants.TOOL_RAG_MAX_CHUNKS,
+        title="Tool max chunks",
+        description="Maximum number of chunks returned by the file_search tool. "
+        f"Default: {constants.TOOL_RAG_MAX_CHUNKS}.",
+    )
+
+
+class RetrievalConfiguration(ConfigurationBase):
+    """Retrieval strategy configuration.
+
+    Groups inline and tool-based retrieval settings.
+
+    Attributes:
+        inline: Inline retrieval strategy configuration.
+        tool: Tool-based retrieval strategy configuration.
+    """
+
+    inline: RetrievalInlineConfiguration = Field(
+        default_factory=RetrievalInlineConfiguration,
+        title="Inline retrieval",
+        description="Configuration for inline RAG (context injection before LLM call).",
+    )
+
+    tool: RetrievalToolConfiguration = Field(
+        default_factory=RetrievalToolConfiguration,
+        title="Tool retrieval",
+        description="Configuration for tool-based RAG (file_search tool).",
+    )
+
+
+class ByokConfiguration(ConfigurationBase):
+    """BYOK (Bring Your Own Knowledge) section under ``rag``.
+
+    Groups BYOK stores and the per-store fetch limit.
+
+    Attributes:
+        max_chunks: Per-store fetch limit for BYOK RAG queries.
+        stores: List of BYOK RAG store configurations.
+    """
+
+    max_chunks: PositiveInt = Field(
+        default=constants.BYOK_RAG_MAX_CHUNKS,
+        title="BYOK max chunks",
+        description="Per-store fetch limit for BYOK RAG queries. "
+        f"Default: {constants.BYOK_RAG_MAX_CHUNKS}.",
+    )
+
+    stores: list[ByokRag] = Field(
+        default_factory=list,
+        title="BYOK RAG stores",
+        description="List of BYOK RAG store configurations.",
     )
 
 
@@ -2529,7 +2701,14 @@ class OkpConfiguration(ConfigurationBase):
     """OKP (Offline Knowledge Portal) provider configuration.
 
     Controls provider-specific behaviour for the OKP vector store.
-    Only relevant when ``"okp"`` is listed in ``rag.inline`` or ``rag.tool``.
+    Only relevant when ``"okp"`` is listed in ``rag.retrieval.inline.sources``
+    or ``rag.retrieval.tool.sources``.
+
+    Attributes:
+        rhokp_url: Base URL for the OKP server.
+        offline: When True, use parent_id for OKP chunk source URLs.
+        chunk_filter_query: Additional filter query for OKP search requests.
+        max_chunks: Maximum number of chunks fetched from OKP.
     """
 
     rhokp_url: Optional[AnyHttpUrl] = Field(
@@ -2553,6 +2732,104 @@ class OkpConfiguration(ConfigurationBase):
         description="Additional OKP filter query applied to every OKP search request. "
         "Use Solr boolean syntax, e.g. 'product:ansible AND product:*openshift*'.",
     )
+
+    max_chunks: PositiveInt = Field(
+        default=constants.OKP_RAG_MAX_CHUNKS,
+        title="OKP max chunks",
+        description="Maximum number of chunks fetched from OKP. "
+        f"Default: {constants.OKP_RAG_MAX_CHUNKS}.",
+    )
+
+
+class RagConfiguration(ConfigurationBase):
+    """Unified RAG configuration.
+
+    Groups all RAG-related settings: BYOK stores, OKP provider, and
+    retrieval strategies (inline and tool-based).
+
+    Also supports the deprecated top-level ``inline`` and ``tool`` fields
+    for backward compatibility; these are migrated to
+    ``retrieval.inline.sources`` and ``retrieval.tool.sources`` with a
+    deprecation warning.
+
+    Attributes:
+        byok: BYOK store configuration and per-store fetch limit.
+        okp: OKP provider configuration.
+        retrieval: Retrieval strategy configuration (inline + tool).
+        inline: Deprecated — migrated to ``retrieval.inline.sources``.
+        tool: Deprecated — migrated to ``retrieval.tool.sources``.
+    """
+
+    byok: ByokConfiguration = Field(
+        default_factory=ByokConfiguration,
+        title="BYOK configuration",
+        description="BYOK RAG stores and per-store fetch limit.",
+    )
+
+    okp: OkpConfiguration = Field(
+        default_factory=OkpConfiguration,
+        title="OKP configuration",
+        description=f"OKP provider settings. Only used when '{constants.OKP_RAG_ID}' "
+        "is listed in retrieval.inline.sources or retrieval.tool.sources.",
+    )
+
+    retrieval: RetrievalConfiguration = Field(
+        default_factory=RetrievalConfiguration,
+        title="Retrieval configuration",
+        description="Retrieval strategy configuration (inline + tool).",
+    )
+
+    # --- Deprecated fields for backward compatibility ---
+    # exclude=True is intentional: deprecated fields are accepted during
+    # parsing for backward compatibility but must not appear in
+    # model_dump() / config-dump output so consumers only see the new
+    # canonical structure.
+    inline: Optional[list[str]] = Field(
+        default=None,
+        title="Inline RAG IDs (deprecated)",
+        description="Deprecated — use 'retrieval.inline.sources' instead.",
+        exclude=True,
+    )
+
+    # exclude=True is intentional: same rationale as ``inline`` above.
+    tool: Optional[list[str]] = Field(
+        default=None,
+        title="Tool RAG IDs (deprecated)",
+        description="Deprecated — use 'retrieval.tool.sources' instead.",
+        exclude=True,
+    )
+
+    @model_validator(mode="after")
+    def migrate_deprecated_fields(self) -> Self:
+        """Migrate deprecated ``inline`` and ``tool`` fields to ``retrieval``.
+
+        When the deprecated ``inline`` or ``tool`` fields are provided,
+        their values are copied into ``retrieval.inline.sources`` and
+        ``retrieval.tool.sources`` respectively, and a deprecation warning
+        is emitted.
+
+        Returns:
+            Self: The validated model instance.
+        """
+        if self.inline is not None:
+            warnings.warn(
+                "RagConfiguration field 'rag.inline' is deprecated; "
+                "use 'rag.retrieval.inline.sources' instead",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            self.retrieval.inline.sources = self.inline  # pylint: disable=no-member
+            self.inline = None
+        if self.tool is not None:
+            warnings.warn(
+                "RagConfiguration field 'rag.tool' is deprecated; "
+                "use 'rag.retrieval.tool.sources' instead",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            self.retrieval.tool.sources = self.tool  # pylint: disable=no-member
+            self.tool = None
+        return self
 
 
 class RerankerConfiguration(ConfigurationBase):
@@ -2883,11 +3160,11 @@ class Configuration(ConfigurationBase):
         description="Settings for human-in-the-loop approval of MCP tool invocations",
     )
 
-    byok_rag: list[ByokRag] = Field(
-        default_factory=list,
-        title="BYOK RAG configuration",
-        description="BYOK RAG configuration. This configuration can be used to "
-        "reconfigure Llama Stack through its run.yaml configuration file",
+    byok_rag: Optional[list[ByokRag]] = Field(
+        default=None,
+        title="BYOK RAG configuration (deprecated)",
+        description="Deprecated — use 'rag.byok.stores' instead. "
+        "BYOK RAG configuration for backward compatibility.",
     )
 
     vector_store: VectorStoreConfiguration = Field(
@@ -2943,14 +3220,16 @@ class Configuration(ConfigurationBase):
     rag: RagConfiguration = Field(
         default_factory=RagConfiguration,
         title="RAG configuration",
-        description="Configuration for all RAG strategies (inline and tool-based).",
+        description="Unified RAG configuration: BYOK stores, OKP provider, "
+        "and retrieval strategies (inline + tool).",
     )
 
-    okp: OkpConfiguration = Field(
-        default_factory=OkpConfiguration,
-        title="OKP configuration",
-        description=f"OKP provider settings. Only used when '{constants.OKP_RAG_ID}' is listed "
-        "in rag.inline or rag.tool.",
+    okp: Optional[OkpConfiguration] = Field(
+        default=None,
+        title="OKP configuration (deprecated)",
+        description="Deprecated — use 'rag.okp' instead. "
+        f"OKP provider settings. Only used when '{constants.OKP_RAG_ID}' is listed "
+        "in rag.retrieval.inline.sources or rag.retrieval.tool.sources.",
     )
 
     reranker: RerankerConfiguration = Field(
@@ -2971,6 +3250,48 @@ class Configuration(ConfigurationBase):
         description="Configuration for saved prompts feature limits including "
         "maximum prompts per user, display name length, and content length.",
     )
+
+    @model_validator(mode="after")
+    def migrate_deprecated_rag_fields(self) -> Self:
+        """Migrate deprecated top-level ``byok_rag`` and ``okp`` into ``rag``.
+
+        When the deprecated ``byok_rag`` list is provided at the top level,
+        its entries are moved into ``rag.byok.stores`` and a deprecation
+        warning is emitted.  Similarly, a top-level ``okp`` section is merged
+        into ``rag.okp``.
+
+        Returns:
+            Self: The validated configuration instance.
+        """
+        if self.byok_rag is not None and len(self.byok_rag) > 0:
+            if self.rag.byok.stores:  # pylint: disable=no-member
+                raise ValueError(
+                    "Both deprecated top-level 'byok_rag' and 'rag.byok.stores' "
+                    "are populated. Remove the top-level 'byok_rag' and use only "
+                    "'rag.byok.stores'."
+                )
+            warnings.warn(
+                "Top-level 'byok_rag' is deprecated; use 'rag.byok.stores' instead",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            self.rag.byok.stores = list(self.byok_rag)  # pylint: disable=no-member
+
+        if self.okp is not None:
+            warnings.warn(
+                "Top-level 'okp' is deprecated; use 'rag.okp' instead",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            # Merge top-level okp into rag.okp only if rag.okp is at defaults.
+            # Using model_fields_set ensures this check stays correct if
+            # OkpConfiguration gains new fields in the future.
+            # pylint: disable=no-member
+            rag_okp = self.rag.okp
+            rag_okp_is_default = not rag_okp.model_fields_set
+            if rag_okp_is_default:
+                self.rag.okp = self.okp
+        return self
 
     @model_validator(mode="after")
     def validate_mcp_auth_headers(self) -> Self:
@@ -3078,7 +3399,7 @@ class Configuration(ConfigurationBase):
     def validate_reranker_auto_enable(self) -> Self:
         """Automatically enable reranker when both BYOK and OKP RAG are configured.
 
-        When users have both BYOK entries in byok_rag and OKP
+        When users have both BYOK entries in rag.byok.stores and OKP
         configured in the RAG strategies, automatically
         enable the reranker if it's not explicitly disabled. This improves result
         quality when multiple knowledge sources are available.
@@ -3087,11 +3408,11 @@ class Configuration(ConfigurationBase):
             Self: The validated configuration instance with reranker potentially enabled.
         """
         # Check if BYOK RAG entries are configured
-        has_byok = len(self.byok_rag) > 0
+        has_byok = len(self.rag.byok.stores) > 0  # pylint: disable=no-member
 
         # Check if OKP is configured in either inline or tool RAG strategies
         # pylint: disable=no-member
-        has_okp = constants.OKP_RAG_ID in self.rag.inline
+        has_okp = constants.OKP_RAG_ID in self.rag.retrieval.inline.sources
 
         # If both BYOK and OKP are present and reranker is using default settings,
         # ensure it's enabled for optimal results
@@ -3105,7 +3426,7 @@ class Configuration(ConfigurationBase):
                 "Automatically enabling reranker: Both BYOK RAG (%d entries) or "
                 "other inline RAG and OKP are configured. Reranking improves result "
                 "quality when multiple knowledge sources are available.",
-                len(self.byok_rag),
+                len(self.rag.byok.stores),
             )
             self.reranker.enabled = True
 

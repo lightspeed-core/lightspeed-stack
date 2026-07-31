@@ -218,14 +218,19 @@ DEFAULT_CROSS_ENCODER_MODEL: Final[str] = "cross-encoder/ms-marco-MiniLM-L6-v2"
 USER_QUOTA_LIMITER: Final[str] = "user_limiter"
 CLUSTER_QUOTA_LIMITER: Final[str] = "cluster_limiter"
 
-# Hard cap on total RAG chunks delivered to the LLM across all sources
+# Hard cap on total RAG chunks delivered to the LLM across all sources.
+# Now user-configurable via rag.retrieval.inline.max_chunks; this constant
+# serves as the default value.
 INLINE_RAG_MAX_CHUNKS: Final[int] = 10
 
 # RAG as a tool constants
 DEFAULT_RAG_TOOL: Final[str] = "file_search"
+# Now user-configurable via rag.retrieval.tool.max_chunks; this constant
+# serves as the default value.
 TOOL_RAG_MAX_CHUNKS: Final[int] = 10  # retrieved from RAG as a tool
 
-# Inline RAG constants
+# Inline RAG constants — now user-configurable via rag.byok.max_chunks and
+# rag.okp.max_chunks respectively; these constants serve as default values.
 BYOK_RAG_MAX_CHUNKS: Final[int] = 10  # retrieved from BYOK RAG
 OKP_RAG_MAX_CHUNKS: Final[int] = 5  # retrieved from OKP RAG
 # Score multiplier applied to BYOK chunks after cross-encoder reranking (Solr chunks unchanged)

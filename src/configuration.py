@@ -18,6 +18,7 @@ from models.config import (
     AuthenticationConfiguration,
     AuthorizationConfiguration,
     AzureEntraIdConfiguration,
+    ByokRag,
     CompactionConfiguration,
     Configuration,
     ConversationHistoryConfiguration,
@@ -534,10 +535,10 @@ class AppConfig:  # pylint: disable=too-many-public-methods
 
     @property
     def okp(self) -> "OkpConfiguration":
-        """Return OKP configuration."""
+        """Return OKP configuration from the unified rag section."""
         if self._configuration is None:
             raise LogicError("logic error: configuration is not loaded")
-        return self._configuration.okp
+        return self._configuration.rag.okp
 
     @property
     def reranker(self) -> "RerankerConfiguration":
@@ -554,6 +555,22 @@ class AppConfig:  # pylint: disable=too-many-public-methods
         return self._configuration.skills
 
     @property
+    def byok_rag(self) -> list[ByokRag]:
+        """Return BYOK RAG stores from the unified rag configuration.
+
+        Backward-compatible property that returns ``rag.byok.stores``.
+
+        Returns:
+            list[ByokRag]: The list of BYOK RAG store configurations.
+
+        Raises:
+            LogicError: If the configuration has not been loaded.
+        """
+        if self._configuration is None:
+            raise LogicError("logic error: configuration is not loaded")
+        return self._configuration.rag.byok.stores
+
+    @property
     def rag_id_mapping(self) -> dict[str, str]:
         """Return mapping from vector_db_id to rag_id from BYOK and OKP RAG config.
 
@@ -567,12 +584,15 @@ class AppConfig:  # pylint: disable=too-many-public-methods
         if self._configuration is None:
             raise LogicError("logic error: configuration is not loaded")
         byok_mapping = {
-            brag.vector_db_id: brag.rag_id for brag in self._configuration.byok_rag
+            brag.vector_db_id: brag.rag_id
+            for brag in self._configuration.rag.byok.stores
         }
 
         rag = self._configuration.rag
         okp_id = constants.OKP_RAG_ID
-        okp_enabled = okp_id in (rag.inline or []) or okp_id in (rag.tool or [])
+        inline_sources = rag.retrieval.inline.sources
+        tool_sources = rag.retrieval.tool.sources
+        okp_enabled = okp_id in inline_sources or okp_id in tool_sources
         okp_mapping = (
             {constants.SOLR_DEFAULT_VECTOR_STORE_ID: okp_id} if okp_enabled else {}
         )
@@ -593,7 +613,7 @@ class AppConfig:  # pylint: disable=too-many-public-methods
             raise LogicError("logic error: configuration is not loaded")
         return {
             brag.vector_db_id: brag.score_multiplier
-            for brag in self._configuration.byok_rag
+            for brag in self._configuration.rag.byok.stores
         }
 
     @property
@@ -601,14 +621,15 @@ class AppConfig:  # pylint: disable=too-many-public-methods
         """Return whether OKP is included in the inline RAG list.
 
         Returns:
-            bool: True if 'okp' appears in rag.inline, False otherwise.
+            bool: True if 'okp' appears in rag.retrieval.inline.sources,
+            False otherwise.
 
         Raises:
             LogicError: If the configuration has not been loaded.
         """
         if self._configuration is None:
             raise LogicError("logic error: configuration is not loaded")
-        return constants.OKP_RAG_ID in self._configuration.rag.inline
+        return constants.OKP_RAG_ID in self._configuration.rag.retrieval.inline.sources
 
     def resolve_index_name(
         self, vector_store_id: str, rag_id_mapping: Optional[dict[str, str]] = None
