@@ -33,7 +33,14 @@ CONTAINER_RUNTIME ?= $(shell command -v podman 2>/dev/null || command -v docker 
 	docs/models/requests.svg \
 	docs/models/responses.svg \
 	docs/models/common.svg \
-	docs/models/database.svg
+	docs/models/database.svg \
+	docs/models/requests.json \
+	docs/models/conversation_summary.json \
+	docs/models/successful_responses.json \
+	docs/models/error_responses.json \
+	docs/models/common.json \
+	docs/models/agents.json \
+	docs/models/common_responses.json
 
 run-stack: ## Run lightspeed-stack directly, without building dependent service/s
 	@if [ "$${OTEL_SDK_DISABLED:-true}" = "false" ]; then \
