@@ -85,7 +85,7 @@ def mock_authorization_fixture(mocker: MockerFixture) -> None:
 def mock_shield_passed_fixture(mocker: MockerFixture) -> None:
     """Mock shield moderation to pass for all integration tests."""
     mocker.patch(
-        "app.endpoints.rlsapi_v1.run_shield_moderation",
+        "app.endpoints.rlsapi_v1.run_shield_moderation_v2",
         new=mocker.AsyncMock(return_value=ShieldModerationPassed()),
     )
 

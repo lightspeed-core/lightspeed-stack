@@ -25,6 +25,7 @@ from app.endpoints.rlsapi_v1 import (
     TemplateRenderError,
     _build_instructions,
     _call_llm,
+    _check_shield_moderation,
     _compile_prompt_template,
     _get_default_model_id,
     _resolve_quota_subject,
@@ -43,6 +44,13 @@ from models.api.requests.rlsapi import (
 from models.api.responses.error import ServiceUnavailableResponse
 from models.api.responses.successful.rlsapi import RlsapiV1InferResponse
 from models.common.moderation import ShieldModerationBlocked, ShieldModerationPassed
+from models.config import (
+    QuestionValidityConfig,
+    QuestionValidityShieldConfiguration,
+    RedactionConfig,
+    RedactionRule,
+    RedactionShieldConfiguration,
+)
 from tests.unit.utils.auth_helpers import mock_authorization_resolvers
 from utils.rh_identity import get_rh_identity_context
 from utils.suid import check_suid
@@ -70,6 +78,7 @@ def mock_custom_prompt_fixture(mocker: MockerFixture) -> Callable[[str], None]:
         mock_config.customization = mock_customization
         mock_config.rlsapi_v1 = mock_rlsapi_v1
         mock_config.quota_limiters = []
+        mock_config.shields = []
         mocker.patch("app.endpoints.rlsapi_v1.configuration", mock_config)
 
     return _set
@@ -151,7 +160,7 @@ def mock_shield_passed_fixture(mocker: MockerFixture) -> None:
     with a different return value.
     """
     mocker.patch(
-        "app.endpoints.rlsapi_v1.run_shield_moderation",
+        "app.endpoints.rlsapi_v1.run_shield_moderation_v2",
         new=mocker.AsyncMock(return_value=ShieldModerationPassed()),
     )
 
@@ -851,6 +860,7 @@ async def test_infer_include_metadata_respects_verbose_config(
     config_mock.customization = mock_configuration.customization
     config_mock.rlsapi_v1 = rlsapi_v1_mock
     config_mock.quota_limiters = []
+    config_mock.shields = []
     mocker.patch("app.endpoints.rlsapi_v1.configuration", config_mock)
 
     mock_response = mocker.Mock()
@@ -907,6 +917,7 @@ def _setup_config_mock(
     config_mock.customization = mock_configuration.customization
     config_mock.rlsapi_v1 = rlsapi_v1_mock
     config_mock.quota_limiters = []
+    config_mock.shields = []
     mocker.patch("app.endpoints.rlsapi_v1.configuration", config_mock)
 
 
@@ -1105,6 +1116,7 @@ def mock_quota_config_fixture(
         config_mock.customization = mock_configuration.customization
         config_mock.rlsapi_v1 = rlsapi_v1_mock
         config_mock.quota_limiters = []
+        config_mock.shields = []
         mocker.patch("app.endpoints.rlsapi_v1.configuration", config_mock)
 
     return _set
@@ -1255,7 +1267,7 @@ async def test_infer_quota_shield_blocked_does_not_consume_tokens(
         moderation_id="modr-test",
     )
     mocker.patch(
-        "app.endpoints.rlsapi_v1.run_shield_moderation",
+        "app.endpoints.rlsapi_v1.run_shield_moderation_v2",
         new=mocker.AsyncMock(return_value=blocked),
     )
 
@@ -1297,7 +1309,7 @@ async def test_infer_shield_blocked_returns_refusal(
     """Test that blocked shield moderation returns refusal text without calling LLM."""
     blocked = _create_blocked_moderation_result()
     mocker.patch(
-        "app.endpoints.rlsapi_v1.run_shield_moderation",
+        "app.endpoints.rlsapi_v1.run_shield_moderation_v2",
         new=mocker.AsyncMock(return_value=blocked),
     )
 
@@ -1336,7 +1348,7 @@ async def test_infer_shield_blocked_skips_llm_call(
     """Test that blocked shield moderation prevents any LLM call."""
     blocked = _create_blocked_moderation_result()
     mocker.patch(
-        "app.endpoints.rlsapi_v1.run_shield_moderation",
+        "app.endpoints.rlsapi_v1.run_shield_moderation_v2",
         new=mocker.AsyncMock(return_value=blocked),
     )
     mock_call_llm = mocker.patch(
@@ -1368,7 +1380,7 @@ async def test_infer_shield_blocked_queues_splunk_event(
     """Test that blocked shield moderation queues a Splunk event with correct sourcetype."""
     blocked = _create_blocked_moderation_result()
     mocker.patch(
-        "app.endpoints.rlsapi_v1.run_shield_moderation",
+        "app.endpoints.rlsapi_v1.run_shield_moderation_v2",
         new=mocker.AsyncMock(return_value=blocked),
     )
 
@@ -1424,7 +1436,7 @@ async def test_infer_shield_moderation_receives_combined_input(
     """Test that shield moderation receives the full combined input source."""
     mock_moderation = mocker.AsyncMock(return_value=ShieldModerationPassed())
     mocker.patch(
-        "app.endpoints.rlsapi_v1.run_shield_moderation",
+        "app.endpoints.rlsapi_v1.run_shield_moderation_v2",
         new=mock_moderation,
     )
 
@@ -1444,11 +1456,157 @@ async def test_infer_shield_moderation_receives_combined_input(
     )
 
     mock_moderation.assert_called_once()
-    # The input_text argument should be the combined input source
-    input_text = mock_moderation.call_args[0][1]
+    # The input_text argument is the first positional arg to run_shield_moderation_v2
+    input_text = mock_moderation.call_args[0][0]
     assert "Why did this fail?" in input_text
     assert "piped input" in input_text
     assert "permission denied" in input_text
+
+
+# --- Test PII redaction behavior via _check_shield_moderation ---
+
+
+def _redaction_shield() -> RedactionShieldConfiguration:
+    """Build a redaction shield that replaces email addresses."""
+    return RedactionShieldConfiguration(
+        name="pii-redaction",
+        provider_id="redaction",
+        config=RedactionConfig(
+            rules=[
+                RedactionRule(
+                    pattern=r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}",
+                    replacement="[REDACTED_EMAIL]",
+                )
+            ],
+        ),
+    )
+
+
+def _question_validity_shield() -> QuestionValidityShieldConfiguration:
+    """Build a question-validity shield configuration."""
+    return QuestionValidityShieldConfiguration(
+        name="question-validity",
+        provider_id="question_validity",
+        config=QuestionValidityConfig(model_id="test-model"),
+    )
+
+
+@pytest.mark.asyncio
+async def test_check_shield_redaction_modifies_input(
+    mocker: MockerFixture,
+) -> None:
+    """Test that PII redaction returns redacted text as moderated_input."""
+    mocker.patch(
+        "app.endpoints.rlsapi_v1.configuration",
+        mocker.Mock(shields=[_redaction_shield()]),
+    )
+    mocker.patch(
+        "app.endpoints.rlsapi_v1.run_shield_moderation_v2",
+        new=mocker.AsyncMock(return_value=ShieldModerationPassed()),
+    )
+
+    refusal, moderated = await _check_shield_moderation(
+        "Contact user@example.com for details",
+        "req-1",
+        mocker.Mock(),
+        mocker.Mock(),
+        mocker.Mock(),
+    )
+
+    assert refusal is None
+    assert "[REDACTED_EMAIL]" in moderated
+    assert "user@example.com" not in moderated
+
+
+@pytest.mark.asyncio
+async def test_check_shield_no_pii_passes_original(
+    mocker: MockerFixture,
+) -> None:
+    """Test that clean input passes through redaction unchanged."""
+    mocker.patch(
+        "app.endpoints.rlsapi_v1.configuration",
+        mocker.Mock(shields=[_redaction_shield()]),
+    )
+    mocker.patch(
+        "app.endpoints.rlsapi_v1.run_shield_moderation_v2",
+        new=mocker.AsyncMock(return_value=ShieldModerationPassed()),
+    )
+
+    refusal, moderated = await _check_shield_moderation(
+        "How do I list files?",
+        "req-2",
+        mocker.Mock(),
+        mocker.Mock(),
+        mocker.Mock(),
+    )
+
+    assert refusal is None
+    assert moderated == "How do I list files?"
+
+
+@pytest.mark.asyncio
+async def test_check_shield_redaction_then_validity_passes_redacted_to_v2(
+    mocker: MockerFixture,
+) -> None:
+    """Test that redacted text is forwarded to run_shield_moderation_v2."""
+    mocker.patch(
+        "app.endpoints.rlsapi_v1.configuration",
+        mocker.Mock(
+            shields=[_redaction_shield(), _question_validity_shield()],
+        ),
+    )
+    mock_v2 = mocker.AsyncMock(return_value=ShieldModerationPassed())
+    mocker.patch(
+        "app.endpoints.rlsapi_v1.run_shield_moderation_v2",
+        new=mock_v2,
+    )
+
+    refusal, moderated = await _check_shield_moderation(
+        "Contact user@example.com for help",
+        "req-3",
+        mocker.Mock(),
+        mocker.Mock(),
+        mocker.Mock(),
+    )
+
+    assert refusal is None
+    assert "[REDACTED_EMAIL]" in moderated
+    v2_input = mock_v2.call_args[0][0]
+    assert "[REDACTED_EMAIL]" in v2_input
+    assert "user@example.com" not in v2_input
+
+
+@pytest.mark.asyncio
+async def test_check_shield_validity_blocks_returns_refusal(
+    mocker: MockerFixture,
+) -> None:
+    """Test that question validity block returns a refusal response."""
+    mocker.patch(
+        "app.endpoints.rlsapi_v1.configuration",
+        mocker.Mock(
+            shields=[_redaction_shield(), _question_validity_shield()],
+        ),
+    )
+    blocked = ShieldModerationBlocked(
+        message="Off-topic question.",
+        moderation_id="modr-block-123",
+    )
+    mocker.patch(
+        "app.endpoints.rlsapi_v1.run_shield_moderation_v2",
+        new=mocker.AsyncMock(return_value=blocked),
+    )
+
+    refusal, _ = await _check_shield_moderation(
+        "What is the meaning of life?",
+        "req-4",
+        mocker.Mock(),
+        mocker.Mock(),
+        mocker.Mock(),
+    )
+
+    assert refusal is not None
+    assert isinstance(refusal, RlsapiV1InferResponse)
+    assert refusal.data.text == "Off-topic question."
 
 
 @pytest.mark.asyncio
