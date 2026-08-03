@@ -5,7 +5,7 @@ from ogx_client.types import ListModelsResponse
 from ogx_client.types.model import Model
 from pytest_mock import MockerFixture
 
-from metrics.utils import setup_model_metrics
+from lightspeed_stack.metrics.utils import setup_model_metrics
 
 
 def _make_model(model_id: str, provider_id: str, model_type: str) -> Model:
@@ -23,20 +23,25 @@ def _make_model(model_id: str, provider_id: str, model_type: str) -> Model:
 async def test_setup_model_metrics(mocker: MockerFixture) -> None:
     """Test the setup_model_metrics function."""
     # Mock the OGXAsLibraryClient
-    mock_client = mocker.patch("client.AsyncOgxClientHolder.get_client").return_value
+    mock_client = mocker.patch(
+        "lightspeed_stack.client.AsyncOgxClientHolder.get_client"
+    ).return_value
     # Make sure the client is an AsyncMock for async methods
     mock_client = mocker.AsyncMock()
-    mocker.patch("client.AsyncOgxClientHolder.get_client", return_value=mock_client)
     mocker.patch(
-        "metrics.utils.configuration.inference.default_provider",
+        "lightspeed_stack.client.AsyncOgxClientHolder.get_client",
+        return_value=mock_client,
+    )
+    mocker.patch(
+        "lightspeed_stack.metrics.utils.configuration.inference.default_provider",
         "default_provider",
     )
     mocker.patch(
-        "metrics.utils.configuration.inference.default_model",
+        "lightspeed_stack.metrics.utils.configuration.inference.default_model",
         "default_model",
     )
 
-    mock_metric = mocker.patch("metrics.provider_model_configuration")
+    mock_metric = mocker.patch("lightspeed_stack.metrics.provider_model_configuration")
     model_default = _make_model("default_model", "default_provider", "llm")
     model_0 = _make_model("test_model-0", "test_provider-0", "llm")
     model_1 = _make_model("test_model-1", "test_provider-1", "llm")

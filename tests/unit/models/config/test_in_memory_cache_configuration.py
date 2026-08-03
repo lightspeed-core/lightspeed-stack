@@ -3,7 +3,7 @@
 import pytest
 from pydantic import ValidationError
 
-from models.config import InMemoryCacheConfig
+from lightspeed_stack.models.config import InMemoryCacheConfig
 
 
 def test_in_memory_cache_configuration() -> None:

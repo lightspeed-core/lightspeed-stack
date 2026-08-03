@@ -3,7 +3,7 @@
 import pytest
 from pydantic import ValidationError
 
-from models.config import ServiceConfiguration
+from lightspeed_stack.models.config import ServiceConfiguration
 
 
 def test_configuration_rejects_unknown_fields() -> None:

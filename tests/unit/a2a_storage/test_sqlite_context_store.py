@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 from sqlalchemy.ext.asyncio import create_async_engine
 
-from a2a_storage.sqlite_context_store import SQLiteA2AContextStore
+from lightspeed_stack.a2a_storage.sqlite_context_store import SQLiteA2AContextStore
 
 
 class TestSQLiteA2AContextStore:

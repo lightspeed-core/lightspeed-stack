@@ -468,7 +468,7 @@ make run
 ```
 
 ```
-uv run opentelemetry-instrument python3.12 src/lightspeed_stack.py
+uv run opentelemetry-instrument lightspeed_stack
 [07/29/25 15:43:35] INFO     Initializing app                                                                                 main.py:19
                     INFO     Including routers                                                                                main.py:68
 INFO:     Started server process [1922983]
@@ -561,7 +561,7 @@ cp examples/lightspeed-stack-lls-library.yaml lightspeed-stack.yaml
     ```
 1. Check the output
     ```text
-    uv run opentelemetry-instrument python3.12 src/lightspeed_stack.py
+    uv run opentelemetry-instrument lightspeed_stack
     Using config run.yaml:
     apis:
     - agents
@@ -663,10 +663,10 @@ It should get the image, copy all layers, and write manifest:
 ```text
 Trying to pull quay.io/lightspeed-core/lightspeed-stack:dev-latest...
 Getting image source signatures
-Copying blob 455d71b0a12b done   | 
-Copying blob d8e516fe2a03 done   | 
-Copying blob a299c213c55c done   | 
-Copying config 4468f47593 done   | 
+Copying blob 455d71b0a12b done   |
+Copying blob d8e516fe2a03 done   |
+Copying blob a299c213c55c done   |
+Copying config 4468f47593 done   |
 Writing manifest to image destination
 4468f475931a54ad1e5c26270ff4c3e55ec31444c1b0bf8fb77a576db7ab33f1
 ```
@@ -680,10 +680,10 @@ podman pull quay.io/lightspeed-core/lightspeed-stack:0.2.0
 ```text
 Trying to pull quay.io/lightspeed-core/lightspeed-stack:0.2.0...
 Getting image source signatures
-Copying blob 7c9e86f872c9 done   | 
-Copying blob 455d71b0a12b skipped: already exists  
-Copying blob a299c213c55c skipped: already exists  
-Copying config a4982f4319 done   | 
+Copying blob 7c9e86f872c9 done   |
+Copying blob 455d71b0a12b skipped: already exists
+Copying blob a299c213c55c skipped: already exists
+Copying config a4982f4319 done   |
 Writing manifest to image destination
 a4982f43195537b9eb1cec510fe6655f245d6d4b7236a4759808115d5d719972
 ```

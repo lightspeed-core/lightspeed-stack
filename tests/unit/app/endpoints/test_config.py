@@ -4,9 +4,9 @@ import pytest
 from fastapi import HTTPException, Request, status
 from pytest_mock import MockerFixture
 
-from app.endpoints.config import config_endpoint_handler
-from authentication.interface import AuthTuple
-from configuration import AppConfig
+from lightspeed_stack.app.endpoints.config import config_endpoint_handler
+from lightspeed_stack.authentication.interface import AuthTuple
+from lightspeed_stack.configuration import AppConfig
 from tests.unit.utils.auth_helpers import mock_authorization_resolvers
 
 
@@ -19,7 +19,7 @@ async def test_config_endpoint_handler_configuration_not_loaded(
 
     mock_config = AppConfig()
     mock_config._configuration = None  # pylint: disable=protected-access
-    mocker.patch("app.endpoints.config.configuration", mock_config)
+    mocker.patch("lightspeed_stack.app.endpoints.config.configuration", mock_config)
 
     # HTTP request mock required by URL endpoint handler
     request = Request(
@@ -54,7 +54,7 @@ async def test_config_endpoint_handler_configuration_loaded(
     """Test the config endpoint handler when configuration is loaded."""
     mock_authorization_resolvers(mocker)
 
-    mocker.patch("app.endpoints.config.configuration", minimal_config)
+    mocker.patch("lightspeed_stack.app.endpoints.config.configuration", minimal_config)
 
     # HTTP request mock required by URL endpoint handler
     request = Request(

@@ -6,7 +6,7 @@ import pytest
 from pydantic import AnyHttpUrl, AnyUrl, ConfigDict, ValidationError
 from pydantic_core import SchemaError
 
-from models.api.responses.successful import (
+from lightspeed_stack.models.api.responses.successful import (
     AuthorizedResponse,
     ConfigurationResponse,
     ConversationDeleteResponse,
@@ -31,20 +31,22 @@ from models.api.responses.successful import (
     StreamingQueryResponse,
     ToolsResponse,
 )
-from models.api.responses.successful.bases import AbstractSuccessfulResponse
-from models.common import (
+from lightspeed_stack.models.api.responses.successful.bases import (
+    AbstractSuccessfulResponse,
+)
+from lightspeed_stack.models.common import (
     ConversationData,
     ConversationDetails,
     HealthStatus,
     MCPServerAuthInfo,
     ProviderHealthStatus,
 )
-from models.common.turn_summary import (
+from lightspeed_stack.models.common.turn_summary import (
     ReferencedDocument,
     ToolCallSummary,
     ToolResultSummary,
 )
-from models.config import (
+from lightspeed_stack.models.config import (
     Configuration,
     LlamaStackConfiguration,
     ServiceConfiguration,

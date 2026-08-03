@@ -7,18 +7,18 @@ from typing import Any
 import pytest
 from pydantic import AnyUrl
 
-from cache.cache_entry import CacheEntry
-from cache.cache_error import CacheError
-from cache.sqlite_cache import SQLiteCache
-from models.common import ConversationData
-from models.common.turn_summary import (
+from lightspeed_stack.cache.cache_entry import CacheEntry
+from lightspeed_stack.cache.cache_error import CacheError
+from lightspeed_stack.cache.sqlite_cache import SQLiteCache
+from lightspeed_stack.models.common import ConversationData
+from lightspeed_stack.models.common.turn_summary import (
     ReferencedDocument,
     ToolCallSummary,
     ToolResultSummary,
 )
-from models.compaction import ConversationSummary
-from models.config import SQLiteDatabaseConfiguration
-from utils import suid
+from lightspeed_stack.models.compaction import ConversationSummary
+from lightspeed_stack.models.config import SQLiteDatabaseConfiguration
+from lightspeed_stack.utils import suid
 
 USER_ID_1 = suid.get_suid()
 USER_ID_2 = suid.get_suid()

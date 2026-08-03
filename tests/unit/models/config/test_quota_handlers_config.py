@@ -7,7 +7,10 @@ import pytest
 from pydantic import ValidationError
 from pytest_subtests import SubTests
 
-from models.config import QuotaHandlersConfiguration, QuotaSchedulerConfiguration
+from lightspeed_stack.models.config import (
+    QuotaHandlersConfiguration,
+    QuotaSchedulerConfiguration,
+)
 
 
 def test_quota_handlers_configuration(subtests: SubTests) -> None:

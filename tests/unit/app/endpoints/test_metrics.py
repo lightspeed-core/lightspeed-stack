@@ -4,9 +4,9 @@ import pytest
 from fastapi import Request
 from pytest_mock import MockerFixture
 
-import metrics  # noqa: F401 pylint: disable=unused-import
-from app.endpoints.metrics import metrics_endpoint_handler
-from authentication.interface import AuthTuple
+from lightspeed_stack import metrics  # noqa: F401 pylint: disable=unused-import
+from lightspeed_stack.app.endpoints.metrics import metrics_endpoint_handler
+from lightspeed_stack.authentication.interface import AuthTuple
 from tests.unit.utils.auth_helpers import mock_authorization_resolvers
 
 

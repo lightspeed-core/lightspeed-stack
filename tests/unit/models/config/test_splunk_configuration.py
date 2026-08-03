@@ -5,7 +5,7 @@ from typing import Optional
 
 import pytest
 
-from models.config import SplunkConfiguration
+from lightspeed_stack.models.config import SplunkConfiguration
 
 
 @pytest.fixture(name="token_file")

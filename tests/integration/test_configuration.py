@@ -2,8 +2,8 @@
 
 import pytest
 
-from configuration import configuration
-from models.config import ModelContextProtocolServer
+from lightspeed_stack.configuration import configuration
+from lightspeed_stack.models.config import ModelContextProtocolServer
 
 
 @pytest.fixture(name="configuration_filename")

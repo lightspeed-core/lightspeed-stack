@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from models.config import UserDataCollection
-from utils.checks import InvalidConfigurationError
+from lightspeed_stack.models.config import UserDataCollection
+from lightspeed_stack.utils.checks import InvalidConfigurationError
 
 
 def test_user_data_collection_feedback_enabled() -> None:

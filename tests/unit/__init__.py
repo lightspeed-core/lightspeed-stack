@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from configuration import configuration
+from lightspeed_stack.configuration import configuration
 
 config_dict: dict[str, Any] = {
     "name": "test",

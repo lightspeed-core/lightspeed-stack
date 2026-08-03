@@ -31,9 +31,9 @@ CONTAINER_RUNTIME ?= $(shell command -v podman 2>/dev/null || command -v docker 
 
 run-stack: ## Run lightspeed-stack directly, without building dependent service/s
 	@if [ "$${OTEL_SDK_DISABLED:-true}" = "false" ]; then \
-		uv run opentelemetry-instrument python3.12 src/lightspeed_stack.py -c $(CONFIG); \
+		uv run opentelemetry-instrument lightspeed_stack -c $(CONFIG); \
 	else \
-		uv run python3.12 src/lightspeed_stack.py -c $(CONFIG); \
+		uv run lightspeed-stack -c $(CONFIG); \
 	fi
 
 run: start-llama-stack-container ## Run the service locally with dependent services
@@ -84,7 +84,7 @@ start-llama-stack-container: build-llama-stack-image ## Start llama-stack contai
 		-v $(PWD)/$(LLAMA_STACK_CONFIG):/opt/app-root/run.yaml:z \
 		-v $(PWD)/$(CONFIG):/opt/app-root/lightspeed-stack.yaml:ro,z \
 		-v $(PWD)/scripts/llama-stack-entrypoint.sh:/opt/app-root/enrich-entrypoint.sh:ro,z \
-		-v $(PWD)/src/llama_stack_configuration.py:/opt/app-root/llama_stack_configuration.py:ro,z \
+		-v $(PWD)/src/lightspeed_stack/llama_stack_configuration.py:/opt/app-root/llama_stack_configuration.py:ro,z \
 		-e OPENAI_API_KEY \
 		-e BRAVE_SEARCH_API_KEY \
 		-e TAVILY_SEARCH_API_KEY \
@@ -143,7 +143,7 @@ clean-llama-stack: remove-llama-stack-container ## Remove container and image
 	fi
 
 run-llama-stack: ## Start Llama Stack with enriched config (for local service mode)
-	uv run src/llama_stack_configuration.py -c $(CONFIG) -i $(LLAMA_STACK_CONFIG) -o $(LLAMA_STACK_CONFIG) && \
+	uv run src/lightspeed_stack/llama_stack_configuration.py -c $(CONFIG) -i $(LLAMA_STACK_CONFIG) -o $(LLAMA_STACK_CONFIG) && \
 	uv run ogx stack run $(LLAMA_STACK_CONFIG)
 
 test-unit: ## Run the unit tests
@@ -228,31 +228,31 @@ docs/models/agents.md:	docs/models/agents.json
 	openapi-to-markdown --input_file $< --output_file $@
 
 docs/models/requests.json:	$(wildcard src/models/api/requests/*)	## Generate OpenAPI specification with requests models
-	uv run src/lightspeed_stack.py --dump-models-group requests
+	uv run lightspeed-stack --dump-models-group requests
 	mv requests.json $@
 
 docs/models/conversation_summary.json:	src/models/compaction.py	## Generate OpenAPI specification with conversation_summary models
-	uv run src/lightspeed_stack.py --dump-models-group conversation_summary
+	uv run lightspeed-stack --dump-models-group conversation_summary
 	mv conversation_summary.json $@
 
 docs/models/successful_responses.json:	$(wildcard src/models/api/responses/successful/*)	## Generate OpenAPI specification with successful_responses models
-	uv run src/lightspeed_stack.py --dump-models-group successful_responses
+	uv run lightspeed-stack --dump-models-group successful_responses
 	mv successful_responses.json $@
 
 docs/models/error_responses.json:	$(wildcard src/models/api/responses/error/*)	## Generate OpenAPI specification with error_responses models
-	uv run src/lightspeed_stack.py --dump-models-group error_responses
+	uv run lightspeed-stack --dump-models-group error_responses
 	mv error_responses.json $@
 
 docs/models/common.json:	$(wildcard src/models/common/*)	## Generate OpenAPI specification with common models
-	uv run src/lightspeed_stack.py --dump-models-group common
+	uv run lightspeed-stack --dump-models-group common
 	mv common.json $@
 
 docs/models/agents.json:	$(wildcard src/models/common/agents/*)	## Generate OpenAPI specification with agents models
-	uv run src/lightspeed_stack.py --dump-models-group agents
+	uv run lightspeed-stack --dump-models-group agents
 	mv agents.json $@
 
 docs/models/common_responses.json:	$(wildcard src/models/common/responses/*)	## Generate OpenAPI specification with common_responses models
-	uv run src/lightspeed_stack.py --dump-models-group common_responses
+	uv run lightspeed-stack --dump-models-group common_responses
 	mv common_responses.json $@
 
 docs/models/requests.puml:	$(wildcard src/models/api/requests/*)	## Generate PlantUML class diagram for requests data models

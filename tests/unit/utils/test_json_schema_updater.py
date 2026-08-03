@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from utils.json_schema_updater import recursive_update
+from lightspeed_stack.utils.json_schema_updater import recursive_update
 
 
 def test_update_empty_input() -> None:

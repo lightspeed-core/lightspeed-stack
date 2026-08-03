@@ -7,10 +7,10 @@ import sys
 
 from fastapi.openapi.utils import get_openapi
 
-from client import AsyncOgxClientHolder
+from lightspeed_stack.client import AsyncOgxClientHolder
 
 # it is needed to read proper configuration in order to start the app to generate schema
-from configuration import configuration
+from lightspeed_stack.configuration import configuration
 
 CFG_FILE = "lightspeed-stack.yaml"
 configuration.load_configuration(CFG_FILE)
@@ -20,7 +20,7 @@ import asyncio  # noqa: E402  pylint: disable=C0411,C0413
 
 asyncio.run(AsyncOgxClientHolder().load(configuration.configuration.llama_stack))
 
-from app.main import app  # noqa: E402  pylint: disable=C0413
+from lightspeed_stack.app.main import app  # noqa: E402  pylint: disable=C0413
 
 
 def read_version_from_openapi(openapi_filename: str) -> str:

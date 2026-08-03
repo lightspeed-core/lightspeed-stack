@@ -1,6 +1,6 @@
 """Unit tests for the degraded mode tracker."""
 
-from utils.degraded_mode import DegradedModeTracker
+from lightspeed_stack.utils.degraded_mode import DegradedModeTracker
 
 
 class TestDegradedModeTracker:

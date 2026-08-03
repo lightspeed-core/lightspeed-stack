@@ -11,10 +11,10 @@ from ogx_client.types import ListModelsResponse
 from ogx_client.types.model import Model
 from pytest_mock import AsyncMockType, MockerFixture
 
-from app.endpoints.models import models_endpoint_handler
-from authentication.interface import AuthTuple
-from configuration import AppConfig
-from models.api.requests import ModelFilter
+from lightspeed_stack.app.endpoints.models import models_endpoint_handler
+from lightspeed_stack.authentication.interface import AuthTuple
+from lightspeed_stack.configuration import AppConfig
+from lightspeed_stack.models.api.requests import ModelFilter
 
 
 @pytest.fixture(name="mock_ogx_client")
@@ -35,7 +35,9 @@ def mock_ogx_client_fixture(
         mock_client: The mocked Llama Stack client instance configured as described above.
     """
     # Patch in app.endpoints.models where it's actually used by models_endpoint_handler_base
-    mock_holder_class = mocker.patch("app.endpoints.models.AsyncOgxClientHolder")
+    mock_holder_class = mocker.patch(
+        "lightspeed_stack.app.endpoints.models.AsyncOgxClientHolder"
+    )
 
     mock_client = mocker.AsyncMock()
 
@@ -90,7 +92,9 @@ def mock_ogx_client_failing_fixture(
         mock_client: The mocked Llama Stack client instance configured as described above.
     """
     # Patch in app.endpoints.models where it's actually used by models_endpoint_handler_base
-    mock_holder_class = mocker.patch("app.endpoints.models.AsyncOgxClientHolder")
+    mock_holder_class = mocker.patch(
+        "lightspeed_stack.app.endpoints.models.AsyncOgxClientHolder"
+    )
 
     mock_client = mocker.AsyncMock()
 

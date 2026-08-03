@@ -2,13 +2,13 @@
 
 import pytest
 
-from models.config import (
+from lightspeed_stack.models.config import (
     QuotaHandlersConfiguration,
     QuotaLimiterConfiguration,
     SQLiteDatabaseConfiguration,
 )
-from quota.cluster_quota_limiter import ClusterQuotaLimiter
-from quota.quota_exceed_error import QuotaExceedError
+from lightspeed_stack.quota.cluster_quota_limiter import ClusterQuotaLimiter
+from lightspeed_stack.quota.quota_exceed_error import QuotaExceedError
 
 # pylint: disable=protected-access
 

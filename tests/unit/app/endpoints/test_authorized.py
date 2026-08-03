@@ -4,8 +4,8 @@ import pytest
 from fastapi import HTTPException
 from starlette.datastructures import Headers
 
-from app.endpoints.authorized import authorized_endpoint_handler
-from authentication.utils import extract_user_token
+from lightspeed_stack.app.endpoints.authorized import authorized_endpoint_handler
+from lightspeed_stack.authentication.utils import extract_user_token
 
 MOCK_AUTH = ("test-id", "test-user", True, "token")
 

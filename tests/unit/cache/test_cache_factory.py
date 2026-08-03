@@ -6,18 +6,18 @@ import pytest
 from pydantic import SecretStr
 from pytest_mock import MockerFixture
 
-from cache.cache_factory import CacheFactory
-from cache.in_memory_cache import InMemoryCache
-from cache.noop_cache import NoopCache
-from cache.postgres_cache import PostgresCache
-from cache.sqlite_cache import SQLiteCache
-from constants import (
+from lightspeed_stack.cache.cache_factory import CacheFactory
+from lightspeed_stack.cache.in_memory_cache import InMemoryCache
+from lightspeed_stack.cache.noop_cache import NoopCache
+from lightspeed_stack.cache.postgres_cache import PostgresCache
+from lightspeed_stack.cache.sqlite_cache import SQLiteCache
+from lightspeed_stack.constants import (
     CACHE_TYPE_MEMORY,
     CACHE_TYPE_NOOP,
     CACHE_TYPE_POSTGRES,
     CACHE_TYPE_SQLITE,
 )
-from models.config import (
+from lightspeed_stack.models.config import (
     ConversationHistoryConfiguration,
     InMemoryCacheConfig,
     PostgreSQLDatabaseConfiguration,

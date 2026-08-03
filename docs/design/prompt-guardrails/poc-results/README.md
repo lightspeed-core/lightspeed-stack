@@ -81,7 +81,7 @@ LCS_GUARDRAILS_POC_CONFIG=docs/design/prompt-guardrails/poc-results/guardrails-p
 # 3. Full stack (see meta/docs/local-stack-testing.md for service startup)
 #    Start Llama Stack (run-ci.yaml) then:
 LCS_GUARDRAILS_POC_CONFIG=docs/design/prompt-guardrails/poc-results/guardrails-poc.yaml \
-  uv run src/lightspeed_stack.py -c docs/design/prompt-guardrails/poc-results/lcs-poc-config.yaml
+  uv run lightspeed-stack -c docs/design/prompt-guardrails/poc-results/lcs-poc-config.yaml
 #    Then POST /v1/query with {"query":"...","shield_ids":[]} to isolate the
 #    guardrails layer from the run-ci.yaml llama-guard shield.
 ```

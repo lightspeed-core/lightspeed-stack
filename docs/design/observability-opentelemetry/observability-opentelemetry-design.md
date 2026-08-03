@@ -297,7 +297,7 @@ See the [OpenTelemetry SDK environment variables reference](https://opentelemetr
 **`docker-compose.yaml` (LCORE service)** — set `OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_SERVICE_NAME`, `OTEL_EXPORTER_OTLP_PROTOCOL`; add headers, sampler, `OTEL_SDK_DISABLED`, etc. as needed via `environment` / `env_file`.
 
 **`Containerfile` (LCORE image)** —  
-`ENTRYPOINT ["opentelemetry-instrument", "python3.12", "src/lightspeed_stack.py"]`
+`ENTRYPOINT ["opentelemetry-instrument", "lightspeed-stack"]`
 
 ### Trigger mechanism
 
@@ -366,7 +366,7 @@ No **required** change to JSON requests/responses. The `/config` response gains 
 | `pyproject.toml` | Add OTel API, SDK, OTLP exporter, FastAPI instrumentor, propagators; pin versions per project policy. |
 | `src/app/endpoints/config.py` | Scrape `OTEL_*` env vars into `observability.otel` on `/config` response; redact secrets. |
 | `app/endpoints/*.py`, `utils/*.py` | Add manual spans around logical sections of request handlers. |
-| `Containerfile` | Add OTel packages; set **`ENTRYPOINT`** to **`["opentelemetry-instrument", "python3.12", "src/lightspeed_stack.py"]`**. |
+| `Containerfile` | Add OTel packages; set **`ENTRYPOINT`** to **`["opentelemetry-instrument", "lightspeed-stack"]`**. |
 | `docker-compose.yaml` | **`environment`** / **`env_file`**: required **`OTEL_*`** exporter fields. |
 
 ## Open Questions

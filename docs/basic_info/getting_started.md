@@ -153,7 +153,7 @@ authentication:
     ```
 1. Check the output
     ```text
-    uv run src/lightspeed_stack.py
+    uv run lightspeed-stack
     Using config run.yaml:
     apis:
     - agents

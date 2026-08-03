@@ -1147,7 +1147,7 @@ ENV PATH="/app-root/.venv/bin:$PATH"
 
 # Run the application
 EXPOSE 8080
-ENTRYPOINT ["opentelemetry-instrument", "python3.12", "src/lightspeed_stack.py"]
+ENTRYPOINT ["opentelemetry-instrument", "lightspeed-stack"]
 USER 1001
 ```
 

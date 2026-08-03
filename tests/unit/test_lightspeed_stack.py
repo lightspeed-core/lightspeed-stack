@@ -6,9 +6,9 @@ from pathlib import Path
 import pytest
 import yaml
 
-import lightspeed_stack
-from configuration import AppConfig
-from lightspeed_stack import create_argument_parser, main
+from lightspeed_stack import cli
+from lightspeed_stack.cli import create_argument_parser, main
+from lightspeed_stack.configuration import AppConfig
 
 LEGACY_DEPRECATION_MARKER = "DEPRECATED: the two-file configuration"
 
@@ -133,9 +133,9 @@ def run_main_with_config(
     cfg_file = tmp_path / "lightspeed-stack.yaml"
     cfg_file.write_text(config_yaml, encoding="utf-8")
     monkeypatch.setattr("sys.argv", ["lightspeed-stack", "-c", str(cfg_file)])
-    monkeypatch.setattr(lightspeed_stack, "configuration", AppConfig())
-    monkeypatch.setattr(lightspeed_stack, "start_quota_scheduler", lambda _: None)
-    monkeypatch.setattr(lightspeed_stack, "start_uvicorn", lambda _: None)
+    monkeypatch.setattr(cli, "configuration", AppConfig())
+    monkeypatch.setattr(cli, "start_quota_scheduler", lambda _: None)
+    monkeypatch.setattr(cli, "start_uvicorn", lambda _: None)
     main()
 
 

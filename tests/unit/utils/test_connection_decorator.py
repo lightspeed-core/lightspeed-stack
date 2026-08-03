@@ -2,7 +2,7 @@
 
 import pytest
 
-from utils.connection_decorator import connection
+from lightspeed_stack.utils.connection_decorator import connection
 
 
 class SomeActionException(Exception):

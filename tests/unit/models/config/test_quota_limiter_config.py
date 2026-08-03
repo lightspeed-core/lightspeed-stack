@@ -5,7 +5,7 @@ from typing import Any
 import pytest
 from pytest_subtests import SubTests
 
-from models.config import QuotaLimiterConfiguration
+from lightspeed_stack.models.config import QuotaLimiterConfiguration
 
 
 def test_quota_limiter_configuration(subtests: SubTests) -> None:

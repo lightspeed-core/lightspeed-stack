@@ -4,10 +4,10 @@ from typing import Optional
 
 import pytest
 
-from cache.cache_entry import CacheEntry
-from cache.noop_cache import NoopCache
-from models.compaction import ConversationSummary
-from utils import suid
+from lightspeed_stack.cache.cache_entry import CacheEntry
+from lightspeed_stack.cache.noop_cache import NoopCache
+from lightspeed_stack.models.compaction import ConversationSummary
+from lightspeed_stack.utils import suid
 
 USER_ID = suid.get_suid()
 CONVERSATION_ID = suid.get_suid()

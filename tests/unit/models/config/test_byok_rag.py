@@ -3,13 +3,13 @@
 import pytest
 from pydantic import ValidationError
 
-from constants import (
+from lightspeed_stack.constants import (
     DEFAULT_EMBEDDING_DIMENSION,
     DEFAULT_EMBEDDING_MODEL,
     DEFAULT_RAG_TYPE,
     DEFAULT_SCORE_MULTIPLIER,
 )
-from models.config import ByokRag
+from lightspeed_stack.models.config import ByokRag
 
 
 def test_byok_rag_configuration_default_values() -> None:

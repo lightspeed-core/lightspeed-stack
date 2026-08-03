@@ -6,8 +6,8 @@ import pytest
 from pydantic import ValidationError
 from pytest_subtests import SubTests
 
-import constants
-from models.config import (
+from lightspeed_stack import constants
+from lightspeed_stack.models.config import (
     ConversationHistoryConfiguration,
     InMemoryCacheConfig,
     PostgreSQLDatabaseConfiguration,

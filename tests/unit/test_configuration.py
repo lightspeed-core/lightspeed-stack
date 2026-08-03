@@ -9,16 +9,16 @@ from typing import Any
 import pytest
 from pydantic import ValidationError
 
-import constants
-from cache.in_memory_cache import InMemoryCache
-from cache.sqlite_cache import SQLiteCache
-from configuration import (
+from lightspeed_stack import constants
+from lightspeed_stack.cache.in_memory_cache import InMemoryCache
+from lightspeed_stack.cache.sqlite_cache import SQLiteCache
+from lightspeed_stack.configuration import (
     AppConfig,
     LogicError,
     replace_env_vars_preserving_native_override,
 )
-from models.config import CustomProfile, ModelContextProtocolServer
-from utils.checks import InvalidConfigurationError
+from lightspeed_stack.models.config import CustomProfile, ModelContextProtocolServer
+from lightspeed_stack.utils.checks import InvalidConfigurationError
 
 
 # pylint: disable=broad-exception-caught,protected-access

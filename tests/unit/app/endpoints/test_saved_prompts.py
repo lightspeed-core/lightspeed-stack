@@ -12,25 +12,25 @@ from fastapi.testclient import TestClient
 from pytest_mock import MockerFixture
 from sqlalchemy.exc import SQLAlchemyError
 
-import constants
-from app.endpoints.saved_prompts import (
+from lightspeed_stack import constants
+from lightspeed_stack.app.endpoints.saved_prompts import (
     create_saved_prompts_handler,
     delete_saved_prompts_handler,
     get_saved_prompts_config_handler,
     list_saved_prompts_handler,
     router,
 )
-from authentication.interface import AuthTuple
-from configuration import AppConfig
-from models.api.requests import SavedPromptCreateRequest
-from models.config import Action
-from tests.unit.utils.auth_helpers import mock_authorization_resolvers
-from utils.saved_prompts import (
+from lightspeed_stack.authentication.interface import AuthTuple
+from lightspeed_stack.configuration import AppConfig
+from lightspeed_stack.models.api.requests import SavedPromptCreateRequest
+from lightspeed_stack.models.config import Action
+from lightspeed_stack.utils.saved_prompts import (
     SavedPromptAccessDeniedError,
     SavedPromptConflictError,
     SavedPromptLimitExceededError,
     SavedPromptNotFoundError,
 )
+from tests.unit.utils.auth_helpers import mock_authorization_resolvers
 
 MOCK_AUTH: AuthTuple = ("test_user_id", "test_user", True, "test_token")
 MOCK_LIST_AUTH: Final[AuthTuple] = ("user-1", "test_user", True, "test_token")
@@ -85,7 +85,9 @@ async def test_get_saved_prompts_config_returns_default_values(
 ) -> None:
     """GET /saved-prompts/config returns default saved prompts limits."""
     mock_authorization_resolvers(mocker)
-    mocker.patch("app.endpoints.saved_prompts.configuration", minimal_config)
+    mocker.patch(
+        "lightspeed_stack.app.endpoints.saved_prompts.configuration", minimal_config
+    )
 
     response = await get_saved_prompts_config_handler(
         auth=MOCK_AUTH,
@@ -112,7 +114,7 @@ async def test_get_saved_prompts_config_returns_configured_values(
     """GET /saved-prompts/config returns configured saved prompts limits."""
     mock_authorization_resolvers(mocker)
     mocker.patch(
-        "app.endpoints.saved_prompts.configuration",
+        "lightspeed_stack.app.endpoints.saved_prompts.configuration",
         config_with_custom_saved_prompts,
     )
 
@@ -136,7 +138,9 @@ async def test_get_saved_prompts_config_configuration_not_loaded(
 
     mock_config = AppConfig()
     mock_config._configuration = None  # pylint: disable=protected-access
-    mocker.patch("app.endpoints.saved_prompts.configuration", mock_config)
+    mocker.patch(
+        "lightspeed_stack.app.endpoints.saved_prompts.configuration", mock_config
+    )
 
     with pytest.raises(HTTPException) as exc_info:
         await get_saved_prompts_config_handler(
@@ -160,7 +164,9 @@ async def test_get_saved_prompts_config_forbidden_without_get_config_action(
     saved_prompts_http_request: Request,
 ) -> None:
     """GET /saved-prompts/config returns 403 when user lacks GET_CONFIG permission."""
-    mocker.patch("app.endpoints.saved_prompts.configuration", minimal_config)
+    mocker.patch(
+        "lightspeed_stack.app.endpoints.saved_prompts.configuration", minimal_config
+    )
 
     mock_role_resolver = mocker.AsyncMock()
     mock_role_resolver.resolve_roles.return_value = set()
@@ -169,7 +175,7 @@ async def test_get_saved_prompts_config_forbidden_without_get_config_action(
     mock_access_resolver.check_access.return_value = False
 
     mocker.patch(
-        "authorization.middleware.get_authorization_resolvers",
+        "lightspeed_stack.authorization.middleware.get_authorization_resolvers",
         return_value=(mock_role_resolver, mock_access_resolver),
     )
 
@@ -197,7 +203,9 @@ def test_get_saved_prompts_config_returns_401_when_auth_rejects(
     Verifies the route is actually wired with the auth dependency by
     hitting it via TestClient rather than calling the handler directly.
     """
-    mocker.patch("app.endpoints.saved_prompts.configuration", minimal_config)
+    mocker.patch(
+        "lightspeed_stack.app.endpoints.saved_prompts.configuration", minimal_config
+    )
     mock_authorization_resolvers(mocker)
 
     async def _reject(_self: object, _request: Request) -> None:
@@ -211,7 +219,7 @@ def test_get_saved_prompts_config_returns_401_when_auth_rejects(
         )
 
     mocker.patch(
-        "authentication.noop.NoopAuthDependency.__call__",
+        "lightspeed_stack.authentication.noop.NoopAuthDependency.__call__",
         _reject,
     )
 
@@ -235,10 +243,12 @@ async def test_get_saved_prompts_config_uses_get_config_action(
 ) -> None:
     """GET /saved-prompts/config authorizes with Action.GET_CONFIG."""
     mock_authorization_resolvers(mocker)
-    mocker.patch("app.endpoints.saved_prompts.configuration", minimal_config)
+    mocker.patch(
+        "lightspeed_stack.app.endpoints.saved_prompts.configuration", minimal_config
+    )
 
     perform_check = mocker.patch(
-        "authorization.middleware._perform_authorization_check",
+        "lightspeed_stack.authorization.middleware._perform_authorization_check",
         return_value=None,
     )
 
@@ -294,12 +304,14 @@ async def test_list_saved_prompts_happy_path(
 ) -> None:
     """GET /saved-prompts maps DAL rows and preserves order without user_id."""
     mock_authorization_resolvers(mocker)
-    mocker.patch("app.endpoints.saved_prompts.configuration", minimal_config)
+    mocker.patch(
+        "lightspeed_stack.app.endpoints.saved_prompts.configuration", minimal_config
+    )
 
     newer_ts = datetime(2026, 7, 22, 16, 5, 0, tzinfo=UTC)
     older_ts = datetime(2026, 7, 22, 16, 0, 0, tzinfo=UTC)
     mock_list = mocker.patch(
-        "app.endpoints.saved_prompts.list_saved_prompts_by_user",
+        "lightspeed_stack.app.endpoints.saved_prompts.list_saved_prompts_by_user",
         return_value=[
             _prompt_row(
                 prompt_id="p-newer",
@@ -342,9 +354,11 @@ async def test_list_saved_prompts_empty(
 ) -> None:
     """GET /saved-prompts returns an empty prompts list when DAL is empty."""
     mock_authorization_resolvers(mocker)
-    mocker.patch("app.endpoints.saved_prompts.configuration", minimal_config)
     mocker.patch(
-        "app.endpoints.saved_prompts.list_saved_prompts_by_user",
+        "lightspeed_stack.app.endpoints.saved_prompts.configuration", minimal_config
+    )
+    mocker.patch(
+        "lightspeed_stack.app.endpoints.saved_prompts.list_saved_prompts_by_user",
         return_value=[],
     )
 
@@ -364,11 +378,13 @@ async def test_list_saved_prompts_isolates_near_collision_users(
 ) -> None:
     """Handler only asks DAL for auth user_id; response stays that user's rows."""
     mock_authorization_resolvers(mocker)
-    mocker.patch("app.endpoints.saved_prompts.configuration", minimal_config)
+    mocker.patch(
+        "lightspeed_stack.app.endpoints.saved_prompts.configuration", minimal_config
+    )
 
     ts = datetime(2026, 7, 22, 16, 0, 0, tzinfo=UTC)
     mock_list = mocker.patch(
-        "app.endpoints.saved_prompts.list_saved_prompts_by_user",
+        "lightspeed_stack.app.endpoints.saved_prompts.list_saved_prompts_by_user",
         return_value=[
             _prompt_row(
                 prompt_id="owned",
@@ -403,13 +419,15 @@ async def test_list_saved_prompts_uses_manage_saved_prompts_action(
 ) -> None:
     """GET /saved-prompts authorizes with Action.MANAGE_SAVED_PROMPTS."""
     mock_authorization_resolvers(mocker)
-    mocker.patch("app.endpoints.saved_prompts.configuration", minimal_config)
     mocker.patch(
-        "app.endpoints.saved_prompts.list_saved_prompts_by_user",
+        "lightspeed_stack.app.endpoints.saved_prompts.configuration", minimal_config
+    )
+    mocker.patch(
+        "lightspeed_stack.app.endpoints.saved_prompts.list_saved_prompts_by_user",
         return_value=[],
     )
     perform_check = mocker.patch(
-        "authorization.middleware._perform_authorization_check",
+        "lightspeed_stack.authorization.middleware._perform_authorization_check",
         return_value=None,
     )
 
@@ -431,14 +449,16 @@ async def test_list_saved_prompts_forbidden_without_action(
     saved_prompts_http_request: Request,
 ) -> None:
     """GET /saved-prompts returns 403 when MANAGE_SAVED_PROMPTS is denied."""
-    mocker.patch("app.endpoints.saved_prompts.configuration", minimal_config)
+    mocker.patch(
+        "lightspeed_stack.app.endpoints.saved_prompts.configuration", minimal_config
+    )
 
     mock_role_resolver = mocker.AsyncMock()
     mock_role_resolver.resolve_roles.return_value = set()
     mock_access_resolver = mocker.Mock()
     mock_access_resolver.check_access.return_value = False
     mocker.patch(
-        "authorization.middleware.get_authorization_resolvers",
+        "lightspeed_stack.authorization.middleware.get_authorization_resolvers",
         return_value=(mock_role_resolver, mock_access_resolver),
     )
 
@@ -456,7 +476,9 @@ def test_list_saved_prompts_returns_401_when_auth_rejects(
     minimal_config: AppConfig,
 ) -> None:
     """GET /v1/saved-prompts returns 401 when auth dependency rejects."""
-    mocker.patch("app.endpoints.saved_prompts.configuration", minimal_config)
+    mocker.patch(
+        "lightspeed_stack.app.endpoints.saved_prompts.configuration", minimal_config
+    )
     mock_authorization_resolvers(mocker)
 
     async def _reject(_self: object, _request: Request) -> None:
@@ -470,7 +492,7 @@ def test_list_saved_prompts_returns_401_when_auth_rejects(
         )
 
     mocker.patch(
-        "authentication.noop.NoopAuthDependency.__call__",
+        "lightspeed_stack.authentication.noop.NoopAuthDependency.__call__",
         _reject,
     )
 
@@ -491,7 +513,9 @@ async def test_list_saved_prompts_configuration_not_loaded(
     mock_authorization_resolvers(mocker)
     mock_config = AppConfig()
     mock_config._configuration = None  # pylint: disable=protected-access
-    mocker.patch("app.endpoints.saved_prompts.configuration", mock_config)
+    mocker.patch(
+        "lightspeed_stack.app.endpoints.saved_prompts.configuration", mock_config
+    )
 
     with pytest.raises(HTTPException) as exc_info:
         await list_saved_prompts_handler(
@@ -510,9 +534,11 @@ async def test_list_saved_prompts_database_error(
 ) -> None:
     """GET /saved-prompts returns 500 when the database query fails."""
     mock_authorization_resolvers(mocker)
-    mocker.patch("app.endpoints.saved_prompts.configuration", minimal_config)
     mocker.patch(
-        "app.endpoints.saved_prompts.list_saved_prompts_by_user",
+        "lightspeed_stack.app.endpoints.saved_prompts.configuration", minimal_config
+    )
+    mocker.patch(
+        "lightspeed_stack.app.endpoints.saved_prompts.list_saved_prompts_by_user",
         side_effect=SQLAlchemyError("db down"),
     )
 
@@ -536,11 +562,13 @@ async def test_create_saved_prompts_happy_path(
 ) -> None:
     """POST /saved-prompts returns mapped prompt without user_id."""
     mock_authorization_resolvers(mocker)
-    mocker.patch("app.endpoints.saved_prompts.configuration", minimal_config)
+    mocker.patch(
+        "lightspeed_stack.app.endpoints.saved_prompts.configuration", minimal_config
+    )
 
     created_at = datetime(2026, 7, 22, 16, 0, 0, tzinfo=UTC)
     mock_create = mocker.patch(
-        "app.endpoints.saved_prompts.create_saved_prompt",
+        "lightspeed_stack.app.endpoints.saved_prompts.create_saved_prompt",
         return_value=_prompt_row(
             prompt_id="prompt-1",
             user_id="user-1",
@@ -588,11 +616,13 @@ async def test_create_saved_prompts_normalizes_name_before_dal(
 ) -> None:
     """POST /saved-prompts strips name whitespace before calling DAL."""
     mock_authorization_resolvers(mocker)
-    mocker.patch("app.endpoints.saved_prompts.configuration", minimal_config)
+    mocker.patch(
+        "lightspeed_stack.app.endpoints.saved_prompts.configuration", minimal_config
+    )
 
     created_at = datetime(2026, 7, 22, 16, 0, 0, tzinfo=UTC)
     mock_create = mocker.patch(
-        "app.endpoints.saved_prompts.create_saved_prompt",
+        "lightspeed_stack.app.endpoints.saved_prompts.create_saved_prompt",
         return_value=_prompt_row(
             prompt_id="prompt-1",
             user_id="user-1",
@@ -625,10 +655,12 @@ async def test_create_saved_prompts_uses_manage_saved_prompts_action(
 ) -> None:
     """POST /saved-prompts authorizes with Action.MANAGE_SAVED_PROMPTS."""
     mock_authorization_resolvers(mocker)
-    mocker.patch("app.endpoints.saved_prompts.configuration", minimal_config)
+    mocker.patch(
+        "lightspeed_stack.app.endpoints.saved_prompts.configuration", minimal_config
+    )
     created_at = datetime(2026, 7, 22, 16, 0, 0, tzinfo=UTC)
     mocker.patch(
-        "app.endpoints.saved_prompts.create_saved_prompt",
+        "lightspeed_stack.app.endpoints.saved_prompts.create_saved_prompt",
         return_value=_prompt_row(
             prompt_id="prompt-1",
             user_id="user-1",
@@ -639,7 +671,7 @@ async def test_create_saved_prompts_uses_manage_saved_prompts_action(
         ),
     )
     perform_check = mocker.patch(
-        "authorization.middleware._perform_authorization_check",
+        "lightspeed_stack.authorization.middleware._perform_authorization_check",
         return_value=None,
     )
 
@@ -663,9 +695,11 @@ async def test_create_saved_prompts_quota_exceeded(
 ) -> None:
     """POST /saved-prompts returns 422 when the per-user quota is exceeded."""
     mock_authorization_resolvers(mocker)
-    mocker.patch("app.endpoints.saved_prompts.configuration", minimal_config)
     mocker.patch(
-        "app.endpoints.saved_prompts.create_saved_prompt",
+        "lightspeed_stack.app.endpoints.saved_prompts.configuration", minimal_config
+    )
+    mocker.patch(
+        "lightspeed_stack.app.endpoints.saved_prompts.create_saved_prompt",
         side_effect=SavedPromptLimitExceededError(
             "Saved prompt limit exceeded: 50 existing prompts, maximum is 50"
         ),
@@ -693,8 +727,12 @@ async def test_create_saved_prompts_validation_error(
 ) -> None:
     """POST /saved-prompts returns 422 for empty/invalid name or content."""
     mock_authorization_resolvers(mocker)
-    mocker.patch("app.endpoints.saved_prompts.configuration", minimal_config)
-    mock_create = mocker.patch("app.endpoints.saved_prompts.create_saved_prompt")
+    mocker.patch(
+        "lightspeed_stack.app.endpoints.saved_prompts.configuration", minimal_config
+    )
+    mock_create = mocker.patch(
+        "lightspeed_stack.app.endpoints.saved_prompts.create_saved_prompt"
+    )
 
     with pytest.raises(HTTPException) as exc_info:
         await create_saved_prompts_handler(
@@ -719,9 +757,11 @@ async def test_create_saved_prompts_duplicate_name_conflict(
 ) -> None:
     """POST /saved-prompts returns 409 when the prompt name already exists."""
     mock_authorization_resolvers(mocker)
-    mocker.patch("app.endpoints.saved_prompts.configuration", minimal_config)
     mocker.patch(
-        "app.endpoints.saved_prompts.create_saved_prompt",
+        "lightspeed_stack.app.endpoints.saved_prompts.configuration", minimal_config
+    )
+    mocker.patch(
+        "lightspeed_stack.app.endpoints.saved_prompts.create_saved_prompt",
         side_effect=SavedPromptConflictError("Saved prompt name already exists"),
     )
 
@@ -747,9 +787,11 @@ async def test_create_saved_prompts_database_error(
 ) -> None:
     """POST /saved-prompts returns 500 when the database write fails."""
     mock_authorization_resolvers(mocker)
-    mocker.patch("app.endpoints.saved_prompts.configuration", minimal_config)
     mocker.patch(
-        "app.endpoints.saved_prompts.create_saved_prompt",
+        "lightspeed_stack.app.endpoints.saved_prompts.configuration", minimal_config
+    )
+    mocker.patch(
+        "lightspeed_stack.app.endpoints.saved_prompts.create_saved_prompt",
         side_effect=SQLAlchemyError("db down"),
     )
 
@@ -775,7 +817,9 @@ async def test_create_saved_prompts_configuration_not_loaded(
     mock_authorization_resolvers(mocker)
     mock_config = AppConfig()
     mock_config._configuration = None  # pylint: disable=protected-access
-    mocker.patch("app.endpoints.saved_prompts.configuration", mock_config)
+    mocker.patch(
+        "lightspeed_stack.app.endpoints.saved_prompts.configuration", mock_config
+    )
 
     with pytest.raises(HTTPException) as exc_info:
         await create_saved_prompts_handler(
@@ -794,14 +838,16 @@ async def test_create_saved_prompts_forbidden_without_action(
     saved_prompts_http_request: Request,
 ) -> None:
     """POST /saved-prompts returns 403 when MANAGE_SAVED_PROMPTS is denied."""
-    mocker.patch("app.endpoints.saved_prompts.configuration", minimal_config)
+    mocker.patch(
+        "lightspeed_stack.app.endpoints.saved_prompts.configuration", minimal_config
+    )
 
     mock_role_resolver = mocker.AsyncMock()
     mock_role_resolver.resolve_roles.return_value = set()
     mock_access_resolver = mocker.Mock()
     mock_access_resolver.check_access.return_value = False
     mocker.patch(
-        "authorization.middleware.get_authorization_resolvers",
+        "lightspeed_stack.authorization.middleware.get_authorization_resolvers",
         return_value=(mock_role_resolver, mock_access_resolver),
     )
 
@@ -820,7 +866,9 @@ def test_create_saved_prompts_returns_401_when_auth_rejects(
     minimal_config: AppConfig,
 ) -> None:
     """POST /v1/saved-prompts returns 401 when auth dependency rejects."""
-    mocker.patch("app.endpoints.saved_prompts.configuration", minimal_config)
+    mocker.patch(
+        "lightspeed_stack.app.endpoints.saved_prompts.configuration", minimal_config
+    )
     mock_authorization_resolvers(mocker)
 
     async def _reject(_self: object, _request: Request) -> None:
@@ -834,7 +882,7 @@ def test_create_saved_prompts_returns_401_when_auth_rejects(
         )
 
     mocker.patch(
-        "authentication.noop.NoopAuthDependency.__call__",
+        "lightspeed_stack.authentication.noop.NoopAuthDependency.__call__",
         _reject,
     )
 
@@ -857,9 +905,11 @@ async def test_delete_saved_prompts_happy_path(
 ) -> None:
     """DELETE /saved-prompts/{prompt_id} returns 200 deleted=true for owner."""
     mock_authorization_resolvers(mocker)
-    mocker.patch("app.endpoints.saved_prompts.configuration", minimal_config)
+    mocker.patch(
+        "lightspeed_stack.app.endpoints.saved_prompts.configuration", minimal_config
+    )
     mock_delete = mocker.patch(
-        "app.endpoints.saved_prompts.delete_saved_prompt_by_id_and_user",
+        "lightspeed_stack.app.endpoints.saved_prompts.delete_saved_prompt_by_id_and_user",
         return_value=None,
     )
 
@@ -883,9 +933,11 @@ async def test_delete_saved_prompts_uses_authenticated_user_id(
 ) -> None:
     """DELETE passes the authenticated user_id into DAL, not another user's."""
     mock_authorization_resolvers(mocker)
-    mocker.patch("app.endpoints.saved_prompts.configuration", minimal_config)
+    mocker.patch(
+        "lightspeed_stack.app.endpoints.saved_prompts.configuration", minimal_config
+    )
     mock_delete = mocker.patch(
-        "app.endpoints.saved_prompts.delete_saved_prompt_by_id_and_user",
+        "lightspeed_stack.app.endpoints.saved_prompts.delete_saved_prompt_by_id_and_user",
         return_value=None,
     )
 
@@ -907,9 +959,11 @@ async def test_delete_saved_prompts_invalid_id_format(
 ) -> None:
     """DELETE returns 400 for invalid prompt_id and does not call DAL."""
     mock_authorization_resolvers(mocker)
-    mocker.patch("app.endpoints.saved_prompts.configuration", minimal_config)
+    mocker.patch(
+        "lightspeed_stack.app.endpoints.saved_prompts.configuration", minimal_config
+    )
     mock_delete = mocker.patch(
-        "app.endpoints.saved_prompts.delete_saved_prompt_by_id_and_user"
+        "lightspeed_stack.app.endpoints.saved_prompts.delete_saved_prompt_by_id_and_user"
     )
 
     with pytest.raises(HTTPException) as exc_info:
@@ -934,9 +988,11 @@ async def test_delete_saved_prompts_not_found(
 ) -> None:
     """DELETE returns 200 with deleted=false when the prompt does not exist."""
     mock_authorization_resolvers(mocker)
-    mocker.patch("app.endpoints.saved_prompts.configuration", minimal_config)
     mocker.patch(
-        "app.endpoints.saved_prompts.delete_saved_prompt_by_id_and_user",
+        "lightspeed_stack.app.endpoints.saved_prompts.configuration", minimal_config
+    )
+    mocker.patch(
+        "lightspeed_stack.app.endpoints.saved_prompts.delete_saved_prompt_by_id_and_user",
         side_effect=SavedPromptNotFoundError("Saved prompt not found"),
     )
 
@@ -959,9 +1015,11 @@ async def test_delete_saved_prompts_access_denied_returns_403(
 ) -> None:
     """DELETE maps non-owner access denied to 403."""
     mock_authorization_resolvers(mocker)
-    mocker.patch("app.endpoints.saved_prompts.configuration", minimal_config)
     mocker.patch(
-        "app.endpoints.saved_prompts.delete_saved_prompt_by_id_and_user",
+        "lightspeed_stack.app.endpoints.saved_prompts.configuration", minimal_config
+    )
+    mocker.patch(
+        "lightspeed_stack.app.endpoints.saved_prompts.delete_saved_prompt_by_id_and_user",
         side_effect=SavedPromptAccessDeniedError("Saved prompt access denied"),
     )
 
@@ -988,13 +1046,15 @@ async def test_delete_saved_prompts_uses_manage_saved_prompts_action(
 ) -> None:
     """DELETE /saved-prompts/{prompt_id} authorizes with MANAGE_SAVED_PROMPTS."""
     mock_authorization_resolvers(mocker)
-    mocker.patch("app.endpoints.saved_prompts.configuration", minimal_config)
     mocker.patch(
-        "app.endpoints.saved_prompts.delete_saved_prompt_by_id_and_user",
+        "lightspeed_stack.app.endpoints.saved_prompts.configuration", minimal_config
+    )
+    mocker.patch(
+        "lightspeed_stack.app.endpoints.saved_prompts.delete_saved_prompt_by_id_and_user",
         return_value=None,
     )
     perform_check = mocker.patch(
-        "authorization.middleware._perform_authorization_check",
+        "lightspeed_stack.authorization.middleware._perform_authorization_check",
         return_value=None,
     )
 
@@ -1018,9 +1078,11 @@ async def test_delete_saved_prompts_database_error(
 ) -> None:
     """DELETE returns 500 when the database delete fails."""
     mock_authorization_resolvers(mocker)
-    mocker.patch("app.endpoints.saved_prompts.configuration", minimal_config)
     mocker.patch(
-        "app.endpoints.saved_prompts.delete_saved_prompt_by_id_and_user",
+        "lightspeed_stack.app.endpoints.saved_prompts.configuration", minimal_config
+    )
+    mocker.patch(
+        "lightspeed_stack.app.endpoints.saved_prompts.delete_saved_prompt_by_id_and_user",
         side_effect=SQLAlchemyError("db down"),
     )
 
@@ -1046,7 +1108,9 @@ async def test_delete_saved_prompts_configuration_not_loaded(
     mock_authorization_resolvers(mocker)
     mock_config = AppConfig()
     mock_config._configuration = None  # pylint: disable=protected-access
-    mocker.patch("app.endpoints.saved_prompts.configuration", mock_config)
+    mocker.patch(
+        "lightspeed_stack.app.endpoints.saved_prompts.configuration", mock_config
+    )
 
     with pytest.raises(HTTPException) as exc_info:
         await delete_saved_prompts_handler(
@@ -1065,14 +1129,16 @@ async def test_delete_saved_prompts_forbidden_without_action(
     saved_prompts_http_request: Request,
 ) -> None:
     """DELETE returns 403 when MANAGE_SAVED_PROMPTS is denied."""
-    mocker.patch("app.endpoints.saved_prompts.configuration", minimal_config)
+    mocker.patch(
+        "lightspeed_stack.app.endpoints.saved_prompts.configuration", minimal_config
+    )
 
     mock_role_resolver = mocker.AsyncMock()
     mock_role_resolver.resolve_roles.return_value = set()
     mock_access_resolver = mocker.Mock()
     mock_access_resolver.check_access.return_value = False
     mocker.patch(
-        "authorization.middleware.get_authorization_resolvers",
+        "lightspeed_stack.authorization.middleware.get_authorization_resolvers",
         return_value=(mock_role_resolver, mock_access_resolver),
     )
 
@@ -1091,7 +1157,9 @@ def test_delete_saved_prompts_returns_401_when_auth_rejects(
     minimal_config: AppConfig,
 ) -> None:
     """DELETE /v1/saved-prompts/{prompt_id} returns 401 when auth rejects."""
-    mocker.patch("app.endpoints.saved_prompts.configuration", minimal_config)
+    mocker.patch(
+        "lightspeed_stack.app.endpoints.saved_prompts.configuration", minimal_config
+    )
     mock_authorization_resolvers(mocker)
 
     async def _reject(_self: object, _request: Request) -> None:
@@ -1105,7 +1173,7 @@ def test_delete_saved_prompts_returns_401_when_auth_rejects(
         )
 
     mocker.patch(
-        "authentication.noop.NoopAuthDependency.__call__",
+        "lightspeed_stack.authentication.noop.NoopAuthDependency.__call__",
         _reject,
     )
 

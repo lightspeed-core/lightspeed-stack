@@ -6,7 +6,7 @@ from typing import Any
 import pytest
 from pytest_mock import MockerFixture
 
-from version import __version__
+from lightspeed_stack.version import __version__
 
 
 @pytest.fixture(name="mock_request_factory")

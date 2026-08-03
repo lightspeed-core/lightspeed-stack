@@ -4,7 +4,7 @@ from pathlib import Path
 
 from pytest_benchmark.fixture import BenchmarkFixture
 
-from utils.token_estimator import (
+from lightspeed_stack.utils.token_estimator import (
     estimate_tokens,
 )
 

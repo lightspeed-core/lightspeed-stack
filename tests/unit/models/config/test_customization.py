@@ -6,7 +6,7 @@ import pytest
 from pydantic import ValidationError
 from pytest_subtests import SubTests
 
-from models.config import Customization
+from lightspeed_stack.models.config import Customization
 
 
 def test_service_customization(subtests: SubTests) -> None:

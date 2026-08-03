@@ -10,15 +10,18 @@ from pydantic_ai.models.openai import OpenAIResponsesModelSettings
 from pydantic_ai.usage import RequestUsage, RunUsage
 from pytest_mock import MockerFixture, MockType
 
-from constants import (
+from lightspeed_stack.constants import (
     DEFAULT_INVALID_QUESTION_RESPONSE,
     DEFAULT_MODEL_PROMPT,
 )
-from models.common.moderation import ShieldModerationBlocked, ShieldModerationPassed
-from models.config import (
+from lightspeed_stack.models.common.moderation import (
+    ShieldModerationBlocked,
+    ShieldModerationPassed,
+)
+from lightspeed_stack.models.config import (
     QuestionValidityConfig,
 )
-from pydantic_ai_lightspeed.capabilities.question_validity._capability import (
+from lightspeed_stack.pydantic_ai_lightspeed.capabilities.question_validity._capability import (
     SUBJECT_ALLOWED,
     SUBJECT_REJECTED,
     QuestionValidity,
@@ -26,7 +29,9 @@ from pydantic_ai_lightspeed.capabilities.question_validity._capability import (
     _extract_message_str_from_user_content,
 )
 
-_MODULE = "pydantic_ai_lightspeed.capabilities.question_validity._capability"
+_MODULE = (
+    "lightspeed_stack.pydantic_ai_lightspeed.capabilities.question_validity._capability"
+)
 
 
 class TestExtractMessageStrFromUserContent:
@@ -295,7 +300,7 @@ class TestWrapRun:
             usage=RequestUsage(input_tokens=10, output_tokens=1),
         )
         mocker.patch(
-            "pydantic_ai_lightspeed.capabilities.question_validity._capability.model_request",
+            "lightspeed_stack.pydantic_ai_lightspeed.capabilities.question_validity._capability.model_request",
             return_value=mock_response,
         )
 
@@ -319,7 +324,7 @@ class TestWrapRun:
             usage=RequestUsage(input_tokens=10, output_tokens=1),
         )
         mocker.patch(
-            "pydantic_ai_lightspeed.capabilities.question_validity._capability.model_request",
+            "lightspeed_stack.pydantic_ai_lightspeed.capabilities.question_validity._capability.model_request",
             return_value=mock_response,
         )
 
@@ -349,7 +354,7 @@ class TestWrapRun:
             usage=RequestUsage(input_tokens=10, output_tokens=1),
         )
         mocker.patch(
-            "pydantic_ai_lightspeed.capabilities.question_validity._capability.model_request",
+            "lightspeed_stack.pydantic_ai_lightspeed.capabilities.question_validity._capability.model_request",
             return_value=mock_response,
         )
 
@@ -379,7 +384,7 @@ class TestWrapRun:
             usage=RequestUsage(),
         )
         mocker.patch(
-            "pydantic_ai_lightspeed.capabilities.question_validity._capability.model_request",
+            "lightspeed_stack.pydantic_ai_lightspeed.capabilities.question_validity._capability.model_request",
             return_value=mock_response,
         )
 
@@ -404,7 +409,7 @@ class TestWrapRun:
             usage=RequestUsage(input_tokens=10, output_tokens=1),
         )
         mocker.patch(
-            "pydantic_ai_lightspeed.capabilities.question_validity._capability.model_request",
+            "lightspeed_stack.pydantic_ai_lightspeed.capabilities.question_validity._capability.model_request",
             return_value=mock_response,
         )
 
@@ -427,7 +432,7 @@ class TestWrapRun:
             usage=RequestUsage(input_tokens=10, output_tokens=5),
         )
         mocker.patch(
-            "pydantic_ai_lightspeed.capabilities.question_validity._capability.model_request",
+            "lightspeed_stack.pydantic_ai_lightspeed.capabilities.question_validity._capability.model_request",
             return_value=mock_response,
         )
 
@@ -457,7 +462,7 @@ class TestWrapRun:
             usage=RequestUsage(input_tokens=10, output_tokens=1),
         )
         mocker.patch(
-            "pydantic_ai_lightspeed.capabilities.question_validity._capability.model_request",
+            "lightspeed_stack.pydantic_ai_lightspeed.capabilities.question_validity._capability.model_request",
             return_value=mock_response,
         )
 
@@ -482,7 +487,7 @@ class TestWrapRun:
             usage=request_usage,
         )
         mocker.patch(
-            "pydantic_ai_lightspeed.capabilities.question_validity._capability.model_request",
+            "lightspeed_stack.pydantic_ai_lightspeed.capabilities.question_validity._capability.model_request",
             return_value=mock_response,
         )
 
@@ -507,7 +512,7 @@ class TestWrapRun:
             usage=request_usage,
         )
         mocker.patch(
-            "pydantic_ai_lightspeed.capabilities.question_validity._capability.model_request",
+            "lightspeed_stack.pydantic_ai_lightspeed.capabilities.question_validity._capability.model_request",
             return_value=mock_response,
         )
 
@@ -532,7 +537,7 @@ class TestWrapRun:
             usage=request_usage,
         )
         mocker.patch(
-            "pydantic_ai_lightspeed.capabilities.question_validity._capability.model_request",
+            "lightspeed_stack.pydantic_ai_lightspeed.capabilities.question_validity._capability.model_request",
             return_value=mock_response,
         )
 
@@ -555,7 +560,7 @@ class TestWrapRun:
             usage=RequestUsage(),
         )
         mocker.patch(
-            "pydantic_ai_lightspeed.capabilities.question_validity._capability.model_request",
+            "lightspeed_stack.pydantic_ai_lightspeed.capabilities.question_validity._capability.model_request",
             return_value=mock_response,
         )
 
@@ -576,7 +581,7 @@ class TestWrapRun:
     ) -> None:
         """Test that model_request is called with the built prompt."""
         mock_model_request = mocker.patch(
-            "pydantic_ai_lightspeed.capabilities.question_validity._capability.model_request",
+            "lightspeed_stack.pydantic_ai_lightspeed.capabilities.question_validity._capability.model_request",
             return_value=ModelResponse(
                 parts=[TextPart(content=SUBJECT_ALLOWED)],
                 usage=RequestUsage(),
@@ -611,7 +616,7 @@ class TestWrapRun:
             usage=RequestUsage(),
         )
         mocker.patch(
-            "pydantic_ai_lightspeed.capabilities.question_validity._capability.model_request",
+            "lightspeed_stack.pydantic_ai_lightspeed.capabilities.question_validity._capability.model_request",
             return_value=mock_response,
         )
 
@@ -630,7 +635,7 @@ class TestWrapRun:
     ) -> None:
         """Test that model_request exceptions propagate to the caller."""
         mocker.patch(
-            "pydantic_ai_lightspeed.capabilities.question_validity._capability.model_request",
+            "lightspeed_stack.pydantic_ai_lightspeed.capabilities.question_validity._capability.model_request",
             side_effect=RuntimeError("connection failed"),
         )
 
@@ -654,7 +659,7 @@ class TestWrapRun:
         ctx.usage = RunUsage()
 
         mock_model_request = mocker.patch(
-            "pydantic_ai_lightspeed.capabilities.question_validity._capability.model_request",
+            "lightspeed_stack.pydantic_ai_lightspeed.capabilities.question_validity._capability.model_request",
             return_value=ModelResponse(
                 parts=[TextPart(content=SUBJECT_ALLOWED)],
                 usage=RequestUsage(),

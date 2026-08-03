@@ -10,9 +10,12 @@ import pytest
 from fastapi import HTTPException, Request
 from pytest_mock import MockerFixture
 
-from authentication.interface import NO_AUTH_TUPLE
-from authentication.rh_identity import RHIdentityAuthDependency, RHIdentityData
-from constants import NO_USER_TOKEN
+from lightspeed_stack.authentication.interface import NO_AUTH_TUPLE
+from lightspeed_stack.authentication.rh_identity import (
+    RHIdentityAuthDependency,
+    RHIdentityData,
+)
+from lightspeed_stack.constants import NO_USER_TOKEN
 
 
 @pytest.fixture
@@ -393,7 +396,9 @@ class TestRHIdentityData:
         mocker: MockerFixture,
     ) -> None:
         """Test validation failures for various missing fields."""
-        mock_warning = mocker.patch("authentication.rh_identity.logger.warning")
+        mock_warning = mocker.patch(
+            "lightspeed_stack.authentication.rh_identity.logger.warning"
+        )
 
         with pytest.raises(HTTPException) as exc_info:
             RHIdentityData(missing_field)
@@ -405,7 +410,9 @@ class TestRHIdentityData:
 
     def test_unsupported_identity_type(self, mocker: MockerFixture) -> None:
         """Test validation fails with unsupported identity type."""
-        mock_warning = mocker.patch("authentication.rh_identity.logger.warning")
+        mock_warning = mocker.patch(
+            "lightspeed_stack.authentication.rh_identity.logger.warning"
+        )
         invalid_data = {"identity": {"type": "Unknown", "org_id": "123"}}
 
         with pytest.raises(HTTPException) as exc_info:
@@ -614,7 +621,9 @@ class TestRHIdentityHealthProbeSkip:
         mock_config.authentication_configuration.skip_for_health_probes = (
             skip_for_health_probes
         )
-        mocker.patch("authentication.rh_identity.configuration", mock_config)
+        mocker.patch(
+            "lightspeed_stack.authentication.rh_identity.configuration", mock_config
+        )
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
@@ -692,7 +701,9 @@ class TestRHIdentityMetricsSkip:
         mock_config.authentication_configuration.skip_for_metrics = skip_for_metrics
         # Ensure health probe skip is disabled so it doesn't interfere
         mock_config.authentication_configuration.skip_for_health_probes = False
-        mocker.patch("authentication.rh_identity.configuration", mock_config)
+        mocker.patch(
+            "lightspeed_stack.authentication.rh_identity.configuration", mock_config
+        )
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
@@ -784,7 +795,9 @@ class TestRHIdentityHeaderSizeLimit:
         max_size: int,
     ) -> None:
         """Test oversized headers rejected with HTTP 400 and a warning logged."""
-        mock_warning = mocker.patch("authentication.rh_identity.logger.warning")
+        mock_warning = mocker.patch(
+            "lightspeed_stack.authentication.rh_identity.logger.warning"
+        )
         auth_dep = RHIdentityAuthDependency(max_header_size=max_size)
         request = create_request_with_header(mocker, "x" * header_size)
 
