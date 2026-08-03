@@ -740,6 +740,22 @@ To verify: `uv run make test-e2e` runs every new scenario green and
 behave reports zero undefined steps.
 ```
 
+<!-- type: Story -->
+<!-- key: LCORE-2747 -->
+#### LCORE-2747: Integration tests for unified-mode synthesis
+
+**Description**: Add pytest integration tests under `tests/integration/` that
+exercise the unified-mode synthesis path (baseline → enrichment → high-level
+inference → native_override) and confirm enrichment parity with legacy mode, so
+requirement R7 ("enrichment yields the same synthesized result in unified mode
+as legacy for equivalent inputs") is verified at the integration level, not only
+by unit tests. Fills the gap between the synthesizer unit tests (LCORE-2336) and
+the behave e2e suite (LCORE-2341 / LCORE-2343). Filed post-spike during
+implementation.
+
+**Blocked by**: LCORE-2336 (synthesizer), LCORE-2337 (migrate-then-synthesize
+parity cases).
+
 ### Epic: Documentation for unified mode
 
 Make the single-file unified configuration the primary documented path,
