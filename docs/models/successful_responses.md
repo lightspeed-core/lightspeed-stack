@@ -52,6 +52,22 @@ API Key Token configuration.
 | api_key | string |  |
 
 
+## AbstractErrorResponse
+
+
+Base class for error responses.
+
+Attributes:
+    status_code: HTTP status code for the error response.
+    detail: The detail model containing error summary and cause.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| status_code | integer | HTTP status code for the errors response |
+| detail |  | The detail model containing error summary and cause |
+
+
 ## AccessRule
 
 
@@ -87,22 +103,6 @@ Filter configuration for restricting which MCP tools can be used.
 | tool_names | array |  |
 
 
-## ApprovalFilter
-
-
-Granular approval control for specific MCP tools.
-
-Attributes:
-    always: Tool names that always require human approval before execution.
-    never: Tool names that never require approval (pre-approved).
-
-
-| Field | Type | Description |
-|-------|------|-------------|
-| always | array | List of tool names that always require human approval |
-| never | array | List of tool names that never require approval |
-
-
 ## ApprovalsConfiguration
 
 
@@ -119,6 +119,26 @@ Attributes:
 |-------|------|-------------|
 | approval_timeout_seconds | integer | Seconds before pending approval requests expire |
 | approval_retention_days | integer | Days to retain decided approvals before cleanup |
+
+
+## Attachment
+
+
+Model representing an attachment that can be sent from the UI as part of query.
+
+A list of attachments can be an optional part of 'query' request.
+
+Attributes:
+    attachment_type: The attachment type, like "log", "configuration", "image" etc.
+    content_type: The content type as defined in MIME standard
+    content: The actual attachment content (text or base64-encoded image data)
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| attachment_type | string | The attachment type, like 'log', 'configuration', 'image' etc. |
+| content_type | string | The content type as defined in MIME standard |
+| content | string | The actual attachment content (text or base64-encoded image data) |
 
 
 ## AuthenticationConfiguration
@@ -184,6 +204,18 @@ Microsoft Entra ID authentication attributes for Azure.
 | scope | string | Azure Cognitive Services scope for token requests. Override only if using a different Azure service. |
 
 
+## BadRequestResponse
+
+
+400 Bad Request. Invalid resource identifier.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| status_code | integer | HTTP status code for the errors response |
+| detail |  | The detail model containing error summary and cause |
+
+
 ## ByokRag
 
 
@@ -228,6 +260,78 @@ Useful resources:
 | allow_credentials | boolean | Indicate that cookies should be supported for cross-origin requests |
 | allow_methods | array | A list of HTTP methods that should be allowed for cross-origin requests. You can use ['*'] to allow all standard methods. |
 | allow_headers | array | A list of HTTP request headers that should be supported for cross-origin requests. You can use ['*'] to allow all headers. The Accept, Accept-Language, Content-Language and Content-Type headers are always allowed for simple CORS requests. |
+
+
+## CatalogModel
+
+
+Normalized model entry used by ``/models`` and internal model resolution.
+
+Unifies OpenAI-style, Anthropic, and Google ``models.list()`` payloads into
+one catalog shape.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| identifier | string | Model identifier |
+| metadata | object | Provider-specific metadata excluding core catalog fields |
+| api_model_type | string | API model type (typically mirrors model_type) |
+| provider_id | string | Provider identifier |
+| type | string | Object type, always 'model' |
+| provider_resource_id | string | Provider-native resource identifier for the model |
+| model_type | string | Model type such as 'llm' or 'embedding' |
+
+
+## CatalogShield
+
+
+Shield entry in the ``/shields`` catalog response.
+
+Attributes:
+    name: Unique, user-facing name identifying this shield instance.
+    provider_id: Shield provider / type discriminator.
+    type: Catalog entry type; always shield.
+    config: Type-specific shield configuration.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| name | string | Unique, user-facing name of the shield instance |
+| provider_id | string | Shield provider / type discriminator |
+| type | string | Catalog entry type; always shield |
+| config | object | Type-specific shield configuration |
+
+
+## CatalogTool
+
+
+Tool entry in the ``/tools`` catalog response.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| identifier | string |  |
+| description | string |  |
+| parameters | array |  |
+| provider_id | string |  |
+| toolgroup_id | string |  |
+| server_source | string |  |
+| type | string |  |
+
+
+## CatalogToolParameter
+
+
+Parameter entry for a tool in the ``/tools`` catalog response.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| name | string |  |
+| description | string |  |
+| parameter_type | string |  |
+| required | boolean |  |
+| default |  |  |
 
 
 ## CompactionConfiguration
@@ -303,6 +407,7 @@ Global service configuration.
 | reranker |  | Configuration for neural reranking of RAG chunks using cross-encoder. |
 | skills |  | Agent skills configuration. Specifies paths to skill directories. |
 | saved_prompts |  | Configuration for saved prompts feature limits including maximum prompts per user, display name length, and content length. |
+| shields | array | List of pydantic-ai-lightspeed agent guardrail shields (question validity and PII redaction). Each entry has a unique 'name', a 'provider_id' ('question_validity' or 'redaction'), and a type-specific 'config'. |
 
 
 ## ConfigurationResponse
@@ -317,6 +422,18 @@ Attributes:
 | Field | Type | Description |
 |-------|------|-------------|
 | configuration |  |  |
+
+
+## ConflictResponse
+
+
+409 Conflict - Resource already exists.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| status_code | integer | HTTP status code for the errors response |
+| detail |  | The detail model containing error summary and cause |
 
 
 ## ConversationData
@@ -444,6 +561,20 @@ Attributes:
 | completed_at | string | ISO 8601 timestamp when the turn completed |
 
 
+## ConversationUpdateRequest
+
+
+Model representing a request to update a conversation topic summary.
+
+Attributes:
+    topic_summary: The new topic summary for the conversation.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| topic_summary | string | The new topic summary for the conversation |
+
+
 ## ConversationUpdateResponse
 
 
@@ -532,6 +663,70 @@ Database configuration.
 | postgres |  | PostgreSQL database configuration |
 
 
+## DetailModel
+
+
+Nested detail model for error responses.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| response | string | Short summary of the error |
+| cause | string | Detailed explanation of what caused the error |
+
+
+## EndEventData
+
+
+Nested data for event: "end".
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| referenced_documents | array |  |
+| truncated | boolean |  |
+| input_tokens | integer |  |
+| output_tokens | integer |  |
+
+
+## EndStreamPayload
+
+
+SSE end-of-stream body (includes available_quotas beside data).
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| event | string |  |
+| data |  |  |
+| available_quotas | object |  |
+
+
+## ErrorEventData
+
+
+Payload for event: "error".
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| status_code | integer |  |
+| response | string |  |
+| cause | string |  |
+
+
+## ErrorStreamPayload
+
+
+SSE error event body (event + typed data).
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| event | string |  |
+| data |  |  |
+
+
 ## FaissVectorStoreProvider
 
 
@@ -558,6 +753,42 @@ Storage config for a FAISS dynamic vector-store provider.
 | path | string | On-disk FAISS/SQLite path for this provider. |
 
 
+## FeedbackCategory
+
+
+Enum representing predefined feedback categories for AI responses.
+
+These categories help provide structured feedback about AI inference quality
+when users provide negative feedback (thumbs down). Multiple categories can
+be selected to provide comprehensive feedback about response issues.
+
+
+
+
+## FeedbackRequest
+
+
+Model representing a feedback request.
+
+Attributes:
+    conversation_id: The required conversation ID (UUID).
+    user_question: The required user question.
+    llm_response: The required LLM response.
+    sentiment: The optional sentiment.
+    user_feedback: The optional user feedback.
+    categories: The optional list of feedback categories (multi-select for negative feedback).
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| conversation_id | string | The required conversation ID (UUID) |
+| user_question | string | User question (the query string) |
+| llm_response | string | Response from LLM |
+| sentiment | integer | User sentiment, if provided must be -1 or 1 |
+| user_feedback | string | Feedback on the LLM response. |
+| categories | array | List of feedback categories that describe issues with the LLM response (for negative feedback). |
+
+
 ## FeedbackResponse
 
 
@@ -570,6 +801,20 @@ Attributes:
 | Field | Type | Description |
 |-------|------|-------------|
 | response | string | The response of the feedback request. |
+
+
+## FeedbackStatusUpdateRequest
+
+
+Model representing a feedback status update request.
+
+Attributes:
+    status: Value of the desired feedback enabled state.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| status | boolean | Desired state of feedback enablement, must be False or True |
 
 
 ## FeedbackStatusUpdateResponse
@@ -610,6 +855,30 @@ Attributes:
 | object | string | Object type |
 
 
+## FileTooLargeResponse
+
+
+413 Content Too Large - File upload exceeds size limit.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| status_code | integer | HTTP status code for the errors response |
+| detail |  | The detail model containing error summary and cause |
+
+
+## ForbiddenResponse
+
+
+403 Forbidden. Access denied.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| status_code | integer | HTTP status code for the errors response |
+| detail |  | The detail model containing error summary and cause |
+
+
 ## HealthStatus
 
 
@@ -640,6 +909,12 @@ In-memory cache configuration.
 | Field | Type | Description |
 |-------|------|-------------|
 | max_entries | integer | Maximum number of entries stored in the in-memory cache |
+
+
+## IncludeParameter
+
+
+
 
 
 ## InferenceConfiguration
@@ -674,6 +949,59 @@ Attributes:
 | name | string | Service name |
 | service_version | string | Service version |
 | llama_stack_version | string | Llama Stack version |
+
+
+## InputToolMCP
+
+
+MCP input tool with authorization included when serializing request bodies.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| type | string |  |
+| server_label | string |  |
+| connector_id | string |  |
+| server_url | string |  |
+| headers | object |  |
+| authorization | string |  |
+| require_approval |  |  |
+| allowed_tools |  |  |
+
+
+## InternalServerErrorResponse
+
+
+500 Internal Server Error.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| status_code | integer | HTTP status code for the errors response |
+| detail |  | The detail model containing error summary and cause |
+
+
+## InterruptedEventData
+
+
+Payload for event: "interrupted".
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| request_id | string |  |
+
+
+## InterruptedStreamPayload
+
+
+SSE interrupted stream body.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| event | string |  |
+| data |  |  |
 
 
 ## JsonPathOperator
@@ -806,6 +1134,18 @@ Attributes:
 | servers | array | List of MCP servers that accept client-provided authorization |
 
 
+## MCPListToolsSummary
+
+
+Model representing MCP list tools payload serialized into tool results.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| server_label | string | MCP server label associated with the tool list |
+| tools | array | Tools exposed by the MCP server |
+
+
 ## MCPListToolsTool
 
 
@@ -886,6 +1226,30 @@ Attributes:
 | servers | array | List of all registered MCP servers (static and dynamic) |
 
 
+## MCPServerRegistrationRequest
+
+
+Request model for dynamically registering an MCP server.
+
+Attributes:
+    name: Unique name for the MCP server.
+    url: URL of the MCP server endpoint.
+    provider_id: MCP provider identification (defaults to "model-context-protocol").
+    authorization_headers: Optional headers to send to the MCP server.
+    headers: Optional list of HTTP header names to forward from incoming requests.
+    timeout: Optional request timeout in seconds.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| name | string | Unique name for the MCP server |
+| url | string | URL of the MCP server endpoint |
+| provider_id | string | MCP provider identification |
+| authorization_headers | object | Headers to send to the MCP server. Values must be one of the supported token resolution keywords: 'client' - forward the caller's token provided via MCP-HEADERS, 'kubernetes' - use the authenticated user's Kubernetes token, 'oauth' - use an OAuth token provided via MCP-HEADERS. File-path based secrets (used in static YAML config) are not supported for dynamically registered servers. |
+| headers | array | List of HTTP header names to forward from incoming requests |
+| timeout | integer | Request timeout in seconds for the MCP server |
+
+
 ## MCPServerRegistrationResponse
 
 
@@ -953,6 +1317,20 @@ Useful resources:
 | timeout | integer | Timeout in seconds for requests to the MCP server. If not specified, the default timeout from Llama Stack will be used. Note: This field is reserved for future use when Llama Stack adds timeout support. |
 
 
+## ModelFilter
+
+
+Model representing a query parameter to select models by its type.
+
+Attributes:
+    model_type: Required model type, such as 'llm', 'embeddings' etc.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| model_type | string | Optional filter to return only models matching this type |
+
+
 ## ModelsResponse
 
 
@@ -962,6 +1340,18 @@ Model representing a response to models request.
 | Field | Type | Description |
 |-------|------|-------------|
 | models | array | List of models available |
+
+
+## NotFoundResponse
+
+
+404 Not Found - Resource does not exist.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| status_code | integer | HTTP status code for the errors response |
+| detail |  | The detail model containing error summary and cause |
 
 
 ## ObservabilityConfiguration
@@ -1021,6 +1411,8 @@ URL citation annotation for referencing external web resources.
 ## OpenAIResponseAnnotationContainerFileCitation
 
 
+Container file citation annotation referencing a file within a container.
+
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -1053,6 +1445,8 @@ File citation annotation for referencing specific files in response content.
 
 ## OpenAIResponseAnnotationFilePath
 
+
+File path annotation referencing a generated file in response content.
 
 
 | Field | Type | Description |
@@ -1090,6 +1484,21 @@ Error details for failed OpenAI response requests.
 |-------|------|-------------|
 | code | string |  |
 | message | string |  |
+
+
+## OpenAIResponseInputFunctionToolCallOutput
+
+
+This represents the output of a function call that gets passed back to the model.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| call_id | string |  |
+| output |  |  |
+| type | string |  |
+| id | string |  |
+| status | string |  |
 
 
 ## OpenAIResponseInputMessageContentFile
@@ -1227,6 +1636,8 @@ Forces the model to call a specific tool on a remote MCP server
 ## OpenAIResponseInputToolChoiceMode
 
 
+Enumeration of simple tool choice modes for response generation.
+
 
 
 
@@ -1315,6 +1726,21 @@ A request for human approval of a tool invocation.
 | type | string |  |
 
 
+## OpenAIResponseMCPApprovalResponse
+
+
+A response to an MCP approval request.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| approval_request_id | string |  |
+| approve | boolean |  |
+| type | string |  |
+| id | string |  |
+| reason | string |  |
+
+
 ## OpenAIResponseMessage
 
 
@@ -1335,6 +1761,8 @@ scenarios.
 
 ## OpenAIResponseOutputMessageContentOutputText
 
+
+Text content within an output message of an OpenAI response.
 
 
 | Field | Type | Description |
@@ -1454,6 +1882,45 @@ MCP list tools output message containing available tools from an MCP server.
 | tools | array |  |
 
 
+## OpenAIResponseOutputMessageReasoningContent
+
+
+Reasoning text from the model.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| text | string | The reasoning text content from the model. |
+| type | string | The type identifier, always 'reasoning_text'. |
+
+
+## OpenAIResponseOutputMessageReasoningItem
+
+
+Reasoning output from the model, representing the model's thinking process.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| id | string | Unique identifier for the reasoning output item. |
+| summary | array | Summary of the reasoning output. |
+| type | string | The type identifier, always 'reasoning'. |
+| content | array | The reasoning content from the model. |
+| status | string | The status of the reasoning output. |
+
+
+## OpenAIResponseOutputMessageReasoningSummary
+
+
+A summary of reasoning output from the model.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| text | string | The summary text of the reasoning output. |
+| type | string | The type identifier, always 'summary_text'. |
+
+
 ## OpenAIResponseOutputMessageWebSearchToolCall
 
 
@@ -1503,6 +1970,7 @@ Controls how much reasoning the model performs before generating a response.
 | Field | Type | Description |
 |-------|------|-------------|
 | effort | string |  |
+| summary | string | Summary mode for reasoning output. One of 'auto', 'concise', or 'detailed'. |
 
 
 ## OpenAIResponseText
@@ -1511,11 +1979,13 @@ Controls how much reasoning the model performs before generating a response.
 Text response configuration for OpenAI responses.
 
 :param format: (Optional) Text format configuration specifying output format requirements
+:param verbosity: (Optional) Controls response verbosity level
 
 
 | Field | Type | Description |
 |-------|------|-------------|
 | format |  |  |
+| verbosity | string |  |
 
 
 ## OpenAIResponseTextFormat
@@ -1689,6 +2159,22 @@ Useful resources:
 | ca_cert_path | string | Path to CA certificate |
 
 
+## PromptCreateRequest
+
+
+Request body to create a stored prompt template in Llama Stack.
+
+Attributes:
+    prompt: Prompt text with variable placeholders.
+    variables: Variable names allowed in the template.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| prompt | string | Prompt text with variable placeholders |
+| variables | array | Variable names allowed in the template |
+
+
 ## PromptDeleteResponse
 
 
@@ -1726,6 +2212,38 @@ Attributes:
 | is_default | boolean | Whether this version is the default |
 | prompt | string | Prompt text with placeholders |
 | variables | array | Variable names used in the template |
+
+
+## PromptTooLongResponse
+
+
+413 Payload Too Large - Prompt is too long.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| status_code | integer | HTTP status code for the errors response |
+| detail |  | The detail model containing error summary and cause |
+
+
+## PromptUpdateRequest
+
+
+Request body to update a stored prompt (creates a new version).
+
+Attributes:
+    prompt: Updated prompt text.
+    version: Current version being updated.
+    set_as_default: Whether the new version becomes the default.
+    variables: Updated allowed variable names.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| prompt | string | Updated prompt text |
+| version | integer | Current version being updated |
+| set_as_default | boolean | Whether the new version becomes the default |
+| variables | array | Updated allowed variable names |
 
 
 ## PromptsListResponse
@@ -1786,6 +2304,42 @@ Model representing a response to providers request.
 | providers | object | List of available API types and their corresponding providers |
 
 
+## QueryRequest
+
+
+Model representing a request for the LLM (Language Model).
+
+Attributes:
+    query: The query string.
+    conversation_id: The optional conversation ID (UUID).
+    provider: The optional provider.
+    model: The optional model.
+    system_prompt: The optional system prompt.
+    attachments: The optional attachments.
+    no_tools: Whether to bypass all tools and MCP servers (default: False).
+    generate_topic_summary: Whether to generate topic summary for new conversations.
+    media_type: The optional media type for response format (application/json or text/plain).
+    vector_store_ids: The optional list of specific vector store IDs to query for RAG.
+    shield_ids: The optional list of configured shield names to apply.
+    solr: Optional Solr inline RAG options (mode, filters) or legacy filter-only dict.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| query | string | The query string |
+| conversation_id | string | The optional conversation ID (UUID) |
+| provider | string | The optional provider |
+| model | string | The optional model |
+| system_prompt | string | The optional system prompt. |
+| attachments | array | The optional list of attachments. |
+| no_tools | boolean | Whether to bypass all tools and MCP servers |
+| generate_topic_summary | boolean | Whether to generate topic summary for new conversations |
+| media_type | string | Media type for the response format |
+| vector_store_ids | array | Optional list of specific vector store IDs to query for RAG. If not provided, all available vector stores will be queried. |
+| shield_ids | array | Optional list of configured shield names to apply. If None, all configured shields are used. |
+| solr |  | Solr inline RAG config: mode (semantic, hybrid, lexical) and filters; a legacy filter-only object (e.g. fq) is still accepted. |
+
+
 ## QueryResponse
 
 
@@ -1817,6 +2371,49 @@ Attributes:
 | available_quotas | object | Quota available as measured by all configured quota limiters |
 | tool_calls | array | List of tool calls made during response generation |
 | tool_results | array | List of tool results |
+
+
+## QuestionValidityConfig
+
+
+Configuration for the question validity guardrail.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| model_id | string | The model_id to use for the guard |
+| model_prompt | string | The default prompt sent to the LLM used to validate the Users' question. |
+| invalid_question_response | string | The default response when the Users' question is determined to be invalid. |
+
+
+## QuestionValidityShieldConfiguration
+
+
+Configuration for a named question-validity guardrail shield.
+
+Attributes:
+    name: Unique, user-facing name identifying this shield instance.
+    provider_id: Discriminator identifying this as a question-validity shield.
+    config: Question-validity-specific configuration.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| name | string | Unique, user-facing name identifying this shield instance. |
+| provider_id | string | Discriminator identifying this as a question-validity shield. |
+| config |  | Question-validity-specific configuration for this shield. |
+
+
+## QuotaExceededResponse
+
+
+429 Too Many Requests - Quota limit exceeded.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| status_code | integer | HTTP status code for the errors response |
+| detail |  | The detail model containing error summary and cause |
 
 
 ## QuotaHandlersConfiguration
@@ -1897,6 +2494,24 @@ Model representing a RAG chunk used in the response.
 | source | string | Index name identifying the knowledge source from configuration |
 | score | number | Relevance score |
 | attributes | object | Document metadata from the RAG provider (e.g., url, title, author) |
+
+
+## RAGContext
+
+
+Result of building RAG context from all enabled pre-query RAG sources.
+
+Attributes:
+    context_text: Formatted RAG context string for injection into the query.
+    rag_chunks: RAG chunks from pre-query sources (BYOK + Solr).
+    referenced_documents: Referenced documents from pre-query sources.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| context_text | string | Formatted context for injection |
+| rag_chunks | array | RAG chunks from pre-query sources |
+| referenced_documents | array | Documents from pre-query sources |
 
 
 ## RAGInfoResponse
@@ -1982,6 +2597,64 @@ Attributes:
 | providers | array | List of unhealthy providers (empty when all healthy) |
 
 
+## RedactionConfig
+
+
+Configuration for PII redaction with regex-based rules.
+
+Rules are validated and compiled at construction time. Invalid
+regex patterns raise a ``ValueError`` immediately.
+
+Attributes:
+    rules: Ordered list of redaction rules applied sequentially.
+    case_sensitive: When False, patterns are compiled with
+        ``re.IGNORECASE``. Defaults to False.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| rules | array | Ordered list of PII redaction rules |
+| case_sensitive | boolean | When False, patterns are compiled with re.IGNORECASE |
+
+
+## RedactionRule
+
+
+A single regex-based redaction rule.
+
+Attributes:
+    pattern: Raw regex pattern string to match sensitive data.
+    replacement: Text to substitute for each match.
+    case_sensitive: Per-rule override for case sensitivity.
+        When None, the global ``RedactionConfig.case_sensitive``
+        flag applies.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| pattern | string | Regex pattern to match sensitive data |
+| replacement | string | Replacement string for matched text |
+| case_sensitive | boolean | Per-rule case sensitivity override. When None, the global config flag applies. |
+
+
+## RedactionShieldConfiguration
+
+
+Configuration for a named PII-redaction guardrail shield.
+
+Attributes:
+    name: Unique, user-facing name identifying this shield instance.
+    provider_id: Discriminator identifying this as a redaction shield.
+    config: Redaction-specific configuration.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| name | string | Unique, user-facing name identifying this shield instance. |
+| provider_id | string | Discriminator identifying this as a redaction shield. |
+| config |  | Redaction-specific configuration for this shield. |
+
+
 ## ReferencedDocument
 
 
@@ -2011,6 +2684,121 @@ Reranker configuration for RAG chunk reranking.
 |-------|------|-------------|
 | enabled | boolean | When True, reranking applied to RAG chunks. When False, reranking is disabled and original scoring used. |
 | model | string | Cross-encoder model name for reranking RAG chunks. Defaults to 'cross-encoder/ms-marco-MiniLM-L6-v2' from sentence-transformers. |
+
+
+## ResponseInput
+
+
+
+
+
+## ResponseItem
+
+
+
+
+
+## ResponsesApiParams
+
+
+Parameters for a Llama Stack Responses API request.
+
+All fields accepted by the Llama Stack client responses.create() body are
+included so that dumped model can be passed directly to response create.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| input |  | The input text or structured input items |
+| model | string | The full model ID in format "provider/model" |
+| conversation | string | The conversation ID in llama-stack format |
+| include | array | Output item types to include in the response |
+| instructions | string | The resolved system prompt |
+| max_infer_iters | integer | Maximum number of inference iterations |
+| max_output_tokens | integer | Maximum number of tokens allowed in the response |
+| max_tool_calls | integer | Maximum tool calls allowed in a single response |
+| metadata | object | Custom metadata for tracking or logging |
+| parallel_tool_calls | boolean | Whether the model can make multiple tool calls in parallel |
+| previous_response_id | string | Identifier of the previous response in a multi-turn conversation |
+| prompt |  | Prompt template with variables for dynamic substitution |
+| reasoning |  | Reasoning configuration for the response |
+| safety_identifier | string | Stable identifier for safety monitoring and abuse detection |
+| store | boolean | Whether to store the response |
+| stream | boolean | Whether to stream the response |
+| temperature | number | Sampling temperature (e.g. 0.0-2.0) |
+| text |  | Text response configuration (format constraints) |
+| tool_choice |  | Tool selection strategy |
+| tools | array | Prepared tool groups for Responses API (same type as ResponsesRequest.tools) |
+| extra_headers | object | Extra HTTP headers to send with the request (e.g. x-llamastack-provider-data) |
+| omit_conversation | boolean | When True, the conversation parameter is dropped from the request body while remaining on the object for identity. Set by conversation compaction (LCORE-1572): once a conversation is compacted, lightspeed-stack supplies explicit input and must not let Llama Stack reload the full history via the conversation parameter. |
+
+
+## ResponsesRequest
+
+
+Model representing a request for the Responses API following LCORE specification.
+
+Attributes:
+    input: Input text or structured input items containing the query.
+    model: Model identifier in format "provider/model". Auto-selected if not provided.
+    conversation: Conversation ID linking to an existing conversation. Accepts both
+        OpenAI and LCORE formats. Mutually exclusive with previous_response_id.
+    include: Explicitly specify output item types that are excluded by default but
+        should be included in the response.
+    instructions: System instructions or guidelines provided to the model (acts as
+        the system prompt).
+    max_infer_iters: Maximum number of inference iterations the model can perform.
+    max_output_tokens: Maximum number of tokens allowed in the response.
+    max_tool_calls: Maximum number of tool calls allowed in a single response.
+    metadata: Custom metadata dictionary with key-value pairs for tracking or logging.
+    parallel_tool_calls: Whether the model can make multiple tool calls in parallel.
+    previous_response_id: Identifier of the previous response in a multi-turn
+        conversation. Mutually exclusive with conversation.
+    prompt: Prompt object containing a template with variables for dynamic
+        substitution.
+    reasoning: Reasoning configuration for the response.
+    safety_identifier: Safety identifier for the response.
+    store: Whether to store the response in conversation history. Defaults to True.
+    stream: Whether to stream the response as it is generated. Defaults to False.
+    temperature: Sampling temperature controlling randomness (typically 0.0–2.0).
+    text: Text response configuration specifying output format constraints (JSON
+        schema, JSON object, or plain text).
+    tool_choice: Tool selection strategy ("auto", "required", "none", or specific
+        tool configuration).
+    tools: List of tools available to the model (file search, web search, function
+        calls, MCP tools). Defaults to all tools available to the model.
+    generate_topic_summary: LCORE-specific flag indicating whether to generate a
+        topic summary for new conversations. Defaults to True.
+    shield_ids: LCORE-specific list of configured shield names to apply.
+        If None, all configured shields are used.
+    solr: Optional Solr inline RAG options (mode, filters) or legacy filter-only dict.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| input |  |  |
+| model | string |  |
+| conversation | string |  |
+| include | array |  |
+| instructions | string |  |
+| max_infer_iters | integer |  |
+| max_output_tokens | integer |  |
+| max_tool_calls | integer |  |
+| metadata | object |  |
+| parallel_tool_calls | boolean |  |
+| previous_response_id | string |  |
+| prompt |  |  |
+| reasoning |  |  |
+| safety_identifier | string |  |
+| store | boolean |  |
+| stream | boolean |  |
+| temperature | number |  |
+| text |  |  |
+| tool_choice |  |  |
+| tools | array |  |
+| generate_topic_summary | boolean |  |
+| shield_ids | array |  |
+| solr |  |  |
 
 
 ## ResponsesResponse
@@ -2087,6 +2875,38 @@ Attributes:
 | output_text | string |  |
 
 
+## RlsapiV1Attachment
+
+
+Attachment data from rlsapi v1 context.
+
+Attributes:
+    contents: The textual contents of the file read on the client machine.
+    mimetype: The MIME type of the file.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| contents | string | File contents read on client |
+| mimetype | string | MIME type of the file |
+
+
+## RlsapiV1CLA
+
+
+Command Line Assistant information from rlsapi v1 context.
+
+Attributes:
+    nevra: The NEVRA (Name-Epoch-Version-Release-Architecture) of the CLA.
+    version: The version of the command line assistant.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| nevra | string | CLA NEVRA identifier |
+| version | string | Command line assistant version |
+
+
 ## RlsapiV1Configuration
 
 
@@ -2101,6 +2921,28 @@ sections so that CLA-specific options do not affect other endpoints.
 |-------|------|-------------|
 | allow_verbose_infer | boolean | Allow /v1/infer to return extended metadata (tool_calls, rag_chunks, token_usage) when the client sends "include_metadata": true. Should NOT be enabled in production. If production use is needed, consider RBAC-based access control via an Action.RLSAPI_V1_INFER authorization rule. |
 | quota_subject | string | Identity field used as the quota subject for /v1/infer. When set, token quota enforcement is enabled for this endpoint. Requires quota_handlers to be configured. "org_id" and "system_id" require rh-identity authentication; falls back to user_id when rh-identity data is unavailable. |
+
+
+## RlsapiV1Context
+
+
+Context data for rlsapi v1 /infer request.
+
+Attributes:
+    stdin: Redirect input read by command-line-assistant.
+    attachments: Attachment object received by the client.
+    terminal: Terminal object received by the client.
+    systeminfo: System information object received by the client.
+    cla: Command Line Assistant information.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| stdin | string | Redirect input from stdin |
+| attachments |  | File attachment data |
+| terminal |  | Terminal output context |
+| systeminfo |  | Client system information |
+| cla |  | Command line assistant metadata |
 
 
 ## RlsapiV1InferData
@@ -2131,6 +2973,37 @@ Attributes:
 | output_tokens | integer | Number of output tokens generated (requires include_metadata=true) |
 
 
+## RlsapiV1InferRequest
+
+
+RHEL Lightspeed rlsapi v1 /infer request.
+
+Attributes:
+    question: User question string.
+    context: Context with system info, terminal output, etc. (defaults provided).
+    skip_rag: Reserved for future use. RAG retrieval is not yet implemented.
+    include_metadata: Request extended response with debugging metadata (dev/testing only).
+
+Example:
+    ```python
+    request = RlsapiV1InferRequest(
+        question="How do I list files?",
+        context=RlsapiV1Context(
+            systeminfo=RlsapiV1SystemInfo(os="RHEL", version="9.3"),
+            terminal=RlsapiV1Terminal(output="bash: command not found"),
+        ),
+    )
+    ```
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| question | string | User question |
+| context |  | Optional context (system info, terminal output, stdin, attachments) |
+| skip_rag | boolean | Reserved for future use. RAG retrieval is not yet implemented. |
+| include_metadata | boolean | [Development/Testing Only] Return extended response with debugging metadata (tool_calls, rag_chunks, tokens). Only honored when allow_verbose_infer is enabled. Not available in production. |
+
+
 ## RlsapiV1InferResponse
 
 
@@ -2143,6 +3016,40 @@ Attributes:
 | Field | Type | Description |
 |-------|------|-------------|
 | data |  | Response data containing text and request_id |
+
+
+## RlsapiV1SystemInfo
+
+
+System information from rlsapi v1 context.
+
+Attributes:
+    os: The operating system of the client machine.
+    version: The version of the operating system.
+    arch: The architecture of the client machine.
+    system_id: The id of the client machine.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| os | string | Operating system name |
+| version | string | Operating system version |
+| arch | string | System architecture |
+| id | string | Client machine ID |
+
+
+## RlsapiV1Terminal
+
+
+Terminal output from rlsapi v1 context.
+
+Attributes:
+    output: The textual contents of the terminal read on the client machine.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| output | string | Terminal output from client |
 
 
 ## SQLiteDatabaseConfiguration
@@ -2256,7 +3163,7 @@ Examples:
 :param ranker: (Optional) Name of the ranking algorithm to use. Supported values:
     - "weighted": Weighted combination of vector and keyword scores
     - "rrf": Reciprocal Rank Fusion algorithm
-    - "neural": Neural reranking model (requires model parameter, Part II)
+    - "neural": Neural reranking model (requires model parameter)
     Note: For OpenAI API compatibility, any string value is accepted, but only the above values are supported.
 :param score_threshold: (Optional) Minimum relevance score threshold for results. Default: 0.0
 :param alpha: (Optional) Weight factor for weighted ranker (0-1).
@@ -2271,10 +3178,10 @@ Examples:
     Falls back to VectorStoresConfig.chunk_retrieval_params.rrf_impact_factor if not provided.
 :param weights: (Optional) Dictionary of weights for combining different signal types.
     Keys can be "vector", "keyword", "neural". Values should sum to 1.0.
-    Used when combining algorithm-based reranking with neural reranking (Part II).
+    Used when combining algorithm-based reranking with neural reranking.
     Example: {"vector": 0.3, "keyword": 0.3, "neural": 0.4}
-:param model: (Optional) Model identifier for neural reranker (e.g., "vllm/Qwen3-Reranker-0.6B").
-    Required when ranker="neural" or when weights contains "neural" (Part II).
+:param model: (Optional) Model identifier for neural reranker (e.g., "transformers/Qwen/Qwen3-Reranker-0.6B").
+    Required when ranker="neural" or when weights contains "neural".
 
 
 | Field | Type | Description |
@@ -2312,6 +3219,42 @@ the service can handle requests concurrently.
 | cors |  | Cross-Origin Resource Sharing configuration for cross-domain requests |
 
 
+## ServiceUnavailableResponse
+
+
+503 Backend Unavailable.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| status_code | integer | HTTP status code for the errors response |
+| detail |  | The detail model containing error summary and cause |
+
+
+## ShieldModerationBlocked
+
+
+Shield moderation blocked the content; refusal details are present.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| decision | string |  |
+| message | string |  |
+| moderation_id | string |  |
+
+
+## ShieldModerationPassed
+
+
+Shield moderation passed; no refusal.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| decision | string |  |
+
+
 ## ShieldsResponse
 
 
@@ -2320,7 +3263,7 @@ Model representing a response to shields request.
 
 | Field | Type | Description |
 |-------|------|-------------|
-| shields | array | List of shields available |
+| shields | array | List of shields configured in Lightspeed Core Stack |
 
 
 ## SkillsConfiguration
@@ -2341,6 +3284,25 @@ Paths are validated at startup to ensure they exist and contain valid SKILL.md f
 | Field | Type | Description |
 |-------|------|-------------|
 | paths | array | Paths to skill directories or directories containing skill subdirectories. |
+
+
+## SolrVectorSearchRequest
+
+
+LCORE Solr inline RAG options for vector_io.query (mode and provider filters).
+
+Attributes:
+    mode: Solr vector_io search mode. When omitted, the server default (hybrid) is used.
+    filters: Solr provider filter payload passed through as params['solr'].
+
+Legacy clients may send a plain JSON object with filter keys only;
+that object is accepted as filters with mode unset (server default applies).
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| mode | string | Solr vector_io search mode. When omitted, the server default ('hybrid') is used. |
+| filters | object | Solr provider filter payload passed through as params['solr']. Supports structured metadata filters (eq, ne, in, nin comparison operators). Legacy filter-only objects (e.g. fq) are still accepted. |
 
 
 ## SplunkConfiguration
@@ -2369,6 +3331,30 @@ Useful resources:
 | verify_ssl | boolean | Whether to verify SSL certificates for HEC endpoint. |
 
 
+## StartEventData
+
+
+Payload for event: "start".
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| conversation_id | string |  |
+| request_id | string |  |
+
+
+## StartStreamPayload
+
+
+SSE stream start body.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| event | string |  |
+| data |  |  |
+
+
 ## StatusResponse
 
 
@@ -2383,6 +3369,28 @@ Attributes:
 |-------|------|-------------|
 | functionality | string | The functionality of the service |
 | status | object | The status of the service |
+
+
+## StreamPayloadBase
+
+
+Base for streaming SSE JSON payloads.
+
+
+
+
+## StreamingInterruptRequest
+
+
+Model representing a request to interrupt an active streaming query.
+
+Attributes:
+    request_id: Unique ID of the active streaming request to interrupt.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| request_id | string | The active streaming request ID to interrupt |
 
 
 ## StreamingInterruptResponse
@@ -2436,6 +3444,62 @@ Useful resources:
 | tls_key_password | string | Path to file containing the password to decrypt the SSL/TLS private key. |
 
 
+## TokenChunkData
+
+
+Structured data for token and turn-complete stream lines.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| id | integer |  |
+| token | string |  |
+
+
+## TokenCounter
+
+
+Model representing token counter.
+
+Attributes:
+    input_tokens: number of tokens sent to LLM
+    output_tokens: number of tokens received from LLM
+    input_tokens_counted: number of input tokens counted by the handler
+    llm_calls: number of LLM calls
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| input_tokens | integer |  |
+| output_tokens | integer |  |
+| input_tokens_counted | integer |  |
+| llm_calls | integer |  |
+
+
+## TokenStreamPayload
+
+
+SSE token delta (event: "token").
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| event | string |  |
+| data |  |  |
+
+
+## ToolCallStreamPayload
+
+
+SSE tool call summary.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| event | string |  |
+| data |  |  |
+
+
 ## ToolCallSummary
 
 
@@ -2448,6 +3512,31 @@ Model representing a tool call made during response generation (for tool_calls l
 | name | string | Name of the tool called |
 | args | object | Arguments passed to the tool |
 | type | string | Type indicator for tool call |
+
+
+## ToolInfoSummary
+
+
+Model representing metadata for a single tool exposed by MCP list tools.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| name | string | Tool name |
+| description | string | Human-readable tool description |
+| input_schema | object | JSON schema for the tool input |
+
+
+## ToolResultStreamPayload
+
+
+SSE tool result summary.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| event | string |  |
+| data |  |  |
 
 
 ## ToolResultSummary
@@ -2476,6 +3565,42 @@ Model representing a response to tools request.
 | tools | array | List of tools available from all configured MCP servers and built-in toolgroups |
 
 
+## Transcript
+
+
+Model representing a transcript entry to be stored.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| metadata |  |  |
+| redacted_query | string |  |
+| query_is_valid | boolean |  |
+| llm_response | string |  |
+| rag_chunks | array |  |
+| truncated | boolean |  |
+| attachments | array |  |
+| tool_calls | array |  |
+| tool_results | array |  |
+
+
+## TranscriptMetadata
+
+
+Metadata for a transcript entry.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| provider | string |  |
+| model | string |  |
+| query_provider | string |  |
+| query_model | string |  |
+| user_id | string |  |
+| conversation_id | string |  |
+| timestamp | string |  |
+
+
 ## TrustedProxyConfiguration
 
 
@@ -2498,6 +3623,50 @@ A Kubernetes ServiceAccount identity for trusted-proxy allowlist.
 |-------|------|-------------|
 | namespace | string | Kubernetes namespace of the ServiceAccount. |
 | name | string | Name of the Kubernetes ServiceAccount. |
+
+
+## TurnCompleteStreamPayload
+
+
+SSE turn completion (same data shape as token).
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| event | string |  |
+| data |  |  |
+
+
+## TurnSummary
+
+
+Summary of a turn in llama stack.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| id | string | ID of the response |
+| llm_response | string |  |
+| tool_calls | array |  |
+| tool_results | array |  |
+| rag_chunks | array |  |
+| referenced_documents | array |  |
+| token_usage |  |  |
+| output_items | array | Structured response output items, captured for compacted-mode turn persistence (LCORE-1572). Empty on the non-compacted path. |
+| partial_tokens | array | Accumulated text deltas during streaming, used to reconstruct partial content on interruption. |
+| next_chunk_id | integer | Next monotonic SSE chunk index, kept in sync with the inner generator so the interrupt handler can emit a sequentially valid id. |
+
+
+## UnauthorizedResponse
+
+
+401 Unauthorized - Missing or invalid credentials.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| status_code | integer | HTTP status code for the errors response |
+| detail |  | The detail model containing error summary and cause |
 
 
 ## UnifiedInferenceProvider
@@ -2568,6 +3737,18 @@ Attributes:
 | native_override | object | Raw Llama Stack schema deep-merged last (maps merge recursively; lists and scalars replace). |
 
 
+## UnprocessableEntityResponse
+
+
+422 Unprocessable Entity - Request validation failed.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| status_code | integer | HTTP status code for the errors response |
+| detail |  | The detail model containing error summary and cause |
+
+
 ## UserDataCollection
 
 
@@ -2606,6 +3787,30 @@ Attributes:
 | providers | array | Dynamic vector-store provider capacity for runtime POST /v1/vector-stores creates. Not the same as byok_rag (static registered corpora). |
 
 
+## VectorStoreCreateRequest
+
+
+Model representing a request to create a vector store.
+
+Attributes:
+    name: Name of the vector store.
+    embedding_model: Optional embedding model to use.
+    embedding_dimension: Optional embedding dimension.
+    chunking_strategy: Optional chunking strategy configuration.
+    provider_id: Optional vector store provider identifier.
+    metadata: Optional metadata dictionary for storing session information.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| name | string | Name of the vector store |
+| embedding_model | string | Embedding model to use for the vector store |
+| embedding_dimension | integer | Dimension of the embedding vectors |
+| chunking_strategy | object | Chunking strategy configuration |
+| provider_id | string | Vector store provider identifier |
+| metadata | object | Metadata dictionary for storing session information |
+
+
 ## VectorStoreDeleteResponse
 
 
@@ -2616,6 +3821,24 @@ Result of deleting a vector store (always HTTP 200).
 |-------|------|-------------|
 | deleted | boolean | Whether the deletion was successful. |
 | vector_store_id | string | Vector store identifier that was passed to delete. |
+
+
+## VectorStoreFileCreateRequest
+
+
+Model representing a request to add a file to a vector store.
+
+Attributes:
+    file_id: ID of the file to add to the vector store.
+    attributes: Optional metadata key-value pairs (max 16 pairs).
+    chunking_strategy: Optional chunking strategy configuration.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| file_id | string | ID of the file to add to the vector store |
+| attributes | object | Set of up to 16 key-value pairs for storing additional information. Keys: strings (max 64 chars). Values: strings (max 512 chars), booleans, or numbers. |
+| chunking_strategy | object | Chunking strategy configuration for this file |
 
 
 ## VectorStoreFileDeleteResponse
@@ -2698,6 +3921,24 @@ Attributes:
 | metadata | object | Metadata dictionary for storing session information |
 
 
+## VectorStoreUpdateRequest
+
+
+Model representing a request to update a vector store.
+
+Attributes:
+    name: New name for the vector store.
+    expires_at: Optional expiration timestamp.
+    metadata: Optional metadata dictionary for storing session information.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| name | string | New name for the vector store |
+| expires_at | integer | Unix timestamp when the vector store should expire |
+| metadata | object | Metadata dictionary for storing session information |
+
+
 ## VectorStoresListResponse
 
 
@@ -2712,3 +3953,34 @@ Attributes:
 |-------|------|-------------|
 | data | array | List of vector stores |
 | object | string | Object type |
+
+
+## models__config__ApprovalFilter
+
+
+Granular approval control for specific MCP tools.
+
+Attributes:
+    always: Tool names that always require human approval before execution.
+    never: Tool names that never require approval (pre-approved).
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| always | array | List of tool names that always require human approval |
+| never | array | List of tool names that never require approval |
+
+
+## ogx_api__openai_responses__ApprovalFilter
+
+
+Filter configuration for MCP tool approval requirements.
+
+:param always: (Optional) List of tool names that always require approval
+:param never: (Optional) List of tool names that never require approval
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| always | array |  |
+| never | array |  |

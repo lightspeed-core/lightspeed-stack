@@ -21,6 +21,37 @@ class "Attachment" as src.models.common.query.Attachment {
   model_config : dict
   validate_image_attachment() -> Self
 }
+class "CatalogModel" as src.models.common.models.CatalogModel {
+  api_model_type : str
+  identifier : str
+  metadata : dict[str, Any]
+  model_type : str
+  provider_id : str
+  provider_resource_id : str
+  type : str
+}
+class "CatalogShield" as src.models.common.shields.CatalogShield {
+  config : dict[str, Any]
+  name : str
+  provider_id : Literal['question_validity', 'redaction']
+  type : Literal['shield']
+}
+class "CatalogTool" as src.models.common.tools.CatalogTool {
+  description : str
+  identifier : str
+  parameters : list[CatalogToolParameter]
+  provider_id : str
+  server_source : str
+  toolgroup_id : str
+  type : str
+}
+class "CatalogToolParameter" as src.models.common.tools.CatalogToolParameter {
+  default : Optional[Any]
+  description : str
+  name : str
+  parameter_type : str
+  required : bool
+}
 class "ConversationData" as src.models.common.conversation.ConversationData {
   conversation_id : str
   last_message_timestamp : float
@@ -85,6 +116,11 @@ class "InterruptedStreamPayload" as src.models.common.agents.stream_payloads.Int
   data
   event : Literal['interrupted']
   create() -> Self
+}
+class "ListedMcpTool" as src.models.common.tools.ListedMcpTool {
+  description : Optional[str]
+  input_schema : Optional[dict[str, Any]]
+  name : str
 }
 class "MCPListToolsSummary" as src.models.common.turn_summary.MCPListToolsSummary {
   server_label : str

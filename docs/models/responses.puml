@@ -140,7 +140,7 @@ class "MCPServerRegistrationResponse" as src.models.api.responses.successful.mcp
 }
 class "ModelsResponse" as src.models.api.responses.successful.catalog.ModelsResponse {
   model_config : dict
-  models : list[dict[str, Any]]
+  models : list[CatalogModel]
 }
 class "NotFoundResponse" as src.models.api.responses.error.not_found.NotFoundResponse {
   description : ClassVar[str]
@@ -296,7 +296,7 @@ class "ServiceUnavailableResponse" as src.models.api.responses.error.service_una
 }
 class "ShieldsResponse" as src.models.api.responses.successful.catalog.ShieldsResponse {
   model_config : dict
-  shields : list[dict[str, Any]]
+  shields : list[CatalogShield]
 }
 class "StatusResponse" as src.models.api.responses.successful.probes.StatusResponse {
   functionality : str
@@ -315,7 +315,7 @@ class "StreamingQueryResponse" as src.models.api.responses.successful.query.Stre
 }
 class "ToolsResponse" as src.models.api.responses.successful.catalog.ToolsResponse {
   model_config : dict
-  tools : list[dict[str, Any]]
+  tools : list[CatalogTool]
 }
 class "UnauthorizedResponse" as src.models.api.responses.error.unauthorized.UnauthorizedResponse {
   description : ClassVar[str]
