@@ -1838,7 +1838,7 @@ requires-dist = [
     { name = "litellm", specifier = ">=1.83.7" },
     { name = "ogx", specifier = "==1.0.2" },
     { name = "ogx-api", specifier = "==1.0.2" },
-    { name = "ogx-client", specifier = "==1.0.2" },
+    { name = "ogx-client", specifier = "==1.2.1" },
     { name = "openai", specifier = ">=1.99.9" },
     { name = "opentelemetry-distro", specifier = ">=0.49b0" },
     { name = "opentelemetry-exporter-otlp", specifier = ">=1.34.1" },
@@ -2417,28 +2417,19 @@ wheels = [
 
 [[package]]
 name = "ogx-client"
-version = "1.0.2"
+version = "1.2.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "anyio" },
-    { name = "click" },
-    { name = "distro" },
     { name = "fire" },
     { name = "httpx" },
-    { name = "pandas" },
-    { name = "prompt-toolkit" },
-    { name = "pyaml" },
     { name = "pydantic" },
+    { name = "python-dateutil" },
     { name = "requests" },
-    { name = "rich" },
-    { name = "sniffio" },
-    { name = "termcolor" },
-    { name = "tqdm" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/91/74/3edc7a8f396137741d9b29a728bcf45afd4a8266b40f1080ec0118c52065/ogx_client-1.0.2.tar.gz", hash = "sha256:4f5d0a5285fdbfcd3c260c291d70d325cf44b743a67c51e65d8a0c5f5cd76177", size = 435217, upload-time = "2026-05-13T22:52:04.778Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/4f/6b/5a22ea5b1193219cc6760acdd4085676c251096780dacbfbe3bd7d3381e1/ogx_client-1.2.1.tar.gz", hash = "sha256:1e22c29fff211c8f135da8f594407f01350ec00e9d0491d917b2fdd117d8b8c1", size = 588070, upload-time = "2026-07-14T19:20:43.71Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b0/fc/4bf0216fd6e13943837f30164937d6db78dd8743424984ce22c763491c22/ogx_client-1.0.2-py3-none-any.whl", hash = "sha256:167ad9f36ec632cd579bb6451dc8137d90d755d78cd7073d8fc9dcc9bf622fa5", size = 309278, upload-time = "2026-05-13T22:52:03.149Z" },
+    { url = "https://files.pythonhosted.org/packages/f3/1b/d912fcec167ec4d0b03b39579e2c0e4f8d712025f5bcb1e837b83a4e0ccc/ogx_client-1.2.1-py3-none-any.whl", hash = "sha256:b23c94e2ec5be59b359280ff58574d426662c22e0a6cbd51fc6357deb045e3ca", size = 1544659, upload-time = "2026-07-14T19:20:42.053Z" },
 ]
 
 [[package]]
@@ -3026,18 +3017,6 @@ keyring = [
 ]
 memory = [
     { name = "cachetools" },
-]
-
-[[package]]
-name = "pyaml"
-version = "26.7.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "pyyaml" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/15/6a/acfdf17de0d6947b419da8696e02b781b18de2cf49e0472298b50e1f0711/pyaml-26.7.0.tar.gz", hash = "sha256:11cda3a796efc6dbce0d56836be56cfd26289dad07bcd78e9904086729929c93", size = 30669, upload-time = "2026-07-04T00:34:38.532Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/a6/26/3f05f9e3692853dff663913d5d62fb8df3f5640c8d70b06588c0b51ed953/pyaml-26.7.0-py3-none-any.whl", hash = "sha256:cfa382780c43ae660669b87d394d550a41856ef175f5749f51f753e12d7077ac", size = 27226, upload-time = "2026-07-04T00:34:37.198Z" },
 ]
 
 [[package]]
