@@ -142,10 +142,13 @@ class AsyncLlamaStackClientHolder(metaclass=Singleton):
         config = configuration.configuration
 
         # Enrichment: BYOK RAG
-        enrich_byok_rag(ls_config, [b.model_dump() for b in config.byok_rag])
+        enrich_byok_rag(
+            ls_config,
+            [b.model_dump() for b in config.rag.byok.stores],
+        )
 
         # Enrichment: Solr - enabled when "okp" appears in either inline or tool list
-        enrich_solr(ls_config, config.rag.model_dump(), config.okp.model_dump())
+        enrich_solr(ls_config, config.rag.model_dump(), config.rag.okp.model_dump())
 
         # Enrichment: Azure Entra ID deferred auth
         entra_id_config = (

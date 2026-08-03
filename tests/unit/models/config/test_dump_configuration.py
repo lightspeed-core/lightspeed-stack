@@ -40,6 +40,29 @@ _DEFAULT_APPROVALS_DUMP: dict[str, int] = {
     "approval_retention_days": 30,
 }
 
+_DEFAULT_RAG_DUMP: dict[str, Any] = {
+    "byok": {
+        "max_chunks": 10,
+        "stores": [],
+    },
+    "okp": {
+        "rhokp_url": None,
+        "offline": True,
+        "chunk_filter_query": None,
+        "max_chunks": 5,
+    },
+    "retrieval": {
+        "inline": {
+            "sources": [],
+            "max_chunks": 10,
+        },
+        "tool": {
+            "sources": [],
+            "max_chunks": 10,
+        },
+    },
+}
+
 _DEFAULT_SAVED_PROMPTS_DUMP: dict[str, int] = {
     "max_prompts_per_user": constants.SAVED_PROMPTS_DEFAULT_MAX_PER_USER,
     "max_display_name_length": constants.SAVED_PROMPTS_DEFAULT_MAX_DISPLAY_NAME_LENGTH,
@@ -124,7 +147,6 @@ def test_dump_configuration_minimal_cfg(tmp_path: Path) -> None:
         assert "customization" in content
         assert "inference" in content
         assert "database" in content
-        assert "byok_rag" in content
         assert "quota_handlers" in content
         assert "azure_entra_id" in content
         assert "reranker" in content
@@ -219,7 +241,7 @@ def test_dump_configuration_minimal_cfg(tmp_path: Path) -> None:
                 "buffer_max_ratio": 0.3,
             },
             "approvals": _DEFAULT_APPROVALS_DUMP,
-            "byok_rag": [],
+            "byok_rag": None,
             "vector_store": {
                 "default_provider": None,
                 "providers": [],
@@ -240,15 +262,8 @@ def test_dump_configuration_minimal_cfg(tmp_path: Path) -> None:
                 "postgres": None,
             },
             "azure_entra_id": None,
-            "rag": {
-                "inline": [],
-                "tool": [],
-            },
-            "okp": {
-                "rhokp_url": None,
-                "offline": True,
-                "chunk_filter_query": None,
-            },
+            "rag": _DEFAULT_RAG_DUMP,
+            "okp": None,
             "rlsapi_v1": {
                 "allow_verbose_infer": False,
                 "quota_subject": None,
@@ -447,7 +462,7 @@ def test_dump_configuration_valid_values(tmp_path: Path) -> None:
                 "buffer_max_ratio": 0.3,
             },
             "approvals": _DEFAULT_APPROVALS_DUMP,
-            "byok_rag": [],
+            "byok_rag": None,
             "vector_store": {
                 "default_provider": None,
                 "providers": [],
@@ -468,15 +483,8 @@ def test_dump_configuration_valid_values(tmp_path: Path) -> None:
                 "postgres": None,
             },
             "azure_entra_id": None,
-            "rag": {
-                "inline": [],
-                "tool": [],
-            },
-            "okp": {
-                "rhokp_url": None,
-                "offline": True,
-                "chunk_filter_query": None,
-            },
+            "rag": _DEFAULT_RAG_DUMP,
+            "okp": None,
             "rlsapi_v1": {
                 "allow_verbose_infer": False,
                 "quota_subject": None,
@@ -811,7 +819,7 @@ def test_dump_configuration_with_quota_limiters(tmp_path: Path) -> None:
                 "buffer_max_ratio": 0.3,
             },
             "approvals": _DEFAULT_APPROVALS_DUMP,
-            "byok_rag": [],
+            "byok_rag": None,
             "vector_store": {
                 "default_provider": None,
                 "providers": [],
@@ -847,15 +855,8 @@ def test_dump_configuration_with_quota_limiters(tmp_path: Path) -> None:
                 "postgres": None,
             },
             "azure_entra_id": None,
-            "rag": {
-                "inline": [],
-                "tool": [],
-            },
-            "okp": {
-                "rhokp_url": None,
-                "offline": True,
-                "chunk_filter_query": None,
-            },
+            "rag": _DEFAULT_RAG_DUMP,
+            "okp": None,
             "rlsapi_v1": {
                 "allow_verbose_infer": False,
                 "quota_subject": None,
@@ -1074,7 +1075,7 @@ def test_dump_configuration_with_quota_limiters_different_values(
                 "buffer_max_ratio": 0.3,
             },
             "approvals": _DEFAULT_APPROVALS_DUMP,
-            "byok_rag": [],
+            "byok_rag": None,
             "vector_store": {
                 "default_provider": None,
                 "providers": [],
@@ -1110,15 +1111,8 @@ def test_dump_configuration_with_quota_limiters_different_values(
                 "postgres": None,
             },
             "azure_entra_id": None,
-            "rag": {
-                "inline": [],
-                "tool": [],
-            },
-            "okp": {
-                "rhokp_url": None,
-                "offline": True,
-                "chunk_filter_query": None,
-            },
+            "rag": _DEFAULT_RAG_DUMP,
+            "okp": None,
             "rlsapi_v1": {
                 "allow_verbose_infer": False,
                 "quota_subject": None,
@@ -1376,6 +1370,7 @@ def test_dump_configuration_byok(tmp_path: Path) -> None:
                     "embedding_dimension": 768,
                     "embedding_model": "sentence-transformers/all-mpnet-base-v2",
                     "rag_id": "rag_id",
+                    "backend": "faiss",
                     "rag_type": "inline::faiss",
                     "vector_db_id": "vector_db_id",
                     "score_multiplier": 1.0,
@@ -1407,14 +1402,44 @@ def test_dump_configuration_byok(tmp_path: Path) -> None:
             },
             "azure_entra_id": None,
             "rag": {
-                "inline": [],
-                "tool": [],
+                "byok": {
+                    "max_chunks": 10,
+                    "stores": [
+                        {
+                            "db_path": "tests/configuration/rag.txt",
+                            "embedding_dimension": 768,
+                            "embedding_model": "sentence-transformers/all-mpnet-base-v2",
+                            "rag_id": "rag_id",
+                            "backend": "faiss",
+                            "rag_type": "inline::faiss",
+                            "vector_db_id": "vector_db_id",
+                            "score_multiplier": 1.0,
+                            "host": None,
+                            "port": None,
+                            "db": None,
+                            "user": None,
+                            "password": None,
+                        },
+                    ],
+                },
+                "okp": {
+                    "rhokp_url": None,
+                    "offline": True,
+                    "chunk_filter_query": None,
+                    "max_chunks": 5,
+                },
+                "retrieval": {
+                    "inline": {
+                        "sources": [],
+                        "max_chunks": 10,
+                    },
+                    "tool": {
+                        "sources": [],
+                        "max_chunks": 10,
+                    },
+                },
             },
-            "okp": {
-                "rhokp_url": None,
-                "offline": True,
-                "chunk_filter_query": None,
-            },
+            "okp": None,
             "rlsapi_v1": {
                 "allow_verbose_infer": False,
                 "quota_subject": None,
@@ -1608,7 +1633,7 @@ def test_dump_configuration_pg_namespace(tmp_path: Path) -> None:
                 "buffer_max_ratio": 0.3,
             },
             "approvals": _DEFAULT_APPROVALS_DUMP,
-            "byok_rag": [],
+            "byok_rag": None,
             "vector_store": {
                 "default_provider": None,
                 "providers": [],
@@ -1629,15 +1654,8 @@ def test_dump_configuration_pg_namespace(tmp_path: Path) -> None:
                 "postgres": None,
             },
             "azure_entra_id": None,
-            "rag": {
-                "inline": [],
-                "tool": [],
-            },
-            "okp": {
-                "rhokp_url": None,
-                "offline": True,
-                "chunk_filter_query": None,
-            },
+            "rag": _DEFAULT_RAG_DUMP,
+            "okp": None,
             "rlsapi_v1": {
                 "allow_verbose_infer": False,
                 "quota_subject": None,
@@ -1991,7 +2009,7 @@ def test_dump_configuration_allow_degraded_mode(tmp_path: Path) -> None:
                 "buffer_max_ratio": 0.3,
             },
             "approvals": _DEFAULT_APPROVALS_DUMP,
-            "byok_rag": [],
+            "byok_rag": None,
             "vector_store": {
                 "default_provider": None,
                 "providers": [],
@@ -2012,15 +2030,8 @@ def test_dump_configuration_allow_degraded_mode(tmp_path: Path) -> None:
                 "postgres": None,
             },
             "azure_entra_id": None,
-            "rag": {
-                "inline": [],
-                "tool": [],
-            },
-            "okp": {
-                "rhokp_url": None,
-                "offline": True,
-                "chunk_filter_query": None,
-            },
+            "rag": _DEFAULT_RAG_DUMP,
+            "okp": None,
             "rlsapi_v1": {
                 "allow_verbose_infer": False,
                 "quota_subject": None,
@@ -2220,7 +2231,7 @@ def test_dump_configuration_max_retries_settings(tmp_path: Path) -> None:
                 "buffer_max_ratio": 0.3,
             },
             "approvals": _DEFAULT_APPROVALS_DUMP,
-            "byok_rag": [],
+            "byok_rag": None,
             "vector_store": {
                 "default_provider": None,
                 "providers": [],
@@ -2241,15 +2252,8 @@ def test_dump_configuration_max_retries_settings(tmp_path: Path) -> None:
                 "postgres": None,
             },
             "azure_entra_id": None,
-            "rag": {
-                "inline": [],
-                "tool": [],
-            },
-            "okp": {
-                "rhokp_url": None,
-                "offline": True,
-                "chunk_filter_query": None,
-            },
+            "rag": _DEFAULT_RAG_DUMP,
+            "okp": None,
             "rlsapi_v1": {
                 "allow_verbose_infer": False,
                 "quota_subject": None,
@@ -2449,7 +2453,7 @@ def test_dump_configuration_retry_count_settings(tmp_path: Path) -> None:
                 "buffer_max_ratio": 0.3,
             },
             "approvals": _DEFAULT_APPROVALS_DUMP,
-            "byok_rag": [],
+            "byok_rag": None,
             "vector_store": {
                 "default_provider": None,
                 "providers": [],
@@ -2470,15 +2474,8 @@ def test_dump_configuration_retry_count_settings(tmp_path: Path) -> None:
                 "postgres": None,
             },
             "azure_entra_id": None,
-            "rag": {
-                "inline": [],
-                "tool": [],
-            },
-            "okp": {
-                "rhokp_url": None,
-                "offline": True,
-                "chunk_filter_query": None,
-            },
+            "rag": _DEFAULT_RAG_DUMP,
+            "okp": None,
             "rlsapi_v1": {
                 "allow_verbose_infer": False,
                 "quota_subject": None,
@@ -2685,7 +2682,7 @@ def test_dump_configuration_specific_compaction_values(tmp_path: Path) -> None:
                 "buffer_max_ratio": 0.5,
             },
             "approvals": _DEFAULT_APPROVALS_DUMP,
-            "byok_rag": [],
+            "byok_rag": None,
             "vector_store": {
                 "default_provider": None,
                 "providers": [],
@@ -2706,15 +2703,8 @@ def test_dump_configuration_specific_compaction_values(tmp_path: Path) -> None:
                 "postgres": None,
             },
             "azure_entra_id": None,
-            "rag": {
-                "inline": [],
-                "tool": [],
-            },
-            "okp": {
-                "rhokp_url": None,
-                "offline": True,
-                "chunk_filter_query": None,
-            },
+            "rag": _DEFAULT_RAG_DUMP,
+            "okp": None,
             "rlsapi_v1": {
                 "allow_verbose_infer": False,
                 "quota_subject": None,

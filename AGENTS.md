@@ -397,3 +397,75 @@ Allowed prefixes: `LCORE-`, `RSPEED-`, `MGTM-`, `OLS-`, `RHIDP-`, `LEADS-`, `CWF
 4. Follow existing code patterns in the module you're modifying
 5. Write unit tests covering new functionality
 6. Run format and verify before completion
+
+## Lola Skills
+
+These skills are installed by Lola and provide specialized capabilities.
+When a task matches a skill's description, read the skill's SKILL.md file
+to learn the detailed instructions and workflows.
+
+**How to use skills:**
+1. Check if your task matches any skill description below
+2. Use `read_file` to read the skill's SKILL.md for detailed instructions
+3. Follow the instructions in the SKILL.md file
+
+<!-- lola:skills:start -->
+
+### ixd-firefly-custom-skills
+
+#### api-spec-validator
+**When to use:** Validate API endpoint implementations against OpenAPI or Swagger specifications for correctness and completeness. Use when checking API compliance, auditing spec drift, or verifying that route handlers match their documented contracts.
+**Instructions:** Read `.lola/modules/ixd-firefly-custom-skills/skills/api-spec-validator/SKILL.md` for detailed guidance.
+
+#### code-reviewer
+**When to use:** Perform structured code reviews with a comprehensive checklist covering correctness, security, performance, and maintainability. Use when reviewing a diff, pull request, merge request, or set of changed files before merge.
+**Instructions:** Read `.lola/modules/ixd-firefly-custom-skills/skills/code-reviewer/SKILL.md` for detailed guidance.
+
+#### coverage-analyzer
+**When to use:** Analyze test coverage reports to identify gaps in line, branch, and function coverage, then suggest targeted tests to close those gaps and reach 100% coverage. Use when coverage is below target, after adding new code, or when preparing for a release.
+**Instructions:** Read `.lola/modules/ixd-firefly-custom-skills/skills/coverage-analyzer/SKILL.md` for detailed guidance.
+
+#### cypress-skill
+**When to use:** Generates production-grade Cypress E2E and component tests in JavaScript or TypeScript, with support for local execution. Use when the user asks to write or debug Cypress tests, set up Cypress, work with cy commands, or mentions Cypress, "component test", "E2E test", "cy.", or common APIs such as cy.visit, cy.get, or cy.intercept.
+**Instructions:** Read `.lola/modules/ixd-firefly-custom-skills/skills/cypress-skill/SKILL.md` for detailed guidance.
+
+#### evolution
+**When to use:** Updates skill files based on user corrections during a session. Use when a user's guidance contradicts or extends a loaded skill's instructions, enabling skills to learn and improve from real-world usage.
+**Instructions:** Read `.lola/modules/ixd-firefly-custom-skills/skills/evolution/SKILL.md` for detailed guidance.
+
+#### flaky-test-detector
+**When to use:** Identify flaky tests by running test suites multiple times and analyzing inconsistent pass/fail results. Use when tests fail intermittently, CI builds are unreliable, or when diagnosing non-deterministic test behavior.
+**Instructions:** Read `.lola/modules/ixd-firefly-custom-skills/skills/flaky-test-detector/SKILL.md` for detailed guidance.
+
+#### security-scanner
+**When to use:** Scan source code for common security vulnerabilities including injection flaws, authentication issues, sensitive data exposure, XSS, and dependency CVEs. Use when performing security audits, reviewing code before deployment, or hardening an application.
+**Instructions:** Read `.lola/modules/ixd-firefly-custom-skills/skills/security-scanner/SKILL.md` for detailed guidance.
+
+#### test-runner
+**When to use:** Execute project test suites for unit testing with coverage and functional testing. Use when running tests, checking coverage, verifying test results, or executing a specific test file or method.
+**Instructions:** Read `.lola/modules/ixd-firefly-custom-skills/skills/test-runner/SKILL.md` for detailed guidance.
+
+<!-- lola:skills:end -->
+
+<!-- lola:instructions:start -->
+<!-- lola:module:ixd-firefly-custom-skills:start -->
+---
+name: ixd-firefly-custom-skills
+description: Shared agent skills for harness-cli and OpenCode following the Agent Skills standard
+---
+
+# Harness Skills Module
+
+This AI Context Module provides shared skills for use with [harness-cli](https://github.com/your-org/ixd-firefly-harness-engineering-cli) and [OpenCode](https://opencode.ai).
+
+All skills in this module follow the [Agent Skills](https://agentskills.io) open standard, making them compatible with any agent that supports the specification, including **OpenCode**, **Claude Code**, **Cursor**, **GitHub Copilot**, **Gemini CLI**, and [many others](https://agentskills.io/home).
+
+## Available Skills
+
+Skills include: `test-runner`, `coverage-analyzer`, `flaky-test-detector`, `code-reviewer`, `security-scanner`, `api-spec-validator`, `cypress-skill`, and `evolution` (enables skills to learn from user corrections during sessions). See [SKILLS_QUICKSTART.md](./SKILLS_QUICKSTART.md) for the complete list with descriptions.
+
+## Installation
+
+Install skills into your project using `harness-cli` or manually by copying skill directories into your project's `.opencode/skills/` directory. See [README.md](./README.md) for full installation and usage instructions.
+<!-- lola:module:ixd-firefly-custom-skills:end -->
+<!-- lola:instructions:end -->
