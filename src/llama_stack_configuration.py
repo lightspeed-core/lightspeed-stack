@@ -1372,10 +1372,45 @@ def generate_configuration(
 # =============================================================================
 
 
+def has_synthesis_input(lcs_config: dict[str, Any]) -> bool:
+    """Return True when a raw lightspeed config carries a synthesis input.
+
+    Mirrors the unified-vs-legacy detection of the root ``Configuration``
+    model (``check_unified_vs_legacy``) for callers that work with the raw
+    YAML dict, such as the CLI: a non-empty top-level ``inference.providers``,
+    a non-empty ``vector_store.providers``, or a ``llama_stack.config`` block
+    signal unified mode (R11).
+
+    Parameters:
+        lcs_config: The ``lightspeed-stack.yaml`` contents parsed into a dict.
+
+    Returns:
+        bool: True when any synthesis input is present.
+    """
+    inference = lcs_config.get("inference") or {}
+    vector_store = lcs_config.get("vector_store") or {}
+    llama_stack = lcs_config.get("llama_stack") or {}
+    return (
+        bool(inference.get("providers"))
+        or bool(vector_store.get("providers"))
+        or llama_stack.get("config") is not None
+    )
+
+
 def main() -> None:
-    """CLI entry point."""
+    """CLI entry point with unified-vs-legacy auto-detection.
+
+    Auto-detects the configuration shape from the ``--config`` file (spec
+    "Trigger mechanism"): when it carries a synthesis input the full run.yaml
+    is synthesized from it and ``--input`` is ignored, so no external
+    run.yaml needs to exist; otherwise the legacy path enriches the
+    ``--input`` run.yaml in place. Server-mode container entrypoints rely on
+    this dispatch to serve both modes with a single invocation.
+    """
     parser = ArgumentParser(
-        description="Enrich Llama Stack config with Lightspeed values",
+        description="Generate the Llama Stack run configuration from a "
+        "lightspeed-stack.yaml: synthesized in unified mode, or enriched "
+        "from --input in legacy mode (auto-detected)",
     )
     parser.add_argument(
         "-c",
@@ -1387,20 +1422,25 @@ def main() -> None:
         "-i",
         "--input",
         default="run.yaml",
-        help="Input Llama Stack config (default: run.yaml)",
+        help="Input Llama Stack config enriched in legacy mode; ignored in "
+        "unified mode (default: run.yaml)",
     )
     parser.add_argument(
         "-o",
         "--output",
         default="run_.yaml",
-        help="Output enriched config (default: run_.yaml)",
+        help="Output generated config (default: run_.yaml)",
     )
     args = parser.parse_args()
 
     with open(args.config, "r", encoding="utf-8") as f:
         config = yaml.safe_load(f)
 
-    generate_configuration(args.input, args.output, config)
+    if has_synthesis_input(config):
+        config_file_dir = os.path.dirname(os.path.abspath(args.config))
+        synthesize_to_file(config, args.output, config_file_dir)
+    else:
+        generate_configuration(args.input, args.output, config)
 
 
 if __name__ == "__main__":
