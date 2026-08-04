@@ -476,6 +476,14 @@ def restart_container(container_name: str) -> None:
     # that restart the container don't time out.
     wait_for_container_health(container_name)
 
+    # Docker health can report healthy before uvicorn binds the published
+    # port (the documented race wait_for_lightspeed_stack_http_ready exists
+    # for). Unified-mode first boots are the slowest restarts in the suite
+    # and hit that window reliably, so close it here for every restart
+    # rather than only in the proxy steps.
+    if container_name == "lightspeed-stack":
+        wait_for_lightspeed_stack_http_ready()
+
     if container_name == "llama-stack":
         from tests.e2e.features.steps.health import (
             reset_llama_stack_disrupt_once_tracking,
