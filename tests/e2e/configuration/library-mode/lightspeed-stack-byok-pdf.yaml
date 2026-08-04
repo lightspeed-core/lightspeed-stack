@@ -34,15 +34,17 @@ inference:
 # store (tests/e2e/rag/pdf_kv_store.db) so this feature is self-contained and
 # needs no externally-provisioned vector-store id. See tests/e2e/rag/README.md
 # for how the fixture was produced.
-byok_rag:
-  - rag_id: pdf-field-notes
-    rag_type: inline::faiss
-    embedding_model: sentence-transformers/all-mpnet-base-v2
-    embedding_dimension: 768
-    vector_db_id: vs_4a27375c-b8da-4134-96fc-b8198d111015
-    db_path: ${env.PDF_KV_RAG_PATH:=~/.llama/storage/rag/pdf_kv_store.db}
-    score_multiplier: 1.0
-
 rag:
-  inline:
-    - pdf-field-notes
+  byok:
+    stores:
+      - rag_id: pdf-field-notes
+        backend: faiss
+        embedding_model: sentence-transformers/all-mpnet-base-v2
+        embedding_dimension: 768
+        vector_db_id: vs_4a27375c-b8da-4134-96fc-b8198d111015
+        db_path: ${env.PDF_KV_RAG_PATH:=~/.llama/storage/rag/pdf_kv_store.db}
+        score_multiplier: 1.0
+  retrieval:
+    inline:
+      sources:
+        - pdf-field-notes

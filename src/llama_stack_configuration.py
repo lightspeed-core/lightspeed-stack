@@ -81,10 +81,25 @@ VECTOR_IO_TEMPLATES: dict[str, dict[str, Any]] = {
     },
 }
 
-VECTOR_STORE_PROVIDER_TYPE_MAP: dict[str, str] = {
+BACKEND_TO_PROVIDER_TYPE: dict[str, str] = {
     "faiss": "inline::faiss",
     "pgvector": "remote::pgvector",
 }
+
+
+def _resolve_rag_type(brag: dict[str, Any]) -> str:
+    """Resolve the full Llama Stack provider type from a BYOK RAG dict.
+
+    Parameters:
+        brag (dict[str, Any]): A single BYOK RAG entry dict, expected to
+            contain a ``backend`` key (e.g. ``"faiss"``, ``"pgvector"``).
+
+    Returns:
+        str: The fully-qualified Llama Stack provider type
+            (e.g. ``"inline::faiss"``, ``"remote::pgvector"``).
+    """
+    backend = brag.get("backend", constants.DEFAULT_RAG_BACKEND)
+    return BACKEND_TO_PROVIDER_TYPE.get(backend, f"inline::{backend}")
 
 
 class YamlDumper(yaml.Dumper):  # pylint: disable=too-many-ancestors
@@ -211,7 +226,7 @@ def construct_storage_backends_section(
     for brag in byok_rag:
         if not brag.get("rag_id"):
             raise ValueError(f"BYOK RAG entry is missing required 'rag_id': {brag}")
-        rag_type = brag.get("rag_type", constants.DEFAULT_RAG_TYPE)
+        rag_type = _resolve_rag_type(brag)
         template = VECTOR_IO_TEMPLATES.get(rag_type, {})
         if not template.get("needs_storage_backend", True):
             continue
@@ -452,7 +467,7 @@ def construct_vector_io_providers_section(
             continue
         existing_ids.add(provider_id)
         added += 1
-        rag_type = brag.get("rag_type", constants.DEFAULT_RAG_TYPE)
+        rag_type = _resolve_rag_type(brag)
         config = _build_vector_io_config(rag_type, backend_name, brag)
         output.append(
             {
@@ -609,7 +624,7 @@ def _vsprov_fields_and_backend(
         )
     raise ValueError(
         f"Unsupported vector_store.providers type '{product_type}'. "
-        f"Supported types: {list(VECTOR_STORE_PROVIDER_TYPE_MAP)}"
+        f"Supported types: {list(BACKEND_TO_PROVIDER_TYPE)}"
     )
 
 
@@ -682,7 +697,7 @@ def _enrich_one_vector_store_provider(
     """
     provider_id = str(entry["id"]).strip()
     product_type = entry["type"]
-    ls_type = VECTOR_STORE_PROVIDER_TYPE_MAP[product_type]
+    ls_type = BACKEND_TO_PROVIDER_TYPE[product_type]
     extra_fields, backend_name, backend_entry = _vsprov_fields_and_backend(
         product_type, provider_id, entry.get("config") or {}
     )
@@ -1104,7 +1119,7 @@ def _resolve_profile_path(profile: str, config_file_dir: Optional[str]) -> Path:
     return path
 
 
-def synthesize_configuration(
+def synthesize_configuration(  # pylint: disable=too-many-locals
     lcs_config: dict[str, Any],
     config_file_dir: Optional[str] = None,
     default_baseline: Optional[dict[str, Any]] = None,
@@ -1128,8 +1143,7 @@ def synthesize_configuration(
     Returns:
         dict[str, Any]: The synthesized Llama Stack configuration.
     """
-    llama_stack = lcs_config.get("llama_stack") or {}
-    unified = llama_stack.get("config")  # None when only top-level inputs are set
+    unified = (lcs_config.get("llama_stack") or {}).get("config")
 
     # 1-2. Select the baseline.
     baseline_was_empty = False
@@ -1157,9 +1171,17 @@ def synthesize_configuration(
     # 4. Existing enrichment — same calls as legacy generate_configuration so
     #    unified output matches legacy output for equivalent inputs (R7).
     enrich_azure_entra_id_inference(ls_config, lcs_config.get("azure_entra_id"))
-    enrich_byok_rag(ls_config, lcs_config.get("byok_rag", []))
+    rag_section = lcs_config.get("rag", {})
+    byok_stores = rag_section.get("byok", {}).get("stores", [])
+    enrich_byok_rag(ls_config, byok_stores)
+    retrieval = rag_section.get("retrieval", {})
+    rag_config_for_solr = {
+        "inline": retrieval.get("inline", {}).get("sources", []),
+        "tool": retrieval.get("tool", {}).get("sources", []),
+    }
+    okp_config = rag_section.get("okp", {})
+    enrich_solr(ls_config, rag_config_for_solr, okp_config)
     enrich_vector_store(ls_config, lcs_config.get("vector_store"))
-    enrich_solr(ls_config, lcs_config.get("rag", {}), lcs_config.get("okp", {}))
 
     # 5. High-level inference providers (Decision S5 — a root-level section).
     inference = lcs_config.get("inference") or {}
@@ -1328,10 +1350,18 @@ def generate_configuration(
     enrich_azure_entra_id_inference(ls_config, config.get("azure_entra_id"))
 
     # Enrichment: BYOK RAG
-    enrich_byok_rag(ls_config, config.get("byok_rag", []))
+    rag_section = config.get("rag", {})
+    byok_stores = rag_section.get("byok", {}).get("stores", [])
+    enrich_byok_rag(ls_config, byok_stores)
 
     # Enrichment: Solr - enabled when "okp" appears in either inline or tool list
-    enrich_solr(ls_config, config.get("rag", {}), config.get("okp", {}))
+    retrieval = rag_section.get("retrieval", {})
+    rag_config_for_solr = {
+        "inline": retrieval.get("inline", {}).get("sources", []),
+        "tool": retrieval.get("tool", {}).get("sources", []),
+    }
+    okp_config = rag_section.get("okp", {})
+    enrich_solr(ls_config, rag_config_for_solr, okp_config)
 
     dedupe_providers_vector_io(ls_config)
 

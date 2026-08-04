@@ -12,6 +12,7 @@ from models.config import (
     Action,
     AuthenticationConfiguration,
     AuthorizationConfiguration,
+    ByokConfiguration,
     Configuration,
     CORSConfiguration,
     Customization,
@@ -23,7 +24,11 @@ from models.config import (
     JwtRoleRule,
     LlamaStackConfiguration,
     ModelContextProtocolServer,
+    OkpConfiguration,
     PostgreSQLDatabaseConfiguration,
+    RagConfiguration,
+    RetrievalConfiguration,
+    RetrievalStrategyConfiguration,
     ServiceConfiguration,
     SQLiteDatabaseConfiguration,
     TLSConfiguration,
@@ -287,13 +292,33 @@ def build_fully_populated_config() -> Configuration:
             ),
         ],
         conversation_cache=None,
-        byok_rag=[],
+        rag=RagConfiguration.model_construct(
+            byok=ByokConfiguration.model_construct(
+                max_chunks=10,
+                stores=[],
+            ),
+            okp=OkpConfiguration.model_construct(
+                rhokp_url=None,
+                offline=True,
+                chunk_filter_query=None,
+                max_chunks=5,
+            ),
+            retrieval=RetrievalConfiguration.model_construct(
+                inline=RetrievalStrategyConfiguration.model_construct(
+                    sources=[],
+                    max_chunks=10,
+                ),
+                tool=RetrievalStrategyConfiguration.model_construct(
+                    sources=[],
+                    max_chunks=10,
+                ),
+            ),
+        ),
         a2a_state=None,
         quota_handlers=None,
         azure_entra_id=None,
         splunk=None,
         deployment_environment="production",
-        solr=None,
     )
 
 
@@ -363,13 +388,33 @@ def build_minimal_config() -> Configuration:
         ),
         mcp_servers=[],
         conversation_cache=None,
-        byok_rag=[],
+        rag=RagConfiguration.model_construct(
+            byok=ByokConfiguration.model_construct(
+                max_chunks=10,
+                stores=[],
+            ),
+            okp=OkpConfiguration.model_construct(
+                rhokp_url=None,
+                offline=True,
+                chunk_filter_query=None,
+                max_chunks=5,
+            ),
+            retrieval=RetrievalConfiguration.model_construct(
+                inline=RetrievalStrategyConfiguration.model_construct(
+                    sources=[],
+                    max_chunks=10,
+                ),
+                tool=RetrievalStrategyConfiguration.model_construct(
+                    sources=[],
+                    max_chunks=10,
+                ),
+            ),
+        ),
         a2a_state=None,
         quota_handlers=None,
         azure_entra_id=None,
         splunk=None,
         deployment_environment="development",
-        solr=None,
     )
 
 

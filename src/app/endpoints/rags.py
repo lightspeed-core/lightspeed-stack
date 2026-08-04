@@ -24,7 +24,7 @@ from models.api.responses.successful import (
     RAGInfoResponse,
     RAGListResponse,
 )
-from models.config import Action, ByokRag
+from models.config import Action, RagStore
 from utils.endpoints import check_configuration_loaded
 
 logger = get_logger(__name__)
@@ -112,7 +112,7 @@ async def rags_endpoint_handler(
         raise HTTPException(**response.model_dump()) from e
 
 
-def _resolve_rag_id_to_vector_db_id(rag_id: str, byok_rags: list[ByokRag]) -> str:
+def _resolve_rag_id_to_vector_db_id(rag_id: str, byok_rags: list[RagStore]) -> str:
     """Resolve a user-facing rag_id to the llama-stack vector_db_id.
 
     Checks if the given ID matches a rag_id in the BYOK config and returns
@@ -178,7 +178,7 @@ async def get_rag_endpoint_handler(
 
     # Resolve user-facing rag_id to llama-stack vector_db_id
     vector_db_id = _resolve_rag_id_to_vector_db_id(
-        rag_id, configuration.configuration.byok_rag
+        rag_id, configuration.configuration.rag.byok.stores
     )
 
     try:

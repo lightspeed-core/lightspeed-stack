@@ -33,18 +33,6 @@ conversation_cache:
     ssl_mode: disable
     gss_encmode: disable
 
-#byok_rag:
-#  - rag_id: ocp_docs
-#    rag_type: inline::faiss
-#    embedding_dimension: 1024
-#    vector_db_id: vector_byok_1
-#    db_path: /tmp/ocp.faiss
-#  - rag_id: knowledge_base
-#    rag_type: inline::faiss
-#    embedding_dimension: 384
-#    vector_db_id: vector_byok_2
-#    db_path: /tmp/kb.faiss
-
 quota_handlers:
   sqlite:
       db_path: quota.sqlite
