@@ -242,6 +242,21 @@ def before_scenario(context: Context, scenario: Scenario) -> None:
         scenario.skip("Skipped in Prow (requires Docker Compose services)")
         return
 
+    # Skip openai-specific scenarios on non-openai provider matrices: the
+    # providers workflow runs the full test list with E2E_DEFAULT_PROVIDER_OVERRIDE
+    # set (azure/watsonx/...), and fixtures that hardcode an openai provider
+    # (e.g. the unified-mode inference.providers fixture) cannot serve queries
+    # for those models.
+    provider_override = os.getenv("E2E_DEFAULT_PROVIDER_OVERRIDE", "")
+    if "openai-only" in scenario.effective_tags and provider_override not in (
+        "",
+        "openai",
+    ):
+        scenario.skip(
+            f"Skipped on provider matrix '{provider_override}' (openai-only fixture)"
+        )
+        return
+
     # In Prow, verify the lightspeed port-forward is alive before each scenario.
     # Port-forwards can silently die between scenarios (e.g. pod restart, TCP reset).
     if is_prow_environment():

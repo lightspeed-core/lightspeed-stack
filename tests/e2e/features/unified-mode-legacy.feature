@@ -1,4 +1,4 @@
-@cfg_unified @skip
+@cfg_unified @skip @skip-in-prow
 Feature: Legacy two-file configuration during deprecation window
 
   Background:
