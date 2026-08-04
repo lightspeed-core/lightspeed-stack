@@ -5,6 +5,7 @@ from typing import Optional
 
 import psycopg2
 from fastapi import HTTPException
+from opentelemetry import trace
 
 from log import get_logger
 from models.api.responses.error import (
@@ -14,8 +15,10 @@ from models.api.responses.error import (
 from quota.quota_exceed_error import QuotaExceedError
 from quota.quota_limiter import QuotaLimiter
 from quota.token_usage_history import TokenUsageHistory
+from utils.otel_tracing import SpanAttributes, record_exception
 
 logger = get_logger(__name__)
+tracer = trace.get_tracer(__name__)
 
 
 # pylint: disable=R0913,R0917
@@ -79,19 +82,25 @@ def check_tokens_available(quota_limiters: list[QuotaLimiter], user_id: str) -> 
         HTTPException: With status 500 if database communication fails,
             or status 429 if quota is exceeded.
     """
-    try:
-        # check available tokens using all configured quota limiters
-        for quota_limiter in quota_limiters:
-            quota_limiter.ensure_available_quota(subject_id=user_id)
-    except (psycopg2.Error, sqlite3.Error) as pg_error:
-        message = "Error communicating with quota database backend"
-        logger.error(message)
-        response = InternalServerErrorResponse.database_error()
-        raise HTTPException(**response.model_dump()) from pg_error
-    except QuotaExceedError as e:
-        logger.error("The quota has been exceeded")
-        response = QuotaExceededResponse.from_exception(e)
-        raise HTTPException(**response.model_dump()) from e
+    with tracer.start_as_current_span("quota.check") as span:
+        try:
+            # check available tokens using all configured quota limiters
+            for quota_limiter in quota_limiters:
+                quota_limiter.ensure_available_quota(subject_id=user_id)
+            span.set_attribute(SpanAttributes.QUOTA_CHECK_PASSED, True)
+        except (psycopg2.Error, sqlite3.Error) as pg_error:
+            message = "Error communicating with quota database backend"
+            logger.error(message)
+            span.set_attribute(SpanAttributes.QUOTA_CHECK_PASSED, False)
+            record_exception(span, pg_error)
+            response = InternalServerErrorResponse.database_error()
+            raise HTTPException(**response.model_dump()) from pg_error
+        except QuotaExceedError as e:
+            logger.error("The quota has been exceeded")
+            span.set_attribute(SpanAttributes.QUOTA_CHECK_PASSED, False)
+            record_exception(span, e)
+            response = QuotaExceededResponse.from_exception(e)
+            raise HTTPException(**response.model_dump()) from e
 
 
 def get_available_quotas(

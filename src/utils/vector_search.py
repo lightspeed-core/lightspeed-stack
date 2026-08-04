@@ -13,6 +13,7 @@ from ogx_api.openai_responses import (
     OpenAIResponseMessage as ResponseMessage,
 )
 from ogx_client import AsyncOgxClient
+from opentelemetry import trace
 from pydantic import AnyUrl
 
 import constants
@@ -21,10 +22,18 @@ from log import get_logger
 from models.common.query import SolrVectorSearchRequest
 from models.common.responses.types import ResponseInput
 from models.common.turn_summary import RAGChunk, RAGContext, ReferencedDocument
+from utils.otel_tracing import (
+    SpanAttributes,
+    SpanEvents,
+    add_span_event,
+    anonymize_value,
+    set_span_attributes,
+)
 from utils.reranker import apply_byok_rerank_boost, rerank_chunks_with_cross_encoder
 from utils.responses import resolve_vector_store_ids
 
 logger = get_logger(__name__)
+tracer = trace.get_tracer(__name__)
 
 
 def _filter_documents_for_chunks(
@@ -652,58 +661,85 @@ async def build_rag_context(  # pylint: disable=too-many-locals,too-many-branche
     Returns:
         RAGContext containing formatted context text and referenced documents
     """
-    if moderation_decision == "blocked":
-        return RAGContext()
+    with tracer.start_as_current_span("rag.retrieve") as span:
+        # Set RAG input attribute
+        span.set_attribute(SpanAttributes.RAG_INPUT, anonymize_value(query))
 
-    top_k = constants.INLINE_RAG_MAX_CHUNKS
+        if moderation_decision == "blocked":
+            span.set_attribute(SpanAttributes.RAG_SOURCES_COUNT, 0)
+            return RAGContext()
 
-    # Fetch from each source using per-source limits for the reranking pool
-    byok_chunks_task = _fetch_byok_rag(
-        client, query, vector_store_ids, max_chunks=constants.BYOK_RAG_MAX_CHUNKS
-    )
-    solr_chunks_task = _fetch_solr_rag(client, query, solr)
+        top_k = constants.INLINE_RAG_MAX_CHUNKS
 
-    (byok_chunks, byok_documents), (solr_chunks, solr_documents) = await asyncio.gather(
-        byok_chunks_task, solr_chunks_task
-    )
-
-    # Merge chunks
-    merged = byok_chunks + solr_chunks
-
-    # Rerank full pool with cross-encoder if enabled; then take top_k
-    if configuration.reranker.enabled:
-        logger.info(
-            "Reranker enabled: processing %d chunks with model '%s'",
-            len(merged),
-            configuration.reranker.model,
+        # Fetch from each source using per-source limits for the reranking pool
+        byok_chunks_task = _fetch_byok_rag(
+            client,
+            query,
+            vector_store_ids,
+            max_chunks=constants.BYOK_RAG_MAX_CHUNKS,
         )
-        reranked = await rerank_chunks_with_cross_encoder(query, merged, len(merged))
-        context_chunks = apply_byok_rerank_boost(reranked)[:top_k]
-        logger.info(
-            "Reranker completed: returned %d top chunks after BYOK boost",
+        solr_chunks_task = _fetch_solr_rag(client, query, solr)
+
+        (byok_chunks, byok_documents), (
+            solr_chunks,
+            solr_documents,
+        ) = await asyncio.gather(byok_chunks_task, solr_chunks_task)
+
+        # Merge chunks
+        merged = byok_chunks + solr_chunks
+
+        # Rerank full pool with cross-encoder if enabled; then take top_k
+        if configuration.reranker.enabled:
+            logger.info(
+                "Reranker enabled: processing %d chunks with model '%s'",
+                len(merged),
+                configuration.reranker.model,
+            )
+            reranked = await rerank_chunks_with_cross_encoder(
+                query, merged, len(merged)
+            )
+            context_chunks = apply_byok_rerank_boost(reranked)[:top_k]
+            logger.info(
+                "Reranker completed: returned %d top chunks after BYOK boost",
+                len(context_chunks),
+            )
+        else:
+            logger.info("Reranker disabled: using original vector similarity scores")
+            context_chunks = merged[:top_k]
+
+        context_text = _format_rag_context(context_chunks, query)
+
+        logger.debug(
+            "Inline RAG context built: %d chunks (after rerank), %d characters",
             len(context_chunks),
+            len(context_text),
         )
-    else:
-        logger.info("Reranker disabled: using original vector similarity scores")
-        context_chunks = merged[:top_k]
 
-    context_text = _format_rag_context(context_chunks, query)
+        # Filter documents to match final chunks (after reranking)
+        all_documents = byok_documents + solr_documents
+        top_documents = _filter_documents_for_chunks(all_documents, context_chunks)
 
-    logger.debug(
-        "Inline RAG context built: %d chunks (after rerank), %d characters",
-        len(context_chunks),
-        len(context_text),
-    )
+        # Set RAG attributes
+        set_span_attributes(
+            span,
+            {
+                SpanAttributes.RAG_SOURCES_COUNT: len(top_documents),
+                SpanAttributes.RAG_SOURCES: [doc.doc_url for doc in top_documents],
+            },
+        )
 
-    # Filter documents to match final chunks (after reranking)
-    all_documents = byok_documents + solr_documents
-    top_documents = _filter_documents_for_chunks(all_documents, context_chunks)
+        # Emit RAG retrieval completed event
+        add_span_event(
+            span,
+            SpanEvents.RAG_RETRIEVAL_COMPLETED,
+            {"rag.chunks.count": len(context_chunks)},
+        )
 
-    return RAGContext(
-        context_text=context_text,
-        rag_chunks=context_chunks,
-        referenced_documents=top_documents,
-    )
+        return RAGContext(
+            context_text=context_text,
+            rag_chunks=context_chunks,
+            referenced_documents=top_documents,
+        )
 
 
 def _join_okp_doc_url(base_url: AnyUrl, reference: Optional[str]) -> str:
