@@ -130,7 +130,7 @@ _AZURE_INPUTS: dict[str, Any] = {
     "azure_entra_id": {
         "tenant_id": "test-tenant",
         "client_id": "test-client",
-        "client_secret_path": "/run/secrets/azure",
+        "client_secret": "test-secret",
     }
 }
 
@@ -403,15 +403,6 @@ def test_migrate_then_synthesize_round_trip_without_enrichment(
     assert legacy == synthesized
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="Known defect (LCORE-3370): dumb migration lifts run.yaml "
-    "into native_override, which deep-merges after enrichment and replaces "
-    "lists wholesale (R5) — so BYOK/Solr vector_io providers, registered "
-    "embedding models, and the Azure model_validation enrichment are lost "
-    "whenever the original run.yaml already carried those list sections. "
-    "Contradicts migrate_config_dumb's enrichment-keeps-working promise.",
-)
 def test_migrate_then_synthesize_preserves_enrichment_parity(
     tmp_path: Path,
 ) -> None:

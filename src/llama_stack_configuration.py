@@ -1138,11 +1138,13 @@ def synthesize_configuration(
     """Synthesize a full Llama Stack ``run.yaml`` dict from a unified config.
 
     Implements the unified-mode synthesis pipeline: select a baseline (profile
-    file, empty, or the built-in default), apply the existing enrichment
-    (Azure Entra ID, BYOK RAG, Solr/OKP) for parity with legacy mode (R7),
-    expand the high-level ``inference.providers`` section, ensure the default
-    MCP tool_runtime provider when the baseline was not empty, and deep-merge
-    the raw ``native_override`` last (R5).
+    file, empty, or the built-in default), expand the high-level
+    ``inference.providers`` section, ensure the default MCP tool_runtime
+    provider when the baseline was not empty, deep-merge the raw
+    ``native_override`` (R5: it wins over the baseline and the high-level
+    expansion), and apply the existing enrichment (Azure Entra ID, BYOK RAG,
+    vector_store, Solr/OKP) last — matching legacy mode, where enrichment
+    always post-processes the operator's final run.yaml (R7, LCORE-3370).
 
     Parameters:
         lcs_config: The full ``lightspeed-stack.yaml`` parsed into a dict.
@@ -1180,26 +1182,34 @@ def synthesize_configuration(
     # 3. Normalize duplicated vector_io providers in the baseline.
     dedupe_providers_vector_io(ls_config)
 
-    # 4. Existing enrichment — same calls as legacy generate_configuration so
-    #    unified output matches legacy output for equivalent inputs (R7).
-    enrich_azure_entra_id_inference(ls_config, lcs_config.get("azure_entra_id"))
-    enrich_byok_rag(ls_config, lcs_config.get("byok_rag", []))
-    enrich_vector_store(ls_config, lcs_config.get("vector_store"))
-    enrich_solr(ls_config, lcs_config.get("rag", {}), lcs_config.get("okp", {}))
-
-    # 5. High-level inference providers (Decision S5 — a root-level section).
+    # 4. High-level inference providers (Decision S5 — a root-level section).
     inference = lcs_config.get("inference") or {}
     if inference.get("providers"):
         apply_high_level_inference(ls_config, inference)
 
-    # 6. Ensure MCP tool_runtime for default/profile baselines (skipped for
+    # 5. Ensure MCP tool_runtime for default/profile baselines (skipped for
     #    baseline: empty so migrate round-trips stay lossless).
     if not baseline_was_empty:
         ensure_mcp_tool_runtime(ls_config)
 
-    # 7. Raw escape hatch, deep-merged last with list replacement (R5).
+    # 6. Raw escape hatch, deep-merged with list replacement. It wins over the
+    #    baseline and the high-level expansion (R5) but deliberately NOT over
+    #    enrichment (step 7).
     if unified and unified.get("native_override"):
         ls_config = deep_merge_list_replace(ls_config, unified["native_override"])
+
+    # 7. Existing enrichment — same calls as legacy generate_configuration so
+    #    unified output matches legacy output for equivalent inputs (R7).
+    #    Applied AFTER the native_override merge (LCORE-3370): in legacy mode
+    #    enrichment always post-processes the operator's final run.yaml, so a
+    #    migrated config (whose native_override IS the lifted run.yaml) must
+    #    get the same treatment or list-shaped enrichment artifacts
+    #    (vector_io providers, registered models, azure model_validation) are
+    #    replaced wholesale by the lifted lists and silently lost.
+    enrich_azure_entra_id_inference(ls_config, lcs_config.get("azure_entra_id"))
+    enrich_byok_rag(ls_config, lcs_config.get("byok_rag", []))
+    enrich_vector_store(ls_config, lcs_config.get("vector_store"))
+    enrich_solr(ls_config, lcs_config.get("rag", {}), lcs_config.get("okp", {}))
 
     # 8. Dedupe again in case native_override or enrichment reintroduced dupes.
     dedupe_providers_vector_io(ls_config)
