@@ -186,6 +186,11 @@ def run_migrate_config(context: Context) -> None:
         f"--migrate-config failed (rc={result.returncode}).\n"
         f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
     )
+    # The CLI writes 0600 (R10: migrated files may carry lifted secrets), but
+    # the container user must be able to read the copy configure_service puts
+    # at the repo root to boot it. The fixture pair is env-reference-only by
+    # design, so relaxing the harness copy is safe.
+    os.chmod(output, 0o644)
     context.migrated_config_path = output
     context.migration_pair_run_yaml = pair_run
     context.add_cleanup(lambda: output.unlink(missing_ok=True))
