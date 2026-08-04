@@ -12987,6 +12987,22 @@
                         "title": "Service name",
                         "description": "Name of the service. That value will be used in REST API endpoints."
                     },
+                    "config_format_version": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "enum": [
+                                    "legacy",
+                                    "unified"
+                                ]
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Configuration format version",
+                        "description": "Optional explicit marker of the configuration format. When set, it must agree with the shape detected from the configuration body: 'unified' requires a synthesis input (a non-empty inference.providers, a non-empty vector_store.providers, or a llama_stack.config block), 'legacy' requires no synthesis input. Reserved as the lever for a future breaking change of the unified schema (R11)."
+                    },
                     "service": {
                         "$ref": "#/components/schemas/ServiceConfiguration",
                         "title": "Service configuration",

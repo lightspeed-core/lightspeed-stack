@@ -2962,6 +2962,18 @@ class Configuration(ConfigurationBase):
         description="Name of the service. That value will be used in REST API endpoints.",
     )
 
+    config_format_version: Optional[Literal["legacy", "unified"]] = Field(
+        None,
+        title="Configuration format version",
+        description="Optional explicit marker of the configuration format. "
+        "When set, it must agree with the shape detected from the "
+        "configuration body: 'unified' requires a synthesis input (a "
+        "non-empty inference.providers, a non-empty vector_store.providers, "
+        "or a llama_stack.config block), 'legacy' requires no synthesis "
+        "input. Reserved as the lever for a future breaking change of the "
+        "unified schema (R11).",
+    )
+
     service: ServiceConfiguration = Field(
         ...,
         title="Service configuration",
@@ -3343,14 +3355,19 @@ class Configuration(ConfigurationBase):
         - Library mode needs *some* run source — a synthesis input or the
           legacy path. ``inference.providers`` or ``vector_store.providers``
           alone is sufficient; no ``llama_stack.config`` block is required.
+        - An explicit ``config_format_version``, when set, must agree with
+          the detected shape (R11): ``unified`` requires a synthesis input,
+          ``legacy`` requires its absence (remote-only configs count as
+          legacy-compatible).
 
         Returns:
             Self: The validated configuration instance.
 
         Raises:
             ValueError: If a synthesis input and the legacy
-                ``library_client_config_path`` are set together, or if library
-                mode has no run source at all.
+                ``library_client_config_path`` are set together, if library
+                mode has no run source at all, or if ``config_format_version``
+                contradicts the detected shape.
         """
         # pylint: disable=no-member
         synthesis_input = (
@@ -3380,6 +3397,18 @@ class Configuration(ConfigurationBase):
                 "vector_store.providers, a llama_stack.config block, or "
                 "library_client_config_path."
             )
+        if self.config_format_version is not None:
+            detected = "unified" if synthesis_input else "legacy"
+            if self.config_format_version != detected:
+                raise ValueError(
+                    f"config_format_version is '{self.config_format_version}' "
+                    f"but the configuration body is {detected}-shaped: a "
+                    "unified configuration carries a synthesis input (a "
+                    "non-empty inference.providers, a non-empty "
+                    "vector_store.providers, or a llama_stack.config block), "
+                    "a legacy one does not. Fix config_format_version or the "
+                    "configuration body."
+                )
         return self
 
     def dump(self, filename: str | Path = "configuration.json") -> None:
