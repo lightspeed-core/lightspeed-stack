@@ -80,7 +80,7 @@ dependencies = [
     # Used for token estimation before LLM calls (LCORE-1569 / conversation compaction)
     "tiktoken>=0.8.0",
     # Used for Pydantic AI
-    "pydantic-ai==2.16.0",
+    "pydantic-ai>=2.16.0",
     "pydantic-ai-skills>=0.11.0",
     # Used for OpenTelemetry instrumentation
     "opentelemetry-distro>=0.49b0",
