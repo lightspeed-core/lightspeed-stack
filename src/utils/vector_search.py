@@ -250,6 +250,7 @@ async def _query_store_for_byok_rag(
     vector_store_id: str,
     query: str,
     weight: float,
+    score_threshold: float,
     max_chunks: int = constants.BYOK_RAG_MAX_CHUNKS,
 ) -> list[dict[str, Any]]:
     """Query a single vector store for BYOK RAG.
@@ -260,6 +261,7 @@ async def _query_store_for_byok_rag(
         query: Search query string
         weight: Score multiplier to apply
         max_chunks: Maximum number of chunks to request from this store.
+        score_threshold: Minimum raw similarity score (``relevance_cutoff_score``)
 
     Returns:
         List of weighted result dictionaries, or empty list on error
@@ -271,6 +273,7 @@ async def _query_store_for_byok_rag(
             params={
                 "max_chunks": max_chunks,
                 "mode": "vector",
+                "score_threshold": score_threshold,
             },
         )
         return _extract_byok_rag_chunks(search_response, vector_store_id, weight)
@@ -496,8 +499,9 @@ async def _fetch_byok_rag(  # pylint: disable=too-many-locals
         return rag_chunks, referenced_documents
 
     try:
-        # Get score multiplier and rag_id mappings
+        # Get per-store mappings from configuration
         score_multiplier_mapping = configuration.score_multiplier_mapping
+        relevance_cutoff_mapping = configuration.relevance_cutoff_mapping
         rag_id_mapping = configuration.rag_id_mapping
 
         # Query all vector stores in parallel
@@ -508,6 +512,10 @@ async def _fetch_byok_rag(  # pylint: disable=too-many-locals
                     vector_store_id,
                     query,
                     score_multiplier_mapping.get(vector_store_id, 1.0),
+                    relevance_cutoff_mapping.get(
+                        vector_store_id,
+                        constants.DEFAULT_BYOK_RAG_RELEVANCE_CUTOFF_SCORE,
+                    ),
                     max_chunks=limit,
                 )
                 for vector_store_id in vector_store_ids_to_query
