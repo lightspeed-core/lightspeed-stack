@@ -1,4 +1,4 @@
-@cfg_unified @skip
+@cfg_unified @skip @skip-in-prow
 Feature: Unified mode configuration boot
 
   Background:
@@ -10,7 +10,7 @@ Feature: Unified mode configuration boot
 
   # --- library mode (@skip-in-server-mode) ---
 
-  @skip-in-server-mode
+  @skip-in-server-mode @openai-only
   Scenario: Unified config with inference.providers boots and serves requests in library mode
     Given The service uses the lightspeed-stack-unified-providers.yaml configuration
       And The service is restarted
@@ -62,7 +62,7 @@ Feature: Unified mode configuration boot
 
   # --- server mode (@skip-in-library-mode) ---
 
-  @skip-in-library-mode
+  @skip-in-library-mode @openai-only
   Scenario: Unified config with inference.providers boots and serves requests in server mode
     Given The service uses the lightspeed-stack-unified-providers.yaml configuration
       And Llama Stack is restarted
