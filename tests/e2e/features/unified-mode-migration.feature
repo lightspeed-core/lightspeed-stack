@@ -1,4 +1,4 @@
-@cfg_unified @skip @skip-in-prow
+@cfg_unified @skip-in-prow
 Feature: Legacy to unified configuration migration
 
   Background:
