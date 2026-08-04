@@ -8,11 +8,17 @@ import yaml
 from pydantic import SecretStr
 
 from models.config import (
+    A2AStateConfiguration,
     AccessRule,
     Action,
+    APIKeyTokenConfiguration,
+    ApprovalsConfiguration,
     AuthenticationConfiguration,
     AuthorizationConfiguration,
+    ByokRag,
+    CompactionConfiguration,
     Configuration,
+    ConversationHistoryConfiguration,
     CORSConfiguration,
     Customization,
     DatabaseConfiguration,
@@ -23,10 +29,25 @@ from models.config import (
     JwtRoleRule,
     LlamaStackConfiguration,
     ModelContextProtocolServer,
+    OkpConfiguration,
     PostgreSQLDatabaseConfiguration,
+    QuotaHandlersConfiguration,
+    QuotaLimiterConfiguration,
+    QuotaSchedulerConfiguration,
+    RagConfiguration,
+    RerankerConfiguration,
+    RHIdentityConfiguration,
+    RlsapiV1Configuration,
+    SavedPromptsConfiguration,
     ServiceConfiguration,
+    SkillsConfiguration,
+    SplunkConfiguration,
     SQLiteDatabaseConfiguration,
     TLSConfiguration,
+    TrustedProxyConfiguration,
+    TrustedProxyServiceAccount,
+    UnifiedInferenceProvider,
+    UnifiedLlamaStackConfig,
     UserDataCollection,
 )
 
@@ -58,6 +79,47 @@ PII_PG_PASS = "P@ssw0rd!SuperSecret"
 PII_PG_NAMESPACE = "production_ns"
 PII_PG_CA_CERT = "/etc/ssl/postgres/ca.crt"
 PII_MCP_URL = "https://mcp.internal.corp.com:9090"
+PII_BASE_URL = "https://lightspeed.internal.corp.com"
+
+# New PII values for extended sections
+PII_CACHE_SQLITE_PATH = "/var/lib/lightspeed/cache.sqlite"
+PII_CACHE_PG_HOST = "cache-db.internal.corp.com"
+PII_CACHE_PG_DB = "cache_prod"
+PII_CACHE_PG_USER = "cache_user"
+PII_CACHE_PG_PASS = "CacheP@ss!Secret"
+PII_CACHE_PG_NAMESPACE = "cache_ns"
+PII_CACHE_PG_CA_CERT = "/etc/ssl/cache-postgres/ca.crt"
+PII_QUOTA_SQLITE_PATH = "/var/lib/lightspeed/quota.sqlite"
+PII_QUOTA_PG_HOST = "quota-db.internal.corp.com"
+PII_QUOTA_PG_DB = "quota_prod"
+PII_QUOTA_PG_USER = "quota_user"
+PII_QUOTA_PG_PASS = "QuotaP@ss!Secret"
+PII_QUOTA_PG_NAMESPACE = "quota_ns"
+PII_QUOTA_PG_CA_CERT = "/etc/ssl/quota-postgres/ca.crt"
+PII_BYOK_DB_PATH = "/var/lib/lightspeed/byok.faiss"
+PII_BYOK_PG_HOST = "byok-db.internal.corp.com"
+PII_BYOK_PG_DB = "byok_prod"
+PII_BYOK_PG_USER = "byok_user"
+PII_BYOK_PG_PASS = "ByokP@ss!Secret"
+PII_A2A_SQLITE_PATH = "/var/lib/lightspeed/a2a.sqlite"
+PII_A2A_PG_HOST = "a2a-db.internal.corp.com"
+PII_A2A_PG_DB = "a2a_prod"
+PII_A2A_PG_USER = "a2a_user"
+PII_A2A_PG_PASS = "A2aP@ss!Secret"
+PII_A2A_PG_NAMESPACE = "a2a_ns"
+PII_A2A_PG_CA_CERT = "/etc/ssl/a2a-postgres/ca.crt"
+PII_SPLUNK_URL = "https://splunk.internal.corp.com:8088"
+PII_SPLUNK_TOKEN_PATH = "/etc/splunk/hec_token.txt"
+PII_SPLUNK_INDEX = "lightspeed_events_prod"
+PII_AZURE_TENANT_ID = "azure-tenant-id-secret-99999"
+PII_AZURE_CLIENT_ID = "azure-client-id-secret-88888"
+PII_AZURE_CLIENT_SECRET = "azure-client-secret-77777"
+PII_PROFILE_PATH = "/etc/lightspeed/custom_profile.py"
+PII_AGENT_CARD_PATH = "/etc/lightspeed/agent_card.yaml"
+PII_OKP_URL = "https://okp.internal.corp.com"
+PII_SKILLS_PATH = "/etc/lightspeed/skills"
+PII_AUTH_API_KEY = "auth-api-key-secret-12345"
+PII_LLAMA_PROFILE_PATH = "/etc/lightspeed/llama_profile.yaml"
 
 ALL_PII_VALUES = [
     PII_HOST,
@@ -84,6 +146,45 @@ ALL_PII_VALUES = [
     PII_PG_NAMESPACE,
     PII_PG_CA_CERT,
     PII_MCP_URL,
+    PII_BASE_URL,
+    # New PII values
+    PII_CACHE_SQLITE_PATH,
+    PII_CACHE_PG_HOST,
+    PII_CACHE_PG_DB,
+    PII_CACHE_PG_USER,
+    PII_CACHE_PG_PASS,
+    PII_CACHE_PG_NAMESPACE,
+    PII_CACHE_PG_CA_CERT,
+    PII_QUOTA_SQLITE_PATH,
+    PII_QUOTA_PG_HOST,
+    PII_QUOTA_PG_DB,
+    PII_QUOTA_PG_USER,
+    PII_QUOTA_PG_PASS,
+    PII_QUOTA_PG_NAMESPACE,
+    PII_QUOTA_PG_CA_CERT,
+    PII_BYOK_DB_PATH,
+    PII_BYOK_PG_HOST,
+    PII_BYOK_PG_DB,
+    PII_BYOK_PG_USER,
+    PII_BYOK_PG_PASS,
+    PII_A2A_SQLITE_PATH,
+    PII_A2A_PG_HOST,
+    PII_A2A_PG_DB,
+    PII_A2A_PG_USER,
+    PII_A2A_PG_PASS,
+    PII_A2A_PG_NAMESPACE,
+    PII_A2A_PG_CA_CERT,
+    PII_SPLUNK_URL,
+    PII_SPLUNK_TOKEN_PATH,
+    PII_AZURE_TENANT_ID,
+    PII_AZURE_CLIENT_ID,
+    PII_AZURE_CLIENT_SECRET,
+    PII_PROFILE_PATH,
+    PII_AGENT_CARD_PATH,
+    PII_OKP_URL,
+    PII_SKILLS_PATH,
+    PII_AUTH_API_KEY,
+    PII_LLAMA_PROFILE_PATH,
 ]
 
 SAMPLE_LLAMA_STACK_CONFIG: dict[str, Any] = {
@@ -179,7 +280,7 @@ def build_fully_populated_config() -> Configuration:
         service=ServiceConfiguration.model_construct(
             host=PII_HOST,
             port=8080,
-            base_url=None,
+            base_url=PII_BASE_URL,
             workers=4,
             auth_enabled=True,
             color_log=True,
@@ -203,15 +304,35 @@ def build_fully_populated_config() -> Configuration:
             use_as_library_client=False,
             library_client_config_path=PII_LIB_CONFIG,
             timeout=180,
+            max_retries=5,
+            retry_delay=3,
+            allow_degraded_mode=True,
+            config=UnifiedLlamaStackConfig.model_construct(
+                baseline="default",
+                profile=PII_LLAMA_PROFILE_PATH,
+                native_override={},
+            ),
         ),
         inference=InferenceConfiguration.model_construct(
             default_model="gpt-4o-mini",
             default_provider="openai",
+            context_windows={"openai/gpt-4o-mini": 128000},
+            max_infer_iters=10,
+            max_tool_calls=30,
+            providers=[
+                UnifiedInferenceProvider.model_construct(
+                    type="openai",
+                    api_key_env="OPENAI_API_KEY",
+                    allowed_models=["gpt-4o-mini"],
+                    extra={},
+                ),
+            ],
         ),
         authentication=AuthenticationConfiguration.model_construct(
             module="jwk_token",
             skip_tls_verification=False,
-            skip_for_health_probes=False,
+            skip_for_health_probes=True,
+            skip_for_metrics=True,
             k8s_cluster_api=PII_K8S_API,
             k8s_ca_cert_path=Path(PII_K8S_CERT),
             jwk_config=JwkConfiguration.model_construct(
@@ -231,8 +352,22 @@ def build_fully_populated_config() -> Configuration:
                     ],
                 ),
             ),
-            api_key_config=None,
-            rh_identity_config=None,
+            api_key_config=APIKeyTokenConfiguration.model_construct(
+                api_key=SecretStr(PII_AUTH_API_KEY),
+            ),
+            rh_identity_config=RHIdentityConfiguration.model_construct(
+                required_entitlements=["insights", "openshift"],
+                max_header_size=65536,
+            ),
+            trusted_proxy_config=TrustedProxyConfiguration.model_construct(
+                user_header="X-Forwarded-User",
+                allowed_service_accounts=[
+                    TrustedProxyServiceAccount.model_construct(
+                        namespace="default",
+                        name="my-proxy",
+                    ),
+                ],
+            ),
         ),
         authorization=AuthorizationConfiguration.model_construct(
             access_rules=[
@@ -256,10 +391,11 @@ def build_fully_populated_config() -> Configuration:
             system_prompt=PII_SYSTEM_PROMPT,
             system_prompt_path=Path(PII_PROMPT_PATH),
             disable_query_system_prompt=False,
-            profile_path=None,
+            profile_path=PII_PROFILE_PATH,
             custom_profile=None,
-            agent_card_path=None,
+            agent_card_path=Path(PII_AGENT_CARD_PATH),
             agent_card_config=None,
+            disable_shield_ids_override=True,
         ),
         database=DatabaseConfiguration.model_construct(
             sqlite=SQLiteDatabaseConfiguration.model_construct(
@@ -282,17 +418,140 @@ def build_fully_populated_config() -> Configuration:
                 name="my-mcp-server",
                 provider_id="model-context-protocol",
                 url=PII_MCP_URL,
-                authorization_headers={},
-                timeout=None,
+                authorization_headers={"Authorization": "/etc/mcp/token.txt"},
+                headers=["x-rh-identity"],
+                require_approval="always",
+                timeout=30,
             ),
         ],
-        conversation_cache=None,
-        byok_rag=[],
-        a2a_state=None,
-        quota_handlers=None,
+        conversation_cache=ConversationHistoryConfiguration.model_construct(
+            type="postgres",
+            memory=None,
+            sqlite=SQLiteDatabaseConfiguration.model_construct(
+                db_path=PII_CACHE_SQLITE_PATH,
+            ),
+            postgres=PostgreSQLDatabaseConfiguration.model_construct(
+                host=PII_CACHE_PG_HOST,
+                port=5432,
+                db=PII_CACHE_PG_DB,
+                user=PII_CACHE_PG_USER,
+                password=SecretStr(PII_CACHE_PG_PASS),
+                namespace=PII_CACHE_PG_NAMESPACE,
+                ssl_mode="require",
+                gss_encmode="disable",
+                ca_cert_path=Path(PII_CACHE_PG_CA_CERT),
+            ),
+        ),
+        compaction=CompactionConfiguration.model_construct(
+            enabled=True,
+            threshold_ratio=0.8,
+            token_floor=2048,
+            buffer_turns=6,
+            buffer_max_ratio=0.4,
+        ),
+        approvals=ApprovalsConfiguration.model_construct(
+            approval_timeout_seconds=600,
+            approval_retention_days=60,
+        ),
+        byok_rag=[
+            ByokRag.model_construct(
+                rag_id="my-rag",
+                rag_type="inline::faiss",
+                embedding_model="all-MiniLM-L6-v2",
+                embedding_dimension=384,
+                vector_db_id="my-vector-db",
+                db_path=PII_BYOK_DB_PATH,
+                score_multiplier=1.5,
+                host=PII_BYOK_PG_HOST,
+                port="5432",
+                db=PII_BYOK_PG_DB,
+                user=PII_BYOK_PG_USER,
+                password=SecretStr(PII_BYOK_PG_PASS),
+            ),
+        ],
+        a2a_state=A2AStateConfiguration.model_construct(
+            sqlite=SQLiteDatabaseConfiguration.model_construct(
+                db_path=PII_A2A_SQLITE_PATH,
+            ),
+            postgres=PostgreSQLDatabaseConfiguration.model_construct(
+                host=PII_A2A_PG_HOST,
+                port=5432,
+                db=PII_A2A_PG_DB,
+                user=PII_A2A_PG_USER,
+                password=SecretStr(PII_A2A_PG_PASS),
+                namespace=PII_A2A_PG_NAMESPACE,
+                ssl_mode="verify-ca",
+                gss_encmode="prefer",
+                ca_cert_path=Path(PII_A2A_PG_CA_CERT),
+            ),
+        ),
+        quota_handlers=QuotaHandlersConfiguration.model_construct(
+            sqlite=SQLiteDatabaseConfiguration.model_construct(
+                db_path=PII_QUOTA_SQLITE_PATH,
+            ),
+            postgres=PostgreSQLDatabaseConfiguration.model_construct(
+                host=PII_QUOTA_PG_HOST,
+                port=5432,
+                db=PII_QUOTA_PG_DB,
+                user=PII_QUOTA_PG_USER,
+                password=SecretStr(PII_QUOTA_PG_PASS),
+                namespace=PII_QUOTA_PG_NAMESPACE,
+                ssl_mode="prefer",
+                gss_encmode="require",
+                ca_cert_path=Path(PII_QUOTA_PG_CA_CERT),
+            ),
+            limiters=[
+                QuotaLimiterConfiguration.model_construct(
+                    type="user_limiter",
+                    name="daily-user-quota",
+                    initial_quota=10000,
+                    quota_increase=0,
+                    period="1 day",
+                ),
+            ],
+            scheduler=QuotaSchedulerConfiguration.model_construct(
+                period=5,
+                database_reconnection_count=20,
+                database_reconnection_delay=2,
+            ),
+            enable_token_history=True,
+        ),
         azure_entra_id=None,
-        splunk=None,
+        splunk=SplunkConfiguration.model_construct(
+            enabled=True,
+            url=PII_SPLUNK_URL,
+            token_path=Path(PII_SPLUNK_TOKEN_PATH),
+            index=PII_SPLUNK_INDEX,
+            source="lightspeed-stack",
+            timeout=10,
+            verify_ssl=False,
+        ),
         deployment_environment="production",
+        rag=RagConfiguration.model_construct(
+            inline=["okp"],
+            tool=["my-rag"],
+        ),
+        okp=OkpConfiguration.model_construct(
+            rhokp_url=PII_OKP_URL,
+            offline=True,
+            chunk_filter_query="product:ansible",
+        ),
+        reranker=RerankerConfiguration.model_construct(
+            enabled=True,
+            model="cross-encoder/ms-marco-MiniLM-L6-v2",
+        ),
+        skills=SkillsConfiguration.model_construct(
+            paths=[Path(PII_SKILLS_PATH)],
+        ),
+        saved_prompts=SavedPromptsConfiguration.model_construct(
+            max_prompts_per_user=50,
+            max_display_name_length=200,
+            max_content_length=5000,
+        ),
+        rlsapi_v1=RlsapiV1Configuration.model_construct(
+            allow_verbose_infer=True,
+            quota_subject="user_id",
+        ),
         solr=None,
     )
 
@@ -332,20 +591,30 @@ def build_minimal_config() -> Configuration:
             use_as_library_client=True,
             library_client_config_path=None,
             timeout=180,
+            max_retries=3,
+            retry_delay=1,
+            allow_degraded_mode=False,
+            config=None,
         ),
         inference=InferenceConfiguration.model_construct(
             default_model=None,
             default_provider=None,
+            context_windows={},
+            max_infer_iters=10,
+            max_tool_calls=30,
+            providers=[],
         ),
         authentication=AuthenticationConfiguration.model_construct(
             module="noop",
             skip_tls_verification=False,
             skip_for_health_probes=False,
+            skip_for_metrics=False,
             k8s_cluster_api=None,
             k8s_ca_cert_path=None,
             jwk_config=None,
             api_key_config=None,
             rh_identity_config=None,
+            trusted_proxy_config=None,
         ),
         authorization=None,
         user_data_collection=UserDataCollection.model_construct(
@@ -363,12 +632,20 @@ def build_minimal_config() -> Configuration:
         ),
         mcp_servers=[],
         conversation_cache=None,
+        compaction=None,
+        approvals=None,
         byok_rag=[],
         a2a_state=None,
         quota_handlers=None,
         azure_entra_id=None,
         splunk=None,
         deployment_environment="development",
+        rag=None,
+        okp=None,
+        reranker=None,
+        skills=None,
+        saved_prompts=None,
+        rlsapi_v1=None,
         solr=None,
     )
 
