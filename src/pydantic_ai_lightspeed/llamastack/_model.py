@@ -386,6 +386,9 @@ class OgxResponsesModel(OpenAIResponsesModel):
                     f"Expected ResponseCreatedEvent, got {type(first_chunk).__name__}"
                 )
 
+            tool_call_ids_are_response_scoped = self.profile.get(  # type: ignore[attr-defined]
+                "openai_responses_tool_call_ids_are_response_scoped", False
+            )
             yield OpenAIResponsesStreamedResponse(
                 model_request_parameters=model_request_parameters,
                 _model_name=first_chunk.response.model,
@@ -398,6 +401,7 @@ class OgxResponsesModel(OpenAIResponsesModel):
                     if first_chunk.response.created_at
                     else None
                 ),
+                _tool_call_ids_are_response_scoped=tool_call_ids_are_response_scoped,
             )
 
     @staticmethod
