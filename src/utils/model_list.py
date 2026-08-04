@@ -2,46 +2,50 @@
 
 from typing import Any
 
-from ogx_client.types import ListModelsResponse
-from ogx_client.types.model import Model
-from ogx_client.types.model_list_response import (
-    AnthropicListModelsResponse,
-    AnthropicListModelsResponseData,
-    GoogleListModelsResponse,
-    GoogleListModelsResponseModel,
-    ModelListResponse,
+from ogx_client.models.anthropic_list_models_response import AnthropicListModelsResponse
+from ogx_client.models.anthropic_model_info import AnthropicModelInfo
+from ogx_client.models.google_list_models_response import GoogleListModelsResponse
+from ogx_client.models.google_model_info import GoogleModelInfo
+from ogx_client.models.list_models_v1_models_get200_response import (
+    ListModelsV1ModelsGet200Response,
 )
+from ogx_client.models.open_ai_list_models_response import OpenAIListModelsResponse
+from ogx_client.models.open_ai_model import OpenAIModel
 
 from models.common.models import CatalogModel
 
 
-def parse_openai_style_model(model: Model) -> CatalogModel:
+def parse_openai_style_model(model: OpenAIModel) -> CatalogModel:
     """
-    Parse an OpenAI-style OGX ``Model`` into a unified catalog model.
+    Parse an OpenAI-style OGX ``OpenAIModel`` into a unified catalog model.
 
-    Uses the OGX ``Model`` properties for identifier, model_type, provider
-    fields, and filtered metadata.
+    Reads ``id`` / ``object`` from the model and pulls ``model_type``,
+    ``provider_id``, and ``provider_resource_id`` from ``custom_metadata``.
+    Remaining custom metadata becomes ``CatalogModel.metadata``.
 
     Parameters:
-        model: Model object from ``ListModelsResponse.data``.
+        model: Model object from ``OpenAIListModelsResponse.data``.
 
     Returns:
         CatalogModel: Normalized catalog entry.
     """
-    model_type = model.model_type or "unknown"
+    custom_metadata = dict(model.custom_metadata or {})
+    model_type = custom_metadata.pop("model_type", None) or "unknown"
+    provider_id = custom_metadata.pop("provider_id", "") or ""
+    provider_resource_id = custom_metadata.pop("provider_resource_id", "") or ""
 
     return CatalogModel(
-        identifier=model.identifier,
-        metadata=model.metadata or {},
+        identifier=model.id,
+        metadata=custom_metadata,
         api_model_type=model_type,
-        provider_id=model.provider_id or "",
+        provider_id=provider_id,
         type=model.object or "model",
-        provider_resource_id=model.provider_resource_id or "",
+        provider_resource_id=provider_resource_id,
         model_type=model_type,
     )
 
 
-def parse_anthropic_model(model: AnthropicListModelsResponseData) -> CatalogModel:
+def parse_anthropic_model(model: AnthropicModelInfo) -> CatalogModel:
     """Parse an Anthropic model list entry into a unified catalog model.
 
     Parameters:
@@ -70,7 +74,7 @@ def parse_anthropic_model(model: AnthropicListModelsResponseData) -> CatalogMode
     )
 
 
-def parse_google_model(model: GoogleListModelsResponseModel) -> CatalogModel:
+def parse_google_model(model: GoogleModelInfo) -> CatalogModel:
     """Parse a Google model list entry into a unified catalog model.
 
     Parameters:
@@ -96,21 +100,19 @@ def parse_google_model(model: GoogleListModelsResponseModel) -> CatalogModel:
     )
 
 
-def parse_model_list_response(response: ModelListResponse) -> list[CatalogModel]:
-    """Normalize an OGX ``models.list()`` union response into catalog models.
-
-    OGX returns one of ``ListModelsResponse``, ``AnthropicListModelsResponse``,
-    or ``GoogleListModelsResponse``. This helper matches on the concrete type
-    and parses every entry into :class:`CatalogModel`.
+def parse_model_list_response(
+    response: ListModelsV1ModelsGet200Response,
+) -> list[CatalogModel]:
+    """Normalize an OGX ``models.list()`` response into catalog models.
 
     Parameters:
-        response: The union response returned by ``client.models.list()``.
+        response: The response returned by ``client.models.list()``.
 
     Returns:
         list[CatalogModel]: Parsed models in the unified catalog shape.
     """
-    match response:
-        case ListModelsResponse(data=data):
+    match response.actual_instance:
+        case OpenAIListModelsResponse(data=data):
             return [parse_openai_style_model(model) for model in data]
         case AnthropicListModelsResponse(data=data):
             return [parse_anthropic_model(model) for model in data]

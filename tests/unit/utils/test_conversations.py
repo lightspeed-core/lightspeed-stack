@@ -7,14 +7,17 @@ import pytest
 from fastapi import HTTPException
 from ogx_api import OpenAIResponseMessage
 from ogx_client import APIConnectionError, APIStatusError
-from ogx_client.types.conversations.item_list_response import (
-    OpenAIResponseInputFunctionToolCallOutputOutputListOpenAIResponseInputMessageContentTextOpenAIResponseInputMessageContentImageOpenAIResponseInputMessageContentFileOpenAIResponseInputMessageContentFile as FunctionCallOutputFile,  # pylint: disable=line-too-long
+from ogx_client.models.open_ai_response_input_function_tool_call_output import (
+    OpenAIResponseInputFunctionToolCallOutput as FunctionCallOutput,
 )
-from ogx_client.types.conversations.item_list_response import (
-    OpenAIResponseInputFunctionToolCallOutputOutputListOpenAIResponseInputMessageContentTextOpenAIResponseInputMessageContentImageOpenAIResponseInputMessageContentFileOpenAIResponseInputMessageContentImage as FunctionCallOutputImage,  # pylint: disable=line-too-long
+from ogx_client.models.open_ai_response_input_message_content_file import (
+    OpenAIResponseInputMessageContentFile as InputFileContent,
 )
-from ogx_client.types.conversations.item_list_response import (
-    OpenAIResponseInputFunctionToolCallOutputOutputListOpenAIResponseInputMessageContentTextOpenAIResponseInputMessageContentImageOpenAIResponseInputMessageContentFileOpenAIResponseInputMessageContentText as FunctionCallOutputText,  # pylint: disable=line-too-long
+from ogx_client.models.open_ai_response_input_message_content_image import (
+    OpenAIResponseInputMessageContentImage as InputImageContent,
+)
+from ogx_client.models.open_ai_response_input_message_content_text import (
+    OpenAIResponseInputMessageContentText as InputTextContent,
 )
 from pytest_mock import MockerFixture
 
@@ -336,13 +339,16 @@ class TestBuildToolCallSummaryFromItem:
 
     def test_function_call_output(self, mocker: MockerFixture) -> None:
         """Test parsing a function_call_output item."""
-        mock_item = mocker.Mock()
-        mock_item.type = "function_call_output"
-        mock_item.call_id = "call_123"
-        mock_item.status = "success"
-        mock_item.output = "Function result"
+        item = FunctionCallOutput.from_dict(
+            {
+                "call_id": "call_123",
+                "output": "Function result",
+                "type": "function_call_output",
+                "status": "success",
+            }
+        )
 
-        tool_call, tool_result = _build_tool_call_summary_from_item(mock_item)
+        tool_call, tool_result = _build_tool_call_summary_from_item(item)
 
         assert tool_call is None
         assert tool_result is not None
@@ -354,13 +360,15 @@ class TestBuildToolCallSummaryFromItem:
 
     def test_function_call_output_without_status(self, mocker: MockerFixture) -> None:
         """Test parsing a function_call_output item without status."""
-        mock_item = mocker.Mock()
-        mock_item.type = "function_call_output"
-        mock_item.call_id = "call_123"
-        mock_item.status = None
-        mock_item.output = "Function result"
+        item = FunctionCallOutput.from_dict(
+            {
+                "call_id": "call_123",
+                "output": "Function result",
+                "type": "function_call_output",
+            }
+        )
 
-        _, tool_result = _build_tool_call_summary_from_item(mock_item)
+        _, tool_result = _build_tool_call_summary_from_item(item)
 
         assert tool_result is not None
         assert tool_result.status == "success"  # Defaults to "success"
@@ -369,24 +377,27 @@ class TestBuildToolCallSummaryFromItem:
         self, mocker: MockerFixture
     ) -> None:
         """Test parsing function_call_output with mixed content parts."""
-        mock_item = mocker.Mock()
-        mock_item.type = "function_call_output"
-        mock_item.call_id = "call_456"
-        mock_item.status = "success"
-        mock_item.output = [
-            FunctionCallOutputText(type="input_text", text="result text"),
-            FunctionCallOutputImage(
-                type="input_image",
-                image_url="https://example.com/image.png",
-            ),
-            FunctionCallOutputFile(
-                type="input_file",
-                file_id="file_123",
-                filename="report.pdf",
-            ),
-        ]
+        item = FunctionCallOutput.from_dict(
+            {
+                "call_id": "call_456",
+                "output": [
+                    {"type": "input_text", "text": "result text"},
+                    {
+                        "type": "input_image",
+                        "image_url": "https://example.com/image.png",
+                    },
+                    {
+                        "type": "input_file",
+                        "file_id": "file_123",
+                        "filename": "report.pdf",
+                    },
+                ],
+                "type": "function_call_output",
+                "status": "success",
+            }
+        )
 
-        _, tool_result = _build_tool_call_summary_from_item(mock_item)
+        _, tool_result = _build_tool_call_summary_from_item(item)
 
         assert tool_result is not None
         content = tool_result.model_dump()["content"]
@@ -406,9 +417,9 @@ class TestFunctionCallOutputToStr:
     def test_extracts_text_and_serializes_other_parts(self) -> None:
         """Extract text parts and JSON-serialize image/file parts."""
         output = [
-            FunctionCallOutputText(type="input_text", text="hello"),
-            FunctionCallOutputImage(type="input_image", file_id="img_1"),
-            FunctionCallOutputFile(type="input_file", filename="data.csv"),
+            InputTextContent(type="input_text", text="hello"),
+            InputImageContent(type="input_image", file_id="img_1"),
+            InputFileContent(type="input_file", filename="data.csv"),
         ]
 
         content = _function_call_output_to_str(output)
@@ -542,15 +553,18 @@ class TestBuildConversationTurnsFromItems:
         create_mock_user_turn: Any,
     ) -> None:
         """Test building a turn with tool results."""
-        mock_function_output = mocker.Mock()
-        mock_function_output.type = "function_call_output"
-        mock_function_output.call_id = "call_1"
-        mock_function_output.status = "success"
-        mock_function_output.output = "Result"
+        function_output = FunctionCallOutput.from_dict(
+            {
+                "call_id": "call_1",
+                "output": "Result",
+                "type": "function_call_output",
+                "status": "success",
+            }
+        )
 
         items = [
             mocker.Mock(type="message", role="user", content="Use tool"),
-            mock_function_output,
+            function_output,
             mocker.Mock(type="message", role="assistant", content="Done"),
         ]
         turns_metadata = [create_mock_user_turn(turn_number=1)]
@@ -575,16 +589,19 @@ class TestBuildConversationTurnsFromItems:
         mock_function_call.name = "test_tool"
         mock_function_call.arguments = "{}"
 
-        mock_function_output = mocker.Mock()
-        mock_function_output.type = "function_call_output"
-        mock_function_output.call_id = "call_1"
-        mock_function_output.status = "success"
-        mock_function_output.output = "Result"
+        function_output = FunctionCallOutput.from_dict(
+            {
+                "call_id": "call_1",
+                "output": "Result",
+                "type": "function_call_output",
+                "status": "success",
+            }
+        )
 
         items = [
             mocker.Mock(type="message", role="user", content="Use tool"),
             mock_function_call,
-            mock_function_output,
+            function_output,
             mocker.Mock(type="message", role="assistant", content="Done"),
         ]
         turns_metadata = [create_mock_user_turn(turn_number=1)]

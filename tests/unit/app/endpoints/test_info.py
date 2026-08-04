@@ -5,7 +5,7 @@ from typing import Any
 import pytest
 from fastapi import HTTPException, Request, status
 from ogx_client import APIConnectionError
-from ogx_client.types import VersionInfo
+from ogx_client.models.version_info import VersionInfo
 from pytest_mock import MockerFixture
 
 from app.endpoints.info import info_endpoint_handler

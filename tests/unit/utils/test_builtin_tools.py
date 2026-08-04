@@ -5,7 +5,7 @@
 import pytest
 from fastapi import HTTPException
 from ogx_client import APIConnectionError
-from ogx_client.types.shared.provider_info import ProviderInfo
+from ogx_client.models.provider_info import ProviderInfo
 from pytest_mock import MockerFixture
 
 from utils.builtin_tools import get_file_search_tools
