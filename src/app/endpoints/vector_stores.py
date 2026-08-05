@@ -244,7 +244,7 @@ async def list_vector_stores(
                 usage_bytes=vs.usage_bytes or 0,
                 metadata=vs.metadata,
             )
-            for vs in vector_stores.data
+            for vs in vector_stores
         ]
 
         return VectorStoresListResponse(data=data)
@@ -646,7 +646,7 @@ async def add_file_to_vector_store(  # pylint: disable=too-many-locals,too-many-
             attributes=vs_file.attributes,
             last_error=(
                 vs_file.last_error.message
-                if vs_file.last_error and hasattr(vs_file.last_error, "message")
+                if vs_file.last_error is not None
                 else None
             ),
             object=vs_file.object or "vector_store.file",
@@ -714,12 +714,12 @@ async def list_vector_store_files(
                 attributes=f.attributes,
                 last_error=(
                     f.last_error.message
-                    if f.last_error and hasattr(f.last_error, "message")
+                    if f.last_error is not None
                     else None
                 ),
                 object=f.object or "vector_store.file",
             )
-            for f in files.data
+            for f in files
         ]
         return VectorStoreFilesListResponse(data=data)
     except APIConnectionError as e:
@@ -787,7 +787,7 @@ async def get_vector_store_file(
             attributes=vs_file.attributes,
             last_error=(
                 vs_file.last_error.message
-                if vs_file.last_error and hasattr(vs_file.last_error, "message")
+                if vs_file.last_error is not None
                 else None
             ),
             object=vs_file.object or "vector_store.file",

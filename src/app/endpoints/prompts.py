@@ -245,10 +245,7 @@ async def get_prompt_handler(
 
     try:
         client = AsyncOgxClientHolder().get_client()
-        if version is not None:
-            retrieved = await client.prompts.retrieve(prompt_id, version=version)
-        else:
-            retrieved = await client.prompts.retrieve(prompt_id)
+        retrieved = await client.prompts.retrieve(prompt_id, version=version)
         return PromptResourceResponse.model_validate(retrieved.model_dump())
     except APIConnectionError as e:
         logger.error("Unable to connect to Llama Stack: %s", e)

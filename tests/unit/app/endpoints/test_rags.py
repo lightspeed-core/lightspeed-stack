@@ -1,7 +1,7 @@
 """Unit tests for the /rags REST API endpoints."""
 
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
 
 import pytest
 from fastapi import HTTPException, Request, status
@@ -99,6 +99,14 @@ async def test_rags_endpoint_success(
                 RagInfo("vs_7b52a8cf-0fa3-489c-beab-27e061d102f3"),
                 RagInfo("vs_7b52a8cf-0fa3-489c-cafe-27e061d102f3"),
             ]
+
+        def __iter__(self) -> "Iterator[RagInfo]":
+            """Iterate over RAG entries."""
+            return iter(self.data)
+
+        def __len__(self) -> int:
+            """Return number of RAG entries."""
+            return len(self.data)
 
     mock_client = mocker.AsyncMock()
     mock_client.vector_stores.list.return_value = RagList()
@@ -319,6 +327,14 @@ async def test_rags_endpoint_returns_rag_ids_from_config(
                 RagInfo("vs_def456"),  # mapped to company-kb
                 RagInfo("vs_unmapped"),  # not in config, passed through
             ]
+
+        def __iter__(self) -> "Iterator[RagInfo]":
+            """Iterate over RAG entries."""
+            return iter(self.data)
+
+        def __len__(self) -> int:
+            """Return number of RAG entries."""
+            return len(self.data)
 
     mock_client = mocker.AsyncMock()
     mock_client.vector_stores.list.return_value = RagList()

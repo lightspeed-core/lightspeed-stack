@@ -153,7 +153,7 @@ async def get_vector_store_ids(
 
     try:
         vector_stores = await client.vector_stores.list()
-        return [vector_store.id for vector_store in vector_stores.data]
+        return [vector_store.id for vector_store in vector_stores]
     except APIConnectionError as e:
         error_response = ServiceUnavailableResponse(
             backend_name="OGX",

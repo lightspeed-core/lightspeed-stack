@@ -145,24 +145,6 @@ async def test_get_prompt_with_version(
 
 
 @pytest.mark.asyncio
-async def test_get_prompt_without_version_omits_kwarg(
-    prompts_client_mocks: tuple[Any, Any],
-    prompts_http_request: Request,
-) -> None:
-    """get_prompt calls retrieve with prompt_id only when version is omitted."""
-    _, mock_prompts = prompts_client_mocks
-    mock_prompts.retrieve.return_value = _sample_prompt(VALID_PMPT_ID, 1)
-
-    await get_prompt_handler(
-        request=prompts_http_request,
-        prompt_id=VALID_PMPT_ID,
-        auth=MOCK_AUTH,
-    )
-
-    mock_prompts.retrieve.assert_awaited_once_with(VALID_PMPT_ID)
-
-
-@pytest.mark.asyncio
 async def test_update_prompt_success(
     prompts_client_mocks: tuple[Any, Any],
     prompts_http_request: Request,

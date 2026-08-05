@@ -94,13 +94,13 @@ async def rags_endpoint_handler(
         client = AsyncOgxClientHolder().get_client()
         # retrieve list of RAGs
         rags = await client.vector_stores.list()
-        logger.info("List of rags: %d", len(rags.data))
+        logger.info("List of rags: %d", len(rags))
 
         # Map llama-stack vector store IDs to user-facing rag_ids from config
         rag_id_mapping = configuration.rag_id_mapping
         rag_ids = [
             configuration.resolve_index_name(rag.id, rag_id_mapping)
-            for rag in rags.data
+            for rag in rags
         ]
 
         return RAGListResponse(rags=rag_ids)

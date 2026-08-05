@@ -38,9 +38,7 @@ def mock_llama_stack_streaming_fixture(
         make_openai_model()
     )
 
-    mock_vector_stores_response = mocker.MagicMock()
-    mock_vector_stores_response.data = []
-    mock_client.vector_stores.list.return_value = mock_vector_stores_response
+    mock_client.vector_stores.list.return_value = []
 
     mock_conversation = mocker.MagicMock()
     mock_conversation.id = "conv_" + "a" * 48

@@ -453,7 +453,7 @@ async def test_get_conversation_returns_chat_history(
     # Mock Llama Stack response
     mock_items = mocker.Mock()
     mock_items.data = [mock_user_message, mock_assistant_message]
-    mock_items.has_next_page.return_value = False
+    mock_items.has_more = False
     mock_ogx_client.conversations.items.list = mocker.AsyncMock(return_value=mock_items)
 
     response = await get_conversation_endpoint_handler(
@@ -543,7 +543,7 @@ async def test_get_conversation_with_turns_metadata(
     # Mock paginator response
     mock_items = mocker.Mock()
     mock_items.data = [mock_user_message, mock_assistant_message]
-    mock_items.has_next_page.return_value = False
+    mock_items.has_more = False
     mock_ogx_client.conversations.items.list = mocker.AsyncMock(return_value=mock_items)
 
     response = await get_conversation_endpoint_handler(

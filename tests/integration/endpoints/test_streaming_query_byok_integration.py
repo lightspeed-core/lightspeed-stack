@@ -109,9 +109,7 @@ def mock_streaming_byok_client_fixture(
     )
 
     # No tool-based vector stores
-    mock_vector_stores_response = mocker.MagicMock()
-    mock_vector_stores_response.data = []
-    mock_client.vector_stores.list.return_value = mock_vector_stores_response
+    mock_client.vector_stores.list.return_value = []
 
     mock_holder_class.return_value.get_client.return_value = mock_client
     yield mock_client
@@ -165,9 +163,7 @@ def mock_streaming_byok_tool_client_fixture(  # pylint: disable=too-many-stateme
     # Tool-based vector stores available
     mock_vector_store = mocker.MagicMock()
     mock_vector_store.id = "vs-byok-knowledge"
-    mock_list_result = mocker.MagicMock()
-    mock_list_result.data = [mock_vector_store]
-    mock_client.vector_stores.list.return_value = mock_list_result
+    mock_client.vector_stores.list.return_value = [mock_vector_store]
 
     mock_holder_class.return_value.get_client.return_value = mock_client
     yield mock_client
@@ -306,9 +302,7 @@ async def test_streaming_query_byok_inline_rag_with_request_vector_store_ids(
         return_value=_make_byok_vector_io_response(mocker)
     )
 
-    mock_vs_resp = mocker.MagicMock()
-    mock_vs_resp.data = []
-    mock_client.vector_stores.list.return_value = mock_vs_resp
+    mock_client.vector_stores.list.return_value = []
 
     mock_holder_class.return_value.get_client.return_value = mock_client
 
@@ -371,9 +365,7 @@ async def test_streaming_query_byok_request_vector_store_ids_filters_configured_
         return_value=_make_byok_vector_io_response(mocker)
     )
 
-    mock_vs_resp = mocker.MagicMock()
-    mock_vs_resp.data = []
-    mock_client.vector_stores.list.return_value = mock_vs_resp
+    mock_client.vector_stores.list.return_value = []
 
     mock_holder_class.return_value.get_client.return_value = mock_client
 
@@ -653,9 +645,7 @@ async def test_streaming_query_byok_combined_inline_and_tool_rag(
     # Tool RAG vector stores
     mock_vector_store = mocker.MagicMock()
     mock_vector_store.id = "vs-byok-knowledge"
-    mock_list_result = mocker.MagicMock()
-    mock_list_result.data = [mock_vector_store]
-    mock_client.vector_stores.list.return_value = mock_list_result
+    mock_client.vector_stores.list.return_value = [mock_vector_store]
 
     mock_holder_class.return_value.get_client.return_value = mock_client
 
@@ -727,9 +717,7 @@ async def test_streaming_query_byok_only_configured_rag_id_is_queried(
         return_value=_make_byok_vector_io_response(mocker)
     )
 
-    mock_vs_resp = mocker.MagicMock()
-    mock_vs_resp.data = []
-    mock_client.vector_stores.list.return_value = mock_vs_resp
+    mock_client.vector_stores.list.return_value = []
 
     mock_holder_class.return_value.get_client.return_value = mock_client
 
@@ -821,9 +809,7 @@ async def test_streaming_query_byok_score_multiplier_shifts_priority(  # pylint:
 
     mock_client.vector_io.query = mocker.AsyncMock(side_effect=_side_effect)
 
-    mock_vs_resp = mocker.MagicMock()
-    mock_vs_resp.data = []
-    mock_client.vector_stores.list.return_value = mock_vs_resp
+    mock_client.vector_stores.list.return_value = []
 
     mock_holder_class.return_value.get_client.return_value = mock_client
 
@@ -892,9 +878,7 @@ async def test_streaming_query_rag_content_limit_caps_context(  # pylint: disabl
         return_value=_make_vector_io_response(mocker, chunks_data)
     )
 
-    mock_vs_resp = mocker.MagicMock()
-    mock_vs_resp.data = []
-    mock_client.vector_stores.list.return_value = mock_vs_resp
+    mock_client.vector_stores.list.return_value = []
 
     mock_holder_class.return_value.get_client.return_value = mock_client
 
@@ -981,9 +965,7 @@ async def test_streaming_query_rag_content_limit_caps_across_multiple_sources(  
 
     mock_client.vector_io.query = mocker.AsyncMock(side_effect=_side_effect)
 
-    mock_vs_resp = mocker.MagicMock()
-    mock_vs_resp.data = []
-    mock_client.vector_stores.list.return_value = mock_vs_resp
+    mock_client.vector_stores.list.return_value = []
 
     mock_holder_class.return_value.get_client.return_value = mock_client
 
@@ -1054,9 +1036,7 @@ async def test_streaming_query_rag_content_limit_caps_inline_rag(  # pylint: dis
         return_value=_make_vector_io_response(mocker, chunks_data)
     )
 
-    mock_vs_resp = mocker.MagicMock()
-    mock_vs_resp.data = []
-    mock_client.vector_stores.list.return_value = mock_vs_resp
+    mock_client.vector_stores.list.return_value = []
 
     mock_holder_class.return_value.get_client.return_value = mock_client
 

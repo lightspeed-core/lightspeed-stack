@@ -824,9 +824,7 @@ def mock_ogx_client_fixture(
     mock_client.shields.list.return_value = []
 
     # Mock vector_stores.list (empty by default)
-    mock_vector_stores_response = mocker.MagicMock()
-    mock_vector_stores_response.data = []
-    mock_client.vector_stores.list.return_value = mock_vector_stores_response
+    mock_client.vector_stores.list.return_value = []
 
     # Mock conversations.create
     mock_conversation = mocker.MagicMock()

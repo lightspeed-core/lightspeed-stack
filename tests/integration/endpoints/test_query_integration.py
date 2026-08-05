@@ -652,10 +652,7 @@ async def test_query_v2_endpoint_bypasses_tools_when_no_tools_true(
     mock_vector_store = mocker.MagicMock()
     mock_vector_store.id = "vs-test-123"
 
-    mock_list_result = mocker.MagicMock()
-    mock_list_result.data = [mock_vector_store]
-
-    mock_ogx_client.vector_stores.list.return_value = mock_list_result
+    mock_ogx_client.vector_stores.list.return_value = [mock_vector_store]
 
     query_request = QueryRequest(query="What is Ansible?", no_tools=True)
 
