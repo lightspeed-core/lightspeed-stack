@@ -573,6 +573,8 @@ Custom profile customization for prompts and validation.
 |-------|------|-------------|
 | path | string | Path to Python modules containing custom profile. |
 | prompts | object | Dictionary containing map of system prompts |
+| validation | string | Read-only. Loaded from the custom profile Python module (PROFILE_CONFIG['system_prompts']['validation']), not from lightspeed-stack.yaml. Used when a question_validity shield omits model_prompt. |
+| invalid_resp | string | Read-only. Loaded from the custom profile Python module (PROFILE_CONFIG['query_responses']['invalid_resp']), not from lightspeed-stack.yaml. Used when a question_validity shield omits invalid_question_response. |
 
 
 ## Customization
@@ -1951,8 +1953,8 @@ Configuration for the question validity guardrail.
 | Field | Type | Description |
 |-------|------|-------------|
 | model_id | string | The model_id to use for the guard |
-| model_prompt | string | The default prompt sent to the LLM used to validate the Users' question. |
-| invalid_question_response | string | The default response when the Users' question is determined to be invalid. |
+| model_prompt | string | Classifier prompt for the agent / wrap_run path. Null/omitted at load is filled from the profile module's system_prompts.validation, then the LCORE default; an explicit empty string is kept. Include $message or ${message} so the user question is substituted. Not used by responses-path run(), which sends raw user input. |
+| invalid_question_response | string | Refusal text used on both agent and responses / run() paths. Null/omitted at load is filled from the profile module's query_responses.invalid_resp, then the LCORE default; an explicit empty string is kept. |
 
 
 ## QuestionValidityShieldConfiguration

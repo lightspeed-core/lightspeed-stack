@@ -1636,6 +1636,33 @@ class CustomProfile:
         init=False,
         title="System prompts",
         description="Dictionary containing map of system prompts",
+        json_schema_extra={"readOnly": True},
+    )
+
+    validation: Optional[str] = Field(
+        default=None,
+        init=False,
+        title="Question validity classifier prompt",
+        description=(
+            "Read-only. Loaded from the custom profile Python module "
+            "(PROFILE_CONFIG['system_prompts']['validation']), not from "
+            "lightspeed-stack.yaml. Used when a question_validity shield omits "
+            "model_prompt."
+        ),
+        json_schema_extra={"readOnly": True},
+    )
+
+    invalid_resp: Optional[str] = Field(
+        default=None,
+        init=False,
+        title="Invalid question response",
+        description=(
+            "Read-only. Loaded from the custom profile Python module "
+            "(PROFILE_CONFIG['query_responses']['invalid_resp']), not from "
+            "lightspeed-stack.yaml. Used when a question_validity shield omits "
+            "invalid_question_response."
+        ),
+        json_schema_extra={"readOnly": True},
     )
 
     def __post_init__(self) -> None:
@@ -1647,7 +1674,16 @@ class CustomProfile:
         checks.file_check(Path(self.path), "custom profile")
         profile_module = checks.import_python_module("profile", self.path)
         if profile_module is not None and checks.is_valid_profile(profile_module):
-            self.prompts = profile_module.PROFILE_CONFIG.get("system_prompts", {})
+            profile_config = profile_module.PROFILE_CONFIG
+            self.prompts = profile_config.get("system_prompts", {})
+            validation = self.prompts.get("validation")
+            if isinstance(validation, str):
+                self.validation = validation
+            query_responses = profile_config.get("query_responses")
+            if isinstance(query_responses, dict):
+                invalid_resp = query_responses.get("invalid_resp")
+                if isinstance(invalid_resp, str):
+                    self.invalid_resp = invalid_resp
 
     def get_prompts(self) -> dict[str, str]:
         """
@@ -1657,6 +1693,24 @@ class CustomProfile:
             dict[str, str]: Mapping from prompt names to prompt text.
         """
         return self.prompts
+
+    def get_validation(self) -> Optional[str]:
+        """Return the profile question-validity classifier prompt, if loaded.
+
+        Returns:
+            The ``system_prompts.validation`` string from the profile module,
+            or None when that key is absent or not a string.
+        """
+        return self.validation
+
+    def get_invalid_resp(self) -> Optional[str]:
+        """Return the profile invalid-question refusal text, if loaded.
+
+        Returns:
+            The ``query_responses.invalid_resp`` string from the profile module,
+            or None when that key is absent or not a string.
+        """
+        return self.invalid_resp
 
 
 class Customization(ConfigurationBase):
@@ -2667,15 +2721,26 @@ class QuestionValidityConfig(ConfigurationBase):
     model_id: str = Field(
         ..., title="Model id", description="The model_id to use for the guard"
     )
-    model_prompt: str = Field(
-        default=constants.DEFAULT_MODEL_PROMPT,
+    model_prompt: Optional[str] = Field(
+        default=None,
         title="Model prompt",
-        description="The default prompt sent to the LLM used to validate the Users' question.",
+        description=(
+            "Classifier prompt for the agent / wrap_run path. Null/omitted at "
+            "load is filled from the profile module's system_prompts.validation, "
+            "then the LCORE default; an explicit empty string is kept. Include "
+            "$message or ${message} so the user question is substituted. Not "
+            "used by responses-path run(), which sends raw user input."
+        ),
     )
-    invalid_question_response: str = Field(
-        default=constants.DEFAULT_INVALID_QUESTION_RESPONSE,
+    invalid_question_response: Optional[str] = Field(
+        default=None,
         title="Invalid question response",
-        description="The default response when the Users' question is determined to be invalid.",
+        description=(
+            "Refusal text used on both agent and responses / run() paths. "
+            "Null/omitted at load is filled from the profile module's "
+            "query_responses.invalid_resp, then the LCORE default; an explicit "
+            "empty string is kept."
+        ),
     )
 
 
@@ -3187,6 +3252,44 @@ class Configuration(ConfigurationBase):
             raise ValueError(
                 f"Shield names must be unique, found duplicates: {sorted(duplicates)}"
             )
+        return self
+
+    @model_validator(mode="after")
+    def resolve_question_validity_shield_prompts(self) -> Self:
+        """Fill omitted QV prompt/refusal fields from profile or LCORE defaults.
+
+        Runs at configuration load so ``GET /v1/shields`` returns the effective
+        ``model_prompt`` and ``invalid_question_response``. Explicit YAML values
+        are left unchanged.
+
+        Returns:
+            Self: The model instance after resolving shield text fields.
+        """
+        profile = None
+        if self.customization is not None:
+            # pylint: disable=no-member  # Pydantic nested model field
+            profile = self.customization.custom_profile
+        profile_validation = None
+        profile_invalid_resp = None
+        if profile is not None:
+            profile_validation = profile.get_validation()
+            profile_invalid_resp = profile.get_invalid_resp()
+
+        for shield in self.shields:
+            match shield.config:
+                case QuestionValidityConfig() as qv_config:
+                    if qv_config.model_prompt is None:
+                        qv_config.model_prompt = (
+                            profile_validation
+                            if profile_validation is not None
+                            else constants.DEFAULT_MODEL_PROMPT
+                        )
+                    if qv_config.invalid_question_response is None:
+                        qv_config.invalid_question_response = (
+                            profile_invalid_resp
+                            if profile_invalid_resp is not None
+                            else constants.DEFAULT_INVALID_QUESTION_RESPONSE
+                        )
         return self
 
     @model_validator(mode="after")
