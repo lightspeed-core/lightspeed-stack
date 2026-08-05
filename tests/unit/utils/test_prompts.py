@@ -333,3 +333,22 @@ def test_get_topic_summary_system_prompt_no_customization(
 
     topic_summary_prompt = prompts.get_topic_summary_system_prompt()
     assert topic_summary_prompt == constants.DEFAULT_TOPIC_SUMMARY_SYSTEM_PROMPT
+
+
+def test_custom_profile_loads_invalid_resp() -> None:
+    """CustomProfile loads query_responses.invalid_resp from the profile module."""
+    custom_profile = CustomProfile(path="tests/profiles/test/profile.py")
+    invalid_resp = custom_profile.get_invalid_resp()
+
+    assert invalid_resp is not None
+    assert "Red Hat Developer Hub" in invalid_resp
+
+
+def test_custom_profile_loads_validation() -> None:
+    """CustomProfile loads system_prompts.validation from the profile module."""
+    custom_profile = CustomProfile(path="tests/profiles/test/profile.py")
+    validation = custom_profile.get_validation()
+
+    assert validation is not None
+    assert "${message}" in validation
+    assert validation == custom_profile.get_prompts().get("validation")

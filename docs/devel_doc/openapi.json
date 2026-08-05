@@ -1440,7 +1440,7 @@
                                             "config": {
                                                 "invalid_question_response": "I can only answer questions about the product.",
                                                 "model_id": "openai/gpt-4o-mini",
-                                                "model_prompt": "Is this question valid?"
+                                                "model_prompt": "Is this question valid? ${message}"
                                             },
                                             "name": "question-validity",
                                             "provider_id": "question_validity",
@@ -14054,7 +14054,34 @@
                         "type": "object",
                         "title": "System prompts",
                         "description": "Dictionary containing map of system prompts",
-                        "default": {}
+                        "default": {},
+                        "readOnly": true
+                    },
+                    "validation": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Question validity classifier prompt",
+                        "description": "Read-only. Loaded from the custom profile Python module (PROFILE_CONFIG['system_prompts']['validation']), not from lightspeed-stack.yaml. Used when a question_validity shield omits model_prompt.",
+                        "readOnly": true
+                    },
+                    "invalid_resp": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Invalid question response",
+                        "description": "Read-only. Loaded from the custom profile Python module (PROFILE_CONFIG['query_responses']['invalid_resp']), not from lightspeed-stack.yaml. Used when a question_validity shield omits invalid_question_response.",
+                        "readOnly": true
                     }
                 },
                 "type": "object",
@@ -18988,16 +19015,28 @@
                         "description": "The model_id to use for the guard"
                     },
                     "model_prompt": {
-                        "type": "string",
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
                         "title": "Model prompt",
-                        "description": "The default prompt sent to the LLM used to validate the Users' question.",
-                        "default": "\nInstructions:\n- You are a question classifying tool\n- You are an expert in kubernetes and openshift\n- Your job is to determine where or a user's question is related to kubernetes and/or openshift technologies and to provide a one-word response.\n- If a question appears to be related to kubernetes or openshift technologies, answer with the word ${allowed}, otherwise answer with the word ${rejected}.\n- Do not explain your answer, just provide the one-word response. Do not give any other response.\n- If the given question is an empty string, answer with the word ${rejected}\n\n\nExample Question:\nWhy is the sky blue?\nExample Response:\n${rejected}\n\nExample Question:\nWhy is the grass green?\nExample Response:\n${rejected}\n\nExample Question:\nWhy is sand yellow?\nExample Response:\n${rejected}\n\nExample Question:\nCan you help configure my cluster to automatically scale?\nExample Response:\n${allowed}\n\nQuestion:\n${message}\nResponse:\n"
+                        "description": "Classifier prompt for the agent / wrap_run path. Null/omitted at load is filled from the profile module's system_prompts.validation, then the LCORE default; an explicit empty string is kept. Include $message or ${message} so the user question is substituted. Not used by responses-path run(), which sends raw user input."
                     },
                     "invalid_question_response": {
-                        "type": "string",
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
                         "title": "Invalid question response",
-                        "description": "The default response when the Users' question is determined to be invalid.",
-                        "default": "\nHi, I'm the OpenShift Lightspeed assistant, I can help you with questions about OpenShift, \nplease ask me a question related to OpenShift.\n"
+                        "description": "Refusal text used on both agent and responses / run() paths. Null/omitted at load is filled from the profile module's query_responses.invalid_resp, then the LCORE default; an explicit empty string is kept."
                     }
                 },
                 "additionalProperties": false,
@@ -21417,7 +21456,7 @@
                                 "config": {
                                     "invalid_question_response": "I can only answer questions about the product.",
                                     "model_id": "openai/gpt-4o-mini",
-                                    "model_prompt": "Is this question valid?"
+                                    "model_prompt": "Is this question valid? ${message}"
                                 },
                                 "name": "question-validity",
                                 "provider_id": "question_validity",

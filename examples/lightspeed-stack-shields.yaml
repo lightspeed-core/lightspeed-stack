@@ -19,14 +19,14 @@ authentication:
 # LCORE-owned safety shields (not Llama Stack / OGX Safety API resources).
 # Listed via GET /v1/shields; selected per request with optional shield_ids.
 shields:
-  - identifier: topic-guard
+  - name: topic-guard
     provider_id: question_validity
     config:
       model_id: openai/gpt-4o-mini
-      # Optional; omit to use built-in defaults:
-      model_prompt: "Classify whether the question is about OpenShift. Reply ALLOWED or REJECTED."
+      # Optional; omit to use profile/LCORE defaults:
+      model_prompt: "Classify whether the question is about OpenShift. Reply ALLOWED or REJECTED. Question: ${message}"
       invalid_question_response: "I can only answer questions about OpenShift."
-  - identifier: pii-redaction
+  - name: pii-redaction
     provider_id: redaction
     config:
       rules:

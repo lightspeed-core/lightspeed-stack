@@ -81,8 +81,60 @@ for a complete example.
 | Config field | Required | Description |
 |--------------|----------|-------------|
 | `model_id` | Yes | Model used for the validity check (for example `openai/gpt-4o-mini`) |
-| `model_prompt` | No | Classifier prompt (has a built-in default) |
-| `invalid_question_response` | No | Reply returned when the question is rejected |
+| `model_prompt` | No | Classifier prompt. When omitted: customization profile `system_prompts.validation`, then the LCORE default |
+| `invalid_question_response` | No | Reply when rejected. When omitted: profile `query_responses.invalid_resp`, then the LCORE default |
+
+### Profile fallback (resolved at startup)
+
+When LCORE loads configuration, omitted `model_prompt` /
+`invalid_question_response` on each `question_validity` shield are filled
+once from the customization profile module (when `customization.profile_path`
+points at a Python profile) or from LCORE defaults:
+
+| Shield field | Profile module key | Runtime use |
+|--------------|--------------------|-------------|
+| `model_prompt` | `PROFILE_CONFIG["system_prompts"]["validation"]` | **Classifier template** — agent / `wrap_run` only |
+| `invalid_question_response` | `PROFILE_CONFIG["query_responses"]["invalid_resp"]` | **Refusal text** — agent and responses / `run()` paths |
+
+Those profile keys are read from the profile **Python module**
+(`PROFILE_CONFIG`), not from fields under `customization:` in
+`lightspeed-stack.yaml`.
+
+Explicit values in `lightspeed-stack.yaml` always win. Missing profile keys
+fall through silently to LCORE defaults. After load, `GET /v1/shields` returns
+the **effective** prompt and refusal text.
+
+**Omit vs empty string:** Only a missing / `null` field is filled. An explicit
+empty string (`""`) in YAML **or** in the profile (`validation` /
+`invalid_resp`) is kept as-is and is not replaced by LCORE defaults.
+
+**Upgrade note:** If a deployment already uses a customization profile that
+defines `validation` / `invalid_resp`, and a QV shield omits those YAML fields,
+the effective values change after upgrade (no YAML edit required): classifier
+text on the agent path, and refusal text on both agent and responses paths.
+Set the fields explicitly in YAML to keep the previous LCORE defaults.
+
+**Schema / OpenAPI note:** In the config model these fields are optional
+(`null` when omitted in YAML). After configuration load they are always filled
+with the effective string. Clients that read `GET /v1/shields` see the resolved
+values, not `null`.
+
+### `model_prompt` placeholders (agent / `wrap_run` only)
+
+On the agent capability path, the classifier prompt is rendered with Python
+`string.Template` before the validity model runs. Include `$message` or
+`${message}` so the user question is substituted into the prompt. Without it,
+the classifier still runs but does not see the user's question (same behavior
+as before). The responses moderation path (`run()`) does not use this template;
+it sends raw user input (see below).
+
+Optional placeholders:
+
+| Placeholder | Substituted value |
+|-------------|-------------------|
+| `${message}` / `$message` | User question text |
+| `${allowed}` / `$allowed` | `ALLOWED` |
+| `${rejected}` / `$rejected` | `REJECTED` |
 
 ## redaction
 
@@ -95,8 +147,9 @@ Invalid regex patterns are rejected at configuration load time.
 
 # How shields apply at runtime
 
-The same shield logic (`question_validity` and `redaction`) is used on both
-agent-based and responses-based endpoints; only the integration point differs.
+Both agent-based and responses-based endpoints use the configured
+`question_validity` and `redaction` shields; the integration point differs
+(see below for how `question_validity` prompts are applied on each path).
 
 ## Agent-based endpoints
 
@@ -108,10 +161,16 @@ questions or redacting PII from model messages — using the configured shields.
 ## Responses-based endpoints
 
 On pure responses-based endpoints (for example `/v1/responses` and `/v1/infer`),
-there is no agent capability layer. Instead, LCORE runs the **same core shield
-functionality directly** through a custom API (`run_shield_moderation`) before
-each request. When moderation blocks the input, the endpoint returns a refusal
-(and may persist the blocked turn) without calling the model.
+there is no agent capability layer. Instead, LCORE runs shield moderation
+directly through `run_shield_moderation_v2` before each request. When
+moderation blocks the input, the endpoint returns a refusal (and may persist
+the blocked turn) without calling the model.
+
+For `question_validity`, that moderation path sends the **raw user input** to
+the validity model. It does **not** render `model_prompt` with
+`$message` / `${message}` the way the agent capability path (`wrap_run`) does.
+Configured / profile-resolved `invalid_question_response` is still used for the
+refusal text on this path. This matches pre-existing moderation behavior.
 
 ## Per-endpoint behavior
 
