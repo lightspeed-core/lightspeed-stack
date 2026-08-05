@@ -1,8 +1,8 @@
 """Unit tests for functions defined in metrics/utils.py"""
 
 import pytest
-from ogx_client.types import ListModelsResponse
-from ogx_client.types.model import Model
+from ogx_client.models.list_models_response import ListModelsResponse
+from ogx_client.models.model import Model
 from pytest_mock import MockerFixture
 
 from metrics.utils import setup_model_metrics

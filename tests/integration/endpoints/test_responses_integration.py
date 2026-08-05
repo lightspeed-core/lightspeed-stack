@@ -11,8 +11,6 @@ from typing import Any
 import pytest
 from fastapi import Request
 from fastapi.responses import StreamingResponse
-from ogx_client.types import ListModelsResponse
-from ogx_client.types.model import Model
 from pytest_mock import MockerFixture
 from sqlalchemy.orm import Session
 
@@ -23,6 +21,7 @@ from models.api.requests import ResponsesRequest
 from models.api.responses.successful import ResponsesResponse
 from models.common.moderation import ShieldModerationBlocked
 from models.common.responses.contexts import ResponsesContext
+from tests.integration.conftest import make_openai_model, make_openai_models_list_response
 from models.database.conversations import UserConversation, UserTurn
 
 MOCK_AUTH: AuthTuple = (
@@ -91,19 +90,8 @@ def _build_mock_client(mocker: MockerFixture) -> Any:
     mock_response.model_dump.return_value = _RESPONSE_DUMP.copy()
     mock_client.responses.create = mocker.AsyncMock(return_value=mock_response)
 
-    mock_client.models.list.return_value = ListModelsResponse.model_construct(
-        data=[
-            Model.model_construct(
-                id="test-provider/test-model",
-                created=0,
-                owned_by="test",
-                object="model",
-                custom_metadata={
-                    "provider_id": "test-provider",
-                    "model_type": "llm",
-                },
-            )
-        ]
+    mock_client.models.list.return_value = make_openai_models_list_response(
+        make_openai_model()
     )
 
     mock_client.shields.list.return_value = []

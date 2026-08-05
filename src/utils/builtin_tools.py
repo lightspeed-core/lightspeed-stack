@@ -6,7 +6,7 @@ from typing import Final
 
 from fastapi import HTTPException
 from ogx_client import APIConnectionError, APIStatusError, AsyncOgxClient
-from ogx_client.types.shared.provider_info import ProviderInfo
+from ogx_client.models.provider_info import ProviderInfo
 
 from log import get_logger
 from models.api.responses.error import ServiceUnavailableResponse

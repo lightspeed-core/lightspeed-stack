@@ -9,8 +9,12 @@ import pytest
 from fastapi import Request, Response
 from fastapi.testclient import TestClient
 from ogx_api.openai_responses import OpenAIResponseObject
-from ogx_client.types import ListModelsResponse, VersionInfo
-from ogx_client.types.model import Model
+from ogx_client.models.list_models_v1_models_get200_response import (
+    ListModelsV1ModelsGet200Response,
+)
+from ogx_client.models.open_ai_list_models_response import OpenAIListModelsResponse
+from ogx_client.models.open_ai_model import OpenAIModel
+from ogx_client.models.version_info import VersionInfo
 from pydantic_ai import AgentRunResultEvent
 from pydantic_ai.messages import (
     ModelMessage,
@@ -62,6 +66,50 @@ TEST_MODEL_NAME = "test-model"
 # ==========================================
 # Helper Functions
 # ==========================================
+
+
+def make_openai_models_list_response(
+    *models: OpenAIModel,
+) -> ListModelsV1ModelsGet200Response:
+    """Build a ``client.models.list()`` response in the OpenAI OneOf shape.
+
+    Parameters:
+        *models: OpenAI-style model entries for ``data``.
+
+    Returns:
+        ``ListModelsV1ModelsGet200Response`` wrapping ``OpenAIListModelsResponse``.
+    """
+    return ListModelsV1ModelsGet200Response(
+        OpenAIListModelsResponse.model_construct(data=list(models))
+    )
+
+
+def make_openai_model(
+    *,
+    model_id: str = TEST_MODEL,
+    provider_id: str = TEST_PROVIDER,
+    model_type: str = "llm",
+) -> OpenAIModel:
+    """Build an ``OpenAIModel`` for integration ``models.list`` mocks.
+
+    Parameters:
+        model_id: Full model identifier (provider/name).
+        provider_id: Value stored in ``custom_metadata.provider_id``.
+        model_type: Value stored in ``custom_metadata.model_type``.
+
+    Returns:
+        Constructed ``OpenAIModel`` instance.
+    """
+    return OpenAIModel.model_construct(
+        id=model_id,
+        created=0,
+        owned_by="test",
+        object="model",
+        custom_metadata={
+            "provider_id": provider_id,
+            "model_type": model_type,
+        },
+    )
 
 
 def create_mock_llm_response(  # pylint: disable=too-many-arguments,too-many-positional-arguments
@@ -768,19 +816,8 @@ def mock_ogx_client_fixture(
     mock_client.responses.create.return_value = mock_response
 
     # Mock models.list
-    mock_client.models.list.return_value = ListModelsResponse.model_construct(
-        data=[
-            Model.model_construct(
-                id="test-provider/test-model",
-                created=0,
-                owned_by="test",
-                object="model",
-                custom_metadata={
-                    "provider_id": "test-provider",
-                    "model_type": "llm",
-                },
-            )
-        ]
+    mock_client.models.list.return_value = make_openai_models_list_response(
+        make_openai_model()
     )
 
     # Mock shields.list (empty by default)

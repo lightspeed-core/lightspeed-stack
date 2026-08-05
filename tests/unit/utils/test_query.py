@@ -9,8 +9,8 @@ from typing import Any
 import psycopg2
 import pytest
 from fastapi import HTTPException
-from ogx_client.types import ListModelsResponse, ModelListResponse
-from ogx_client.types.model import Model
+from ogx_client.models.list_models_response import ListModelsResponse
+from ogx_client.models.model import Model
 from pydantic_ai.messages import ImageUrl
 from pytest_mock import MockerFixture
 from sqlalchemy.exc import SQLAlchemyError
@@ -54,7 +54,7 @@ def mock_config_fixture() -> AppConfig:
 
 
 @pytest.fixture(name="mock_models")
-def mock_models_fixture() -> ModelListResponse:
+def mock_models_fixture() -> ListModelsResponse:
     """Create an OpenAI-style OGX models list response."""
     return ListModelsResponse.model_construct(
         data=[

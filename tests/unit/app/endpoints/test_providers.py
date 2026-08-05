@@ -3,7 +3,7 @@
 import pytest
 from fastapi import HTTPException, Request, status
 from ogx_client import APIConnectionError, BadRequestError
-from ogx_client.types import ProviderInfo
+from ogx_client.models.provider_info import ProviderInfo
 from pytest_mock import MockerFixture
 
 from app.endpoints.providers import (
