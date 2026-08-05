@@ -6,8 +6,9 @@ from datetime import UTC, datetime
 from typing import Any, Literal, Optional, cast
 
 from fastapi import HTTPException
-from ogx_api import OpenAIResponseMessage, OpenAIResponseOutput
+from ogx_api import OpenAIResponseOutput
 from ogx_client import APIConnectionError, APIStatusError, AsyncOgxClient
+from ogx_client.models.add_items_request import AddItemsRequest
 from ogx_client.models.open_ai_response_input_function_tool_call_output import (
     OpenAIResponseInputFunctionToolCallOutput as FunctionCallOutput,
 )
@@ -47,6 +48,7 @@ from ogx_client.models.open_ai_response_output_message_mcp_list_tools import (
 from ogx_client.models.open_ai_response_output_message_web_search_tool_call import (
     OpenAIResponseOutputMessageWebSearchToolCall as WebSearchCall,
 )
+from pydantic import ValidationError
 
 from constants import DEFAULT_RAG_TOOL
 from models.api.responses.error import (
@@ -64,6 +66,40 @@ from utils.responses import parse_arguments_string
 
 type FunctionCallOutputPart = InputTextContent | InputImageContent | InputFileContent
 type FunctionCallOutputContent = str | list[FunctionCallOutputPart]
+
+
+def to_conversation_item(data: dict[str, Any]) -> Optional[ConversationItem]:
+    """Attempt to parse a raw dict into a oneOf wrapper.
+
+    Parameters:
+        data: Raw dict to parse.
+
+    Returns:
+        ConversationItem if parsing succeeds,
+        None otherwise.
+    """
+    try:
+        return ConversationItem.from_dict(data)
+    except (ValidationError, ValueError):
+        return None
+
+
+def build_add_items_request(items: Sequence[dict[str, Any]]) -> AddItemsRequest:
+    """Build an ``AddItemsRequest`` from conversation items.
+
+    Parameters:
+        items: Conversation items to append.
+
+    Returns:
+        Request body for items.create.
+    """
+    return AddItemsRequest(
+        items=[
+            conversation_item
+            for item in items
+            if (conversation_item := to_conversation_item(item)) is not None
+        ]
+    )
 
 
 def _extract_text_from_content(content: Any) -> str:
@@ -503,21 +539,17 @@ async def append_turn_items_to_conversation(
         llm_output: Output from the LLM: a list of OpenAIResponseOutput.
     """
     if isinstance(user_input, str):
-        user_message = OpenAIResponseMessage(
-            role="user",
-            content=user_input,
-        )
-        user_items = [user_message.model_dump()]
+        items: list[dict[str, Any]] = [
+            {"type": "message", "role": "user", "content": user_input}
+        ]
     else:
-        user_items = [item.model_dump() for item in user_input]
+        items = [item.model_dump(exclude_none=True) for item in user_input]
 
-    output_items = [item.model_dump() for item in llm_output]
-
-    items = user_items + output_items
+    items.extend(item.model_dump(exclude_none=True) for item in llm_output)
     try:
         await client.conversations.items.create(
             conversation_id,
-            items=items,
+            add_items_request=build_add_items_request(items),
         )
     except APIConnectionError as e:
         error_response = ServiceUnavailableResponse(
@@ -590,10 +622,16 @@ async def append_turn_to_conversation(
     try:
         await client.conversations.items.create(
             conversation_id,
-            items=[
-                {"type": "message", "role": "user", "content": user_message},
-                {"type": "message", "role": "assistant", "content": assistant_message},
-            ],
+            add_items_request=build_add_items_request(
+                [
+                    {"type": "message", "role": "user", "content": user_message},
+                    {
+                        "type": "message",
+                        "role": "assistant",
+                        "content": assistant_message,
+                    },
+                ]
+            ),
         )
     except APIConnectionError as e:
         error_response = ServiceUnavailableResponse(

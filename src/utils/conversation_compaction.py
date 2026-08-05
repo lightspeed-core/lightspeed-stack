@@ -65,6 +65,7 @@ from utils.compaction import (
 )
 from utils.conversations import (
     append_turn_items_to_conversation,
+    build_add_items_request,
     get_all_conversation_items,
 )
 from utils.token_estimator import (
@@ -275,16 +276,17 @@ async def _write_summary_marker(
     summary_text: str,
 ) -> None:
     """Write the summary into the conversation as a recognizable marker message."""
-    marker_item: dict[str, Any] = {
-        "type": "message",
-        "role": "user",
-        "content": [
-            {"type": "input_text", "text": f"{MARKER_SENTINEL} {summary_text}"}
-        ],
-    }
     await client.conversations.items.create(
         conversation_id,
-        items=[marker_item],
+        add_items_request=build_add_items_request(
+            [
+                {
+                    "type": "message",
+                    "role": "user",
+                    "content": f"{MARKER_SENTINEL} {summary_text}",
+                }
+            ]
+        ),
     )
 
 

@@ -7,6 +7,7 @@ import pytest
 from fastapi import HTTPException
 from ogx_api import OpenAIResponseMessage
 from ogx_client import APIConnectionError, APIStatusError
+from ogx_client.models.add_items_request import AddItemsRequest
 from ogx_client.models.open_ai_response_input_function_tool_call_output import (
     OpenAIResponseInputFunctionToolCallOutput as FunctionCallOutput,
 )
@@ -30,8 +31,10 @@ from utils.conversations import (
     _function_call_output_to_str,
     append_turn_items_to_conversation,
     append_turn_to_conversation,
+    build_add_items_request,
     build_conversation_turns_from_items,
     get_all_conversation_items,
+    to_conversation_item,
 )
 
 # Default conversation start time for tests
@@ -809,6 +812,72 @@ class TestBuildConversationTurnsFromItems:
         assert turn.completed_at == "2024-01-01T10:00:00Z"
 
 
+class TestToConversationItem:
+    """Tests for to_conversation_item."""
+
+    def test_parses_message_dict(self) -> None:
+        """Valid message dict becomes a conversation item."""
+        item = to_conversation_item(
+            {"type": "message", "role": "user", "content": "Hello"}
+        )
+        assert item is not None
+        assert item.type == "message"
+        assert item.role == "user"
+        assert item.content == "Hello"
+
+    def test_parses_model_dump_payload(self) -> None:
+        """model_dump() of an ogx_api message is accepted."""
+        payload = OpenAIResponseMessage(
+            type="message",
+            role="assistant",
+            content="Hi",
+        ).model_dump(exclude_none=True)
+        item = to_conversation_item(payload)
+        assert item is not None
+        assert item.role == "assistant"
+        assert item.content == "Hi"
+
+    def test_returns_none_for_invalid_payload(self) -> None:
+        """Unrecognized oneOf payload returns None instead of raising."""
+        assert to_conversation_item({"type": "not_a_real_variant"}) is None
+
+
+class TestBuildAddItemsRequest:
+    """Tests for build_add_items_request."""
+
+    def test_builds_request_from_message_dicts(self) -> None:
+        """Dicts are validated into AddItemsRequest items."""
+        request = build_add_items_request(
+            [
+                {"type": "message", "role": "user", "content": "Hello"},
+                {
+                    "type": "message",
+                    "role": "assistant",
+                    "content": "I cannot help with that",
+                },
+            ]
+        )
+        assert isinstance(request, AddItemsRequest)
+        items = list(request)
+        assert len(items) == 2
+        assert items[0].type == "message" and items[0].role == "user"
+        assert items[0].content == "Hello"
+        assert items[1].type == "message" and items[1].role == "assistant"
+        assert items[1].content == "I cannot help with that"
+
+    def test_skips_invalid_dicts(self) -> None:
+        """Invalid payloads are filtered out of the request."""
+        request = build_add_items_request(
+            [
+                {"type": "message", "role": "user", "content": "ok"},
+                {"type": "not_a_real_variant"},
+            ]
+        )
+        items = list(request)
+        assert len(items) == 1
+        assert items[0].content == "ok"
+
+
 class TestAppendTurnItemsToConversation:  # pylint: disable=too-few-public-methods
     """Tests for append_turn_items_to_conversation function."""
 
@@ -835,12 +904,14 @@ class TestAppendTurnItemsToConversation:  # pylint: disable=too-few-public-metho
         mock_client.conversations.items.create.assert_called_once()
         call_args = mock_client.conversations.items.create.call_args
         assert call_args[0][0] == "conv-123"
-        items = call_args[1]["items"]
+        request = call_args[1]["add_items_request"]
+        assert isinstance(request, AddItemsRequest)
+        items = list(request)
         assert len(items) == 2
-        assert items[0]["type"] == "message" and items[0]["role"] == "user"
-        assert items[0]["content"] == "Hello"
-        assert items[1]["type"] == "message" and items[1]["role"] == "assistant"
-        assert items[1]["content"] == "I cannot help with that"
+        assert items[0].type == "message" and items[0].role == "user"
+        assert items[0].content == "Hello"
+        assert items[1].type == "message" and items[1].role == "assistant"
+        assert items[1].content == "I cannot help with that"
 
 
 class TestAppendTurnToConversation:  # pylint: disable=too-few-public-methods
@@ -861,17 +932,17 @@ class TestAppendTurnToConversation:  # pylint: disable=too-few-public-methods
             assistant_message="I cannot help with that",
         )
 
-        mock_client.conversations.items.create.assert_called_once_with(
-            "conv-123",
-            items=[
-                {"type": "message", "role": "user", "content": "Hello"},
-                {
-                    "type": "message",
-                    "role": "assistant",
-                    "content": "I cannot help with that",
-                },
-            ],
-        )
+        mock_client.conversations.items.create.assert_called_once()
+        call_args = mock_client.conversations.items.create.call_args
+        assert call_args[0][0] == "conv-123"
+        request = call_args[1]["add_items_request"]
+        assert isinstance(request, AddItemsRequest)
+        items = list(request)
+        assert len(items) == 2
+        assert items[0].type == "message" and items[0].role == "user"
+        assert items[0].content == "Hello"
+        assert items[1].type == "message" and items[1].role == "assistant"
+        assert items[1].content == "I cannot help with that"
 
 
 class TestGetAllConversationItems:
