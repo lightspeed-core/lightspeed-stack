@@ -10,10 +10,7 @@ from pydantic_ai.models.openai import OpenAIResponsesModelSettings
 from pydantic_ai.usage import RequestUsage, RunUsage
 from pytest_mock import MockerFixture, MockType
 
-from constants import (
-    DEFAULT_INVALID_QUESTION_RESPONSE,
-    DEFAULT_MODEL_PROMPT,
-)
+from constants import DEFAULT_INVALID_QUESTION_RESPONSE
 from models.common.moderation import ShieldModerationBlocked, ShieldModerationPassed
 from models.config import (
     QuestionValidityConfig,
@@ -27,6 +24,7 @@ from pydantic_ai_lightspeed.capabilities.utils import (
     extract_conversation_id,
     extract_message_str_from_user_content,
 )
+from tests.unit.qv_config import make_qv_config
 
 _MODULE = "pydantic_ai_lightspeed.capabilities.question_validity._capability"
 
@@ -112,17 +110,17 @@ class TestExtractConversationId:
 class TestQuestionValidityConfigInit:
     """Tests for QuestionValidityConfig initialization."""
 
-    def test_default_model_prompt(self) -> None:
-        """Test that default model_prompt is used."""
+    def test_omitted_model_prompt_is_none(self) -> None:
+        """Omitted model_prompt defaults to None before Configuration load fills it."""
         qv_config = QuestionValidityConfig(model_id="test")
 
-        assert qv_config.model_prompt == DEFAULT_MODEL_PROMPT
+        assert qv_config.model_prompt is None
 
-    def test_default_invalid_question_response(self) -> None:
-        """Test that default invalid_question_response is used."""
+    def test_omitted_invalid_question_response_is_none(self) -> None:
+        """Omitted invalid_question_response defaults to None before Configuration load fills it."""
         qv_config = QuestionValidityConfig(model_id="test")
 
-        assert qv_config.invalid_question_response == DEFAULT_INVALID_QUESTION_RESPONSE
+        assert qv_config.invalid_question_response is None
 
     def test_custom_model_prompt(self) -> None:
         """Test that custom model_prompt can be provided."""
@@ -164,8 +162,7 @@ class TestQuestionValidityInit:
             f"{_MODULE}.OgxResponsesModel.from_ogx_client",
         )
 
-        config = QuestionValidityConfig(model_id="test-model")
-        QuestionValidity(config=config)
+        QuestionValidity(config=make_qv_config(model_id="test-model"))
 
         mock_holder.return_value.get_client.assert_called_once()
         mock_from_client.assert_called_once_with(
@@ -182,11 +179,18 @@ class TestQuestionValidityInit:
             f"{_MODULE}.OgxResponsesModel.from_ogx_client",
             return_value=mock_model,
         )
-        config = QuestionValidityConfig(model_id="test")
 
-        qv = QuestionValidity(config=config)
+        qv = QuestionValidity(config=make_qv_config())
 
         assert qv._model is mock_model
+
+    def test_unset_prompt_fields_raise(self, mocker: MockerFixture) -> None:
+        """Capability requires prompt fields already set by Configuration load."""
+        mocker.patch(f"{_MODULE}.AsyncOgxClientHolder")
+        mocker.patch(f"{_MODULE}.OgxResponsesModel.from_ogx_client")
+
+        with pytest.raises(ValueError, match="must be set"):
+            QuestionValidity(config=QuestionValidityConfig(model_id="test"))
 
 
 class TestBuildPrompt:
@@ -201,7 +205,7 @@ class TestBuildPrompt:
     @pytest.fixture(name="question_validity")
     def question_validity_fixture(self) -> QuestionValidity:
         """Create a QuestionValidity instance with a mock model."""
-        config = QuestionValidityConfig(model_id="test")
+        config = make_qv_config()
         return QuestionValidity(config=config)
 
     def test_string_input(self, question_validity: QuestionValidity) -> None:
@@ -240,8 +244,7 @@ class TestBuildPrompt:
 
     def test_custom_prompt_template(self) -> None:
         """Test with a custom prompt template."""
-        config = QuestionValidityConfig(
-            model_id="test",
+        config = make_qv_config(
             model_prompt="Is '${message}' valid? ${allowed}/${rejected}",
         )
         qv = QuestionValidity(config=config)
@@ -301,7 +304,7 @@ class TestWrapRun:
             return_value=mock_response,
         )
 
-        config = QuestionValidityConfig(model_id="test")
+        config = make_qv_config()
         qv = QuestionValidity(config=config)
         result = await qv.wrap_run(mock_ctx, handler=mock_handler)
 
@@ -325,7 +328,7 @@ class TestWrapRun:
             return_value=mock_response,
         )
 
-        config = QuestionValidityConfig(model_id="test")
+        config = make_qv_config()
         qv = QuestionValidity(config=config)
         result = await qv.wrap_run(mock_ctx, handler=mock_handler)
 
@@ -355,7 +358,7 @@ class TestWrapRun:
             return_value=mock_response,
         )
 
-        config = QuestionValidityConfig(model_id="test")
+        config = make_qv_config()
         qv = QuestionValidity(config=config)
         await qv.wrap_run(mock_ctx, handler=mock_handler)
 
@@ -385,7 +388,7 @@ class TestWrapRun:
             return_value=mock_response,
         )
 
-        config = QuestionValidityConfig(model_id="test")
+        config = make_qv_config()
         qv = QuestionValidity(config=config)
         result = await qv.wrap_run(mock_ctx, handler=mock_handler)
 
@@ -410,7 +413,7 @@ class TestWrapRun:
             return_value=mock_response,
         )
 
-        config = QuestionValidityConfig(model_id="test")
+        config = make_qv_config()
         qv = QuestionValidity(config=config)
         await qv.wrap_run(mock_ctx, handler=mock_handler)
 
@@ -433,7 +436,7 @@ class TestWrapRun:
             return_value=mock_response,
         )
 
-        config = QuestionValidityConfig(model_id="test")
+        config = make_qv_config()
         qv = QuestionValidity(config=config)
         result = await qv.wrap_run(mock_ctx, handler=mock_handler)
 
@@ -463,7 +466,7 @@ class TestWrapRun:
             return_value=mock_response,
         )
 
-        config = QuestionValidityConfig(model_id="test")
+        config = make_qv_config()
         qv = QuestionValidity(config=config)
         result = await qv.wrap_run(mock_ctx, handler=mock_handler)
 
@@ -488,7 +491,7 @@ class TestWrapRun:
             return_value=mock_response,
         )
 
-        config = QuestionValidityConfig(model_id="test")
+        config = make_qv_config()
         qv = QuestionValidity(config=config)
         await qv.wrap_run(mock_ctx, handler=mock_handler)
 
@@ -513,7 +516,7 @@ class TestWrapRun:
             return_value=mock_response,
         )
 
-        config = QuestionValidityConfig(model_id="test")
+        config = make_qv_config()
         qv = QuestionValidity(config=config)
         await qv.wrap_run(mock_ctx, handler=mock_handler)
 
@@ -538,7 +541,7 @@ class TestWrapRun:
             return_value=mock_response,
         )
 
-        config = QuestionValidityConfig(model_id="test")
+        config = make_qv_config()
         qv = QuestionValidity(config=config)
         result = await qv.wrap_run(mock_ctx, handler=mock_handler)
 
@@ -561,9 +564,7 @@ class TestWrapRun:
             return_value=mock_response,
         )
 
-        config = QuestionValidityConfig(
-            model_id="test", invalid_question_response="Custom rejection."
-        )
+        config = make_qv_config(invalid_question_response="Custom rejection.")
         qv = QuestionValidity(config=config)
         result = await qv.wrap_run(mock_ctx, handler=mock_handler)
 
@@ -585,7 +586,7 @@ class TestWrapRun:
             ),
         )
 
-        config = QuestionValidityConfig(model_id="test")
+        config = make_qv_config()
         qv = QuestionValidity(config=config)
         await qv.wrap_run(mock_ctx, handler=mock_handler)
 
@@ -617,7 +618,7 @@ class TestWrapRun:
             return_value=mock_response,
         )
 
-        config = QuestionValidityConfig(model_id="test")
+        config = make_qv_config()
         qv = QuestionValidity(config=config)
         result = await qv.wrap_run(ctx, handler=mock_handler)
 
@@ -636,7 +637,7 @@ class TestWrapRun:
             side_effect=RuntimeError("connection failed"),
         )
 
-        config = QuestionValidityConfig(model_id="test")
+        config = make_qv_config()
         qv = QuestionValidity(config=config)
 
         with pytest.raises(RuntimeError, match="connection failed"):
@@ -663,7 +664,7 @@ class TestWrapRun:
             ),
         )
 
-        config = QuestionValidityConfig(model_id="test")
+        config = make_qv_config()
         qv = QuestionValidity(config=config)
         await qv.wrap_run(ctx, handler=mock_handler)
 
@@ -696,10 +697,7 @@ class TestQuestionValidityRun:
         )
 
         custom_prompt = "Classify: $message (reply $allowed or $rejected)"
-        config = QuestionValidityConfig(
-            model_id="test",
-            model_prompt=custom_prompt,
-        )
+        config = make_qv_config(model_prompt=custom_prompt)
         qv = QuestionValidity(config=config)
         await qv.run("How do I create a pod?")
 
@@ -717,7 +715,7 @@ class TestQuestionValidityRun:
         )
         mocker.patch(f"{_MODULE}.model_request", return_value=mock_response)
 
-        config = QuestionValidityConfig(model_id="test")
+        config = make_qv_config()
         qv = QuestionValidity(config=config)
         result = await qv.run("How do I create a pod?")
 
@@ -733,7 +731,7 @@ class TestQuestionValidityRun:
         )
         mocker.patch(f"{_MODULE}.model_request", return_value=mock_response)
 
-        config = QuestionValidityConfig(model_id="test")
+        config = make_qv_config()
         qv = QuestionValidity(config=config)
         result = await qv.run("What is the meaning of life?")
 
@@ -754,7 +752,7 @@ class TestQuestionValidityRun:
         )
         mocker.patch(f"{_MODULE}.model_request", return_value=mock_response)
 
-        config = QuestionValidityConfig(model_id="test")
+        config = make_qv_config()
         qv = QuestionValidity(config=config)
         result = await qv.run("some input")
 
@@ -777,7 +775,7 @@ class TestQuestionValidityRun:
         )
         mocker.patch(f"{_MODULE}.model_request", return_value=mock_response)
 
-        config = QuestionValidityConfig(model_id="test")
+        config = make_qv_config()
         qv = QuestionValidity(config=config)
         result = await qv.run("How do I scale pods?")
 
@@ -792,9 +790,7 @@ class TestQuestionValidityRun:
         )
         mocker.patch(f"{_MODULE}.model_request", return_value=mock_response)
 
-        config = QuestionValidityConfig(
-            model_id="test", invalid_question_response="Custom rejection."
-        )
+        config = make_qv_config(invalid_question_response="Custom rejection.")
         qv = QuestionValidity(config=config)
         result = await qv.run("off-topic question")
 
