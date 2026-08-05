@@ -15,7 +15,6 @@ from pytest_mock import MockerFixture
 from configuration import AppConfig
 from models.common.responses.responses_api_params import ResponsesApiParams
 from models.config import (
-    QuestionValidityConfig,
     QuestionValidityShieldConfiguration,
     RedactionConfig,
     RedactionShieldConfiguration,
@@ -23,6 +22,7 @@ from models.config import (
 )
 from pydantic_ai_lightspeed.capabilities import QuestionValidity
 from pydantic_ai_lightspeed.capabilities.redaction import PiiRedactionCapability
+from tests.unit.qv_config import make_qv_config
 from utils.pydantic_ai_helpers import (
     _agent_capabilities,
     _shield_capability,
@@ -75,7 +75,7 @@ class TestShieldCapability:
         shield = QuestionValidityShieldConfiguration(
             name="topic-guard",
             provider_id="question_validity",
-            config=QuestionValidityConfig(model_id="test-model"),
+            config=make_qv_config(model_id="test-model"),
         )
 
         capability = _shield_capability(shield)
@@ -132,7 +132,7 @@ class TestAgentCapabilities:
             QuestionValidityShieldConfiguration(
                 name="topic-guard",
                 provider_id="question_validity",
-                config=QuestionValidityConfig(model_id="test-model"),
+                config=make_qv_config(model_id="test-model"),
             ),
             RedactionShieldConfiguration(
                 name="pii-guard",
@@ -298,7 +298,7 @@ class TestBuildAgent:
             QuestionValidityShieldConfiguration(
                 name="topic-guard",
                 provider_id="question_validity",
-                config=QuestionValidityConfig(model_id="test-model"),
+                config=make_qv_config(model_id="test-model"),
             ),
             RedactionShieldConfiguration(
                 name="pii-guard",
@@ -367,7 +367,7 @@ class TestBuildAgent:
             QuestionValidityShieldConfiguration(
                 name="topic-guard",
                 provider_id="question_validity",
-                config=QuestionValidityConfig(model_id="test-model"),
+                config=make_qv_config(model_id="test-model"),
             ),
             RedactionShieldConfiguration(
                 name="pii-guard",

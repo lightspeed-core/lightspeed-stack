@@ -107,7 +107,7 @@ async def test_shields_endpoint_handler_configured_shields(
             "provider_id": "question_validity",
             "config": {
                 "model_id": "openai/gpt-4o-mini",
-                "model_prompt": "Is this question valid?",
+                "model_prompt": "Is this question valid? ${message}",
                 "invalid_question_response": "I can only answer product questions.",
             },
         },
