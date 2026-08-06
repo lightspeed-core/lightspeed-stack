@@ -535,17 +535,21 @@ def wait_for_lightspeed_stack_http_ready(
 
 
 def replace_placeholders(context: Context, text: str) -> str:
-    """Replace {MODEL}, {PROVIDER}, and {VECTOR_STORE_ID} placeholders from context.
+    """Replace known placeholders in *text* with values from the Behave context.
+
+    Supported placeholders: ``{MODEL}``, ``{PROVIDER}``, ``{VECTOR_STORE_ID}``,
+    ``{RESPONSES_FIRST_RESPONSE_ID}``, ``{RESPONSES_CONVERSATION_ID}``,
+    ``{RESPONSES_SECOND_RESPONSE_ID}``, and ``{CONVERSATION_ID}``.
 
     Parameters:
     ----------
-        context (Context): Behave context (default_model, default_provider,
-            optional faiss_vector_store_id from ``FAISS_VECTOR_STORE_ID``).
+        context (Context): Behave context carrying model/provider defaults,
+            optional vector-store and response IDs, and ``response_data``.
         text (str): String that may contain placeholders to replace.
 
     Returns:
     -------
-        String with placeholders replaced by actual values
+        String with placeholders replaced by actual values.
     """
     result = text.replace("{MODEL}", context.default_model)
     result = result.replace("{PROVIDER}", context.default_provider)
@@ -562,5 +566,17 @@ def replace_placeholders(context: Context, text: str) -> str:
     if hasattr(context, "responses_second_response_id"):
         result = result.replace(
             "{RESPONSES_SECOND_RESPONSE_ID}", context.responses_second_response_id
+        )
+    if hasattr(context, "response_data") and context.response_data.get(
+        "conversation_id"
+    ):
+        result = result.replace(
+            "{CONVERSATION_ID}", context.response_data["conversation_id"]
+        )
+    if hasattr(context, "response_data") and context.response_data.get(
+            "conversation"
+        ):
+         result = result.replace(
+                "{CONVERSATION_ID}", context.response_data["conversation"]
         )
     return result
