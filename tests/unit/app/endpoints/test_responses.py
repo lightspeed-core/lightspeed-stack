@@ -757,7 +757,7 @@ class TestHandleNonStreamingResponse:
         mock_moderation.refusal_response = mock_refusal
 
         _patch_handle_non_streaming_common(mocker, minimal_config)
-        mock_client.conversations.items.create = mocker.AsyncMock()
+        mock_client.items.create = mocker.AsyncMock()
         mock_api_response = mocker.Mock()
         mock_api_response.output = [mock_refusal]
         mock_api_response.model_dump.return_value = {
@@ -1170,7 +1170,7 @@ class TestHandleStreamingResponse:
         )
         mocker.patch(f"{MODULE}.store_query_results")
 
-        mock_client.conversations.items.create = mocker.AsyncMock()
+        mock_client.items.create = mocker.AsyncMock()
         api_params, context = build_api_params_and_context(
             updated_request=request,
             client=mock_client,

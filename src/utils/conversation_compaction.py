@@ -276,7 +276,7 @@ async def _write_summary_marker(
     summary_text: str,
 ) -> None:
     """Write the summary into the conversation as a recognizable marker message."""
-    await client.conversations.items.create(
+    await client.items.create(
         conversation_id,
         add_items_request=build_add_items_request(
             [

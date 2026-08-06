@@ -55,12 +55,12 @@ def _build_base_streaming_mock_client(mocker: MockerFixture) -> Any:
     """Build a base mock Llama Stack client configured for streaming responses.
 
     Extends the base query mock client with streaming-specific stubs:
-    conversations.items.create and a non-streaming responses.create stub for
+    items.create and a non-streaming responses.create stub for
     topic summary generation. Agent inference is mocked separately via
     ``mock_streaming_query_agent``.
     """
     mock_client = _build_base_mock_client(mocker)
-    mock_client.conversations.items.create = mocker.AsyncMock()
+    mock_client.items.create = mocker.AsyncMock()
 
     async def _responses_create(**_kwargs: Any) -> Any:
         mock_resp = mocker.MagicMock()

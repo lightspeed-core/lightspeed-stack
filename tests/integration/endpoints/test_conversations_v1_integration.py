@@ -268,7 +268,7 @@ ERROR_HANDLING_TEST_CASES = [
             "endpoint": "get",
             "error_type": "connection",
             "expected_status": 503,
-            "mock_path": "conversations.items.list",
+            "mock_path": "items.list",
         },
         id="get_handles_connection_error",
     ),
@@ -277,7 +277,7 @@ ERROR_HANDLING_TEST_CASES = [
             "endpoint": "get",
             "error_type": "api_status",
             "expected_status": 500,
-            "mock_path": "conversations.items.list",
+            "mock_path": "items.list",
         },
         id="get_handles_api_status_error",
     ),
@@ -454,7 +454,7 @@ async def test_get_conversation_returns_chat_history(
     mock_items = mocker.Mock()
     mock_items.data = [mock_user_message, mock_assistant_message]
     mock_items.has_more = False
-    mock_ogx_client.conversations.items.list = mocker.AsyncMock(return_value=mock_items)
+    mock_ogx_client.items.list = mocker.AsyncMock(return_value=mock_items)
 
     response = await get_conversation_endpoint_handler(
         request=non_admin_test_request,
@@ -544,7 +544,7 @@ async def test_get_conversation_with_turns_metadata(
     mock_items = mocker.Mock()
     mock_items.data = [mock_user_message, mock_assistant_message]
     mock_items.has_more = False
-    mock_ogx_client.conversations.items.list = mocker.AsyncMock(return_value=mock_items)
+    mock_ogx_client.items.list = mocker.AsyncMock(return_value=mock_items)
 
     response = await get_conversation_endpoint_handler(
         request=non_admin_test_request,

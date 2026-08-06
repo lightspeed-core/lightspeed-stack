@@ -887,7 +887,7 @@ class TestAppendTurnItemsToConversation:  # pylint: disable=too-few-public-metho
     ) -> None:
         """Test that append_turn_items_to_conversation creates conversation items correctly."""
         mock_client = mocker.Mock()
-        mock_client.conversations.items.create = mocker.AsyncMock(return_value=None)
+        mock_client.items.create = mocker.AsyncMock(return_value=None)
         assistant_msg = OpenAIResponseMessage(
             type="message",
             role="assistant",
@@ -901,8 +901,8 @@ class TestAppendTurnItemsToConversation:  # pylint: disable=too-few-public-metho
             llm_output=[assistant_msg],
         )
 
-        mock_client.conversations.items.create.assert_called_once()
-        call_args = mock_client.conversations.items.create.call_args
+        mock_client.items.create.assert_called_once()
+        call_args = mock_client.items.create.call_args
         assert call_args[0][0] == "conv-123"
         request = call_args[1]["add_items_request"]
         assert isinstance(request, AddItemsRequest)
@@ -923,7 +923,7 @@ class TestAppendTurnToConversation:  # pylint: disable=too-few-public-methods
     ) -> None:
         """Test that append_turn_to_conversation creates conversation items correctly."""
         mock_client = mocker.Mock()
-        mock_client.conversations.items.create = mocker.AsyncMock(return_value=None)
+        mock_client.items.create = mocker.AsyncMock(return_value=None)
 
         await append_turn_to_conversation(
             mock_client,
@@ -932,8 +932,8 @@ class TestAppendTurnToConversation:  # pylint: disable=too-few-public-methods
             assistant_message="I cannot help with that",
         )
 
-        mock_client.conversations.items.create.assert_called_once()
-        call_args = mock_client.conversations.items.create.call_args
+        mock_client.items.create.assert_called_once()
+        call_args = mock_client.items.create.call_args
         assert call_args[0][0] == "conv-123"
         request = call_args[1]["add_items_request"]
         assert isinstance(request, AddItemsRequest)
@@ -958,14 +958,14 @@ class TestGetAllConversationItems:
         mock_page.data = [item_a, item_b]
         mock_page.has_more = False
 
-        mock_client.conversations.items.list = mocker.AsyncMock(return_value=mock_page)
+        mock_client.items.list = mocker.AsyncMock(return_value=mock_page)
 
         result = await get_all_conversation_items(
             mock_client, "conv_0d21ba731f21f798dc9680125d5d6f49"
         )
 
         assert result == [item_a, item_b]
-        mock_client.conversations.items.list.assert_called_once_with(
+        mock_client.items.list.assert_called_once_with(
             conversation_id="conv_0d21ba731f21f798dc9680125d5d6f49",
             order="asc",
             after=None,
@@ -988,7 +988,7 @@ class TestGetAllConversationItems:
         second_page.data = [item_2, item_3]
         second_page.has_more = False
 
-        mock_client.conversations.items.list = mocker.AsyncMock(
+        mock_client.items.list = mocker.AsyncMock(
             side_effect=[first_page, second_page]
         )
 
@@ -1004,7 +1004,7 @@ class TestGetAllConversationItems:
         mock_page.data = []
         mock_page.has_more = False
 
-        mock_client.conversations.items.list = mocker.AsyncMock(return_value=mock_page)
+        mock_client.items.list = mocker.AsyncMock(return_value=mock_page)
 
         result = await get_all_conversation_items(mock_client, "conv_empty")
 
@@ -1014,7 +1014,7 @@ class TestGetAllConversationItems:
     async def test_handles_connection_error(self, mocker: MockerFixture) -> None:
         """Test that APIConnectionError is converted to HTTPException 503."""
         mock_client = mocker.Mock()
-        mock_client.conversations.items.list = mocker.AsyncMock(
+        mock_client.items.list = mocker.AsyncMock(
             side_effect=APIConnectionError(
                 message="connection refused", request=mocker.Mock()
             )
@@ -1030,7 +1030,7 @@ class TestGetAllConversationItems:
     async def test_handles_api_status_error(self, mocker: MockerFixture) -> None:
         """Test that APIStatusError is converted to HTTPException 500."""
         mock_client = mocker.Mock()
-        mock_client.conversations.items.list = mocker.AsyncMock(
+        mock_client.items.list = mocker.AsyncMock(
             side_effect=APIStatusError(
                 message="internal error",
                 response=mocker.Mock(request=None),

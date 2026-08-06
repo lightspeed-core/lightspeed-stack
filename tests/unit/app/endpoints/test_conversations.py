@@ -529,7 +529,7 @@ class TestGetConversationEndpoint:
         mock_database_session(mocker, query_result=[mock_conversation], db_turns=[])
 
         mock_client = mocker.AsyncMock()
-        mock_client.conversations.items.list.side_effect = APIConnectionError(
+        mock_client.items.list.side_effect = APIConnectionError(
             request=None  # type: ignore[arg-type]
         )
         mock_client_holder = mocker.patch(
@@ -578,7 +578,7 @@ class TestGetConversationEndpoint:
         mock_database_session(mocker, db_turns=[])
 
         mock_client = mocker.AsyncMock()
-        mock_client.conversations.items.list.side_effect = NotFoundError(
+        mock_client.items.list.side_effect = NotFoundError(
             message="Conversation not found",
             response=mocker.Mock(request=None),
             body=None,
@@ -686,7 +686,7 @@ class TestGetConversationEndpoint:
         mock_item2.content = "Hi there!"
         mock_items_response.data = [mock_item1, mock_item2]
         mock_items_response.has_more = False
-        mock_client.conversations.items.list = mocker.AsyncMock(
+        mock_client.items.list = mocker.AsyncMock(
             return_value=mock_items_response
         )
 
@@ -742,7 +742,7 @@ class TestGetConversationEndpoint:
             ),
         ]
         mock_items.has_more = False
-        mock_client.conversations.items.list = mocker.AsyncMock(return_value=mock_items)
+        mock_client.items.list = mocker.AsyncMock(return_value=mock_items)
 
         mock_client_holder = mocker.patch(
             "app.endpoints.conversations_v1.AsyncOgxClientHolder"
@@ -818,7 +818,7 @@ class TestGetConversationEndpoint:
         mock_items_response = mocker.Mock()
         mock_items_response.data = []
         mock_items_response.has_more = False
-        mock_client.conversations.items.list = mocker.AsyncMock(
+        mock_client.items.list = mocker.AsyncMock(
             return_value=mock_items_response
         )
         mock_client_holder = mocker.patch(
@@ -864,7 +864,7 @@ class TestGetConversationEndpoint:
         mock_database_session(mocker, db_turns=[])
 
         mock_client = mocker.AsyncMock()
-        mock_client.conversations.items.list.side_effect = APIStatusError(
+        mock_client.items.list.side_effect = APIStatusError(
             message="Conversation not found",
             response=mocker.Mock(status_code=404, request=None),
             body=None,
@@ -969,7 +969,7 @@ class TestGetConversationEndpoint:
             mocker.Mock(type="message", role="assistant", content="Hi!"),
         ]
         mock_items_response.has_more = False
-        mock_client.conversations.items.list.return_value = mock_items_response
+        mock_client.items.list.return_value = mock_items_response
         mock_client_holder = mocker.patch(
             "app.endpoints.conversations_v1.AsyncOgxClientHolder"
         )
