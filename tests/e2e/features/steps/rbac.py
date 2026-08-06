@@ -28,7 +28,7 @@ def authenticate_as_role(context: Context, role: str) -> None:
     Fetches pre-generated test tokens from the mock JWKS server
     and sets the appropriate Authorization header for the given role.
 
-    Available roles: admin, user, viewer, query_only, no_role
+    Available roles: admin, user, user2, viewer, query_only, no_role
     """
     tokens = get_test_tokens()
 
