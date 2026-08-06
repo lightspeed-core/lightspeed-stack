@@ -573,10 +573,8 @@ def replace_placeholders(context: Context, text: str) -> str:
         result = result.replace(
             "{CONVERSATION_ID}", context.response_data["conversation_id"]
         )
-    if hasattr(context, "response_data") and context.response_data.get(
-            "conversation"
-        ):
-         result = result.replace(
-                "{CONVERSATION_ID}", context.response_data["conversation"]
+    if hasattr(context, "response_data") and context.response_data.get("conversation"):
+        result = result.replace(
+            "{CONVERSATION_ID}", context.response_data["conversation"]
         )
     return result
