@@ -21,8 +21,11 @@ from models.api.requests import ResponsesRequest
 from models.api.responses.successful import ResponsesResponse
 from models.common.moderation import ShieldModerationBlocked
 from models.common.responses.contexts import ResponsesContext
-from tests.integration.conftest import make_openai_model, make_openai_models_list_response
 from models.database.conversations import UserConversation, UserTurn
+from tests.integration.conftest import (
+    make_openai_model,
+    make_openai_models_list_response,
+)
 
 MOCK_AUTH: AuthTuple = (
     "00000000-0000-0000-0000-000",

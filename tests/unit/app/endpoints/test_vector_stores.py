@@ -2,7 +2,8 @@
 
 # pylint: disable=too-many-lines
 
-from typing import Any, Iterator
+from collections.abc import Iterator
+from typing import Any
 
 import pytest
 from fastapi import HTTPException, Request, status
