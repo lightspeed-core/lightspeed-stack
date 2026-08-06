@@ -42,6 +42,9 @@ Integration tests for the rlsapi v1 /infer endpoint.
 ## [test_root_endpoint.py](test_root_endpoint.py)
 Integration tests for the /root endpoint.
 
+## [test_saved_prompts_integration.py](test_saved_prompts_integration.py)
+Integration tests for the /v1/saved-prompts REST API endpoints.
+
 ## [test_stream_interrupt_integration.py](test_stream_interrupt_integration.py)
 Integration tests for the streaming query interrupt lifecycle.
 
