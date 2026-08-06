@@ -1,7 +1,8 @@
 """Unit tests for the /rags REST API endpoints."""
 
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 
 import pytest
 from fastapi import HTTPException, Request, status
