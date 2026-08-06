@@ -62,6 +62,7 @@ _OPENAPI_TAGS: Final[list[dict[str, str]]] = [
         "description": "Saved prompts configuration and management.",
     },
     {"name": "shields", "description": "Safety shields."},
+    {"name": "skills", "description": "Agent skills."},
     {"name": "streaming_query", "description": "Streaming query (SSE)."},
     {"name": "streaming_query_interrupt", "description": "Streaming interrupt."},
     {"name": "tools", "description": "Tools."},

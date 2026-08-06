@@ -1584,6 +1584,156 @@
                 }
             }
         },
+        "/v1/skills": {
+            "get": {
+                "tags": [
+                    "skills"
+                ],
+                "summary": "Skills Endpoint Handler",
+                "description": "Handle requests to the /skills endpoint.\n\nProcess GET requests to the /skills endpoint, returning a list of loaded\nagent skills with their metadata (name, description).\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- auth: Authentication tuple from the auth dependency (used by middleware).\n\n### Raises:\n- HTTPException: with status 401 for unauthorized access.\n- HTTPException: with status 403 if permission is denied.\n- HTTPException: with status 500 and a detail object containing `response`\n  and `cause` when service configuration is wrong or incomplete.\n\n### Returns:\n- SkillsResponse: An object containing the list of loaded skills.",
+                "operationId": "skills_endpoint_handler_v1_skills_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SkillsResponse"
+                                },
+                                "example": {
+                                    "skills": [
+                                        {
+                                            "description": "Review code for quality and security",
+                                            "name": "code-review"
+                                        },
+                                        {
+                                            "description": "Troubleshoot OpenShift cluster issues",
+                                            "name": "openshift-troubleshooting"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UnauthorizedResponse"
+                                },
+                                "examples": {
+                                    "missing header": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "No Authorization header found",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "missing token": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "No token found in Authorization header",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "expired token": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Token has expired",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "invalid signature": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Invalid token signature",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "invalid key": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Token signed by unknown key",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "missing claim": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Token missing claim: user_id",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "invalid k8s token": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Invalid or expired Kubernetes token",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "invalid jwk token": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Authentication key server returned invalid data",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Permission denied",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ForbiddenResponse"
+                                },
+                                "examples": {
+                                    "endpoint": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "User 6789 is not authorized to access this endpoint.",
+                                                "response": "User does not have permission to access this endpoint"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/InternalServerErrorResponse"
+                                },
+                                "examples": {
+                                    "configuration": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Lightspeed Stack configuration has not been initialized.",
+                                                "response": "Configuration is not loaded"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/v1/providers": {
             "get": {
                 "tags": [
@@ -11568,6 +11718,7 @@
                     "feedback",
                     "get_models",
                     "get_tools",
+                    "get_skills",
                     "get_shields",
                     "list_providers",
                     "get_provider",
@@ -21257,6 +21408,27 @@
                     }
                 ]
             },
+            "SkillMetadata": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Unique name of the skill"
+                    },
+                    "description": {
+                        "type": "string",
+                        "title": "Description",
+                        "description": "Human readable description of what the skill does"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name",
+                    "description"
+                ],
+                "title": "SkillMetadata",
+                "description": "Metadata describing a single loaded agent skill.\n\nAttributes:\n    name: Unique name of the skill.\n    description: Human readable description of what the skill does."
+            },
             "SkillsConfiguration": {
                 "properties": {
                     "paths": {
@@ -21273,6 +21445,38 @@
                 "type": "object",
                 "title": "SkillsConfiguration",
                 "description": "Agent skills configuration.\n\nSpecifies paths to skill directories. Skill metadata (name, description)\nis read from SKILL.md frontmatter at startup.\n\nEach path can point to either:\n- A directory containing a SKILL.md file (single skill)\n- A directory containing subdirectories with SKILL.md files (multiple skills)\n\nPaths are validated at startup to ensure they exist and contain valid SKILL.md files."
+            },
+            "SkillsResponse": {
+                "properties": {
+                    "skills": {
+                        "items": {
+                            "$ref": "#/components/schemas/SkillMetadata"
+                        },
+                        "type": "array",
+                        "title": "Skills",
+                        "description": "List of loaded skills with metadata"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "skills"
+                ],
+                "title": "SkillsResponse",
+                "description": "Model representing a response to skills request.\n\nAttributes:\n    skills: List of loaded skills with metadata (name and description).",
+                "examples": [
+                    {
+                        "skills": [
+                            {
+                                "description": "Review code for quality and security",
+                                "name": "code-review"
+                            },
+                            {
+                                "description": "Troubleshoot OpenShift cluster issues",
+                                "name": "openshift-troubleshooting"
+                            }
+                        ]
+                    }
+                ]
             },
             "SolrVectorSearchRequest": {
                 "properties": {
@@ -22852,6 +23056,10 @@
         {
             "name": "shields",
             "description": "Safety shields."
+        },
+        {
+            "name": "skills",
+            "description": "Agent skills."
         },
         {
             "name": "streaming_query",

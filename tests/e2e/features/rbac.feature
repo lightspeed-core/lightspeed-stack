@@ -101,6 +101,12 @@ Feature: Role-Based Access Control (RBAC)
      Then The status code of the response is 403
       And The body of the response contains does not have permission
 
+  Scenario: Query-only user cannot list skills - returns 403
+      And I authenticate as "query_only" user
+     When I access REST API endpoint "skills" using HTTP GET method
+     Then The status code of the response is 403
+      And The body of the response contains does not have permission
+
   # ============================================
   # No Role - Minimal Access (everyone role only)
   # ============================================

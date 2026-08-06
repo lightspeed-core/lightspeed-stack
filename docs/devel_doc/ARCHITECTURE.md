@@ -506,6 +506,10 @@ This section documents the REST API endpoints exposed by LCore for client intera
 **List Shields:** `GET /v1/shields`
 - Returns list of shields configured in LCORE
 
+**List Skills:** `GET /skills`
+- Returns loaded agent skills (name and description) from the configured
+  skill directories, without requiring an LLM/agent turn
+
 **List RAG Databases:** `GET /rags`
 - Returns configured vector stores
 

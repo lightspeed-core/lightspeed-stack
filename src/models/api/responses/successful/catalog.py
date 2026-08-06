@@ -6,7 +6,39 @@ from pydantic import Field
 
 from models.api.responses.successful.bases import AbstractSuccessfulResponse
 from models.common import CatalogModel, CatalogShield
+from models.common.skills import SkillMetadata
 from models.common.tools import CatalogTool
+
+
+class SkillsResponse(AbstractSuccessfulResponse):
+    """Model representing a response to skills request.
+
+    Attributes:
+        skills: List of loaded skills with metadata (name and description).
+    """
+
+    skills: list[SkillMetadata] = Field(
+        description="List of loaded skills with metadata",
+    )
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "skills": [
+                        {
+                            "name": "code-review",
+                            "description": "Review code for quality and security",
+                        },
+                        {
+                            "name": "openshift-troubleshooting",
+                            "description": "Troubleshoot OpenShift cluster issues",
+                        },
+                    ],
+                }
+            ]
+        }
+    }
 
 
 class ModelsResponse(AbstractSuccessfulResponse):

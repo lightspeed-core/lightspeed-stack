@@ -1274,6 +1274,7 @@ class Action(str, Enum):
     FEEDBACK = "feedback"
     GET_MODELS = "get_models"
     GET_TOOLS = "get_tools"
+    GET_SKILLS = "get_skills"
     GET_SHIELDS = "get_shields"
     LIST_PROVIDERS = "list_providers"
     GET_PROVIDER = "get_provider"

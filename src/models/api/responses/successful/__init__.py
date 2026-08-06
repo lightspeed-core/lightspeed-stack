@@ -7,6 +7,7 @@ from models.api.responses.successful.catalog import (
     RAGInfoResponse,
     RAGListResponse,
     ShieldsResponse,
+    SkillsResponse,
     ToolsResponse,
 )
 from models.api.responses.successful.configuration import ConfigurationResponse
@@ -100,6 +101,7 @@ __all__ = [
     "SavedPromptsConfigResponse",
     "SavedPromptsListResponse",
     "ShieldsResponse",
+    "SkillsResponse",
     "StatusResponse",
     "StreamingInterruptResponse",
     "StreamingQueryResponse",

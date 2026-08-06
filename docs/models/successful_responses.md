@@ -2535,6 +2535,22 @@ Model representing a response to shields request.
 | shields | array | List of shields configured in Lightspeed Core Stack |
 
 
+## SkillMetadata
+
+
+Metadata describing a single loaded agent skill.
+
+Attributes:
+    name: Unique name of the skill.
+    description: Human readable description of what the skill does.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| name | string | Unique name of the skill |
+| description | string | Human readable description of what the skill does |
+
+
 ## SkillsConfiguration
 
 
@@ -2553,6 +2569,17 @@ Paths are validated at startup to ensure they exist and contain valid SKILL.md f
 | Field | Type | Description |
 |-------|------|-------------|
 | paths | array | Paths to skill directories or directories containing skill subdirectories. |
+
+
+## SkillsResponse
+
+
+Model representing a response to skills request.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| skills | array | List of loaded skills with metadata |
 
 
 ## SplunkConfiguration

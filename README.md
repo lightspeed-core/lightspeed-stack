@@ -1264,6 +1264,57 @@ will be returned.
 }
 ```
 
+## Skills endpoint
+
+**Endpoint:** `GET /v1/skills`
+
+Process GET requests and return the list of agent skills loaded from the
+directories configured under `skills.paths` in the service configuration
+(see [Agent Skills](#agent-skills) and the [Agent Skills Guide](docs/user_doc/skills_guide.md)
+for configuration and authoring instructions). Each skill's name and
+description are read from its `SKILL.md` frontmatter.
+
+This endpoint reads the configured skill directories directly and does not
+invoke an LLM or agent — it is intended for clients (e.g. the RHDH UI or
+other tooling) that need a deterministic way to introspect configured
+skills without the cost, latency, or non-determinism of an LLM tool call.
+This is distinct from the `list_skills` tool that the agent itself may
+invoke during a `/v1/query` or `/v1/streaming_query` turn.
+
+If [authentication](#authentication) is enabled, include the appropriate
+credentials; otherwise the request returns `401`/`403`.
+
+```bash
+curl -H "Authorization: Bearer <token>" \
+  http://localhost:8080/v1/skills
+```
+
+**Response Body:**
+
+```json
+{
+  "skills": [
+    {
+      "name": "code-review",
+      "description": "Review code for quality and security"
+    },
+    {
+      "name": "openshift-troubleshooting",
+      "description": "Troubleshoot OpenShift cluster issues"
+    }
+  ]
+}
+```
+
+If no skills are configured (or `skills.paths` is empty), the endpoint
+returns an empty list:
+
+```json
+{
+  "skills": []
+}
+```
+
 
 # Database structure
 

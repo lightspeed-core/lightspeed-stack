@@ -16,6 +16,7 @@ This guide covers how to configure Agent Skills in Lightspeed Core Stack and how
   - [Frontmatter Fields](#frontmatter-fields)
   - [Body Content](#body-content)
 - [Creating a Skill](#creating-a-skill)
+- [Inspecting Loaded Skills via REST API](#inspecting-loaded-skills-via-rest-api)
 - [How Skills Work at Runtime](#how-skills-work-at-runtime)
 - [Limitations](#limitations)
 - [References](#references)
@@ -206,6 +207,39 @@ skills:
 Skills are loaded at startup. Restart Lightspeed Core Stack to pick up new or modified skills.
 
 See [examples/skills/](../examples/skills/) for complete working examples.
+
+# Inspecting Loaded Skills via REST API
+
+`GET /v1/skills` returns the name and description of every skill loaded
+from the configured `skills.paths`, without going through an LLM/agent
+turn. If authentication is enabled, include the appropriate credentials;
+otherwise the request returns `401`/`403`:
+
+```bash
+curl -H "Authorization: Bearer <token>" \
+  http://localhost:8080/v1/skills
+```
+
+```json
+{
+  "skills": [
+    {
+      "name": "code-review",
+      "description": "Review code for quality and security"
+    },
+    {
+      "name": "openshift-troubleshooting",
+      "description": "Troubleshoot OpenShift cluster issues"
+    }
+  ]
+}
+```
+
+This is useful for clients (e.g. UI integrations or deployment tooling)
+that need to display or verify which skills are configured, and don't
+want to rely on the LLM invoking the `list_skills` tool described below.
+If no skills are configured, `skills` is an empty list. See the
+[README](../../README.md#skills-endpoint) for the full endpoint reference.
 
 # How Skills Work at Runtime
 

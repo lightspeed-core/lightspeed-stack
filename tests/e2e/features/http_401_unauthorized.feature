@@ -124,6 +124,23 @@ Feature: HTTP 401 Unauthorized
     }
     """
 
+  # --- skills ---
+
+  Scenario: Skills list returns 401 when not authenticated
+    Given The service uses the lightspeed-stack-auth-noop-token.yaml configuration
+    And The service is restarted
+    When I access REST API endpoint "skills" using HTTP GET method
+    Then The status code of the response is 401
+    And The body of the response is the following
+    """
+    {
+      "detail": {
+        "response": "Missing or invalid credentials provided by client",
+        "cause": "No Authorization header found"
+      }
+    }
+    """
+
   # --- prompts ---
 
   Scenario: Prompts list returns 401 when not authenticated

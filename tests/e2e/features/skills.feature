@@ -179,6 +179,15 @@ Feature: Agent skills tests
       """
 
   # --- Skill discovery ---
+  #
+  # Note: plain GET /v1/skills happy-path coverage (configured skills, empty
+  # list, and multi-skill directory discovery) lives in
+  # tests/integration/endpoints/test_skills_integration.py instead of here.
+  # That endpoint only reads local skill directories and returns a typed
+  # response with no LLM/agent turn involved, so it doesn't need the full e2e
+  # stack. See tests/e2e/features/http_401_unauthorized.feature and
+  # tests/e2e/features/rbac.feature for the /v1/skills auth-failure (401/403)
+  # coverage.
 
   @SkillsConfig
   Scenario: LLM can discover skills via list_skills tool using query endpoint

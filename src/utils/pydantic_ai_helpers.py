@@ -13,6 +13,7 @@ from pydantic_ai_skills import SkillsCapability
 
 from configuration import AppConfig
 from models.common.responses.responses_api_params import ResponsesApiParams
+from models.common.skills import SkillMetadata
 from models.common.tools import CatalogTool, CatalogToolParameter
 from models.config import (
     QuestionValidityConfig,
@@ -22,9 +23,7 @@ from models.config import (
 )
 from pydantic_ai_lightspeed.capabilities import QuestionValidity
 from pydantic_ai_lightspeed.capabilities.redaction import PiiRedactionCapability
-from pydantic_ai_lightspeed.llamastack import (
-    OgxResponsesModel,
-)
+from pydantic_ai_lightspeed.llamastack import OgxResponsesModel
 from utils.shields import get_shields_for_request
 
 _AGENT_SKILLS_PROVIDER_ID: Final[str] = "agent-skills"
@@ -110,6 +109,26 @@ def _capability_tools_from_toolset(toolset: Any) -> list[CatalogTool]:
             )
         )
     return tools
+
+
+def get_skills_metadata(
+    skills: Optional[SkillsConfiguration],
+) -> list[SkillMetadata]:
+    """Return metadata for all loaded skills.
+
+    Parameters:
+        skills: Agent skills configuration from LCS, or None when skills are disabled.
+
+    Returns:
+        List of ``SkillMetadata`` with ``name`` and ``description`` for each loaded skill.
+    """
+    capability = _skills_capability(skills)
+    if capability is None:
+        return []
+    return [
+        SkillMetadata(name=skill.name, description=skill.description)
+        for skill in capability.toolset.skills.values()
+    ]
 
 
 def get_agent_capability_tools(
