@@ -592,8 +592,8 @@ Custom profile customization for prompts and validation.
 |-------|------|-------------|
 | path | string | Path to Python modules containing custom profile. |
 | prompts | object | Dictionary containing map of system prompts |
-| validation | string | Read-only. Loaded from the custom profile Python module (PROFILE_CONFIG['system_prompts']['validation']), not from lightspeed-stack.yaml. Used when a question_validity shield omits model_prompt. |
-| invalid_resp | string | Read-only. Loaded from the custom profile Python module (PROFILE_CONFIG['query_responses']['invalid_resp']), not from lightspeed-stack.yaml. Used when a question_validity shield omits invalid_question_response. |
+| validation | string | Read-only. Loaded from the custom profile Python module (PROFILE_CONFIG["system_prompts"]["validation"]), not from lightspeed-stack.yaml. Used when a question_validity shield omits model_prompt. |
+| invalid_resp | string | Read-only. Loaded from the custom profile Python module (PROFILE_CONFIG["query_responses"]["invalid_resp"]), not from lightspeed-stack.yaml. Used when a question_validity shield omits invalid_question_response. |
 
 
 ## Customization
