@@ -885,7 +885,7 @@ class TestGetAllConversationItems:
         item_b = mocker.Mock(type="message", role="assistant", content="Hi")
         mock_page = mocker.Mock()
         mock_page.data = [item_a, item_b]
-        mock_page.has_next_page.return_value = False
+        mock_page.has_more = False
 
         mock_client.conversations.items.list = mocker.AsyncMock(return_value=mock_page)
 
@@ -897,6 +897,7 @@ class TestGetAllConversationItems:
         mock_client.conversations.items.list.assert_called_once_with(
             conversation_id="conv_0d21ba731f21f798dc9680125d5d6f49",
             order="asc",
+            after=None,
         )
 
     @pytest.mark.asyncio
@@ -909,14 +910,16 @@ class TestGetAllConversationItems:
 
         first_page = mocker.Mock()
         first_page.data = [item_1]
-        first_page.has_next_page.return_value = True
+        first_page.has_more = True
+        first_page.last_id = "item_1"
+
         second_page = mocker.Mock()
         second_page.data = [item_2, item_3]
-        second_page.has_next_page.return_value = False
+        second_page.has_more = False
 
-        first_page.get_next_page = mocker.AsyncMock(return_value=second_page)
-
-        mock_client.conversations.items.list = mocker.AsyncMock(return_value=first_page)
+        mock_client.conversations.items.list = mocker.AsyncMock(
+            side_effect=[first_page, second_page]
+        )
 
         result = await get_all_conversation_items(mock_client, "conv_abc")
 
@@ -924,11 +927,11 @@ class TestGetAllConversationItems:
 
     @pytest.mark.asyncio
     async def test_handles_empty_data(self, mocker: MockerFixture) -> None:
-        """Test that None or empty page data is handled."""
+        """Test that empty page data is handled."""
         mock_client = mocker.Mock()
         mock_page = mocker.Mock()
-        mock_page.data = None
-        mock_page.has_next_page.return_value = False
+        mock_page.data = []
+        mock_page.has_more = False
 
         mock_client.conversations.items.list = mocker.AsyncMock(return_value=mock_page)
 

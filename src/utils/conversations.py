@@ -543,17 +543,19 @@ async def get_all_conversation_items(
     Returns:
         List of all items in the conversation, oldest first.
     """
+    items: list[ConversationItem] = []
+    after: Optional[str] = None
+    has_more = True
     try:
-        paginator = client.conversations.items.list(
-            conversation_id=conversation_id_llama_stack,
-            order="asc",
-        )
-        first_page = await paginator
-        items: list[ConversationItem] = list(first_page.data or [])
-        page = first_page
-        while page.has_next_page():
-            page = await page.get_next_page()
-            items.extend(page.data or [])
+        while has_more:
+            page = await client.conversations.items.list(
+                conversation_id=conversation_id_llama_stack,
+                order="asc",
+                after=after,
+            )
+            items.extend(page.data)
+            has_more = page.has_more
+            after = page.last_id
         return items
     except APIConnectionError as e:
         error_response = ServiceUnavailableResponse(

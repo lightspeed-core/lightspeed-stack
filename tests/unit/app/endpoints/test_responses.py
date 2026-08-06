@@ -132,7 +132,7 @@ def _patch_client(mocker: MockerFixture) -> Any:
     """Patch AsyncOgxClientHolder; return (mock_client, mock_holder)."""
     mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
     mock_vector_stores = mocker.Mock()
-    mock_vector_stores.list = mocker.AsyncMock(return_value=mocker.Mock(data=[]))
+    mock_vector_stores.list = mocker.AsyncMock(return_value=[])
     mock_client.vector_stores = mock_vector_stores
     mock_holder = mocker.Mock()
     mock_holder.get_client.return_value = mock_client

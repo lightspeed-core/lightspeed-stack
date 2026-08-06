@@ -96,9 +96,7 @@ def _build_mock_client(mocker: MockerFixture) -> Any:
 
     mock_client.shields.list.return_value = []
 
-    mock_vs_resp = mocker.MagicMock()
-    mock_vs_resp.data = []
-    mock_client.vector_stores.list.return_value = mock_vs_resp
+    mock_client.vector_stores.list.return_value = []
 
     mock_conv = mocker.MagicMock()
     mock_conv.id = MOCK_CONV_ID
