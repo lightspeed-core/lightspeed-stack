@@ -106,7 +106,7 @@ from models.common.turn_summary import (
     ToolResultSummary,
     TurnSummary,
 )
-from models.config import ByokRag
+from models.config import RagStore
 from models.database.conversations import UserConversation
 from utils.mcp_headers import (
     McpHeaders,
@@ -257,15 +257,16 @@ async def prepare_tools(  # pylint: disable=too-many-arguments,too-many-position
     # Vector store ID resolution priority:
     #   1. Per-request IDs: highest prio; customer-facing rag_ids are translated to vector_db_ids.
     #   2. rag.tool config IDs: used when no per-request IDs provided, and rag.tool is configured.
-    byok_rags = configuration.configuration.byok_rag
+    byok_stores = configuration.configuration.rag.byok.stores
 
-    is_tool_rag_enabled = len(configuration.configuration.rag.tool) > 0
-
+    is_tool_rag_enabled = (
+        len(configuration.configuration.rag.retrieval.tool.sources) > 0
+    )
     if vector_store_ids is not None:
-        effective_ids = resolve_vector_store_ids(vector_store_ids, byok_rags)
+        effective_ids = resolve_vector_store_ids(vector_store_ids, byok_stores)
     elif is_tool_rag_enabled:
         effective_ids = resolve_vector_store_ids(
-            configuration.configuration.rag.tool, byok_rags
+            configuration.configuration.rag.retrieval.tool.sources, byok_stores
         )
 
     # Add RAG tools if vector stores are available
@@ -636,7 +637,7 @@ def filter_tools_by_allowed_entries(
 
 
 def resolve_vector_store_ids(
-    vector_store_ids: list[str], byok_rags: list[ByokRag]
+    vector_store_ids: list[str], byok_rags: list[RagStore]
 ) -> list[str]:
     """Translate customer-facing rag_ids to llama-stack vector_db_ids.
 
@@ -664,7 +665,7 @@ def resolve_vector_store_ids(
 
 
 def translate_tools_vector_store_ids(
-    tools: list[InputTool], byok_rags: list[ByokRag]
+    tools: list[InputTool], byok_rags: list[RagStore]
 ) -> list[InputTool]:
     """Translate user-facing vector_store_ids to llama-stack IDs in each file_search tool.
 
@@ -704,7 +705,7 @@ def get_rag_tools(vector_store_ids: list[str]) -> Optional[list[InputToolFileSea
         InputToolFileSearch(
             type="file_search",
             vector_store_ids=vector_store_ids,
-            max_num_results=constants.TOOL_RAG_MAX_CHUNKS,
+            max_num_results=configuration.rag.retrieval.tool.max_chunks,
         )
     ]
 
@@ -1730,8 +1731,8 @@ async def _resolve_client_tools(
     # Per-request override of vector stores (user-facing rag_ids)
     vector_store_ids = extract_vector_store_ids_from_tools(tools) or None
     # Translate user-facing rag_ids to llama-stack vector_store_ids in each file_search tool
-    byok_rags = configuration.configuration.byok_rag
-    prepared_tools = translate_tools_vector_store_ids(tools, byok_rags)
+    byok_stores = configuration.configuration.rag.byok.stores
+    prepared_tools = translate_tools_vector_store_ids(tools, byok_stores)
     prepared_tools = apply_mcp_headers_to_explicit_tools(
         prepared_tools, token, mcp_headers, request_headers
     )
@@ -1819,7 +1820,7 @@ async def resolve_tool_choice(
         )
     else:
         # Pass tools explicitly configured for this request
-        byok_rags = configuration.configuration.byok_rag
+        byok_rags = configuration.configuration.rag.byok.stores
         prepared_tools = translate_tools_vector_store_ids(tools, byok_rags)
         prepared_tools = apply_mcp_headers_to_explicit_tools(
             prepared_tools, token, mcp_headers, request_headers

@@ -707,7 +707,7 @@ async def test_query_v2_endpoint_uses_tools_when_available(  # pylint: disable=u
     """
     # prepare_tools does not require llama-stack client anymore so the way to
     # enable RAG tools is through config
-    test_config.rag.tool = ["vs-test-123"]
+    test_config.rag.retrieval.tool.sources = ["vs-test-123"]
     _ = patch_db_session
 
     query_request = QueryRequest(query="What is Ansible?", no_tools=False)

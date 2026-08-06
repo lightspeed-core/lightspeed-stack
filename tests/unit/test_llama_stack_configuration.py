@@ -266,7 +266,7 @@ def test_construct_vector_io_providers_section_adds_new() -> None:
         {
             "rag_id": "rag1",
             "vector_db_id": "store1",
-            "rag_type": "inline::faiss",
+            "backend": "faiss",
         },
     ]
     output = construct_vector_io_providers_section(ls_config, byok_rag)
@@ -283,7 +283,7 @@ def test_construct_vector_io_providers_section_idempotent_reenrichment() -> None
         {
             "rag_id": "rag1",
             "vector_db_id": "store1",
-            "rag_type": "inline::faiss",
+            "backend": "faiss",
         },
     ]
     ls_config: dict[str, Any] = {"providers": {}}
@@ -313,7 +313,7 @@ def test_construct_vector_io_providers_section_collapses_existing_duplicates() -
         {
             "rag_id": "rag1",
             "vector_db_id": "store1",
-            "rag_type": "inline::faiss",
+            "backend": "faiss",
         },
     ]
     output = construct_vector_io_providers_section(ls_config, byok_rag)
@@ -328,7 +328,7 @@ def test_construct_vector_io_providers_section_pgvector() -> None:
         {
             "rag_id": "pg1",
             "vector_db_id": "vs_pg",
-            "rag_type": "remote::pgvector",
+            "backend": "pgvector",
             "host": "${env.POSTGRES_HOST}",
             "port": "${env.POSTGRES_PORT}",
             "db": "${env.POSTGRES_DATABASE}",
@@ -351,11 +351,11 @@ def test_construct_vector_io_providers_section_mixed() -> None:
     """Test mixed faiss and pgvector entries generate correct configs."""
     ls_config: dict[str, Any] = {"providers": {}}
     byok_rag = [
-        {"rag_id": "f1", "vector_db_id": "vs_f", "rag_type": "inline::faiss"},
+        {"rag_id": "f1", "vector_db_id": "vs_f", "backend": "faiss"},
         {
             "rag_id": "pg1",
             "vector_db_id": "vs_pg",
-            "rag_type": "remote::pgvector",
+            "backend": "pgvector",
             "host": "localhost",
             "port": "5432",
             "db": "mydb",
@@ -377,9 +377,7 @@ def test_construct_vector_io_providers_section_mixed() -> None:
 def test_construct_storage_backends_section_skips_pgvector() -> None:
     """Test pgvector entries are skipped (they use kv_default)."""
     ls_config: dict[str, Any] = {}
-    byok_rag = [
-        {"rag_id": "pg1", "vector_db_id": "vs_pg", "rag_type": "remote::pgvector"}
-    ]
+    byok_rag = [{"rag_id": "pg1", "vector_db_id": "vs_pg", "backend": "pgvector"}]
     output = construct_storage_backends_section(ls_config, byok_rag)
     assert len(output) == 0
 
@@ -389,7 +387,7 @@ def test_construct_storage_backends_section_mixed_faiss_pgvector() -> None:
     ls_config: dict[str, Any] = {}
     byok_rag = [
         {"rag_id": "f1", "vector_db_id": "vs_f", "db_path": "/tmp/f.db"},
-        {"rag_id": "pg1", "vector_db_id": "vs_pg", "rag_type": "remote::pgvector"},
+        {"rag_id": "pg1", "vector_db_id": "vs_pg", "backend": "pgvector"},
     ]
     output = construct_storage_backends_section(ls_config, byok_rag)
     assert len(output) == 1
@@ -404,7 +402,7 @@ def test_enrich_byok_rag_pgvector_end_to_end() -> None:
         {
             "rag_id": "pg1",
             "vector_db_id": "vs_pg",
-            "rag_type": "remote::pgvector",
+            "backend": "pgvector",
             "embedding_model": "sentence-transformers/all-mpnet-base-v2",
             "embedding_dimension": 768,
             "host": "${env.POSTGRES_HOST}",
@@ -647,7 +645,7 @@ def test_generate_configuration_dedupes_vector_io_on_load(tmp_path: Path) -> Non
 
 def test_generate_configuration_with_dict(tmp_path: Path) -> None:
     """Test generate_configuration accepts dict."""
-    config: dict[str, Any] = {"byok_rag": []}
+    config: dict[str, Any] = {"rag": {"byok": {"stores": []}}}
     outfile = tmp_path / "output.yaml"
 
     generate_configuration("tests/configuration/run.yaml", str(outfile), config)
@@ -683,16 +681,20 @@ def test_generate_configuration_with_pydantic_model(tmp_path: Path) -> None:
 def test_generate_configuration_with_byok(tmp_path: Path) -> None:
     """Test generate_configuration adds BYOK entries."""
     config = {
-        "byok_rag": [
-            {
-                "rag_id": "rag1",
-                "vector_db_id": "store1",
-                "embedding_model": "test-model",
-                "embedding_dimension": 256,
-                "rag_type": "inline::faiss",
-                "db_path": "/tmp/store1.db",
+        "rag": {
+            "byok": {
+                "stores": [
+                    {
+                        "rag_id": "rag1",
+                        "vector_db_id": "store1",
+                        "embedding_model": "test-model",
+                        "embedding_dimension": 256,
+                        "backend": "faiss",
+                        "db_path": "/tmp/store1.db",
+                    },
+                ],
             },
-        ],
+        },
     }
     outfile = tmp_path / "output.yaml"
 
@@ -722,20 +724,24 @@ def test_generate_configuration_with_byok(tmp_path: Path) -> None:
 def test_generate_configuration_with_pgvector(tmp_path: Path) -> None:
     """Test generate_configuration adds pgvector BYOK entries."""
     config = {
-        "byok_rag": [
-            {
-                "rag_id": "pg1",
-                "vector_db_id": "vs_pg",
-                "embedding_model": "sentence-transformers/all-mpnet-base-v2",
-                "embedding_dimension": 768,
-                "rag_type": "remote::pgvector",
-                "host": "localhost",
-                "port": "5432",
-                "db": "knowledge_db",
-                "user": "admin",
-                "password": "secret",
+        "rag": {
+            "byok": {
+                "stores": [
+                    {
+                        "rag_id": "pg1",
+                        "vector_db_id": "vs_pg",
+                        "embedding_model": "sentence-transformers/all-mpnet-base-v2",
+                        "embedding_dimension": 768,
+                        "backend": "pgvector",
+                        "host": "localhost",
+                        "port": "5432",
+                        "db": "knowledge_db",
+                        "user": "admin",
+                        "password": "secret",
+                    },
+                ],
             },
-        ],
+        },
     }
     outfile = tmp_path / "output.yaml"
     generate_configuration("tests/configuration/run.yaml", str(outfile), config)
