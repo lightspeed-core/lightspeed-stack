@@ -250,7 +250,8 @@ def construct_vector_stores_section(
         list[dict[str, Any]]: The `vector_stores` list where each entry is a mapping with keys:
             - `vector_store_id`: identifier of the vector store (for Llama Stack config)
             - `provider_id`: provider identifier prefixed with `"byok_"`
-            - `embedding_model`: name of the embedding model
+            - `embedding_model`: registered OGX model id
+              (``sentence-transformers/byok_<rag_id>_embedding``), not the load path
             - `embedding_dimension`: embedding vector dimensionality
     """
     output = []
@@ -280,12 +281,13 @@ def construct_vector_stores_section(
             continue
         existing_store_ids.add(vector_db_id)
         added += 1
-        embedding_model = brag.get("embedding_model", constants.DEFAULT_EMBEDDING_MODEL)
+        # OGX registers BYOK embeddings as sentence-transformers/byok_<rag_id>_embedding
+        # (see construct_models_section). Lookups must use that id, not the load path.
         output.append(
             {
                 "vector_store_id": vector_db_id,
                 "provider_id": f"byok_{rag_id}",
-                "embedding_model": embedding_model,
+                "embedding_model": f"sentence-transformers/byok_{rag_id}_embedding",
                 "embedding_dimension": brag.get("embedding_dimension"),
             }
         )
@@ -336,14 +338,16 @@ def construct_models_section(
         provider_model_id = embedding_model
         provider_model_id = provider_model_id.removeprefix("sentence-transformers/")
 
-        # Skip if embedding model already registered
-        existing_model_ids = [m.get("provider_model_id") for m in output]
-        if provider_model_id in existing_model_ids:
+        # Dedupe by generated model_id (not load path). Vector stores look up
+        # sentence-transformers/byok_<rag_id>_embedding; shared paths still need
+        # one alias per rag_id.
+        model_id = f"byok_{rag_id}_embedding"
+        if any(model.get("model_id") == model_id for model in output):
             continue
 
         output.append(
             {
-                "model_id": f"byok_{rag_id}_embedding",
+                "model_id": model_id,
                 "model_type": "embedding",
                 "provider_id": "sentence-transformers",
                 "provider_model_id": provider_model_id,
@@ -544,10 +548,12 @@ def _upsert_vsprov_embedding_model(
     embedding_model: str,
     embedding_dimension: int,
 ) -> None:
-    """Register an embedding model if provider_model_id is not already present.
+    """Register or refresh a vsprov embedding model alias by model_id.
 
-    Dedupes against BYOK/baseline rows by ``provider_model_id`` (after stripping
-    a leading ``sentence-transformers/`` prefix).
+    Uses ``model_id`` ``vsprov_<provider_id>_embedding`` (not load path) so
+    BYOK and ``vector_store`` can share a ``provider_model_id`` and both
+    resolve. Re-enrichment updates path and metadata when the same
+    ``model_id`` already exists.
 
     Parameters:
         ls_config: Llama Stack configuration modified in place.
@@ -557,18 +563,20 @@ def _upsert_vsprov_embedding_model(
             validated ``vector_store.providers`` entries).
     """
     models = ls_config.setdefault("registered_resources", {}).setdefault("models", [])
+    model_id = f"vsprov_{provider_id}_embedding"
     provider_model_id = embedding_model.removeprefix("sentence-transformers/")
-    if any(model.get("provider_model_id") == provider_model_id for model in models):
-        return
-    models.append(
-        {
-            "model_id": f"vsprov_{provider_id}_embedding",
-            "model_type": "embedding",
-            "provider_id": "sentence-transformers",
-            "provider_model_id": provider_model_id,
-            "metadata": {"embedding_dimension": embedding_dimension},
-        }
-    )
+    entry = {
+        "model_id": model_id,
+        "model_type": "embedding",
+        "provider_id": "sentence-transformers",
+        "provider_model_id": provider_model_id,
+        "metadata": {"embedding_dimension": embedding_dimension},
+    }
+    for index, model in enumerate(models):
+        if model.get("model_id") == model_id:
+            models[index] = entry
+            return
+    models.append(entry)
 
 
 def _vsprov_fields_and_backend(
@@ -655,12 +663,14 @@ def _apply_vector_stores_defaults(
     if not isinstance(vector_stores, dict):
         vector_stores = {}
         ls_config["vector_stores"] = vector_stores
-    vector_stores["default_provider_id"] = str(designated["id"]).strip()
-    emb = designated.get("embedding_model")
-    if emb:
+    provider_id = str(designated["id"]).strip()
+    vector_stores["default_provider_id"] = provider_id
+    # Match _upsert_vsprov_embedding_model model_id; OGX validates
+    # provider_id/model_id against registered models, not the load path.
+    if designated.get("embedding_model"):
         vector_stores["default_embedding_model"] = {
             "provider_id": "sentence-transformers",
-            "model_id": emb,
+            "model_id": f"vsprov_{provider_id}_embedding",
         }
 
 

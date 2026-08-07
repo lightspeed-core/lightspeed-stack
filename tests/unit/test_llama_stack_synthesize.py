@@ -655,7 +655,7 @@ def test_synthesize_includes_vector_store() -> None:
     assert "notebooks" in ids
     assert result["vector_stores"]["default_provider_id"] == "notebooks"
     assert result["vector_stores"]["default_embedding_model"]["model_id"] == (
-        "/rag-content/embeddings_model"
+        "vsprov_notebooks_embedding"
     )
 
 
