@@ -132,6 +132,9 @@ ENV PATH="/app-root/.venv/bin:$PATH"
 # Library mode: Llama Stack expects external provider configs under a path named providers.d (hardcoded).
 # We place them at /app-root/providers.d. YAMLs there reference lightspeed_stack_providers.*, so that package must be on PYTHONPATH.
 ENV PYTHONPATH="/app-root"
+# Unified: set the environment variable to mount point of external providers.
+# default_run.yaml sets this to ~/.llama/providers.d if unset.
+ENV EXTERNAL_PROVIDERS_DIR="/app-root/providers.d"
 
 # Copy entrypoint script
 COPY ${LSC_SOURCE_DIR}/scripts/entrypoint.sh /app-root/entrypoint.sh
