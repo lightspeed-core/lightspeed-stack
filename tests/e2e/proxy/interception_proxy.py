@@ -25,6 +25,7 @@ import asyncio
 import json
 import logging
 import ssl
+import threading
 from pathlib import Path
 from typing import Any, Optional
 
@@ -39,7 +40,7 @@ ALTERNATE_INTERCEPTION_PROXY_PORT = 8890
 IN_CLUSTER_CA_CERT_PATH = Path("/tmp/interception-proxy-ca.pem")
 
 
-class InterceptionProxy:
+class InterceptionProxy:  # pylint: disable=too-many-instance-attributes
     """Async TLS-intercepting proxy for testing.
 
     Attributes:
@@ -64,6 +65,7 @@ class InterceptionProxy:
         self.connect_count = 0
         self._server: Optional[asyncio.Server] = None
         self._handler_tasks: set[asyncio.Task[Any]] = set()
+        self._thread: Optional[threading.Thread] = None
 
     def _make_server_ssl_context(self, hostname: str) -> ssl.SSLContext:
         """Create an SSL context with a certificate for the given hostname.

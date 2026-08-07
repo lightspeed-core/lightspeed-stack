@@ -21,6 +21,7 @@ In-cluster (Konflux/Prow) usage::
 import asyncio
 import json
 import logging
+import threading
 from typing import Any, Optional
 
 # In-cluster defaults (``python tunnel_proxy.py``).
@@ -48,6 +49,7 @@ class TunnelProxy:
         self.last_connect_target: Optional[str] = None
         self._server: Optional[asyncio.Server] = None
         self._handler_tasks: set[asyncio.Task[Any]] = set()
+        self._thread: Optional[threading.Thread] = None
 
     async def _handle_client(
         self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter

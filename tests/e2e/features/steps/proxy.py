@@ -286,7 +286,11 @@ def _stop_proxy(context: Context, attr: str, loop_attr: str) -> None:
         except Exception:
             pass
         loop.call_soon_threadsafe(loop.stop)
-        time.sleep(0.5)
+        thread = getattr(proxy, "_thread", None)
+        if thread is not None:
+            thread.join(timeout=30)
+        else:
+            time.sleep(0.5)
     if hasattr(context, attr):
         delattr(context, attr)
     if hasattr(context, loop_attr):
@@ -368,10 +372,21 @@ def start_tunnel_proxy(context: Context, port: int) -> None:
 
     def run_proxy() -> None:
         asyncio.set_event_loop(loop)
-        loop.run_until_complete(proxy.start())
-        loop.run_forever()
+        try:
+            loop.run_until_complete(proxy.start())
+            loop.run_forever()
+        finally:
+            # Cancel leftover handler tasks so the loop can close cleanly.
+            if pending := asyncio.all_tasks(loop):
+                for task in pending:
+                    task.cancel()
+                loop.run_until_complete(
+                    asyncio.gather(*pending, return_exceptions=True)
+                )
+            loop.close()
 
     thread = threading.Thread(target=run_proxy, daemon=True)
+    proxy._thread = thread
     thread.start()
     time.sleep(1)
 
@@ -463,10 +478,21 @@ def start_interception_proxy(context: Context, port: int) -> None:
 
     def run_proxy() -> None:
         asyncio.set_event_loop(loop)
-        loop.run_until_complete(proxy.start())
-        loop.run_forever()
+        try:
+            loop.run_until_complete(proxy.start())
+            loop.run_forever()
+        finally:
+            # Cancel leftover handler tasks so the loop can close cleanly.
+            if pending := asyncio.all_tasks(loop):
+                for task in pending:
+                    task.cancel()
+                loop.run_until_complete(
+                    asyncio.gather(*pending, return_exceptions=True)
+                )
+            loop.close()
 
     thread = threading.Thread(target=run_proxy, daemon=True)
+    proxy._thread = thread
     thread.start()
     time.sleep(1)
 
