@@ -9,7 +9,13 @@ from fastapi import HTTPException, status
 from pytest_mock import MockerFixture
 from starlette.types import Message, Receive, Scope, Send
 
-from app.main import GlobalExceptionMiddleware, RestApiMetricsMiddleware
+from app.main import (
+    GlobalExceptionMiddleware,
+    RestApiMetricsMiddleware,
+)
+from app.main import (
+    app as fastapi_app,
+)
 from models.api.responses.error import InternalServerErrorResponse
 
 
@@ -189,6 +195,7 @@ async def test_rest_api_metrics_strips_root_path(
 ) -> None:
     """Middleware must strip root_path so prefixed requests still match routes."""
     mocker.patch("app.main.app_routes_paths", ["/v1/infer"])
+    mocker.patch.object(fastapi_app, "root_path", "/api/lightspeed")
     mock_measure_duration = mocker.patch(
         "app.main.recording.measure_response_duration", return_value=nullcontext()
     )
@@ -201,9 +208,9 @@ async def test_rest_api_metrics_strips_root_path(
     middleware = RestApiMetricsMiddleware(ok_app)
     collector = _ResponseCollector()
 
-    # Simulate 3scale forwarding /api/lightspeed/v1/infer with root_path set.
+    # Simulate 3scale forwarding /api/lightspeed/v1/infer — scope carries no root_path.
     await middleware(
-        _make_scope("/api/lightspeed/v1/infer", root_path="/api/lightspeed"),
+        _make_scope("/api/lightspeed/v1/infer"),
         _noop_receive,
         collector,
     )
@@ -234,6 +241,44 @@ async def test_rest_api_metrics_no_root_path_unchanged(
 
     await middleware(
         _make_scope("/v1/infer"),
+        _noop_receive,
+        collector,
+    )
+
+    assert collector.status_code == 200
+    mock_measure_duration.assert_called_once_with("/v1/infer")
+    mock_record_call.assert_called_once_with("/v1/infer", 200)
+
+
+@pytest.mark.asyncio
+async def test_rest_api_metrics_uses_app_root_path_not_scope(
+    mocker: MockerFixture,
+) -> None:
+    """Middleware must read root_path from app.root_path, not scope["root_path"].
+
+    This regression test guards against reverting the fix for RSPEED-2941: the scope
+    carries no root_path (as uvicorn actually sends), while app.root_path is set to the
+    correct prefix. If someone switches back to scope.get("root_path", ""), this test
+    fails because the path would not be stripped and the metric would not be recorded.
+    """
+    mocker.patch("app.main.app_routes_paths", ["/v1/infer"])
+    mocker.patch.object(fastapi_app, "root_path", "/api/lightspeed")
+    mock_measure_duration = mocker.patch(
+        "app.main.recording.measure_response_duration", return_value=nullcontext()
+    )
+    mock_record_call = mocker.patch("app.main.recording.record_rest_api_call")
+
+    async def ok_app(_scope: Scope, _receive: Receive, send: Send) -> None:
+        await send({"type": "http.response.start", "status": 200, "headers": []})
+        await send({"type": "http.response.body", "body": b"ok"})
+
+    middleware = RestApiMetricsMiddleware(ok_app)
+    collector = _ResponseCollector()
+
+    # Scope intentionally has no root_path — matching what uvicorn actually provides.
+    # The middleware must strip the prefix using app.root_path, not the scope.
+    await middleware(
+        _make_scope("/api/lightspeed/v1/infer"),
         _noop_receive,
         collector,
     )
