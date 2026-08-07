@@ -259,6 +259,10 @@ DEFAULT_SCORE_MULTIPLIER: Final[float] = 1.0
 # Special RAG ID that activates the OKP provider when listed in rag.inline or rag.tool
 OKP_RAG_ID: Final[str] = "okp"
 
+# OpenTelemetry anonymization configuration
+# Environment variable for HMAC secret used to anonymize sensitive trace data
+OTEL_ANONYMIZATION_SECRET_ENV_VAR: Final[str] = "OTEL_ANONYMIZATION_SECRET"
+
 # Logging configuration constants
 # Environment variable name for configurable log level
 LIGHTSPEED_STACK_LOG_LEVEL_ENV_VAR: Final[str] = "LIGHTSPEED_STACK_LOG_LEVEL"

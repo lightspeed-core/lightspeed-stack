@@ -4,6 +4,7 @@ from typing import Optional
 
 from fastapi import HTTPException
 from ogx_client import AsyncOgxClient
+from opentelemetry import trace
 from pydantic_ai.exceptions import AgentRunError
 
 from configuration import AppConfig
@@ -26,8 +27,10 @@ from pydantic_ai_lightspeed.capabilities.redaction._capability import (
     PiiRedactionCapability,
 )
 from utils.agents.error_handler import map_agent_inference_error
+from utils.otel_tracing import SpanAttributes
 
 logger = get_logger(__name__)
+tracer = trace.get_tracer(__name__)
 
 
 def validate_shield_ids_override(
@@ -151,8 +154,11 @@ async def run_shield_moderation(
     ------
         HTTPException: If shield's provider_resource_id is not configured or model not found.
     """
-    # Currently stubbed to always pass until LCS-owned input shields are wired.
-    return ShieldModerationPassed()
+    with tracer.start_as_current_span("shield.moderate") as span:
+        # Currently stubbed to always pass until LCS-owned input shields are wired.
+        result = ShieldModerationPassed()
+        span.set_attribute(SpanAttributes.SHIELD_RESULT, "passed")
+        return result
 
 
 def get_shields_for_request(
