@@ -343,6 +343,65 @@ class TestBuildReferencedDocument:
         assert doc.doc_url is None
         assert doc.doc_title == "Title Only"
 
+    def test_okp_online_builds_full_url(self, mocker: MockerFixture) -> None:
+        """Test OKP online mode joins reference_url with OKP base URL."""
+        mock_config = mocker.patch("utils.responses.configuration")
+        mock_config.okp.offline = False
+        mock_config.okp.rhokp_url = AnyUrl("https://docs.example.com/")
+
+        result = _file_search_result(
+            attributes={
+                "reference_url": "/en/docs/guide/index",
+                "source_path": "/en/docs/guide/index",
+                "title": "OKP Guide",
+                "source": "okp",
+            }
+        )
+
+        doc = build_referenced_document(result, ["portal-rag"], {"portal-rag": "okp"})
+
+        assert doc is not None
+        assert str(doc.doc_url) == "https://docs.example.com/en/docs/guide/index"
+        assert doc.source == "okp"
+
+    def test_okp_offline_builds_url_from_source_path(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test OKP offline mode uses source_path with OKP base URL."""
+        mock_config = mocker.patch("utils.responses.configuration")
+        mock_config.okp.offline = True
+        mock_config.okp.rhokp_url = AnyUrl("http://localhost:8081/")
+
+        result = _file_search_result(
+            attributes={
+                "reference_url": "https://docs.redhat.com/en/docs/guide/index",
+                "source_path": "/en/docs/guide/index",
+                "title": "OKP Guide",
+                "source": "okp",
+            }
+        )
+
+        doc = build_referenced_document(result, ["portal-rag"], {"portal-rag": "okp"})
+
+        assert doc is not None
+        assert str(doc.doc_url) == "http://localhost:8081/en/docs/guide/index"
+        assert doc.source == "okp"
+
+    def test_non_okp_source_uses_reference_url_directly(self) -> None:
+        """Test non-OKP sources still use reference_url from attribute keys."""
+        result = _file_search_result(
+            attributes={
+                "reference_url": "https://example.com/doc",
+                "title": "Non-OKP Doc",
+            }
+        )
+
+        doc = build_referenced_document(result, ["vs-001"], {"vs-001": "other"})
+
+        assert doc is not None
+        assert str(doc.doc_url) == "https://example.com/doc"
+        assert doc.source == "other"
+
 
 class TestReferencedDocumentsFromFileSearchResults:
     """Tests for referenced_documents_from_file_search_results."""

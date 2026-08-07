@@ -248,6 +248,7 @@ def test_dump_configuration_minimal_cfg(tmp_path: Path) -> None:
                 "rhokp_url": None,
                 "offline": True,
                 "chunk_filter_query": None,
+                "search_mode": None,
             },
             "rlsapi_v1": {
                 "allow_verbose_infer": False,
@@ -477,6 +478,7 @@ def test_dump_configuration_valid_values(tmp_path: Path) -> None:
                 "rhokp_url": None,
                 "offline": True,
                 "chunk_filter_query": None,
+                "search_mode": None,
             },
             "rlsapi_v1": {
                 "allow_verbose_infer": False,
@@ -857,6 +859,7 @@ def test_dump_configuration_with_quota_limiters(tmp_path: Path) -> None:
                 "rhokp_url": None,
                 "offline": True,
                 "chunk_filter_query": None,
+                "search_mode": None,
             },
             "rlsapi_v1": {
                 "allow_verbose_infer": False,
@@ -1121,6 +1124,7 @@ def test_dump_configuration_with_quota_limiters_different_values(
                 "rhokp_url": None,
                 "offline": True,
                 "chunk_filter_query": None,
+                "search_mode": None,
             },
             "rlsapi_v1": {
                 "allow_verbose_infer": False,
@@ -1418,6 +1422,7 @@ def test_dump_configuration_byok(tmp_path: Path) -> None:
                 "rhokp_url": None,
                 "offline": True,
                 "chunk_filter_query": None,
+                "search_mode": None,
             },
             "rlsapi_v1": {
                 "allow_verbose_infer": False,
@@ -1642,6 +1647,7 @@ def test_dump_configuration_pg_namespace(tmp_path: Path) -> None:
                 "rhokp_url": None,
                 "offline": True,
                 "chunk_filter_query": None,
+                "search_mode": None,
             },
             "rlsapi_v1": {
                 "allow_verbose_infer": False,
@@ -2026,6 +2032,7 @@ def test_dump_configuration_allow_degraded_mode(tmp_path: Path) -> None:
                 "rhokp_url": None,
                 "offline": True,
                 "chunk_filter_query": None,
+                "search_mode": None,
             },
             "rlsapi_v1": {
                 "allow_verbose_infer": False,
@@ -2256,6 +2263,7 @@ def test_dump_configuration_max_retries_settings(tmp_path: Path) -> None:
                 "rhokp_url": None,
                 "offline": True,
                 "chunk_filter_query": None,
+                "search_mode": None,
             },
             "rlsapi_v1": {
                 "allow_verbose_infer": False,
@@ -2486,6 +2494,7 @@ def test_dump_configuration_retry_count_settings(tmp_path: Path) -> None:
                 "rhokp_url": None,
                 "offline": True,
                 "chunk_filter_query": None,
+                "search_mode": None,
             },
             "rlsapi_v1": {
                 "allow_verbose_infer": False,
@@ -2723,6 +2732,7 @@ def test_dump_configuration_specific_compaction_values(tmp_path: Path) -> None:
                 "rhokp_url": None,
                 "offline": True,
                 "chunk_filter_query": None,
+                "search_mode": None,
             },
             "rlsapi_v1": {
                 "allow_verbose_infer": False,

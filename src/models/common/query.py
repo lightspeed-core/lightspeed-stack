@@ -135,7 +135,7 @@ class SolrVectorSearchRequest(BaseModel):
     """LCORE Solr inline RAG options for vector_io.query (mode and provider filters).
 
     Attributes:
-        mode: Solr vector_io search mode. When omitted, the server default (hybrid) is used.
+        mode: Solr vector_io search mode. When omitted, the configured OKP default is used.
         filters: Solr provider filter payload passed through as params['solr'].
 
     Legacy clients may send a plain JSON object with filter keys only;
@@ -144,13 +144,14 @@ class SolrVectorSearchRequest(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    mode: Optional[Literal["semantic", "hybrid", "lexical"]] = Field(
+    mode: Optional[Literal["semantic", "hybrid", "lexical", "keyword"]] = Field(
         None,
         description=(
-            "Solr vector_io search mode. When omitted, the server default "
-            f"({SOLR_VECTOR_SEARCH_DEFAULT_MODE!r}) is used."
+            "Solr vector_io search mode. When omitted, the configured OKP default "
+            f"is used; otherwise {SOLR_VECTOR_SEARCH_DEFAULT_MODE!r} applies. "
+            "'keyword' and 'lexical' both use BM25 text search."
         ),
-        examples=["hybrid", "semantic", "lexical"],
+        examples=["hybrid", "semantic", "keyword", "lexical"],
     )
     filters: Optional[dict[str, Any]] = Field(
         None,
@@ -206,6 +207,6 @@ class SolrVectorSearchRequest(BaseModel):
         logger.warning(
             "Solr inline RAG: sending filter fields at the top level of `solr` without "
             "`mode` or `filters` is deprecated and will be removed; use "
-            '`{"mode": "<semantic|hybrid|lexical>", "filters": {...}}` instead.'
+            '`{"mode": "<semantic|hybrid|lexical|keyword>", "filters": {...}}` instead.'
         )
         return {"mode": None, "filters": data}

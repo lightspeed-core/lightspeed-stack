@@ -808,7 +808,7 @@ def test_enrich_solr_adds_embedding_model() -> None:
     enrich_solr(ls_config, _OKP_RAG_CONFIG, {})
 
     model_ids = [m["model_id"] for m in ls_config["registered_resources"]["models"]]
-    assert "solr_embedding" in model_ids
+    assert "sentence-transformers/solr_embedding" in model_ids
 
 
 def test_enrich_solr_skips_duplicate_provider() -> None:
@@ -881,6 +881,70 @@ def test_enrich_solr_user_chunk_filter_query_is_conjoined() -> None:
     )
     assert provider["config"]["chunk_window_config"]["chunk_filter_query"] == (
         "is_chunk:true AND product:ansible"
+    )
+
+
+def test_enrich_solr_sets_default_search_mode_keyword() -> None:
+    """Test enrich_solr propagates search_mode keyword to vector_stores config."""
+    ls_config: dict[str, Any] = {}
+    enrich_solr(ls_config, _OKP_RAG_CONFIG, {"search_mode": "keyword"})
+
+    assert (
+        ls_config["vector_stores"]["chunk_retrieval_params"]["default_search_mode"]
+        == "keyword"
+    )
+
+
+def test_enrich_solr_sets_default_search_mode_hybrid() -> None:
+    """Test enrich_solr propagates search_mode hybrid to vector_stores config."""
+    ls_config: dict[str, Any] = {}
+    enrich_solr(ls_config, _OKP_RAG_CONFIG, {"search_mode": "hybrid"})
+
+    assert (
+        ls_config["vector_stores"]["chunk_retrieval_params"]["default_search_mode"]
+        == "hybrid"
+    )
+
+
+def test_enrich_solr_maps_semantic_to_vector() -> None:
+    """Test enrich_solr maps LCORE semantic to OGX vector search mode."""
+    ls_config: dict[str, Any] = {}
+    enrich_solr(ls_config, _OKP_RAG_CONFIG, {"search_mode": "semantic"})
+
+    assert (
+        ls_config["vector_stores"]["chunk_retrieval_params"]["default_search_mode"]
+        == "vector"
+    )
+
+
+def test_enrich_solr_maps_lexical_to_keyword() -> None:
+    """Test enrich_solr maps LCORE lexical to OGX keyword via SOLR_SEARCH_MODE_MAP."""
+    ls_config: dict[str, Any] = {}
+    enrich_solr(ls_config, _OKP_RAG_CONFIG, {"search_mode": "lexical"})
+
+    assert (
+        ls_config["vector_stores"]["chunk_retrieval_params"]["default_search_mode"]
+        == "keyword"
+    )
+
+
+def test_enrich_solr_no_search_mode_skips_vector_stores() -> None:
+    """Test enrich_solr does not set vector_stores when search_mode is absent."""
+    ls_config: dict[str, Any] = {}
+    enrich_solr(ls_config, _OKP_RAG_CONFIG, {})
+
+    assert "vector_stores" not in ls_config
+
+
+def test_enrich_solr_preserves_existing_vector_stores() -> None:
+    """Test enrich_solr preserves existing vector_stores config when adding search_mode."""
+    ls_config: dict[str, Any] = {"vector_stores": {"default_provider_id": "faiss"}}
+    enrich_solr(ls_config, _OKP_RAG_CONFIG, {"search_mode": "keyword"})
+
+    assert ls_config["vector_stores"]["default_provider_id"] == "faiss"
+    assert (
+        ls_config["vector_stores"]["chunk_retrieval_params"]["default_search_mode"]
+        == "keyword"
     )
 
 

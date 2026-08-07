@@ -162,7 +162,16 @@ class TestBuildQueryParams:
         solr = SolrVectorSearchRequest(mode="lexical")
         params = _build_query_params(solr=solr)
 
-        assert params["mode"] == "lexical"
+        # "lexical" is translated to "keyword" for Llama Stack dispatch
+        assert params["mode"] == "keyword"
+        assert "solr" not in params
+
+    def test_keyword_mode_direct(self) -> None:
+        """Request mode 'keyword' is passed through unchanged."""
+        solr = SolrVectorSearchRequest(mode="keyword")
+        params = _build_query_params(solr=solr)
+
+        assert params["mode"] == "keyword"
         assert "solr" not in params
 
     def test_mode_with_solr_filters(self) -> None:
@@ -185,6 +194,60 @@ class TestBuildQueryParams:
 
         assert params["mode"] == constants.SOLR_VECTOR_SEARCH_DEFAULT_MODE
         assert params["solr"] == {"fq": ["product:*openshift*"]}
+
+    def test_config_search_mode_keyword(self, mocker: MockerFixture) -> None:
+        """OKP config search_mode is used when no per-request mode is set."""
+        config_mock = mocker.Mock(spec=AppConfig)
+        config_mock.okp.search_mode = "keyword"
+        mocker.patch("utils.vector_search.configuration", config_mock)
+
+        params = _build_query_params()
+
+        assert params["mode"] == "keyword"
+
+    def test_config_search_mode_semantic(self, mocker: MockerFixture) -> None:
+        """OKP config search_mode 'semantic' is used as default."""
+        config_mock = mocker.Mock(spec=AppConfig)
+        config_mock.okp.search_mode = "semantic"
+        mocker.patch("utils.vector_search.configuration", config_mock)
+
+        params = _build_query_params()
+
+        assert params["mode"] == "semantic"
+
+    def test_per_request_mode_overrides_config(self, mocker: MockerFixture) -> None:
+        """Per-request solr mode takes precedence over OKP config default."""
+        config_mock = mocker.Mock(spec=AppConfig)
+        config_mock.okp.search_mode = "keyword"
+        mocker.patch("utils.vector_search.configuration", config_mock)
+
+        solr = SolrVectorSearchRequest(mode="semantic")
+        params = _build_query_params(solr=solr)
+
+        assert params["mode"] == "semantic"
+
+    def test_no_config_no_request_mode_uses_global_default(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Without config or per-request mode, global default is used."""
+        config_mock = mocker.Mock(spec=AppConfig)
+        config_mock.okp.search_mode = None
+        mocker.patch("utils.vector_search.configuration", config_mock)
+
+        params = _build_query_params()
+
+        assert params["mode"] == constants.SOLR_VECTOR_SEARCH_DEFAULT_MODE
+
+    def test_lexical_config_translated_to_keyword(self, mocker: MockerFixture) -> None:
+        """Per-request 'lexical' is translated to 'keyword' even with config set."""
+        config_mock = mocker.Mock(spec=AppConfig)
+        config_mock.okp.search_mode = "hybrid"
+        mocker.patch("utils.vector_search.configuration", config_mock)
+
+        solr = SolrVectorSearchRequest(mode="lexical")
+        params = _build_query_params(solr=solr)
+
+        assert params["mode"] == "keyword"
 
 
 class TestExtractByokRagChunks:

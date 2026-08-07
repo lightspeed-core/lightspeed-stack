@@ -5,6 +5,7 @@
 import json
 from collections.abc import Mapping, Sequence
 from typing import Any, Optional, cast
+from urllib.parse import urljoin
 
 from fastapi import HTTPException
 from ogx_api import OpenAIResponseObject
@@ -850,6 +851,33 @@ def apply_mcp_headers_to_explicit_tools(
     return out
 
 
+def _build_okp_doc_url(attributes: dict[str, Any]) -> Optional[str]:
+    """Build a full OKP document URL from file_search result attributes.
+
+    Uses the ``offline`` flag from OKP configuration to choose between
+    ``source_path`` (disconnected clusters) and ``reference_url`` (online).
+    The chosen relative path is joined with the OKP base URL.
+
+    Parameters:
+        attributes: Metadata dict from a file_search result chunk.
+
+    Returns:
+        Fully-qualified document URL, or None if no usable path is found.
+    """
+    offline = configuration.okp.offline
+    if offline:
+        reference = attributes.get("source_path") or attributes.get("doc_id")
+    else:
+        reference = attributes.get("reference_url") or attributes.get("doc_id")
+
+    if not reference:
+        return None
+
+    rhokp = configuration.okp.rhokp_url
+    base_url = str(rhokp) if rhokp is not None else constants.RH_SERVER_OKP_DEFAULT_URL
+    return urljoin(base_url, str(reference))
+
+
 def parse_referenced_documents(  # pylint: disable=too-many-locals
     response: Optional[ResponseObject],
     vector_store_ids: Optional[list[str]] = None,
@@ -899,9 +927,12 @@ def parse_referenced_documents(  # pylint: disable=too-many-locals
                 doc_title = attributes.get("title")
                 doc_id = attributes.get("document_id") or attributes.get("doc_id")
 
+                # OKP/Solr chunks use reference_url/source_path instead
+                if not doc_url and resolved_source == constants.OKP_RAG_ID:
+                    doc_url = _build_okp_doc_url(attributes)
+
                 if doc_title or doc_url:
-                    # Treat empty string as None for URL to satisfy Optional[AnyUrl]
-                    final_url = doc_url or None
+                    final_url: Any = doc_url or None
                     if (final_url, doc_title) not in seen_docs:
                         documents.append(
                             ReferencedDocument(

@@ -121,8 +121,11 @@ def _build_query_params(
     resolved_mode = (
         solr.mode
         if solr is not None and solr.mode is not None
-        else constants.SOLR_VECTOR_SEARCH_DEFAULT_MODE
+        else (
+            configuration.okp.search_mode or constants.SOLR_VECTOR_SEARCH_DEFAULT_MODE
+        )
     )
+    resolved_mode = constants.SOLR_SEARCH_MODE_MAP.get(resolved_mode, resolved_mode)
     params: dict[str, Any] = {
         "k": k if k is not None else constants.SOLR_VECTOR_SEARCH_DEFAULT_K,
         "score_threshold": constants.SOLR_VECTOR_SEARCH_DEFAULT_SCORE_THRESHOLD,

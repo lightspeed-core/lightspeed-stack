@@ -36,7 +36,7 @@ COPY ${LSC_SOURCE_DIR}/pyproject.toml ${LSC_SOURCE_DIR}/LICENSE ${LSC_SOURCE_DIR
 
 # lightspeed-providers:
 # Fully hermetic — uses prefetched artifact or pinned commit from GitHub
-ARG LIGHTSPEED_PROVIDERS_COMMIT=8cd1b3d3bdd841ea99d31b334ae00a275581661c
+ARG LIGHTSPEED_PROVIDERS_COMMIT=faf6a89a3ad7856e2e7a934324f31d146108acdb
 RUN set -eux; \
     ZIP_PATH="/tmp/lightspeed-providers.zip"; \
     EXTRACT_DIR="/tmp/providers"; \

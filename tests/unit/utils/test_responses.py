@@ -69,6 +69,7 @@ from models.config import (
 from utils.query import normalize_vertex_ai_model_id
 from utils.responses import (
     _build_chunk_attributes,
+    _build_okp_doc_url,
     _merge_tools,
     build_mcp_tool_call_from_arguments_done,
     build_tool_call_summary,
@@ -3144,6 +3145,237 @@ class TestParseReferencedDocumentsWithSource:
 
         assert len(docs) == 1
         assert docs[0].source is None
+
+
+class TestBuildOkpDocUrl:
+    """Tests for _build_okp_doc_url OKP URL construction."""
+
+    def test_online_mode_uses_reference_url(self, mocker: MockerFixture) -> None:
+        """Test that online mode (offline=False) uses reference_url."""
+        mock_okp = mocker.Mock()
+        mock_okp.offline = False
+        mock_okp.rhokp_url = "https://docs.openshift.com"
+        mock_config = mocker.Mock()
+        mock_config.okp = mock_okp
+        mocker.patch("utils.responses.configuration", mock_config)
+
+        url = _build_okp_doc_url(
+            {
+                "reference_url": "/docs/pipelines/config.html",
+                "source_path": "pipelines/config.html",
+            }
+        )
+        assert url == "https://docs.openshift.com/docs/pipelines/config.html"
+
+    def test_offline_mode_uses_source_path(self, mocker: MockerFixture) -> None:
+        """Test that offline mode (offline=True) uses source_path."""
+        mock_okp = mocker.Mock()
+        mock_okp.offline = True
+        mock_okp.rhokp_url = "https://docs.openshift.com"
+        mock_config = mocker.Mock()
+        mock_config.okp = mock_okp
+        mocker.patch("utils.responses.configuration", mock_config)
+
+        url = _build_okp_doc_url(
+            {
+                "reference_url": "/docs/pipelines/config.html",
+                "source_path": "pipelines/config.html",
+            }
+        )
+        assert url == "https://docs.openshift.com/pipelines/config.html"
+
+    def test_online_falls_back_to_doc_id(self, mocker: MockerFixture) -> None:
+        """Test online mode falls back to doc_id when reference_url is absent."""
+        mock_okp = mocker.Mock()
+        mock_okp.offline = False
+        mock_okp.rhokp_url = "https://docs.openshift.com"
+        mock_config = mocker.Mock()
+        mock_config.okp = mock_okp
+        mocker.patch("utils.responses.configuration", mock_config)
+
+        url = _build_okp_doc_url({"doc_id": "some-doc-id"})
+        assert url == "https://docs.openshift.com/some-doc-id"
+
+    def test_offline_falls_back_to_doc_id(self, mocker: MockerFixture) -> None:
+        """Test offline mode falls back to doc_id when source_path is absent."""
+        mock_okp = mocker.Mock()
+        mock_okp.offline = True
+        mock_okp.rhokp_url = "https://docs.openshift.com"
+        mock_config = mocker.Mock()
+        mock_config.okp = mock_okp
+        mocker.patch("utils.responses.configuration", mock_config)
+
+        url = _build_okp_doc_url({"doc_id": "some-doc-id"})
+        assert url == "https://docs.openshift.com/some-doc-id"
+
+    def test_returns_none_when_no_reference(self, mocker: MockerFixture) -> None:
+        """Test returns None when no reference_url, source_path, or doc_id."""
+        mock_okp = mocker.Mock()
+        mock_okp.offline = False
+        mock_okp.rhokp_url = "https://docs.openshift.com"
+        mock_config = mocker.Mock()
+        mock_config.okp = mock_okp
+        mocker.patch("utils.responses.configuration", mock_config)
+
+        url = _build_okp_doc_url({"title": "Some Doc"})
+        assert url is None
+
+    def test_uses_default_url_when_rhokp_url_is_none(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test uses RH_SERVER_OKP_DEFAULT_URL when rhokp_url is not configured."""
+        mock_okp = mocker.Mock()
+        mock_okp.offline = False
+        mock_okp.rhokp_url = None
+        mock_config = mocker.Mock()
+        mock_config.okp = mock_okp
+        mocker.patch("utils.responses.configuration", mock_config)
+
+        url = _build_okp_doc_url({"reference_url": "/docs/page.html"})
+        assert url == "http://localhost:8081/docs/page.html"
+
+
+class TestParseReferencedDocumentsOkp:
+    """Tests for parse_referenced_documents with OKP/Solr file_search results."""
+
+    def test_okp_online_builds_full_url(self, mocker: MockerFixture) -> None:
+        """Test OKP result builds full URL from reference_url in online mode."""
+        mock_okp = mocker.Mock()
+        mock_okp.offline = False
+        mock_okp.rhokp_url = "https://docs.openshift.com"
+        mock_config = mocker.Mock()
+        mock_config.okp = mock_okp
+        mocker.patch("utils.responses.configuration", mock_config)
+
+        mock_result = mocker.Mock()
+        mock_result.attributes = {
+            "reference_url": "/docs/pipelines/config.html",
+            "source_path": "pipelines/config.html",
+            "title": "Pipeline Config",
+            "doc_id": "doc-001",
+            "source": "okp",
+        }
+
+        mock_output = mocker.Mock()
+        mock_output.type = "file_search_call"
+        mock_output.results = [mock_result]
+
+        mock_response = mocker.Mock()
+        mock_response.output = [mock_output]
+
+        docs = parse_referenced_documents(
+            mock_response,
+            vector_store_ids=["portal-rag"],
+            rag_id_mapping={"portal-rag": "okp"},
+        )
+
+        assert len(docs) == 1
+        assert (
+            str(docs[0].doc_url)
+            == "https://docs.openshift.com/docs/pipelines/config.html"
+        )
+        assert docs[0].doc_title == "Pipeline Config"
+        assert docs[0].source == "okp"
+
+    def test_okp_offline_builds_url_from_source_path(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test OKP result builds URL from source_path in offline mode."""
+        mock_okp = mocker.Mock()
+        mock_okp.offline = True
+        mock_okp.rhokp_url = "https://docs.openshift.com"
+        mock_config = mocker.Mock()
+        mock_config.okp = mock_okp
+        mocker.patch("utils.responses.configuration", mock_config)
+
+        mock_result = mocker.Mock()
+        mock_result.attributes = {
+            "reference_url": "/docs/pipelines/config.html",
+            "source_path": "pipelines/config.html",
+            "title": "Pipeline Config",
+            "doc_id": "doc-001",
+            "source": "okp",
+        }
+
+        mock_output = mocker.Mock()
+        mock_output.type = "file_search_call"
+        mock_output.results = [mock_result]
+
+        mock_response = mocker.Mock()
+        mock_response.output = [mock_output]
+
+        docs = parse_referenced_documents(
+            mock_response,
+            vector_store_ids=["portal-rag"],
+            rag_id_mapping={"portal-rag": "okp"},
+        )
+
+        assert len(docs) == 1
+        assert (
+            str(docs[0].doc_url) == "https://docs.openshift.com/pipelines/config.html"
+        )
+        assert docs[0].source == "okp"
+
+    def test_okp_multistore_detected_via_source_attribute(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test OKP detected in multi-store scenario via source attribute."""
+        mock_okp = mocker.Mock()
+        mock_okp.offline = False
+        mock_okp.rhokp_url = "https://docs.openshift.com"
+        mock_config = mocker.Mock()
+        mock_config.okp = mock_okp
+        mocker.patch("utils.responses.configuration", mock_config)
+
+        mock_result = mocker.Mock()
+        mock_result.attributes = {
+            "reference_url": "/docs/builds.html",
+            "title": "Builds",
+            "source": "okp",
+        }
+
+        mock_output = mocker.Mock()
+        mock_output.type = "file_search_call"
+        mock_output.results = [mock_result]
+
+        mock_response = mocker.Mock()
+        mock_response.output = [mock_output]
+
+        docs = parse_referenced_documents(
+            mock_response,
+            vector_store_ids=["portal-rag", "byok-store"],
+            rag_id_mapping={"portal-rag": "okp", "byok-store": "my-docs"},
+        )
+
+        assert len(docs) == 1
+        assert str(docs[0].doc_url) == "https://docs.openshift.com/docs/builds.html"
+        assert docs[0].source == "okp"
+
+    def test_non_okp_result_unaffected(self, mocker: MockerFixture) -> None:
+        """Test non-OKP results still use existing doc_url/url attribute lookup."""
+        mock_result = mocker.Mock()
+        mock_result.attributes = {
+            "url": "https://example.com/byok-doc",
+            "title": "BYOK Doc",
+            "document_id": "byok-001",
+        }
+
+        mock_output = mocker.Mock()
+        mock_output.type = "file_search_call"
+        mock_output.results = [mock_result]
+
+        mock_response = mocker.Mock()
+        mock_response.output = [mock_output]
+
+        docs = parse_referenced_documents(
+            mock_response,
+            vector_store_ids=["byok-store"],
+            rag_id_mapping={"byok-store": "my-docs"},
+        )
+
+        assert len(docs) == 1
+        assert str(docs[0].doc_url) == "https://example.com/byok-doc"
+        assert docs[0].source == "my-docs"
 
 
 class TestGetRAGToolsWithConfig:

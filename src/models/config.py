@@ -2558,6 +2558,16 @@ class OkpConfiguration(ConfigurationBase):
         "Use Solr boolean syntax, e.g. 'product:ansible AND product:*openshift*'.",
     )
 
+    search_mode: Optional[Literal["semantic", "hybrid", "keyword"]] = Field(
+        default=None,
+        title="OKP search mode",
+        description="Default Solr search mode for OKP queries. "
+        "'keyword' uses BM25 text search (no embedding model needed). "
+        "'hybrid' combines vector + keyword search. "
+        "'semantic' uses pure vector search. "
+        "When unset, falls back to the global default ('hybrid').",
+    )
+
 
 class RerankerConfiguration(ConfigurationBase):
     """Reranker configuration for RAG chunk reranking."""
