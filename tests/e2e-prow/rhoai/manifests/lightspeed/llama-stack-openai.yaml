@@ -1,8 +1,10 @@
-# Llama Stack from source on UBI: init clones repo + seeds FAISS, main enriches run.yaml and runs Llama.
+# Llama Stack from source on UBI: init clones repo + seeds FAISS, main restores seed then uses
+# scripts/llama-stack-entrypoint.sh (same enrich/start path as GitHub Actions docker-compose).
 # Needs ConfigMaps: llama-stack-config (run.yaml), rag-data (kv_store.db.gz), lightspeed-stack-config;
 # optional llama-stack-source for repo_url / repo_revision.
 #
-# RAG: seeded in setup-from-source from rag-data ConfigMap (gzip); main re-inflates from rag-data mount.
+# RAG: seeded in setup-from-source from rag-data ConfigMap (gzip); main re-inflates, verifies the
+# FAISS index key, then lets the shared entrypoint copy the fixture into writable KV_STORE_PATH.
 apiVersion: v1
 kind: Pod
 metadata:
@@ -55,6 +57,9 @@ spec:
               fi
               cp -f /opt/app-root/.e2e-rag-seed/kv_store.db /opt/app-root/src/.llama/storage/rag/kv_store.db
             fi
+            cp -f /opt/app-root/scripts/llama-stack-entrypoint.sh /opt/app-root/enrich-entrypoint.sh
+            cp -f /opt/app-root/src/llama_stack_configuration.py /opt/app-root/llama_stack_configuration.py
+            chmod 755 /opt/app-root/enrich-entrypoint.sh
             chmod -R 775 /opt/app-root && chown -R 1001:0 /opt/app-root
             echo "PVC fast-path complete"
             exit 0
@@ -87,7 +92,9 @@ spec:
             exit 1
           fi
           cp -f /opt/app-root/.e2e-rag-seed/kv_store.db /opt/app-root/src/.llama/storage/rag/kv_store.db
-          cp /opt/app-root/src/llama_stack_configuration.py /opt/app-root/llama_stack_configuration.py
+          cp -f /opt/app-root/scripts/llama-stack-entrypoint.sh /opt/app-root/enrich-entrypoint.sh
+          cp -f /opt/app-root/src/llama_stack_configuration.py /opt/app-root/llama_stack_configuration.py
+          chmod 755 /opt/app-root/enrich-entrypoint.sh
           chmod -R 775 /opt/app-root && chown -R 1001:0 /opt/app-root
       volumeMounts:
         - name: app-root
@@ -132,12 +139,14 @@ spec:
           value: "/opt/app-root/src"
         - name: HOME
           value: "/opt/app-root/src"
+        # Match GitHub Actions docker-compose + llama-stack-entrypoint.sh:
+        # registry/SQL under /tmp (writable); FAISS (run-ci kv_rag) reads the restored fixture.
         - name: KV_STORE_PATH
-          value: "/opt/app-root/src/.llama/storage/kv_store.db"
+          value: "/tmp/llama/kv_store.db"
         - name: KV_RAG_PATH
           value: "/opt/app-root/src/.llama/storage/rag/kv_store.db"
         - name: SQL_STORE_PATH
-          value: "/opt/app-root/src/.llama/storage/sql_store.db"
+          value: "/tmp/llama/sql_store.db"
         - name: OPENAI_API_KEY
           valueFrom:
             secretKeyRef:
@@ -189,28 +198,23 @@ spec:
             elif [[ -f "$RAG_SEED" ]]; then
               cp -f "$RAG_SEED" "$RAG_WORK"
               chmod 664 "$RAG_WORK" 2>/dev/null || true
+            else
+              echo "FATAL: no RAG seed at $RAG_CM_GZ or $RAG_SEED"
+              exit 1
             fi
           }
+          # Re-inflate golden FAISS fixture (same bytes GH bind-mounts from tests/e2e/rag).
           restore_rag_seed
-          INPUT_CONFIG="${LLAMA_STACK_CONFIG:-/opt/app-root/run.yaml}"
-          ENRICHED_CONFIG="/opt/app-root/run.yaml"
-          LIGHTSPEED_CONFIG="${LIGHTSPEED_CONFIG:-/opt/app-root/lightspeed-stack.yaml}"
-          if [[ -f "$LIGHTSPEED_CONFIG" ]]; then
-            echo "Enriching llama-stack config..."
-            ENRICHMENT_FAILED=0
-            /opt/app-root/.venv/bin/python3 /opt/app-root/llama_stack_configuration.py \
-              -c "$LIGHTSPEED_CONFIG" \
-              -i "$INPUT_CONFIG" \
-              -o "$ENRICHED_CONFIG" 2>&1 || ENRICHMENT_FAILED=1
-            if [[ -f "$ENRICHED_CONFIG" ]] && [[ "$ENRICHMENT_FAILED" -eq 0 ]]; then
-              echo "Using enriched config: $ENRICHED_CONFIG"
-              restore_rag_seed
-              exec ogx stack run "$ENRICHED_CONFIG"
-            fi
+          # Fail fast with evidence in pod logs (e2e-ops dumps these on scenario failure).
+          RAG_WORK="$RAG_WORK" python3 /opt/app-root/scripts/e2e_verify_rag_fixture.py
+          if [[ ! -x /opt/app-root/enrich-entrypoint.sh ]]; then
+            echo "FATAL: missing /opt/app-root/enrich-entrypoint.sh (init should install it)"
+            exit 1
           fi
-          echo "Using original config: $INPUT_CONFIG"
-          restore_rag_seed
-          exec ogx stack run "$INPUT_CONFIG"
+          # Same enrich + ogx start path as GitHub Actions (docker-compose entrypoint).
+          export LLAMA_STACK_CONFIG="${LLAMA_STACK_CONFIG:-/opt/app-root/run.yaml}"
+          export LIGHTSPEED_CONFIG="${LIGHTSPEED_CONFIG:-/opt/app-root/lightspeed-stack.yaml}"
+          exec /opt/app-root/enrich-entrypoint.sh
       ports:
         - containerPort: 8321
       readinessProbe:
