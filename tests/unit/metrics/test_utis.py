@@ -1,30 +1,15 @@
 """Unit tests for functions defined in metrics/utils.py"""
 
 import pytest
-from ogx_client.models.list_models_response import ListModelsResponse
-from ogx_client.models.model import Model
 from pytest_mock import MockerFixture
 
 from metrics.utils import setup_model_metrics
-
-
-def _make_model(model_id: str, provider_id: str, model_type: str) -> Model:
-    """Build an OGX Model for metrics tests."""
-    return Model.model_construct(
-        id=model_id,
-        created=0,
-        owned_by="test",
-        object="model",
-        custom_metadata={"provider_id": provider_id, "model_type": model_type},
-    )
+from tests.unit.conftest import make_openai_model, make_openai_models_list_response
 
 
 @pytest.mark.asyncio
 async def test_setup_model_metrics(mocker: MockerFixture) -> None:
     """Test the setup_model_metrics function."""
-    # Mock the OGXAsLibraryClient
-    mock_client = mocker.patch("client.AsyncOgxClientHolder.get_client").return_value
-    # Make sure the client is an AsyncMock for async methods
     mock_client = mocker.AsyncMock()
     mocker.patch("client.AsyncOgxClientHolder.get_client", return_value=mock_client)
     mocker.patch(
@@ -37,19 +22,24 @@ async def test_setup_model_metrics(mocker: MockerFixture) -> None:
     )
 
     mock_metric = mocker.patch("metrics.provider_model_configuration")
-    model_default = _make_model("default_model", "default_provider", "llm")
-    model_0 = _make_model("test_model-0", "test_provider-0", "llm")
-    model_1 = _make_model("test_model-1", "test_provider-1", "llm")
-    not_llm_model = _make_model("not-llm-model", "not-llm-provider", "not-llm")
+    model_default = make_openai_model(
+        model_id="default_model", provider_id="default_provider", model_type="llm"
+    )
+    model_0 = make_openai_model(
+        model_id="test_model-0", provider_id="test_provider-0", model_type="llm"
+    )
+    model_1 = make_openai_model(
+        model_id="test_model-1", provider_id="test_provider-1", model_type="llm"
+    )
+    not_llm_model = make_openai_model(
+        model_id="not-llm-model", provider_id="not-llm-provider", model_type="not-llm"
+    )
 
-    # Mock the list of models returned by the client
-    mock_client.models.list.return_value = ListModelsResponse.model_construct(
-        data=[
-            model_0,
-            model_default,
-            not_llm_model,
-            model_1,
-        ]
+    mock_client.openai.list.return_value = make_openai_models_list_response(
+        model_0,
+        model_default,
+        not_llm_model,
+        model_1,
     )
 
     await setup_model_metrics()

@@ -71,7 +71,7 @@ TEST_MODEL_NAME = "test-model"
 def make_openai_models_list_response(
     *models: OpenAIModel,
 ) -> ListModelsV1ModelsGet200Response:
-    """Build a ``client.models.list()`` response in the OpenAI OneOf shape.
+    """Build a ``client.openai.list()`` response in the OpenAI OneOf shape.
 
     Parameters:
         *models: OpenAI-style model entries for ``data``.
@@ -90,7 +90,7 @@ def make_openai_model(
     provider_id: str = TEST_PROVIDER,
     model_type: str = "llm",
 ) -> OpenAIModel:
-    """Build an ``OpenAIModel`` for integration ``models.list`` mocks.
+    """Build an ``OpenAIModel`` for integration ``openai.list`` mocks.
 
     Parameters:
         model_id: Full model identifier (provider/name).
@@ -815,8 +815,8 @@ def mock_ogx_client_fixture(
 
     mock_client.responses.create.return_value = mock_response
 
-    # Mock models.list
-    mock_client.models.list.return_value = make_openai_models_list_response(
+    # Mock openai.list
+    mock_client.openai.list.return_value = make_openai_models_list_response(
         make_openai_model()
     )
 

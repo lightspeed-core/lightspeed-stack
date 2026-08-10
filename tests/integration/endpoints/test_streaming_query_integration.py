@@ -37,7 +37,7 @@ def mock_llama_stack_streaming_fixture(
     )
     mock_client = mocker.AsyncMock()
 
-    mock_client.models.list.return_value = make_openai_models_list_response(
+    mock_client.openai.list.return_value = make_openai_models_list_response(
         make_openai_model()
     )
 

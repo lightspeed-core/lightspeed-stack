@@ -42,7 +42,7 @@ def mock_ogx_client_fixture(
     mock_client = mocker.AsyncMock()
 
     # Mock models list (required for model selection)
-    mock_client.models.list.return_value = make_openai_models_list_response(
+    mock_client.openai.list.return_value = make_openai_models_list_response(
         make_openai_model(model_id="test-provider/test-model-1"),
         make_openai_model(
             model_id="test-provider/test-model-2", model_type="embedding"
@@ -78,7 +78,7 @@ def mock_ogx_client_failing_fixture(
 
     mock_client = mocker.AsyncMock()
 
-    mock_client.models.list.side_effect = APIConnectionError(request=mocker.Mock())
+    mock_client.openai.list.side_effect = APIConnectionError(request=mocker.Mock())
 
     # Create a mock holder instance
     mock_holder_instance = mock_holder_class.return_value

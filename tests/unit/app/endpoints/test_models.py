@@ -5,8 +5,6 @@ from typing import Any
 import pytest
 from fastapi import HTTPException, Request, status
 from ogx_client import APIConnectionError
-from ogx_client.models.list_models_response import ListModelsResponse
-from ogx_client.models.model import Model
 from pytest_mock import MockerFixture
 from pytest_subtests import SubTests
 
@@ -14,21 +12,8 @@ from app.endpoints.models import models_endpoint_handler
 from authentication.interface import AuthTuple
 from configuration import AppConfig
 from models.api.requests import ModelFilter
+from tests.unit.conftest import make_openai_model, make_openai_models_list_response
 from tests.unit.utils.auth_helpers import mock_authorization_resolvers
-
-
-def _make_model(model_id: str, provider_id: str, model_type: str) -> Model:
-    """Build an OGX Model for models-endpoint tests."""
-    return Model.model_construct(
-        id=model_id,
-        created=0,
-        owned_by="test",
-        object="model",
-        custom_metadata={
-            "model_type": model_type,
-            "provider_id": provider_id,
-        },
-    )
 
 
 @pytest.mark.asyncio
@@ -162,7 +147,7 @@ async def test_models_endpoint_handler_unable_to_retrieve_models_list(
 
     # Mock the LlamaStack client
     mock_client = mocker.AsyncMock()
-    mock_client.models.list.return_value = ListModelsResponse.model_construct(data=[])
+    mock_client.openai.list.return_value = make_openai_models_list_response()
     mock_lsc = mocker.patch("app.endpoints.models.AsyncOgxClientHolder.get_client")
     mock_lsc.return_value = mock_client
     mock_config = mocker.Mock()
@@ -219,7 +204,7 @@ async def test_models_endpoint_handler_model_type_query_parameter(
 
     # Mock the LlamaStack client
     mock_client = mocker.AsyncMock()
-    mock_client.models.list.return_value = ListModelsResponse.model_construct(data=[])
+    mock_client.openai.list.return_value = make_openai_models_list_response()
     mock_lsc = mocker.patch("app.endpoints.models.AsyncOgxClientHolder.get_client")
     mock_lsc.return_value = mock_client
     mock_config = mocker.Mock()
@@ -275,13 +260,15 @@ async def test_models_endpoint_handler_model_list_retrieved(
 
     # Mock the LlamaStack client
     mock_client = mocker.AsyncMock()
-    mock_client.models.list.return_value = ListModelsResponse.model_construct(
-        data=[
-            _make_model("model1", "provider1", "llm"),
-            _make_model("model2", "provider2", "embedding"),
-            _make_model("model3", "provider3", "llm"),
-            _make_model("model4", "provider4", "embedding"),
-        ]
+    mock_client.openai.list.return_value = make_openai_models_list_response(
+        make_openai_model(model_id="model1", provider_id="provider1", model_type="llm"),
+        make_openai_model(
+            model_id="model2", provider_id="provider2", model_type="embedding"
+        ),
+        make_openai_model(model_id="model3", provider_id="provider3", model_type="llm"),
+        make_openai_model(
+            model_id="model4", provider_id="provider4", model_type="embedding"
+        ),
     )
     mock_lsc = mocker.patch("app.endpoints.models.AsyncOgxClientHolder.get_client")
     mock_lsc.return_value = mock_client
@@ -349,13 +336,15 @@ async def test_models_endpoint_handler_model_list_retrieved_with_query_parameter
 
     # Mock the LlamaStack client
     mock_client = mocker.AsyncMock()
-    mock_client.models.list.return_value = ListModelsResponse.model_construct(
-        data=[
-            _make_model("model1", "provider1", "llm"),
-            _make_model("model2", "provider2", "embedding"),
-            _make_model("model3", "provider3", "llm"),
-            _make_model("model4", "provider4", "embedding"),
-        ]
+    mock_client.openai.list.return_value = make_openai_models_list_response(
+        make_openai_model(model_id="model1", provider_id="provider1", model_type="llm"),
+        make_openai_model(
+            model_id="model2", provider_id="provider2", model_type="embedding"
+        ),
+        make_openai_model(model_id="model3", provider_id="provider3", model_type="llm"),
+        make_openai_model(
+            model_id="model4", provider_id="provider4", model_type="embedding"
+        ),
     )
     mock_lsc = mocker.patch("app.endpoints.models.AsyncOgxClientHolder.get_client")
     mock_lsc.return_value = mock_client
@@ -441,9 +430,9 @@ async def test_models_endpoint_llama_stack_connection_error(
     }
 
     # mock AsyncOgxClientHolder to raise APIConnectionError
-    # when models.list() method is called
+    # when openai.list() method is called
     mock_client = mocker.AsyncMock()
-    mock_client.models.list.side_effect = APIConnectionError(request=None)  # type: ignore
+    mock_client.openai.list.side_effect = APIConnectionError(request=None)  # type: ignore
     mock_client_holder = mocker.patch("app.endpoints.models.AsyncOgxClientHolder")
     mock_client_holder.return_value.get_client.return_value = mock_client
 

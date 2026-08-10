@@ -100,7 +100,7 @@ def _build_base_mock_client(mocker: MockerFixture) -> Any:
     mock_client = mocker.AsyncMock()
 
     # Model list
-    mock_client.models.list.return_value = make_openai_models_list_response(
+    mock_client.openai.list.return_value = make_openai_models_list_response(
         make_openai_model()
     )
 

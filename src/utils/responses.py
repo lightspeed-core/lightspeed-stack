@@ -1329,7 +1329,7 @@ async def check_model_configured(
         HTTPException: If there's a connection error or other API error
     """
     try:
-        models = parse_model_list_response(await client.models.list())
+        models = parse_model_list_response(await client.openai.list())
         for model in models:
             if model.identifier == model_id:
                 return True
@@ -1395,7 +1395,7 @@ async def select_model_for_responses(
 
     # 3. Fetch models list and select the first LLM model (model_type="llm")
     try:
-        models = parse_model_list_response(await client.models.list())
+        models = parse_model_list_response(await client.openai.list())
     except APIConnectionError as e:
         error_response = ServiceUnavailableResponse(
             backend_name="OGX",

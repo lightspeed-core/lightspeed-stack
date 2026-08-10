@@ -184,7 +184,7 @@ async def create_vector_store(
 
         return VectorStoreResponse(
             id=vector_store.id,
-            name=vector_store.name,
+            name=vector_store.name or "",
             created_at=vector_store.created_at,
             last_active_at=vector_store.last_active_at,
             expires_at=vector_store.expires_at,
@@ -236,7 +236,7 @@ async def list_vector_stores(
         data = [
             VectorStoreResponse(
                 id=vs.id,
-                name=vs.name,
+                name=vs.name or "",
                 created_at=vs.created_at,
                 last_active_at=vs.last_active_at,
                 expires_at=vs.expires_at or None,
@@ -294,7 +294,7 @@ async def get_vector_store(
 
         return VectorStoreResponse(
             id=vector_store.id,
-            name=vector_store.name,
+            name=vector_store.name or "",
             created_at=vector_store.created_at,
             last_active_at=vector_store.last_active_at,
             expires_at=vector_store.expires_at,
@@ -358,7 +358,7 @@ async def update_vector_store(
 
         return VectorStoreResponse(
             id=vector_store.id,
-            name=vector_store.name,
+            name=vector_store.name or "",
             created_at=vector_store.created_at,
             last_active_at=vector_store.last_active_at,
             expires_at=vector_store.expires_at,

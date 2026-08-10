@@ -188,7 +188,7 @@ async def _get_default_model_id() -> str:
     )
     client = AsyncOgxClientHolder().get_client()
     try:
-        models = parse_model_list_response(await client.models.list())
+        models = parse_model_list_response(await client.openai.list())
     except APIConnectionError as e:
         error_response = ServiceUnavailableResponse(
             backend_name="OGX",

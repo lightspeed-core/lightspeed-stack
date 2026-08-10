@@ -72,7 +72,7 @@ def _build_mock_client(mocker: MockerFixture) -> Any:
     """Build a mock Llama Stack client for responses integration tests.
 
     Returns a fully-configured AsyncMock client with sensible defaults for
-    responses.create, models.list, shields.list, vector_stores.list, and
+    responses.create, openai.list, shields.list, vector_stores.list, and
     conversations.create.
     """
     mock_client = mocker.AsyncMock()
@@ -93,7 +93,7 @@ def _build_mock_client(mocker: MockerFixture) -> Any:
     mock_response.model_dump.return_value = _RESPONSE_DUMP.copy()
     mock_client.responses.create = mocker.AsyncMock(return_value=mock_response)
 
-    mock_client.models.list.return_value = make_openai_models_list_response(
+    mock_client.openai.list.return_value = make_openai_models_list_response(
         make_openai_model()
     )
 
