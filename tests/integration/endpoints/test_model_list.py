@@ -13,7 +13,10 @@ from app.endpoints.models import models_endpoint_handler
 from authentication.interface import AuthTuple
 from configuration import AppConfig
 from models.api.requests import ModelFilter
-from tests.integration.conftest import make_openai_model, make_openai_models_list_response
+from tests.integration.conftest import (
+    make_openai_model,
+    make_openai_models_list_response,
+)
 
 
 @pytest.fixture(name="mock_ogx_client")

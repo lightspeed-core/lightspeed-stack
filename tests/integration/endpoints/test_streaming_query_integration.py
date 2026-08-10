@@ -14,7 +14,10 @@ from authentication.interface import AuthTuple
 from configuration import AppConfig
 from models.api.requests import QueryRequest
 from models.common.query import Attachment
-from tests.integration.conftest import make_openai_model, make_openai_models_list_response
+from tests.integration.conftest import (
+    make_openai_model,
+    make_openai_models_list_response,
+)
 
 
 @pytest.fixture(name="mock_streaming_ogx_client")
