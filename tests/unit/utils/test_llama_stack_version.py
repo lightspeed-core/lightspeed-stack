@@ -3,7 +3,7 @@
 from typing import Any
 
 import pytest
-from ogx_client import APIConnectionError
+from ogx_client import ApiException
 from ogx_client.models.version_info import VersionInfo
 from pytest_mock import MockerFixture
 from pytest_subtests import SubTests
@@ -122,14 +122,14 @@ async def test_check_llama_stack_version_too_big_version(
 async def test_check_llama_stack_version_retries_on_connection_error(
     mocker: MockerFixture,
 ) -> None:
-    """Test that check_llama_stack_version retries on APIConnectionError."""
+    """Test that check_llama_stack_version retries on ApiException."""
     mock_client = mocker.AsyncMock()
     mock_sleep = mocker.patch("utils.llama_stack_version.asyncio.sleep")
 
     # Fail twice with connection error, then succeed
     mock_client.inspect.version.side_effect = [
-        APIConnectionError(request=mocker.MagicMock()),
-        APIConnectionError(request=mocker.MagicMock()),
+        ApiException(status=None),
+        ApiException(status=None),
         VersionInfo(version=MINIMAL_SUPPORTED_LLAMA_STACK_VERSION),
     ]
 
@@ -147,11 +147,9 @@ async def test_check_llama_stack_version_raises_after_max_retries(
     mock_client = mocker.AsyncMock()
     mock_sleep = mocker.patch("utils.llama_stack_version.asyncio.sleep")
 
-    mock_client.inspect.version.side_effect = APIConnectionError(
-        request=mocker.MagicMock()
-    )
+    mock_client.inspect.version.side_effect = ApiException(status=None)
 
-    with pytest.raises(APIConnectionError):
+    with pytest.raises(ApiException):
         await check_llama_stack_version(mock_client, max_retries=3, retry_delay=1)
 
     assert mock_client.inspect.version.call_count == 3

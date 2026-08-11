@@ -139,7 +139,7 @@ async def test_health_readiness_client_error(
     This integration test verifies:
     - RuntimeError from uninitialized client is NOT caught by the endpoint
     - Error propagates from the endpoint handler (desired behavior)
-    - The endpoint does not catch RuntimeError, only APIConnectionError
+    - The endpoint does not catch RuntimeError, only ApiException
 
     Parameters:
     ----------

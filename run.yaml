@@ -59,6 +59,8 @@ providers:
     provider_type: inline::reference
 server:
   port: 8321
+  # OGX 1.3+ requires TLS by default; e2e/local use plain HTTP.
+  insecure: true
 storage:
   backends:
     kv_default: # Define the storage backend type for RAG, in this case registry and RAG are unified i.e. information on registered resources (e.g. models, vector_stores) are saved together with the RAG chunks

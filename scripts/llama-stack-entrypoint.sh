@@ -19,9 +19,10 @@ if [ -f "$LIGHTSPEED_CONFIG" ]; then
 
     if [ -f "$ENRICHED_CONFIG" ] && [ "$ENRICHMENT_FAILED" -eq 0 ]; then
         echo "Using enriched config: $ENRICHED_CONFIG"
-        exec ogx stack run "$ENRICHED_CONFIG"
+        # OGX 1.3+ requires TLS unless --insecure is set (e2e/local HTTP).
+        exec ogx stack run --insecure "$ENRICHED_CONFIG"
     fi
 fi
 
 echo "Using original config: $INPUT_CONFIG"
-exec ogx stack run "$INPUT_CONFIG"
+exec ogx stack run --insecure "$INPUT_CONFIG"

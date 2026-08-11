@@ -4,7 +4,7 @@
 
 import pytest
 from fastapi import HTTPException
-from ogx_client import APIConnectionError
+from ogx_client import ApiException
 from ogx_client.models.provider_info import ProviderInfo
 from pytest_mock import MockerFixture
 
@@ -99,7 +99,7 @@ async def test_get_file_search_tools_raises_503_on_provider_connection_error(
     """Raise HTTP 503 when Llama Stack is unreachable during provider discovery."""
     client = mocker.AsyncMock()
     client.providers.list = mocker.AsyncMock(
-        side_effect=APIConnectionError(message="down", request=mocker.Mock())
+        side_effect=ApiException(status=None, reason="down")
     )
 
     with pytest.raises(HTTPException) as exc_info:

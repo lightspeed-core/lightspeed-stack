@@ -92,9 +92,9 @@ async def run_shield_moderation_v2(
 
         try:
             shield_result = await shield.run(input_text)
-        # APIConnectionError and APIStatusError from ogx should not be raised from model_request,
+        # ApiException from ogx should not be raised from model_request,
         # because they will be caught inside AsyncOpenAI and transferred into openai's
-        # APIConnectionError. The openai's exceptions will further transferred into ModelHTTPError
+        # APIStatusError. The openai's exceptions will further transferred into ModelHTTPError
         # or ModelAPIError by _map_api_errors in OpenAIResponseModel.
         except (AgentRunError, RuntimeError) as exc:
             model_id = getattr(shield_config.config, "model_id", "unknown-shield-model")

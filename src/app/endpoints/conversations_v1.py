@@ -4,10 +4,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from ogx_api import ConversationNotFoundError, InvalidParameterError
-from ogx_client import (
-    APIConnectionError,
-    APIStatusError,
-)
+from ogx_client import ApiException
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.database import get_session
@@ -273,15 +270,21 @@ async def get_conversation_endpoint_handler(  # pylint: disable=too-many-locals,
             chat_history=chat_history,
         )
 
-    except APIConnectionError as e:
-        logger.error("Unable to connect to Llama Stack: %s", e)
-        response = ServiceUnavailableResponse(
-            backend_name="OGX", cause=str(e)
+    except ApiException as e:
+        if not e.status:
+            logger.error("Unable to connect to Llama Stack: %s", e)
+            response = ServiceUnavailableResponse(
+                backend_name="OGX",
+            ).model_dump()
+            raise HTTPException(**response) from e
+        # In library mode, ConversationNotFoundError is raised instead of ApiException
+        logger.error("Conversation not found: %s", e)
+        response = NotFoundResponse(
+            resource="conversation", resource_id=normalized_conv_id
         ).model_dump()
         raise HTTPException(**response) from e
-
-    except (APIStatusError, ConversationNotFoundError) as e:
-        # In library mode, ConversationNotFoundError is raised instead of APIStatusError
+    except ConversationNotFoundError as e:
+        # In library mode, ConversationNotFoundError is raised instead of ApiException
         logger.error("Conversation not found: %s", e)
         response = NotFoundResponse(
             resource="conversation", resource_id=normalized_conv_id
@@ -384,12 +387,17 @@ async def delete_conversation_endpoint_handler(
             delete_response.deleted,
         )
 
-    except APIConnectionError as e:
-        response = ServiceUnavailableResponse(backend_name="OGX", cause=str(e))
-        raise HTTPException(**response.model_dump()) from e
-
-    except (APIStatusError, ConversationNotFoundError, InvalidParameterError):
-        # In library mode, ConversationNotFoundError is raised instead of APIStatusError
+    except ApiException as e:
+        if not e.status:
+            response = ServiceUnavailableResponse(backend_name="OGX")
+            raise HTTPException(**response.model_dump()) from e
+        # In library mode, ConversationNotFoundError is raised instead of ApiException
+        logger.warning(
+            "Conversation %s in LlamaStack not found. Treating as already deleted.",
+            normalized_conv_id,
+        )
+    except (ConversationNotFoundError, InvalidParameterError):
+        # In library mode, ConversationNotFoundError is raised instead of ApiException
         logger.warning(
             "Conversation %s in LlamaStack not found. Treating as already deleted.",
             normalized_conv_id,
@@ -460,8 +468,7 @@ async def update_conversation_endpoint_handler(
 
     # If reached this, user is authorized to update this conversation
     try:
-        conversation = retrieve_conversation(normalized_conv_id)
-        if conversation is None:
+        if retrieve_conversation(normalized_conv_id) is None:
             response = NotFoundResponse(
                 resource="conversation", resource_id=normalized_conv_id
             ).model_dump()
@@ -520,14 +527,20 @@ async def update_conversation_endpoint_handler(
             message="Topic summary updated successfully",
         )
 
-    except APIConnectionError as e:
-        response = ServiceUnavailableResponse(
-            backend_name="OGX", cause=str(e)
+    except ApiException as e:
+        if not e.status:
+            response = ServiceUnavailableResponse(
+                backend_name="OGX",
+            ).model_dump()
+            raise HTTPException(**response) from e
+        # In library mode, ConversationNotFoundError is raised instead of ApiException
+        logger.error("Conversation not found: %s", e)
+        response = NotFoundResponse(
+            resource="conversation", resource_id=normalized_conv_id
         ).model_dump()
         raise HTTPException(**response) from e
-
-    except (APIStatusError, ConversationNotFoundError) as e:
-        # In library mode, ConversationNotFoundError is raised instead of APIStatusError
+    except ConversationNotFoundError as e:
+        # In library mode, ConversationNotFoundError is raised instead of ApiException
         logger.error("Conversation not found: %s", e)
         response = NotFoundResponse(
             resource="conversation", resource_id=normalized_conv_id

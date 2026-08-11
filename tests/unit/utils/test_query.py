@@ -9,6 +9,7 @@ from typing import Any
 import psycopg2
 import pytest
 from fastapi import HTTPException
+from ogx_client import ApiException
 from pydantic_ai.messages import ImageUrl
 from pytest_mock import MockerFixture
 from sqlalchemy.exc import SQLAlchemyError
@@ -311,11 +312,10 @@ class TestHandleKnownApistatusErrors:
 
     def test_context_length_exceeded(self) -> None:
         """Test handling context length exceeded error."""
-        error = type(
-            "APIStatusError",
-            (),
-            {"status_code": 400, "message": "context_length_exceeded: prompt too long"},
-        )()
+        error = ApiException(
+            status=400,
+            reason="context_length_exceeded: prompt too long",
+        )
         result = handle_known_apistatus_errors(error, "model1")
         assert isinstance(result, PromptTooLongResponse)
         detail = result.model_dump()["detail"]
@@ -325,9 +325,7 @@ class TestHandleKnownApistatusErrors:
 
     def test_quota_exceeded(self) -> None:
         """Test handling quota exceeded error."""
-        error = type(
-            "APIStatusError", (), {"status_code": 429, "message": "Rate limit exceeded"}
-        )()
+        error = ApiException(status=429, reason="Rate limit exceeded")
         result = handle_known_apistatus_errors(error, "model1")
         assert isinstance(result, QuotaExceededResponse)
         detail = result.model_dump()["detail"]
@@ -335,11 +333,7 @@ class TestHandleKnownApistatusErrors:
 
     def test_generic_error(self) -> None:
         """Test handling generic error."""
-        error = type(
-            "APIStatusError",
-            (),
-            {"status_code": 500, "message": "Internal server error"},
-        )()
+        error = ApiException(status=500, reason="Internal server error")
         result = handle_known_apistatus_errors(error, "model1")
         assert isinstance(result, InternalServerErrorResponse)
         detail = result.model_dump()["detail"]

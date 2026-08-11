@@ -6,7 +6,7 @@ from typing import Any
 
 import pytest
 from fastapi import HTTPException, Request, status
-from ogx_client import APIConnectionError, BadRequestError
+from ogx_client import ApiException, BadRequestError
 from pytest_mock import MockerFixture
 
 from app.endpoints.rags import (
@@ -45,7 +45,7 @@ async def test_rags_endpoint_connection_error(
     """Test that /rags endpoint raises HTTP 503 if Llama Stack connection fails."""
     mocker.patch("app.endpoints.rags.configuration", minimal_config)
     mock_client = mocker.AsyncMock()
-    mock_client.vector_stores.list.side_effect = APIConnectionError(request=None)  # type: ignore
+    mock_client.vector_stores.list.side_effect = ApiException(status=None)  # type: ignore
     mocker.patch(
         "app.endpoints.rags.AsyncOgxClientHolder"
     ).return_value.get_client.return_value = mock_client
@@ -151,11 +151,7 @@ async def test_rag_info_endpoint_rag_not_found(
     mocker.patch("app.endpoints.rags.configuration", minimal_config)
     mock_client = mocker.AsyncMock()
     mock_client.vector_stores.retrieve = mocker.AsyncMock(
-        side_effect=BadRequestError(
-            message="RAG not found",
-            response=mocker.Mock(request=None),
-            body=None,
-        )
+        side_effect=BadRequestError(status=400, reason="RAG not found")
     )  # type: ignore
     mocker.patch(
         "app.endpoints.rags.AsyncOgxClientHolder"
@@ -182,9 +178,7 @@ async def test_rag_info_endpoint_connection_error(
     """Test that /rags/{rag_id} endpoint raises HTTP 503 if Llama Stack connection fails."""
     mocker.patch("app.endpoints.rags.configuration", minimal_config)
     mock_client = mocker.AsyncMock()
-    mock_client.vector_stores.retrieve.side_effect = APIConnectionError(
-        request=None  # type: ignore
-    )
+    mock_client.vector_stores.retrieve.side_effect = ApiException(status=None)
     mocker.patch(
         "app.endpoints.rags.AsyncOgxClientHolder"
     ).return_value.get_client.return_value = mock_client

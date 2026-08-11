@@ -33,7 +33,7 @@ from a2a.types import (
 )
 from a2a.utils import new_agent_text_message, new_task
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from ogx_client import APIConnectionError, APIStatusError
+from ogx_client import ApiException
 from pydantic_ai import AgentRunResultEvent
 from pydantic_ai.exceptions import AgentRunError
 from pydantic_ai.messages import (
@@ -378,7 +378,7 @@ class A2AAgentExecutor(AgentExecutor):
                 configuration,
                 shields=query_request.shield_ids,
             )
-        except (AgentRunError, APIStatusError, APIConnectionError, RuntimeError) as e:
+        except (AgentRunError, ApiException, RuntimeError) as e:
             error_response = map_agent_inference_error(e, query_request.model or "")
             logger.error("Error preparing A2A agent: %s", str(e), exc_info=True)
             await task_updater.update_status(
@@ -437,7 +437,7 @@ class A2AAgentExecutor(AgentExecutor):
             ):
                 aggregator.process_event(a2a_event)
                 await event_queue.enqueue_event(a2a_event)
-        except (AgentRunError, APIStatusError, APIConnectionError, RuntimeError) as e:
+        except (AgentRunError, ApiException, RuntimeError) as e:
             error_response = map_agent_inference_error(e, responses_params.model)
             logger.error("Error during A2A agent run: %s", str(e), exc_info=True)
             await task_updater.update_status(

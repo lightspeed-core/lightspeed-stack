@@ -7,7 +7,7 @@ from typing import Any, Literal, Optional, cast
 
 from fastapi import HTTPException
 from ogx_api import OpenAIResponseOutput
-from ogx_client import APIConnectionError, APIStatusError, AsyncOgxClient
+from ogx_client import ApiException, AsyncOgxClient
 from ogx_client.models.add_items_request import AddItemsRequest
 from ogx_client.models.open_ai_response_input_function_tool_call_output import (
     OpenAIResponseInputFunctionToolCallOutput as FunctionCallOutput,
@@ -551,13 +551,13 @@ async def append_turn_items_to_conversation(
             conversation_id,
             add_items_request=build_add_items_request(items),
         )
-    except APIConnectionError as e:
-        error_response = ServiceUnavailableResponse(
-            backend_name="OGX",
-            cause=str(e),
-        )
-        raise HTTPException(**error_response.model_dump()) from e
-    except APIStatusError as e:
+    except ApiException as e:
+        if not e.status:
+            error_response = ServiceUnavailableResponse(
+                backend_name="OGX",
+            )
+            raise HTTPException(**error_response.model_dump()) from e
+
         error_response = InternalServerErrorResponse.generic()
         raise HTTPException(**error_response.model_dump()) from e
 
@@ -589,13 +589,13 @@ async def get_all_conversation_items(
             has_more = page.has_more
             after = page.last_id
         return items
-    except APIConnectionError as e:
-        error_response = ServiceUnavailableResponse(
-            backend_name="OGX",
-            cause=str(e),
-        )
-        raise HTTPException(**error_response.model_dump()) from e
-    except APIStatusError as e:
+    except ApiException as e:
+        if not e.status:
+            error_response = ServiceUnavailableResponse(
+                backend_name="OGX",
+            )
+            raise HTTPException(**error_response.model_dump()) from e
+
         error_response = InternalServerErrorResponse.generic()
         raise HTTPException(**error_response.model_dump()) from e
 
@@ -633,12 +633,12 @@ async def append_turn_to_conversation(
                 ]
             ),
         )
-    except APIConnectionError as e:
-        error_response = ServiceUnavailableResponse(
-            backend_name="OGX",
-            cause=str(e),
-        )
-        raise HTTPException(**error_response.model_dump()) from e
-    except APIStatusError as e:
+    except ApiException as e:
+        if not e.status:
+            error_response = ServiceUnavailableResponse(
+                backend_name="OGX",
+            )
+            raise HTTPException(**error_response.model_dump()) from e
+
         error_response = InternalServerErrorResponse.generic()
         raise HTTPException(**error_response.model_dump()) from e

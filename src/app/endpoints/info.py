@@ -3,7 +3,7 @@
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from ogx_client import APIConnectionError
+from ogx_client import ApiException
 
 from authentication import get_auth_dependency
 from authentication.interface import AuthTuple
@@ -83,7 +83,7 @@ async def info_endpoint_handler(
             llama_stack_version=llama_stack_version,
         )
     # connection to Llama Stack server
-    except APIConnectionError as e:
+    except ApiException as e:
         logger.error("Unable to connect to Llama Stack: %s", e)
-        response = ServiceUnavailableResponse(backend_name="OGX", cause=str(e))
+        response = ServiceUnavailableResponse(backend_name="OGX")
         raise HTTPException(**response.model_dump()) from e

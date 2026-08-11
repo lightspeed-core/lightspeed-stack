@@ -9,8 +9,7 @@ from fastapi import HTTPException
 from fastapi.responses import StreamingResponse
 from ogx_api import OpenAIResponseObject
 from ogx_api.openai_responses import OpenAIResponseMessage
-from ogx_client import APIConnectionError, AsyncOgxClient
-from ogx_client import APIStatusError as LLSApiStatusError
+from ogx_client import ApiException
 from openai._exceptions import APIStatusError as OpenAIAPIStatusError
 from pytest_mock import MockerFixture
 
@@ -26,6 +25,7 @@ from models.common.turn_summary import RAGContext, TurnSummary
 from observability.formats.responses import ResponsesEventData
 from observability.splunk import _fire_and_forget_tasks
 from tests.unit.app.endpoints.test_responses import build_api_params_and_context
+from tests.unit.conftest import mock_async_ogx_client
 
 MODULE = "app.endpoints.responses"
 TELEMETRY_MODULE = "app.endpoints.responses_telemetry"
@@ -230,7 +230,7 @@ class TestSplunkTelemetryHooks:
     ) -> None:
         """Blocked moderation fires responses_shield_blocked telemetry."""
         request = _request_with_model_and_conv("Bad input")
-        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
+        mock_client = mock_async_ogx_client(mocker)
 
         mock_moderation = mocker.Mock()
         mock_moderation.decision = "blocked"
@@ -294,18 +294,16 @@ class TestSplunkTelemetryHooks:
         "exc_factory",
         [
             pytest.param(
-                lambda m: APIConnectionError(request=m.Mock()),
-                id="APIConnectionError",
+                lambda m: ApiException(status=None),
+                id="ApiException-connection",
             ),
             pytest.param(
                 lambda m: RuntimeError("context_length exceeded"),
                 id="RuntimeError-context-length",
             ),
             pytest.param(
-                lambda m: LLSApiStatusError(
-                    message="API error", response=m.Mock(request=None), body=None
-                ),
-                id="LLSApiStatusError",
+                lambda m: ApiException(status=500, reason="API error"),
+                id="ApiException-status",
             ),
             pytest.param(
                 lambda m: OpenAIAPIStatusError(
@@ -324,7 +322,7 @@ class TestSplunkTelemetryHooks:
     ) -> None:
         """Each error branch fires responses_error telemetry with fire_and_forget."""
         request = _request_with_model_and_conv("Hello")
-        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
+        mock_client = mock_async_ogx_client(mocker)
         mock_moderation = mocker.Mock()
         mock_moderation.decision = "passed"
 
@@ -377,7 +375,7 @@ class TestSplunkTelemetryHooks:
     ) -> None:
         """Successful non-streaming response fires responses_completed with token counts."""
         request = _request_with_model_and_conv("Hello")
-        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
+        mock_client = mock_async_ogx_client(mocker)
         mock_moderation = mocker.Mock()
         mock_moderation.decision = "passed"
 
@@ -467,7 +465,7 @@ class TestSplunkTelemetryHooks:
     ) -> None:
         """Blocked moderation in streaming fires responses_shield_blocked telemetry."""
         request = _request_with_model_and_conv("Bad", model="provider/model1")
-        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
+        mock_client = mock_async_ogx_client(mocker)
 
         mock_moderation = mocker.Mock()
         mock_moderation.decision = "blocked"
@@ -522,18 +520,16 @@ class TestSplunkTelemetryHooks:
         "exc_factory",
         [
             pytest.param(
-                lambda m: APIConnectionError(request=m.Mock()),
-                id="APIConnectionError",
+                lambda m: ApiException(status=None),
+                id="ApiException-connection",
             ),
             pytest.param(
                 lambda m: RuntimeError("context_length exceeded"),
                 id="RuntimeError-context-length",
             ),
             pytest.param(
-                lambda m: LLSApiStatusError(
-                    message="API error", response=m.Mock(request=None), body=None
-                ),
-                id="LLSApiStatusError",
+                lambda m: ApiException(status=500, reason="API error"),
+                id="ApiException-status",
             ),
             pytest.param(
                 lambda m: OpenAIAPIStatusError(
@@ -552,7 +548,7 @@ class TestSplunkTelemetryHooks:
     ) -> None:
         """Each streaming error branch fires responses_error telemetry with fire_and_forget."""
         request = _request_with_model_and_conv("Hello")
-        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
+        mock_client = mock_async_ogx_client(mocker)
         mock_moderation = mocker.Mock()
         mock_moderation.decision = "passed"
 
@@ -605,7 +601,7 @@ class TestSplunkTelemetryHooks:
     ) -> None:
         """Successful streaming fires responses_completed after consuming the stream."""
         request = _request_with_model_and_conv("Hi", model="provider/model1")
-        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
+        mock_client = mock_async_ogx_client(mocker)
         mock_moderation = mocker.Mock()
         mock_moderation.decision = "passed"
 
@@ -701,7 +697,7 @@ class TestSplunkTelemetryHooks:
     ) -> None:
         """When background_tasks is None, queue_responses_splunk_event is called but is a no-op."""
         request = _request_with_model_and_conv("Bad input")
-        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
+        mock_client = mock_async_ogx_client(mocker)
 
         mock_moderation = mocker.Mock()
         mock_moderation.decision = "blocked"
