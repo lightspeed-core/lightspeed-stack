@@ -524,6 +524,133 @@ def test_apply_high_level_inference_empty_is_noop() -> None:
     assert ls_config["providers"]["inference"] == [{"provider_id": "x"}]
 
 
+def test_apply_high_level_inference_registers_llm_model() -> None:
+    """An allowed model is registered as an LLM resource pointing at its provider."""
+    ls_config: dict[str, Any] = {"providers": {"inference": []}}
+    inference = {
+        "providers": [
+            {
+                "type": "openai",
+                "api_key_env": "OPENAI_API_KEY",
+                "allowed_models": ["gpt-4o-mini"],
+            }
+        ]
+    }
+    apply_high_level_inference(ls_config, inference)
+    models = ls_config["registered_resources"]["models"]
+    assert models == [
+        {
+            "model_id": "gpt-4o-mini",
+            "model_type": "llm",
+            "provider_id": "openai",
+            "provider_model_id": "gpt-4o-mini",
+        }
+    ]
+
+
+def test_apply_high_level_inference_registers_multiple_allowed_models() -> None:
+    """Every allowed model for a provider is registered, not just the first."""
+    ls_config: dict[str, Any] = {"providers": {"inference": []}}
+    inference = {
+        "providers": [
+            {
+                "type": "vllm",
+                "id": "vllm-prod",
+                "allowed_models": ["model-a", "model-b"],
+            }
+        ]
+    }
+    apply_high_level_inference(ls_config, inference)
+    model_ids = {m["model_id"] for m in ls_config["registered_resources"]["models"]}
+    assert model_ids == {"model-a", "model-b"}
+    assert all(
+        m["provider_id"] == "vllm-prod"
+        for m in ls_config["registered_resources"]["models"]
+    )
+
+
+def test_apply_high_level_inference_no_allowed_models_no_registration() -> None:
+    """A provider without allowed_models registers no LLM model."""
+    ls_config: dict[str, Any] = {"providers": {"inference": []}}
+    inference = {"providers": [{"type": "sentence_transformers"}]}
+    apply_high_level_inference(ls_config, inference)
+    assert ls_config["registered_resources"]["models"] == []
+
+
+def test_apply_high_level_inference_skips_already_registered_model() -> None:
+    """A model already present in registered_resources.models is not duplicated."""
+    ls_config: dict[str, Any] = {
+        "providers": {"inference": []},
+        "registered_resources": {
+            "models": [
+                {
+                    "model_id": "gpt-4o-mini",
+                    "model_type": "llm",
+                    "provider_id": "stale-provider",
+                    "provider_model_id": "gpt-4o-mini",
+                }
+            ]
+        },
+    }
+    inference = {"providers": [{"type": "openai", "allowed_models": ["gpt-4o-mini"]}]}
+    apply_high_level_inference(ls_config, inference)
+    models = ls_config["registered_resources"]["models"]
+    assert len(models) == 1
+    assert models[0]["provider_id"] == "stale-provider"
+
+
+def test_apply_high_level_inference_replacing_provider_evicts_its_stale_models() -> (
+    None
+):
+    """A later entry with the same provider_id drops the earlier entry's models."""
+    ls_config: dict[str, Any] = {"providers": {"inference": []}}
+    inference = {
+        "providers": [
+            {
+                "type": "vllm",
+                "id": "vllm-shared",
+                "allowed_models": ["model-old"],
+            },
+            {
+                "type": "vllm",
+                "id": "vllm-shared",
+                "allowed_models": ["model-new"],
+            },
+        ]
+    }
+    apply_high_level_inference(ls_config, inference)
+    models = ls_config["registered_resources"]["models"]
+    model_ids = {m["model_id"] for m in models}
+    assert model_ids == {"model-new"}
+    assert all(m["provider_id"] == "vllm-shared" for m in models)
+
+
+def test_apply_high_level_inference_replacing_provider_keeps_baseline_models() -> None:
+    """Eviction only removes models this call registered, not pre-existing ones."""
+    ls_config: dict[str, Any] = {
+        "providers": {"inference": []},
+        "registered_resources": {
+            "models": [
+                {
+                    "model_id": "baseline-model",
+                    "model_type": "llm",
+                    "provider_id": "vllm-shared",
+                    "provider_model_id": "baseline-model",
+                }
+            ]
+        },
+    }
+    inference = {
+        "providers": [
+            {"type": "vllm", "id": "vllm-shared", "allowed_models": ["model-a"]},
+            {"type": "vllm", "id": "vllm-shared", "allowed_models": ["model-b"]},
+        ]
+    }
+    apply_high_level_inference(ls_config, inference)
+    model_ids = {m["model_id"] for m in ls_config["registered_resources"]["models"]}
+    assert model_ids == {"baseline-model", "model-b"}
+
+
 def test_provider_type_map_covers_every_literal_value() -> None:
     """Every UnifiedInferenceProvider.type value has a PROVIDER_TYPE_MAP entry."""
     literal_values = set(

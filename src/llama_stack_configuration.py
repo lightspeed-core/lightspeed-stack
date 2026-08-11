@@ -1064,6 +1064,130 @@ def _strip_default_openai_inference(ls_config: dict[str, Any]) -> None:
     ]
 
 
+def _replace_or_append_inference_provider(
+    inference_list: list[Any], entry: dict[str, Any]
+) -> None:
+    """Replace an inference entry with the same provider_id, else append.
+
+    Baseline ${env.OPENAI_API_KEY:+openai} matches as "openai" (LCORE-3607).
+
+    Parameters:
+        inference_list: Mutable providers.inference list.
+        entry: New provider entry to install.
+    """
+    provider_id = entry["provider_id"]
+    for index, existing in enumerate(inference_list):
+        if not isinstance(existing, dict):
+            continue
+        existing_id = _matchable_provider_id(existing.get("provider_id"))
+        if existing_id == provider_id:
+            logger.info(
+                "Replacing existing inference provider with "
+                "provider_id=%r; a later high-level entry overwrote it",
+                provider_id,
+            )
+            inference_list[index] = entry
+            return
+    inference_list.append(entry)
+
+
+def _build_inference_entry(
+    provider: dict[str, Any], emitted_id: str, ls_provider_type: str
+) -> tuple[dict[str, Any], list[str]]:
+    """Build a providers.inference entry from one high-level provider.
+
+    Parameters:
+        provider: One high-level ``inference.providers`` entry.
+        emitted_id: The provider_id to emit (explicit id or hyphenated type).
+        ls_provider_type: Llama Stack provider_type from :data:`PROVIDER_TYPE_MAP`.
+
+    Returns:
+        tuple[dict[str, Any], list[str]]: The provider entry, and its
+        ``allowed_models`` (empty list when unset).
+    """
+    entry: dict[str, Any] = {
+        "provider_id": emitted_id,
+        "provider_type": ls_provider_type,
+    }
+
+    provider_config: dict[str, Any] = {}
+    if provider.get("extra"):
+        provider_config.update(provider["extra"])
+    if provider.get("api_key_env"):
+        key_field = API_KEY_FIELD_MAP.get(ls_provider_type, "api_key")
+        provider_config[key_field] = "${env." + provider["api_key_env"] + "}"
+    allowed_models = provider.get("allowed_models") or []
+    if allowed_models:
+        provider_config["allowed_models"] = allowed_models
+    if provider_config:
+        entry["config"] = provider_config
+
+    return entry, allowed_models
+
+
+class _LLMModelRegistrar:  # pylint: disable=too-few-public-methods
+    """Owns ``registered_resources.models`` writes for one synthesis call.
+
+    ``apply_high_level_inference`` needs to register a model per
+    ``allowed_models`` entry, dedupe against models registered before the
+    call (baseline, native_override, BYOK, ...), and — when a later
+    high-level entry reuses a ``provider_id`` — evict the models it
+    registered for that provider's earlier declaration. Bundling those three
+    pieces of state here keeps that bookkeeping out of the caller instead of
+    threading a list, a set, and a dict through free-function parameters.
+    """
+
+    def __init__(self, ls_config: dict[str, Any]) -> None:
+        self._models = ls_config.setdefault("registered_resources", {}).setdefault(
+            "models", []
+        )
+        self._known_ids = {
+            m.get("model_id") for m in self._models if isinstance(m, dict)
+        }
+        self._owned_by_provider: dict[str, list[str]] = {}
+
+    def sync(self, provider_id: str, allowed_models: list[str]) -> None:
+        """Register ``allowed_models`` for ``provider_id``, replacing its prior set.
+
+        A later high-level entry with the same emitted ``provider_id`` fully
+        replaces the earlier one's provider config (see
+        ``_replace_or_append_inference_provider``), so any model this
+        registrar added for it earlier in the same call is stale and must be
+        evicted first — otherwise a model no longer served by the replaced
+        provider would linger in ``registered_resources.models``.
+
+        Parameters:
+            provider_id: provider_id of the inference provider offering the
+                models.
+            allowed_models: Model names to register.
+        """
+        stale = set(self._owned_by_provider.pop(provider_id, []))
+        if stale:
+            self._models[:] = [
+                m
+                for m in self._models
+                if not (isinstance(m, dict) and m.get("model_id") in stale)
+            ]
+            self._known_ids.difference_update(stale)
+
+        added = []
+        for model_name in allowed_models:
+            if model_name in self._known_ids:
+                continue
+            self._models.append(
+                {
+                    "model_id": model_name,
+                    "model_type": "llm",
+                    "provider_id": provider_id,
+                    "provider_model_id": model_name,
+                }
+            )
+            self._known_ids.add(model_name)
+            added.append(model_name)
+        if added:
+            self._owned_by_provider[provider_id] = added
+
+
 def apply_high_level_inference(
     ls_config: dict[str, Any], inference: dict[str, Any]
 ) -> None:
@@ -1082,6 +1206,14 @@ def apply_high_level_inference(
     Secrets are emitted as ``${env.<VAR>}`` references, never resolved
     values (R6).
 
+    Each of the provider's ``allowed_models`` is also registered as an LLM
+    entry in ``registered_resources.models`` (skipping any ``model_id`` already
+    present), so the model is usable even when the provider endpoint is
+    unreachable at startup — Llama Stack's auto-discovery otherwise requires a
+    live connection to list models. Replacing a provider (same emitted id)
+    also evicts the LLM entries this function registered for the earlier
+    declaration, so a superseded provider's models don't linger.
+
     Parameters:
         ls_config: The OGX configuration being synthesized (modified in
             place).
@@ -1097,43 +1229,18 @@ def apply_high_level_inference(
 
     providers_section = ls_config.setdefault("providers", {})
     inference_list = providers_section.setdefault("inference", [])
+    model_registrar = _LLMModelRegistrar(ls_config)
 
     for provider in providers:
         provider_type = provider["type"]
         emitted_id = provider.get("id") or provider_type.replace("_", "-")
         ls_provider_type = PROVIDER_TYPE_MAP[provider_type]
-        entry: dict[str, Any] = {
-            "provider_id": emitted_id,
-            "provider_type": ls_provider_type,
-        }
+        entry, allowed_models = _build_inference_entry(
+            provider, emitted_id, ls_provider_type
+        )
 
-        provider_config: dict[str, Any] = {}
-        if provider.get("extra"):
-            provider_config.update(provider["extra"])
-        if provider.get("api_key_env"):
-            key_field = API_KEY_FIELD_MAP.get(ls_provider_type, "api_key")
-            provider_config[key_field] = "${env." + provider["api_key_env"] + "}"
-        if provider.get("allowed_models"):
-            provider_config["allowed_models"] = provider["allowed_models"]
-        if provider_config:
-            entry["config"] = provider_config
-
-        # Replace a baseline provider with the same id, else append.
-        # Baseline ${env.OPENAI_API_KEY:+openai} matches as "openai" (LCORE-3607).
-        for index, existing in enumerate(inference_list):
-            if not isinstance(existing, dict):
-                continue
-            existing_id = _matchable_provider_id(existing.get("provider_id"))
-            if existing_id == emitted_id:
-                logger.info(
-                    "Replacing existing inference provider with "
-                    "provider_id=%r; a later high-level entry overwrote it",
-                    emitted_id,
-                )
-                inference_list[index] = entry
-                break
-        else:
-            inference_list.append(entry)
+        _replace_or_append_inference_provider(inference_list, entry)
+        model_registrar.sync(emitted_id, allowed_models)
 
     logger.info(
         "Applied %d high-level inference provider(s) to synthesized config",
