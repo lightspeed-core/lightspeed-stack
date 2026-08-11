@@ -69,6 +69,7 @@ from utils.endpoints import (
 )
 from utils.mcp_headers import mcp_headers_dependency
 from utils.mcp_oauth_probe import check_mcp_auth
+from utils.ogx_serialization import dump_ogx_model
 from utils.prompts import get_system_prompt
 from utils.query import (
     consume_query_tokens,
@@ -711,7 +712,7 @@ def _sanitize_response_dict(
     response object before it is forwarded to the client.
 
     Args:
-        response_dict: Mutable dict produced by ``model_dump`` on a response
+        response_dict: Mutable dict produced by ``dump_ogx_model`` on a response
             object.  Modified in-place.
         configured_mcp_labels: Set of ``server_label`` values that identify
             server-deployed MCP servers.
@@ -886,7 +887,7 @@ async def response_generator(
             ):
                 continue
 
-            chunk_dict = chunk.model_dump(exclude_none=True, by_alias=True)
+            chunk_dict = dump_ogx_model(chunk)
 
             # Create own sequence number for chunks to maintain order
             chunk_dict["sequence_number"] = sequence_number
@@ -1164,7 +1165,11 @@ async def handle_non_streaming_response(
         output_text,
     )
     configured_mcp_labels = {s.name for s in configuration.mcp_servers}
-    response_dict = api_response.model_dump(exclude_none=True)
+    response_dict = (
+        api_response.model_dump(exclude_none=True)
+        if context.moderation_result.decision == "blocked"
+        else dump_ogx_model(api_response)
+    )
     _sanitize_response_dict(
         response_dict,
         configured_mcp_labels,
