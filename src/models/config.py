@@ -3299,20 +3299,21 @@ class Configuration(ConfigurationBase):
             profile_invalid_resp = profile.get_invalid_resp()
 
         for shield in self.shields:
-            match shield.config:
-                case QuestionValidityConfig() as qv_config:
-                    if qv_config.model_prompt is None:
-                        qv_config.model_prompt = (
-                            profile_validation
-                            if profile_validation is not None
-                            else constants.DEFAULT_MODEL_PROMPT
-                        )
-                    if qv_config.invalid_question_response is None:
-                        qv_config.invalid_question_response = (
-                            profile_invalid_resp
-                            if profile_invalid_resp is not None
-                            else constants.DEFAULT_INVALID_QUESTION_RESPONSE
-                        )
+            if not isinstance(shield.config, QuestionValidityConfig):
+                continue
+            qv_config = shield.config
+            if qv_config.model_prompt is None:
+                qv_config.model_prompt = (
+                    profile_validation
+                    if profile_validation is not None
+                    else constants.DEFAULT_MODEL_PROMPT
+                )
+            if qv_config.invalid_question_response is None:
+                qv_config.invalid_question_response = (
+                    profile_invalid_resp
+                    if profile_invalid_resp is not None
+                    else constants.DEFAULT_INVALID_QUESTION_RESPONSE
+                )
         return self
 
     @model_validator(mode="after")
