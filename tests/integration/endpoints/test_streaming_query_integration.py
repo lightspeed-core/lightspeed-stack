@@ -49,7 +49,7 @@ def mock_llama_stack_streaming_fixture(
 
     mock_client.shields.list.return_value = []
 
-    mock_client.conversations.items.create = mocker.AsyncMock()
+    mock_client.items.create = mocker.AsyncMock()
 
     mock_vector_io_response = mocker.MagicMock()
     mock_vector_io_response.chunks = []

@@ -547,7 +547,7 @@ async def append_turn_items_to_conversation(
 
     items.extend(item.model_dump(exclude_none=True) for item in llm_output)
     try:
-        await client.conversations.items.create(
+        await client.items.create(
             conversation_id,
             add_items_request=build_add_items_request(items),
         )
@@ -580,7 +580,7 @@ async def get_all_conversation_items(
     has_more = True
     try:
         while has_more:
-            page = await client.conversations.items.list(
+            page = await client.items.list(
                 conversation_id=conversation_id_llama_stack,
                 order="asc",
                 after=after,
@@ -620,7 +620,7 @@ async def append_turn_to_conversation(
         assistant_message: The shield violation response message.
     """
     try:
-        await client.conversations.items.create(
+        await client.items.create(
             conversation_id,
             add_items_request=build_add_items_request(
                 [

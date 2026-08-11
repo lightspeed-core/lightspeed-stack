@@ -242,7 +242,7 @@ class TestSplunkTelemetryHooks:
         mock_moderation.refusal_response = mock_refusal
 
         _patch_handle_non_streaming_common(mocker, minimal_config)
-        mock_client.conversations.items.create = mocker.AsyncMock()
+        mock_client.items.create = mocker.AsyncMock()
         mock_api_response = mocker.Mock()
         mock_api_response.output = [mock_refusal]
         mock_api_response.model_dump.return_value = {
@@ -489,7 +489,7 @@ class TestSplunkTelemetryHooks:
             new=mocker.AsyncMock(return_value=None),
         )
         mocker.patch(f"{MODULE}.store_query_results")
-        mock_client.conversations.items.create = mocker.AsyncMock()
+        mock_client.items.create = mocker.AsyncMock()
 
         mock_queue = mocker.patch(f"{TELEMETRY_MODULE}.queue_responses_splunk_event")
 
@@ -713,7 +713,7 @@ class TestSplunkTelemetryHooks:
         mock_moderation.refusal_response = mock_refusal
 
         _patch_handle_non_streaming_common(mocker, minimal_config)
-        mock_client.conversations.items.create = mocker.AsyncMock()
+        mock_client.items.create = mocker.AsyncMock()
         mock_api_response = mocker.Mock()
         mock_api_response.output = [mock_refusal]
         mock_api_response.model_dump.return_value = {
