@@ -1593,7 +1593,7 @@ def generate_configuration(
 def main() -> None:
     """CLI entry point."""
     parser = ArgumentParser(
-        description="Enrich OGX config with Lightspeed values",
+        description="Enrich or synthesize OGX config from Lightspeed values",
     )
     parser.add_argument(
         "-c",
@@ -1605,20 +1605,32 @@ def main() -> None:
         "-i",
         "--input",
         default="run.yaml",
-        help="Input OGX config (default: run.yaml)",
+        help="Input OGX config for legacy enrichment mode; ignored "
+        "with --synthesize (default: run.yaml)",
     )
     parser.add_argument(
         "-o",
         "--output",
         default="run_.yaml",
-        help="Output enriched config (default: run_.yaml)",
+        help="Output config file (default: run_.yaml)",
+    )
+    parser.add_argument(
+        "--synthesize",
+        action="store_true",
+        help="Build a complete run.yaml from -c alone instead of enriching "
+        "an existing run.yaml given by -i",
     )
     args = parser.parse_args()
 
     with open(args.config, "r", encoding="utf-8") as f:
-        config = yaml.safe_load(f)
+        config = yaml.safe_load(f) or {}
 
-    generate_configuration(args.input, args.output, config)
+    if args.synthesize:
+        synthesize_to_file(
+            config, args.output, config_file_dir=str(Path(args.config).parent)
+        )
+    else:
+        generate_configuration(args.input, args.output, config)
 
 
 if __name__ == "__main__":

@@ -11,6 +11,7 @@ write-to-file step (persistent path, mode 0600).
 import logging
 import os
 import stat
+import sys
 from pathlib import Path
 from typing import Any, Optional, get_args
 
@@ -25,6 +26,7 @@ from llama_stack_configuration import (
     deep_merge_list_replace,
     ensure_mcp_tool_runtime,
     load_default_baseline,
+    main,
     migrate_config_dumb,
     synthesize_configuration,
     synthesize_to_file,
@@ -1210,6 +1212,103 @@ def test_migrate_config_dumb_rejects_non_mapping_inputs(tmp_path: Path) -> None:
     empty_run.write_text("", encoding="utf-8")
     with pytest.raises(ValueError, match="did not parse to a mapping"):
         migrate_config_dumb(str(empty_run), lcs_path, out_path)
+
+
+# ---------------------------------------------------------------------------
+# CLI entry point
+# ---------------------------------------------------------------------------
+
+
+def test_main_synthesize_flag_builds_run_yaml(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """--synthesize builds a complete run.yaml from -c alone."""
+    config_path = tmp_path / "lightspeed-stack.yaml"
+    config_path.write_text(
+        yaml.dump(
+            {
+                "llama_stack": {
+                    "config": {
+                        "baseline": "empty",
+                        "native_override": {"version": 2, "apis": ["inference"]},
+                    }
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    output_path = tmp_path / "run.yaml"
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "llama_stack_configuration.py",
+            "-c",
+            str(config_path),
+            "-o",
+            str(output_path),
+            "--synthesize",
+        ],
+    )
+    main()
+
+    result = yaml.safe_load(output_path.read_text(encoding="utf-8"))
+    assert result == {"version": 2, "apis": ["inference"]}
+
+
+def test_main_default_uses_legacy_enrichment(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Without --synthesize, the CLI keeps calling legacy generate_configuration."""
+    config_path = tmp_path / "lightspeed-stack.yaml"
+    config_path.write_text(yaml.dump({}), encoding="utf-8")
+    input_path = tmp_path / "run.yaml"
+    input_path.write_text(yaml.dump({"version": 2}), encoding="utf-8")
+    output_path = tmp_path / "run_.yaml"
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "llama_stack_configuration.py",
+            "-c",
+            str(config_path),
+            "-i",
+            str(input_path),
+            "-o",
+            str(output_path),
+        ],
+    )
+    main()
+
+    result = yaml.safe_load(output_path.read_text(encoding="utf-8"))
+    assert result["version"] == 2
+
+
+def test_main_synthesize_flag_handles_empty_config_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An empty/comment-only -c file loads as {} instead of crashing on None."""
+    config_path = tmp_path / "lightspeed-stack.yaml"
+    config_path.write_text("# only a comment\n", encoding="utf-8")
+    output_path = tmp_path / "run.yaml"
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "llama_stack_configuration.py",
+            "-c",
+            str(config_path),
+            "-o",
+            str(output_path),
+            "--synthesize",
+        ],
+    )
+    main()
+
+    assert output_path.exists()
 
 
 # ---------------------------------------------------------------------------
