@@ -14,6 +14,7 @@ from pydantic_ai_lightspeed.llamastack._provider import (
     OgxProvider,
 )
 from pydantic_ai_lightspeed.llamastack._transport import OgxServerTransport
+from tests.unit.conftest import attach_mock_api_client
 
 
 class TestOgxProviderProperties:
@@ -168,8 +169,7 @@ class TestFromOgxClient:
         mock_client = mocker.Mock(spec=AsyncOgxClient)
         mock_client.base_url = "http://my-server:8321/v1"
         mock_client.api_key = "test-key"
-        mock_client._client = mocker.Mock(spec=httpx.AsyncClient)
-        mock_client.default_headers = {}
+        attach_mock_api_client(mocker, mock_client)
 
         provider = OgxProvider.from_ogx_client(mock_client)
 
@@ -181,8 +181,7 @@ class TestFromOgxClient:
         mock_client = mocker.Mock(spec=AsyncOgxClient)
         mock_client.base_url = "http://my-server:8321"
         mock_client.api_key = "test-key"
-        mock_client._client = mocker.Mock(spec=httpx.AsyncClient)
-        mock_client.default_headers = {}
+        attach_mock_api_client(mocker, mock_client)
 
         provider = OgxProvider.from_ogx_client(mock_client)
 
@@ -195,8 +194,7 @@ class TestFromOgxClient:
         mock_client = mocker.Mock(spec=AsyncOgxClient)
         mock_client.base_url = "http://my-server:8321/"
         mock_client.api_key = "test-key"
-        mock_client._client = mocker.Mock(spec=httpx.AsyncClient)
-        mock_client.default_headers = {}
+        attach_mock_api_client(mocker, mock_client)
 
         provider = OgxProvider.from_ogx_client(mock_client)
 
@@ -208,8 +206,7 @@ class TestFromOgxClient:
         mock_client = mocker.Mock(spec=AsyncOgxClient)
         mock_client.base_url = "http://my-server:8321/v1"
         mock_client.api_key = "my-secret"
-        mock_client._client = mocker.Mock(spec=httpx.AsyncClient)
-        mock_client.default_headers = {}
+        attach_mock_api_client(mocker, mock_client)
 
         provider = OgxProvider.from_ogx_client(mock_client)
 
@@ -222,8 +219,7 @@ class TestFromOgxClient:
         mock_client = mocker.Mock(spec=AsyncOgxClient)
         mock_client.base_url = "http://my-server:8321/v1"
         mock_client.api_key = None
-        mock_client._client = mocker.Mock(spec=httpx.AsyncClient)
-        mock_client.default_headers = {}
+        attach_mock_api_client(mocker, mock_client)
 
         provider = OgxProvider.from_ogx_client(mock_client)
 
@@ -235,8 +231,7 @@ class TestFromOgxClient:
         mock_client.base_url = "http://my-server:8321/v1"
         mock_client.api_key = "test-key"
         inner_http = mocker.Mock(spec=httpx.AsyncClient)
-        mock_client._client = inner_http
-        mock_client.default_headers = {}
+        attach_mock_api_client(mocker, mock_client, async_http_client=inner_http)
 
         provider = OgxProvider.from_ogx_client(mock_client)
 
@@ -250,10 +245,12 @@ class TestFromOgxClient:
         mock_client.base_url = "http://my-server:8321/v1"
         mock_client.api_key = "test-key"
         inner_http = httpx.AsyncClient()
-        mock_client._client = inner_http
-        mock_client.default_headers = {
-            "X-OGX-Provider-Data": '{"azure_api_key": "token"}'
-        }
+        attach_mock_api_client(
+            mocker,
+            mock_client,
+            async_http_client=inner_http,
+            default_headers={"X-OGX-Provider-Data": '{"azure_api_key": "token"}'},
+        )
 
         provider = OgxProvider.from_ogx_client(mock_client)
 

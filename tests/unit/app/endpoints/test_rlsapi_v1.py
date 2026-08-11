@@ -14,10 +14,10 @@ from typing import Any, Optional
 import pytest
 from fastapi import HTTPException, status
 from ogx_client import APIConnectionError, APIStatusError
-from ogx_client.models.list_models_response import ListModelsResponse
-from ogx_client.models.model import Model
 from pydantic import ValidationError
 from pytest_mock import MockerFixture
+
+from tests.unit.conftest import make_openai_model, make_openai_models_list_response
 
 import constants
 from app.endpoints.rlsapi_v1 import (
@@ -362,23 +362,21 @@ async def test_get_default_model_id_errors(
     """Test _get_default_model_id fallback failures raise 503 responses."""
     mocker.patch("app.endpoints.rlsapi_v1.configuration", minimal_config)
 
-    mock_embedding_model = Model.model_construct(
-        id="sentence-transformers/all-mpnet-base-v2",
-        created=0,
-        owned_by="test",
-        object="model",
-        custom_metadata={"model_type": "embedding"},
+    mock_embedding_model = make_openai_model(
+        model_id="sentence-transformers/all-mpnet-base-v2",
+        provider_id="sentence-transformers",
+        model_type="embedding",
     )
 
     mock_client = mocker.Mock()
     mock_client.models = mocker.Mock()
 
     if failure_mode == "no_llm_models":
-        mock_client.models.list = mocker.AsyncMock(
-            return_value=ListModelsResponse.model_construct(data=[mock_embedding_model])
+        mock_client.openai.list = mocker.AsyncMock(
+            return_value=make_openai_models_list_response(mock_embedding_model)
         )
     else:
-        mock_client.models.list = mocker.AsyncMock(
+        mock_client.openai.list = mocker.AsyncMock(
             side_effect=APIConnectionError(request=mocker.Mock())
         )
 
@@ -410,18 +408,16 @@ async def test_config_error_503_matches_llm_error_503_shape(
     """
     mocker.patch("app.endpoints.rlsapi_v1.configuration", minimal_config)
 
-    mock_embedding_model = Model.model_construct(
-        id="sentence-transformers/all-mpnet-base-v2",
-        created=0,
-        owned_by="test",
-        object="model",
-        custom_metadata={"model_type": "embedding"},
+    mock_embedding_model = make_openai_model(
+        model_id="sentence-transformers/all-mpnet-base-v2",
+        provider_id="sentence-transformers",
+        model_type="embedding",
     )
 
     mock_client = mocker.Mock()
     mock_client.models = mocker.Mock()
-    mock_client.models.list = mocker.AsyncMock(
-        return_value=ListModelsResponse.model_construct(data=[mock_embedding_model])
+    mock_client.openai.list = mocker.AsyncMock(
+        return_value=make_openai_models_list_response(mock_embedding_model)
     )
 
     mock_client_holder = mocker.Mock()
@@ -454,27 +450,23 @@ async def test_get_default_model_id_auto_discovery_success(
     """Test _get_default_model_id returns first discovered LLM model ID."""
     mocker.patch("app.endpoints.rlsapi_v1.configuration", minimal_config)
 
-    mock_llm_model = Model.model_construct(
-        id="openai/gpt-4o-mini",
-        created=0,
-        owned_by="test",
-        object="model",
-        custom_metadata={"model_type": "llm"},
+    mock_llm_model = make_openai_model(
+        model_id="openai/gpt-4o-mini",
+        provider_id="openai",
+        model_type="llm",
     )
 
-    mock_embedding_model = Model.model_construct(
-        id="sentence-transformers/all-mpnet-base-v2",
-        created=0,
-        owned_by="test",
-        object="model",
-        custom_metadata={"model_type": "embedding"},
+    mock_embedding_model = make_openai_model(
+        model_id="sentence-transformers/all-mpnet-base-v2",
+        provider_id="sentence-transformers",
+        model_type="embedding",
     )
 
     mock_client = mocker.Mock()
     mock_client.models = mocker.Mock()
-    mock_client.models.list = mocker.AsyncMock(
-        return_value=ListModelsResponse.model_construct(
-            data=[mock_embedding_model, mock_llm_model]
+    mock_client.openai.list = mocker.AsyncMock(
+        return_value=make_openai_models_list_response(
+            mock_embedding_model, mock_llm_model
         )
     )
 

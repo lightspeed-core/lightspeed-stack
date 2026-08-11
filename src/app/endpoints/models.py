@@ -93,7 +93,7 @@ async def models_endpoint_handler(
         # try to get Llama Stack client
         client = AsyncOgxClientHolder().get_client()
         # retrieve and normalize models across OpenAI/Anthropic/Google list shapes
-        parsed_models = parse_model_list_response(await client.models.list())
+        parsed_models = parse_model_list_response(await client.openai.list())
 
         # optional filtering by model type
         if model_type.model_type is not None:

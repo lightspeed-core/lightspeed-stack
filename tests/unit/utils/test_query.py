@@ -9,8 +9,6 @@ from typing import Any
 import psycopg2
 import pytest
 from fastapi import HTTPException
-from ogx_client.models.list_models_response import ListModelsResponse
-from ogx_client.models.model import Model
 from pydantic_ai.messages import ImageUrl
 from pytest_mock import MockerFixture
 from sqlalchemy.exc import SQLAlchemyError
@@ -51,29 +49,6 @@ def mock_config_fixture() -> AppConfig:
     cfg = AppConfig()
     cfg.init_from_dict(config_dict)
     return cfg
-
-
-@pytest.fixture(name="mock_models")
-def mock_models_fixture() -> ListModelsResponse:
-    """Create an OpenAI-style OGX models list response."""
-    return ListModelsResponse.model_construct(
-        data=[
-            Model.model_construct(
-                id="provider1/model1",
-                created=0,
-                owned_by="test",
-                object="model",
-                custom_metadata={"model_type": "llm", "provider_id": "provider1"},
-            ),
-            Model.model_construct(
-                id="provider2/model2",
-                created=0,
-                owned_by="test",
-                object="model",
-                custom_metadata={"model_type": "llm", "provider_id": "provider2"},
-            ),
-        ]
-    )
 
 
 class TestStoreConversationIntoCache:

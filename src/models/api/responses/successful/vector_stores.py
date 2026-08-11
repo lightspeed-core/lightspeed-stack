@@ -1,5 +1,6 @@
 """Successful responses for vector stores and vector store files."""
 
+from collections.abc import Mapping
 from typing import Any, ClassVar, Optional
 
 from pydantic import Field
@@ -231,7 +232,7 @@ class VectorStoreFileResponse(AbstractSuccessfulResponse):
     id: str = Field(..., description="Vector store file ID")
     vector_store_id: str = Field(..., description="ID of the vector store")
     status: str = Field(..., description="File processing status")
-    attributes: Optional[dict[str, str | float | bool]] = Field(
+    attributes: Optional[Mapping[str, Any]] = Field(
         None,
         description=(
             "Set of up to 16 key-value pairs for storing additional information. "

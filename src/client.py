@@ -3,7 +3,7 @@
 import json
 import os
 import tempfile
-from typing import Optional, cast
+from typing import Any, Optional
 
 import yaml
 from fastapi import HTTPException
@@ -27,6 +27,31 @@ from utils.model_list import parse_model_list_response
 from utils.types import Singleton
 
 logger = get_logger(__name__)
+
+
+def read_provider_data(client: AsyncOgxClient) -> dict[str, Any]:
+    """Read provider data from a library or service client.
+
+    Library clients keep provider data on ``provider_data``. Service
+    clients store it as JSON in ``api_client.default_headers``.
+
+    Parameters:
+        client: Initialized OGX client (library or service).
+
+    Returns:
+        A mutable copy of the current provider data dict (empty if unset).
+    """
+    if isinstance(client, AsyncOGXAsLibraryClient):
+        return dict(client.provider_data or {})
+
+    raw = client.api_client.default_headers.get("X-OGX-Provider-Data")
+    if not raw:
+        return {}
+    try:
+        parsed = json.loads(raw)
+    except (json.JSONDecodeError, TypeError):
+        return {}
+    return parsed if isinstance(parsed, dict) else {}
 
 
 class AsyncOgxClientHolder(metaclass=Singleton):
@@ -235,7 +260,7 @@ class AsyncOgxClientHolder(metaclass=Singleton):
         """
         try:
             client = self.get_client()
-            models = parse_model_list_response(await client.models.list())
+            models = parse_model_list_response(await client.openai.list())
         except RuntimeError as e:
             logger.warning("Client not initialized, skipping model check: %s", e)
             return False, f"Client not initialized: {e!s}"
@@ -257,7 +282,7 @@ class AsyncOgxClientHolder(metaclass=Singleton):
             try:
                 await self.reload_library_client()
                 client = self.get_client()
-                reloaded_models = parse_model_list_response(await client.models.list())
+                reloaded_models = parse_model_list_response(await client.openai.list())
                 if any(m.identifier == model_id for m in reloaded_models):
                     logger.info(
                         "Model %s found after client reload",
@@ -290,46 +315,32 @@ class AsyncOgxClientHolder(metaclass=Singleton):
         if not updates:
             return self.get_client()
 
+        current_client = self.get_client()
+        provider_data = read_provider_data(current_client)
+        provider_data.update(updates)
+
         if self.is_library_client:
             if not self._config_path:
                 logger.warning("Cannot update Azure token: config path not set")
-                return self.get_client()
+                return current_client
 
-            current_provider_data = dict(
-                cast(AsyncOGXAsLibraryClient, self._lsc).provider_data or {}
+            updated_client = AsyncOGXAsLibraryClient(
+                self._config_path, provider_data=provider_data
             )
-            current_provider_data.update(updates)
-            client = AsyncOGXAsLibraryClient(
-                self._config_path, provider_data=current_provider_data
-            )
-            await client.initialize()
-            self._lsc = client
+            await updated_client.initialize()
+            self._lsc = updated_client
             # Re-apply logging configuration after ogx's setup_logging() is called.
             # This ensures the desired logging configuration is applied when
             # using AsyncOGXAsLibraryClient.
             setup_logging()
+            return updated_client
 
-            return client
-
-        # Service client mode
-        current_client = self.get_client()
-        current_headers = current_client.default_headers or {}
-        provider_data_json = current_headers.get("X-OGX-Provider-Data")
-
-        try:
-            provider_data = json.loads(provider_data_json) if provider_data_json else {}
-        except (json.JSONDecodeError, TypeError):
-            provider_data = {}
-
-        provider_data.update(updates)
-
-        updated_headers = {
-            **current_headers,
-            "X-OGX-Provider-Data": json.dumps(provider_data),
-        }
-
-        updated_client = current_client.copy(
-            set_default_headers=updated_headers  # type: ignore[arg-type]
+        # Service client: AsyncOgxClient has no .copy(); rebuild with provider_data.
+        updated_client = AsyncOgxClient(
+            base_url=str(current_client.base_url) if current_client.base_url else None,
+            api_key=current_client.api_key,
+            timeout=current_client.configuration.timeout,
+            provider_data=provider_data,
         )
         self._lsc = updated_client
         return updated_client
