@@ -1,4 +1,4 @@
-@e2e_group_1 @skip-in-library-mode  @skip-in-prow
+@cfg_tls @skip-in-library-mode @skip-in-prow
 Feature: TLS configuration — TLS minimum version 1.3
   Validate Llama Stack NetworkConfig.tls min_version TLSv1.3 against the mock
   HTTPS inference provider.
@@ -10,7 +10,7 @@ Feature: TLS configuration — TLS minimum version 1.3
       And the Lightspeed stack configuration directory is "tests/e2e/configuration"
       And The original Llama Stack config is restored if modified
       And The mock TLS inference server is deployed
-      And The service uses the lightspeed-stack-tls.yaml configuration
+      And The service uses the lightspeed-stack-g-tls.yaml configuration
       And The service is restarted
 
   Scenario: Inference succeeds with TLS minimum version TLSv1.3

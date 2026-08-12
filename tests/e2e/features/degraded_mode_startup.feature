@@ -1,4 +1,4 @@
-@e2e_group_3 @skip-in-library-mode @Authorized
+@cfg_degraded @skip-in-library-mode @Authorized
 Feature: Degraded mode startup
 
   End-to-end scenarios that test LCORE startup behavior when llama-stack
@@ -14,7 +14,7 @@ Feature: Degraded mode startup
       And the Lightspeed stack configuration directory is "tests/e2e/configuration"
 
   Scenario: Degraded mode metric is set to 0.0 when started with llama-stack
-    Given The service uses the lightspeed-stack-degraded-mode.yaml configuration
+    Given The service uses the lightspeed-stack-g-degraded.yaml configuration
       And The service is restarted
     When I access endpoint "metrics" using HTTP GET method
     Then The status code of the response is 200
@@ -22,7 +22,7 @@ Feature: Degraded mode startup
 
   Scenario: Degraded mode metric is set to 1.0 when started without llama-stack
     Given The llama-stack connection is disrupted
-      And The service uses the lightspeed-stack-degraded-mode.yaml configuration
+      And The service uses the lightspeed-stack-g-degraded.yaml configuration
       And The service is restarted
     When I access endpoint "metrics" using HTTP GET method
     Then The status code of the response is 200
@@ -30,7 +30,7 @@ Feature: Degraded mode startup
 
   Scenario: Readiness endpoint reports degraded state when started without llama-stack
     Given The llama-stack connection is disrupted
-      And The service uses the lightspeed-stack-degraded-mode.yaml configuration
+      And The service uses the lightspeed-stack-g-degraded.yaml configuration
       And The service is restarted
     When I access endpoint "readiness" using HTTP GET method
     Then The status code of the response is 503

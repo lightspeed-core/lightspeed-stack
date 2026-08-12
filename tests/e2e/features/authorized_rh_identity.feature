@@ -1,4 +1,4 @@
-@e2e_group_3 @RHIdentity
+@cfg_rh_identity @RHIdentity
 Feature: Authorized endpoint API tests for the rh-identity authentication module
 
   Background:
@@ -6,7 +6,7 @@ Feature: Authorized endpoint API tests for the rh-identity authentication module
       And The system is in default state
       And REST API service prefix is /v1
       And the Lightspeed stack configuration directory is "tests/e2e/configuration"
-      And The service uses the lightspeed-stack-auth-rh-identity.yaml configuration
+      And The service uses the lightspeed-stack-g-rh-identity.yaml configuration
       And The service is restarted
 
   Scenario: Request fails when identity field is missing

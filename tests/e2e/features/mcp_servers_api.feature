@@ -1,4 +1,4 @@
-@e2e_group_3 @MCP
+@cfg_mcp @MCP
 Feature: MCP Server Management API tests
 
   Tests for the dynamic MCP server management endpoints:
@@ -9,7 +9,7 @@ Feature: MCP Server Management API tests
       And The system is in default state
       And REST API service prefix is /v1
       And the Lightspeed stack configuration directory is "tests/e2e/configuration"
-      And The service uses the lightspeed-stack-mcp.yaml configuration
+      And The service uses the lightspeed-stack-g-mcp.yaml configuration
       And The service is restarted
 
   Scenario: List MCP servers returns pre-configured servers

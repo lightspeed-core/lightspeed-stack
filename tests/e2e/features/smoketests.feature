@@ -1,4 +1,4 @@
-@e2e_group_3
+@cfg_default
 Feature: Smoke tests
 
 
@@ -7,7 +7,7 @@ Feature: Smoke tests
       And The system is in default state
       And REST API service prefix is /v1
       And the Lightspeed stack configuration directory is "tests/e2e/configuration"
-      And The service uses the lightspeed-stack.yaml configuration
+      And The service uses the lightspeed-stack-g-default.yaml configuration
       And The service is restarted
 
 

@@ -1,4 +1,4 @@
-@e2e_group_2 @Authorized
+@cfg_authorized @Authorized
 Feature: Authorized endpoint API tests for the noop-with-token authentication module
 
   Background:
@@ -7,7 +7,7 @@ Feature: Authorized endpoint API tests for the noop-with-token authentication mo
       And I set the Authorization header to Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva
       And REST API service prefix is /v1
       And the Lightspeed stack configuration directory is "tests/e2e/configuration"
-      And The service uses the lightspeed-stack-auth-noop-token.yaml configuration
+      And The service uses the lightspeed-stack-g-authorized.yaml configuration
       And The service is restarted
 
   Scenario: Check if the authorized endpoint works when user_id is not provided 

@@ -16,8 +16,9 @@ from tests.e2e.utils.utils import (
 )
 
 # Behave may clear user attributes on ``context`` between scenarios; keep the
-# last applied config basename here so Background can skip re-applying the same
-# YAML across scenarios in one feature. Mutate the dict entry (no global).
+# last applied config basename here so ``The service uses ...`` can skip
+# re-applying the same YAML across scenarios and across feature files in one
+# job (CI shards are config-aligned). Mutate the dict entry (no global).
 _active_lightspeed_stack_config_basename: dict[str, Optional[str]] = {"basename": None}
 
 # Behave clears user attributes on ``context`` between scenarios; store
@@ -26,8 +27,17 @@ _llama_stack_endpoint: dict[str, str] = {"hostname": "localhost", "port": "8321"
 
 
 def reset_active_lightspeed_stack_config_basename() -> None:
-    """Reset before each feature; see ``environment.before_feature``."""
+    """Clear the applied-config basename tracker.
+
+    Used when ``E2E_RESTORE_CONFIG_AFTER_FEATURE=1`` restores bootstrap YAML so
+    the next configure step does not skip-restart against a stale basename.
+    """
     _active_lightspeed_stack_config_basename["basename"] = None
+
+
+def get_active_lightspeed_stack_config_basename() -> Optional[str]:
+    """Return the last applied Lightspeed config basename, if any."""
+    return _active_lightspeed_stack_config_basename["basename"]
 
 
 def get_llama_stack_hostname() -> str:
@@ -92,8 +102,10 @@ def configure_service(context: Context, config_name: str) -> None:
     consistent. When the basename differs from the last apply, creates the
     backup on first use,
     copies the YAML, updates ``context.feature_config`` / override flags, and
-    stores the basename for the next check. Cleared in ``before_feature`` so a
-    new feature file always applies at least once.
+    stores the basename for the next check. Basename is kept across feature
+    files so consecutive features that share a ``g-*`` YAML skip restart (CI
+    shards are config-aligned). Set ``E2E_RESTORE_CONFIG_AFTER_FEATURE=1`` to
+    restore bootstrap after each feature (legacy; forces re-apply next).
 
     Build path from ``lightspeed_stack_config_directory`` (directory step),
     defaulting base to ``tests/e2e/configuration`` if that step was omitted; then

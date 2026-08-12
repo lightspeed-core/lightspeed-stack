@@ -1,4 +1,4 @@
-@e2e_group_3 @skip-in-library-mode @skip-in-prow
+@cfg_default @skip-in-library-mode @skip-in-prow
 Feature: Proxy and TLS networking tests for Llama Stack providers
 
   Verify that the Lightspeed Stack works correctly when Llama Stack's
@@ -14,7 +14,7 @@ Feature: Proxy and TLS networking tests for Llama Stack providers
       And The system is in default state
       And REST API service prefix is /v1
       And the Lightspeed stack configuration directory is "tests/e2e/configuration"
-      And The service uses the lightspeed-stack.yaml configuration
+      And The service uses the lightspeed-stack-g-default.yaml configuration
       And The service is restarted
       And The original Llama Stack config is restored if modified
 

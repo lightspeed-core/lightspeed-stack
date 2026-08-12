@@ -1,4 +1,4 @@
-@e2e_group_1 @RBAC
+@cfg_rbac @RBAC
 Feature: rlsapi v1 /infer endpoint error response tests
 
   Tests for error conditions on the rlsapi v1 /infer endpoint including
@@ -9,7 +9,7 @@ Feature: rlsapi v1 /infer endpoint error response tests
       And The system is in default state
       And REST API service prefix is /v1
       And the Lightspeed stack configuration directory is "tests/e2e/configuration"
-      And The service uses the lightspeed-stack-rbac.yaml configuration
+      And The service uses the lightspeed-stack-g-rbac.yaml configuration
       And The service is restarted
 
   # ============================================

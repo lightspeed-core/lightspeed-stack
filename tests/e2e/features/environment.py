@@ -285,30 +285,16 @@ def _dump_pod_logs_on_failure(
 def after_scenario(context: Context, scenario: Scenario) -> None:
     """Run after each scenario is run.
 
-    Perform per-scenario teardown: restore scenario-specific configuration and,
-    in server mode, attempt to restart and verify the Llama Stack container if
-    it was previously running.
-
-    If ``configure_service`` applied a non-baseline YAML during the scenario
-    (``context.scenario_lightspeed_override_active``), copies
-    ``context.feature_config`` back and restarts lightspeed-stack.
-
-    When not running in library mode and the context indicates the Llama Stack
-    was running before the scenario, this function attempts to start the
-    llama-stack container and polls its health endpoint until it becomes
-    healthy or a timeout is reached.
+    Perform per-scenario teardown (failure logs, shield re-register). Does not
+    bounce Lightspeed back to ``feature_config`` after a mid-feature YAML
+    override: the next scenario's ``The service uses ...`` step applies whatever
+    config it needs (skip-restart when the basename is unchanged). Restoring and
+    restarting here doubled restarts for consecutive override scenarios (e.g.
+    MCP invalid).
 
     Parameters:
     ----------
-        context (Context): Behave test context. Expected attributes used here include:
-            - feature_config: path to the feature-level configuration to restore.
-            - scenario_lightspeed_override_active: set by ``configure_service``
-              when a scenario switches YAML after Background.
-            - is_library_mode (bool): whether tests run in library mode.
-            - llama_stack_was_running (bool, optional): whether llama-stack was
-              running before the scenario.
-            - hostname_llama, port_llama (str/int, optional): host and port
-              used for the llama-stack health check.
+        context (Context): Behave test context.
         scenario (Scenario): Behave scenario (unused; shield restore uses context flags).
     """
     if is_prow_environment():
@@ -316,12 +302,9 @@ def after_scenario(context: Context, scenario: Scenario) -> None:
             context, scenario, os.environ.get("NAMESPACE", "e2e-rhoai-dsc")
         )
 
+    # Drop override flag only; next scenario / Background re-applies as needed.
     if getattr(context, "scenario_lightspeed_override_active", False):
         context.scenario_lightspeed_override_active = False
-        feature_cfg = getattr(context, "feature_config", None)
-        if feature_cfg:
-            switch_config(feature_cfg)
-            restart_container("lightspeed-stack")
 
     # Re-register shield if ``Given shields are disabled for this scenario`` unregistered it.
     if getattr(context, "shields_disabled_for_scenario", False):
@@ -411,9 +394,9 @@ def _restore_llama_stack() -> None:
             ["docker", "start", "llama-stack"], check=True, capture_output=True
         )
 
-        # Wait for the service to be healthy
+        # Wait for the service to be healthy (aligned with post-restart budget).
         print("Restoring Llama Stack connection...")
-        max_attempts = 24
+        max_attempts = 60
         for attempt in range(max_attempts):
             try:
                 result = subprocess.run(
@@ -463,6 +446,9 @@ def before_feature(context: Context, feature: Feature) -> None:
     Per-feature setup that is not expressed in Gherkin.
     Lightspeed YAML is applied in feature Backgrounds via ``configure_service``.
 
+    Does **not** clear the applied-config basename tracker: consecutive features
+    that share the same ``g-*`` YAML skip restart (config-aligned CI shards).
+
     Records monotonic start time on ``feature`` for duration logging in
     ``after_feature`` (includes scenarios and feature teardown).
 
@@ -472,8 +458,12 @@ def before_feature(context: Context, feature: Feature) -> None:
     ``E2E_FLAKY_MAX_ATTEMPTS`` environment variable.
     """
     setattr(feature, _E2E_FEATURE_PERF_START_ATTR, time.perf_counter())
-    reset_active_lightspeed_stack_config_basename()
-    context.active_lightspeed_stack_config_basename = None
+    # Per-feature baseline for mid-feature overrides; basename stays for skip-restart.
+    context.feature_config = None
+    context.scenario_lightspeed_override_active = False
+    context.active_lightspeed_stack_config_basename = (
+        None  # display only; module tracker is authoritative
+    )
     # One real Llama disruption per feature (module-level flag; survives context resets)
     reset_llama_stack_disrupt_once_tracking()
     if feature.filename and is_tls_feature_file(feature.filename):
@@ -495,12 +485,27 @@ def before_feature(context: Context, feature: Feature) -> None:
             delattr(context, _attr)
 
 
+def _restore_config_after_feature_enabled() -> bool:
+    """Return True when legacy per-feature bootstrap restore/restart is requested."""
+    return os.getenv("E2E_RESTORE_CONFIG_AFTER_FEATURE", "0").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+    }
+
+
 def after_feature(context: Context, feature: Feature) -> None:
     """Run after each feature file is exercised.
 
-    Perform feature-level teardown: restore any modified configuration and,
-    when ``context.feedback_e2e_conversation_cleanup`` is set by feedback steps,
-    delete tracked feedback test conversations.
+    Perform feature-level teardown: optionally restore bootstrap configuration,
+    and when ``context.feedback_e2e_conversation_cleanup`` is set by feedback
+    steps, delete tracked feedback test conversations.
+
+    By default (``E2E_RESTORE_CONFIG_AFTER_FEATURE`` unset/0), keeps the last
+    applied ``g-*`` YAML and does **not** restart containers. That removes the
+    ~2 restarts per feature-file boundary that dominated config-aligned shards.
+    Set ``E2E_RESTORE_CONFIG_AFTER_FEATURE=1`` for the legacy restore + LCS
+    (and llama in server mode) restart after every feature.
     """
     # Restore Llama Stack FIRST (before any lightspeed-stack restart).
     # Read from module-level state — Behave clears custom context attributes
@@ -517,16 +522,20 @@ def after_feature(context: Context, feature: Feature) -> None:
             response = requests.delete(url, headers=headers, timeout=10)
             assert response.status_code == 200, f"{url} returned {response.status_code}"
 
-    # Restore Lightspeed Stack config if the generic configure_service step switched it.
-    # This cleanup intentionally runs for any feature (not tag-gated) - any feature that
-    # leaves a backup file will trigger config restoration and container restarts.
+    # Config backup from configure_service.
     backup_path = "lightspeed-stack.yaml.backup"
     if os.path.exists(backup_path):
-        switch_config(backup_path)
-        remove_config_backup(backup_path)
-        if not context.is_library_mode:
-            restart_container("llama-stack")
-        restart_container("lightspeed-stack")
+        if _restore_config_after_feature_enabled():
+            switch_config(backup_path)
+            remove_config_backup(backup_path)
+            if not context.is_library_mode:
+                restart_container("llama-stack")
+            restart_container("lightspeed-stack")
+            reset_active_lightspeed_stack_config_basename()
+        else:
+            # Keep applied config for the next feature; drop backup so the next
+            # real YAML change creates a fresh baseline (not a false "override").
+            remove_config_backup(backup_path)
 
     # Clean up any proxy servers left from the last scenario
     if hasattr(context, "tunnel_proxy") or hasattr(context, "interception_proxy"):

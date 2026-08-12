@@ -1,0 +1,28 @@
+# Group: @cfg_skills
+# Echo-only path. Not merged with skills-directory: @SkillsConfig asserts
+# exact list_skills tool_results content with echo alone.
+name: Lightspeed Core Service (LCS) — grouped skills (echo)
+service:
+  host: 0.0.0.0
+  port: 8080
+  auth_enabled: false
+  workers: 1
+  color_log: true
+  access_log: true
+llama_stack:
+  use_as_library_client: true
+  config:
+    profile: run.yaml
+user_data_collection:
+  feedback_enabled: true
+  feedback_storage: "/tmp/data/feedback"
+  transcripts_enabled: true
+  transcripts_storage: "/tmp/data/transcripts"
+authentication:
+  module: "noop"
+inference:
+  default_provider: openai
+  default_model: gpt-4o-mini
+skills:
+  paths:
+    - skills/echo

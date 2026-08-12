@@ -1,40 +1,74 @@
+# E2E feature order — grouped by @cfg_* affinity so consecutive features share
+# the same Lightspeed YAML (skip-restart). Multi-config files sit at the end of
+# their primary block; scenario order inside those files is default→authorized→…
+# or authorized→…→negative (negative last).
+#
+# CI shards filter by tag; this order still matters for unfiltered local runs and
+# for shards that pack several configs (mcp, other).
+
+# --- @cfg_default ---
 features/authorized_noop.feature
 features/health.feature
 features/info.feature
 features/models.feature
 features/rest_api.feature
 features/smoketests.feature
-features/authorized_noop_token.feature
-features/conversation_cache_v2.feature
-features/conversations.feature
-features/prompts.feature
-features/faiss.feature
 features/inline_rag.feature
-features/byok_pdf.feature
-features/vector_stores.feature
-features/feedback.feature
+features/proxy.feature
+# default → authorized → rbac (scenario order); default-shard affinity
+features/llama_stack_disrupted.feature
+
+# --- @cfg_skills → @cfg_skills_directory → @cfg_default (no-skills) ---
+features/skills.feature
+
+# --- @cfg_authorized ---
+features/authorized_noop_token.feature
+features/conversations.feature
+features/faiss.feature
+features/opentelemetry.feature
+features/prompts.feature
 features/query.feature
 features/responses.feature
 features/responses_streaming.feature
 features/rlsapi_v1.feature
 features/streaming_query.feature
+features/vector_stores.feature
+# authorized-first multi (negative scenarios last inside each file)
+features/conversation_cache_v2.feature
+features/feedback.feature
+# authorized → rh_identity → rbac (ends on rbac → next block)
 features/http_401_unauthorized.feature
-features/authorized_rh_identity.feature
+
+# --- @cfg_rbac (warm after http_401) ---
 features/rbac.feature
 features/rlsapi_v1_errors.feature
-features/llama_stack_disrupted.feature
-features/mcp.feature
+
+# --- @cfg_rh_identity ---
+features/authorized_rh_identity.feature
+
+# --- @cfg_mcp → @cfg_mcp_invalid → @cfg_mcp_api_auth ---
+# Pure g-mcp first so mcp.feature happy-path can skip-restart
 features/mcp_servers_api.feature
+features/mcp.feature
 features/mcp_servers_api_auth.feature
+
+# --- @cfg_negative ---
 features/mcp_servers_api_no_config.feature
-features/proxy.feature
+
+# --- @cfg_byok_pdf ---
+features/byok_pdf.feature
+
+# --- @cfg_tls ---
 features/tls-ca.feature
 features/tls-mtls.feature
 features/tls-tlsv13.feature
-features/opentelemetry.feature
+
+# --- @cfg_degraded ---
+features/degraded_mode_startup.feature
+
+# --- @cfg_unified (@skip) ---
 features/unified-mode-boot.feature
 features/unified-mode-legacy.feature
 features/unified-mode-validation.feature
 features/unified-mode-migration.feature
 features/unified-mode-synthesis.feature
-features/skills.feature

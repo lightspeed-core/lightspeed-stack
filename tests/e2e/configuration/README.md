@@ -59,3 +59,9 @@ Both server-mode and library-mode default configurations include:
 - `lightspeed-stack-auth-noop-token.yaml` - For authorization testing
 - `lightspeed-stack-invalid-feedback-storage.yaml` - For negative feedback testing
 - `lightspeed-stack-no-cache.yaml` - For cache-disabled scenarios
+
+### Grouped configs (restart reduction)
+
+New `lightspeed-stack-g-*.yaml` files merge compatible options and map to
+`@cfg_*` Behave tags so CI can shard by config (one restart per job). Legacy
+YAMLs above are unchanged. See [grouped/README.md](grouped/README.md).

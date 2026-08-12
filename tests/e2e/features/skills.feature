@@ -1,4 +1,3 @@
-@e2e_group_2
 Feature: Agent skills tests
 
   Background:
@@ -7,11 +6,11 @@ Feature: Agent skills tests
       And REST API service prefix is /v1
       And the Lightspeed stack configuration directory is "tests/e2e/configuration"
 
-  # --- Skill tools registration ---
+# Echo skill path (@cfg_skills)
 
-  @SkillsConfig
+  @SkillsConfig @cfg_skills
   Scenario: Skill tools are registered when skills are configured
-    Given The service uses the lightspeed-stack-skills.yaml configuration
+    Given The service uses the lightspeed-stack-g-skills.yaml configuration
       And MCP configuration is reset for a new scenario
       And The service is restarted
     When I access REST API endpoint "tools" using HTTP GET method
@@ -138,46 +137,8 @@ Feature: Agent skills tests
       }
       """
 
-  Scenario: Skill tools are not registered when no skills are configured
-    Given The service uses the lightspeed-stack.yaml configuration
-      And MCP configuration is reset for a new scenario
-      And The service is restarted
-    When I access REST API endpoint "tools" using HTTP GET method
-    Then The status code of the response is 200
-     And The body of the response is the following
-      """
-      {
-        "tools": [
-          {
-            "identifier": "insert_into_memory",
-            "description": "Insert documents into memory",
-            "parameters": [],
-            "provider_id": "file-search",
-            "toolgroup_id": "builtin::file_search",
-            "server_source": "builtin",
-            "type": "tool"
-          },
-          {
-            "identifier": "file_search",
-            "description": "Search files for relevant information",
-            "parameters": [
-              {
-                "name": "query",
-                "description": "The query to search for. Can be a natural language sentence or keywords.",
-                "parameter_type": "string",
-                "required": true,
-                "default": null
-              }
-            ],
-            "provider_id": "file-search",
-            "toolgroup_id": "builtin::file_search",
-            "server_source": "builtin",
-            "type": "tool"
-          }
-        ]
-      }
-      """
 
+<<<<<<< Updated upstream
   # --- Skill discovery ---
   #
   # Note: plain GET /v1/skills happy-path coverage (configured skills, empty
@@ -190,8 +151,11 @@ Feature: Agent skills tests
   # coverage.
 
   @SkillsConfig
+=======
+  @SkillsConfig @cfg_skills
+>>>>>>> Stashed changes
   Scenario: LLM can discover skills via list_skills tool using query endpoint
-    Given The service uses the lightspeed-stack-skills.yaml configuration
+    Given The service uses the lightspeed-stack-g-skills.yaml configuration
       And The service is restarted
       And I capture the current token metrics
     When I use "query" to ask question 
@@ -220,9 +184,10 @@ Feature: Agent skills tests
       """
       And The token metrics have increased
 
-  @SkillsConfig
+
+  @SkillsConfig @cfg_skills
   Scenario: LLM can discover skills via list_skills tool using streaming_query endpoint
-    Given The service uses the lightspeed-stack-skills.yaml configuration
+    Given The service uses the lightspeed-stack-g-skills.yaml configuration
       And The service is restarted
       And I capture the current token metrics
     When I use "streaming_query" to ask question 
@@ -254,9 +219,10 @@ Feature: Agent skills tests
 
   # --- Skill activation ---
 
-  @SkillsConfig @flaky
+
+  @SkillsConfig @flaky @cfg_skills
   Scenario: LLM can Load a skill and use its instructions via query endpoint
-    Given The service uses the lightspeed-stack-skills.yaml configuration
+    Given The service uses the lightspeed-stack-g-skills.yaml configuration
       And The service is restarted
       And I capture the current token metrics
     When I use "query" to ask question 
@@ -288,9 +254,10 @@ Feature: Agent skills tests
       """
       And The token metrics have increased
 
-  @SkillsConfig @flaky
+
+  @SkillsConfig @flaky @cfg_skills
   Scenario: LLM can load a skill and use its instructions via streaming_query endpoint
-    Given The service uses the lightspeed-stack-skills.yaml configuration
+    Given The service uses the lightspeed-stack-g-skills.yaml configuration
       And The service is restarted
       And I capture the current token metrics
     When I use "streaming_query" to ask question 
@@ -326,9 +293,10 @@ Feature: Agent skills tests
 
   # --- Skill resource loading ---
 
-  @SkillsConfig
+
+  @SkillsConfig @cfg_skills
   Scenario: LLM can load a skill reference file via read_skill_resource tool using query endpoint
-    Given The service uses the lightspeed-stack-skills.yaml configuration
+    Given The service uses the lightspeed-stack-g-skills.yaml configuration
       And The service is restarted
       And I capture the current token metrics
     When I use "query" to ask question 
@@ -361,9 +329,10 @@ Feature: Agent skills tests
       """
       And The token metrics have increased
 
-  @SkillsConfig
+
+  @SkillsConfig @cfg_skills
   Scenario: LLM can load a skill reference file via read_skill_resource tool using streaming_query endpoint
-    Given The service uses the lightspeed-stack-skills.yaml configuration
+    Given The service uses the lightspeed-stack-g-skills.yaml configuration
       And The service is restarted
       And I capture the current token metrics
     When I use "streaming_query" to ask question 
@@ -399,9 +368,10 @@ Feature: Agent skills tests
 
   # --- Error handling: unknown skill ---
 
-  @SkillsConfig @skip
+
+  @SkillsConfig @skip @cfg_skills
   Scenario: load_skill returns error for unknown skill name via query endpoint
-    Given The service uses the lightspeed-stack-skills.yaml configuration
+    Given The service uses the lightspeed-stack-g-skills.yaml configuration
       And The service is restarted
     When I use "query" to ask question 
     """
@@ -431,9 +401,10 @@ Feature: Agent skills tests
       """
 
 
-  @SkillsConfig @skip
+
+  @SkillsConfig @skip @cfg_skills
   Scenario: load_skill returns error for unknown skill name via streaming_query endpoint
-    Given The service uses the lightspeed-stack-skills.yaml configuration
+    Given The service uses the lightspeed-stack-g-skills.yaml configuration
       And The service is restarted
     When I use "streaming_query" to ask question 
     """
@@ -464,9 +435,10 @@ Feature: Agent skills tests
       """
   # --- Error handling: missing resource ---
 
-  @SkillsConfig @skip
+
+  @SkillsConfig @skip @cfg_skills
   Scenario: read_skill_resource returns error for nonexistent resource file via query endpoint
-    Given The service uses the lightspeed-stack-skills.yaml configuration
+    Given The service uses the lightspeed-stack-g-skills.yaml configuration
       And The service is restarted
     When I use "query" to ask question 
     """
@@ -496,9 +468,10 @@ Feature: Agent skills tests
       ]
       """
 
-  @SkillsConfig @skip
+
+  @SkillsConfig @skip @cfg_skills
   Scenario: read_skill_resource returns error for nonexistent resource file via streaming_query endpoint
-    Given The service uses the lightspeed-stack-skills.yaml configuration
+    Given The service uses the lightspeed-stack-g-skills.yaml configuration
       And The service is restarted
     When I use "streaming_query" to ask question 
     """
@@ -532,9 +505,10 @@ Feature: Agent skills tests
 
   # --- Context management: deduplication ---
 
-  @SkillsConfig @skip
+
+  @SkillsConfig @skip @cfg_skills
   Scenario: Duplicate skill activation in same conversation returns already-loaded note via query endpoint
-    Given The service uses the lightspeed-stack-skills.yaml configuration
+    Given The service uses the lightspeed-stack-g-skills.yaml configuration
       And The service is restarted
     When I use "query" to ask question 
     """
@@ -595,70 +569,11 @@ Feature: Agent skills tests
 
   # --- Multiple skills ---
 
-  @SkillsMultiConfig
-  Scenario: Skills directory path discovers all skills in subdirectories via query endpoint
-    Given The service uses the lightspeed-stack-skills-directory.yaml configuration
-      And The service is restarted
-    When I use "query" to ask question 
-    """
-    {"query": "List all available skills using the list_skills tool.", "model": "{MODEL}", "provider": "{PROVIDER}"}
-    """
-    Then The status code of the response is 200
-      And The body of the "tool_calls" field of the response is the following    
-      """
-      [
-        {
-          "name": "list_skills",
-          "type": "function_call"
-        }
-      ]
-      """
-      And The body of the "tool_results" field of the response is the following    
-      """
-      [
-        {
-          "status": "success",
-          "content": "{\"echo\":\"Echo back the user's input exactly as provided. Use when a user asks to echo, repeat, or mirror text.\",\"summarize\":\"Summarize text into a concise single-sentence overview. Use when a user asks to summarize, condense, or shorten text.\"}",
-          "type": "function_call_output"
-        }
-      ]
-      """
-
-  @SkillsMultiConfig
-  Scenario: Skills directory path discovers all skills in subdirectories via streaming_query endpoint
-    Given The service uses the lightspeed-stack-skills-directory.yaml configuration
-      And The service is restarted
-    When I use "streaming_query" to ask question 
-    """
-    {"query": "List all available skills using the list_skills tool.", "model": "{MODEL}", "provider": "{PROVIDER}"}
-    """
-    When I wait for the response to be completed
-    Then The status code of the response is 200
-      And The body of the "tool_calls" field of the response is the following    
-      """
-      [
-        {
-          "name": "list_skills",
-          "type": "function_call"
-        }
-      ]
-      """
-      And The body of the "tool_results" field of the response is the following    
-      """
-      [
-        {
-          "status": "success",
-          "content": "{\"echo\":\"Echo back the user's input exactly as provided. Use when a user asks to echo, repeat, or mirror text.\",\"summarize\":\"Summarize text into a concise single-sentence overview. Use when a user asks to summarize, condense, or shorten text.\"}",
-          "type": "function_call_output"
-        }
-      ]
-      """
-
-  # --- Full progressive disclosure flow ---
 
   @SkillsConfig @skip # TODO: This test is too flaky (should be run on demand)
+  @SkillsConfig @skip @cfg_skills
   Scenario: LLM completes list_skills then load_skill then read_skill_resource via query endpoint
-    Given The service uses the lightspeed-stack-skills.yaml configuration
+    Given The service uses the lightspeed-stack-g-skills.yaml configuration
       And The service is restarted
       And I capture the current token metrics
     When I use "query" to ask question
@@ -715,9 +630,11 @@ Feature: Agent skills tests
       """
 
 
+
   @SkillsConfig @skip # TODO: This test is too flaky (should be run on demand)
+  @SkillsConfig @skip @cfg_skills
   Scenario: LLM completes list_skills then load_skill then read_skill_resource via streaming_query endpoint
-    Given The service uses the lightspeed-stack-skills.yaml configuration
+    Given The service uses the lightspeed-stack-g-skills.yaml configuration
       And The service is restarted
       And I capture the current token metrics
     When I use "streaming_query" to ask question
@@ -773,3 +690,114 @@ Feature: Agent skills tests
         }
       ]
       """
+
+# --- @cfg_skills_directory: skills/ discovers echo+summarize ---
+
+  @SkillsMultiConfig @cfg_skills_directory
+  Scenario: Skills directory path discovers all skills in subdirectories via query endpoint
+    Given The service uses the lightspeed-stack-g-skills-directory.yaml configuration
+      And The service is restarted
+    When I use "query" to ask question 
+    """
+    {"query": "List all available skills using the list_skills tool.", "model": "{MODEL}", "provider": "{PROVIDER}"}
+    """
+    Then The status code of the response is 200
+      And The body of the "tool_calls" field of the response is the following    
+      """
+      [
+        {
+          "name": "list_skills",
+          "type": "function_call"
+        }
+      ]
+      """
+      And The body of the "tool_results" field of the response is the following    
+      """
+      [
+        {
+          "status": "success",
+          "content": "{\"echo\":\"Echo back the user's input exactly as provided. Use when a user asks to echo, repeat, or mirror text.\",\"summarize\":\"Summarize text into a concise single-sentence overview. Use when a user asks to summarize, condense, or shorten text.\"}",
+          "type": "function_call_output"
+        }
+      ]
+      """
+
+
+  @SkillsMultiConfig @cfg_skills_directory
+  Scenario: Skills directory path discovers all skills in subdirectories via streaming_query endpoint
+    Given The service uses the lightspeed-stack-g-skills-directory.yaml configuration
+      And The service is restarted
+    When I use "streaming_query" to ask question 
+    """
+    {"query": "List all available skills using the list_skills tool.", "model": "{MODEL}", "provider": "{PROVIDER}"}
+    """
+    When I wait for the response to be completed
+    Then The status code of the response is 200
+      And The body of the "tool_calls" field of the response is the following    
+      """
+      [
+        {
+          "name": "list_skills",
+          "type": "function_call"
+        }
+      ]
+      """
+      And The body of the "tool_results" field of the response is the following    
+      """
+      [
+        {
+          "status": "success",
+          "content": "{\"echo\":\"Echo back the user's input exactly as provided. Use when a user asks to echo, repeat, or mirror text.\",\"summarize\":\"Summarize text into a concise single-sentence overview. Use when a user asks to summarize, condense, or shorten text.\"}",
+          "type": "function_call_output"
+        }
+      ]
+      """
+
+  # --- Full progressive disclosure flow ---
+
+
+# --- @cfg_default: skills disabled ---
+
+  @cfg_default
+  Scenario: Skill tools are not registered when no skills are configured
+    Given The service uses the lightspeed-stack-g-default.yaml configuration
+      And MCP configuration is reset for a new scenario
+      And The service is restarted
+    When I access REST API endpoint "tools" using HTTP GET method
+    Then The status code of the response is 200
+     And The body of the response is the following
+      """
+      {
+        "tools": [
+          {
+            "identifier": "insert_into_memory",
+            "description": "Insert documents into memory",
+            "parameters": [],
+            "provider_id": "file-search",
+            "toolgroup_id": "builtin::file_search",
+            "server_source": "builtin",
+            "type": "tool"
+          },
+          {
+            "identifier": "file_search",
+            "description": "Search files for relevant information",
+            "parameters": [
+              {
+                "name": "query",
+                "description": "The query to search for. Can be a natural language sentence or keywords.",
+                "parameter_type": "string",
+                "required": true,
+                "default": null
+              }
+            ],
+            "provider_id": "file-search",
+            "toolgroup_id": "builtin::file_search",
+            "server_source": "builtin",
+            "type": "tool"
+          }
+        ]
+      }
+      """
+
+  # --- Skill discovery ---
+

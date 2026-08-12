@@ -1,0 +1,84 @@
+# Group: @cfg_rbac
+# From: lightspeed-stack-rbac.yaml (auth module jwk-token is incompatible with other groups)
+name: Lightspeed Core Service (RBAC E2E Tests - Library Mode) — grouped
+service:
+  host: 0.0.0.0
+  port: 8080
+  auth_enabled: true
+  workers: 1
+  color_log: true
+  access_log: true
+
+llama_stack:
+  use_as_library_client: true
+  config:
+    profile: run.yaml
+
+user_data_collection:
+  feedback_enabled: true
+  feedback_storage: "/tmp/data/feedback"
+  transcripts_enabled: true
+  transcripts_storage: "/tmp/data/transcripts"
+
+conversation_cache:
+  type: "sqlite"
+  sqlite:
+    db_path: "/tmp/data/conversation-cache.db"
+
+authentication:
+  module: "jwk-token"
+  jwk_config:
+    url: "http://mock-jwks:8000/.well-known/jwks.json"
+    jwt_configuration:
+      user_id_claim: "sub"
+      username_claim: "name"
+      role_rules:
+        - jsonpath: "$.admin"
+          operator: "equals"
+          value: [true]
+          roles: ["admin"]
+        - jsonpath: "$.role"
+          operator: "equals"
+          value: ["user"]
+          roles: ["user"]
+        - jsonpath: "$.role"
+          operator: "equals"
+          value: ["viewer"]
+          roles: ["viewer"]
+        - jsonpath: "$.permissions[*]"
+          operator: "contains"
+          value: "query"
+          roles: ["query_only"]
+
+authorization:
+  access_rules:
+    - role: "admin"
+      actions: ["admin"]
+    - role: "user"
+      actions:
+        - "query"
+        - "streaming_query"
+        - "get_conversation"
+        - "list_conversations"
+        - "delete_conversation"
+        - "update_conversation"
+        - "feedback"
+        - "get_models"
+        - "get_tools"
+        - "info"
+        - "model_override"
+        - "rlsapi_v1_infer"
+    - role: "viewer"
+      actions:
+        - "get_conversation"
+        - "list_conversations"
+        - "get_models"
+        - "get_tools"
+        - "info"
+    - role: "query_only"
+      actions:
+        - "query"
+        - "streaming_query"
+    - role: "*"
+      actions:
+        - "info"

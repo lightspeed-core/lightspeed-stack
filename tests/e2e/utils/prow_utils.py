@@ -62,15 +62,22 @@ def run_e2e_ops(
     )
 
 
-def wait_for_pod_health(pod_name: str, max_attempts: int = 20) -> None:
+def wait_for_pod_health(pod_name: str, max_attempts: int = 60) -> None:
     """Wait for pod to be ready in OpenShift/Prow environment.
 
-    Generous number of attempts to account for OpenTelemetry instrumentation
-    initialization overhead during service startup.
+    Default 60 attempts (e2e-ops sleeps 3s between polls ≈ 180s) to cover
+    OpenTelemetry startup overhead and slower Llama/Lightspeed pod rollouts.
+    Override by passing ``max_attempts`` (``wait_for_container_health`` forwards
+    ``E2E_CONTAINER_HEALTH_MAX_ATTEMPTS``).
     """
     actual_pod_name = get_pod_name(pod_name)
     try:
-        result = run_e2e_ops("wait-for-pod", [actual_pod_name, str(max_attempts)])
+        # Subprocess timeout must exceed e2e-ops wait (attempts × 3s) plus margin.
+        result = run_e2e_ops(
+            "wait-for-pod",
+            [actual_pod_name, str(max_attempts)],
+            timeout=max(180, max_attempts * 3 + 60),
+        )
         print(result.stdout, end="")
         if result.returncode != 0:
             print(result.stderr, end="")

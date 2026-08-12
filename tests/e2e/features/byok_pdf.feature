@@ -1,4 +1,4 @@
-@e2e_group_3 @skip-in-server-mode
+@cfg_byok_pdf @skip-in-server-mode
 Feature: BYOK PDF support tests
 
   # Validates that a vector store built from a PDF by rag-content's `pdf`
@@ -14,7 +14,7 @@ Feature: BYOK PDF support tests
       And I set the Authorization header to Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva
       And REST API service prefix is /v1
       And the Lightspeed stack configuration directory is "tests/e2e/configuration"
-      And The service uses the lightspeed-stack-byok-pdf.yaml configuration
+      And The service uses the lightspeed-stack-g-byok-pdf.yaml configuration
       And The service is restarted
 
   Scenario: PDF-built inline RAG source is registered

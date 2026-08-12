@@ -64,6 +64,12 @@ def is_prow_environment() -> bool:
 E2E_HTTP_TRANSIENT_MAX_ATTEMPTS: int = 3
 E2E_HTTP_TRANSIENT_DELAY_S: float = 0.5
 
+# Post-restart Docker health poll (2s sleep between attempts). Library mode embeds
+# llama-stack (~45–60s) and OpenTelemetry adds startup overhead; 60 ≈ 120s.
+E2E_CONTAINER_HEALTH_MAX_ATTEMPTS: int = int(
+    os.getenv("E2E_CONTAINER_HEALTH_MAX_ATTEMPTS", "60")
+)
+
 
 def request_with_transient_retry(
     **kwargs: Any,
@@ -181,7 +187,10 @@ def validate_json(message: Any, schema: Any) -> None:
         assert False, "The provided schema is faulty:" + str(e)
 
 
-def wait_for_container_health(container_name: str, max_attempts: int = 20) -> None:
+def wait_for_container_health(
+    container_name: str,
+    max_attempts: Optional[int] = None,
+) -> None:
     """Wait for container to be healthy.
 
     Polls a Docker container until its health status becomes `healthy` or the
@@ -192,8 +201,9 @@ def wait_for_container_health(container_name: str, max_attempts: int = 20) -> No
     inspect errors or timeouts are ignored and retried; the function returns
     after the container is observed healthy or after all attempts complete.
 
-    OpenTelemetry instrumentation adds initialization overhead, so the default
-    has been set to 20 attempts (40 seconds) to prevent timeouts.
+    Default attempts come from ``E2E_CONTAINER_HEALTH_MAX_ATTEMPTS`` (60 ≈ 120s
+    at 2s intervals). Library mode embeds llama-stack (~45–60s) and OpenTelemetry
+    adds startup overhead, so the previous 20-attempt / 40s budget was too tight.
 
     Returns:
     -------
@@ -202,8 +212,12 @@ def wait_for_container_health(container_name: str, max_attempts: int = 20) -> No
     Parameters:
     ----------
         container_name (str): Docker container name or ID to check.
-        max_attempts (int): Maximum number of health check attempts (default 20).
+        max_attempts (int | None): Maximum health check attempts. Defaults to
+            ``E2E_CONTAINER_HEALTH_MAX_ATTEMPTS``.
     """
+    if max_attempts is None:
+        max_attempts = E2E_CONTAINER_HEALTH_MAX_ATTEMPTS
+
     if is_prow_environment():
         wait_for_pod_health(container_name, max_attempts)
         return
@@ -235,7 +249,7 @@ def wait_for_container_health(container_name: str, max_attempts: int = 20) -> No
 
     print(
         f"Could not confirm Docker health=healthy for {container_name} "
-        f"after {max_attempts} attempts"
+        f"after {max_attempts} attempts (~{max_attempts * 2}s)"
     )
 
 
@@ -471,9 +485,9 @@ def restart_container(container_name: str) -> None:
     # Wait for container to be healthy.
     # Library mode embeds llama-stack, so the container takes longer to start
     # (~45-60s vs ~10s in server mode). OpenTelemetry instrumentation adds
-    # initialization overhead. Use a generous attempt count so MCP-auth scenarios
-    # that restart the container don't time out.
-    wait_for_container_health(container_name, max_attempts=20)
+    # initialization overhead. Use E2E_CONTAINER_HEALTH_MAX_ATTEMPTS (default 60
+    # ≈ 120s) so MCP-auth / config-switch restarts do not time out.
+    wait_for_container_health(container_name)
 
     if container_name == "llama-stack":
         from tests.e2e.features.steps.health import (
@@ -484,7 +498,7 @@ def restart_container(container_name: str) -> None:
 
 
 def wait_for_lightspeed_stack_http_ready(
-    max_attempts: int = 40,
+    max_attempts: int = 80,
     delay_s: float = 1.5,
 ) -> None:
     """Block until Lightspeed Stack accepts HTTP on the host-mapped port.
@@ -492,7 +506,8 @@ def wait_for_lightspeed_stack_http_ready(
     Used from proxy e2e steps only: ``docker inspect`` health can report
     ``healthy`` before the published port accepts connections (Podman/Docker
     timing). Polls ``/liveness`` using the same host/port as Behave
-    (``E2E_LSC_*``).
+    (``E2E_LSC_*``). Default ~120s (80 × 1.5s), aligned with the container
+    health wait after restarts.
 
     Parameters:
     ----------

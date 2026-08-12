@@ -1,4 +1,4 @@
-@e2e_group_2 @RBAC
+@cfg_rbac @RBAC
 Feature: Role-Based Access Control (RBAC)
 
   Comprehensive tests for role-based access control to ensure
@@ -9,7 +9,7 @@ Feature: Role-Based Access Control (RBAC)
       And The system is in default state
       And REST API service prefix is /v1
       And the Lightspeed stack configuration directory is "tests/e2e/configuration"
-      And The service uses the lightspeed-stack-rbac.yaml configuration
+      And The service uses the lightspeed-stack-g-rbac.yaml configuration
       And The service is restarted
 
   # ============================================

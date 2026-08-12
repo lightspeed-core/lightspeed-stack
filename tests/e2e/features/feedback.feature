@@ -1,4 +1,4 @@
-@e2e_group_3 @Feedback
+@Feedback
 Feature: feedback endpoint API tests
 
 
@@ -8,9 +8,10 @@ Feature: feedback endpoint API tests
       And I set the Authorization header to Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva
       And REST API service prefix is /v1
       And the Lightspeed stack configuration directory is "tests/e2e/configuration"
-      And The service uses the lightspeed-stack-auth-noop-token.yaml configuration
+      And The service uses the lightspeed-stack-g-authorized.yaml configuration
       And The service is restarted
 
+  @cfg_authorized
   Scenario: Check if enabling the feedback is working
     When The feedback is enabled
      Then The status code of the response is 200
@@ -23,7 +24,8 @@ Feature: feedback endpoint API tests
                 }
         }
         """
-    
+
+  @cfg_authorized
   Scenario: Check if disabling the feedback is working
     When The feedback is disabled
      Then The status code of the response is 200
@@ -37,6 +39,7 @@ Feature: feedback endpoint API tests
         }
         """
 
+  @cfg_authorized
   Scenario: Check if toggling the feedback with incorrect attribute name fails
      When I update feedback status with
         """
@@ -62,6 +65,7 @@ Feature: feedback endpoint API tests
         }
         """
 
+  @cfg_authorized
   Scenario: Check if getting feedback status returns true when feedback is enabled
     And The feedback is enabled
      When I retreive the current feedback status
@@ -76,6 +80,7 @@ Feature: feedback endpoint API tests
         }
         """
 
+  @cfg_authorized
   Scenario: Check if getting feedback status returns false when feedback is disabled
     And The feedback is disabled
      When I retreive the current feedback status
@@ -90,6 +95,7 @@ Feature: feedback endpoint API tests
         }
         """
 
+  @cfg_authorized
   Scenario: Check if feedback endpoint is not working when feedback is disabled
     And A new conversation is initialized
     And The feedback is disabled
@@ -113,6 +119,7 @@ Feature: feedback endpoint API tests
         }  
         """
 
+  @cfg_authorized
   Scenario: Check if feedback endpoint fails when required fields are not specified
     And The feedback is enabled
      When I submit the following feedback without specifying conversation ID
@@ -153,6 +160,7 @@ Feature: feedback endpoint API tests
         }
         """
 
+  @cfg_authorized
   Scenario: Check if feedback endpoint is working when sentiment is negative
     And A new conversation is initialized
     And The feedback is enabled
@@ -173,6 +181,7 @@ Feature: feedback endpoint API tests
         }
         """
 
+  @cfg_authorized
   Scenario: Check if feedback endpoint is working when sentiment is positive
     And A new conversation is initialized
     And The feedback is enabled
@@ -193,6 +202,7 @@ Feature: feedback endpoint API tests
         }
         """
 
+  @cfg_authorized
   Scenario: Check if feedback submission fails when invalid sentiment is passed
     And A new conversation is initialized
     And The feedback is enabled
@@ -218,6 +228,7 @@ Feature: feedback endpoint API tests
         }
         """
 
+  @cfg_authorized
   Scenario: Check if feedback submission fails when nonexisting conversation ID is passed
     And The feedback is enabled
      When I submit the following feedback for nonexisting conversation "12345678-abcd-0000-0123-456789abcdef"
@@ -240,6 +251,7 @@ Feature: feedback endpoint API tests
         }
         """
 
+  @cfg_authorized
   Scenario: Check if feedback submission fails when conversation belongs to a different user
     And I set the Authorization header to Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva
     # Create a conversation as a different user (via user_id query param for noop_with_token)
@@ -258,6 +270,7 @@ Feature: feedback endpoint API tests
      Then The status code of the response is 403
      And The body of the response contains User does not have permission to perform this action
 
+  @cfg_authorized
   Scenario: Check if feedback endpoint fails when only empty string user_feedback is provided
     Given The system is in default state
     And A new conversation is initialized
@@ -285,33 +298,7 @@ Feature: feedback endpoint API tests
         }
         """
 
-@InvalidFeedbackStorageConfig
-  Scenario: Check if feedback submittion fails when invalid feedback storage path is configured
-    Given The service uses the lightspeed-stack-invalid-feedback-storage.yaml configuration
-      And The service is restarted
-      And The system is in default state
-      And The feedback is enabled
-    And A new conversation is initialized
-     When I submit the following feedback for the conversation created before
-        """
-        {
-            "llm_response": "Sample Response",
-            "sentiment": -1,
-            "user_feedback": "Not satisfied with the response quality",
-            "user_question": "Sample Question"
-        }
-        """
-     Then The status code of the response is 500
-     And The body of the response is the following
-        """
-        {
-            "detail": {
-                        "response": "Failed to store feedback",
-                        "cause": "Failed to store feedback at directory: /invalid"
-                    }
-        }
-        """
-
+  @cfg_authorized
   Scenario: Check if sequential feedback status toggling maintains consistency
     When The feedback is enabled
      Then The status code of the response is 200
@@ -331,6 +318,7 @@ Feature: feedback endpoint API tests
         }
         """
 
+  @cfg_authorized
   Scenario: Check if submitting duplicate feedback succeeds
     And A new conversation is initialized
     And The feedback is enabled
@@ -364,5 +352,32 @@ Feature: feedback endpoint API tests
         """
         {
             "response": "feedback received"
+        }
+        """
+
+@InvalidFeedbackStorageConfig @cfg_negative
+  Scenario: Check if feedback submittion fails when invalid feedback storage path is configured
+    Given The service uses the lightspeed-stack-g-negative.yaml configuration
+      And The service is restarted
+      And The system is in default state
+      And The feedback is enabled
+    And A new conversation is initialized
+     When I submit the following feedback for the conversation created before
+        """
+        {
+            "llm_response": "Sample Response",
+            "sentiment": -1,
+            "user_feedback": "Not satisfied with the response quality",
+            "user_question": "Sample Question"
+        }
+        """
+     Then The status code of the response is 500
+     And The body of the response is the following
+        """
+        {
+            "detail": {
+                        "response": "Failed to store feedback",
+                        "cause": "Failed to store feedback at directory: /invalid"
+                    }
         }
         """
