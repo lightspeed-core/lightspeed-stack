@@ -116,11 +116,13 @@ services:
     networks:
       - lightspeednet
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/liveness"]
+      # /readiness checks providers + default model; give Llama/providers time to
+      # finish registering before failures count toward unhealthy.
+      test: ["CMD", "curl", "-f", "http://localhost:8080/readiness"]
       interval: 10s   # how often to run the check
       timeout: 5s    # how long to wait before considering it failed
-      retries: 3      # how many times to retry before marking as unhealthy
-      start_period: 5s # time to wait before starting checks
+      retries: 5      # how many times to retry before marking as unhealthy
+      start_period: 60s # ignore failures while providers/models come up after restart
 
   # Mock JWKS server for RBAC E2E tests
   mock-jwks:

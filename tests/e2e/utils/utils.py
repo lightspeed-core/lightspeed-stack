@@ -468,12 +468,15 @@ def restart_container(container_name: str) -> None:
         print(f"Failed to restart container {container_name}: {e}")
         raise
 
-    # Wait for container to be healthy.
-    # Library mode embeds llama-stack, so the container takes longer to start
-    # (~45-60s vs ~10s in server mode). OpenTelemetry instrumentation adds
-    # initialization overhead. Use a generous attempt count so MCP-auth scenarios
-    # that restart the container don't time out.
-    wait_for_container_health(container_name, max_attempts=20)
+    # Wait for container health. Lightspeed compose probes /readiness with a long
+    # start_period (providers/models); allow enough poll time to cover that window
+    # (server ~60s+retries, library ~120s+retries) rather than giving up early.
+    health_attempts = 90 if container_name == "lightspeed-stack" else 20
+    wait_for_container_health(container_name, max_attempts=health_attempts)
+
+    if container_name == "lightspeed-stack":
+        # Published host port can lag Docker's in-container healthy; confirm from Behave.
+        wait_for_lightspeed_stack_http_ready()
 
     if container_name == "llama-stack":
         from tests.e2e.features.steps.health import (
@@ -487,12 +490,12 @@ def wait_for_lightspeed_stack_http_ready(
     max_attempts: int = 40,
     delay_s: float = 1.5,
 ) -> None:
-    """Block until Lightspeed Stack accepts HTTP on the host-mapped port.
+    """Block until Lightspeed Stack is ready on the host-mapped port.
 
     Used from proxy e2e steps only: ``docker inspect`` health can report
     ``healthy`` before the published port accepts connections (Podman/Docker
-    timing). Polls ``/liveness`` using the same host/port as Behave
-    (``E2E_LSC_*``).
+    timing). Polls ``/readiness`` (providers + default model) using the same
+    host/port as Behave (``E2E_LSC_*``).
 
     Parameters:
     ----------
@@ -500,13 +503,13 @@ def wait_for_lightspeed_stack_http_ready(
         delay_s: Sleep between attempts.
     Raises:
     ------
-        AssertionError: If ``/liveness`` does not return HTTP 200 in time.
+        AssertionError: If ``/readiness`` does not return HTTP 200 in time.
     """
     if is_prow_environment():
         return
     host = os.getenv("E2E_LSC_HOSTNAME", "localhost")
     port = os.getenv("E2E_LSC_PORT", "8080")
-    url = f"http://{host}:{port}/liveness"
+    url = f"http://{host}:{port}/readiness"
     for attempt in range(max_attempts):
         try:
             response = requests.get(url, timeout=5)
@@ -518,7 +521,7 @@ def wait_for_lightspeed_stack_http_ready(
             print(f"⏱ HTTP wait LSC {attempt + 1}/{max_attempts} ({url})...")
             time.sleep(delay_s)
     raise AssertionError(
-        f"Lightspeed Stack did not become reachable at {url!r} "
+        f"Lightspeed Stack did not become ready at {url!r} "
         f"after {max_attempts} attempts (~{max_attempts * delay_s:.0f}s)"
     )
 

@@ -67,10 +67,12 @@ services:
       - OTEL_SERVICE_NAME=${OTEL_SERVICE_NAME:-}
       - OTEL_SDK_DISABLED=${OTEL_SDK_DISABLED:-true}
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/liveness"]
+      # /readiness checks providers + default model; library mode also boots the
+      # embedded stack, so allow a long grace period before counting failures.
+      test: ["CMD", "curl", "-f", "http://localhost:8080/readiness"]
       interval: 10s   # how often to run the check
       timeout: 5s    # how long to wait before considering it failed
-      retries: 3      # how many times to retry before marking as unhealthy
+      retries: 5      # how many times to retry before marking as unhealthy
       start_period: 15s # time to wait before starting checks (increased for library initialization)
 
   # Mock JWKS server for RBAC E2E tests

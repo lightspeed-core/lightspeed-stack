@@ -67,14 +67,16 @@ spec:
       command: ["/bin/sh", "-c", "mkdir -p /tmp/data && exec /app-root/entrypoint.sh"]
       ports:
         - containerPort: 8080
-      # TCP probes avoid HTTP/auth. LCS + Llama handshake and large images can take 60–120s before :8080 listens;
-      # aggressive liveness was killing the container (connection refused) and breaking port-forward sandboxes.
+      # Readiness waits for providers/default model (/readiness). Liveness stays TCP so a
+      # slow provider handshake does not kill the pod (connection refused during boot).
       readinessProbe:
-        tcpSocket:
+        httpGet:
+          path: /readiness
           port: 8080
         initialDelaySeconds: 20
         periodSeconds: 5
-        failureThreshold: 30
+        timeoutSeconds: 5
+        failureThreshold: 36  # ~3 min after initialDelay for provider/model registration
       livenessProbe:
         tcpSocket:
           port: 8080

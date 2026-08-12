@@ -1,10 +1,11 @@
 """Code to be called before and after certain events during testing.
 
-Currently four events have been registered:
+Currently five events have been registered:
 1. before_all
 2. before_feature
 3. before_scenario
 4. after_scenario
+5. after_feature
 """
 
 import os
@@ -34,7 +35,6 @@ from tests.e2e.features.steps.tls import (
 )
 from tests.e2e.utils.llama_stack_utils import register_shield
 from tests.e2e.utils.prow_utils import (
-    restart_pod,
     restore_llama_stack_pod,
     run_e2e_ops,
 )
@@ -285,18 +285,14 @@ def _dump_pod_logs_on_failure(
 def after_scenario(context: Context, scenario: Scenario) -> None:
     """Run after each scenario is run.
 
-    Perform per-scenario teardown: restore scenario-specific configuration and,
-    in server mode, attempt to restart and verify the Llama Stack container if
-    it was previously running.
+    Per-scenario teardown only:
 
-    If ``configure_service`` applied a non-baseline YAML during the scenario
-    (``context.scenario_lightspeed_override_active``), copies
-    ``context.feature_config`` back and restarts lightspeed-stack.
+    - If ``configure_service`` applied a non-baseline YAML
+      (``context.scenario_lightspeed_override_active``), copy
+      ``context.feature_config`` back and restart lightspeed-stack.
+    - Re-register the llama-guard shield when a scenario disabled it.
 
-    When not running in library mode and the context indicates the Llama Stack
-    was running before the scenario, this function attempts to start the
-    llama-stack container and polls its health endpoint until it becomes
-    healthy or a timeout is reached.
+    Llama Stack disruption recovery runs in ``after_feature``, not here.
 
     Parameters:
     ----------
@@ -304,11 +300,6 @@ def after_scenario(context: Context, scenario: Scenario) -> None:
             - feature_config: path to the feature-level configuration to restore.
             - scenario_lightspeed_override_active: set by ``configure_service``
               when a scenario switches YAML after Background.
-            - is_library_mode (bool): whether tests run in library mode.
-            - llama_stack_was_running (bool, optional): whether llama-stack was
-              running before the scenario.
-            - hostname_llama, port_llama (str/int, optional): host and port
-              used for the llama-stack health check.
         scenario (Scenario): Behave scenario (unused; shield restore uses context flags).
     """
     if is_prow_environment():
@@ -370,48 +361,26 @@ def _print_llama_stack_diagnostics() -> None:
     print("--- end diagnostics ---")
 
 
-def _restore_llama_stack() -> None:
-    """Restore Llama Stack connection after disruption."""
+def _ensure_llama_stack_running() -> None:
+    """Bring Llama Stack back after disruption (soft-fail; teardown must not abort the suite).
+
+    On Prow, recreates the Llama pod. On Docker, ``docker start`` and polls
+    in-container ``/v1/health``. Does not restart lightspeed-stack; callers
+    decide that after config restore so Llama is only brought up once.
+    """
     if is_prow_environment():
-        # Recreate llama pod, then restart LCS so in-process clients reconnect (Llama IP/pod changed).
         try:
             restore_llama_stack_pod()
+            reset_llama_stack_disrupt_once_tracking()
+            print("✓ Prow: Llama Stack restored")
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
             print(f"Warning: Could not restore Llama Stack pod on Prow: {e}")
-            return
-        last_lcs_err: Optional[
-            subprocess.CalledProcessError | subprocess.TimeoutExpired
-        ] = None
-        for attempt in range(1, 4):
-            try:
-                restart_pod("lightspeed-stack")
-                print(
-                    "✓ Prow: Llama Stack restored and lightspeed-stack restarted "
-                    "for clean reconnect"
-                )
-                reset_llama_stack_disrupt_once_tracking()
-                return
-            except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
-                last_lcs_err = e
-                print(
-                    f"Warning: lightspeed-stack restart after Llama restore "
-                    f"attempt {attempt}/3 failed: {e}"
-                )
-                if attempt < 3:
-                    time.sleep(5)
-        print(
-            "Warning: Could not restart lightspeed-stack after Llama restore "
-            f"after 3 attempts: {last_lcs_err}"
-        )
         return
 
     try:
-        # Start the llama-stack container again
         subprocess.run(
             ["docker", "start", "llama-stack"], check=True, capture_output=True
         )
-
-        # Wait for the service to be healthy
         print("Restoring Llama Stack connection...")
         max_attempts = 24
         for attempt in range(max_attempts):
@@ -432,7 +401,7 @@ def _restore_llama_stack() -> None:
                 if result.returncode == 0:
                     print("✓ Llama Stack connection restored successfully")
                     reset_llama_stack_disrupt_once_tracking()
-                    break
+                    return
             except subprocess.TimeoutExpired:
                 print(
                     f"⏱ Health check timed out on attempt {attempt + 1}/{max_attempts}"
@@ -444,9 +413,9 @@ def _restore_llama_stack() -> None:
                     f"(attempt {attempt + 1}/{max_attempts})"
                 )
                 time.sleep(2)
-            else:
-                print("Warning: Llama Stack may not be fully healthy after restoration")
-                _print_llama_stack_diagnostics()
+
+        print("Warning: Llama Stack may not be fully healthy after restoration")
+        _print_llama_stack_diagnostics()
 
     except subprocess.CalledProcessError as e:
         print(f"Warning: Could not restore Llama Stack connection: {e}")
@@ -455,6 +424,44 @@ def _restore_llama_stack() -> None:
         if e.stdout:
             print(f"  docker start stdout: {e.stdout}")
         _print_llama_stack_diagnostics()
+
+
+def _restore_lightspeed_config_backup() -> bool:
+    """Restore ``lightspeed-stack.yaml`` from backup if present.
+
+    Returns:
+        True when a backup was applied and removed.
+    """
+    backup_path = "lightspeed-stack.yaml.backup"
+    if not os.path.exists(backup_path):
+        return False
+    switch_config(backup_path)
+    remove_config_backup(backup_path)
+    return True
+
+
+def _restart_lightspeed_after_prow_llama_restore() -> None:
+    """Soft-fail LCS restart so Prow clients reconnect after a Llama pod change."""
+    last_lcs_err: Optional[
+        subprocess.CalledProcessError | subprocess.TimeoutExpired
+    ] = None
+    for attempt in range(1, 4):
+        try:
+            restart_container("lightspeed-stack")
+            print("✓ Prow: lightspeed-stack restarted after Llama disruption restore")
+            return
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
+            last_lcs_err = e
+            print(
+                f"Warning: lightspeed-stack restart after Llama restore "
+                f"attempt {attempt}/3 failed: {e}"
+            )
+            if attempt < 3:
+                time.sleep(5)
+    print(
+        "Warning: Could not restart lightspeed-stack after Llama restore "
+        f"after 3 attempts: {last_lcs_err}"
+    )
 
 
 def before_feature(context: Context, feature: Feature) -> None:
@@ -498,17 +505,15 @@ def before_feature(context: Context, feature: Feature) -> None:
 def after_feature(context: Context, feature: Feature) -> None:
     """Run after each feature file is exercised.
 
-    Perform feature-level teardown: restore any modified configuration and,
-    when ``context.feedback_e2e_conversation_cleanup`` is set by feedback steps,
-    delete tracked feedback test conversations.
-    """
-    # Restore Llama Stack FIRST (before any lightspeed-stack restart).
-    # Read from module-level state — Behave clears custom context attributes
-    # between scenarios, so context.llama_stack_was_running is unreliable here.
-    if get_llama_stack_was_running():
-        _restore_llama_stack()
-        reset_llama_stack_was_running()
+    Teardown order (avoids start-then-restart of Llama):
 
+    1. Feedback conversation cleanup (while the feature's LCS config is still active).
+    2. Restore ``lightspeed-stack.yaml`` from backup when present.
+    3. Bring Llama up **once** when needed (disrupted and/or config restored).
+    4. Restart lightspeed-stack **once** when config was restored, or on Prow after
+       a Llama disruption (clients must reconnect to a new pod).
+    5. Stop any leftover proxy servers; log feature duration.
+    """
     if getattr(context, "feedback_e2e_conversation_cleanup", False):
         token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva"
         for conversation_id in getattr(context, "feedback_conversations", []):
@@ -517,16 +522,27 @@ def after_feature(context: Context, feature: Feature) -> None:
             response = requests.delete(url, headers=headers, timeout=10)
             assert response.status_code == 200, f"{url} returned {response.status_code}"
 
-    # Restore Lightspeed Stack config if the generic configure_service step switched it.
-    # This cleanup intentionally runs for any feature (not tag-gated) - any feature that
-    # leaves a backup file will trigger config restoration and container restarts.
-    backup_path = "lightspeed-stack.yaml.backup"
-    if os.path.exists(backup_path):
-        switch_config(backup_path)
-        remove_config_backup(backup_path)
-        if not context.is_library_mode:
+    # Module-level flag — Behave clears custom context attrs between scenarios.
+    llama_was_disrupted = get_llama_stack_was_running()
+    if llama_was_disrupted:
+        reset_llama_stack_was_running()
+
+    # Restore host/ConfigMap YAML before bouncing containers so a single
+    # Llama start/restart sees the baseline enrichment config.
+    config_restored = _restore_lightspeed_config_backup()
+
+    if not context.is_library_mode and (llama_was_disrupted or config_restored):
+        if config_restored:
+            # ``docker restart`` starts a stopped container; picks up restored YAML.
             restart_container("llama-stack")
+        else:
+            # Disrupt-only (no backup): soft-fail so teardown does not abort the suite.
+            _ensure_llama_stack_running()
+
+    if config_restored:
         restart_container("lightspeed-stack")
+    elif llama_was_disrupted and is_prow_environment():
+        _restart_lightspeed_after_prow_llama_restore()
 
     # Clean up any proxy servers left from the last scenario
     if hasattr(context, "tunnel_proxy") or hasattr(context, "interception_proxy"):
