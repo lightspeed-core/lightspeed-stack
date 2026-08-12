@@ -1,3 +1,5 @@
+# @cfg_rbac
+# From: lightspeed-stack-rbac.yaml (auth module jwk-token is incompatible with other groups)
 name: Lightspeed Core Service (RBAC E2E Tests)
 service:
   host: 0.0.0.0

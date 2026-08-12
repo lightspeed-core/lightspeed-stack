@@ -34,6 +34,12 @@ def reset_llama_stack_disrupt_once_tracking() -> None:
     _llama_stack_was_running["value"] = False
 
 
+def _force_lightspeed_restart_after_llama_disrupt(context: Context) -> None:
+    """Do not skip the next Lightspeed restart after Llama is disrupted."""
+    context.force_lightspeed_restart_after_mcp_config_reset = True
+    context.lightspeed_stack_skip_restart = False
+
+
 @given("The llama-stack connection is disrupted")
 def llama_stack_connection_broken(context: Context) -> None:
     """Break llama_stack connection by stopping the container.
@@ -63,6 +69,7 @@ def llama_stack_connection_broken(context: Context) -> None:
     """
     if _llama_stack_disrupt_once["applied"]:
         print("Llama Stack disruption skipped (already applied once this feature)")
+        _force_lightspeed_restart_after_llama_disrupt(context)
         return
 
     # Store original state for restoration (only on the real disruption path).
@@ -78,6 +85,7 @@ def llama_stack_connection_broken(context: Context) -> None:
         context.llama_stack_was_running = was_running
         _llama_stack_was_running["value"] = was_running
         _llama_stack_disrupt_once["applied"] = True
+        _force_lightspeed_restart_after_llama_disrupt(context)
         return
 
     # Docker-based disruption
@@ -108,3 +116,4 @@ def llama_stack_connection_broken(context: Context) -> None:
         return
 
     _llama_stack_disrupt_once["applied"] = True
+    _force_lightspeed_restart_after_llama_disrupt(context)

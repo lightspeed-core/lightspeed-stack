@@ -1,4 +1,4 @@
-@e2e_group_2
+@cfg_default
 Feature: Models endpoint tests
 
 
@@ -7,7 +7,7 @@ Feature: Models endpoint tests
       And The system is in default state
       And REST API service prefix is /v1
       And the Lightspeed stack configuration directory is "tests/e2e/configuration"
-      And The service uses the lightspeed-stack.yaml configuration
+      And The service uses the lightspeed-stack-default.yaml configuration
       And The service is restarted
 
 

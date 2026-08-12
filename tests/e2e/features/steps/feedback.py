@@ -168,7 +168,5 @@ def _lightspeed_yaml_path(context: Context, filename: str) -> str:
 @given("An invalid feedback storage path is configured")  # type: ignore[reportCallIssue]
 def configure_invalid_feedback_storage_path(context: Context) -> None:
     """Set an invalid feedback storage path and restart the container."""
-    switch_config(
-        _lightspeed_yaml_path(context, "lightspeed-stack-invalid-feedback-storage.yaml")
-    )
+    switch_config(_lightspeed_yaml_path(context, "lightspeed-stack-negative.yaml"))
     restart_container("lightspeed-stack")

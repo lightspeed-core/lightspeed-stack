@@ -1,3 +1,6 @@
+# @cfg_skills
+# Echo-only path. Not merged with skills-directory: @SkillsConfig asserts
+# exact list_skills tool_results content with echo alone.
 name: Lightspeed Core Service (LCS)
 service:
   host: 0.0.0.0

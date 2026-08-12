@@ -1,3 +1,6 @@
+# @cfg_byok_pdf
+# Kept separate: dedicated vector store + rag.inline=[pdf-field-notes] so
+# retrieval is not mixed with e2e-test-docs (Paul Graham) chunks.
 name: Lightspeed Core Service (LCS)
 service:
   host: 0.0.0.0

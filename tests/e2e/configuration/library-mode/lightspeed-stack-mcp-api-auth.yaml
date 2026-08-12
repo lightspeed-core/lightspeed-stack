@@ -1,3 +1,7 @@
+# @cfg_mcp_api_auth
+# From: lightspeed-stack-mcp-auth.yaml
+# Kept out of @cfg_authorized: static MCP would make check_mcp_auth run on
+# every query/responses call in the authorized suite.
 name: Lightspeed Core Service (LCS)
 service:
   host: 0.0.0.0
@@ -19,9 +23,10 @@ user_data_collection:
   transcripts_enabled: true
   transcripts_storage: "/tmp/data/transcripts"
 authentication:
-  module: "noop"
+  module: "noop-with-token"
 mcp_servers:
-  - name: "mcp-file"
+  - name: "mcp-oauth"
+    provider_id: "model-context-protocol"
     url: "http://mock-mcp:3000"
     authorization_headers:
-      Authorization: "/tmp/invalid-mcp-token"
+      Authorization: "oauth"
