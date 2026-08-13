@@ -7,6 +7,11 @@ packages:
     cmake,
     cargo,
   ]
+
+upgradePackages:
+  [
+    libgcrypt,
+  ]
 contentOrigin:
   repofiles: ["./redhat.repo"]
 arches: [x86_64, aarch64]
