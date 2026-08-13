@@ -147,6 +147,44 @@ The reference profiles are sanity-checked by the unit suite
 (`tests/unit/test_llama_stack_synthesize.py`), so they stay loadable as the
 synthesizer evolves.
 
+### Conversation persistence (unified mode)
+
+When `conversation_cache` is `postgres` or `sqlite`, unified synthesis upserts an
+OGX backend named `conversations_default` from that cache and points
+`storage.stores.conversations` at it **before** applying
+`llama_stack.config.native_override`. Inference/agents SQL on `sql_default` is
+left alone. Continuing a chat after a restart (such as a Kubernetes Pod redeploy) needs this OGX store; listing and
+ownership also need a durable matching-type LCORE `database`.
+
+**Happy path.** Use unified library mode (`llama_stack.config.baseline` or a
+profile), set durable `conversation_cache`, set `database` to the same backend
+*type* (postgres or sqlite) on a non-ephemeral path, and do **not** set
+`storage.stores.conversations` under `native_override`. See
+[`examples/lightspeed-stack-unified-conversation-persistence-pg.yaml`](../../examples/lightspeed-stack-unified-conversation-persistence-pg.yaml).
+
+**`native_override` wins.** Dumb migration lifts a full `run.yaml` into
+`native_override`, which usually still has `stores.conversations.backend:
+sql_default`. That undoes enrichment; LCORE logs a warning and chats will not
+survive restart until you remove that key, point it at `conversations_default`,
+or accept a deliberate split.
+
+**`database` must be durable too.** If `database` is omitted (default
+`/tmp/lightspeed-stack.db`), is under `/tmp/`, or is a different type than the
+cache, synthesis warns. Same-type different hosts/paths do not warn.
+
+**Secrets.** Prefer `${env.*}` for postgres
+passwords. Literals are copied into `.generated/run.yaml` (mode 0600) and
+trigger a warning.
+
+**SQLite.** Sharing one `db_path` between cache and OGX conversations is fine
+for single-worker. Prefer Postgres for multi-worker / production.
+
+**Legacy two-file mode** is unchanged. Migrate to unified or edit `run.yaml`
+manually. OpenAI-compatible `previous_response_id` continuation still uses an
+ephemeral responses store and does not survive restart; normal continue-chat
+via the `conversation` id does.
+
+More detail: [Conversations API Guide](../devel_doc/conversations_api.md).
 
 
 ### Llama Stack as a server

@@ -290,7 +290,7 @@ class DatabaseConfiguration(ConfigurationBase):
         Ensure exactly one database backend is configured, defaulting to a temporary SQLite one.
 
         If neither `sqlite` nor `postgres` is set, assigns a default SQLite
-        configuration using the file path "/tmp/lightspeed-stack.db". If both
+        configuration using ``constants.DEFAULT_SQLITE_DATABASE_PATH``. If both
         backends are configured, raises a `ValueError`.
 
         Returns:
@@ -303,8 +303,9 @@ class DatabaseConfiguration(ConfigurationBase):
             # Default to SQLite in a (hopefully) tmpfs if no database configuration is provided.
             # This is good for backwards compatibility for deployments that do not mind having
             # no persistent database.
-            sqlite_file_name = "/tmp/lightspeed-stack.db"
-            self.sqlite = SQLiteDatabaseConfiguration(db_path=sqlite_file_name)
+            self.sqlite = SQLiteDatabaseConfiguration(
+                db_path=constants.DEFAULT_SQLITE_DATABASE_PATH
+            )
         elif total_configured_dbs > 1:
             raise ValueError("Only one database configuration can be provided")
 

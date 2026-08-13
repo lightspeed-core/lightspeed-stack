@@ -20,9 +20,10 @@ Two related responsibilities live here:
 
 import copy
 import os
+import re
 from argparse import ArgumentParser
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Final, Optional
 from urllib.parse import urljoin
 
 import yaml
@@ -33,6 +34,16 @@ import constants
 from log import get_logger
 
 logger = get_logger(__name__)
+
+# Dedicated OGX SQL backend for stores.conversations when conversation_cache is
+# durable (RHIDP-14967). Injected only during unified synthesis; not seeded in
+# default_run.yaml.
+CONVERSATIONS_BACKEND_NAME: Final[str] = "conversations_default"
+# Default OGX stores.conversations.table_name when the baseline/store omits one.
+DEFAULT_CONVERSATIONS_TABLE_NAME: Final[str] = "openai_conversations"
+_DURABLE_CACHE_TYPES: Final[frozenset[str]] = frozenset({"postgres", "sqlite"})
+# Used to warn when a postgres password is not an ${env.*} reference.
+_ENV_REF_RE: Final[re.Pattern[str]] = re.compile(r"^\$\{env\.[^}]+\}$")
 
 # Maps a UnifiedInferenceProvider.type (canonical, backend-agnostic vocabulary)
 # to the Llama Stack provider_type emitted by apply_high_level_inference. The
@@ -1110,6 +1121,184 @@ def ensure_mcp_tool_runtime(ls_config: dict[str, Any]) -> None:
     )
 
 
+def enrich_conversation_storage(
+    ls_config: dict[str, Any],
+    conversation_cache: Optional[dict[str, Any]],
+) -> None:
+    """Upsert ``conversations_default`` from a durable ``conversation_cache``.
+
+    When ``conversation_cache.type`` is ``postgres`` or ``sqlite`` and the
+    selected backend block has required fields, writes
+    ``storage.backends.conversations_default`` and sets
+    ``storage.stores.conversations.backend`` to that name. Leaves
+    ``sql_default`` and other backends untouched. Reads the raw YAML dict
+    slice (not a validated model) so passwords are not masked as SecretStr.
+
+    Parameters:
+        ls_config: Mutable Llama Stack / OGX configuration being synthesized.
+        conversation_cache: Raw ``conversation_cache`` mapping from
+            ``lightspeed-stack.yaml``, or None.
+
+    Returns:
+        None: ``ls_config`` is modified in place. Incomplete or non-durable
+        cache configs are skipped with no mutation.
+    """
+    if not isinstance(conversation_cache, dict):
+        return
+    cache_type = conversation_cache.get("type")
+    if cache_type not in _DURABLE_CACHE_TYPES:
+        return
+
+    block = conversation_cache.get(cache_type)
+    if not isinstance(block, dict):
+        return
+
+    if cache_type == "sqlite":
+        db_path = block.get("db_path")
+        if not isinstance(db_path, str) or not db_path.strip():
+            return
+        backend_cfg: dict[str, Any] = {
+            "type": "sql_sqlite",
+            "db_path": db_path,
+        }
+    else:
+        # host/port are optional on PostgreSQLDatabaseConfiguration (default
+        # localhost/5432); only require fields the model itself requires.
+        required = ("db", "user", "password")
+        for key in required:
+            value = block.get(key)
+            if not isinstance(value, str) or not value.strip():
+                return
+        backend_cfg = {
+            "type": "sql_postgres",
+            "host": block.get("host", "localhost"),
+            "port": block.get("port", 5432),
+            "db": block["db"],
+            "user": block["user"],
+            "password": block["password"],
+        }
+
+    # Treat YAML nulls (storage:, backends:, stores:) as empty dicts. setdefault
+    # alone is not enough: a present key with value None is returned as-is.
+    storage = ls_config.get("storage") or {}
+    ls_config["storage"] = storage
+    backends = storage.get("backends") or {}
+    storage["backends"] = backends
+    backends[CONVERSATIONS_BACKEND_NAME] = backend_cfg
+
+    stores = storage.get("stores") or {}
+    storage["stores"] = stores
+    conversations = stores.get("conversations")
+    if not isinstance(conversations, dict):
+        conversations = {}
+        stores["conversations"] = conversations
+    table_name = conversations.get("table_name")
+    if not isinstance(table_name, str) or not table_name.strip():
+        conversations["table_name"] = DEFAULT_CONVERSATIONS_TABLE_NAME
+    conversations["backend"] = CONVERSATIONS_BACKEND_NAME
+
+    logger.info(
+        "Conversation persistence: wired stores.conversations to %s from "
+        "conversation_cache.type=%r",
+        CONVERSATIONS_BACKEND_NAME,
+        cache_type,
+    )
+
+
+def _database_is_ephemeral_or_mismatched(
+    lcs_config: dict[str, Any], cache_type: str
+) -> bool:
+    """Return True when raw database is absent, /tmp sqlite, or type-mismatched."""
+    database = lcs_config.get("database")
+    if not isinstance(database, dict):
+        return True
+    if database.get("postgres") is not None:
+        db_type = "postgres"
+    elif database.get("sqlite") is not None:
+        db_type = "sqlite"
+    else:
+        return True
+    if db_type != cache_type:
+        return True
+    if db_type == "sqlite":
+        path = (database.get("sqlite") or {}).get("db_path")
+        if isinstance(path, str) and (
+            path.startswith("/tmp/") or path == constants.DEFAULT_SQLITE_DATABASE_PATH
+        ):
+            return True
+    return False
+
+
+def warn_conversation_persistence(
+    ls_config: dict[str, Any], lcs_config: dict[str, Any]
+) -> list[str]:
+    """Log post-merge conversation-persistence footguns; return message list.
+
+    Emits W1 when durable cache does not drive final ``stores.conversations``,
+    W2 when ``database`` is ephemeral or type-mismatched, and W3 when a
+    postgres password is a non-``${env…}`` literal. Never logs secret values.
+
+    Parameters:
+        ls_config: Final synthesized Llama Stack configuration (after override).
+        lcs_config: Raw full ``lightspeed-stack.yaml`` dict.
+
+    Returns:
+        list[str]: Warning messages that were logged (empty when nothing to warn).
+    """
+    messages: list[str] = []
+    cache = lcs_config.get("conversation_cache")
+    if not isinstance(cache, dict) or cache.get("type") not in _DURABLE_CACHE_TYPES:
+        return messages
+    cache_type = str(cache["type"])
+
+    storage = ls_config.get("storage") or {}
+    stores = storage.get("stores") or {}
+    backends = storage.get("backends") or {}
+    conversations = stores.get("conversations") if isinstance(stores, dict) else None
+    backend_name = (
+        conversations.get("backend") if isinstance(conversations, dict) else None
+    )
+    if (
+        backend_name != CONVERSATIONS_BACKEND_NAME
+        or not isinstance(backends, dict)
+        or CONVERSATIONS_BACKEND_NAME not in backends
+    ):
+        messages.append(
+            "Conversation persistence: durable conversation_cache is set but "
+            "native_override still owns storage.stores.conversations (or "
+            f"{CONVERSATIONS_BACKEND_NAME} is missing). Remove or retarget "
+            "that key under llama_stack.config.native_override, or point it at "
+            f"{CONVERSATIONS_BACKEND_NAME}."
+        )
+
+    if _database_is_ephemeral_or_mismatched(lcs_config, cache_type):
+        messages.append(
+            "Conversation persistence: durable conversation_cache is set but "
+            "database is ephemeral or type-mismatched; configure a durable "
+            f"database of type {cache_type!r} so ownership metadata survives "
+            "restart."
+        )
+
+    password = None
+    backend = (
+        backends.get(CONVERSATIONS_BACKEND_NAME) if isinstance(backends, dict) else None
+    )
+    if isinstance(backend, dict) and backend.get("type") == "sql_postgres":
+        password = backend.get("password")
+    elif cache_type == "postgres" and isinstance(cache.get("postgres"), dict):
+        password = cache["postgres"].get("password")
+    if isinstance(password, str) and password and _ENV_REF_RE.match(password) is None:
+        messages.append(
+            "Conversation persistence: literal postgres password detected in "
+            "conversation_cache; prefer an ${env.VAR} reference so secrets are "
+            "not written into the synthesized run.yaml."
+        )
+
+    for msg in messages:
+        logger.warning(msg)
+    return messages
+
+
 def _resolve_profile_path(profile: str, config_file_dir: Optional[str]) -> Path:
     """Resolve a ``profile:`` path against the loaded config's directory (R8).
 
@@ -1141,8 +1330,10 @@ def synthesize_configuration(
     file, empty, or the built-in default), apply the existing enrichment
     (Azure Entra ID, BYOK RAG, Solr/OKP) for parity with legacy mode (R7),
     expand the high-level ``inference.providers`` section, ensure the default
-    MCP tool_runtime provider when the baseline was not empty, and deep-merge
-    the raw ``native_override`` last (R5).
+    MCP tool_runtime provider when the baseline was not empty, wire durable
+    ``conversation_cache`` into ``stores.conversations`` (RHIDP-14967),
+    deep-merge the raw ``native_override`` last (R5), then warn on persistence
+    footguns.
 
     Parameters:
         lcs_config: The full ``lightspeed-stack.yaml`` parsed into a dict.
@@ -1197,12 +1388,21 @@ def synthesize_configuration(
     if not baseline_was_empty:
         ensure_mcp_tool_runtime(ls_config)
 
+    # 6b. Durable conversation_cache → conversations_default (before override).
+    cache_raw = lcs_config.get("conversation_cache")
+    enrich_conversation_storage(
+        ls_config, cache_raw if isinstance(cache_raw, dict) else None
+    )
+
     # 7. Raw escape hatch, deep-merged last with list replacement (R5).
     if unified and unified.get("native_override"):
         ls_config = deep_merge_list_replace(ls_config, unified["native_override"])
 
     # 8. Dedupe again in case native_override or enrichment reintroduced dupes.
     dedupe_providers_vector_io(ls_config)
+
+    # 9. Persistence footgun warnings (override already applied).
+    warn_conversation_persistence(ls_config, lcs_config)
 
     return ls_config
 

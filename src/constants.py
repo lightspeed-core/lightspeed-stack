@@ -198,6 +198,10 @@ CACHE_TYPE_SQLITE: Final[str] = "sqlite"
 CACHE_TYPE_POSTGRES: Final[str] = "postgres"
 CACHE_TYPE_NOOP: Final[str] = "noop"
 
+# Default sqlite path when DatabaseConfiguration has no backend configured.
+# Ephemeral (typically tmpfs); conversation-persistence warnings treat this as non-durable.
+DEFAULT_SQLITE_DATABASE_PATH: Final[str] = "/tmp/lightspeed-stack.db"
+
 # BYOK RAG
 # Default RAG type for bring-your-own-knowledge RAG configurations, that type
 # needs to be supported by Llama Stack

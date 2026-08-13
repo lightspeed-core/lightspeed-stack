@@ -158,15 +158,15 @@ response = await client.responses.create(
 
 ### Conversation Storage
 
-Conversations are stored in **two databases**:
+Conversations are stored across **LCORE and Llama Stack / OGX** layers:
 
-#### 1. Llama Stack Database (PostgreSQL `public` schema)
+#### 1. Llama Stack / OGX conversations store
 
 **Tables:**
 - `openai_conversations`: Stores conversation metadata
-- `conversation_items`: Stores individual messages/turns in conversations
+- `conversation_items`: Stores individual messages/turns (durable source of truth for continue-chat)
 
-**Configuration (in `config/llama_stack_client_config.yaml`):**
+**Baseline configuration** (shipped `default_run.yaml` / typical profile):
 ```yaml
 storage:
   stores:
@@ -175,7 +175,13 @@ storage:
       backend: sql_default
 ```
 
-#### 2. Lightspeed Stack Database (PostgreSQL `lightspeed-stack` schema)
+In **unified mode**, when `conversation_cache` is `postgres` or `sqlite`,
+synthesis upserts `storage.backends.conversations_default` from that cache and
+sets `stores.conversations.backend: conversations_default` (unless
+`native_override` retargets the store afterward). See
+[Conversation persistence (unified mode)](../user_doc/deployment_guide.md#conversation-persistence-unified-mode).
+
+#### 2. Lightspeed Stack database
 
 **Table:** `user_conversation`
 
@@ -186,6 +192,11 @@ Stores user-specific metadata:
 - Creation and last message timestamps
 - Message count
 - Topic summary
+
+#### 3. Lightspeed conversation cache (optional)
+
+When configured, `conversation_cache` holds V2 Q&A history and topic summaries.
+It does **not** replace the OGX conversations store used to continue chats.
 
 ---
 
