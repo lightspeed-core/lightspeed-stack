@@ -4,6 +4,13 @@ lockfileVendor: redhat
 arches:
 - arch: aarch64
   packages:
+  - url: https://cdn.redhat.com/content/dist/layered/rhel9/aarch64/rhelai/3.4/os/Packages/t/thrift-0.15.0-6.el9ai.aarch64.rpm
+    repoid: rhelai-3.4-for-rhel-9-aarch64-rpms
+    size: 1446795
+    checksum: sha256:3daa6deb9e8ac711cb61c63a87c250ac5fe744a368408dddc540a7ddfb19675e
+    name: thrift
+    evr: 1:0.15.0-6.el9ai
+    sourcerpm: thrift-0.15.0-6.el9ai.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.6/aarch64/appstream/os/Packages/c/cargo-1.84.1-1.el9.aarch64.rpm
     repoid: rhel-9-for-aarch64-appstream-eus-rpms__9_DOT_6
     size: 7744425
@@ -85,6 +92,13 @@ arches:
   module_metadata: []
 - arch: x86_64
   packages:
+  - url: https://cdn.redhat.com/content/dist/layered/rhel9/x86_64/rhelai/3.4/os/Packages/t/thrift-0.15.0-6.el9ai.x86_64.rpm
+    repoid: rhelai-3.4-for-rhel-9-x86_64-rpms
+    size: 1657357
+    checksum: sha256:f4731d852b67a8b5b90f3f703ef6c29b2107e0686b5fda20095a929dc9d044ac
+    name: thrift
+    evr: 1:0.15.0-6.el9ai
+    sourcerpm: thrift-0.15.0-6.el9ai.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.6/x86_64/appstream/os/Packages/c/cargo-1.84.1-1.el9.x86_64.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms__9_DOT_6
     size: 8292467
