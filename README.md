@@ -918,7 +918,7 @@ test-unit                         Run the unit tests
 test-integration                  Run integration tests tests
 test-e2e                          Run end to end tests for the service
 test-e2e-local                    Run end to end tests for the service (no script wrapper)
-test-e2e-tagged                   Run e2e tests with E2E_BEHAVE_TAG_EXPR (default: all @e2e_group_*)
+test-e2e-tagged                   Run e2e tests with E2E_BEHAVE_TAG_EXPR (default: all @cfg_*)
 test-e2e-tagged-local             Same as test-e2e-tagged without script wrapper
 benchmarks                        Run benchmarks
 check-types-src                   Check type hints in sources only

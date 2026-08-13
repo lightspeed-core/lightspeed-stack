@@ -16,8 +16,9 @@ from tests.e2e.utils.utils import (
 )
 
 # Behave may clear user attributes on ``context`` between scenarios; keep the
-# last applied config basename here so Background can skip re-applying the same
-# YAML across scenarios in one feature. Mutate the dict entry (no global).
+# last applied config basename here so ``The service uses ...`` can skip
+# re-applying the same YAML across scenarios and across feature files in one
+# job (CI shards are config-aligned). Mutate the dict entry (no global).
 _active_lightspeed_stack_config_basename: dict[str, Optional[str]] = {"basename": None}
 
 # Behave clears user attributes on ``context`` between scenarios; store
@@ -26,8 +27,17 @@ _llama_stack_endpoint: dict[str, str] = {"hostname": "localhost", "port": "8321"
 
 
 def reset_active_lightspeed_stack_config_basename() -> None:
-    """Reset before each feature; see ``environment.before_feature``."""
+    """Clear the applied-config basename tracker.
+
+    Used when ``E2E_RESTORE_CONFIG_AFTER_FEATURE=1`` restores bootstrap YAML so
+    the next configure step does not skip-restart against a stale basename.
+    """
     _active_lightspeed_stack_config_basename["basename"] = None
+
+
+def get_active_lightspeed_stack_config_basename() -> Optional[str]:
+    """Return the last applied Lightspeed config basename, if any."""
+    return _active_lightspeed_stack_config_basename["basename"]
 
 
 def get_llama_stack_hostname() -> str:
@@ -87,13 +97,15 @@ def configure_service(context: Context, config_name: str) -> None:
     returns immediately: no backup, no copy, and sets
     ``context.lightspeed_stack_skip_restart`` so the next ``The service is
     restarted`` step can no-op—except after ``MCP configuration is reset for a new
-    scenario`` (library mode clears embedded Llama Stack storage), in which case
+    scenario`` or llama-stack disruption, in which case
     the restart is not skipped so Lightspeed reloads config and MCP state stays
     consistent. When the basename differs from the last apply, creates the
     backup on first use,
     copies the YAML, updates ``context.feature_config`` / override flags, and
-    stores the basename for the next check. Cleared in ``before_feature`` so a
-    new feature file always applies at least once.
+    stores the basename for the next check. Basename is kept across feature
+    files so consecutive features that share a ``@cfg_*`` YAML skip restart (CI
+    shards are config-aligned). Set ``E2E_RESTORE_CONFIG_AFTER_FEATURE=1`` to
+    restore bootstrap after each feature (legacy; forces re-apply next).
 
     Build path from ``lightspeed_stack_config_directory`` (directory step),
     defaulting base to ``tests/e2e/configuration`` if that step was omitted; then
@@ -104,13 +116,11 @@ def configure_service(context: Context, config_name: str) -> None:
     Parameters:
     ----------
         context (Context): Behave context.
-        config_name (str): Config filename (e.g. lightspeed-stack-inline-rag.yaml).
+        config_name (str): Config filename (e.g. lightspeed-stack-default.yaml).
     """
     config_name = config_name.strip()
     if _active_lightspeed_stack_config_basename["basename"] == config_name:
-        # ``MCP configuration is reset for a new scenario`` may have run (library:
-        # clear ``~/.llama``). The next restart must not be skipped or SQLite
-        # handles / MCP state diverges from the running process.
+        # MCP reset or llama disrupt: do not skip the next restart.
         if getattr(context, "force_lightspeed_restart_after_mcp_config_reset", False):
             context.lightspeed_stack_skip_restart = False
             context.force_lightspeed_restart_after_mcp_config_reset = False

@@ -1,3 +1,5 @@
+# @cfg_rh_identity
+# From: lightspeed-stack-auth-rh-identity.yaml (auth module incompatible with other groups)
 name: Lightspeed Core Service (LCS) - RH Identity Auth
 service:
   host: 0.0.0.0

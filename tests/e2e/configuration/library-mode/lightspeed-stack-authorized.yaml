@@ -1,3 +1,11 @@
+# @cfg_authorized
+# Safe merge: auth-noop-token + shields from default.
+# Intentionally NO mcp_servers: query/streaming_query/responses/tools all call
+# check_mcp_auth(); a static MCP entry would probe mock-mcp on every authorized
+# suite request and amplify flake.
+# Intentionally NO pii-redaction shields: streaming_query compares
+# token-stream text to turn_complete; redaction only applies to the complete
+# message and would make that assertion fail (v2 vs v[NUM]).
 name: Lightspeed Core Service (LCS)
 service:
   host: 0.0.0.0

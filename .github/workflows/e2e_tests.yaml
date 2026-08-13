@@ -11,9 +11,32 @@ jobs:
       matrix:
         mode: ["server", "library"]
         environment: ["ci"]
-        e2e_group: [1, 2, 3]
+        # Config-aligned shards (@cfg_*). Packed small groups keep job count reasonable
+        # while avoiding mixed-config restarts inside large suites.
+        shard:
+          - name: default
+            tags: "not @skip and @cfg_default"
+          - name: authorized
+            tags: "not @skip and @cfg_authorized"
+          - name: mcp
+            tags: "not @skip and (@cfg_mcp or @cfg_mcp_invalid or @cfg_mcp_api_auth)"
+          - name: rbac
+            tags: "not @skip and @cfg_rbac"
+          - name: skills
+            tags: "not @skip and (@cfg_skills or @cfg_skills_directory)"
+          - name: other
+            tags: "not @skip and (@cfg_rh_identity or @cfg_negative or @cfg_byok_pdf or @cfg_degraded or @cfg_unified)"
+          # Server-only; listed in shard (not matrix.include) so it expands with
+          # mode=server before any library jobs. include would append after library.
+          - name: tls
+            tags: "not @skip and @cfg_tls"
+        exclude:
+          - mode: library
+            shard:
+              name: tls
+              tags: "not @skip and @cfg_tls"
 
-    name: "E2E: ${{ matrix.mode }} mode / ${{ matrix.environment }} / group ${{ matrix.e2e_group }}"
+    name: "E2E: ${{ matrix.mode }} / ${{ matrix.environment }} / ${{ matrix.shard.name }}"
     
     env:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -43,7 +66,7 @@ jobs:
           persist-credentials: ${{ github.event_name != 'pull_request_target' }}
 
           # Fetch submodules (required for lightspeed-providers)
-          submodules: ‘recursive’
+          submodules: "recursive"
 
       - name: Verify actual git checkout result
         run: |
@@ -112,7 +135,7 @@ jobs:
           echo "=== Configuration Summary ==="
           echo "Deployment mode: ${{ matrix.mode }}"
           echo "Environment: ${{ matrix.environment }}"
-          echo "E2E shard (Makefile test-e2e-tagged): @e2e_group_${{ matrix.e2e_group }} (with not @skip)"
+          echo "E2E shard (Makefile test-e2e-tagged): ${{ matrix.shard.tags }}"
           echo "Source config: tests/e2e/configs/run-${{ matrix.environment }}.yaml"
           echo ""
           echo "=== Configuration Preview ==="
@@ -239,8 +262,8 @@ jobs:
           TERM: xterm-256color
           FORCE_COLOR: 1
           E2E_DEPLOYMENT_MODE: ${{ matrix.mode }}
-          # Matches Makefile test-e2e-tagged / E2E_BEHAVE_TAG_EXPR (one @e2e_group_* per job).
-          E2E_BEHAVE_TAG_EXPR: "not @skip and @e2e_group_${{ matrix.e2e_group }}"
+          # Matches Makefile test-e2e-tagged / E2E_BEHAVE_TAG_EXPR (one @cfg_* pack per job).
+          E2E_BEHAVE_TAG_EXPR: "${{ matrix.shard.tags }}"
         run: |
           echo "Installing test dependencies..."
           pip install uv

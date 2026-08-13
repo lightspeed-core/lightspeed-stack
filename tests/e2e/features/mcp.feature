@@ -1,4 +1,3 @@
-@e2e_group_2
 Feature: MCP tests
 
   Background:
@@ -7,9 +6,10 @@ Feature: MCP tests
       And REST API service prefix is /v1
       And the Lightspeed stack configuration directory is "tests/e2e/configuration"
 
+# Per-auth single-server configs (@cfg_mcp). Cannot share one multi-server YAML:
+# check_mcp_auth probes every configured MCP server. lightspeed-stack-mcp.yaml is for mcp_servers_api.
 
-# File-based (valid token) — lightspeed-stack-mcp-file-auth.yaml
-  @MCPFileAuthConfig
+  @MCPFileAuthConfig @cfg_mcp
   Scenario: Check if tools endpoint succeeds when MCP file-based auth token is passed
     Given MCP configuration is reset for a new scenario
       And The service uses the lightspeed-stack-mcp-file-auth.yaml configuration
@@ -19,10 +19,10 @@ Feature: MCP tests
     Then The status code of the response is 200
     And The body of the response contains mcp-file
 
-  @MCPFileAuthConfig @flaky
+
+  @MCPFileAuthConfig @flaky @cfg_mcp
   Scenario: Check if query endpoint succeeds when MCP file-based auth token is passed
-    Given MCP configuration is reset for a new scenario
-      And The service uses the lightspeed-stack-mcp-file-auth.yaml configuration
+      Given The service uses the lightspeed-stack-mcp-file-auth.yaml configuration
       And The service is restarted
     And The mcp-file mcp server Authorization header is set to "/tmp/mcp-token"
     And I capture the current token metrics
@@ -36,10 +36,10 @@ Feature: MCP tests
         | Hello                     |
     And The token metrics have increased
 
-  @MCPFileAuthConfig @flaky
+
+  @MCPFileAuthConfig @flaky @cfg_mcp
   Scenario: Check if streaming_query endpoint succeeds when MCP file-based auth token is passed
-    Given MCP configuration is reset for a new scenario
-      And The service uses the lightspeed-stack-mcp-file-auth.yaml configuration
+      Given The service uses the lightspeed-stack-mcp-file-auth.yaml configuration
       And The service is restarted
     And The mcp-file mcp server Authorization header is set to "/tmp/mcp-token"
     And I capture the current token metrics
@@ -54,71 +54,10 @@ Feature: MCP tests
         | Hello                     |
     And The token metrics have increased
 
-# File-based (invalid token) — lightspeed-stack-invalid-mcp-file-auth.yaml
-  @InvalidMCPFileAuthConfig
-  Scenario: Check if tools endpoint reports error when MCP file-based invalid auth token is passed
-    Given MCP configuration is reset for a new scenario
-      And The service uses the lightspeed-stack-invalid-mcp-file-auth.yaml configuration
-      And The service is restarted
-    And The mcp-file mcp server Authorization header is set to "/tmp/invalid-mcp-token"
-    When I access REST API endpoint "tools" using HTTP GET method
-    Then The status code of the response is 401
-    And The body of the response is the following
-    """
-        {
-            "detail": {
-                "response": "Missing or invalid credentials provided by client",
-                "cause": "MCP server at http://mock-mcp:3000 requires OAuth"
-            }
-        }
-    """
 
-  @InvalidMCPFileAuthConfig
-  Scenario: Check if query endpoint reports error when MCP file-based invalid auth token is passed
-    Given MCP configuration is reset for a new scenario
-      And The service uses the lightspeed-stack-invalid-mcp-file-auth.yaml configuration
-      And The service is restarted
-    And The mcp-file mcp server Authorization header is set to "/tmp/invalid-mcp-token"
-    When I use "query" to ask question
-    """
-    {"query": "Say hello", "model": "{MODEL}", "provider": "{PROVIDER}"}
-    """
-    Then The status code of the response is 401
-    And The body of the response is the following
-    """
-        {
-            "detail": {
-                "response": "Missing or invalid credentials provided by client",
-                "cause": "MCP server at http://mock-mcp:3000 requires OAuth"
-            }
-        }
-    """
-
-  @InvalidMCPFileAuthConfig
-  Scenario: Check if streaming_query endpoint reports error when MCP file-based invalid auth token is passed
-    Given MCP configuration is reset for a new scenario
-      And The service uses the lightspeed-stack-invalid-mcp-file-auth.yaml configuration
-      And The service is restarted
-    And The mcp-file mcp server Authorization header is set to "/tmp/invalid-mcp-token"
-    When I use "streaming_query" to ask question
-    """
-    {"query": "Say hello", "model": "{MODEL}", "provider": "{PROVIDER}"}
-    """
-    Then The status code of the response is 401
-    And The body of the response is the following
-    """
-        {
-            "detail": {
-                "response": "Missing or invalid credentials provided by client",
-                "cause": "MCP server at http://mock-mcp:3000 requires OAuth"
-            }
-        }
-    """
-
-# Kubernetes — lightspeed-stack-mcp-kubernetes-auth.yaml (success paths then invalid token)
-  @MCPKubernetesAuthConfig
+  @MCPKubernetesAuthConfig @cfg_mcp
   Scenario: Check if tools endpoint succeeds when MCP kubernetes auth token is passed
-    Given MCP configuration is reset for a new scenario
+      Given MCP configuration is reset for a new scenario
       And The service uses the lightspeed-stack-mcp-kubernetes-auth.yaml configuration
       And The service is restarted
     And I set the Authorization header to Bearer kubernetes-test-token
@@ -126,10 +65,10 @@ Feature: MCP tests
     Then The status code of the response is 200
     And The body of the response contains mcp-kubernetes
 
-  @MCPKubernetesAuthConfig @flaky
+
+  @MCPKubernetesAuthConfig @flaky @cfg_mcp
   Scenario: Check if query endpoint succeeds when MCP kubernetes auth token is passed
-    Given MCP configuration is reset for a new scenario
-      And The service uses the lightspeed-stack-mcp-kubernetes-auth.yaml configuration
+      Given The service uses the lightspeed-stack-mcp-kubernetes-auth.yaml configuration
       And The service is restarted
     And I set the Authorization header to Bearer kubernetes-test-token
     And I capture the current token metrics
@@ -143,10 +82,10 @@ Feature: MCP tests
         | Hello                     |
     And The token metrics have increased
 
-  @MCPKubernetesAuthConfig @flaky
+
+  @MCPKubernetesAuthConfig @flaky @cfg_mcp
   Scenario: Check if streaming_query endpoint succeeds when MCP kubernetes auth token is passed
-    Given MCP configuration is reset for a new scenario
-      And The service uses the lightspeed-stack-mcp-kubernetes-auth.yaml configuration
+      Given The service uses the lightspeed-stack-mcp-kubernetes-auth.yaml configuration
       And The service is restarted
     And I set the Authorization header to Bearer kubernetes-test-token
     And I capture the current token metrics
@@ -161,10 +100,10 @@ Feature: MCP tests
         | Hello                     |
     And The token metrics have increased
 
-  @MCPKubernetesAuthConfig
+
+  @MCPKubernetesAuthConfig @cfg_mcp
   Scenario: Check if tools endpoint reports error when MCP kubernetes invalid auth token is passed
-    Given MCP configuration is reset for a new scenario
-      And The service uses the lightspeed-stack-mcp-kubernetes-auth.yaml configuration
+      Given The service uses the lightspeed-stack-mcp-kubernetes-auth.yaml configuration
       And The service is restarted
     And I set the Authorization header to Bearer kubernetes-invalid-token
     When I access REST API endpoint "tools" using HTTP GET method
@@ -179,10 +118,10 @@ Feature: MCP tests
         }
     """
 
-  @MCPKubernetesAuthConfig
+
+  @MCPKubernetesAuthConfig @cfg_mcp
   Scenario: Check if query endpoint reports error when MCP kubernetes invalid auth token is passed
-    Given MCP configuration is reset for a new scenario
-      And The service uses the lightspeed-stack-mcp-kubernetes-auth.yaml configuration
+      Given The service uses the lightspeed-stack-mcp-kubernetes-auth.yaml configuration
       And The service is restarted
     And I set the Authorization header to Bearer kubernetes-invalid-token
     When I use "query" to ask question with authorization header
@@ -200,10 +139,10 @@ Feature: MCP tests
         }
     """
 
-  @MCPKubernetesAuthConfig
+
+  @MCPKubernetesAuthConfig @cfg_mcp
   Scenario: Check if streaming_query endpoint reports error when MCP kubernetes invalid auth token is passed
-    Given MCP configuration is reset for a new scenario
-      And The service uses the lightspeed-stack-mcp-kubernetes-auth.yaml configuration
+      Given The service uses the lightspeed-stack-mcp-kubernetes-auth.yaml configuration
       And The service is restarted
     And I set the Authorization header to Bearer kubernetes-invalid-token
     When I use "streaming_query" to ask question with authorization header
@@ -221,10 +160,10 @@ Feature: MCP tests
         }
     """
 
-# Client-provided — lightspeed-stack-mcp-clientauth.yaml
-@MCPClientAuthConfig
+
+@MCPClientAuthConfig @cfg_mcp
   Scenario: Check if tools endpoint succeeds when MCP client-provided auth token is passed
-    Given MCP configuration is reset for a new scenario
+      Given MCP configuration is reset for a new scenario
       And The service uses the lightspeed-stack-mcp-client-auth.yaml configuration
       And The service is restarted
     And I set the "MCP-HEADERS" header to
@@ -235,10 +174,10 @@ Feature: MCP tests
     Then The status code of the response is 200
     And The body of the response contains mcp-client
 
-  @MCPClientAuthConfig @flaky
+
+  @MCPClientAuthConfig @flaky @cfg_mcp
   Scenario: Check if query endpoint succeeds when MCP client-provided auth token is passed
-    Given MCP configuration is reset for a new scenario
-      And The service uses the lightspeed-stack-mcp-client-auth.yaml configuration
+      Given The service uses the lightspeed-stack-mcp-client-auth.yaml configuration
       And The service is restarted
     And I set the "MCP-HEADERS" header to
     """
@@ -255,10 +194,10 @@ Feature: MCP tests
         | Hello                     |
     And The token metrics have increased
 
-  @MCPClientAuthConfig @flaky
+
+  @MCPClientAuthConfig @flaky @cfg_mcp
   Scenario: Check if streaming_query endpoint succeeds when MCP client-provided auth token is passed
-    Given MCP configuration is reset for a new scenario
-      And The service uses the lightspeed-stack-mcp-client-auth.yaml configuration
+      Given The service uses the lightspeed-stack-mcp-client-auth.yaml configuration
       And The service is restarted
     And I set the "MCP-HEADERS" header to
     """
@@ -276,19 +215,19 @@ Feature: MCP tests
         | Hello                     |
     And The token metrics have increased
 
-  @MCPClientAuthConfig
+
+  @MCPClientAuthConfig @cfg_mcp
   Scenario: Check if tools endpoint succeeds by skipping when MCP client-provided auth token is omitted
-    Given MCP configuration is reset for a new scenario
-      And The service uses the lightspeed-stack-mcp-client-auth.yaml configuration
+      Given The service uses the lightspeed-stack-mcp-client-auth.yaml configuration
       And The service is restarted
     When I access REST API endpoint "tools" using HTTP GET method
     Then The status code of the response is 200
     And The body of the response does not contain mcp-client
 
-  @MCPClientAuthConfig @flaky
+
+  @MCPClientAuthConfig @flaky @cfg_mcp
   Scenario: Check if query endpoint succeeds by skipping when MCP client-provided auth token is omitted
-    Given MCP configuration is reset for a new scenario
-      And The service uses the lightspeed-stack-mcp-client-auth.yaml configuration
+      Given The service uses the lightspeed-stack-mcp-client-auth.yaml configuration
       And The service is restarted
     And I capture the current token metrics
     When I use "query" to ask question
@@ -302,10 +241,10 @@ Feature: MCP tests
         | Hello                     |
     And The token metrics have increased
 
-  @MCPClientAuthConfig @flaky
+
+  @MCPClientAuthConfig @flaky @cfg_mcp
   Scenario: Check if streaming_query endpoint succeeds by skipping when MCP client-provided auth token is omitted
-    Given MCP configuration is reset for a new scenario
-      And The service uses the lightspeed-stack-mcp-client-auth.yaml configuration
+      Given The service uses the lightspeed-stack-mcp-client-auth.yaml configuration
       And The service is restarted
     And I capture the current token metrics
     When I use "streaming_query" to ask question
@@ -320,10 +259,10 @@ Feature: MCP tests
         | Hello                     |
     And The token metrics have increased
 
-  @MCPClientAuthConfig
+
+  @MCPClientAuthConfig @cfg_mcp
   Scenario: Check if tools endpoint reports error when MCP client-provided invalid auth token is passed
-    Given MCP configuration is reset for a new scenario
-      And The service uses the lightspeed-stack-mcp-client-auth.yaml configuration
+      Given The service uses the lightspeed-stack-mcp-client-auth.yaml configuration
       And The service is restarted
     And I set the "MCP-HEADERS" header to
     """
@@ -341,10 +280,10 @@ Feature: MCP tests
         }
     """
 
-  @MCPClientAuthConfig
+
+  @MCPClientAuthConfig @cfg_mcp
   Scenario: Check if query endpoint reports error when MCP client-provided invalid auth token is passed
-    Given MCP configuration is reset for a new scenario
-      And The service uses the lightspeed-stack-mcp-client-auth.yaml configuration
+      Given The service uses the lightspeed-stack-mcp-client-auth.yaml configuration
       And The service is restarted
     And I set the "MCP-HEADERS" header to
     """
@@ -365,10 +304,10 @@ Feature: MCP tests
         }
     """
 
-  @MCPClientAuthConfig
+
+  @MCPClientAuthConfig @cfg_mcp
   Scenario: Check if streaming_query endpoint reports error when MCP client-provided invalid auth token is passed
-    Given MCP configuration is reset for a new scenario
-      And The service uses the lightspeed-stack-mcp-client-auth.yaml configuration
+      Given The service uses the lightspeed-stack-mcp-client-auth.yaml configuration
       And The service is restarted
     And I set the "MCP-HEADERS" header to
     """
@@ -389,10 +328,10 @@ Feature: MCP tests
         }
     """
 
-# OAuth — lightspeed-stack-mcp-oauth-auth.yaml (valid token, then unauthenticated, then invalid token)
-  @MCPOAuthAuthConfig
+
+  @MCPOAuthAuthConfig @cfg_mcp
   Scenario: Check if tools endpoint succeeds when MCP OAuth auth token is passed
-    Given MCP configuration is reset for a new scenario
+      Given MCP configuration is reset for a new scenario
       And The service uses the lightspeed-stack-mcp-oauth-auth.yaml configuration
       And The service is restarted
     And I set the "MCP-HEADERS" header to
@@ -403,10 +342,10 @@ Feature: MCP tests
     Then The status code of the response is 200
     And The body of the response contains mcp-oauth
 
-  @MCPOAuthAuthConfig @flaky
+
+  @MCPOAuthAuthConfig @flaky @cfg_mcp
   Scenario: Check if query endpoint succeeds when MCP OAuth auth token is passed
-    Given MCP configuration is reset for a new scenario
-      And The service uses the lightspeed-stack-mcp-oauth-auth.yaml configuration
+      Given The service uses the lightspeed-stack-mcp-oauth-auth.yaml configuration
       And The service is restarted
     And I set the "MCP-HEADERS" header to
     """
@@ -423,10 +362,10 @@ Feature: MCP tests
         | Hello                     |
     And The token metrics have increased
 
-  @MCPOAuthAuthConfig @flaky
+
+  @MCPOAuthAuthConfig @flaky @cfg_mcp
   Scenario: Check if streaming_query endpoint succeeds when MCP OAuth auth token is passed
-    Given MCP configuration is reset for a new scenario
-      And The service uses the lightspeed-stack-mcp-oauth-auth.yaml configuration
+      Given The service uses the lightspeed-stack-mcp-oauth-auth.yaml configuration
       And The service is restarted
     And I set the "MCP-HEADERS" header to
     """
@@ -444,10 +383,10 @@ Feature: MCP tests
         | Hello                     |
     And The token metrics have increased
 
-  @MCPOAuthAuthConfig
+
+  @MCPOAuthAuthConfig @cfg_mcp
   Scenario: Check if tools endpoint reports error when MCP OAuth requires authentication
-    Given MCP configuration is reset for a new scenario
-      And The service uses the lightspeed-stack-mcp-oauth-auth.yaml configuration
+      Given The service uses the lightspeed-stack-mcp-oauth-auth.yaml configuration
       And The service is restarted
     When I access REST API endpoint "tools" using HTTP GET method
     Then The status code of the response is 401
@@ -462,10 +401,10 @@ Feature: MCP tests
     """
     And The headers of the response contains the following header "www-authenticate"
 
-  @MCPOAuthAuthConfig
+
+  @MCPOAuthAuthConfig @cfg_mcp
   Scenario: Check if query endpoint reports error when MCP OAuth requires authentication
-    Given MCP configuration is reset for a new scenario
-      And The service uses the lightspeed-stack-mcp-oauth-auth.yaml configuration
+      Given The service uses the lightspeed-stack-mcp-oauth-auth.yaml configuration
       And The service is restarted
     When I use "query" to ask question
     """
@@ -483,10 +422,10 @@ Feature: MCP tests
     """
     And The headers of the response contains the following header "www-authenticate"
 
-  @MCPOAuthAuthConfig
+
+  @MCPOAuthAuthConfig @cfg_mcp
   Scenario: Check if streaming_query endpoint reports error when MCP OAuth requires authentication
-    Given MCP configuration is reset for a new scenario
-      And The service uses the lightspeed-stack-mcp-oauth-auth.yaml configuration
+      Given The service uses the lightspeed-stack-mcp-oauth-auth.yaml configuration
       And The service is restarted
     When I use "streaming_query" to ask question
     """
@@ -504,10 +443,10 @@ Feature: MCP tests
     """
     And The headers of the response contains the following header "www-authenticate"
 
-  @MCPOAuthAuthConfig
+
+  @MCPOAuthAuthConfig @cfg_mcp
   Scenario: Check if tools endpoint reports error when MCP OAuth invalid auth token is passed
-    Given MCP configuration is reset for a new scenario
-      And The service uses the lightspeed-stack-mcp-oauth-auth.yaml configuration
+      Given The service uses the lightspeed-stack-mcp-oauth-auth.yaml configuration
       And The service is restarted
     And I set the "MCP-HEADERS" header to
     """
@@ -526,10 +465,10 @@ Feature: MCP tests
     """
     And The headers of the response contains the following header "www-authenticate"
 
-  @MCPOAuthAuthConfig
+
+  @MCPOAuthAuthConfig @cfg_mcp
   Scenario: Check if query endpoint reports error when MCP OAuth invalid auth token is passed
-    Given MCP configuration is reset for a new scenario
-      And The service uses the lightspeed-stack-mcp-oauth-auth.yaml configuration
+      Given The service uses the lightspeed-stack-mcp-oauth-auth.yaml configuration
       And The service is restarted
     And I set the "MCP-HEADERS" header to
     """
@@ -551,10 +490,10 @@ Feature: MCP tests
     """
     And The headers of the response contains the following header "www-authenticate"
 
-  @MCPOAuthAuthConfig
+
+  @MCPOAuthAuthConfig @cfg_mcp
   Scenario: Check if streaming_query endpoint reports error when MCP OAuth invalid auth token is passed
-    Given MCP configuration is reset for a new scenario
-      And The service uses the lightspeed-stack-mcp-oauth-auth.yaml configuration
+      Given The service uses the lightspeed-stack-mcp-oauth-auth.yaml configuration
       And The service is restarted
     And I set the "MCP-HEADERS" header to
     """
@@ -576,11 +515,79 @@ Feature: MCP tests
     """
     And The headers of the response contains the following header "www-authenticate"
 
+
+  @cfg_mcp
   Scenario: Check if MCP client auth options endpoint is working
-    Given MCP configuration is reset for a new scenario
-      And The service uses the lightspeed-stack-mcp.yaml configuration
+      Given MCP configuration is reset for a new scenario
+      And The service uses the lightspeed-stack-mcp-client-auth.yaml configuration
       And The service is restarted
     When I access REST API endpoint "mcp-auth/client-options" using HTTP GET method
     Then The status code of the response is 200
       And The body of the response has proper client auth options structure
       And The response contains server "mcp-client" with client auth header "Authorization"
+
+# Invalid MCP file token uses lightspeed-stack-mcp-invalid.yaml (@cfg_mcp_invalid)
+
+  @InvalidMCPFileAuthConfig @cfg_mcp_invalid
+  Scenario: Check if tools endpoint reports error when MCP file-based invalid auth token is passed
+    Given MCP configuration is reset for a new scenario
+      And The service uses the lightspeed-stack-mcp-invalid.yaml configuration
+      And The service is restarted
+    And The mcp-file mcp server Authorization header is set to "/tmp/invalid-mcp-token"
+    When I access REST API endpoint "tools" using HTTP GET method
+    Then The status code of the response is 401
+    And The body of the response is the following
+    """
+        {
+            "detail": {
+                "response": "Missing or invalid credentials provided by client",
+                "cause": "MCP server at http://mock-mcp:3000 requires OAuth"
+            }
+        }
+    """
+
+
+  @InvalidMCPFileAuthConfig @cfg_mcp_invalid
+  Scenario: Check if query endpoint reports error when MCP file-based invalid auth token is passed
+    Given MCP configuration is reset for a new scenario
+      And The service uses the lightspeed-stack-mcp-invalid.yaml configuration
+      And The service is restarted
+    And The mcp-file mcp server Authorization header is set to "/tmp/invalid-mcp-token"
+    When I use "query" to ask question
+    """
+    {"query": "Say hello", "model": "{MODEL}", "provider": "{PROVIDER}"}
+    """
+    Then The status code of the response is 401
+    And The body of the response is the following
+    """
+        {
+            "detail": {
+                "response": "Missing or invalid credentials provided by client",
+                "cause": "MCP server at http://mock-mcp:3000 requires OAuth"
+            }
+        }
+    """
+
+
+  @InvalidMCPFileAuthConfig @cfg_mcp_invalid
+  Scenario: Check if streaming_query endpoint reports error when MCP file-based invalid auth token is passed
+    Given MCP configuration is reset for a new scenario
+      And The service uses the lightspeed-stack-mcp-invalid.yaml configuration
+      And The service is restarted
+    And The mcp-file mcp server Authorization header is set to "/tmp/invalid-mcp-token"
+    When I use "streaming_query" to ask question
+    """
+    {"query": "Say hello", "model": "{MODEL}", "provider": "{PROVIDER}"}
+    """
+    Then The status code of the response is 401
+    And The body of the response is the following
+    """
+        {
+            "detail": {
+                "response": "Missing or invalid credentials provided by client",
+                "cause": "MCP server at http://mock-mcp:3000 requires OAuth"
+            }
+        }
+    """
+
+

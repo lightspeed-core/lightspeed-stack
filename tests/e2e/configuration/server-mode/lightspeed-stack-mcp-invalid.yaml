@@ -1,3 +1,6 @@
+# @cfg_mcp_invalid
+# From: lightspeed-stack-invalid-mcp-file-auth.yaml
+# Must stay isolated: tools/query expect 401 when the only MCP server has a bad token.
 name: Lightspeed Core Service (LCS)
 service:
   host: 0.0.0.0
@@ -7,22 +10,19 @@ service:
   color_log: true
   access_log: true
 llama_stack:
-  # Library mode - embeds llama-stack as library
-  use_as_library_client: true
-  # Unified mode: run.yaml (materialized per provider by CI/the harness)
-  # is consumed as the synthesis profile instead of the legacy two-file path.
-  config:
-    profile: run.yaml
+  # Server mode - connects to separate llama-stack service
+  use_as_library_client: false
+  url: http://${env.E2E_LLAMA_HOSTNAME}:8321
+  api_key: xyzzy
 user_data_collection:
   feedback_enabled: true
   feedback_storage: "/tmp/data/feedback"
   transcripts_enabled: true
   transcripts_storage: "/tmp/data/transcripts"
 authentication:
-  module: "noop-with-token"
+  module: "noop"
 mcp_servers:
-  - name: "mcp-oauth"
-    provider_id: "model-context-protocol"
+  - name: "mcp-file"
     url: "http://mock-mcp:3000"
     authorization_headers:
-      Authorization: "oauth"
+      Authorization: "/tmp/invalid-mcp-token"
