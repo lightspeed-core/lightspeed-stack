@@ -9,9 +9,8 @@ import sentry_sdk  # pyright: ignore[reportMissingImports]
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from ogx_client import APIConnectionError, AsyncOgxClient
 from fastapi.routing import iter_route_contexts
-
+from ogx_client import APIConnectionError, AsyncOgxClient
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 import version
