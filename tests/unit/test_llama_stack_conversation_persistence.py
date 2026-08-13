@@ -18,6 +18,109 @@ from llama_stack_configuration import (
 # ---------------------------------------------------------------------------
 
 
+def _lcs_with_matching_sqlite(
+    db_path: str = "/var/lib/lightspeed/app.db",
+) -> dict[str, Any]:
+    """Build lcs_config with matching durable sqlite cache + database."""
+    return {
+        "conversation_cache": {
+            "type": "sqlite",
+            "sqlite": {"db_path": db_path},
+        },
+        "database": {"sqlite": {"db_path": db_path}},
+    }
+
+
+def _lcs_with_matching_postgres(
+    password: str = "${env.POSTGRES_PASSWORD}",
+    **postgres_overrides: Any,
+) -> dict[str, Any]:
+    """Build lcs_config with matching durable postgres cache + database."""
+    postgres: dict[str, Any] = {
+        "host": "h",
+        "port": 5432,
+        "db": "d",
+        "user": "u",
+        "password": password,
+    }
+    postgres.update(postgres_overrides)
+    return {
+        "conversation_cache": {"type": "postgres", "postgres": dict(postgres)},
+        "database": {"postgres": dict(postgres)},
+    }
+
+
+def _durable_pg_cache(password: str = "${env.POSTGRES_PASSWORD}") -> dict[str, Any]:
+    """Build a minimal durable postgres conversation_cache dict."""
+    return {
+        "type": "postgres",
+        "postgres": {
+            "host": "h",
+            "port": 5432,
+            "db": "d",
+            "user": "u",
+            "password": password,
+        },
+    }
+
+
+def test_enrich_skips_when_database_absent() -> None:
+    """Cache-only (typical library E2E): do not retarget stores.conversations."""
+    ls_config = load_default_baseline()
+    before = copy.deepcopy(ls_config)
+    cache = {
+        "type": "sqlite",
+        "sqlite": {"db_path": "/tmp/data/conversation-cache.db"},
+    }
+    enrich_conversation_storage(ls_config, cache, {"conversation_cache": cache})
+    assert ls_config == before
+
+
+def test_enrich_skips_when_database_under_tmp() -> None:
+    """Ephemeral /tmp database blocks enrichment even with a durable cache path."""
+    ls_config = load_default_baseline()
+    before = copy.deepcopy(ls_config)
+    cache = {"type": "sqlite", "sqlite": {"db_path": "/data/cache.db"}}
+    lcs = {
+        "conversation_cache": cache,
+        "database": {"sqlite": {"db_path": "/tmp/lightspeed-stack.db"}},
+    }
+    enrich_conversation_storage(ls_config, cache, lcs)
+    assert ls_config == before
+
+
+def test_enrich_skips_on_type_mismatch() -> None:
+    """Postgres cache + sqlite database must not retarget conversations."""
+    ls_config = load_default_baseline()
+    before = copy.deepcopy(ls_config)
+    cache = {
+        "type": "postgres",
+        "postgres": {
+            "host": "h",
+            "db": "d",
+            "user": "u",
+            "password": "p",
+        },
+    }
+    lcs = {
+        "conversation_cache": cache,
+        "database": {"sqlite": {"db_path": "/var/lib/lightspeed/app.db"}},
+    }
+    enrich_conversation_storage(ls_config, cache, lcs)
+    assert ls_config == before
+
+
+def test_enrich_runs_when_database_matches_sqlite() -> None:
+    """Matching durable sqlite database allows conversations_default wiring."""
+    ls_config = load_default_baseline()
+    lcs = _lcs_with_matching_sqlite("/var/lib/lightspeed/cache.db")
+    enrich_conversation_storage(ls_config, lcs["conversation_cache"], lcs)
+    assert (
+        ls_config["storage"]["stores"]["conversations"]["backend"]
+        == CONVERSATIONS_BACKEND_NAME
+    )
+
+
 def test_enrich_conversation_storage_postgres_h1() -> None:
     """H1: postgres cache upserts conversations_default and retargets store."""
     ls_config = load_default_baseline()
@@ -31,7 +134,18 @@ def test_enrich_conversation_storage_postgres_h1() -> None:
             "password": "${env.POSTGRES_PASSWORD}",
         },
     }
-    enrich_conversation_storage(ls_config, cache)
+    lcs = {
+        "conversation_cache": cache,
+        "database": {
+            "postgres": {
+                "host": "db.example.com",
+                "db": "lightspeed",
+                "user": "ls",
+                "password": "${env.POSTGRES_PASSWORD}",
+            }
+        },
+    }
+    enrich_conversation_storage(ls_config, cache, lcs)
     backend = ls_config["storage"]["backends"][CONVERSATIONS_BACKEND_NAME]
     assert backend == {
         "type": "sql_postgres",
@@ -51,11 +165,8 @@ def test_enrich_conversation_storage_postgres_h1() -> None:
 def test_enrich_conversation_storage_sqlite_h2() -> None:
     """H2: sqlite cache shares db_path on conversations_default."""
     ls_config = load_default_baseline()
-    cache = {
-        "type": "sqlite",
-        "sqlite": {"db_path": "/var/lib/lightspeed/cache.db"},
-    }
-    enrich_conversation_storage(ls_config, cache)
+    lcs = _lcs_with_matching_sqlite("/var/lib/lightspeed/cache.db")
+    enrich_conversation_storage(ls_config, lcs["conversation_cache"], lcs)
     assert ls_config["storage"]["backends"][CONVERSATIONS_BACKEND_NAME] == {
         "type": "sql_sqlite",
         "db_path": "/var/lib/lightspeed/cache.db",
@@ -69,8 +180,8 @@ def test_enrich_conversation_storage_sqlite_h2() -> None:
 def test_enrich_conversation_storage_creates_store_when_missing_h3() -> None:
     """H3: missing stores.conversations is created with default table_name."""
     ls_config: dict[str, Any] = {"storage": {"backends": {}}}
-    cache = {"type": "sqlite", "sqlite": {"db_path": "/data/cache.db"}}
-    enrich_conversation_storage(ls_config, cache)
+    lcs = _lcs_with_matching_sqlite("/data/cache.db")
+    enrich_conversation_storage(ls_config, lcs["conversation_cache"], lcs)
     assert ls_config["storage"]["stores"]["conversations"] == {
         "table_name": DEFAULT_CONVERSATIONS_TABLE_NAME,
         "backend": CONVERSATIONS_BACKEND_NAME,
@@ -89,8 +200,8 @@ def test_enrich_conversation_storage_tolerates_null_storage_nodes(
     ls_config: dict[str, Any],
 ) -> None:
     """YAML null storage/backends/stores must not crash; wire from empty dicts."""
-    cache = {"type": "sqlite", "sqlite": {"db_path": "/data/cache.db"}}
-    enrich_conversation_storage(ls_config, cache)
+    lcs = _lcs_with_matching_sqlite("/data/cache.db")
+    enrich_conversation_storage(ls_config, lcs["conversation_cache"], lcs)
     assert ls_config["storage"]["backends"][CONVERSATIONS_BACKEND_NAME] == {
         "type": "sql_sqlite",
         "db_path": "/data/cache.db",
@@ -114,8 +225,8 @@ def test_enrich_conversation_storage_preserves_custom_table_name() -> None:
             },
         }
     }
-    cache = {"type": "sqlite", "sqlite": {"db_path": "/data/cache.db"}}
-    enrich_conversation_storage(ls_config, cache)
+    lcs = _lcs_with_matching_sqlite("/data/cache.db")
+    enrich_conversation_storage(ls_config, lcs["conversation_cache"], lcs)
     assert (
         ls_config["storage"]["stores"]["conversations"]["table_name"] == "custom_convs"
     )
@@ -143,42 +254,49 @@ def test_enrich_conversation_storage_skips_incomplete_e1_e2(
     """E1/E2: non-durable or incomplete cache leaves ls_config unchanged."""
     ls_config = load_default_baseline()
     before = copy.deepcopy(ls_config)
-    enrich_conversation_storage(ls_config, cache)
+    enrich_conversation_storage(ls_config, cache, {})
     assert ls_config == before
 
 
 def test_enrich_conversation_storage_defaults_port_e5() -> None:
     """E5: omitted postgres port defaults to 5432."""
     ls_config = load_default_baseline()
-    enrich_conversation_storage(
-        ls_config,
-        {
-            "type": "postgres",
-            "postgres": {
-                "host": "h",
-                "db": "d",
-                "user": "u",
-                "password": "p",
-            },
+    cache = {
+        "type": "postgres",
+        "postgres": {
+            "host": "h",
+            "db": "d",
+            "user": "u",
+            "password": "p",
         },
-    )
+    }
+    lcs = _lcs_with_matching_postgres(password="p", host="h", db="d", user="u")
+    enrich_conversation_storage(ls_config, cache, lcs)
     assert ls_config["storage"]["backends"][CONVERSATIONS_BACKEND_NAME]["port"] == 5432
 
 
 def test_enrich_conversation_storage_defaults_host() -> None:
     """Omitted postgres host defaults to localhost (mirrors model default)."""
     ls_config = load_default_baseline()
-    enrich_conversation_storage(
-        ls_config,
-        {
-            "type": "postgres",
+    cache = {
+        "type": "postgres",
+        "postgres": {
+            "db": "d",
+            "user": "u",
+            "password": "p",
+        },
+    }
+    lcs = {
+        "conversation_cache": cache,
+        "database": {
             "postgres": {
                 "db": "d",
                 "user": "u",
                 "password": "p",
-            },
+            }
         },
-    )
+    }
+    enrich_conversation_storage(ls_config, cache, lcs)
     backend = ls_config["storage"]["backends"][CONVERSATIONS_BACKEND_NAME]
     assert backend == {
         "type": "sql_postgres",
@@ -216,19 +334,29 @@ def test_enrich_conversation_storage_retargets_existing_sql_postgres_e8() -> Non
             },
         }
     }
-    enrich_conversation_storage(
-        ls_config,
-        {
-            "type": "postgres",
+    cache = {
+        "type": "postgres",
+        "postgres": {
+            "host": "b",
+            "port": 5432,
+            "db": "b",
+            "user": "b",
+            "password": "b",
+        },
+    }
+    lcs = {
+        "conversation_cache": cache,
+        "database": {
             "postgres": {
                 "host": "b",
                 "port": 5432,
                 "db": "b",
                 "user": "b",
                 "password": "b",
-            },
+            }
         },
-    )
+    }
+    enrich_conversation_storage(ls_config, cache, lcs)
     assert (
         ls_config["storage"]["stores"]["conversations"]["backend"]
         == CONVERSATIONS_BACKEND_NAME
@@ -236,28 +364,14 @@ def test_enrich_conversation_storage_retargets_existing_sql_postgres_e8() -> Non
     assert ls_config["storage"]["backends"][CONVERSATIONS_BACKEND_NAME]["host"] == "b"
 
 
-def _durable_pg_cache(password: str = "${env.POSTGRES_PASSWORD}") -> dict[str, Any]:
-    """Build a minimal durable postgres conversation_cache dict."""
-    return {
-        "type": "postgres",
-        "postgres": {
-            "host": "h",
-            "port": 5432,
-            "db": "d",
-            "user": "u",
-            "password": password,
-        },
-    }
-
-
-def test_warn_w1_when_override_clobbers() -> None:
-    """U1: W1 when final conversations backend is not conversations_default."""
+def test_warn_when_override_clobbers_conversations_backend() -> None:
+    """Warn when final conversations backend is not conversations_default."""
     ls_config = {
         "storage": {
             "backends": {
                 CONVERSATIONS_BACKEND_NAME: {
                     "type": "sql_sqlite",
-                    "db_path": "/x",
+                    "db_path": "/var/lib/lightspeed/x.db",
                 }
             },
             "stores": {
@@ -268,15 +382,15 @@ def test_warn_w1_when_override_clobbers() -> None:
             },
         }
     }
-    lcs = {"conversation_cache": {"type": "sqlite", "sqlite": {"db_path": "/x"}}}
+    lcs = _lcs_with_matching_sqlite("/var/lib/lightspeed/x.db")
     msgs = warn_conversation_persistence(ls_config, lcs)
     assert any(
         "native_override still owns storage.stores.conversations" in msg for msg in msgs
     )
 
 
-def test_warn_w2_absent_database() -> None:
-    """E6/U3: W2 when database key is absent."""
+def test_warn_when_database_absent() -> None:
+    """Warn when database key is absent while durable cache is set."""
     ls_config = {
         "storage": {
             "backends": {
@@ -295,8 +409,27 @@ def test_warn_w2_absent_database() -> None:
     assert any("database is ephemeral or type-mismatched" in msg for msg in msgs)
 
 
-def test_warn_w2_type_mismatch() -> None:
-    """U4: W2 when cache is postgres and database is sqlite."""
+def test_warn_absent_database_does_not_blame_native_override() -> None:
+    """Cache-only / ephemeral DB warns about database, not about native_override."""
+    ls_config = {
+        "storage": {
+            "backends": {"sql_default": {"type": "sql_sqlite", "db_path": "/x"}},
+            "stores": {"conversations": {"backend": "sql_default"}},
+        }
+    }
+    lcs = {
+        "conversation_cache": {
+            "type": "sqlite",
+            "sqlite": {"db_path": "/tmp/data/conversation-cache.db"},
+        }
+    }
+    msgs = warn_conversation_persistence(ls_config, lcs)
+    assert any("database is ephemeral or type-mismatched" in m for m in msgs)
+    assert not any("native_override still owns" in m for m in msgs)
+
+
+def test_warn_when_database_type_mismatches_cache() -> None:
+    """Warn when cache is postgres and database is sqlite."""
     ls_config = {
         "storage": {
             "backends": {
@@ -320,8 +453,8 @@ def test_warn_w2_type_mismatch() -> None:
     assert any("database is ephemeral or type-mismatched" in msg for msg in msgs)
 
 
-def test_warn_no_w2_when_matching_postgres() -> None:
-    """U5: no W2 when database and cache are both postgres."""
+def test_warn_no_database_warning_when_matching_postgres() -> None:
+    """No database warning when database and cache are both postgres."""
     ls_config = {
         "storage": {
             "backends": {
@@ -352,8 +485,8 @@ def test_warn_no_w2_when_matching_postgres() -> None:
     assert not any("database is ephemeral or type-mismatched" in msg for msg in msgs)
 
 
-def test_warn_w3_literal_password() -> None:
-    """U6: W3 for literal password; secret value must not appear in messages."""
+def test_warn_literal_postgres_password() -> None:
+    """Warn for literal password; secret value must not appear in messages."""
     ls_config = {
         "storage": {
             "backends": {
@@ -385,8 +518,8 @@ def test_warn_w3_literal_password() -> None:
     assert all("s3cret" not in msg for msg in msgs)
 
 
-def test_warn_no_w3_for_env_ref_with_default() -> None:
-    """E7/U7: ${env.VAR:=default} does not trigger W3."""
+def test_warn_no_literal_password_for_env_ref_with_default() -> None:
+    """${env.VAR:=default} does not trigger the literal-password warning."""
     password = "${env.POSTGRES_PASSWORD:=secret}"
     ls_config = {
         "storage": {
@@ -463,8 +596,37 @@ def test_synthesize_wires_postgres_cache_h1() -> None:
     )
 
 
+def test_synthesize_cache_only_keeps_sql_default(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Library-E2E shape: sqlite cache, no database → no enrich; database warning only."""
+    lcs = {
+        "llama_stack": {
+            "use_as_library_client": True,
+            "config": {"baseline": "default"},
+        },
+        "conversation_cache": {
+            "type": "sqlite",
+            "sqlite": {"db_path": "/tmp/data/conversation-cache.db"},
+        },
+    }
+    with caplog.at_level(
+        "WARNING", logger="lightspeed_stack.llama_stack_configuration"
+    ):
+        result = synthesize_configuration(lcs)
+    assert result["storage"]["stores"]["conversations"]["backend"] == "sql_default"
+    assert CONVERSATIONS_BACKEND_NAME not in result["storage"]["backends"]
+    assert any(
+        "database is ephemeral or type-mismatched" in r.message for r in caplog.records
+    )
+    assert not any(
+        "native_override still owns storage.stores.conversations" in r.message
+        for r in caplog.records
+    )
+
+
 def test_synthesize_override_wins_u1(caplog: pytest.LogCaptureFixture) -> None:
-    """U1/G1: native_override restores sql_default; unused backend remains; W1."""
+    """native_override restores sql_default; unused backend remains; override warning."""
     lcs = {
         "llama_stack": {
             "use_as_library_client": True,
@@ -486,6 +648,7 @@ def test_synthesize_override_wins_u1(caplog: pytest.LogCaptureFixture) -> None:
             "type": "sqlite",
             "sqlite": {"db_path": "/data/cache.db"},
         },
+        "database": {"sqlite": {"db_path": "/data/cache.db"}},
     }
     with caplog.at_level(
         "WARNING", logger="lightspeed_stack.llama_stack_configuration"
@@ -499,7 +662,7 @@ def test_synthesize_override_wins_u1(caplog: pytest.LogCaptureFixture) -> None:
 def test_synthesize_migrate_shape_with_durable_cache_u2(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    """U2: dumb-migrate shape keeps override-owned conversations backend + W1."""
+    """Dumb-migrate shape keeps override-owned conversations backend + override warning."""
     run_yaml = {
         "version": 2,
         "storage": {
@@ -526,6 +689,7 @@ def test_synthesize_migrate_shape_with_durable_cache_u2(
             "type": "sqlite",
             "sqlite": {"db_path": "/data/cache.db"},
         },
+        "database": {"sqlite": {"db_path": "/data/cache.db"}},
     }
     with caplog.at_level(
         "WARNING", logger="lightspeed_stack.llama_stack_configuration"

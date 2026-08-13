@@ -175,10 +175,12 @@ storage:
       backend: sql_default
 ```
 
-In **unified mode**, when `conversation_cache` is `postgres` or `sqlite`,
-synthesis upserts `storage.backends.conversations_default` from that cache and
-sets `stores.conversations.backend: conversations_default` (unless
-`native_override` retargets the store afterward). See
+In **unified mode**, when `conversation_cache` is `postgres` or `sqlite` **and**
+`database` is the same type on a non-`/tmp` path, synthesis upserts
+`storage.backends.conversations_default` from that cache and sets
+`stores.conversations.backend: conversations_default` (unless `native_override`
+retargets the store afterward). Without a matching durable `database`,
+`sql_default` is left alone. See
 [Conversation persistence (unified mode)](../user_doc/deployment_guide.md#conversation-persistence-unified-mode).
 
 #### 2. Lightspeed Stack database

@@ -1118,11 +1118,13 @@ def ensure_mcp_tool_runtime(ls_config: dict[str, Any]) -> None:
 def enrich_conversation_storage(
     ls_config: dict[str, Any],
     conversation_cache: Optional[dict[str, Any]],
+    lcs_config: dict[str, Any],
 ) -> None:
     """Upsert ``conversations_default`` from a durable ``conversation_cache``.
 
-    When ``conversation_cache.type`` is ``postgres`` or ``sqlite`` and the
-    selected backend block has required fields, writes
+    When ``conversation_cache.type`` is ``postgres`` or ``sqlite``, the selected
+    backend block has required fields, **and** ``lcs_config`` has a matching
+    durable ``database`` (same type; sqlite not under ``/tmp``), writes
     ``storage.backends.conversations_default`` and sets
     ``storage.stores.conversations.backend`` to that name. Leaves
     ``sql_default`` and other backends untouched. Reads the raw YAML dict
@@ -1132,15 +1134,20 @@ def enrich_conversation_storage(
         ls_config: Mutable Llama Stack / OGX configuration being synthesized.
         conversation_cache: Raw ``conversation_cache`` mapping from
             ``lightspeed-stack.yaml``, or None.
+        lcs_config: Raw full ``lightspeed-stack.yaml`` dict (used to gate on
+            durable matching ``database``).
 
     Returns:
-        None: ``ls_config`` is modified in place. Incomplete or non-durable
-        cache configs are skipped with no mutation.
+        None: ``ls_config`` is modified in place. Incomplete, non-durable, or
+        ephemeral/mismatched-database configs are skipped with no mutation.
     """
     if not isinstance(conversation_cache, dict):
         return
     cache_type = conversation_cache.get("type")
     if cache_type not in _DURABLE_CACHE_TYPES:
+        return
+
+    if _database_is_ephemeral_or_mismatched(lcs_config, str(cache_type)):
         return
 
     block = conversation_cache.get(cache_type)
@@ -1228,9 +1235,13 @@ def warn_conversation_persistence(
 ) -> list[str]:
     """Log post-merge conversation-persistence footguns; return message list.
 
-    Emits W1 when durable cache does not drive final ``stores.conversations``,
-    W2 when ``database`` is ephemeral or type-mismatched, and W3 when a
-    postgres password is a non-``${env…}`` literal. Never logs secret values.
+    When durable ``conversation_cache`` is set but ``database`` is ephemeral or
+    type-mismatched (enrichment is skipped), warns that a durable matching
+    database is required. When a durable matching database is present but final
+    ``stores.conversations`` is not ``conversations_default`` (typically
+    ``native_override``), warns that override still owns the store. When a
+    postgres password is a non-``${env…}`` literal, warns to prefer an env
+    reference. Never logs secret values.
 
     Parameters:
         ls_config: Final synthesized Llama Stack configuration (after override).
@@ -1252,7 +1263,15 @@ def warn_conversation_persistence(
     backend_name = (
         conversations.get("backend") if isinstance(conversations, dict) else None
     )
-    if (
+
+    if _database_is_ephemeral_or_mismatched(lcs_config, cache_type):
+        messages.append(
+            "Conversation persistence: durable conversation_cache is set but "
+            "database is ephemeral or type-mismatched; configure a durable "
+            f"database of type {cache_type!r} so ownership metadata survives "
+            "restart."
+        )
+    elif (
         backend_name != constants.CONVERSATIONS_BACKEND_NAME
         or not isinstance(backends, dict)
         or constants.CONVERSATIONS_BACKEND_NAME not in backends
@@ -1263,14 +1282,6 @@ def warn_conversation_persistence(
             f"{constants.CONVERSATIONS_BACKEND_NAME} is missing). Remove or "
             "retarget that key under llama_stack.config.native_override, or "
             f"point it at {constants.CONVERSATIONS_BACKEND_NAME}."
-        )
-
-    if _database_is_ephemeral_or_mismatched(lcs_config, cache_type):
-        messages.append(
-            "Conversation persistence: durable conversation_cache is set but "
-            "database is ephemeral or type-mismatched; configure a durable "
-            f"database of type {cache_type!r} so ownership metadata survives "
-            "restart."
         )
 
     password = None
@@ -1327,9 +1338,9 @@ def synthesize_configuration(
     (Azure Entra ID, BYOK RAG, Solr/OKP) for parity with legacy mode (R7),
     expand the high-level ``inference.providers`` section, ensure the default
     MCP tool_runtime provider when the baseline was not empty, wire durable
-    ``conversation_cache`` into ``stores.conversations`` (RHIDP-14967),
-    deep-merge the raw ``native_override`` last (R5), then warn on persistence
-    footguns.
+    ``conversation_cache`` into ``stores.conversations`` when ``database`` is
+    durable and type-matched (RHIDP-14967), deep-merge the raw
+    ``native_override`` last (R5), then warn on persistence footguns.
 
     Parameters:
         lcs_config: The full ``lightspeed-stack.yaml`` parsed into a dict.
@@ -1384,10 +1395,13 @@ def synthesize_configuration(
     if not baseline_was_empty:
         ensure_mcp_tool_runtime(ls_config)
 
-    # 6b. Durable conversation_cache → conversations_default (before override).
+    # 6b. Durable conversation_cache → conversations_default (before override),
+    #     only when database is durable and type-matched.
     cache_raw = lcs_config.get("conversation_cache")
     enrich_conversation_storage(
-        ls_config, cache_raw if isinstance(cache_raw, dict) else None
+        ls_config,
+        cache_raw if isinstance(cache_raw, dict) else None,
+        lcs_config,
     )
 
     # 7. Raw escape hatch, deep-merged last with list replacement (R5).

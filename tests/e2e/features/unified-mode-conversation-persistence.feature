@@ -1,4 +1,4 @@
-@e2e_group_2 @skip-in-server-mode
+@cfg_unified @skip-in-server-mode
 Feature: Unified mode conversation persistence across restart
 
   # Proves RHIDP-14967: with conversation_cache + matching database on a

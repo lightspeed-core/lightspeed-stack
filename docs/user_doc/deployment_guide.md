@@ -149,12 +149,16 @@ synthesizer evolves.
 
 ### Conversation persistence (unified mode)
 
-When `conversation_cache` is `postgres` or `sqlite`, unified synthesis upserts an
-OGX backend named `conversations_default` from that cache and points
+When `conversation_cache` is `postgres` or `sqlite` **and** `database` is the
+same backend type on a non-`/tmp` path, unified synthesis upserts an OGX backend
+named `conversations_default` from that cache and points
 `storage.stores.conversations` at it **before** applying
-`llama_stack.config.native_override`. Inference/agents SQL on `sql_default` is
-left alone. Continuing a chat after a restart (such as a Kubernetes Pod redeploy) needs this OGX store; listing and
-ownership also need a durable matching-type LCORE `database`.
+`llama_stack.config.native_override`. If `database` is missing, under `/tmp/`,
+or a different type than the cache, synthesis leaves `sql_default` alone and
+logs a warning. Inference/agents SQL on `sql_default` is left alone either way.
+Continuing a chat after a restart (such as a Kubernetes Pod redeploy) needs the
+wired OGX store; listing and ownership also need that durable matching-type
+LCORE `database`.
 
 **Happy path.** Use unified library mode (`llama_stack.config.baseline` or a
 profile), set durable `conversation_cache`, set `database` to the same backend
@@ -168,9 +172,10 @@ sql_default`. That undoes enrichment; LCORE logs a warning and chats will not
 survive restart until you remove that key, point it at `conversations_default`,
 or accept a deliberate split.
 
-**`database` must be durable too.** If `database` is omitted (default
+**`database` is a precondition for wiring.** If `database` is omitted (default
 `/tmp/lightspeed-stack.db`), is under `/tmp/`, or is a different type than the
-cache, synthesis warns. Same-type different hosts/paths do not warn.
+cache, synthesis does **not** retarget `stores.conversations` and warns instead.
+Same-type different hosts/paths still wire and do not warn.
 
 **Secrets.** Prefer `${env.*}` for postgres
 passwords. Literals are copied into `.generated/run.yaml` (mode 0600) and
