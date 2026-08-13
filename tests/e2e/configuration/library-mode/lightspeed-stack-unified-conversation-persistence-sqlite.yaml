@@ -21,15 +21,15 @@ user_data_collection:
 authentication:
   module: "noop"
 # Same sqlite file for LCORE database + conversation_cache (and, via synthesis,
-# OGX conversations_default). Path is outside /tmp so W2 does not fire; it still
-# lives on the container filesystem and survives `docker restart` (not a PVC).
+# OGX conversations_default). Outside /tmp (not ephemeral) and outside ~/.llama
+# (e2e may rm -rf that tree). Survives `docker restart` on the container FS.
 database:
   sqlite:
-    db_path: "/opt/app-root/src/.llama/storage/conversation-persistence.db"
+    db_path: "/opt/app-root/src/data/conversation-persistence.db"
 conversation_cache:
   type: sqlite
   sqlite:
-    db_path: "/opt/app-root/src/.llama/storage/conversation-persistence.db"
+    db_path: "/opt/app-root/src/data/conversation-persistence.db"
 inference:
   default_provider: openai
   default_model: gpt-4o-mini
