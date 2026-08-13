@@ -20,6 +20,7 @@ Feature: Unified mode conversation persistence across restart
     {"query": "Say the word apple and nothing else", "model": "{MODEL}", "provider": "{PROVIDER}", "no_tools": true}
     """
     Then The status code of the response is 200
+    And I store conversation details
     Given The service is restarted
     When I use "query" to ask question with same conversation_id
     """
