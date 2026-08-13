@@ -1,3 +1,4 @@
+# @cfg_skills_directory
 name: Lightspeed Core Service (LCS)
 service:
   host: 0.0.0.0

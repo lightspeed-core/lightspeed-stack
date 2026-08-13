@@ -1,4 +1,4 @@
-@e2e_group_1 @skip-in-library-mode @skip-in-prow
+@cfg_tls @skip-in-library-mode @skip-in-prow
 Feature: TLS configuration — mutual TLS authentication
   Validate Llama Stack NetworkConfig.tls client certificate settings against the
   mock HTTPS inference provider (mTLS port).

@@ -1,3 +1,8 @@
+# @cfg_default
+# Safe merge: lightspeed-stack.yaml + lightspeed-stack-inline-rag.yaml
+# Same byok rag_id (e2e-test-docs) with both rag.tool and rag.inline.
+# /v1/rags partial asserts still match. No MCP (would break info tools checks
+# and add check_mcp_auth to every call). No PDF BYOK (separate retrieval store).
 name: Lightspeed Core Service (LCS)
 service:
   host: 0.0.0.0
@@ -37,5 +42,15 @@ byok_rag:
     score_multiplier: 1.0
 
 rag:
+  tool:
+    - e2e-test-docs
   inline:
     - e2e-test-docs
+
+shields:
+  - name: pii-redaction
+    provider_id: redaction
+    config:
+      rules:
+        - pattern: '\d+'
+          replacement: '[NUM]'

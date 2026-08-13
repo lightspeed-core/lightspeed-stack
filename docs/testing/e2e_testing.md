@@ -214,7 +214,7 @@ You can put several tags on one scenario. To document why a scenario is skipped,
 
 ## Configuration Files
 
-- **Lightspeed-stack**: Under `tests/e2e/configuration/server-mode/` and `library-mode/`. Switched via `switch_config()` and copied into the container's config path (or applied via ConfigMap in Prow). Names like `lightspeed-stack.yaml`, `lightspeed-stack-auth-noop-token.yaml`, `lightspeed-stack-rbac.yaml`, etc.
+- **Lightspeed-stack**: Under `tests/e2e/configuration/server-mode/` and `library-mode/`. Switched via `switch_config()` and copied into the container's config path (or applied via ConfigMap in Prow). Bootstrap: `lightspeed-stack.yaml`; variants: `lightspeed-stack-default.yaml`, `lightspeed-stack-authorized.yaml`, `lightspeed-stack-rbac.yaml`, etc. (see `tests/e2e/configuration/grouped/README.md`).
 - **Llama Stack**: Under `tests/e2e/configs/` (e.g. `run-ci.yaml`). Used by the Llama Stack container; not switched by Behave step-by-step, but the stack is started with the appropriate run config.
 
 See `tests/e2e/configuration/README.md` for a short description of each config.

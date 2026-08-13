@@ -1,3 +1,5 @@
+# @cfg_skills_directory
+# Directory discovery (echo + summarize). Separate from @cfg_skills.
 name: Lightspeed Core Service (LCS)
 service:
   host: 0.0.0.0
