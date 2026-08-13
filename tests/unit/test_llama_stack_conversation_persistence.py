@@ -5,9 +5,8 @@ from typing import Any, Optional
 
 import pytest
 
+from constants import CONVERSATIONS_BACKEND_NAME, DEFAULT_CONVERSATIONS_TABLE_NAME
 from llama_stack_configuration import (
-    CONVERSATIONS_BACKEND_NAME,
-    DEFAULT_CONVERSATIONS_TABLE_NAME,
     enrich_conversation_storage,
     load_default_baseline,
     synthesize_configuration,

@@ -26,3 +26,4 @@ Feature: Unified mode conversation persistence across restart
     {"query": "What single word did I ask you to say earlier?", "model": "{MODEL}", "provider": "{PROVIDER}", "no_tools": true}
     """
     Then The status code of the response is 200
+      And The body of the response contains apple

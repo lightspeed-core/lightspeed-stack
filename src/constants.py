@@ -202,6 +202,13 @@ CACHE_TYPE_NOOP: Final[str] = "noop"
 # Ephemeral (typically tmpfs); conversation-persistence warnings treat this as non-durable.
 DEFAULT_SQLITE_DATABASE_PATH: Final[str] = "/tmp/lightspeed-stack.db"
 
+# Dedicated OGX SQL backend for stores.conversations when conversation_cache is
+# durable (RHIDP-14967). Injected only during unified synthesis; not seeded in
+# default_run.yaml.
+CONVERSATIONS_BACKEND_NAME: Final[str] = "conversations_default"
+# Default OGX stores.conversations.table_name when the baseline/store omits one.
+DEFAULT_CONVERSATIONS_TABLE_NAME: Final[str] = "openai_conversations"
+
 # BYOK RAG
 # Default RAG type for bring-your-own-knowledge RAG configurations, that type
 # needs to be supported by Llama Stack

@@ -35,12 +35,6 @@ from log import get_logger
 
 logger = get_logger(__name__)
 
-# Dedicated OGX SQL backend for stores.conversations when conversation_cache is
-# durable (RHIDP-14967). Injected only during unified synthesis; not seeded in
-# default_run.yaml.
-CONVERSATIONS_BACKEND_NAME: Final[str] = "conversations_default"
-# Default OGX stores.conversations.table_name when the baseline/store omits one.
-DEFAULT_CONVERSATIONS_TABLE_NAME: Final[str] = "openai_conversations"
 _DURABLE_CACHE_TYPES: Final[frozenset[str]] = frozenset({"postgres", "sqlite"})
 # Used to warn when a postgres password is not an ${env.*} reference.
 _ENV_REF_RE: Final[re.Pattern[str]] = re.compile(r"^\$\{env\.[^}]+\}$")
@@ -1184,7 +1178,7 @@ def enrich_conversation_storage(
     ls_config["storage"] = storage
     backends = storage.get("backends") or {}
     storage["backends"] = backends
-    backends[CONVERSATIONS_BACKEND_NAME] = backend_cfg
+    backends[constants.CONVERSATIONS_BACKEND_NAME] = backend_cfg
 
     stores = storage.get("stores") or {}
     storage["stores"] = stores
@@ -1194,13 +1188,13 @@ def enrich_conversation_storage(
         stores["conversations"] = conversations
     table_name = conversations.get("table_name")
     if not isinstance(table_name, str) or not table_name.strip():
-        conversations["table_name"] = DEFAULT_CONVERSATIONS_TABLE_NAME
-    conversations["backend"] = CONVERSATIONS_BACKEND_NAME
+        conversations["table_name"] = constants.DEFAULT_CONVERSATIONS_TABLE_NAME
+    conversations["backend"] = constants.CONVERSATIONS_BACKEND_NAME
 
     logger.info(
         "Conversation persistence: wired stores.conversations to %s from "
         "conversation_cache.type=%r",
-        CONVERSATIONS_BACKEND_NAME,
+        constants.CONVERSATIONS_BACKEND_NAME,
         cache_type,
     )
 
@@ -1259,16 +1253,16 @@ def warn_conversation_persistence(
         conversations.get("backend") if isinstance(conversations, dict) else None
     )
     if (
-        backend_name != CONVERSATIONS_BACKEND_NAME
+        backend_name != constants.CONVERSATIONS_BACKEND_NAME
         or not isinstance(backends, dict)
-        or CONVERSATIONS_BACKEND_NAME not in backends
+        or constants.CONVERSATIONS_BACKEND_NAME not in backends
     ):
         messages.append(
             "Conversation persistence: durable conversation_cache is set but "
             "native_override still owns storage.stores.conversations (or "
-            f"{CONVERSATIONS_BACKEND_NAME} is missing). Remove or retarget "
-            "that key under llama_stack.config.native_override, or point it at "
-            f"{CONVERSATIONS_BACKEND_NAME}."
+            f"{constants.CONVERSATIONS_BACKEND_NAME} is missing). Remove or "
+            "retarget that key under llama_stack.config.native_override, or "
+            f"point it at {constants.CONVERSATIONS_BACKEND_NAME}."
         )
 
     if _database_is_ephemeral_or_mismatched(lcs_config, cache_type):
@@ -1281,7 +1275,9 @@ def warn_conversation_persistence(
 
     password = None
     backend = (
-        backends.get(CONVERSATIONS_BACKEND_NAME) if isinstance(backends, dict) else None
+        backends.get(constants.CONVERSATIONS_BACKEND_NAME)
+        if isinstance(backends, dict)
+        else None
     )
     if isinstance(backend, dict) and backend.get("type") == "sql_postgres":
         password = backend.get("password")
