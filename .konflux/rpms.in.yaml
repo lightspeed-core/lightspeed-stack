@@ -11,6 +11,7 @@ packages:
 upgradePackages:
   [
     libgcrypt,
+    thrift,
   ]
 contentOrigin:
   repofiles: ["./redhat.repo"]
