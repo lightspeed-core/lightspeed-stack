@@ -57,6 +57,10 @@ spec:
         # Unused for server-mode FAISS (llama pod owns the fixture); keep out of ~/.llama.
         - name: KV_RAG_PATH
           value: "/app-root/.e2e-rag-work/kv_store.db"
+        - name: OTEL_SDK_DISABLED
+          value: "true"
+        - name: OTEL_ANONYMIZATION_SECRET
+          value: "lightspeed-stack-otel-anonymization-dev-default"
         - name: VLLM_MODEL
           valueFrom:
             secretKeyRef:
