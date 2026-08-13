@@ -20,7 +20,7 @@ Feature: Unified mode conversation persistence across restart
     {"query": "Say the word apple and nothing else", "model": "{MODEL}", "provider": "{PROVIDER}", "no_tools": true}
     """
     Then The status code of the response is 200
-    When The service is restarted
+    And The service is restarted
     And I use "query" to ask question with same conversation_id
     """
     {"query": "What single word did I ask you to say earlier?", "model": "{MODEL}", "provider": "{PROVIDER}", "no_tools": true}
