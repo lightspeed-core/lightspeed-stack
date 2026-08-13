@@ -140,6 +140,7 @@ Feature: HTTP 401 Unauthorized
 
   # --- skills ---
 
+  @cfg_authorized
   Scenario: Skills list returns 401 when not authenticated
     Given The service uses the lightspeed-stack-authorized.yaml configuration
     And The service is restarted
