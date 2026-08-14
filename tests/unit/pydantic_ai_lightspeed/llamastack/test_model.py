@@ -477,6 +477,12 @@ class TestRequestStream:
         mocker.patch(
             "pydantic_ai_lightspeed.llamastack._model.check_allow_model_requests"
         )
+        mocker.patch.object(
+            type(model),
+            "profile",
+            new_callable=mocker.PropertyMock,
+            return_value={},
+        )
         return model
 
     @pytest.mark.asyncio
