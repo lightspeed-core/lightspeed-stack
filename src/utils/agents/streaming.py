@@ -46,7 +46,7 @@ from models.common.query import Attachment
 from models.common.responses import ResponseInput
 from models.common.responses.contexts import ResponseGeneratorContext
 from models.common.responses.responses_api_params import ResponsesApiParams
-from models.common.turn_summary import TurnSummary
+from models.common.turn_summary import ContextStatus, TurnSummary
 from utils.agents.error_handler import map_agent_inference_error
 from utils.agents.query import (
     AgentFinishReason,
@@ -170,6 +170,7 @@ async def generate_agent_response(  # pylint: disable=too-many-statements
     emit_start: bool = True,
     original_input: Optional[ResponseInput] = None,
     root_span: Optional[trace.Span] = None,
+    context_status: ContextStatus = "full",
 ) -> AsyncIterator[str]:
     """Wrap an agent SSE generator with cleanup logic.
 
@@ -189,6 +190,9 @@ async def generate_agent_response(  # pylint: disable=too-many-statements
             explicit-input rewrite. Used to persist the completed turn with its
             structured input (preserving attachments); ``None`` otherwise.
         root_span: OpenTelemetry root span for this request.
+        context_status: Whether the conversation context was sent in full
+            ("full") or older turns were replaced by a summary ("summarized").
+            Reported to the client in the SSE end event.
 
     Yields:
         SSE-formatted strings from the wrapped generator.
@@ -298,6 +302,7 @@ async def generate_agent_response(  # pylint: disable=too-many-statements
     )
     end_payload = EndStreamPayload.create(
         referenced_documents=turn_summary.referenced_documents,
+        context_status=context_status,
         input_tokens=turn_summary.token_usage.input_tokens,
         output_tokens=turn_summary.token_usage.output_tokens,
         available_quotas=available_quotas,

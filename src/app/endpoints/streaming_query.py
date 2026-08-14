@@ -48,6 +48,7 @@ from models.common.query import Attachment
 from models.common.responses.contexts import ResponseGeneratorContext
 from models.common.responses.responses_api_params import ResponsesApiParams
 from models.common.responses.types import ResponseInput
+from models.common.turn_summary import ContextStatus
 from models.config import Action
 from utils.agents.streaming import (
     generate_agent_response,
@@ -431,6 +432,7 @@ async def generate_response_with_compaction(
         )
 
         compacted_original_input: Optional[ResponseInput] = None
+        context_status: ContextStatus = "full"
         try:
             async for item in apply_compaction(
                 context.client,
@@ -447,6 +449,7 @@ async def generate_response_with_compaction(
                 elif isinstance(item, CompactionResult):
                     responses_params = item.params
                     compacted_original_input = item.original_input
+                    context_status = item.context_status
 
             generator, turn_summary = await retrieve_agent_response_generator(
                 responses_params=responses_params,
@@ -495,6 +498,7 @@ async def generate_response_with_compaction(
             emit_start=False,
             original_input=compacted_original_input,
             root_span=root_span,
+            context_status=context_status,
         ):
             yield event
     finally:

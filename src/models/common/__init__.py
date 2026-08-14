@@ -28,6 +28,7 @@ from models.common.tools import (
 )
 from models.common.transcripts import Transcript, TranscriptMetadata
 from models.common.turn_summary import (
+    ContextStatus,
     MCPListToolsSummary,
     RAGChunk,
     RAGContext,
@@ -44,6 +45,7 @@ __all__ = [
     "CatalogShield",
     "CatalogTool",
     "CatalogToolParameter",
+    "ContextStatus",
     "ConversationData",
     "ConversationDetails",
     "ConversationTurn",

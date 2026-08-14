@@ -679,6 +679,70 @@ class TestGenerateAgentResponse:
         store_mock.assert_called_once()
 
     @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("generate_kwargs", "expected_status"),
+        [
+            ({}, "full"),
+            ({"context_status": "summarized"}, "summarized"),
+        ],
+    )
+    async def test_end_event_reports_context_status(
+        self,
+        mocker: MockerFixture,
+        make_generator_context: Callable[..., ResponseGeneratorContext],
+        responses_params: ResponsesApiParams,
+        generate_kwargs: dict[str, Any],
+        expected_status: str,
+    ) -> None:
+        """Test the end event carries context_status ("full" by default)."""
+        context = make_generator_context()
+        turn_summary = TurnSummary()
+        turn_summary.token_usage = TokenCounter(input_tokens=3, output_tokens=7)
+        background_tasks: list[asyncio.Task[None]] = []
+
+        async def inner() -> AsyncIterator[str]:
+            yield serialize_event(
+                TokenStreamPayload.create(chunk_id=0, token="Hi"),
+                MEDIA_TYPE_JSON,
+            )
+
+        mocker.patch("utils.agents.streaming.consume_query_tokens")
+        mocker.patch(
+            "utils.agents.streaming.get_available_quotas",
+            return_value={"daily": 100},
+        )
+        mocker.patch(
+            "utils.agents.streaming.maybe_get_topic_summary",
+            new=mocker.AsyncMock(return_value=None),
+        )
+        mocker.patch("utils.agents.streaming.store_query_results")
+        mock_config = mocker.Mock()
+        mock_config.quota_limiters = []
+        mocker.patch("utils.agents.streaming.configuration", mock_config)
+
+        result = [
+            event
+            async for event in generate_agent_response(
+                inner(),
+                context,
+                responses_params,
+                turn_summary,
+                background_tasks,
+                **generate_kwargs,
+            )
+        ]
+
+        end_events = [
+            parsed
+            for event in result
+            if event.startswith("data: ")
+            and (parsed := json.loads(event.removeprefix("data: ").strip()))["event"]
+            == "end"
+        ]
+        assert len(end_events) == 1
+        assert end_events[0]["data"]["context_status"] == expected_status
+
+    @pytest.mark.asyncio
     async def test_cancelled_persists_interrupted_turn(
         self,
         mocker: MockerFixture,

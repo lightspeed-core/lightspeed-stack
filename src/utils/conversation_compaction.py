@@ -57,6 +57,7 @@ from configuration import configuration
 from log import get_logger
 from models.common.responses.responses_api_params import ResponsesApiParams
 from models.common.responses.types import ResponseInput
+from models.common.turn_summary import ContextStatus
 from models.compaction import ConversationSummary
 from models.config import CompactionConfiguration, InferenceConfiguration
 from utils.compaction import (
@@ -180,6 +181,11 @@ class CompactionResult:
     params: ResponsesApiParams
     compacted: bool
     original_input: Optional[ResponseInput] = None
+
+    @property
+    def context_status(self) -> ContextStatus:
+        """The API ``context_status`` value for this result (LCORE-1573)."""
+        return "summarized" if self.compacted else "full"
 
 
 def is_marker_item(item: Any) -> bool:
