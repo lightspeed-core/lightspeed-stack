@@ -38,8 +38,14 @@ jobs:
           deny()  { echo "::warning::$1"; echo "authorized=false" >> "$GITHUB_OUTPUT"; exit 0; }
 
           permission_of() {
-            gh api "repos/${REPOSITORY}/collaborators/$(jq -nr --arg u "$1" '$u|@uri')/permission" \
-              --jq .permission 2>/dev/null || echo none
+            local url="repos/${REPOSITORY}/collaborators/$(jq -nr --arg u "$1" '$u|@uri')/permission"
+            local perm
+            for attempt in 1 2 3; do
+              perm=$(gh api "$url" --jq .permission 2>/dev/null) && [ -n "$perm" ] && { echo "$perm"; return; }
+              echo "::debug::API attempt $attempt failed for $1, retrying in ${attempt}s…"
+              sleep "$attempt"
+            done
+            echo none
           }
 
           [ "$EVENT_NAME" = "schedule" ] && allow "Scheduled run."
