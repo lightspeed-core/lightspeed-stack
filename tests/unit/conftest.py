@@ -65,6 +65,35 @@ def make_openai_models_list_response(
     )
 
 
+_DEFAULT_OGX_MOCK_APIS = ("responses", "items", "openai", "conversations")
+
+
+def attach_mock_ogx_api_clients(
+    mocker: MockerFixture,
+    client: Any,
+    *api_names: str,
+) -> Any:
+    """Attach nested API mocks for ``spec=AsyncOgxClient`` clients.
+
+    ``AsyncOgxClient`` creates sub-APIs in ``__init__``, so they are instance
+    attributes rather than class attributes. A spec mock blocks access to them
+    unless they are attached explicitly.
+    """
+    for name in api_names or _DEFAULT_OGX_MOCK_APIS:
+        setattr(client, name, mocker.AsyncMock())
+    return client
+
+
+def mock_async_ogx_client(
+    mocker: MockerFixture,
+    *api_names: str,
+) -> AsyncMockType:
+    """Create a spec'd ``AsyncOgxClient`` mock with nested API clients attached."""
+    client = mocker.AsyncMock(spec=AsyncOgxClient)
+    attach_mock_ogx_api_clients(mocker, client, *api_names)
+    return client
+
+
 def attach_mock_api_client(
     mocker: MockerFixture,
     client: Any,
@@ -172,6 +201,7 @@ def mock_client_fixture(  # pylint: disable=protected-access
     client = mocker.Mock(spec=AsyncOgxClient)
     client.base_url = "http://localhost:8321"
     client.api_key = "test-key"
+    attach_mock_ogx_api_clients(mocker, client)
     attach_mock_api_client(mocker, client)
     return client
 

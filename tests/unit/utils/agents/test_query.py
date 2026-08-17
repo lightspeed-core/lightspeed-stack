@@ -6,7 +6,7 @@ from typing import Any, Optional
 
 import pytest
 from fastapi import HTTPException
-from ogx_client import APIConnectionError, APIStatusError
+from ogx_client import ApiException
 from pydantic_ai.messages import (
     FinishReason,
     ImageUrl,
@@ -479,9 +479,7 @@ class TestRetrieveAgentResponse:
     ) -> None:
         """Test Llama Stack connection errors are mapped to HTTPException."""
         mock_agent = mocker.AsyncMock()
-        mock_agent.run = mocker.AsyncMock(
-            side_effect=APIConnectionError(request=mocker.Mock())
-        )
+        mock_agent.run = mocker.AsyncMock(side_effect=ApiException(status=None))
         mocker.patch(
             "utils.agents.query.build_agent",
             return_value=mock_agent,
@@ -507,11 +505,7 @@ class TestRetrieveAgentResponse:
         """Test API status errors from the agent run are mapped to HTTPException."""
         mock_agent = mocker.AsyncMock()
         mock_agent.run = mocker.AsyncMock(
-            side_effect=APIStatusError(
-                message="quota exceeded",
-                response=mocker.Mock(),
-                body=None,
-            )
+            side_effect=ApiException(status=500, reason="quota exceeded")
         )
         mocker.patch(
             "utils.agents.query.build_agent",

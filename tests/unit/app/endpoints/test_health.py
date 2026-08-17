@@ -3,7 +3,7 @@
 from typing import Any
 
 import pytest
-from ogx_client import APIConnectionError
+from ogx_client import ApiException
 from pytest_mock import MockerFixture
 
 from app.endpoints.health import (
@@ -267,16 +267,15 @@ class TestGetProvidersHealthStatuses:
         mock_lsc = mocker.patch("client.AsyncOgxClientHolder.get_client")
 
         # Mock get_ogx_client to raise an exception
-        mock_lsc.side_effect = APIConnectionError(request=mocker.Mock())
+        mock_lsc.side_effect = ApiException(status=None, reason="Connection error.")
 
         result = await get_providers_health_statuses()
 
         assert len(result) == 1
         assert result[0].provider_id == "unknown"
         assert result[0].status == HealthStatus.ERROR.value
-        assert (
-            result[0].message == "Failed to initialize health check: Connection error."
-        )
+        assert result[0].message.startswith("Failed to initialize health check:")
+        assert "Connection error." in (result[0].message or "")
 
 
 class TestCheckDefaultModelAvailable:

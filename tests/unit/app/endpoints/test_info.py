@@ -4,7 +4,7 @@ from typing import Any
 
 import pytest
 from fastapi import HTTPException, Request, status
-from ogx_client import APIConnectionError
+from ogx_client import ApiException
 from ogx_client.models.version_info import VersionInfo
 from pytest_mock import MockerFixture
 
@@ -84,7 +84,7 @@ async def test_info_endpoint_connection_error(mocker: MockerFixture) -> None:
 
     Sets up application configuration and patches the LlamaStack
     client so that calling its version inspection raises an
-    APIConnectionError, then asserts the raised HTTPException has
+    ApiException, then asserts the raised HTTPException has
     status code 503 and a detail payload containing a "response" of
     "Service unavailable" and a "cause" that includes "Unable to
     connect to Llama Stack".
@@ -119,7 +119,7 @@ async def test_info_endpoint_connection_error(mocker: MockerFixture) -> None:
 
     # Mock the LlamaStack client
     mock_client = mocker.AsyncMock()
-    mock_client.inspect.version.side_effect = APIConnectionError(request=None)  # type: ignore
+    mock_client.inspect.version.side_effect = ApiException(status=None)  # type: ignore
     mock_lsc = mocker.patch("client.AsyncOgxClientHolder.get_client")
     mock_lsc.return_value = mock_client
     mock_config = mocker.Mock()
@@ -144,4 +144,7 @@ async def test_info_endpoint_connection_error(mocker: MockerFixture) -> None:
         await info_endpoint_handler(auth=auth, request=request)
         assert e.value.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
         assert e.value.detail["response"] == "Service unavailable"  # type: ignore
-        assert "Unable to connect to OGX" in e.value.detail["cause"]  # type: ignore
+        assert (
+            "Connection error while trying to reach backend service."
+            in e.value.detail["cause"]
+        )  # type: ignore

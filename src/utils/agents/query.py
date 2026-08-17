@@ -6,7 +6,7 @@ from enum import Enum
 from typing import Optional, TypeAlias, cast
 
 from fastapi import HTTPException
-from ogx_client import APIConnectionError, APIStatusError, AsyncOgxClient
+from ogx_client import ApiException, AsyncOgxClient
 from pydantic_ai.exceptions import (
     AgentRunError,
 )
@@ -46,9 +46,7 @@ from utils.token_counter import TokenCounter
 
 logger = get_logger(__name__)
 
-AgentInferenceError: TypeAlias = (
-    AgentRunError | APIStatusError | APIConnectionError | RuntimeError
-)
+AgentInferenceError: TypeAlias = AgentRunError | ApiException | RuntimeError
 
 
 class AgentFinishReason(str, Enum):
@@ -259,7 +257,7 @@ async def retrieve_agent_response(
         else:
             prompt = cast(str, responses_params.input)
         run_result = await agent.run(prompt)
-    except (AgentRunError, APIStatusError, APIConnectionError, RuntimeError) as exc:
+    except (AgentRunError, ApiException, RuntimeError) as exc:
         response = map_agent_inference_error(exc, responses_params.model)
         raise HTTPException(**response.model_dump()) from exc
 

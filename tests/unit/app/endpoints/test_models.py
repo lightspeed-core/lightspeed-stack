@@ -4,7 +4,7 @@ from typing import Any
 
 import pytest
 from fastapi import HTTPException, Request, status
-from ogx_client import APIConnectionError
+from ogx_client import ApiException
 from pytest_mock import MockerFixture
 from pytest_subtests import SubTests
 
@@ -56,7 +56,7 @@ async def test_models_endpoint_handler_configuration_loaded(
 
     Loads an AppConfig from a test dictionary, patches the endpoint's
     configuration and AsyncOgxClientHolder so that get_client raises
-    APIConnectionError, issues a request with an authorization header, and
+    ApiException, issues a request with an authorization header, and
     asserts that calling the handler raises an HTTPException with status 503
     and a detail response of "Unable to connect to OGX".
     """
@@ -90,9 +90,7 @@ async def test_models_endpoint_handler_configuration_loaded(
 
     mocker.patch("app.endpoints.models.configuration", cfg)
     mock_client_holder = mocker.patch("app.endpoints.models.AsyncOgxClientHolder")
-    mock_client_holder.return_value.get_client.side_effect = APIConnectionError(
-        request=mocker.Mock()
-    )
+    mock_client_holder.return_value.get_client.side_effect = ApiException(status=None)
 
     request = Request(
         scope={
@@ -429,10 +427,10 @@ async def test_models_endpoint_llama_stack_connection_error(
         "authentication": {"module": "noop"},
     }
 
-    # mock AsyncOgxClientHolder to raise APIConnectionError
+    # mock AsyncOgxClientHolder to raise ApiException
     # when openai.list() method is called
     mock_client = mocker.AsyncMock()
-    mock_client.openai.list.side_effect = APIConnectionError(request=None)  # type: ignore
+    mock_client.openai.list.side_effect = ApiException(status=None)  # type: ignore
     mock_client_holder = mocker.patch("app.endpoints.models.AsyncOgxClientHolder")
     mock_client_holder.return_value.get_client.return_value = mock_client
 
@@ -455,4 +453,7 @@ async def test_models_endpoint_llama_stack_connection_error(
         )
         assert e.value.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
         assert e.value.detail["response"] == "Unable to connect to OGX"  # type: ignore
-        assert "Unable to connect to OGX" in e.value.detail["cause"]  # type: ignore
+        assert (
+            "Connection error while trying to reach backend service."
+            in e.value.detail["cause"]
+        )  # type: ignore

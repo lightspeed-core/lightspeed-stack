@@ -7,7 +7,7 @@ from typing import Any
 
 import pytest
 from fastapi import HTTPException, Request, status
-from ogx_client import APIConnectionError, BadRequestError
+from ogx_client import ApiException, BadRequestError
 from pytest_mock import MockerFixture
 
 from app.endpoints.vector_stores import (
@@ -232,7 +232,7 @@ async def test_create_vector_store_connection_error(mocker: MockerFixture) -> No
     cfg.init_from_dict(config_dict)
 
     mock_client = mocker.AsyncMock()
-    mock_client.vector_stores.create.side_effect = APIConnectionError(request=None)  # type: ignore
+    mock_client.vector_stores.create.side_effect = ApiException(status=None)  # type: ignore
     mock_lsc = mocker.patch(
         "app.endpoints.vector_stores.AsyncOgxClientHolder.get_client"
     )
@@ -323,7 +323,7 @@ async def test_get_vector_store_not_found(mocker: MockerFixture) -> None:
     mock_response = mocker.Mock()
     mock_response.request = mocker.Mock()
     mock_client.vector_stores.retrieve.side_effect = BadRequestError(
-        message="Not found", response=mock_response, body=None
+        status=400, reason="Not found"
     )
     mock_lsc = mocker.patch(
         "app.endpoints.vector_stores.AsyncOgxClientHolder.get_client"
@@ -693,7 +693,7 @@ async def test_list_vector_stores_connection_error(mocker: MockerFixture) -> Non
     cfg.init_from_dict(config_dict)
 
     mock_client = mocker.AsyncMock()
-    mock_client.vector_stores.list.side_effect = APIConnectionError(request=None)  # type: ignore
+    mock_client.vector_stores.list.side_effect = ApiException(status=None)  # type: ignore
     mock_lsc = mocker.patch(
         "app.endpoints.vector_stores.AsyncOgxClientHolder.get_client"
     )
@@ -718,7 +718,7 @@ async def test_update_vector_store_connection_error(mocker: MockerFixture) -> No
     cfg.init_from_dict(config_dict)
 
     mock_client = mocker.AsyncMock()
-    mock_client.vector_stores.update.side_effect = APIConnectionError(request=None)  # type: ignore
+    mock_client.vector_stores.update.side_effect = ApiException(status=None)  # type: ignore
     mock_lsc = mocker.patch(
         "app.endpoints.vector_stores.AsyncOgxClientHolder.get_client"
     )
@@ -749,7 +749,7 @@ async def test_update_vector_store_not_found(mocker: MockerFixture) -> None:
     mock_response = mocker.Mock()
     mock_response.request = mocker.Mock()
     mock_client.vector_stores.update.side_effect = BadRequestError(
-        message="Not found", response=mock_response, body=None
+        status=400, reason="Not found"
     )
     mock_lsc = mocker.patch(
         "app.endpoints.vector_stores.AsyncOgxClientHolder.get_client"
@@ -778,7 +778,7 @@ async def test_delete_vector_store_connection_error(mocker: MockerFixture) -> No
     cfg.init_from_dict(config_dict)
 
     mock_client = mocker.AsyncMock()
-    mock_client.vector_stores.delete.side_effect = APIConnectionError(request=None)  # type: ignore
+    mock_client.vector_stores.delete.side_effect = ApiException(status=None)  # type: ignore
     mock_lsc = mocker.patch(
         "app.endpoints.vector_stores.AsyncOgxClientHolder.get_client"
     )
@@ -806,7 +806,7 @@ async def test_delete_vector_store_not_found(mocker: MockerFixture) -> None:
     mock_response = mocker.Mock()
     mock_response.request = mocker.Mock()
     mock_client.vector_stores.delete.side_effect = BadRequestError(
-        message="Not found", response=mock_response, body=None
+        status=400, reason="Not found"
     )
     mock_lsc = mocker.patch(
         "app.endpoints.vector_stores.AsyncOgxClientHolder.get_client"
@@ -834,7 +834,7 @@ async def test_create_file_connection_error(mocker: MockerFixture) -> None:
     cfg.init_from_dict(config_dict)
 
     mock_client = mocker.AsyncMock()
-    mock_client.files.create.side_effect = APIConnectionError(request=None)  # type: ignore
+    mock_client.files.create.side_effect = ApiException(status=None)  # type: ignore
     mock_lsc = mocker.patch(
         "app.endpoints.vector_stores.AsyncOgxClientHolder.get_client"
     )
@@ -867,7 +867,7 @@ async def test_create_file_bad_request(mocker: MockerFixture) -> None:
     mock_response = mocker.Mock()
     mock_response.request = mocker.Mock()
     mock_client.files.create.side_effect = BadRequestError(
-        message="File too large", response=mock_response, body=None
+        status=400, reason="File too large"
     )
     mock_lsc = mocker.patch(
         "app.endpoints.vector_stores.AsyncOgxClientHolder.get_client"
@@ -963,9 +963,7 @@ async def test_add_file_to_vector_store_connection_error(
     cfg.init_from_dict(config_dict)
 
     mock_client = mocker.AsyncMock()
-    mock_client.vector_stores_files.create.side_effect = APIConnectionError(
-        request=None  # type: ignore
-    )
+    mock_client.vector_stores_files.create.side_effect = ApiException(status=None)
     mock_lsc = mocker.patch(
         "app.endpoints.vector_stores.AsyncOgxClientHolder.get_client"
     )
@@ -996,7 +994,7 @@ async def test_add_file_to_vector_store_not_found(mocker: MockerFixture) -> None
     mock_response = mocker.Mock()
     mock_response.request = mocker.Mock()
     mock_client.vector_stores_files.create.side_effect = BadRequestError(
-        message="File not found", response=mock_response, body=None
+        status=400, reason="File not found"
     )
     mock_lsc = mocker.patch(
         "app.endpoints.vector_stores.AsyncOgxClientHolder.get_client"
@@ -1027,9 +1025,7 @@ async def test_list_vector_store_files_connection_error(
     cfg.init_from_dict(config_dict)
 
     mock_client = mocker.AsyncMock()
-    mock_client.vector_stores_files.list.side_effect = APIConnectionError(
-        request=None  # type: ignore
-    )
+    mock_client.vector_stores_files.list.side_effect = ApiException(status=None)
     mock_lsc = mocker.patch(
         "app.endpoints.vector_stores.AsyncOgxClientHolder.get_client"
     )
@@ -1059,7 +1055,7 @@ async def test_list_vector_store_files_not_found(mocker: MockerFixture) -> None:
     mock_response = mocker.Mock()
     mock_response.request = mocker.Mock()
     mock_client.vector_stores_files.list.side_effect = BadRequestError(
-        message="Vector store not found", response=mock_response, body=None
+        status=400, reason="Vector store not found"
     )
     mock_lsc = mocker.patch(
         "app.endpoints.vector_stores.AsyncOgxClientHolder.get_client"
@@ -1088,9 +1084,7 @@ async def test_get_vector_store_file_connection_error(mocker: MockerFixture) -> 
     cfg.init_from_dict(config_dict)
 
     mock_client = mocker.AsyncMock()
-    mock_client.vector_stores_files.retrieve.side_effect = APIConnectionError(
-        request=None  # type: ignore
-    )
+    mock_client.vector_stores_files.retrieve.side_effect = ApiException(status=None)
     mock_lsc = mocker.patch(
         "app.endpoints.vector_stores.AsyncOgxClientHolder.get_client"
     )
@@ -1120,7 +1114,7 @@ async def test_get_vector_store_file_not_found(mocker: MockerFixture) -> None:
     mock_response = mocker.Mock()
     mock_response.request = mocker.Mock()
     mock_client.vector_stores_files.retrieve.side_effect = BadRequestError(
-        message="File not found", response=mock_response, body=None
+        status=400, reason="File not found"
     )
     mock_lsc = mocker.patch(
         "app.endpoints.vector_stores.AsyncOgxClientHolder.get_client"
@@ -1150,9 +1144,7 @@ async def test_delete_vector_store_file_connection_error(
     cfg.init_from_dict(config_dict)
 
     mock_client = mocker.AsyncMock()
-    mock_client.vector_stores_files.delete.side_effect = APIConnectionError(
-        request=None  # type: ignore
-    )
+    mock_client.vector_stores_files.delete.side_effect = ApiException(status=None)
     mock_lsc = mocker.patch(
         "app.endpoints.vector_stores.AsyncOgxClientHolder.get_client"
     )
@@ -1182,7 +1174,7 @@ async def test_delete_vector_store_file_not_found(mocker: MockerFixture) -> None
     mock_response = mocker.Mock()
     mock_response.request = mocker.Mock()
     mock_client.vector_stores_files.delete.side_effect = BadRequestError(
-        message="File not found", response=mock_response, body=None
+        status=400, reason="File not found"
     )
     mock_lsc = mocker.patch(
         "app.endpoints.vector_stores.AsyncOgxClientHolder.get_client"
@@ -1210,9 +1202,7 @@ async def test_get_vector_store_connection_error(mocker: MockerFixture) -> None:
     cfg.init_from_dict(config_dict)
 
     mock_client = mocker.AsyncMock()
-    mock_client.vector_stores.retrieve.side_effect = APIConnectionError(
-        request=None  # type: ignore
-    )
+    mock_client.vector_stores.retrieve.side_effect = ApiException(status=None)
     mock_lsc = mocker.patch(
         "app.endpoints.vector_stores.AsyncOgxClientHolder.get_client"
     )
@@ -1277,7 +1267,7 @@ async def test_create_file_non_size_bad_request_returns_400(
     mock_response = mocker.Mock()
     mock_response.request = mocker.Mock()
     mock_client.files.create.side_effect = BadRequestError(
-        message="Invalid file format", response=mock_response, body=None
+        status=400, reason="Invalid file format"
     )
     mock_lsc = mocker.patch(
         "app.endpoints.vector_stores.AsyncOgxClientHolder.get_client"

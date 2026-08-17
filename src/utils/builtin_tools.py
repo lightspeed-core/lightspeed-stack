@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Final
 
 from fastapi import HTTPException
-from ogx_client import APIConnectionError, APIStatusError, AsyncOgxClient
+from ogx_client import ApiException, AsyncOgxClient
 from ogx_client.models.provider_info import ProviderInfo
 
 from log import get_logger
@@ -88,13 +88,13 @@ async def get_file_search_tools(
     """
     try:
         providers = await client.providers.list()
-    except APIStatusError as exc:
-        logger.warning("Unable to list providers for file-search tools: %s", exc)
-        return []
-    except APIConnectionError as e:
+    except ApiException as e:
+        if e.status:
+            logger.warning("Unable to list providers for file-search tools: %s", e)
+            return []
         logger.error("Unable to connect to OGX: %s", e)
         response = ServiceUnavailableResponse(
-            backend_name="OGX", cause=str(e)
+            backend_name="OGX",
         ).model_dump()
         raise HTTPException(**response) from e
 

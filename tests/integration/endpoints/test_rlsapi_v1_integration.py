@@ -14,7 +14,7 @@ from typing import Any, cast
 import pytest
 from fastapi import HTTPException, status
 from fastapi.testclient import TestClient
-from ogx_client import APIConnectionError
+from ogx_client import ApiException
 from pytest_mock import MockerFixture
 
 import constants
@@ -266,9 +266,7 @@ async def test_rlsapi_v1_infer_connection_error_returns_503(
     _ = rlsapi_config
 
     mock_responses = mocker.Mock()
-    mock_responses.create = mocker.AsyncMock(
-        side_effect=APIConnectionError(request=mocker.Mock())
-    )
+    mock_responses.create = mocker.AsyncMock(side_effect=ApiException(status=None))
 
     mock_client = mocker.Mock()
     mock_client.responses = mock_responses

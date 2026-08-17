@@ -6,13 +6,7 @@ from io import BytesIO
 from typing import Annotated, Any, Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
-from ogx_client import (
-    APIConnectionError,
-    BadRequestError,
-)
-from ogx_client import (
-    APIStatusError as LLSApiStatusError,
-)
+from ogx_client import ApiException, BadRequestError
 from openai._exceptions import APIStatusError as OpenAIAPIStatusError
 
 from authentication import get_auth_dependency
@@ -192,11 +186,16 @@ async def create_vector_store(
             usage_bytes=vector_store.usage_bytes or 0,
             metadata=vector_store.metadata,
         )
-    except APIConnectionError as e:
-        logger.error("Unable to connect to Llama Stack: %s", e)
-        response = ServiceUnavailableResponse(backend_name="OGX", cause=str(e))
-        raise HTTPException(**response.model_dump()) from e
-    except (LLSApiStatusError, OpenAIAPIStatusError) as e:
+    except ApiException as e:
+        if not e.status:
+            logger.error("Unable to connect to Llama Stack: %s", e)
+            response = ServiceUnavailableResponse(backend_name="OGX")
+            raise HTTPException(**response.model_dump()) from e
+
+        logger.error("API status error while creating vector store: %s", e)
+        error_response = handle_known_apistatus_errors(e, "llama-stack")
+        raise HTTPException(**error_response.model_dump()) from e
+    except OpenAIAPIStatusError as e:
         logger.error("API status error while creating vector store: %s", e)
         error_response = handle_known_apistatus_errors(e, "llama-stack")
         raise HTTPException(**error_response.model_dump()) from e
@@ -248,11 +247,16 @@ async def list_vector_stores(
         ]
 
         return VectorStoresListResponse(data=data)
-    except APIConnectionError as e:
-        logger.error("Unable to connect to Llama Stack: %s", e)
-        response = ServiceUnavailableResponse(backend_name="OGX", cause=str(e))
-        raise HTTPException(**response.model_dump()) from e
-    except (LLSApiStatusError, OpenAIAPIStatusError) as e:
+    except ApiException as e:
+        if not e.status:
+            logger.error("Unable to connect to Llama Stack: %s", e)
+            response = ServiceUnavailableResponse(backend_name="OGX")
+            raise HTTPException(**response.model_dump()) from e
+
+        logger.error("API status error while listing vector stores: %s", e)
+        error_response = handle_known_apistatus_errors(e, "llama-stack")
+        raise HTTPException(**error_response.model_dump()) from e
+    except OpenAIAPIStatusError as e:
         logger.error("API status error while listing vector stores: %s", e)
         error_response = handle_known_apistatus_errors(e, "llama-stack")
         raise HTTPException(**error_response.model_dump()) from e
@@ -302,17 +306,22 @@ async def get_vector_store(
             usage_bytes=vector_store.usage_bytes or 0,
             metadata=vector_store.metadata,
         )
-    except APIConnectionError as e:
-        logger.error("Unable to connect to Llama Stack: %s", e)
-        response = ServiceUnavailableResponse(backend_name="OGX", cause=str(e))
-        raise HTTPException(**response.model_dump()) from e
     except BadRequestError as e:
         logger.error("Vector store not found: %s", e)
         response = NotFoundResponse(
             resource="vector store", resource_id=vector_store_id
         )
         raise HTTPException(**response.model_dump()) from e
-    except (LLSApiStatusError, OpenAIAPIStatusError) as e:
+    except ApiException as e:
+        if not e.status:
+            logger.error("Unable to connect to Llama Stack: %s", e)
+            response = ServiceUnavailableResponse(backend_name="OGX")
+            raise HTTPException(**response.model_dump()) from e
+
+        logger.error("API status error while getting vector store: %s", e)
+        error_response = handle_known_apistatus_errors(e, "llama-stack")
+        raise HTTPException(**error_response.model_dump()) from e
+    except OpenAIAPIStatusError as e:
         logger.error("API status error while getting vector store: %s", e)
         error_response = handle_known_apistatus_errors(e, "llama-stack")
         raise HTTPException(**error_response.model_dump()) from e
@@ -366,17 +375,22 @@ async def update_vector_store(
             usage_bytes=vector_store.usage_bytes or 0,
             metadata=vector_store.metadata or None,
         )
-    except APIConnectionError as e:
-        logger.error("Unable to connect to Llama Stack: %s", e)
-        response = ServiceUnavailableResponse(backend_name="OGX", cause=str(e))
-        raise HTTPException(**response.model_dump()) from e
     except BadRequestError as e:
         logger.error("Vector store not found: %s", e)
         response = NotFoundResponse(
             resource="vector store", resource_id=vector_store_id
         )
         raise HTTPException(**response.model_dump()) from e
-    except (LLSApiStatusError, OpenAIAPIStatusError) as e:
+    except ApiException as e:
+        if not e.status:
+            logger.error("Unable to connect to Llama Stack: %s", e)
+            response = ServiceUnavailableResponse(backend_name="OGX")
+            raise HTTPException(**response.model_dump()) from e
+
+        logger.error("API status error while updating vector store: %s", e)
+        error_response = handle_known_apistatus_errors(e, "llama-stack")
+        raise HTTPException(**error_response.model_dump()) from e
+    except OpenAIAPIStatusError as e:
         logger.error("API status error while updating vector store: %s", e)
         error_response = handle_known_apistatus_errors(e, "llama-stack")
         raise HTTPException(**error_response.model_dump()) from e
@@ -418,14 +432,19 @@ async def delete_vector_store(
         client = AsyncOgxClientHolder().get_client()
         await client.vector_stores.delete(vector_store_id)
         return VectorStoreDeleteResponse(deleted=True, vector_store_id=vector_store_id)
-    except APIConnectionError as e:
-        logger.error("Unable to connect to Llama Stack: %s", e)
-        response = ServiceUnavailableResponse(backend_name="OGX", cause=str(e))
-        raise HTTPException(**response.model_dump()) from e
     except (BadRequestError, ValueError) as e:
         logger.error("Vector store delete failed: %s", e)
         return VectorStoreDeleteResponse(deleted=False, vector_store_id=vector_store_id)
-    except (LLSApiStatusError, OpenAIAPIStatusError) as e:
+    except ApiException as e:
+        if not e.status:
+            logger.error("Unable to connect to Llama Stack: %s", e)
+            response = ServiceUnavailableResponse(backend_name="OGX")
+            raise HTTPException(**response.model_dump()) from e
+
+        logger.error("API status error while deleting vector store: %s", e)
+        error_response = handle_known_apistatus_errors(e, "llama-stack")
+        raise HTTPException(**error_response.model_dump()) from e
+    except OpenAIAPIStatusError as e:
         logger.error("API status error while deleting vector store: %s", e)
         error_response = handle_known_apistatus_errors(e, "llama-stack")
         raise HTTPException(**error_response.model_dump()) from e
@@ -527,10 +546,6 @@ async def create_file(  # pylint: disable=too-many-branches,too-many-statements
             purpose=file_obj.purpose or "assistants",
             object=file_obj.object or "file",
         )
-    except APIConnectionError as e:
-        logger.error("Unable to connect to Llama Stack: %s", e)
-        response = ServiceUnavailableResponse(backend_name="OGX", cause=str(e))
-        raise HTTPException(**response.model_dump()) from e
     except BadRequestError as e:
         logger.error("Bad request for file upload: %s", e)
         # Check if backend rejected due to file size
@@ -545,7 +560,16 @@ async def create_file(  # pylint: disable=too-many-branches,too-many-statements
             response.status_code = status.HTTP_400_BAD_REQUEST
             response.detail.response = "Invalid file upload"
         raise HTTPException(**response.model_dump()) from e
-    except (LLSApiStatusError, OpenAIAPIStatusError) as e:
+    except ApiException as e:
+        if not e.status:
+            logger.error("Unable to connect to Llama Stack: %s", e)
+            response = ServiceUnavailableResponse(backend_name="OGX")
+            raise HTTPException(**response.model_dump()) from e
+
+        logger.error("API status error while uploading file: %s", e)
+        error_response = handle_known_apistatus_errors(e, "llama-stack")
+        raise HTTPException(**error_response.model_dump()) from e
+    except OpenAIAPIStatusError as e:
         logger.error("API status error while uploading file: %s", e)
         error_response = handle_known_apistatus_errors(e, "llama-stack")
         raise HTTPException(**error_response.model_dump()) from e
@@ -645,16 +669,10 @@ async def add_file_to_vector_store(  # pylint: disable=too-many-locals,too-many-
             status=vs_file.status or "unknown",
             attributes=vs_file.attributes,
             last_error=(
-                vs_file.last_error.message
-                if vs_file.last_error is not None
-                else None
+                vs_file.last_error.message if vs_file.last_error is not None else None
             ),
             object=vs_file.object or "vector_store.file",
         )
-    except APIConnectionError as e:
-        logger.error("Unable to connect to Llama Stack: %s", e)
-        response = ServiceUnavailableResponse(backend_name="OGX", cause=str(e))
-        raise HTTPException(**response.model_dump()) from e
     except BadRequestError as e:
         logger.error("Vector store file operation failed: %s", e)
         # Don't assume which resource is missing - could be vector_store_id OR file_id
@@ -663,7 +681,16 @@ async def add_file_to_vector_store(  # pylint: disable=too-many-locals,too-many-
             resource_id=f"vector_store={vector_store_id}, file={body.file_id}",
         )
         raise HTTPException(**response.model_dump()) from e
-    except (LLSApiStatusError, OpenAIAPIStatusError) as e:
+    except ApiException as e:
+        if not e.status:
+            logger.error("Unable to connect to Llama Stack: %s", e)
+            response = ServiceUnavailableResponse(backend_name="OGX")
+            raise HTTPException(**response.model_dump()) from e
+
+        logger.error("API status error while adding file to vector store: %s", e)
+        error_response = handle_known_apistatus_errors(e, "llama-stack")
+        raise HTTPException(**error_response.model_dump()) from e
+    except OpenAIAPIStatusError as e:
         logger.error("API status error while adding file to vector store: %s", e)
         error_response = handle_known_apistatus_errors(e, "llama-stack")
         raise HTTPException(**error_response.model_dump()) from e
@@ -712,27 +739,28 @@ async def list_vector_store_files(
                 vector_store_id=f.vector_store_id or vector_store_id,
                 status=f.status or "unknown",
                 attributes=f.attributes,
-                last_error=(
-                    f.last_error.message
-                    if f.last_error is not None
-                    else None
-                ),
+                last_error=(f.last_error.message if f.last_error is not None else None),
                 object=f.object or "vector_store.file",
             )
             for f in files
         ]
         return VectorStoreFilesListResponse(data=data)
-    except APIConnectionError as e:
-        logger.error("Unable to connect to Llama Stack: %s", e)
-        response = ServiceUnavailableResponse(backend_name="OGX", cause=str(e))
-        raise HTTPException(**response.model_dump()) from e
     except BadRequestError as e:
         logger.error("Vector store not found: %s", e)
         response = NotFoundResponse(
             resource="vector_store", resource_id=vector_store_id
         )
         raise HTTPException(**response.model_dump()) from e
-    except (LLSApiStatusError, OpenAIAPIStatusError) as e:
+    except ApiException as e:
+        if not e.status:
+            logger.error("Unable to connect to Llama Stack: %s", e)
+            response = ServiceUnavailableResponse(backend_name="OGX")
+            raise HTTPException(**response.model_dump()) from e
+
+        logger.error("API status error while listing vector store files: %s", e)
+        error_response = handle_known_apistatus_errors(e, "llama-stack")
+        raise HTTPException(**error_response.model_dump()) from e
+    except OpenAIAPIStatusError as e:
         logger.error("API status error while listing vector store files: %s", e)
         error_response = handle_known_apistatus_errors(e, "llama-stack")
         raise HTTPException(**error_response.model_dump()) from e
@@ -786,21 +814,24 @@ async def get_vector_store_file(
             status=vs_file.status or "unknown",
             attributes=vs_file.attributes,
             last_error=(
-                vs_file.last_error.message
-                if vs_file.last_error is not None
-                else None
+                vs_file.last_error.message if vs_file.last_error is not None else None
             ),
             object=vs_file.object or "vector_store.file",
         )
-    except APIConnectionError as e:
-        logger.error("Unable to connect to Llama Stack: %s", e)
-        response = ServiceUnavailableResponse(backend_name="OGX", cause=str(e))
-        raise HTTPException(**response.model_dump()) from e
     except BadRequestError as e:
         logger.error("Vector store file not found: %s", e)
         response = NotFoundResponse(resource="file", resource_id=file_id)
         raise HTTPException(**response.model_dump()) from e
-    except (LLSApiStatusError, OpenAIAPIStatusError) as e:
+    except ApiException as e:
+        if not e.status:
+            logger.error("Unable to connect to Llama Stack: %s", e)
+            response = ServiceUnavailableResponse(backend_name="OGX")
+            raise HTTPException(**response.model_dump()) from e
+
+        logger.error("API status error while getting vector store file: %s", e)
+        error_response = handle_known_apistatus_errors(e, "llama-stack")
+        raise HTTPException(**error_response.model_dump()) from e
+    except OpenAIAPIStatusError as e:
         logger.error("API status error while getting vector store file: %s", e)
         error_response = handle_known_apistatus_errors(e, "llama-stack")
         raise HTTPException(**error_response.model_dump()) from e
@@ -847,14 +878,19 @@ async def delete_vector_store_file(
             file_id=file_id,
         )
         return VectorStoreFileDeleteResponse(deleted=True, file_id=file_id)
-    except APIConnectionError as e:
-        logger.error("Unable to connect to Llama Stack: %s", e)
-        response = ServiceUnavailableResponse(backend_name="OGX", cause=str(e))
-        raise HTTPException(**response.model_dump()) from e
     except (BadRequestError, ValueError) as e:
         logger.error("Vector store file delete failed: %s", e)
         return VectorStoreFileDeleteResponse(deleted=False, file_id=file_id)
-    except (LLSApiStatusError, OpenAIAPIStatusError) as e:
+    except ApiException as e:
+        if not e.status:
+            logger.error("Unable to connect to Llama Stack: %s", e)
+            response = ServiceUnavailableResponse(backend_name="OGX")
+            raise HTTPException(**response.model_dump()) from e
+
+        logger.error("API status error while deleting vector store file: %s", e)
+        error_response = handle_known_apistatus_errors(e, "llama-stack")
+        raise HTTPException(**error_response.model_dump()) from e
+    except OpenAIAPIStatusError as e:
         logger.error("API status error while deleting vector store file: %s", e)
         error_response = handle_known_apistatus_errors(e, "llama-stack")
         raise HTTPException(**error_response.model_dump()) from e

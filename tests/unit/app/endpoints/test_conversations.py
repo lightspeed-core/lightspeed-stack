@@ -8,7 +8,7 @@ from typing import Any, Optional
 
 import pytest
 from fastapi import HTTPException, Request, status
-from ogx_client import APIConnectionError, APIStatusError, NotFoundError
+from ogx_client import ApiException, NotFoundError
 from pytest_mock import MockerFixture, MockType
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -529,9 +529,7 @@ class TestGetConversationEndpoint:
         mock_database_session(mocker, query_result=[mock_conversation], db_turns=[])
 
         mock_client = mocker.AsyncMock()
-        mock_client.items.list.side_effect = APIConnectionError(
-            request=None  # type: ignore[arg-type]
-        )
+        mock_client.items.list.side_effect = ApiException(status=None)
         mock_client_holder = mocker.patch(
             "app.endpoints.conversations_v1.AsyncOgxClientHolder"
         )
@@ -579,9 +577,7 @@ class TestGetConversationEndpoint:
 
         mock_client = mocker.AsyncMock()
         mock_client.items.list.side_effect = NotFoundError(
-            message="Conversation not found",
-            response=mocker.Mock(request=None),
-            body=None,
+            status=404, reason="Conversation not found"
         )
         mock_client_holder = mocker.patch(
             "app.endpoints.conversations_v1.AsyncOgxClientHolder"
@@ -686,9 +682,7 @@ class TestGetConversationEndpoint:
         mock_item2.content = "Hi there!"
         mock_items_response.data = [mock_item1, mock_item2]
         mock_items_response.has_more = False
-        mock_client.items.list = mocker.AsyncMock(
-            return_value=mock_items_response
-        )
+        mock_client.items.list = mocker.AsyncMock(return_value=mock_items_response)
 
         mock_client_holder = mocker.patch(
             "app.endpoints.conversations_v1.AsyncOgxClientHolder"
@@ -818,9 +812,7 @@ class TestGetConversationEndpoint:
         mock_items_response = mocker.Mock()
         mock_items_response.data = []
         mock_items_response.has_more = False
-        mock_client.items.list = mocker.AsyncMock(
-            return_value=mock_items_response
-        )
+        mock_client.items.list = mocker.AsyncMock(return_value=mock_items_response)
         mock_client_holder = mocker.patch(
             "app.endpoints.conversations_v1.AsyncOgxClientHolder"
         )
@@ -847,9 +839,9 @@ class TestGetConversationEndpoint:
         dummy_request: Request,
         mock_conversation: MockType,
     ) -> None:
-        """Test when APIStatusError is raised during conversation retrieval.
+        """Test when ApiException is raised during conversation retrieval.
 
-        get_all_conversation_items maps APIStatusError to HTTP 500.
+        get_all_conversation_items maps ApiException to HTTP 500.
         """
         mock_authorization_resolvers(mocker)
         mocker.patch(
@@ -864,10 +856,8 @@ class TestGetConversationEndpoint:
         mock_database_session(mocker, db_turns=[])
 
         mock_client = mocker.AsyncMock()
-        mock_client.items.list.side_effect = APIStatusError(
-            message="Conversation not found",
-            response=mocker.Mock(status_code=404, request=None),
-            body=None,
+        mock_client.items.list.side_effect = ApiException(
+            status=404, reason="Conversation not found"
         )
         mock_client_holder = mocker.patch(
             "app.endpoints.conversations_v1.AsyncOgxClientHolder"
@@ -1109,9 +1099,7 @@ class TestDeleteConversationEndpoint:
         )
 
         mock_client = mocker.AsyncMock()
-        mock_client.conversations.delete.side_effect = APIConnectionError(
-            request=None  # type: ignore
-        )
+        mock_client.conversations.delete.side_effect = ApiException(status=None)
         mock_client_holder = mocker.patch(
             "app.endpoints.conversations_v1.AsyncOgxClientHolder"
         )
@@ -1151,10 +1139,8 @@ class TestDeleteConversationEndpoint:
         )
 
         mock_client = mocker.AsyncMock()
-        mock_client.conversations.delete.side_effect = APIStatusError(
-            message="Conversation not found",
-            response=mocker.Mock(status_code=404, request=None),
-            body=None,
+        mock_client.conversations.delete.side_effect = ApiException(
+            status=404, reason="Conversation not found"
         )
         mock_client_holder = mocker.patch(
             "app.endpoints.conversations_v1.AsyncOgxClientHolder"
@@ -2031,11 +2017,9 @@ class TestUpdateConversationEndpoint:
             return_value=mock_conversation,
         )
 
-        # Mock AsyncOgxClientHolder to raise APIConnectionError
+        # Mock AsyncOgxClientHolder to raise ApiException
         mock_client = mocker.AsyncMock()
-        mock_client.conversations.update.side_effect = APIConnectionError(
-            request=None  # type: ignore
-        )
+        mock_client.conversations.update.side_effect = ApiException(status=None)
         mock_client_holder = mocker.patch(
             "app.endpoints.conversations_v1.AsyncOgxClientHolder"
         )
@@ -2077,12 +2061,10 @@ class TestUpdateConversationEndpoint:
             return_value=mock_conversation,
         )
 
-        # Mock AsyncOgxClientHolder to raise APIStatusError
+        # Mock AsyncOgxClientHolder to raise ApiException
         mock_client = mocker.AsyncMock()
-        mock_client.conversations.update.side_effect = APIStatusError(
-            message="Conversation not found",
-            response=mocker.Mock(status_code=404, request=None),
-            body=None,
+        mock_client.conversations.update.side_effect = ApiException(
+            status=404, reason="Conversation not found"
         )
         mock_client_holder = mocker.patch(
             "app.endpoints.conversations_v1.AsyncOgxClientHolder"

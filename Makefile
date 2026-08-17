@@ -144,7 +144,7 @@ clean-llama-stack: remove-llama-stack-container ## Remove container and image
 
 run-llama-stack: ## Start Llama Stack with enriched config (for local service mode)
 	uv run src/llama_stack_configuration.py -c $(CONFIG) -i $(LLAMA_STACK_CONFIG) -o $(LLAMA_STACK_CONFIG) && \
-	uv run ogx stack run $(LLAMA_STACK_CONFIG)
+	uv run ogx stack run --insecure $(LLAMA_STACK_CONFIG)
 
 test-unit: ## Run the unit tests
 	@echo "Running unit tests..."

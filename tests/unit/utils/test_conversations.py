@@ -1,12 +1,14 @@
 """Unit tests for conversation utility functions."""
 
+# pylint: disable=too-many-lines
+
 from datetime import UTC, datetime
 from typing import Any
 
 import pytest
 from fastapi import HTTPException
 from ogx_api import OpenAIResponseMessage
-from ogx_client import APIConnectionError, APIStatusError
+from ogx_client import ApiException
 from ogx_client.models.add_items_request import AddItemsRequest
 from ogx_client.models.open_ai_response_input_function_tool_call_output import (
     OpenAIResponseInputFunctionToolCallOutput as FunctionCallOutput,
@@ -340,7 +342,7 @@ class TestBuildToolCallSummaryFromItem:
         assert tool_result is not None
         assert tool_result.content == "{}"
 
-    def test_function_call_output(self, mocker: MockerFixture) -> None:
+    def test_function_call_output(self) -> None:
         """Test parsing a function_call_output item."""
         item = FunctionCallOutput.from_dict(
             {
@@ -361,7 +363,7 @@ class TestBuildToolCallSummaryFromItem:
         assert tool_result.type == "function_call_output"
         assert tool_result.round == 1
 
-    def test_function_call_output_without_status(self, mocker: MockerFixture) -> None:
+    def test_function_call_output_without_status(self) -> None:
         """Test parsing a function_call_output item without status."""
         item = FunctionCallOutput.from_dict(
             {
@@ -376,9 +378,7 @@ class TestBuildToolCallSummaryFromItem:
         assert tool_result is not None
         assert tool_result.status == "success"  # Defaults to "success"
 
-    def test_function_call_output_with_structured_content(
-        self, mocker: MockerFixture
-    ) -> None:
+    def test_function_call_output_with_structured_content(self) -> None:
         """Test parsing function_call_output with mixed content parts."""
         item = FunctionCallOutput.from_dict(
             {
@@ -988,9 +988,7 @@ class TestGetAllConversationItems:
         second_page.data = [item_2, item_3]
         second_page.has_more = False
 
-        mock_client.items.list = mocker.AsyncMock(
-            side_effect=[first_page, second_page]
-        )
+        mock_client.items.list = mocker.AsyncMock(side_effect=[first_page, second_page])
 
         result = await get_all_conversation_items(mock_client, "conv_abc")
 
@@ -1012,12 +1010,10 @@ class TestGetAllConversationItems:
 
     @pytest.mark.asyncio
     async def test_handles_connection_error(self, mocker: MockerFixture) -> None:
-        """Test that APIConnectionError is converted to HTTPException 503."""
+        """Test that ApiException is converted to HTTPException 503."""
         mock_client = mocker.Mock()
         mock_client.items.list = mocker.AsyncMock(
-            side_effect=APIConnectionError(
-                message="connection refused", request=mocker.Mock()
-            )
+            side_effect=ApiException(status=None, reason="connection refused")
         )
 
         with pytest.raises(HTTPException) as exc_info:
@@ -1028,14 +1024,10 @@ class TestGetAllConversationItems:
 
     @pytest.mark.asyncio
     async def test_handles_api_status_error(self, mocker: MockerFixture) -> None:
-        """Test that APIStatusError is converted to HTTPException 500."""
+        """Test that ApiException is converted to HTTPException 500."""
         mock_client = mocker.Mock()
         mock_client.items.list = mocker.AsyncMock(
-            side_effect=APIStatusError(
-                message="internal error",
-                response=mocker.Mock(request=None),
-                body=None,
-            )
+            side_effect=ApiException(status=500, reason="internal error")
         )
 
         with pytest.raises(HTTPException) as exc_info:

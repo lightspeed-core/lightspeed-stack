@@ -6,7 +6,7 @@ from typing import Any
 import pytest
 from fastapi import Request
 from fastapi.exceptions import HTTPException
-from ogx_client import APIConnectionError
+from ogx_client import ApiException
 from pytest_mock import AsyncMockType, MockerFixture
 
 from app.endpoints.models import models_endpoint_handler
@@ -78,7 +78,7 @@ def mock_ogx_client_failing_fixture(
 
     mock_client = mocker.AsyncMock()
 
-    mock_client.openai.list.side_effect = APIConnectionError(request=mocker.Mock())
+    mock_client.openai.list.side_effect = ApiException(status=None)
 
     # Create a mock holder instance
     mock_holder_instance = mock_holder_class.return_value
@@ -187,14 +187,14 @@ async def test_models_list_on_api_connection_error(
     Parameters:
     ----------
         test_config: Test configuration
-        mock_ogx_client_failing: Mocked Llama Stack client that raises APIConnectionError
+        mock_ogx_client_failing: Mocked Llama Stack client that raises ApiException
         test_request: FastAPI request
         test_auth: noop authentication tuple
     """
     _ = test_config
     _ = mock_ogx_client_failing
 
-    # we should catch HTTPException, not APIConnectionError!
+    # we should catch HTTPException, not ApiException!
     with pytest.raises(HTTPException) as exc_info:
         await models_endpoint_handler(
             request=test_request,

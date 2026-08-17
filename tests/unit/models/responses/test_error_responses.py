@@ -709,16 +709,17 @@ class TestInternalServerErrorResponse:
 class TestServiceUnavailableResponse:
     """Test cases for ServiceUnavailableResponse."""
 
-    def test_constructor(self) -> None:
-        """Test ServiceUnavailableResponse with valid parameters."""
-        response = ServiceUnavailableResponse(
-            backend_name="OGX", cause="Connection timeout"
-        )
+    def test_constructor_default_cause(self) -> None:
+        """Test ServiceUnavailableResponse uses the default connection error cause."""
+        response = ServiceUnavailableResponse(backend_name="OGX")
         assert isinstance(response, AbstractErrorResponse)
         assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
         assert isinstance(response.detail, DetailModel)
         assert response.detail.response == "Unable to connect to OGX"
-        assert response.detail.cause == "Connection timeout"
+        assert (
+            response.detail.cause
+            == "Connection error while trying to reach backend service."
+        )
 
     def test_different_backend_names(self) -> None:
         """Test ServiceUnavailableResponse with different backend names."""

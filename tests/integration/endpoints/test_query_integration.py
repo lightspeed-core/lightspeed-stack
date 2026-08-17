@@ -6,7 +6,7 @@
 
 import pytest
 from fastapi import HTTPException, Request, status
-from ogx_client import APIConnectionError
+from ogx_client import ApiException
 from pytest_mock import AsyncMockType, MockerFixture
 from sqlalchemy.orm import Session
 
@@ -97,7 +97,6 @@ async def test_query_v2_endpoint_handles_connection_error(
     mock_query_agent: AsyncMockType,
     test_request: Request,
     test_auth: AuthTuple,
-    mocker: MockerFixture,
 ) -> None:
     """Test that query v2 endpoint properly handles Llama Stack connection errors.
 
@@ -113,7 +112,6 @@ async def test_query_v2_endpoint_handles_connection_error(
         mock_query_agent: Mocked Pydantic AI agent for build_agent/agent.run
         test_request: FastAPI request
         test_auth: noop authentication tuple
-        mocker: pytest-mock fixture
 
     Returns:
     -------
@@ -123,7 +121,7 @@ async def test_query_v2_endpoint_handles_connection_error(
     _ = mock_ogx_client
     _ = mock_query_agent
 
-    mock_query_agent.run.side_effect = APIConnectionError(request=mocker.Mock())
+    mock_query_agent.run.side_effect = ApiException(status=None)
 
     query_request = QueryRequest(query="What is Ansible?")
 

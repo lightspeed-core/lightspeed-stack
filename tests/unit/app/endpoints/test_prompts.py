@@ -4,7 +4,7 @@ from typing import Any, Optional
 
 import pytest
 from fastapi import HTTPException, Request, status
-from ogx_client import APIConnectionError, BadRequestError
+from ogx_client import ApiException, BadRequestError
 from ogx_client.models.prompt import Prompt
 from pytest_mock import MockerFixture
 
@@ -199,9 +199,7 @@ async def test_delete_prompt_not_found_returns_body(
     _, mock_prompts = prompts_client_mocks
     mock_response = mocker.Mock()
     mock_response.request = mocker.Mock()
-    mock_prompts.delete.side_effect = BadRequestError(
-        message="not found", response=mock_response, body=None
-    )
+    mock_prompts.delete.side_effect = BadRequestError(status=400, reason="not found")
 
     result = await delete_prompt_handler(
         request=prompts_http_request,
@@ -237,9 +235,9 @@ async def test_get_prompt_api_connection_error(
     prompts_client_mocks: tuple[Any, Any],
     prompts_http_request: Request,
 ) -> None:
-    """get_prompt maps APIConnectionError to 503."""
+    """get_prompt maps ApiException to 503."""
     _, mock_prompts = prompts_client_mocks
-    mock_prompts.retrieve.side_effect = APIConnectionError(request=None)  # type: ignore
+    mock_prompts.retrieve.side_effect = ApiException(status=None)  # type: ignore
 
     with pytest.raises(HTTPException) as exc_info:
         await get_prompt_handler(
@@ -261,9 +259,7 @@ async def test_get_prompt_bad_request_maps_to_404(
     _, mock_prompts = prompts_client_mocks
     mock_response = mocker.Mock()
     mock_response.request = mocker.Mock()
-    mock_prompts.retrieve.side_effect = BadRequestError(
-        message="not found", response=mock_response, body=None
-    )
+    mock_prompts.retrieve.side_effect = BadRequestError(status=400, reason="not found")
 
     with pytest.raises(HTTPException) as exc_info:
         await get_prompt_handler(
@@ -292,7 +288,7 @@ async def test_update_prompt_bad_request_maps_to_404(
     mock_response = mocker.Mock()
     mock_response.request = mocker.Mock()
     mock_prompts.update.side_effect = BadRequestError(
-        message="invalid version", response=mock_response, body=None
+        status=400, reason="invalid version"
     )
 
     body = PromptUpdateRequest(

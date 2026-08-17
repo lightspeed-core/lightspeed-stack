@@ -13,8 +13,7 @@ import os
 from typing import Optional
 
 from ogx_client import (
-    APIConnectionError,
-    APIStatusError,
+    ApiException,
     AsyncOgxClient,
 )
 
@@ -62,11 +61,11 @@ async def _unregister_shield_async(identifier: str) -> Optional[tuple[str, str]]
             return None
         try:
             await client.shields.delete(identifier)
-        except APIConnectionError:
-            raise
-        except APIStatusError as e:
+        except ApiException as e:
+            if not e.status:
+                raise
             # 400 "not found": shield already absent, scenario can proceed
-            if e.status_code == 400 and "not found" in str(e).lower():
+            if e.status == 400 and "not found" in str(e).lower():
                 return None
             raise
         if provider_id is not None and provider_shield_id is not None:

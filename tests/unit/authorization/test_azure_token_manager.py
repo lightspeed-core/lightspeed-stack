@@ -18,6 +18,7 @@ from authorization.azure_token_manager import (
 )
 from configuration import AzureEntraIdConfiguration
 from constants import DEFAULT_LOGGER_NAME
+from utils.types import Singleton
 
 
 @pytest.fixture(name="dummy_config")
@@ -33,9 +34,10 @@ def dummy_config_fixture() -> AzureEntraIdConfiguration:
 
 @pytest.fixture(autouse=True)
 def reset_singleton() -> Generator[None, None, None]:
-    """Reset the singleton instance before each test."""
-    AzureEntraIDManager._instances = {}  # type: ignore[attr-defined]
+    """Reset the AzureEntraIDManager singleton before each test."""
+    Singleton._instances.pop(AzureEntraIDManager, None)
     yield
+    Singleton._instances.pop(AzureEntraIDManager, None)
 
 
 @pytest.fixture(name="token_manager")

@@ -8,7 +8,7 @@ from typing import Any, Optional
 import yaml
 from fastapi import HTTPException
 from ogx.core.library_client import AsyncOGXAsLibraryClient
-from ogx_client import APIConnectionError, APIStatusError, AsyncOgxClient
+from ogx_client import ApiException, AsyncOgxClient
 
 import constants
 from authorization.azure_token_manager import AzureEntraIDManager
@@ -150,8 +150,7 @@ class AsyncOgxClientHolder(metaclass=Singleton):
             "Using timeout of %d seconds for Llama Stack requests", config.timeout
         )
         api_key = config.api_key.get_secret_value() if config.api_key else None
-        # Convert AnyHttpUrl to string for the client
-        base_url = str(config.url) if config.url else None
+        base_url = str(config.url).rstrip("/") if config.url else None
         self._lsc = AsyncOgxClient(
             base_url=base_url, api_key=api_key, timeout=config.timeout
         )
@@ -221,10 +220,9 @@ class AsyncOgxClientHolder(metaclass=Singleton):
         try:
             client = AsyncOGXAsLibraryClient(self._config_path)
             await client.initialize()
-        except APIConnectionError as e:
+        except ApiException as e:
             error_response = ServiceUnavailableResponse(
                 backend_name="OGX",
-                cause=str(e),
             )
             raise HTTPException(**error_response.model_dump()) from e
         self._lsc = client
@@ -264,7 +262,7 @@ class AsyncOgxClientHolder(metaclass=Singleton):
         except RuntimeError as e:
             logger.warning("Client not initialized, skipping model check: %s", e)
             return False, f"Client not initialized: {e!s}"
-        except (APIConnectionError, APIStatusError) as e:
+        except ApiException as e:
             logger.error("Error checking model availability: %s", e)
             return False, f"Error checking model availability: {e!s}"
 
@@ -292,8 +290,7 @@ class AsyncOgxClientHolder(metaclass=Singleton):
             except (
                 RuntimeError,
                 HTTPException,
-                APIConnectionError,
-                APIStatusError,
+                ApiException,
             ) as err:
                 logger.error("Client reload failed: %s", err)
 
@@ -337,7 +334,11 @@ class AsyncOgxClientHolder(metaclass=Singleton):
 
         # Service client: AsyncOgxClient has no .copy(); rebuild with provider_data.
         updated_client = AsyncOgxClient(
-            base_url=str(current_client.base_url) if current_client.base_url else None,
+            base_url=(
+                str(current_client.base_url).rstrip("/")
+                if current_client.base_url
+                else None
+            ),
             api_key=current_client.api_key,
             timeout=current_client.configuration.timeout,
             provider_data=provider_data,
@@ -357,7 +358,7 @@ class AsyncOgxClientHolder(metaclass=Singleton):
 
         try:
             providers = await self._lsc.providers.list()
-        except (APIConnectionError, APIStatusError) as err:
+        except ApiException as err:
             logger.warning("Failed to list providers for Azure base_url: %s", err)
             return None
 

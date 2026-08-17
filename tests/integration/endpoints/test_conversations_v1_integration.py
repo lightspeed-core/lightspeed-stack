@@ -8,7 +8,7 @@ from datetime import UTC, datetime
 
 import pytest
 from fastapi import HTTPException, Request, status
-from ogx_client import APIConnectionError, APIStatusError
+from ogx_client import ApiException
 from pytest_mock import AsyncMockType, MockerFixture
 from sqlalchemy.orm import Session
 
@@ -320,7 +320,6 @@ async def test_conversation_error_handling(  # pylint: disable=too-many-locals
     non_admin_test_request: Request,
     test_auth: AuthTuple,
     patch_db_session: Session,
-    mocker: MockerFixture,
 ) -> None:
     """Data-driven test for conversation endpoint error handling.
 
@@ -336,7 +335,6 @@ async def test_conversation_error_handling(  # pylint: disable=too-many-locals
         non_admin_test_request: FastAPI request with standard user permissions
         test_auth: noop authentication tuple
         patch_db_session: Test database session
-        mocker: pytest-mock fixture
     """
     _ = test_config
 
@@ -365,13 +363,9 @@ async def test_conversation_error_handling(  # pylint: disable=too-many-locals
         mock_method = getattr(mock_method, attr)
 
     if error_type == "connection":
-        mock_method.side_effect = APIConnectionError(request=mocker.Mock())
+        mock_method.side_effect = ApiException(status=None)
     elif error_type == "api_status":
-        mock_method.side_effect = APIStatusError(
-            message="Server error",
-            response=mocker.Mock(status_code=500),
-            body=None,
-        )
+        mock_method.side_effect = ApiException(status=500, reason="Server error")
 
     # Call the appropriate endpoint and expect error
     with pytest.raises(HTTPException) as exc_info:
@@ -654,7 +648,6 @@ async def test_delete_conversation_handles_not_found_in_llama_stack(
     non_admin_test_request: Request,
     test_auth: AuthTuple,
     patch_db_session: Session,
-    mocker: MockerFixture,
 ) -> None:
     """Test that delete conversation handles not found in Llama Stack gracefully.
 
@@ -669,7 +662,6 @@ async def test_delete_conversation_handles_not_found_in_llama_stack(
         non_admin_test_request: FastAPI request with standard user permissions
         test_auth: noop authentication tuple
         patch_db_session: Test database session
-        mocker: pytest-mock fixture
     """
     _ = test_config
 
@@ -688,10 +680,8 @@ async def test_delete_conversation_handles_not_found_in_llama_stack(
     patch_db_session.commit()
 
     # Configure mock to raise not found error
-    mock_ogx_client.conversations.delete.side_effect = APIStatusError(
-        message="Not found",
-        response=mocker.Mock(status_code=404),
-        body=None,
+    mock_ogx_client.conversations.delete.side_effect = ApiException(
+        status=404, reason="Not found"
     )
 
     response = await delete_conversation_endpoint_handler(

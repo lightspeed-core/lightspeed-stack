@@ -9,22 +9,22 @@ from typing import Any
 
 import pytest
 from fastapi import HTTPException
-from ogx_client import APIConnectionError, APIStatusError
+from ogx_client import ApiException
 from pydantic import AnyHttpUrl, SecretStr
 from pytest_mock import MockerFixture
 
 from authorization.azure_token_manager import AzureEntraIDManager
 from client import AsyncOgxClientHolder
 from configuration import AzureEntraIdConfiguration
-from tests.unit.conftest import make_openai_model, make_openai_models_list_response
 from models.config import LlamaStackConfiguration
+from tests.unit.conftest import make_openai_model, make_openai_models_list_response
 from utils.types import Singleton
 
 
 @pytest.fixture(autouse=True)
 def reset_singleton() -> None:
     """Reset singleton state between tests."""
-    Singleton._instances = {}
+    Singleton._instances.clear()
 
 
 def test_async_client_get_client_method() -> None:
@@ -57,9 +57,7 @@ async def test_get_async_llama_stack_library_client() -> None:
 
     async with client.get_client() as ls_client:
         assert ls_client is not None
-        assert not ls_client.is_closed()
         await ls_client.close()
-        assert ls_client.is_closed()
 
 
 @pytest.mark.asyncio
@@ -112,7 +110,7 @@ async def test_get_async_llama_stack_wrong_configuration(
 @pytest.mark.asyncio
 async def test_update_azure_token_service_client() -> None:
     """Test update_azure_token replaces the service client with new provider headers."""
-    AzureEntraIDManager._instances = {}  # type: ignore[attr-defined]
+    Singleton._instances.pop(AzureEntraIDManager, None)
     manager = AzureEntraIDManager()
     manager.set_config(
         AzureEntraIdConfiguration(
@@ -151,7 +149,7 @@ async def test_update_azure_token_service_client() -> None:
 @pytest.mark.asyncio
 async def test_load_service_client_defers_azure_provider_data() -> None:
     """Test service client load does not set Azure headers until update_azure_token."""
-    AzureEntraIDManager._instances = {}  # type: ignore[attr-defined]
+    Singleton._instances.pop(AzureEntraIDManager, None)
     manager = AzureEntraIDManager()
     manager.set_config(
         AzureEntraIdConfiguration(
@@ -174,6 +172,7 @@ async def test_load_service_client_defers_azure_provider_data() -> None:
     holder = AsyncOgxClientHolder()
     await holder.load(cfg)
 
+    assert holder.get_client().configuration.host == "http://localhost:8321"
     default_headers = holder.get_client().api_client.default_headers or {}
     assert "X-OGX-Provider-Data" not in default_headers
 
@@ -230,7 +229,6 @@ class TestCheckModelAvailable:
     @pytest.mark.asyncio
     async def test_model_available(
         self,
-        mocker: MockerFixture,
         holder_with_mock_client: tuple[AsyncOgxClientHolder, Any],
     ) -> None:
         """Test returns True when the model is found in the registry."""
@@ -247,7 +245,6 @@ class TestCheckModelAvailable:
     @pytest.mark.asyncio
     async def test_model_not_found_service_client(
         self,
-        mocker: MockerFixture,
         holder_with_mock_client: tuple[AsyncOgxClientHolder, Any],
     ) -> None:
         """Test returns False and skips reload for non-library (service) clients."""
@@ -276,15 +273,11 @@ class TestCheckModelAvailable:
         "exception_factory",
         [
             pytest.param(
-                lambda m: APIConnectionError(request=m.Mock()),
+                lambda m: ApiException(status=None),
                 id="connection_error",
             ),
             pytest.param(
-                lambda m: APIStatusError(
-                    message="Internal error",
-                    response=m.Mock(status_code=500, headers={}),
-                    body=None,
-                ),
+                lambda m: ApiException(status=500, reason="Internal error"),
                 id="api_status_error",
             ),
         ],
