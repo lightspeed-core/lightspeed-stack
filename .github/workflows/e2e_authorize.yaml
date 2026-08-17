@@ -28,6 +28,7 @@ jobs:
           EVENT_ACTION: ${{ github.event.action }}
           USER: ${{ github.event.pull_request.user.login || github.actor }}
           ACTOR: ${{ github.actor }}
+          ASSOCIATION: ${{ github.event.pull_request.author_association }}
           REPOSITORY: ${{ github.repository }}
         run: |
           set -euo pipefail
@@ -44,14 +45,18 @@ jobs:
           [ "$EVENT_NAME" = "schedule" ] && allow "Scheduled run."
 
           USER_PERM=$(perm "$USER")
-          echo "executor=$USER permission=$USER_PERM"
+          echo "executor=$USER permission=$USER_PERM association=${ASSOCIATION:-none}"
           if [ "$USER_PERM" = "admin" ] || [ "$USER_PERM" = "write" ]; then
             allow "$USER is an owner or developer."
+          fi
+          # Org members often only have read on this repo, so perm() is not enough.
+          if [ "$ASSOCIATION" = "OWNER" ] || [ "$ASSOCIATION" = "MEMBER" ]; then
+            allow "$USER is an organization $ASSOCIATION."
           fi
 
           # ok-to-test only counts on the labeled event, so a later push cannot
           # reuse an old owner approval against a new PR head.
-          [ "$EVENT_ACTION" = "labeled" ] || deny "$USER is not an owner or developer."
+          [ "$EVENT_ACTION" = "labeled" ] || deny "$USER is not an owner, member, or developer."
 
           LABELER_PERM=$(perm "$ACTOR")
           echo "ok-to-test labeler=$ACTOR permission=$LABELER_PERM"
