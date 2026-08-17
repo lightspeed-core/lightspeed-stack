@@ -13,6 +13,7 @@ jobs:
     uses: ./.github/workflows/e2e_authorize.yaml
     permissions:
       contents: read
+      members: read
 
   e2e_tests:
     needs: authorize

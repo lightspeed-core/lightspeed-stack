@@ -10,17 +10,17 @@ on:
 
 jobs:
   authorize:
-    name: Check owner or developer access
+    name: Check repository access
     runs-on: ubuntu-latest
     timeout-minutes: 2
-    # Adding some other label must not start e2e.
     if: github.event.action != 'labeled' || github.event.label.name == 'ok-to-test'
     permissions:
       contents: read
+      members: read
     outputs:
       authorized: ${{ steps.check.outputs.authorized }}
     steps:
-      - name: Verify executor is owner or developer
+      - name: Allow repo members, or ok-to-test from an owner
         id: check
         env:
           GH_TOKEN: ${{ github.token }}
@@ -28,7 +28,6 @@ jobs:
           EVENT_ACTION: ${{ github.event.action }}
           USER: ${{ github.event.pull_request.user.login || github.actor }}
           ACTOR: ${{ github.actor }}
-          ASSOCIATION: ${{ github.event.pull_request.author_association }}
           REPOSITORY: ${{ github.repository }}
         run: |
           set -euo pipefail
@@ -36,30 +35,36 @@ jobs:
           allow() { echo "$1"; echo "authorized=true" >> "$GITHUB_OUTPUT"; exit 0; }
           deny()  { echo "::warning::$1"; echo "authorized=false" >> "$GITHUB_OUTPUT"; exit 0; }
 
-          perm() {
-            local encoded
-            encoded=$(jq -nr --arg u "$1" '$u|@uri')
-            gh api "repos/${REPOSITORY}/collaborators/${encoded}/permission" --jq .permission 2>/dev/null || echo none
+          encode() { jq -nr --arg u "$1" '$u|@uri'; }
+
+          # True if the user is on this repository or an org owner/member.
+          is_repo_user_or_member() {
+            local encoded org role
+            encoded=$(encode "$1")
+            if gh api --silent "repos/${REPOSITORY}/collaborators/${encoded}"; then
+              return 0
+            fi
+            org="${REPOSITORY%%/*}"
+            role=$(gh api "orgs/${org}/memberships/${encoded}" \
+              --jq 'if .state == "active" then .role else "none" end' 2>/dev/null || echo none)
+            [ "$role" = "admin" ] || [ "$role" = "member" ]
+          }
+
+          repo_permission() {
+            gh api "repos/${REPOSITORY}/collaborators/$(encode "$1")/permission" --jq .permission 2>/dev/null || echo none
           }
 
           [ "$EVENT_NAME" = "schedule" ] && allow "Scheduled run."
 
-          USER_PERM=$(perm "$USER")
-          echo "executor=$USER permission=$USER_PERM association=${ASSOCIATION:-none}"
-          if [ "$USER_PERM" = "admin" ] || [ "$USER_PERM" = "write" ]; then
-            allow "$USER is an owner or developer."
-          fi
-          # Org members often only have read on this repo, so perm() is not enough.
-          if [ "$ASSOCIATION" = "OWNER" ] || [ "$ASSOCIATION" = "MEMBER" ]; then
-            allow "$USER is an organization $ASSOCIATION."
+          echo "executor=$USER"
+          if is_repo_user_or_member "$USER"; then
+            allow "$USER is a user or member of ${REPOSITORY}."
           fi
 
-          # ok-to-test only counts on the labeled event, so a later push cannot
-          # reuse an old owner approval against a new PR head.
-          [ "$EVENT_ACTION" = "labeled" ] || deny "$USER is not an owner, member, or developer."
+          [ "$EVENT_ACTION" = "labeled" ] || deny "$USER is not a user or member of ${REPOSITORY}."
 
-          LABELER_PERM=$(perm "$ACTOR")
+          LABELER_PERM=$(repo_permission "$ACTOR")
           echo "ok-to-test labeler=$ACTOR permission=$LABELER_PERM"
           [ "$LABELER_PERM" = "admin" ] && allow "Owner $ACTOR added ok-to-test."
 
-          deny "ok-to-test was not added by an owner."
+          deny "ok-to-test must be added by a repository owner."
