@@ -6,6 +6,7 @@ from typing import Any, Optional
 
 import pytest
 from fastapi import HTTPException
+from ogx_api.openai_responses import OpenAIResponseMessage
 from ogx_client import APIConnectionError, APIStatusError
 from pydantic_ai.messages import (
     FinishReason,
@@ -426,6 +427,97 @@ class TestRetrieveAgentResponse:
         mock_agent.run.assert_awaited_once_with("Say hello")
         assert summary.llm_response == "Hello!"
         assert summary.id == "resp-success"
+
+    @pytest.mark.asyncio
+    async def test_compacted_input_runs_agent_with_prompt_text(
+        self,
+        mocker: MockerFixture,
+        make_agent_run_result: Callable[..., Any],
+        make_responses_params: Callable[..., ResponsesApiParams],
+        patch_recording_metrics: None,
+    ) -> None:
+        """Test compacted explicit input is reduced to the query text for agent.run."""
+        explicit = [
+            OpenAIResponseMessage(
+                role="user", content="Summary of earlier conversation:\nS1"
+            ),
+            OpenAIResponseMessage(role="user", content="new question"),
+        ]
+        params = make_responses_params(input_text="ignored").model_copy(
+            update={"input": explicit, "omit_conversation": True}
+        )
+        run_result = make_agent_run_result(content="Answer")
+        mock_agent = mocker.AsyncMock()
+        mock_agent.run = mocker.AsyncMock(return_value=run_result)
+        mocker.patch("utils.agents.query.build_agent", return_value=mock_agent)
+
+        summary = await retrieve_agent_response(
+            client=mocker.AsyncMock(),
+            responses_params=params,
+            moderation_result=ShieldModerationPassed(),
+            endpoint_path=ENDPOINT_PATH_QUERY,
+        )
+
+        mock_agent.run.assert_awaited_once_with("new question")
+        assert summary.llm_response == "Answer"
+
+    @pytest.mark.asyncio
+    async def test_blocked_moderation_compacted_skips_append(
+        self,
+        mocker: MockerFixture,
+        make_responses_params: Callable[..., ResponsesApiParams],
+        blocked_moderation: ShieldModerationBlocked,
+    ) -> None:
+        """Test blocked moderation does not append explicit input in compacted mode."""
+        params = make_responses_params().model_copy(
+            update={
+                "input": [OpenAIResponseMessage(role="user", content="q")],
+                "omit_conversation": True,
+            }
+        )
+        mock_append = mocker.patch(
+            "utils.agents.query.append_turn_items_to_conversation",
+            new=mocker.AsyncMock(),
+        )
+
+        summary = await retrieve_agent_response(
+            client=mocker.AsyncMock(),
+            responses_params=params,
+            moderation_result=blocked_moderation,
+            endpoint_path=ENDPOINT_PATH_QUERY,
+        )
+
+        mock_append.assert_not_awaited()
+        assert summary.llm_response == "Content blocked by shield."
+
+    @pytest.mark.asyncio
+    async def test_inference_error_is_logged(
+        self,
+        mocker: MockerFixture,
+        make_responses_params: Callable[..., ResponsesApiParams],
+        patch_recording_metrics: None,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Test mapped agent inference errors are logged before raising."""
+        mock_agent = mocker.AsyncMock()
+        mock_agent.run = mocker.AsyncMock(
+            side_effect=APIConnectionError(request=mocker.Mock())
+        )
+        mocker.patch("utils.agents.query.build_agent", return_value=mock_agent)
+
+        with caplog.at_level("ERROR"):
+            with pytest.raises(HTTPException):
+                await retrieve_agent_response(
+                    client=mocker.AsyncMock(),
+                    responses_params=make_responses_params(),
+                    moderation_result=ShieldModerationPassed(),
+                    endpoint_path=ENDPOINT_PATH_QUERY,
+                )
+
+        assert any(
+            record.levelname == "ERROR" and "Agent inference failed" in record.message
+            for record in caplog.records
+        )
 
     @pytest.mark.asyncio
     async def test_success_with_image_attachments_sends_multimodal_prompt(

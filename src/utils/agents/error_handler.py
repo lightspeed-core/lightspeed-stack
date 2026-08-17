@@ -48,6 +48,9 @@ def map_agent_inference_error(
         RuntimeError: Re-raised when ``exc`` is a non-agent ``RuntimeError`` that is
             not a recognized context-length failure.
     """
+    # The mapped HTTPException loses the original exception, and callers raise
+    # it without logging — log here so failures are diagnosable (LCORE-3582).
+    logger.error("Agent inference failed: %s", exc, exc_info=exc)
     match exc:
         case AgentRunError() as agent_exc:
             return map_pydantic_agent_run_error(agent_exc, model_id)

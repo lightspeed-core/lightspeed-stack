@@ -74,6 +74,16 @@ def _model_settings_from_responses_params(
     """Map ``ResponsesApiParams`` into Pydantic AI OpenAI Responses model settings."""
     payload = responses_params.model_dump(exclude_none=True)
     extra_body = {k: v for k, v in payload.items() if k in _LLS_RESPONSES_EXTRA_FIELDS}
+    if responses_params.omit_conversation and not isinstance(
+        responses_params.input, str
+    ):
+        # Compacted mode (LCORE-3582): the request must carry the explicit item
+        # list (summaries + recent turns + new query), but pydantic-ai builds
+        # the wire ``input`` from the prompt alone. Overriding via extra_body
+        # replaces it with the explicit list, exactly as the non-agent
+        # /v1/responses path sends it. Dropped again on tool-loop
+        # continuations — see ``_prepare_compacted_input``.
+        extra_body["input"] = payload["input"]
     settings_dict: dict[str, Any] = {}
     if extra_body:
         settings_dict["extra_body"] = extra_body
@@ -291,6 +301,7 @@ class OgxResponsesModel(OpenAIResponsesModel):
         messages, model_settings = self._prepare_conversation_continuation(
             messages, model_settings
         )
+        model_settings = self._prepare_compacted_input(messages, model_settings)
         return await super().request(messages, model_settings, model_request_parameters)
 
     def _prepare_conversation_continuation(
@@ -334,6 +345,34 @@ class OgxResponsesModel(OpenAIResponsesModel):
         new_settings.pop("openai_previous_response_id", None)
         return trimmed_messages, cast(ModelSettings, new_settings)
 
+    def _prepare_compacted_input(
+        self,
+        messages: list[ModelMessage],
+        model_settings: Optional[ModelSettings],
+    ) -> Optional[ModelSettings]:
+        """Drop the compacted ``input`` override on tool-loop continuations.
+
+        In compacted mode (LCORE-3582) the request body ``input`` is overridden
+        via ``extra_body`` with the explicit item list. That override is only
+        valid for the first request of an agent run: on client-side tool-loop
+        iterations pydantic-ai's mapped messages carry the tool results and
+        must win, so the override is removed once a ``ModelResponse`` exists in
+        the message history.
+        """
+        if not model_settings or not isinstance(model_settings, dict):
+            return model_settings
+        extra_body = model_settings.get("extra_body")
+        if not isinstance(extra_body, dict) or "input" not in extra_body:
+            return model_settings
+        if not any(isinstance(message, ModelResponse) for message in messages):
+            return model_settings
+
+        new_extra_body = dict(extra_body)
+        new_extra_body.pop("input")
+        new_settings = dict(model_settings)
+        new_settings["extra_body"] = new_extra_body
+        return cast(ModelSettings, new_settings)
+
     @asynccontextmanager
     async def request_stream(  # pylint: disable=unused-argument
         self,
@@ -360,6 +399,7 @@ class OgxResponsesModel(OpenAIResponsesModel):
         messages, model_settings = self._prepare_conversation_continuation(
             messages, model_settings
         )
+        model_settings = self._prepare_compacted_input(messages, model_settings)
 
         model_settings_cast = cast(OpenAIResponsesModelSettings, model_settings or {})
         response = await self._responses_create(
