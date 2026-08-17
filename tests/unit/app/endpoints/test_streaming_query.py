@@ -14,6 +14,7 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
 from pytest_mock import MockerFixture
 
 from app.endpoints.streaming_query import (
+    generate_response_with_compaction,
     streaming_query_endpoint_handler,
 )
 from configuration import AppConfig
@@ -30,6 +31,7 @@ from models.common.turn_summary import (
     TurnSummary,
 )
 from models.config import Action
+from utils.conversation_compaction import CompactionResult
 from utils.otel_tracing import SpanAttributes, SpanEvents
 
 INTERRUPTED_INDICATOR = f"\n\n*{INTERRUPTED_RESPONSE_MESSAGE}*"
@@ -907,3 +909,92 @@ class TestStreamingQueryOtelInstrumentation:
             assert child.parent is not None  # pyright narrowing
             assert root_spans[0].context is not None  # pyright narrowing
             assert child.parent.span_id == root_spans[0].context.span_id
+
+
+class TestGenerateResponseWithCompaction:  # pylint: disable=too-few-public-methods
+    """Tests for the compaction-aware SSE generator."""
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("compacted", "expected_status"),
+        [(False, "full"), (True, "summarized")],
+    )
+    async def test_threads_context_status_to_agent_response(
+        self,
+        mocker: MockerFixture,
+        compacted: bool,
+        expected_status: str,
+    ) -> None:
+        """Test the CompactionResult outcome reaches generate_agent_response."""
+        responses_params = ResponsesApiParams.model_validate(
+            {
+                "model": "provider1/model1",
+                "input": "What is OpenShift?",
+                "conversation": "conv_123",
+                "stream": True,
+                "store": True,
+            }
+        )
+
+        context = mocker.Mock()
+        context.conversation_id = "conv_123"
+        context.request_id = "req_123"
+        context.user_id = "user_123"
+        context.skip_userid_check = False
+        context.client = mocker.AsyncMock()
+        context.moderation_result = ShieldModerationPassed()
+        context.inline_rag_context = RAGContext()
+        context.query_request = QueryRequest(
+            query="What is OpenShift?"
+        )  # pyright: ignore[reportCallIssue]
+
+        compaction_result = CompactionResult(responses_params, compacted=compacted)
+
+        async def fake_apply_compaction(
+            *_args: Any, **_kwargs: Any
+        ) -> AsyncIterator[CompactionResult]:
+            yield compaction_result
+
+        mocker.patch(
+            "app.endpoints.streaming_query.apply_compaction",
+            new=fake_apply_compaction,
+        )
+        mocker.patch(
+            "app.endpoints.streaming_query.configured_conversation_cache",
+            return_value=None,
+        )
+        mock_config = mocker.Mock()
+        mocker.patch("app.endpoints.streaming_query.configuration", mock_config)
+
+        async def inner_generator() -> AsyncIterator[str]:
+            yield "data: test\n\n"
+
+        mocker.patch(
+            "app.endpoints.streaming_query.retrieve_agent_response_generator",
+            new=mocker.AsyncMock(return_value=(inner_generator(), TurnSummary())),
+        )
+
+        captured_kwargs: dict[str, Any] = {}
+
+        async def fake_generate_agent_response(
+            *_args: Any, **kwargs: Any
+        ) -> AsyncIterator[str]:
+            captured_kwargs.update(kwargs)
+            yield "data: end\n\n"
+
+        mocker.patch(
+            "app.endpoints.streaming_query.generate_agent_response",
+            new=fake_generate_agent_response,
+        )
+
+        events = [
+            event
+            async for event in generate_response_with_compaction(
+                context=context,
+                responses_params=responses_params,
+                endpoint_path="/v1/streaming_query",
+            )
+        ]
+
+        assert events  # the start event plus the delegated events
+        assert captured_kwargs["context_status"] == expected_status
