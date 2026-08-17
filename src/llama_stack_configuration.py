@@ -56,6 +56,11 @@ API_KEY_FIELD_MAP: dict[str, str] = {
     "remote::vllm": "api_token",
 }
 
+# High-level inference `type` values that serve embeddings rather than LLMs.
+# Their `allowed_models` must not be registered as `llm` model resources,
+# which would give Llama Stack a mis-typed model that routes incorrectly.
+EMBEDDING_PROVIDER_TYPES: frozenset[str] = frozenset({"sentence_transformers"})
+
 # Package-relative path to the built-in default baseline run.yaml shipped with
 # LCORE, used when unified mode selects baseline "default" or "byo-llm" without
 # a profile. "byo-llm" loads this file then strips the conditional OpenAI row.
@@ -1125,67 +1130,70 @@ def _build_inference_entry(
     return entry, allowed_models
 
 
-class _LLMModelRegistrar:  # pylint: disable=too-few-public-methods
-    """Owns ``registered_resources.models`` writes for one synthesis call.
+def _register_high_level_models(
+    existing_models: list[Any], provider_id: str, allowed_models: list[str]
+) -> list[dict[str, Any]]:
+    """Build LLM resource entries for allowed_models not already registered.
 
-    ``apply_high_level_inference`` needs to register a model per
-    ``allowed_models`` entry, dedupe against models registered before the
-    call (baseline, native_override, BYOK, ...), and — when a later
-    high-level entry reuses a ``provider_id`` — evict the models it
-    registered for that provider's earlier declaration. Bundling those three
-    pieces of state here keeps that bookkeeping out of the caller instead of
-    threading a list, a set, and a dict through free-function parameters.
+    Each allowed model is registered as an ``llm`` resource pointing at
+    ``provider_id`` so it is usable even when the provider endpoint is
+    unreachable at startup — Llama Stack's auto-discovery otherwise needs a
+    live connection to list models.
+
+    Deduplication is keyed on ``(provider_id, model_id)`` rather than the bare
+    ``model_id``: Llama Stack scopes model identifiers by provider (it builds
+    ``f"{provider_id}/{model_id}"``), so the same model name served by two
+    providers is registered once per provider instead of being dropped for the
+    second one.
+
+    Parameters:
+        existing_models: Models already in ``registered_resources.models``
+            (baseline, native_override, BYOK, and any registered earlier in
+            this synthesis pass); read only for deduplication, never mutated.
+        provider_id: Emitted provider_id the models are served by.
+        allowed_models: Model names to register.
+
+    Returns:
+        New model resource dicts to append; empty when all are already known.
     """
-
-    def __init__(self, ls_config: dict[str, Any]) -> None:
-        self._models = ls_config.setdefault("registered_resources", {}).setdefault(
-            "models", []
-        )
-        self._known_ids = {
-            m.get("model_id") for m in self._models if isinstance(m, dict)
-        }
-        self._owned_by_provider: dict[str, list[str]] = {}
-
-    def sync(self, provider_id: str, allowed_models: list[str]) -> None:
-        """Register ``allowed_models`` for ``provider_id``, replacing its prior set.
-
-        A later high-level entry with the same emitted ``provider_id`` fully
-        replaces the earlier one's provider config (see
-        ``_replace_or_append_inference_provider``), so any model this
-        registrar added for it earlier in the same call is stale and must be
-        evicted first — otherwise a model no longer served by the replaced
-        provider would linger in ``registered_resources.models``.
-
-        Parameters:
-            provider_id: provider_id of the inference provider offering the
-                models.
-            allowed_models: Model names to register.
-        """
-        stale = set(self._owned_by_provider.pop(provider_id, []))
-        if stale:
-            self._models[:] = [
-                m
-                for m in self._models
-                if not (isinstance(m, dict) and m.get("model_id") in stale)
-            ]
-            self._known_ids.difference_update(stale)
-
-        added = []
-        for model_name in allowed_models:
-            if model_name in self._known_ids:
-                continue
-            self._models.append(
-                {
-                    "model_id": model_name,
-                    "model_type": "llm",
-                    "provider_id": provider_id,
-                    "provider_model_id": model_name,
-                }
+    known = {
+        (m.get("provider_id"), m.get("model_id"))
+        for m in existing_models
+        if isinstance(m, dict)
+    }
+    new_entries: list[dict[str, Any]] = []
+    for model_name in allowed_models:
+        key = (provider_id, model_name)
+        if key in known:
+            logger.debug(
+                "Model %r already registered for provider_id=%r; skipping",
+                model_name,
+                provider_id,
             )
-            self._known_ids.add(model_name)
-            added.append(model_name)
-        if added:
-            self._owned_by_provider[provider_id] = added
+            continue
+        known.add(key)
+        new_entries.append(
+            {
+                "model_id": model_name,
+                "model_type": "llm",
+                "provider_id": provider_id,
+                "provider_model_id": model_name,
+            }
+        )
+    return new_entries
+
+
+def _emitted_provider_id(provider: dict[str, Any]) -> str:
+    """Return the provider_id emitted for one high-level provider entry.
+
+    Parameters:
+        provider: One high-level ``inference.providers`` entry.
+
+    Returns:
+        The provider_id to emit.
+    """
+    explicit_id = (provider.get("id") or "").strip()
+    return explicit_id or provider["type"].replace("_", "-")
 
 
 def apply_high_level_inference(
@@ -1206,13 +1214,19 @@ def apply_high_level_inference(
     Secrets are emitted as ``${env.<VAR>}`` references, never resolved
     values (R6).
 
-    Each of the provider's ``allowed_models`` is also registered as an LLM
-    entry in ``registered_resources.models`` (skipping any ``model_id`` already
-    present), so the model is usable even when the provider endpoint is
-    unreachable at startup — Llama Stack's auto-discovery otherwise requires a
-    live connection to list models. Replacing a provider (same emitted id)
-    also evicts the LLM entries this function registered for the earlier
-    declaration, so a superseded provider's models don't linger.
+    Each LLM provider's ``allowed_models`` is also registered as an LLM entry
+    in ``registered_resources.models`` (deduped by ``(provider_id, model_id)``),
+    so the model is usable even when the provider endpoint is unreachable at
+    startup — Llama Stack's auto-discovery otherwise requires a live connection
+    to list models. Embedding provider types (see :data:`EMBEDDING_PROVIDER_TYPES`)
+    are skipped, since their models are not LLMs. Duplicate emitted provider ids
+    are rejected upstream by ``InferenceConfiguration`` validation, so no
+    same-id eviction is needed here.
+
+    These registrations run before the ``native_override`` merge and
+    ``registered_resources.models`` is a list, so an operator override that
+    supplies its own ``models`` replaces them wholesale (R5 list-replacement
+    precedence) — intended, so an override always wins.
 
     Parameters:
         ls_config: The OGX configuration being synthesized (modified in
@@ -1227,20 +1241,58 @@ def apply_high_level_inference(
     if not providers:
         return
 
+    # Validate for duplicate emitted ids before mutating ls_config.
+    # InferenceConfiguration catches this at Pydantic load time, but callers
+    # such as the CLI may pass raw dicts that bypass that validation.
+    seen_ids: set[str] = set()
+    for provider in providers:
+        emitted = _emitted_provider_id(provider)
+        if emitted in seen_ids:
+            raise ValueError(
+                f"duplicate inference provider id {emitted!r}: two "
+                "inference.providers entries resolve to the same provider_id; "
+                "set a distinct 'id' on one of them"
+            )
+        seen_ids.add(emitted)
+
     providers_section = ls_config.setdefault("providers", {})
     inference_list = providers_section.setdefault("inference", [])
-    model_registrar = _LLMModelRegistrar(ls_config)
+    # (emitted_id, allowed_models) pairs to register as LLM resources, collected
+    # while emitting provider entries and applied after the loop.
+    to_register: list[tuple[str, list[str]]] = []
 
     for provider in providers:
         provider_type = provider["type"]
-        emitted_id = provider.get("id") or provider_type.replace("_", "-")
+        emitted_id = _emitted_provider_id(provider)
         ls_provider_type = PROVIDER_TYPE_MAP[provider_type]
         entry, allowed_models = _build_inference_entry(
             provider, emitted_id, ls_provider_type
         )
-
         _replace_or_append_inference_provider(inference_list, entry)
-        model_registrar.sync(emitted_id, allowed_models)
+
+        if not allowed_models:
+            continue
+        if provider_type in EMBEDDING_PROVIDER_TYPES:
+            logger.debug(
+                "Skipping LLM model registration for embedding provider "
+                "type=%r (provider_id=%r)",
+                provider_type,
+                emitted_id,
+            )
+            continue
+        to_register.append((emitted_id, allowed_models))
+
+    # Bind (creating if needed) registered_resources.models only when there is
+    # something to register, so a config that registers nothing keeps its
+    # original shape instead of gaining an empty models block.
+    if to_register:
+        models_list = ls_config.setdefault("registered_resources", {}).setdefault(
+            "models", []
+        )
+        for emitted_id, allowed_models in to_register:
+            models_list.extend(
+                _register_high_level_models(models_list, emitted_id, allowed_models)
+            )
 
     logger.info(
         "Applied %d high-level inference provider(s) to synthesized config",
@@ -1604,9 +1656,9 @@ def main() -> None:
     parser.add_argument(
         "-i",
         "--input",
-        default="run.yaml",
-        help="Input OGX config for legacy enrichment mode; ignored "
-        "with --synthesize (default: run.yaml)",
+        default=None,
+        help="Input OGX config for legacy enrichment mode "
+        "(default: run.yaml); not valid with --synthesize",
     )
     parser.add_argument(
         "-o",
@@ -1622,6 +1674,14 @@ def main() -> None:
     )
     args = parser.parse_args()
 
+    if args.synthesize and args.input is not None:
+        parser.error(
+            "-i/--input is not valid with --synthesize; synthesize builds "
+            "the config from -c alone"
+        )
+
+    # An empty or comment-only -c file loads as {} rather than None; this
+    # applies to both modes (legacy previously raised on config.get()).
     with open(args.config, "r", encoding="utf-8") as f:
         config = yaml.safe_load(f) or {}
 
@@ -1630,7 +1690,7 @@ def main() -> None:
             config, args.output, config_file_dir=str(Path(args.config).parent)
         )
     else:
-        generate_configuration(args.input, args.output, config)
+        generate_configuration(args.input or "run.yaml", args.output, config)
 
 
 if __name__ == "__main__":

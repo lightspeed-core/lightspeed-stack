@@ -18,6 +18,7 @@ from typing import Any, Optional, get_args
 import pytest
 import yaml
 from ogx.core.stack import replace_env_vars
+from pydantic import ValidationError
 
 from llama_stack_configuration import (
     CONDITIONAL_OPENAI_PROVIDER_ID,
@@ -31,7 +32,7 @@ from llama_stack_configuration import (
     synthesize_configuration,
     synthesize_to_file,
 )
-from models.config import UnifiedInferenceProvider
+from models.config import InferenceConfiguration, UnifiedInferenceProvider
 
 OPENAI_CONDITIONAL_PROVIDER_ID = CONDITIONAL_OPENAI_PROVIDER_ID
 OPENAI_CONDITIONAL_API_KEY = "${env.OPENAI_API_KEY:=}"
@@ -368,6 +369,28 @@ def test_apply_high_level_inference_uses_explicit_id() -> None:
     assert entry["provider_type"] == "remote::vllm"
 
 
+def test_apply_high_level_inference_strips_whitespace_from_explicit_id() -> None:
+    """A raw-dict caller's padded id is stripped, not emitted verbatim."""
+    ls_config: dict[str, Any] = {"providers": {"inference": []}}
+    inference = {"providers": [{"type": "vllm", "id": " vllm-prod "}]}
+    apply_high_level_inference(ls_config, inference)
+    entry = ls_config["providers"]["inference"][0]
+    assert entry["provider_id"] == "vllm-prod"
+
+
+def test_apply_high_level_inference_detects_duplicate_after_stripping() -> None:
+    """Ids that only differ by incidental whitespace are treated as duplicates."""
+    ls_config: dict[str, Any] = {"providers": {"inference": []}}
+    inference = {
+        "providers": [
+            {"type": "vllm", "id": "shared"},
+            {"type": "ollama", "id": " shared "},
+        ]
+    }
+    with pytest.raises(ValueError, match="duplicate inference provider id"):
+        apply_high_level_inference(ls_config, inference)
+
+
 def test_apply_high_level_inference_same_type_distinct_ids() -> None:
     """Two providers of the same type with distinct ids both appear."""
     ls_config: dict[str, Any] = {"providers": {"inference": []}}
@@ -395,32 +418,28 @@ def test_apply_high_level_inference_same_type_distinct_ids() -> None:
     assert by_id["vllm-staging"]["config"]["url"] == "http://staging:8000"
 
 
-def test_apply_high_level_inference_duplicate_id_last_wins(
+def test_apply_high_level_inference_replaces_baseline_provider_id(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    """Duplicate id keeps the last entry and logs an info message."""
-    ls_config: dict[str, Any] = {"providers": {"inference": []}}
-    inference = {
-        "providers": [
-            {
-                "type": "vllm",
-                "id": "vllm-shared",
-                "api_key_env": "FIRST_KEY",
-            },
-            {
-                "type": "vllm",
-                "id": "vllm-shared",
-                "api_key_env": "SECOND_KEY",
-            },
-        ]
+    """A high-level provider that matches a baseline provider_id replaces it."""
+    ls_config: dict[str, Any] = {
+        "providers": {
+            "inference": [
+                {
+                    "provider_id": "vllm",
+                    "provider_type": "remote::vllm",
+                    "config": {"api_token": "${env.OLD_KEY}"},
+                }
+            ]
+        }
     }
+    inference = {"providers": [{"type": "vllm", "api_key_env": "NEW_KEY"}]}
     with caplog.at_level("INFO", logger="lightspeed_stack.llama_stack_configuration"):
         apply_high_level_inference(ls_config, inference)
     entries = ls_config["providers"]["inference"]
     assert len(entries) == 1
-    assert entries[0]["provider_id"] == "vllm-shared"
-    assert entries[0]["config"]["api_token"] == "${env.SECOND_KEY}"
-    assert "provider_id='vllm-shared'" in caplog.text
+    assert entries[0]["config"]["api_token"] == "${env.NEW_KEY}"
+    assert "provider_id='vllm'" in caplog.text
 
 
 def test_apply_high_level_inference_merges_extra() -> None:
@@ -572,15 +591,46 @@ def test_apply_high_level_inference_registers_multiple_allowed_models() -> None:
 
 
 def test_apply_high_level_inference_no_allowed_models_no_registration() -> None:
-    """A provider without allowed_models registers no LLM model."""
+    """A provider without allowed_models leaves registered_resources untouched."""
     ls_config: dict[str, Any] = {"providers": {"inference": []}}
     inference = {"providers": [{"type": "sentence_transformers"}]}
     apply_high_level_inference(ls_config, inference)
-    assert ls_config["registered_resources"]["models"] == []
+    # Nothing registered -> no empty registered_resources.models block is added.
+    assert "registered_resources" not in ls_config
+
+
+def test_apply_high_level_inference_skips_embedding_provider_models() -> None:
+    """allowed_models on an embedding provider is not registered as an llm."""
+    ls_config: dict[str, Any] = {"providers": {"inference": []}}
+    inference = {
+        "providers": [
+            {"type": "sentence_transformers", "allowed_models": ["all-MiniLM-L6-v2"]}
+        ]
+    }
+    apply_high_level_inference(ls_config, inference)
+    assert ls_config["providers"]["inference"][0]["provider_id"] == (
+        "sentence-transformers"
+    )
+    assert "registered_resources" not in ls_config
+
+
+def test_apply_high_level_inference_same_model_distinct_providers() -> None:
+    """The same model name served by two providers is registered once each."""
+    ls_config: dict[str, Any] = {"providers": {"inference": []}}
+    inference = {
+        "providers": [
+            {"type": "openai", "id": "openai", "allowed_models": ["gpt-4o"]},
+            {"type": "azure", "id": "azure", "allowed_models": ["gpt-4o"]},
+        ]
+    }
+    apply_high_level_inference(ls_config, inference)
+    models = ls_config["registered_resources"]["models"]
+    by_provider = {(m["provider_id"], m["model_id"]) for m in models}
+    assert by_provider == {("openai", "gpt-4o"), ("azure", "gpt-4o")}
 
 
 def test_apply_high_level_inference_skips_already_registered_model() -> None:
-    """A model already present in registered_resources.models is not duplicated."""
+    """A model already registered for the same provider_id is not duplicated."""
     ls_config: dict[str, Any] = {
         "providers": {"inference": []},
         "registered_resources": {
@@ -588,7 +638,7 @@ def test_apply_high_level_inference_skips_already_registered_model() -> None:
                 {
                     "model_id": "gpt-4o-mini",
                     "model_type": "llm",
-                    "provider_id": "stale-provider",
+                    "provider_id": "openai",
                     "provider_model_id": "gpt-4o-mini",
                 }
             ]
@@ -598,59 +648,68 @@ def test_apply_high_level_inference_skips_already_registered_model() -> None:
     apply_high_level_inference(ls_config, inference)
     models = ls_config["registered_resources"]["models"]
     assert len(models) == 1
-    assert models[0]["provider_id"] == "stale-provider"
+    assert models[0]["provider_id"] == "openai"
 
 
-def test_apply_high_level_inference_replacing_provider_evicts_its_stale_models() -> (
-    None
-):
-    """A later entry with the same provider_id drops the earlier entry's models."""
-    ls_config: dict[str, Any] = {"providers": {"inference": []}}
-    inference = {
-        "providers": [
-            {
-                "type": "vllm",
-                "id": "vllm-shared",
-                "allowed_models": ["model-old"],
-            },
-            {
-                "type": "vllm",
-                "id": "vllm-shared",
-                "allowed_models": ["model-new"],
-            },
-        ]
-    }
-    apply_high_level_inference(ls_config, inference)
-    models = ls_config["registered_resources"]["models"]
-    model_ids = {m["model_id"] for m in models}
-    assert model_ids == {"model-new"}
-    assert all(m["provider_id"] == "vllm-shared" for m in models)
-
-
-def test_apply_high_level_inference_replacing_provider_keeps_baseline_models() -> None:
-    """Eviction only removes models this call registered, not pre-existing ones."""
+def test_apply_high_level_inference_registers_model_for_new_provider() -> None:
+    """A model present under another provider is still registered for this one."""
     ls_config: dict[str, Any] = {
         "providers": {"inference": []},
         "registered_resources": {
             "models": [
                 {
-                    "model_id": "baseline-model",
+                    "model_id": "gpt-4o-mini",
                     "model_type": "llm",
-                    "provider_id": "vllm-shared",
-                    "provider_model_id": "baseline-model",
+                    "provider_id": "other-provider",
+                    "provider_model_id": "gpt-4o-mini",
                 }
             ]
         },
     }
     inference = {
         "providers": [
-            {"type": "vllm", "id": "vllm-shared", "allowed_models": ["model-a"]},
-            {"type": "vllm", "id": "vllm-shared", "allowed_models": ["model-b"]},
+            {"type": "openai", "id": "openai", "allowed_models": ["gpt-4o-mini"]}
         ]
     }
     apply_high_level_inference(ls_config, inference)
-    model_ids = {m["model_id"] for m in ls_config["registered_resources"]["models"]}
-    assert model_ids == {"baseline-model", "model-b"}
+    keys = {
+        (m["provider_id"], m["model_id"])
+        for m in ls_config["registered_resources"]["models"]
+    }
+    assert keys == {("other-provider", "gpt-4o-mini"), ("openai", "gpt-4o-mini")}
+
+
+def test_inference_config_rejects_duplicate_explicit_provider_ids() -> None:
+    """Two providers with the same explicit id are rejected at validation."""
+    with pytest.raises(ValidationError, match="duplicate inference provider id"):
+        InferenceConfiguration(
+            providers=[
+                {"type": "vllm", "id": "vllm-shared", "allowed_models": ["a"]},
+                {"type": "openai", "id": "vllm-shared", "allowed_models": ["b"]},
+            ]
+        )
+
+
+def test_inference_config_rejects_duplicate_type_derived_provider_ids() -> None:
+    """Two providers of the same type with no id collide on the derived id."""
+    with pytest.raises(ValidationError, match="duplicate inference provider id"):
+        InferenceConfiguration(
+            providers=[
+                {"type": "vllm", "allowed_models": ["a"]},
+                {"type": "vllm", "allowed_models": ["b"]},
+            ]
+        )
+
+
+def test_inference_config_allows_distinct_provider_ids() -> None:
+    """Distinct ids (and an id that avoids a type-derived clash) validate."""
+    config = InferenceConfiguration(
+        providers=[
+            {"type": "vllm", "allowed_models": ["a"]},
+            {"type": "vllm", "id": "vllm-staging", "allowed_models": ["b"]},
+        ]
+    )
+    assert len(config.providers) == 2
 
 
 def test_provider_type_map_covers_every_literal_value() -> None:
@@ -1284,6 +1343,38 @@ def test_main_default_uses_legacy_enrichment(
 
     result = yaml.safe_load(output_path.read_text(encoding="utf-8"))
     assert result["version"] == 2
+
+
+def test_main_synthesize_flag_rejects_duplicate_provider_ids(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """CLI synthesis raises ValueError for duplicate emitted provider_ids."""
+    config_path = tmp_path / "lightspeed-stack.yaml"
+    config_path.write_text(
+        "inference:\n"
+        "  providers:\n"
+        "    - type: vllm\n"
+        "      id: shared\n"
+        "      allowed_models: [a]\n"
+        "    - type: openai\n"
+        "      id: shared\n"
+        "      allowed_models: [b]\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "llama_stack_configuration.py",
+            "-c",
+            str(config_path),
+            "-o",
+            str(tmp_path / "run.yaml"),
+            "--synthesize",
+        ],
+    )
+    with pytest.raises(ValueError, match="duplicate inference provider id"):
+        main()
 
 
 def test_main_synthesize_flag_handles_empty_config_file(
