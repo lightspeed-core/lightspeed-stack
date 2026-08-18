@@ -291,8 +291,8 @@ py-key-value-aio==0.4.5 \
 pyaml==26.7.0 \
     --hash=sha256:667a4b440272f1376fae57023a213a583a707d29bc4127d354ecc3668adefd7a
 pyarrow==25.0.0 \
-    --hash=sha256:479a525bff931de32df4a666ce09e8e109fda447da5576562cf8e6c4eb4dbe96 \
-    --hash=sha256:97e1a5fe8e846857f1a0cd424865fa1cfaae09c2c4f0976cca184e479d3267cc
+    --hash=sha256:b7cc7bfc4f74e1b44f9699468c26df0925f75cbef99346ac35efac8c13cb71b5 \
+    --hash=sha256:dc55a12747b836dfd27b2055e343c6b00d9f726dec25ad097bbe536140b9bc1f
 pyasn1==0.6.4 \
     --hash=sha256:aa4baf3e3b2b894b21127fc4769773650d15543dec5a3756daaa19c0f3763b7f
 pyasn1-modules==0.4.2 \
