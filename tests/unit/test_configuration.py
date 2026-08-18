@@ -250,9 +250,13 @@ def test_init_from_dict() -> None:
     assert cfg.shields == []
 
 
-def test_init_from_dict_with_shields() -> None:
-    """Test initialization with guardrail shields configuration."""
-    config_dict: dict[str, Any] = {
+def _base_config_dict(
+    *,
+    shields: list[dict[str, Any]],
+    customization: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Build a minimal AppConfig dict for shield / QV resolution tests."""
+    return {
         "name": "foo",
         "service": {
             "host": "localhost",
@@ -271,44 +275,307 @@ def test_init_from_dict_with_shields() -> None:
             "feedback_enabled": False,
         },
         "mcp_servers": [],
-        "customization": None,
+        "customization": customization,
         "authentication": {
             "module": "noop",
         },
-        "shields": [
-            {
-                "name": "topic-guard-a",
-                "provider_id": "question_validity",
-                "config": {"model_id": "test-model"},
-            },
-            {
-                "name": "topic-guard-b",
-                "provider_id": "question_validity",
-                "config": {"model_id": "test-model-2"},
-            },
-            {
-                "name": "pii-guard",
-                "provider_id": "redaction",
-                "config": {
-                    "rules": [
-                        {"pattern": r"\d+", "replacement": "[NUM]"},
-                    ],
-                },
-            },
-        ],
+        "shields": shields,
     }
+
+
+def _init_config_from_dict(config_dict: dict[str, Any]) -> AppConfig:
+    """Initialize AppConfig from a dict and return it."""
     cfg = AppConfig()
     cfg.init_from_dict(config_dict)
+    return cfg
+
+
+def test_init_from_dict_with_shields() -> None:
+    """Test initialization with guardrail shields configuration."""
+    cfg = _init_config_from_dict(
+        _base_config_dict(
+            shields=[
+                {
+                    "name": "topic-guard-a",
+                    "provider_id": "question_validity",
+                    "config": {"model_id": "test-model"},
+                },
+                {
+                    "name": "topic-guard-b",
+                    "provider_id": "question_validity",
+                    "config": {"model_id": "test-model-2"},
+                },
+                {
+                    "name": "pii-guard",
+                    "provider_id": "redaction",
+                    "config": {
+                        "rules": [
+                            {"pattern": r"\d+", "replacement": "[NUM]"},
+                        ],
+                    },
+                },
+            ],
+        )
+    )
 
     assert len(cfg.shields) == 3
     assert cfg.shields[0].name == "topic-guard-a"
     assert cfg.shields[0].provider_id == "question_validity"
     assert cfg.shields[0].config.model_id == "test-model"  # type: ignore[union-attr]
+    # Omitted QV text fields are filled at load from LCORE defaults.
+    assert (
+        cfg.shields[0].config.model_prompt  # type: ignore[union-attr]
+        == constants.DEFAULT_MODEL_PROMPT
+    )
+    assert (
+        cfg.shields[0].config.invalid_question_response  # type: ignore[union-attr]
+        == constants.DEFAULT_INVALID_QUESTION_RESPONSE
+    )
     assert cfg.shields[1].name == "topic-guard-b"
     assert cfg.shields[1].config.model_id == "test-model-2"  # type: ignore[union-attr]
     assert cfg.shields[2].name == "pii-guard"
     assert cfg.shields[2].provider_id == "redaction"
     assert len(cfg.shields[2].config.compiled_patterns) == 1  # type: ignore[union-attr]
+
+
+def test_qv_shield_prompts_resolve_from_profile_at_startup() -> None:
+    """Omitted QV fields are filled from the customization profile at load."""
+    cfg = _init_config_from_dict(
+        _base_config_dict(
+            customization={
+                "profile_path": "tests/profiles/test/profile.py",
+            },
+            shields=[
+                {
+                    "name": "topic-guard",
+                    "provider_id": "question_validity",
+                    "config": {"model_id": "test-model"},
+                },
+            ],
+        )
+    )
+
+    profile = CustomProfile(path="tests/profiles/test/profile.py")
+    assert (
+        cfg.shields[0].config.model_prompt  # type: ignore[union-attr]
+        == profile.get_validation()
+    )
+    assert (
+        cfg.shields[0].config.invalid_question_response  # type: ignore[union-attr]
+        == profile.get_invalid_resp()
+    )
+
+
+def test_qv_shield_yaml_prompt_wins_over_profile_at_startup() -> None:
+    """Explicit YAML model_prompt is kept when a profile is also configured."""
+    yaml_prompt = "YAML wins ${message}"
+    yaml_refusal = "YAML refusal"
+    cfg = _init_config_from_dict(
+        _base_config_dict(
+            customization={
+                "profile_path": "tests/profiles/test/profile.py",
+            },
+            shields=[
+                {
+                    "name": "topic-guard",
+                    "provider_id": "question_validity",
+                    "config": {
+                        "model_id": "test-model",
+                        "model_prompt": yaml_prompt,
+                        "invalid_question_response": yaml_refusal,
+                    },
+                },
+            ],
+        )
+    )
+
+    assert cfg.shields[0].config.model_prompt == yaml_prompt  # type: ignore[union-attr]
+    assert (
+        cfg.shields[0].config.invalid_question_response  # type: ignore[union-attr]
+        == yaml_refusal
+    )
+
+
+def test_qv_shield_explicit_prompt_without_message_placeholder_still_loads() -> None:
+    """Explicit YAML prompts without $message remain valid (additive; no hard-fail)."""
+    explicit_prompt = "Classify whether the question is about OpenShift."
+    cfg = _init_config_from_dict(
+        _base_config_dict(
+            shields=[
+                {
+                    "name": "topic-guard",
+                    "provider_id": "question_validity",
+                    "config": {
+                        "model_id": "test-model",
+                        "model_prompt": explicit_prompt,
+                    },
+                },
+            ],
+        )
+    )
+
+    assert cfg.shields[0].config.model_prompt == explicit_prompt  # type: ignore[union-attr]
+
+
+def test_qv_shield_empty_string_is_not_replaced_by_defaults() -> None:
+    """Explicit empty-string YAML values are kept; only None is filled."""
+    cfg = _init_config_from_dict(
+        _base_config_dict(
+            customization={
+                "profile_path": "tests/profiles/test/profile.py",
+            },
+            shields=[
+                {
+                    "name": "topic-guard",
+                    "provider_id": "question_validity",
+                    "config": {
+                        "model_id": "test-model",
+                        "model_prompt": "",
+                        "invalid_question_response": "",
+                    },
+                },
+            ],
+        )
+    )
+
+    assert cfg.shields[0].config.model_prompt == ""  # type: ignore[union-attr]
+    assert cfg.shields[0].config.invalid_question_response == ""  # type: ignore[union-attr]
+
+
+def test_qv_shield_partial_yaml_override_fills_only_omitted_fields() -> None:
+    """Each omitted field is filled independently when the other is set in YAML."""
+    yaml_prompt = "YAML prompt only ${message}"
+    yaml_refusal = "YAML refusal only"
+    profile = CustomProfile(path="tests/profiles/test/profile.py")
+    cfg = _init_config_from_dict(
+        _base_config_dict(
+            customization={
+                "profile_path": "tests/profiles/test/profile.py",
+            },
+            shields=[
+                {
+                    "name": "prompt-only",
+                    "provider_id": "question_validity",
+                    "config": {
+                        "model_id": "test-model",
+                        "model_prompt": yaml_prompt,
+                    },
+                },
+                {
+                    "name": "refusal-only",
+                    "provider_id": "question_validity",
+                    "config": {
+                        "model_id": "test-model-2",
+                        "invalid_question_response": yaml_refusal,
+                    },
+                },
+            ],
+        )
+    )
+
+    assert cfg.shields[0].config.model_prompt == yaml_prompt  # type: ignore[union-attr]
+    assert (
+        cfg.shields[0].config.invalid_question_response  # type: ignore[union-attr]
+        == profile.get_invalid_resp()
+    )
+    assert (
+        cfg.shields[1].config.model_prompt  # type: ignore[union-attr]
+        == profile.get_validation()
+    )
+    assert (
+        cfg.shields[1].config.invalid_question_response  # type: ignore[union-attr]
+        == yaml_refusal
+    )
+
+
+def test_qv_shield_profile_empty_strings_are_kept() -> None:
+    """Profile empty-string validation / invalid_resp are kept (not treated as missing)."""
+    cfg = _init_config_from_dict(
+        _base_config_dict(
+            customization={
+                "profile_path": "tests/profiles/empty_qv_strings/profile.py",
+            },
+            shields=[
+                {
+                    "name": "topic-guard",
+                    "provider_id": "question_validity",
+                    "config": {"model_id": "test-model"},
+                },
+            ],
+        )
+    )
+
+    assert cfg.shields[0].config.model_prompt == ""  # type: ignore[union-attr]
+    assert cfg.shields[0].config.invalid_question_response == ""  # type: ignore[union-attr]
+
+
+def test_qv_shield_profile_without_qv_keys_falls_back_to_defaults() -> None:
+    """Missing profile validation / invalid_resp keys fall through to LCORE defaults."""
+    cfg = _init_config_from_dict(
+        _base_config_dict(
+            customization={
+                "profile_path": "tests/profiles/no_qv_keys/profile.py",
+            },
+            shields=[
+                {
+                    "name": "topic-guard",
+                    "provider_id": "question_validity",
+                    "config": {"model_id": "test-model"},
+                },
+            ],
+        )
+    )
+
+    assert (
+        cfg.shields[0].config.model_prompt  # type: ignore[union-attr]
+        == constants.DEFAULT_MODEL_PROMPT
+    )
+    assert (
+        cfg.shields[0].config.invalid_question_response  # type: ignore[union-attr]
+        == constants.DEFAULT_INVALID_QUESTION_RESPONSE
+    )
+
+
+def test_qv_shield_multiple_shields_resolve_independently() -> None:
+    """Each question_validity shield resolves its own omitted fields."""
+    yaml_prompt = "Shield-A YAML ${message}"
+    profile = CustomProfile(path="tests/profiles/test/profile.py")
+    cfg = _init_config_from_dict(
+        _base_config_dict(
+            customization={
+                "profile_path": "tests/profiles/test/profile.py",
+            },
+            shields=[
+                {
+                    "name": "shield-a",
+                    "provider_id": "question_validity",
+                    "config": {
+                        "model_id": "model-a",
+                        "model_prompt": yaml_prompt,
+                    },
+                },
+                {
+                    "name": "shield-b",
+                    "provider_id": "question_validity",
+                    "config": {"model_id": "model-b"},
+                },
+            ],
+        )
+    )
+
+    assert cfg.shields[0].config.model_prompt == yaml_prompt  # type: ignore[union-attr]
+    assert (
+        cfg.shields[0].config.invalid_question_response  # type: ignore[union-attr]
+        == profile.get_invalid_resp()
+    )
+    assert (
+        cfg.shields[1].config.model_prompt  # type: ignore[union-attr]
+        == profile.get_validation()
+    )
+    assert (
+        cfg.shields[1].config.invalid_question_response  # type: ignore[union-attr]
+        == profile.get_invalid_resp()
+    )
 
 
 def test_init_from_dict_with_mcp_servers() -> None:

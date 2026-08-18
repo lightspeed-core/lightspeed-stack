@@ -116,21 +116,43 @@ class QuestionValidity(AbstractSafetyCapability):
 
     The guard function receives the user prompt and returns True if safe.
 
+    ``config.model_prompt`` and ``config.invalid_question_response`` must be
+    set before construction. In service startup,
+    ``Configuration.resolve_question_validity_shield_prompts`` fills omitted
+    fields from the customization profile or LCORE defaults.
+
     Example:
         ```python
         from pydantic_ai import Agent
-        from pydantic_ai.models.openai import OpenAIResponsesModel
+        from models.config import QuestionValidityConfig
 
-        model = OpenAIResponsesModel("gpt-4o-mini")
-        agent = Agent("openai:gpt-4.1", capabilities=[QuestionValidity(model)])
+        config = QuestionValidityConfig(
+            model_id="gpt-4o-mini",
+            model_prompt="Is this on-topic? ${message}",
+            invalid_question_response="Off-topic.",
+        )
+        agent = Agent("openai:gpt-4.1", capabilities=[QuestionValidity(config=config)])
         ```
     """
 
     config: QuestionValidityConfig
     _model: Model = field(init=False)
+    _model_prompt: str = field(init=False)
+    _invalid_question_response: str = field(init=False)
 
     def __post_init__(self) -> None:
-        """Initialize the model instance from the configured model ID."""
+        """Validate required prompt fields and initialize the model."""
+        model_prompt = self.config.model_prompt
+        invalid_question_response = self.config.invalid_question_response
+        if model_prompt is None or invalid_question_response is None:
+            raise ValueError(
+                "question_validity model_prompt and invalid_question_response "
+                "must be set; Configuration resolves omitted fields at load time"
+            )
+
+        self._model_prompt = model_prompt
+        self._invalid_question_response = invalid_question_response
+
         ogx_client = AsyncOgxClientHolder().get_client()
 
         self._model = OgxResponsesModel.from_ogx_client(
@@ -148,7 +170,7 @@ class QuestionValidity(AbstractSafetyCapability):
         Returns:
             The rendered prompt string ready to send to the validity model.
         """
-        return Template(self.config.model_prompt).substitute(
+        return Template(self._model_prompt).substitute(
             message=_message_to_str(message),
             allowed=SUBJECT_ALLOWED,
             rejected=SUBJECT_REJECTED,
@@ -191,7 +213,7 @@ class QuestionValidity(AbstractSafetyCapability):
             message_history=[
                 ModelRequest.user_text_prompt(user_message),
                 ModelResponse(
-                    [TextPart(self.config.invalid_question_response)],
+                    [TextPart(self._invalid_question_response)],
                     finish_reason="stop",
                 ),
             ],
@@ -203,7 +225,7 @@ class QuestionValidity(AbstractSafetyCapability):
                 AsyncOgxClientHolder().get_client(),
                 conversation_id,
                 user_message,
-                self.config.invalid_question_response,
+                self._invalid_question_response,
             )
         else:
             logger.warning(
@@ -211,12 +233,16 @@ class QuestionValidity(AbstractSafetyCapability):
                 "skipping v1/conversation persistence for rejected question."
             )
 
-        return AgentRunResult(
-            output=self.config.invalid_question_response, _state=state
-        )
+        return AgentRunResult(output=self._invalid_question_response, _state=state)
 
     async def run(self, input_text: str) -> ShieldModerationResult:
-        """Run question-validity check and return a moderation result."""
+        """Run question-validity check and return a moderation result.
+
+        Sends ``input_text`` to the validity model as-is (no ``_build_prompt`` /
+        ``model_prompt`` template rendering). Used by responses-path shield
+        moderation. The agent path uses ``wrap_run``, which renders
+        ``model_prompt``.
+        """
         result = await model_request(
             model=self._model, messages=[ModelRequest.user_text_prompt(input_text)]
         )
@@ -225,6 +251,6 @@ class QuestionValidity(AbstractSafetyCapability):
             return ShieldModerationPassed()
 
         return ShieldModerationBlocked(
-            message=self.config.invalid_question_response,
+            message=self._invalid_question_response,
             moderation_id=f"modr-{uuid4()}",
         )
