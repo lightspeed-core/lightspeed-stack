@@ -1,4 +1,4 @@
-@cfg_unified @skip
+@cfg_unified @skip-in-prow
 Feature: Unified mode configuration synthesis
 
   Background:
