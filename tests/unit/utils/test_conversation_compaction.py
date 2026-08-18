@@ -121,6 +121,27 @@ def test_should_compact() -> None:
     )
 
 
+def test_agent_prompt_text_string_input() -> None:
+    """A plain string input is returned unchanged."""
+    assert cc.agent_prompt_text(_params("what is a pod?")) == "what is a pod?"
+
+
+def test_agent_prompt_text_explicit_list_returns_last_message_text() -> None:
+    """For compacted explicit input, the trailing user query text is returned."""
+    params = _params()
+    explicit = cc._build_explicit_input(
+        ["earlier summary"], [_msg("assistant", "prior answer")], "new question"
+    )
+    compacted = params.model_copy(update={"input": explicit, "omit_conversation": True})
+    assert cc.agent_prompt_text(compacted) == "new question"
+
+
+def test_agent_prompt_text_empty_list_returns_empty() -> None:
+    """An empty explicit list yields an empty prompt rather than crashing."""
+    params = _params().model_copy(update={"input": [], "omit_conversation": True})
+    assert cc.agent_prompt_text(params) == ""
+
+
 # --- apply_compaction ---
 
 

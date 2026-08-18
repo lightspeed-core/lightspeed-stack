@@ -243,6 +243,34 @@ def _verbatim_input_message(item: Any) -> Optional[OpenAIResponseMessage]:
     return OpenAIResponseMessage(role=cast(Any, role), content=text)
 
 
+def agent_prompt_text(params: ResponsesApiParams) -> str:
+    """Return the textual user prompt for a pydantic-ai agent run.
+
+    In compacted mode ``params.input`` is the explicit item list built by
+    :func:`_build_explicit_input` (summaries + recent turns + new query), so
+    the new user query is the trailing message item. The agent pipeline still
+    needs a plain string prompt (capabilities and multimodal input operate on
+    it); the full explicit list reaches the request body separately via the
+    ``extra_body`` input override (LCORE-3582).
+
+    Args:
+        params: Prepared (possibly compaction-rewritten) request parameters.
+
+    Returns:
+        ``params.input`` unchanged when it is a string; otherwise the text of
+        the last message item in the explicit list, or ``""`` when there is
+        none.
+    """
+    if isinstance(params.input, str):
+        return params.input
+    for item in reversed(list(params.input)):
+        if is_message_item(item):
+            text = extract_message_text(item)
+            if text:
+                return text
+    return ""
+
+
 def _query_input_message(original_input: ResponseInput) -> list[Any]:
     """Render the new user query as explicit input items.
 

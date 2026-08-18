@@ -6,6 +6,7 @@ from collections.abc import AsyncIterator
 from typing import Any
 
 import pytest
+from ogx_api.openai_responses import OpenAIResponseMessage
 from openai.types import responses
 from pydantic_ai import ModelMessage, UnexpectedModelBehavior
 from pydantic_ai.messages import ModelResponse
@@ -119,6 +120,86 @@ class TestModelSettingsFromResponsesParams:
         assert "parallel_tool_calls" not in settings
         assert "extra_headers" not in settings
         assert "openai_previous_response_id" not in settings
+
+    def test_compacted_input_overrides_via_extra_body(self) -> None:
+        """Test compacted params carry the explicit input list in extra_body."""
+        items = [
+            OpenAIResponseMessage(
+                role="user", content="Summary of earlier conversation:\nS1"
+            ),
+            OpenAIResponseMessage(role="user", content="new question"),
+        ]
+        params = _make_params(input=items, omit_conversation=True)
+        settings = _model_settings_from_responses_params(params)
+        extra_body = settings["extra_body"]
+        assert "conversation" not in extra_body
+        assert extra_body["input"] == [
+            {
+                "role": "user",
+                "content": "Summary of earlier conversation:\nS1",
+                "type": "message",
+            },
+            {"role": "user", "content": "new question", "type": "message"},
+        ]
+
+    def test_string_input_never_lands_in_extra_body(self) -> None:
+        """Test that a plain string input is not duplicated into extra_body."""
+        params = _make_params(input="hello", omit_conversation=True)
+        settings = _model_settings_from_responses_params(params)
+        assert "input" not in settings.get("extra_body", {})
+
+    def test_non_compacted_list_input_not_in_extra_body(self) -> None:
+        """Test that without omit_conversation the input stays out of extra_body."""
+        items = [OpenAIResponseMessage(role="user", content="q")]
+        params = _make_params(input=items, omit_conversation=False)
+        settings = _model_settings_from_responses_params(params)
+        assert "input" not in settings.get("extra_body", {})
+
+
+class TestPrepareCompactedInput:
+    """Tests for the compacted-input tool-loop guard."""
+
+    @pytest.fixture(name="model")
+    def model_fixture(self, mocker: MockerFixture) -> OgxResponsesModel:
+        """Create a OgxResponsesModel with mocked __init__."""
+        mocker.patch.object(OgxResponsesModel, "__init__", return_value=None)
+        return OgxResponsesModel("test-model")
+
+    def test_no_input_override_returns_unchanged(
+        self, model: OgxResponsesModel, mocker: MockerFixture
+    ) -> None:
+        """Test settings without an input override pass through untouched."""
+        messages = [mocker.Mock()]
+        settings: ModelSettings = {"extra_body": {"max_infer_iters": 5}}
+        assert model._prepare_compacted_input(messages, settings) is settings
+
+    def test_first_request_keeps_input_override(
+        self, model: OgxResponsesModel, mocker: MockerFixture
+    ) -> None:
+        """Test the override survives when no ModelResponse is in messages."""
+        messages = [mocker.Mock(spec=[])]
+        settings: ModelSettings = {
+            "extra_body": {"input": [{"role": "user", "content": "q"}]}
+        }
+        assert model._prepare_compacted_input(messages, settings) is settings
+
+    def test_tool_loop_continuation_drops_input_override(
+        self, model: OgxResponsesModel
+    ) -> None:
+        """Test the override is dropped once a ModelResponse exists."""
+        messages: list[ModelMessage] = [ModelResponse(parts=[])]
+        settings: ModelSettings = {
+            "extra_body": {
+                "input": [{"role": "user", "content": "q"}],
+                "max_infer_iters": 5,
+            }
+        }
+        result = model._prepare_compacted_input(messages, settings)
+        assert result is not settings
+        assert "input" not in result["extra_body"]
+        assert result["extra_body"]["max_infer_iters"] == 5
+        # original settings untouched
+        assert "input" in settings["extra_body"]
 
 
 class TestFromOgxClient:
