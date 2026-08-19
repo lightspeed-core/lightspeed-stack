@@ -3356,6 +3356,43 @@ class Configuration(ConfigurationBase):
         return self
 
     @model_validator(mode="after")
+    def validate_output_shield_prompts_explicit(self) -> Self:
+        """Require explicit model_prompt and invalid_question_response for output shields.
+
+        Output shields use the same QuestionValidityConfig as input shields,
+        but the input-side defaults (DEFAULT_MODEL_PROMPT and
+        DEFAULT_INVALID_QUESTION_RESPONSE) are inappropriate for output
+        classification. This validator ensures that output shields explicitly
+        set both fields.
+
+        Returns:
+            Self: The model instance after validation.
+
+        Raises:
+            ValueError: If an output shield uses input-side default prompt
+                or rejection message.
+        """
+        for shield in self.output_shields:
+            if not isinstance(shield.config, QuestionValidityConfig):
+                continue
+            if shield.config.model_prompt == constants.DEFAULT_MODEL_PROMPT:
+                raise ValueError(
+                    f"Output shield '{shield.name}' must explicitly set "
+                    f"'model_prompt' — the input-side default prompt is not "
+                    f"suitable for output classification."
+                )
+            if (
+                shield.config.invalid_question_response
+                == constants.DEFAULT_INVALID_QUESTION_RESPONSE
+            ):
+                raise ValueError(
+                    f"Output shield '{shield.name}' must explicitly set "
+                    f"'invalid_question_response' — the input-side default "
+                    f"rejection message is not suitable for output classification."
+                )
+        return self
+
+    @model_validator(mode="after")
     def validate_mcp_auth_headers(self) -> Self:
         """
         Validate MCP server authorization headers against authentication module.

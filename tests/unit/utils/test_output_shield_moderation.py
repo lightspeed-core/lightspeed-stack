@@ -10,6 +10,7 @@ import pytest
 from pydantic_ai.exceptions import AgentRunError
 from pytest_mock import MockerFixture
 
+import constants
 from models.common.moderation import ShieldModerationBlocked, ShieldModerationPassed
 from models.config import (
     QuestionValidityConfig,
@@ -186,3 +187,41 @@ class TestRunOutputShieldModeration:
         )
 
         mock_shield.run.assert_called_once_with(response_text)
+
+
+class TestOutputShieldConfigValidation:
+    """Tests that output shields require explicit prompt and rejection message."""
+
+    def test_default_prompt_detected(self) -> None:
+        """Output shield using input-side default prompt should be caught."""
+        config = QuestionValidityConfig(
+            model_id="test-model",
+            # model_prompt not set — uses DEFAULT_MODEL_PROMPT
+            invalid_question_response="Custom rejection.",
+        )
+        assert config.model_prompt == constants.DEFAULT_MODEL_PROMPT
+
+    def test_default_rejection_detected(self) -> None:
+        """Output shield using input-side default rejection should be caught."""
+        config = QuestionValidityConfig(
+            model_id="test-model",
+            model_prompt="Custom prompt: ${message} ${allowed} ${rejected}",
+            # invalid_question_response not set — uses default
+        )
+        assert (
+            config.invalid_question_response
+            == constants.DEFAULT_INVALID_QUESTION_RESPONSE
+        )
+
+    def test_explicit_fields_differ_from_defaults(self) -> None:
+        """Output shield with explicit fields should differ from defaults."""
+        config = QuestionValidityConfig(
+            model_id="test-model",
+            model_prompt="Custom output prompt: ${message} ${allowed} ${rejected}",
+            invalid_question_response="Custom rejection message.",
+        )
+        assert config.model_prompt != constants.DEFAULT_MODEL_PROMPT
+        assert (
+            config.invalid_question_response
+            != constants.DEFAULT_INVALID_QUESTION_RESPONSE
+        )
