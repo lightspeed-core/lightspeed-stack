@@ -3343,8 +3343,12 @@ class Configuration(ConfigurationBase):
             ValueError: If two or more shields share the same name.
         """
         all_shields = list(self.shields) + list(self.output_shields)
-        names = [shield.name for shield in all_shields]
-        duplicates = {name for name in names if names.count(name) > 1}
+        seen: set[str] = set()
+        duplicates: set[str] = set()
+        for shield in all_shields:
+            if shield.name in seen:
+                duplicates.add(shield.name)
+            seen.add(shield.name)
         if duplicates:
             raise ValueError(
                 f"Shield names must be unique, found duplicates: {sorted(duplicates)}"

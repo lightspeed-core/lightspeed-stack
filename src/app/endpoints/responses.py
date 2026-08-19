@@ -1131,6 +1131,9 @@ async def handle_non_streaming_response(
             if output_moderation.decision == "blocked":
                 logger.info("Output shield blocked response")
                 output_text = output_moderation.message
+                # Replace the structured output too, so the blocked
+                # content is not leaked via response.output field.
+                api_response.output = [output_moderation.refusal_response]
 
             # Explicitly append the turn to conversation if context passed by previous response
             await _append_previous_response_turn(
