@@ -3320,9 +3320,21 @@ class Configuration(ConfigurationBase):
         "and a type-specific 'config'.",
     )
 
+    output_shields: list[ShieldConfiguration] = Field(
+        default_factory=list,
+        title="Output shields configuration",
+        description="Shields that run on LLM output before returning to the "
+        "user. Same format as input shields but applied post-inference. "
+        "Typically uses question_validity with an output-classification "
+        "prompt to detect non-technical or off-topic responses.",
+    )
+
     @model_validator(mode="after")
     def validate_shield_names_unique(self) -> Self:
         """Reject shields lists containing duplicate names.
+
+        Checks both input shields and output shields, and ensures no
+        name collision across the two lists.
 
         Returns:
             Self: The model instance after validation.
@@ -3330,7 +3342,8 @@ class Configuration(ConfigurationBase):
         Raises:
             ValueError: If two or more shields share the same name.
         """
-        names = [shield.name for shield in self.shields]
+        all_shields = list(self.shields) + list(self.output_shields)
+        names = [shield.name for shield in all_shields]
         duplicates = {name for name in names if names.count(name) > 1}
         if duplicates:
             raise ValueError(

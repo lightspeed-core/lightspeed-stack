@@ -105,7 +105,7 @@ from utils.responses import (
     select_model_for_responses,
 )
 from utils.rh_identity import get_rh_identity_context
-from utils.shields import run_shield_moderation_v2
+from utils.shields import run_output_shield_moderation, run_shield_moderation_v2
 from utils.suid import (
     normalize_conversation_id,
 )
@@ -974,6 +974,19 @@ async def response_generator(
                 )
                 chunk_dict["response"]["output_text"] = turn_summary.llm_response
 
+                # Output shield check on completed stream (OFFSEC-310).
+                # Cannot retroactively block already-streamed content;
+                # log a warning for monitoring/alerting.
+                output_moderation = await run_output_shield_moderation(
+                    turn_summary.llm_response or "",
+                    configuration.configuration.output_shields,
+                )
+                if output_moderation.decision == "blocked":
+                    logger.warning(
+                        "Output shield triggered on streamed response "
+                        "(cannot retroactively block)"
+                    )
+
             yield f"event: {chunk.type or 'error'}\ndata: {json.dumps(chunk_dict)}\n\n"
     except Exception:
         if not inference_metric_recorded:
@@ -1109,6 +1122,16 @@ async def handle_non_streaming_response(
                 token_usage=token_usage,
             )
             output_text = extract_text_from_response_items(api_response.output)
+
+            # Run output shields on LLM response (OFFSEC-310 / LCORE-2750).
+            output_moderation = await run_output_shield_moderation(
+                output_text or "",
+                configuration.configuration.output_shields,
+            )
+            if output_moderation.decision == "blocked":
+                logger.info("Output shield blocked response")
+                output_text = output_moderation.message
+
             # Explicitly append the turn to conversation if context passed by previous response
             await _append_previous_response_turn(
                 api_params,
