@@ -10,7 +10,6 @@ import pytest
 from pydantic_ai.exceptions import AgentRunError
 from pytest_mock import MockerFixture
 
-import constants
 from models.common.moderation import ShieldModerationBlocked, ShieldModerationPassed
 from models.config import (
     QuestionValidityConfig,
@@ -166,38 +165,69 @@ class TestRunOutputShieldModeration:
 
 
 class TestOutputShieldConfigValidation:
-    """Tests that output shields require explicit prompt and rejection message."""
+    """Tests that Configuration rejects output shields with input-side defaults."""
 
-    def test_default_prompt_detected(self) -> None:
-        """Output shield using input-side default prompt should be caught."""
-        config = QuestionValidityConfig(
-            model_id="test-model",
-            # model_prompt not set — uses DEFAULT_MODEL_PROMPT
-            invalid_question_response="Custom rejection.",
-        )
-        assert config.model_prompt == constants.DEFAULT_MODEL_PROMPT
-
-    def test_default_rejection_detected(self) -> None:
-        """Output shield using input-side default rejection should be caught."""
-        config = QuestionValidityConfig(
-            model_id="test-model",
-            model_prompt="Custom prompt: ${message} ${allowed} ${rejected}",
-            # invalid_question_response not set — uses default
-        )
-        assert (
-            config.invalid_question_response
-            == constants.DEFAULT_INVALID_QUESTION_RESPONSE
+    @staticmethod
+    def _minimal_config(**kwargs):
+        """Build a minimal valid Configuration with the given overrides."""
+        from models.config import (
+            Configuration,
+            LlamaStackConfiguration,
+            ServiceConfiguration,
+            UserDataCollection,
         )
 
-    def test_explicit_fields_differ_from_defaults(self) -> None:
-        """Output shield with explicit fields should differ from defaults."""
-        config = QuestionValidityConfig(
-            model_id="test-model",
-            model_prompt="Custom output prompt: ${message} ${allowed} ${rejected}",
-            invalid_question_response="Custom rejection message.",
+        return Configuration(
+            name="test",
+            service=ServiceConfiguration(),
+            llama_stack=LlamaStackConfiguration(
+                use_as_library_client=True,
+                library_client_config_path="/tmp/run.yaml",
+            ),
+            user_data_collection=UserDataCollection(),
+            **kwargs,
         )
-        assert config.model_prompt != constants.DEFAULT_MODEL_PROMPT
-        assert (
-            config.invalid_question_response
-            != constants.DEFAULT_INVALID_QUESTION_RESPONSE
+
+    def test_rejects_output_shield_with_default_prompt(self) -> None:
+        """Configuration should reject output shield using input-side default prompt."""
+        shield = QuestionValidityShieldConfiguration(
+            name="bad-output",
+            provider_id="question_validity",
+            config=QuestionValidityConfig(
+                model_id="test-model",
+                # model_prompt omitted — defaults to DEFAULT_MODEL_PROMPT
+                invalid_question_response="Custom rejection.",
+            ),
         )
+        with pytest.raises(ValueError, match="must explicitly set 'model_prompt'"):
+            self._minimal_config(output_shields=[shield])
+
+    def test_rejects_output_shield_with_default_rejection(self) -> None:
+        """Configuration should reject output shield using input-side default rejection."""
+        shield = QuestionValidityShieldConfiguration(
+            name="bad-output",
+            provider_id="question_validity",
+            config=QuestionValidityConfig(
+                model_id="test-model",
+                model_prompt="Custom: ${message} ${allowed} ${rejected}",
+                # invalid_question_response omitted — defaults to DEFAULT_INVALID_QUESTION_RESPONSE
+            ),
+        )
+        with pytest.raises(
+            ValueError, match="must explicitly set 'invalid_question_response'"
+        ):
+            self._minimal_config(output_shields=[shield])
+
+    def test_accepts_output_shield_with_explicit_fields(self) -> None:
+        """Configuration should accept output shield with explicit prompt and rejection."""
+        shield = QuestionValidityShieldConfiguration(
+            name="good-output",
+            provider_id="question_validity",
+            config=QuestionValidityConfig(
+                model_id="test-model",
+                model_prompt="Custom output: ${message} ${allowed} ${rejected}",
+                invalid_question_response="Custom rejection message.",
+            ),
+        )
+        config = self._minimal_config(output_shields=[shield])
+        assert len(config.output_shields) == 1
