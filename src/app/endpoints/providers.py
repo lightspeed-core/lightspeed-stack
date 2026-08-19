@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.params import Depends
 from ogx_client import APIConnectionError, BadRequestError
 from ogx_client.types import ProviderListResponse
+from opentelemetry import trace
 
 from authentication import get_auth_dependency
 from authentication.interface import AuthTuple
@@ -29,6 +30,7 @@ from models.config import Action
 from utils.endpoints import check_configuration_loaded
 
 logger = get_logger(__name__)
+tracer = trace.get_tracer(__name__)
 router = APIRouter(tags=["providers"])
 
 
@@ -84,20 +86,22 @@ async def providers_endpoint_handler(
     # Nothing interesting in the request
     _ = request
 
-    check_configuration_loaded(configuration)
+    with tracer.start_as_current_span("providers.list") as span:
+        check_configuration_loaded(configuration)
 
-    llama_stack_configuration = configuration.llama_stack_configuration
-    logger.info("Llama Stack config: %s", llama_stack_configuration)
+        llama_stack_configuration = configuration.llama_stack_configuration
+        logger.info("Llama Stack config: %s", llama_stack_configuration)
 
-    try:
-        client = AsyncOgxClientHolder().get_client()
-        providers: ProviderListResponse = await client.providers.list()
-    except APIConnectionError as e:
-        logger.error("Unable to connect to Llama Stack: %s", e)
-        response = ServiceUnavailableResponse(backend_name="OGX", cause=str(e))
-        raise HTTPException(**response.model_dump()) from e
+        try:
+            client = AsyncOgxClientHolder().get_client()
+            providers: ProviderListResponse = await client.providers.list()
+        except APIConnectionError as e:
+            logger.error("Unable to connect to Llama Stack: %s", e)
+            response = ServiceUnavailableResponse(backend_name="OGX", cause=str(e))
+            raise HTTPException(**response.model_dump()) from e
 
-    return ProvidersListResponse(providers=group_providers(providers))
+        span.set_attribute("providers.count", len(providers))
+        return ProvidersListResponse(providers=group_providers(providers))
 
 
 def group_providers(providers: ProviderListResponse) -> dict[str, list[dict[str, Any]]]:
@@ -154,21 +158,23 @@ async def get_provider_endpoint_handler(
     # Nothing interesting in the request
     _ = request
 
-    check_configuration_loaded(configuration)
+    with tracer.start_as_current_span("providers.get") as span:
+        check_configuration_loaded(configuration)
 
-    llama_stack_configuration = configuration.llama_stack_configuration
-    logger.info("Llama Stack config: %s", llama_stack_configuration)
+        llama_stack_configuration = configuration.llama_stack_configuration
+        logger.info("Llama Stack config: %s", llama_stack_configuration)
 
-    try:
-        client = AsyncOgxClientHolder().get_client()
-        provider = await client.providers.retrieve(provider_id)
-        return ProviderResponse(**provider.model_dump())
+        try:
+            client = AsyncOgxClientHolder().get_client()
+            provider = await client.providers.retrieve(provider_id)
+            span.set_attribute("providers.found", True)
+            return ProviderResponse(**provider.model_dump())
 
-    except APIConnectionError as e:
-        logger.error("Unable to connect to Llama Stack: %s", e)
-        response = ServiceUnavailableResponse(backend_name="OGX", cause=str(e))
-        raise HTTPException(**response.model_dump()) from e
+        except APIConnectionError as e:
+            logger.error("Unable to connect to Llama Stack: %s", e)
+            response = ServiceUnavailableResponse(backend_name="OGX", cause=str(e))
+            raise HTTPException(**response.model_dump()) from e
 
-    except BadRequestError as e:
-        response = NotFoundResponse(resource="provider", resource_id=provider_id)
-        raise HTTPException(**response.model_dump()) from e
+        except BadRequestError as e:
+            response = NotFoundResponse(resource="provider", resource_id=provider_id)
+            raise HTTPException(**response.model_dump()) from e

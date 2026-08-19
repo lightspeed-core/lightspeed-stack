@@ -802,9 +802,7 @@ async def infer_endpoint(  # pylint: disable=R0914,R0915
         response_text, configuration.configuration.output_shields
     )
     if output_moderation.decision == "blocked":
-        logger.info(
-            "Output shield blocked response for request %s", request_id
-        )
+        logger.info("Output shield blocked response for request %s", request_id)
         response_text = output_moderation.message
 
     # Consume quota tokens after successful inference.

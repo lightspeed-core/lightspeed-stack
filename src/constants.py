@@ -391,6 +391,12 @@ SAVED_PROMPTS_MAX_DISPLAY_NAME_LENGTH_UPPER_BOUND: Final[int] = (
 SAVED_PROMPTS_DEFAULT_MAX_CONTENT_LENGTH: Final[int] = 10_000
 SAVED_PROMPTS_MAX_CONTENT_LENGTH_UPPER_BOUND: Final[int] = 30_000
 
+# Input sanitization (OFFSEC-307 / LCORE-2749)
+OBFUSCATION_REJECTION_MESSAGE: Final[str] = (
+    "Your input contains characters or encoding patterns that cannot be "
+    "processed. Please rephrase your question in plain text."
+)
+
 # Output-side classification (OFFSEC-310 / LCORE-2750)
 DEFAULT_OUTPUT_MODEL_PROMPT: Final[str] = """
 Instructions:

@@ -56,9 +56,7 @@ class TestRunOutputShieldModeration:
     ) -> None:
         """Shield returning passed should result in passed."""
         mock_shield = mocker.Mock()
-        mock_shield.run = mocker.AsyncMock(
-            return_value=ShieldModerationPassed()
-        )
+        mock_shield.run = mocker.AsyncMock(return_value=ShieldModerationPassed())
         mocker.patch("utils.shields.build_shield", return_value=mock_shield)
 
         result = await run_output_shield_moderation(
@@ -95,9 +93,7 @@ class TestRunOutputShieldModeration:
         assert result.message == "Non-technical content detected."
 
     @pytest.mark.asyncio
-    async def test_stops_on_first_block(
-        self, mocker: MockerFixture
-    ) -> None:
+    async def test_stops_on_first_block(self, mocker: MockerFixture) -> None:
         """Should return blocked on first shield that blocks."""
         blocked = ShieldModerationBlocked(
             decision="blocked",
@@ -109,9 +105,7 @@ class TestRunOutputShieldModeration:
         shield2 = mocker.Mock()
         shield2.run = mocker.AsyncMock(return_value=ShieldModerationPassed())
 
-        mocker.patch(
-            "utils.shields.build_shield", side_effect=[shield1, shield2]
-        )
+        mocker.patch("utils.shields.build_shield", side_effect=[shield1, shield2])
 
         result = await run_output_shield_moderation(
             "some text",
@@ -123,18 +117,12 @@ class TestRunOutputShieldModeration:
         shield2.run.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_continues_on_shield_error(
-        self, mocker: MockerFixture
-    ) -> None:
+    async def test_continues_on_shield_error(self, mocker: MockerFixture) -> None:
         """Shield errors should be logged but not block the response."""
         failing_shield = mocker.Mock()
-        failing_shield.run = mocker.AsyncMock(
-            side_effect=AgentRunError("model error")
-        )
+        failing_shield.run = mocker.AsyncMock(side_effect=AgentRunError("model error"))
         passing_shield = mocker.Mock()
-        passing_shield.run = mocker.AsyncMock(
-            return_value=ShieldModerationPassed()
-        )
+        passing_shield.run = mocker.AsyncMock(return_value=ShieldModerationPassed())
 
         mocker.patch(
             "utils.shields.build_shield",
@@ -151,18 +139,12 @@ class TestRunOutputShieldModeration:
         passing_shield.run.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_continues_on_runtime_error(
-        self, mocker: MockerFixture
-    ) -> None:
+    async def test_continues_on_runtime_error(self, mocker: MockerFixture) -> None:
         """RuntimeError from shield should be logged but not block."""
         failing_shield = mocker.Mock()
-        failing_shield.run = mocker.AsyncMock(
-            side_effect=RuntimeError("unexpected")
-        )
+        failing_shield.run = mocker.AsyncMock(side_effect=RuntimeError("unexpected"))
 
-        mocker.patch(
-            "utils.shields.build_shield", return_value=failing_shield
-        )
+        mocker.patch("utils.shields.build_shield", return_value=failing_shield)
 
         result = await run_output_shield_moderation(
             "some text", [_output_shield_config()]
@@ -171,20 +153,14 @@ class TestRunOutputShieldModeration:
         assert isinstance(result, ShieldModerationPassed)
 
     @pytest.mark.asyncio
-    async def test_passes_response_text_to_shield(
-        self, mocker: MockerFixture
-    ) -> None:
+    async def test_passes_response_text_to_shield(self, mocker: MockerFixture) -> None:
         """The response text should be passed to shield.run()."""
         mock_shield = mocker.Mock()
-        mock_shield.run = mocker.AsyncMock(
-            return_value=ShieldModerationPassed()
-        )
+        mock_shield.run = mocker.AsyncMock(return_value=ShieldModerationPassed())
         mocker.patch("utils.shields.build_shield", return_value=mock_shield)
 
         response_text = "Use sudo dnf install httpd to install Apache."
-        await run_output_shield_moderation(
-            response_text, [_output_shield_config()]
-        )
+        await run_output_shield_moderation(response_text, [_output_shield_config()])
 
         mock_shield.run.assert_called_once_with(response_text)
 

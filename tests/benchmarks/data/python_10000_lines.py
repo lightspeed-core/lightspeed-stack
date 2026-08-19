@@ -31,14 +31,14 @@ def _reset_app_config_between_tests() -> Generator:
     try:
         AppConfig()._configuration = None  # type: ignore[attr-defined]
         AppConfig()._quota_limiters = []  # type: ignore[attr-defined]
-    except Exception:
+    except ValueError:
         pass
     yield
     # ensure clean state after each test
     try:
         AppConfig()._configuration = None  # type: ignore[attr-defined]
         AppConfig()._quota_limiters = []  # type: ignore[attr-defined]
-    except Exception:
+    except TypeError:
         pass
 
 

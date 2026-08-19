@@ -4,6 +4,9 @@ from typing import Any
 
 import pytest
 from ogx_client import APIConnectionError
+from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
+    InMemorySpanExporter,
+)
 from pytest_mock import MockerFixture
 
 from app.endpoints.health import (
@@ -394,3 +397,107 @@ class TestReadinessDegradedMode:  # pylint: disable=too-few-public-methods
         assert "RAG functionality unavailable" in response.impacts
         assert "Agent tools unavailable" in response.impacts
         assert len(response.providers) == 0
+
+
+class TestHealthEndpointOtel:
+    """OTEL instrumentation tests for health probe endpoints."""
+
+    @pytest.mark.asyncio
+    async def test_readiness_emits_span_on_healthy(
+        self,
+        mocker: MockerFixture,
+        otel: tuple[Any, InMemorySpanExporter],
+    ) -> None:
+        """Test that a healthy readiness check emits a span with status 200."""
+        tracer, exporter = otel
+        mocker.patch("app.endpoints.health.tracer", tracer)
+        mock_authorization_resolvers(mocker)
+
+        mock_tracker = mocker.patch("app.endpoints.health.DegradedModeTracker")
+        mock_tracker.return_value.is_degraded.return_value = False
+
+        mocker.patch(
+            "app.endpoints.health.get_providers_health_statuses",
+            return_value=[
+                ProviderHealthStatus(
+                    provider_id="p1",
+                    status=HealthStatus.OK.value,
+                    message="ok",
+                )
+            ],
+        )
+        mocker.patch(
+            "app.endpoints.health.check_default_model_available",
+            return_value=(True, "Model available"),
+        )
+
+        mock_response = mocker.Mock()
+        auth: AuthTuple = ("uid", "uname", True, "tok")
+
+        await readiness_probe_get_method(auth=auth, response=mock_response)
+
+        spans = exporter.get_finished_spans()
+        assert len(spans) == 1
+        span = spans[0]
+        assert span.name == "readiness.handle_request"
+        assert span.attributes is not None
+        assert span.attributes["http.status_code"] == 200
+
+    @pytest.mark.asyncio
+    async def test_readiness_emits_span_with_503_on_unhealthy(
+        self,
+        mocker: MockerFixture,
+        otel: tuple[Any, InMemorySpanExporter],
+    ) -> None:
+        """Test that an unhealthy readiness check emits a span with status 503."""
+        tracer, exporter = otel
+        mocker.patch("app.endpoints.health.tracer", tracer)
+        mock_authorization_resolvers(mocker)
+
+        mock_tracker = mocker.patch("app.endpoints.health.DegradedModeTracker")
+        mock_tracker.return_value.is_degraded.return_value = False
+
+        mocker.patch(
+            "app.endpoints.health.get_providers_health_statuses",
+            return_value=[
+                ProviderHealthStatus(
+                    provider_id="bad-provider",
+                    status=HealthStatus.ERROR.value,
+                    message="down",
+                )
+            ],
+        )
+
+        mock_response = mocker.Mock()
+        auth: AuthTuple = ("uid", "uname", True, "tok")
+
+        await readiness_probe_get_method(auth=auth, response=mock_response)
+
+        spans = exporter.get_finished_spans()
+        assert len(spans) == 1
+        span = spans[0]
+        assert span.name == "readiness.handle_request"
+        assert span.attributes is not None
+        assert span.attributes["http.status_code"] == 503
+
+    @pytest.mark.asyncio
+    async def test_liveness_emits_span(
+        self,
+        mocker: MockerFixture,
+        otel: tuple[Any, InMemorySpanExporter],
+    ) -> None:
+        """Test that the liveness probe emits a span with status 200."""
+        tracer, exporter = otel
+        mocker.patch("app.endpoints.health.tracer", tracer)
+        mock_authorization_resolvers(mocker)
+
+        auth: AuthTuple = ("uid", "uname", True, "tok")
+
+        await liveness_probe_get_method(auth=auth)
+
+        spans = exporter.get_finished_spans()
+        assert len(spans) == 1
+        span = spans[0]
+        assert span.name == "liveness.handle_request"
+        assert span.attributes is not None
+        assert span.attributes["http.status_code"] == 200
