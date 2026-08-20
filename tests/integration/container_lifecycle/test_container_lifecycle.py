@@ -11,6 +11,7 @@ from typing import Any
 
 import pytest
 import requests
+from requests import RequestException
 
 OGX_IMAGE_NAME = "lightspeed-ogx:local"
 OGX_CONTAINER_NAME = "lightspeed-ogx"
@@ -139,7 +140,7 @@ class TestContainerLifecycle:
                 passed = True
                 break
 
-            except (requests.RequestException, JSONDecodeError, AssertionError):
+            except (RequestException, JSONDecodeError, AssertionError):
                 time.sleep(1)
 
         if not passed:

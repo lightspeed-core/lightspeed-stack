@@ -124,12 +124,11 @@ start-ogx-container: build-ogx-image ## Start OGX container
 wait-for-ogx-health: ## Wait for OGX container to be healthy
 	@echo "Waiting for OGX container to be healthy..."
 	@for i in {1..30}; do \
-		STATUS=$$($(CONTAINER_RUNTIME) inspect --format='{{.State.Health.Status}}' $(OGX_CONTAINER_NAME) 2>/dev/null || echo "no-healthcheck"); \
-		if [ "$$STATUS" = "healthy" ]; then \
+		if curl -sf http://localhost:$(OGX_PORT)/v1/health >/dev/null 2>&1; then \
 			echo "✓ OGX is healthy and ready!"; \
 			exit 0; \
 		fi; \
-		echo "  Health status: $$STATUS (attempt $$i/30)"; \
+		echo "  Waiting... (attempt $$i/30)"; \
 		sleep 2; \
 	done; \
 	echo "✗ ERROR: OGX did not become healthy within 60 seconds"; \
