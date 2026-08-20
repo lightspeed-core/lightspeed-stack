@@ -79,9 +79,9 @@ start-ogx-container: build-ogx-image ## Start OGX container
 		-p $(OGX_PORT):8321 \
 		--health-cmd "curl -f http://localhost:8321/v1/health || exit 1" \
 		--health-interval 10s \
-		--health-timeout 5s \
-		--health-retries 3 \
-		--health-start-period 15s \
+		--health-timeout 10s \
+		--health-retries 5 \
+		--health-start-period 20s \
 		-v $(PWD)/$(OGX_CONFIG):/opt/app-root/run.yaml:z \
 		-v $(PWD)/$(CONFIG):/opt/app-root/lightspeed-stack.yaml:ro,z \
 		-v $(PWD)/scripts/llama-stack-entrypoint.sh:/opt/app-root/enrich-entrypoint.sh:ro,z \
