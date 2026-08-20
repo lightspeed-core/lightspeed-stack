@@ -1,0 +1,49 @@
+# Example: unified mode with durable conversation persistence (Postgres).
+#
+# Synthesis upserts OGX storage.backends.conversations_default from
+# conversation_cache and points stores.conversations at it. Do not set
+# storage.stores.conversations under native_override unless you intend to
+# override that wiring (native_override wins; LCORE will warn).
+#
+# Keep database and conversation_cache on the same backend type so ownership
+# metadata and chat continuation both survive restart.
+name: Lightspeed Core Service (LCS) — unified conversation persistence
+service:
+  host: localhost
+  port: 8080
+  auth_enabled: false
+  workers: 1
+  color_log: true
+  access_log: true
+llama_stack:
+  use_as_library_client: true
+  config:
+    baseline: default
+authentication:
+  module: "noop"
+user_data_collection:
+  feedback_enabled: false
+  transcripts_enabled: false
+database:
+  postgres:
+    host: ${env.POSTGRES_HOST:=127.0.0.1}
+    port: 5432
+    db: ${env.POSTGRES_DB:=lightspeed}
+    user: ${env.POSTGRES_USER:=lightspeed}
+    password: ${env.POSTGRES_PASSWORD}
+    ssl_mode: disable
+    gss_encmode: disable
+conversation_cache:
+  type: postgres
+  postgres:
+    host: ${env.POSTGRES_HOST:=127.0.0.1}
+    port: 5432
+    db: ${env.POSTGRES_DB:=lightspeed}
+    user: ${env.POSTGRES_USER:=lightspeed}
+    password: ${env.POSTGRES_PASSWORD}
+    ssl_mode: disable
+    gss_encmode: disable
+inference:
+  providers:
+    - type: openai
+      api_key_env: OPENAI_API_KEY
