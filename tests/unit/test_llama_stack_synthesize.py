@@ -8,6 +8,7 @@ write-to-file step (persistent path, mode 0600).
 
 import os
 import stat
+import sys
 from pathlib import Path
 from typing import Any, Optional, get_args
 
@@ -19,7 +20,9 @@ from llama_stack_configuration import (
     apply_high_level_inference,
     deep_merge_list_replace,
     ensure_mcp_tool_runtime,
+    has_synthesis_input,
     load_default_baseline,
+    main,
     migrate_config_dumb,
     synthesize_configuration,
     synthesize_to_file,
@@ -826,3 +829,122 @@ def test_reference_profile_loads_via_synthesizer(profile_path: Path) -> None:
     assert result["version"] == 2
     assert "inference" in result["apis"]
     assert result["providers"]["inference"], "profile must configure inference"
+
+
+# ---------------------------------------------------------------------------
+# CLI auto-detection (LCORE-2338): main() dispatches unified vs legacy
+# ---------------------------------------------------------------------------
+
+
+def test_has_synthesis_input_detection() -> None:
+    """The raw-dict detection mirrors the root-model synthesis-input check."""
+    assert has_synthesis_input({"llama_stack": {"config": {"baseline": "default"}}})
+    assert has_synthesis_input({"inference": {"providers": [{"type": "openai"}]}})
+    assert has_synthesis_input({"vector_store": {"providers": [{"id": "nb"}]}})
+    assert not has_synthesis_input({})
+    assert not has_synthesis_input(
+        {"llama_stack": {"library_client_config_path": "run.yaml"}}
+    )
+    # empty provider lists and null sections are not synthesis inputs
+    assert not has_synthesis_input({"inference": {"providers": []}})
+    assert not has_synthesis_input({"inference": None, "llama_stack": None})
+
+
+def _run_main(monkeypatch: pytest.MonkeyPatch, argv: list[str]) -> None:
+    """Invoke the module CLI with the given arguments."""
+    monkeypatch.setattr(sys, "argv", ["llama_stack_configuration.py", *argv])
+    main()
+
+
+def test_main_unified_config_synthesizes_without_input_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A unified config is synthesized; the legacy --input file is ignored.
+
+    This is the server-mode contract (spec "Trigger mechanism"): the container
+    entrypoint always passes -i, but in unified mode no run.yaml mount needs
+    to exist.
+    """
+    lcs = {
+        "llama_stack": {
+            "config": {
+                "baseline": "empty",
+                "native_override": {"version": 2, "marker": "synthesized"},
+            }
+        }
+    }
+    cfg_path = tmp_path / "lightspeed-stack.yaml"
+    cfg_path.write_text(yaml.dump(lcs), encoding="utf-8")
+    out_path = tmp_path / "generated-run.yaml"
+
+    _run_main(
+        monkeypatch,
+        [
+            "-c",
+            str(cfg_path),
+            "-i",
+            str(tmp_path / "does-not-exist.yaml"),
+            "-o",
+            str(out_path),
+        ],
+    )
+
+    assert yaml.safe_load(out_path.read_text(encoding="utf-8")) == {
+        "version": 2,
+        "marker": "synthesized",
+    }
+    # synthesized output carries the 0600 secret-safety contract (R10)
+    assert stat.S_IMODE(os.stat(out_path).st_mode) == 0o600
+
+
+def test_main_unified_config_resolves_relative_profile(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A relative profile: in the config resolves against the config's dir (R8)."""
+    profile = {"version": 2, "apis": ["inference"], "marker": "from-profile"}
+    (tmp_path / "my-profile.yaml").write_text(yaml.dump(profile), encoding="utf-8")
+    lcs = {"llama_stack": {"config": {"profile": "my-profile.yaml"}}}
+    cfg_path = tmp_path / "lightspeed-stack.yaml"
+    cfg_path.write_text(yaml.dump(lcs), encoding="utf-8")
+    out_path = tmp_path / "generated-run.yaml"
+
+    _run_main(monkeypatch, ["-c", str(cfg_path), "-o", str(out_path)])
+
+    assert yaml.safe_load(out_path.read_text(encoding="utf-8"))["marker"] == (
+        "from-profile"
+    )
+
+
+def test_main_legacy_config_enriches_input_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A legacy config (no synthesis input) enriches the --input run.yaml."""
+    run_yaml = {"version": 2, "apis": ["inference"]}
+    run_path = tmp_path / "run.yaml"
+    run_path.write_text(yaml.dump(run_yaml), encoding="utf-8")
+    lcs = {
+        "llama_stack": {"library_client_config_path": str(run_path)},
+        "byok_rag": [
+            {
+                "rag_id": "kb1",
+                "vector_db_id": "kb1",
+                "db_path": "/var/lib/kb1/faiss.db",
+                "embedding_model": "nomic-ai/nomic-embed-text-v1.5",
+                "embedding_dimension": 768,
+            }
+        ],
+    }
+    cfg_path = tmp_path / "lightspeed-stack.yaml"
+    cfg_path.write_text(yaml.dump(lcs), encoding="utf-8")
+    out_path = tmp_path / "enriched-run.yaml"
+
+    _run_main(
+        monkeypatch,
+        ["-c", str(cfg_path), "-i", str(run_path), "-o", str(out_path)],
+    )
+
+    enriched = yaml.safe_load(out_path.read_text(encoding="utf-8"))
+    # original content survives and BYOK enrichment was applied to the input
+    assert enriched["version"] == 2
+    vector_io_ids = {p["provider_id"] for p in enriched["providers"]["vector_io"]}
+    assert "byok_kb1" in vector_io_ids
