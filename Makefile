@@ -123,12 +123,11 @@ start-llama-stack-container: build-llama-stack-image ## Start llama-stack contai
 wait-for-llama-stack-health: ## Wait for llama-stack container to be healthy
 	@echo "Waiting for llama-stack container to be healthy..."
 	@for i in {1..30}; do \
-		STATUS=$$($(CONTAINER_RUNTIME) inspect --format='{{.State.Health.Status}}' $(LLAMA_STACK_CONTAINER_NAME) 2>/dev/null || echo "no-healthcheck"); \
-		if [ "$$STATUS" = "healthy" ]; then \
+		if curl -sf http://localhost:$(LLAMA_STACK_PORT)/v1/health >/dev/null 2>&1; then \
 			echo "✓ Llama-stack is healthy and ready!"; \
 			exit 0; \
 		fi; \
-		echo "  Health status: $$STATUS (attempt $$i/30)"; \
+		echo "  Waiting... (attempt $$i/30)"; \
 		sleep 2; \
 	done; \
 	echo "✗ ERROR: Llama-stack did not become healthy within 60 seconds"; \
