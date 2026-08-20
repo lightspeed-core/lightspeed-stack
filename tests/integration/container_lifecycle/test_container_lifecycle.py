@@ -3,679 +3,188 @@
 Tests verify build, startup, health monitoring, configuration, and teardown.
 """
 
-# commented until https://redhat.atlassian.net/browse/LCORE-3521 gets fixed
-# import os
-# import subprocess
-# import time
-# import urllib.error
-# import urllib.request
-# import warnings
-# from collections.abc import Generator
-
-# import pytest
-
-# # Timeout constants (in seconds)
-# RUNTIME_DETECTION_TIMEOUT = 5
-# CONTAINER_BUILD_TIMEOUT = 300  # 5 minutes for image build
-# CONTAINER_START_TIMEOUT = 300  # 5 minutes for container start
-# CONTAINER_STOP_TIMEOUT = 15
-# CONTAINER_CLEANUP_TIMEOUT = 10
-# IMAGE_CLEANUP_TIMEOUT = 30
-# DANGLING_IMAGES_CLEANUP_TIMEOUT = 300  # 5 minutes for dangling images cleanup
-# HEALTH_CHECK_TIMEOUT = 5
-# PORT_QUERY_TIMEOUT = 5
-
-# # Retry constants
-# HEALTH_CHECK_MAX_ATTEMPTS = 30
-# NETWORK_BINDING_MAX_ATTEMPTS = 5
-
-# DEFAULT_LIGHTSPEED_LLAMA_STACK_IMAGE_NAME = "lightspeed-llama-stack:local"
-
-
-# @pytest.fixture(scope="session")
-# def container_runtime() -> str:
-#     """Detect available container runtime (podman or docker).
-
-#     Returns
-#     -------
-#         str: Container runtime command ("podman" or "docker").
-
-#     Raises
-#     ------
-#         pytest.skip: If no container runtime is available.
-#     """
-#     for runtime in ["podman", "docker"]:
-#         try:
-#             subprocess.run(
-#                 [runtime, "--version"],
-#                 check=True,
-#                 capture_output=True,
-#                 timeout=RUNTIME_DETECTION_TIMEOUT,
-#             )
-#             return runtime
-#         except (subprocess.CalledProcessError, FileNotFoundError):
-#             continue
-#     pytest.skip("No container runtime available")
-
-
-# @pytest.fixture(scope="session", autouse=True)
-# def cleanup_container_artifacts(container_runtime: str) -> Generator[None]:
-#     """Remove container images and dangling layers after all tests complete.
-
-#     Parameters
-#     ----------
-#         container_runtime (str): Container runtime to use.
-
-#     Yields
-#     ------
-#         None
-#     """
-#     yield
-
-#     try:
-#         subprocess.run(
-#             [container_runtime, "rmi", "-f", DEFAULT_LIGHTSPEED_LLAMA_STACK_IMAGE_NAME],
-#             capture_output=True,
-#             timeout=IMAGE_CLEANUP_TIMEOUT,
-#         )
-#     except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
-#         warnings.warn(f"Image cleanup failed: {e}")
-
-#     try:
-#         subprocess.run(
-#             [container_runtime, "image", "prune", "-f"],
-#             capture_output=True,
-#             timeout=DANGLING_IMAGES_CLEANUP_TIMEOUT,
-#         )
-#     except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
-#         warnings.warn(f"Dangling image cleanup failed: {e}")
-
-
-# @pytest.fixture(scope="class")
-# def managed_container(container_runtime: str) -> Generator[str, None, None]:
-#     """Start container once for entire test class with strict cleanup.
-
-#     Parameters
-#     ----------
-#         container_runtime (str): Container runtime to use.
-
-#     Yields
-#     ------
-#         str: Test container name.
-#     """
-#     container_name = "test-llama-stack-integration"
-
-#     # Pre-cleanup
-#     subprocess.run(
-#         [container_runtime, "rm", "-f", container_name],
-#         check=True,
-#         capture_output=True,
-#         timeout=CONTAINER_CLEANUP_TIMEOUT,
-#     )
-
-#     # Start container
-#     result = subprocess.run(
-#         [
-#             "make",
-#             "start-llama-stack-container",
-#             f"LLAMA_STACK_CONTAINER_NAME={container_name}",
-#         ],
-#         capture_output=True,
-#         text=True,
-#         timeout=CONTAINER_START_TIMEOUT,
-#     )
-#     assert result.returncode == 0, f"Container start failed: {result.stderr}"
-
-#     yield container_name
-
-#     # Post-cleanup
-#     subprocess.run(
-#         [container_runtime, "rm", "-f", container_name],
-#         check=True,
-#         capture_output=True,
-#         timeout=CONTAINER_CLEANUP_TIMEOUT,
-#     )
-
-
-# class TestContainerBuild:
-#     """Test container image building with idempotency checks."""
-
-#     def _get_image_id(
-#         self, runtime: str, image_name: str = DEFAULT_LIGHTSPEED_LLAMA_STACK_IMAGE_NAME
-#     ) -> str:
-#         """Get the unique, immutable Image ID (SHA256).
-
-#         Parameters
-#         ----------
-#             runtime (str): Container runtime (podman or docker).
-#             image_name (str): Image name and tag to query.
-
-#         Returns
-#         -------
-#             str: The image ID (SHA256 hash).
-#         """
-#         result = subprocess.run(
-#             [runtime, "images", "-q", image_name],
-#             capture_output=True,
-#             text=True,
-#             check=True,
-#             timeout=HEALTH_CHECK_TIMEOUT,
-#         )
-#         return result.stdout.strip()
-
-#     def test_build_llama_stack_image(self, container_runtime: str) -> None:
-#         """Test that llama-stack image builds successfully and exists.
-
-#         Parameters
-#         ----------
-#             container_runtime (str): Container runtime to use for verification.
-#         """
-#         result = subprocess.run(
-#             ["make", "build-llama-stack-image"],
-#             capture_output=True,
-#             text=True,
-#             timeout=CONTAINER_BUILD_TIMEOUT,
-#         )
-#         assert result.returncode == 0, f"Build failed: {result.stderr}"
-
-#         # Verify image exists via the runtime
-#         image_id = self._get_image_id(container_runtime)
-#         assert image_id, "Image ID not found after build"
-
-#         # Verify image is listed with correct tag
-#         result = subprocess.run(
-#             [container_runtime, "images", DEFAULT_LIGHTSPEED_LLAMA_STACK_IMAGE_NAME],
-#             capture_output=True,
-#             text=True,
-#             timeout=PORT_QUERY_TIMEOUT,
-#         )
-#         assert result.returncode == 0, "Failed to list images"
-#         assert (
-#             "lightspeed-llama-stack" in result.stdout
-#         ), "Image not found in image list"
-
-#     def test_build_is_idempotent_via_image_id(self, container_runtime: str) -> None:
-#         """Test that rebuilding without changes yields the exact same Image ID.
-
-#         Parameters
-#         ----------
-#             container_runtime (str): Container runtime to use for image inspection.
-#         """
-#         # Trigger the first build
-#         subprocess.run(
-#             ["make", "build-llama-stack-image"],
-#             check=True,
-#             timeout=CONTAINER_BUILD_TIMEOUT,
-#         )
-#         first_image_id = self._get_image_id(container_runtime)
-#         assert first_image_id, "Failed to retrieve Image ID after first build"
-
-#         # Trigger the second build (should be 100% cached)
-#         subprocess.run(
-#             ["make", "build-llama-stack-image"],
-#             check=True,
-#             timeout=CONTAINER_BUILD_TIMEOUT,
-#         )
-#         second_image_id = self._get_image_id(container_runtime)
-
-#         # Core Idempotency Assert: Image ID must be identical
-#         assert first_image_id == second_image_id, (
-#             f"Build was not idempotent! Image ID changed from {first_image_id} "
-#             f"to {second_image_id}. This means cache layers were invalidated."
-#         )
-
-
-# @pytest.mark.usefixtures("managed_container")
-# class TestLlamaStackDeployment:
-#     """Consolidated lifecycle, networking, and configuration verification."""
-
-#     def test_container_is_running(
-#         self, container_runtime: str, managed_container: str
-#     ) -> None:
-#         """Verify container appears in the runtime's active process list.
-
-#         Parameters
-#         ----------
-#             container_runtime (str): Container runtime to use.
-#             managed_container (str): Test container name.
-#         """
-#         result = subprocess.run(
-#             [
-#                 container_runtime,
-#                 "ps",
-#                 "--filter",
-#                 f"name={managed_container}",
-#                 "--format",
-#                 "{{.Names}}",
-#             ],
-#             capture_output=True,
-#             text=True,
-#             timeout=PORT_QUERY_TIMEOUT,
-#         )
-#         assert (
-#             managed_container in result.stdout
-#         ), f"Container {managed_container} not found in running containers"
-
-#     def test_container_becomes_healthy(
-#         self, container_runtime: str, managed_container: str
-#     ) -> None:
-#         """Poll engine internal health state until status is healthy.
-
-#         Parameters
-#         ----------
-#             container_runtime (str): Container runtime to use.
-#             managed_container (str): Test container name.
-#         """
-#         for attempt in range(HEALTH_CHECK_MAX_ATTEMPTS):
-#             result = subprocess.run(
-#                 [
-#                     container_runtime,
-#                     "inspect",
-#                     "--format",
-#                     "{{.State.Health.Status}}",
-#                     managed_container,
-#                 ],
-#                 capture_output=True,
-#                 text=True,
-#                 timeout=HEALTH_CHECK_TIMEOUT,
-#             )
-#             if result.stdout.strip() == "healthy":
-#                 return
-#             time.sleep(2)
-#         pytest.fail(
-#             f"Container failed to transition to a 'healthy' state within 60s "
-#             f"(attempts: {HEALTH_CHECK_MAX_ATTEMPTS})."
-#         )
-
-#     def test_health_endpoint_responds_on_host(self) -> None:
-#         """Verify HTTP API accessibility from host without container-side curl."""
-#         url = "http://localhost:8321/v1/health"
-
-#         # Retry loop for network binding stabilization
-#         for attempt in range(NETWORK_BINDING_MAX_ATTEMPTS):
-#             try:
-#                 with urllib.request.urlopen(
-#                     url, timeout=HEALTH_CHECK_TIMEOUT
-#                 ) as response:
-#                     body = response.read().decode("utf-8").lower()
-#                     assert (
-#                         response.status == 200
-#                     ), f"Health endpoint returned status {response.status}"
-#                     assert (
-#                         "status" in body
-#                     ), f"Health response missing 'status' field: {body}"
-#                     return
-#             except (urllib.error.URLError, ConnectionError) as e:
-#                 if attempt == NETWORK_BINDING_MAX_ATTEMPTS - 1:  # Last attempt
-#                     pytest.fail(
-#                         f"Could not reach /v1/health from host machine after "
-#                         f"{attempt + 1} attempts. Last error: {e}"
-#                     )
-#                 time.sleep(1)
-
-#     def test_default_port_mapping(
-#         self, container_runtime: str, managed_container: str
-#     ) -> None:
-#         """Verify internal port 8321 binds properly.
-
-#         Parameters
-#         ----------
-#             container_runtime (str): Container runtime to use.
-#             managed_container (str): Test container name.
-#         """
-#         result = subprocess.run(
-#             [container_runtime, "port", managed_container],
-#             capture_output=True,
-#             text=True,
-#             timeout=PORT_QUERY_TIMEOUT,
-#         )
-#         assert result.returncode == 0, "Failed to query port mappings"
-#         assert (
-#             "8321" in result.stdout
-#         ), f"Port 8321 not found in port mappings: {result.stdout}"
-
-#     @pytest.mark.parametrize(
-#         "file_path",
-#         [
-#             "/opt/app-root/run.yaml",
-#             "/opt/app-root/lightspeed-stack.yaml",
-#             "/opt/app-root/enrich-entrypoint.sh",
-#             "/opt/app-root/llama_stack_configuration.py",
-#         ],
-#     )
-#     def test_required_volumes_mounted(
-#         self, container_runtime: str, managed_container: str, file_path: str
-#     ) -> None:
-#         """Parametrized verification of all critical configuration and script mounts.
-
-#         Parameters
-#         ----------
-#             container_runtime (str): Container runtime to use.
-#             managed_container (str): Test container name.
-#             file_path (str): Path to verify inside container.
-#         """
-#         result = subprocess.run(
-#             [container_runtime, "exec", managed_container, "test", "-f", file_path],
-#             capture_output=True,
-#             timeout=HEALTH_CHECK_TIMEOUT,
-#         )
-#         assert (
-#             result.returncode == 0
-#         ), f"Required mount missing or not a file: {file_path}"
-
-
-# class TestContainerCustomConfiguration:
-#     """Isolates tests that require distinct runtime configurations."""
-
-#     def test_custom_port_mapping(self, container_runtime: str) -> None:
-#         """Verify alternative port bindings parameterize correctly.
-
-#         Parameters
-#         ----------
-#             container_runtime (str): Container runtime to use.
-#         """
-#         container_name = "test-llama-stack-custom-port"
-#         custom_port = "9321"
-
-#         try:
-#             subprocess.run(
-#                 [
-#                     "make",
-#                     "start-llama-stack-container",
-#                     f"LLAMA_STACK_CONTAINER_NAME={container_name}",
-#                     f"LLAMA_STACK_PORT={custom_port}",
-#                 ],
-#                 check=True,
-#                 capture_output=True,
-#                 timeout=CONTAINER_START_TIMEOUT,
-#             )
-#             result = subprocess.run(
-#                 [container_runtime, "port", container_name],
-#                 capture_output=True,
-#                 text=True,
-#                 timeout=5,
-#             )
-#             assert result.returncode == 0, "Failed to query port mappings"
-#             assert (
-#                 custom_port in result.stdout
-#             ), f"Custom port {custom_port} not found in port mappings: {result.stdout}"
-#         finally:
-#             subprocess.run(
-#                 [container_runtime, "rm", "-f", container_name],
-#                 check=True,
-#                 capture_output=True,
-#                 timeout=10,
-#             )
-
-
-# class TestContainerTeardown:
-#     """Test container cleanup and resource management."""
-
-#     def test_stop_container_gracefully(self, container_runtime: str) -> None:
-#         """Test that container stops gracefully within timeout.
-
-#         Parameters
-#         ----------
-#             container_runtime (str): Container runtime to use.
-#         """
-#         container_name = "test-llama-stack-teardown"
-
-#         try:
-#             # Start container
-#             subprocess.run(
-#                 [
-#                     "make",
-#                     "start-llama-stack-container",
-#                     f"LLAMA_STACK_CONTAINER_NAME={container_name}",
-#                 ],
-#                 check=True,
-#                 capture_output=True,
-#                 timeout=CONTAINER_START_TIMEOUT,
-#             )
-
-#             # Stop container using Makefile target
-#             result = subprocess.run(
-#                 [
-#                     "make",
-#                     "stop-llama-stack-container",
-#                     f"LLAMA_STACK_CONTAINER_NAME={container_name}",
-#                 ],
-#                 capture_output=True,
-#                 text=True,
-#                 timeout=CONTAINER_STOP_TIMEOUT,
-#             )
-#             assert result.returncode == 0, f"Container stop failed: {result.stderr}"
-
-#             # Verify container is no longer running
-#             result = subprocess.run(
-#                 [
-#                     container_runtime,
-#                     "ps",
-#                     "--filter",
-#                     f"name={container_name}",
-#                     "--format",
-#                     "{{.Names}}",
-#                 ],
-#                 capture_output=True,
-#                 text=True,
-#                 timeout=5,
-#             )
-#             assert (
-#                 container_name not in result.stdout
-#             ), f"Container {container_name} still running after stop"
-
-#         finally:
-#             subprocess.run(
-#                 [container_runtime, "rm", "-f", container_name],
-#                 check=True,
-#                 capture_output=True,
-#                 timeout=10,
-#             )
-
-#     def test_remove_container_saves_logs(self, container_runtime: str) -> None:
-#         """Test that removing container saves logs to a clean, unique file path.
-
-#         Parameters
-#         ----------
-#             container_runtime (str): Container runtime to use.
-#         """
-#         container_name = "test-llama-stack-log-save"
-
-#         # Clear stale log file to prevent false positives
-#         target_log = "/tmp/llama-stack-last-run.log"
-#         if os.path.exists(target_log):
-#             os.remove(target_log)
-
-#         try:
-#             # Start container
-#             subprocess.run(
-#                 [
-#                     "make",
-#                     "start-llama-stack-container",
-#                     f"LLAMA_STACK_CONTAINER_NAME={container_name}",
-#                 ],
-#                 check=True,
-#                 capture_output=True,
-#                 timeout=CONTAINER_START_TIMEOUT,
-#             )
-
-#             # Remove container (should save logs)
-#             subprocess.run(
-#                 [
-#                     "make",
-#                     "remove-llama-stack-container",
-#                     f"LLAMA_STACK_CONTAINER_NAME={container_name}",
-#                 ],
-#                 check=True,
-#                 capture_output=True,
-#                 timeout=15,
-#             )
-
-#             # Verify log file was created and is not empty
-#             assert os.path.exists(
-#                 target_log
-#             ), f"Container logs were not written to {target_log}"
-#             assert os.path.getsize(target_log) > 0, "Log file was created but is empty"
-
-#         finally:
-#             subprocess.run(
-#                 [container_runtime, "rm", "-f", container_name],
-#                 check=True,
-#                 capture_output=True,
-#                 timeout=10,
-#             )
-
-#     @pytest.mark.order("last")
-#     @pytest.mark.destructive
-#     def test_clean_removes_image_and_container(self, container_runtime: str) -> None:
-#         """Test that clean target removes assets. Runs last to avoid deleting dev images.
-
-#         Parameters
-#         ----------
-#             container_runtime (str): Container runtime to use.
-
-#         Notes
-#         -----
-#             Marked as destructive and ordered last. Skip locally with:
-#             pytest -m "not destructive"
-#         """
-#         container_name = "test-llama-stack-clean"
-
-#         # Ensure image exists
-#         subprocess.run(
-#             ["make", "build-llama-stack-image"],
-#             check=True,
-#             capture_output=True,
-#             timeout=300,
-#         )
-
-#         # Start a container
-#         subprocess.run(
-#             [
-#                 "make",
-#                 "start-llama-stack-container",
-#                 f"LLAMA_STACK_CONTAINER_NAME={container_name}",
-#             ],
-#             check=True,
-#             capture_output=True,
-#             timeout=300,
-#         )
-
-#         # Run clean target
-#         result = subprocess.run(
-#             [
-#                 "make",
-#                 "clean-llama-stack",
-#                 f"LLAMA_STACK_CONTAINER_NAME={container_name}",
-#             ],
-#             capture_output=True,
-#             text=True,
-#             timeout=CONTAINER_STOP_TIMEOUT * 2,  # Clean does more work
-#         )
-#         assert result.returncode == 0, f"Clean target failed: {result.stderr}"
-
-#         # Verify container is removed
-#         result = subprocess.run(
-#             [container_runtime, "ps", "-a", "--filter", f"name={container_name}"],
-#             capture_output=True,
-#             text=True,
-#             timeout=PORT_QUERY_TIMEOUT,
-#         )
-#         assert (
-#             container_name not in result.stdout
-#         ), f"Container {container_name} still exists after clean"
-
-#         # Verify image is removed
-#         result = subprocess.run(
-#             [
-#                 container_runtime,
-#                 "images",
-#                 "-q",
-#                 DEFAULT_LIGHTSPEED_LLAMA_STACK_IMAGE_NAME,
-#             ],
-#             capture_output=True,
-#             text=True,
-#             timeout=PORT_QUERY_TIMEOUT,
-#         )
-#         assert not result.stdout.strip(), "Image still exists after clean"
-
-
-# class TestContainerErrorScenarios:
-#     """Test error handling and edge cases."""
-
-#     def test_double_start_replaces_container(self, container_runtime: str) -> None:
-#         """Test that starting container twice replaces the first instance.
-
-#         Parameters
-#         ----------
-#             container_runtime (str): Container runtime to use.
-#         """
-#         container_name = "test-llama-stack-double-start"
-
-#         try:
-#             # First start
-#             subprocess.run(
-#                 [
-#                     "make",
-#                     "start-llama-stack-container",
-#                     f"LLAMA_STACK_CONTAINER_NAME={container_name}",
-#                 ],
-#                 check=True,
-#                 capture_output=True,
-#                 timeout=CONTAINER_START_TIMEOUT,
-#             )
-
-#             # Get first container ID
-#             result = subprocess.run(
-#                 [
-#                     container_runtime,
-#                     "ps",
-#                     "-q",
-#                     "--filter",
-#                     f"name={container_name}",
-#                 ],
-#                 capture_output=True,
-#                 text=True,
-#                 timeout=5,
-#             )
-#             first_id = result.stdout.strip()
-
-#             # Second start (should replace)
-#             subprocess.run(
-#                 [
-#                     "make",
-#                     "start-llama-stack-container",
-#                     f"LLAMA_STACK_CONTAINER_NAME={container_name}",
-#                 ],
-#                 check=True,
-#                 capture_output=True,
-#                 timeout=CONTAINER_START_TIMEOUT,
-#             )
-
-#             # Get second container ID
-#             result = subprocess.run(
-#                 [
-#                     container_runtime,
-#                     "ps",
-#                     "-q",
-#                     "--filter",
-#                     f"name={container_name}",
-#                 ],
-#                 capture_output=True,
-#                 text=True,
-#                 timeout=5,
-#             )
-#             second_id = result.stdout.strip()
-
-#             # IDs should be different (new container created)
-#             assert (
-#                 first_id != second_id
-#             ), f"Container was not replaced on second start (ID: {first_id})"
-
-#         finally:
-#             subprocess.run(
-#                 [container_runtime, "rm", "-f", container_name],
-#                 check=True,
-#                 capture_output=True,
-#                 timeout=10,
-#             )
+import os
+import time
+from subprocess import CalledProcessError, CompletedProcess, run
+from typing import Any
+
+import pytest
+import requests
+
+LLAMA_STACK_IMAGE_NAME = "lightspeed-llama-stack:local"
+LLAMA_STACK_CONTAINER_NAME = "lightspeed-llama-stack"
+HEALTH_ENDPOINT = "http://localhost:8321/v1/health"
+LLAMA_STACK_CONTAINER_LOG = "/tmp/llama-stack-last-run.log"
+MUST_HAVE_FILES = [
+    "/opt/app-root/run.yaml",
+    "/opt/app-root/lightspeed-stack.yaml",
+    "/opt/app-root/enrich-entrypoint.sh",
+    "/opt/app-root/llama_stack_configuration.py",
+]
+DEFAULT_TIMEOUT = 60
+NETWORK_BINDING_MAX_ATTEMPTS = 5
+
+
+@pytest.fixture(scope="session")
+def container_runtime() -> str:
+    """Detect available container runtime (podman or docker).
+
+    Returns
+    -------
+        str: Container runtime command ("podman" or "docker").
+
+    Raises
+    ------
+        pytest.skip: If no container runtime is available.
+    """
+    for runtime in ["podman", "docker"]:
+        try:
+            _run_container_command(
+                [runtime, "--version"],
+                check=True,
+            )
+
+            return runtime
+        except (CalledProcessError, FileNotFoundError):
+            continue
+    pytest.skip("No container runtime available")
+
+
+def _run_container_command(
+    cmd: list[str],
+    *,
+    capture_output=True,
+    text=True,
+    timeout=DEFAULT_TIMEOUT,
+    check=False,
+) -> CompletedProcess[Any]:
+    """Run a container command as a subprocess.
+
+    Parameters
+    ----------
+        cmd: Command and arguments to execute.
+        capture_output: Whether to capture stdout and stderr.
+        text: Whether to decode output as text.
+        timeout: Maximum seconds to wait before killing the process.
+        check: Whether to raise CalledProcessError on non-zero exit.
+
+    Returns
+    -------
+        CompletedProcess: Result of the subprocess execution.
+    """
+    return run(
+        cmd, capture_output=capture_output, text=text, timeout=timeout, check=check
+    )
+
+
+class TestContainerLifecycle:
+    """Integration tests for Llama Stack container lifecycle management."""
+
+    def test_container_lifecycle(self, container_runtime):
+        """Verify the full container lifecycle: build, start, health, files, and cleanup."""
+        # Make sure we start clean
+        _run_container_command(
+            [container_runtime, "rmi", "-f", LLAMA_STACK_IMAGE_NAME],
+        )
+
+        # Test image build
+        build_image_result = _run_container_command(
+            ["make", "build-llama-stack-image"], timeout=300
+        )
+        assert (
+            build_image_result.returncode == 0
+        ), f"Build failed: {build_image_result.stderr}"
+
+        # Verify image is listed with correct tag
+        query_image_result = _run_container_command(
+            [container_runtime, "images", LLAMA_STACK_IMAGE_NAME]
+        )
+
+        assert query_image_result.returncode == 0, "Failed to list images"
+        assert (
+            "lightspeed-llama-stack" in query_image_result.stdout
+        ), "Image not found in image list"
+
+        # Spawn container
+        build_container_result = _run_container_command(
+            [
+                "make",
+                "start-llama-stack-container",
+            ],
+            timeout=300,
+        )
+        assert (
+            build_container_result.returncode == 0
+        ), f"Container start failed: {build_container_result.stderr}"
+
+        # Verify the container is healthy
+        attempts_left = NETWORK_BINDING_MAX_ATTEMPTS
+        passed = False
+        while attempts_left != 0:
+            attempts_left -= 1
+            try:
+                response = requests.get(HEALTH_ENDPOINT, timeout=30)
+                assert (
+                    response.status_code == 200
+                ), f"Health endpoint returned status {response.status_code}"
+                body = response.json()
+                assert (
+                    body.get("status") == "OK"
+                ), 'Health response missing "status" field or its value is not "OK"'
+
+                passed = True
+                break
+
+            except Exception:
+                time.sleep(1)
+
+        if not passed:
+            pytest.fail(
+                f"Could not reach /v1/health from host machine after "
+                f"{NETWORK_BINDING_MAX_ATTEMPTS} attempts"
+            )
+
+        # Verify we have these essential files mounted
+        for file in MUST_HAVE_FILES:
+            search_result = _run_container_command(
+                [
+                    container_runtime,
+                    "exec",
+                    LLAMA_STACK_CONTAINER_NAME,
+                    "test",
+                    "-f",
+                    file,
+                ]
+            )
+            assert (
+                search_result.returncode == 0
+            ), f"Required mount missing or not a file: {file}"
+
+        remove_container_result = _run_container_command(
+            [
+                "make",
+                "remove-llama-stack-container",
+            ],
+        )
+        assert (
+            remove_container_result.returncode == 0
+        ), "Failed to remove the Llama Stack container"
+
+        # Verify log file was created and is not empty
+        assert os.path.exists(
+            LLAMA_STACK_CONTAINER_LOG
+        ), f"Container logs were not written to {LLAMA_STACK_CONTAINER_LOG}"
+        assert (
+            os.path.getsize(LLAMA_STACK_CONTAINER_LOG) > 0
+        ), "Log file was created but is empty"
+
+        # Remove the Llama Stack image
+        clean_result = _run_container_command(
+            [
+                "make",
+                "clean-llama-stack",
+            ],
+        )
+        assert (
+            clean_result.returncode == 0
+        ), f"Clean target failed: {clean_result.stderr}"
