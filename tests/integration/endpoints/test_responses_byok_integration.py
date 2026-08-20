@@ -4,6 +4,7 @@ from typing import Any
 
 import pytest
 from fastapi import Request
+from ogx_client.models.open_ai_response_object import OpenAIResponseObject
 from pytest_mock import MockerFixture
 
 import constants
@@ -36,6 +37,7 @@ _RESPONSE_DUMP: dict[str, Any] = {
     "created_at": 1700000000,
     "status": "completed",
     "model": "test-provider/test-model",
+    "store": False,
     "output": [
         {
             "type": "message",
@@ -68,8 +70,8 @@ _RESPONSE_DUMP: dict[str, Any] = {
 def _build_responses_mock_client(mocker: MockerFixture) -> Any:
     """Build a mock client suitable for the /responses endpoint."""
     mock_client = _build_base_mock_client(mocker)
-    mock_client.responses.create.return_value.model_dump.return_value = (
-        _RESPONSE_DUMP.copy()
+    mock_client.responses.create = mocker.AsyncMock(
+        return_value=OpenAIResponseObject.from_dict(_RESPONSE_DUMP)
     )
     return mock_client
 

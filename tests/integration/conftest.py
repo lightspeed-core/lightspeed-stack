@@ -8,12 +8,12 @@ from typing import Any, Optional
 import pytest
 from fastapi import Request, Response
 from fastapi.testclient import TestClient
-from ogx_api.openai_responses import OpenAIResponseObject
 from ogx_client.models.list_models_v1_models_get200_response import (
     ListModelsV1ModelsGet200Response,
 )
 from ogx_client.models.open_ai_list_models_response import OpenAIListModelsResponse
 from ogx_client.models.open_ai_model import OpenAIModel
+from ogx_client.models.open_ai_response_object import OpenAIResponseObject
 from ogx_client.models.version_info import VersionInfo
 from pydantic_ai import AgentRunResultEvent
 from pydantic_ai.messages import (
@@ -112,52 +112,99 @@ def make_openai_model(
     )
 
 
-def create_mock_llm_response(  # pylint: disable=too-many-arguments,too-many-positional-arguments
-    mocker: MockerFixture,
+def make_openai_response_object(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+    *,
+    response_id: str = "response-123",
     content: str = "This is a test response about Ansible.",
-    tool_calls: Optional[list[Any]] = None,
+    model: str = TEST_MODEL,
+    tool_calls: Optional[list[dict[str, Any]]] = None,
     refusal: Optional[str] = None,
     input_tokens: int = 10,
     output_tokens: int = 5,
-) -> Any:
-    """Create a customizable mock LLM response.
+) -> OpenAIResponseObject:
+    """Build a real ``ogx_client`` OpenAI Responses API object for tests.
 
-    Helper function to create mock LLM responses with configurable content,
-    tool calls, refusals, and token counts. Useful for tests that need to
-    customize the response behavior.
-
-    Args:
-        mocker: pytest-mock fixture
-        content: Response content text
-        tool_calls: Optional list of tool calls
-        refusal: Optional refusal message (for shield violations)
-        input_tokens: Input token count for usage
-        output_tokens: Output token count for usage
+    Parameters:
+        response_id: Response identifier returned by the mocked API.
+        content: Assistant message text for the default output item.
+        model: Model identifier on the response object.
+        tool_calls: Optional function-call output items to append.
+        refusal: Optional refusal text; when set, emits a refusal content part.
+        input_tokens: Input token count for usage metadata.
+        output_tokens: Output token count for usage metadata.
 
     Returns:
-        Mock LLM response object with the specified configuration.
+        ``OpenAIResponseObject`` instance suitable for ``dump_ogx_model()``.
     """
-    mock_response = mocker.MagicMock(spec=OpenAIResponseObject)
-    mock_response.id = "response-123"
+    output: list[dict[str, Any]] = list(tool_calls or [])
+    message_content: list[dict[str, Any]] = (
+        [{"type": "refusal", "refusal": refusal}]
+        if refusal
+        else [{"type": "output_text", "text": content, "annotations": []}]
+    )
+    output.append(
+        {
+            "type": "message",
+            "id": "msg-1",
+            "role": "assistant",
+            "status": "completed",
+            "content": message_content,
+        }
+    )
 
-    # Create output message
-    mock_output_item = mocker.MagicMock()
-    mock_output_item.type = "message"
-    mock_output_item.role = "assistant"
-    mock_output_item.content = content
-    mock_output_item.refusal = refusal
+    payload: dict[str, Any] = {
+        "id": response_id,
+        "object": "response",
+        "created_at": 1_700_000_000,
+        "status": "completed",
+        "model": model,
+        "store": False,
+        "output": output,
+        "usage": {
+            "input_tokens": input_tokens,
+            "output_tokens": output_tokens,
+            "total_tokens": input_tokens + output_tokens,
+            "input_tokens_details": {"cached_tokens": 0},
+            "output_tokens_details": {"reasoning_tokens": 0},
+        },
+    }
+    response = OpenAIResponseObject.from_dict(payload)
+    assert response is not None
+    return response
 
-    mock_response.output = [mock_output_item]
-    mock_response.stop_reason = "end_turn" if not refusal else "stop"
-    mock_response.tool_calls = tool_calls or []
 
-    # Mock usage
-    mock_usage = mocker.MagicMock()
-    mock_usage.input_tokens = input_tokens
-    mock_usage.output_tokens = output_tokens
-    mock_response.usage = mock_usage
+def create_mock_llm_response(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+    mocker: MockerFixture,
+    content: str = "This is a test response about Ansible.",
+    tool_calls: Optional[list[dict[str, Any]]] = None,
+    refusal: Optional[str] = None,
+    input_tokens: int = 10,
+    output_tokens: int = 5,
+) -> OpenAIResponseObject:
+    """Create a customizable LLM response for integration test mocks.
 
-    return mock_response
+    Helper function to create ``ogx_client`` response objects with configurable
+    content, tool calls, refusals, and token counts.
+
+    Args:
+        mocker: pytest-mock fixture (kept for backward compatibility).
+        content: Response content text.
+        tool_calls: Optional function-call output items.
+        refusal: Optional refusal message (for shield violations).
+        input_tokens: Input token count for usage.
+        output_tokens: Output token count for usage.
+
+    Returns:
+        ``OpenAIResponseObject`` with the specified configuration.
+    """
+    _ = mocker
+    return make_openai_response_object(
+        content=content,
+        tool_calls=tool_calls,
+        refusal=refusal,
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+    )
 
 
 def create_mock_vector_store_response(
@@ -795,25 +842,9 @@ def mock_ogx_client_fixture(
     mock_client = mocker.AsyncMock()
 
     # Mock responses.create with default assistant response
-    mock_response = mocker.MagicMock(spec=OpenAIResponseObject)
-    mock_response.id = "response-123"
-
-    mock_output_item = mocker.MagicMock()
-    mock_output_item.type = "message"
-    mock_output_item.role = "assistant"
-    mock_output_item.content = "This is a test response about Ansible."
-    mock_output_item.refusal = None
-
-    mock_response.output = [mock_output_item]
-    mock_response.stop_reason = "end_turn"
-    mock_response.tool_calls = []
-
-    mock_usage = mocker.MagicMock()
-    mock_usage.input_tokens = 10
-    mock_usage.output_tokens = 5
-    mock_response.usage = mock_usage
-
-    mock_client.responses.create.return_value = mock_response
+    mock_client.responses.create = mocker.AsyncMock(
+        return_value=make_openai_response_object()
+    )
 
     # Mock openai.list
     mock_client.openai.list.return_value = make_openai_models_list_response(

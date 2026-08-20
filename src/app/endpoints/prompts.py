@@ -28,6 +28,7 @@ from models.api.responses.successful import (
 )
 from models.config import Action
 from utils.endpoints import check_configuration_loaded
+from utils.ogx_serialization import dump_ogx_model
 from utils.query import handle_known_apistatus_errors
 from utils.suid import check_suid_prompt
 
@@ -136,7 +137,7 @@ async def create_prompt_handler(
         client = AsyncOgxClientHolder().get_client()
         payload = body.model_dump(exclude_none=True)
         created = await client.prompts.create(**payload)
-        return PromptResourceResponse.model_validate(created.model_dump())
+        return PromptResourceResponse.model_validate(dump_ogx_model(created))
     except ApiException as e:
         if not e.status:
             logger.error("Unable to connect to Llama Stack: %s", e)
@@ -185,7 +186,7 @@ async def list_prompts_handler(
     try:
         client = AsyncOgxClientHolder().get_client()
         items = await client.prompts.list()
-        data = [PromptResourceResponse.model_validate(p.model_dump()) for p in items]
+        data = [PromptResourceResponse.model_validate(dump_ogx_model(p)) for p in items]
         return PromptsListResponse(data=data)
     except ApiException as e:
         if not e.status:
@@ -246,7 +247,7 @@ async def get_prompt_handler(
     try:
         client = AsyncOgxClientHolder().get_client()
         retrieved = await client.prompts.retrieve(prompt_id, version=version)
-        return PromptResourceResponse.model_validate(retrieved.model_dump())
+        return PromptResourceResponse.model_validate(dump_ogx_model(retrieved))
     except (BadRequestError, ValueError) as e:
         logger.error("Prompt not found: %s", e)
         response = NotFoundResponse(resource="prompt", resource_id=prompt_id)
@@ -316,7 +317,7 @@ async def update_prompt_handler(
         client = AsyncOgxClientHolder().get_client()
         payload = body.model_dump(exclude_none=True, exclude_unset=True)
         updated = await client.prompts.update(prompt_id, **payload)
-        return PromptResourceResponse.model_validate(updated.model_dump())
+        return PromptResourceResponse.model_validate(dump_ogx_model(updated))
     except (BadRequestError, ValueError) as e:
         logger.error("Prompt update failed: %s", e)
         response = NotFoundResponse(resource="prompt", resource_id=prompt_id)

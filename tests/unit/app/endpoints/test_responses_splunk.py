@@ -384,7 +384,7 @@ class TestSplunkTelemetryHooks:
         mock_api_response.usage = mocker.Mock(
             input_tokens=100, output_tokens=50, total_tokens=150
         )
-        mock_api_response.model_dump.return_value = {
+        serialized_response = {
             "id": "resp_1",
             "object": "response",
             "created_at": 0,
@@ -400,6 +400,7 @@ class TestSplunkTelemetryHooks:
             },
         }
         mock_client.responses.create = mocker.AsyncMock(return_value=mock_api_response)
+        mocker.patch(f"{MODULE}.dump_ogx_model", return_value=serialized_response)
 
         _patch_handle_non_streaming_common(mocker, minimal_config)
         mocker.patch(
@@ -613,7 +614,7 @@ class TestSplunkTelemetryHooks:
         mock_chunk.response.usage = mocker.Mock(
             input_tokens=100, output_tokens=50, total_tokens=150
         )
-        mock_chunk.model_dump.return_value = {
+        serialized_chunk = {
             "type": "response.completed",
             "response": {
                 "id": "r1",
@@ -626,6 +627,7 @@ class TestSplunkTelemetryHooks:
             yield mock_chunk
 
         mock_client.responses.create = mocker.AsyncMock(return_value=mock_stream())
+        mocker.patch(f"{MODULE}.dump_ogx_model", return_value=serialized_chunk)
 
         mocker.patch(f"{MODULE}.configuration", minimal_config)
         mocker.patch(f"{MODULE}.get_available_quotas", return_value={})

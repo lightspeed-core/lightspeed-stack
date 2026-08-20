@@ -11,6 +11,7 @@ from typing import Any
 import pytest
 from fastapi import Request
 from fastapi.responses import StreamingResponse
+from ogx_client.models.open_ai_response_object import OpenAIResponseObject
 from pytest_mock import MockerFixture
 from sqlalchemy.orm import Session
 
@@ -43,6 +44,7 @@ _RESPONSE_DUMP: dict[str, Any] = {
     "created_at": 1700000000,
     "status": "completed",
     "model": "test-provider/test-model",
+    "store": False,
     "output": [
         {
             "type": "message",
@@ -77,21 +79,9 @@ def _build_mock_client(mocker: MockerFixture) -> Any:
     """
     mock_client = mocker.AsyncMock()
 
-    mock_response = mocker.MagicMock()
-    mock_response.id = "resp_integ_test"
-    mock_output = mocker.MagicMock()
-    mock_output.type = "message"
-    mock_output.role = "assistant"
-    mock_output.content = "Ansible is an automation tool."
-    mock_output.refusal = None
-    mock_response.output = [mock_output]
-    mock_response.usage = mocker.MagicMock()
-    mock_response.usage.input_tokens = 10
-    mock_response.usage.output_tokens = 5
-    mock_response.status = "completed"
-    mock_response.model = "test-provider/test-model"
-    mock_response.model_dump.return_value = _RESPONSE_DUMP.copy()
-    mock_client.responses.create = mocker.AsyncMock(return_value=mock_response)
+    mock_client.responses.create = mocker.AsyncMock(
+        return_value=OpenAIResponseObject.from_dict(_RESPONSE_DUMP)
+    )
 
     mock_client.openai.list.return_value = make_openai_models_list_response(
         make_openai_model()
