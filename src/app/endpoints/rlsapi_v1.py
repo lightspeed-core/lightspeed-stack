@@ -63,7 +63,7 @@ from utils.responses import (
     get_mcp_tools,
 )
 from utils.rh_identity import AUTH_DISABLED, get_rh_identity_context
-from utils.shields import run_shield_moderation_v2
+from utils.shields import run_output_shield_moderation, run_shield_moderation_v2
 from utils.suid import get_suid
 
 logger = get_logger(__name__)
@@ -794,6 +794,16 @@ async def infer_endpoint(  # pylint: disable=R0914,R0915
     if not response_text:
         logger.warning("Empty response from LLM for request %s", request_id)
         response_text = constants.UNABLE_TO_PROCESS_RESPONSE
+
+    # Run output shields on LLM response (OFFSEC-310 / LCORE-2750).
+    # Detects non-technical content (creative writing, persona roleplay)
+    # that bypassed input filters.
+    output_moderation = await run_output_shield_moderation(
+        response_text, configuration.configuration.output_shields
+    )
+    if output_moderation.decision == "blocked":
+        logger.info("Output shield blocked response for request %s", request_id)
+        response_text = output_moderation.message
 
     # Consume quota tokens after successful inference.
     if quota_id is not None:

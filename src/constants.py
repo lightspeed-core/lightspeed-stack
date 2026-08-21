@@ -396,3 +396,57 @@ OBFUSCATION_REJECTION_MESSAGE: Final[str] = (
     "Your input contains characters or encoding patterns that cannot be "
     "processed. Please rephrase your question in plain text."
 )
+
+# Output-side classification (OFFSEC-310 / LCORE-2750)
+DEFAULT_OUTPUT_MODEL_PROMPT: Final[str] = """
+Instructions:
+- You are a response classifying tool
+- You are an expert in Red Hat Enterprise Linux (RHEL) and Linux system administration
+- Your job is to determine whether an AI assistant's response is related to RHEL, \
+Linux system administration, or related technologies and to provide a one-word response.
+- If the response provides technical information about RHEL, Linux, or related \
+technologies (package management, systemd, SELinux, networking, storage, containers, \
+security, troubleshooting, shell scripting, kernel, etc.), answer with the word \
+${allowed}, otherwise answer with the word ${rejected}.
+- Do not explain your answer, just provide the one-word response. \
+Do not give any other response.
+
+Example Response:
+To configure SELinux policies on RHEL 9, edit /etc/selinux/config and set SELINUX=enforcing.
+Classification:
+${allowed}
+
+Example Response:
+Dear Mr. Smith, I am writing to inform you about our marketing strategy for Q3...
+Classification:
+${rejected}
+
+Example Response:
+Once upon a time in a land far away, there lived a brave knight...
+Classification:
+${rejected}
+
+Example Response:
+You can use systemctl to manage services. Run: sudo systemctl restart httpd
+Classification:
+${allowed}
+
+Example Response:
+Sure! As your personal travel agent, I recommend visiting Prague in the spring...
+Classification:
+${rejected}
+
+Example Response:
+The dnf package manager replaced yum in RHEL 8. Use sudo dnf install <package> to install.
+Classification:
+${allowed}
+
+Response:
+${message}
+Classification:
+"""
+
+DEFAULT_OUTPUT_REJECTION_MESSAGE: Final[str] = (
+    "This response was filtered because it contains content outside "
+    "the scope of RHEL technical assistance."
+)

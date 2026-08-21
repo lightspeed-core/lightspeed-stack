@@ -3320,9 +3320,21 @@ class Configuration(ConfigurationBase):
         "and a type-specific 'config'.",
     )
 
+    output_shields: list[ShieldConfiguration] = Field(
+        default_factory=list,
+        title="Output shields configuration",
+        description="Shields that run on LLM output before returning to the "
+        "user. Same format as input shields but applied post-inference. "
+        "Typically uses question_validity with an output-classification "
+        "prompt to detect non-technical or off-topic responses.",
+    )
+
     @model_validator(mode="after")
     def validate_shield_names_unique(self) -> Self:
         """Reject shields lists containing duplicate names.
+
+        Checks both input shields and output shields, and ensures no
+        name collision across the two lists.
 
         Returns:
             Self: The model instance after validation.
@@ -3330,12 +3342,54 @@ class Configuration(ConfigurationBase):
         Raises:
             ValueError: If two or more shields share the same name.
         """
-        names = [shield.name for shield in self.shields]
-        duplicates = {name for name in names if names.count(name) > 1}
+        all_shields = list(self.shields) + list(self.output_shields)
+        seen: set[str] = set()
+        duplicates: set[str] = set()
+        for shield in all_shields:
+            if shield.name in seen:
+                duplicates.add(shield.name)
+            seen.add(shield.name)
         if duplicates:
             raise ValueError(
                 f"Shield names must be unique, found duplicates: {sorted(duplicates)}"
             )
+        return self
+
+    @model_validator(mode="after")
+    def validate_output_shield_prompts_explicit(self) -> Self:
+        """Require explicit model_prompt and invalid_question_response for output shields.
+
+        Output shields use the same QuestionValidityConfig as input shields,
+        but the input-side defaults (DEFAULT_MODEL_PROMPT and
+        DEFAULT_INVALID_QUESTION_RESPONSE) are inappropriate for output
+        classification. This validator ensures that output shields explicitly
+        set both fields.
+
+        Returns:
+            Self: The model instance after validation.
+
+        Raises:
+            ValueError: If an output shield uses input-side default prompt
+                or rejection message.
+        """
+        for shield in self.output_shields:
+            if not isinstance(shield.config, QuestionValidityConfig):
+                continue
+            if shield.config.model_prompt == constants.DEFAULT_MODEL_PROMPT:
+                raise ValueError(
+                    f"Output shield '{shield.name}' must explicitly set "
+                    f"'model_prompt' — the input-side default prompt is not "
+                    f"suitable for output classification."
+                )
+            if (
+                shield.config.invalid_question_response
+                == constants.DEFAULT_INVALID_QUESTION_RESPONSE
+            ):
+                raise ValueError(
+                    f"Output shield '{shield.name}' must explicitly set "
+                    f"'invalid_question_response' — the input-side default "
+                    f"rejection message is not suitable for output classification."
+                )
         return self
 
     @model_validator(mode="after")

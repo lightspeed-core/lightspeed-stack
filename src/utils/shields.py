@@ -127,6 +127,57 @@ async def run_shield_moderation_v2(
     return ShieldModerationPassed()
 
 
+async def run_output_shield_moderation(
+    response_text: str,
+    output_shield_configs: list[ShieldConfiguration],
+) -> ShieldModerationResult:
+    """Run shield moderation on LLM output text.
+
+    Iterates through configured output shields and checks the LLM
+    response for non-technical or off-topic content before it is
+    returned to the user.
+
+    Addresses pentest finding OFFSEC-310 (LCORE-2750): the model can
+    be manipulated into generating creative content outside its intended
+    scope as a RHEL technical assistant.
+
+    Parameters:
+        response_text: The LLM response text to classify.
+        output_shield_configs: List of output shield configurations.
+
+    Returns:
+        Result indicating if the output was blocked or passed.
+    """
+    if not output_shield_configs:
+        return ShieldModerationPassed()
+
+    for shield_config in output_shield_configs:
+        shield = build_shield(shield_config)
+
+        try:
+            shield_result = await shield.run(response_text)
+        except (AgentRunError, RuntimeError) as exc:
+            model_id = getattr(shield_config.config, "model_id", "unknown-shield-model")
+            logger.warning(
+                "Output shield %s failed (model=%s): %s",
+                shield_config.name,
+                model_id,
+                exc,
+            )
+            # Don't block the response if the output shield itself fails —
+            # return the original response rather than an error.
+            continue
+
+        if shield_result.decision == "blocked":
+            logger.info(
+                "Output shield %s blocked response",
+                shield_config.name,
+            )
+            return shield_result
+
+    return ShieldModerationPassed()
+
+
 def build_shield(shield_config: ShieldConfiguration) -> AbstractSafetyCapability:
     """Build a safety capability instance from a shield configuration.
 
