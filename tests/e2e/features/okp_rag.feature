@@ -147,7 +147,7 @@ Feature: OKP(Solr) RAG retrieval tests
   Scenario Outline: <mode> streaming query API with OKP tool RAG has rag_chunk and referenced_documents returned
     Given The service uses the <config> configuration
       And The service is restarted
-    When I use "query" to ask question with authorization header
+    When I use "streaming_query" to ask question with authorization header
     """
     {
       "query": "configure remote desktop using gnome",
