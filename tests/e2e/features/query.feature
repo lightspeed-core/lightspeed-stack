@@ -292,7 +292,7 @@ Scenario: Check if LLM responds for query request with error for missing query
     """
     Then The status code of the response is 200
      And The response contains no rag_chunks
-     And The response contains no reference_documents
+     And The response contains no referenced_documents
   @cfg_okp
   @skip
   Scenario: Streaming query returns no referenced_documents when OKP is disabled
