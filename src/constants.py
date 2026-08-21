@@ -233,6 +233,9 @@ DEFAULT_RAG_TOOL: Final[str] = "file_search"
 # Score multiplier applied to BYOK chunks after cross-encoder reranking (Solr chunks unchanged)
 BYOK_RAG_RERANK_BOOST: Final[float] = 1.2
 
+# Default minimum raw similarity per BYOK store
+DEFAULT_BYOK_RAG_RELEVANCE_CUTOFF_SCORE: Final[float] = 0.3
+
 # Solr OKP constants
 SOLR_VECTOR_SEARCH_DEFAULT_K: Final[int] = 5
 SOLR_VECTOR_SEARCH_DEFAULT_SCORE_THRESHOLD: Final[float] = 0.3
@@ -387,3 +390,9 @@ SAVED_PROMPTS_MAX_DISPLAY_NAME_LENGTH_UPPER_BOUND: Final[int] = (
 )
 SAVED_PROMPTS_DEFAULT_MAX_CONTENT_LENGTH: Final[int] = 10_000
 SAVED_PROMPTS_MAX_CONTENT_LENGTH_UPPER_BOUND: Final[int] = 30_000
+
+# Input sanitization (OFFSEC-307 / LCORE-2749)
+OBFUSCATION_REJECTION_MESSAGE: Final[str] = (
+    "Your input contains characters or encoding patterns that cannot be "
+    "processed. Please rephrase your question in plain text."
+)

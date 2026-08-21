@@ -35,10 +35,10 @@ external_providers_dir: ${env.EXTERNAL_PROVIDERS_DIR:=~/.llama/providers.d}
 
 providers:
   inference:
-  - provider_id: openai
+  - provider_id: ${env.OPENAI_API_KEY:+openai}
     provider_type: remote::openai
     config:
-      api_key: ${env.OPENAI_API_KEY}
+      api_key: ${env.OPENAI_API_KEY:=}
       allowed_models: ["${env.E2E_OPENAI_MODEL:=gpt-4o-mini}"]
   - provider_id: sentence-transformers
     provider_type: inline::sentence-transformers

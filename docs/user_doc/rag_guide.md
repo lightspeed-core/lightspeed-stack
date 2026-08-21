@@ -252,7 +252,7 @@ podman run \
 > For other supported models and configuration options, see the vLLM documentation:
 > [vLLM: Tool Calling](https://docs.vllm.ai/en/stable/features/tool_calling.html)
 
-After starting the container, configure the vLLM provider in your `run.yaml`, matching `model_id` with the model provided in the `podman run` command.
+After starting the container, configure the vLLM provider in your synthesis profile / baseline `run.yaml` (unified mode) or external `run.yaml` (deprecated legacy mode), matching `model_id` with the model provided in the `podman run` command.
 
 ```yaml
 [...]
@@ -275,7 +275,7 @@ providers:
 
 ### OpenAI example
 
-Add a provider for your language model in your `run.yaml` (e.g., OpenAI):
+Add a provider for your language model in your synthesis profile / baseline `run.yaml` (e.g., OpenAI):
 
 ```yaml
 models:

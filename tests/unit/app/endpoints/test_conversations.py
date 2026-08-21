@@ -9,6 +9,10 @@ from typing import Any, Optional
 import pytest
 from fastapi import HTTPException, Request, status
 from ogx_client import APIConnectionError, APIStatusError, NotFoundError
+from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
+    InMemorySpanExporter,
+)
+from opentelemetry.trace import StatusCode
 from pytest_mock import MockerFixture, MockType
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -30,6 +34,7 @@ from models.api.responses.successful import (
     ConversationsListResponse,
     ConversationUpdateResponse,
 )
+from models.common import ConversationTurn, Message
 from models.config import Action
 from models.database.conversations import UserConversation, UserTurn
 from tests.unit.utils.auth_helpers import mock_authorization_resolvers
@@ -2162,3 +2167,364 @@ class TestUpdateConversationEndpoint:
         detail = exc_info.value.detail
         assert isinstance(detail, dict)
         assert "Database" in detail["response"]  # pyright: ignore[reportArgumentType]
+
+
+class TestConversationsV1Otel:
+    """OTEL instrumentation tests for conversations v1 endpoints."""
+
+    @pytest.mark.asyncio
+    async def test_list_span_on_success(
+        self,
+        mocker: MockerFixture,
+        setup_configuration: AppConfig,
+        dummy_request: Request,
+        otel: tuple[Any, InMemorySpanExporter],
+    ) -> None:
+        """Test that listing conversations emits a span with count."""
+        tracer, exporter = otel
+        mocker.patch("app.endpoints.conversations_v1.tracer", tracer)
+        mock_authorization_resolvers(mocker)
+        mocker.patch(
+            "app.endpoints.conversations_v1.configuration", setup_configuration
+        )
+
+        mock_conversations = [
+            create_mock_conversation(
+                mocker,
+                VALID_CONVERSATION_ID,
+                "2024-01-01T00:00:00Z",
+                "2024-01-01T00:05:00Z",
+                5,
+                "model",
+                "provider",
+            ),
+        ]
+        mock_database_session(mocker, mock_conversations)
+
+        response = await get_conversations_list_endpoint_handler(
+            auth=MOCK_AUTH, request=dummy_request
+        )
+
+        assert isinstance(response, ConversationsListResponse)
+        spans = exporter.get_finished_spans()
+        assert len(spans) == 1
+        span = spans[0]
+        assert span.name == "conversations_v1.list"
+        assert span.attributes["conversations.count"] == 1
+
+    @pytest.mark.asyncio
+    async def test_list_span_records_error(
+        self,
+        mocker: MockerFixture,
+        dummy_request: Request,
+        otel: tuple[Any, InMemorySpanExporter],
+    ) -> None:
+        """Test that the list span records an error when config is not loaded."""
+        tracer, exporter = otel
+        mocker.patch("app.endpoints.conversations_v1.tracer", tracer)
+        mock_authorization_resolvers(mocker)
+
+        mock_config = AppConfig()
+        mocker.patch("app.endpoints.conversations_v1.configuration", mock_config)
+
+        with pytest.raises(HTTPException):
+            await get_conversations_list_endpoint_handler(
+                auth=MOCK_AUTH, request=dummy_request
+            )
+
+        spans = exporter.get_finished_spans()
+        assert len(spans) == 1
+        assert spans[0].name == "conversations_v1.list"
+        assert spans[0].status.status_code == StatusCode.ERROR
+
+    @pytest.mark.asyncio
+    async def test_get_span_on_success(  # pylint: disable=too-many-locals
+        self,
+        mocker: MockerFixture,
+        setup_configuration: AppConfig,
+        dummy_request: Request,
+        otel: tuple[Any, InMemorySpanExporter],
+    ) -> None:
+        """Test that getting a conversation emits a span with turn count."""
+        tracer, exporter = otel
+        mocker.patch("app.endpoints.conversations_v1.tracer", tracer)
+        mock_authorization_resolvers(mocker)
+        mocker.patch(
+            "app.endpoints.conversations_v1.configuration", setup_configuration
+        )
+        mocker.patch("app.endpoints.conversations_v1.check_suid", return_value=True)
+        mocker.patch(
+            "app.endpoints.conversations_v1.normalize_conversation_id",
+            return_value=VALID_CONVERSATION_ID,
+        )
+
+        mock_conversation = mocker.Mock()
+        mock_conversation.created_at = datetime(2024, 1, 1, tzinfo=UTC)
+        mocker.patch(
+            "app.endpoints.conversations_v1.validate_and_retrieve_conversation",
+            return_value=mock_conversation,
+        )
+
+        mocker.patch(
+            "app.endpoints.conversations_v1.AsyncOgxClientHolder"
+        ).return_value.get_client.return_value = mocker.AsyncMock()
+
+        mocker.patch(
+            "app.endpoints.conversations_v1.to_llama_stack_conversation_id",
+            return_value=f"conv_{VALID_CONVERSATION_ID}",
+        )
+
+        mock_database_session(mocker, db_turns=[create_mock_db_turn(mocker, 1)])
+
+        mocker.patch(
+            "app.endpoints.conversations_v1.get_all_conversation_items",
+            return_value=[mocker.Mock(), mocker.Mock()],
+        )
+
+        mock_turns = [
+            ConversationTurn(
+                messages=[
+                    Message(content="q1", type="user", referenced_documents=None),
+                    Message(content="r1", type="assistant", referenced_documents=None),
+                ],
+                provider="p",
+                model="m",
+                started_at="2024-01-01T00:00:00Z",
+                completed_at="2024-01-01T00:00:05Z",
+            ),
+            ConversationTurn(
+                messages=[
+                    Message(content="q2", type="user", referenced_documents=None),
+                    Message(content="r2", type="assistant", referenced_documents=None),
+                ],
+                provider="p",
+                model="m",
+                started_at="2024-01-01T00:00:06Z",
+                completed_at="2024-01-01T00:00:10Z",
+            ),
+        ]
+        mocker.patch(
+            "app.endpoints.conversations_v1.build_conversation_turns_from_items",
+            return_value=mock_turns,
+        )
+
+        response = await get_conversation_endpoint_handler(
+            request=dummy_request,
+            conversation_id=VALID_CONVERSATION_ID,
+            auth=MOCK_AUTH,
+        )
+
+        assert isinstance(response, ConversationResponse)
+        spans = exporter.get_finished_spans()
+        assert len(spans) == 1
+        span = spans[0]
+        assert span.name == "conversations_v1.get"
+        assert span.attributes["conversations.found"] is True
+        assert span.attributes["conversations.turns.count"] == 2
+
+    @pytest.mark.asyncio
+    async def test_get_span_records_error_on_connection_failure(
+        self,
+        mocker: MockerFixture,
+        setup_configuration: AppConfig,
+        dummy_request: Request,
+        otel: tuple[Any, InMemorySpanExporter],
+    ) -> None:
+        """Test that the get span records an error on API connection failure."""
+        tracer, exporter = otel
+        mocker.patch("app.endpoints.conversations_v1.tracer", tracer)
+        mock_authorization_resolvers(mocker)
+        mocker.patch(
+            "app.endpoints.conversations_v1.configuration", setup_configuration
+        )
+        mocker.patch("app.endpoints.conversations_v1.check_suid", return_value=True)
+        mocker.patch(
+            "app.endpoints.conversations_v1.normalize_conversation_id",
+            return_value=VALID_CONVERSATION_ID,
+        )
+        mocker.patch(
+            "app.endpoints.conversations_v1.validate_and_retrieve_conversation",
+            return_value=mocker.Mock(),
+        )
+        mocker.patch(
+            "app.endpoints.conversations_v1.AsyncOgxClientHolder"
+        ).return_value.get_client.side_effect = APIConnectionError(
+            request=mocker.Mock()
+        )
+
+        mock_database_session(mocker)
+
+        with pytest.raises(HTTPException):
+            await get_conversation_endpoint_handler(
+                request=dummy_request,
+                conversation_id=VALID_CONVERSATION_ID,
+                auth=MOCK_AUTH,
+            )
+
+        spans = exporter.get_finished_spans()
+        assert len(spans) == 1
+        assert spans[0].name == "conversations_v1.get"
+        assert spans[0].status.status_code == StatusCode.ERROR
+
+    @pytest.mark.asyncio
+    async def test_delete_span_on_success(
+        self,
+        mocker: MockerFixture,
+        setup_configuration: AppConfig,
+        dummy_request: Request,
+        otel: tuple[Any, InMemorySpanExporter],
+    ) -> None:
+        """Test that deleting a conversation emits a span with deleted flag."""
+        tracer, exporter = otel
+        mocker.patch("app.endpoints.conversations_v1.tracer", tracer)
+        mock_authorization_resolvers(mocker)
+        mocker.patch(
+            "app.endpoints.conversations_v1.configuration", setup_configuration
+        )
+        mocker.patch("app.endpoints.conversations_v1.check_suid", return_value=True)
+        mocker.patch(
+            "app.endpoints.conversations_v1.normalize_conversation_id",
+            return_value=VALID_CONVERSATION_ID,
+        )
+
+        mock_database_session(mocker)
+        mocker.patch("utils.endpoints.delete_conversation", return_value=True)
+        mocker.patch(
+            "app.endpoints.conversations_v1.delete_conversation", return_value=True
+        )
+
+        mock_client = mocker.AsyncMock()
+        mock_client.conversations.delete.return_value = mocker.Mock(deleted=True)
+        mocker.patch(
+            "app.endpoints.conversations_v1.AsyncOgxClientHolder"
+        ).return_value.get_client.return_value = mock_client
+
+        mocker.patch(
+            "app.endpoints.conversations_v1.to_llama_stack_conversation_id",
+            return_value=f"conv_{VALID_CONVERSATION_ID}",
+        )
+
+        response = await delete_conversation_endpoint_handler(
+            request=dummy_request,
+            conversation_id=VALID_CONVERSATION_ID,
+            auth=MOCK_AUTH,
+        )
+
+        assert isinstance(response, ConversationDeleteResponse)
+        spans = exporter.get_finished_spans()
+        assert len(spans) == 1
+        span = spans[0]
+        assert span.name == "conversations_v1.delete"
+        assert span.attributes["conversations.deleted"] is True
+
+    @pytest.mark.asyncio
+    async def test_delete_span_records_error(
+        self,
+        mocker: MockerFixture,
+        dummy_request: Request,
+        otel: tuple[Any, InMemorySpanExporter],
+    ) -> None:
+        """Test that the delete span records an error when config is not loaded."""
+        tracer, exporter = otel
+        mocker.patch("app.endpoints.conversations_v1.tracer", tracer)
+        mock_authorization_resolvers(mocker)
+
+        mock_config = AppConfig()
+        mocker.patch("app.endpoints.conversations_v1.configuration", mock_config)
+
+        with pytest.raises(HTTPException):
+            await delete_conversation_endpoint_handler(
+                request=dummy_request,
+                conversation_id=VALID_CONVERSATION_ID,
+                auth=MOCK_AUTH,
+            )
+
+        spans = exporter.get_finished_spans()
+        assert len(spans) == 1
+        assert spans[0].name == "conversations_v1.delete"
+        assert spans[0].status.status_code == StatusCode.ERROR
+
+    @pytest.mark.asyncio
+    async def test_update_span_on_success(
+        self,
+        mocker: MockerFixture,
+        setup_configuration: AppConfig,
+        dummy_request: Request,
+        otel: tuple[Any, InMemorySpanExporter],
+    ) -> None:
+        """Test that updating a conversation emits a span with updated flag."""
+        tracer, exporter = otel
+        mocker.patch("app.endpoints.conversations_v1.tracer", tracer)
+        mock_authorization_resolvers(mocker)
+        mocker.patch(
+            "app.endpoints.conversations_v1.configuration", setup_configuration
+        )
+        mocker.patch("app.endpoints.conversations_v1.check_suid", return_value=True)
+        mocker.patch(
+            "app.endpoints.conversations_v1.normalize_conversation_id",
+            return_value=VALID_CONVERSATION_ID,
+        )
+
+        mock_conversation = mocker.Mock()
+        mocker.patch(
+            "app.endpoints.conversations_v1.retrieve_conversation",
+            return_value=mock_conversation,
+        )
+
+        mock_database_session(mocker)
+
+        mock_client = mocker.AsyncMock()
+        mocker.patch(
+            "app.endpoints.conversations_v1.AsyncOgxClientHolder"
+        ).return_value.get_client.return_value = mock_client
+
+        mocker.patch(
+            "app.endpoints.conversations_v1.to_llama_stack_conversation_id",
+            return_value=f"conv_{VALID_CONVERSATION_ID}",
+        )
+
+        update_request = ConversationUpdateRequest(topic_summary="New topic")
+
+        response = await update_conversation_endpoint_handler(
+            request=dummy_request,
+            conversation_id=VALID_CONVERSATION_ID,
+            update_request=update_request,
+            auth=MOCK_AUTH,
+        )
+
+        assert isinstance(response, ConversationUpdateResponse)
+        spans = exporter.get_finished_spans()
+        assert len(spans) == 1
+        span = spans[0]
+        assert span.name == "conversations_v1.update"
+        assert span.attributes["conversations.updated"] is True
+
+    @pytest.mark.asyncio
+    async def test_update_span_records_error(
+        self,
+        mocker: MockerFixture,
+        dummy_request: Request,
+        otel: tuple[Any, InMemorySpanExporter],
+    ) -> None:
+        """Test that the update span records an error when config is not loaded."""
+        tracer, exporter = otel
+        mocker.patch("app.endpoints.conversations_v1.tracer", tracer)
+        mock_authorization_resolvers(mocker)
+
+        mock_config = AppConfig()
+        mocker.patch("app.endpoints.conversations_v1.configuration", mock_config)
+
+        update_request = ConversationUpdateRequest(topic_summary="New topic")
+
+        with pytest.raises(HTTPException):
+            await update_conversation_endpoint_handler(
+                request=dummy_request,
+                conversation_id=VALID_CONVERSATION_ID,
+                update_request=update_request,
+                auth=MOCK_AUTH,
+            )
+
+        spans = exporter.get_finished_spans()
+        assert len(spans) == 1
+        assert spans[0].name == "conversations_v1.update"
+        assert spans[0].status.status_code == StatusCode.ERROR

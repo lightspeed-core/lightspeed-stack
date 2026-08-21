@@ -841,8 +841,12 @@ class LlamaStackConfiguration(ConfigurationBase):
 
     library_client_config_path: Optional[str] = Field(
         None,
-        title="Llama Stack configuration path",
-        description="Path to configuration file used when Llama Stack is run in library mode",
+        title="Llama Stack configuration path (legacy, deprecated)",
+        description="Path to configuration file used when Llama Stack is run "
+        "in library mode. DEPRECATED legacy two-file setup: logs a startup "
+        "warning since 0.6 and is removed in 0.7 — use unified mode instead "
+        "(the config block below, and/or the root-level inference.providers "
+        "section); migrate with lightspeed-stack --migrate-config.",
     )
 
     timeout: PositiveInt = Field(
@@ -2088,6 +2092,14 @@ class RagStore(ConfigurationBase):
         description="Multiplier applied to relevance scores from this vector store. "
         "Used to weight results when querying multiple knowledge sources. "
         "Values > 1 boost this store's results; values < 1 reduce them.",
+    )
+
+    relevance_cutoff_score: float = Field(
+        constants.DEFAULT_BYOK_RAG_RELEVANCE_CUTOFF_SCORE,
+        gt=0,
+        title="Relevance cutoff score",
+        description="Minimum raw similarity score to consider a result relevant. "
+        "Results with a similarity score below this threshold are not returned.",
     )
 
     host: Optional[str] = Field(

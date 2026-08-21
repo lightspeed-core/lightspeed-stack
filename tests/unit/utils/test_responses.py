@@ -53,6 +53,9 @@ from ogx_api.openai_responses import (
 from ogx_client import APIConnectionError, APIStatusError, AsyncOgxClient
 from ogx_client.types import ListModelsResponse
 from ogx_client.types.model import Model
+from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
+    InMemorySpanExporter,
+)
 from pydantic import AnyUrl, BaseModel
 from pytest_mock import MockerFixture
 
@@ -66,6 +69,7 @@ from models.config import (
     ModelContextProtocolServer,
     RagStore,
 )
+from utils.otel_tracing import SpanAttributes, SpanEvents
 from utils.query import normalize_vertex_ai_model_id
 from utils.responses import (
     _build_chunk_attributes,
@@ -84,6 +88,7 @@ from utils.responses import (
     get_rag_tools,
     get_topic_summary,
     is_server_deployed_output,
+    maybe_get_topic_summary,
     parse_arguments_string,
     parse_referenced_documents,
     prepare_responses_params,
@@ -1012,6 +1017,81 @@ class TestGetTopicSummary:
 
         with pytest.raises(HTTPException):
             await get_topic_summary("test question", mock_client, "model1")
+
+
+class TestMaybeGetTopicSummaryOtel:
+    """OpenTelemetry events/attributes for maybe_get_topic_summary."""
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("success", "expect_attr"),
+        [(True, True), (False, False)],
+    )
+    async def test_emits_started_success_and_finished(
+        self,
+        success: bool,
+        expect_attr: bool,
+        mocker: MockerFixture,
+        otel: tuple[Any, InMemorySpanExporter],
+    ) -> None:
+        """Topic summary span records success attr and started/finished events."""
+        tracer, exporter = otel
+        mocker.patch("utils.responses.tracer", tracer)
+        if success:
+            mocker.patch(
+                "utils.responses.get_topic_summary",
+                new=mocker.AsyncMock(return_value="Topic"),
+            )
+            result = await maybe_get_topic_summary(
+                True, "hello", mocker.AsyncMock(), "provider/model"
+            )
+            assert result == "Topic"
+        else:
+            mocker.patch(
+                "utils.responses.get_topic_summary",
+                new=mocker.AsyncMock(side_effect=RuntimeError("boom")),
+            )
+            with pytest.raises(RuntimeError, match="boom"):
+                await maybe_get_topic_summary(
+                    True, "hello", mocker.AsyncMock(), "provider/model"
+                )
+
+        span = next(
+            span
+            for span in exporter.get_finished_spans()
+            if span.name == "topic.summary"
+        )
+        assert span.attributes is not None
+        assert span.attributes[SpanAttributes.TOPIC_SUMMARY_SUCCESS] is expect_attr
+        event_names = [event.name for event in span.events]
+        assert SpanEvents.TOPIC_SUMMARY_TASK_STARTED in event_names
+        assert SpanEvents.TOPIC_SUMMARY_TASK_FINISHED in event_names
+        if success:
+            assert event_names == [
+                SpanEvents.TOPIC_SUMMARY_TASK_STARTED,
+                SpanEvents.TOPIC_SUMMARY_TASK_FINISHED,
+            ]
+        else:
+            assert event_names.index(
+                SpanEvents.TOPIC_SUMMARY_TASK_STARTED
+            ) < event_names.index(SpanEvents.TOPIC_SUMMARY_TASK_FINISHED)
+
+    @pytest.mark.asyncio
+    async def test_disabled_emits_no_span(
+        self,
+        mocker: MockerFixture,
+        otel: tuple[Any, InMemorySpanExporter],
+    ) -> None:
+        """Disabled topic summary does not create a span."""
+        tracer, exporter = otel
+        mocker.patch("utils.responses.tracer", tracer)
+        result = await maybe_get_topic_summary(
+            False, "hello", mocker.AsyncMock(), "provider/model"
+        )
+        assert result is None
+        assert not [
+            s for s in exporter.get_finished_spans() if s.name == "topic.summary"
+        ]
 
 
 class TestResolveToolChoice:

@@ -191,5 +191,5 @@ class QuotaLimiter(ABC):
             if cursor is not None:
                 try:
                     cursor.close()
-                except Exception:  # pylint: disable=broad-exception-caught
+                except (psycopg2.Error, sqlite3.ProgrammingError):
                     logger.warning("Unable to close cursor")

@@ -1,2 +1,4 @@
+--index-url https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.5/cpu-ubi9/simple/
 uv==0.11.28
-pip==26.1
+pip==26.1.2
+maturin==1.14.1

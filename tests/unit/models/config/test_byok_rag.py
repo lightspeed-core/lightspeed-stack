@@ -4,6 +4,7 @@ import pytest
 from pydantic import ValidationError
 
 from constants import (
+    DEFAULT_BYOK_RAG_RELEVANCE_CUTOFF_SCORE,
     DEFAULT_EMBEDDING_DIMENSION,
     DEFAULT_EMBEDDING_MODEL,
     DEFAULT_RAG_BACKEND,
@@ -35,6 +36,7 @@ def test_rag_store_configuration_default_values() -> None:
     assert rag_store.vector_db_id == "vector_db_id"
     assert rag_store.db_path == "tests/configuration/rag.txt"
     assert rag_store.score_multiplier == DEFAULT_SCORE_MULTIPLIER
+    assert rag_store.relevance_cutoff_score == DEFAULT_BYOK_RAG_RELEVANCE_CUTOFF_SCORE
 
 
 def test_rag_store_configuration_nondefault_values() -> None:
@@ -54,6 +56,7 @@ def test_rag_store_configuration_nondefault_values() -> None:
         vector_db_id="vector_db_id",
         db_path="tests/configuration/rag.txt",
         score_multiplier=1.0,
+        relevance_cutoff_score=0.72,
     )
     assert rag_store is not None
     assert rag_store.rag_id == "rag_id"
@@ -62,6 +65,7 @@ def test_rag_store_configuration_nondefault_values() -> None:
     assert rag_store.embedding_dimension == 1024
     assert rag_store.vector_db_id == "vector_db_id"
     assert rag_store.db_path == "tests/configuration/rag.txt"
+    assert rag_store.relevance_cutoff_score == 0.72
 
 
 def test_rag_store_configuration_wrong_dimension() -> None:
@@ -211,6 +215,24 @@ def test_rag_store_configuration_score_multiplier_must_be_positive() -> None:
             embedding_dimension=1024,
             db_path="tests/configuration/rag.txt",
             score_multiplier=0.0,
+        )
+
+
+@pytest.mark.parametrize("bad_cutoff", [0.0, -0.5])
+def test_byok_rag_configuration_relevance_cutoff_must_be_positive(
+    bad_cutoff: float,
+) -> None:
+    """Test that relevance_cutoff_score must be greater than 0."""
+    with pytest.raises(ValidationError, match="greater than 0"):
+        _ = RagStore(
+            rag_id="rag_id",
+            backend="faiss",
+            vector_db_id="vector_db_id",
+            embedding_model="embedding_model",
+            embedding_dimension=1024,
+            db_path="tests/configuration/rag.txt",
+            score_multiplier=1.0,
+            relevance_cutoff_score=bad_cutoff,
         )
 
 

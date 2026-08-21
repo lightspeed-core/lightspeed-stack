@@ -685,13 +685,24 @@ service:
   access_log: true
 llama_stack:
   use_as_library_client: true
-  library_client_config_path: <path-to-llama-stack-run.yaml-file>
+  # Unified mode (recommended): LCORE synthesizes the Llama Stack run.yaml.
+  # Point profile at a run.yaml-shaped file you author, or omit the config
+  # block and drive everything from the top-level inference.providers
+  # section over the built-in default baseline.
+  config:
+    profile: <path-to-llama-stack-run.yaml-file>
 user_data_collection:
   feedback_enabled: true
   feedback_storage: "/tmp/data/feedback"
   transcripts_enabled: true
   transcripts_storage: "/tmp/data/transcripts"
 ```
+
+> [!WARNING]
+> The legacy two-file setup (`library_client_config_path:` pointing at an
+> externally maintained `run.yaml`) is deprecated — it logs a startup
+> warning since 0.6 and is removed in 0.7. See the
+> [migration guide](docs/user_doc/deployment_guide.md#migrating-from-the-legacy-two-file-configuration).
 
 ## Llama Stack version check
 
@@ -1048,7 +1059,11 @@ When embedding llama-stack directly in the container, use the existing `deploy/l
 ```yaml
 llama_stack:
   use_as_library_client: true
-  library_client_config_path: /app-root/run.yaml
+  # Unified mode: the mounted run.yaml is the synthesis profile. (The
+  # legacy library_client_config_path equivalent is deprecated, removed
+  # in 0.7.)
+  config:
+    profile: /app-root/run.yaml
 ```
 
 **Build and run**:

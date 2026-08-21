@@ -231,7 +231,14 @@ defaults), so the unified signal is `inference.providers` being
 No persistent storage is added. The synthesized `run.yaml` is written
 once per boot to a deterministic path; not a database. `src/data/
 default_run.yaml` is a new package-shipped file, the built-in baseline
-Llama Stack configuration.
+Llama Stack configuration. Its `remote::openai` inference provider uses
+Llama Stack's `${env.OPENAI_API_KEY:+openai}` / `${env.OPENAI_API_KEY:=}`
+conditional-provider idiom, so the built-in baseline contributes openai
+only when `OPENAI_API_KEY` is set. Synthesis leaves those refs
+unevaluated (R6); Llama Stack resolves them at boot. With the key unset
+or empty the provider is disabled (`provider_id` becomes `None`) and
+the stack loads without `EnvVarError`. With the key set, the resolved
+config matches the previous unconditional openai provider.
 
 ### Configuration
 
@@ -431,7 +438,7 @@ September 2026.
 |---|---|
 | `src/models/config.py` | Add `UnifiedInferenceProvider`. Extend the existing `InferenceConfiguration` with `providers: list[UnifiedInferenceProvider]`. Add `UnifiedLlamaStackConfig` (`baseline`/`profile`/`native_override`) and a `config` field on `LlamaStackConfiguration`. Put the unified-vs-legacy `model_validator` on the **root** `Configuration` model (spans `inference.providers` + `llama_stack.*`). |
 | `src/llama_stack_configuration.py` | Add `synthesize_configuration`, `deep_merge_list_replace`, `apply_high_level_inference`, `load_default_baseline`, `synthesize_to_file`, `migrate_config_dumb`, `PROVIDER_TYPE_MAP`, `DEFAULT_BASELINE_RESOURCE`. Update `main()` to auto-detect unified vs legacy. |
-| `src/data/default_run.yaml` | New file — a thinner baseline than today's repo-root `run.yaml`. Notably do **not** reference `${env.EXTERNAL_PROVIDERS_DIR}` without a default (see "Findings discovered during PoC" in the spike doc). |
+| `src/data/default_run.yaml` | New file — a thinner baseline than today's repo-root `run.yaml`. Notably do **not** reference `${env.EXTERNAL_PROVIDERS_DIR}` without a default (see "Findings discovered during PoC" in the spike doc). OpenAI is conditional on `OPENAI_API_KEY` (`${env.OPENAI_API_KEY:+openai}` / `${env.OPENAI_API_KEY:=}`). |
 | `src/client.py` | In `_load_library_client`: branch on `config.config` presence. Add `_synthesize_library_config()` that calls the synthesizer and writes to the deterministic path (R10). Keep `_enrich_library_config` for legacy. |
 | `src/lightspeed_stack.py` | Add `--migrate-config`, `--run-yaml`, `--migrate-output`, `--synthesized-config-output` flags. Add an early-exit branch in `main()` that dispatches to `migrate_config_dumb` when `--migrate-config` is set. Clean up stale docstring. |
 | `scripts/llama-stack-entrypoint.sh` | No functional change — the Python CLI already auto-detects. Update the comment to document both modes. |
@@ -545,6 +552,7 @@ reference.
 | Date | Change | Reason |
 |---|---|---|
 | 2026-04-23 | Initial version | Spike completion |
+| 2026-08-20 | Default baseline openai provider is conditional on `OPENAI_API_KEY` | LCORE-3607: `baseline: default` must load when the key is unset |
 
 ## Appendix A — Worked example: legacy → unified migration
 

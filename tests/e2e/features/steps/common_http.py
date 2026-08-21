@@ -10,6 +10,7 @@ from behave import (
     when,
 )  # pyright: ignore[reportAttributeAccessIssue]
 from behave.runner import Context
+from requests.exceptions import JSONDecodeError
 
 from tests.e2e.utils.utils import (
     http_response_json_or_responses_sse_terminal,
@@ -32,7 +33,7 @@ def check_status_code(context: Context, status: int) -> None:
         # Include response body in error message for debugging
         try:
             error_body = context.response.json()
-        except Exception:
+        except JSONDecodeError:
             error_body = context.response.text
         assert False, (
             f"Status code is {context.response.status_code}, expected {status}. "
@@ -49,7 +50,7 @@ def check_status_code_one_of(context: Context, first: int, second: int) -> None:
     if actual not in allowed:
         try:
             error_body = context.response.json()
-        except Exception:
+        except JSONDecodeError:
             error_body = context.response.text
         assert False, (
             f"Status code is {actual}, expected one of {sorted(allowed)}. "

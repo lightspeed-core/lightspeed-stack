@@ -7,6 +7,7 @@ the application with OpenTelemetry spans, attributes, and events.
 import hashlib
 import hmac
 import os
+from collections.abc import Mapping
 from enum import StrEnum
 from typing import Any, Optional
 
@@ -25,6 +26,8 @@ class SpanAttributes(StrEnum):
     USER_ID = "user.id"  # anonymized
     INPUT = "request.input"  # anonymized
     OUTPUT = "response.output"  # anonymized
+    RESPONSE_ERROR = "response.error"
+    RESPONSE_CAUSE = "response.cause"
     REQUEST_ATTACHMENTS_COUNT = "request.attachments.count"
     LLM_MODEL_ID = "llm.model.id"
     LLM_PROVIDER_ID = "llm.provider.id"
@@ -38,11 +41,14 @@ class SpanAttributes(StrEnum):
     TOOL_CALLS_COUNT = "tool.calls.count"
     TOOL_CALLS_NAMES = "tool.calls.names"
     SKILL_ACTIVATIONS = "skill.activations"
+    RLS_TEMPLATE_OK = "rls.template.ok"
+    TOPIC_SUMMARY_SUCCESS = "topic.summary.success"
 
 
 class SpanEvents(StrEnum):
     """OpenTelemetry span event names for LCS instrumentation."""
 
+    RLS_TEMPLATE_RENDERED = "rls.template.rendered"
     VALIDATION_COMPLETED = "validation.completed"
     SHIELD_REJECTED = "shield.rejected"
     PII_DETECTED = "pii.detected"
@@ -53,6 +59,8 @@ class SpanEvents(StrEnum):
     SKILL_ACTIVATED = "skill.activated"
     LLM_RESPONSE_COMPLETED = "llm.response.completed"
     TURN_PERSISTED = "turn.persisted"
+    TOPIC_SUMMARY_TASK_STARTED = "topic.summary.task.started"
+    TOPIC_SUMMARY_TASK_FINISHED = "topic.summary.task.finished"
 
 
 def anonymize_value(value: str, max_length: int = 50) -> str:
@@ -123,7 +131,9 @@ def add_span_event(
 
 
 def record_exception(
-    span: trace.Span, exception: Exception, attributes: Optional[dict[str, Any]] = None
+    span: trace.Span,
+    exception: Exception,
+    attributes: Optional[Mapping[SpanAttributes, Any]] = None,
 ) -> None:
     """Record an exception on a span.
 
@@ -132,4 +142,7 @@ def record_exception(
         exception: The exception to record.
         attributes: Optional additional attributes for the exception event.
     """
-    span.record_exception(exception, attributes=attributes)
+    span_attributes = (
+        {str(key): value for key, value in attributes.items()} if attributes else None
+    )
+    span.record_exception(exception, attributes=span_attributes)

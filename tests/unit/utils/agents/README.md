@@ -1,5 +1,9 @@
 # List of source files stored in `tests/unit/utils/agents` directory
 
+## [test_error_handler.py](test_error_handler.py)
+
+Tests for agent inference error mapping.
+
 ## [test_query.py](test_query.py)
 
 Unit tests for utils.agents.query module.

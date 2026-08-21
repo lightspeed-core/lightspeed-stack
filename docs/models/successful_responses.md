@@ -864,7 +864,7 @@ Useful resources:
 | url | string | URL to Llama Stack service; used when library mode is disabled. Must be a valid HTTP or HTTPS URL. |
 | api_key | string | API key to access Llama Stack service |
 | use_as_library_client | boolean | When set to true Llama Stack will be used in library mode, not in server mode (default) |
-| library_client_config_path | string | Path to configuration file used when Llama Stack is run in library mode |
+| library_client_config_path | string | Path to configuration file used when Llama Stack is run in library mode. DEPRECATED legacy two-file setup: logs a startup warning since 0.6 and is removed in 0.7 — use unified mode instead (the config block below, and/or the root-level inference.providers section); migrate with lightspeed-stack --migrate-config. |
 | timeout | integer | Timeout in seconds for requests to Llama Stack service. Default is 180 seconds (3 minutes) to accommodate long-running RAG queries. |
 | max_retries | integer | Maximum number of connection attempts before giving up. Used on startup to connect to Llama Stack and retrieve its version. Connection attempts are retried with a fixed delay to handle the case where Llama Stack is still starting up (e.g., when running as a sidecar in the same pod). |
 | retry_delay | integer | Delay in seconds between retry attempts. Used on startup to connect to Llama Stack and retrieve its version. Connection attempts are retried with a fixed delay to handle the case where Llama Stack is still starting up (e.g., when running as a sidecar in the same pod). |
@@ -2135,6 +2135,7 @@ BYOK (Bring Your Own Knowledge) RAG store configuration.
 | vector_db_id | string | Vector database identification. |
 | db_path | string | Path to RAG database. Required for faiss backend. |
 | score_multiplier | number | Multiplier applied to relevance scores from this vector store. Used to weight results when querying multiple knowledge sources. Values > 1 boost this store's results; values < 1 reduce them. |
+| relevance_cutoff_score | number | Minimum raw similarity score to consider a result relevant. Results with a similarity score below this threshold are not returned. |
 | host | string | PostgreSQL host for pgvector backend. Defaults to ${env.POSTGRES_HOST} when backend is pgvector. |
 | port |  | PostgreSQL port for pgvector backend. Defaults to ${env.POSTGRES_PORT} when backend is pgvector. |
 | db | string | PostgreSQL database name for pgvector backend. Defaults to ${env.POSTGRES_DATABASE} when backend is pgvector. |

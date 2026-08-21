@@ -79,6 +79,29 @@ All those deployments methods will be covered later.
 
 
 
+## Configuration modes
+
+*LCS* reads one operator-facing file: `lightspeed-stack.yaml`. There are two
+ways it can drive the underlying Llama Stack:
+
+1. **Unified mode (recommended).** The single `lightspeed-stack.yaml` is the
+   only configuration file you maintain. LCORE *synthesizes* the Llama Stack
+   `run.yaml` from it at startup — from a built-in default baseline, an
+   optional [profile](#profiles) you author, the high-level
+   `inference.providers` section, and a raw `native_override` escape hatch.
+   All examples in this guide show unified mode first.
+2. **Legacy two-file mode (deprecated).** `llama_stack.library_client_config_path`
+   points at an external, hand-maintained `run.yaml`. This path is deprecated:
+   since release 0.6 it logs a startup warning, and it is **removed in
+   release 0.7**. See
+   [Migrating from the legacy two-file configuration](#migrating-from-the-legacy-two-file-configuration).
+
+The two modes are mutually exclusive in one file — configuration loading
+fails if a unified synthesis input and `library_client_config_path` are both
+present.
+
+
+
 ## Integration with Llama Stack framework
 
 The Llama Stack framework can be run as a standalone server and accessed via its the REST API. However, instead of direct communication via the REST API (and JSON format), there is an even better alternative. It is based on the so-called Llama Stack Client. It is a library available for Python, Swift, Node.js or Kotlin, which "wraps" the REST API stack in a suitable way, which is easier for many applications.
@@ -92,7 +115,11 @@ When this mode is selected, Llama Stack is used as a regular Python library. Thi
 ![Llama Stack as library](./llama_stack_as_library.svg)
 
 > [!NOTE]
-> Even when Llama Stack is used as a library, it still requires the configuration file `run.yaml` to be presented. This configuration file is loaded during initialization phase.
+> Even when Llama Stack is used as a library, it still requires a `run.yaml`
+> configuration during the initialization phase. In unified mode (the
+> recommended default) LCORE synthesizes that file for you from
+> `lightspeed-stack.yaml`; only the deprecated legacy mode requires you to
+> maintain `run.yaml` by hand.
 
 
 
@@ -157,6 +184,78 @@ When this mode is selected, Llama Stack is started as a separate REST API servic
 
 > [!NOTE]
 > The REST API schema and semantics can change at any time, especially before version 1.0.0 is released. By using *Lightspeed Core Service*, developers, users, and customers stay isolated from these incompatibilities.
+
+
+
+## Migrating from the legacy two-file configuration
+
+Three migration paths, per deployment:
+
+| Path | Effort | Result |
+|---|---|---|
+| Do nothing | none | Legacy keeps working until removal in 0.7 (with a startup deprecation warning) |
+| Lift-and-shift | seconds — `--migrate-config` | Single file, byte-equivalent Llama Stack behavior |
+| Re-express | hours+ | Single file; high-level sections and/or a profile replace the lifted `run.yaml` |
+
+### Step-by-step: lift-and-shift with `--migrate-config`
+
+Given a legacy pair — a hand-maintained `run.yaml` plus a
+`lightspeed-stack.yaml` that points at it:
+
+```yaml
+# lightspeed-stack.yaml (legacy, deprecated)
+name: LCS
+llama_stack:
+  use_as_library_client: true
+  library_client_config_path: ./run.yaml
+# ... rest ...
+```
+
+1. Run the migration tool:
+
+   ```bash
+   lightspeed-stack --migrate-config \
+     --run-yaml run.yaml \
+     -c lightspeed-stack.yaml \
+     --migrate-output lightspeed-stack-unified.yaml
+   ```
+
+2. Inspect the output. Everything from your `lightspeed-stack.yaml` is
+   preserved; only the `llama_stack` section changes —
+   `library_client_config_path` is removed and your entire `run.yaml` is
+   lifted into the unified config block:
+
+   ```yaml
+   # lightspeed-stack-unified.yaml
+   name: LCS
+   llama_stack:
+     use_as_library_client: true
+     config:
+       baseline: empty
+       native_override:
+         # ... your run.yaml content, verbatim ...
+   ```
+
+3. Replace literal secrets. If your `run.yaml` contained secret values
+   directly, replace them with `${env.MY_VAR}` environment references —
+   the migrated file otherwise carries them onto disk verbatim (the
+   synthesized output is written owner-only, mode 0600, as a safety net).
+
+4. Swap the file in (`mv lightspeed-stack-unified.yaml
+   lightspeed-stack.yaml`), delete the now-unused external `run.yaml`
+   mount/copy, and restart. Llama Stack behavior is identical: synthesis
+   starts from an empty baseline and deep-merges only your lifted
+   `run.yaml`.
+
+Later, at your own pace, you can slim the `native_override` down by moving
+providers into the high-level `inference.providers` section or into a
+[profile](#profiles) — that is the "re-express" path.
+
+### Deprecation schedule
+
+Unified mode shipped in release 0.6 with legacy mode fully functional plus
+a startup deprecation warning; the legacy two-file path is removed in
+release 0.7.
 
 
 
@@ -542,11 +641,16 @@ cp examples/run.yaml .
 
 
 #### LCS configuration to use Llama Stack in library mode
-Copy the example LCS config file from examples/lightspeed-stack-library.yaml to the project directory:
+Copy the example LCS config file from examples/lightspeed-stack-lls-library.yaml to the project directory:
 
 ```bash
 cp examples/lightspeed-stack-lls-library.yaml lightspeed-stack.yaml
 ```
+
+The example is a unified-mode configuration: the `run.yaml` you created above
+is consumed as the synthesis [profile](#profiles) via
+`llama_stack.config.profile` — there is no deprecated
+`library_client_config_path` in it.
 
 
 #### Start LCS
@@ -1074,7 +1178,9 @@ Create a file named `run.yaml`. Use the example configuration from [examples/run
 
 ### LCS configuration
 
-Create file `lightspeed-stack.yaml` with the following content:
+Create file `lightspeed-stack.yaml` with the following content (unified
+mode — the `run.yaml` created above is consumed as the synthesis
+[profile](#profiles)):
 
 ```yaml
 name: Lightspeed Core Service (LCS)
@@ -1087,7 +1193,8 @@ service:
   access_log: true
 llama_stack:
   use_as_library_client: true
-  library_client_config_path: ./run.yaml
+  config:
+    profile: ./run.yaml
   api_key: xyzzy
 user_data_collection:
   feedback_enabled: true
@@ -1098,6 +1205,12 @@ user_data_collection:
 authentication:
   module: "noop"
 ```
+
+> [!WARNING]
+> The legacy equivalent — `library_client_config_path: ./run.yaml` instead
+> of the `config:` block — is deprecated and will be removed in release
+> 0.7. See
+> [Migrating from the legacy two-file configuration](#migrating-from-the-legacy-two-file-configuration).
 
 
 ### Start *Lightspeed Core Service* from a container

@@ -1142,11 +1142,11 @@ def _fetch_hashes_for_pypi_packages(
 def _strip_rhoai_duplicates_from_build_deps(
     build_file: str, rhoai_names: set[str]
 ) -> None:
-    """Remove packages from build deps file that already exist as RHOAI wheels.
+    """Remove packages from build deps file that are already provided elsewhere.
 
-    Prevents hermeto from fetching PyPI wheels for packages that are already
-    available from RHOAI, which would cause EC policy violations (binary=true
-    on PyPI-sourced packages).
+    Strips packages that already exist as RHOAI wheels or bootstrap packages
+    to prevent hermeto from fetching PyPI wheels for them, which would cause
+    EC policy violations (binary=true on PyPI-sourced packages).
     """
     with open(build_file) as f:
         lines = f.readlines()
@@ -1272,8 +1272,6 @@ def main() -> None:
                     f.write(f"{name}=={info['version']}\n")
             subprocess.run(
                 [
-                    "uv",
-                    "run",
                     "pybuild-deps",
                     "compile",
                     f"--output-file={build_output}",
@@ -1285,10 +1283,14 @@ def main() -> None:
             if os.path.exists(tmp_sdist_file):
                 os.remove(tmp_sdist_file)
 
-        # Strip build deps that duplicate RHOAI wheel packages to avoid
-        # hermeto fetching them as binary from PyPI (EC policy violation).
+        # Strip build deps that duplicate RHOAI wheel packages or bootstrap
+        # packages to avoid hermeto fetching them as binary from PyPI
+        # (EC policy violation).
         rhoai_names = set(buckets["rhoai_wheel"].keys())
-        _strip_rhoai_duplicates_from_build_deps(build_output, rhoai_names)
+        bootstrap_names = {normalize_name(p) for p in bootstrap_packages}
+        _strip_rhoai_duplicates_from_build_deps(
+            build_output, rhoai_names | bootstrap_names
+        )
     else:
         with open(build_output, "w") as f:
             f.write("# No sdist packages — no build dependencies needed.\n")

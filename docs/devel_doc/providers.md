@@ -1,7 +1,7 @@
 # Lightspeed Core Providers
 
 Lightspeed Core Stack (LCS) builds on top of llama-stack and its provider system.  
-Any llama-stack provider can be enabled in LCS with minimal effort by installing the required dependencies and updating llama-stack configuration in `run.yaml` file.  
+Any llama-stack provider can be enabled in LCS with minimal effort by installing the required dependencies and updating the Llama Stack configuration — in unified mode that is your synthesis profile (or `native_override`) inside `lightspeed-stack.yaml`; in the deprecated legacy mode, the external `run.yaml` file.  
 
 This document catalogs all available llama-stack providers and indicates which ones are officially supported in the current LCS version. It also provides a step-by-step guide on how to enable any llama-stack provider in LCS.  
 

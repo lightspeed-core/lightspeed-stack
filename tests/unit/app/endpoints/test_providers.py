@@ -1,9 +1,15 @@
 """Unit tests for the /providers REST API endpoints."""
 
+from typing import Any
+
 import pytest
 from fastapi import HTTPException, Request, status
 from ogx_client import APIConnectionError, BadRequestError
 from ogx_client.types import ProviderInfo
+from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
+    InMemorySpanExporter,
+)
+from opentelemetry.trace import StatusCode
 from pytest_mock import MockerFixture
 
 from app.endpoints.providers import (
@@ -198,3 +204,151 @@ async def test_get_provider_connection_error(
     detail = e.value.detail
     assert isinstance(detail, dict)
     assert detail["response"] == "Unable to connect to OGX"  # type: ignore
+
+
+class TestProvidersEndpointOtel:
+    """OTEL instrumentation tests for the /providers endpoints."""
+
+    @pytest.mark.asyncio
+    async def test_list_emits_span_with_count(
+        self,
+        mocker: MockerFixture,
+        minimal_config: AppConfig,
+        otel: tuple[Any, InMemorySpanExporter],
+    ) -> None:
+        """Test that a successful /providers list emits a span with providers.count."""
+        tracer, exporter = otel
+        mocker.patch("app.endpoints.providers.tracer", tracer)
+        mocker.patch("app.endpoints.providers.configuration", minimal_config)
+
+        provider_list = [
+            ProviderInfo(
+                api="inference",
+                provider_id="openai",
+                provider_type="remote::openai",
+                config={},
+                health={},
+            ),
+        ]
+        mock_client = mocker.AsyncMock()
+        mock_client.providers.list.return_value = provider_list
+        mocker.patch(
+            "app.endpoints.providers.AsyncOgxClientHolder"
+        ).return_value.get_client.return_value = mock_client
+
+        request = Request(scope={"type": "http"})
+        auth: AuthTuple = ("uid", "uname", True, "tok")
+
+        await providers_endpoint_handler(request=request, auth=auth)
+
+        spans = exporter.get_finished_spans()
+        assert len(spans) == 1
+        span = spans[0]
+        assert span.name == "providers.list"
+        assert span.attributes is not None
+        assert span.attributes["providers.count"] == 1
+
+    @pytest.mark.asyncio
+    async def test_list_span_records_error_on_connection_failure(
+        self,
+        mocker: MockerFixture,
+        minimal_config: AppConfig,
+        otel: tuple[Any, InMemorySpanExporter],
+    ) -> None:
+        """Test that the list span records an error on connection failure."""
+        tracer, exporter = otel
+        mocker.patch("app.endpoints.providers.tracer", tracer)
+        mocker.patch("app.endpoints.providers.configuration", minimal_config)
+
+        mocker.patch(
+            "app.endpoints.providers.AsyncOgxClientHolder"
+        ).return_value.get_client.side_effect = APIConnectionError(
+            request=mocker.Mock()
+        )
+
+        request = Request(scope={"type": "http"})
+        auth: AuthTuple = ("uid", "uname", True, "tok")
+
+        with pytest.raises(HTTPException):
+            await providers_endpoint_handler(request=request, auth=auth)
+
+        spans = exporter.get_finished_spans()
+        assert len(spans) == 1
+        assert spans[0].name == "providers.list"
+        assert spans[0].status.status_code == StatusCode.ERROR
+
+    @pytest.mark.asyncio
+    async def test_get_emits_span_with_found(
+        self,
+        mocker: MockerFixture,
+        minimal_config: AppConfig,
+        otel: tuple[Any, InMemorySpanExporter],
+    ) -> None:
+        """Test that /providers/{provider_id} emits a span with providers.found."""
+        tracer, exporter = otel
+        mocker.patch("app.endpoints.providers.tracer", tracer)
+        mocker.patch("app.endpoints.providers.configuration", minimal_config)
+
+        provider = ProviderInfo(
+            api="inference",
+            provider_id="openai",
+            provider_type="remote::openai",
+            config={},
+            health={},
+        )
+        mock_client = mocker.AsyncMock()
+        mock_client.providers.retrieve = mocker.AsyncMock(return_value=provider)
+        mocker.patch(
+            "app.endpoints.providers.AsyncOgxClientHolder"
+        ).return_value.get_client.return_value = mock_client
+
+        request = Request(scope={"type": "http"})
+        auth: AuthTuple = ("uid", "uname", True, "tok")
+
+        await get_provider_endpoint_handler(
+            request=request, provider_id="openai", auth=auth
+        )
+
+        spans = exporter.get_finished_spans()
+        assert len(spans) == 1
+        span = spans[0]
+        assert span.name == "providers.get"
+        assert span.attributes is not None
+        assert span.attributes["providers.found"] is True
+
+    @pytest.mark.asyncio
+    async def test_get_span_records_error_on_not_found(
+        self,
+        mocker: MockerFixture,
+        minimal_config: AppConfig,
+        otel: tuple[Any, InMemorySpanExporter],
+    ) -> None:
+        """Test that the get span records an error when provider is not found."""
+        tracer, exporter = otel
+        mocker.patch("app.endpoints.providers.tracer", tracer)
+        mocker.patch("app.endpoints.providers.configuration", minimal_config)
+
+        mock_client = mocker.AsyncMock()
+        mock_client.providers.retrieve = mocker.AsyncMock(
+            side_effect=BadRequestError(
+                message="not found",
+                response=mocker.Mock(request=None),
+                body=None,
+            )
+        )  # type: ignore
+        mocker.patch(
+            "app.endpoints.providers.AsyncOgxClientHolder"
+        ).return_value.get_client.return_value = mock_client
+
+        request = Request(scope={"type": "http"})
+        auth: AuthTuple = ("uid", "uname", True, "tok")
+
+        with pytest.raises(HTTPException):
+            await get_provider_endpoint_handler(
+                request=request, provider_id="missing", auth=auth
+            )
+
+        spans = exporter.get_finished_spans()
+        assert len(spans) == 1
+        assert spans[0].name == "providers.get"
+        assert spans[0].status.status_code == StatusCode.ERROR

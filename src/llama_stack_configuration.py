@@ -1013,6 +1013,25 @@ def deep_merge_list_replace(
     return result
 
 
+def _matchable_provider_id(provider_id: Any) -> Any:
+    """Return the provider_id used for high-level replace matching.
+
+    The default baseline ships openai as ``${env.OPENAI_API_KEY:+openai}``
+    (R6: left unevaluated). Treat that literal as ``openai`` so a high-level
+    ``{type: openai}`` replaces the baseline row instead of appending.
+
+    Parameters:
+        provider_id: The raw ``provider_id`` from a baseline or emitted entry.
+
+    Returns:
+        ``openai`` when ``provider_id`` is the baseline conditional openai
+        ref, otherwise ``provider_id`` unchanged.
+    """
+    if provider_id == "${env.OPENAI_API_KEY:+openai}":
+        return "openai"
+    return provider_id
+
+
 def apply_high_level_inference(
     ls_config: dict[str, Any], inference: dict[str, Any]
 ) -> None:
@@ -1026,7 +1045,9 @@ def apply_high_level_inference(
     baseline's ecosystem convention (e.g. the default embedding model reference).
     An entry whose ``provider_id`` already exists in the baseline (or was emitted
     by an earlier high-level entry) is replaced with an info log; new ones are
-    appended. Secrets are emitted as ``${env.<VAR>}`` references, never resolved
+    appended. The baseline openai id ``${env.OPENAI_API_KEY:+openai}`` is matched
+    as ``openai``, so high-level ``{type: openai}`` still replaces that row.
+    Secrets are emitted as ``${env.<VAR>}`` references, never resolved
     values (R6).
 
     Parameters:
@@ -1066,8 +1087,12 @@ def apply_high_level_inference(
             entry["config"] = provider_config
 
         # Replace a baseline provider with the same id, else append.
+        # Baseline ${env.OPENAI_API_KEY:+openai} matches as "openai" (LCORE-3607).
         for index, existing in enumerate(inference_list):
-            if isinstance(existing, dict) and existing.get("provider_id") == emitted_id:
+            if not isinstance(existing, dict):
+                continue
+            existing_id = _matchable_provider_id(existing.get("provider_id"))
+            if existing_id == emitted_id:
                 logger.info(
                     "Replacing existing inference provider with "
                     "provider_id=%r; a later high-level entry overwrote it",

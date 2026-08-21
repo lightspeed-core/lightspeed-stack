@@ -3,6 +3,7 @@
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Request
+from opentelemetry import trace
 
 from authentication import get_auth_dependency
 from authentication.interface import AuthTuple
@@ -34,6 +35,7 @@ from utils.pydantic_ai_helpers import get_agent_capability_tools
 from utils.tool_formatter import build_catalog_tool
 
 logger = get_logger(__name__)
+tracer = trace.get_tracer(__name__)
 router = APIRouter(tags=["tools"])
 
 
@@ -86,46 +88,50 @@ async def tools_endpoint_handler(  # pylint: disable=too-many-locals
     # Nothing interesting in the request
     _ = request
 
-    check_configuration_loaded(configuration)
+    with tracer.start_as_current_span("tools.list") as span:
+        check_configuration_loaded(configuration)
 
-    complete_mcp_headers = build_mcp_headers(
-        configuration, mcp_headers, request.headers, token
-    )
-
-    # Check MCP auth
-    await check_mcp_auth(configuration, mcp_headers, token, request.headers)
-
-    client = AsyncOgxClientHolder().get_client()
-    consolidated_tools: list[CatalogTool] = list(await get_file_search_tools(client))
-
-    for mcp_server in configuration.mcp_servers:
-        consolidated_tools.extend(
-            await _list_tools_for_mcp_server(
-                mcp_server,
-                complete_mcp_headers.get(mcp_server.name, {}),
-            )
+        complete_mcp_headers = build_mcp_headers(
+            configuration, mcp_headers, request.headers, token
         )
 
-    existing_tool_ids = {
-        tool.identifier for tool in consolidated_tools if tool.identifier
-    }
-    for tool in get_agent_capability_tools(configuration.skills):
-        if tool.identifier not in existing_tool_ids:
-            consolidated_tools.append(tool)
-            existing_tool_ids.add(tool.identifier)
+        # Check MCP auth
+        await check_mcp_auth(configuration, mcp_headers, token, request.headers)
 
-    builtin_tool_count = len(
-        [tool for tool in consolidated_tools if tool.server_source == "builtin"]
-    )
-    mcp_tool_count = len(consolidated_tools) - builtin_tool_count
-    logger.info(
-        "Retrieved total of %d tools (%d builtin, %d from MCP servers)",
-        len(consolidated_tools),
-        builtin_tool_count,
-        mcp_tool_count,
-    )
+        client = AsyncOgxClientHolder().get_client()
+        consolidated_tools: list[CatalogTool] = list(
+            await get_file_search_tools(client)
+        )
 
-    return ToolsResponse(tools=consolidated_tools)
+        for mcp_server in configuration.mcp_servers:
+            consolidated_tools.extend(
+                await _list_tools_for_mcp_server(
+                    mcp_server,
+                    complete_mcp_headers.get(mcp_server.name, {}),
+                )
+            )
+
+        existing_tool_ids = {
+            tool.identifier for tool in consolidated_tools if tool.identifier
+        }
+        for tool in get_agent_capability_tools(configuration.skills):
+            if tool.identifier not in existing_tool_ids:
+                consolidated_tools.append(tool)
+                existing_tool_ids.add(tool.identifier)
+
+        builtin_tool_count = len(
+            [tool for tool in consolidated_tools if tool.server_source == "builtin"]
+        )
+        mcp_tool_count = len(consolidated_tools) - builtin_tool_count
+        logger.info(
+            "Retrieved total of %d tools (%d builtin, %d from MCP servers)",
+            len(consolidated_tools),
+            builtin_tool_count,
+            mcp_tool_count,
+        )
+
+        span.set_attribute("tools.count", len(consolidated_tools))
+        return ToolsResponse(tools=consolidated_tools)
 
 
 async def _list_tools_for_mcp_server(

@@ -594,7 +594,7 @@ class AppConfig:  # pylint: disable=too-many-public-methods
         """Return mapping from vector_db_id to score_multiplier from BYOK RAG config.
 
         Returns:
-            dict[str, float]: Mapping where keys are llama-stack vector_db_ids
+            dict[str, float]: Mapping where keys are OGX vector_db_ids
             and values are score multipliers from configuration.
 
         Raises:
@@ -604,6 +604,24 @@ class AppConfig:  # pylint: disable=too-many-public-methods
             raise LogicError("logic error: configuration is not loaded")
         return {
             store.vector_db_id: store.score_multiplier
+            for store in self._configuration.rag.byok.stores
+        }
+
+    @property
+    def relevance_cutoff_mapping(self) -> dict[str, float]:
+        """Return mapping from vector_db_id to relevance_cutoff_score from BYOK RAG config.
+
+        Returns:
+            dict[str, float]: Mapping where keys are OGX vector_db_ids
+            and values are relevance cutoff scores from configuration.
+
+        Raises:
+            LogicError: If the configuration has not been loaded.
+        """
+        if self._configuration is None:
+            raise LogicError("logic error: configuration is not loaded")
+        return {
+            store.vector_db_id: store.relevance_cutoff_score
             for store in self._configuration.rag.byok.stores
         }
 

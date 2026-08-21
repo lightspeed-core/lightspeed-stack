@@ -44,6 +44,10 @@ Degraded mode state tracking.
 
 Utility functions for endpoint handlers.
 
+## [input_sanitization.py](input_sanitization.py)
+
+Input sanitization to detect and block obfuscated prompt injection attempts.
+
 ## [json_schema_updater.py](json_schema_updater.py)
 
 Function to transform a JSON Schema-like dictionary into an OpenAPI-compatible schema.

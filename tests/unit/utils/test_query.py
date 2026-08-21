@@ -358,6 +358,21 @@ class TestHandleKnownApistatusErrors:
         detail = result.model_dump()["detail"]
         assert "quota" in detail["response"].lower()
 
+    def test_vertex_429_wrapped_as_500(self) -> None:
+        """Test that Vertex AI RESOURCE_EXHAUSTED wrapped as 500 is treated as 429."""
+        error = type(
+            "APIStatusError",
+            (),
+            {
+                "status_code": 500,
+                "message": "RESOURCE_EXHAUSTED: Quota exceeded for model",
+            },
+        )()
+        result = handle_known_apistatus_errors(error, "model1")
+        assert isinstance(result, QuotaExceededResponse)
+        detail = result.model_dump()["detail"]
+        assert "quota" in detail["response"].lower()
+
     def test_generic_error(self) -> None:
         """Test handling generic error."""
         error = type(

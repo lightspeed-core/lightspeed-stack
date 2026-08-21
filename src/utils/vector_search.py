@@ -14,7 +14,7 @@ from ogx_api.openai_responses import (
 )
 from ogx_client import AsyncOgxClient
 from opentelemetry import trace
-from pydantic import AnyUrl
+from pydantic import AnyUrl, ValidationError
 
 import constants
 from configuration import configuration
@@ -257,11 +257,12 @@ def _format_rag_context(rag_chunks: list[RAGChunk], query: str) -> str:
     return output
 
 
-async def _query_store_for_byok_rag(
+async def _query_store_for_byok_rag(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     client: AsyncOgxClient,
     vector_store_id: str,
     query: str,
     weight: float,
+    score_threshold: float,
     max_chunks: int = constants.DEFAULT_BYOK_RAG_MAX_CHUNKS,
 ) -> list[dict[str, Any]]:
     """Query a single vector store for BYOK RAG.
@@ -271,6 +272,7 @@ async def _query_store_for_byok_rag(
         vector_store_id: ID of the vector store to query
         query: Search query string
         weight: Score multiplier to apply
+        score_threshold: Minimum raw similarity score (``relevance_cutoff_score``)
         max_chunks: Maximum number of chunks to request from this store.
 
     Returns:
@@ -283,6 +285,7 @@ async def _query_store_for_byok_rag(
             params={
                 "max_chunks": max_chunks,
                 "mode": "vector",
+                "score_threshold": score_threshold,
             },
         )
         return _extract_byok_rag_chunks(search_response, vector_store_id, weight)
@@ -374,7 +377,7 @@ def _process_byok_rag_chunks_for_documents(
             if reference_url:
                 try:
                     parsed_url = AnyUrl(reference_url)
-                except Exception:  # pylint: disable=broad-exception-caught
+                except ValidationError:
                     parsed_url = None
 
             referenced_documents.append(
@@ -432,7 +435,7 @@ def _process_solr_chunks_for_documents(
             if doc_url:
                 try:
                     parsed_url = AnyUrl(doc_url)
-                except Exception:  # pylint: disable=broad-exception-caught
+                except ValidationError:
                     parsed_url = None
 
             doc_ids_from_chunks.append(
@@ -505,8 +508,9 @@ async def _fetch_byok_rag(  # pylint: disable=too-many-locals
         return rag_chunks, referenced_documents
 
     try:
-        # Get score multiplier and rag_id mappings
+        # Get per-store mappings from configuration
         score_multiplier_mapping = configuration.score_multiplier_mapping
+        relevance_cutoff_mapping = configuration.relevance_cutoff_mapping
         rag_id_mapping = configuration.rag_id_mapping
 
         # Query all vector stores in parallel
@@ -517,6 +521,10 @@ async def _fetch_byok_rag(  # pylint: disable=too-many-locals
                     vector_store_id,
                     query,
                     score_multiplier_mapping.get(vector_store_id, 1.0),
+                    relevance_cutoff_mapping.get(
+                        vector_store_id,
+                        constants.DEFAULT_BYOK_RAG_RELEVANCE_CUTOFF_SCORE,
+                    ),
                     max_chunks=limit,
                 )
                 for vector_store_id in vector_store_ids_to_query

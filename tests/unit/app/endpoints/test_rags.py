@@ -6,6 +6,10 @@ from typing import Any
 import pytest
 from fastapi import HTTPException, Request, status
 from ogx_client import APIConnectionError, BadRequestError
+from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
+    InMemorySpanExporter,
+)
+from opentelemetry.trace import StatusCode
 from pytest_mock import MockerFixture
 
 from app.endpoints.rags import (
@@ -393,3 +397,163 @@ def test_resolve_rag_id_to_vector_db_id_passthrough(tmp_path: Path) -> None:
     byok_config = _make_byok_config(str(tmp_path))
     byok_rags = byok_config.configuration.rag.byok.stores
     assert _resolve_rag_id_to_vector_db_id("vs_unknown", byok_rags) == "vs_unknown"
+
+
+class TestRagsEndpointOtel:
+    """OTEL instrumentation tests for the /rags endpoints."""
+
+    @pytest.mark.asyncio
+    async def test_list_emits_span_with_count(
+        self,
+        mocker: MockerFixture,
+        minimal_config: AppConfig,
+        otel: tuple[Any, InMemorySpanExporter],
+    ) -> None:
+        """Test that a successful /rags list emits a span with rags.count."""
+        tracer, exporter = otel
+        mocker.patch("app.endpoints.rags.tracer", tracer)
+        mocker.patch("app.endpoints.rags.configuration", minimal_config)
+
+        # pylint: disable=R0903
+        class RagInfo:
+            """RagInfo mock."""
+
+            def __init__(self, rag_id: str) -> None:
+                """Initialize with ID."""
+                self.id = rag_id
+
+        class RagList:
+            """List of RAGs mock."""
+
+            def __init__(self) -> None:
+                """Initialize with mock data."""
+                self.data = [RagInfo("vs_1"), RagInfo("vs_2")]
+
+        mock_client = mocker.AsyncMock()
+        mock_client.vector_stores.list.return_value = RagList()
+        mocker.patch(
+            "app.endpoints.rags.AsyncOgxClientHolder"
+        ).return_value.get_client.return_value = mock_client
+
+        request = Request(scope={"type": "http"})
+        auth: AuthTuple = ("uid", "uname", True, "tok")
+
+        await rags_endpoint_handler(request=request, auth=auth)
+
+        spans = exporter.get_finished_spans()
+        assert len(spans) == 1
+        span = spans[0]
+        assert span.name == "rags.list"
+        assert span.attributes is not None
+        assert span.attributes["rags.count"] == 2
+
+    @pytest.mark.asyncio
+    async def test_list_span_records_error_on_connection_failure(
+        self,
+        mocker: MockerFixture,
+        minimal_config: AppConfig,
+        otel: tuple[Any, InMemorySpanExporter],
+    ) -> None:
+        """Test that the list span records an error on connection failure."""
+        tracer, exporter = otel
+        mocker.patch("app.endpoints.rags.tracer", tracer)
+        mocker.patch("app.endpoints.rags.configuration", minimal_config)
+
+        mock_client = mocker.AsyncMock()
+        mock_client.vector_stores.list.side_effect = APIConnectionError(
+            request=None  # type: ignore
+        )
+        mocker.patch(
+            "app.endpoints.rags.AsyncOgxClientHolder"
+        ).return_value.get_client.return_value = mock_client
+
+        request = Request(scope={"type": "http"})
+        auth: AuthTuple = ("uid", "uname", True, "tok")
+
+        with pytest.raises(HTTPException):
+            await rags_endpoint_handler(request=request, auth=auth)
+
+        spans = exporter.get_finished_spans()
+        assert len(spans) == 1
+        assert spans[0].name == "rags.list"
+        assert spans[0].status.status_code == StatusCode.ERROR
+
+    @pytest.mark.asyncio
+    async def test_get_emits_span_with_found(
+        self,
+        mocker: MockerFixture,
+        minimal_config: AppConfig,
+        otel: tuple[Any, InMemorySpanExporter],
+    ) -> None:
+        """Test that /rags/{rag_id} emits a span with rags.found on success."""
+        tracer, exporter = otel
+        mocker.patch("app.endpoints.rags.tracer", tracer)
+        mocker.patch("app.endpoints.rags.configuration", minimal_config)
+
+        # pylint: disable=R0902,R0903
+        class RagInfo:
+            """RagInfo mock."""
+
+            def __init__(self) -> None:
+                """Initialize with test data."""
+                self.id = "xyzzy"
+                self.name = "rag_name"
+                self.created_at = 123456
+                self.last_active_at = 1234567
+                self.expires_at = 12345678
+                self.object = "faiss"
+                self.status = "completed"
+                self.usage_bytes = 100
+
+        mock_client = mocker.AsyncMock()
+        mock_client.vector_stores.retrieve.return_value = RagInfo()
+        mocker.patch(
+            "app.endpoints.rags.AsyncOgxClientHolder"
+        ).return_value.get_client.return_value = mock_client
+
+        request = Request(scope={"type": "http"})
+        auth: AuthTuple = ("uid", "uname", True, "tok")
+
+        await get_rag_endpoint_handler(request=request, auth=auth, rag_id="xyzzy")
+
+        spans = exporter.get_finished_spans()
+        assert len(spans) == 1
+        span = spans[0]
+        assert span.name == "rags.get"
+        assert span.attributes is not None
+        assert span.attributes["rags.found"] is True
+
+    @pytest.mark.asyncio
+    async def test_get_span_records_error_on_not_found(
+        self,
+        mocker: MockerFixture,
+        minimal_config: AppConfig,
+        otel: tuple[Any, InMemorySpanExporter],
+    ) -> None:
+        """Test that the get span records an error when RAG is not found."""
+        tracer, exporter = otel
+        mocker.patch("app.endpoints.rags.tracer", tracer)
+        mocker.patch("app.endpoints.rags.configuration", minimal_config)
+
+        mock_client = mocker.AsyncMock()
+        mock_client.vector_stores.retrieve = mocker.AsyncMock(
+            side_effect=BadRequestError(
+                message="RAG not found",
+                response=mocker.Mock(request=None),
+                body=None,
+            )
+        )  # type: ignore
+        mocker.patch(
+            "app.endpoints.rags.AsyncOgxClientHolder"
+        ).return_value.get_client.return_value = mock_client
+
+        request = Request(scope={"type": "http"})
+        auth: AuthTuple = ("uid", "uname", True, "tok")
+
+        with pytest.raises(HTTPException):
+            await get_rag_endpoint_handler(request=request, auth=auth, rag_id="missing")
+
+        spans = exporter.get_finished_spans()
+        assert len(spans) == 1
+        assert spans[0].name == "rags.get"
+        assert spans[0].status.status_code == StatusCode.ERROR

@@ -80,6 +80,7 @@ from ogx_api.openai_responses import (
     OpenAIResponseUsageOutputTokensDetails as UsageOutputTokensDetails,
 )
 from ogx_client import APIConnectionError, APIStatusError, AsyncOgxClient
+from opentelemetry import trace
 
 import constants
 from configuration import configuration
@@ -115,6 +116,12 @@ from utils.mcp_headers import (
     find_unresolved_auth_headers,
 )
 from utils.model_list import parse_model_list_response
+from utils.otel_tracing import (
+    SpanAttributes,
+    SpanEvents,
+    add_span_event,
+    set_span_attributes,
+)
 from utils.prompts import get_system_prompt, get_topic_summary_system_prompt
 from utils.query import (
     extract_provider_and_model_from_model_id,
@@ -126,6 +133,7 @@ from utils.suid import to_llama_stack_conversation_id
 from utils.token_counter import TokenCounter
 
 logger = get_logger(__name__)
+tracer = trace.get_tracer(__name__)
 
 
 async def get_vector_store_ids(
@@ -226,7 +234,19 @@ async def maybe_get_topic_summary(
     if not generate_topic_summary:
         return None
     logger.debug("Generating topic summary for new conversation")
-    return await get_topic_summary(input_text, client, model_id)
+    with tracer.start_as_current_span("topic.summary") as span:
+        add_span_event(span, SpanEvents.TOPIC_SUMMARY_TASK_STARTED)
+        success = False
+        try:
+            summary = await get_topic_summary(input_text, client, model_id)
+            success = True
+            return summary
+        finally:
+            set_span_attributes(
+                span,
+                {SpanAttributes.TOPIC_SUMMARY_SUCCESS: success},
+            )
+            add_span_event(span, SpanEvents.TOPIC_SUMMARY_TASK_FINISHED)
 
 
 async def prepare_tools(  # pylint: disable=too-many-arguments,too-many-positional-arguments

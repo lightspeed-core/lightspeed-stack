@@ -1,5 +1,6 @@
 """Utility helpers for shield override validation and moderation."""
 
+import uuid
 from typing import Optional
 
 from fastapi import HTTPException
@@ -8,6 +9,7 @@ from opentelemetry import trace
 from pydantic_ai.exceptions import AgentRunError
 
 from configuration import AppConfig
+from constants import OBFUSCATION_REJECTION_MESSAGE
 from log import get_logger
 from models.api.requests import QueryRequest
 from models.api.responses.error import (
@@ -15,6 +17,7 @@ from models.api.responses.error import (
     UnprocessableEntityResponse,
 )
 from models.common.moderation import (
+    ShieldModerationBlocked,
     ShieldModerationPassed,
     ShieldModerationResult,
 )
@@ -27,7 +30,8 @@ from pydantic_ai_lightspeed.capabilities.redaction._capability import (
     PiiRedactionCapability,
 )
 from utils.agents.error_handler import map_agent_inference_error
-from utils.otel_tracing import SpanAttributes
+from utils.input_sanitization import sanitize_input
+from utils.otel_tracing import SpanAttributes, SpanEvents, add_span_event
 
 logger = get_logger(__name__)
 tracer = trace.get_tracer(__name__)
@@ -86,28 +90,58 @@ async def run_shield_moderation_v2(
     Returns:
         Result indicating if content was blocked or passed.
     """
-    selected_shield_configs = get_shields_for_request(
-        shield_configs, selected_shield_ids
-    )
+    with tracer.start_as_current_span("shield.moderate") as span:
+        # Sanitize input before running any shields (OFFSEC-307 / LCORE-2749).
+        # Normalizes Unicode and rejects obfuscated content (unusual Unicode
+        # blocks, binary/hex encoding, XML injection patterns).
+        normalized_text, rejection_reason = sanitize_input(input_text)
+        if rejection_reason:
+            logger.warning("Input blocked by sanitization: %s", rejection_reason)
+            span.set_attribute(SpanAttributes.SHIELD_RESULT, "blocked")
+            add_span_event(
+                span,
+                SpanEvents.SHIELD_REJECTED,
+                {"shield.reason": "input_sanitization"},
+            )
+            return ShieldModerationBlocked(
+                decision="blocked",
+                message=OBFUSCATION_REJECTION_MESSAGE,
+                moderation_id=str(uuid.uuid4()),
+            )
+        input_text = normalized_text
 
-    for shield_config in selected_shield_configs:
-        shield = build_shield(shield_config)
+        selected_shield_configs = get_shields_for_request(
+            shield_configs, selected_shield_ids
+        )
 
-        try:
-            shield_result = await shield.run(input_text)
-        # APIConnectionError and APIStatusError from ogx should not be raised from model_request,
-        # because they will be caught inside AsyncOpenAI and transferred into openai's
-        # APIConnectionError. The openai's exceptions will further transferred into ModelHTTPError
-        # or ModelAPIError by _map_api_errors in OpenAIResponseModel.
-        except (AgentRunError, RuntimeError) as exc:
-            model_id = getattr(shield_config.config, "model_id", "unknown-shield-model")
-            response = map_agent_inference_error(exc, model_id)
-            raise HTTPException(**response.model_dump()) from exc
+        for shield_config in selected_shield_configs:
+            shield = build_shield(shield_config)
 
-        if shield_result.decision == "blocked":
-            return shield_result
+            try:
+                shield_result = await shield.run(input_text)
+            # APIConnectionError and APIStatusError from ogx should not be raised
+            # from model_request, because they will be caught inside AsyncOpenAI
+            # and transferred into openai's APIConnectionError. The openai's
+            # exceptions will further transferred into ModelHTTPError or
+            # ModelAPIError by _map_api_errors in OpenAIResponseModel.
+            except (AgentRunError, RuntimeError) as exc:
+                model_id = getattr(
+                    shield_config.config, "model_id", "unknown-shield-model"
+                )
+                response = map_agent_inference_error(exc, model_id)
+                raise HTTPException(**response.model_dump()) from exc
 
-    return ShieldModerationPassed()
+            if shield_result.decision == "blocked":
+                span.set_attribute(SpanAttributes.SHIELD_RESULT, "blocked")
+                add_span_event(
+                    span,
+                    SpanEvents.SHIELD_REJECTED,
+                    {"shield.name": shield_config.name},
+                )
+                return shield_result
+
+        span.set_attribute(SpanAttributes.SHIELD_RESULT, "passed")
+        return ShieldModerationPassed()
 
 
 def build_shield(shield_config: ShieldConfiguration) -> AbstractSafetyCapability:

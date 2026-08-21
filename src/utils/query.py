@@ -539,6 +539,23 @@ def normalize_vertex_ai_model_id(model_id: str) -> str:
     return model_id
 
 
+def is_resource_exhausted_error(error_message: str) -> bool:
+    """Detect Vertex AI RESOURCE_EXHAUSTED errors wrapped as 500 by llama-stack.
+
+    llama-stack's remote::vertexai provider translates Vertex AI's 429
+    RESOURCE_EXHAUSTED into a generic 500 InternalServerError, losing the
+    original status code.  The original gRPC status name is preserved in
+    the error message, so we match on that.
+
+    Args:
+        error_message: The error message to inspect.
+
+    Returns:
+        True if the message indicates a wrapped RESOURCE_EXHAUSTED error.
+    """
+    return "resource_exhausted" in error_message.lower()
+
+
 def handle_known_apistatus_errors(
     error: LLSApiStatusError | OpenAIAPIStatusError, model_id: str
 ) -> AbstractErrorResponse:
@@ -555,5 +572,12 @@ def handle_known_apistatus_errors(
     if is_context_length_error(error_message):
         return PromptTooLongResponse(model=model_id)
     if error.status_code == 429:
+        return QuotaExceededResponse.model(model_id)
+    if is_resource_exhausted_error(error_message):
+        logger.warning(
+            "Detected RESOURCE_EXHAUSTED in error message with status %d; "
+            "treating as 429 (llama-stack wraps Vertex AI 429 as 500)",
+            error.status_code,
+        )
         return QuotaExceededResponse.model(model_id)
     return InternalServerErrorResponse.generic()

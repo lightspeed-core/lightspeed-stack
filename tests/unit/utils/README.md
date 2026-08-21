@@ -40,6 +40,10 @@ Unit tests for conversation utility functions.
 
 Unit tests for endpoints utility functions.
 
+## [test_input_sanitization.py](test_input_sanitization.py)
+
+Unit tests for utils/input_sanitization.py.
+
 ## [test_json_schema_updater.py](test_json_schema_updater.py)
 
 Unit tests for utils/json_schema_updater module.

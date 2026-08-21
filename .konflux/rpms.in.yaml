@@ -7,6 +7,10 @@ packages:
     cmake,
     cargo,
   ]
+upgradePackages:
+  [
+    thrift,
+  ]
 contentOrigin:
   repofiles: ["./redhat.repo"]
 arches: [x86_64, aarch64]

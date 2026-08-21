@@ -7,6 +7,10 @@ from fastapi import HTTPException, Request, status
 from ogx_client import APIConnectionError
 from ogx_client.types import ListModelsResponse
 from ogx_client.types.model import Model
+from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
+    InMemorySpanExporter,
+)
+from opentelemetry.trace import StatusCode
 from pytest_mock import MockerFixture
 from pytest_subtests import SubTests
 
@@ -467,3 +471,79 @@ async def test_models_endpoint_llama_stack_connection_error(
         assert e.value.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
         assert e.value.detail["response"] == "Unable to connect to OGX"  # type: ignore
         assert "Unable to connect to OGX" in e.value.detail["cause"]  # type: ignore
+
+
+class TestModelsEndpointOtel:
+    """OTEL instrumentation tests for the /models endpoint."""
+
+    @pytest.mark.asyncio
+    async def test_emits_span_with_model_count(
+        self,
+        mocker: MockerFixture,
+        otel: tuple[Any, InMemorySpanExporter],
+    ) -> None:
+        """Test that a successful /models request emits a span with models.count."""
+        tracer, exporter = otel
+        mocker.patch("app.endpoints.models.tracer", tracer)
+        mock_authorization_resolvers(mocker)
+
+        mock_client = mocker.AsyncMock()
+        mock_client.models.list.return_value = ListModelsResponse.model_construct(
+            data=[
+                _make_model("m1", "p1", "llm"),
+                _make_model("m2", "p2", "embedding"),
+            ]
+        )
+        mocker.patch(
+            "app.endpoints.models.AsyncOgxClientHolder"
+        ).return_value.get_client.return_value = mock_client
+        mock_config = mocker.Mock()
+        mocker.patch("app.endpoints.models.configuration", mock_config)
+
+        request = Request(scope={"type": "http"})
+        auth: AuthTuple = ("uid", "uname", True, "tok")
+
+        await models_endpoint_handler(
+            request=request, auth=auth, model_type=ModelFilter(model_type=None)
+        )
+
+        spans = exporter.get_finished_spans()
+        assert len(spans) == 1
+        span = spans[0]
+        assert span.name == "models.list"
+        assert span.attributes is not None
+        assert span.attributes["models.count"] == 2
+
+    @pytest.mark.asyncio
+    async def test_span_records_error_on_connection_failure(
+        self,
+        mocker: MockerFixture,
+        otel: tuple[Any, InMemorySpanExporter],
+    ) -> None:
+        """Test that the span records an error on Llama Stack connection failure."""
+        tracer, exporter = otel
+        mocker.patch("app.endpoints.models.tracer", tracer)
+        mock_authorization_resolvers(mocker)
+
+        mock_client = mocker.AsyncMock()
+        mock_client.models.list.side_effect = APIConnectionError(
+            request=None  # type: ignore
+        )
+        mocker.patch(
+            "app.endpoints.models.AsyncOgxClientHolder"
+        ).return_value.get_client.return_value = mock_client
+        mock_config = mocker.Mock()
+        mocker.patch("app.endpoints.models.configuration", mock_config)
+
+        request = Request(scope={"type": "http"})
+        auth: AuthTuple = ("uid", "uname", True, "tok")
+
+        with pytest.raises(HTTPException):
+            await models_endpoint_handler(
+                request=request, auth=auth, model_type=ModelFilter(model_type=None)
+            )
+
+        spans = exporter.get_finished_spans()
+        assert len(spans) == 1
+        assert spans[0].name == "models.list"
+        assert spans[0].status.status_code == StatusCode.ERROR

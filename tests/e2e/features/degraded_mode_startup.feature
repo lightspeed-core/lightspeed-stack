@@ -23,7 +23,8 @@ Feature: Degraded mode startup
   Scenario: Degraded mode metric is set to 1.0 when started without llama-stack
     Given The llama-stack connection is disrupted
       And The service uses the lightspeed-stack-degraded.yaml configuration
-      And The service is restarted
+      # Konflux restart-lightspeed otherwise restores llama before LCS boots.
+      And The service is restarted without restoring llama-stack
     When I access endpoint "metrics" using HTTP GET method
     Then The status code of the response is 200
     And The response body contains "ls_started_in_degraded_mode 1.0"
@@ -31,7 +32,7 @@ Feature: Degraded mode startup
   Scenario: Readiness endpoint reports degraded state when started without llama-stack
     Given The llama-stack connection is disrupted
       And The service uses the lightspeed-stack-degraded.yaml configuration
-      And The service is restarted
+      And The service is restarted without restoring llama-stack
     When I access endpoint "readiness" using HTTP GET method
     Then The status code of the response is 200
     And The body of the response, ignoring the "providers" field, is the following

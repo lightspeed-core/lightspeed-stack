@@ -140,7 +140,7 @@ okp:
   chunk_filter_query: "product:*openshift* AND product_version:4.21"
 ```
 
-When you launch Lightspeed stack it will augment the Llamastack run.yaml with
+When you launch Lightspeed stack it will augment the Llama Stack configuration (the synthesized run.yaml in unified mode, or your external run.yaml in the deprecated legacy mode) with
 configuration for OKP.
 
 ### Dynamic Metadata Filtering
@@ -266,7 +266,7 @@ curl -sX POST http://localhost:8080/v1/query \
 
 Then launch Lightspeed Stack using your Lightspeed Stack
 config(`lightspeed-stack.yaml`) which references the provided default
-Llamastack config file (`run.yaml`):
+Effective Llama Stack config (the synthesized `run.yaml` — in legacy mode, your external `run.yaml`):
 
 ```bash
 make run

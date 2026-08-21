@@ -13,6 +13,7 @@ from typing import Any, Optional, get_args
 
 import pytest
 import yaml
+from ogx.core.stack import replace_env_vars
 
 from llama_stack_configuration import (
     PROVIDER_TYPE_MAP,
@@ -26,6 +27,9 @@ from llama_stack_configuration import (
 )
 from models.config import UnifiedInferenceProvider
 
+OPENAI_CONDITIONAL_PROVIDER_ID = "${env.OPENAI_API_KEY:+openai}"
+OPENAI_CONDITIONAL_API_KEY = "${env.OPENAI_API_KEY:=}"
+
 # ---------------------------------------------------------------------------
 # ensure_mcp_tool_runtime
 # ---------------------------------------------------------------------------
@@ -38,6 +42,24 @@ def _tool_runtime_ids(ls_config: dict[str, Any]) -> list[Optional[str]]:
         entry.get("provider_id")
         for entry in providers.get("tool_runtime") or []
         if isinstance(entry, dict)
+    ]
+
+
+def _inference_entries(ls_config: dict[str, Any]) -> list[dict[str, Any]]:
+    """Return inference provider dicts from a synthesized or baseline config."""
+    providers = ls_config.get("providers") or {}
+    return [
+        entry for entry in providers.get("inference") or [] if isinstance(entry, dict)
+    ]
+
+
+def _openai_inference_entries(ls_config: dict[str, Any]) -> list[dict[str, Any]]:
+    """Return remote::openai inference rows, including the conditional-id form."""
+    return [
+        entry
+        for entry in _inference_entries(ls_config)
+        if entry.get("provider_type") == "remote::openai"
+        or entry.get("provider_id") in ("openai", OPENAI_CONDITIONAL_PROVIDER_ID)
     ]
 
 
@@ -132,6 +154,54 @@ def test_load_default_baseline_includes_file_processors() -> None:
         p.get("provider_id") == "pypdf" and p.get("provider_type") == "inline::pypdf"
         for p in processors
     )
+
+
+def test_load_default_baseline_openai_is_conditional_on_api_key() -> None:
+    """OpenAI is present only when OPENAI_API_KEY is set (LCORE-3607)."""
+    baseline = load_default_baseline()
+    openai_entries = _openai_inference_entries(baseline)
+    assert openai_entries == [
+        {
+            "provider_id": OPENAI_CONDITIONAL_PROVIDER_ID,
+            "provider_type": "remote::openai",
+            "config": {
+                "api_key": OPENAI_CONDITIONAL_API_KEY,
+                "allowed_models": ["${env.E2E_OPENAI_MODEL:=gpt-4o-mini}"],
+            },
+        }
+    ]
+    ids = [entry["provider_id"] for entry in _inference_entries(baseline)]
+    assert "sentence-transformers" in ids
+
+
+@pytest.mark.parametrize("openai_api_key", [None, ""])
+def test_default_baseline_resolves_when_openai_api_key_missing(
+    monkeypatch: pytest.MonkeyPatch, openai_api_key: Optional[str]
+) -> None:
+    """Unset or empty OPENAI_API_KEY disables openai without EnvVarError."""
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    if openai_api_key is not None:
+        monkeypatch.setenv("OPENAI_API_KEY", openai_api_key)
+
+    resolved = replace_env_vars(load_default_baseline())
+    openai_entries = _openai_inference_entries(resolved)
+    assert len(openai_entries) == 1
+    assert openai_entries[0]["provider_id"] is None
+    ids = [entry["provider_id"] for entry in _inference_entries(resolved)]
+    assert "sentence-transformers" in ids
+
+
+def test_default_baseline_resolves_when_openai_api_key_set(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A set OPENAI_API_KEY resolves to the same openai provider as before."""
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test-key")
+    resolved = replace_env_vars(load_default_baseline())
+    openai_entries = _openai_inference_entries(resolved)
+    assert len(openai_entries) == 1
+    openai = openai_entries[0]
+    assert openai["provider_id"] == "openai"
+    assert openai["config"]["api_key"] == "sk-test-key"
 
 
 # ---------------------------------------------------------------------------
@@ -245,6 +315,33 @@ def test_apply_high_level_inference_replaces_existing_provider_id(
     openai = ls_config["providers"]["inference"][0]
     assert openai["config"]["api_key"] == "${env.NEW_KEY}"
     assert "provider_id='openai'" in caplog.text
+
+
+def test_apply_high_level_inference_replaces_conditional_provider_id() -> None:
+    """The baseline ${env.OPENAI_API_KEY:+openai} row matches id openai."""
+    ls_config: dict[str, Any] = {
+        "providers": {
+            "inference": [
+                {
+                    "provider_id": OPENAI_CONDITIONAL_PROVIDER_ID,
+                    "provider_type": "remote::openai",
+                    "config": {"api_key": OPENAI_CONDITIONAL_API_KEY},
+                },
+                {
+                    "provider_id": "sentence-transformers",
+                    "provider_type": "inline::sentence-transformers",
+                },
+            ]
+        }
+    }
+    inference = {"providers": [{"type": "openai", "api_key_env": "OPENAI_API_KEY"}]}
+    apply_high_level_inference(ls_config, inference)
+    openai_entries = _openai_inference_entries(ls_config)
+    assert len(openai_entries) == 1
+    assert openai_entries[0]["provider_id"] == "openai"
+    assert openai_entries[0]["config"]["api_key"] == "${env.OPENAI_API_KEY}"
+    ids = [entry["provider_id"] for entry in _inference_entries(ls_config)]
+    assert ids == ["openai", "sentence-transformers"]
 
 
 def test_apply_high_level_inference_uses_explicit_id() -> None:
@@ -597,13 +694,47 @@ def test_synthesize_from_default_baseline_applies_inference_and_override() -> No
         },
     }
     result = synthesize_configuration(lcs)
-    # high-level inference landed (env ref, never a literal secret)
-    openai = next(
-        p for p in result["providers"]["inference"] if p["provider_id"] == "openai"
-    )
+    openai_entries = _openai_inference_entries(result)
+    assert len(openai_entries) == 1
+    openai = openai_entries[0]
+    assert openai["provider_id"] == "openai"
     assert openai["config"]["api_key"] == "${env.OPENAI_API_KEY}"
     # native_override deep-merged last
     assert result["safety"]["default_shield_id"] == "custom"
+
+
+def test_synthesize_vllm_appends_and_keeps_conditional_openai(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """High-level vLLM appends; baseline openai stays conditional and disables."""
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.setenv("VLLM_API_KEY", "vllm-test-key")
+    lcs = {
+        "llama_stack": {"config": {"baseline": "default"}},
+        "inference": {
+            "providers": [
+                {
+                    "type": "vllm",
+                    "api_key_env": "VLLM_API_KEY",
+                    "extra": {"url": "http://vllm:8000"},
+                }
+            ]
+        },
+    }
+    result = synthesize_configuration(lcs)
+    openai_entries = _openai_inference_entries(result)
+    assert len(openai_entries) == 1
+    assert openai_entries[0]["provider_id"] == OPENAI_CONDITIONAL_PROVIDER_ID
+    vllm = next(
+        entry for entry in _inference_entries(result) if entry["provider_id"] == "vllm"
+    )
+    assert vllm["provider_type"] == "remote::vllm"
+
+    resolved = replace_env_vars(result)
+    resolved_openai = _openai_inference_entries(resolved)
+    assert len(resolved_openai) == 1
+    assert resolved_openai[0]["provider_id"] is None
+    assert any(entry["provider_id"] == "vllm" for entry in _inference_entries(resolved))
 
 
 def test_synthesize_loads_profile_relative_to_config_dir(tmp_path: Path) -> None:
