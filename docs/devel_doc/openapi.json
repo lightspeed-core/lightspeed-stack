@@ -22256,10 +22256,11 @@
                         "type": "string",
                         "enum": [
                             "default",
-                            "empty"
+                            "empty",
+                            "byo-llm"
                         ],
                         "title": "Baseline selector",
-                        "description": "Synthesis starting point: 'default' uses LCORE's built-in baseline, 'empty' starts from {}. Ignored when 'profile' is set.",
+                        "description": "Synthesis starting point: 'default' uses LCORE's built-in baseline including the conditional OpenAI provider, 'byo-llm' uses the same baseline without that OpenAI row, 'empty' starts from {}. Ignored when 'profile' is set.",
                         "default": "default"
                     },
                     "profile": {
@@ -22284,7 +22285,7 @@
                 "additionalProperties": false,
                 "type": "object",
                 "title": "UnifiedLlamaStackConfig",
-                "description": "Backend-specific knobs for unified-mode Llama Stack synthesis.\n\nPer Decision S5 of the design spike, backend-agnostic high-level sections\n(inference, ...) live at the configuration root, not here. This block holds\nonly the Llama-Stack-specific synthesis controls: which baseline to start\nfrom, an optional profile file, and a raw native_override escape hatch.\n\nAttributes:\n    baseline: Synthesis starting point. \"default\" begins from LCORE's\n        built-in baseline (src/data/default_run.yaml); \"empty\" begins from\n        an empty dict (used by the migration tool for an exact round-trip).\n        Ignored when `profile` is set.\n    profile: Optional path to a user-authored run.yaml-shaped file used as\n        the synthesis baseline. Relative paths resolve against the directory\n        of the loaded lightspeed-stack.yaml.\n    native_override: Raw Llama Stack schema deep-merged last (maps merge\n        recursively, lists and scalars replace). The escape hatch for\n        anything the high-level sections do not express."
+                "description": "Backend-specific knobs for unified-mode Llama Stack synthesis.\n\nPer Decision S5 of the design spike, backend-agnostic high-level sections\n(inference, ...) live at the configuration root, not here. This block holds\nonly the Llama-Stack-specific synthesis controls: which baseline to start\nfrom, an optional profile file, and a raw native_override escape hatch.\n\nAttributes:\n    baseline: Synthesis starting point. \"default\" begins from LCORE's\n        built-in baseline (src/data/default_run.yaml) including the\n        conditional OpenAI inference provider. \"byo-llm\" begins from the\n        same file with that OpenAI row removed. \"empty\" begins from an\n        empty dict (used by the migration tool for an exact round-trip).\n        Ignored when `profile` is set.\n    profile: Optional path to a user-authored run.yaml-shaped file used as\n        the synthesis baseline. Relative paths resolve against the directory\n        of the loaded lightspeed-stack.yaml.\n    native_override: Raw Llama Stack schema deep-merged last (maps merge\n        recursively, lists and scalars replace). The escape hatch for\n        anything the high-level sections do not express."
             },
             "UnprocessableEntityResponse": {
                 "properties": {

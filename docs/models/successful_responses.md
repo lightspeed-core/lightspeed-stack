@@ -2864,8 +2864,10 @@ from, an optional profile file, and a raw native_override escape hatch.
 
 Attributes:
     baseline: Synthesis starting point. "default" begins from LCORE's
-        built-in baseline (src/data/default_run.yaml); "empty" begins from
-        an empty dict (used by the migration tool for an exact round-trip).
+        built-in baseline (src/data/default_run.yaml) including the
+        conditional OpenAI inference provider. "byo-llm" begins from the
+        same file with that OpenAI row removed. "empty" begins from an
+        empty dict (used by the migration tool for an exact round-trip).
         Ignored when `profile` is set.
     profile: Optional path to a user-authored run.yaml-shaped file used as
         the synthesis baseline. Relative paths resolve against the directory
@@ -2877,7 +2879,7 @@ Attributes:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| baseline | string | Synthesis starting point: 'default' uses LCORE's built-in baseline, 'empty' starts from {}. Ignored when 'profile' is set. |
+| baseline | string | Synthesis starting point: 'default' uses LCORE's built-in baseline including the conditional OpenAI provider, 'byo-llm' uses the same baseline without that OpenAI row, 'empty' starts from {}. Ignored when 'profile' is set. |
 | profile | string | Path to a run.yaml-shaped baseline file. Relative paths resolve against the directory of the loaded lightspeed-stack.yaml. |
 | native_override | object | Raw Llama Stack schema deep-merged last (maps merge recursively; lists and scalars replace). |
 

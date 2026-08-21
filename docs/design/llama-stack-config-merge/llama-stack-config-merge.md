@@ -33,9 +33,11 @@ Key shape:
   high-level sections don't express.
 - `llama_stack.config.profile` — path to a user-authored YAML that serves
   as the synthesis baseline.
-- `llama_stack.config.baseline: default | empty` — pick between LCORE's
-  built-in baseline and an empty dict (used by the migration tool for
-  exact round-trip).
+- `llama_stack.config.baseline: default | byo-llm | empty` — pick
+  LCORE's built-in baseline (includes a conditional OpenAI provider),
+  the same baseline without that OpenAI row, or an empty dict (used by
+  the migration tool for exact round-trip). `default` emits a deprecation
+  WARN naming `byo-llm`.
 - Legacy two-file mode (`llama_stack.library_client_config_path` +
   external `run.yaml`) is preserved during a deprecation window;
   mutually exclusive with the unified *synthesis inputs* (a non-empty
@@ -265,7 +267,7 @@ llama_stack:
   # with `library_client_config_path` is a validation error.
   config:
     # Baseline selection (backend-specific knobs stay here)
-    baseline: default              # default | empty; ignored if `profile` is set
+    baseline: default              # default | byo-llm | empty; ignored if `profile` is set
     profile: ./my-profile.yaml     # optional; resolves relative to lightspeed-stack.yaml
 
     # Escape hatch — raw Llama Stack schema, deep-merged with list replacement
@@ -299,7 +301,7 @@ class InferenceConfiguration(ConfigurationBase):
 class UnifiedLlamaStackConfig(ConfigurationBase):
     # Backend-specific knobs only. Per Decision S5, the backend-agnostic
     # high-level sections (inference, ...) live at the root, NOT here.
-    baseline: Literal["default", "empty"] = "default"
+    baseline: Literal["default", "empty", "byo-llm"] = "default"
     profile: Optional[str] = None
     native_override: dict[str, Any] = Field(default_factory=dict)
 
@@ -455,7 +457,10 @@ September 2026.
    defaults to `default`, no profile, no `native_override`).
 2. Baseline: if `unified` and `unified.profile` set → load that file.
    Else if `unified` and `unified.baseline == "empty"` → `{}`. Else →
-   `default_baseline` arg or `load_default_baseline()`.
+   `default_baseline` arg or `load_default_baseline()`. If the selector
+   is `byo-llm`, strip the built-in conditional OpenAI inference row.
+   If the selector is `default` or omitted, emit a deprecation WARN
+   naming `byo-llm`. `empty` and `profile:` are unchanged.
 3. Run `dedupe_providers_vector_io` on the baseline.
 4. Apply existing enrichment: `enrich_byok_rag`, `enrich_solr` (Azure
    Entra ID intentionally stays separate because it's a `.env`
@@ -553,6 +558,7 @@ reference.
 |---|---|---|
 | 2026-04-23 | Initial version | Spike completion |
 | 2026-08-20 | Default baseline openai provider is conditional on `OPENAI_API_KEY` | LCORE-3607: `baseline: default` must load when the key is unset |
+| 2026-08-21 | Add `baseline: byo-llm` (default_run.yaml minus the OpenAI row); WARN on `default`/omitted | LCORE-3654: opt-in openai-free baseline |
 
 ## Appendix A — Worked example: legacy → unified migration
 

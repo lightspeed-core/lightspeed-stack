@@ -25,6 +25,7 @@ from pydantic import ValidationError
 
 from configuration import configuration
 from llama_stack_configuration import (
+    CONDITIONAL_OPENAI_PROVIDER_ID,
     generate_configuration,
     load_default_baseline,
     migrate_config_dumb,
@@ -266,6 +267,35 @@ def test_default_baseline_through_real_load(tmp_path: Path) -> None:
     baseline = load_default_baseline()
     assert synthesized["version"] == baseline["version"]
     assert set(baseline["apis"]).issubset(set(synthesized["apis"]))
+    mcp_ids = {p["provider_id"] for p in synthesized["providers"]["tool_runtime"]}
+    assert "model-context-protocol" in mcp_ids
+
+
+def test_byo_llm_baseline_through_real_load(tmp_path: Path) -> None:
+    """baseline: byo-llm synthesizes from default_run.yaml without the OpenAI row."""
+    lcs_dict = _base_config_dict()
+    lcs_dict["llama_stack"] = {
+        "use_as_library_client": True,
+        "config": {"baseline": "byo-llm"},
+    }
+    synthesized, _ = _load_and_synthesize(tmp_path, lcs_dict)
+
+    baseline = load_default_baseline()
+    assert synthesized["version"] == baseline["version"]
+    for entry in synthesized["providers"]["inference"]:
+        if not isinstance(entry, dict):
+            continue
+        assert entry.get("provider_type") != "remote::openai"
+        assert entry.get("provider_id") not in (
+            "openai",
+            CONDITIONAL_OPENAI_PROVIDER_ID,
+        )
+    inference_ids = [
+        entry["provider_id"]
+        for entry in synthesized["providers"]["inference"]
+        if isinstance(entry, dict)
+    ]
+    assert "sentence-transformers" in inference_ids
     mcp_ids = {p["provider_id"] for p in synthesized["providers"]["tool_runtime"]}
     assert "model-context-protocol" in mcp_ids
 

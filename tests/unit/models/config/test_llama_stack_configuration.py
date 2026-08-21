@@ -233,6 +233,12 @@ def test_unified_config_rejects_unknown_fields() -> None:
         UnifiedLlamaStackConfig(bogus=True)  # pyright: ignore[reportCallIssue]
 
 
+def test_unified_config_accepts_byo_llm_baseline() -> None:
+    """byo-llm is a valid baseline selector (LCORE-3654)."""
+    cfg = UnifiedLlamaStackConfig(baseline="byo-llm")
+    assert cfg.baseline == "byo-llm"
+
+
 def test_root_rejects_config_and_legacy_path_together() -> None:
     """A llama_stack.config block and a legacy path in one file fail at load (R3)."""
     config_dict = _base_config_dict()

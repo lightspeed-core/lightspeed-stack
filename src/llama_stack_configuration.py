@@ -10,7 +10,7 @@ Two related responsibilities live here:
   layers dynamic values (BYOK RAG, Solr/OKP, Azure Entra ID) on top of it.
 - **Synthesis** (unified mode, LCORE-2336): builds a complete ``run.yaml`` from
   high-level operator inputs in ``lightspeed-stack.yaml`` — a baseline (built-in
-  default, a profile file, or empty), the same enrichment, the high-level
+  default, byo-llm, a profile file, or empty), the same enrichment, the high-level
   ``inference.providers`` section, and a raw ``native_override`` deep-merged
   last. ``run.yaml`` becomes an implementation detail LCORE owns rather than an
   operator-facing artifact.
@@ -22,7 +22,7 @@ import copy
 import os
 from argparse import ArgumentParser
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Final, Optional
 from urllib.parse import urljoin
 
 import yaml
@@ -57,8 +57,14 @@ API_KEY_FIELD_MAP: dict[str, str] = {
 }
 
 # Package-relative path to the built-in default baseline run.yaml shipped with
-# LCORE, used when unified mode selects baseline "default" without a profile.
+# LCORE, used when unified mode selects baseline "default" or "byo-llm" without
+# a profile. "byo-llm" loads this file then strips the conditional OpenAI row.
 DEFAULT_BASELINE_RESOURCE: Path = Path(__file__).parent / "data" / "default_run.yaml"
+
+# Unevaluated provider_id of the built-in OpenAI row in default_run.yaml
+# (LCORE-3607). Matched as "openai" during high-level replace, and stripped
+# when baseline is byo-llm (LCORE-3654).
+CONDITIONAL_OPENAI_PROVIDER_ID: Final[str] = "${env.OPENAI_API_KEY:+openai}"
 
 VECTOR_IO_TEMPLATES: dict[str, dict[str, Any]] = {
     "inline::faiss": {
@@ -976,8 +982,8 @@ def load_default_baseline() -> dict[str, Any]:
 
     Returns:
         dict[str, Any]: The parsed contents of ``src/data/default_run.yaml``,
-        the baseline used when unified mode selects ``baseline: default``
-        without a profile.
+        the baseline used when unified mode selects ``baseline: default`` or
+        ``baseline: byo-llm`` without a profile.
 
     Raises:
         OSError: If the shipped baseline file cannot be read.
@@ -1027,9 +1033,35 @@ def _matchable_provider_id(provider_id: Any) -> Any:
         ``openai`` when ``provider_id`` is the baseline conditional openai
         ref, otherwise ``provider_id`` unchanged.
     """
-    if provider_id == "${env.OPENAI_API_KEY:+openai}":
+    if provider_id == CONDITIONAL_OPENAI_PROVIDER_ID:
         return "openai"
     return provider_id
+
+
+def _strip_default_openai_inference(ls_config: dict[str, Any]) -> None:
+    """Remove the OpenAI inference provider from the default baseline.
+
+    Parameters:
+        ls_config: The Llama Stack configuration being synthesized (modified
+            in place).
+
+    Returns:
+        None: ``ls_config`` is modified in place.
+    """
+    providers = ls_config.get("providers")
+    if not isinstance(providers, dict):
+        return
+    inference = providers.get("inference")
+    if not isinstance(inference, list):
+        return
+    providers["inference"] = [
+        entry
+        for entry in inference
+        if not (
+            isinstance(entry, dict)
+            and entry.get("provider_id") == CONDITIONAL_OPENAI_PROVIDER_ID
+        )
+    ]
 
 
 def apply_high_level_inference(
@@ -1178,7 +1210,7 @@ def synthesize_configuration(  # pylint: disable=too-many-locals
     """Synthesize a full Llama Stack ``run.yaml`` dict from a unified config.
 
     Implements the unified-mode synthesis pipeline: select a baseline (profile
-    file, empty, or the built-in default), apply the existing enrichment
+    file, empty, byo-llm, or the built-in default), apply the existing enrichment
     (Azure Entra ID, BYOK RAG, Solr/OKP) for parity with legacy mode (R7),
     expand the high-level ``inference.providers`` section, ensure the default
     MCP tool_runtime provider when the baseline was not empty, and deep-merge
@@ -1198,6 +1230,7 @@ def synthesize_configuration(  # pylint: disable=too-many-locals
 
     # 1-2. Select the baseline.
     baseline_was_empty = False
+    loaded_shipped_baseline = False
     if unified and unified.get("profile"):
         profile_path = _resolve_profile_path(unified["profile"], config_file_dir)
         logger.info("Loading synthesis baseline from profile %s", profile_path)
@@ -1208,6 +1241,8 @@ def synthesize_configuration(  # pylint: disable=too-many-locals
         baseline_was_empty = True
         baseline = {}
     else:
+        # default, omitted, or byo-llm: start from default_run.yaml.
+        loaded_shipped_baseline = True
         baseline = (
             default_baseline
             if default_baseline is not None
@@ -1215,6 +1250,21 @@ def synthesize_configuration(  # pylint: disable=too-many-locals
         )
 
     ls_config: dict[str, Any] = copy.deepcopy(baseline)
+
+    # Profile and empty are unchanged. The shipped file either keeps OpenAI
+    # (default/omitted, with a deprecation WARN) or drops it (byo-llm).
+    if loaded_shipped_baseline:
+        if unified and unified.get("baseline") == "byo-llm":
+            _strip_default_openai_inference(ls_config)
+        else:
+            logger.warning(
+                "DEPRECATED: llama_stack.config.baseline 'default' includes a "
+                "built-in conditional OpenAI inference provider (%s). Set "
+                "baseline to 'byo-llm' to start without that provider and "
+                "declare LLMs under inference.providers. 'byo-llm' will "
+                "become the default in a future release.",
+                CONDITIONAL_OPENAI_PROVIDER_ID,
+            )
 
     # 3. Normalize duplicated vector_io providers in the baseline.
     dedupe_providers_vector_io(ls_config)
