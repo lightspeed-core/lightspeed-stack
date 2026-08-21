@@ -35,7 +35,7 @@ To keep requests on-topic and protect sensitive data, LCore applies **safety shi
 - **Multi-Provider Support**: Works with multiple LLM providers (Ollama, OpenAI, Watsonx, etc.)
 - **Enterprise Security**: Authentication, authorization (RBAC), and secure credential management
 - **Resource Management**: Token-based quota limits and usage tracking
-- **Conversation Management**: Multi-turn conversations with history and caching
+- **Conversation Management**: Multi-turn conversations with history, caching, and automatic compaction
 - **RAG Integration**: Retrieval-Augmented Generation for context-aware responses
 - **Tool Orchestration**: Model Context Protocol (MCP) server integration
 - **Observability**: Prometheus metrics, structured logging, and health checks
@@ -370,6 +370,83 @@ External A2A requests go through LCore's standard authentication system (K8s, RH
 
 ---
 
+### 2.11 Conversation Compaction (`utils/compaction.py`, `utils/conversation_compaction.py`)
+
+**Purpose:** Automatically summarize older conversation turns when the conversation history approaches the LLM's context window limit, preventing HTTP 413 failures and enabling arbitrarily long conversations.
+
+**Design Philosophy (Option A):** Once compaction triggers, LCore takes ownership of the context sent to the LLM. The `conversation` parameter is dropped from the OGX call (`omit_conversation=True`), and LCore constructs the input explicitly from summaries + recent turns + new query. The full original history remains in OGX for auditing.
+
+**Architecture:**
+
+The compaction system is split into two layers:
+
+1. **Pure Logic Layer** (`utils/compaction.py`) — Side-effect-free functions:
+   - `partition_conversation()` — Splits conversation items into old and recent chunks using a *degrading guard*: starts with the configured `buffer_turns` and shrinks one pair at a time until the recent chunk fits the token budget
+   - `summarize_chunk()` — Single LLM call to produce a `ConversationSummary` from older turns
+   - `recursively_resummarize()` — Folds multiple accumulated summaries into one when they approach the context limit
+
+2. **Runtime Integration Layer** (`utils/conversation_compaction.py`) — Manages side effects:
+   - Per-conversation locking (serializes concurrent requests on the same conversation)
+   - Compaction state loading (cache-preferred with marker fallback)
+   - Marker persistence (`[lightspeed:compaction-summary]` sentinel in conversation items)
+   - `CompactionStartedEvent` emission for streaming progress indicators
+   - `apply_compaction()` (async generator) — Main entry point used by all endpoints
+   - `store_compacted_turn()` — Appends user query + LLM output when in compacted mode
+
+**Data Flow:**
+
+```
+User Query → Estimate Tokens → Exceeds Threshold?
+                                    │
+                              No    │    Yes
+                              ↓     │     ↓
+                          Pass-through  Acquire Lock
+                                        ↓
+                                    Fetch Conversation Items
+                                        ↓
+                                    Load Compaction State
+                                    (cache → marker fallback)
+                                        ↓
+                                    Partition (old | recent)
+                                        ↓
+                                    Summarize Old Chunk (LLM call)
+                                        ↓
+                                    Write Marker + Cache Summary
+                                        ↓
+                                    Recursive Fold (if needed)
+                                        ↓
+                                    Build Explicit Input:
+                                    [summaries + recent + query]
+                                        ↓
+                                    Set omit_conversation=True
+                                        ↓
+                                    Release Lock → Continue to LLM
+```
+
+**Endpoint Integration:**
+
+| Endpoint | Mode | Cache | `context_status` |
+|---|---|---|---|
+| `/v1/query` | Blocking (`apply_compaction_blocking()`) | Yes | Yes (`"full"` / `"summarized"`) |
+| `/v1/streaming_query` | Streaming (`apply_compaction()` generator) | Yes | Yes (in `end` event) |
+| `/v1/responses` | Blocking | Yes | No (OpenAI-compatible, silent) |
+| `/a2a` | Blocking, marker-only (no cache) | No | No (A2A protocol scope) |
+
+**Configuration:**
+
+Compaction is controlled by `CompactionConfiguration` in `lightspeed-stack.yaml`:
+- `enabled` (default: `false`) — Master switch
+- `threshold_ratio` (default: `0.7`) — Fraction of context window that triggers compaction
+- `token_floor` (default: `4096`) — Minimum token count before compaction can fire
+- `buffer_turns` (default: `4`) — Recent turns kept verbatim
+- `buffer_max_ratio` (default: `0.3`) — Max fraction of window for the buffer
+
+Models must have context windows registered via `inference.context_windows` (a map of model ID to token count).
+
+**Concurrency:** A per-conversation lock dictionary serializes concurrent compaction requests on the same conversation. Lock entries are reference-counted and cleaned up when the last waiter exits.
+
+---
+
 ## 3. Request Processing Pipeline
 
 This section illustrates how requests flow through LCore from initial receipt to final response.
@@ -400,11 +477,12 @@ Here's how a real query flows through the system:
 5. **Model Selection** - Use configured default model (e.g., `meta-llama/Llama-3.1-8B-Instruct`)
 6. **Context Building** - Retrieve conversation history, query RAG vector stores for relevant docs, determine available MCP tools
 7. **Shield moderation** - LCore-owned direct-run moderation (and agent capabilities where applicable) using shields configured in LCORE config
-8. **Llama Stack / agent call** - Send request with system prompt, RAG context, and MCP tools
-9. **LLM Processing** - Stack / agent generates response, may invoke MCP tools, returns token counts
-10. **Post-Processing** - Generate conversation summary if new
-11. **Store Results** - Save to Cache DB, User DB, consume quota, update metrics
-12. **Return Response** - Complete LLM response with referenced documents, token usage, and remaining quota
+8. **Conversation compaction** - If enabled and estimated tokens exceed the threshold, summarize older turns and rebuild the context (see [Section 2.11](#211-conversation-compaction-utilscompactionpy-utilsconversation_compactionpy))
+9. **OGX / agent call** - Send request with system prompt, RAG context, and MCP tools
+10. **LLM Processing** - Stack / agent generates response, may invoke MCP tools, returns token counts
+11. **Post-Processing** - Generate conversation summary if new
+12. **Store Results** - Save to Cache DB, User DB, consume quota, update metrics
+13. **Return Response** - Complete LLM response with referenced documents, token usage, and remaining quota
 
 **Key Takeaways:**
 - RAG enhances responses with relevant documentation

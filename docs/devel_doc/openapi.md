@@ -2738,7 +2738,7 @@ user's query to a selected Llama Stack LLM and returning the generated response.
 - mcp_headers: Headers that should be passed to MCP servers.
 
 ### Returns:
-- QueryResponse: Contains the conversation ID and the LLM-generated response.
+- QueryResponse: Contains the conversation ID, the LLM-generated response, and a `context_status` field indicating whether the conversation context is `"full"` or `"summarized"`.
 
 ### Raises:
 - HTTPException:
@@ -3021,7 +3021,7 @@ content type text/event-stream.
 - mcp_headers: Headers that should be passed to MCP servers.
 
 ### Returns:
-- SSE-formatted events for the query lifecycle.
+- SSE-formatted events for the query lifecycle. Includes a `context_status` field (`"full"` or `"summarized"`) in the `end` event payload indicating whether conversation compaction was applied. When compaction is triggered, a `compaction` SSE event is emitted before inference begins.
 
 ### Raises:
 - HTTPException:
@@ -8010,6 +8010,7 @@ Attributes:
 | available_quotas | object | Quota available as measured by all configured quota limiters |
 | tool_calls | array | List of tool calls made during response generation |
 | tool_results | array | List of tool results |
+| context_status | string | Indicates whether the conversation context sent to the LLM is `"full"` (complete history) or `"summarized"` (older turns were summarized). Only present in QueryResponse and StreamingQueryResponse; omitted from `/v1/responses` (OpenAI-compatible) and `/a2a` responses. |
 
 
 ## QuotaExceededResponse

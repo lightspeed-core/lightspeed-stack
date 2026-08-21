@@ -224,6 +224,51 @@ Attributes:
 | buffer_turns     | integer | Number of recent turns to keep verbatim.                                                                    |
 | buffer_max_ratio | number  | Maximum fraction of context window the buffer zone can occupy, regardless of buffer_turns.                  |
 
+### How to enable conversation compaction
+
+Compaction is disabled by default. To enable it, add a `compaction` section to your `lightspeed-stack.yaml` and set `enabled: true`. You must also register context window sizes for the models you use via the `inference.context_windows` map so the compaction trigger can calculate when older turns should be summarized.
+
+**Minimal configuration:**
+
+```yaml
+inference:
+  default_provider: openai
+  default_model: gpt-4o-mini
+  context_windows:
+    openai/gpt-4o-mini: 128000
+
+compaction:
+  enabled: true
+```
+
+**Full configuration with all options:**
+
+```yaml
+inference:
+  default_provider: openai
+  default_model: gpt-4o-mini
+  context_windows:
+    openai/gpt-4o-mini: 128000
+    openai/gpt-4o: 128000
+
+compaction:
+  enabled: true
+  threshold_ratio: 0.7       # trigger at 70% of context window (default)
+  token_floor: 4096           # minimum tokens before compaction can fire (default)
+  buffer_turns: 4             # recent turns kept verbatim (default)
+  buffer_max_ratio: 0.3       # buffer may use at most 30% of the window (default)
+```
+
+**Key considerations:**
+
+- `context_windows` is required. Models absent from this map have no registered window and compaction will not trigger for them.
+- `threshold_ratio` controls how aggressively compaction fires. Lower values compact sooner; higher values wait longer (closer to the window limit).
+- `buffer_turns` sets how many recent user/assistant turn pairs are kept in full. A degrading guard automatically reduces this if the buffer itself would exceed `buffer_max_ratio` of the window.
+- `token_floor` prevents compaction from triggering on very short conversations.
+- When compaction is disabled (the default), requests that exceed the context window surface as HTTP 413.
+
+For a comprehensive explanation of the feature, see the [Conversation Compaction Guide](conversation_compaction.md).
+
 
 ## Configuration
 
