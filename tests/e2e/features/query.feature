@@ -284,8 +284,6 @@ Scenario: Check if LLM responds for query request with error for missing query
   @cfg_okp
   @skip
   Scenario: Query returns no rag_chunks and no reference_documents when OKP OKP is disabled
-    Given The service uses the lightspeed-stack-okp-disabled.yaml configuration
-      And The service is restarted
     When I use "query" to ask question with authorization header
     """
     {"query": "configure remote desktop using gnome", "model": "{MODEL}", "provider": "{PROVIDER}"}
@@ -296,8 +294,6 @@ Scenario: Check if LLM responds for query request with error for missing query
   @cfg_okp
   @skip
   Scenario: Streaming query returns no referenced_documents when OKP is disabled
-    Given The service uses the lightspeed-stack-okp-disabled.yaml configuration
-      And The service is restarted
     When I use "streaming_query" to ask question with authorization header
     """
     {"query": "configure remote desktop using gnome", "model": "{MODEL}", "provider": "{PROVIDER}"}
