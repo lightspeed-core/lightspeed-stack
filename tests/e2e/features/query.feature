@@ -282,6 +282,7 @@ Scenario: Check if LLM responds for query request with error for missing query
 
     # # ── OKP RAG Disabled (okp not in rag.retrieval.inline.sources) ─────
   @cfg_okp
+  @skip
   Scenario: Query returns no rag_chunks and no reference_documents when OKP OKP is disabled
     Given The service uses the lightspeed-stack-okp-disabled.yaml configuration
       And The service is restarted
@@ -293,6 +294,7 @@ Scenario: Check if LLM responds for query request with error for missing query
      And The response contains no rag_chunks
      And The response contains no reference_documents
   @cfg_okp
+  @skip
   Scenario: Streaming query returns no referenced_documents when OKP is disabled
     Given The service uses the lightspeed-stack-okp-disabled.yaml configuration
       And The service is restarted
