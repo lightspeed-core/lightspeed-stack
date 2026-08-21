@@ -1824,6 +1824,35 @@ class InferenceConfiguration(ConfigurationBase):
             )
         return self
 
+    @model_validator(mode="after")
+    def check_unique_provider_ids(self) -> Self:
+        """Reject two high-level providers that resolve to the same provider_id.
+
+        The synthesizer emits each provider under its explicit ``id`` when set,
+        otherwise the ``type`` with underscores hyphenated. Two entries
+        resolving to the same emitted id would collide in the synthesized
+        ``providers.inference`` list (the later one silently overwriting the
+        earlier), so reject the ambiguity here rather than resolving it as
+        last-wins at synthesis time.
+
+        Raises:
+            ValueError: If two providers resolve to the same emitted id.
+
+        Returns:
+            self (Self): The validated configuration instance.
+        """
+        seen: set[str] = set()
+        for provider in self.providers:
+            emitted_id = provider.id or provider.type.replace("_", "-")
+            if emitted_id in seen:
+                raise ValueError(
+                    f"duplicate inference provider id {emitted_id!r}: two "
+                    "inference.providers entries resolve to the same "
+                    "provider_id; set a distinct 'id' on one of them"
+                )
+            seen.add(emitted_id)
+        return self
+
 
 class CompactionConfiguration(ConfigurationBase):
     """Configuration for conversation history compaction.

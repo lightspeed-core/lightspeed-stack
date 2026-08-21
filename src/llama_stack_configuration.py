@@ -56,6 +56,11 @@ API_KEY_FIELD_MAP: dict[str, str] = {
     "remote::vllm": "api_token",
 }
 
+# High-level inference `type` values that serve embeddings rather than LLMs.
+# Their `allowed_models` must not be registered as `llm` model resources,
+# which would give Llama Stack a mis-typed model that routes incorrectly.
+EMBEDDING_PROVIDER_TYPES: frozenset[str] = frozenset({"sentence_transformers"})
+
 # Package-relative path to the built-in default baseline run.yaml shipped with
 # LCORE, used when unified mode selects baseline "default" without a profile.
 DEFAULT_BASELINE_RESOURCE: Path = Path(__file__).parent / "data" / "default_run.yaml"
@@ -1013,6 +1018,115 @@ def deep_merge_list_replace(
     return result
 
 
+def _replace_or_append_inference_provider(
+    inference_list: list[Any], entry: dict[str, Any]
+) -> None:
+    """Replace an inference entry with the same provider_id, else append.
+
+    Parameters:
+        inference_list: Mutable providers.inference list.
+        entry: New provider entry to install.
+    """
+    provider_id = entry["provider_id"]
+    for index, existing in enumerate(inference_list):
+        if isinstance(existing, dict) and existing.get("provider_id") == provider_id:
+            logger.info(
+                "Replacing existing inference provider with "
+                "provider_id=%r; a later high-level entry overwrote it",
+                provider_id,
+            )
+            inference_list[index] = entry
+            return
+    inference_list.append(entry)
+
+
+def _build_inference_entry(
+    provider: dict[str, Any], emitted_id: str, ls_provider_type: str
+) -> tuple[dict[str, Any], list[str]]:
+    """Build a providers.inference entry from one high-level provider.
+
+    Parameters:
+        provider: One high-level ``inference.providers`` entry.
+        emitted_id: The provider_id to emit (explicit id or hyphenated type).
+        ls_provider_type: Llama Stack provider_type from :data:`PROVIDER_TYPE_MAP`.
+
+    Returns:
+        tuple[dict[str, Any], list[str]]: The provider entry, and its
+        ``allowed_models`` (empty list when unset).
+    """
+    entry: dict[str, Any] = {
+        "provider_id": emitted_id,
+        "provider_type": ls_provider_type,
+    }
+
+    provider_config: dict[str, Any] = {}
+    if provider.get("extra"):
+        provider_config.update(provider["extra"])
+    if provider.get("api_key_env"):
+        key_field = API_KEY_FIELD_MAP.get(ls_provider_type, "api_key")
+        provider_config[key_field] = "${env." + provider["api_key_env"] + "}"
+    allowed_models = provider.get("allowed_models") or []
+    if allowed_models:
+        provider_config["allowed_models"] = allowed_models
+    if provider_config:
+        entry["config"] = provider_config
+
+    return entry, allowed_models
+
+
+def _register_high_level_models(
+    existing_models: list[Any], provider_id: str, allowed_models: list[str]
+) -> list[dict[str, Any]]:
+    """Build LLM resource entries for allowed_models not already registered.
+
+    Each allowed model is registered as an ``llm`` resource pointing at
+    ``provider_id`` so it is usable even when the provider endpoint is
+    unreachable at startup — Llama Stack's auto-discovery otherwise needs a
+    live connection to list models.
+
+    Deduplication is keyed on ``(provider_id, model_id)`` rather than the bare
+    ``model_id``: Llama Stack scopes model identifiers by provider (it builds
+    ``f"{provider_id}/{model_id}"``), so the same model name served by two
+    providers is registered once per provider instead of being dropped for the
+    second one.
+
+    Parameters:
+        existing_models: Models already in ``registered_resources.models``
+            (baseline, native_override, BYOK, and any registered earlier in
+            this synthesis pass); read only for deduplication, never mutated.
+        provider_id: Emitted provider_id the models are served by.
+        allowed_models: Model names to register.
+
+    Returns:
+        New model resource dicts to append; empty when all are already known.
+    """
+    known = {
+        (m.get("provider_id"), m.get("model_id"))
+        for m in existing_models
+        if isinstance(m, dict)
+    }
+    new_entries: list[dict[str, Any]] = []
+    for model_name in allowed_models:
+        key = (provider_id, model_name)
+        if key in known:
+            logger.debug(
+                "Model %r already registered for provider_id=%r; skipping",
+                model_name,
+                provider_id,
+            )
+            continue
+        known.add(key)
+        new_entries.append(
+            {
+                "model_id": model_name,
+                "model_type": "llm",
+                "provider_id": provider_id,
+                "provider_model_id": model_name,
+            }
+        )
+    return new_entries
+
+
 def apply_high_level_inference(
     ls_config: dict[str, Any], inference: dict[str, Any]
 ) -> None:
@@ -1029,6 +1143,20 @@ def apply_high_level_inference(
     appended. Secrets are emitted as ``${env.<VAR>}`` references, never resolved
     values (R6).
 
+    Each LLM provider's ``allowed_models`` is also registered as an LLM entry
+    in ``registered_resources.models`` (deduped by ``(provider_id, model_id)``),
+    so the model is usable even when the provider endpoint is unreachable at
+    startup — Llama Stack's auto-discovery otherwise requires a live connection
+    to list models. Embedding provider types (see :data:`EMBEDDING_PROVIDER_TYPES`)
+    are skipped, since their models are not LLMs. Duplicate emitted provider ids
+    are rejected upstream by ``InferenceConfiguration`` validation, so no
+    same-id eviction is needed here.
+
+    These registrations run before the ``native_override`` merge and
+    ``registered_resources.models`` is a list, so an operator override that
+    supplies its own ``models`` replaces them wholesale (R5 list-replacement
+    precedence) — intended, so an override always wins.
+
     Parameters:
         ls_config: The Llama Stack configuration being synthesized (modified in
             place).
@@ -1042,41 +1170,60 @@ def apply_high_level_inference(
     if not providers:
         return
 
+    # Validate for duplicate emitted ids before mutating ls_config.
+    # InferenceConfiguration catches this at Pydantic load time, but callers
+    # such as the CLI may pass raw dicts that bypass that validation.
+    seen_ids: set[str] = set()
+    for provider in providers:
+        emitted = (provider.get("id") or "").strip() or provider["type"].replace(
+            "_", "-"
+        )
+        if emitted in seen_ids:
+            raise ValueError(
+                f"duplicate inference provider id {emitted!r}: two "
+                "inference.providers entries resolve to the same provider_id; "
+                "set a distinct 'id' on one of them"
+            )
+        seen_ids.add(emitted)
+
     providers_section = ls_config.setdefault("providers", {})
     inference_list = providers_section.setdefault("inference", [])
+    # (emitted_id, allowed_models) pairs to register as LLM resources, collected
+    # while emitting provider entries and applied after the loop.
+    to_register: list[tuple[str, list[str]]] = []
 
     for provider in providers:
         provider_type = provider["type"]
         emitted_id = provider.get("id") or provider_type.replace("_", "-")
         ls_provider_type = PROVIDER_TYPE_MAP[provider_type]
-        entry: dict[str, Any] = {
-            "provider_id": emitted_id,
-            "provider_type": ls_provider_type,
-        }
+        entry, allowed_models = _build_inference_entry(
+            provider, emitted_id, ls_provider_type
+        )
+        _replace_or_append_inference_provider(inference_list, entry)
 
-        provider_config: dict[str, Any] = {}
-        if provider.get("extra"):
-            provider_config.update(provider["extra"])
-        if provider.get("api_key_env"):
-            key_field = API_KEY_FIELD_MAP.get(ls_provider_type, "api_key")
-            provider_config[key_field] = "${env." + provider["api_key_env"] + "}"
-        if provider.get("allowed_models"):
-            provider_config["allowed_models"] = provider["allowed_models"]
-        if provider_config:
-            entry["config"] = provider_config
+        if not allowed_models:
+            continue
+        if provider_type in EMBEDDING_PROVIDER_TYPES:
+            logger.debug(
+                "Skipping LLM model registration for embedding provider "
+                "type=%r (provider_id=%r)",
+                provider_type,
+                emitted_id,
+            )
+            continue
+        to_register.append((emitted_id, allowed_models))
 
-        # Replace a baseline provider with the same id, else append.
-        for index, existing in enumerate(inference_list):
-            if isinstance(existing, dict) and existing.get("provider_id") == emitted_id:
-                logger.info(
-                    "Replacing existing inference provider with "
-                    "provider_id=%r; a later high-level entry overwrote it",
-                    emitted_id,
-                )
-                inference_list[index] = entry
-                break
-        else:
-            inference_list.append(entry)
+    # Bind (creating if needed) registered_resources.models only when there is
+    # something to register, so a config that registers nothing keeps its
+    # original shape instead of gaining an empty models block.
+    if to_register:
+        models_list = ls_config.setdefault("registered_resources", {}).setdefault(
+            "models", []
+        )
+        for emitted_id, allowed_models in to_register:
+            models_list.extend(
+                _register_high_level_models(models_list, emitted_id, allowed_models)
+            )
 
     logger.info(
         "Applied %d high-level inference provider(s) to synthesized config",
@@ -1405,7 +1552,7 @@ def generate_configuration(
 def main() -> None:
     """CLI entry point."""
     parser = ArgumentParser(
-        description="Enrich Llama Stack config with Lightspeed values",
+        description="Enrich or synthesize Llama Stack config from Lightspeed values",
     )
     parser.add_argument(
         "-c",
@@ -1416,21 +1563,41 @@ def main() -> None:
     parser.add_argument(
         "-i",
         "--input",
-        default="run.yaml",
-        help="Input Llama Stack config (default: run.yaml)",
+        default=None,
+        help="Input Llama Stack config for legacy enrichment mode "
+        "(default: run.yaml); not valid with --synthesize",
     )
     parser.add_argument(
         "-o",
         "--output",
         default="run_.yaml",
-        help="Output enriched config (default: run_.yaml)",
+        help="Output config file (default: run_.yaml)",
+    )
+    parser.add_argument(
+        "--synthesize",
+        action="store_true",
+        help="Build a complete run.yaml from -c alone instead of enriching "
+        "an existing run.yaml given by -i",
     )
     args = parser.parse_args()
 
-    with open(args.config, "r", encoding="utf-8") as f:
-        config = yaml.safe_load(f)
+    if args.synthesize and args.input is not None:
+        parser.error(
+            "-i/--input is not valid with --synthesize; synthesize builds "
+            "the config from -c alone"
+        )
 
-    generate_configuration(args.input, args.output, config)
+    # An empty or comment-only -c file loads as {} rather than None; this
+    # applies to both modes (legacy previously raised on config.get()).
+    with open(args.config, "r", encoding="utf-8") as f:
+        config = yaml.safe_load(f) or {}
+
+    if args.synthesize:
+        synthesize_to_file(
+            config, args.output, config_file_dir=str(Path(args.config).parent)
+        )
+    else:
+        generate_configuration(args.input or "run.yaml", args.output, config)
 
 
 if __name__ == "__main__":
