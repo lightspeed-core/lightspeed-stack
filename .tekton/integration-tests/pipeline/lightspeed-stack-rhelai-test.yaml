@@ -75,7 +75,7 @@ spec:
                     path: token
         steps:
           - name: create-instance
-            image: quay.io/redhat-developer/mapt:v0.14.3
+            image: quay.io/redhat-developer/mapt:v0.14.4
             imagePullPolicy: Always
             env:
               - name: HOME
@@ -447,7 +447,7 @@ spec:
                     path: token
         steps:
           - name: destroy-instance
-            image: quay.io/redhat-developer/mapt:v0.14.3
+            image: quay.io/redhat-developer/mapt:v0.14.4
             imagePullPolicy: Always
             env:
               - name: HOME
