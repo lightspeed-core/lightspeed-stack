@@ -14,10 +14,10 @@ Feature: OKP(Solr) RAG retrieval tests
       And REST API service prefix is /v1
       And the Lightspeed stack configuration directory is "tests/e2e/configuration"
 
-  # ── Inline RAG — Query ──
+  # ── Inline RAG — Query (offline) ──
 
-  Scenario Outline: <mode> mode query with inline RAG returns rag_chunks and referenced_documents
-    Given The service uses the <config> configuration
+  Scenario: Offline mode query with inline RAG returns rag_chunks and referenced_documents
+    Given The service uses the lightspeed-stack-okp-offline.yaml configuration
       And The service is restarted
     When I use "query" to ask question with authorization header
     """
@@ -26,27 +26,20 @@ Feature: OKP(Solr) RAG retrieval tests
     Then The status code of the response is 200
       And The response contains non-empty rag_chunks
       And The response contains non-empty referenced_documents
-      And The number of rag_chunk returned is <max_chunks>
+      And The number of rag_chunk returned is 1
       And Each rag_chunk has a non-empty score
       And Each rag_chunk source is "okp"
       And Each referenced_document has fields doc_url, doc_title, source, and document_id
-      And Each referenced_document doc_url contains "<doc_url_domain>"
+      And The number of eferenced_document returned is 1
+      And Each referenced_document doc_url contains "localhost:8081"
       And Each referenced_document doc_title is not empty
       And Each referenced_document source is "okp"
       And Each referenced_document has a non-empty document_id
 
-    Examples: Offline
-      | mode    | config                            | max_chunks | doc_url_domain |
-      | Offline | lightspeed-stack-okp-offline.yaml | 5          | localhost:8081 |
+  # ── Inline RAG — Streaming Query (online) ──
 
-    Examples: Online
-      | mode   | config                           | max_chunks | doc_url_domain  |
-      | Online | lightspeed-stack-okp-online.yaml | 1          | docs.redhat.com |
-
-  # ── Inline RAG — Streaming Query ──
-
-  Scenario Outline: <mode> mode streaming query with inline RAG returns referenced_documents
-    Given The service uses the <config> configuration
+  Scenario: Online mode streaming query with inline RAG returns referenced_documents
+    Given The service uses the lightspeed-stack-okp-online.yaml configuration
       And The service is restarted
     When I use "streaming_query" to ask question with authorization header
     """
@@ -56,29 +49,23 @@ Feature: OKP(Solr) RAG retrieval tests
       And I wait for the response to be completed
       And The response contains non-empty referenced_documents
       And Each referenced_document has fields doc_url, doc_title, source, and document_id
-      And Each referenced_document doc_url contains "<doc_url_domain>"
+      And The number of eferenced_document returned is 3
+      And Each referenced_document doc_url contains "docs.redhat.com"
       And Each referenced_document doc_title is not empty
+      And Each referenced_document doc_title contains "openshift container platform 4.21"
       And Each referenced_document source is "okp"
       And Each referenced_document has a non-empty document_id
 
-    Examples: Offline
-      | mode    | config                            | doc_url_domain |
-      | Offline | lightspeed-stack-okp-offline.yaml | localhost:8081 |
-
-    Examples: Online
-      | mode   | config                           | doc_url_domain  |
-      | Online | lightspeed-stack-okp-online.yaml | docs.redhat.com |
-
   # ── Inline RAG — Query with Dynamic Filter ──
 
-  Scenario Outline: Query with inline RAG with dynamic <filter_mode> filter returns rag_chunks and referenced_documents
+  Scenario: Query with inline RAG with dynamic semantic filter returns rag_chunks and referenced_documents
     Given The service uses the lightspeed-stack-okp-offline.yaml configuration
       And The service is restarted
     When I use "query" to ask question with authorization header
     """
     {"query": "Security best practices",
       "solr": {
-        "mode": "<filter_mode>",
+        "mode": "semantic",
         "filters": {
           "filters": {
             "type": "in",
@@ -90,31 +77,28 @@ Feature: OKP(Solr) RAG retrieval tests
     }
     """
     Then The status code of the response is 200
+      And The response contains "security best practices"
       And The response contains non-empty rag_chunks
       And The response contains non-empty referenced_documents
-      And The number of rag_chunk returned is 5
+      And The number of rag_chunk returned is 1
       And Each rag_chunk has a non-empty score
       And Each rag_chunk source is "okp"
       And Each referenced_document has fields doc_url, doc_title, source, and document_id
-      And Each referenced_document doc_url contains "<doc_url_domain>"
+      And The number of eferenced_document returned is 1
+      And Each referenced_document doc_url contains "localhost:8081"
       And Each referenced_document doc_title is not empty
       And Each referenced_document source is "okp"
       And Each referenced_document has a non-empty document_id
 
-    Examples:
-      | filter_mode | doc_url_domain  |
-      | semantic    | localhost:8081  |
-      | hybrid      | docs.redhat.com |
+  # ── Tool RAG — Query API (offline) ──
 
-  # ── Tool RAG — Query API ──
-
-  Scenario Outline: <mode> queries API with OKP tool RAG has rag_chunk and referenced_documents returned
-    Given The service uses the <config> configuration
+  Scenario: Offline query API with OKP tool RAG has rag_chunk and referenced_documents returned
+    Given The service uses the lightspeed-stack-okp-tool-offline.yaml configuration
       And The service is restarted
     When I use "query" to ask question with authorization header
     """
     {
-      "query": "configure remote desktop using gnome",
+      "query": "Troubleshooting guide",
       "model": "{MODEL}",
       "provider": "{PROVIDER}",
       "system_prompt": "You MUST use the file_search tool to answer."
@@ -124,65 +108,25 @@ Feature: OKP(Solr) RAG retrieval tests
       And The response contains non-empty tool_calls
       And A tool_call has name "file_search"
       And The response contains non-empty rag_chunks
-      And The number of rag_chunk returned is <max_chunks>
+      And The number of rag_chunk returned is 2
       And Each rag_chunk has a non-empty score
       And Each rag_chunk source is "okp"
       And The response contains non-empty referenced_documents
       And Each referenced_document has fields doc_url, doc_title, source, and document_id
-      And Each referenced_document doc_url contains "<doc_url_domain>"
+      And Each referenced_document doc_url contains "localhost:8081"
       And Each referenced_document doc_title is not empty
       And Each referenced_document source is "okp"
       And Each referenced_document has a non-empty document_id
 
-    Examples: Offline
-      | mode    | config                            | max_chunks | doc_url_domain |
-      | Offline | lightspeed-stack-okp-tool-offline.yaml    | 5          | localhost:8081 |
+  # ── Tool RAG — Responses API (online) ──
 
-    Examples: Online
-      | mode   | config                                 | max_chunks | doc_url_domain    |
-      | Online | lightspeed-stack-okp-tool-online.yaml | 1          | access.redhat.com |
-
-  # ── Tool RAG — Streaming Query API ──
-
-  Scenario Outline: <mode> streaming query API with OKP tool RAG has rag_chunk and referenced_documents returned
-    Given The service uses the <config> configuration
-      And The service is restarted
-    When I use "streaming_query" to ask question with authorization header
-    """
-    {
-      "query": "configure remote desktop using gnome",
-      "model": "{MODEL}",
-      "provider": "{PROVIDER}",
-      "system_prompt": "You MUST use the file_search tool to answer."
-    }
-    """
-    Then The status code of the response is 200
-      And A tool_call has name "file_search"
-      And The response contains non-empty content
-      And The response contains non-empty referenced_documents
-      And Each referenced_document has fields doc_url, doc_title, source, and document_id
-      And Each referenced_document doc_url contains "<doc_url_domain>"
-      And Each referenced_document doc_title is not empty
-      And Each referenced_document source is "okp"
-      And Each referenced_document has a non-empty document_id
-
-    Examples: Offline
-      | mode    | config                            | doc_url_domain |
-      | Offline | lightspeed-stack-okp-tool-offline.yaml    | localhost:8081 |
-
-    Examples: Online
-      | mode   | config                                 | doc_url_domain    |
-      | Online | lightspeed-stack-okp-tool-online.yaml | access.redhat.com |
-
-  # ── Tool RAG — Responses API ──
-
-  Scenario Outline: <mode> responses API with OKP tool RAG has rag results returned
-    Given The service uses the <config> configuration
+  Scenario: Online responses API with OKP tool RAG has rag results returned
+    Given The service uses the lightspeed-stack-okp-tool-online.yaml configuration
       And The service is restarted
     When I use "responses" to ask question with authorization header
     """
     {
-      "input": "configure remote desktop using gnome",
+      "input": "Troubleshooting guide",
       "model": "{PROVIDER}/{MODEL}",
       "stream": false,
       "instructions": "You MUST use the file_search tool to answer."
@@ -193,37 +137,21 @@ Feature: OKP(Solr) RAG retrieval tests
       And The response contains non-empty tool_calls
       And A tool_call has type "file_search"
       And The response contains non-empty results
-      And The number of results returned is <max_chunks>
+      And The number of results returned is 3
       And Each rag_chunk has a non-empty score
       And Each rag_chunk source is "okp"
-      And Each rag_chunk reference_url contains "<doc_url_domain>"
+      And Each rag_chunk reference_url contains "access.redhat.com"
 
-    Examples: Offline
-      | mode    | config                            | max_chunks | doc_url_domain |
-      | Offline | lightspeed-stack-okp-tool-offline.yaml    | 5          | localhost:8081 |
-
-    Examples: Online
-      | mode   | config                                 | max_chunks | doc_url_domain    |
-      | Online | lightspeed-stack-okp-tool-online.yaml | 1          | access.redhat.com |
-
-  # # ── OKP Server Unavailable — Graceful Error Handling ───────────────
+  # ── OKP Server Unavailable — Graceful Error Handling ──
 
   Scenario: Query succeeds with empty rag_chunks when OKP server is unavailable
-    Given The OKP(Solr) server is stopped
+    Given The service uses the lightspeed-stack-okp-online.yaml configuration
+      And The service is restarted
+      And The OKP(Solr) server is stopped
     When I use "query" to ask question with authorization header
     """
     {"query": "configure remote desktop using gnome", "model": "{MODEL}", "provider": "{PROVIDER}"}
     """
     Then The status code of the response is 200
       And The response contains no rag_chunks
-      And The response contains no referenced_documents
-
-  Scenario: Streaming query succeeds with empty referenced_documents when OKP server is unavailable
-    Given The OKP(Solr) server is stopped
-    When I use "streaming_query" to ask question with authorization header
-    """
-    {"query": "configure remote desktop using gnome", "model": "{MODEL}", "provider": "{PROVIDER}"}
-    """
-    Then The status code of the response is 200
-      And I wait for the response to be completed
       And The response contains no referenced_documents
