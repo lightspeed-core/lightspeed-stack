@@ -220,7 +220,10 @@ def ask_question_in_same_conversation(context: Context, endpoint: str) -> None:
 def check_rag_chunks_present(context: Context) -> None:
     """Check that the response contains non-empty rag_chunks from inline RAG."""
     assert context.response is not None
-    response_json = context.response.json()
+    if getattr(context, "use_streaming_response_data", False):
+        response_json = context.response_data
+    else:
+        response_json = context.response.json()
     assert "rag_chunks" in response_json, "rag_chunks field missing from response"
     assert (
         len(response_json["rag_chunks"]) > 0
@@ -231,7 +234,10 @@ def check_rag_chunks_present(context: Context) -> None:
 def check_referenced_documents_present(context: Context) -> None:
     """Check that the response contains non-empty referenced_documents."""
     assert context.response is not None
-    response_json = context.response.json()
+    if getattr(context, "use_streaming_response_data", False):
+        response_json = context.response_data
+    else:
+        response_json = context.response.json()
     assert (
         "referenced_documents" in response_json
     ), "referenced_documents field missing from response"
@@ -379,6 +385,7 @@ def _parse_streaming_response(response_text: str) -> dict:
     full_response_split: list[str] = []
     tool_calls: list[dict[str, Any]] = []
     tool_results: list[dict[str, Any]] = []
+    referenced_documents: list[dict[str, Any]] = []
     finished = False
     stream_error = (
         None  # {"status_code": int, "response": str, "cause": str} if event "error"
@@ -402,6 +409,10 @@ def _parse_streaming_response(response_text: str) -> dict:
                     full_response = data["data"]["token"]
                 elif event == "end":
                     finished = True
+                    end_data = data.get("data") or {}
+                    referenced_documents = end_data.get(
+                        "referenced_documents", referenced_documents
+                    )
                 elif event == "error":
                     stream_error = data.get("data") or {}
             except json.JSONDecodeError:
@@ -413,6 +424,7 @@ def _parse_streaming_response(response_text: str) -> dict:
         "response_complete": full_response,
         "tool_calls": tool_calls,
         "tool_results": tool_results,
+        "referenced_documents": referenced_documents,
         "finished": finished,
         "stream_error": stream_error,
     }

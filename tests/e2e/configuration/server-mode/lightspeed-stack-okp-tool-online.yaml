@@ -1,0 +1,39 @@
+# @cfg_okp
+# OKP tool RAG — online mode.
+# LLM calls file_search on demand; chunks use reference_url-based URLs (access.redhat.com).
+name: Lightspeed Core Service (LCS)
+service:
+  host: 0.0.0.0
+  port: 8080
+  auth_enabled: false
+  workers: 1
+  color_log: true
+  access_log: true
+llama_stack:
+  use_as_library_client: false
+  url: http://${env.E2E_LLAMA_HOSTNAME}:8321
+  api_key: xyzzy
+user_data_collection:
+  feedback_enabled: true
+  feedback_storage: "/tmp/data/feedback"
+  transcripts_enabled: true
+  transcripts_storage: "/tmp/data/transcripts"
+conversation_cache:
+  type: "sqlite"
+  sqlite:
+    db_path: "/tmp/data/conversation-cache.db"
+authentication:
+  module: "noop"
+inference:
+  default_provider: openai
+  default_model: gpt-4o-mini
+rag:
+  retrieval:
+    tool:
+      sources:
+        - okp
+      max_chunks: 3
+  okp:
+    rhokp_url: ${env.RH_SERVER_OKP:=http://localhost:8081/solr}
+    offline: false
+    max_chunks: 5
