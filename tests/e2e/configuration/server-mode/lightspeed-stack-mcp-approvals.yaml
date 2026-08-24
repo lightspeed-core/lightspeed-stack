@@ -26,8 +26,8 @@ inference:
   default_provider: openai
   default_model: gpt-4o-mini
 approvals:
-  approval_timeout_seconds: 60
-  approval_retention_days: 7
+  approval_timeout: 60 seconds
+  approval_retention: 7 days
 mcp_servers:
   - name: "mcp-approval-always"
     provider_id: "model-context-protocol"
@@ -42,6 +42,6 @@ mcp_servers:
     url: "http://mock-mcp:3000"
     require_approval:
       always:
-        - "<PLACEHOLDER>"
+        - "add"
       never:
-        - "<PLACEHOLDER>"
+        - "subtract"

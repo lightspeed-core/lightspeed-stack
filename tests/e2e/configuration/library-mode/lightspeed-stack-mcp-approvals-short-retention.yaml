@@ -25,8 +25,8 @@ inference:
   default_provider: openai
   default_model: gpt-4o-mini
 approvals:
-  approval_timeout_seconds: 60
-  approval_retention_seconds: 5
+  approval_timeout: 5 second
+  approval_retention: 10 seconds
 mcp_servers:
   - name: "mcp-approval-always"
     provider_id: "model-context-protocol"
