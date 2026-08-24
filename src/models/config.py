@@ -771,8 +771,10 @@ class UnifiedLlamaStackConfig(ConfigurationBase):
 
     Attributes:
         baseline: Synthesis starting point. "default" begins from LCORE's
-            built-in baseline (src/data/default_run.yaml); "empty" begins from
-            an empty dict (used by the migration tool for an exact round-trip).
+            built-in baseline (src/data/default_run.yaml) including the
+            conditional OpenAI inference provider. "byo-llm" begins from the
+            same file with that OpenAI row removed. "empty" begins from an
+            empty dict (used by the migration tool for an exact round-trip).
             Ignored when `profile` is set.
         profile: Optional path to a user-authored run.yaml-shaped file used as
             the synthesis baseline. Relative paths resolve against the directory
@@ -782,11 +784,13 @@ class UnifiedLlamaStackConfig(ConfigurationBase):
             anything the high-level sections do not express.
     """
 
-    baseline: Literal["default", "empty"] = Field(
+    baseline: Literal["default", "empty", "byo-llm"] = Field(
         "default",
         title="Baseline selector",
         description="Synthesis starting point: 'default' uses LCORE's built-in "
-        "baseline, 'empty' starts from {}. Ignored when 'profile' is set.",
+        "baseline including the conditional OpenAI provider, 'byo-llm' uses "
+        "the same baseline without that OpenAI row, 'empty' starts from {}. "
+        "Ignored when 'profile' is set.",
     )
 
     profile: Optional[str] = Field(

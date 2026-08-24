@@ -6,16 +6,9 @@ relationships when flowing through the query endpoint and its
 downstream components.
 """
 
-# pylint: disable=protected-access
-
-from collections.abc import Generator
-
 import pytest
 from fastapi import Request
 from opentelemetry import context as otel_context
-from opentelemetry import trace
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
     InMemorySpanExporter,
 )
@@ -28,39 +21,6 @@ from models.api.requests import QueryRequest
 KNOWN_TRACE_ID = "4bf92f3577b34da6a3ce929d0e0e4736"
 KNOWN_PARENT_SPAN_ID = "00f067aa0ba902b7"
 TRACEPARENT = f"00-{KNOWN_TRACE_ID}-{KNOWN_PARENT_SPAN_ID}-01"
-
-
-@pytest.fixture(name="otel_collector", scope="module")
-def otel_collector_fixture() -> Generator[InMemorySpanExporter, None, None]:
-    """Install a global TracerProvider backed by an InMemorySpanExporter.
-
-    Module-scoped so that every module-level ``trace.get_tracer(__name__)``
-    proxy resolves to the same real tracer across all tests in this file.
-    Shutting down the provider between tests would invalidate the cached
-    proxy and silently drop spans.
-
-    Why we reset ``_TRACER_PROVIDER_SET_ONCE`` instead of using
-    ``mock.patch("opentelemetry.trace.get_tracer_provider")``:
-    ``ProxyTracer._tracer`` reads the module-level ``_TRACER_PROVIDER``
-    variable directly — it never calls ``get_tracer_provider()``.
-    Patching the function leaves that variable ``None``, so the proxy
-    falls back to a noop tracer and no spans are captured.
-    ``set_tracer_provider()`` is the only way to populate the variable,
-    and the one-shot guard must be reset to allow re-installation.
-    """
-    exporter = InMemorySpanExporter()
-    provider = TracerProvider()
-    provider.add_span_processor(SimpleSpanProcessor(exporter))
-
-    trace._TRACER_PROVIDER_SET_ONCE._done = False
-    trace._TRACER_PROVIDER = None
-    trace.set_tracer_provider(provider)
-
-    yield exporter
-
-    provider.shutdown()
-    trace._TRACER_PROVIDER_SET_ONCE._done = False
-    trace._TRACER_PROVIDER = None
 
 
 @pytest.fixture(autouse=True)

@@ -17,6 +17,7 @@ from ogx_api.openai_responses import (
     OpenAIResponseMessage,
 )
 from ogx_client import APIConnectionError, APIStatusError, AsyncOgxClient
+from opentelemetry import trace
 from pytest_mock import MockerFixture
 
 from app.endpoints.responses import (
@@ -42,7 +43,7 @@ from models.common.responses.responses_conversation_context import (
     ResponsesConversationContext,
 )
 from models.common.responses.types import InputToolMCP
-from models.common.turn_summary import RAGContext, TurnSummary
+from models.common.turn_summary import RAGContext, ToolCallSummary, TurnSummary
 from models.config import Action, ModelContextProtocolServer
 from models.database.conversations import UserConversation
 
@@ -59,6 +60,31 @@ ENDPOINTS_MODULE = "utils.endpoints"
 UTILS_RESPONSES_MODULE = "utils.responses"
 MODEL = "google-vertex/publishers/google/models/gemini-2.5-flash"
 SERVER_INSTRUCTIONS = "Server instructions"
+
+
+class _MockSpan:
+    """Minimal OTEL span stand-in for direct handler unit tests."""
+
+    def end(self) -> None:
+        """No-op span end."""
+
+    def set_attribute(self, *_args: Any, **_kwargs: Any) -> None:
+        """No-op attribute setter."""
+
+    def add_event(self, *_args: Any, **_kwargs: Any) -> None:
+        """No-op event recorder."""
+
+    def record_exception(self, *_args: Any, **_kwargs: Any) -> None:
+        """No-op exception recorder."""
+
+    def is_recording(self) -> bool:
+        """Report that the span accepts recordings."""
+        return True
+
+
+def _mock_span() -> trace.Span:
+    """Return a typed span stand-in for behavioral handler unit tests."""
+    return cast(trace.Span, _MockSpan())
 
 
 def build_api_params_and_context(  # pylint: disable=too-many-arguments
@@ -92,6 +118,7 @@ def build_api_params_and_context(  # pylint: disable=too-many-arguments
         generate_topic_summary=generate_topic_summary,
         endpoint_path=endpoint_path,
         user_agent=user_agent,
+        root_span=_mock_span(),
     )
     return api_params, context
 
@@ -842,7 +869,7 @@ class TestHandleNonStreamingResponse:
         mocker.patch(f"{MODULE}.consume_query_tokens")
         mocker.patch(
             f"{MODULE}.build_turn_summary",
-            return_value=mocker.Mock(referenced_documents=[]),
+            return_value=TurnSummary(),
         )
         mocker.patch(
             f"{MODULE}.extract_text_from_response_items",
@@ -923,7 +950,7 @@ class TestHandleNonStreamingResponse:
         mocker.patch(f"{MODULE}.consume_query_tokens")
         mocker.patch(
             f"{MODULE}.build_turn_summary",
-            return_value=mocker.Mock(referenced_documents=[]),
+            return_value=TurnSummary(),
         )
         mocker.patch(
             f"{MODULE}.extract_text_from_response_items",
@@ -1241,7 +1268,7 @@ class TestHandleStreamingResponse:
         mocker.patch(f"{MODULE}.extract_vector_store_ids_from_tools", return_value=[])
         mocker.patch(
             f"{MODULE}.build_turn_summary",
-            return_value=TurnSummary(referenced_documents=[]),
+            return_value=TurnSummary(),
         )
         mocker.patch(
             f"{MODULE}.maybe_get_topic_summary",
@@ -1328,7 +1355,7 @@ class TestHandleStreamingResponse:
         mocker.patch(f"{MODULE}.extract_vector_store_ids_from_tools", return_value=[])
         mocker.patch(
             f"{MODULE}.build_turn_summary",
-            return_value=TurnSummary(referenced_documents=[]),
+            return_value=TurnSummary(),
         )
         mocker.patch(
             f"{MODULE}.maybe_get_topic_summary",
@@ -1408,11 +1435,14 @@ class TestHandleStreamingResponse:
         mocker.patch(f"{MODULE}.extract_vector_store_ids_from_tools", return_value=[])
         mocker.patch(
             f"{MODULE}.build_turn_summary",
-            return_value=TurnSummary(referenced_documents=[]),
+            return_value=TurnSummary(),
         )
         mock_build_tool_call = mocker.patch(
             f"{MODULE}.build_tool_call_summary",
-            return_value=(mocker.Mock(), mocker.Mock()),
+            return_value=(
+                ToolCallSummary(id="call_1", name="search", type="function_call"),
+                None,
+            ),
         )
         mocker.patch(
             f"{MODULE}.maybe_get_topic_summary",
@@ -1494,7 +1524,7 @@ class TestHandleStreamingResponse:
         mocker.patch(f"{MODULE}.extract_vector_store_ids_from_tools", return_value=[])
         mocker.patch(
             f"{MODULE}.build_turn_summary",
-            return_value=TurnSummary(referenced_documents=[]),
+            return_value=TurnSummary(),
         )
         mocker.patch(
             f"{MODULE}.maybe_get_topic_summary",
@@ -2319,11 +2349,7 @@ class TestSanitizesOutputAndModel:
         mocker.patch(f"{MODULE}.consume_query_tokens")
         mocker.patch(
             f"{MODULE}.build_turn_summary",
-            return_value=mocker.Mock(
-                referenced_documents=[],
-                rag_chunks=[],
-                token_usage=mocker.Mock(input_tokens=1, output_tokens=2),
-            ),
+            return_value=TurnSummary(),
         )
         mocker.patch(
             f"{MODULE}.extract_text_from_response_items",
@@ -2446,7 +2472,7 @@ class TestSanitizesOutputAndModel:
         mocker.patch(f"{MODULE}.extract_vector_store_ids_from_tools", return_value=[])
         mocker.patch(
             f"{MODULE}.build_turn_summary",
-            return_value=TurnSummary(referenced_documents=[]),
+            return_value=TurnSummary(),
         )
         mocker.patch(
             f"{MODULE}.maybe_get_topic_summary",
@@ -2572,7 +2598,7 @@ class TestMcpEventsFilteredUnconditionally:
         mocker.patch(f"{MODULE}.extract_vector_store_ids_from_tools", return_value=[])
         mocker.patch(
             f"{MODULE}.build_turn_summary",
-            return_value=TurnSummary(referenced_documents=[]),
+            return_value=TurnSummary(),
         )
         mocker.patch(
             f"{MODULE}.maybe_get_topic_summary",
@@ -2668,7 +2694,7 @@ class TestMcpEventsFilteredUnconditionally:
         mocker.patch(f"{MODULE}.extract_vector_store_ids_from_tools", return_value=[])
         mocker.patch(
             f"{MODULE}.build_turn_summary",
-            return_value=TurnSummary(referenced_documents=[]),
+            return_value=TurnSummary(),
         )
         mocker.patch(
             f"{MODULE}.maybe_get_topic_summary",
@@ -2761,6 +2787,7 @@ async def test_response_generator_records_failure_when_stream_iteration_raises(
         context=context,
         turn_summary=TurnSummary(),
         inference_start_time=0.0,
+        inference_span=_mock_span(),
     )
 
     with pytest.raises(RuntimeError, match="stream broken"):

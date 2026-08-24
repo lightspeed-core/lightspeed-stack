@@ -16,6 +16,7 @@ import subprocess
 import time
 import tomllib
 import urllib.request
+import sys
 from collections import deque
 from collections.abc import Sequence
 from html.parser import HTMLParser
@@ -1026,8 +1027,6 @@ def uv_resolve(
         rhoai_index_url,
         "--default-index",
         "https://pypi.org/simple/",
-        "--index-strategy",
-        "prefer-index",
         "--emit-index-annotation",
         "--no-sources",
         "--group",
@@ -1037,7 +1036,12 @@ def uv_resolve(
         cmd += ["--override", overrides_file]
 
     logger.debug("Running: %s", " ".join(cmd))
-    result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+    except subprocess.CalledProcessError as e:
+        print("Failed:")
+        print(e.stderr)
+        sys.exit(1)
 
     resolved: dict[str, dict[str, Any]] = {}
     current_package: Optional[str] = None
@@ -1270,15 +1274,20 @@ def main() -> None:
                 for name in sorted(sdist_names):
                     info = buckets["pypi_sdist"][name]
                     f.write(f"{name}=={info['version']}\n")
-            subprocess.run(
-                [
-                    "pybuild-deps",
-                    "compile",
-                    f"--output-file={build_output}",
-                    tmp_sdist_file,
-                ],
-                check=True,
-            )
+            try:
+                subprocess.run(
+                    [
+                        "pybuild-deps",
+                        "compile",
+                        f"--output-file={build_output}",
+                        tmp_sdist_file,
+                    ],
+                    check=True,
+                )
+            except subprocess.CalledProcessError as e:
+                print("Failed:")
+                print(e.stderr)
+                sys.exit(1)
         finally:
             if os.path.exists(tmp_sdist_file):
                 os.remove(tmp_sdist_file)

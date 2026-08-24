@@ -132,7 +132,7 @@ class TestAnonymizeValue:
         assert match is not None
         assert len(match.group(1)) == 16  # 16 hex chars = 64 bits
 
-    def test_missing_secret_raises_error(self, monkeypatch):
+    def test_missing_secret_raises_error(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Test that missing OTEL_ANONYMIZATION_SECRET raises a clear error."""
         # Remove the secret that was set by the autouse fixture
         monkeypatch.delenv("OTEL_ANONYMIZATION_SECRET", raising=False)
@@ -144,7 +144,9 @@ class TestAnonymizeValue:
         ):
             anonymize_value("test-value")
 
-    def test_missing_secret_with_otel_disabled_returns_placeholder(self, monkeypatch):
+    def test_missing_secret_with_otel_disabled_returns_placeholder(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Test that missing secret with OTEL_SDK_DISABLED returns placeholder."""
         monkeypatch.delenv("OTEL_ANONYMIZATION_SECRET", raising=False)
         monkeypatch.setenv("OTEL_SDK_DISABLED", "true")
@@ -156,7 +158,7 @@ class TestAnonymizeValue:
 class TestSetSpanAttributes:
     """Tests for set_span_attributes function."""
 
-    def test_set_single_attribute(self, otel):
+    def test_set_single_attribute(self, otel: Generator[Any, Any, Any]) -> None:
         """Test setting a single attribute on a span."""
         tracer, exporter = otel
         with tracer.start_as_current_span("test_span") as span:

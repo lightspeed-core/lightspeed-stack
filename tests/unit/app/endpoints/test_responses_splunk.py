@@ -421,6 +421,8 @@ class TestSplunkTelemetryHooks:
         mock_turn_summary = mocker.Mock()
         mock_turn_summary.referenced_documents = []
         mock_turn_summary.rag_chunks = []
+        mock_turn_summary.tool_calls = []
+        mock_turn_summary.llm_response = "Model reply"
         mock_token_usage = mocker.Mock()
         mock_token_usage.input_tokens = 100
         mock_token_usage.output_tokens = 50

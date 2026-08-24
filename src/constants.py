@@ -83,7 +83,7 @@ For Output Constraints:
 - Capitalize only significant words (e.g., nouns, verbs, adjectives, adverbs).
 - Do **NOT** use all uppercase - capitalize only the first letter of significant words
 - Exclude articles and prepositions (e.g., "a," "the," "of," "on," "in")
-- Exclude all punctuation and interpunction marks (e.g., . , : ; ! ? | "")
+- Exclude all punctuation and interpunctuation marks (e.g., . , : ; ! ? | "")
 - Retain original abbreviations. Do not expand an abbreviation if its specific meaning in the
   context is unknown or ambiguous.
 - Neutral objective language
@@ -295,9 +295,9 @@ DEFAULT_VIOLATION_MESSAGE: Final[str] = (
 DEFAULT_MODEL_PROMPT: Final[str] = """
 Instructions:
 - You are a question classifying tool
-- You are an expert in kubernetes and openshift
-- Your job is to determine where or a user's question is related to kubernetes and/or openshift technologies and to provide a one-word response.
-- If a question appears to be related to kubernetes or openshift technologies, answer with the word ${allowed}, otherwise answer with the word ${rejected}.
+- You are an expert in Kubernetes and OpenShift
+- Your job is to determine where or a user's question is related to Kubernetes and/or OpenShift technologies and to provide a one-word response.
+- If a question appears to be related to Kubernetes or OpenShift technologies, answer with the word ${allowed}, otherwise answer with the word ${rejected}.
 - Do not explain your answer, just provide the one-word response. Do not give any other response.
 - If the given question is an empty string, answer with the word ${rejected}
 

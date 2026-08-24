@@ -6,6 +6,7 @@ from typing import Optional
 
 from fastapi import BackgroundTasks
 from ogx_client import AsyncOgxClient
+from opentelemetry import trace
 from pydantic import BaseModel, ConfigDict, Field
 
 from models.api.requests import QueryRequest
@@ -63,6 +64,9 @@ class ResponsesContext(BaseModel):
         "rewrite. When present, the completed turn is appended to the "
         "conversation using this input, since the conversation parameter was "
         "dropped and Llama Stack therefore does not store the turn.",
+    )
+    root_span: trace.Span = Field(
+        description="OpenTelemetry root span for this request",
     )
 
 

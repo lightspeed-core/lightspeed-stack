@@ -6,6 +6,8 @@ high-level inference expansion, the full synthesis pipeline, and the
 write-to-file step (persistent path, mode 0600).
 """
 
+# pylint: disable=too-many-lines
+
 import os
 import stat
 from pathlib import Path
@@ -16,6 +18,7 @@ import yaml
 from ogx.core.stack import replace_env_vars
 
 from llama_stack_configuration import (
+    CONDITIONAL_OPENAI_PROVIDER_ID,
     PROVIDER_TYPE_MAP,
     apply_high_level_inference,
     deep_merge_list_replace,
@@ -27,7 +30,7 @@ from llama_stack_configuration import (
 )
 from models.config import UnifiedInferenceProvider
 
-OPENAI_CONDITIONAL_PROVIDER_ID = "${env.OPENAI_API_KEY:+openai}"
+OPENAI_CONDITIONAL_PROVIDER_ID = CONDITIONAL_OPENAI_PROVIDER_ID
 OPENAI_CONDITIONAL_API_KEY = "${env.OPENAI_API_KEY:=}"
 
 # ---------------------------------------------------------------------------
@@ -735,6 +738,122 @@ def test_synthesize_vllm_appends_and_keeps_conditional_openai(
     assert len(resolved_openai) == 1
     assert resolved_openai[0]["provider_id"] is None
     assert any(entry["provider_id"] == "vllm" for entry in _inference_entries(resolved))
+
+
+@pytest.mark.parametrize(
+    "lcs",
+    [
+        {"llama_stack": {"config": {"baseline": "default"}}},
+        {"llama_stack": {"config": {}}},
+        {},
+    ],
+)
+def test_synthesize_default_path_keeps_conditional_openai(
+    lcs: dict[str, Any],
+) -> None:
+    """default or omitted baseline keeps the OpenAI row."""
+    result = synthesize_configuration(lcs)
+    openai_entries = _openai_inference_entries(result)
+    assert len(openai_entries) == 1
+    assert openai_entries[0]["provider_id"] == OPENAI_CONDITIONAL_PROVIDER_ID
+    ids = [entry["provider_id"] for entry in _inference_entries(result)]
+    assert "sentence-transformers" in ids
+
+
+def test_synthesize_byo_llm_strips_openai() -> None:
+    """byo-llm drops the built-in OpenAI row and keeps the embedder."""
+    lcs = {"llama_stack": {"config": {"baseline": "byo-llm"}}}
+    result = synthesize_configuration(lcs)
+    assert _openai_inference_entries(result) == []
+    ids = [entry["provider_id"] for entry in _inference_entries(result)]
+    assert ids == ["sentence-transformers"]
+    assert "model-context-protocol" in _tool_runtime_ids(result)
+
+
+def test_synthesize_byo_llm_with_vllm_appends_without_openai() -> None:
+    """byo-llm + high-level vLLM appends vLLM and does not restore OpenAI."""
+    lcs = {
+        "llama_stack": {"config": {"baseline": "byo-llm"}},
+        "inference": {
+            "providers": [
+                {
+                    "type": "vllm",
+                    "api_key_env": "VLLM_API_KEY",
+                    "extra": {"url": "http://vllm:8000"},
+                }
+            ]
+        },
+    }
+    result = synthesize_configuration(lcs)
+    assert _openai_inference_entries(result) == []
+    vllm = next(
+        entry for entry in _inference_entries(result) if entry["provider_id"] == "vllm"
+    )
+    assert vllm["provider_type"] == "remote::vllm"
+    assert "sentence-transformers" in [
+        entry["provider_id"] for entry in _inference_entries(result)
+    ]
+
+
+def test_synthesize_byo_llm_with_openai_appends_one_row() -> None:
+    """byo-llm + high-level openai appends a single openai row."""
+    lcs = {
+        "llama_stack": {"config": {"baseline": "byo-llm"}},
+        "inference": {
+            "providers": [{"type": "openai", "api_key_env": "OPENAI_API_KEY"}]
+        },
+    }
+    result = synthesize_configuration(lcs)
+    openai_entries = _openai_inference_entries(result)
+    assert len(openai_entries) == 1
+    assert openai_entries[0]["provider_id"] == "openai"
+    assert openai_entries[0]["config"]["api_key"] == "${env.OPENAI_API_KEY}"
+
+
+def test_synthesize_empty_baseline_does_not_strip_openai() -> None:
+    """baseline: empty is unchanged: no OpenAI strip."""
+    lcs = {
+        "llama_stack": {
+            "config": {
+                "baseline": "empty",
+                "native_override": {"version": 2, "apis": ["inference"]},
+            }
+        }
+    }
+    result = synthesize_configuration(lcs)
+    assert result == {"version": 2, "apis": ["inference"]}
+
+
+def test_synthesize_profile_ignores_byo_llm(tmp_path: Path) -> None:
+    """profile: wins over baseline: byo-llm; no OpenAI strip."""
+    profile = {
+        "version": 2,
+        "apis": ["inference"],
+        "providers": {
+            "inference": [
+                {
+                    "provider_id": "openai",
+                    "provider_type": "remote::openai",
+                    "config": {"api_key": "${env.OPENAI_API_KEY}"},
+                }
+            ]
+        },
+        "marker": "from-profile",
+    }
+    (tmp_path / "my-profile.yaml").write_text(yaml.dump(profile), encoding="utf-8")
+    lcs = {
+        "llama_stack": {
+            "config": {
+                "profile": "my-profile.yaml",
+                "baseline": "byo-llm",
+            }
+        }
+    }
+    result = synthesize_configuration(lcs, config_file_dir=str(tmp_path))
+    assert result["marker"] == "from-profile"
+    openai_entries = _openai_inference_entries(result)
+    assert len(openai_entries) == 1
+    assert openai_entries[0]["provider_id"] == "openai"
 
 
 def test_synthesize_loads_profile_relative_to_config_dir(tmp_path: Path) -> None:

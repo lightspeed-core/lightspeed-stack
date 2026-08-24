@@ -192,7 +192,7 @@ class TestBuildQueryParams:
 
     def test_custom_mode(self) -> None:
         """Request mode overrides the default Solr vector_io mode."""
-        solr = SolrVectorSearchRequest(mode="lexical")
+        solr = SolrVectorSearchRequest(mode="lexical", filters=None)
         params = _build_query_params(solr=solr)
 
         # "lexical" is translated to "keyword" for Llama Stack dispatch
@@ -201,7 +201,7 @@ class TestBuildQueryParams:
 
     def test_keyword_mode_direct(self) -> None:
         """Request mode 'keyword' is passed through unchanged."""
-        solr = SolrVectorSearchRequest(mode="keyword")
+        solr = SolrVectorSearchRequest(mode="keyword", filters=None)
         params = _build_query_params(solr=solr)
 
         assert params["mode"] == "keyword"
@@ -222,7 +222,7 @@ class TestBuildQueryParams:
         """Mode is set to default value when only filters are provided."""
         solr = SolrVectorSearchRequest(
             filters={"fq": ["product:*openshift*"]},
-        )
+        )  # pyright: ignore[reportCallIssue]
         params = _build_query_params(solr=solr)
 
         assert params["mode"] == constants.SOLR_VECTOR_SEARCH_DEFAULT_MODE
@@ -254,7 +254,7 @@ class TestBuildQueryParams:
         config_mock.okp.search_mode = "keyword"
         mocker.patch("utils.vector_search.configuration", config_mock)
 
-        solr = SolrVectorSearchRequest(mode="semantic")
+        solr = SolrVectorSearchRequest(mode="semantic", filters={})
         params = _build_query_params(solr=solr)
 
         assert params["mode"] == "semantic"
@@ -277,7 +277,7 @@ class TestBuildQueryParams:
         config_mock.okp.search_mode = "hybrid"
         mocker.patch("utils.vector_search.configuration", config_mock)
 
-        solr = SolrVectorSearchRequest(mode="lexical")
+        solr = SolrVectorSearchRequest(mode="lexical", filters={})
         params = _build_query_params(solr=solr)
 
         assert params["mode"] == "keyword"
@@ -1429,6 +1429,8 @@ class TestRerankChunksWithCrossEncoder:
         # Content 1: 0.3 * 0.75 + 0.7 * 0.4 = 0.505 (approximately)
         # Content 2: 0.3 * 0.0 + 0.7 * 0.0 = 0.0
         assert result[0].score == 1.0
+        # score is optional: make sure it is set
+        assert result[1].score is not None
         assert abs(result[1].score - 0.505) < 0.01  # Allow small floating point errors
         assert result[2].score == 0.0
 
@@ -1664,6 +1666,8 @@ class TestApplyByokRerankBoost:
         assert len(result) == 1
         assert result[0].content == "Test content"
         assert result[0].source == "byok_store"
+        # score is optional: make sure it is set
+        assert result[0].score is not None
         assert abs(result[0].score - 1.2) < 1e-10  # 0.8 * 1.5
         assert result[0].attributes == {
             "title": "Test Doc",
