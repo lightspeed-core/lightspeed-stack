@@ -30,7 +30,7 @@ Feature: OKP(Solr) RAG retrieval tests
       And Each rag_chunk has a non-empty score
       And Each rag_chunk source is "okp"
       And Each referenced_document has fields doc_url, doc_title, source, and document_id
-      And The number of eferenced_document returned is 1
+      And The number of referenced_document returned is 1
       And Each referenced_document doc_url contains "localhost:8081"
       And Each referenced_document doc_title is not empty
       And Each referenced_document source is "okp"
@@ -49,7 +49,7 @@ Feature: OKP(Solr) RAG retrieval tests
       And I wait for the response to be completed
       And The response contains non-empty referenced_documents
       And Each referenced_document has fields doc_url, doc_title, source, and document_id
-      And The number of eferenced_document returned is 3
+      And The number of referenced_document returned is 3
       And Each referenced_document doc_url contains "docs.redhat.com"
       And Each referenced_document doc_title is not empty
       And Each referenced_document doc_title contains "openshift container platform 4.21"
@@ -84,7 +84,7 @@ Feature: OKP(Solr) RAG retrieval tests
       And Each rag_chunk has a non-empty score
       And Each rag_chunk source is "okp"
       And Each referenced_document has fields doc_url, doc_title, source, and document_id
-      And The number of eferenced_document returned is 1
+      And The number of referenced_document returned is 1
       And Each referenced_document doc_url contains "localhost:8081"
       And Each referenced_document doc_title is not empty
       And Each referenced_document source is "okp"
