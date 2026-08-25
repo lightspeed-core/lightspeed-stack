@@ -24,8 +24,6 @@ Feature: OKP(Solr) RAG retrieval tests
     {"query": "configure remote desktop using gnome", "model": "{MODEL}", "provider": "{PROVIDER}"}
     """
     Then The status code of the response is 200
-      And The response contains non-empty rag_chunks
-      And The response contains non-empty referenced_documents
       And The number of rag_chunk returned is 1
       And Each rag_chunk has a non-empty score
       And Each rag_chunk source is "okp"
@@ -40,6 +38,7 @@ Feature: OKP(Solr) RAG retrieval tests
 
   Scenario: Online mode streaming query with inline RAG returns referenced_documents
     Given The service uses the lightspeed-stack-okp-online.yaml configuration
+      And Llama Stack is restarted
       And The service is restarted
     When I use "streaming_query" to ask question with authorization header
     """
@@ -47,7 +46,6 @@ Feature: OKP(Solr) RAG retrieval tests
     """
     Then The status code of the response is 200
       And I wait for the response to be completed
-      And The response contains non-empty referenced_documents
       And Each referenced_document has fields doc_url, doc_title, source, and document_id
       And The number of referenced_document returned is 3
       And Each referenced_document doc_url contains "docs.redhat.com"
@@ -78,8 +76,6 @@ Feature: OKP(Solr) RAG retrieval tests
     """
     Then The status code of the response is 200
       And The response contains "security best practices"
-      And The response contains non-empty rag_chunks
-      And The response contains non-empty referenced_documents
       And The number of rag_chunk returned is 1
       And Each rag_chunk has a non-empty score
       And Each rag_chunk source is "okp"
@@ -154,4 +150,16 @@ Feature: OKP(Solr) RAG retrieval tests
     """
     Then The status code of the response is 200
       And The response contains no rag_chunks
+      And The response contains no referenced_documents
+
+  Scenario: Streaming query succeeds with empty referenced_documents when OKP server is unavailable
+    Given The service uses the lightspeed-stack-okp-online.yaml configuration
+      And The service is restarted
+      And The OKP(Solr) server is stopped
+    When I use "streaming_query" to ask question with authorization header
+    """
+    {"query": "configure remote desktop using gnome", "model": "{MODEL}", "provider": "{PROVIDER}"}
+    """
+    Then The status code of the response is 200
+      And I wait for the response to be completed
       And The response contains no referenced_documents
