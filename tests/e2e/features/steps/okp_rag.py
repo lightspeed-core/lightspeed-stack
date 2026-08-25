@@ -12,6 +12,11 @@ from behave.runner import Context
 # OKP/Solr Docker container name
 OKP_CONTAINER_NAME = os.getenv("E2E_OKP_CONTAINER", "okp-solr")
 
+# OKP Docker image name (for finding container by image)
+OKP_IMAGE_NAME = os.getenv(
+    "E2E_OKP_IMAGE", "registry.redhat.io/offline-knowledge-portal/rhokp-rhel9"
+)
+
 # Default OKP health check URL
 OKP_DEFAULT_URL = os.getenv("E2E_OKP_URL", "http://localhost:8081")
 
@@ -76,6 +81,36 @@ def _get_file_search_results(context: Context) -> list[dict[str, Any]]:
     return results
 
 
+def _find_okp_container() -> str | None:
+    """Find OKP container by name or image.
+
+    Returns:
+        Container name/ID if found, None otherwise.
+    """
+    # Try by configured name first
+    result = subprocess.run(
+        ["docker", "inspect", "-f", "{{.State.Running}}", OKP_CONTAINER_NAME],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode == 0:
+        return OKP_CONTAINER_NAME
+
+    # Try by image name
+    result = subprocess.run(
+        ["docker", "ps", "-a", "-q", "--filter", f"ancestor={OKP_IMAGE_NAME}"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode == 0 and result.stdout.strip():
+        container_id = result.stdout.strip().split()[0]
+        return container_id
+
+    return None
+
+
 # ── Given steps ──
 
 
@@ -96,24 +131,69 @@ def okp_server_is_running(context: Context) -> None:
 def okp_server_is_stopped(context: Context) -> None:
     """Stop the OKP(Solr) Docker container to simulate unavailability."""
     context.okp_was_running = False
-    try:
-        result = subprocess.run(
-            ["docker", "inspect", "-f", "{{.State.Running}}", OKP_CONTAINER_NAME],
-            capture_output=True,
-            text=True,
-            check=True,
+    context.okp_container_name = None
+
+    # Find the OKP container
+    container_name = _find_okp_container()
+    if not container_name:
+        print(
+            f"✓ OKP container not found (neither '{OKP_CONTAINER_NAME}' nor '{OKP_IMAGE_NAME}') - already unavailable"
         )
-        if "true" in result.stdout.lower():
-            context.okp_was_running = True
-            subprocess.run(
-                ["docker", "stop", OKP_CONTAINER_NAME],
-                capture_output=True,
-                text=True,
-                check=True,
-            )
-            time.sleep(2)
-    except subprocess.CalledProcessError as exc:
-        print(f"Warning: could not stop OKP container: {exc}")
+        return
+
+    # Check if container is running
+    result = subprocess.run(
+        ["docker", "inspect", "-f", "{{.State.Running}}", container_name],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    if result.returncode != 0:
+        print(f"✓ OKP container '{container_name}' inspection failed - unavailable")
+        return
+
+    if "true" not in result.stdout.lower():
+        print(f"✓ OKP container '{container_name}' already stopped")
+        return
+
+    # Container is running - stop it
+    context.okp_was_running = True
+    context.okp_container_name = container_name
+
+    stop_result = subprocess.run(
+        ["docker", "stop", container_name],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if stop_result.returncode != 0:
+        assert (
+            False
+        ), f"Failed to stop OKP container '{container_name}': {stop_result.stderr}"
+
+    # Wait for the container to fully stop
+    time.sleep(5)
+
+    # Verify the server is actually unreachable
+    max_attempts = 10
+    for attempt in range(max_attempts):
+        try:
+            resp = requests.get(OKP_DEFAULT_URL, timeout=2)
+            if attempt < max_attempts - 1:
+                time.sleep(1)
+            else:
+                assert (
+                    False
+                ), f"OKP server still responding after stop: {resp.status_code}"
+        except requests.ConnectionError:
+            # Server is unreachable - success
+            print(f"✓ OKP server stopped and verified unreachable ({container_name})")
+            break
+        except requests.Timeout:
+            # Timeout is also acceptable - server not responding
+            print(f"✓ OKP server stopped (connection timeout) ({container_name})")
+            break
 
 
 # ── Then steps: rag_chunk assertions ──
@@ -203,6 +283,27 @@ def check_referenced_document_doc_title(context: Context) -> None:
         assert title, f"referenced_document[{i}] has empty or missing doc_title"
 
 
+@then('Each referenced_document doc_title contains "{substring}"')
+def check_referenced_document_doc_title_contains(
+    context: Context, substring: str
+) -> None:
+    """Assert every referenced_document doc_title contains the expected substring (case-insensitive)."""
+    docs = _get_referenced_documents(context)
+    assert docs, "No referenced_documents to check"
+    for i, doc in enumerate(docs):
+        title = str(doc.get("doc_title", "")).lower()
+        assert (
+            substring.lower() in title
+        ), f"referenced_document[{i}] doc_title {doc.get('doc_title')!r} does not contain {substring!r}"
+
+
+@then("The number of referenced_document returned is {count:d}")
+def check_referenced_document_count(context: Context, count: int) -> None:
+    """Assert the number of referenced_documents matches the expected count."""
+    docs = _get_referenced_documents(context)
+    assert len(docs) == count, f"Expected {count} referenced_documents, got {len(docs)}"
+
+
 @then('Each referenced_document source is "{source}"')
 def check_referenced_document_source(context: Context, source: str) -> None:
     """Assert every referenced_document has the expected source."""
@@ -259,6 +360,23 @@ def check_tool_call_type(context: Context, type_name: str) -> None:
 
 
 # ── Then steps: content and results assertions ──
+
+
+@then('The response contains "{substring}"')
+def check_response_contains_substring(context: Context, substring: str) -> None:
+    """Assert the LLM response contains the expected substring (case-insensitive)."""
+    body = _get_response_body(context)
+    if "response" in body:
+        response_text = body["response"]
+    elif "output_text" in body:
+        response_text = body["output_text"]
+    else:
+        response_text = body.get("response_complete", "")
+
+    assert substring.lower() in response_text.lower(), (
+        f"Response does not contain {substring!r}. "
+        f"Response text: {response_text[:200]}..."
+    )
 
 
 @then("The response contains non-empty content")

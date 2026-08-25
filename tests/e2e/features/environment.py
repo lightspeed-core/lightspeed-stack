@@ -304,6 +304,8 @@ def after_scenario(context: Context, scenario: Scenario) -> None:
               running before the scenario.
             - hostname_llama, port_llama (str/int, optional): host and port
               used for the llama-stack health check.
+            - okp_was_running (bool, optional): whether OKP server was running
+              before it was stopped by the scenario.
         scenario (Scenario): Behave scenario (unused; shield restore uses context flags).
     """
     if is_prow_environment():
@@ -328,6 +330,80 @@ def after_scenario(context: Context, scenario: Scenario) -> None:
                 print("Re-registered shield llama-guard")
             except Exception as e:  # pylint: disable=broad-exception-caught
                 print(f"Warning: Could not re-register shield: {e}")
+
+    # Restart OKP server if it was stopped during the scenario
+    # (only in local/Docker mode - OpenShift manages containers differently)
+    if getattr(context, "okp_was_running", False) and not is_prow_environment():
+        from tests.e2e.features.steps.okp_rag import (
+            OKP_DEFAULT_URL,
+            OKP_IMAGE_NAME,
+        )
+
+        container_name = getattr(context, "okp_container_name", None)
+        if container_name:
+            # Check if container still exists (may be auto-removed if started with --rm)
+            check_result = subprocess.run(
+                ["docker", "inspect", "-f", "{{.State.Running}}", container_name],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+            if check_result.returncode != 0:
+                # Container was removed (likely started with --rm flag) - recreate it
+                print(
+                    f"OKP container '{container_name}' was removed, recreating from {OKP_IMAGE_NAME}..."
+                )
+                try:
+                    subprocess.run(
+                        [
+                            "docker",
+                            "run",
+                            "--rm",
+                            "-d",
+                            "-p",
+                            "8081:8080",
+                            OKP_IMAGE_NAME,
+                        ],
+                        capture_output=True,
+                        text=True,
+                        check=True,
+                    )
+                except subprocess.CalledProcessError as e:
+                    print(f"Warning: Could not recreate OKP container: {e}")
+                    if e.stderr:
+                        print(f"  Error: {e.stderr}")
+            else:
+                # Container exists - just start it
+                try:
+                    subprocess.run(
+                        ["docker", "start", container_name],
+                        capture_output=True,
+                        text=True,
+                        check=True,
+                    )
+                except subprocess.CalledProcessError as e:
+                    print(
+                        f"Warning: Could not start OKP container '{container_name}': {e}"
+                    )
+                    if e.stderr:
+                        print(f"  Error: {e.stderr}")
+
+            # Wait for the server to be ready
+            max_attempts = 30
+            for attempt in range(max_attempts):
+                try:
+                    resp = requests.get(OKP_DEFAULT_URL, timeout=5)
+                    if resp.status_code < 500:
+                        print("✓ OKP server restarted successfully")
+                        break
+                except requests.ConnectionError:
+                    if attempt < max_attempts - 1:
+                        time.sleep(1)
+                    else:
+                        print(
+                            "Warning: OKP server may not be fully ready after restart"
+                        )
 
 
 def _print_llama_stack_diagnostics() -> None:
