@@ -59,6 +59,7 @@ def run_e2e_ops(
         capture_output=True,
         text=True,
         timeout=timeout,
+        check=False,
     )
 
 

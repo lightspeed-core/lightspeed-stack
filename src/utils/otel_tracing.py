@@ -43,6 +43,8 @@ class SpanAttributes(StrEnum):
     SKILL_ACTIVATIONS = "skill.activations"
     RLS_TEMPLATE_OK = "rls.template.ok"
     TOPIC_SUMMARY_SUCCESS = "topic.summary.success"
+    A2A_RPC_METHOD = "a2a.rpc.method"
+    A2A_REQUEST_ID = "a2a.request.id"
 
 
 class SpanEvents(StrEnum):
@@ -61,6 +63,8 @@ class SpanEvents(StrEnum):
     TURN_PERSISTED = "turn.persisted"
     TOPIC_SUMMARY_TASK_STARTED = "topic.summary.task.started"
     TOPIC_SUMMARY_TASK_FINISHED = "topic.summary.task.finished"
+    A2A_DISPATCH_START = "a2a.dispatch.start"
+    A2A_DISPATCH_END = "a2a.dispatch.end"
 
 
 def anonymize_value(value: str, max_length: int = 50) -> str:

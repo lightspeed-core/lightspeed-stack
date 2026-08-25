@@ -31,7 +31,7 @@ def shields_are_disabled_for_scenario(context: Context) -> None:
         context.llama_guard_provider_shield_id = saved[1] if saved else None
         context.shields_disabled_for_scenario = True
         print("Unregistered shield llama-guard for this scenario")
-    except Exception as e:  # pylint: disable=broad-exception-caught
+    except (RuntimeError, ValueError, AttributeError) as e:
         context.scenario.skip(
             f"Could not unregister shield (is Llama Stack reachable?): {e}"
         )

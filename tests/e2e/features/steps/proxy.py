@@ -19,6 +19,7 @@ import subprocess
 import tempfile
 import threading
 import time
+from concurrent.futures import CancelledError
 from pathlib import Path
 from typing import Any, Optional
 
@@ -283,7 +284,7 @@ def _stop_proxy(context: Context, attr: str, loop_attr: str) -> None:
         fut = asyncio.run_coroutine_threadsafe(proxy.stop(), loop)
         try:
             fut.result(timeout=30)
-        except Exception:
+        except (CancelledError, TimeoutError):
             pass
         loop.call_soon_threadsafe(loop.stop)
         thread = getattr(proxy, "_thread", None)
