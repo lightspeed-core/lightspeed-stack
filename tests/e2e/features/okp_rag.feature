@@ -1,4 +1,4 @@
-@cfg_okp @skip
+@cfg_okp 
 Feature: OKP(Solr) RAG retrieval tests
 
   # Offline Knowledge Portal (OKP) provides a Solr-backed RAG source to LSC.
@@ -94,7 +94,7 @@ Feature: OKP(Solr) RAG retrieval tests
 
   Scenario: Offline query API with OKP tool RAG has rag_chunk and referenced_documents returned
     Given The service uses the lightspeed-stack-okp-tool-offline.yaml configuration
-      And The service is restarted
+      # And The service is restarted
     When I use "query" to ask question with authorization header
     """
     {
@@ -154,4 +154,15 @@ Feature: OKP(Solr) RAG retrieval tests
     """
     Then The status code of the response is 200
       And The response contains no rag_chunks
+      And The response contains no referenced_documents
+  
+  Scenario: Streaming query succeeds with empty rag_chunks when OKP server is unavailable
+    Given The service uses the lightspeed-stack-okp-online.yaml configuration
+      And The service is restarted
+      And The OKP(Solr) server is stopped
+    When I use "query" to ask question with authorization header
+    """
+    {"query": "configure remote desktop using gnome", "model": "{MODEL}", "provider": "{PROVIDER}"}
+    """
+    Then The status code of the response is 200
       And The response contains no referenced_documents

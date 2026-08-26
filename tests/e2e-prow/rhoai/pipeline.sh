@@ -92,6 +92,23 @@ oc create secret docker-registry quay-lightspeed-pull-secret \
 # Link the secret to default service account for image pulls
 oc secrets link default quay-lightspeed-pull-secret --for=pull -n "$NAMESPACE" 2>/dev/null || echo "⚠️  Secret already linked to default SA"
 
+# Create Red Hat registry pull secret for OKP images
+# Credentials from Prow secrets (environment variables or mounted volumes)
+if [[ -n "${REDHAT_REGISTRY_USERNAME:-}" ]] && [[ -n "${REDHAT_REGISTRY_PASSWORD:-}" ]]; then
+  echo "Creating Red Hat registry pull secret from environment..."
+  oc create secret docker-registry redhat-registry-pull-secret \
+    --docker-server=registry.redhat.io \
+    --docker-username="$REDHAT_REGISTRY_USERNAME" \
+    --docker-password="$REDHAT_REGISTRY_PASSWORD" \
+    -n "$NAMESPACE" 2>/dev/null && echo "✅ Red Hat registry pull secret created" || echo "⚠️  Secret exists or creation failed"
+
+  # Link to default service account
+  oc secrets link default redhat-registry-pull-secret --for=pull -n "$NAMESPACE" 2>/dev/null || echo "⚠️  Secret already linked to default SA"
+else
+  echo "⚠️  REDHAT_REGISTRY_USERNAME/PASSWORD not set - OKP image pull may fail"
+  echo "   (This is OK if not testing OKP features)"
+fi
+
 
 #========================================
 # 5. CONFIGMAPS

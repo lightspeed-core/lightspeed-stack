@@ -20,6 +20,7 @@ def get_namespace() -> str:
 _POD_NAME_MAP = {
     "lightspeed-stack": "lightspeed-stack-service",
     "llama-stack": "llama-stack-service",
+    "okp-solr": "okp-solr-service",
 }
 
 
@@ -345,3 +346,44 @@ def update_config_configmap(
     finally:
         if temp_path and os.path.exists(temp_path):
             os.remove(temp_path)
+
+
+def disrupt_okp_solr_pod() -> bool:
+    """Disrupt OKP Solr connection in Prow/OpenShift environment.
+
+    Returns:
+        True if the pod was running and has been disrupted, False otherwise.
+    """
+    try:
+        result = run_e2e_ops("disrupt-okp-solr", timeout=60)
+        print(result.stdout, end="")
+
+        # Exit code 0 = disrupted (was running), exit code 2 = was not running
+        if result.returncode == 0:
+            return True
+        elif result.returncode == 2:
+            return False
+        else:
+            print(result.stderr, end="")
+            return False
+
+    except subprocess.TimeoutExpired:
+        print("Warning: Timeout while disrupting OKP Solr connection")
+        return False
+
+
+def restore_okp_solr_pod() -> None:
+    """Restore OKP Solr pod in Prow/OpenShift environment.
+
+    Raises:
+        subprocess.CalledProcessError: If oc/e2e-ops restore fails.
+        subprocess.TimeoutExpired: If the operation times out.
+    """
+    result = run_e2e_ops("restore-okp-solr", timeout=180)
+    print(result.stdout, end="")
+    if result.returncode != 0:
+        print(result.stderr, end="")
+        raise subprocess.CalledProcessError(
+            result.returncode, "restore-okp-solr", result.stderr
+        )
+    print("✓ OKP Solr pod restored successfully")

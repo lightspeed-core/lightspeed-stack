@@ -110,6 +110,42 @@ oc create secret docker-registry quay-lightspeed-pull-secret \
 # Link the secret to default service account for image pulls
 oc secrets link default quay-lightspeed-pull-secret --for=pull -n "$NAMESPACE" 2>/dev/null || echo "⚠️  Secret already linked to default SA"
 
+# Create Red Hat registry pull secret for OKP images
+# Credentials from Konflux secrets (mounted at /var/run/redhat-registry-*)
+if [[ -d /var/run/redhat-registry-username ]] && [[ -d /var/run/redhat-registry-password ]]; then
+  log "Creating Red Hat registry pull secret..."
+  REDHAT_USERNAME=""
+  REDHAT_PASSWORD=""
+
+  # Read username
+  shopt -s nullglob
+  for _f in /var/run/redhat-registry-username/*; do
+    [[ -f "$_f" ]] && REDHAT_USERNAME="$(cat "$_f")" && break
+  done
+
+  # Read password
+  for _f in /var/run/redhat-registry-password/*; do
+    [[ -f "$_f" ]] && REDHAT_PASSWORD="$(cat "$_f")" && break
+  done
+  shopt -u nullglob
+
+  if [[ -n "$REDHAT_USERNAME" ]] && [[ -n "$REDHAT_PASSWORD" ]]; then
+    oc create secret docker-registry redhat-registry-pull-secret \
+      --docker-server=registry.redhat.io \
+      --docker-username="$REDHAT_USERNAME" \
+      --docker-password="$REDHAT_PASSWORD" \
+      -n "$NAMESPACE" 2>/dev/null && log "✅ Red Hat registry pull secret created" || log "⚠️  Secret exists or creation failed"
+
+    # Link to default service account
+    oc secrets link default redhat-registry-pull-secret --for=pull -n "$NAMESPACE" 2>/dev/null || echo "⚠️  Secret already linked to default SA"
+  else
+    log "⚠️  Red Hat registry credentials not found in /var/run - OKP image pull may fail"
+  fi
+else
+  log "⚠️  Red Hat registry credential mounts not found - OKP image pull may fail"
+  log "   (This is OK if not testing OKP features)"
+fi
+
 
 #========================================
 # 4. DEPLOY MOCK SERVERS (JWKS & MCP)

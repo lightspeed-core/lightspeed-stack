@@ -33,6 +33,10 @@
 #   delete-e2e-mock-tls-inference   - Remove mock TLS pod + Service (manual cleanup)
 #   restart-e2e-mock-tls-inference  - Delete then deploy mock TLS (manual / recovery)
 #   sync-mock-tls-certs-secret      - Copy mock /certs into Secret for OGX mount
+#   deploy-okp-solr                 - Deploy OKP Solr service
+#   delete-okp-solr                 - Delete OKP Solr pod
+#   disrupt-okp-solr                - Delete OKP Solr pod to disrupt connection
+#   restore-okp-solr                - Restore OKP Solr pod
 
 set -e
 
@@ -989,6 +993,46 @@ cmd_disrupt_llama_stack() {
     fi
 }
 
+cmd_deploy_okp_solr() {
+    echo "Deploying OKP Solr service in namespace $NAMESPACE..."
+    oc apply -n "$NAMESPACE" -f "$MANIFEST_DIR/okp-solr.yaml"
+    wait_for_pod "okp-solr-service" 60
+    echo "✓ OKP Solr service deployed and ready"
+}
+
+cmd_delete_okp_solr() {
+    echo "Deleting OKP Solr pod from namespace $NAMESPACE..."
+    timeout 60 oc delete pod okp-solr-service -n "$NAMESPACE" --ignore-not-found=true --wait=true 2>/dev/null || {
+        oc delete pod okp-solr-service -n "$NAMESPACE" --ignore-not-found=true --force --grace-period=0 2>/dev/null || true
+        sleep 2
+    }
+    echo "✓ OKP Solr pod deleted"
+}
+
+cmd_disrupt_okp_solr() {
+    local pod_name="okp-solr-service"
+
+    local phase
+    phase=$(oc get pod "$pod_name" -n "$NAMESPACE" -o jsonpath='{.status.phase}' 2>/dev/null || echo "NotFound")
+
+    if [[ "$phase" == "Running" ]]; then
+        oc delete pod "$pod_name" -n "$NAMESPACE" --wait=true
+        sleep 2
+        echo "OKP Solr connection disrupted successfully (pod deleted)"
+        exit 0
+    else
+        echo "OKP Solr pod was not running (phase: $phase)"
+        exit 2
+    fi
+}
+
+cmd_restore_okp_solr() {
+    echo "Restoring OKP Solr service in namespace $NAMESPACE..."
+    oc apply -n "$NAMESPACE" -f "$MANIFEST_DIR/okp-solr.yaml"
+    wait_for_pod "okp-solr-service" 60
+    echo "✓ OKP Solr service restored and ready"
+}
+
 # ============================================================================
 # Main command dispatcher
 # ============================================================================
@@ -1060,6 +1104,18 @@ case "$COMMAND" in
     dump-pod-logs)
         cmd_dump_pod_logs "$@"
         ;;
+    deploy-okp-solr)
+        cmd_deploy_okp_solr
+        ;;
+    delete-okp-solr)
+        cmd_delete_okp_solr
+        ;;
+    disrupt-okp-solr)
+        cmd_disrupt_okp_solr
+        ;;
+    restore-okp-solr)
+        cmd_restore_okp_solr
+        ;;
     *)
         echo "Usage: $0 <command> [args...]"
         echo ""
@@ -1081,6 +1137,10 @@ case "$COMMAND" in
         echo "  deploy-e2e-interception-proxy      - Deploy in-cluster interception proxy pod"
         echo "  deploy-e2e-mock-tls-inference        - Deploy mock HTTPS inference (tls-*.feature)"
         echo "  delete-e2e-mock-tls-inference        - Remove mock TLS pod + Service"
+        echo "  deploy-okp-solr                      - Deploy OKP Solr service"
+        echo "  delete-okp-solr                      - Delete OKP Solr pod"
+        echo "  disrupt-okp-solr                     - Delete OKP Solr pod to disrupt connection"
+        echo "  restore-okp-solr                     - Restore OKP Solr pod"
         echo "  restart-e2e-mock-tls-inference       - Delete then deploy mock TLS (recovery)"
         echo "  sync-mock-tls-certs-secret           - Publish mock TLS /certs to Secret"
         echo "  dump-pod-logs <pod> [tail-lines]   - Print init + container logs"

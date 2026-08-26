@@ -12,7 +12,8 @@ service:
 llama_stack:
   use_as_library_client: true
   config:
-    profile: run.yaml
+      baseline: default
+    # profile: run.yaml
 user_data_collection:
   feedback_enabled: true
   feedback_storage: "/tmp/data/feedback"
@@ -32,7 +33,7 @@ rag:
     tool:
       sources:
         - okp
-      max_chunk : 3
+      max_chunks : 3
   okp:
     rhokp_url: ${env.RH_SERVER_OKP:=http://localhost:8081/solr}
     offline: false

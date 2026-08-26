@@ -9,6 +9,8 @@ import requests
 from behave import given, then  # pyright: ignore[reportAttributeAccessIssue]
 from behave.runner import Context
 
+# ── Constants ──
+
 # OKP/Solr Docker container name
 OKP_CONTAINER_NAME = os.getenv("E2E_OKP_CONTAINER", "okp-solr")
 
@@ -32,11 +34,27 @@ _TOOL_OUTPUT_TYPES = frozenset(
 )
 
 
+# ── Response Body Extraction ──
+
+
 def _get_response_body(context: Context) -> dict[str, Any]:
     """Return the response body dict, handling both JSON and streaming formats."""
     if getattr(context, "use_streaming_response_data", False):
         return context.response_data
     return context.response.json()
+
+
+def _get_response_text(context: Context) -> str:
+    """Extract response text from various response formats."""
+    body = _get_response_body(context)
+    return (
+        body.get("response")
+        or body.get("output_text")
+        or body.get("response_complete", "")
+    )
+
+
+# ── Data Extractors ──
 
 
 def _get_rag_chunks(context: Context) -> list[dict[str, Any]]:
@@ -79,6 +97,179 @@ def _get_file_search_results(context: Context) -> list[dict[str, Any]]:
         if item.get("type") == "file_search_call":
             results.extend(item.get("results") or [])
     return results
+
+
+# ── Generic Field Accessors ──
+
+
+def _get_nested_field(item: dict[str, Any], field_path: str) -> Any:
+    """Get a field from item, supporting nested access via dot notation.
+
+    Examples:
+        _get_nested_field(chunk, "score") -> chunk.get("score")
+        _get_nested_field(chunk, "attributes.reference_url")
+            -> chunk.get("attributes", {}).get("reference_url")
+
+    Parameters:
+        item: Dictionary to extract field from.
+        field_path: Field path, using dots for nested access.
+
+    Returns:
+        Field value or None if not found.
+    """
+    keys = field_path.split(".")
+    value: Any = item
+    for key in keys:
+        if isinstance(value, dict):
+            value = value.get(key)
+        else:
+            return None
+    return value
+
+
+# ── Generic Assertion Helpers ──
+
+
+def _assert_count_matches(items: list, expected_count: int, item_type: str) -> None:
+    """Assert the number of items matches the expected count.
+
+    Parameters:
+        items: List of items to check.
+        expected_count: Expected number of items.
+        item_type: Human-readable item type for error messages.
+
+    Raises:
+        AssertionError: If count doesn't match.
+    """
+    actual_count = len(items)
+    assert (
+        actual_count == expected_count
+    ), f"Expected {expected_count} {item_type}, but found {actual_count}"
+
+
+def _assert_not_empty(items: list, item_type: str) -> None:
+    """Assert the collection is not empty.
+
+    Parameters:
+        items: List of items to check.
+        item_type: Human-readable item type for error messages.
+
+    Raises:
+        AssertionError: If collection is empty.
+    """
+    assert len(items) > 0, f"{item_type} is empty — no items were found"
+
+
+def _assert_empty(items: list, item_type: str) -> None:
+    """Assert the collection is empty.
+
+    Parameters:
+        items: List of items to check.
+        item_type: Human-readable item type for error messages.
+
+    Raises:
+        AssertionError: If collection is not empty.
+    """
+    assert len(items) == 0, f"Expected no {item_type}, but found {len(items)}"
+
+
+def _assert_field_not_empty(
+    items: list[dict[str, Any]], field_path: str, item_type: str
+) -> None:
+    """Assert every item has a non-empty value for the specified field.
+
+    Parameters:
+        items: List of items to check.
+        field_path: Field path to check (supports dot notation).
+        item_type: Human-readable item type for error messages.
+
+    Raises:
+        AssertionError: If any item has empty or missing field.
+    """
+    assert items, f"No {item_type} to check"
+    for i, item in enumerate(items):
+        value = _get_nested_field(item, field_path)
+        assert value is not None and value != "", (
+            f"Expected non-empty {field_path} in {item_type}[{i}], "
+            f"but found {value!r}"
+        )
+
+
+def _assert_field_contains(
+    items: list[dict[str, Any]], field_path: str, substring: str, item_type: str
+) -> None:
+    """Assert every item's field contains the expected substring (case-insensitive).
+
+    Parameters:
+        items: List of items to check.
+        field_path: Field path to check (supports dot notation).
+        substring: Expected substring.
+        item_type: Human-readable item type for error messages.
+
+    Raises:
+        AssertionError: If any item's field doesn't contain substring.
+    """
+    assert items, f"No {item_type} to check"
+    for i, item in enumerate(items):
+        value = _get_nested_field(item, field_path)
+        assert substring.lower() in str(value).lower(), (
+            f"Expected {substring!r} in {item_type}[{i}].{field_path}, "
+            f"but found {value!r}"
+        )
+
+
+def _assert_field_matches(
+    items: list[dict[str, Any]], field_path: str, expected: Any, item_type: str
+) -> None:
+    """Assert every item's field matches the expected value.
+
+    For fields that might be nested (e.g., source in attributes), checks both
+    the direct field and the attributes.field path.
+
+    Parameters:
+        items: List of items to check.
+        field_path: Field path to check (supports dot notation).
+        expected: Expected value.
+        item_type: Human-readable item type for error messages.
+
+    Raises:
+        AssertionError: If any item's field doesn't match expected value.
+    """
+    assert items, f"No {item_type} to check"
+    for i, item in enumerate(items):
+        actual = _get_nested_field(item, field_path)
+        # Fallback: check if field exists in attributes
+        if actual is None and "." not in field_path:
+            actual = _get_nested_field(item, f"attributes.{field_path}")
+        assert actual == expected, (
+            f"Expected {field_path}={expected!r} in {item_type}[{i}], "
+            f"but found {actual!r}"
+        )
+
+
+def _assert_has_fields(
+    items: list[dict[str, Any]], required_fields: set[str], item_type: str
+) -> None:
+    """Assert every item has all required fields.
+
+    Parameters:
+        items: List of items to check.
+        required_fields: Set of required field names.
+        item_type: Human-readable item type for error messages.
+
+    Raises:
+        AssertionError: If any item is missing required fields.
+    """
+    assert items, f"No {item_type} to check"
+    for i, item in enumerate(items):
+        missing = required_fields - set(item.keys())
+        assert not missing, (
+            f"Expected fields {required_fields} in {item_type}[{i}], "
+            f"but missing {missing}. Available fields: {list(item.keys())}"
+        )
+
+
+# ── Docker/OKP Management ──
 
 
 def _find_okp_container() -> str | None:
@@ -129,15 +320,30 @@ def okp_server_is_running(context: Context) -> None:
 
 @given("The OKP(Solr) server is stopped")
 def okp_server_is_stopped(context: Context) -> None:
-    """Stop the OKP(Solr) Docker container to simulate unavailability."""
+    """Stop the OKP(Solr) Docker container or pod to simulate unavailability."""
+    from tests.e2e.utils.utils import is_prow_environment
+
     context.okp_was_running = False
     context.okp_container_name = None
 
-    # Find the OKP container
+    if is_prow_environment():
+        # Prow/OpenShift: use pod disruption
+        from tests.e2e.utils.prow_utils import disrupt_okp_solr_pod
+
+        was_running = disrupt_okp_solr_pod()
+        if was_running:
+            context.okp_was_running = True
+            print("✓ OKP Solr pod disrupted in Prow environment")
+        else:
+            print("✓ OKP Solr pod was not running")
+        return
+
+    # Docker mode: existing logic
     container_name = _find_okp_container()
     if not container_name:
         print(
-            f"✓ OKP container not found (neither '{OKP_CONTAINER_NAME}' nor '{OKP_IMAGE_NAME}') - already unavailable"
+            f"✓ OKP container not found (neither '{OKP_CONTAINER_NAME}' "
+            f"nor '{OKP_IMAGE_NAME}') - already unavailable"
         )
         return
 
@@ -196,144 +402,111 @@ def okp_server_is_stopped(context: Context) -> None:
             break
 
 
-# ── Then steps: rag_chunk assertions ──
+# ── Then Steps: rag_chunks Assertions ──
 
 
 @then("The number of rag_chunk returned is {count:d}")
 def check_rag_chunk_count(context: Context, count: int) -> None:
     """Assert the number of rag_chunks matches the expected count."""
     chunks = _get_rag_chunks(context)
-    assert len(chunks) == count, f"Expected {count} rag_chunks, got {len(chunks)}"
+    _assert_count_matches(chunks, count, "rag_chunks")
 
 
 @then("Each rag_chunk has a non-empty score")
 def check_rag_chunk_scores(context: Context) -> None:
     """Assert every rag_chunk has a non-empty score."""
     chunks = _get_rag_chunks(context)
-    assert chunks, "No rag_chunks to check"
-    for i, chunk in enumerate(chunks):
-        score = chunk.get("score")
-        assert score is not None, f"rag_chunk[{i}] has no score"
+    _assert_field_not_empty(chunks, "score", "rag_chunks")
 
 
 @then('Each rag_chunk source is "{source}"')
 def check_rag_chunk_source(context: Context, source: str) -> None:
     """Assert every rag_chunk has the expected source."""
     chunks = _get_rag_chunks(context)
-    assert chunks, "No rag_chunks to check"
-    for i, chunk in enumerate(chunks):
-        actual = chunk.get("source")
-        if actual is None:
-            attrs = chunk.get("attributes") or {}
-            actual = attrs.get("source")
-        assert (
-            actual == source
-        ), f"rag_chunk[{i}] source is {actual!r}, expected {source!r}"
+    _assert_field_matches(chunks, "source", source, "rag_chunks")
 
 
 @then('Each rag_chunk reference_url contains "{domain}"')
 def check_rag_chunk_reference_url(context: Context, domain: str) -> None:
     """Assert every rag_chunk's reference_url contains the expected domain."""
     chunks = _get_rag_chunks(context)
+    # Check both possible field paths for reference_url
     assert chunks, "No rag_chunks to check"
     for i, chunk in enumerate(chunks):
         attrs = chunk.get("attributes") or {}
         ref_url = attrs.get("reference_url") or attrs.get("doc_url") or ""
-        assert domain in str(
-            ref_url
-        ), f"rag_chunk[{i}] reference_url {ref_url!r} does not contain {domain!r}"
+        assert domain in str(ref_url), (
+            f"Expected {domain!r} in rag_chunks[{i}].attributes.reference_url, "
+            f"but found {ref_url!r}"
+        )
 
 
-# ── Then steps: referenced_document assertions ──
+# ── Then Steps: referenced_documents Assertions ──
 
 
 @then("Each referenced_document has fields doc_url, doc_title, source, and document_id")
 def check_referenced_document_fields(context: Context) -> None:
     """Assert every referenced_document has the required fields."""
     docs = _get_referenced_documents(context)
-    assert docs, "No referenced_documents to check"
-    required = {"doc_url", "doc_title", "source", "document_id"}
-    for i, doc in enumerate(docs):
-        missing = required - set(doc.keys())
-        assert not missing, (
-            f"referenced_document[{i}] missing fields: {missing}. "
-            f"Available: {list(doc.keys())}"
-        )
+    required_fields = {"doc_url", "doc_title", "source", "document_id"}
+    _assert_has_fields(docs, required_fields, "referenced_documents")
 
 
 @then('Each referenced_document doc_url contains "{domain}"')
 def check_referenced_document_doc_url(context: Context, domain: str) -> None:
     """Assert every referenced_document doc_url contains the expected domain."""
     docs = _get_referenced_documents(context)
-    assert docs, "No referenced_documents to check"
-    for i, doc in enumerate(docs):
-        doc_url = str(doc.get("doc_url", ""))
-        assert (
-            domain in doc_url
-        ), f"referenced_document[{i}] doc_url {doc_url!r} does not contain {domain!r}"
+    _assert_field_contains(docs, "doc_url", domain, "referenced_documents")
 
 
 @then("Each referenced_document doc_title is not empty")
 def check_referenced_document_doc_title(context: Context) -> None:
     """Assert every referenced_document has a non-empty doc_title."""
     docs = _get_referenced_documents(context)
-    assert docs, "No referenced_documents to check"
-    for i, doc in enumerate(docs):
-        title = doc.get("doc_title")
-        assert title, f"referenced_document[{i}] has empty or missing doc_title"
+    _assert_field_not_empty(docs, "doc_title", "referenced_documents")
 
 
 @then('Each referenced_document doc_title contains "{substring}"')
 def check_referenced_document_doc_title_contains(
     context: Context, substring: str
 ) -> None:
-    """Assert every referenced_document doc_title contains the expected substring (case-insensitive)."""
+    """Assert every referenced_document doc_title contains the expected substring.
+
+    Matching is case-insensitive.
+    """
     docs = _get_referenced_documents(context)
-    assert docs, "No referenced_documents to check"
-    for i, doc in enumerate(docs):
-        title = str(doc.get("doc_title", "")).lower()
-        assert (
-            substring.lower() in title
-        ), f"referenced_document[{i}] doc_title {doc.get('doc_title')!r} does not contain {substring!r}"
+    _assert_field_contains(docs, "doc_title", substring, "referenced_documents")
 
 
 @then("The number of referenced_document returned is {count:d}")
 def check_referenced_document_count(context: Context, count: int) -> None:
     """Assert the number of referenced_documents matches the expected count."""
     docs = _get_referenced_documents(context)
-    assert len(docs) == count, f"Expected {count} referenced_documents, got {len(docs)}"
+    _assert_count_matches(docs, count, "referenced_documents")
 
 
 @then('Each referenced_document source is "{source}"')
 def check_referenced_document_source(context: Context, source: str) -> None:
     """Assert every referenced_document has the expected source."""
     docs = _get_referenced_documents(context)
-    assert docs, "No referenced_documents to check"
-    for i, doc in enumerate(docs):
-        actual = doc.get("source")
-        assert (
-            actual == source
-        ), f"referenced_document[{i}] source is {actual!r}, expected {source!r}"
+    _assert_field_matches(docs, "source", source, "referenced_documents")
 
 
 @then("Each referenced_document has a non-empty document_id")
 def check_referenced_document_id(context: Context) -> None:
     """Assert every referenced_document has a non-empty document_id."""
     docs = _get_referenced_documents(context)
-    assert docs, "No referenced_documents to check"
-    for i, doc in enumerate(docs):
-        doc_id = doc.get("document_id")
-        assert doc_id, f"referenced_document[{i}] has empty or missing document_id"
+    _assert_field_not_empty(docs, "document_id", "referenced_documents")
 
 
-# ── Then steps: tool_calls assertions ──
+# ── Then Steps: tool_calls Assertions ──
 
 
 @then("The response contains non-empty tool_calls")
 def check_tool_calls_present(context: Context) -> None:
     """Assert the response contains at least one tool call."""
     tool_calls = _get_tool_calls(context)
-    assert len(tool_calls) > 0, "tool_calls is empty — no tool calls were made"
+    _assert_not_empty(tool_calls, "tool_calls")
 
 
 @then('A tool_call has name "{name}"')
@@ -342,9 +515,9 @@ def check_tool_call_name(context: Context, name: str) -> None:
     tool_calls = _get_tool_calls(context)
     assert tool_calls, "No tool_calls to check"
     names = [tc.get("name") for tc in tool_calls]
-    assert (
-        name in names
-    ), f"No tool_call with name {name!r} found. Available names: {names!r}"
+    assert name in names, (
+        f"Expected tool_call with name {name!r}, " f"but found names {names!r}"
+    )
 
 
 @then('A tool_call has type "{type_name}"')
@@ -354,59 +527,46 @@ def check_tool_call_type(context: Context, type_name: str) -> None:
     assert tool_calls, "No tool_calls to check"
     types = [tc.get("type") for tc in tool_calls]
     matched = any(t in {type_name, f"{type_name}_call"} for t in types)
-    assert (
-        matched
-    ), f"No tool_call with type {type_name!r} found. Available types: {types!r}"
+    assert matched, (
+        f"Expected tool_call with type {type_name!r}, " f"but found types {types!r}"
+    )
 
 
-# ── Then steps: content and results assertions ──
+# ── Then Steps: Content and Results Assertions ──
 
 
 @then('The response contains "{substring}"')
 def check_response_contains_substring(context: Context, substring: str) -> None:
     """Assert the LLM response contains the expected substring (case-insensitive)."""
-    body = _get_response_body(context)
-    if "response" in body:
-        response_text = body["response"]
-    elif "output_text" in body:
-        response_text = body["output_text"]
-    else:
-        response_text = body.get("response_complete", "")
-
+    response_text = _get_response_text(context)
     assert substring.lower() in response_text.lower(), (
-        f"Response does not contain {substring!r}. "
-        f"Response text: {response_text[:200]}..."
+        f"Expected substring {substring!r} in response, "
+        f"but response text: {response_text[:200]}..."
     )
 
 
 @then("The response contains non-empty content")
 def check_response_content_present(context: Context) -> None:
     """Assert the response contains non-empty content text."""
-    body = _get_response_body(context)
-    if "response" in body:
-        content = body["response"]
-    elif "output_text" in body:
-        content = body["output_text"]
-    else:
-        content = body.get("response_complete", "")
-    assert content, "Response content is empty"
+    content = _get_response_text(context)
+    assert content, "Expected non-empty response content, but it was empty"
 
 
 @then("The response contains non-empty results")
 def check_results_present(context: Context) -> None:
     """Assert the Responses API output contains non-empty file_search results."""
     results = _get_file_search_results(context)
-    assert len(results) > 0, "No file_search results found in response output"
+    _assert_not_empty(results, "file_search results")
 
 
 @then("The number of results returned is {count:d}")
 def check_results_count(context: Context, count: int) -> None:
     """Assert the number of file_search results matches the expected count."""
     results = _get_file_search_results(context)
-    assert len(results) == count, f"Expected {count} results, got {len(results)}"
+    _assert_count_matches(results, count, "file_search results")
 
 
-# ── Then steps: empty response assertions ──
+# ── Then Steps: Empty Response Assertions ──
 
 
 @then("The response contains no rag_chunks")
@@ -414,7 +574,7 @@ def check_no_rag_chunks(context: Context) -> None:
     """Assert the response has no rag_chunks (empty or absent)."""
     body = _get_response_body(context)
     chunks = body.get("rag_chunks", [])
-    assert len(chunks) == 0, f"Expected no rag_chunks, got {len(chunks)}"
+    _assert_empty(chunks, "rag_chunks")
 
 
 @then("The response contains no referenced_documents")
@@ -422,4 +582,4 @@ def check_no_referenced_documents(context: Context) -> None:
     """Assert the response has no referenced_documents (empty or absent)."""
     body = _get_response_body(context)
     docs = body.get("referenced_documents", [])
-    assert len(docs) == 0, f"Expected no referenced_documents, got {len(docs)}"
+    _assert_empty(docs, "referenced_documents")
