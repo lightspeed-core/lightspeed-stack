@@ -1252,9 +1252,25 @@ def synthesize_configuration(  # pylint: disable=too-many-locals
     ls_config: dict[str, Any] = copy.deepcopy(baseline)
 
     # Profile and empty are unchanged. The shipped file either keeps OpenAI
-    # (default/omitted) or drops it (byo-llm).
-    if loaded_shipped_baseline and unified and unified.get("baseline") == "byo-llm":
-        _strip_default_openai_inference(ls_config)
+    # (default/omitted, with a deprecation WARN) or drops it (byo-llm).
+    #
+    # Deprecation schedule (confirmed by @sbunciak 2026-08-25): the built-in
+    # OpenAI row in baseline "default" is deprecated in 0.7 with this single
+    # startup WARN and removed in 0.8. "default" shipped in 0.6.0 GA, so the
+    # Engineering Support Agreement's one-minor deprecation phase applies.
+    if loaded_shipped_baseline:
+        if unified and unified.get("baseline") == "byo-llm":
+            _strip_default_openai_inference(ls_config)
+        else:
+            logger.warning(
+                "DEPRECATED: the built-in OpenAI inference provider in "
+                "llama_stack.config.baseline 'default' is deprecated and will "
+                "be removed in release 0.8. Set baseline to 'byo-llm' and "
+                "declare your LLM providers under inference.providers: "
+                "https://lightspeed-core.github.io/lightspeed-stack/design"
+                "/llama-stack-config-merge/llama-stack-config-merge.html"
+                "#configuration"
+            )
 
     # 3. Normalize duplicated vector_io providers in the baseline.
     dedupe_providers_vector_io(ls_config)
