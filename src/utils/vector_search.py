@@ -641,7 +641,9 @@ async def _fetch_okp_rag(  # pylint: disable=too-many-locals
                     len(rag_chunks),
                 )
 
-    except Exception as e:  # pylint: disable=broad-exception-caught
+    except (
+        Exception  # pylint: disable=broad-exception-caught
+    ) as e:  # noqa: BLE001 RUF100
         logger.warning("Failed to query OKP for chunks: %s", e)
         logger.debug("OKP query error details: %s", traceback.format_exc())
 

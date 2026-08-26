@@ -3,12 +3,19 @@
 Used on query and streaming paths.
 """
 
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 
 from ogx_api import OpenAIResponseOutput
 from pydantic import AnyUrl, BaseModel, Field
 
 from utils.token_counter import TokenCounter
+
+type ContextStatus = Literal["full", "summarized"]
+"""How the conversation context was assembled for a turn.
+
+``"full"`` means the full history was used; ``"summarized"`` means older
+turns were replaced by a compaction summary (LCORE-1573).
+"""
 
 
 class RAGChunk(BaseModel):

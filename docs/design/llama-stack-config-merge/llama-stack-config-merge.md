@@ -267,6 +267,8 @@ llama_stack:
   config:
     # Baseline selection (backend-specific knobs stay here)
     baseline: default              # default | byo-llm | empty; ignored if `profile` is set
+                                   # DEPRECATED in 0.7: `default`'s built-in OpenAI
+                                   # provider is removed in 0.8 -- use `byo-llm`
     profile: ./my-profile.yaml     # optional; resolves relative to lightspeed-stack.yaml
 
     # Escape hatch — raw OGX schema, deep-merged with list replacement
@@ -557,6 +559,7 @@ reference.
 | 2026-04-23 | Initial version | Spike completion |
 | 2026-08-20 | Default baseline openai provider is conditional on `OPENAI_API_KEY` | LCORE-3607: `baseline: default` must load when the key is unset |
 | 2026-08-21 | Add `baseline: byo-llm` (default_run.yaml minus the OpenAI row) | LCORE-3654: opt-in openai-free baseline |
+| 2026-08-25 | `baseline: default`'s built-in OpenAI provider deprecated in 0.7, removed in 0.8 | LCORE-3696: `default` shipped in 0.6.0 GA, so the ESA one-minor deprecation phase applies (confirmed by @sbunciak) |
 
 ## Appendix A — Worked example: legacy → unified migration
 

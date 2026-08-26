@@ -1,6 +1,7 @@
 """Unit tests for QueryResponse model."""
 
-from pydantic import AnyUrl
+import pytest
+from pydantic import AnyUrl, ValidationError
 
 from models.api.responses.successful import QueryResponse
 from models.common.turn_summary import (
@@ -32,6 +33,27 @@ class TestQueryResponse:
         qr = QueryResponse(response="LLM answer")  # type: ignore[call-arg]
         assert qr.conversation_id is None
         assert qr.response == "LLM answer"
+
+    def test_context_status_defaults_to_full(self) -> None:
+        """Test that context_status defaults to "full" when not provided."""
+        qr = QueryResponse(response="LLM answer")  # type: ignore[call-arg]
+        assert qr.context_status == "full"
+
+    def test_context_status_summarized(self) -> None:
+        """Test that context_status accepts the "summarized" value."""
+        qr = QueryResponse(  # type: ignore[call-arg]
+            response="LLM answer",
+            context_status="summarized",
+        )
+        assert qr.context_status == "summarized"
+
+    def test_context_status_rejects_unknown_value(self) -> None:
+        """Test that context_status rejects values outside full/summarized."""
+        with pytest.raises(ValidationError):
+            QueryResponse(  # type: ignore[call-arg]
+                response="LLM answer",
+                context_status="partial",  # type: ignore[arg-type]
+            )
 
     def test_complete_query_response_with_all_fields(self) -> None:
         """Test QueryResponse with all fields including tool calls, and tool results."""

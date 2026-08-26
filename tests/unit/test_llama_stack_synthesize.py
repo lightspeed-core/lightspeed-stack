@@ -8,6 +8,7 @@ write-to-file step (persistent path, mode 0600).
 
 # pylint: disable=too-many-lines
 
+import logging
 import os
 import stat
 from pathlib import Path
@@ -740,6 +741,15 @@ def test_synthesize_vllm_appends_and_keeps_conditional_openai(
     assert any(entry["provider_id"] == "vllm" for entry in _inference_entries(resolved))
 
 
+def _byo_llm_deprecation_warnings(caplog: pytest.LogCaptureFixture) -> list[str]:
+    """Return WARN records that name the byo-llm baseline replacement."""
+    return [
+        record.getMessage()
+        for record in caplog.records
+        if record.levelno == logging.WARNING and "byo-llm" in record.getMessage()
+    ]
+
+
 @pytest.mark.parametrize(
     "lcs",
     [
@@ -749,10 +759,16 @@ def test_synthesize_vllm_appends_and_keeps_conditional_openai(
     ],
 )
 def test_synthesize_default_path_keeps_conditional_openai(
-    lcs: dict[str, Any],
+    lcs: dict[str, Any], caplog: pytest.LogCaptureFixture
 ) -> None:
-    """default or omitted baseline keeps the OpenAI row."""
-    result = synthesize_configuration(lcs)
+    """default or omitted baseline keeps the OpenAI row and warns naming byo-llm."""
+    with caplog.at_level(
+        "WARNING", logger="lightspeed_stack.llama_stack_configuration"
+    ):
+        result = synthesize_configuration(lcs)
+    warnings = _byo_llm_deprecation_warnings(caplog)
+    assert len(warnings) == 1
+    assert "removed in release 0.8" in warnings[0]
     openai_entries = _openai_inference_entries(result)
     assert len(openai_entries) == 1
     assert openai_entries[0]["provider_id"] == OPENAI_CONDITIONAL_PROVIDER_ID
@@ -760,10 +776,14 @@ def test_synthesize_default_path_keeps_conditional_openai(
     assert "sentence-transformers" in ids
 
 
-def test_synthesize_byo_llm_strips_openai() -> None:
-    """byo-llm drops the built-in OpenAI row and keeps the embedder."""
+def test_synthesize_byo_llm_strips_openai(caplog: pytest.LogCaptureFixture) -> None:
+    """byo-llm drops the OpenAI row, keeps the embedder, and does not warn."""
     lcs = {"llama_stack": {"config": {"baseline": "byo-llm"}}}
-    result = synthesize_configuration(lcs)
+    with caplog.at_level(
+        "WARNING", logger="lightspeed_stack.llama_stack_configuration"
+    ):
+        result = synthesize_configuration(lcs)
+    assert _byo_llm_deprecation_warnings(caplog) == []
     assert _openai_inference_entries(result) == []
     ids = [entry["provider_id"] for entry in _inference_entries(result)]
     assert ids == ["sentence-transformers"]
@@ -810,8 +830,10 @@ def test_synthesize_byo_llm_with_openai_appends_one_row() -> None:
     assert openai_entries[0]["config"]["api_key"] == "${env.OPENAI_API_KEY}"
 
 
-def test_synthesize_empty_baseline_does_not_strip_openai() -> None:
-    """baseline: empty is unchanged: no OpenAI strip."""
+def test_synthesize_empty_baseline_does_not_strip_openai(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """baseline: empty is unchanged: no OpenAI strip and no deprecation WARN."""
     lcs = {
         "llama_stack": {
             "config": {
@@ -820,12 +842,18 @@ def test_synthesize_empty_baseline_does_not_strip_openai() -> None:
             }
         }
     }
-    result = synthesize_configuration(lcs)
+    with caplog.at_level(
+        "WARNING", logger="lightspeed_stack.llama_stack_configuration"
+    ):
+        result = synthesize_configuration(lcs)
+    assert _byo_llm_deprecation_warnings(caplog) == []
     assert result == {"version": 2, "apis": ["inference"]}
 
 
-def test_synthesize_profile_ignores_byo_llm(tmp_path: Path) -> None:
-    """profile: wins over baseline: byo-llm; no OpenAI strip."""
+def test_synthesize_profile_ignores_byo_llm(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    """profile: wins over baseline: byo-llm; no OpenAI strip and no WARN."""
     profile = {
         "version": 2,
         "apis": ["inference"],
@@ -849,7 +877,11 @@ def test_synthesize_profile_ignores_byo_llm(tmp_path: Path) -> None:
             }
         }
     }
-    result = synthesize_configuration(lcs, config_file_dir=str(tmp_path))
+    with caplog.at_level(
+        "WARNING", logger="lightspeed_stack.llama_stack_configuration"
+    ):
+        result = synthesize_configuration(lcs, config_file_dir=str(tmp_path))
+    assert _byo_llm_deprecation_warnings(caplog) == []
     assert result["marker"] == "from-profile"
     openai_entries = _openai_inference_entries(result)
     assert len(openai_entries) == 1

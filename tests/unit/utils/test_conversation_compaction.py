@@ -121,6 +121,13 @@ def test_should_compact() -> None:
     )
 
 
+def test_compaction_result_context_status() -> None:
+    """The compacted flag maps to the API context_status value (LCORE-1573)."""
+    params = _params()
+    assert cc.CompactionResult(params, compacted=False).context_status == "full"
+    assert cc.CompactionResult(params, compacted=True).context_status == "summarized"
+
+
 # --- apply_compaction ---
 
 

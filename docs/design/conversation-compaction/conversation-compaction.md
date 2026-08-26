@@ -115,7 +115,7 @@ lightspeed-stack
   9. Append the completed turn to the conversation items (continuous history,
      same conversation_id) — OGX did not auto-store it (no conversation param)
   10. Release per-conversation lock
-  11. Return response (context_status="summarized" when 1573 lands; "full" otherwise)
+  11. Return response (context_status="summarized" when compacted; "full" otherwise — LCORE-1573)
 ```
 
 Note: when no prior summary exists and the request is below the threshold,
@@ -237,17 +237,30 @@ This preserves a single continuous conversation identity. The `conversation_id` 
 
 ## API response changes
 
-Add `context_status` field to `QueryResponse` and `StreamingQueryResponse`:
+The `context_status` field is added in two places (LCORE-1573):
+
+- `QueryResponse` (`src/models/api/responses/successful/query.py`) — the
+  non-streaming `/v1/query` response body.
+- `EndEventData` (`src/models/common/agents/stream_payloads.py`) — the SSE
+  `end` event payload that streaming `/v1/streaming_query` clients actually
+  receive on the wire, alongside the analogous `truncated` signal.
 
 ``` python
-context_status: str = Field(
+context_status: ContextStatus = Field(
     "full",
-    description="Context status: 'full' (no compaction), "
-    "'summarized' (older turns summarized).",
+    description='Context status: "full" (no compaction) or '
+    '"summarized" (older turns replaced by a summary)',
 )
 ```
 
-The existing `truncated` field remains deprecated.
+`StreamingQueryResponse` is a documentation-only class with an empty body
+(its `openapi_response()` inlines an SSE example string); adding a field
+there would change nothing on the wire, so it is intentionally skipped —
+only its SSE example is updated to show `context_status` in the `end` event.
+
+The value maps directly from `CompactionResult.compacted`
+(`utils/conversation_compaction.py`): `"summarized"` when True, `"full"`
+otherwise. The existing `truncated` field remains deprecated.
 
 ## Configuration
 
@@ -307,7 +320,8 @@ Add `compaction` field to the root `Configuration` class.
 | `src/app/endpoints/streaming_query.py` | Compaction-aware SSE path that emits the `compaction` event before summarizing (R12) |
 | `src/app/endpoints/a2a.py`             | Inline compaction (no SSE event); store the turn on `response.completed` |
 | `src/app/endpoints/responses.py`       | Silent compaction (OpenAI-compatible); store the turn via `_append_previous_response_turn` |
-| `src/models/responses.py` (now relocated) | `context_status` field — deferred to LCORE-1573 |
+| `src/models/api/responses/successful/query.py` | `context_status` on `QueryResponse` (non-streaming `/v1/query`) — LCORE-1573 |
+| `src/models/common/agents/stream_payloads.py` | `context_status` on `EndEventData`, the streaming SSE `end` event payload (`StreamingQueryResponse` is docs-only and intentionally skipped) — LCORE-1573 |
 | `src/cache/` (all backends)            | `ConversationSummary` storage — LCORE-1571 |
 
 ## How compaction is invoked

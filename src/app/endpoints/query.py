@@ -356,6 +356,7 @@ async def _handle_query_with_tracing(
         rag_chunks=turn_summary.rag_chunks,
         referenced_documents=turn_summary.referenced_documents,
         truncated=False,
+        context_status=compaction.context_status,
         input_tokens=turn_summary.token_usage.input_tokens,
         output_tokens=turn_summary.token_usage.output_tokens,
         available_quotas=available_quotas,

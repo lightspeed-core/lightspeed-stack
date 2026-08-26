@@ -1,7 +1,7 @@
 # pylint: disable=too-many-locals
 """Unit tests for the /query (v2) REST API endpoint using Responses API."""
 
-from typing import Any
+from typing import Any, cast
 
 import pytest
 from fastapi import Request
@@ -22,6 +22,7 @@ from models.common.turn_summary import (
     TurnSummary,
 )
 from models.database.conversations import UserConversation
+from utils.conversation_compaction import CompactionResult
 
 # User ID must be proper UUID
 MOCK_AUTH = (
@@ -175,6 +176,88 @@ class TestQueryEndpointHandler:
         assert isinstance(response, QueryResponse)
         assert response.conversation_id == "123"
         assert response.response == "Kubernetes is a container orchestration platform"
+        assert response.context_status == "full"
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("compacted", "expected_status"),
+        [(False, "full"), (True, "summarized")],
+    )
+    async def test_query_reports_context_status(
+        self,
+        dummy_request: Request,
+        setup_configuration: AppConfig,
+        mocker: MockerFixture,
+        compacted: bool,
+        expected_status: str,
+    ) -> None:
+        """Test that the compaction outcome is surfaced as context_status."""
+        query_request = QueryRequest(
+            query="What is Kubernetes?"
+        )  # pyright: ignore[reportCallIssue]
+
+        mocker.patch("app.endpoints.query.configuration", setup_configuration)
+        mocker.patch("app.endpoints.query.check_configuration_loaded")
+        mocker.patch("app.endpoints.query.check_tokens_available")
+        mocker.patch("app.endpoints.query.validate_model_provider_override")
+
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
+        mock_client_holder = mocker.Mock()
+        mock_client_holder.get_client.return_value = mock_client
+        mocker.patch(
+            "app.endpoints.query.AsyncOgxClientHolder",
+            return_value=mock_client_holder,
+        )
+        mocker.patch(
+            "app.endpoints.query.maybe_get_topic_summary",
+            new=mocker.AsyncMock(return_value=None),
+        )
+        mocker.patch(
+            "app.endpoints.query.run_shield_moderation",
+            new=mocker.AsyncMock(return_value=ShieldModerationPassed()),
+        )
+
+        mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
+        mock_responses_params.model = "provider1/model1"
+        mock_responses_params.conversation = "conv_123"
+        mock_responses_params.tools = None
+        mocker.patch(
+            "app.endpoints.query.prepare_responses_params",
+            new=mocker.AsyncMock(return_value=mock_responses_params),
+        )
+
+        compaction_result = CompactionResult(
+            cast(ResponsesApiParams, mock_responses_params),
+            compacted=compacted,
+        )
+        mocker.patch(
+            "app.endpoints.query.apply_compaction_blocking",
+            new=mocker.AsyncMock(return_value=compaction_result),
+        )
+
+        mock_turn_summary = TurnSummary()
+        mock_turn_summary.llm_response = "An answer"
+        mocker.patch(
+            "app.endpoints.query.retrieve_agent_response",
+            new=mocker.AsyncMock(return_value=mock_turn_summary),
+        )
+
+        mocker.patch(
+            "app.endpoints.query.normalize_conversation_id", return_value="123"
+        )
+        mocker.patch("app.endpoints.query.store_query_results")
+        mocker.patch("app.endpoints.query.consume_query_tokens")
+        mocker.patch("app.endpoints.query.get_available_quotas", return_value={})
+
+        response = await query_endpoint_handler(
+            request=dummy_request,
+            query_request=query_request,
+            auth=MOCK_AUTH,
+            mcp_headers={},
+        )
+
+        assert isinstance(response, QueryResponse)
+        assert response.context_status == expected_status
 
     @pytest.mark.asyncio
     async def test_query_merges_inline_and_tool_rag_chunks_and_documents(
