@@ -304,6 +304,8 @@ def after_scenario(context: Context, scenario: Scenario) -> None:
               running before the scenario.
             - hostname_llama, port_llama (str/int, optional): host and port
               used for the OGX health check.
+            - okp_was_running (bool, optional): whether OKP server was running
+              before it was stopped by the scenario.
         scenario (Scenario): Behave scenario (unused; shield restore uses context flags).
     """
     if is_prow_environment():
