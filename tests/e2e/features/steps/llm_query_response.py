@@ -156,6 +156,9 @@ def ask_question_authorized(context: Context, endpoint: str) -> None:
         body = _read_streamed_response(resp)
         resp._content = body.encode(resp.encoding or "utf-8")
         context.response = resp
+        # Parse SSE events and make data available for assertions
+        context.response_data = _parse_streaming_response(body)
+        context.use_streaming_response_data = True
     else:
         context.response = request_with_transient_retry(
             method="POST",
