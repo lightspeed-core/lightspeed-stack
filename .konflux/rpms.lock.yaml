@@ -4,6 +4,13 @@ lockfileVendor: redhat
 arches:
 - arch: aarch64
   packages:
+  - url: https://cdn.redhat.com/content/dist/rhel9/9.7/aarch64/appstream/os/Packages/l/libxslt-1.1.34-14.el9_7.1.aarch64.rpm
+    repoid: rhel-9-for-aarch64-appstream-rpms__9_DOT_7
+    size: 251669
+    checksum: sha256:2b1fc002c4f57960df438791f7dfb5d4defa964f1afc73c3556451bc7f5ea01c
+    name: libxslt
+    evr: 1.1.34-14.el9_7.1
+    sourcerpm: libxslt-1.1.34-14.el9_7.1.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.6/aarch64/appstream/os/Packages/c/cargo-1.84.1-1.el9.aarch64.rpm
     repoid: rhel-9-for-aarch64-appstream-eus-rpms__9_DOT_6
     size: 7744425
@@ -85,6 +92,13 @@ arches:
   module_metadata: []
 - arch: x86_64
   packages:
+  - url: https://cdn.redhat.com/content/dist/rhel9/9.7/x86_64/appstream/os/Packages/l/libxslt-1.1.34-14.el9_7.1.x86_64.rpm
+    repoid: rhel-9-for-x86_64-appstream-rpms__9_DOT_7
+    size: 254259
+    checksum: sha256:d92873a046c78ae6837d8b23deecbfa1d6376b81bf587382e89ed345c1d5bad5
+    name: libxslt
+    evr: 1.1.34-14.el9_7.1
+    sourcerpm: libxslt-1.1.34-14.el9_7.1.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.6/x86_64/appstream/os/Packages/c/cargo-1.84.1-1.el9.x86_64.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms__9_DOT_6
     size: 8292467

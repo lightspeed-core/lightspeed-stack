@@ -56,3 +56,19 @@ metadata_expire = 86400
 enabled_metadata = 0
 sslclientkey = $SSL_CLIENT_KEY
 sslclientcert = $SSL_CLIENT_CERT
+
+[rhel-9-for-$basearch-appstream-rpms__9_DOT_7]
+name = Red Hat Enterprise Linux 9 for $basearch - AppStream (RPMs)
+baseurl = https://cdn.redhat.com/content/dist/rhel9/9.7/$basearch/appstream/os
+enabled = 1
+gpgcheck = 1
+gpgkey = file:///etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
+sslverify = 1
+sslcacert = /etc/rhsm/ca/redhat-uep.pem
+sslverifystatus = 1
+metadata_expire = 86400
+enabled_metadata = 0
+sslclientkey = $SSL_CLIENT_KEY
+sslclientcert = $SSL_CLIENT_CERT
+includepkgs=libxslt*
+excludepkgs=*.i686
