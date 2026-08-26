@@ -13,7 +13,7 @@ This document explains how the Conversations API works with the Responses API in
 
 * [Introduction](#introduction)
 * [Conversation ID Formats](#conversation-id-formats)
-   * [Llama Stack Format](#llama-stack-format)
+   * [OGX Format](#ogx-format)
    * [Normalized Format](#normalized-format)
    * [ID Conversion Utilities](#id-conversion-utilities)
 * [How Conversations Work](#how-conversations-work)
@@ -41,7 +41,7 @@ Lightspeed Core Stack uses the **OpenAI Responses API** (`client.responses.creat
 * Shield/guardrails support
 
 Conversations are stored in two locations:
-1. **Llama Stack database** (`openai_conversations` and `conversation_items` tables in `public` schema)
+1. **OGX database** (`openai_conversations` and `conversation_items` tables in `public` schema)
 2. **Lightspeed Stack database** (`user_conversation` table in `lightspeed-stack` schema)
 
 > [!NOTE]
@@ -51,9 +51,9 @@ Conversations are stored in two locations:
 
 ## Conversation ID Formats
 
-### Llama Stack Format
+### OGX Format
 
-When Llama Stack creates a conversation, it generates an ID in the format:
+When OGX creates a conversation, it generates an ID in the format:
 
 ```
 conv_<48-character-hex-string>
@@ -64,7 +64,7 @@ conv_<48-character-hex-string>
 conv_0d21ba731f21f798dc9680125d5d6f493e4a7ab79f25670e
 ```
 
-This is the format used internally by Llama Stack and must be used when calling Llama Stack APIs.
+This is the format used internally by OGX and must be used when calling OGX APIs.
 
 ### Normalized Format
 
@@ -87,11 +87,11 @@ LCS provides utilities in `src/utils/suid.py` for ID conversion:
 ```python
 from utils.suid import normalize_conversation_id, to_llama_stack_conversation_id
 
-# Convert from Llama Stack format to normalized format
+# Convert from OGX format to normalized format
 normalized_id = normalize_conversation_id("conv_0d21ba731f21f798dc9680125d5d6f493e4a7ab79f25670e")
 # Returns: "0d21ba731f21f798dc9680125d5d6f493e4a7ab79f25670e"
 
-# Convert from normalized format to Llama Stack format
+# Convert from normalized format to OGX format
 llama_stack_id = to_llama_stack_conversation_id("0d21ba731f21f798dc9680125d5d6f493e4a7ab79f25670e")
 # Returns: "conv_0d21ba731f21f798dc9680125d5d6f493e4a7ab79f25670e"
 ```
@@ -105,7 +105,7 @@ llama_stack_id = to_llama_stack_conversation_id("0d21ba731f21f798dc9680125d5d6f4
 When a user makes a query **without** providing a `conversation_id`:
 
 1. LCS creates a new conversation using `client.conversations.create(metadata={})`
-2. Llama Stack returns a conversation ID (e.g., `conv_abc123...`)
+2. OGX returns a conversation ID (e.g., `conv_abc123...`)
 3. LCS normalizes the ID and stores it in the database
 4. The query is sent to `client.responses.create()` with the conversation ID
 5. The normalized ID is returned to the client
@@ -125,7 +125,7 @@ response = await client.responses.create(
     model=model_id,
     instructions=system_prompt,
     store=True,
-    conversation=llama_stack_conv_id,  # Use Llama Stack format
+    conversation=llama_stack_conv_id,  # Use OGX format
     # ... other parameters
 )
 ```
@@ -135,15 +135,15 @@ response = await client.responses.create(
 When a user provides an existing `conversation_id`:
 
 1. LCS receives the normalized ID (e.g., `0d21ba731f21f798dc9680125d5d6f493e4a7ab79f25670e`)
-2. Converts it to Llama Stack format (adds `conv_` prefix)
+2. Converts it to OGX format (adds `conv_` prefix)
 3. Sends the query to `client.responses.create()` with the existing conversation ID
-4. Llama Stack retrieves the conversation history and continues the conversation
+4. OGX retrieves the conversation history and continues the conversation
 5. The conversation history is automatically included in the LLM context
 
 **Code flow:**
 
 ```python
-# Conversation ID was provided - convert to llama-stack format
+# Conversation ID was provided - convert to OGX format
 conversation_id = query_request.conversation_id
 llama_stack_conv_id = to_llama_stack_conversation_id(conversation_id)
 
@@ -160,7 +160,7 @@ response = await client.responses.create(
 
 Conversations are stored in **two databases**:
 
-#### 1. Llama Stack Database (PostgreSQL `public` schema)
+#### 1. OGX Database (PostgreSQL `public` schema)
 
 **Tables:**
 - `openai_conversations`: Stores conversation metadata
@@ -435,7 +435,7 @@ CREATE INDEX idx_user_conversation_user_id ON "lightspeed-stack".user_conversati
 > [!NOTE]
 > The `id` column uses `VARCHAR` without a length limit, which PostgreSQL treats similarly to `TEXT`. This accommodates the 48-character normalized conversation IDs.
 
-### Llama Stack Schema
+### OGX Schema
 
 **Table:** `public.openai_conversations`
 
@@ -496,12 +496,12 @@ Calling `/v3/conversations/{conversation_id}` returns empty `chat_history`.
 
 **Possible Causes:**
 1. The conversation was just created and has no messages yet
-2. The conversation exists in Lightspeed DB but not in Llama Stack DB (data inconsistency)
-3. Database connection to Llama Stack is failing
+2. The conversation exists in Lightspeed DB but not in OGX DB (data inconsistency)
+3. Database connection to OGX is failing
 
 **Solution:**
 - Verify the conversation has messages by checking `message_count`
-- Check Llama Stack database connectivity
+- Check OGX database connectivity
 - Verify `openai_conversations` and `conversation_items` tables exist and are accessible
 
 ---
@@ -509,6 +509,6 @@ Calling `/v3/conversations/{conversation_id}` returns empty `chat_history`.
 ## References
 
 - [OpenAI Responses API Documentation](https://platform.openai.com/docs/api-reference/responses)
-- [Llama Stack Documentation](https://github.com/meta-llama/llama-stack)
+- [OGX Documentation](https://github.com/meta-llama/llama-stack)
 - [LCS Configuration Guide](./config.md)
 - [LCS Getting Started Guide](./getting_started.md)

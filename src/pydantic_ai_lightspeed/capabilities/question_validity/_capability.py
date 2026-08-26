@@ -88,7 +88,7 @@ def _message_to_str(message: Optional[str | Sequence[UserContent]]) -> str:
 
 
 def _extract_conversation_id(model: Model) -> Optional[str]:
-    """Extract the Llama Stack conversation ID from the agent's model settings.
+    """Extract the OGX conversation ID from the agent's model settings.
 
     The main agent's model is built with ``conversation`` in its
     ``extra_body`` model settings (see ``OgxResponsesModel.from_ogx_client``).
@@ -100,7 +100,7 @@ def _extract_conversation_id(model: Model) -> Optional[str]:
 
     Returns:
         The conversation ID, or None if the model has no such setting
-        (e.g. when used outside a Llama Stack-backed agent).
+        (e.g. when used outside an OGX-backed agent).
     """
     extra_body = (model.settings or {}).get("extra_body")
     if not isinstance(extra_body, dict):

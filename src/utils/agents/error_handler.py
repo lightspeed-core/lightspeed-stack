@@ -36,7 +36,7 @@ def map_agent_inference_error(
     exc: AgentInferenceError,
     model_id: str,
 ) -> AbstractErrorResponse:
-    """Map agent run failures from pydantic-ai or Llama Stack to an LCS error response.
+    """Map agent run failures from pydantic-ai or OGX to an LCS error response.
 
     Args:
         exc: Agent, HTTP status, connection, or context-length runtime error.
@@ -93,8 +93,8 @@ def map_pydantic_agent_run_error(  # pylint: disable=too-many-return-statements
             return QuotaExceededResponse.model(model_id)
         case ModelHTTPError() as http_exc if is_resource_exhausted_error(str(http_exc)):
             logger.warning(
-                "Detected RESOURCE_EXHAUSTED in ModelHTTPError with status %d; "
-                "treating as 429 (llama-stack wraps Vertex AI 429 as 500)",
+                "Detected RESOURCE_EXHAUSTED in ModelHTTPError with status %d; treating as "
+                "429 (OGX wraps Vertex AI 429 as 500)",
                 http_exc.status_code,
             )
             return QuotaExceededResponse.model(model_id)

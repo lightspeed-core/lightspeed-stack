@@ -54,7 +54,7 @@ Function to transform a JSON Schema-like dictionary into an OpenAPI-compatible s
 
 ## [llama_stack_version.py](llama_stack_version.py)
 
-Check if the Llama Stack version is supported by the LCS.
+Check if the OGX version is supported by the LCS.
 
 ## [markdown_repair.py](markdown_repair.py)
 
@@ -74,7 +74,7 @@ Probe MCP servers for OAuth and raise 401 with WWW-Authenticate when required.
 
 ## [mcp_tools.py](mcp_tools.py)
 
-Utilities for discovering tools from remote MCP servers without Llama Stack.
+Utilities for discovering tools from remote MCP servers without OGX.
 
 ## [model_list.py](model_list.py)
 
@@ -98,7 +98,7 @@ Utility functions for system prompts.
 
 ## [pydantic_ai_helpers.py](pydantic_ai_helpers.py)
 
-Helpers for running Pydantic AI agents against Llama Stack (Responses API compatibility).
+Helpers for running Pydantic AI agents against OGX (Responses API compatibility).
 
 ## [query.py](query.py)
 

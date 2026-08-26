@@ -1,4 +1,4 @@
-"""Helpers for running Pydantic AI agents against Llama Stack (Responses API compatibility)."""
+"""Helpers for running Pydantic AI agents against OGX (Responses API compatibility)."""
 
 from __future__ import annotations
 
@@ -221,15 +221,15 @@ def build_agent(
     shields: Optional[list[str]] = None,
     no_tools: bool = False,
 ) -> Agent[None, str]:
-    """Build a Pydantic AI agent that mirrors ``responses_params`` on the Llama Stack backend.
+    """Build a Pydantic AI agent that mirrors ``responses_params`` on the OGX backend.
 
     Uses ``OgxProvider`` with the same ``AsyncOgxClient`` (or library client)
     as the query endpoint, and ``OpenAIResponsesModel`` so requests follow the Responses API.
-    Llama-Stack-specific fields (conversation, tools, MCP headers, etc.) are passed via
+    OGX-specific fields (conversation, tools, MCP headers, etc.) are passed via
     ``model_settings['extra_body']`` so they merge into the OpenAI client request body.
 
     Parameters:
-        client: Initialized Llama Stack client from ``AsyncOgxClientHolder().get_client()``.
+        client: Initialized OGX client from ``AsyncOgxClientHolder().get_client()``.
         responses_params: Parameters produced by ``prepare_responses_params`` for this turn.
         config: Application configuration. Agent skills (``config.skills``) and the
             configured guardrail shields (``config.shields``) are extracted from it.

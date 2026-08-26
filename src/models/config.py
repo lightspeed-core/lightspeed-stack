@@ -534,7 +534,7 @@ class ModelContextProtocolServer(ConfigurationBase):
     MCP (Model Context Protocol) servers provide tools and capabilities to the
     AI agents. These are configured by this structure. Only MCP servers
     defined in the lightspeed-stack.yaml configuration are available to the
-    agents. Tools configured in the llama-stack run.yaml are not accessible to
+    agents. Tools configured in the OGX run.yaml are not accessible to
     lightspeed-core agents.
 
     Useful resources:
@@ -630,9 +630,9 @@ class ModelContextProtocolServer(ConfigurationBase):
         default=None,
         title="Request timeout",
         description=(
-            "Timeout in seconds for requests to the MCP server. "
-            "If not specified, the default timeout from Llama Stack will be used. "
-            "Note: This field is reserved for future use when Llama Stack adds timeout support."
+            "Timeout in seconds for requests to the MCP server. If not "
+            "specified, the default timeout from OGX will be used. Note: This "
+            "field is reserved for future use when OGX adds timeout support."
         ),
     )
 
@@ -659,16 +659,16 @@ class UnifiedInferenceProvider(ConfigurationBase):
     """A high-level inference provider entry for unified-mode synthesis.
 
     Operators describe inference providers at this high level (backend-agnostic
-    vocabulary) instead of authoring raw Llama Stack provider blocks. The
-    synthesizer (`apply_high_level_inference`) expands each entry into a Llama
-    Stack `providers.inference` entry, mapping `type` to a `provider_type` and
+    vocabulary) instead of authoring raw OGX provider blocks. The
+    synthesizer (`apply_high_level_inference`) expands each entry into an OGX
+    `providers.inference` entry, mapping `type` to a `provider_type` and
     emitting `${env.<VAR>}` references for secrets (never literal values).
 
     Attributes:
         type: Canonical provider identifier. Vendor-neutral so it survives a
             future backend change; each backend-specific synthesizer maps it to
             its own provider vocabulary.
-        id: Optional identifier emitted as the Llama Stack provider_id. When
+        id: Optional identifier emitted as the OGX provider_id. When
             omitted, synthesized as type with underscores hyphenated. If set,
             must be non-empty after stripping whitespace and may contain only
             lowercase letters, digits, underscores, and hyphens.
@@ -695,16 +695,16 @@ class UnifiedInferenceProvider(ConfigurationBase):
     ] = Field(
         ...,
         title="Provider type",
-        description="Canonical, backend-agnostic provider identifier mapped to a "
-        "Llama Stack provider_type by the synthesizer.",
+        description="Canonical, backend-agnostic provider identifier mapped to "
+        "an OGX provider_type by the synthesizer.",
     )
 
     id: Optional[str] = Field(
         None,
         title="Provider ID",
-        description="Optional identifier emitted as the Llama Stack provider_id. "
-        "When omitted, synthesized as type with underscores hyphenated. If set, "
-        "must be non-empty after stripping whitespace and may contain only "
+        description="Optional identifier emitted as the OGX provider_id. When omitted, "
+        "synthesized as type with underscores hyphenated. If set, must "
+        "be non-empty after stripping whitespace and may contain only "
         "lowercase letters, digits, underscores, and hyphens.",
     )
 
@@ -762,11 +762,11 @@ class UnifiedInferenceProvider(ConfigurationBase):
 
 
 class UnifiedLlamaStackConfig(ConfigurationBase):
-    """Backend-specific knobs for unified-mode Llama Stack synthesis.
+    """Backend-specific knobs for unified-mode OGX synthesis.
 
     Per Decision S5 of the design spike, backend-agnostic high-level sections
     (inference, ...) live at the configuration root, not here. This block holds
-    only the Llama-Stack-specific synthesis controls: which baseline to start
+    only the OGX-specific synthesis controls: which baseline to start
     from, an optional profile file, and a raw native_override escape hatch.
 
     Attributes:
@@ -779,7 +779,7 @@ class UnifiedLlamaStackConfig(ConfigurationBase):
         profile: Optional path to a user-authored run.yaml-shaped file used as
             the synthesis baseline. Relative paths resolve against the directory
             of the loaded lightspeed-stack.yaml.
-        native_override: Raw Llama Stack schema deep-merged last (maps merge
+        native_override: Raw OGX schema deep-merged last (maps merge
             recursively, lists and scalars replace). The escape hatch for
             anything the high-level sections do not express.
     """
@@ -803,105 +803,107 @@ class UnifiedLlamaStackConfig(ConfigurationBase):
     native_override: dict[str, object] = Field(
         default_factory=dict,
         title="Native override",
-        description="Raw Llama Stack schema deep-merged last (maps merge "
-        "recursively; lists and scalars replace).",
+        description="Raw OGX schema deep-merged last (maps "
+        "merge recursively; lists and scalars replace).",
     )
 
 
 class LlamaStackConfiguration(ConfigurationBase):
-    """Llama stack configuration.
+    """OGX configuration.
 
-    Llama Stack is a comprehensive system that provides a uniform set of tools
+    OGX is a comprehensive system that provides a uniform set of tools
     for building, scaling, and deploying generative AI applications, enabling
     developers to create, integrate, and orchestrate multiple AI services and
     capabilities into an adaptable setup.
 
     Useful resources:
 
-      - [Llama Stack](https://www.llama.com/products/llama-stack/)
-      - [Python Llama Stack client](https://github.com/llamastack/llama-stack-client-python)
-      - [Build AI Applications with Llama Stack](https://llamastack.github.io/)
+      - [OGX](https://www.llama.com/products/llama-stack/)
+      - [Python OGX client](https://github.com/llamastack/llama-stack-client-python)
+      - [Build AI Applications with OGX](https://llamastack.github.io/)
     """
 
     url: Optional[AnyHttpUrl] = Field(
         None,
-        title="Llama Stack URL",
-        description="URL to Llama Stack service; used when library mode is disabled. "
-        "Must be a valid HTTP or HTTPS URL.",
+        title="OGX URL",
+        description="URL to OGX service; used when library mode is "
+        "disabled. Must be a valid HTTP or HTTPS URL.",
     )
 
     api_key: Optional[SecretStr] = Field(
         None,
         title="API key",
-        description="API key to access Llama Stack service",
+        description="API key to access OGX service",
     )
 
     use_as_library_client: Optional[bool] = Field(
         None,
         title="Use as library",
-        description="When set to true Llama Stack will be used in library mode, not in "
-        "server mode (default)",
+        description="When set to true OGX will be used "
+        "in library mode, not in server mode (default)",
     )
 
     library_client_config_path: Optional[str] = Field(
         None,
-        title="Llama Stack configuration path (legacy, deprecated)",
-        description="Path to configuration file used when Llama Stack is run "
-        "in library mode. DEPRECATED legacy two-file setup: logs a startup "
-        "warning since 0.6 and is removed in 0.7 — use unified mode instead "
-        "(the config block below, and/or the root-level inference.providers "
-        "section); migrate with lightspeed-stack --migrate-config.",
+        title="OGX configuration path (legacy, deprecated)",
+        description="Path to configuration file used when OGX is run "
+        "in library mode. DEPRECATED legacy two-file setup: logs a "
+        "startup warning since 0.6 and is removed in 0.7 "
+        "— use unified mode instead (the config block below, "
+        "and/or the root-level inference.providers section); "
+        "migrate with lightspeed-stack --migrate-config.",
     )
 
     timeout: PositiveInt = Field(
         180,
         title="Request timeout",
-        description="Timeout in seconds for requests to Llama Stack service. "
-        "Default is 180 seconds (3 minutes) to accommodate long-running RAG queries.",
+        description="Timeout in seconds for requests to OGX service. Default is "
+        "180 seconds (3 minutes) to accommodate long-running RAG queries.",
     )
 
     max_retries: PositiveInt = Field(
         constants.DEFAULT_MAX_RETRIES,
         title="Maximum number of connection attempts before giving up",
-        description="Maximum number of connection attempts before giving up. "
-        "Used on startup to connect to Llama Stack and retrieve its version. Connection attempts "
-        "are retried with a fixed delay to handle the case where Llama Stack is still starting "
+        description="Maximum number of connection attempts before giving up. Used on startup to "
+        "connect to OGX and retrieve its version. Connection attempts are retried with "
+        "a fixed delay to handle the case where OGX is still starting "
         "up (e.g., when running as a sidecar in the same pod).",
     )
 
     retry_delay: PositiveInt = Field(
         constants.DEFAULT_RETRY_DELAY,
         title="Delay in seconds between retry attempts",
-        description="Delay in seconds between retry attempts. Used on startup to connect to Llama "
-        "Stack and retrieve its version. Connection attempts are retried with a fixed delay to "
-        "handle the case where Llama Stack is still starting up (e.g., when running as a sidecar "
-        "in the same pod).",
+        description="Delay in seconds between retry attempts. Used on startup to connect to "
+        "OGX and retrieve its version. Connection attempts are retried with a fixed "
+        "delay to handle the case where OGX is still starting up (e.g., "
+        "when running as a sidecar in the same pod).",
     )
 
     allow_degraded_mode: Optional[bool] = Field(
         False,
         title="Allow degraded mode",
-        description="If enabled, Lightspeed Core can be started even when Llama Stack "
-        "is not accessible (valid for server mode only)",
+        description="If enabled, Lightspeed Core can be started even when "
+        "OGX is not accessible (valid for server mode only)",
     )
 
     config: Optional["UnifiedLlamaStackConfig"] = Field(
         None,
-        title="Unified Llama Stack configuration",
-        description="Backend-specific knobs for unified mode, where LCORE "
-        "synthesizes the Llama Stack run.yaml instead of reading an external "
-        "file. Holds the baseline selector, an optional profile path, and a "
-        "raw native_override escape hatch. Backend-agnostic high-level "
-        "sections (e.g. inference.providers) live at the configuration root, "
-        "not here. Mutually exclusive with library_client_config_path; that "
-        "cross-field check lives on the root Configuration model. When set in "
-        "library mode, library_client_config_path is not required.",
+        title="Unified OGX configuration",
+        description="Backend-specific knobs for unified mode, where LCORE synthesizes "
+        "the OGX run.yaml instead of reading an external "
+        "file. Holds the baseline selector, an optional profile "
+        "path, and a raw native_override escape hatch. Backend-agnostic "
+        "high-level sections (e.g. inference.providers) live at the configuration "
+        "root, not here. Mutually exclusive with library_client_config_path; that "
+        "cross-field check lives on the root Configuration model. "
+        "When set in library mode, library_client_config_path is not "
+        "required.",
     )
 
     @model_validator(mode="after")
     def check_llama_stack_model(self) -> Self:
         """
-        Validate the Llama Stack configuration and enforce mode-specific requirements.
+        Validate the OGX configuration and enforce mode-specific requirements.
 
         If no URL is provided, requires explicit library-client mode selection.
         When a legacy `library_client_config_path` is given (and no unified
@@ -925,15 +927,15 @@ class LlamaStackConfiguration(ConfigurationBase):
             unspecified or disabled.
         """
         if self.url is None:
-            # when URL is not set, it is supposed that Llama Stack should be run in library mode
+            # when URL is not set, it is supposed that OGX should be run in library mode
             # it means that use_as_library_client attribute must be set to True
             if self.use_as_library_client is None:
                 raise ValueError(
-                    "Llama Stack URL is not specified and library client mode is not specified"
+                    "OGX URL is not specified and library client mode is not specified"
                 )
             if self.use_as_library_client is False:
                 raise ValueError(
-                    "Llama Stack URL is not specified and library client mode is not enabled"
+                    "OGX URL is not specified and library client mode is not enabled"
                 )
 
         # None -> False conversion
@@ -941,7 +943,7 @@ class LlamaStackConfiguration(ConfigurationBase):
             self.use_as_library_client = False
 
         if self.use_as_library_client:
-            # In library mode Llama Stack runs embedded. A legacy
+            # In library mode OGX runs embedded. A legacy
             # library_client_config_path (with no unified config block) must
             # point to a regular readable YAML file. A unified config — driven
             # by a config block here or by inference.providers at the root —
@@ -950,7 +952,7 @@ class LlamaStackConfiguration(ConfigurationBase):
             if self.library_client_config_path is not None and self.config is None:
                 checks.file_check(
                     Path(self.library_client_config_path),
-                    "Llama Stack configuration file",
+                    "OGX configuration file",
                 )
         return self
 
@@ -1313,7 +1315,7 @@ class Action(str, Enum):
     READ_VECTOR_STORES = "read_vector_stores"
     MANAGE_FILES = "manage_files"
 
-    # Llama Stack stored prompt templates (/v1/prompts)
+    # OGX stored prompt templates (/v1/prompts)
     MANAGE_PROMPTS = "manage_prompts"
     READ_PROMPTS = "read_prompts"
 
@@ -1778,13 +1780,16 @@ class InferenceConfiguration(ConfigurationBase):
     providers: list[UnifiedInferenceProvider] = Field(
         default_factory=list,
         title="High-level inference providers",
-        description="Unified-mode synthesis input (Decision S5): a high-level, "
-        "backend-agnostic list of inference providers the synthesizer expands "
-        "into Llama Stack provider entries. Lives at the configuration root so "
-        "it survives a future backend change. A non-empty list signals unified "
-        "mode. Empty (the default) leaves legacy/remote modes unaffected. The "
-        "sibling default_model / default_provider keep their query-time routing "
-        "meaning and are independent of this list.",
+        description=(
+            "Unified-mode synthesis input (Decision S5): a high-level, backend-agnostic "
+            "list of inference providers the synthesizer expands into "
+            "OGX provider entries. Lives at the configuration root "
+            "so it survives a future backend change. A "
+            "non-empty list signals unified mode. Empty (the default) "
+            "leaves legacy/remote modes unaffected. The sibling default_model / "
+            "default_provider keep their query-time routing meaning and are "
+            "independent of this list."
+        ),
     )
 
     max_infer_iters: Optional[PositiveInt] = Field(
@@ -2226,7 +2231,7 @@ class VectorStoreProviderBase(ConfigurationBase):
     """Shared fields for dynamic vector-store provider capacity entries.
 
     Attributes:
-        id: Llama Stack vector_io provider_id. Surrounding whitespace is
+        id: OGX vector_io provider_id. Surrounding whitespace is
             stripped before validation and emission.
         embedding_model: Embedding model identification used for stores
             created against this provider.
@@ -2239,7 +2244,7 @@ class VectorStoreProviderBase(ConfigurationBase):
         min_length=1,
         title="Provider ID",
         description=(
-            "Llama Stack vector_io provider_id. Surrounding whitespace is "
+            "OGX vector_io provider_id. Surrounding whitespace is "
             "stripped before validation and emission."
         ),
     )
@@ -2328,7 +2333,7 @@ class VectorStoreConfiguration(ConfigurationBase):
 
     Attributes:
         default_provider: Provider id used for vector_stores.default_* in the
-            synthesized Llama Stack config. Required when providers is
+            synthesized OGX config. Required when providers is
             non-empty; must match one of providers[].id. Must be omitted when
             providers is empty.
         providers: Dynamic vector-store provider capacity for runtime
@@ -2340,9 +2345,9 @@ class VectorStoreConfiguration(ConfigurationBase):
         None,
         title="Default provider",
         description=(
-            "Provider id used for vector_stores.default_* in the synthesized "
-            "Llama Stack config. Required when providers is non-empty; must "
-            "match one of providers[].id."
+            "Provider id used for vector_stores.default_* in the "
+            "synthesized OGX config. Required when providers is "
+            "non-empty; must match one of providers[].id."
         ),
     )
 
@@ -3144,9 +3149,9 @@ class Configuration(ConfigurationBase):
 
     llama_stack: LlamaStackConfiguration = Field(
         ...,
-        title="Llama Stack configuration",
-        description="This section contains Llama Stack configuration. "
-        "Lightspeed Core Stack service can call Llama Stack in library mode or in server mode.",
+        title="OGX configuration",
+        description="This section contains OGX configuration. Lightspeed Core Stack service can "
+        "call OGX in library mode or in server mode.",
     )
 
     user_data_collection: UserDataCollection = Field(
@@ -3165,11 +3170,11 @@ class Configuration(ConfigurationBase):
     mcp_servers: list[ModelContextProtocolServer] = Field(
         default_factory=list,
         title="Model Context Protocol Server and tools configuration",
-        description="MCP (Model Context Protocol) servers provide tools and "
-        "capabilities to the AI agents. These are configured in this section. "
-        "Only MCP servers defined in the lightspeed-stack.yaml configuration are "
-        "available to the agents. Tools configured in the llama-stack run.yaml "
-        "are not accessible to lightspeed-core agents.",
+        description="MCP (Model Context Protocol) servers provide tools and capabilities "
+        "to the AI agents. These are configured in this "
+        "section. Only MCP servers defined in the lightspeed-stack.yaml configuration "
+        "are available to the agents. Tools configured in the "
+        "OGX run.yaml are not accessible to lightspeed-core agents.",
     )
 
     authentication: AuthenticationConfiguration = Field(
@@ -3484,7 +3489,7 @@ class Configuration(ConfigurationBase):
         legacy_input = self.llama_stack.library_client_config_path is not None
         if synthesis_input and legacy_input:
             raise ValueError(
-                "Llama Stack configuration is ambiguous: unified synthesis "
+                "OGX configuration is ambiguous: unified synthesis "
                 "inputs (a non-empty inference.providers, a non-empty "
                 "vector_store.providers, or a llama_stack.config block) are "
                 "mutually exclusive with the legacy "
@@ -3498,7 +3503,7 @@ class Configuration(ConfigurationBase):
             and not legacy_input
         ):
             raise ValueError(
-                "Llama Stack library mode requires a run-configuration source: "
+                "OGX library mode requires a run-configuration source: "
                 "set a non-empty inference.providers, a non-empty "
                 "vector_store.providers, a llama_stack.config block, or "
                 "library_client_config_path."

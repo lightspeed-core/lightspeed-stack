@@ -17,7 +17,7 @@ from configuration import AppConfig
 def mock_ogx_client_fixture(
     mocker: MockerFixture,
 ) -> Generator[Any, None, None]:
-    """Mock only the external Llama Stack client.
+    """Mock only the external OGX client.
 
     This is the only external dependency we mock for integration tests,
     as it represents an external service call.
@@ -28,7 +28,7 @@ def mock_ogx_client_fixture(
 
     Yields:
     ------
-        AsyncMock: A mocked Llama Stack client configured for tests.
+        AsyncMock: A mocked OGX client configured for tests.
     """
     mock_holder_class = mocker.patch("app.endpoints.info.AsyncOgxClientHolder")
 

@@ -18,8 +18,8 @@ if [ -f "$REPO_ROOT/tests/e2e/secrets/invalid-mcp-token" ]; then
     --dry-run=client -o yaml | oc apply -f -
 fi
 
-# 1. Llama Stack (run from source). Cluster DNS name matches oc expose --name=llama-stack-service-svc.
-# Secret must exist before the pod: both LCS and llama-stack-container use E2E_LLAMA_HOSTNAME from it.
+# 1. OGX (run from source). Cluster DNS name matches oc expose --name=llama-stack-service-svc.
+# Secret must exist before the pod: both LCS and OGX-container use E2E_LLAMA_HOSTNAME from it.
 _LLAMA_SVC_FQDN="llama-stack-service-svc.${NAMESPACE}.svc.cluster.local"
 oc create secret generic llama-stack-ip-secret \
   --from-literal=key="$_LLAMA_SVC_FQDN" \

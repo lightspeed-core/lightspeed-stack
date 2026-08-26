@@ -66,7 +66,7 @@ rlsapi v1 endpoint test steps.
 
 ## [shields.py](shields.py)
 
-Behave steps for temporarily disabling Llama Stack shields in e2e (server mode).
+Behave steps for temporarily disabling OGX shields in e2e (server mode).
 
 ## [tls.py](tls.py)
 

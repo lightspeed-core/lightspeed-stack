@@ -23,7 +23,7 @@ def mock_llama_stack_streaming_fixture(
     mocker: MockerFixture,
     mock_streaming_query_agent: AsyncMockType,
 ) -> Generator[Any, None, None]:
-    """Mock only the Llama Stack client (holder + client).
+    """Mock only the OGX client (holder + client).
 
     Configures the client so the real handler runs: models, vector_stores,
     conversations, shields, vector_io, and responses.create for topic summary.
@@ -173,7 +173,7 @@ async def test_streaming_query_v2_endpoint_attachment_handling(  # pylint: disab
         test_case: Dictionary containing test parameters (attachments,
             expected_status, expected_error)
         test_config: Test configuration
-        mock_streaming_ogx_client: Mocked Llama Stack client
+        mock_streaming_ogx_client: Mocked OGX client
         mock_streaming_query_agent: Mocked Pydantic AI agent for build_agent
         test_request: FastAPI request
         test_auth: noop authentication tuple
@@ -278,7 +278,7 @@ async def test_streaming_query_endpoint_returns_401_for_mcp_oauth(  # pylint: di
         test_case: Dictionary containing test parameters (www_authenticate,
             expect_www_authenticate)
         test_config: Test configuration
-        mock_streaming_ogx_client: Mocked Llama Stack client
+        mock_streaming_ogx_client: Mocked OGX client
         mock_streaming_query_agent: Mocked Pydantic AI agent for build_agent
         test_request: FastAPI request
         test_auth: noop authentication tuple

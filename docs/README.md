@@ -159,7 +159,7 @@ See the full documentation at [`../README.md`](../README.md) or browse sub-pages
 
 [Design](https://lightspeed-core.github.io/lightspeed-stack/design/human-in-the-loop/human-in-the-loop.html)
 
-*** Llama Stack config merge (unified `lightspeed-stack.yaml`) ***
+*** OGX config merge (unified `lightspeed-stack.yaml`) ***
 
 [Spike](https://lightspeed-core.github.io/lightspeed-stack/design/llama-stack-config-merge/llama-stack-config-merge-spike.html)
 

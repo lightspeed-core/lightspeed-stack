@@ -1,4 +1,4 @@
-"""Llama Stack provider implementation for Pydantic AI."""
+"""OGX provider implementation for Pydantic AI."""
 
 from __future__ import annotations as _annotations
 
@@ -23,12 +23,12 @@ DEFAULT_BASE_URL = "http://localhost:8321/v1"
 
 
 class OgxProvider(Provider[AsyncOpenAI]):
-    """Provider for Llama Stack — connects to a Llama Stack server's OpenAI-compatible API.
+    """Provider for OGX — connects to an OGX server's OpenAI-compatible API.
 
     Supports two modes:
 
-    1. **Server mode** — connect to a running Llama Stack server via HTTP
-    2. **Library mode** — run Llama Stack in-process via ``AsyncOGXAsLibraryClient``
+    1. **Server mode** — connect to a running OGX server via HTTP
+    2. **Library mode** — run OGX in-process via ``AsyncOGXAsLibraryClient``
     """
 
     @property
@@ -55,14 +55,14 @@ class OgxProvider(Provider[AsyncOpenAI]):
     def from_ogx_client(
         client: AsyncOgxClient | AsyncOGXAsLibraryClient,
     ) -> OgxProvider:
-        """Create a ``OgxProvider`` from a Llama Stack client.
+        """Create a ``OgxProvider`` from an OGX client.
 
         For an ``AsyncOGXAsLibraryClient``, delegates to library mode.
         For an ``AsyncOgxClient``, extracts the base URL, API key, and
         underlying HTTP client to create a server-mode provider.
 
         Args:
-            client: A Llama Stack client (server or library variant).
+            client: An OGX client (server or library variant).
 
         Returns:
             Configured ``OgxProvider`` instance.
@@ -95,14 +95,14 @@ class OgxProvider(Provider[AsyncOpenAI]):
         library_client: Optional[AsyncOGXAsLibraryClient] = None,
         http_client: Optional[httpx.AsyncClient] = None,
     ) -> None:
-        """Create a new Llama Stack provider.
+        """Create a new OGX provider.
 
         Args:
-            base_url: The base URL for the Llama Stack server (OpenAI-compatible endpoint).
+            base_url: The base URL for the OGX server (OpenAI-compatible endpoint).
                 Defaults to ``http://localhost:8321/v1``.
                 Must be ``None`` when ``library_client`` is provided.
             api_key: The API key for authentication. Defaults to ``'not-needed'`` since
-                local Llama Stack servers typically don't require one.
+                local OGX servers typically don't require one.
                 Must be ``None`` when ``library_client`` is provided.
             library_client: An initialized ``AsyncOGXAsLibraryClient`` for library mode.
                 When provided, requests are dispatched in-process (no server needed).

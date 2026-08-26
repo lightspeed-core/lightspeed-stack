@@ -34,7 +34,7 @@ Unit tests for src/llama_stack_configuration.py.
 
 ## [test_llama_stack_synthesize.py](test_llama_stack_synthesize.py)
 
-Unit tests for unified-mode Llama Stack configuration synthesis (LCORE-2336).
+Unit tests for unified-mode OGX configuration synthesis (LCORE-2336).
 
 ## [test_log.py](test_log.py)
 

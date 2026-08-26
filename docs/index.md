@@ -162,7 +162,7 @@ product questions using backend LLM services, agents, and RAG databases.
 
 [Design](https://lightspeed-core.github.io/lightspeed-stack/design/human-in-the-loop/human-in-the-loop.html)
 
-*** Llama Stack config merge (unified `lightspeed-stack.yaml`) ***
+*** ogx config merge (unified `lightspeed-stack.yaml`) ***
 
 [Spike](https://lightspeed-core.github.io/lightspeed-stack/design/llama-stack-config-merge/llama-stack-config-merge-spike.html)
 

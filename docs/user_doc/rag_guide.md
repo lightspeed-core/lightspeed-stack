@@ -176,13 +176,13 @@ Requirements:
   match one of `providers[].id`
 - When `providers` is empty, `default_provider` must be omitted
 - Provider `id` must match `[a-z0-9_-]+` and must not start with `byok_`
-- Applied in **unified** Llama Stack synthesis only
+- Applied in **unified** OGX synthesis only
   (`llama_stack.use_as_library_client: true` with a synthesis input such as
   `llama_stack.config`, `inference.providers`, or `vector_store.providers`)
 
 `default_provider` becomes `vector_stores.default_provider_id` and that
 provider's embedding model becomes `default_embedding_model` in the
-synthesized Llama Stack config. FAISS entries also get a dedicated storage
+synthesized OGX config. FAISS entries also get a dedicated storage
 backend named `vsprov_<id>_storage`.
 
 ### FAISS example
@@ -492,5 +492,5 @@ The top-level `vector_stores` block in [`run.yaml`](../examples/run.yaml) may in
 When `vector_store` is configured, `default_provider` overwrites
 `vector_stores.default_provider_id` and `default_embedding_model`
 during unified synthesis. Annotation settings are not managed by that enricher
-— keep them in the Llama Stack baseline/profile or `native_override`.
+— keep them in the OGX baseline/profile or `native_override`.
 

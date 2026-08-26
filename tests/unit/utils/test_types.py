@@ -146,7 +146,7 @@ class TestResponsesApiParamsModelDump:
     """Tests for ResponsesApiParams.model_dump() MCP authorization serialization.
 
     Regression tests for LCORE-1414 / GitHub issue #1269: MCP authorization must
-    survive model_dump() when forwarding tools to Llama Stack.
+    survive model_dump() when forwarding tools to OGX.
     """
 
     def _make_params(self, tools: list) -> ResponsesApiParams:

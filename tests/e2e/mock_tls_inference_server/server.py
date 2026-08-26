@@ -5,7 +5,7 @@ Serves two HTTPS listeners using trustme-generated test certificates:
   - Port 8443: standard TLS (no client certificate required)
   - Port 8444: mutual TLS (client certificate required, verified against CA)
 
-Implements the minimal OpenAI API surface needed by Llama Stack's
+Implements the minimal OpenAI API surface needed by OGX's
 remote::openai provider: /v1/models and /v1/chat/completions.
 
 Certificates are generated on-the-fly using trustme at server startup.
@@ -98,7 +98,7 @@ class OpenAIHandler(BaseHTTPRequestHandler):
         completion_id = "chatcmpl-tls-test-001"
         response_text = "Hello from the TLS mock inference server."
 
-        # Llama Stack calls remote chat completions with stream=True and reads
+        # OGX calls remote chat completions with stream=True and reads
         # assistant text from delta.content chunks.
         if request_data.get("stream"):
             self.send_response(200)

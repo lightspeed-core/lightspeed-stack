@@ -4,7 +4,7 @@ This module wires the pure compaction primitives (``utils.compaction``,
 LCORE-1570) and the token estimator (``utils.token_estimator``, LCORE-1569)
 into the actual request path (LCORE-1572). Unlike ``utils.compaction`` — which
 is deliberately side-effect free — this module *does* touch conversation state:
-it fetches conversation items from Llama Stack, calls the summarization LLM,
+it fetches conversation items from OGX, calls the summarization LLM,
 writes summary marker items, reads and writes summaries in the cache, and holds
 a per-conversation lock.
 
@@ -12,17 +12,17 @@ Design (see ``docs/design/conversation-compaction/conversation-compaction.md``):
 
 * **Option A — lightspeed owns the context after compaction.** Once a
   conversation has been compacted, lightspeed-stack stops handing the
-  ``conversation`` parameter to Llama Stack (which would otherwise reload the
+  ``conversation`` parameter to OGX (which would otherwise reload the
   full message history and defeat compaction). Instead it builds the model
   input explicitly from the summaries plus the recent verbatim turns. The
   conversation identity (``conversation_id``) is preserved, and the full
-  history remains in Llama Stack's conversation *items* for UI/audit.
+  history remains in OGX's conversation *items* for UI/audit.
 
 * **Marker items track the boundary.** Each compaction writes the summary into
   the conversation as a recognizable *marker* message (a message whose text
   starts with ``MARKER_SENTINEL``). The items after the last marker are the
   recent verbatim turns; the marker texts are the additive summaries. This is
-  lightspeed's own bookkeeping — Llama Stack never interprets it (we no longer
+  lightspeed's own bookkeeping — OGX never interprets it (we no longer
   pass ``conversation`` to inference once a marker exists).
 
 * **Streaming notification.** When driven by the streaming endpoint, this
@@ -36,7 +36,7 @@ the active summary set is read back from it, and when the summaries themselves
 grow past the threshold they are folded into one and persisted via
 ``replace_summaries`` so the fold is reused rather than recomputed. When no
 persisting cache is configured (or a cache read fails) the module falls back to
-the Llama Stack marker texts, which remain authoritative — marker-only mode
+the OGX marker texts, which remain authoritative — marker-only mode
 keeps additive summaries with no fold. The marker items always carry the
 boundary between summarized history and the recent verbatim turns.
 """
@@ -149,7 +149,7 @@ class CompactionStartedEvent:
     formatting by yielding this typed value instead of a formatted string.
 
     Attributes:
-        conversation_id: The conversation being compacted (llama-stack format).
+        conversation_id: The conversation being compacted (OGX format).
     """
 
     conversation_id: str
@@ -174,7 +174,7 @@ class CompactionResult:
             ``compacted`` is True); ``None`` otherwise. In compacted mode the
             caller must append this plus the LLM output to the conversation
             items itself, since the ``conversation`` parameter is no longer
-            passed to Llama Stack.
+            passed to OGX.
     """
 
     params: ResponsesApiParams
@@ -300,7 +300,7 @@ def _read_cached_summaries(
     The cache is the preferred source of truth for summaries (and the only home
     for a persisted recursive fold). Returns an empty list when no cache is
     configured, the backend does not persist (in-memory/no-op), or a cache error
-    occurs — callers then fall back to the Llama Stack marker texts, which remain
+    occurs — callers then fall back to the OGX marker texts, which remain
     authoritative.
     """
     if cache is None:
@@ -321,7 +321,7 @@ def _store_cached_summary(
 ) -> None:
     """Persist a new summary chunk to the cache (best-effort).
 
-    The summary is also written as a Llama Stack marker by the caller, so a
+    The summary is also written as an OGX marker by the caller, so a
     failed cache write does not lose it — it only forgoes cache-backed reads and
     folding for this conversation.
     """
@@ -386,7 +386,7 @@ def _load_compaction_state(
 ) -> tuple[list[str], list[ConversationSummary], list[Any]]:
     """Read the current summary set and the recent-items buffer from the conversation.
 
-    The cache is the preferred source of truth for summary text; the Llama Stack
+    The cache is the preferred source of truth for summary text; the OGX
     marker texts remain the authoritative fallback when no persisting cache is
     configured. The recent-verbatim boundary is always derived from marker
     position in the conversation items.
@@ -428,7 +428,7 @@ async def _persist_new_summary_chunk(  # pylint: disable=too-many-arguments,too-
     user_id: str,
     skip_user_id_check: bool,
 ) -> None:
-    """Persist a fresh summary chunk: write the Llama Stack marker + best-effort cache."""
+    """Persist a fresh summary chunk: write the OGX marker + best-effort cache."""
     await _write_summary_marker(client, conversation_id, summary.summary_text)
     _store_cached_summary(cache, user_id, conversation_id, summary, skip_user_id_check)
 
@@ -515,7 +515,7 @@ async def apply_compaction(  # pylint: disable=too-many-arguments,too-many-posit
     prior summary marker already exists.
 
     Parameters:
-        client: Llama Stack client.
+        client: OGX client.
         params: The base Responses API params from ``prepare_responses_params``.
         inference_config: Inference config (for the per-model context window).
         compaction_config: Compaction tuning (enabled, threshold, buffer, ...).
@@ -669,7 +669,7 @@ async def needs_compaction_path(
     are actually being compacted.
 
     Parameters:
-        client: Llama Stack client.
+        client: OGX client.
         params: The base Responses API params.
         inference_config: Inference config (for the per-model context window).
         compaction_config: Compaction tuning.
@@ -701,7 +701,7 @@ async def store_compacted_turn(
     """Append a completed turn to the conversation when in compacted mode.
 
     In compacted mode the ``conversation`` parameter is not sent to inference,
-    so Llama Stack does not auto-store the turn. lightspeed-stack appends the
+    so OGX does not auto-store the turn. lightspeed-stack appends the
     user query and the LLM output to the conversation items itself, keeping the
     full history (and the recent-turn buffer for the next request) intact.
     """

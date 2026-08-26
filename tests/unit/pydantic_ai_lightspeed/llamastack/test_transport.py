@@ -198,7 +198,7 @@ class TestHandleAsyncRequest:
 
         with pytest.raises(
             RuntimeError,
-            match="Llama Stack library client not initialized",
+            match="OGX library client not initialized",
         ):
             await transport.handle_async_request(request)
 

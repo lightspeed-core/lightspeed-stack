@@ -150,7 +150,7 @@ def minimal_config_fixture() -> AppConfig:
 def mock_client_fixture(  # pylint: disable=protected-access
     mocker: MockerFixture,
 ) -> AsyncOgxClient:
-    """Remote Llama Stack client mock for build_agent tests."""
+    """Remote OGX client mock for build_agent tests."""
     client = mocker.Mock(spec=AsyncOgxClient)
     client.base_url = "http://localhost:8321"
     client.api_key = "test-key"

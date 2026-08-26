@@ -1,13 +1,13 @@
 """Step definitions for proxy and TLS networking e2e tests.
 
-These tests configure Llama Stack's run.yaml with NetworkConfig settings
+These tests configure OGX's run.yaml with NetworkConfig settings
 (proxy, TLS) and verify the full pipeline works through the Lightspeed Stack.
-The proxy sits between Llama Stack and whichever remote LLM provider is active.
+The proxy sits between OGX and whichever remote LLM provider is active.
 
 Config switching uses the same pattern as other e2e tests: overwrite the
 host-mounted run.yaml and restart Docker containers. Restarts are not
-triggered from ``The original Llama Stack config is restored if modified``;
-list ``Llama Stack is restarted`` / ``Lightspeed Stack is restarted`` in the
+triggered from ``The original OGX config is restored if modified``;
+list ``OGX is restarted`` / ``Lightspeed Stack is restarted`` in the
 feature file so readers see every restart. Cleanup restores the backup file
 (and stops proxy servers) before each scenario.
 """
@@ -64,7 +64,7 @@ def _is_docker_mode() -> bool:
 
 
 def _host_special_dns_from_container(hostname: str) -> Optional[str]:
-    """Resolve a host-gateway hostname inside llama-stack to an IPv4 address.
+    """Resolve a host-gateway hostname inside OGX to an IPv4 address.
 
     Docker exposes ``host.docker.internal`` or ``host.containers.internal``
     for reaching the host. Resolving from inside the container matches the address
@@ -203,7 +203,7 @@ def _sync_interception_proxy_ca_secret() -> None:
 
 
 def _get_proxy_host(is_docker: bool) -> str:
-    """Get the host address that Llama Stack should use to reach the tunnel proxy.
+    """Get the host address that OGX should use to reach the tunnel proxy.
 
     Parameters:
     ----------
@@ -315,7 +315,7 @@ def restore_if_modified(context: Context) -> None:
         delattr(context, "needs_interception_ca_on_llama")
 
     if restore_llama_config_if_modified():
-        print("Restoring original Llama Stack config from backup...")
+        print("Restoring original OGX config from backup...")
 
 
 # --- Service Restart Steps ---
@@ -323,7 +323,7 @@ def restore_if_modified(context: Context) -> None:
 
 @given("Llama Stack is restarted")
 def restart_llama_stack(context: Context) -> None:
-    """Restart the Llama Stack container."""
+    """Restart the OGX container."""
     from tests.e2e.features.steps.tls import (
         is_tls_configuration_feature,
         restart_llama_for_tls_feature,
@@ -462,7 +462,7 @@ def start_interception_proxy(context: Context, port: int) -> None:
     ca_cert_path = Path(tempfile.gettempdir()) / "interception-proxy-ca.pem"
     proxy.export_ca_cert(ca_cert_path)
 
-    # In Docker mode, copy the cert into the llama-stack container
+    # In Docker mode, copy the cert into the OGX container
     if context.is_docker_mode:
         container_cert_path = "/tmp/interception-proxy-ca.pem"
         subprocess.run(

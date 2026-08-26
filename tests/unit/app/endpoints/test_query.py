@@ -53,7 +53,7 @@ def setup_configuration_fixture() -> AppConfig:
 
     The returned AppConfig is initialized from a fixed dictionary that sets:
     - a lightweight service configuration (localhost, port 8080, minimal workers, logging enabled),
-    - a test Llama Stack configuration (test API key and URL, not used as a library client),
+    - a test OGX configuration (test API key and URL, not used as a library client),
     - user data collection with transcripts disabled,
     - an empty MCP servers list,
     - a noop conversation cache.

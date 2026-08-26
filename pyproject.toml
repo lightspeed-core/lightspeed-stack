@@ -27,7 +27,7 @@ dependencies = [
     "uvicorn>=0.34.3",
     # Used by authentication/k8s integration
     "kubernetes>=30.1.0",
-    # Used to call Llama Stack APIs
+    # Used to call OGX APIs
     "ogx==1.0.2",
     "ogx-client==1.0.2",
     "ogx-api==1.0.2",
@@ -52,7 +52,7 @@ dependencies = [
     # Async database drivers for A2A persistent storage
     "aiosqlite>=0.21.0",
     "asyncpg>=0.31.0",
-    # Used by Llama Stack version checker
+    # Used by OGX version checker
     "semver<4.0.0",
     # Used by authorization resolvers
     "jsonpath-ng>=1.6.1",
@@ -152,7 +152,7 @@ dev = [
     "pytest-benchmark>=5.2.3",
 ]
 llslibdev = [
-    # To check llama-stack API provider dependecies:
+    # To check OGX API provider dependecies:
     #
     #    $ uv run ogx stack list-providers
     #
@@ -247,8 +247,8 @@ line-length = 88
 extend-exclude = ["tests/profiles/syntax_error.py"]
 
 [tool.ruff.lint]
-extend-select = ["TID251", "UP006", "UP007", "UP008", "UP010", "UP012", "UP017", "UP024", "UP035", "UP040", "UP041", "RUF100", "B009", "B010", "DTZ005", "D202", "I001", "PLR1733", "RUF022", "PLW1510", "TC004", "PIE790", "FURB129", "RET501"]
-ignore = ["UP047", "UP045", "BLE", "S", "C", "RUF", "SIM", "B017", "TRY004", "TRY201", "TRY203", "TRY401", "B008", "EXE001", "G201", "ISC004", "LOG014", "PERF402", "PYI034", "PYI064"]
+extend-select = ["TID251", "UP006", "UP007", "UP008", "UP010", "UP012", "UP017", "UP024", "UP035", "UP040", "UP041", "RUF100", "B009", "B010", "DTZ005", "D202", "I001", "PLR1733", "RUF022", "PLW1510", "TC004", "PIE790", "PERF402", "FURB129", "RET501"]
+ignore = ["UP047", "UP045", "BLE", "S", "C", "RUF", "SIM", "B017", "TRY004", "TRY201", "TRY203", "TRY401", "B008", "EXE001", "G201", "ISC004", "LOG014", "PYI034", "PYI064"]
 
 [tool.ruff.lint.flake8-tidy-imports.banned-api]
 unittest = { msg = "use pytest instead of unittest" }

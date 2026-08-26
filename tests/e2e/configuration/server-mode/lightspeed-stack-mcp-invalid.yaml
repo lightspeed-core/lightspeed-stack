@@ -10,7 +10,7 @@ service:
   color_log: true
   access_log: true
 llama_stack:
-  # Server mode - connects to separate llama-stack service
+  # Server mode - connects to separate OGX service
   use_as_library_client: false
   url: http://${env.E2E_LLAMA_HOSTNAME}:8321
   api_key: xyzzy

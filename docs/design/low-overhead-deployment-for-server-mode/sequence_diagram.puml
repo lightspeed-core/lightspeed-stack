@@ -4,8 +4,8 @@ participant runner     as "Lightspeed\ncore runner"
 participant cfg_1      as "Configuration\nloader"
 participant cfg_2      as "Configuration\ngenerator"
 participant lcore      as "Lightspeed\ncore service"
-participant ls_runner  as "Llama Stack\nrunner"
-participant ls_service as "Llama Stack\nservice"
+participant ls_runner  as "OGX\nrunner"
+participant ls_service as "OGX\nservice"
 
 alt Startup
 admin ->> runner: Start
@@ -25,7 +25,7 @@ end
 
 alt Teardown
 admin ->> runner: Teardown
-runner ->> ls_runner: Stop Llama Stack
+runner ->> ls_runner: Stop OGX
 ls_runner ->> ls_service: Stop
 ls_service ->> ls_runner: Status
 ls_runner ->> runner: Status

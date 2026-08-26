@@ -216,6 +216,7 @@ class "ResponsesContext" as src.models.common.responses.contexts.ResponsesContex
   model_config : ConfigDict
   moderation_result : Optional[ShieldModerationResult]
   rh_identity_context : Optional[tuple[str, str]]
+  root_span : Span
   started_at : Optional[datetime]
   user_agent : Optional[str]
 }

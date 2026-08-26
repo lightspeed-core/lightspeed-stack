@@ -9,10 +9,10 @@ Spec doc: [prompt-guardrails.md](prompt-guardrails.md)
 **The problem**: LCORE-230 asks for optional prompt guardrails — safety-tuned
 LLM checks on prompts and answers (prompt injection is OWASP LLM risk #1) —
 configurable via the lightspeed-stack config file. Input-side moderation
-already exists (Llama Stack shields via the Moderations API), but there is no
+already exists (OGX shields via the Moderations API), but there is no
 output-side moderation, no lightspeed-stack-side configuration surface, no
 support for Granite Guardian or custom risk definitions, and the current
-mechanism is bound to a Llama Stack API surface that upstream has already
+mechanism is bound to an OGX API surface that upstream has already
 deleted (OGX 1.x removed the entire Safety API). Ask Red Hat's migration to
 Lightspeed Core is blocked on parity with their existing Granite
 Guardian-based guardrails ([LCORE-2253](https://redhat.atlassian.net/browse/LCORE-2253)).
@@ -21,7 +21,7 @@ Guardian-based guardrails ([LCORE-2253](https://redhat.atlassian.net/browse/LCOR
 lightspeed-stack-owned module that invokes guardian models through any
 OpenAI-compatible endpoint, with pluggable detector backends (Granite
 Guardian chat-template adapter, generic OpenAI-moderations endpoint, and a
-transitional bridge to today's Llama Stack shields). Guardrail *points*
+transitional bridge to today's OGX shields). Guardrail *points*
 (`input` / `output` / `tool_content`) are first-class in the config schema.
 Recommended guardian model: **IBM Granite Guardian** (Apache 2.0). See
 [Decision S1](#decision-s1-where-the-guardrails-engine-lives),
@@ -32,7 +32,7 @@ Recommended guardian model: **IBM Granite Guardian** (Apache 2.0). See
 Granite Guardian (`granite3-guardian:2b`, Ollama, CPU) — end-to-end
 through the full local stack. Custom bring-your-own-criteria risks work;
 the input hook blocks through real HTTP with the validation-error metric;
-the new layer coexists additively with the existing llama-stack shields.
+the new layer coexists additively with the existing OGX shields.
 
 **The headline finding is a warning**: the out-of-the-box `jailbreak`
 risk flags legitimate OpenShift questions ("You are now a cluster admin,
@@ -77,22 +77,22 @@ recommendation — please confirm or override.
 
 ### Decision S1: Where the guardrails engine lives
 
-Today's input moderation calls Llama Stack's Moderations API per registered
-shield ([background](#current-state-in-lightspeed-stack)). Upstream Llama
-Stack (now OGX) deleted that entire API surface in 1.x
-([background](#upstream-trajectory-llama-stack--ogx-1x)), and the team plans
-to reduce Llama Stack to an inference provider
+Today's input moderation calls OGX's Moderations API per registered
+shield ([background](#current-state-in-lightspeed-stack)). Upstream OGX
+deleted that entire API surface in 1.x
+([background](#upstream-trajectory-ogx-ogx-1x)), and the team plans
+to reduce OGX to an inference provider
 ([LCORE-1099](https://redhat.atlassian.net/browse/LCORE-1099)). Ask Red Hat's
-production guardrails bypass Llama Stack safety entirely — they call Granite
+production guardrails bypass OGX safety entirely — they call Granite
 Guardian on vLLM through a plain OpenAI client
 ([background](#ask-red-hat-baseline)).
 
 | Option | Description |
 |--------|-------------|
-| A — Extend the Llama Stack shields path | Add output-side `moderations.create` calls next to the existing input call. Smallest delta; dies with OGX 1.x; cannot express Guardian custom risks. |
-| B — Responses API `guardrails=` parameter | Delegate enforcement to llama-stack (0.6.0 runs input+output checks internally). Least code; deepest coupling; loses LCS pre-flight control (RAG skip, blocked-turn persistence); no custom risks; parameter shape changes again in OGX 1.x. |
-| C — LCS-native guardrails layer | lightspeed-stack owns detection: pluggable detector backends called via OpenAI-compatible endpoints; guardrail points and risk definitions configured in the LCS config file. Survives OGX 1.x and the Llama Stack phase-out; reproduces the Ask RH pattern. |
-| D — TrustyAI FMS Guardrails Orchestrator | Delegate detection to the RHOAI guardrails stack. Productized, but a heavy infrastructure dependency for an optional LCS feature; its llama-stack provider requires the 0.x Safety API. |
+| A — Extend the OGX shields path | Add output-side `moderations.create` calls next to the existing input call. Smallest delta; dies with OGX 1.x; cannot express Guardian custom risks. |
+| B — Responses API `guardrails=` parameter | Delegate enforcement to OGX (0.6.0 runs input+output checks internally). Least code; deepest coupling; loses LCS pre-flight control (RAG skip, blocked-turn persistence); no custom risks; parameter shape changes again in OGX 1.x. |
+| C — LCS-native guardrails layer | lightspeed-stack owns detection: pluggable detector backends called via OpenAI-compatible endpoints; guardrail points and risk definitions configured in the LCS config file. Survives OGX 1.x and the OGX phase-out; reproduces the Ask RH pattern. |
+| D — TrustyAI FMS Guardrails Orchestrator | Delegate detection to the RHOAI guardrails stack. Productized, but a heavy infrastructure dependency for an optional LCS feature; its OGX provider requires the 0.x Safety API. |
 
 **Recommendation**: **C** — LCS-native layer with pluggable detector
 backends. Ship three backends: `granite_guardian` (chat-template invocation,
@@ -240,8 +240,9 @@ Needs @sbunciak's call (his Epic).
 
 ### Decision S5: Fate of the existing shields moderation path
 
-Input moderation via Llama Stack shields is live on four endpoints today,
-with `shield_ids` request-override semantics documented in `docs/responses.md`.
+Input moderation via OGX shields is live on four endpoints today,
+with `shield_ids` request-override semantics documented in
+`docs/devel_doc/responses.md`.
 
 | Option | Description |
 |--------|-------------|
@@ -360,7 +361,7 @@ _No answer needed — this will be implemented as recommended unless you object.
 **Recommendation**: **A** for the production design (B is what the PoC
 demonstrates). The capability mechanism is already how the inert
 question-validity/redaction features hook the agent loop — same seam,
-llama-stack-independent.
+OGX-independent.
 
 **Confidence**: 75%
 
@@ -527,7 +528,7 @@ guardrail points (LCORE-230).
 - Granite Guardian is supported and documented as the recommended model;
   any OpenAI-compatible moderations endpoint works as an alternative
   detector.
-- Guardrails survive the Llama Stack → OGX 1.x transition unchanged.
+- Guardrails survive the OGX → OGX 1.x transition unchanged.
 - Ask Red Hat's guardrails usage (parallel multi-risk input screening,
   output relevance checks, custom risks) is reproducible on Lightspeed
   Core.
@@ -659,7 +660,7 @@ Key files: src/models/config.py, src/guardrails/, tests/unit/guardrails/.
 `/v1/query`, `/v1/streaming_query`, `/v1/responses`, and `/rlsapi`,
 feeding the existing moderation-result seam (blocked ⇒ refusal response,
 RAG skip, blocked-turn persistence, validation-error metric), additive to
-the existing Llama Stack shields path (Decision S5).
+the existing OGX shields path (Decision S5).
 
 **Blocked by**: LCORE-3389 (config + detector framework)
 
@@ -929,9 +930,9 @@ other stale references) to the new location.
 
 ### Current state in lightspeed-stack
 
-Input moderation is live on all four query endpoints via Llama Stack's
+Input moderation is live on all four query endpoints via OGX's
 OpenAI-compatible Moderations API, driven by shields registered in the
-llama-stack run config:
+OGX run config:
 
 - `src/utils/shields.py:122` — `run_shield_moderation()` iterates shields,
   calls `client.moderations.create(input=..., model=shield.provider_resource_id)`,
@@ -952,7 +953,7 @@ llama-stack run config:
   `disable_shield_ids_override` lockdown (`src/models/config.py:1663`).
 - Output-side: `detect_shield_violations()` (`src/utils/shields.py:58`) is
   dead code; **no output moderation exists**.
-- A second, llama-stack-independent track exists but is inert:
+- A second, OGX-independent track exists but is inert:
   `src/pydantic_ai_lightspeed/capabilities/question_validity/` (LLM-judge
   topic gate) and `.../redaction/` (regex PII redaction, input+output
   hooks), with config models (`QuestionValidityConfig`, `RedactionConfig`
@@ -964,7 +965,7 @@ Gaps: no output moderation, no LCS-side guardrails config, no Granite
 Guardian / custom-risk support, no dedicated design doc, no e2e coverage of
 blocking behavior.
 
-### Llama Stack 0.6.0 safety surface (pinned version)
+### OGX 0.6.0 safety surface (pinned version)
 
 - Safety API: `client.safety.run_shield(messages, shield_id)` →
   `RunShieldResponse.violation` (`info|warn|error`); OpenAI-compatible
@@ -982,7 +983,7 @@ blocking behavior.
   yield refusal responses (not errors), enforcement via `run_moderation`.
   lightspeed-stack does not use this parameter today.
 
-### Upstream trajectory: Llama Stack → OGX 1.x
+### Upstream trajectory: OGX → OGX 1.x
 
 Upstream renamed to OGX (`ogx-ai/ogx`). **OGX 1.0.0 (2026-05-12) deleted
 the entire Safety API** — `/v1/moderations`, `/v1/shields`,
@@ -992,7 +993,7 @@ service) plus a per-request `guardrails: true` boolean. Fail-closed.
 Upstream declined: separate input-vs-output config, and moderation of
 server-side tool outputs (indirect injection) — both closed NOT_PLANNED.
 The 0.5.x/0.6.x maintenance line keeps the classic Safety API. Combined
-with the plan to reduce Llama Stack to an inference provider
+with the plan to reduce OGX to an inference provider
 (LCORE-1099), any guardrails design bound to shields/Moderations dies at
 that migration; an LCS-native layer does not.
 
@@ -1005,14 +1006,14 @@ archived copy reviewed for this spike). Its findings for guardrails:
 
 | Aspect | Ask Search (IFD) | LCS today | Gap |
 |--------|------------------|-----------|-----|
-| Input guardrails | Granite Guardian, 4 risk categories (CVE, jailbreak, leetspeak, amnesia) | Llama Stack shields | Different implementation |
+| Input guardrails | Granite Guardian, 4 risk categories (CVE, jailbreak, leetspeak, amnesia) | OGX shields | Different implementation |
 | Custom risk categories | Yes — criteria defined in `guardian.py` prompts | No — pre-built shields only | **YES** — cannot define custom risks |
 | Parallel safety checks | `asyncio.gather()` across all 4 | Sequential shield loop | **YES** — LCS slower |
 | Per-risk thresholds | Per risk (0.65 leetspeak, 0.80 CVE) | Per-shield, if supported | LCS less granular |
 | Violation handling | `SafetyViolationError` → canned `PredefinedModelAnswers` | Shield violation → `refusal_response` | Comparable |
 
 The analysis rates "Granite Guardian Custom Guardrails" a **HIGH**-severity
-gap: *"LCS only supports Llama Stack shields; no custom risk categories
+gap: *"LCS only supports OGX shields; no custom risk categories
 (CVE, leetspeak, amnesia, jailbreak)."* Decisions S1/S2 (LCS-native layer
 with custom risks), T8 (thresholds) and T9 (per-rule messages) are the
 direct responses.
@@ -1027,14 +1028,14 @@ that Decisions T5 and T7 build on.
 From RHAIRFE-98 (Jira comments, 2025-08-13) and the public Ask Red Hat
 technology attributions: Granite Guardian (3.2-5B then, 3.3-8B now) served
 on vLLM (Red Hat AI Inference Server), invoked via a plain OpenAI client —
-not via llama-stack safety. Input: multiple risks checked in parallel
+not via OGX safety. Input: multiple risks checked in parallel
 (Guardian has no batch API): modified Harm (CVE questions permitted), and
 custom risks Roleplay Jailbreak, Leet Speak, Amnesia. Output: retrieved
 context and generated answer checked against Context Relevance and Answer
 Relevance (OOTB risks) — output guardrails need access to retrieved
 context, not just the answer. RHAIRFE-98 was closed by pointing at RHOAI
 3.0's Guardrails Orchestrator (Granite Guardian as a HuggingFace detector),
-not by an upstream llama-stack provider.
+not by an upstream OGX provider.
 
 ### Guardian model landscape
 
@@ -1144,7 +1145,7 @@ revisit only if output-side secret detection is added later.
 - **TrustyAI FMS as the required engine** (S1-D): verdict — rejected as a
   requirement, supported as a deployment choice through the
   `openai_moderations`-style backend against gateway endpoints.
-- **Upstreaming a Granite Guardian llama-stack provider** (the original
+- **Upstreaming a Granite Guardian OGX provider** (the original
   RHAIRFE-98 ask): verdict — moot; upstream deleted the provider surface.
 
 ## Glossary

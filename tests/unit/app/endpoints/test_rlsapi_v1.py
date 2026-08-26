@@ -572,7 +572,7 @@ async def test_infer_model_not_found_returns_404(
     mock_request_factory: Callable[..., Any],
     mock_background_tasks: Any,
 ) -> None:
-    """Test /infer returns HTTP 404 when configured model does not exist in Llama Stack."""
+    """Test /infer returns HTTP 404 when configured model does not exist in OGX."""
     mocker.patch(
         "app.endpoints.rlsapi_v1.check_model_configured",
         new=mocker.AsyncMock(return_value=False),

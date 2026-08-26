@@ -21,21 +21,21 @@ def check_suid(suid: str) -> bool:
     Check if given string is a proper session ID.
 
     Accepts standard RFC 4122 UUID strings, 48-character
-    hexadecimal llama-stack IDs, or the same hex ID prefixed with
+    hexadecimal OGX IDs, or the same hex ID prefixed with
     "conv_". Non-string inputs are considered invalid.
 
-    Returns True if the string is a valid UUID or a llama-stack conversation ID.
+    Returns True if the string is a valid UUID or an OGX conversation ID.
 
     Parameters:
     ----------
         suid (str): UUID value to validate — accepts a UUID string,
-        or a llama-stack conversation ID (48-char hex, optionally with conv_ prefix).
+        or an OGX conversation ID (48-char hex, optionally with conv_ prefix).
 
     Notes:
     -----
         Validation accepts:
         1. Standard UUID format (e.g., '550e8400-e29b-41d4-a716-446655440000')
-        2. 48-character hex string (llama-stack format)
+        2. 48-character hex string (OGX format)
         3. 'conv_' prefix + 48-character hex string (53 chars total)
     """
     if not isinstance(suid, str):
@@ -44,7 +44,7 @@ def check_suid(suid: str) -> bool:
     # Strip 'conv_' prefix if present
     hex_part = suid.removeprefix("conv_")
 
-    # Check for 48-char hex string (llama-stack conversation ID format)
+    # Check for 48-char hex string (OGX conversation ID format)
     if len(hex_part) == 48:
         try:
             int(hex_part, 16)
@@ -86,7 +86,7 @@ def normalize_conversation_id(conversation_id: str) -> str:
 
 def to_llama_stack_conversation_id(conversation_id: str) -> str:
     """
-    Convert a database conversation ID to llama-stack format.
+    Convert a database conversation ID to OGX format.
 
     Adds the 'conv_' prefix if not already present.
 
@@ -96,7 +96,7 @@ def to_llama_stack_conversation_id(conversation_id: str) -> str:
 
     Returns:
     -------
-        str: The conversation ID in llama-stack format (conv_xxx).
+        str: The conversation ID in OGX format (conv_xxx).
 
     Examples:
     --------

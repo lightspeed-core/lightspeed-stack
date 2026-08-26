@@ -28,7 +28,7 @@ def test_loading_proper_configuration(configuration_filename: str) -> None:
     Loads configuration from the provided file and asserts presence and
     correctness of top-level sections (configuration, service, llama_stack,
     user_data_collection, mcp_servers) and selected field values including
-    service host and flags, CORS settings, llama stack URL and API key secret,
+    service host and flags, CORS settings, OGX URL and API key secret,
     user data collection settings, and three MCP server entries.
 
     Parameters:

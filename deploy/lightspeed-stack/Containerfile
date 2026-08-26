@@ -119,7 +119,7 @@ USER root
 # Additional tools for derived images
 RUN ${RUNTIME_DNF_COMMAND} install -y --nodocs --setopt=keepcache=0 --setopt=tsflags=nodocs jq patch
 
-# Create llama-stack directories for library mode
+# Create OGX directories for library mode
 RUN mkdir -p /opt/app-root/src/.llama/storage /opt/app-root/src/.llama/providers.d && \
     chown -R 1001:1001 /opt/app-root/src/.llama
 
@@ -130,7 +130,7 @@ RUN mkdir -p /opt/app-root/src/.cache/huggingface && \
 # Add executables from .venv to system PATH
 ENV PATH="/app-root/.venv/bin:$PATH"
 
-# Library mode: Llama Stack expects external provider configs under a path named providers.d (hardcoded).
+# Library mode: OGX expects external provider configs under a path named providers.d (hardcoded).
 # We place them at /app-root/providers.d. YAMLs there reference lightspeed_stack_providers.*, so that package must be on PYTHONPATH.
 ENV PYTHONPATH="/app-root"
 # Unified: set the environment variable to mount point of external providers.

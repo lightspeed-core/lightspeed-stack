@@ -845,7 +845,7 @@ The top log probability for a token from an OpenAI-compatible chat completion re
 ## PromptCreateRequest
 
 
-Request body to create a stored prompt template in Llama Stack.
+Request body to create a stored prompt template in OGX.
 
 Attributes:
     prompt: Prompt text with variable placeholders.

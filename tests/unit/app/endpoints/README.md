@@ -8,6 +8,10 @@ Unit tests for endpoints implementations.
 
 Shared pytest fixtures for endpoint unit tests.
 
+## [responses_otel_helpers.py](responses_otel_helpers.py)
+
+Shared helpers for responses endpoint OpenTelemetry unit tests.
+
 ## [test_a2a.py](test_a2a.py)
 
 Unit tests for the A2A (Agent-to-Agent) protocol endpoints.
@@ -75,6 +79,10 @@ Unit tests for the /rags REST API endpoints.
 ## [test_responses.py](test_responses.py)
 
 Unit tests for the /responses REST API endpoint (LCORE Responses API).
+
+## [test_responses_otel.py](test_responses_otel.py)
+
+OpenTelemetry unit tests for the /responses REST API endpoint.
 
 ## [test_responses_splunk.py](test_responses_splunk.py)
 

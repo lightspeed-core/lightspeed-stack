@@ -6,7 +6,7 @@ Main classes for the Lightspeed Core Stack REST API service.
 
 ## [client.py](client.py)
 
-Llama Stack client retrieval class.
+OGX client retrieval class.
 
 ## [configuration.py](configuration.py)
 
@@ -22,7 +22,7 @@ Entry point to the Lightspeed Core Stack REST API service.
 
 ## [llama_stack_configuration.py](llama_stack_configuration.py)
 
-Llama Stack configuration enrichment and synthesis.
+OGX configuration enrichment and synthesis.
 
 ## [log.py](log.py)
 

@@ -723,9 +723,9 @@ class TestA2AAgentExecutor:
         # Mock the client to raise APIConnectionError on models.list()
         mock_client = mocker.AsyncMock()
         # Create a mock httpx.Request for APIConnectionError
-        mock_request = httpx.Request("GET", "http://test-llama-stack/models")
+        mock_request = httpx.Request("GET", "http://test-ogx/models")
         mock_client.models.list.side_effect = APIConnectionError(
-            message="Connection refused: unable to reach Llama Stack",
+            message="Connection refused: unable to reach OGX",
             request=mock_request,
         )
         mocker.patch(

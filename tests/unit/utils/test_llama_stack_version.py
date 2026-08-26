@@ -1,4 +1,4 @@
-"""Unit tests for utility function to check Llama Stack version."""
+"""Unit tests for utility function to check OGX version."""
 
 from typing import Any
 
@@ -24,7 +24,7 @@ async def test_check_llama_stack_version_minimal_supported_version(
     mocker: MockerFixture,
 ) -> None:
     """Test the check_llama_stack_version function."""
-    # mock the Llama Stack client
+    # mock the OGX client
     mock_client = mocker.AsyncMock()
     mock_client.inspect.version.return_value = VersionInfo(
         version=MINIMAL_SUPPORTED_LLAMA_STACK_VERSION
@@ -39,7 +39,7 @@ async def test_check_llama_stack_version_maximal_supported_version(
     mocker: MockerFixture,
 ) -> None:
     """Test the check_llama_stack_version function."""
-    # mock the Llama Stack client
+    # mock the OGX client
     mock_client = mocker.AsyncMock()
     mock_client.inspect.version.return_value = VersionInfo(
         version=MAXIMAL_SUPPORTED_LLAMA_STACK_VERSION
@@ -54,14 +54,14 @@ async def test_check_llama_stack_version_too_small_version(
     mocker: MockerFixture,
 ) -> None:
     """Test the check_llama_stack_version function."""
-    # mock the Llama Stack client
+    # mock the OGX client
     mock_client = mocker.AsyncMock()
 
     # that is surely out of range
     mock_client.inspect.version.return_value = VersionInfo(version="0.0.0")
 
     expected_exception_msg = (
-        f"Llama Stack version >= {MINIMAL_SUPPORTED_LLAMA_STACK_VERSION} "
+        f"OGX version >= {MINIMAL_SUPPORTED_LLAMA_STACK_VERSION} "
         + "is required, but 0.0.0 is used"
     )
     # test if the version is checked
@@ -70,20 +70,20 @@ async def test_check_llama_stack_version_too_small_version(
 
 
 async def _check_version_must_fail(mock_client: Any, bigger_version: Version) -> None:
-    """Check if the Llama Stack version is supported and must fail if not.
+    """Check if the OGX version is supported and must fail if not.
 
     Args:
         mock_client: A mock client used for testing.
         bigger_version: A version object representing a version higher than the supported version.
 
     Raises:
-        InvalidLlamaStackVersionException: If the Llama Stack version is greater than the
+        InvalidLlamaStackVersionException: If the OGX version is greater than the
         maximal supported version.
     """
     mock_client.inspect.version.return_value = VersionInfo(version=str(bigger_version))
 
     expected_exception_msg = (
-        f"Llama Stack version <= {MAXIMAL_SUPPORTED_LLAMA_STACK_VERSION} is required, "
+        f"OGX version <= {MAXIMAL_SUPPORTED_LLAMA_STACK_VERSION} is required, "
         + f"but {bigger_version} is used"
     )
     # test if the version is checked
@@ -96,7 +96,7 @@ async def test_check_llama_stack_version_too_big_version(
     mocker: MockerFixture, subtests: SubTests
 ) -> None:
     """Test the check_llama_stack_version function."""
-    # mock the Llama Stack client
+    # mock the OGX client
     mock_client = mocker.AsyncMock()
 
     max_version = Version.parse(MAXIMAL_SUPPORTED_LLAMA_STACK_VERSION)

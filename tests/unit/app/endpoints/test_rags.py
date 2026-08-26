@@ -45,7 +45,7 @@ async def test_rags_endpoint_configuration_not_loaded(
 async def test_rags_endpoint_connection_error(
     mocker: MockerFixture, minimal_config: AppConfig
 ) -> None:
-    """Test that /rags endpoint raises HTTP 503 if Llama Stack connection fails."""
+    """Test that /rags endpoint raises HTTP 503 if OGX connection fails."""
     mocker.patch("app.endpoints.rags.configuration", minimal_config)
     mock_client = mocker.AsyncMock()
     mock_client.vector_stores.list.side_effect = APIConnectionError(request=None)  # type: ignore
@@ -174,7 +174,7 @@ async def test_rag_info_endpoint_rag_not_found(
 async def test_rag_info_endpoint_connection_error(
     mocker: MockerFixture, minimal_config: AppConfig
 ) -> None:
-    """Test that /rags/{rag_id} endpoint raises HTTP 503 if Llama Stack connection fails."""
+    """Test that /rags/{rag_id} endpoint raises HTTP 503 if OGX connection fails."""
     mocker.patch("app.endpoints.rags.configuration", minimal_config)
     mock_client = mocker.AsyncMock()
     mock_client.vector_stores.retrieve.side_effect = APIConnectionError(
@@ -304,7 +304,7 @@ def _make_byok_config(tmp_path: Any) -> AppConfig:
 async def test_rags_endpoint_returns_rag_ids_from_config(
     mocker: MockerFixture, tmp_path: Path
 ) -> None:
-    """Test that /rags endpoint maps llama-stack IDs to user-facing rag_ids."""
+    """Test that /rags endpoint maps OGX IDs to user-facing rag_ids."""
     byok_config = _make_byok_config(str(tmp_path))
     mocker.patch("app.endpoints.rags.configuration", byok_config)
 

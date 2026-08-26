@@ -71,7 +71,7 @@ async def test_models_endpoint_handler_configuration_loaded(
     """Test the models endpoint handler if configuration is loaded.
 
     Verify the models endpoint raises HTTP 503 when configuration is loaded but
-    the Llama Stack client cannot connect.
+    the OGX client cannot connect.
 
     Loads an AppConfig from a test dictionary, patches the endpoint's
     configuration and AsyncOgxClientHolder so that get_client raises
@@ -164,7 +164,7 @@ async def test_models_endpoint_handler_unable_to_retrieve_models_list(
     cfg = AppConfig()
     cfg.init_from_dict(config_dict)
 
-    # Mock the LlamaStack client
+    # Mock the OGX client
     mock_client = mocker.AsyncMock()
     mock_client.models.list.return_value = ListModelsResponse.model_construct(data=[])
     mock_lsc = mocker.patch("app.endpoints.models.AsyncOgxClientHolder.get_client")
@@ -221,7 +221,7 @@ async def test_models_endpoint_handler_model_type_query_parameter(
     cfg = AppConfig()
     cfg.init_from_dict(config_dict)
 
-    # Mock the LlamaStack client
+    # Mock the OGX client
     mock_client = mocker.AsyncMock()
     mock_client.models.list.return_value = ListModelsResponse.model_construct(data=[])
     mock_lsc = mocker.patch("app.endpoints.models.AsyncOgxClientHolder.get_client")
@@ -277,7 +277,7 @@ async def test_models_endpoint_handler_model_list_retrieved(
     cfg = AppConfig()
     cfg.init_from_dict(config_dict)
 
-    # Mock the LlamaStack client
+    # Mock the OGX client
     mock_client = mocker.AsyncMock()
     mock_client.models.list.return_value = ListModelsResponse.model_construct(
         data=[
@@ -351,7 +351,7 @@ async def test_models_endpoint_handler_model_list_retrieved_with_query_parameter
     cfg = AppConfig()
     cfg.init_from_dict(config_dict)
 
-    # Mock the LlamaStack client
+    # Mock the OGX client
     mock_client = mocker.AsyncMock()
     mock_client.models.list.return_value = ListModelsResponse.model_construct(
         data=[
@@ -417,7 +417,7 @@ async def test_models_endpoint_handler_model_list_retrieved_with_query_parameter
 async def test_models_endpoint_llama_stack_connection_error(
     mocker: MockerFixture,
 ) -> None:
-    """Test the model endpoint when LlamaStack connection fails."""
+    """Test the model endpoint when OGX connection fails."""
     mock_authorization_resolvers(mocker)
 
     # configuration for tests
@@ -520,7 +520,7 @@ class TestModelsEndpointOtel:
         mocker: MockerFixture,
         otel: tuple[Any, InMemorySpanExporter],
     ) -> None:
-        """Test that the span records an error on Llama Stack connection failure."""
+        """Test that the span records an error on OGX connection failure."""
         tracer, exporter = otel
         mocker.patch("app.endpoints.models.tracer", tracer)
         mock_authorization_resolvers(mocker)

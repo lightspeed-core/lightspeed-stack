@@ -1,6 +1,6 @@
 #!/bin/bash
-# Entrypoint for llama-stack container.
-# Enriches config with lightspeed dynamic values, then starts llama-stack.
+# Entrypoint for OGX container.
+# Enriches config with lightspeed dynamic values, then starts OGX.
 
 set -e
 

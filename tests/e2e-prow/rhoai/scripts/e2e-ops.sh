@@ -9,7 +9,7 @@
 #   is the CI runner, not the application.
 # - E2E_LSC_PORT_FORWARD_PID_FILE coordinates the handoff.
 # - pipeline-konflux.sh (and hooks) forward llama-stack-service-svc to localhost:8321 for
-#   Behave steps that call Llama Stack directly (MCP toolgroups, shields). When the llama
+#   Behave steps that call OGX directly (MCP toolgroups, shields). When the llama
 #   pod is recreated, that forward must be restarted or you get "PodSandbox ... not found" /
 #   APIConnectionError on subsequent scenarios.
 # - E2E_LLAMA_PORT_FORWARD_PID_FILE coordinates killing/restarting the 8321 forward.
@@ -19,20 +19,20 @@
 #
 # Commands:
 #   restart-lightspeed              - Restart lightspeed-stack pod and port-forward
-#   restart-llama-stack             - Restart/restore llama-stack pod and localhost:8321 forward
-#   restart-both-services           - Full llama-stack then lightspeed-stack restart (explicit only)
+#   restart-llama-stack             - Restart/restore OGX pod and localhost:8321 forward
+#   restart-both-services           - Full OGX then lightspeed-stack restart (explicit only)
 #   restart-port-forward            - Re-establish port-forward for lightspeed
-#   restart-llama-port-forward      - Re-establish port-forward for Llama Stack (8321)
+#   restart-llama-port-forward      - Re-establish port-forward for OGX (8321)
 #   wait-for-pod <name> [attempts]  - Wait for a pod to be ready
 #   update-configmap <name> <file>  - Update ConfigMap from file
 #   get-configmap-content <name>    - Get ConfigMap content (outputs to stdout)
-#   disrupt-llama-stack             - Delete llama-stack pod to disrupt connection
+#   disrupt-llama-stack             - Delete OGX pod to disrupt connection
 #   deploy-e2e-tunnel-proxy         - Deploy in-cluster tunnel proxy (proxy.feature step)
 #   deploy-e2e-interception-proxy   - Deploy in-cluster interception proxy (proxy.feature step)
 #   deploy-e2e-mock-tls-inference   - Deploy mock HTTPS inference server (tls-*.feature)
 #   delete-e2e-mock-tls-inference   - Remove mock TLS pod + Service (manual cleanup)
 #   restart-e2e-mock-tls-inference  - Delete then deploy mock TLS (manual / recovery)
-#   sync-mock-tls-certs-secret      - Copy mock /certs into Secret for llama-stack mount
+#   sync-mock-tls-certs-secret      - Copy mock /certs into Secret for OGX mount
 
 set -e
 
@@ -173,7 +173,7 @@ kill_stale_lightspeed_forward() {
     free_local_tcp_port "$port"
 }
 
-# Kill anything likely to hold the Llama Stack local forward (localhost:8321).
+# Kill anything likely to hold the OGX local forward (localhost:8321).
 kill_stale_llama_forward() {
     local port="${1:-8321}"
     local saved_pf
@@ -253,7 +253,7 @@ verify_connectivity() {
 
         if [[ "$http_code" == "200" || "$http_code" == "401" ]]; then
             # Port-forward works; now verify the app is fully initialized by hitting
-            # a real endpoint. /v1/models requires the Llama Stack handshake to complete.
+            # a real endpoint. /v1/models requires the OGX handshake to complete.
             # Accept 200 (no auth) or 401/403 (auth) — both prove the full app stack is up.
             #
             # Proxy/TLS e2e scenarios intentionally misconfigure Llama (e.g. unreachable
@@ -303,17 +303,17 @@ wait_for_llama_stack_http_health() {
     local max_attempts="${1:-35}"
     local attempt
 
-    echo "Verifying Llama Stack is fully up (GET /v1/health inside pod)..."
+    echo "Verifying OGX is fully up (GET /v1/health inside pod)..."
     for ((attempt=1; attempt<=max_attempts; attempt++)); do
         if _llama_stack_http_health_once; then
-            echo "✓ Llama Stack /v1/health OK (attempt $attempt/$max_attempts)"
+            echo "✓ OGX /v1/health OK (attempt $attempt/$max_attempts)"
             return 0
         fi
         if [[ $attempt -lt $max_attempts ]]; then
             sleep 2
         fi
     done
-    echo "ERROR: Llama Stack did not respond on http://127.0.0.1:8321/v1/health inside the pod"
+    echo "ERROR: OGX did not respond on http://127.0.0.1:8321/v1/health inside the pod"
     e2e_ops_dump_pod_logs "llama-stack-service" 200
     return 1
 }
@@ -406,7 +406,7 @@ _restart_lightspeed_core() {
     if [[ "${E2E_SKIP_LLAMA_RESTORE_ON_LCS_RESTART:-0}" == "1" ]]; then
         echo "⚠️  Skipping llama restore before LCS restart (E2E_SKIP_LLAMA_RESTORE_ON_LCS_RESTART=1)"
     elif ! _llama_stack_http_health_once 2>/dev/null; then
-        echo "⚠️  Llama Stack not healthy — restoring before LCS restart..."
+        echo "⚠️  OGX not healthy — restoring before LCS restart..."
         if ! _restart_llama_stack_core; then
             echo "===== Lightspeed restore FAILED (Llama not healthy) ====="
             return 1
@@ -550,7 +550,7 @@ verify_llama_local_forward() {
             sleep 2
         fi
     done
-    echo "Llama Stack localhost:8321 connectivity check failed (HTTP: ${http_code:-unknown})"
+    echo "OGX localhost:8321 connectivity check failed (HTTP: ${http_code:-unknown})"
     return 1
 }
 
@@ -562,7 +562,7 @@ cmd_restart_llama_port_forward() {
     local pf_resource
     local llama_pf_log="/tmp/port-forward-llama.log"
 
-    echo "Re-establishing Llama Stack port-forward on $local_port:$remote_port..."
+    echo "Re-establishing OGX port-forward on $local_port:$remote_port..."
 
     for ((attempt=1; attempt<=max_attempts; attempt++)); do
         kill_stale_llama_forward "$local_port"
@@ -596,7 +596,7 @@ cmd_restart_llama_port_forward() {
         if verify_llama_local_forward 12; then
             echo "$pf_pid" >"$E2E_LLAMA_PORT_FORWARD_PID_FILE"
             echo "[e2e-ops] Llama through port-forward: GET http://127.0.0.1:$local_port/v1/health -> OK"
-            echo "✓ Llama Stack port-forward established (PID: $pf_pid, $pf_resource)"
+            echo "✓ OGX port-forward established (PID: $pf_pid, $pf_resource)"
             return 0
         fi
 
@@ -607,7 +607,7 @@ cmd_restart_llama_port_forward() {
         fi
     done
 
-    echo "Failed to establish Llama Stack port-forward on :$local_port"
+    echo "Failed to establish OGX port-forward on :$local_port"
     if [[ -s "$llama_pf_log" ]]; then
         echo "[e2e-ops] $llama_pf_log (tail 30):"
         tail -30 "$llama_pf_log" 2>/dev/null | sed 's/^/[e2e-ops] /' || true
@@ -981,10 +981,10 @@ cmd_disrupt_llama_stack() {
     if [[ "$phase" == "Running" ]]; then
         oc delete pod "$pod_name" -n "$NAMESPACE" --wait=true
         sleep 2
-        echo "Llama Stack connection disrupted successfully (pod deleted)"
+        echo "OGX connection disrupted successfully (pod deleted)"
         exit 0
     else
-        echo "Llama Stack pod was not running (phase: $phase)"
+        echo "OGX pod was not running (phase: $phase)"
         exit 2
     fi
 }
@@ -1067,7 +1067,7 @@ case "$COMMAND" in
         echo "  restart-lightspeed              - Restart lightspeed-stack pod and port-forward"
         echo "  restart-llama-stack             - Restart/restore llama-stack pod"
         echo "  restart-both-services           - Full llama-stack + lightspeed-stack restart (explicit)"
-        echo "  restart-llama-port-forward      - Re-establish port-forward for Llama (8321)"
+        echo "  restart-llama-port-forward      - Re-establish port-forward for OGX (8321)"
         echo "  restart-port-forward            - Re-establish port-forward for lightspeed"
         echo "  wait-for-pod <name> [attempts]  - Wait for a pod to be ready"
         echo "  update-configmap <name> <file>  - Update ConfigMap from file"

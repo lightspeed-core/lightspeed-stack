@@ -19,7 +19,7 @@ from version import __version__
 def mock_ogx_client_fixture(
     mocker: MockerFixture,
 ) -> Generator[Any, None, None]:
-    """Mock only the external Llama Stack client.
+    """Mock only the external OGX client.
 
     This is the only external dependency we mock for integration tests,
     as it represents an external service call.
@@ -30,7 +30,7 @@ def mock_ogx_client_fixture(
 
     Yields:
     ------
-        AsyncMock: A mocked Llama Stack client configured for tests.
+        AsyncMock: A mocked OGX client configured for tests.
     """
     mock_holder_class = mocker.patch("app.endpoints.info.AsyncOgxClientHolder")
 
@@ -57,14 +57,14 @@ async def test_info_endpoint_returns_service_information(
     This integration test verifies:
     - Endpoint handler integrates with configuration system
     - Configuration values are correctly accessed
-    - Llama Stack client is properly called
+    - OGX client is properly called
     - Real noop authentication is used
     - Response structure matches expected format
 
     Parameters:
     ----------
         test_config: Loads real configuration (required for endpoint to access config)
-        mock_ogx_client: Mocked Llama Stack client
+        mock_ogx_client: Mocked OGX client
         test_request: FastAPI request
         test_auth: noop authentication tuple
 
@@ -82,7 +82,7 @@ async def test_info_endpoint_returns_service_information(
     assert response.service_version == __version__
     assert response.llama_stack_version == "0.2.22"
 
-    # Verify the Llama Stack client was called
+    # Verify the OGX client was called
     mock_ogx_client.inspect.version.assert_called_once()
 
 
@@ -94,7 +94,7 @@ async def test_info_endpoint_handles_connection_error(
     test_auth: AuthTuple,
     mocker: MockerFixture,
 ) -> None:
-    """Test that info endpoint properly handles Llama Stack connection errors.
+    """Test that info endpoint properly handles OGX connection errors.
 
     This integration test verifies:
     - Error handling when external service is unavailable
@@ -104,7 +104,7 @@ async def test_info_endpoint_handles_connection_error(
     Parameters:
     ----------
         test_config: Loads real configuration (required for endpoint to access config)
-        mock_ogx_client: Mocked Llama Stack client
+        mock_ogx_client: Mocked OGX client
         test_request: FastAPI request
         test_auth: noop authentication tuple
         mocker: pytest-mock fixture for creating mocks
@@ -145,7 +145,7 @@ async def test_info_endpoint_uses_configuration_values(
     Parameters:
     ----------
         test_config: Loads real configuration (required for endpoint to access config)
-        mock_ogx_client: Mocked Llama Stack client
+        mock_ogx_client: Mocked OGX client
         test_request: Real FastAPI request
         test_auth: Real noop authentication tuple
     """

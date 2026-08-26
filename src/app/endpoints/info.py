@@ -33,7 +33,7 @@ get_info_responses: dict[int | str, dict[str, Any]] = {
     401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
     503: ServiceUnavailableResponse.openapi_response(
-        examples=["ogx", "kubernetes api"]
+        examples=["OGX", "kubernetes api"]
     ),
 }
 
@@ -48,7 +48,7 @@ async def info_endpoint_handler(
     Handle request to the /info endpoint.
 
     Process GET requests to the /info endpoint, returning the
-    service name, version and Llama-stack version.
+    service name, version and OGX version.
 
     ### Parameters:
     - request: The incoming HTTP request (used by middleware).
@@ -58,7 +58,7 @@ async def info_endpoint_handler(
     - HTTPException: with status 401 for unauthorized access.
     - HTTPException: with status 403 if permission is denied.
     - HTTPException: with status 503 and a detail object containing `response`
-      and `cause` when unable to connect to Llama Stack.
+      and `cause` when unable to connect to OGX.
 
     ### Returns:
     - InfoResponse: An object containing the service's name and version.
@@ -73,14 +73,14 @@ async def info_endpoint_handler(
         logger.info("Response to /v1/info endpoint")
 
         try:
-            # try to get Llama Stack client
+            # try to get OGX client
             client = AsyncOgxClientHolder().get_client()
             # retrieve version
             llama_stack_version_object = await client.inspect.version()
             llama_stack_version = llama_stack_version_object.version
             logger.debug("Service name: %s", configuration.configuration.name)
             logger.debug("Service version: %s", __version__)
-            logger.debug("Llama Stack version: %s", llama_stack_version)
+            logger.debug("OGX version: %s", llama_stack_version)
             set_span_attributes(
                 span,
                 {
@@ -93,8 +93,8 @@ async def info_endpoint_handler(
                 service_version=__version__,
                 llama_stack_version=llama_stack_version,
             )
-        # connection to Llama Stack server
+        # connection to OGX server
         except APIConnectionError as e:
-            logger.error("Unable to connect to Llama Stack: %s", e)
+            logger.error("Unable to connect to OGX: %s", e)
             response = ServiceUnavailableResponse(backend_name="OGX", cause=str(e))
             raise HTTPException(**response.model_dump()) from e

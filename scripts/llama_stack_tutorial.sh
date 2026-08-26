@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Llama Stack Tutorial - Interactive Guide 
-# This tutorial demonstrates key features of the Llama Stack server
+# OGX Tutorial - Interactive Guide 
+# This tutorial demonstrates key features of the OGX server
 
 LLAMA_STACK_URL="http://localhost:8321"
 
@@ -82,7 +82,7 @@ if [ "$INTERACTIVE" = true ]; then
     wait_for_user
 fi
 
-# Section 0: What is Llama Stack?
+# Section 0: What is OGX?
 print_section "What is Llama Stack?"
 cat << 'EOF'
 Llama Stack serves as the AI INTEGRATION LAYER - it's the middleware that abstracts

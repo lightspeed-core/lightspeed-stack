@@ -1,4 +1,4 @@
-"""Llama Stack client retrieval class."""
+"""OGX client retrieval class."""
 
 import json
 import os
@@ -41,7 +41,7 @@ class AsyncOgxClientHolder(metaclass=Singleton):
         return isinstance(self._lsc, AsyncOGXAsLibraryClient)
 
     async def load(self, llama_stack_config: LlamaStackConfiguration) -> None:
-        """Initialize the Llama Stack client based on configuration."""
+        """Initialize the OGX client based on configuration."""
         if self._lsc is not None:  # early stopping - client already initialized
             return
 
@@ -63,7 +63,7 @@ class AsyncOgxClientHolder(metaclass=Singleton):
         inference.providers (with no config block) correctly falls through to
         synthesis. Stores the final config path for use in reload.
         """
-        logger.info("Using Llama Stack as library client")
+        logger.info("Using OGX as library client")
 
         # Configure logging before synthesis/enrichment so INFO lines from those
         # steps are not dropped. Without handlers, Python's lastResort only
@@ -82,7 +82,7 @@ class AsyncOgxClientHolder(metaclass=Singleton):
         await client.initialize()
         self._lsc = client
 
-        # Re-apply logging configuration after ogx's setup_logging() is called.
+        # Re-apply logging configuration after OGX's setup_logging() is called.
         # This ensures the desired logging configuration is applied when
         # using AsyncOGXAsLibraryClient.
         setup_logging()
@@ -115,15 +115,13 @@ class AsyncOgxClientHolder(metaclass=Singleton):
         config_file_dir = os.path.dirname(os.path.abspath(config_file))
 
         synthesize_to_file(lcs_config, output_path, config_file_dir)
-        logger.info("Using synthesized Llama Stack config at %s", output_path)
+        logger.info("Using synthesized OGX config at %s", output_path)
         return output_path
 
     def _load_service_client(self, config: LlamaStackConfiguration) -> None:
         """Initialize client in service mode (remote HTTP)."""
-        logger.info("Using Llama Stack running as a service")
-        logger.info(
-            "Using timeout of %d seconds for Llama Stack requests", config.timeout
-        )
+        logger.info("Using OGX running as a service")
+        logger.info("Using timeout of %d seconds for OGX requests", config.timeout)
         api_key = config.api_key.get_secret_value() if config.api_key else None
         # Convert AnyHttpUrl to string for the client
         base_url = str(config.url) if config.url else None
@@ -132,12 +130,12 @@ class AsyncOgxClientHolder(metaclass=Singleton):
         )
 
     def _enrich_library_config(self, input_config_path: str) -> str:
-        """Enrich llama-stack config with BYOK RAG and OKP Solr settings."""
+        """Enrich OGX config with BYOK RAG and OKP Solr settings."""
         try:
             with open(input_config_path, "r", encoding="utf-8") as f:
                 ls_config = yaml.safe_load(f)
         except (OSError, yaml.YAMLError) as e:
-            logger.warning("Failed to read llama-stack config: %s", e)
+            logger.warning("Failed to read OGX config: %s", e)
             return input_config_path
 
         config = configuration.configuration
@@ -165,7 +163,7 @@ class AsyncOgxClientHolder(metaclass=Singleton):
         try:
             with open(enriched_path, "w", encoding="utf-8") as f:
                 yaml.dump(ls_config, f, Dumper=YamlDumper, default_flow_style=False)
-            logger.info("Wrote enriched llama-stack config to %s", enriched_path)
+            logger.info("Wrote enriched OGX config to %s", enriched_path)
             return enriched_path
         except OSError as e:
             logger.warning("Failed to write enriched config: %s", e)
@@ -207,7 +205,7 @@ class AsyncOgxClientHolder(metaclass=Singleton):
             )
             raise HTTPException(**error_response.model_dump()) from e
         self._lsc = client
-        # Re-apply logging configuration after ogx's setup_logging() is called.
+        # Re-apply logging configuration after OGX's setup_logging() is called.
         # This ensures the desired logging configuration is applied when
         # using AsyncOGXAsLibraryClient.
         setup_logging()
@@ -217,7 +215,7 @@ class AsyncOgxClientHolder(metaclass=Singleton):
     async def check_model_available(self, model_id: str) -> tuple[bool, str]:
         """Check if a model is available in the registry, attempting reload if needed.
 
-        Verifies the model can be found in the Llama Stack client's model
+        Verifies the model can be found in the OGX client's model
         list. If the model is missing and the client is running in library
         mode, attempts a client reload to re-register models before
         reporting failure.
@@ -308,7 +306,7 @@ class AsyncOgxClientHolder(metaclass=Singleton):
             )
             await client.initialize()
             self._lsc = client
-            # Re-apply logging configuration after ogx's setup_logging() is called.
+            # Re-apply logging configuration after OGX's setup_logging() is called.
             # This ensures the desired logging configuration is applied when
             # using AsyncOGXAsLibraryClient.
             setup_logging()
@@ -340,7 +338,7 @@ class AsyncOgxClientHolder(metaclass=Singleton):
 
     async def get_azure_base_url(self) -> Optional[str]:
         """
-        Retrieve the Azure base_url endpoint from the remote Llama Stack provider configuration.
+        Retrieve the Azure base_url endpoint from the remote OGX provider configuration.
 
         Returns:
             Optional[str]: The Azure base_url if available, otherwise None.

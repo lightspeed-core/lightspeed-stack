@@ -134,7 +134,7 @@ def _setup_responses_mock(
 
 @pytest.fixture(name="mock_llama_stack")
 def mock_llama_stack_fixture(rlsapi_config: AppConfig, mocker: MockerFixture) -> Any:
-    """Mock Llama Stack client with successful response."""
+    """Mock OGX client with successful response."""
     _ = rlsapi_config
     return _setup_responses_mock(mocker)
 

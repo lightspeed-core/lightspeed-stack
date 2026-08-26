@@ -15,7 +15,7 @@ from ogx_client import OgxClient
 
 client = OgxClient(base_url="http://localhost:8321")
 
-print(f"Using Llama Stack version {client._version}")
+print(f"Using OGX version {client._version}")
 
 models = client.models.list()
 
@@ -24,7 +24,7 @@ for model in models:
 
 # ---
 #
-# ### Llama Stack je použit jako běžná knihovna
+# ### OGX je použit jako běžná knihovna
 #
 
 # Získání seznamu všech dostupných modelů
@@ -32,7 +32,7 @@ for model in models:
 client = OGXAsLibraryClient("run.yaml")
 client.initialize()
 
-print(f"Using Llama Stack version {client._version}")
+print(f"Using OGX version {client._version}")
 
 models = client.models.list()
 
@@ -45,7 +45,7 @@ for model in models:
 
 client = OgxClient(base_url="http://localhost:8321")
 
-print(f"Using Llama Stack version {client._version}")
+print(f"Using OGX version {client._version}")
 
 models = client.models.list()
 model_id = models[0].identifier
@@ -61,7 +61,7 @@ print(response.to_json())
 
 # ---
 #
-# ### Vývoj Llama Stacku
+# ### Vývoj OGX
 #
 # * Změny v API
 # * Plány na ukončení podpory starších API
@@ -75,7 +75,7 @@ print(response.to_json())
 
 client = OgxClient(base_url="http://localhost:8321")
 
-print(f"Using Llama Stack version {client._version}")
+print(f"Using OGX version {client._version}")
 
 models = client.models.list()
 model_id = models[0].identifier

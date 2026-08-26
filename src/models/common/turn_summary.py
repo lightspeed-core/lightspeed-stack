@@ -100,7 +100,7 @@ class ToolResultSummary(BaseModel):
 
 
 class TurnSummary(BaseModel):
-    """Summary of a turn in llama stack."""
+    """Summary of a turn in OGX."""
 
     id: str = Field(default="", description="ID of the response")
     llm_response: str = ""

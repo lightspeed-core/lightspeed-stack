@@ -90,7 +90,7 @@ def _make_vector_io_response(
 
 
 def _build_base_mock_client(mocker: MockerFixture) -> Any:
-    """Build a base mock Llama Stack client with common stubs.
+    """Build a base mock OGX client with common stubs.
 
     Configures models, shields, conversations, version, and responses.create
     for topic summary generation. Agent inference is mocked separately via
@@ -145,7 +145,7 @@ def mock_byok_client_fixture(
     mocker: MockerFixture,
     mock_query_agent: AsyncMockType,
 ) -> Generator[Any, None, None]:
-    """Mock Llama Stack client with BYOK inline RAG configured.
+    """Mock OGX client with BYOK inline RAG configured.
 
     Configures vector_io.query to return BYOK RAG chunks and sets
     vector_stores.list to empty (no tool-based vector stores).
@@ -180,7 +180,7 @@ def mock_byok_tool_rag_client_fixture(
     mocker: MockerFixture,
     mock_query_agent: AsyncMockType,
 ) -> Generator[Any, None, None]:
-    """Mock Llama Stack client with BYOK tool RAG (file_search) configured.
+    """Mock OGX client with BYOK tool RAG (file_search) configured.
 
     Configures vector_stores.list with a BYOK store and agent.run to return
     a file_search tool result alongside the assistant message.
@@ -772,7 +772,7 @@ async def test_query_byok_combined_inline_and_tool_rag(  # pylint: disable=too-m
     test_config.configuration.rag.retrieval.inline.sources = ["test-knowledge"]
     test_config.configuration.rag.retrieval.tool.sources = ["test-knowledge"]
 
-    # Mock Llama Stack client
+    # Mock OGX client
     mock_holder_class = mocker.patch("app.endpoints.query.AsyncOgxClientHolder")
     mock_client = _build_base_mock_client(mocker)
 

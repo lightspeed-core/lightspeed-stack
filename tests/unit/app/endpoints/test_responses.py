@@ -2805,7 +2805,7 @@ async def test_append_previous_response_turn_compacted(mocker: MockerFixture) ->
     """In compacted mode the turn is stored against the original input.
 
     When compaction rewrote the request, the conversation parameter was dropped
-    so Llama Stack did not store the turn. _append_previous_response_turn must
+    so OGX did not store the turn. _append_previous_response_turn must
     append it using the original user input (carried on the context), not the
     rewritten explicit input on api_params.
     """

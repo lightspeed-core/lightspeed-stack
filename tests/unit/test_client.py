@@ -44,7 +44,7 @@ def test_async_client_get_client_method() -> None:
 
 @pytest.mark.asyncio
 async def test_get_async_llama_stack_library_client() -> None:
-    """Test the initialization of asynchronous Llama Stack client in library mode."""
+    """Test the initialization of asynchronous OGX client in library mode."""
     cfg = LlamaStackConfiguration(
         url=None,
         api_key=None,
@@ -65,7 +65,7 @@ async def test_get_async_llama_stack_library_client() -> None:
 
 @pytest.mark.asyncio
 async def test_get_async_llama_stack_remote_client() -> None:
-    """Test the initialization of asynchronous Llama Stack client in server mode."""
+    """Test the initialization of asynchronous OGX client in server mode."""
     cfg = LlamaStackConfiguration(
         url=AnyHttpUrl("http://localhost:8321"),
         api_key=None,
@@ -383,7 +383,7 @@ class TestCheckModelAvailable:
             return_value=True,
         )
         holder.reload_library_client = mocker.AsyncMock(
-            side_effect=HTTPException(status_code=503, detail="Llama Stack unavailable")
+            side_effect=HTTPException(status_code=503, detail="OGX unavailable")
         )
         mock_client.models.list.return_value = ListModelsResponse.model_construct(
             data=[self._make_model(mocker, "other/model")]

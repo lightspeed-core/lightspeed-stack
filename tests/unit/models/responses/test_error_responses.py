@@ -746,21 +746,21 @@ class TestServiceUnavailableResponse:
         assert expected_count == 2
 
         # Verify example structure
-        assert "ogx" in examples
+        assert "OGX" in examples
         assert "kubernetes api" in examples
-        ogx_example = examples["ogx"]
+        ogx_example = examples["OGX"]
         assert "value" in ogx_example
         assert "detail" in ogx_example["value"]
         assert ogx_example["value"]["detail"]["response"] == "Unable to connect to OGX"
 
     def test_openapi_response_with_explicit_examples(self) -> None:
         """Test ServiceUnavailableResponse.openapi_response() with explicit examples."""
-        result = ServiceUnavailableResponse.openapi_response(examples=["ogx"])
+        result = ServiceUnavailableResponse.openapi_response(examples=["OGX"])
         examples = result["content"]["application/json"]["examples"]
 
         # Verify only 1 example is returned when explicitly specified
         assert len(examples) == 1
-        assert "ogx" in examples
+        assert "OGX" in examples
 
 
 class TestPromptTooLongResponse:

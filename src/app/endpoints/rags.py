@@ -39,7 +39,7 @@ rags_responses: dict[int | str, dict[str, Any]] = {
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
     500: InternalServerErrorResponse.openapi_response(examples=["configuration"]),
     503: ServiceUnavailableResponse.openapi_response(
-        examples=["ogx", "kubernetes api"]
+        examples=["OGX", "kubernetes api"]
     ),
 }
 
@@ -50,7 +50,7 @@ rag_responses: dict[int | str, dict[str, Any]] = {
     404: NotFoundResponse.openapi_response(examples=["rag"]),
     500: InternalServerErrorResponse.openapi_response(examples=["configuration"]),
     503: ServiceUnavailableResponse.openapi_response(
-        examples=["ogx", "kubernetes api"]
+        examples=["OGX", "kubernetes api"]
     ),
 }
 
@@ -74,7 +74,7 @@ async def rags_endpoint_handler(
     - HTTPException: with status 500 and a detail object containing `response`
       and `cause` when service configuration is wrong or incomplete.
     - HTTPException: with status 503 and a detail object containing `response`
-      and `cause` when unable to connect to Llama Stack.
+      and `cause` when unable to connect to OGX.
 
     ### Returns:
     - RAGListResponse: List of RAG identifiers.
@@ -90,16 +90,16 @@ async def rags_endpoint_handler(
         check_configuration_loaded(configuration)
 
         llama_stack_configuration = configuration.llama_stack_configuration
-        logger.info("Llama Stack config: %s", llama_stack_configuration)
+        logger.info("OGX config: %s", llama_stack_configuration)
 
         try:
-            # try to get Llama Stack client
+            # try to get OGX client
             client = AsyncOgxClientHolder().get_client()
             # retrieve list of RAGs
             rags = await client.vector_stores.list()
             logger.info("List of rags: %d", len(rags.data))
 
-            # Map llama-stack vector store IDs to user-facing rag_ids from config
+            # Map OGX vector store IDs to user-facing rag_ids from config
             rag_id_mapping = configuration.rag_id_mapping
             rag_ids = [
                 configuration.resolve_index_name(rag.id, rag_id_mapping)
@@ -109,19 +109,19 @@ async def rags_endpoint_handler(
             span.set_attribute("rags.count", len(rag_ids))
             return RAGListResponse(rags=rag_ids)
 
-        # connection to Llama Stack server
+        # connection to OGX server
         except APIConnectionError as e:
-            logger.error("Unable to connect to Llama Stack: %s", e)
+            logger.error("Unable to connect to OGX: %s", e)
             response = ServiceUnavailableResponse(backend_name="OGX", cause=str(e))
             raise HTTPException(**response.model_dump()) from e
 
 
 def _resolve_rag_id_to_vector_db_id(rag_id: str, byok_rags: list[RagStore]) -> str:
-    """Resolve a user-facing rag_id to the llama-stack vector_db_id.
+    """Resolve a user-facing rag_id to the OGX vector_db_id.
 
     Checks if the given ID matches a rag_id in the BYOK config and returns
     the corresponding vector_db_id. If no match, returns the ID unchanged
-    (assuming it is already a llama-stack vector store ID).
+    (assuming it is already an OGX vector store ID).
 
     Parameters:
     ----------
@@ -130,7 +130,7 @@ def _resolve_rag_id_to_vector_db_id(rag_id: str, byok_rags: list[RagStore]) -> s
 
     Returns:
     -------
-        The llama-stack vector_db_id, or the original ID if no mapping found.
+        The OGX vector_db_id, or the original ID if no mapping found.
     """
     for brag in byok_rags:
         if brag.rag_id == rag_id:
@@ -147,13 +147,13 @@ async def get_rag_endpoint_handler(
 ) -> RAGInfoResponse:
     """Retrieve a single RAG identified by its unique ID.
 
-    Accepts both user-facing rag_id (from LCORE config) and llama-stack
+    Accepts both user-facing rag_id (from LCORE config) and OGX
     vector_store_id. If a rag_id from config is provided, it is resolved
-    to the underlying vector_store_id for the llama-stack lookup.
+    to the underlying vector_store_id for the OGX lookup.
 
     ### Parameters:
     - request: The incoming HTTP request (used by middleware).
-    - rag_id: rag_id or llama-stack vector_store_id
+    - rag_id: rag_id or OGX vector_store_id
     - auth: Authentication tuple from the auth dependency (used by middleware).
 
     ### Raises:
@@ -164,7 +164,7 @@ async def get_rag_endpoint_handler(
     - HTTPException: with status 500 and a detail object containing `response`
       and `cause` when service configuration is wrong or incomplete.
     - HTTPException: with status 503 and a detail object containing `response`
-      and `cause` when unable to connect to Llama Stack.
+      and `cause` when unable to connect to OGX.
 
     ### Returns:
     - RAGInfoResponse: A single RAG's details.
@@ -179,15 +179,15 @@ async def get_rag_endpoint_handler(
         check_configuration_loaded(configuration)
 
         llama_stack_configuration = configuration.llama_stack_configuration
-        logger.info("Llama Stack config: %s", llama_stack_configuration)
+        logger.info("OGX config: %s", llama_stack_configuration)
 
-        # Resolve user-facing rag_id to llama-stack vector_db_id
+        # Resolve user-facing rag_id to OGX vector_db_id
         vector_db_id = _resolve_rag_id_to_vector_db_id(
             rag_id, configuration.configuration.rag.byok.stores
         )
 
         try:
-            # try to get Llama Stack client
+            # try to get OGX client
             client = AsyncOgxClientHolder().get_client()
             # retrieve info about RAG
             rag_info = await client.vector_stores.retrieve(vector_db_id)
@@ -209,7 +209,7 @@ async def get_rag_endpoint_handler(
                 usage_bytes=rag_info.usage_bytes or 0,
             )
         except APIConnectionError as e:
-            logger.error("Unable to connect to Llama Stack: %s", e)
+            logger.error("Unable to connect to OGX: %s", e)
             response = ServiceUnavailableResponse(backend_name="OGX", cause=str(e))
             raise HTTPException(**response.model_dump()) from e
         except BadRequestError as e:

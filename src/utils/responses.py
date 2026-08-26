@@ -143,7 +143,7 @@ async def get_vector_store_ids(
     """Get vector store IDs for querying.
 
     If vector_store_ids are provided, returns them. Otherwise fetches all
-    available vector stores from Llama Stack.
+    available vector stores from OGX.
 
     Args:
         client: The AsyncOgxClient to use for fetching stores
@@ -182,13 +182,13 @@ async def get_topic_summary(  # pylint: disable=too-many-nested-blocks
     Args:
         question: The question to generate a topic summary for
         client: The AsyncOgxClient to use for the request
-        model_id: The llama stack model ID (full format: provider/model)
+        model_id: The OGX model ID (full format: provider/model)
 
     Returns:
         The topic summary for the question
     """
     try:
-        # Normalize Vertex AI model IDs to work around llama-stack 0.6.x bug
+        # Normalize Vertex AI model IDs to work around OGX 0.6.x bug
         normalized_model = normalize_vertex_ai_model_id(model_id)
 
         response = cast(
@@ -225,7 +225,7 @@ async def maybe_get_topic_summary(
     Args:
         generate_topic_summary: Whether topic summary generation is enabled.
         input_text: User input text to summarize.
-        client: Llama Stack client for the summary request.
+        client: OGX client for the summary request.
         model_id: Model identifier in provider/model format.
 
     Returns:
@@ -314,10 +314,10 @@ async def prepare_tools(  # pylint: disable=too-many-arguments,too-many-position
 def _build_provider_data_headers(
     tools: Optional[list[InputTool]],
 ) -> Optional[dict[str, str]]:
-    """Build extra HTTP headers containing MCP provider data for Llama Stack.
+    """Build extra HTTP headers containing MCP provider data for OGX.
 
     Extracts per-server auth headers from MCP tool definitions and encodes
-    them as a JSON ``x-llamastack-provider-data`` header that Llama Stack
+    them as a JSON ``x-llamastack-provider-data`` header that OGX
     uses to authenticate with downstream MCP servers.
 
     Args:
@@ -403,7 +403,7 @@ async def prepare_responses_params(  # pylint: disable=too-many-arguments,too-ma
     # Handle conversation ID for Responses API
     conversation_id = query_request.conversation_id
     if conversation_id:
-        # Conversation ID was provided - convert to llama-stack format
+        # Conversation ID was provided - convert to OGX format
         logger.debug("Using existing conversation ID: %s", conversation_id)
         llama_stack_conv_id = to_llama_stack_conversation_id(conversation_id)
     else:
@@ -430,7 +430,7 @@ async def prepare_responses_params(  # pylint: disable=too-many-arguments,too-ma
     # Build x-llamastack-provider-data header from MCP tool headers
     extra_headers = _build_provider_data_headers(tools)
 
-    # Normalize Vertex AI model IDs to work around llama-stack 0.6.x bug
+    # Normalize Vertex AI model IDs to work around OGX 0.6.x bug
     normalized_model = normalize_vertex_ai_model_id(model)
 
     return ResponsesApiParams(
@@ -660,23 +660,23 @@ def filter_tools_by_allowed_entries(
 def resolve_vector_store_ids(
     vector_store_ids: list[str], byok_rags: list[RagStore]
 ) -> list[str]:
-    """Translate customer-facing rag_ids to llama-stack vector_db_ids.
+    """Translate customer-facing rag_ids to OGX vector_db_ids.
 
     Each ID is looked up against the BYOK RAG configuration. If a matching
     ``rag_id`` is found, the corresponding ``vector_db_id`` is returned.
     The special ``okp`` ID is mapped to the Solr vector store ID.
     Otherwise the ID is passed through unchanged (assumed to already be a
-    llama-stack vector store ID).
+    OGX vector store ID).
 
     Parameters:
     ----------
         vector_store_ids: List of IDs from the client request (may be
-            customer-facing rag_ids or raw llama-stack vector_db_ids).
+            customer-facing rag_ids or raw OGX vector_db_ids).
         byok_rags: BYOK RAG configuration entries.
 
     Returns:
     -------
-        List of llama-stack vector_db_ids ready for the Llama Stack API.
+        List of OGX vector_db_ids ready for the OGX API.
     """
     rag_id_to_vector_db_id = {brag.rag_id: brag.vector_db_id for brag in byok_rags}
     rag_id_to_vector_db_id[constants.OKP_RAG_ID] = (
@@ -688,7 +688,7 @@ def resolve_vector_store_ids(
 def translate_tools_vector_store_ids(
     tools: list[InputTool], byok_rags: list[RagStore]
 ) -> list[InputTool]:
-    """Translate user-facing vector_store_ids to llama-stack IDs in each file_search tool.
+    """Translate user-facing vector_store_ids to OGX IDs in each file_search tool.
 
     Parameters:
     ----------
@@ -789,7 +789,7 @@ async def get_mcp_tools(
         )
         tools.append(
             InputToolMCP(
-                # Pass type explicitly: the llama-stack client serializes pydantic
+                # Pass type explicitly: the OGX client serializes pydantic
                 # instances with model_dump(exclude_unset=True), which strips fields
                 # filled from defaults. Without an explicit value here, the 'type'
                 # discriminator is dropped before reaching CreateResponseRequest,
@@ -861,7 +861,7 @@ def apply_mcp_headers_to_explicit_tools(
             mcp_tool.model_copy(
                 update={
                     # Force 'type' to be explicitly set on the copy so it survives
-                    # model_dump(exclude_unset=True) in the llama-stack client.
+                    # model_dump(exclude_unset=True) in the OGX client.
                     # See RSPEED-3116.
                     "type": "mcp",
                     "headers": headers or None,
@@ -1247,7 +1247,7 @@ def resolve_source_for_result(
 ) -> Optional[str]:
     """Resolve the human-friendly index name for a file search result.
 
-    Uses the vector store mapping to convert internal llama-stack IDs
+    Uses the vector store mapping to convert internal OGX IDs
     to user-facing rag_ids from configuration.
 
     Parameters:
@@ -1268,7 +1268,7 @@ def resolve_source_for_result(
     if source := attributes.get("source"):
         return str(source)
 
-    # Fallback: if llama-stack ever populates vector_store_id in results,
+    # Fallback: if OGX ever populates vector_store_id in results,
     # use it with the rag_id_mapping.
     if vector_store_id := attributes.get("vector_store_id"):
         vector_store_id = str(vector_store_id)
@@ -1386,7 +1386,7 @@ async def check_model_configured(
             if model.identifier == model_id:
                 return True
 
-            # Workaround to llama-stack watsonx bug
+            # Workaround to OGX watsonx bug
             if model_id.startswith(
                 "watsonx/"
             ) and model.identifier == model_id.removeprefix("watsonx/"):
@@ -1467,7 +1467,7 @@ async def select_model_for_responses(
     model = llm_models[0]
     logger.info("Selected first LLM model: %s", model.identifier)
 
-    # Workaround to llama-stack bug for watsonx
+    # Workaround to OGX bug for watsonx
     # model needs to be "watsonx/<model_id>" in the response request
     if model.provider_id == "watsonx" and model.provider_resource_id:
         return model.provider_resource_id
@@ -1653,10 +1653,10 @@ def deduplicate_referenced_documents(
 async def create_new_conversation(
     client: AsyncOgxClient,
 ) -> str:
-    """Create a new conversation via the Llama Stack Conversations API.
+    """Create a new conversation via the OGX Conversations API.
 
     Args:
-        client: The Llama Stack client used to create the conversation.
+        client: The OGX client used to create the conversation.
 
     Returns:
         The new conversation's ID (string), as returned by the API.
@@ -1781,7 +1781,7 @@ async def _resolve_client_tools(
     """
     # Per-request override of vector stores (user-facing rag_ids)
     vector_store_ids = extract_vector_store_ids_from_tools(tools) or None
-    # Translate user-facing rag_ids to llama-stack vector_store_ids in each file_search tool
+    # Translate user-facing rag_ids to OGX vector_store_ids in each file_search tool
     byok_stores = configuration.configuration.rag.byok.stores
     prepared_tools = translate_tools_vector_store_ids(tools, byok_stores)
     prepared_tools = apply_mcp_headers_to_explicit_tools(
@@ -1836,7 +1836,7 @@ async def resolve_tool_choice(
 ) -> tuple[Optional[list[InputTool]], Optional[ToolChoice]]:
     """Resolve tools and tool choice for the Responses API.
 
-    When tool choice is mode none, returns (None, None) so Llama Stack sees no
+    When tool choice is mode none, returns (None, None) so OGX sees no
     tools, even if the request listed tools.
 
     When tools is omitted, load tools from LCORE configuration via prepare_tools.
@@ -1910,7 +1910,7 @@ async def resolve_client_tool_choice(
     server-configured tools.  Conflicts (duplicate MCP server_label or
     file_search) are rejected with a 409 error.
 
-    When tool choice is mode none, returns (None, None) so Llama Stack sees no
+    When tool choice is mode none, returns (None, None) so OGX sees no
     tools, even if the request listed tools.
 
     When filters are present, apply them to prepared tools and overwrite tool

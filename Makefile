@@ -42,7 +42,7 @@ run: start-llama-stack-container ## Run the service locally with dependent servi
 	@trap 'echo ""; echo "Stopping services..."; $(MAKE) stop-llama-stack-container' EXIT INT TERM; \
 	$(MAKE) run-stack
 
-build-llama-stack-image: remove-llama-stack-container ## Build llama-stack container image
+build-llama-stack-image: remove-llama-stack-container ## Build OGX container image
 	@echo "Building llama-stack container image..."
 	@if [ -z "$(CONTAINER_RUNTIME)" ]; then \
 		echo "ERROR: No container runtime found. Install podman or docker."; \
@@ -50,7 +50,7 @@ build-llama-stack-image: remove-llama-stack-container ## Build llama-stack conta
 	fi
 	$(CONTAINER_RUNTIME) build -f deploy/llama-stack/test.containerfile -t $(LLAMA_STACK_IMAGE) .
 
-stop-llama-stack-container: ## Gracefully stop llama-stack container
+stop-llama-stack-container: ## Gracefully stop OGX container
 	@if [ -n "$(CONTAINER_RUNTIME)" ] && $(CONTAINER_RUNTIME) inspect $(LLAMA_STACK_CONTAINER_NAME) >/dev/null 2>&1; then \
 		echo "Stopping llama-stack container (timeout: 10s)..."; \
 		if $(CONTAINER_RUNTIME) stop -t 10 $(LLAMA_STACK_CONTAINER_NAME) 2>/dev/null; then \
@@ -63,7 +63,7 @@ stop-llama-stack-container: ## Gracefully stop llama-stack container
 		fi; \
 	fi
 
-remove-llama-stack-container: ## Remove llama-stack container (saves logs first)
+remove-llama-stack-container: ## Remove OGX container (saves logs first)
 	@if [ -n "$(CONTAINER_RUNTIME)" ] && $(CONTAINER_RUNTIME) inspect $(LLAMA_STACK_CONTAINER_NAME) >/dev/null 2>&1; then \
 		echo "Saving container logs before removal..."; \
 		$(CONTAINER_RUNTIME) logs $(LLAMA_STACK_CONTAINER_NAME) > /tmp/llama-stack-last-run.log 2>&1 || true; \
@@ -72,7 +72,7 @@ remove-llama-stack-container: ## Remove llama-stack container (saves logs first)
 		echo "✓ Container removed (logs saved to /tmp/llama-stack-last-run.log)"; \
 	fi
 
-start-llama-stack-container: build-llama-stack-image ## Start llama-stack container
+start-llama-stack-container: build-llama-stack-image ## Start OGX container
 	@echo "Starting llama-stack container..."
 	$(CONTAINER_RUNTIME) run -d \
 		--name $(LLAMA_STACK_CONTAINER_NAME) \
@@ -124,7 +124,7 @@ start-llama-stack-container: build-llama-stack-image ## Start llama-stack contai
 		$(LLAMA_STACK_IMAGE)
 	@$(MAKE) wait-for-llama-stack-health
 
-wait-for-llama-stack-health: ## Wait for llama-stack container to be healthy
+wait-for-llama-stack-health: ## Wait for OGX container to be healthy
 	@echo "Waiting for llama-stack container to be healthy..."
 	@for i in {1..30}; do \
 		STATUS=$$($(CONTAINER_RUNTIME) inspect --format='{{.State.Health.Status}}' $(LLAMA_STACK_CONTAINER_NAME) 2>/dev/null || echo "no-healthcheck"); \
@@ -146,7 +146,7 @@ clean-llama-stack: remove-llama-stack-container ## Remove container and image
 		$(CONTAINER_RUNTIME) rmi $(LLAMA_STACK_IMAGE); \
 	fi
 
-run-llama-stack: ## Start Llama Stack with enriched config (for local service mode)
+run-llama-stack: ## Start OGX with enriched config (for local service mode)
 	uv run src/llama_stack_configuration.py -c $(CONFIG) -i $(LLAMA_STACK_CONFIG) -o $(LLAMA_STACK_CONFIG) && \
 	uv run ogx stack run $(LLAMA_STACK_CONFIG)
 

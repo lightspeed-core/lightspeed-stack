@@ -1,4 +1,4 @@
-"""Check if the Llama Stack version is supported by the LCS."""
+"""Check if the OGX version is supported by the LCS."""
 
 import asyncio
 import re
@@ -19,7 +19,7 @@ logger = get_logger(__name__)
 
 
 class InvalidLlamaStackVersionException(Exception):
-    """Llama Stack version is not valid."""
+    """OGX version is not valid."""
 
 
 async def check_llama_stack_version(
@@ -28,21 +28,21 @@ async def check_llama_stack_version(
     retry_delay: int = DEFAULT_RETRY_DELAY,
 ) -> Optional[str]:
     """
-    Verify the connected Llama Stack's version is within the supported range.
+    Verify the connected OGX's version is within the supported range.
 
-    This coroutine fetches the Llama Stack version from the provided client
+    This coroutine fetches the OGX version from the provided client
     and validates it against the configured minimal and maximal supported
     versions. Connection attempts are retried with a fixed delay to handle
-    the case where Llama Stack is still starting up (e.g., when running as
+    the case where OGX is still starting up (e.g., when running as
     a sidecar in the same pod).
 
     Args:
-        client: The async Llama Stack client.
+        client: The async OGX client.
         max_retries: Maximum number of connection attempts before giving up.
         retry_delay: Delay in seconds between retry attempts.
 
     Raises:
-        APIConnectionError: If Llama Stack is unreachable after all retries.
+        APIConnectionError: If OGX is unreachable after all retries.
         InvalidLlamaStackVersionException: If the detected version is outside
         the supported range or cannot be parsed.
     """
@@ -62,7 +62,7 @@ async def check_llama_stack_version(
             if attempt == max_retries - 1:
                 raise
             logger.warning(
-                "Llama Stack not ready (attempt %d/%d), retrying in %ds...",
+                "OGX not ready (attempt %d/%d), retrying in %ds...",
                 attempt + 1,
                 max_retries,
                 retry_delay,
@@ -108,9 +108,9 @@ def compare_versions(version_info: str, minimal: str, maximal: str) -> None:
     try:
         current_version = Version.parse(normalized_version)
     except ValueError as e:
-        logger.warning("Failed to parse Llama Stack version '%s'.", version_info)
+        logger.warning("Failed to parse OGX version '%s'.", version_info)
         raise InvalidLlamaStackVersionException(
-            f"Failed to parse Llama Stack version '{version_info}'."
+            f"Failed to parse OGX version '{version_info}'."
         ) from e
 
     minimal_version = Version.parse(minimal)
@@ -121,10 +121,10 @@ def compare_versions(version_info: str, minimal: str, maximal: str) -> None:
 
     if current_version < minimal_version:
         raise InvalidLlamaStackVersionException(
-            f"Llama Stack version >= {minimal_version} is required, but {current_version} is used"
+            f"OGX version >= {minimal_version} is required, but {current_version} is used"
         )
     if current_version > maximal_version:
         raise InvalidLlamaStackVersionException(
-            f"Llama Stack version <= {maximal_version} is required, but {current_version} is used"
+            f"OGX version <= {maximal_version} is required, but {current_version} is used"
         )
-    logger.info("Correct Llama Stack version: %s", current_version)
+    logger.info("Correct OGX version: %s", current_version)

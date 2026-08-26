@@ -477,7 +477,7 @@ class TestRetrieveAgentResponse:
         mocker: MockerFixture,
         responses_params: ResponsesApiParams,
     ) -> None:
-        """Test Llama Stack connection errors are mapped to HTTPException."""
+        """Test OGX connection errors are mapped to HTTPException."""
         mock_agent = mocker.AsyncMock()
         mock_agent.run = mocker.AsyncMock(
             side_effect=APIConnectionError(request=mocker.Mock())

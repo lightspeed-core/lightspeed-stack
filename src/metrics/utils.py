@@ -14,7 +14,7 @@ async def setup_model_metrics() -> None:
     """Perform setup of all metrics related to LLM model and provider.
 
     Should be called during startup when service is in healthy mode.
-    Skipped in degraded mode to avoid blocking on unavailable llama-stack.
+    Skipped in degraded mode to avoid blocking on unavailable OGX.
     """
     logger.info("Setting up model metrics")
     check_configuration_loaded(configuration)

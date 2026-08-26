@@ -32,10 +32,10 @@ def create_argument_parser() -> ArgumentParser:
                       error_responses,common,agents,common_responses}
                       dump schemas for selected models group into OpenAPI-compatible file and quit
     - -c / --config: path to the configuration file (default "lightspeed-stack.yaml")
-    - -g / --generate-llama-stack-configuration: generate a Llama Stack
+    - -g / --generate-llama-stack-configuration: generate an OGX
                                                  configuration from the service configuration
-    - -i / --input-config-file: Llama Stack input configuration filename (default "run.yaml")
-    - -o / --output-config-file: Llama Stack output configuration filename (default "run_.yaml")
+    - -i / --input-config-file: OGX input configuration filename (default "run.yaml")
+    - -o / --output-config-file: OGX output configuration filename (default "run_.yaml")
 
     Returns:
         Configured ArgumentParser for parsing the service CLI options.
@@ -100,7 +100,7 @@ def create_argument_parser() -> ArgumentParser:
     parser.add_argument(
         "--synthesized-config-output",
         dest="synthesized_config_output",
-        help="path where the synthesized Llama Stack run.yaml is written in "
+        help="path where the synthesized OGX run.yaml is written in "
         "unified library mode (overwritten each boot, mode 0600; default: "
         f"{constants.DEFAULT_SYNTHESIZED_CONFIG_PATH})",
         default=None,
@@ -119,8 +119,8 @@ def create_argument_parser() -> ArgumentParser:
     parser.add_argument(
         "--run-yaml",
         dest="run_yaml",
-        help="path to the legacy Llama Stack run.yaml to migrate "
-        "(used with --migrate-config)",
+        help="path to the legacy OGX run.yaml "
+        "to migrate (used with --migrate-config)",
         default=None,
     )
     parser.add_argument(
@@ -154,7 +154,7 @@ def main() -> None:
       the quota scheduler, and starts the Uvicorn web service.
 
     Raises:
-        SystemExit: when configuration dumping or Llama Stack generation fails
+        SystemExit: when configuration dumping or OGX generation fails
                     (exits with status 1).
     """
     logger.info("Lightspeed Core Stack startup")
@@ -185,9 +185,7 @@ def main() -> None:
 
     configuration.load_configuration(args.config_file)
     logger.info("Configuration: %s", configuration.configuration)
-    logger.info(
-        "Llama Stack configuration: %s", configuration.llama_stack_configuration
-    )
+    logger.info("OGX configuration: %s", configuration.llama_stack_configuration)
 
     # Deprecation schedule (Decision S2): the legacy two-file path keeps
     # working through 0.6 with this single startup WARN and is removed in 0.7.

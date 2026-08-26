@@ -289,7 +289,7 @@ responses_response: dict[int | str, dict[str, Any]] = {
     429: QuotaExceededResponse.openapi_response(),
     500: InternalServerErrorResponse.openapi_response(examples=["configuration"]),
     503: ServiceUnavailableResponse.openapi_response(
-        examples=["ogx", "kubernetes api"]
+        examples=["OGX", "kubernetes api"]
     ),
 }
 
@@ -404,9 +404,9 @@ async def _append_previous_response_turn(
     context: ResponsesContext,
     output: Sequence[OpenAIResponseOutput],
 ) -> None:
-    """Append the completed turn when Llama Stack did not store it automatically.
+    """Append the completed turn when OGX did not store it automatically.
 
-    Llama Stack stores the turn itself only when the conversation parameter is
+    OGX stores the turn itself only when the conversation parameter is
     sent. Two cases bypass that and require an explicit append: continuing from
     a ``previous_response_id``, and conversation compaction (LCORE-1572), where
     the conversation parameter is dropped in favor of explicit input. In the
@@ -491,7 +491,7 @@ async def responses_endpoint_handler(
     Handle request to the /responses endpoint using Responses API (LCORE specification).
 
     Processes a POST request to the responses endpoint, forwarding the
-    user's request to a selected Llama Stack LLM and returning the generated response
+    user's request to a selected OGX LLM and returning the generated response
     following the LCORE OpenAPI specification.
 
     Returns:
@@ -1058,7 +1058,7 @@ def _populate_turn_summary(
     """Populate turn summary with metadata extracted from the final response object.
 
     Args:
-        response_object: The completed response object from Llama Stack
+        response_object: The completed response object from OGX
         api_params: ResponsesApiParams
         context: Responses context
         turn_summary: TurnSummary to populate
@@ -1100,7 +1100,7 @@ async def response_generator(
     """Generate SSE-formatted streaming response with LCORE-enriched events.
 
     Args:
-        stream: The streaming response from Llama Stack
+        stream: The streaming response from OGX
         original_request: Original request (read-only)
         api_params: ResponsesApiParams
         context: Responses context

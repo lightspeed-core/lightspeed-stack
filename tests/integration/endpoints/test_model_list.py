@@ -21,7 +21,7 @@ from models.api.requests import ModelFilter
 def mock_ogx_client_fixture(
     mocker: MockerFixture,
 ) -> Generator[Any, None, None]:
-    """Mock only the external Llama Stack client.
+    """Mock only the external OGX client.
 
     This is the only external dependency we mock for integration tests,
     as it represents an external service call.
@@ -32,7 +32,7 @@ def mock_ogx_client_fixture(
 
     Returns:
     -------
-        mock_client: The mocked Llama Stack client instance configured as described above.
+        mock_client: The mocked OGX client instance configured as described above.
     """
     # Patch in app.endpoints.models where it's actually used by models_endpoint_handler_base
     mock_holder_class = mocker.patch("app.endpoints.models.AsyncOgxClientHolder")
@@ -76,7 +76,7 @@ def mock_ogx_client_fixture(
 def mock_ogx_client_failing_fixture(
     mocker: MockerFixture,
 ) -> Generator[Any, None, None]:
-    """Mock only the external Llama Stack client.
+    """Mock only the external OGX client.
 
     This is the only external dependency we mock for integration tests,
     as it represents an external service call.
@@ -87,7 +87,7 @@ def mock_ogx_client_failing_fixture(
 
     Returns:
     -------
-        mock_client: The mocked Llama Stack client instance configured as described above.
+        mock_client: The mocked OGX client instance configured as described above.
     """
     # Patch in app.endpoints.models where it's actually used by models_endpoint_handler_base
     mock_holder_class = mocker.patch("app.endpoints.models.AsyncOgxClientHolder")
@@ -160,7 +160,7 @@ async def test_models_list_with_filter(
         test_case: Dictionary containing test parameters (filter_type,
             expected_count, expected_models)
         test_config: Test configuration
-        mock_ogx_client: Mocked Llama Stack client
+        mock_ogx_client: Mocked OGX client
         test_request: FastAPI request
         test_auth: noop authentication tuple
     """
@@ -198,12 +198,12 @@ async def test_models_list_on_api_connection_error(
 
     This integration test verifies:
     - Model list handler
-    - Error handling when Llama Stack is unreachable
+    - Error handling when OGX is unreachable
 
     Parameters:
     ----------
         test_config: Test configuration
-        mock_ogx_client_failing: Mocked Llama Stack client that raises APIConnectionError
+        mock_ogx_client_failing: Mocked OGX client that raises APIConnectionError
         test_request: FastAPI request
         test_auth: noop authentication tuple
     """

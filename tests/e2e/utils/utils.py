@@ -255,7 +255,7 @@ def wait_for_container_health(
 def wait_for_llama_stack_ready(
     max_attempts: Optional[int] = None,
 ) -> bool:
-    """Wait until the llama-stack container HEALTHCHECK reports healthy.
+    """Wait until the OGX container HEALTHCHECK reports healthy.
 
     Same soft-fail semantics as ``wait_for_container_health``. Prefer this over
     hand-rolled ``curl /v1/health`` loops (compose already probes that path).
@@ -439,9 +439,9 @@ def remove_config_backup(backup_path: str) -> None:
 
 
 def clear_llama_stack_storage(container_name: str = "lightspeed-stack") -> None:
-    """Clear Llama Stack storage in library mode (embedded Llama Stack).
+    """Clear OGX storage in library mode (embedded OGX).
 
-    Removes the ~/.llama directory so embedded Llama Stack persisted state is
+    Removes the ~/.llama directory so embedded OGX persisted state is
     reset. Used before MCP config scenarios in library mode.
     Only runs when using Docker (skipped in Prow).
 
@@ -465,7 +465,7 @@ def clear_llama_stack_storage(container_name: str = "lightspeed-stack") -> None:
             check=False,
         )
     except subprocess.TimeoutExpired as e:
-        print(f"Failed to clear Llama Stack storage: {e}")
+        print(f"Failed to clear OGX storage: {e}")
         raise
 
 
@@ -501,7 +501,7 @@ def restart_container(container_name: str) -> None:
         raise
 
     # Wait for container to be healthy.
-    # Library mode embeds llama-stack, so the container takes longer to start
+    # Library mode embeds OGX, so the container takes longer to start
     # (~45-60s vs ~10s in server mode). OpenTelemetry instrumentation adds
     # initialization overhead. Use a generous attempt count so MCP-auth scenarios
     # that restart the container don't time out.

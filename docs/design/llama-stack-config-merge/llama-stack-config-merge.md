@@ -1,4 +1,4 @@
-# Feature design: Llama Stack config merge (unified `lightspeed-stack.yaml`)
+# Feature design: OGX config merge (unified `lightspeed-stack.yaml`)
 
 |                    |                                                                                  |
 |--------------------|----------------------------------------------------------------------------------|
@@ -12,11 +12,11 @@
 ## What
 
 This feature collapses the two Lightspeed Core configuration files —
-`lightspeed-stack.yaml` (LCORE settings) and `run.yaml` (Llama Stack
+`lightspeed-stack.yaml` (LCORE settings) and `run.yaml` (OGX
 operational config) — into a single `lightspeed-stack.yaml`. At runtime,
-LCORE synthesizes a full Llama Stack `run.yaml` from high-level
+LCORE synthesizes a full OGX `run.yaml` from high-level
 operator-facing inputs (a top-level `inference.providers` list, plus a
-`llama_stack.config` sub-section) and hands it to Llama Stack (library
+`llama_stack.config` sub-section) and hands it to OGX (library
 client or subprocess, mode-dependent).
 
 Key shape:
@@ -28,7 +28,7 @@ Key shape:
   so they survive a future backend change (Decision S5 in the spike).
   Future high-level sections (`rag`, `safety`, …) stay under
   `llama_stack.config` until proven backend-agnostic.
-- `llama_stack.config.native_override` escape hatch — raw Llama Stack
+- `llama_stack.config.native_override` escape hatch — raw OGX
   schema, deep-merged with list replacement. Covers anything the
   high-level sections don't express.
 - `llama_stack.config.profile` — path to a user-authored YAML that serves
@@ -46,7 +46,7 @@ Key shape:
 
 Two-file configuration multiplies the surface area for misconfiguration
 and forces every downstream Lightspeed team (RHOAI, Konflux pipelines,
-any product integrating LCORE) to understand Llama Stack's full internal
+any product integrating LCORE) to understand OGX's full internal
 schema. A single source of truth:
 
 - Reduces the number of artifacts deployment tooling must manage
@@ -77,7 +77,7 @@ detail that LCORE owns, not an operator-facing artifact.
   migration tool.
 - **R4:** `lightspeed-stack --migrate-config --run-yaml X -c Y
   --migrate-output Z` produces a unified configuration from the legacy
-  two-file pair. Running the migrated file drives Llama Stack to
+  two-file pair. Running the migrated file drives OGX to
   byte-identical behavior as the original pair (dumb-mode lossless
   round-trip).
 - **R5:** When `llama_stack.config.native_override` overlaps a key set
@@ -123,7 +123,7 @@ detail that LCORE owns, not an operator-facing artifact.
 
 - **U1:** As an operator setting up LCORE for the first time, I want to
   write one config file with high-level provider choices (OpenAI, Azure,
-  …) so that I don't have to learn Llama Stack's internal schema.
+  …) so that I don't have to learn OGX's internal schema.
 - **U2:** As a downstream team maintainer with an existing heavily
   customized `run.yaml`, I want a mechanical one-shot migration so that
   I can move to the unified format without re-expressing my edge cases.
@@ -185,7 +185,7 @@ lightspeed-stack.yaml (unified mode)
   Write to deterministic path.       Written by LS container's entrypoint
   AsyncOGXAsLibraryClient     script (same synthesizer, same CLI,
   reads the path and initializes.    auto-detects unified via Python).
-                                     `llama stack run <path>` starts LS.
+                                     `llama stack run <path>` starts OGX.
                                      LCORE connects by URL.
 ```
 
@@ -196,7 +196,7 @@ non-empty top-level `inference.providers`, or a `llama_stack.config`
 block), the synthesizer produces a `run.yaml` dict, writes it to disk,
 and passes the path to the library client.
 
-At Llama Stack container startup (server mode): the container's
+At OGX container startup (server mode): the container's
 entrypoint script invokes
 `python3 /opt/app-root/llama_stack_configuration.py -c <lightspeed-stack.yaml>
 -o /opt/app-root/run.yaml`. The Python CLI auto-detects unified vs legacy
@@ -232,11 +232,11 @@ defaults), so the unified signal is `inference.providers` being
 No persistent storage is added. The synthesized `run.yaml` is written
 once per boot to a deterministic path; not a database. `src/data/
 default_run.yaml` is a new package-shipped file, the built-in baseline
-Llama Stack configuration. Its `remote::openai` inference provider uses
-Llama Stack's `${env.OPENAI_API_KEY:+openai}` / `${env.OPENAI_API_KEY:=}`
+OGX configuration. Its `remote::openai` inference provider uses
+OGX's `${env.OPENAI_API_KEY:+openai}` / `${env.OPENAI_API_KEY:=}`
 conditional-provider idiom, so the built-in baseline contributes openai
 only when `OPENAI_API_KEY` is set. Synthesis leaves those refs
-unevaluated (R6); Llama Stack resolves them at boot. With the key unset
+unevaluated (R6); OGX resolves them at boot. With the key unset
 or empty the provider is disabled (`provider_id` becomes `None`) and
 the stack loads without `EnvVarError`. With the key set, the resolved
 config matches the previous unconditional openai provider.
@@ -269,7 +269,7 @@ llama_stack:
     baseline: default              # default | byo-llm | empty; ignored if `profile` is set
     profile: ./my-profile.yaml     # optional; resolves relative to lightspeed-stack.yaml
 
-    # Escape hatch — raw Llama Stack schema, deep-merged with list replacement
+    # Escape hatch — raw OGX schema, deep-merged with list replacement
     native_override:
       safety:
         excluded_categories: [spam]
@@ -376,7 +376,7 @@ removed `-g/-i/-o` flags is cleaned up as part of the docs JIRA.
   allowed types. Escape: use `native_override`.
 - **Unknown fields in any unified-mode section**: rejected by
   `extra="forbid"` on `ConfigurationBase`.
-- **Llama Stack rejects the synthesized `run.yaml`**: surfaces as
+- **OGX rejects the synthesized `run.yaml`**: surfaces as
   whatever LS itself raises (ValidationError from LS's own config
   parsing). The implementation JIRA should log the synthesized file path
   before handing to LS so operators can inspect what failed.
@@ -539,13 +539,13 @@ reference.
 - **LS process supervision** (restart on crash, signal propagation,
   merged logs) — covered by LCORE-777 / LCORE-778, not this feature.
 - **Dynamic reconfig / hot-reload** (live `POST /v1/rag` that adds a BYOK
-  RAG without restart) — covered by LCORE-781, not this feature. Llama
-  Stack's lack of native hot-reload means any implementation requires
+  RAG without restart) — covered by LCORE-781, not this feature. OGX's
+  lack of native hot-reload means any implementation requires
   supervised restart, which is out of scope here.
 - **`config_format_version`** as an explicit schema version, accepted
   but not required. Will become load-bearing the first time the unified
   schema undergoes a real breaking change.
-- **Validation pre-flight against the Llama Stack schema**: today LCORE
+- **Validation pre-flight against the OGX schema**: today LCORE
   only validates its own schema; LS validates its own at startup.
   Introducing a pre-flight validator would catch bad synthesis earlier
   but creates a heavy dependency on LS internals.
@@ -626,7 +626,7 @@ high-level sections) is optional and per-deployment.
 
 ```yaml
 # examples/profiles/openai-remote.yaml
-# A minimal profile for an OpenAI-backed remote Llama Stack.
+# A minimal profile for an OpenAI-backed remote OGX.
 # Referenced via `llama_stack.config.profile: examples/profiles/openai-remote.yaml`.
 version: 2
 apis: [agents, inference, safety, tool_runtime, vector_io]

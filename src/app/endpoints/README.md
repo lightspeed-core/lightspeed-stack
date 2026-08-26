@@ -58,7 +58,7 @@ Handler for REST API call to list available models.
 
 ## [prompts.py](prompts.py)
 
-Handler for REST API calls to manage Llama Stack stored prompt templates.
+Handler for REST API calls to manage OGX stored prompt templates.
 
 ## [providers.py](providers.py)
 
