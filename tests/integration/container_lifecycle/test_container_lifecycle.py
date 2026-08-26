@@ -94,9 +94,9 @@ class TestContainerLifecycle:
         build_image_result = _run_container_command(
             ["make", "build-ogx-image"], timeout=300
         )
-        assert build_image_result.returncode == 0, (
-            f"Build failed: {build_image_result.stderr}"
-        )
+        assert (
+            build_image_result.returncode == 0
+        ), f"Build failed: {build_image_result.stderr}"
 
         # Verify image is listed with correct tag
         query_image_result = _run_container_command(
@@ -104,9 +104,9 @@ class TestContainerLifecycle:
         )
 
         assert query_image_result.returncode == 0, "Failed to list images"
-        assert "lightspeed-ogx" in query_image_result.stdout, (
-            "Image not found in image list"
-        )
+        assert (
+            "lightspeed-ogx" in query_image_result.stdout
+        ), "Image not found in image list"
 
         # Spawn container
         build_container_result = _run_container_command(
@@ -118,9 +118,9 @@ class TestContainerLifecycle:
         )
 
         # Showing stdout is helpful here because it contains those echo messages coming from our makefile
-        assert build_container_result.returncode == 0, (
-            f"Container start failed:\nstdout: {build_container_result.stdout}\nstderr: {build_container_result.stderr}"
-        )
+        assert (
+            build_container_result.returncode == 0
+        ), f"Container start failed:\nstdout: {build_container_result.stdout}\nstderr: {build_container_result.stderr}"
 
         # Verify the container is healthy
         attempts_left = NETWORK_BINDING_MAX_ATTEMPTS
@@ -129,13 +129,13 @@ class TestContainerLifecycle:
             attempts_left -= 1
             try:
                 response = requests.get(HEALTH_ENDPOINT, timeout=30)
-                assert response.status_code == 200, (
-                    f"Health endpoint returned status {response.status_code}"
-                )
+                assert (
+                    response.status_code == 200
+                ), f"Health endpoint returned status {response.status_code}"
                 body = response.json()
-                assert body.get("status") == "OK", (
-                    'Health response missing "status" field or its value is not "OK"'
-                )
+                assert (
+                    body.get("status") == "OK"
+                ), 'Health response missing "status" field or its value is not "OK"'
 
                 passed = True
                 break
@@ -161,9 +161,9 @@ class TestContainerLifecycle:
                     file,
                 ]
             )
-            assert search_result.returncode == 0, (
-                f"Required mount missing or not a file: {file}"
-            )
+            assert (
+                search_result.returncode == 0
+            ), f"Required mount missing or not a file: {file}"
 
         remove_container_result = _run_container_command(
             [
@@ -171,17 +171,17 @@ class TestContainerLifecycle:
                 "remove-ogx-container",
             ],
         )
-        assert remove_container_result.returncode == 0, (
-            "Failed to remove the OGX container"
-        )
+        assert (
+            remove_container_result.returncode == 0
+        ), "Failed to remove the OGX container"
 
         # Verify log file was created and is not empty
-        assert os.path.exists(OGX_CONTAINER_LOG), (
-            f"Container logs were not written to {OGX_CONTAINER_LOG}"
-        )
-        assert os.path.getsize(OGX_CONTAINER_LOG) > 0, (
-            "Log file was created but is empty"
-        )
+        assert os.path.exists(
+            OGX_CONTAINER_LOG
+        ), f"Container logs were not written to {OGX_CONTAINER_LOG}"
+        assert (
+            os.path.getsize(OGX_CONTAINER_LOG) > 0
+        ), "Log file was created but is empty"
 
         # Remove the OGX image
         clean_result = _run_container_command(
@@ -190,6 +190,6 @@ class TestContainerLifecycle:
                 "clean-ogx",
             ],
         )
-        assert clean_result.returncode == 0, (
-            f"Clean target failed: {clean_result.stderr}"
-        )
+        assert (
+            clean_result.returncode == 0
+        ), f"Clean target failed: {clean_result.stderr}"
