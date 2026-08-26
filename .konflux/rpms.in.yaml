@@ -10,7 +10,8 @@ packages:
 upgradePackages:
   [
     libxslt,
-    libgcrypt,
+    libarchive,
+    python3-urllib3,
   ]
 contentOrigin:
   repofiles: ["./redhat.repo"]
