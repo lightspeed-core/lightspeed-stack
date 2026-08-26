@@ -44,7 +44,7 @@ get_readiness_responses: dict[int | str, dict[str, Any]] = {
     401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
     503: ServiceUnavailableResponse.openapi_response(
-        examples=["ogx", "kubernetes api"]
+        examples=["OGX", "kubernetes api"]
     ),
 }
 
@@ -250,7 +250,7 @@ async def liveness_probe_get_method(
     - HTTPException: with status 500 and a detail object containing `response`
       and `cause` when service configuration is wrong or incomplete.
     - HTTPException: with status 503 and a detail object containing `response`
-      and `cause` when unable to connect to Llama Stack.
+      and `cause` when unable to connect to OGX.
 
     ### Returns:
     - LivenessResponse: Indicates that the service is alive.

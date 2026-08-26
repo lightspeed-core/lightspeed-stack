@@ -1,4 +1,4 @@
-"""Integration tests for Llama Stack container lifecycle management.
+"""Integration tests for OGX container lifecycle management.
 
 Tests verify build, startup, health monitoring, configuration, and teardown.
 """
@@ -29,7 +29,7 @@ Tests verify build, startup, health monitoring, configuration, and teardown.
 # HEALTH_CHECK_MAX_ATTEMPTS = 30
 # NETWORK_BINDING_MAX_ATTEMPTS = 5
 
-# DEFAULT_LIGHTSPEED_LLAMA_STACK_IMAGE_NAME = "lightspeed-llama-stack:local"
+# DEFAULT_LIGHTSPEED_LLAMA_STACK_IMAGE_NAME = "lightspeed-OGX:local"
 
 
 # @pytest.fixture(scope="session")
@@ -103,7 +103,7 @@ Tests verify build, startup, health monitoring, configuration, and teardown.
 #     ------
 #         str: Test container name.
 #     """
-#     container_name = "test-llama-stack-integration"
+#     container_name = "test-OGX-integration"
 
 #     # Pre-cleanup
 #     subprocess.run(
@@ -164,7 +164,7 @@ Tests verify build, startup, health monitoring, configuration, and teardown.
 #         return result.stdout.strip()
 
 #     def test_build_llama_stack_image(self, container_runtime: str) -> None:
-#         """Test that llama-stack image builds successfully and exists.
+#         """Test that OGX image builds successfully and exists.
 
 #         Parameters
 #         ----------
@@ -191,7 +191,7 @@ Tests verify build, startup, health monitoring, configuration, and teardown.
 #         )
 #         assert result.returncode == 0, "Failed to list images"
 #         assert (
-#             "lightspeed-llama-stack" in result.stdout
+#             "lightspeed-OGX" in result.stdout
 #         ), "Image not found in image list"
 
 #     def test_build_is_idempotent_via_image_id(self, container_runtime: str) -> None:
@@ -374,7 +374,7 @@ Tests verify build, startup, health monitoring, configuration, and teardown.
 #         ----------
 #             container_runtime (str): Container runtime to use.
 #         """
-#         container_name = "test-llama-stack-custom-port"
+#         container_name = "test-OGX-custom-port"
 #         custom_port = "9321"
 
 #         try:
@@ -418,7 +418,7 @@ Tests verify build, startup, health monitoring, configuration, and teardown.
 #         ----------
 #             container_runtime (str): Container runtime to use.
 #         """
-#         container_name = "test-llama-stack-teardown"
+#         container_name = "test-OGX-teardown"
 
 #         try:
 #             # Start container
@@ -479,10 +479,10 @@ Tests verify build, startup, health monitoring, configuration, and teardown.
 #         ----------
 #             container_runtime (str): Container runtime to use.
 #         """
-#         container_name = "test-llama-stack-log-save"
+#         container_name = "test-OGX-log-save"
 
 #         # Clear stale log file to prevent false positives
-#         target_log = "/tmp/llama-stack-last-run.log"
+#         target_log = "/tmp/OGX-last-run.log"
 #         if os.path.exists(target_log):
 #             os.remove(target_log)
 
@@ -539,7 +539,7 @@ Tests verify build, startup, health monitoring, configuration, and teardown.
 #             Marked as destructive and ordered last. Skip locally with:
 #             pytest -m "not destructive"
 #         """
-#         container_name = "test-llama-stack-clean"
+#         container_name = "test-OGX-clean"
 
 #         # Ensure image exists
 #         subprocess.run(
@@ -610,7 +610,7 @@ Tests verify build, startup, health monitoring, configuration, and teardown.
 #         ----------
 #             container_runtime (str): Container runtime to use.
 #         """
-#         container_name = "test-llama-stack-double-start"
+#         container_name = "test-OGX-double-start"
 
 #         try:
 #             # First start

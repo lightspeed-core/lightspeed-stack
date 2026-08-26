@@ -21,7 +21,7 @@ CONV = "conv_abc123"
 
 
 def _msg(role: str, text: str) -> OpenAIResponseMessage:
-    """Build a typed Llama Stack message item for tests."""
+    """Build a typed OGX message item for tests."""
     return OpenAIResponseMessage(role=cast(Any, role), content=text)
 
 

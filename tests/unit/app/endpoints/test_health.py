@@ -205,7 +205,7 @@ class TestGetProvidersHealthStatuses:
         Verify get_providers_health_statuses returns a ProviderHealthStatus
         entry for each provider reported by the client.
 
-        Mocks an AsyncLlamaStack client whose providers.list() returns three
+        Mocks an OGX client whose providers.list() returns three
         providers with distinct health dicts, then asserts the function
         produces three results with:
         - provider1: status OK, message "All good"
@@ -379,7 +379,7 @@ class TestReadinessDegradedMode:  # pylint: disable=too-few-public-methods
         mock_instance = mock_tracker.return_value
         mock_instance.is_degraded.return_value = True
         mock_instance.get_degraded_reason.return_value = (
-            "Failed to connect to Llama Stack: Connection error"
+            "Failed to connect to OGX: Connection error"
         )
 
         mock_response = mocker.Mock()

@@ -379,7 +379,7 @@ Use `async def` for I/O operations and external API calls
 #### Error handling
 
 - Use FastAPI `HTTPException` with appropriate status codes for API endpoints
-- Handle `APIConnectionError` from Llama Stack where appropriate
+- Handle `APIConnectionError` from OGX where appropriate
 
 ### Formatting rules
 

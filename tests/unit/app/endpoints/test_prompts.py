@@ -23,7 +23,7 @@ from tests.unit.utils.auth_helpers import mock_authorization_resolvers
 
 MOCK_AUTH: AuthTuple = ("mock_user_id", "mock_username", False, "mock_token")
 
-# Valid ``pmpt_`` + 48 hex digits (matches ``check_suid_prompt`` / Llama Stack).
+# Valid ``pmpt_`` + 48 hex digits (matches ``check_suid_prompt`` / OGX).
 VALID_PMPT_ID = "pmpt_5c76d7f7c633ef97477adeb2f642150d8d08e8a6526e9909"
 VALID_PMPT_ID_B = "pmpt_111111111111111111111111111111111111111111111111"
 VALID_PMPT_ID_NOT_FOUND = "pmpt_ffffffffffffffffffffffffffffffffffffffffffffffff"
@@ -37,7 +37,7 @@ def _sample_prompt(
     prompt: Optional[str] = "hello",
     variables: Optional[list[str]] = None,
 ) -> Prompt:
-    """Build a Llama Stack SDK Prompt for test return values."""
+    """Build an OGX SDK Prompt for test return values."""
     return Prompt(
         prompt_id=prompt_id,
         version=version,
@@ -69,7 +69,7 @@ def prompts_client_mocks_fixture(
     mocker: MockerFixture,
     minimal_config: AppConfig,
 ) -> tuple[Any, Any]:
-    """Patch loaded configuration and mocked Llama Stack client with ``.prompts`` API."""
+    """Patch loaded configuration and mocked OGX client with ``.prompts`` API."""
     mocker.patch("app.endpoints.prompts.configuration", minimal_config)
     mock_prompts = mocker.AsyncMock()
     mock_client = mocker.AsyncMock()
@@ -213,7 +213,7 @@ async def test_delete_prompt_not_found_returns_body(
     prompts_http_request: Request,
     mocker: MockerFixture,
 ) -> None:
-    """delete_prompt returns deleted=False on Llama Stack BadRequestError (v2 style)."""
+    """delete_prompt returns deleted=False on OGX BadRequestError (v2 style)."""
     _, mock_prompts = prompts_client_mocks
     mock_response = mocker.Mock()
     mock_response.request = mocker.Mock()
@@ -275,7 +275,7 @@ async def test_get_prompt_bad_request_maps_to_404(
     prompts_http_request: Request,
     mocker: MockerFixture,
 ) -> None:
-    """get_prompt maps Llama Stack BadRequestError to 404 NotFoundResponse."""
+    """get_prompt maps OGX BadRequestError to 404 NotFoundResponse."""
     _, mock_prompts = prompts_client_mocks
     mock_response = mocker.Mock()
     mock_response.request = mocker.Mock()
@@ -305,7 +305,7 @@ async def test_update_prompt_bad_request_maps_to_404(
     prompts_http_request: Request,
     mocker: MockerFixture,
 ) -> None:
-    """update_prompt maps Llama Stack BadRequestError to 404 NotFoundResponse."""
+    """update_prompt maps OGX BadRequestError to 404 NotFoundResponse."""
     _, mock_prompts = prompts_client_mocks
     mock_response = mocker.Mock()
     mock_response.request = mocker.Mock()

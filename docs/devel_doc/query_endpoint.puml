@@ -3,7 +3,7 @@
 participant Client
 participant Endpoint as "Query Endpoint handler"
 participant Auth
-participant LlamaStack as "Llama Stack Client"
+participant OGX as "OGX Client"
 participant Cache as Cache
 
 Client->>Endpoint: POST /query + attachments
@@ -14,11 +14,11 @@ Auth-->>Endpoint: Config valid, tokens available
 Endpoint->>DB: Retrieve user conversation (optional)
 DB-->>Endpoint: UserConversation or None
 Endpoint->>Endpoint: Select model/provider from hints/config
-Endpoint->>LlamaStack: Get model capabilities
-LlamaStack-->>Endpoint: Capabilities response
+Endpoint->>OGX: Get model capabilities
+OGX-->>Endpoint: Capabilities response
 Endpoint->>Endpoint: Build system prompt, toolgroups, MCP headers
-Endpoint->>LlamaStack: Create turn (agent interaction)
-LlamaStack-->>Endpoint: Turn response + tool calls + RAG chunks
+Endpoint->>OGX: Create turn (agent interaction)
+OGX-->>Endpoint: Turn response + tool calls + RAG chunks
 Endpoint->>Endpoint: Parse metadata & referenced documents
 Endpoint->>Endpoint: Transform to QueryResponse
 Endpoint->>DB: Persist conversation metadata (model, topic, count)
@@ -26,7 +26,7 @@ Endpoint->>Cache: Store conversation with timing metadata
 Endpoint-->>Client: Return QueryResponse + token metrics
 
 alt Connection Error
-    LlamaStack-->>Endpoint: APIConnectionError
+    OGX-->>Endpoint: APIConnectionError
     Endpoint-->>Client: HTTP 500
 end
 

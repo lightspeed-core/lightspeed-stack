@@ -10,7 +10,7 @@ Context objects for the responses endpoint pipeline and streaming query generato
 
 ## [responses_api_params.py](responses_api_params.py)
 
-Request parameter model for Llama Stack responses API calls.
+Request parameter model for OGX responses API calls.
 
 ## [responses_conversation_context.py](responses_conversation_context.py)
 

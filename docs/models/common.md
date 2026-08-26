@@ -891,7 +891,7 @@ Metadata for a transcript entry.
 ## TurnSummary
 
 
-Summary of a turn in llama stack.
+Summary of a turn in OGX.
 
 
 | Field | Type | Description |

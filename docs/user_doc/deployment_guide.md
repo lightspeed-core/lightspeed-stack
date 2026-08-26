@@ -4,44 +4,44 @@
 
 * [Preface](#preface)
 * [Deployment methods](#deployment-methods)
-* [Integration with Llama Stack framework](#integration-with-llama-stack-framework)
-    * [Llama Stack as a library](#llama-stack-as-a-library)
-    * [Llama Stack as a server](#llama-stack-as-a-server)
+* [Integration with OGX framework](#integration-with-ogx-framework)
+    * [OGX as a library](#ogx-as-a-library)
+    * [OGX as a server](#ogx-as-a-server)
 * [Local deployment](#local-deployment)
-    * [Llama Stack used as a separate process](#llama-stack-used-as-a-separate-process)
+    * [OGX used as a separate process](#ogx-used-as-a-separate-process)
         * [Prerequisites](#prerequisites)
         * [Installation of all required tools](#installation-of-all-required-tools)
-        * [Installing dependencies for Llama Stack](#installing-dependencies-for-llama-stack)
-        * [Check if Llama Stack can be started](#check-if-llama-stack-can-be-started)
-        * [Llama Stack configuration](#llama-stack-configuration)
-        * [Run Llama Stack in a separate process](#run-llama-stack-in-a-separate-process)
-        * [LCS configuration to connect to Llama Stack running in separate process](#lcs-configuration-to-connect-to-llama-stack-running-in-separate-process)
+        * [Installing dependencies for OGX](#installing-dependencies-for-ogx)
+        * [Check if OGX can be started](#check-if-ogx-can-be-started)
+        * [OGX configuration](#ogx-configuration)
+        * [Run OGX in a separate process](#run-ogx-in-a-separate-process)
+        * [LCS configuration to connect to OGX running in separate process](#lcs-configuration-to-connect-to-ogx-running-in-separate-process)
         * [Start LCS](#start-lcs)
         * [Check if service runs](#check-if-service-runs)
-    * [Llama Stack used as a library](#llama-stack-used-as-a-library)
+    * [OGX used as a library](#ogx-used-as-a-library)
         * [Prerequisites](#prerequisites-1)
         * [Installation of all required tools](#installation-of-all-required-tools-1)
-        * [Installing dependencies for Llama Stack](#installing-dependencies-for-llama-stack-1)
-        * [Llama Stack configuration](#llama-stack-configuration-1)
-        * [LCS configuration to use Llama Stack in library mode](#lcs-configuration-to-use-llama-stack-in-library-mode)
+        * [Installing dependencies for OGX](#installing-dependencies-for-ogx-1)
+        * [OGX configuration](#ogx-configuration-1)
+        * [LCS configuration to use OGX in library mode](#lcs-configuration-to-use-ogx-in-library-mode)
         * [Start LCS](#start-lcs-1)
         * [Check if service runs](#check-if-service-runs-1)
 * [Running from container](#running-from-container)
     * [Retrieving *Lightspeed Core Stack* image](#retrieving-lightspeed-core-stack-image)
         * [Prerequisites](#prerequisites-2)
         * [Retrieve the image](#retrieve-the-image)
-    * [Llama Stack used as a separate process](#llama-stack-used-as-a-separate-process-1)
+    * [OGX used as a separate process](#ogx-used-as-a-separate-process-1)
         * [Prerequisites](#prerequisites-3)
         * [Installation of all required tools](#installation-of-all-required-tools-2)
-        * [Installing dependencies for Llama Stack](#installing-dependencies-for-llama-stack-2)
-        * [Check if Llama Stack can be started](#check-if-llama-stack-can-be-started-1)
-        * [Llama Stack configuration](#llama-stack-configuration-2)
-        * [Run Llama Stack in a separate process](#run-llama-stack-in-a-separate-process-1)
-        * [*Lightspeed Core Stack* configuration to connect to Llama Stack running in separate process](#lightspeed-core-stack-configuration-to-connect-to-llama-stack-running-in-separate-process)
+        * [Installing dependencies for OGX](#installing-dependencies-for-ogx-2)
+        * [Check if OGX can be started](#check-if-ogx-can-be-started-1)
+        * [OGX configuration](#ogx-configuration-2)
+        * [Run OGX in a separate process](#run-ogx-in-a-separate-process-1)
+        * [*Lightspeed Core Stack* configuration to connect to OGX running in separate process](#lightspeed-core-stack-configuration-to-connect-to-ogx-running-in-separate-process)
         * [Start *Lightspeed Core Stack* from within a container](#start-lightspeed-core-stack-from-within-a-container)
-    * [Llama Stack used as a library](#llama-stack-used-as-a-library-1)
+    * [OGX used as a library](#ogx-used-as-a-library-1)
         * [OpenAI key](#openai-key)
-        * [Llama Stack configuration](#llama-stack-configuration-3)
+        * [OGX configuration](#ogx-configuration-3)
     * [LCS configuration](#lcs-configuration)
     * [Start *Lightspeed Core Service* from a container](#start-lightspeed-core-service-from-a-container)
 * [Usage](#usage)
@@ -66,14 +66,14 @@ In this document, you will learn how to install and run a service called *Lights
 
 ## Deployment methods
 
-*Lightspeed Core Stack (LCS)* is built on the Llama Stack framework, which can be run in several modes. Additionally, it is possible to run *LCS* locally (as a regular Python application) or from within a container. This means that it is possible to leverage multiple deployment methods:
+*Lightspeed Core Stack (LCS)* is built on the OGX framework, which can be run in several modes. Additionally, it is possible to run *LCS* locally (as a regular Python application) or from within a container. This means that it is possible to leverage multiple deployment methods:
 
 - Local deployment
-    - Llama Stack framework is used as a library
-    - Llama Stack framework is used as a separate process (deployed locally)
+    - OGX framework is used as a library
+    - OGX framework is used as a separate process (deployed locally)
 - Running from a container
-    - Llama Stack framework is used as a library
-    - Llama Stack framework is used as a separate process
+    - OGX framework is used as a library
+    - OGX framework is used as a separate process
 
 All those deployments methods will be covered later.
 
@@ -82,10 +82,10 @@ All those deployments methods will be covered later.
 ## Configuration modes
 
 *LCS* reads one operator-facing file: `lightspeed-stack.yaml`. There are two
-ways it can drive the underlying Llama Stack:
+ways it can drive the underlying OGX:
 
 1. **Unified mode (recommended).** The single `lightspeed-stack.yaml` is the
-   only configuration file you maintain. LCORE *synthesizes* the Llama Stack
+   only configuration file you maintain. LCORE *synthesizes* the OGX
    `run.yaml` from it at startup — from a built-in default baseline, an
    optional [profile](#profiles) you author, the high-level
    `inference.providers` section, and a raw `native_override` escape hatch.
@@ -102,20 +102,20 @@ present.
 
 
 
-## Integration with Llama Stack framework
+## Integration with OGX framework
 
-The Llama Stack framework can be run as a standalone server and accessed via its the REST API. However, instead of direct communication via the REST API (and JSON format), there is an even better alternative. It is based on the so-called Llama Stack Client. It is a library available for Python, Swift, Node.js or Kotlin, which "wraps" the REST API stack in a suitable way, which is easier for many applications.
+The OGX framework can be run as a standalone server and accessed via its the REST API. However, instead of direct communication via the REST API (and JSON format), there is an even better alternative. It is based on the so-called OGX Client. It is a library available for Python, Swift, Node.js or Kotlin, which "wraps" the REST API stack in a suitable way, which is easier for many applications.
 
 
 
-### Llama Stack as a library
+### OGX as a library
 
-When this mode is selected, Llama Stack is used as a regular Python library. This means that the library must be installed in the system Python environment, a user-level environment, or a virtual environment. All calls to Llama Stack are performed via standard function or method calls:
+When this mode is selected, OGX is used as a regular Python library. This means that the library must be installed in the system Python environment, a user-level environment, or a virtual environment. All calls to OGX are performed via standard function or method calls:
 
-![Llama Stack as library](./llama_stack_as_library.svg)
+![OGX as library](./llama_stack_as_library.svg)
 
 > [!NOTE]
-> Even when Llama Stack is used as a library, it still requires a `run.yaml`
+> Even when OGX is used as a library, it still requires a `run.yaml`
 > configuration during the initialization phase. In unified mode (the
 > recommended default) LCORE synthesizes that file for you from
 > `lightspeed-stack.yaml`; only the deprecated legacy mode requires you to
@@ -125,13 +125,12 @@ When this mode is selected, Llama Stack is used as a regular Python library. Thi
 
 ### Profiles
 
-In unified mode (where LCORE synthesizes the Llama Stack `run.yaml` from
+In unified mode (where LCORE synthesizes the OGX `run.yaml` from
 `lightspeed-stack.yaml` instead of reading an external file), the synthesis
 starts from a *baseline*. By default that is LCORE's built-in baseline; a
 **profile** replaces it with a file you author.
 
-A profile is an ordinary `run.yaml`-shaped YAML file — the same schema Llama
-Stack reads natively. Everything else in the unified pipeline (enrichment,
+A profile is an ordinary `run.yaml`-shaped YAML file — the same schema OGX reads natively. Everything else in the unified pipeline (enrichment,
 the high-level `inference.providers` section, ensuring the MCP tool_runtime
 provider, then `native_override`) is applied *on top* of the profile, in that
 order. The MCP ensure adds `provider_id: model-context-protocol` when missing
@@ -149,7 +148,7 @@ for `baseline: empty` (use `native_override` there if you need MCP).
   high-level `inference.providers` section.
 
 Keep secrets out of the file: write `${env.MY_KEY}` environment references,
-which Llama Stack resolves at startup.
+which OGX resolves at startup.
 
 **Referencing a profile.** Point `llama_stack.config.profile` at the file:
 
@@ -176,11 +175,11 @@ synthesizer evolves.
 
 
 
-### Llama Stack as a server
+### OGX as a server
 
-When this mode is selected, Llama Stack is started as a separate REST API service. All communication with Llama Stack is performed via REST API calls, which means that Llama Stack can run on a separate machine if needed.
+When this mode is selected, OGX is started as a separate REST API service. All communication with OGX is performed via REST API calls, which means that OGX can run on a separate machine if needed.
 
-![Llama Stack as service](./llama_stack_as_service.svg)
+![OGX as service](./llama_stack_as_service.svg)
 
 > [!NOTE]
 > The REST API schema and semantics can change at any time, especially before version 1.0.0 is released. By using *Lightspeed Core Service*, developers, users, and customers stay isolated from these incompatibilities.
@@ -194,7 +193,7 @@ Three migration paths, per deployment:
 | Path | Effort | Result |
 |---|---|---|
 | Do nothing | none | Legacy keeps working until removal in 0.7 (with a startup deprecation warning) |
-| Lift-and-shift | seconds — `--migrate-config` | Single file, byte-equivalent Llama Stack behavior |
+| Lift-and-shift | seconds — `--migrate-config` | Single file, byte-equivalent OGX behavior |
 | Re-express | hours+ | Single file; high-level sections and/or a profile replace the lifted `run.yaml` |
 
 ### Step-by-step: lift-and-shift with `--migrate-config`
@@ -243,7 +242,7 @@ llama_stack:
 
 4. Swap the file in (`mv lightspeed-stack-unified.yaml
    lightspeed-stack.yaml`), delete the now-unused external `run.yaml`
-   mount/copy, and restart. Llama Stack behavior is identical: synthesis
+   mount/copy, and restart. OGX behavior is identical: synthesis
    starts from an empty baseline and deep-merges only your lifted
    `run.yaml`.
 
@@ -265,11 +264,11 @@ In this chapter it will be shown how to run LCS locally. This mode is especially
 
 
 
-### Llama Stack used as a separate process
+### OGX used as a separate process
 
-The easiest option is to run Llama Stack in a separate process. This means that there will at least be two running processes involved:
+The easiest option is to run OGX in a separate process. This means that there will at least be two running processes involved:
 
-1. Llama Stack framework with open port 8321 (can be easily changed if needed)
+1. OGX framework with open port 8321 (can be easily changed if needed)
 1. LCS with open port 8080 (can be easily changed if needed)
 
 
@@ -285,7 +284,7 @@ The easiest option is to run Llama Stack in a separate process. This means that 
 1. `pip install --user uv`
 1. `sudo dnf install curl jq`
 
-#### Installing dependencies for Llama Stack
+#### Installing dependencies for OGX
 
 
 1. Create a new directory outside of the lightspeed-stack project directory
@@ -297,7 +296,7 @@ The easiest option is to run Llama Stack in a separate process. This means that 
     cp examples/pyproject.llamastack.toml /tmp/llama-stack-server/pyproject.toml
     ```
 
-1. Run the following command to install all llama-stack dependencies in a new venv located in your new directory:
+1. Run the following command to install all OGX dependencies in a new venv located in your new directory:
 
     ```bash
     cd /tmp/llama-stack-server
@@ -335,17 +334,17 @@ The easiest option is to run Llama Stack in a separate process. This means that 
 
 
 
-#### Check if Llama Stack can be started
+#### Check if OGX can be started
 
-1. In the next step, we need to verify that it is possible to run a tool called `llama`. It was installed into a Python virtual environment and therefore we have to run it via `uv run` command:
+1. In the next step, we need to verify that it is possible to run a tool called `ogx`. It was installed into a Python virtual environment and therefore we have to run it via `uv run` command:
     ```bash
      uv run llama
     ```
 1. If the installation was successful, the following messages should be displayed on the terminal:
     ```
-    usage: llama [-h] {model,stack,download,verify-download} ...
+    usage: ogx [-h] {model,stack,download,verify-download} ...
 
-    Welcome to the Llama CLI
+    Welcome to the OGX CLI
 
     options:
       -h, --help            show this help message and exit
@@ -354,11 +353,11 @@ The easiest option is to run Llama Stack in a separate process. This means that 
       {model,stack,download,verify-download}
 
       model                 Work with llama models
-      stack                 Operations for the Llama Stack / Distributions
+      stack                 Operations for the OGX / Distributions
       download              Download a model from llama.meta.com or Hugging Face Hub
       verify-download       Verify integrity of downloaded model files
     ```
-1. If we try to run the Llama Stack without configuring it, only the exception information is displayed (which is not very user-friendly):
+1. If we try to run the OGX without configuring it, only the exception information is displayed (which is not very user-friendly):
     ```bash
     uv run llama stack run
     ```
@@ -366,7 +365,7 @@ The easiest option is to run Llama Stack in a separate process. This means that 
     ```
     INFO     2025-07-27 16:56:12,464 llama_stack.cli.stack.run:147 server: No image type or image name provided. Assuming environment packages.
     Traceback (most recent call last):
-      File "/tmp/ramdisk/llama-stack-runner/.venv/bin/llama", line 10, in <module>
+      File "/tmp/ramdisk/ogx-runner/.venv/bin/ogx", line 10, in <module>
         sys.exit(main())
                  ^^^^^^
       File "/tmp/ramdisk/llama-stack-runner/.venv/lib64/python3.12/site-packages/llama_stack/cli/llama.py", line 53, in main
@@ -383,16 +382,16 @@ The easiest option is to run Llama Stack in a separate process. This means that 
 
 
 
-#### Llama Stack configuration
+#### OGX configuration
 
-Llama Stack needs to be configured properly. For using the default runnable Llama Stack a file named `run.yaml` needs to be created.  Copy the example `examples/run.yaml` from the lightspeed-stack project directory into your llama-stack directory.
+OGX needs to be configured properly. For using the default runnable OGX a file named `run.yaml` needs to be created.  Copy the example `examples/run.yaml` from the lightspeed-stack project directory into your OGX directory.
 
 ```bash
 cp examples/run.yaml /tmp/llama-stack-server
 ```
 
 
-#### Run Llama Stack in a separate process
+#### Run OGX in a separate process
 
 1. Export OpenAI key by using the following command:
     ```bash
@@ -423,7 +422,7 @@ cp examples/run.yaml /tmp/llama-stack-server
              container_image: null
              datasets: []
              external_providers_dir: null
-             image_name: minimal-viable-llama-stack-configuration
+             image_name: minimal-viable-ogx-configuration
              inference_store:
                db_path: .llama/distributions/ollama/inference_store.db
                type: sqlite
@@ -539,7 +538,7 @@ cp examples/run.yaml /tmp/llama-stack-server
              vector_stores: []
              version: 2
     ```
-1. The server with Llama Stack listens on port 8321. A description of the REST API is available in the form of OpenAPI (endpoint /openapi.json), but other endpoints can also be used. It is possible to check if Llama Stack runs as REST API server by retrieving its version. We use `curl` and `jq` tools for this purposes:
+1. The server with OGX listens on port 8321. A description of the REST API is available in the form of OpenAPI (endpoint /openapi.json), but other endpoints can also be used. It is possible to check if OGX runs as REST API server by retrieving its version. We use `curl` and `jq` tools for this purposes:
     ```bash
     curl localhost:8321/v1/version | jq .
     ```
@@ -551,9 +550,9 @@ cp examples/run.yaml /tmp/llama-stack-server
     ```
 
 
-#### LCS configuration to connect to Llama Stack running in separate process
+#### LCS configuration to connect to OGX running in separate process
 
-Copy the `examples/lightspeed-stack-lls-external.yaml` file to your llama-stack project directory, naming it `lightspeed-stack.yaml`:
+Copy the `examples/lightspeed-stack-lls-external.yaml` file to your OGX project directory, naming it `lightspeed-stack.yaml`:
 
 ```bash
 cp examples/lightspeed-stack-lls-external.yaml lightspeed-stack.yaml`
@@ -605,9 +604,9 @@ curl localhost:8080/v1/models | jq .
 
 
 
-### Llama Stack used as a library
+### OGX used as a library
 
-It is possible to run Lightspeed Core Stack service with Llama Stack "embedded" as a Python library. This means that just one process will be running and only one port (for example 8080) will be accessible.
+It is possible to run Lightspeed Core Stack service with OGX "embedded" as a Python library. This means that just one process will be running and only one port (for example 8080) will be accessible.
 
 
 
@@ -623,7 +622,7 @@ It is possible to run Lightspeed Core Stack service with Llama Stack "embedded" 
 1. `pip install --user uv`
 1. `sudo dnf install curl jq`
 
-#### Installing dependencies for Llama Stack
+#### Installing dependencies for OGX
 
 1. Clone LCS repository
 1. Add and install all required dependencies
@@ -631,16 +630,16 @@ It is possible to run Lightspeed Core Stack service with Llama Stack "embedded" 
     uv sync --group llslibdev
     ```
 
-#### Llama Stack configuration
+#### OGX configuration
 
-Llama Stack needs to be configured properly. Copy the example config from examples/run.yaml to the project directory:
+OGX needs to be configured properly. Copy the example config from examples/run.yaml to the project directory:
 
 ```bash
 cp examples/run.yaml .
 ```
 
 
-#### LCS configuration to use Llama Stack in library mode
+#### LCS configuration to use OGX in library mode
 Copy the example LCS config file from examples/lightspeed-stack-lls-library.yaml to the project directory:
 
 ```bash
@@ -728,7 +727,7 @@ curl localhost:8080/v1/models | jq .
 
 ## Running from container
 
-The image with *Lightspeed Core Stack* allow users to run the service in two modes. In the first mode, the *Llama Stack* runs in separate process - in a container or as a local or remote process. *Llama Stack* functions are accessible via exposed TCP port. In the second model, the Llama Stack is used as a standard Python library which means, that only the *Lightspeed Core Stack* image is needed and no other packages nor tools need to be installed.
+The image with *Lightspeed Core Stack* allow users to run the service in two modes. In the first mode, the *OGX* runs in separate process - in a container or as a local or remote process. *OGX* functions are accessible via exposed TCP port. In the second model, the OGX is used as a standard Python library which means, that only the *Lightspeed Core Stack* image is needed and no other packages nor tools need to be installed.
 
 
 
@@ -794,19 +793,19 @@ a4982f43195537b9eb1cec510fe6655f245d6d4b7236a4759808115d5d719972
 
 
 
-### Llama Stack used as a separate process
+### OGX used as a separate process
 
-*Lightspeed Core Stack* image can run LCS service that connects to Llama Stack running in a separate process. This means that there will at least be two running processes involved:
+*Lightspeed Core Stack* image can run LCS service that connects to OGX running in a separate process. This means that there will at least be two running processes involved:
 
-1. Llama Stack framework with open port 8321 (can be easily changed if needed)
+1. OGX framework with open port 8321 (can be easily changed if needed)
 1. Image with LCS (running in a container) with open port 8080 mapped to local port 8080 (can be easily changed if needed)
 
 ![LCS in a container](./lcs_in_container.svg)
 
 > [!NOTE]
-> Please note that LCS service will be run in a container. Llama Stack itself can be run in a container, in separate local process, or on external machine. It is just needed to know the URL (including TCP port) to connect to Llama Stack.
+> Please note that LCS service will be run in a container. OGX itself can be run in a container, in separate local process, or on external machine. It is just needed to know the URL (including TCP port) to connect to OGX.
 > [!INFO]
-> If Llama Stack is started from a container or is running on separate machine, you can skip next parts - it is expected that everything is setup accordingly.
+> If OGX is started from a container or is running on separate machine, you can skip next parts - it is expected that everything is setup accordingly.
 
 
 
@@ -821,13 +820,13 @@ a4982f43195537b9eb1cec510fe6655f245d6d4b7236a4759808115d5d719972
 1. `pip install --user uv`
 1. `sudo dnf install curl jq`
 
-#### Installing dependencies for Llama Stack
+#### Installing dependencies for OGX
 
 
 1. Create a new directory
     ```bash
-    mkdir llama-stack-server
-    cd llama-stack-server
+    mkdir ogx-server
+    cd ogx-server
     ```
 1. Create project file named `pyproject.toml` in this directory. This file should have the following content:
     ```toml
@@ -900,17 +899,17 @@ a4982f43195537b9eb1cec510fe6655f245d6d4b7236a4759808115d5d719972
 
 
 
-#### Check if Llama Stack can be started
+#### Check if OGX can be started
 
-1. In the next step, we need to verify that it is possible to run a tool called `llama`. It was installed into a Python virtual environment and therefore we have to run it via `uv run` command:
+1. In the next step, we need to verify that it is possible to run a tool called `ogx`. It was installed into a Python virtual environment and therefore we have to run it via `uv run` command:
     ```bash
      uv run llama
     ```
 1. If the installation was successful, the following messages should be displayed on the terminal:
     ```text
-    usage: llama [-h] {model,stack,download,verify-download} ...
+    usage: ogx [-h] {model,stack,download,verify-download} ...
 
-    Welcome to the Llama CLI
+    Welcome to the OGX CLI
 
     options:
       -h, --help            show this help message and exit
@@ -919,11 +918,11 @@ a4982f43195537b9eb1cec510fe6655f245d6d4b7236a4759808115d5d719972
       {model,stack,download,verify-download}
 
       model                 Work with llama models
-      stack                 Operations for the Llama Stack / Distributions
+      stack                 Operations for the OGX / Distributions
       download              Download a model from llama.meta.com or Hugging Face Hub
       verify-download       Verify integrity of downloaded model files
     ```
-1. If we try to run the Llama Stack without configuring it, only the exception information is displayed (which is not very user-friendly):
+1. If we try to run the OGX without configuring it, only the exception information is displayed (which is not very user-friendly):
     ```bash
     uv run llama stack run
     ```
@@ -931,7 +930,7 @@ a4982f43195537b9eb1cec510fe6655f245d6d4b7236a4759808115d5d719972
     ```
     INFO     2025-07-27 16:56:12,464 llama_stack.cli.stack.run:147 server: No image type or image name provided. Assuming environment packages.
     Traceback (most recent call last):
-      File "/tmp/ramdisk/llama-stack-runner/.venv/bin/llama", line 10, in <module>
+      File "/tmp/ramdisk/ogx-runner/.venv/bin/ogx", line 10, in <module>
         sys.exit(main())
                  ^^^^^^
       File "/tmp/ramdisk/llama-stack-runner/.venv/lib64/python3.12/site-packages/llama_stack/cli/llama.py", line 53, in main
@@ -948,13 +947,13 @@ a4982f43195537b9eb1cec510fe6655f245d6d4b7236a4759808115d5d719972
 
 
 
-#### Llama Stack configuration
+#### OGX configuration
 
-Llama Stack needs to be configured properly. For using the default runnable Llama Stack a file named `run.yaml` needs to be created. Use the example configuration from [examples/run.yaml](../examples/run.yaml).
+OGX needs to be configured properly. For using the default runnable OGX a file named `run.yaml` needs to be created. Use the example configuration from [examples/run.yaml](../examples/run.yaml).
 
 
 
-#### Run Llama Stack in a separate process
+#### Run OGX in a separate process
 
 1. Export OpenAI key by using the following command:
     ```bash
@@ -985,7 +984,7 @@ Llama Stack needs to be configured properly. For using the default runnable Llam
              container_image: null
              datasets: []
              external_providers_dir: null
-             image_name: minimal-viable-llama-stack-configuration
+             image_name: minimal-viable-ogx-configuration
              inference_store:
                db_path: .llama/distributions/ollama/inference_store.db
                type: sqlite
@@ -1101,7 +1100,7 @@ Llama Stack needs to be configured properly. For using the default runnable Llam
              vector_stores: []
              version: 2
     ```
-1. The server with Llama Stack listens on port 8321. A description of the REST API is available in the form of OpenAPI (endpoint /openapi.json), but other endpoints can also be used. It is possible to check if Llama Stack runs as REST API server by retrieving its version. We use `curl` and `jq` tools for this purposes:
+1. The server with OGX listens on port 8321. A description of the REST API is available in the form of OpenAPI (endpoint /openapi.json), but other endpoints can also be used. It is possible to check if OGX runs as REST API server by retrieving its version. We use `curl` and `jq` tools for this purposes:
     ```bash
     curl localhost:8321/v1/version | jq .
     ```
@@ -1114,7 +1113,7 @@ Llama Stack needs to be configured properly. For using the default runnable Llam
 
 
 
-#### *Lightspeed Core Stack* configuration to connect to Llama Stack running in separate process
+#### *Lightspeed Core Stack* configuration to connect to OGX running in separate process
 
 Image with *Lightspeed Core Stack* needs to be configured properly. Create local file named `lightspeed-stack.yaml` with the following content:
 
@@ -1152,13 +1151,13 @@ podman run -it --network host -v lightspeed-stack.yaml:/app-root/lightspeed-stac
 ```
 
 > [!NOTE]
-> Please note that `--network host` is insecure option. It is used there because LCS service running in a container have to access Llama Stack running *outside* this container and the standard port mapping can not be leveraged there. This configuration would be ok for development purposes, but for real deployment, network needs to be reconfigured accordingly to maintain required container isolation!
+> Please note that `--network host` is insecure option. It is used there because LCS service running in a container have to access OGX running *outside* this container and the standard port mapping can not be leveraged there. This configuration would be ok for development purposes, but for real deployment, network needs to be reconfigured accordingly to maintain required container isolation!
 
 
 
-### Llama Stack used as a library
+### OGX used as a library
 
-Llama Stack can be used as a library that is already part of OLS image. It means that no other processed needs to be started, but more configuration is required. Everything will be started from within the one container:
+OGX can be used as a library that is already part of OLS image. It means that no other processed needs to be started, but more configuration is required. Everything will be started from within the one container:
 
 ![Both services in a container](./both_services_in_container.svg)
 
@@ -1172,7 +1171,7 @@ First, export your OpenAI key into environment variable:
 export OPENAI_API_KEY="sk-foo-bar-baz-my-key"
 ```
 
-#### Llama Stack configuration
+#### OGX configuration
 
 Create a file named `run.yaml`. Use the example configuration from [examples/run.yaml](../examples/run.yaml).
 

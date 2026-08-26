@@ -179,7 +179,7 @@ def _load_and_synthesize(
 
     Mirrors the runtime flow: the config file is validated via
     ``AppConfig.load_configuration`` (the same entry point the service uses),
-    then — like ``client.AsyncLlamaStackClientHolder`` — the raw operator
+    then — like ``client.AsyncOgxClientHolder`` — the raw operator
     YAML is re-read and handed to ``synthesize_to_file``.
 
     Returns the synthesized run.yaml as a dict plus the output file path.

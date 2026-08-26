@@ -34,7 +34,7 @@ class InMemoryA2AContextStore(A2AContextStore):
             context_id: The A2A context ID.
 
         Returns:
-            The Llama Stack conversation ID, or None if not found.
+            The OGX conversation ID, or None if not found.
         """
         async with self._lock:
             conversation_id = self._contexts.get(context_id)
@@ -51,7 +51,7 @@ class InMemoryA2AContextStore(A2AContextStore):
 
         Args:
             context_id: The A2A context ID.
-            conversation_id: The Llama Stack conversation ID.
+            conversation_id: The OGX conversation ID.
         """
         async with self._lock:
             self._contexts[context_id] = conversation_id

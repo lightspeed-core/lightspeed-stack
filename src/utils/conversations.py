@@ -486,8 +486,8 @@ async def append_turn_items_to_conversation(
     Append a turn (user input + LLM output) to a conversation in LLS database.
 
     Args:
-        client: The Llama Stack client.
-        conversation_id: The Llama Stack conversation ID.
+        client: The OGX client.
+        conversation_id: The OGX conversation ID.
         user_input: User input text or list of ResponseItem.
         llm_output: Output from the LLM: a list of OpenAIResponseOutput.
     """
@@ -526,8 +526,8 @@ async def get_all_conversation_items(
     """Fetch all items for a conversation (Conversations API), paginating as needed.
 
     Args:
-        client: Llama Stack client.
-        conversation_id_llama_stack: Conversation ID in Llama Stack format.
+        client: OGX client.
+        conversation_id_llama_stack: Conversation ID in OGX format.
 
     Returns:
         List of all items in the conversation, oldest first.
@@ -569,8 +569,8 @@ async def append_turn_to_conversation(
 
     Parameters:
     ----------
-        client: The Llama Stack client.
-        conversation_id: The Llama Stack conversation ID.
+        client: The OGX client.
+        conversation_id: The OGX conversation ID.
         user_message: The user's input message.
         assistant_message: The shield violation response message.
     """

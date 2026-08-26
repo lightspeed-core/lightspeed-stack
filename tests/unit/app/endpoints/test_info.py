@@ -49,7 +49,7 @@ async def test_info_endpoint(mocker: MockerFixture) -> None:
     cfg = AppConfig()
     cfg.init_from_dict(config_dict)
 
-    # Mock the LlamaStack client
+    # Mock the OGX client
     mock_client = mocker.AsyncMock()
     mock_client.inspect.version.return_value = VersionInfo(version="0.1.2")
     mock_lsc = mocker.patch("client.AsyncOgxClientHolder.get_client")
@@ -84,14 +84,14 @@ async def test_info_endpoint_connection_error(mocker: MockerFixture) -> None:
     """Test the info endpoint handler.
 
     Verify that info_endpoint_handler raises an HTTPException with
-    status 503 when the LlamaStack client cannot connect.
+    status 503 when the OGX client cannot connect.
 
-    Sets up application configuration and patches the LlamaStack
+    Sets up application configuration and patches the OGX
     client so that calling its version inspection raises an
     APIConnectionError, then asserts the raised HTTPException has
     status code 503 and a detail payload containing a "response" of
     "Service unavailable" and a "cause" that includes "Unable to
-    connect to Llama Stack".
+    connect to OGX".
     """
     mock_authorization_resolvers(mocker)
 
@@ -121,7 +121,7 @@ async def test_info_endpoint_connection_error(mocker: MockerFixture) -> None:
     cfg = AppConfig()
     cfg.init_from_dict(config_dict)
 
-    # Mock the LlamaStack client
+    # Mock the OGX client
     mock_client = mocker.AsyncMock()
     mock_client.inspect.version.side_effect = APIConnectionError(request=None)  # type: ignore
     mock_lsc = mocker.patch("client.AsyncOgxClientHolder.get_client")
@@ -205,7 +205,7 @@ class TestInfoEndpointOtel:
         mocker: MockerFixture,
         otel: tuple[Any, InMemorySpanExporter],
     ) -> None:
-        """Test that the span records an error when Llama Stack is unreachable."""
+        """Test that the span records an error when OGX is unreachable."""
         tracer, exporter = otel
         mocker.patch("app.endpoints.info.tracer", tracer)
         mock_authorization_resolvers(mocker)

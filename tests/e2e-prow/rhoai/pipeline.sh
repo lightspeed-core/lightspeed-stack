@@ -13,9 +13,9 @@ export NAMESPACE
 MODEL_NAME="meta-llama/Llama-3.1-8B-Instruct"
 PIPELINE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# RHOAI llama-stack image (unused when building from source via llama-stack-openai.yaml)
+# RHOAI OGX image (unused when building from source via llama-stack-openai.yaml)
 # LLAMA_STACK_IMAGE="${LLAMA_STACK_IMAGE:-quay.io/rhoai/odh-llama-stack-core-rhel9:rhoai-3.4-ea.2}"
-# echo "Using llama-stack image: $LLAMA_STACK_IMAGE"
+# echo "Using OGX image: $LLAMA_STACK_IMAGE"
 # export LLAMA_STACK_IMAGE
 
 #========================================
@@ -81,7 +81,7 @@ if [ -f "$REPO_ROOT/tests/e2e/secrets/invalid-mcp-token" ]; then
   echo "✅ mcp-invalid-file-auth-token secret applied"
 fi
 
-# Create Quay pull secret for llama-stack images
+# Create Quay pull secret for OGX images
 echo "Creating Quay pull secret..."
 oc create secret docker-registry quay-lightspeed-pull-secret \
   --docker-server=quay.io \
@@ -216,7 +216,7 @@ oc wait pod/mock-jwks pod/mock-mcp \
 echo "✅ Mock servers deployed"
 
 #========================================
-# 8. BUILD LLAMA STACK IMAGE
+# 8. BUILD OGX IMAGE
 #========================================
 echo "===== Building llama-stack image ====="
 LLAMA_STACK_IMAGE="image-registry.openshift-image-registry.svc:5000/${NAMESPACE}/llama-stack-e2e:latest"
@@ -247,7 +247,7 @@ oc policy add-role-to-user system:image-puller \
   -n "$NAMESPACE" 2>/dev/null || true
 
 #========================================
-# 9. DEPLOY LIGHTSPEED STACK AND LLAMA STACK
+# 9. DEPLOY LIGHTSPEED STACK AND OGX
 #========================================
 echo "===== Deploying Services ====="
 
@@ -283,7 +283,7 @@ conn.close()
     
     if [ -n "$FAISS_VECTOR_STORE_ID" ]; then
         echo "✅ Extracted FAISS_VECTOR_STORE_ID: $FAISS_VECTOR_STORE_ID"
-        # Create secret for llama-stack to use
+        # Create secret for OGX to use
         create_secret faiss-vector-store-secret --from-literal=id="$FAISS_VECTOR_STORE_ID"
     else
         echo "❌ No vector_store found in $RAG_DB_PATH - FAISS tests will fail!"
@@ -394,7 +394,7 @@ oc port-forward svc/mock-jwks 8000:8000 -n $NAMESPACE &
 PF_JWKS_PID=$!
 echo "$PF_JWKS_PID" >"$E2E_JWKS_PORT_FORWARD_PID_FILE"
 
-# Behave steps that call Llama Stack directly (MCP toolgroups, shields, disrupt/restore)
+# Behave steps that call OGX directly (MCP toolgroups, shields, disrupt/restore)
 # need localhost:8321. Without this forward those tests hit "Connection refused".
 echo "Starting port-forward for llama-stack..."
 oc port-forward svc/llama-stack-service-svc 8321:8321 -n $NAMESPACE &
@@ -434,11 +434,11 @@ for i in $(seq 1 36); do
   sleep 5
 done
 
-# Wait for Llama Stack port-forward to be usable
-echo "Waiting for Llama Stack port-forward (localhost:8321 /v1/health)..."
+# Wait for OGX port-forward to be usable
+echo "Waiting for OGX port-forward (localhost:8321 /v1/health)..."
 for i in $(seq 1 36); do
   if curl -sf http://localhost:8321/v1/health > /dev/null 2>&1; then
-    echo "✅ Llama Stack port-forward ready after $(( i * 5 ))s"
+    echo "✅ OGX port-forward ready after $(( i * 5 ))s"
     break
   fi
   if [ $i -eq 36 ]; then
@@ -464,7 +464,7 @@ export E2E_DEFAULT_MODEL_OVERRIDE="$MODEL_NAME"
 export E2E_DEFAULT_PROVIDER_OVERRIDE="vllm"
 echo "LCS accessible at: http://$E2E_LSC_HOSTNAME:8080"
 echo "Mock JWKS accessible at: http://$E2E_JWKS_HOSTNAME:8000"
-echo "Llama Stack accessible at: http://localhost:8321"
+echo "OGX accessible at: http://localhost:8321"
 
 
 

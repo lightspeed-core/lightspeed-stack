@@ -19,7 +19,7 @@ _llama_stack_was_running: dict[str, bool] = {"value": False}
 
 
 def get_llama_stack_was_running() -> bool:
-    """Return whether Llama Stack was running before the disruption step."""
+    """Return whether OGX was running before the disruption step."""
     return _llama_stack_was_running["value"]
 
 
@@ -35,7 +35,7 @@ def reset_llama_stack_disrupt_once_tracking() -> None:
 
 
 def _force_lightspeed_restart_after_llama_disrupt(context: Context) -> None:
-    """Do not skip the next Lightspeed restart after Llama is disrupted."""
+    """Do not skip the next Lightspeed restart after OGX is disrupted."""
     context.force_lightspeed_restart_after_mcp_config_reset = True
     context.lightspeed_stack_skip_restart = False
 
@@ -44,13 +44,13 @@ def _force_lightspeed_restart_after_llama_disrupt(context: Context) -> None:
 def llama_stack_connection_broken(context: Context) -> None:
     """Break llama_stack connection by stopping the container.
 
-    Disrupts the Llama Stack service by stopping its Docker container and
+    Disrupts the OGX service by stopping its Docker container and
     records whether it was running.
 
-    The real disruption runs only once per feature until Llama is running again:
+    The real disruption runs only once per feature until OGX is running again:
     the first invocation performs Docker/Prow disruption; later invocations no-op.
     ``reset_llama_stack_disrupt_once_tracking`` clears the skip flag from
-    ``before_feature`` and after Llama is restored (``restart_container``,
+    ``before_feature`` and after OGX is restored (``restart_container``,
     ``_restore_llama_stack``) so the next disrupt step stops the container again.
     Tracking uses module state (not ``context`` alone) because Behave can clear
     custom attributes on ``context`` between scenarios.
@@ -68,7 +68,7 @@ def llama_stack_connection_broken(context: Context) -> None:
         `llama_stack_was_running` and share state between steps.
     """
     if _llama_stack_disrupt_once["applied"]:
-        print("Llama Stack disruption skipped (already applied once this feature)")
+        print("OGX disruption skipped (already applied once this feature)")
         _force_lightspeed_restart_after_llama_disrupt(context)
         return
 
@@ -107,12 +107,12 @@ def llama_stack_connection_broken(context: Context) -> None:
             # Wait a moment for the connection to be fully disrupted
             time.sleep(2)
 
-            print("Llama Stack connection disrupted successfully")
+            print("OGX connection disrupted successfully")
         else:
-            print("Llama Stack container was not running")
+            print("OGX container was not running")
 
     except subprocess.CalledProcessError as e:
-        print(f"Warning: Could not disrupt Llama Stack connection: {e}")
+        print(f"Warning: Could not disrupt OGX connection: {e}")
         return
 
     _llama_stack_disrupt_once["applied"] = True

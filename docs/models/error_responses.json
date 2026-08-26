@@ -553,7 +553,7 @@
                             "cause": "Connection error while trying to reach backend service.",
                             "response": "Unable to connect to OGX"
                         },
-                        "label": "ogx"
+                        "label": "OGX"
                     },
                     {
                         "detail": {

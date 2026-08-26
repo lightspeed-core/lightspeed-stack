@@ -43,7 +43,7 @@ The Confluence importer is build-time content tooling. The
 [BYOK PDF spike](../byok-pdf/byok-pdf-spike.md) (Decision 3) already
 established `lightspeed-core/rag-content` as the home for import tooling;
 lightspeed-stack never opens vector DBs directly (all access goes through
-the llama-stack client) and its config direction keeps ingestion out of the
+the OGX client) and its config direction keeps ingestion out of the
 serving path. The PoC needed zero changes to rag-content library code —
 only a fetch script and a `MetadataProcessor` subclass. Alternatives
 considered and rejected: lightspeed-stack (ingestion + crawler/docling
@@ -483,19 +483,19 @@ lightspeed-core/lightspeed-stack.
 
 <!-- type: Task -->
 <!-- key: LCORE-3381 -->
-### LCORE-3381: rag-content: generated llama-stack.yaml conflicts with registration persisted in faiss_store.db
+### LCORE-3381: rag-content: generated run.yaml conflicts with registration persisted in faiss_store.db
 
 **Description**: A freshly built `llamastack-faiss` store cannot be opened
-with its own generated `llama-stack.yaml`: the
+with its own generated `run.yaml`: the
 `registered_resources.vector_stores` entry re-registers the vector store
 with fewer fields than the registration already persisted inside
-`faiss_store.db`, and llama-stack raises
+`faiss_store.db`, and OGX raises
 `ValueError: Object of type 'vector_store' … already exists with
 conflicting field values: {'provider_resource_id': (None, 'vs_…'),
 'vector_store_name': (None, '<index>')}`. This breaks
 `scripts/query_rag.py` out of the box (observed during the LCORE-2664 PoC;
 worked around by dropping the `registered_resources.vector_stores` entry
-and querying the persisted registration). Likely a llama-stack
+and querying the persisted registration). Likely an OGX
 version-bump regression: either the generated yaml should carry the full
 field set, or query_rag should not re-register.
 
@@ -513,7 +513,7 @@ token):
 2. Build: unmodified rag-content pipeline (docling `HTMLReader`,
    `MarkdownNodeParser`, `all-mpnet-base-v2`, `llamastack-faiss`) →
    `faiss_store.db` (3.8 MB).
-3. Verify: `vector_io.query` via the llama-stack library client.
+3. Verify: `vector_io.query` via the OGX library client.
 4. Incremental: second crawl with CQL `lastmodified` + version comparison.
 
 **Important**: The PoC diverges from the production design in these ways:
@@ -553,7 +553,7 @@ removed before merge).
 - **`doc_type="html"` does not auto-wire the HTMLReader** — the caller must
   pass `file_extractor={".html": HTMLReader()}`; `required_exts` is also
   needed to keep `manifest.json`/`state.json` out of the corpus.
-- **Incidental bug**: generated `llama-stack.yaml` + `query_rag.py`
+- **Incidental bug**: generated `run.yaml` + `query_rag.py`
   registration conflict (see Proposed incidental JIRAs).
 - **Absolute embedding-model path** is baked into the generated config and
   kv registry unless HF-id resolution is used (T7).
@@ -573,11 +573,11 @@ removed before merge).
 
 lightspeed-stack: operators declare stores under `byok_rag:`
 (`src/models/config.py` `ByokRag`; faiss `db_path` or pgvector);
-`src/llama_stack_configuration.py` enriches them into llama-stack
+`src/llama_stack_configuration.py` enriches them into OGX
 `run.yaml` (`VECTOR_IO_TEMPLATES` supports `inline::faiss` and
 `remote::pgvector` only); retrieval fans out in
 `src/utils/vector_search.py`. All vector access is mediated by the
-llama-stack client — the service never opens DBs directly, and the
+OGX client — the service never opens DBs directly, and the
 config-merge design (LCORE-836) keeps operator config backend-agnostic.
 **No hot-reload**: nothing watches `db_path`; a changed DB needs a
 restart. The customer workflow today is fully manual
@@ -587,7 +587,7 @@ artifact.
 rag-content: a local-files framework — `SimpleDirectoryReader` +
 per-extension readers (docling `HTMLReader` on main, `PDFReader` on the
 LCORE-2091 branch) → `MarkdownNodeParser` (380/0) → embed → faiss/pgvector
-in llama-index or llama-stack flavor → optional OCI packaging
+in llama-index or OGX flavor → optional OCI packaging
 (`--output-image`, artifact at `/rag/vector_db`). Chunk metadata carries
 `docs_url`/`title` via `MetadataProcessor` (frontmatter `url` or
 `url_function`). **No remote-source concept, no crawler, no scheduler

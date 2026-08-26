@@ -13,7 +13,7 @@
 - [3. Request Processing Pipeline](#3-request-processing-pipeline)
 - [4. Database Architecture](#4-database-architecture)
 - [5. API Endpoints](#5-api-endpoints)
-- [6. Deployment & Operations](#6-deployment--operations)
+- [6. Deployment & Operations](#6-deployment-operations)
 - [Appendix](#appendix)
 
 ---
@@ -24,9 +24,9 @@
 
 **Lightspeed Core Stack (LCORE)** is an enterprise-grade middleware service that provides a robust layer between client applications and AI Large Language Model (LLM) backends. It adds essential enterprise features such as authentication, authorization, quota management, caching, and observability to LLM interactions.
 
-LCore is built on **Llama Stack / OGX** - an open-source framework that provides standardized APIs for building LLM applications. It offers a unified interface for models, RAG (vector stores), and tools across different providers. LCore communicates with the stack to orchestrate all LLM operations.
+LCore is built on **OGX** — an open-source framework that provides standardized APIs for building LLM applications. It offers a unified interface for models, RAG (vector stores), and tools across different providers. LCore communicates with the stack to orchestrate all LLM operations.
 
-To enhance LLM responses, LCore leverages **RAG (Retrieval-Augmented Generation)**, which retrieves relevant context from vector databases before generating answers. Llama Stack manages the vector stores, and LCore queries them to inject relevant documentation, knowledge bases, or previous conversations into the LLM prompt.
+To enhance LLM responses, LCore leverages **RAG (Retrieval-Augmented Generation)**, which retrieves relevant context from vector databases before generating answers. OGX manages the vector stores, and LCore queries them to inject relevant documentation, knowledge bases, or previous conversations into the LLM prompt.
 
 To keep requests on-topic and protect sensitive data, LCore applies **safety shields**, which validate user questions and redact PII from model traffic. Shields are owned by LCore and configured in the service configuration.
 
@@ -62,7 +62,7 @@ To keep requests on-topic and protect sensitive data, LCore applies **safety shi
 │                         ▼                               │
 │  ┌───────────────────────────────────────────────────┐  │
 │  │          Request Processing                       │  │
-│  │  • LLM Orchestration (via Llama Stack)            │  │
+│  │  • LLM Orchestration (via OGX)            │  │
 │  │  • Safety Shields                                 │  │
 │  │  • Tool Integration (MCP servers)                 │  │
 │  │  • RAG & Context Management                       │  │
@@ -77,7 +77,7 @@ To keep requests on-topic and protect sensitive data, LCore applies **safety shi
                      │
                      ▼
           ┌──────────────────┐
-          │   Llama Stack    │
+          │   OGX    │
           │  (LLM Backend)   │
           │                  │
           │  • Models & LLMs │
@@ -109,7 +109,7 @@ This section describes the major functional components that make up LCore. Each 
 - **FastAPI Application**: Initialize the web framework with OpenAPI documentation
 - **Middleware Stack**: Set up Cross-Origin Resource Sharing (CORS), metrics tracking, and global exception handling
 - **Lifecycle Management**: 
-  - **Startup**: Load configuration, initialize Llama Stack client, load MCP server configuration and register all defined servers with Llama Stack to build the tools list, establish database connections
+  - **Startup**: Load configuration, initialize OGX client, load MCP server configuration and register all defined servers with OGX to build the tools list, establish database connections
   - **Shutdown**: Clean up A2A storage resources (database connections and other resources are cleaned up automatically by Python's context managers)
 - **Router Registration**: Mount all endpoint routers (query, conversation, model info, auth, metrics, A2A, feedback, admin, mcp_auth, mcp_servers)
 
@@ -134,10 +134,10 @@ LCore requires two main configuration files:
    - User data collection preferences
    - Default models and system prompts
 
-2. **Llama Stack Configuration** (`run.yaml`):
+2. **OGX Configuration** (`run.yaml`):
    - Required for both library and server modes
    - Defines LLM providers, models, RAG stores, shields
-   - See [Llama Stack documentation](https://llama-stack.readthedocs.io/) for details
+   - See [OGX documentation](https://llama-stack.readthedocs.io/) for details
 
 **Configuration Validation:**
 - Pydantic models validate configuration structure at startup
@@ -168,7 +168,7 @@ All authentication modules return a standardized 4-tuple: `(user_id, username, r
 - `user_id` (str): Unique user identifier
 - `username` (str): Human-readable username  
 - `roles` (list[str]): User roles for authorization checks
-- `token` (str): Original auth token extracted from request, forwarded to Llama Stack and backend services
+- `token` (str): Original auth token extracted from request, forwarded to OGX and backend services
 
 **Note:** LCore does not generate tokens - it extracts the client's original token from the request (typically `Authorization` header) and forwards it to backend services.
 
@@ -192,7 +192,7 @@ All authentication modules return a standardized 4-tuple: `(user_id, username, r
 
 **Authorization Actions:**
 
-The system defines 30+ actions that can be authorized. Examples (see `docs/auth.md` for complete list):
+The system defines 30+ actions that can be authorized. Examples (see `docs/user_doc/auth.md` for complete list):
 
 **Query Actions:**
 - `QUERY` - Execute non-streaming queries
@@ -227,11 +227,11 @@ The system defines 30+ actions that can be authorized. Examples (see `docs/auth.
 
 ---
 
-### 2.5 Llama Stack Client (`client.py`)
+### 2.5 OGX Client (`client.py`)
 
-**Purpose:** Communicate with the Llama Stack backend service for LLM operations
+**Purpose:** Communicate with the OGX backend service for LLM operations
 
-**Llama Stack APIs Used:**
+**OGX APIs Used:**
 - **Models**: List available LLM models
 - **Responses**: Generate LLM responses (OpenAI-compatible)
 - **Conversations**: Manage conversation history
@@ -334,9 +334,9 @@ MCP servers are remote HTTP services that expose tools/capabilities to LLMs (e.g
 **How It Works:**
 
 1. **Configuration:** MCP servers are defined in the config file with name, URL, and authorization headers. Servers can also be registered dynamically at runtime via `POST /v1/mcp-servers`.
-2. **Registration at Startup:** LCore tells Llama Stack about each MCP server by calling `toolgroups.register()` - this makes the MCP server's tools available in Llama Stack's tool registry
+2. **Registration at Startup:** LCore tells OGX about each MCP server by calling `toolgroups.register()` - this makes the MCP server's tools available in OGX's tool registry
 3. **Query Processing:** When processing a query, LCore determines which tools to make available to the LLM and finalizes authorization headers (e.g., merging client-provided tokens with configured headers)
-4. **Tool Execution:** When the LLM calls a tool, Llama Stack routes the request to the appropriate MCP server URL with the finalized authorization headers
+4. **Tool Execution:** When the LLM calls a tool, OGX routes the request to the appropriate MCP server URL with the finalized authorization headers
 
 **Authorization:**
 - Supports tokens from files, environment variables, or direct values
@@ -364,7 +364,7 @@ External agents interact with LCore through a multi-step process:
 1. **Discovery:** The agent calls `GET /.well-known/agent.json` to retrieve LCore's capabilities, skills, and supported modes
 2. **Message Exchange:** The agent sends messages via `POST /a2a` using JSON-RPC 2.0 format (e.g., `message/send` method) with a `context_id` to identify the conversation
 3. **Context Mapping:** The A2A context store maps the external agent's `context_id` to LCore's internal `conversation_id`, enabling multi-turn conversations (storage: PostgreSQL, SQLite, or in-memory)
-4. **Query Processing:** LCore processes the message through its standard query pipeline (including LLM calls via Llama Stack) and returns the response to the external agent
+4. **Query Processing:** LCore processes the message through its standard query pipeline (including LLM calls via OGX) and returns the response to the external agent
 
 External A2A requests go through LCore's standard authentication system (K8s, RH Identity, API Key, etc.).
 
@@ -400,7 +400,7 @@ Here's how a real query flows through the system:
 5. **Model Selection** - Use configured default model (e.g., `meta-llama/Llama-3.1-8B-Instruct`)
 6. **Context Building** - Retrieve conversation history, query RAG vector stores for relevant docs, determine available MCP tools
 7. **Shield moderation** - LCore-owned direct-run moderation (and agent capabilities where applicable) using shields configured in LCORE config
-8. **Llama Stack / agent call** - Send request with system prompt, RAG context, and MCP tools
+8. **OGX / agent call** - Send request with system prompt, RAG context, and MCP tools
 9. **LLM Processing** - Stack / agent generates response, may invoke MCP tools, returns token counts
 10. **Post-Processing** - Generate conversation summary if new
 11. **Store Results** - Save to Cache DB, User DB, consume quota, update metrics
@@ -420,7 +420,7 @@ Here's how a real query flows through the system:
 
 - **HTTPException (FastAPI)** - 401 Unauthorized, 403 Forbidden, 404 Not Found, 429 Too Many Requests, 500 Internal Server Error
 - **QuotaExceedError** - Converted to HTTP 429
-- **APIConnectionError** (Llama Stack client) - Converted to HTTP 503 Service Unavailable
+- **APIConnectionError** (OGX client) - Converted to HTTP 503 Service Unavailable
 - **SQLAlchemyError** (Database) - Converted to HTTP 500
 
 ---
@@ -521,7 +521,7 @@ This section documents the REST API endpoints exposed by LCore for client intera
 - Basic health status
 
 **Readiness Check:** `GET /readiness`
-- Checks configuration, Llama Stack, and database connections
+- Checks configuration, OGX, and database connections
 
 **Metrics:** `GET /metrics`
 - Prometheus-compatible metrics
@@ -549,23 +549,23 @@ LCore supports two deployment modes, each suited for different operational requi
 ### 6.1 Deployment Modes
 
 **Library Mode:**
-- Llama Stack runs embedded within LCore process
-- No separate Llama Stack service needed
+- OGX runs embedded within LCore process
+- No separate OGX service needed
 - Direct library calls (no HTTP overhead)
 - Lower latency for LLM operations
 - Simpler deployment (single process)
 - Best for: Development, single-node deployments, environments with limited operational complexity
 
 **Server Mode:**
-- LCore and Llama Stack run as two separate processes
-- HTTP communication between LCore and Llama Stack
+- LCore and OGX run as two separate processes
+- HTTP communication between LCore and OGX
 - Independent scaling of each component
 - Better resource isolation
 - Easier to update/restart components independently
 - In Kubernetes: can run as separate pods or as two containers in the same pod (sidecar)
   - **Separate pods**: More isolation, can scale independently
   - **Same pod (sidecar)**: Lower latency (localhost communication), atomic deployment
-- Best for: Production, multi-node deployments, when LCore and Llama Stack have different scaling needs
+- Best for: Production, multi-node deployments, when LCore and OGX have different scaling needs
 
 ---
 
@@ -579,11 +579,11 @@ See the `examples/` directory in the repository root for complete configuration 
 
 ### B. Related Documentation
 
-- [A2A Protocol](./a2a_protocol.md) - Agent-to-Agent communication protocol
-- [Authentication & Authorization](./auth.md) - Detailed auth configuration
-- [Configuration Guide](./config.md) - Configuration system details
-- [Deployment Guide](./deployment_guide.md) - Deployment patterns and best practices
-- [RAG Guide](./rag_guide.md) - RAG configuration and usage
+- [A2A Protocol](../user_doc/a2a_protocol.md) - Agent-to-Agent communication protocol
+- [Authentication & Authorization](../user_doc/auth.md) - Detailed auth configuration
+- [Configuration Guide](../user_doc/config.md) - Configuration system details
+- [Deployment Guide](../user_doc/deployment_guide.md) - Deployment patterns and best practices
+- [RAG Guide](../user_doc/rag_guide.md) - RAG configuration and usage
 - [OpenAPI Specification](./openapi.md) - Complete API reference
 
 ---

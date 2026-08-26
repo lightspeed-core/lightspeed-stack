@@ -1,4 +1,4 @@
-"""httpx transports for Llama Stack library and server modes."""
+"""httpx transports for OGX library and server modes."""
 
 from __future__ import annotations as _annotations
 
@@ -50,7 +50,7 @@ def inject_provider_data_into_headers(
 
     Args:
         headers: Existing request headers.
-        provider_data: Provider credentials/metadata to forward to Llama Stack.
+        provider_data: Provider credentials/metadata to forward to OGX.
 
     Returns:
         Headers with provider data injected when absent from the request.
@@ -72,7 +72,7 @@ def request_with_provider_data_headers(
 
     Args:
         request: The outgoing httpx request.
-        provider_data: Provider credentials/metadata to forward to Llama Stack.
+        provider_data: Provider credentials/metadata to forward to OGX.
 
     Returns:
         The original request, or a copy with provider data headers added.
@@ -100,7 +100,7 @@ def wrap_http_client_with_provider_data(
 
     Args:
         http_client: The client whose transport will be wrapped.
-        provider_data: Provider credentials/metadata to forward to Llama Stack.
+        provider_data: Provider credentials/metadata to forward to OGX.
 
     Returns:
         The original client when ``provider_data`` is empty, otherwise a new
@@ -133,7 +133,7 @@ class OgxServerTransport(httpx.AsyncBaseTransport):
 
         Args:
             transport: The underlying transport used for real HTTP requests.
-            provider_data: Provider credentials/metadata to forward to Llama Stack.
+            provider_data: Provider credentials/metadata to forward to OGX.
         """
         self._transport = transport
         self._provider_data = provider_data
@@ -177,15 +177,15 @@ class _AsyncByteStream(httpx.AsyncByteStream):
 
 
 class OgxLibraryTransport(httpx.AsyncBaseTransport):
-    """Custom httpx transport that dispatches requests through a Llama Stack library client.
+    """Custom httpx transport that dispatches requests through an OGX library client.
 
     Instead of making real HTTP calls, this transport routes requests directly
-    to the Llama Stack's in-process route handlers via the library client's
+    to OGX's in-process route handlers via the library client's
     route matching and body conversion logic.
     """
 
     def __init__(self, client: AsyncOGXAsLibraryClient) -> None:
-        """Initialize the transport with a Llama Stack library client.
+        """Initialize the transport with an OGX library client.
 
         Args:
             client: An initialized ``AsyncOGXAsLibraryClient`` whose route
@@ -194,7 +194,7 @@ class OgxLibraryTransport(httpx.AsyncBaseTransport):
         self._client = client
 
     async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
-        """Dispatch an httpx request to the in-process Llama Stack route handlers.
+        """Dispatch an httpx request to the in-process OGX route handlers.
 
         Args:
             request: The outgoing httpx request to route.
@@ -207,7 +207,7 @@ class OgxLibraryTransport(httpx.AsyncBaseTransport):
         """
         if self._client.route_impls is None:
             raise RuntimeError(
-                "Llama Stack library client not initialized. Call initialize() first."
+                "OGX library client not initialized. Call initialize() first."
             )
 
         method = request.method

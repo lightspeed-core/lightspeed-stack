@@ -16,7 +16,7 @@ from configuration import AppConfig
 def mock_llama_stack_tools_fixture(
     mocker: MockerFixture,
 ) -> Generator[Any, None, None]:
-    """Mock the Llama Stack client for tools endpoint.
+    """Mock the OGX client for tools endpoint.
 
     Returns:
         Mock client with toolgroups.list and tools.list configured.
@@ -67,7 +67,7 @@ async def test_tools_endpoint_returns_401_for_mcp_oauth(  # pylint: disable=too-
     Parameters:
         test_case: Dictionary containing test parameters (www_authenticate, expect_www_authenticate)
         test_config: Test configuration
-        mock_llama_stack_tools: Mocked Llama Stack client
+        mock_llama_stack_tools: Mocked OGX client
         test_request: FastAPI request
         test_auth: noop authentication tuple
         mocker: pytest-mock fixture

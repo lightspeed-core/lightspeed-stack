@@ -265,7 +265,7 @@ class TaskResultAggregator:
 # Agent Executor Implementation
 # -----------------------------
 class A2AAgentExecutor(AgentExecutor):
-    """Agent Executor for A2A using Llama Stack Responses API.
+    """Agent Executor for A2A using OGX Responses API.
 
     This executor implements the A2A AgentExecutor interface and handles
     routing queries to the LLM backend using the Responses API.
@@ -829,7 +829,7 @@ async def get_agent_card(  # pylint: disable=unused-argument
     - HTTPException: with status 500 and a detail object containing `response`
       and `cause` when service configuration is wrong or incomplete.
     - HTTPException: with status 503 and a detail object containing `response`
-      and `cause` when unable to connect to Llama Stack.
+      and `cause` when unable to connect to OGX.
 
     ### Returns:
     - AgentCard: The agent card describing this agent's capabilities.
@@ -916,7 +916,7 @@ async def handle_a2a_jsonrpc_get(
     - HTTPException: with status 500 and a detail object containing `response`
       and `cause` when service configuration is wrong or incomplete.
     - HTTPException: with status 503 and a detail object containing `response`
-      and `cause` when unable to connect to Llama Stack.
+      and `cause` when unable to connect to OGX.
 
     ### Returns:
     - ``Response`` with the full buffered JSON-RPC (or HTTP)
@@ -962,7 +962,7 @@ async def handle_a2a_jsonrpc_post(
     - HTTPException: with status 401 for unauthorized access.
     - HTTPException: with status 403 if permission is denied.
     - HTTPException: with status 503 and a detail object containing `response`
-      and `cause` when unable to connect to Llama Stack.
+      and `cause` when unable to connect to OGX.
 
     ### Returns:
     - ``Response`` with the full buffered JSON-RPC (or HTTP)

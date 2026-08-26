@@ -642,8 +642,8 @@ configuration.</td>
         <tr class="even">
           <td>llama_stack</td>
           <td/>
-          <td>This section contains Llama Stack configuration. Lightspeed Core
-Stack service can call Llama Stack in library mode or in server
+          <td>This section contains OGX configuration. Lightspeed Core
+Stack service can call OGX in library mode or in server
 mode.</td>
         </tr>
         <tr class="odd">
@@ -664,7 +664,7 @@ runtime data</td>
           <td>MCP (Model Context Protocol) servers provide tools and capabilities
 to the AI agents. These are configured in this section. Only MCP servers
 defined in the lightspeed-stack.yaml configuration are available to the
-agents. Tools configured in the llama-stack run.yaml are not accessible
+agents. Tools configured in the OGX run.yaml are not accessible
 to lightspeed-core agents.</td>
         </tr>
         <tr class="even">
@@ -945,7 +945,7 @@ stored.</td>
         <tr class="odd">
           <td>id</td>
           <td>string</td>
-          <td>Llama Stack vector_io provider_id. Surrounding whitespace is
+          <td>OGX vector_io provider_id. Surrounding whitespace is
 stripped before validation and emission.</td>
         </tr>
         <tr class="even">
@@ -1055,7 +1055,7 @@ trigger.</td>
           <td>array</td>
           <td>Unified-mode synthesis input (Decision S5): a high-level,
 backend-agnostic list of inference providers the synthesizer expands
-into Llama Stack provider entries. Lives at the configuration root so it
+into OGX provider entries. Lives at the configuration root so it
 survives a future backend change. A non-empty list signals unified mode.
 Empty (the default) leaves legacy/remote modes unaffected. The sibling
 default_model / default_provider keep their query-time routing meaning
@@ -1221,8 +1221,8 @@ Web Tokens</a>
       </tbody>
     </table>
     <h2 id="llamastackconfiguration">LlamaStackConfiguration</h2>
-    <p>Llama stack configuration.</p>
-    <p>Llama Stack is a comprehensive system that provides a uniform set of
+    <p>OGX configuration.</p>
+    <p>OGX is a comprehensive system that provides a uniform set of
 tools for building, scaling, and deploying generative AI applications,
 enabling developers to create, integrate, and orchestrate multiple AI
 services and capabilities into an adaptable setup.</p>
@@ -1234,11 +1234,11 @@ Stack</a>
       </li>
       <li>
         <a href="https://github.com/llamastack/llama-stack-client-python">Python
-Llama Stack client</a>
+OGX client</a>
       </li>
       <li>
         <a href="https://llamastack.github.io/">Build AI Applications with
-Llama Stack</a>
+OGX</a>
       </li>
     </ul>
     <table>
@@ -1258,24 +1258,24 @@ Llama Stack</a>
         <tr class="odd">
           <td>url</td>
           <td>string</td>
-          <td>URL to Llama Stack service; used when library mode is disabled. Must
+          <td>URL to OGX service; used when library mode is disabled. Must
 be a valid HTTP or HTTPS URL.</td>
         </tr>
         <tr class="even">
           <td>api_key</td>
           <td>string</td>
-          <td>API key to access Llama Stack service</td>
+          <td>API key to access OGX service</td>
         </tr>
         <tr class="odd">
           <td>use_as_library_client</td>
           <td>boolean</td>
-          <td>When set to true Llama Stack will be used in library mode, not in
+          <td>When set to true OGX will be used in library mode, not in
 server mode (default)</td>
         </tr>
         <tr class="even">
           <td>library_client_config_path</td>
           <td>string</td>
-          <td>Path to configuration file used when Llama Stack is run in library
+          <td>Path to configuration file used when OGX is run in library
 mode. DEPRECATED legacy two-file setup: logs a startup warning since 0.6
 and is removed in 0.7 &#x2014; use unified mode instead (the config block
 below, and/or the root-level inference.providers section); migrate with
@@ -1284,14 +1284,14 @@ lightspeed-stack &#x2013;migrate-config.</td>
         <tr class="odd">
           <td>timeout</td>
           <td>integer</td>
-          <td>Timeout in seconds for requests to Llama Stack service. Default is
+          <td>Timeout in seconds for requests to OGX service. Default is
 180 seconds (3 minutes) to accommodate long-running RAG queries.</td>
         </tr>
         <tr class="even">
           <td>max_retries</td>
           <td>integer</td>
           <td>Maximum number of connection attempts before giving up. Used on
-startup to connect to Llama Stack and retrieve its version. Connection
+startup to connect to OGX and retrieve its version. Connection
 attempts are retried with a fixed delay to handle the case where Llama
 Stack is still starting up (e.g., when running as a sidecar in the same
 pod).</td>
@@ -1300,21 +1300,21 @@ pod).</td>
           <td>retry_delay</td>
           <td>integer</td>
           <td>Delay in seconds between retry attempts. Used on startup to connect
-to Llama Stack and retrieve its version. Connection attempts are retried
-with a fixed delay to handle the case where Llama Stack is still
+to OGX and retrieve its version. Connection attempts are retried
+with a fixed delay to handle the case where OGX is still
 starting up (e.g., when running as a sidecar in the same pod).</td>
         </tr>
         <tr class="even">
           <td>allow_degraded_mode</td>
           <td>boolean</td>
-          <td>If enabled, Lightspeed Core can be started even when Llama Stack is
+          <td>If enabled, Lightspeed Core can be started even when OGX is
 not accessible (valid for server mode only)</td>
         </tr>
         <tr class="odd">
           <td>config</td>
           <td/>
           <td>Backend-specific knobs for unified mode, where LCORE synthesizes the
-Llama Stack run.yaml instead of reading an external file. Holds the
+OGX run.yaml instead of reading an external file. Holds the
 baseline selector, an optional profile path, and a raw native_override
 escape hatch. Backend-agnostic high-level sections
 (e.g.&#xA0;inference.providers) live at the configuration root, not here.
@@ -1329,7 +1329,7 @@ library_client_config_path is not required.</td>
     <p>MCP (Model Context Protocol) servers provide tools and capabilities
 to the AI agents. These are configured by this structure. Only MCP
 servers defined in the lightspeed-stack.yaml configuration are available
-to the agents. Tools configured in the llama-stack run.yaml are not
+to the agents. Tools configured in the OGX run.yaml are not
 accessible to lightspeed-core agents.</p>
     <p>Useful resources:</p>
     <ul>
@@ -1408,8 +1408,8 @@ ApprovalFilter for granular control.</td>
           <td>timeout</td>
           <td>integer</td>
           <td>Timeout in seconds for requests to the MCP server. If not specified,
-the default timeout from Llama Stack will be used. Note: This field is
-reserved for future use when Llama Stack adds timeout support.</td>
+the default timeout from OGX will be used. Note: This field is
+reserved for future use when OGX adds timeout support.</td>
         </tr>
       </tbody>
     </table>
@@ -1515,7 +1515,7 @@ the global default (&#x2018;hybrid&#x2019;).</td>
         <tr class="odd">
           <td>id</td>
           <td>string</td>
-          <td>Llama Stack vector_io provider_id. Surrounding whitespace is
+          <td>OGX vector_io provider_id. Surrounding whitespace is
 stripped before validation and emission.</td>
         </tr>
         <tr class="even">
@@ -2622,17 +2622,17 @@ null (no restriction).</td>
     <h2 id="unifiedinferenceprovider">UnifiedInferenceProvider</h2>
     <p>A high-level inference provider entry for unified-mode synthesis.</p>
     <p>Operators describe inference providers at this high level
-(backend-agnostic vocabulary) instead of authoring raw Llama Stack
+(backend-agnostic vocabulary) instead of authoring raw OGX
 provider blocks. The synthesizer
 (<code>apply_high_level_inference</code>) expands each entry into a
-Llama Stack <code>providers.inference</code> entry, mapping
+OGX <code>providers.inference</code> entry, mapping
 <code>type</code> to a <code>provider_type</code> and emitting
 <code>${env.&lt;VAR&gt;}</code> references for secrets (never literal
 values).</p>
     <p>Attributes: type: Canonical provider identifier. Vendor-neutral so it
 survives a future backend change; each backend-specific synthesizer maps
 it to its own provider vocabulary. id: Optional identifier emitted as
-the Llama Stack provider_id. When omitted, synthesized as type with
+the OGX provider_id. When omitted, synthesized as type with
 underscores hyphenated. If set, must be non-empty after stripping
 whitespace and may contain only lowercase letters, digits, underscores,
 and hyphens. api_key_env: Name of the environment variable holding the
@@ -2665,7 +2665,7 @@ Stack provider_type by the synthesizer.</td>
         <tr class="even">
           <td>id</td>
           <td>string</td>
-          <td>Optional identifier emitted as the Llama Stack provider_id. When
+          <td>Optional identifier emitted as the OGX provider_id. When
 omitted, synthesized as type with underscores hyphenated. If set, must
 be non-empty after stripping whitespace and may contain only lowercase
 letters, digits, underscores, and hyphens.</td>
@@ -2691,7 +2691,7 @@ provider&#x2019;s config block.</td>
       </tbody>
     </table>
     <h2 id="unifiedllamastackconfig">UnifiedLlamaStackConfig</h2>
-    <p>Backend-specific knobs for unified-mode Llama Stack synthesis.</p>
+    <p>Backend-specific knobs for unified-mode OGX synthesis.</p>
     <p>Per Decision S5 of the design spike, backend-agnostic high-level
 sections (inference, &#x2026;) live at the configuration root, not here. This
 block holds only the Llama-Stack-specific synthesis controls: which
@@ -2703,7 +2703,7 @@ from an empty dict (used by the migration tool for an exact round-trip).
 Ignored when <code>profile</code> is set. profile: Optional path to a
 user-authored run.yaml-shaped file used as the synthesis baseline.
 Relative paths resolve against the directory of the loaded
-lightspeed-stack.yaml. native_override: Raw Llama Stack schema
+lightspeed-stack.yaml. native_override: Raw OGX schema
 deep-merged last (maps merge recursively, lists and scalars replace).
 The escape hatch for anything the high-level sections do not
 express.</p>
@@ -2736,7 +2736,7 @@ against the directory of the loaded lightspeed-stack.yaml.</td>
         <tr class="odd">
           <td>native_override</td>
           <td>object</td>
-          <td>Raw Llama Stack schema deep-merged last (maps merge recursively;
+          <td>Raw OGX schema deep-merged last (maps merge recursively;
 lists and scalars replace).</td>
         </tr>
       </tbody>
@@ -2789,7 +2789,7 @@ further processing.</td>
 sibling <code>default_provider</code> pointer, rather than a per-entry
 default flag.</p>
     <p>Attributes: default_provider: Provider id used for
-vector_stores.default_* in the synthesized Llama Stack config. Required
+vector_stores.default_* in the synthesized OGX config. Required
 when providers is non-empty; must match one of providers[].id. Must be
 omitted when providers is empty. providers: Dynamic vector-store
 provider capacity for runtime POST /v1/vector-stores creates. Not the
@@ -2812,7 +2812,7 @@ same as rag.byok.stores (static registered corpora).</p>
           <td>default_provider</td>
           <td>string</td>
           <td>Provider id used for vector_stores.default_* in the synthesized
-Llama Stack config. Required when providers is non-empty; must match one
+OGX config. Required when providers is non-empty; must match one
 of providers[].id.</td>
         </tr>
         <tr class="even">

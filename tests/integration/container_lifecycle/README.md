@@ -2,5 +2,5 @@
 
 ## [test_container_lifecycle.py](test_container_lifecycle.py)
 
-Integration tests for Llama Stack container lifecycle management.
+Integration tests for OGX container lifecycle management.
 

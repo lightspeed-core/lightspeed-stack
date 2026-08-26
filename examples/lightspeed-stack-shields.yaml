@@ -16,7 +16,7 @@ user_data_collection:
   transcripts_storage: "/tmp/data/transcripts"
 authentication:
   module: "noop"
-# LCORE-owned safety shields (not Llama Stack / OGX Safety API resources).
+# LCORE-owned safety shields (not OGX / OGX Safety API resources).
 # Listed via GET /v1/shields; selected per request with optional shield_ids.
 shields:
   - identifier: topic-guard

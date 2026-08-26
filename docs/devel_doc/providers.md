@@ -1,9 +1,9 @@
 # Lightspeed Core Providers
 
-Lightspeed Core Stack (LCS) builds on top of llama-stack and its provider system.  
-Any llama-stack provider can be enabled in LCS with minimal effort by installing the required dependencies and updating the Llama Stack configuration — in unified mode that is your synthesis profile (or `native_override`) inside `lightspeed-stack.yaml`; in the deprecated legacy mode, the external `run.yaml` file.  
+Lightspeed Core Stack (LCS) builds on top of OGX and its provider system.  
+Any OGX provider can be enabled in LCS with minimal effort by installing the required dependencies and updating the OGX configuration — in unified mode that is your synthesis profile (or `native_override`) inside `lightspeed-stack.yaml`; in the deprecated legacy mode, the external `run.yaml` file.  
 
-This document catalogs all available llama-stack providers and indicates which ones are officially supported in the current LCS version. It also provides a step-by-step guide on how to enable any llama-stack provider in LCS.  
+This document catalogs all available OGX providers and indicates which ones are officially supported in the current LCS version. It also provides a step-by-step guide on how to enable any OGX provider in LCS.  
 
 
 - [Inference Providers](#inference-providers)
@@ -18,11 +18,11 @@ This document catalogs all available llama-stack providers and indicates which o
 - [Tool Runtime Providers](#tool-runtime-providers)
 - [Files Providers](#files-providers)
 - [Batches Providers](#batches-providers)
-- [How to Enable a Provider](#enabling-a-llama-stack-provider)
+- [Enabling an OGX Provider](#enabling-an-ogx-provider)
 
 The tables below summarize each provider category, containing the following atributes:
 
-- **Name** – Provider identifier in llama-stack  
+- **Name** – Provider identifier in OGX  
 - **Type** – `inline` (runs inside LCS) or `remote` (external service)  
 - **Pip Dependencies** – Required Python packages  
 - **Supported in LCS** – Current support status (`✅` / `❌`)  
@@ -89,11 +89,11 @@ azure_entra_id:
   # scope: "https://cognitiveservices.azure.com/.default"  # optional, this is the default
 ```
 
-#### Llama Stack Configuration Requirements
+#### OGX Configuration Requirements
 
-Because Lightspeed builds on top of Llama Stack, certain configuration fields are required to satisfy the base Llama Stack schema. The config block for the Azure inference provider **must** include `base_url` and `api_version`. When using Entra ID authentication, `api_key` is not required to be configured, since the API key is acquired and passed automatically at runtime.
+Because Lightspeed builds on top of OGX, certain configuration fields are required to satisfy the base OGX schema. The config block for the Azure inference provider **must** include `base_url` and `api_version`. When using Entra ID authentication, `api_key` is not required to be configured, since the API key is acquired and passed automatically at runtime.
 
-When `azure_entra_id` is configured in Lightspeed, config enrichment automatically sets `model_validation: false` on the `remote::azure` provider so Llama Stack can start without validating models against Azure at startup.
+When `azure_entra_id` is configured in Lightspeed, config enrichment automatically sets `model_validation: false` on the `remote::azure` provider so OGX can start without validating models against Azure at startup.
 
 ```yaml
 inference:
@@ -106,18 +106,18 @@ inference:
       model_validation: false  # added automatically by Lightspeed enrichment
 ```
 
-**How it works:** Llama Stack defers Azure authentication to inference time. Lightspeed acquires Entra ID tokens at runtime and passes them via the `X-LlamaStack-Provider-Data` header (`azure_api_key`, `azure_api_base`).
+**How it works:** OGX defers Azure authentication to inference time. Lightspeed acquires Entra ID tokens at runtime and passes them via the `X-LlamaStack-Provider-Data` header (`azure_api_key`, `azure_api_base`).
 
 #### Access Token Lifecycle and Management
 
 **Lightspeed startup (library and service mode):**
 1. Lightspeed reads your Entra ID configuration
 2. Does not acquire or cache access tokens at startup—authentication is deferred until request time
-3. Initializes the Llama Stack client without Azure credentials; credentials are supplied later via `X-LlamaStack-Provider-Data` when an Azure model is used
+3. Initializes the OGX client without Azure credentials; credentials are supplied later via `X-LlamaStack-Provider-Data` when an Azure model is used
 
-**Llama Stack service startup (container mode):**
+**OGX service startup (container mode):**
 1. Config enrichment sets `model_validation: false` on the Azure provider
-2. Llama Stack starts without authenticating models against Azure
+2. OGX starts without authenticating models against Azure
 3. Lightspeed connects to this service at startup without Azure credentials; tokens are added only for Azure inference requests
 
 **During inference requests:**
@@ -146,26 +146,26 @@ export CLIENT_ID="your-client-id"
 export CLIENT_SECRET="your-client-secret"
 ```
 
-**Library mode** (Llama Stack embedded in Lightspeed):
+**Library mode** (OGX embedded in Lightspeed):
 
 ```bash
 # From project root
 make run CONFIG=examples/lightspeed-stack-azure-entraid-lib.yaml
 ```
 
-**Service mode** (Llama Stack as separate service):
+**Service mode** (OGX as separate service):
 
 ```bash
-# Terminal 1: Start Llama Stack service with Azure Entra ID config
+# Terminal 1: Start OGX service with Azure Entra ID config
 make run-llama-stack CONFIG=examples/lightspeed-stack-azure-entraid-service.yaml LLAMA_STACK_CONFIG=examples/azure-run.yaml
 
-# Terminal 2: Start Lightspeed (after Llama Stack is ready)
+# Terminal 2: Start Lightspeed (after OGX is ready)
 make run CONFIG=examples/lightspeed-stack-azure-entraid-service.yaml
 ```
 
 **Note:** The `make run-llama-stack` command accepts two variables:
 - `CONFIG` - Lightspeed configuration file (default: `lightspeed-stack.yaml`)
-- `LLAMA_STACK_CONFIG` - Llama Stack configuration file to enrich and run (default: `run.yaml`)
+- `LLAMA_STACK_CONFIG` - OGX configuration file to enrich and run (default: `run.yaml`)
 
 ---
 
@@ -282,7 +282,7 @@ Shields are owned by LCORE (configured under `shields:` block), not as OGX `prov
 
 ---
 
-## Enabling a Llama Stack Provider
+## Enabling an OGX Provider
 
 1. **Add provider dependencies** 
 
@@ -306,9 +306,9 @@ Shields are owned by LCORE (configured under `shields:` block), not as OGX `prov
     ```bash
     uv sync --group llslibdev
     ```
-1. **Update llama-stack configuration**
+1. **Update OGX configuration**
     
-    Update the llama-stack configuration in `run.yaml` as follows:
+    Update the OGX configuration in `run.yaml` as follows:
     
     Check if the corresponding API of added provider is listed in `apis` section.
     ```yaml
@@ -357,18 +357,18 @@ Shields are owned by LCORE (configured under `shields:` block), not as OGX `prov
         model_type: llm
         provider_model_id: gpt-4-turbo  # provider label
     ```
-    **Note** It is necessary for llama-stack to know which resources to use for a given provider. This means you need to explicitly register resources (including models) before you can use them with the associated APIs.
+    **Note** It is necessary for OGX to know which resources to use for a given provider. This means you need to explicitly register resources (including models) before you can use them with the associated APIs.
 
 1. **Provide credentials / secrets**  
    Make sure any required API keys or tokens are available to the stack. For example, export environment variables or configure them in your secret manager:
    ```bash
    export OPENAI_API_KEY="sk_..."
     ```
-    Llama Stack supports environment variable substitution in configuration values using the `${env.VARIABLE_NAME}` syntax. 
+    OGX supports environment variable substitution in configuration values using the `${env.VARIABLE_NAME}` syntax. 
 
-1. **Rerun your llama-stack service**
+1. **Rerun your OGX service**
 
-    If you are running llama-stack as a standalone service, restart it with:
+    If you are running OGX as a standalone service, restart it with:
     ```bash
     uv run llama stack run run.yaml
     ```
@@ -384,4 +384,4 @@ Shields are owned by LCORE (configured under `shields:` block), not as OGX `prov
 
 ---
 
-For a deeper understanding, see the [official llama-stack providers documentation](https://llamastack.github.io/docs/providers).
+For a deeper understanding, see the [official OGX providers documentation](https://llamastack.github.io/docs/providers).

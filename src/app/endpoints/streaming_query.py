@@ -123,7 +123,7 @@ streaming_query_responses: dict[int | str, dict[str, Any]] = {
     429: QuotaExceededResponse.openapi_response(),
     500: InternalServerErrorResponse.openapi_response(examples=["configuration"]),
     503: ServiceUnavailableResponse.openapi_response(
-        examples=["ogx", "kubernetes api"]
+        examples=["OGX", "kubernetes api"]
     ),
 }
 

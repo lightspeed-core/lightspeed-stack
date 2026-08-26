@@ -1,5 +1,5 @@
 # Mock HTTPS OpenAI API for tls-*.feature (Konflux / Prow; no Docker Compose).
-# Llama Stack run.yaml uses https://e2e-mock-tls-inference.<ns>.svc.cluster.local:8443|8444|8445/v1
+# OGX run.yaml uses https://e2e-mock-tls-inference.<ns>.svc.cluster.local:8443|8444|8445/v1
 apiVersion: v1
 kind: Pod
 metadata:

@@ -23,7 +23,7 @@ from utils.token_estimator import (
 
 
 class _MessageItem:
-    """Minimal stand-in for a Llama Stack conversation message item."""
+    """Minimal stand-in for an OGX conversation message item."""
 
     def __init__(self, role: str, text: str) -> None:
         self.type = "message"
@@ -116,7 +116,7 @@ class TestIsMessage:
     """Tests for the is_message_item duck-type check."""
 
     def test_llama_stack_message_item(self) -> None:
-        """A Llama-Stack-shaped object with type == 'message' is a message."""
+        """An OGX-shaped object with type == 'message' is a message."""
         assert is_message_item(_MessageItem("user", "hi")) is True
 
     def test_llama_stack_tool_call_item(self) -> None:

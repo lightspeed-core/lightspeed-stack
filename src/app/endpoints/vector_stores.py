@@ -60,7 +60,7 @@ vector_stores_list_responses: dict[int | str, dict[str, Any]] = {
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
     500: InternalServerErrorResponse.openapi_response(examples=["configuration"]),
     503: ServiceUnavailableResponse.openapi_response(
-        examples=["ogx", "kubernetes api"]
+        examples=["OGX", "kubernetes api"]
     ),
 }
 
@@ -71,7 +71,7 @@ vector_store_responses: dict[int | str, dict[str, Any]] = {
     404: NotFoundResponse.openapi_response(examples=["vector store"]),
     500: InternalServerErrorResponse.openapi_response(examples=["configuration"]),
     503: ServiceUnavailableResponse.openapi_response(
-        examples=["ogx", "kubernetes api"]
+        examples=["OGX", "kubernetes api"]
     ),
 }
 
@@ -82,7 +82,7 @@ file_responses: dict[int | str, dict[str, Any]] = {
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
     500: InternalServerErrorResponse.openapi_response(examples=["configuration"]),
     503: ServiceUnavailableResponse.openapi_response(
-        examples=["ogx", "kubernetes api"]
+        examples=["OGX", "kubernetes api"]
     ),
 }
 
@@ -93,7 +93,7 @@ vector_store_file_responses: dict[int | str, dict[str, Any]] = {
     404: NotFoundResponse.openapi_response(examples=["file"]),
     500: InternalServerErrorResponse.openapi_response(examples=["configuration"]),
     503: ServiceUnavailableResponse.openapi_response(
-        examples=["ogx", "kubernetes api"]
+        examples=["OGX", "kubernetes api"]
     ),
 }
 
@@ -104,7 +104,7 @@ vector_store_files_list_responses: dict[int | str, dict[str, Any]] = {
     404: NotFoundResponse.openapi_response(examples=["vector store"]),
     500: InternalServerErrorResponse.openapi_response(examples=["configuration"]),
     503: ServiceUnavailableResponse.openapi_response(
-        examples=["ogx", "kubernetes api"]
+        examples=["OGX", "kubernetes api"]
     ),
 }
 
@@ -114,7 +114,7 @@ vector_store_delete_responses: dict[int | str, dict[str, Any]] = {
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
     500: InternalServerErrorResponse.openapi_response(examples=["configuration"]),
     503: ServiceUnavailableResponse.openapi_response(
-        examples=["ogx", "kubernetes api"]
+        examples=["OGX", "kubernetes api"]
     ),
 }
 
@@ -124,7 +124,7 @@ vector_store_file_delete_responses: dict[int | str, dict[str, Any]] = {
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
     500: InternalServerErrorResponse.openapi_response(examples=["configuration"]),
     503: ServiceUnavailableResponse.openapi_response(
-        examples=["ogx", "kubernetes api"]
+        examples=["OGX", "kubernetes api"]
     ),
 }
 
@@ -193,7 +193,7 @@ async def create_vector_store(
             metadata=vector_store.metadata,
         )
     except APIConnectionError as e:
-        logger.error("Unable to connect to Llama Stack: %s", e)
+        logger.error("Unable to connect to OGX: %s", e)
         response = ServiceUnavailableResponse(backend_name="OGX", cause=str(e))
         raise HTTPException(**response.model_dump()) from e
     except (LLSApiStatusError, OpenAIAPIStatusError) as e:
@@ -249,7 +249,7 @@ async def list_vector_stores(
 
         return VectorStoresListResponse(data=data)
     except APIConnectionError as e:
-        logger.error("Unable to connect to Llama Stack: %s", e)
+        logger.error("Unable to connect to OGX: %s", e)
         response = ServiceUnavailableResponse(backend_name="OGX", cause=str(e))
         raise HTTPException(**response.model_dump()) from e
     except (LLSApiStatusError, OpenAIAPIStatusError) as e:
@@ -303,7 +303,7 @@ async def get_vector_store(
             metadata=vector_store.metadata,
         )
     except APIConnectionError as e:
-        logger.error("Unable to connect to Llama Stack: %s", e)
+        logger.error("Unable to connect to OGX: %s", e)
         response = ServiceUnavailableResponse(backend_name="OGX", cause=str(e))
         raise HTTPException(**response.model_dump()) from e
     except BadRequestError as e:
@@ -367,7 +367,7 @@ async def update_vector_store(
             metadata=vector_store.metadata or None,
         )
     except APIConnectionError as e:
-        logger.error("Unable to connect to Llama Stack: %s", e)
+        logger.error("Unable to connect to OGX: %s", e)
         response = ServiceUnavailableResponse(backend_name="OGX", cause=str(e))
         raise HTTPException(**response.model_dump()) from e
     except BadRequestError as e:
@@ -419,7 +419,7 @@ async def delete_vector_store(
         await client.vector_stores.delete(vector_store_id)
         return VectorStoreDeleteResponse(deleted=True, vector_store_id=vector_store_id)
     except APIConnectionError as e:
-        logger.error("Unable to connect to Llama Stack: %s", e)
+        logger.error("Unable to connect to OGX: %s", e)
         response = ServiceUnavailableResponse(backend_name="OGX", cause=str(e))
         raise HTTPException(**response.model_dump()) from e
     except (BadRequestError, ValueError) as e:
@@ -528,7 +528,7 @@ async def create_file(  # pylint: disable=too-many-branches,too-many-statements
             object=file_obj.object or "file",
         )
     except APIConnectionError as e:
-        logger.error("Unable to connect to Llama Stack: %s", e)
+        logger.error("Unable to connect to OGX: %s", e)
         response = ServiceUnavailableResponse(backend_name="OGX", cause=str(e))
         raise HTTPException(**response.model_dump()) from e
     except BadRequestError as e:
@@ -539,7 +539,7 @@ async def create_file(  # pylint: disable=too-many-branches,too-many-statements
             response = FileTooLargeResponse.from_backend_rejection(message=str(e))
         else:
             response = InternalServerErrorResponse.query_failed(
-                cause=f"File upload rejected by Llama Stack: {e!s}"
+                cause=f"File upload rejected by OGX: {e!s}"
             )
             # Override to use 400 status code since it's a client error
             response.status_code = status.HTTP_400_BAD_REQUEST
@@ -652,7 +652,7 @@ async def add_file_to_vector_store(  # pylint: disable=too-many-locals,too-many-
             object=vs_file.object or "vector_store.file",
         )
     except APIConnectionError as e:
-        logger.error("Unable to connect to Llama Stack: %s", e)
+        logger.error("Unable to connect to OGX: %s", e)
         response = ServiceUnavailableResponse(backend_name="OGX", cause=str(e))
         raise HTTPException(**response.model_dump()) from e
     except BadRequestError as e:
@@ -723,7 +723,7 @@ async def list_vector_store_files(
         ]
         return VectorStoreFilesListResponse(data=data)
     except APIConnectionError as e:
-        logger.error("Unable to connect to Llama Stack: %s", e)
+        logger.error("Unable to connect to OGX: %s", e)
         response = ServiceUnavailableResponse(backend_name="OGX", cause=str(e))
         raise HTTPException(**response.model_dump()) from e
     except BadRequestError as e:
@@ -793,7 +793,7 @@ async def get_vector_store_file(
             object=vs_file.object or "vector_store.file",
         )
     except APIConnectionError as e:
-        logger.error("Unable to connect to Llama Stack: %s", e)
+        logger.error("Unable to connect to OGX: %s", e)
         response = ServiceUnavailableResponse(backend_name="OGX", cause=str(e))
         raise HTTPException(**response.model_dump()) from e
     except BadRequestError as e:
@@ -848,7 +848,7 @@ async def delete_vector_store_file(
         )
         return VectorStoreFileDeleteResponse(deleted=True, file_id=file_id)
     except APIConnectionError as e:
-        logger.error("Unable to connect to Llama Stack: %s", e)
+        logger.error("Unable to connect to OGX: %s", e)
         response = ServiceUnavailableResponse(backend_name="OGX", cause=str(e))
         raise HTTPException(**response.model_dump()) from e
     except (BadRequestError, ValueError) as e:

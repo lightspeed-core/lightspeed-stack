@@ -793,9 +793,9 @@ def mock_request_with_auth_fixture() -> Request:
 def mock_ogx_client_fixture(
     mocker: MockerFixture,
 ) -> Generator[Any, None, None]:
-    """Mock only the external Llama Stack client for integration tests.
+    """Mock only the external OGX client for integration tests.
 
-    This is a common fixture that mocks the Llama Stack client with sensible
+    This is a common fixture that mocks the OGX client with sensible
     defaults for integration tests. Individual tests can override specific
     behaviors as needed.
 
@@ -807,7 +807,7 @@ def mock_ogx_client_fixture(
         mocker: pytest-mock fixture used to create and patch mocks.
 
     Yields:
-        mock_client: The mocked Llama Stack client instance.
+        mock_client: The mocked OGX client instance.
     """
     # Patch AsyncOgxClientHolder at multiple import locations
     # This ensures the mock is active both during app startup (app.main)

@@ -34,9 +34,9 @@ Feature: Proxy and TLS networking tests for Llama Stack providers
      Then The status code of the response is 200
       And The tunnel proxy handled at least 1 CONNECT request to the LLM provider
 
-  # NOTE: no_proxy is defined on Llama Stack's ProxyConfig model but not
+  # NOTE: no_proxy is defined on OGX's ProxyConfig model but not
   # implemented in _build_proxy_mounts (http_client.py). The field is ignored.
-  # When Llama Stack implements no_proxy support, add a test here.
+  # When OGX implements no_proxy support, add a test here.
 
   @TunnelProxy
   Scenario: LLM query fails gracefully when proxy is unreachable

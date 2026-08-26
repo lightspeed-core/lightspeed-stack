@@ -1,4 +1,4 @@
-# Upstream llama-stack built from Red Hat UBI Python 3.12 image
+# Upstream OGX built from Red Hat UBI Python 3.12 image
 FROM registry.access.redhat.com/ubi9/python-312
 
 USER root
@@ -26,7 +26,7 @@ RUN uv sync --locked --no-install-project --group llslibdev
 ENV PATH="/opt/app-root/.venv/bin:$PATH" \
     PYTHONPATH="/opt/app-root/src:/opt/app-root/providers"
 
-# Set HOME directory so llama-stack uses /opt/app-root/src/.llama
+# Set HOME directory so OGX uses /opt/app-root/src/.llama
 ENV HOME="/opt/app-root/src"
 
 # Create python3 symlink for compatibility

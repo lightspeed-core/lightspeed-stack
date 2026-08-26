@@ -15,7 +15,7 @@ from configuration import configuration
 CFG_FILE = "lightspeed-stack.yaml"
 configuration.load_configuration(CFG_FILE)
 
-# Llama Stack client needs to be loaded before REST API is fully initialized
+# OGX client needs to be loaded before REST API is fully initialized
 import asyncio  # noqa: E402  pylint: disable=C0411,C0413
 
 asyncio.run(AsyncOgxClientHolder().load(configuration.configuration.llama_stack))

@@ -89,10 +89,10 @@ registered_resources:
   models: []
   vector_stores: []
 # REQUIRED: This section is necessary for file_search tool calls to work.
-# Without it, llama-stack's file-search runtime silently fails all file_search operations
+# Without it, OGX's file-search runtime silently fails all file_search operations
 # with no error logged.
 vector_stores:
-  # LCORE-1498: Disables Llama Stack RAG annotation generation
+  # LCORE-1498: Disables OGX RAG annotation generation
   # causing unwanted citation/file markers in model output.
   annotation_prompt_params:
     enable_annotations: false

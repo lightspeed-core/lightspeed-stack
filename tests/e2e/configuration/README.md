@@ -4,8 +4,8 @@ This directory contains configuration files used for end-to-end testing of Light
 
 ## Directory Structure
 
-- `server-mode/` - Configurations for testing when LCore connects to a separate Llama Stack service
-- `library-mode/` - Configurations for testing when LCore embeds Llama Stack as a library
+- `server-mode/` - Configurations for testing when LCore connects to a separate OGX service
+- `library-mode/` - Configurations for testing when LCore embeds OGX as a library
 
 ## Library mode uses unified configs (LCORE-2342)
 
@@ -31,7 +31,7 @@ profile baseline when missing; many `run-*.yaml` fixtures already include it,
 so the ensure is typically a no-op.
 
 The `tests/e2e/configs/run-*.yaml` files therefore serve a dual role: in
-server mode they are the run configuration of the standalone Llama Stack
+server mode they are the run configuration of the standalone OGX
 service, and in library mode they are consumed as the unified-mode synthesis
 profile. No in-repo test config references them via the legacy mechanism
 anymore.

@@ -1,4 +1,4 @@
-"""Thin Prow/OpenShift wrappers for Llama Stack run.yaml ConfigMap operations."""
+"""Thin Prow/OpenShift wrappers for OGX run.yaml ConfigMap operations."""
 
 from tests.e2e.utils.prow_utils import (
     backup_configmap_to_memory,

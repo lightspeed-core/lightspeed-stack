@@ -1,7 +1,7 @@
-# Llama Stack from source on UBI: init clones repo + seeds FAISS, main restores seed then uses
+# OGX from source on UBI: init clones repo + seeds FAISS, main restores seed then uses
 # scripts/llama-stack-entrypoint.sh (same enrich/start path as GitHub Actions docker-compose).
 # Needs ConfigMaps: llama-stack-config (run.yaml), rag-data (kv_store.db.gz), lightspeed-stack-config;
-# optional llama-stack-source for repo_url / repo_revision.
+# optional OGX-source for repo_url / repo_revision.
 #
 # RAG fixture lives at KV_RAG_PATH outside ~/.llama, with OGX_CONFIG_DIR set, so
 # migrate_legacy_config_dir() cannot move the fixture away on startup.
@@ -215,7 +215,7 @@ spec:
             echo "FATAL: missing /opt/app-root/enrich-entrypoint.sh (init should install it)"
             exit 1
           fi
-          # Same enrich + ogx start path as GitHub Actions (docker-compose entrypoint).
+          # Same enrich + OGX start path as GitHub Actions (docker-compose entrypoint).
           export LLAMA_STACK_CONFIG="${LLAMA_STACK_CONFIG:-/opt/app-root/run.yaml}"
           export LIGHTSPEED_CONFIG="${LIGHTSPEED_CONFIG:-/opt/app-root/lightspeed-stack.yaml}"
           exec /opt/app-root/enrich-entrypoint.sh

@@ -1,10 +1,10 @@
-"""E2E test utilities for Llama Stack shields.
+"""E2E test utilities for OGX shields.
 
-This module provides functions to manage shields on a running Llama Stack
+This module provides functions to manage shields on a running OGX
 instance during end-to-end tests: unregister/re-register shields (e.g. from the
 ``Given shields are disabled for this scenario`` step).
 
-Only applies when running Llama Stack as a separate service (server mode).
+Only applies when running OGX as a separate service (server mode).
 Requires E2E_LLAMA_STACK_URL or E2E_LLAMA_HOSTNAME and E2E_LLAMA_PORT.
 """
 

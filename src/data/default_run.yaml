@@ -1,12 +1,10 @@
-# Built-in default Llama Stack baseline for unified-mode synthesis.
+# Built-in default OGX baseline for unified-mode synthesis.
 #
 # This file is the starting point when a unified `lightspeed-stack.yaml`
-# selects `llama_stack.config.baseline: default` (the default) or
-# `baseline: byo-llm` and does not point at a `profile:`. The synthesizer
-# (src/llama_stack_configuration.py) layers enrichment, high-level
-# `inference.providers`, and `native_override` on top of this baseline to
-# produce the final run.yaml handed to Llama Stack. `byo-llm` loads this
-# file then drops the conditional OpenAI inference row.
+# selects `llama_stack.config.baseline: default` (the default) and does not
+# point at a `profile:`. The synthesizer (src/llama_stack_configuration.py)
+# layers enrichment, high-level `inference.providers`, and `native_override`
+# on top of this baseline to produce the final run.yaml handed to OGX.
 #
 # It is intentionally thinner than the repo-root run.yaml: it carries only the
 # APIs and providers needed to boot a minimal, queryable stack (inference,
@@ -113,10 +111,10 @@ registered_resources:
   models: []
   vector_stores: []
 
-# REQUIRED for file_search tool calls to work. Without it, llama-stack's
+# REQUIRED for file_search tool calls to work. Without it, OGX's
 # file-search runtime silently fails all file_search operations with no error logged.
 vector_stores:
-  # LCORE-1498: Disables Llama Stack RAG annotation generation that causes
+  # LCORE-1498: Disables OGX RAG annotation generation that causes
   # unwanted citation/file markers in model output.
   annotation_prompt_params:
     enable_annotations: false

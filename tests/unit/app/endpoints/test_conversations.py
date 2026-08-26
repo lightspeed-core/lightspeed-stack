@@ -256,7 +256,7 @@ def setup_configuration_fixture() -> AppConfig:
     Returns:
         AppConfig: An AppConfig instance initialized from a dictionary
         containing defaults suitable for tests (local service host/port,
-        disabled auth and user-data collection, test Llama Stack API key and
+        disabled auth and user-data collection, test OGX API key and
         URL, and single worker).
     """
     config_dict: dict[str, Any] = {
@@ -308,7 +308,7 @@ def mock_session_data_fixture() -> dict[str, Any]:
 
     Returns:
         dict: A mock session data structure matching the shape produced by the
-        Llama Stack client for use in unit tests.
+        OGX client for use in unit tests.
     """
     return {
         "session_id": VALID_CONVERSATION_ID,
@@ -524,7 +524,7 @@ class TestGetConversationEndpoint:
         dummy_request: Request,
         mock_conversation: MockType,
     ) -> None:
-        """Test the endpoint when LlamaStack connection fails."""
+        """Test the endpoint when OGX connection fails."""
         mock_authorization_resolvers(mocker)
         mocker.patch(
             "app.endpoints.conversations_v1.configuration", setup_configuration
@@ -542,7 +542,7 @@ class TestGetConversationEndpoint:
         )
         mock_client_holder.return_value.get_client.return_value = mock_client
 
-        # simulate situation when it is not possible to connect to Llama Stack
+        # simulate situation when it is not possible to connect to OGX
         with pytest.raises(HTTPException) as exc_info:
             await get_conversation_endpoint_handler(
                 request=dummy_request,
@@ -565,9 +565,9 @@ class TestGetConversationEndpoint:
         dummy_request: Request,
         mock_conversation: MockType,
     ) -> None:
-        """Test the endpoint when LlamaStack returns NotFoundError.
+        """Test the endpoint when OGX returns NotFoundError.
 
-        When the Llama Stack client reports the session as not found,
+        When the OGX client reports the session as not found,
         get_all_conversation_items maps it to HTTP 500 (InternalServerError).
         """
         mock_authorization_resolvers(mocker)
@@ -1099,7 +1099,7 @@ class TestDeleteConversationEndpoint:
         setup_configuration: AppConfig,
         dummy_request: Request,
     ) -> None:
-        """Test the endpoint when LlamaStack connection fails."""
+        """Test the endpoint when OGX connection fails."""
         mock_authorization_resolvers(mocker)
         mocker.patch(
             "app.endpoints.conversations_v1.configuration", setup_configuration
@@ -1141,7 +1141,7 @@ class TestDeleteConversationEndpoint:
         setup_configuration: AppConfig,
         dummy_request: Request,
     ) -> None:
-        """Test the endpoint when LlamaStack returns NotFoundError."""
+        """Test the endpoint when OGX returns NotFoundError."""
         mock_authorization_resolvers(mocker)
         mocker.patch(
             "app.endpoints.conversations_v1.configuration", setup_configuration
@@ -2023,7 +2023,7 @@ class TestUpdateConversationEndpoint:
         dummy_request: Request,
         mock_conversation: MockType,
     ) -> None:
-        """Test the endpoint when LlamaStack connection fails during update."""
+        """Test the endpoint when OGX connection fails during update."""
         mock_authorization_resolvers(mocker)
         mocker.patch(
             "app.endpoints.conversations_v1.configuration", setup_configuration
@@ -2069,7 +2069,7 @@ class TestUpdateConversationEndpoint:
         dummy_request: Request,
         mock_conversation: MockType,
     ) -> None:
-        """Test the endpoint when LlamaStack returns NotFoundError during update."""
+        """Test the endpoint when OGX returns NotFoundError during update."""
         mock_authorization_resolvers(mocker)
         mocker.patch(
             "app.endpoints.conversations_v1.configuration", setup_configuration

@@ -2,7 +2,7 @@
 
 This module creates snapshots of configuration at startup, masking all PII
 and using logical feature collection. It collects a specific allowlisted set
-of configuration entries from both lightspeed-stack and llama-stack
+of configuration entries from both lightspeed-stack and OGX
 configurations rather than automatically grabbing the whole configuration.
 
 The snapshot is built as a JSON-serializable dict ready for telemetry emission.
@@ -410,7 +410,7 @@ LLAMA_STACK_FIELDS: tuple[FieldSpec | ListFieldSpec, ...] = (
         ),
     ),
     # Providers — extract only provider_id and provider_type per entry.
-    # NOTE: Update this list when llama-stack adds new provider categories.
+    # NOTE: Update this list when OGX adds new provider categories.
     *(
         ListFieldSpec(
             f"providers.{provider_name}",
@@ -643,19 +643,19 @@ def _extract_snapshot_fields(
 
 
 # =============================================================================
-# Llama Stack Storage Field Extraction
+# OGX Storage Field Extraction
 # =============================================================================
 
 
 def _extract_store_info(ls_config: dict[str, Any], store_name: str) -> dict[str, Any]:
-    """Extract store type and db_path from llama-stack storage configuration.
+    """Extract store type and db_path from OGX storage configuration.
 
-    Resolves the store → backend → type/db_path chain in the llama-stack
+    Resolves the store → backend → type/db_path chain in the OGX
     storage config structure.
 
     Parameters:
     ----------
-        ls_config: The parsed llama-stack configuration dict.
+        ls_config: The parsed OGX configuration dict.
         store_name: Name of the store to look up (e.g., "inference", "metadata").
 
     Returns:
@@ -724,27 +724,27 @@ def _read_yaml_file(config_path: str) -> Any:
         with open(config_path, "r", encoding="utf-8") as f:
             return yaml.safe_load(f)
     except (OSError, yaml.YAMLError) as e:
-        logger.warning("Failed to read llama-stack config for snapshot: %s", e)
+        logger.warning("Failed to read OGX config for snapshot: %s", e)
         return None
 
 
 async def build_llama_stack_snapshot(
     config_path: Optional[str] = None,
 ) -> dict[str, Any]:
-    """Build snapshot of llama-stack configuration with PII masking.
+    """Build snapshot of OGX configuration with PII masking.
 
-    In library mode, parses the llama-stack YAML config file and extracts
+    In library mode, parses the OGX YAML config file and extracts
     allowlisted fields with masking. In service mode (config_path is None),
     returns a status indicating the config is not available locally.
 
     Parameters:
     ----------
-        config_path: Path to the llama-stack YAML config file. If None
-            (service mode), llama-stack fields are marked as not available.
+        config_path: Path to the OGX YAML config file. If None
+            (service mode), OGX fields are marked as not available.
 
     Returns:
     -------
-        A nested dict containing the masked llama-stack configuration snapshot,
+        A nested dict containing the masked OGX configuration snapshot,
         or a status dict if the config is not available.
     """
     if config_path is None:
@@ -753,7 +753,7 @@ async def build_llama_stack_snapshot(
     ls_config = await asyncio.to_thread(_read_yaml_file, config_path)
 
     if not isinstance(ls_config, dict):
-        logger.warning("Llama-stack config is not a dict, skipping snapshot")
+        logger.warning("OGX config is not a dict, skipping snapshot")
         return {"status": NOT_AVAILABLE}
 
     snapshot = _extract_snapshot_fields(ls_config, LLAMA_STACK_FIELDS)
@@ -768,7 +768,7 @@ async def build_configuration_snapshot(
 ) -> dict[str, Any]:
     """Build a complete configuration snapshot with PII masking.
 
-    Creates a snapshot containing both lightspeed-stack and llama-stack
+    Creates a snapshot containing both lightspeed-stack and OGX
     configuration data with appropriate PII masking applied. Only collects
     fields from an explicit allowlist — does not automatically grab the
     whole configuration.
@@ -776,8 +776,8 @@ async def build_configuration_snapshot(
     Parameters:
     ----------
         config: The lightspeed-stack Configuration object.
-        llama_stack_config_path: Path to the llama-stack YAML config file.
-            If None (service mode), llama-stack section is marked not available.
+        llama_stack_config_path: Path to the OGX YAML config file.
+            If None (service mode), OGX section is marked not available.
 
     Returns:
     -------

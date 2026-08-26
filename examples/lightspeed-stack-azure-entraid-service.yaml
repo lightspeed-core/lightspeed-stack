@@ -7,8 +7,8 @@ service:
   color_log: true
   access_log: true
 llama_stack:
-  # Uses a remote llama-stack service
-  # The instance would have already been started with a llama-stack-run.yaml file
+  # Uses a remote OGX service
+  # The instance would have already been started with an `ogx-run.yaml` file
   use_as_library_client: false
   # Alternative for "as library use"
   # use_as_library_client: true

@@ -1,8 +1,8 @@
 # Getting Started
 
-### Llama Stack used as a library
+### OGX used as a library
 
-It is possible to run Lightspeed Core Stack service with Llama Stack "embedded" as a Python library. This means that just one process will be running and only one port (for example 8080) will be accessible.
+It is possible to run Lightspeed Core Stack service with OGX "embedded" as a Python library. This means that just one process will be running and only one port (for example 8080) will be accessible.
 
 
 
@@ -18,7 +18,7 @@ It is possible to run Lightspeed Core Stack service with Llama Stack "embedded" 
 1. `pip install --user uv`
 1. `sudo dnf install curl jq`
 
-#### Installing dependencies for Llama Stack
+#### Installing dependencies for OGX
 
 1. Clone LCS repository
 1. Add and install all required dependencies
@@ -111,11 +111,11 @@ It is possible to run Lightspeed Core Stack service with Llama Stack "embedded" 
      + xxhash==3.5.0
     ```
 
-#### Llama Stack configuration
+#### OGX configuration
 
-Llama Stack needs to be configured properly. For using the default runnable Llama Stack a file named `run.yaml` needs to be created. Use the example configuration from [examples/run.yaml](../examples/run.yaml).
+OGX needs to be configured properly. For using the default runnable OGX a file named `run.yaml` needs to be created. Use the example configuration from [examples/run.yaml](../examples/run.yaml).
 
-#### LCS configuration to use Llama Stack in library mode
+#### LCS configuration to use OGX in library mode
 
 Create a file named lightspeed-stack.yaml with this content.
 
@@ -245,7 +245,7 @@ mcp_servers:
     url: "http://localhost:3002"
 ```
 
-**Important**: MCP servers defined in `lightspeed-stack.yaml` or registered dynamically via the API (see [Dynamic MCP Server Management](#dynamic-mcp-server-management-via-api)) are available to the AI agents. Tools configured in the llama-stack `run.yaml` are not accessible to LCS agents.
+**Important**: MCP servers defined in `lightspeed-stack.yaml` or registered dynamically via the API (see [Dynamic MCP Server Management](#dynamic-mcp-server-management-via-api)) are available to the AI agents. Tools configured in the OGX `run.yaml` are not accessible to LCS agents.
 
 #### Step 3: Pass authentication or metadata via MCP headers (optional)
 

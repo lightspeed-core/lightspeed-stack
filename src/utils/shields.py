@@ -119,7 +119,7 @@ async def run_shield_moderation_v2(
 
             try:
                 shield_result = await shield.run(input_text)
-            # APIConnectionError and APIStatusError from ogx should not be raised
+            # APIConnectionError and APIStatusError from OGX should not be raised
             # from model_request, because they will be caught inside AsyncOpenAI
             # and transferred into openai's APIConnectionError. The openai's
             # exceptions will further transferred into ModelHTTPError or

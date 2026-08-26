@@ -23,7 +23,7 @@ from tests.e2e.utils.utils import (
 _active_lightspeed_stack_config_basename: dict[str, Optional[str]] = {"basename": None}
 
 # Behave clears user attributes on ``context`` between scenarios; store
-# Llama Stack endpoint info at module level so ``after_feature`` can see it.
+# OGX endpoint info at module level so ``after_feature`` can see it.
 _llama_stack_endpoint: dict[str, str] = {"hostname": "localhost", "port": "8321"}
 
 
@@ -42,12 +42,12 @@ def get_active_lightspeed_stack_config_basename() -> Optional[str]:
 
 
 def get_llama_stack_hostname() -> str:
-    """Return the Llama Stack hostname surviving per-scenario context clearing."""
+    """Return the OGX hostname surviving per-scenario context clearing."""
     return _llama_stack_endpoint["hostname"]
 
 
 def get_llama_stack_port() -> str:
-    """Return the Llama Stack port surviving per-scenario context clearing."""
+    """Return the OGX port surviving per-scenario context clearing."""
     return _llama_stack_endpoint["port"]
 
 
@@ -98,7 +98,7 @@ def configure_service(context: Context, config_name: str) -> None:
     returns immediately: no backup, no copy, and sets
     ``context.lightspeed_stack_skip_restart`` so the next ``The service is
     restarted`` step can no-op—except after ``MCP configuration is reset for a new
-    scenario`` or llama-stack disruption, in which case
+    scenario`` or OGX disruption, in which case
     the restart is not skipped so Lightspeed reloads config and MCP state stays
     consistent. When the basename differs from the last apply, creates the
     backup on first use,
@@ -174,8 +174,8 @@ def configure_service(context: Context, config_name: str) -> None:
 def reset_mcp_configuration_for_new_scenario(context: Context) -> None:
     """Reset MCP-related state before applying a different MCP config.
 
-    Llama Stack 0.7 no longer registers MCP servers as toolgroups. In library
-    mode, clear embedded Llama Stack storage so the next config applies cleanly.
+    OGX 0.7 no longer registers MCP servers as toolgroups. In library
+    mode, clear embedded OGX storage so the next config applies cleanly.
     In server mode, only force a Lightspeed restart on the next config apply.
 
     Sets ``force_lightspeed_restart_after_mcp_config_reset`` so the next

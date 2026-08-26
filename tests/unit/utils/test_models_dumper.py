@@ -873,8 +873,8 @@ def test_dump_models(tmpdir: Path) -> None:
                         },
                         "llama_stack": {
                             "$ref": "`#/components/schemas/`LlamaStackConfiguration",
-                            "description": "This section contains Llama Stack configuration. Lightspeed Core Stack service can call Llama Stack in library mode or in server mode.",
-                            "title": "Llama Stack configuration"
+                            "description": "This section contains OGX configuration. Lightspeed Core Stack service can call OGX in library mode or in server mode.",
+                            "title": "OGX configuration"
                         },
                         "user_data_collection": {
                             "$ref": "`#/components/schemas/`UserDataCollection",
@@ -887,7 +887,7 @@ def test_dump_models(tmpdir: Path) -> None:
                             "title": "Database Configuration"
                         },
                         "mcp_servers": {
-                            "description": "MCP (Model Context Protocol) servers provide tools and capabilities to the AI agents. These are configured in this section. Only MCP servers defined in the lightspeed-stack.yaml configuration are available to the agents. Tools configured in the llama-stack run.yaml are not accessible to lightspeed-core agents.",
+                            "description": "MCP (Model Context Protocol) servers provide tools and capabilities to the AI agents. These are configured in this section. Only MCP servers defined in the lightspeed-stack.yaml configuration are available to the agents. Tools configured in the OGX run.yaml are not accessible to lightspeed-core agents.",
                             "items": {
                                 "$ref": "`#/components/schemas/`ModelContextProtocolServer"
                             },
@@ -945,7 +945,7 @@ def test_dump_models(tmpdir: Path) -> None:
                             "title": "Approvals configuration"
                         },
                         "byok_rag": {
-                            "description": "BYOK RAG configuration. This configuration can be used to reconfigure Llama Stack through its run.yaml configuration file",
+                            "description": "BYOK RAG configuration. This configuration can be used to reconfigure OGX through its run.yaml configuration file",
                             "items": {
                                 "$ref": "`#/components/schemas/`ByokRag"
                             },
@@ -1996,7 +1996,7 @@ def test_dump_models(tmpdir: Path) -> None:
                     "description": "Dynamic FAISS vector-store provider (runtime create capacity).",
                     "properties": {
                         "id": {
-                            "description": "Llama Stack vector_io provider_id. Surrounding whitespace is stripped before validation and emission.",
+                            "description": "OGX vector_io provider_id. Surrounding whitespace is stripped before validation and emission.",
                             "minLength": 1,
                             "title": "Provider ID",
                             "type": "string"
@@ -2409,7 +2409,7 @@ def test_dump_models(tmpdir: Path) -> None:
                     "type": "object"
                 },
                 "HealthStatus": {
-                    "description": "Health status enum for provider and service health checks.\n\nThis enum serves two purposes:\n\n1. Provider-level health (returned by Llama Stack providers):\n   - OK: Provider is healthy and operational\n   - ERROR: Provider is unhealthy or failed health check\n   - NOT_IMPLEMENTED: Provider does not implement health checks\n   - UNKNOWN: Fallback when provider status cannot be determined\n\n2. Service-level health (overall LCORE status):\n   - HEALTHY: All systems operational, LLS connected, all providers healthy\n   - DEGRADED: Service running with reduced functionality (e.g., LLS unavailable)\n   - UNHEALTHY: Service connected but one or more providers are unhealthy",
+                    "description": "Health status enum for provider and service health checks.\n\nThis enum serves two purposes:\n\n1. Provider-level health (returned by OGX providers):\n   - OK: Provider is healthy and operational\n   - ERROR: Provider is unhealthy or failed health check\n   - NOT_IMPLEMENTED: Provider does not implement health checks\n   - UNKNOWN: Fallback when provider status cannot be determined\n\n2. Service-level health (overall LCORE status):\n   - HEALTHY: All systems operational, LLS connected, all providers healthy\n   - DEGRADED: Service running with reduced functionality (e.g., LLS unavailable)\n   - UNHEALTHY: Service connected but one or more providers are unhealthy",
                     "enum": [
                         "ok",
                         "error",
@@ -2478,7 +2478,7 @@ def test_dump_models(tmpdir: Path) -> None:
                             "type": "object"
                         },
                         "providers": {
-                            "description": "Unified-mode synthesis input (Decision S5): a high-level, backend-agnostic list of inference providers the synthesizer expands into Llama Stack provider entries. Lives at the configuration root so it survives a future backend change. A non-empty list signals unified mode. Empty (the default) leaves legacy/remote modes unaffected. The sibling default_model / default_provider keep their query-time routing meaning and are independent of this list.",
+                            "description": "Unified-mode synthesis input (Decision S5): a high-level, backend-agnostic list of inference providers the synthesizer expands into OGX provider entries. Lives at the configuration root so it survives a future backend change. A non-empty list signals unified mode. Empty (the default) leaves legacy/remote modes unaffected. The sibling default_model / default_provider keep their query-time routing meaning and are independent of this list.",
                             "items": {
                                 "$ref": "`#/components/schemas/`UnifiedInferenceProvider"
                             },
@@ -2504,7 +2504,7 @@ def test_dump_models(tmpdir: Path) -> None:
                     "type": "object"
                 },
                 "InfoResponse": {
-                    "description": "Model representing a response to an info request.\n\nAttributes:\n    name: Service name.\n    service_version: Service version.\n    llama_stack_version: Llama Stack version.",
+                    "description": "Model representing a response to an info request.\n\nAttributes:\n    name: Service name.\n    service_version: Service version.\n    llama_stack_version: OGX version.",
                     "examples": [
                         {
                             "llama_stack_version": "1.0.0",
@@ -2532,7 +2532,7 @@ def test_dump_models(tmpdir: Path) -> None:
                             "type": "string"
                         },
                         "llama_stack_version": {
-                            "description": "Llama Stack version",
+                            "description": "OGX version",
                             "examples": [
                                 "0.2.1",
                                 "0.2.2",
@@ -2540,7 +2540,7 @@ def test_dump_models(tmpdir: Path) -> None:
                                 "0.2.21",
                                 "0.2.22"
                             ],
-                            "title": "Llama Stack Version",
+                            "title": "OGX Version",
                             "type": "string"
                         }
                     },
@@ -2887,53 +2887,53 @@ def test_dump_models(tmpdir: Path) -> None:
                 },
                 "LlamaStackConfiguration": {
                     "additionalProperties": false,
-                    "description": "Llama stack configuration.\n\nLlama Stack is a comprehensive system that provides a uniform set of tools\nfor building, scaling, and deploying generative AI applications, enabling\ndevelopers to create, integrate, and orchestrate multiple AI services and\ncapabilities into an adaptable setup.\n\nUseful resources:\n\n  - [Llama Stack](https://www.llama.com/products/llama-stack/)\n  - [Python Llama Stack client](https://github.com/llamastack/llama-stack-client-python)\n  - [Build AI Applications with Llama Stack](https://llamastack.github.io/)",
+                    "description": "OGX configuration.\n\nOGX is a comprehensive system that provides a uniform set of tools\nfor building, scaling, and deploying generative AI applications, enabling\ndevelopers to create, integrate, and orchestrate multiple AI services and\ncapabilities into an adaptable setup.\n\nUseful resources:\n\n  - [OGX](https://www.llama.com/products/llama-stack/)\n  - [Python OGX client](https://github.com/llamastack/llama-stack-client-python)\n  - [Build AI Applications with OGX](https://llamastack.github.io/)",
                     "properties": {
                         "url": {
                             "type": "string",
                             "nullable": true,
                             "default": null,
-                            "description": "URL to Llama Stack service; used when library mode is disabled. Must be a valid HTTP or HTTPS URL.",
-                            "title": "Llama Stack URL"
+                            "description": "URL to OGX service; used when library mode is disabled. Must be a valid HTTP or HTTPS URL.",
+                            "title": "OGX URL"
                         },
                         "api_key": {
                             "type": "string",
                             "nullable": true,
                             "default": null,
-                            "description": "API key to access Llama Stack service",
+                            "description": "API key to access OGX service",
                             "title": "API key"
                         },
                         "use_as_library_client": {
                             "type": "boolean",
                             "nullable": true,
                             "default": null,
-                            "description": "When set to true Llama Stack will be used in library mode, not in server mode (default)",
+                            "description": "When set to true OGX will be used in library mode, not in server mode (default)",
                             "title": "Use as library"
                         },
                         "library_client_config_path": {
                             "type": "string",
                             "nullable": true,
                             "default": null,
-                            "description": "Path to configuration file used when Llama Stack is run in library mode",
-                            "title": "Llama Stack configuration path"
+                            "description": "Path to configuration file used when OGX is run in library mode",
+                            "title": "OGX configuration path"
                         },
                         "timeout": {
                             "default": 180,
-                            "description": "Timeout in seconds for requests to Llama Stack service. Default is 180 seconds (3 minutes) to accommodate long-running RAG queries.",
+                            "description": "Timeout in seconds for requests to OGX service. Default is 180 seconds (3 minutes) to accommodate long-running RAG queries.",
                             "minimum": 0,
                             "title": "Request timeout",
                             "type": "integer"
                         },
                         "max_retries": {
                             "default": 5,
-                            "description": "Maximum number of connection attempts before giving up. Used on startup to connect to Llama Stack and retrieve its version. Connection attempts are retried with a fixed delay to handle the case where Llama Stack is still starting up (e.g., when running as a sidecar in the same pod).",
+                            "description": "Maximum number of connection attempts before giving up. Used on startup to connect to OGX and retrieve its version. Connection attempts are retried with a fixed delay to handle the case where OGX is still starting up (e.g., when running as a sidecar in the same pod).",
                             "minimum": 0,
                             "title": "Maximum number of connection attempts before giving up",
                             "type": "integer"
                         },
                         "retry_delay": {
                             "default": 2,
-                            "description": "Delay in seconds between retry attempts. Used on startup to connect to Llama Stack and retrieve its version. Connection attempts are retried with a fixed delay to handle the case where Llama Stack is still starting up (e.g., when running as a sidecar in the same pod).",
+                            "description": "Delay in seconds between retry attempts. Used on startup to connect to OGX and retrieve its version. Connection attempts are retried with a fixed delay to handle the case where OGX is still starting up (e.g., when running as a sidecar in the same pod).",
                             "minimum": 0,
                             "title": "Delay in seconds between retry attempts",
                             "type": "integer"
@@ -2942,7 +2942,7 @@ def test_dump_models(tmpdir: Path) -> None:
                             "type": "boolean",
                             "nullable": true,
                             "default": false,
-                            "description": "If enabled, Lightspeed Core can be started even when Llama Stack is not accessible (valid for server mode only)",
+                            "description": "If enabled, Lightspeed Core can be started even when OGX is not accessible (valid for server mode only)",
                             "title": "Allow degraded mode"
                         },
                         "config": {
@@ -2955,8 +2955,8 @@ def test_dump_models(tmpdir: Path) -> None:
                                 }
                             ],
                             "default": null,
-                            "description": "Backend-specific knobs for unified mode, where LCORE synthesizes the Llama Stack run.yaml instead of reading an external file. Holds the baseline selector, an optional profile path, and a raw native_override escape hatch. Backend-agnostic high-level sections (e.g. inference.providers) live at the configuration root, not here. Mutually exclusive with library_client_config_path; that cross-field check lives on the root Configuration model. When set in library mode, library_client_config_path is not required.",
-                            "title": "Unified Llama Stack configuration"
+                            "description": "Backend-specific knobs for unified mode, where LCORE synthesizes the OGX run.yaml instead of reading an external file. Holds the baseline selector, an optional profile path, and a raw native_override escape hatch. Backend-agnostic high-level sections (e.g. inference.providers) live at the configuration root, not here. Mutually exclusive with library_client_config_path; that cross-field check lives on the root Configuration model. When set in library mode, library_client_config_path is not required.",
+                            "title": "Unified OGX configuration"
                         }
                     },
                     "title": "LlamaStackConfiguration",
@@ -3382,7 +3382,7 @@ def test_dump_models(tmpdir: Path) -> None:
                 },
                 "ModelContextProtocolServer": {
                     "additionalProperties": false,
-                    "description": "Model context protocol server configuration.\n\nMCP (Model Context Protocol) servers provide tools and capabilities to the\nAI agents. These are configured by this structure. Only MCP servers\ndefined in the lightspeed-stack.yaml configuration are available to the\nagents. Tools configured in the llama-stack run.yaml are not accessible to\nlightspeed-core agents.\n\nUseful resources:\n\n- [Model Context Protocol](https://modelcontextprotocol.io/docs/getting-started/intro)\n- [MCP FAQs](https://modelcontextprotocol.io/faqs)\n- [Wikipedia article](https://en.wikipedia.org/wiki/Model_Context_Protocol)",
+                    "description": "Model context protocol server configuration.\n\nMCP (Model Context Protocol) servers provide tools and capabilities to the\nAI agents. These are configured by this structure. Only MCP servers\ndefined in the lightspeed-stack.yaml configuration are available to the\nagents. Tools configured in the OGX run.yaml are not accessible to\nlightspeed-core agents.\n\nUseful resources:\n\n- [Model Context Protocol](https://modelcontextprotocol.io/docs/getting-started/intro)\n- [MCP FAQs](https://modelcontextprotocol.io/faqs)\n- [Wikipedia article](https://en.wikipedia.org/wiki/Model_Context_Protocol)",
                     "properties": {
                         "name": {
                             "description": "MCP server name that must be unique",
@@ -3437,7 +3437,7 @@ def test_dump_models(tmpdir: Path) -> None:
                             "type": "integer",
                             "nullable": true,
                             "default": null,
-                            "description": "Timeout in seconds for requests to the MCP server. If not specified, the default timeout from Llama Stack will be used. Note: This field is reserved for future use when Llama Stack adds timeout support.",
+                            "description": "Timeout in seconds for requests to the MCP server. If not specified, the default timeout from OGX will be used. Note: This field is reserved for future use when OGX adds timeout support.",
                             "title": "Request timeout"
                         }
                     },
@@ -5054,7 +5054,7 @@ def test_dump_models(tmpdir: Path) -> None:
                     "description": "Dynamic pgvector vector-store provider (runtime create capacity).",
                     "properties": {
                         "id": {
-                            "description": "Llama Stack vector_io provider_id. Surrounding whitespace is stripped before validation and emission.",
+                            "description": "OGX vector_io provider_id. Surrounding whitespace is stripped before validation and emission.",
                             "minLength": 1,
                             "title": "Provider ID",
                             "type": "string"
@@ -5229,7 +5229,7 @@ def test_dump_models(tmpdir: Path) -> None:
                 },
                 "PromptCreateRequest": {
                     "additionalProperties": false,
-                    "description": "Request body to create a stored prompt template in Llama Stack.\n\nAttributes:\n    prompt: Prompt text with variable placeholders.\n    variables: Variable names allowed in the template.",
+                    "description": "Request body to create a stored prompt template in OGX.\n\nAttributes:\n    prompt: Prompt text with variable placeholders.\n    variables: Variable names allowed in the template.",
                     "examples": [
                         {
                             "prompt": "Summarize: {{text}}",
@@ -5315,7 +5315,7 @@ def test_dump_models(tmpdir: Path) -> None:
                 },
                 "PromptResourceResponse": {
                     "additionalProperties": false,
-                    "description": "A stored prompt template as returned by Llama Stack.\n\nAttributes:\n    prompt_id: Prompt identifier from Llama Stack.\n    version: Version number for this prompt.\n    is_default: Whether this version is the default.\n    prompt: Prompt text with placeholders.\n    variables: Variable names used in the template.",
+                    "description": "A stored prompt template as returned by OGX.\n\nAttributes:\n    prompt_id: Prompt identifier from OGX.\n    version: Version number for this prompt.\n    is_default: Whether this version is the default.\n    prompt: Prompt text with placeholders.\n    variables: Variable names used in the template.",
                     "examples": [
                         {
                             "is_default": true,
@@ -5329,7 +5329,7 @@ def test_dump_models(tmpdir: Path) -> None:
                     ],
                     "properties": {
                         "prompt_id": {
-                            "description": "Prompt identifier from Llama Stack",
+                            "description": "Prompt identifier from OGX",
                             "title": "Prompt Id",
                             "type": "string"
                         },
@@ -5467,7 +5467,7 @@ def test_dump_models(tmpdir: Path) -> None:
                 },
                 "PromptsListResponse": {
                     "additionalProperties": false,
-                    "description": "List of stored prompt templates returned by Llama Stack.\n\nAttributes:\n    data: Prompt entries as returned by the Llama Stack list API.",
+                    "description": "List of stored prompt templates returned by OGX.\n\nAttributes:\n    data: Prompt entries as returned by the OGX list API.",
                     "examples": [
                         {
                             "data": [
@@ -5485,7 +5485,7 @@ def test_dump_models(tmpdir: Path) -> None:
                     ],
                     "properties": {
                         "data": {
-                            "description": "Prompt entries (as returned by Llama Stack list)",
+                            "description": "Prompt entries (as returned by OGX list)",
                             "items": {
                                 "$ref": "`#/components/schemas/`PromptResourceResponse"
                             },
@@ -6744,7 +6744,7 @@ def test_dump_models(tmpdir: Path) -> None:
                     ]
                 },
                 "ResponsesApiParams": {
-                    "description": "Parameters for a Llama Stack Responses API request.\n\nAll fields accepted by the Llama Stack client responses.create() body are\nincluded so that dumped model can be passed directly to response create.",
+                    "description": "Parameters for an OGX Responses API request.\n\nAll fields accepted by the OGX client responses.create() body are\nincluded so that dumped model can be passed directly to response create.",
                     "properties": {
                         "input": {
                             "$ref": "`#/components/schemas/`ResponseInput",
@@ -6941,7 +6941,7 @@ def test_dump_models(tmpdir: Path) -> None:
                         },
                         "omit_conversation": {
                             "default": false,
-                            "description": "When True, the conversation parameter is dropped from the request body while remaining on the object for identity. Set by conversation compaction (LCORE-1572): once a conversation is compacted, lightspeed-stack supplies explicit input and must not let Llama Stack reload the full history via the conversation parameter.",
+                            "description": "When True, the conversation parameter is dropped from the request body while remaining on the object for identity. Set by conversation compaction (LCORE-1572): once a conversation is compacted, lightspeed-stack supplies explicit input and must not let OGX reload the full history via the conversation parameter.",
                             "title": "Omit Conversation",
                             "type": "boolean"
                         }
@@ -9230,10 +9230,10 @@ def test_dump_models(tmpdir: Path) -> None:
                 },
                 "UnifiedInferenceProvider": {
                     "additionalProperties": false,
-                    "description": "A high-level inference provider entry for unified-mode synthesis.\n\nOperators describe inference providers at this high level (backend-agnostic\nvocabulary) instead of authoring raw Llama Stack provider blocks. The\nsynthesizer (`apply_high_level_inference`) expands each entry into a Llama\nStack `providers.inference` entry, mapping `type` to a `provider_type` and\nemitting `${env.<VAR>}` references for secrets (never literal values).\n\nAttributes:\n    type: Canonical provider identifier. Vendor-neutral so it survives a\n        future backend change; each backend-specific synthesizer maps it to\n        its own provider vocabulary.\n    id: Optional identifier emitted as the Llama Stack provider_id. When\n        omitted, synthesized as type with underscores hyphenated. If set,\n        must be non-empty after stripping whitespace and may contain only\n        lowercase letters, digits, underscores, and hyphens.\n    api_key_env: Name of the environment variable holding the provider API\n        key. Emitted verbatim as `${env.<name>}` so the secret never lands\n        on disk resolved.\n    allowed_models: Optional allow-list of model identifiers passed through\n        to the synthesized provider config.\n    extra: Additional provider-config keys merged verbatim into the\n        synthesized provider's `config` block \u2014 an escape hatch for\n        provider-specific knobs not modeled here.",
+                    "description": "A high-level inference provider entry for unified-mode synthesis.\n\nOperators describe inference providers at this high level (backend-agnostic\nvocabulary) instead of authoring raw OGX provider blocks. The\nsynthesizer (`apply_high_level_inference`) expands each entry into a Llama\nStack `providers.inference` entry, mapping `type` to a `provider_type` and\nemitting `${env.<VAR>}` references for secrets (never literal values).\n\nAttributes:\n    type: Canonical provider identifier. Vendor-neutral so it survives a\n        future backend change; each backend-specific synthesizer maps it to\n        its own provider vocabulary.\n    id: Optional identifier emitted as the OGX provider_id. When\n        omitted, synthesized as type with underscores hyphenated. If set,\n        must be non-empty after stripping whitespace and may contain only\n        lowercase letters, digits, underscores, and hyphens.\n    api_key_env: Name of the environment variable holding the provider API\n        key. Emitted verbatim as `${env.<name>}` so the secret never lands\n        on disk resolved.\n    allowed_models: Optional allow-list of model identifiers passed through\n        to the synthesized provider config.\n    extra: Additional provider-config keys merged verbatim into the\n        synthesized provider's `config` block \u2014 an escape hatch for\n        provider-specific knobs not modeled here.",
                     "properties": {
                         "type": {
-                            "description": "Canonical, backend-agnostic provider identifier mapped to a Llama Stack provider_type by the synthesizer.",
+                            "description": "Canonical, backend-agnostic provider identifier mapped to a OGX provider_type by the synthesizer.",
                             "enum": [
                                 "openai",
                                 "ollama",
@@ -9252,7 +9252,7 @@ def test_dump_models(tmpdir: Path) -> None:
                             "type": "string",
                             "nullable": true,
                             "default": null,
-                            "description": "Optional identifier emitted as the Llama Stack provider_id. When omitted, synthesized as type with underscores hyphenated. If set, must be non-empty after stripping whitespace and may contain only lowercase letters, digits, underscores, and hyphens.",
+                            "description": "Optional identifier emitted as the OGX provider_id. When omitted, synthesized as type with underscores hyphenated. If set, must be non-empty after stripping whitespace and may contain only lowercase letters, digits, underscores, and hyphens.",
                             "title": "Provider ID"
                         },
                         "api_key_env": {
@@ -9284,7 +9284,7 @@ def test_dump_models(tmpdir: Path) -> None:
                 },
                 "UnifiedLlamaStackConfig": {
                     "additionalProperties": false,
-                    "description": "Backend-specific knobs for unified-mode Llama Stack synthesis.\n\nPer Decision S5 of the design spike, backend-agnostic high-level sections\n(inference, ...) live at the configuration root, not here. This block holds\nonly the Llama-Stack-specific synthesis controls: which baseline to start\nfrom, an optional profile file, and a raw native_override escape hatch.\n\nAttributes:\n    baseline: Synthesis starting point. \"default\" begins from LCORE's\n        built-in baseline (src/data/default_run.yaml) including the\n        conditional OpenAI inference provider. \"byo-llm\" begins from the\n        same file with that OpenAI row removed. \"empty\" begins from an\n        empty dict (used by the migration tool for an exact round-trip).\n        Ignored when `profile` is set.\n    profile: Optional path to a user-authored run.yaml-shaped file used as\n        the synthesis baseline. Relative paths resolve against the directory\n        of the loaded lightspeed-stack.yaml.\n    native_override: Raw Llama Stack schema deep-merged last (maps merge\n        recursively, lists and scalars replace). The escape hatch for\n        anything the high-level sections do not express.",
+                    "description": "Backend-specific knobs for unified-mode OGX synthesis.\n\nPer Decision S5 of the design spike, backend-agnostic high-level sections\n(inference, ...) live at the configuration root, not here. This block holds\nonly the OGX-specific synthesis controls: which baseline to start\nfrom, an optional profile file, and a raw native_override escape hatch.\n\nAttributes:\n    baseline: Synthesis starting point. \"default\" begins from LCORE's\n        built-in baseline (src/data/default_run.yaml); \"empty\" begins from\n        an empty dict (used by the migration tool for an exact round-trip).\n        Ignored when `profile` is set.\n    profile: Optional path to a user-authored run.yaml-shaped file used as\n        the synthesis baseline. Relative paths resolve against the directory\n        of the loaded lightspeed-stack.yaml.\n    native_override: Raw ogx schema deep-merged last (maps merge\n        recursively, lists and scalars replace). The escape hatch for\n        anything the high-level sections do not express.",
                     "properties": {
                         "baseline": {
                             "default": "default",
@@ -9306,7 +9306,7 @@ def test_dump_models(tmpdir: Path) -> None:
                         },
                         "native_override": {
                             "additionalProperties": true,
-                            "description": "Raw Llama Stack schema deep-merged last (maps merge recursively; lists and scalars replace).",
+                            "description": "Raw ogx schema deep-merged last (maps merge recursively; lists and scalars replace).",
                             "title": "Native override",
                             "type": "object"
                         }
@@ -9407,13 +9407,13 @@ def test_dump_models(tmpdir: Path) -> None:
                 },
                 "VectorStoreConfiguration": {
                     "additionalProperties": false,
-                    "description": "Configuration for dynamic vector-store providers.\n\nMirrors ``InferenceConfiguration``: a providers list plus a sibling\n``default_provider`` pointer, rather than a per-entry default flag.\n\nAttributes:\n    default_provider: Provider id used for vector_stores.default_* in the\n        synthesized Llama Stack config. Required when providers is\n        non-empty; must match one of providers[].id. Must be omitted when\n        providers is empty.\n    providers: Dynamic vector-store provider capacity for runtime\n        POST /v1/vector-stores creates. Not the same as byok_rag (static\n        registered corpora).",
+                    "description": "Configuration for dynamic vector-store providers.\n\nMirrors ``InferenceConfiguration``: a providers list plus a sibling\n``default_provider`` pointer, rather than a per-entry default flag.\n\nAttributes:\n    default_provider: Provider id used for vector_stores.default_* in the\n        synthesized OGX config. Required when providers is\n        non-empty; must match one of providers[].id. Must be omitted when\n        providers is empty.\n    providers: Dynamic vector-store provider capacity for runtime\n        POST /v1/vector-stores creates. Not the same as byok_rag (static\n        registered corpora).",
                     "properties": {
                         "default_provider": {
                             "type": "string",
                             "nullable": true,
                             "default": null,
-                            "description": "Provider id used for vector_stores.default_* in the synthesized Llama Stack config. Required when providers is non-empty; must match one of providers[].id.",
+                            "description": "Provider id used for vector_stores.default_* in the synthesized OGX config. Required when providers is non-empty; must match one of providers[].id.",
                             "title": "Default provider"
                         },
                         "providers": {

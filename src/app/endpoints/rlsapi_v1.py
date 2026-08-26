@@ -105,7 +105,7 @@ infer_responses: dict[int | str, dict[str, Any]] = {
     429: QuotaExceededResponse.openapi_response(),
     500: InternalServerErrorResponse.openapi_response(examples=["configuration"]),
     503: ServiceUnavailableResponse.openapi_response(
-        examples=["ogx", "kubernetes api"]
+        examples=["OGX", "kubernetes api"]
     ),
 }
 
@@ -169,7 +169,7 @@ async def _get_default_model_id() -> str:
 
     Model selection precedence:
     1. If default model and provider are configured, use them.
-    2. Otherwise, query Llama Stack for available LLM models and select the first one.
+    2. Otherwise, query OGX for available LLM models and select the first one.
 
     Returns:
         The model identifier string in "provider/model" format.
@@ -190,7 +190,7 @@ async def _get_default_model_id() -> str:
             )
             return f"{provider_id}/{model_id}"
 
-    # 2. Auto-discover from Llama Stack
+    # 2. Auto-discover from OGX
     logger.info(
         "No complete default model configured for rlsapi v1, "
         "auto-discovering LLM model"
@@ -224,7 +224,7 @@ async def _get_default_model_id() -> str:
 
 
 async def _resolve_validated_model_id() -> str:
-    """Resolve and validate the default model against Llama Stack.
+    """Resolve and validate the default model against OGX.
 
     Combines model resolution with existence validation so callers get
     either a known-good model ID or a clear 404 error.
@@ -233,8 +233,8 @@ async def _resolve_validated_model_id() -> str:
         The validated model identifier string in "provider/model" format.
 
     Raises:
-        HTTPException: 404 if the resolved model does not exist in Llama Stack.
-        HTTPException: 503 if Llama Stack is unreachable during resolution or validation.
+        HTTPException: 404 if the resolved model does not exist in OGX.
+        HTTPException: 503 if OGX is unreachable during resolution or validation.
     """
     model_id = await _get_default_model_id()
     client = AsyncOgxClientHolder().get_client()
@@ -268,7 +268,7 @@ async def _call_llm(
         The full OpenAIResponseObject from the LLM.
 
     Raises:
-        APIConnectionError: If the Llama Stack service is unreachable.
+        APIConnectionError: If the OGX service is unreachable.
         HTTPException: 503 if no default model is configured.
     """
     client = AsyncOgxClientHolder().get_client()
@@ -285,7 +285,7 @@ async def _call_llm(
 
     logger.debug("Using model %s for rlsapi v1 inference", resolved_model_id)
 
-    # Normalize Vertex AI model IDs to work around llama-stack 0.6.x bug
+    # Normalize Vertex AI model IDs to work around OGX 0.6.x bug
     normalized_model = normalize_vertex_ai_model_id(resolved_model_id)
 
     response = await client.responses.create(

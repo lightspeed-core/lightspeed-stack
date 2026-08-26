@@ -195,7 +195,7 @@ class TestBuildQueryParams:
         solr = SolrVectorSearchRequest(mode="lexical", filters=None)
         params = _build_query_params(solr=solr)
 
-        # "lexical" is translated to "keyword" for Llama Stack dispatch
+        # "lexical" is translated to "keyword" for OGX dispatch
         assert params["mode"] == "keyword"
         assert "solr" not in params
 
@@ -671,7 +671,7 @@ class TestFetchByokRag:
     async def test_user_facing_ids_translated_to_internal_ids(
         self, mocker: MockerFixture
     ) -> None:
-        """Test that user-facing rag_ids (vector_store_ids) are translated to llama-stack ids."""
+        """Test that user-facing rag_ids (vector_store_ids) are translated to OGX ids."""
         config_mock = mocker.Mock(spec=AppConfig)
         byok_rag_mock = mocker.Mock()
         byok_rag_mock.rag_id = "my-kb"
@@ -701,7 +701,7 @@ class TestFetchByokRag:
         # Pass user-facing rag_id "my-kb"
         await _fetch_byok_rag(client_mock, "test query", vector_store_ids=["my-kb"])
 
-        # Must be called with the internal llama-stack ID, not the user-facing "my-kb"
+        # Must be called with the internal OGX ID, not the user-facing "my-kb"
         client_mock.vector_io.query.assert_called_once_with(
             vector_store_id="vs-internal-001",
             query="test query",

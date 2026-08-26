@@ -1,7 +1,7 @@
 """Degraded mode state tracking.
 
 This module provides a singleton to track whether Lightspeed Core Stack is
-running in degraded mode (i.e., without Llama Stack connectivity).
+running in degraded mode (i.e., without OGX connectivity).
 """
 
 from typing import Optional
@@ -13,7 +13,7 @@ from utils.types import Singleton
 class DegradedModeTracker(metaclass=Singleton):
     """Track degraded mode state for Lightspeed Core Stack.
 
-    When LCORE cannot connect to Llama Stack during startup and
+    When LCORE cannot connect to OGX during startup and
     allow_degraded_mode is enabled, the service enters degraded mode.
     This tracker maintains that state for health reporting.
     """

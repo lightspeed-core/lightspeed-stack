@@ -1,4 +1,4 @@
-# Llama Stack pod for Prow: uses pre-built image with enrichment + RAG restore.
+# OGX pod for Prow: uses pre-built image with enrichment + RAG restore.
 #
 # Requires: ConfigMap llama-stack-config (run.yaml), ConfigMap rag-data (kv_store.db.gz),
 #           ConfigMap lightspeed-stack-config (lightspeed-stack.yaml).

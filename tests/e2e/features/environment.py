@@ -185,7 +185,7 @@ def _ensure_prow_port_forward(context: Context) -> None:
     except subprocess.TimeoutExpired:
         pass
 
-    # Port-forward alone failed — the pod itself may be dead (e.g. Llama Stack
+    # Port-forward alone failed — the pod itself may be dead (e.g. OGX
     # was never restored after a disruption feature). Attempt a full restart,
     # which also checks Llama health before recreating LCS.
     print("[before_scenario] Port-forward failed; attempting full pod restart...")
@@ -220,14 +220,14 @@ def before_scenario(context: Context, scenario: Scenario) -> None:
         scenario.skip("Marked with @local")
         return
 
-    # Skip scenarios that require separate llama-stack container in library mode
+    # Skip scenarios that require separate OGX container in library mode
     if context.is_library_mode and "skip-in-library-mode" in scenario.effective_tags:
         scenario.skip("Skipped in library mode (no separate llama-stack container)")
         return
 
     # Skip scenarios that rely on a non-default BYOK store. Only library mode
-    # re-enriches the (in-process) llama-stack with the active config's byok_rag
-    # on restart; in server mode the external llama-stack keeps its startup
+    # re-enriches the (in-process) OGX with the active config's byok_rag
+    # on restart; in server mode the external OGX keeps its startup
     # config, so a feature-specific store would not be loaded.
     if not context.is_library_mode and "skip-in-server-mode" in scenario.effective_tags:
         scenario.skip(
@@ -300,10 +300,10 @@ def after_scenario(context: Context, scenario: Scenario) -> None:
             - scenario_lightspeed_override_active: set by ``configure_service``
               when a scenario switches YAML after Background.
             - is_library_mode (bool): whether tests run in library mode.
-            - llama_stack_was_running (bool, optional): whether llama-stack was
+            - llama_stack_was_running (bool, optional): whether OGX was
               running before the scenario.
             - hostname_llama, port_llama (str/int, optional): host and port
-              used for the llama-stack health check.
+              used for the OGX health check.
         scenario (Scenario): Behave scenario (unused; shield restore uses context flags).
     """
     if is_prow_environment():
@@ -326,12 +326,12 @@ def after_scenario(context: Context, scenario: Scenario) -> None:
                     provider_shield_id=provider_shield_id,
                 )
                 print("Re-registered shield llama-guard")
-            except Exception as e:  # pylint: disable=broad-exception-caught
+            except (TypeError, ValueError, RuntimeError, KeyboardInterrupt) as e:
                 print(f"Warning: Could not re-register shield: {e}")
 
 
 def _print_llama_stack_diagnostics() -> None:
-    """Print container state, health, and recent logs to diagnose why llama-stack did not recover."""
+    """Print container state, health, and recent logs to diagnose why OGX did not recover."""
     print("--- llama-stack diagnostics ---")
     for label, cmd in [
         ("State", ["docker", "inspect", "--format={{.State}}", "llama-stack"]),
@@ -362,13 +362,13 @@ def _print_llama_stack_diagnostics() -> None:
 
 
 def _restore_llama_stack() -> None:
-    """Restore Llama Stack connection after disruption."""
+    """Restore OGX connection after disruption."""
     if is_prow_environment():
         # Recreate llama pod, then restart LCS so in-process clients reconnect (Llama IP/pod changed).
         try:
             restore_llama_stack_pod()
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
-            print(f"Warning: Could not restore Llama Stack pod on Prow: {e}")
+            print(f"Warning: Could not restore OGX pod on Prow: {e}")
             return
         last_lcs_err: Optional[
             subprocess.CalledProcessError | subprocess.TimeoutExpired
@@ -377,7 +377,7 @@ def _restore_llama_stack() -> None:
             try:
                 restart_pod("lightspeed-stack")
                 print(
-                    "✓ Prow: Llama Stack restored and lightspeed-stack restarted "
+                    "✓ Prow: OGX restored and lightspeed-stack restarted "
                     "for clean reconnect"
                 )
                 reset_llama_stack_disrupt_once_tracking()
@@ -385,25 +385,25 @@ def _restore_llama_stack() -> None:
             except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
                 last_lcs_err = e
                 print(
-                    f"Warning: lightspeed-stack restart after Llama restore "
+                    f"Warning: lightspeed-stack restart after OGX restore "
                     f"attempt {attempt}/3 failed: {e}"
                 )
                 if attempt < 3:
                     time.sleep(5)
         print(
-            "Warning: Could not restart lightspeed-stack after Llama restore "
+            "Warning: Could not restart lightspeed-stack after OGX restore "
             f"after 3 attempts: {last_lcs_err}"
         )
         return
 
     try:
-        # Start the llama-stack container again
+        # Start the OGX container again
         subprocess.run(
             ["docker", "start", "llama-stack"], check=True, capture_output=True
         )
 
         # Wait for the service to be healthy
-        print("Restoring Llama Stack connection...")
+        print("Restoring OGX connection...")
         max_attempts = 60
         for attempt in range(max_attempts):
             try:
@@ -421,7 +421,7 @@ def _restore_llama_stack() -> None:
                     check=False,
                 )
                 if result.returncode == 0:
-                    print("✓ Llama Stack connection restored successfully")
+                    print("✓ OGX connection restored successfully")
                     reset_llama_stack_disrupt_once_tracking()
                     break
             except subprocess.TimeoutExpired:
@@ -431,16 +431,16 @@ def _restore_llama_stack() -> None:
 
             if attempt < max_attempts - 1:
                 print(
-                    f"Waiting for Llama Stack to be healthy... "
+                    f"Waiting for OGX to be healthy... "
                     f"(attempt {attempt + 1}/{max_attempts})"
                 )
                 time.sleep(2)
             else:
-                print("Warning: Llama Stack may not be fully healthy after restoration")
+                print("Warning: OGX may not be fully healthy after restoration")
                 _print_llama_stack_diagnostics()
 
     except subprocess.CalledProcessError as e:
-        print(f"Warning: Could not restore Llama Stack connection: {e}")
+        print(f"Warning: Could not restore OGX connection: {e}")
         if e.stderr:
             print(f"  docker start stderr: {e.stderr}")
         if e.stdout:
@@ -506,7 +506,7 @@ def after_feature(context: Context, feature: Feature) -> None:
     when ``context.feedback_e2e_conversation_cleanup`` is set by feedback steps,
     delete tracked feedback test conversations.
     """
-    # Restore Llama Stack FIRST (before any lightspeed-stack restart).
+    # Restore OGX FIRST (before any lightspeed-stack restart).
     # Read from module-level state — Behave clears custom context attributes
     # between scenarios, so context.llama_stack_was_running is unreliable here.
     if get_llama_stack_was_running():

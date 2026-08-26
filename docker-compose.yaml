@@ -1,5 +1,5 @@
 services:
-  # Red Hat llama-stack distribution with FAISS
+  # Red Hat OGX distribution with FAISS
   llama-stack:
     build:
       context: .
@@ -7,13 +7,13 @@ services:
     platform: linux/amd64
     container_name: llama-stack
     ports:
-      - "8321:8321"  # Expose llama-stack on 8321 (adjust if needed)
+      - "8321:8321"  # Expose OGX on 8321 (adjust if needed)
     depends_on:
       mock-tls-inference:
         condition: service_healthy
     volumes:
       - ./run.yaml:/opt/app-root/run.yaml:z
-      # Host copies so `docker compose up` picks up script changes without rebuilding llama-stack
+      # Host copies so `docker compose up` picks up script changes without rebuilding OGX
       - ./scripts/llama-stack-entrypoint.sh:/opt/app-root/enrich-entrypoint.sh:ro,z
       - ./src/llama_stack_configuration.py:/opt/app-root/llama_stack_configuration.py:ro,z
       - ${GCP_KEYS_PATH:-./tmp/.gcp-keys-dummy}:/opt/app-root/.gcp-keys:ro

@@ -52,7 +52,7 @@ async def _collect_sse_events(response: StreamingResponse) -> list[dict[str, Any
 
 
 def _build_base_streaming_mock_client(mocker: MockerFixture) -> Any:
-    """Build a base mock Llama Stack client configured for streaming responses.
+    """Build a base mock OGX client configured for streaming responses.
 
     Extends the base query mock client with streaming-specific stubs:
     conversations.items.create and a non-streaming responses.create stub for
@@ -81,7 +81,7 @@ def mock_streaming_byok_client_fixture(
     mocker: MockerFixture,
     mock_streaming_query_agent: AsyncMockType,
 ) -> Generator[Any, None, None]:
-    """Mock Llama Stack client with BYOK inline RAG configured for streaming.
+    """Mock OGX client with BYOK inline RAG configured for streaming.
 
     Configures vector_io.query to return BYOK RAG chunks and sets
     vector_stores.list to empty (no tool-based vector stores).
@@ -122,7 +122,7 @@ def mock_streaming_byok_tool_client_fixture(  # pylint: disable=too-many-stateme
     mocker: MockerFixture,
     mock_streaming_query_agent: AsyncMockType,
 ) -> Generator[Any, None, None]:
-    """Mock Llama Stack client with BYOK tool RAG (file_search) for streaming.
+    """Mock OGX client with BYOK tool RAG (file_search) for streaming.
 
     Configures vector_stores.list with a BYOK store and agent stream events
     that include a file_search tool call alongside the assistant message.
@@ -639,7 +639,7 @@ async def test_streaming_query_byok_combined_inline_and_tool_rag(
     test_config.configuration.rag.retrieval.inline.sources = ["test-knowledge"]
     test_config.configuration.rag.retrieval.tool.sources = ["test-knowledge"]
 
-    # Mock Llama Stack client
+    # Mock OGX client
     mock_holder_class = mocker.patch(
         "app.endpoints.streaming_query.AsyncOgxClientHolder"
     )

@@ -4183,7 +4183,7 @@ def test_native_override_env_refs_not_resolved(
 
     Everything else in the config still resolves. This keeps LCORE from
     eagerly resolving (and then logging at startup) secrets that belong to
-    Llama Stack's own raw schema.
+    OGX's own raw schema.
     """
     monkeypatch.setenv("LCORE_TEST_SECRET", "supersecret")
     monkeypatch.setenv("LCORE_TEST_MODEL", "gpt-4o-mini")

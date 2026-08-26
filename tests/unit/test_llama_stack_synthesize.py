@@ -1,4 +1,4 @@
-"""Unit tests for unified-mode Llama Stack configuration synthesis (LCORE-2336).
+"""Unit tests for unified-mode OGX configuration synthesis (LCORE-2336).
 
 Covers the synthesizer pipeline and its helpers in
 ``src/llama_stack_configuration.py``: baseline loading, deep-merge semantics,

@@ -99,7 +99,7 @@ def test_pgvector_accepts_int_port_from_env_substitution(
 ) -> None:
     """Int port after replace_env_vars type coercion must validate.
 
-    Llama Stack's replace_env_vars converts digit-only env values to int via
+    OGX's replace_env_vars converts digit-only env values to int via
     _convert_string_to_proper_type. LCORE loads config through that helper, so
     port must accept int as well as str / ${env.*} placeholders.
 

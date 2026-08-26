@@ -1,7 +1,7 @@
 """Integration tests for the /v1/responses endpoint.
 
 These tests exercise the handler → DB persistence path with real configuration
-and an in-memory SQLite database. The Llama Stack client is mocked (no real LLM),
+and an in-memory SQLite database. The OGX client is mocked (no real LLM),
 but all internal subsystems (config, DB, shield moderation, conversation storage)
 run with real code.
 """
@@ -67,7 +67,7 @@ _RESPONSE_DUMP: dict[str, Any] = {
 
 
 def _build_mock_client(mocker: MockerFixture) -> Any:
-    """Build a mock Llama Stack client for responses integration tests.
+    """Build a mock OGX client for responses integration tests.
 
     Returns a fully-configured AsyncMock client with sensible defaults for
     responses.create, models.list, shields.list, vector_stores.list, and
@@ -146,7 +146,7 @@ def _setup_test(mocker: MockerFixture) -> Any:
     """Set up mock client and patch all holders for a responses integration test.
 
     Returns:
-        The mock Llama Stack client for further test-specific configuration.
+        The mock OGX client for further test-specific configuration.
     """
     mock_client = _build_mock_client(mocker)
     _patch_client_holders(mocker, mock_client)

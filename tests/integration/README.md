@@ -67,7 +67,7 @@ def test_example(mock_request_with_auth: Request) -> None:
 ### Mocking Fixtures
 
 #### `mock_ogx_client` (function-scoped)
-Mocks the external Llama Stack client with sensible defaults:
+Mocks the external OGX client with sensible defaults:
 - Returns a mock response with "This is a test response about Ansible."
 - Mocks `models.list`, `shields.list`, `vector_stores.list`
 - Mocks `conversations.create` with proper conv_ format
@@ -198,7 +198,7 @@ async def test_example_endpoint_success(
 
     Parameters:
         test_config: Test configuration
-        mock_ogx_client: Mocked Llama Stack client
+        mock_ogx_client: Mocked OGX client
         test_request: FastAPI request
         test_auth: noop authentication tuple
     """
@@ -216,7 +216,7 @@ async def test_example_endpoint_success(
 Integration tests should verify:
 1. **Component interaction** - Multiple components working together
 2. **Real implementations** - Use actual database, config, authentication
-3. **External mocks only** - Mock only external services (Llama Stack, external APIs)
+3. **External mocks only** - Mock only external services (OGX, external APIs)
 4. **Error handling** - HTTP status codes, error messages
 5. **Data flow** - Database persistence, cache updates, etc.
 
@@ -433,7 +433,7 @@ async def test_example(
 
     Parameters:
         test_config: Test configuration
-        mock_ogx_client: Mocked Llama Stack client
+        mock_ogx_client: Mocked OGX client
     """
 ```
 

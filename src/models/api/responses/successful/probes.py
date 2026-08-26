@@ -17,7 +17,7 @@ class InfoResponse(AbstractSuccessfulResponse):
     Attributes:
         name: Service name.
         service_version: Service version.
-        llama_stack_version: Llama Stack version.
+        llama_stack_version: OGX version.
     """
 
     name: str = Field(
@@ -31,7 +31,7 @@ class InfoResponse(AbstractSuccessfulResponse):
     )
 
     llama_stack_version: str = Field(
-        description="Llama Stack version",
+        description="OGX version",
         examples=["0.2.1", "0.2.2", "0.2.18", "0.2.21", "0.2.22"],
     )
 

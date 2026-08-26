@@ -441,7 +441,7 @@ class TestGetMCPTools:
     async def test_get_mcp_tools_require_approval_filter(
         self, mocker: MockerFixture
     ) -> None:
-        """Test get_mcp_tools translates ApprovalFilter to Llama Stack format."""
+        """Test get_mcp_tools translates ApprovalFilter to OGX format."""
         server = ModelContextProtocolServer(
             name="github",
             url="http://localhost:3000",
@@ -852,7 +852,7 @@ class TestGetMCPTools:
 class TestInputToolMCPTypeDiscriminator:
     """Regression tests for RSPEED-3116.
 
-    The llama-stack client SDK serializes pydantic instances with
+    The OGX client SDK serializes pydantic instances with
     ``model_dump(exclude_unset=True)`` before sending them to the server.
     Because Pydantic v2 treats defaulted fields as "unset", the
     ``type: Literal['mcp'] = 'mcp'`` discriminator on the parent class is
@@ -1753,7 +1753,7 @@ class TestResolveVectorStoreIds:
         assert result == ["unknown-id"]
 
     def test_mixed_known_and_unknown_ids(self) -> None:
-        """Test mix of customer-facing IDs and raw llama-stack IDs."""
+        """Test mix of customer-facing IDs and raw OGX IDs."""
         byok_rags = [self._make_byok_rag("ocp_docs", "vs-001")]
         result = resolve_vector_store_ids(["ocp_docs", "already-internal"], byok_rags)
         assert result == ["vs-001", "already-internal"]

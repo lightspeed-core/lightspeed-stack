@@ -245,7 +245,7 @@ async def retrieve_agent_response(
     """Retrieve a turn summary from a blocking agent run.
 
     Args:
-        client: Llama Stack client for conversation persistence on moderation block.
+        client: OGX client for conversation persistence on moderation block.
         responses_params: Prepared Responses API parameters.
         moderation_result: Shield moderation outcome for the turn.
         endpoint_path: Endpoint path used for metric labeling.

@@ -216,7 +216,7 @@ def _format_rag_context(rag_chunks: list[RAGChunk], query: str) -> str:
     """Format RAG chunks for pre-query context injection.
 
     This format is used for both BYOK RAG and Solr RAG chunks.
-    Format is inspired by llama-stack file_search tool implementation.
+    Format is inspired by OGX file_search tool implementation.
 
     Args:
         rag_chunks: List of RAG chunks from pre-query sources (BYOK + Solr)
@@ -289,7 +289,9 @@ async def _query_store_for_byok_rag(  # pylint: disable=too-many-arguments,too-m
             },
         )
         return _extract_byok_rag_chunks(search_response, vector_store_id, weight)
-    except Exception as e:  # pylint: disable=broad-exception-caught
+    except (
+        Exception  # pylint: disable=broad-exception-caught
+    ) as e:  # noqa: BLE001 RUF100
         logger.warning("Failed to search '%s': %s", vector_store_id, e)
         return []
 
@@ -490,7 +492,7 @@ async def _fetch_byok_rag(  # pylint: disable=too-many-locals
             if v in set(configuration.rag.retrieval.inline.sources)
         ]
 
-    # Translate user-facing rag_ids to llama-stack ids
+    # Translate user-facing rag_ids to OGX ids
     vector_store_ids_to_query: list[str] = resolve_vector_store_ids(
         rag_ids_to_query, configuration.rag.byok.stores
     )
@@ -560,7 +562,9 @@ async def _fetch_byok_rag(  # pylint: disable=too-many-locals
         # Extract referenced documents from BYOK RAG chunks (now with resolved sources)
         referenced_documents = _process_byok_rag_chunks_for_documents(top_results)
 
-    except Exception as e:  # pylint: disable=broad-exception-caught
+    except (
+        Exception  # pylint: disable=broad-exception-caught
+    ) as e:  # noqa: BLE001 RUF100
         logger.warning("Failed to perform BYOK RAG search: %s", e)
         logger.debug("BYOK RAG error details: %s", traceback.format_exc())
 

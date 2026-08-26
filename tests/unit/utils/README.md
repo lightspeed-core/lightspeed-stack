@@ -50,7 +50,7 @@ Unit tests for utils/json_schema_updater module.
 
 ## [test_llama_stack_version.py](test_llama_stack_version.py)
 
-Unit tests for utility function to check Llama Stack version.
+Unit tests for utility function to check OGX version.
 
 ## [test_markdown_repair.py](test_markdown_repair.py)
 

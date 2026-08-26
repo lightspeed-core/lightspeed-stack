@@ -512,21 +512,21 @@ def extract_provider_and_model_from_model_id(model_id: str) -> tuple[str, str]:
 
 
 def normalize_vertex_ai_model_id(model_id: str) -> str:
-    """Normalize Vertex AI model ID to work around llama-stack 0.6.x bug.
+    """Normalize Vertex AI model ID to work around OGX 0.6.x bug.
 
-    llama-stack 0.6.x has a bug in the inline::meta-reference responses provider
+    OGX 0.6.x has a bug in the inline::meta-reference responses provider
     where it normalizes model IDs before checking against allowed_models, but doesn't
     normalize the allowed_models list itself. This causes Vertex AI models to fail
     validation because:
     - Model is registered as: publishers/google/models/gemini-2.5-flash
-    - llama-stack strips to: google/gemini-2.5-flash internally
+    - OGX strips to: google/gemini-2.5-flash internally
     - Checks against allowed list: ['publishers/google/models/gemini-2.5-flash']
     - Mismatch → 500 error
 
     This workaround strips the publishers/google/models/ prefix to match what
-    llama-stack expects internally.
+    OGX expects internally.
 
-    Fixed in llama-stack 0.7.0 via https://github.com/ogx-ai/ogx/pull/5169
+    Fixed in OGX 0.7.0 via https://github.com/ogx-ai/ogx/pull/5169
 
     Args:
         model_id: The model ID, possibly in Vertex AI format
@@ -540,9 +540,9 @@ def normalize_vertex_ai_model_id(model_id: str) -> str:
 
 
 def is_resource_exhausted_error(error_message: str) -> bool:
-    """Detect Vertex AI RESOURCE_EXHAUSTED errors wrapped as 500 by llama-stack.
+    """Detect Vertex AI RESOURCE_EXHAUSTED errors wrapped as 500 by OGX.
 
-    llama-stack's remote::vertexai provider translates Vertex AI's 429
+    OGX's remote::vertexai provider translates Vertex AI's 429
     RESOURCE_EXHAUSTED into a generic 500 InternalServerError, losing the
     original status code.  The original gRPC status name is preserved in
     the error message, so we match on that.
@@ -559,10 +559,10 @@ def is_resource_exhausted_error(error_message: str) -> bool:
 def handle_known_apistatus_errors(
     error: LLSApiStatusError | OpenAIAPIStatusError, model_id: str
 ) -> AbstractErrorResponse:
-    """Handle known API status errors from both Llama Stack and OpenAI.
+    """Handle known API status errors from both OGX and OpenAI.
 
     Args:
-        error: The API status error to handle (can be from Llama Stack or OpenAI).
+        error: The API status error to handle (can be from OGX or OpenAI).
         model_id: The model ID for quota exceeded responses.
 
     Returns:
@@ -575,8 +575,8 @@ def handle_known_apistatus_errors(
         return QuotaExceededResponse.model(model_id)
     if is_resource_exhausted_error(error_message):
         logger.warning(
-            "Detected RESOURCE_EXHAUSTED in error message with status %d; "
-            "treating as 429 (llama-stack wraps Vertex AI 429 as 500)",
+            "Detected RESOURCE_EXHAUSTED in error message with status %d; treating "
+            "as 429 (OGX wraps Vertex AI 429 as 500)",
             error.status_code,
         )
         return QuotaExceededResponse.model(model_id)

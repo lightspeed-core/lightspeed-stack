@@ -24,7 +24,7 @@ This guide describes how to run, extend, and understand the Lightspeed Core Stac
 
 - **Framework**: [Behave](https://behave.readthedocs.io/) (Python BDD).
 - **Scope**: REST API of the Lightspeed Core Stack (query, streaming_query, models, info, health, feedback, conversations, RBAC, MCP, etc.).
-- **Execution**: Tests run in a **separate process** from the app. They send HTTP requests to the service. LCORE shields are configured in `lightspeed-stack.yaml` (not via Llama Stack Safety APIs).
+- **Execution**: Tests run in a **separate process** from the app. They send HTTP requests to the service. LCORE shields are configured in `lightspeed-stack.yaml` (not via OGX Safety APIs).
 - **Environments**: Local (Docker Compose) or Prow/OpenShift (containers/pods). Mode is detected via `E2E_DEPLOYMENT_MODE` and `RUNNING_PROW`.
 
 ---
@@ -47,14 +47,14 @@ tests/e2e/
 │       ├── llm_query_response.py # query / streaming_query steps
 │       ├── feedback.py          # Feedback API steps
 │       ├── conversation.py      # Conversations / cache steps
-│       ├── health.py            # Health and llama-stack disruption
+│       ├── health.py            # Health and OGX disruption
 │       ├── info.py, models.py   # Info and models endpoints
 │       ├── rbac.py              # RBAC steps
 │       └── ...
 ├── configuration/               # Lightspeed-stack configs used by E2E (local Docker)
-│   ├── server-mode/             # When Llama stack runs in separate process
-│   └── library-mode/            # When Llama Stack is in-process
-├── configs/                     # Llama Stack run configs (run-ci.yaml, etc.)
+│   ├── server-mode/             # When OGX runs in separate process
+│   └── library-mode/            # When OGX is in-process
+├── configs/                     # OGX run configs (run-ci.yaml, etc.)
 ├── utils/
 │   ├── utils.py                 # restart_container, switch_config, wait_for_container_health, etc.
 │   ├── prow_utils.py            # Prow/OpenShift helpers (restore_llama_stack_pod, etc.)
@@ -71,20 +71,20 @@ tests/e2e-prow/
     ├── run-tests.sh             # Entry to run E2E in Prow
     ├── pipeline.sh              # Prow: full vLLM + LCS + behave (main branch workflow)
     ├── pipeline-konflux.sh      # Konflux: OpenAI Llama run-from-source + run-ci.yaml + behave
-    ├── pipeline-services.sh     # Services for Prow (vLLM llama-stack image + LCS)
+    ├── pipeline-services.sh     # Services for Prow (vLLM OGX image + LCS)
     ├── pipeline-services-konflux.sh  # Services for Konflux (llama-stack-openai + templated LCS)
     ├── pipeline-vllm.sh         # vLLM cluster setup (called from pipeline.sh)
     ├── pipeline-test-pod.sh     # Test pod pipeline
-    ├── configs/                 # vLLM Llama Stack `run.yaml` (used by pipeline.sh for llama-stack-config)
+    ├── configs/                 # vLLM OGX `run.yaml` (used by pipeline.sh for llama-stack-config)
     ├── scripts/
-    │   ├── e2e-ops.sh           # E2E ops (e.g. disrupt/restore llama-stack) — called from prow_utils
+    │   ├── e2e-ops.sh           # E2E ops (e.g. disrupt/restore OGX) — called from prow_utils
     │   ├── bootstrap.sh
     │   ├── deploy-vllm.sh
     │   ├── fetch-vllm-image.sh
     │   ├── get-vllm-pod-info.sh
     │   └── gpu-setup.sh
     └── manifests/               # OpenShift/Kubernetes manifests
-        ├── lightspeed/          # Lightspeed stack, llama-stack, mock-jwks, mock-mcp
+        ├── lightspeed/          # Lightspeed stack, OGX, mock-jwks, mock-mcp
         ├── vllm/                # vLLM runtime and inference services (CPU/GPU)
         ├── operators/           # Operator install (operatorgroup, operators, ds-cluster)
         ├── namespaces/          # NFD, nvidia-operator
@@ -97,7 +97,7 @@ tests/e2e-prow/
 
 ### Prerequisites
 
-- **Local**: Docker Compose stack up (e.g. `docker compose up -d`). The app and Llama Stack must be reachable at the host/ports you configure (see [Environment Variables](#environment-variables)).
+- **Local**: Docker Compose stack up (e.g. `docker compose up -d`). The app and OGX must be reachable at the host/ports you configure (see [Environment Variables](#environment-variables)).
 - **Prow**: Pipeline runs in OpenShift; `RUNNING_PROW` is set and Prow-specific paths/configs are used.
 
 ### Commands
@@ -142,15 +142,15 @@ uv run behave tests/e2e/features/health.feature --tags=-skip-in-library-mode
 | `E2E_DEPLOYMENT_MODE`           | `server`    | `server` or `library`. Drives config paths and which scenarios run (e.g. `@skip-in-library-mode`).                                        |
 | `E2E_LSC_HOSTNAME`              | `localhost` | Host of the Lightspeed Core Stack API.                                                                                                    |
 | `E2E_LSC_PORT`                  | `8080`      | Port of the Lightspeed Core Stack API.                                                                                                    |
-| `E2E_LLAMA_HOSTNAME`            | `localhost` | Host of the Llama Stack service (server mode).                                                                                            |
-| `E2E_LLAMA_PORT`                | `8321`      | Port of the Llama Stack service.                                                                                                          |
-| `E2E_LLAMA_STACK_URL`           | —           | Full base URL for Llama Stack (overrides host/port if set). Used by shield helpers.                                                       |
-| `E2E_LLAMA_STACK_API_KEY`       | `xyzzy`     | API key for Llama Stack client (e.g. shield API).                                                                                         |
+| `E2E_LLAMA_HOSTNAME`            | `localhost` | Host of the OGX service (server mode).                                                                                            |
+| `E2E_LLAMA_PORT`                | `8321`      | Port of the OGX service.                                                                                                          |
+| `E2E_LLAMA_STACK_URL`           | —           | Full base URL for OGX (overrides host/port if set). Used by shield helpers.                                                       |
+| `E2E_LLAMA_STACK_API_KEY`       | `xyzzy`     | API key for OGX client (e.g. shield API).                                                                                         |
 | `E2E_DEFAULT_MODEL_OVERRIDE`    | —           | Override default LLM model id (e.g. `gpt-4o-mini`).                                                                                       |
 | `E2E_DEFAULT_PROVIDER_OVERRIDE` | —           | Override default provider id (e.g. `openai`).                                                                                             |
 | `FAISS_VECTOR_STORE_ID`         | —           | Vector store id for FAISS-related scenarios.                                                                                              |
 | `RUNNING_PROW`                  | —           | Set in Prow/OpenShift; enables Prow config paths and pod/container ops.                                                                   |
-| `OPENAI_API_KEY`                | —           | **Required.** Used by the app and Llama Stack for LLM calls (e.g. OpenAI). The E2E tests and the stack will not run correctly without it. |
+| `OPENAI_API_KEY`                | —           | **Required.** Used by the app and OGX for LLM calls (e.g. OpenAI). The E2E tests and the stack will not run correctly without it. |
 
 
 For local Docker runs, defaults are usually enough. Override when the stack is on different host/ports or when using library mode. **You must set `OPENAI_API_KEY`** for the tests (and the services) to run.
@@ -159,8 +159,8 @@ For local Docker runs, defaults are usually enough. Override when the stack is o
 
 ## Deployment Modes: Server vs Library
 
-- **Server mode** (`E2E_DEPLOYMENT_MODE=server`): Lightspeed Core Stack talks to a **separate** Llama Stack service (e.g. `llama-stack` container). Configs under `configuration/server-mode/` are used. Scenarios that need a dedicated Llama Stack container (e.g. "llama-stack unreachable") run; those tagged `@skip-in-library-mode` run as well.
-- **Library mode** (`E2E_DEPLOYMENT_MODE=library`): Llama Stack runs **in-process** with the app. Configs under `configuration/library-mode/` are used. Scenarios tagged `@skip-in-library-mode` are skipped (no separate llama-stack to disrupt or query for shields).
+- **Server mode** (`E2E_DEPLOYMENT_MODE=server`): Lightspeed Core Stack talks to a **separate** OGX service (e.g. `OGX` container). Configs under `configuration/server-mode/` are used. Scenarios that need a dedicated OGX container (e.g. "OGX unreachable") run; those tagged `@skip-in-library-mode` run as well.
+- **Library mode** (`E2E_DEPLOYMENT_MODE=library`): OGX runs **in-process** with the app. Configs under `configuration/library-mode/` are used. Scenarios tagged `@skip-in-library-mode` are skipped (no separate OGX to disrupt or query for shields).
 
 Mode is set in `before_all` from `E2E_DEPLOYMENT_MODE` and stored as `context.is_library_mode`.
 
@@ -175,11 +175,11 @@ All tag behaviour is implemented in **`features/environment.py`**: the hooks (`b
 | Tag                             | Effect                                                                                                                                                  |
 |---------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `@skip`                         | Scenario is skipped (reason: "Marked with @skip"). Use for broken or WIP scenarios.                                                                     |
-| `@skip-in-library-mode`         | Scenario is skipped when `E2E_DEPLOYMENT_MODE=library`. Used for tests that require a separate Llama Stack (e.g. connection disruption).                |
+| `@skip-in-library-mode`         | Scenario is skipped when `E2E_DEPLOYMENT_MODE=library`. Used for tests that require a separate OGX (e.g. connection disruption).                |
 | `@local`                        | Skipped unless running in "local" mode (context flag).                                                                                                  |
 | `@InvalidFeedbackStorageConfig` | Before scenario: switch to invalid-feedback-storage config and restart container. After: restore feature config and restart.                            |
 | `@NoCacheConfig`                | Before scenario: switch to no-cache config and restart. After: restore and restart.                                                                     |
-| `@disable-shields`              | (If used) Before scenario: unregister shield (e.g. llama-guard) via Llama Stack API; after: re-register. **Server mode only**; skipped in library mode. |
+| `@disable-shields`              | (If used) Before scenario: unregister shield (e.g. llama-guard) via OGX API; after: re-register. **Server mode only**; skipped in library mode. |
 | `@Authorized`                   | Feature-level: use auth-noop-token config for the whole feature; restore in after_feature.                                                              |
 | `@RBAC`                         | Feature-level: use RBAC config; restore in after_feature.                                                                                               |
 | `@RHIdentity`                   | Feature-level: use RH identity config; restore in after_feature.                                                                                        |
@@ -196,10 +196,10 @@ All tag behaviour is implemented in **`features/environment.py`**: the hooks (`b
 You can put several tags on one scenario. To document why a scenario is skipped, add a Gherkin comment above the tags:
 
 ```gherkin
-  # Only in server mode; llama-stack is in-process in library mode
+  # Only in server mode; OGX is in-process in library mode
   @skip-in-library-mode
   @skip
-  Scenario: Check if service report proper readiness when llama stack is not available
+  Scenario: Check if service report proper readiness when OGX is not available
 ```
 
 ### Hooks (environment.py)
@@ -207,7 +207,7 @@ You can put several tags on one scenario. To document why a scenario is skipped,
 - **before_all**: Sets `deployment_mode`, `is_library_mode`, detects or overrides `default_model` / `default_provider`, sets `faiss_vector_store_id`.
 - **before_feature**: Applies feature-level config and restarts container for `Authorized`, `RBAC`, `RHIdentity`, `Feedback`, `MCP`.
 - **before_scenario**: Skips scenarios for `@skip`, `@local`, `@skip-in-library-mode`; applies scenario config for `InvalidFeedbackStorageConfig` / `NoCacheConfig`.
-- **after_scenario**: Restores Llama Stack if it was disrupted; restores config and restarts for scenario config tags.
+- **after_scenario**: Restores OGX if it was disrupted; restores config and restarts for scenario config tags.
 - **after_feature**: Restores config and restarts for `Authorized`, `RBAC`, `RHIdentity`, `MCP`; deletes feedback conversations for `Feedback`.
 
 ---
@@ -215,7 +215,7 @@ You can put several tags on one scenario. To document why a scenario is skipped,
 ## Configuration Files
 
 - **Lightspeed-stack**: Under `tests/e2e/configuration/server-mode/` and `library-mode/`. Switched via `switch_config()` and copied into the container's config path (or applied via ConfigMap in Prow). Bootstrap: `lightspeed-stack.yaml`; variants: `lightspeed-stack-default.yaml`, `lightspeed-stack-authorized.yaml`, `lightspeed-stack-rbac.yaml`, etc. (see `tests/e2e/configuration/grouped/README.md`).
-- **Llama Stack**: Under `tests/e2e/configs/` (e.g. `run-ci.yaml`). Used by the Llama Stack container; not switched by Behave step-by-step, but the stack is started with the appropriate run config.
+- **OGX**: Under `tests/e2e/configs/` (e.g. `run-ci.yaml`). Used by the OGX container; not switched by Behave step-by-step, but the stack is started with the appropriate run config.
 
 See `tests/e2e/configuration/README.md` for a short description of each config.
 
@@ -236,15 +236,15 @@ The feature files below are run in the order given in `tests/e2e/test_list.txt`:
 | `authorized_rh_identity.feature` | `/v1/authorized` endpoint with RH identity auth (x-rh-identity header, entitlements).                                                   |
 | `rbac.feature`                   | Role-Based Access Control: admin/user/viewer/query-only/no-role permissions on query, models, conversations, info.                      |
 | `conversations.feature`          | Conversations API: list, get by id, delete; auth and error cases.                                                                       |
-| `conversation_cache_v2.feature`  | Conversation Cache V2 API: conversations CRUD, topic summary, cache-off and llama-stack-down behaviour.                                 |
+| `conversation_cache_v2.feature`  | Conversation Cache V2 API: conversations CRUD, topic summary, cache-off and OGX-down behaviour.                                 |
 | `feedback.feature`               | Feedback endpoint: enable/disable, status, submit feedback (sentiment, conversation id), invalid storage.                               |
-| `health.feature`                 | Readiness and liveness endpoints; behaviour when llama-stack is unavailable.                                                            |
+| `health.feature`                 | Readiness and liveness endpoints; behaviour when OGX is unavailable.                                                            |
 | `info.feature`                   | Info, OpenAPI, shields, tools, metrics, MCP client auth options endpoints.                                                              |
-| `query.feature`                  | Query endpoint: LLM responses, system prompt, auth errors, missing/invalid params, attachments, context length (413), llama-stack down. |
+| `query.feature`                  | Query endpoint: LLM responses, system prompt, auth errors, missing/invalid params, attachments, context length (413), OGX down. |
 | `streaming_query.feature`        | Streaming query endpoint: token stream, system prompt, auth, params, attachments, context length (413 / stream error).                  |
 | `rest_api.feature`               | REST API: OpenAPI endpoint.                                                                                                             |
 | `mcp.feature`                    | MCP (Model Context Protocol): tools, query, streaming_query with MCP auth (required, token, invalid token).                             |
-| `models.feature`                 | Models endpoint: list models, filter, empty result; error when llama-stack unreachable.                                                 |
+| `models.feature`                 | Models endpoint: list models, filter, empty result; error when OGX unreachable.                                                 |
 
 
 If you add a new feature file, add it to **`tests/e2e/test_list.txt`** so it is included when you run the full E2E suite (e.g. `make test-e2e`). The order in that file is the run order.
@@ -258,7 +258,7 @@ Key step modules:
 - **common_http.py**: Status code, body content, headers.
 - **auth.py**: Set Authorization header.
 - **llm_query_response.py**: Call query/streaming_query, too-long query, parse streamed response, assert fragments and error messages.
-- **health.py**: "The llama-stack connection is disrupted" (stop container in server mode; sets `llama_stack_was_running` for restore in after_scenario).
+- **health.py**: "The OGX connection is disrupted" (stop container in server mode; sets `llama_stack_was_running` for restore in after_scenario).
 
 ---
 
@@ -282,7 +282,7 @@ Each line in a scenario is a **step**. The keyword indicates the step's role; Be
 
 | Keyword   | Meaning                                                                                                | Typical use in this project                                                            |
 |-----------|--------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------|
-| **Given** | Precondition or initial state.                                                                         | Service is started, system in default state, auth header set, llama-stack disrupted.   |
+| **Given** | Precondition or initial state.                                                                         | Service is started, system in default state, auth header set, OGX disrupted.   |
 | **When**  | The action under test.                                                                                 | Call an endpoint (query, streaming_query, GET readiness), send a request body.         |
 | **Then**  | Expected outcome (assertion).                                                                          | Status code is 200, body contains text or matches schema, response has certain fields. |
 | **And**   | Continuation of the previous keyword. Same role as the last Given/When/Then, but reads more naturally. | "Given X **And** Y" = two preconditions; "Then A **And** B" = two assertions.          |
@@ -349,9 +349,9 @@ Here, **Given** sets state, **When** performs the HTTP call, **Then** and **And*
 
 ## Troubleshooting
 
-- **503 or "Unable to connect to Llama Stack"**: In server mode, ensure the Llama Stack container is running and healthy. After a scenario that disrupts Llama Stack, `after_scenario` restores it; if restore fails, check diagnostics (see `_print_llama_stack_diagnostics` in `environment.py` if present) and container logs.
-- **"Container state improper" / restart fails**: Usually the llama-stack container is in a bad state. Ensure it is started (or recreated) before restarting lightspeed-stack; see Docker/Podman and compose usage in the project.
-- **Readonly database (SQLite) in Llama Stack**: If the RAG KV DB is on a bind-mounted path that becomes read-only (e.g. after restart), move it to a named volume (e.g. via `KV_RAG_PATH` in docker-compose) so writes succeed.
+- **503 or "Unable to connect to OGX"**: In server mode, ensure the OGX container is running and healthy. After a scenario that disrupts OGX, `after_scenario` restores it; if restore fails, check diagnostics (see `_print_llama_stack_diagnostics` in `environment.py` if present) and container logs.
+- **"Container state improper" / restart fails**: Usually the OGX container is in a bad state. Ensure it is started (or recreated) before restarting lightspeed-stack; see Docker/Podman and compose usage in the project.
+- **Readonly database (SQLite) in OGX**: If the RAG KV DB is on a bind-mounted path that becomes read-only (e.g. after restart), move it to a named volume (e.g. via `KV_RAG_PATH` in docker-compose) so writes succeed.
 - **ChunkedEncodingError on streaming_query**: The step for streaming_query uses `stream=True` and consumes the stream; if you add new streaming steps, avoid reading the full response with `response.content` and use the same stream-reading pattern so a server close after an error event does not raise.
 - **Event loop is closed (httpx/AsyncClient)**: In E2E, any code that creates an `AsyncOgxClient` (e.g. for shields) must close it (e.g. `await client.close()`) in a `finally` block before the event loop is torn down (e.g. before `asyncio.run()` returns).
 - **Scenarios skipped**: Check tags (`@skip`, `@skip-in-library-mode`, `@local`) and `E2E_DEPLOYMENT_MODE`; ensure the scenario is not excluded by `--tags=-skip` (or the opposite if you intend to run only skipped scenarios for debugging).

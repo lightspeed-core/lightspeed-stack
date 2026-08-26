@@ -1,5 +1,5 @@
 services:
-  # Lightspeed Stack with embedded llama-stack (library mode)
+  # Lightspeed Stack with embedded OGX (library mode)
   lightspeed-stack:
     build:
       context: .

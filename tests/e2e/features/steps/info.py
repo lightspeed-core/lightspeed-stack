@@ -21,7 +21,7 @@ def check_name_version(context: Context, service_name: str, version: str) -> Non
 
 @then("The body of the response has llama-stack version {llama_version}")
 def check_llama_version(context: Context, llama_version: str) -> None:
-    """Check proper llama-stack version number."""
+    """Check proper OGX version number."""
     response_json = context.response.json()
     assert response_json is not None, "Response is not valid JSON"
 

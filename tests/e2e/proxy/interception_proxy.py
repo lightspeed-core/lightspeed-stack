@@ -18,7 +18,7 @@ In-cluster (Konflux/Prow) usage::
 
     python interception_proxy.py
     # MITM on 8889; GET http://127.0.0.1:8886/stats for counters;
-    # CA PEM at /tmp/interception-proxy-ca.pem (copy into llama-stack pod).
+    # CA PEM at /tmp/interception-proxy-ca.pem (copy into OGX pod).
 """
 
 import asyncio

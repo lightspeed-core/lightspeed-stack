@@ -1,6 +1,6 @@
-"""Custom OpenAI Responses model that works around Llama Stack streaming quirks.
+"""Custom OpenAI Responses model that works around OGX streaming quirks.
 
-Llama Stack's Responses API emits ``ResponseFunctionCallArgumentsDeltaEvent`` for MCP
+OGX's Responses API emits ``ResponseFunctionCallArgumentsDeltaEvent`` for MCP
 tool calls *before* the corresponding ``ResponseOutputItemAddedEvent``.  pydantic_ai's
 default handler creates an orphan ``ToolCallPartDelta`` for the unannounced item_id,
 which later causes an IndexError in ``part_end_event``.
@@ -14,7 +14,7 @@ This module provides ``OgxResponsesModel`` which wraps the event stream to
 buffer those early delta events and replay them correctly once the item is announced.
 
 Additionally overrides ``_responses_create`` to filter out ``reasoning.encrypted_content``
-from the include parameter, which llama-stack / OGX doesn't support.
+from the include parameter, which OGX / OGX doesn't support.
 """
 
 from __future__ import annotations as _annotations
@@ -96,9 +96,9 @@ def _model_settings_from_responses_params(
 
 
 class _FilteredResponseStream:
-    """Wraps an OpenAI AsyncStream to reorder spurious events from Llama Stack.
+    """Wraps an OpenAI AsyncStream to reorder spurious events from OGX.
 
-    Llama Stack emits ``ResponseFunctionCallArgumentsDeltaEvent`` for MCP tool calls
+    OGX emits ``ResponseFunctionCallArgumentsDeltaEvent`` for MCP tool calls
     *before* the ``ResponseOutputItemAddedEvent`` that announces them.  This wrapper
     buffers those early deltas and replays them once the announcement arrives.
 
@@ -224,10 +224,10 @@ class _FilteredResponseStream:
 
 
 class OgxResponsesModel(OpenAIResponsesModel):
-    """OpenAI Responses model with Llama Stack streaming compatibility fixes.
+    """OpenAI Responses model with OGX streaming compatibility fixes.
 
     Overrides the streaming response processing to buffer and replay
-    ``ResponseFunctionCallArgumentsDeltaEvent`` events that Llama Stack emits
+    ``ResponseFunctionCallArgumentsDeltaEvent`` events that OGX emits
     before the corresponding ``McpCall`` or ``ResponseFunctionToolCall`` item.
 
     Also filters ``reasoning.encrypted_content`` from the include parameter since
@@ -280,9 +280,9 @@ class OgxResponsesModel(OpenAIResponsesModel):
         model_request_parameters: ModelRequestParameters,
         run_context: Optional[RunContext[Any]] = None,
     ) -> Any:
-        """Non-streaming request with Llama Stack conversation continuation fix.
+        """Non-streaming request with OGX conversation continuation fix.
 
-        Llama Stack rejects requests containing both ``conversation`` and
+        OGX rejects requests containing both ``conversation`` and
         ``previous_response_id``.  On continuation turns (where a prior
         ``ModelResponse`` exists), we trim messages to only the new input and
         disable ``previous_response_id`` so that only ``conversation`` is sent.
@@ -300,15 +300,15 @@ class OgxResponsesModel(OpenAIResponsesModel):
     ) -> tuple[list[ModelMessage], Optional[ModelSettings]]:
         """Trim messages and disable previous_response_id for conversation continuations.
 
-        Llama Stack rejects requests with both ``previous_response_id`` and
+        OGX rejects requests with both ``previous_response_id`` and
         ``conversation``. When ``conversation`` is in ``extra_body`` and there's
         already a ModelResponse in the history (a continuation turn), we:
 
         1. Trim messages to only those AFTER the last ModelResponse (new input only)
         2. Disable ``openai_previous_response_id`` so pydantic-ai won't resolve one
 
-        This means Llama Stack receives ``conversation`` (for persistence) plus only
-        the new input items. Llama Stack reconstructs prior history from the
+        This means OGX receives ``conversation`` (for persistence) plus only
+        the new input items. OGX reconstructs prior history from the
         conversation and appends the new input correctly.
         """
         if not model_settings or not isinstance(model_settings, dict):
@@ -342,7 +342,7 @@ class OgxResponsesModel(OpenAIResponsesModel):
         model_request_parameters: ModelRequestParameters,
         run_context: Optional[RunContext[Any]] = None,
     ) -> AsyncIterator[StreamedResponse]:
-        """Request a streaming response with Llama Stack compatibility fixes.
+        """Request a streaming response with OGX compatibility fixes.
 
         Applies the same conversation continuation handling as :meth:`request`
         before calling the Responses API, then filters streaming tool-call events.
@@ -413,15 +413,15 @@ class OgxResponsesModel(OpenAIResponsesModel):
         model_settings: Optional[ModelSettings] = None,
         profile: Optional[ModelProfileSpec] = None,
     ) -> OgxResponsesModel:
-        """Create a ``OgxResponsesModel`` from a Llama Stack client.
+        """Create a ``OgxResponsesModel`` from an OGX client.
 
         Mirrors ``OpenAIResponsesModel.__init__`` parameters, but accepts a
-        Llama Stack client instead of a provider.  Exactly one of
+        OGX client instead of a provider.  Exactly one of
         ``responses_params`` or ``model_settings`` may be provided.
 
         Args:
             model_name: The model name/ID to use.
-            client: Llama Stack client to build the provider from.
+            client: OGX client to build the provider from.
             responses_params: Optional ``ResponsesApiParams``, converted to
                 ``OpenAIResponsesModelSettings`` internally.  Mutually
                 exclusive with ``model_settings``.
