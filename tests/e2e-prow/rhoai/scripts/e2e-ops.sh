@@ -23,6 +23,7 @@
 #   restart-both-services           - Full OGX then lightspeed-stack restart (explicit only)
 #   restart-port-forward            - Re-establish port-forward for lightspeed
 #   restart-llama-port-forward      - Re-establish port-forward for OGX (8321)
+#   restart-okp-port-forward        - Re-establish port-forward for OKP Solr (8081)
 #   wait-for-pod <name> [attempts]  - Wait for a pod to be ready
 #   update-configmap <name> <file>  - Update ConfigMap from file
 #   get-configmap-content <name>    - Get ConfigMap content (outputs to stdout)
@@ -47,6 +48,7 @@ MANIFEST_DIR="$SCRIPT_DIR/../manifests/lightspeed"
 E2E_LSC_PORT_FORWARD_PID_FILE="${E2E_LSC_PORT_FORWARD_PID_FILE:-/tmp/e2e-lightspeed-port-forward.pid}"
 E2E_LLAMA_PORT_FORWARD_PID_FILE="${E2E_LLAMA_PORT_FORWARD_PID_FILE:-/tmp/e2e-llama-port-forward.pid}"
 E2E_JWKS_PORT_FORWARD_PID_FILE="${E2E_JWKS_PORT_FORWARD_PID_FILE:-/tmp/e2e-jwks-port-forward.pid}"
+E2E_OKP_PORT_FORWARD_PID_FILE="${E2E_OKP_PORT_FORWARD_PID_FILE:-/tmp/e2e-okp-port-forward.pid}"
 
 # ============================================================================
 # Helper functions
@@ -207,6 +209,24 @@ kill_stale_jwks_forward() {
     fi
     pkill -9 -f "port-forward.*mock-jwks.*${port}:${port}" 2>/dev/null || true
     pkill -9 -f "oc port-forward svc/mock-jwks ${port}:${port}" 2>/dev/null || true
+    free_local_tcp_port "$port"
+    sleep 1
+    free_local_tcp_port "$port"
+}
+
+# Kill anything likely to hold the OKP Solr local forward (localhost:8081).
+kill_stale_okp_forward() {
+    local port="${1:-8081}"
+    local saved_pf
+    if [[ -f "$E2E_OKP_PORT_FORWARD_PID_FILE" ]]; then
+        read -r saved_pf <"$E2E_OKP_PORT_FORWARD_PID_FILE" 2>/dev/null || true
+        if [[ "$saved_pf" =~ ^[0-9]+$ ]]; then
+            kill -9 "$saved_pf" 2>/dev/null || true
+        fi
+    fi
+    pkill -9 -f "port-forward.*okp-solr-service-svc.*8081:8080" 2>/dev/null || true
+    pkill -9 -f "oc port-forward svc/okp-solr-service-svc 8081:8080" 2>/dev/null || true
+    pkill -9 -f "port-forward pod/okp-solr-service.*8081:8080" 2>/dev/null || true
     free_local_tcp_port "$port"
     sleep 1
     free_local_tcp_port "$port"
@@ -558,6 +578,25 @@ verify_llama_local_forward() {
     return 1
 }
 
+verify_okp_connectivity() {
+    local max_attempts="${1:-15}"
+    local http_code=""
+    local attempt
+
+    for ((attempt=1; attempt<=max_attempts; attempt++)); do
+        http_code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 "http://localhost:8081/solr" 2>/dev/null) || http_code="000"
+        # OKP Solr returns various 200-399 codes for /solr endpoint
+        if [[ "$http_code" =~ ^[23][0-9][0-9]$ ]]; then
+            return 0
+        fi
+        if [[ $attempt -lt $max_attempts ]]; then
+            sleep 2
+        fi
+    done
+    echo "OKP Solr localhost:8081 connectivity check failed (HTTP: ${http_code:-unknown})"
+    return 1
+}
+
 cmd_restart_llama_port_forward() {
     local local_port="${LOCAL_LLAMA_PORT:-8321}"
     local remote_port="${REMOTE_LLAMA_PORT:-8321}"
@@ -677,6 +716,67 @@ cmd_restart_jwks_port_forward() {
     done
 
     echo "Failed to establish mock-jwks port-forward on :$local_port"
+    return 1
+}
+
+cmd_restart_okp_port_forward() {
+    local local_port="${LOCAL_OKP_PORT:-8081}"
+    local remote_port="${REMOTE_OKP_PORT:-8080}"
+    local max_attempts=6
+    local pf_pid
+    local pf_resource
+    local okp_pf_log="/tmp/port-forward-okp.log"
+
+    echo "Re-establishing OKP Solr port-forward on $local_port:$remote_port..."
+
+    for ((attempt=1; attempt<=max_attempts; attempt++)); do
+        kill_stale_okp_forward "$local_port"
+        sleep 3
+
+        if [[ $attempt -le 2 ]]; then
+            pf_resource="svc/okp-solr-service-svc"
+        else
+            pf_resource="pod/okp-solr-service"
+        fi
+        echo "OKP port-forward attempt $attempt/$max_attempts -> $pf_resource"
+
+        : >"$okp_pf_log"
+        nohup oc port-forward "$pf_resource" "$local_port:$remote_port" -n "$NAMESPACE" \
+            </dev/null >"$okp_pf_log" 2>&1 &
+        pf_pid=$!
+        disown "$pf_pid" 2>/dev/null || true
+        sleep 3
+
+        if ! kill -0 "$pf_pid" 2>/dev/null; then
+            echo "OKP port-forward process exited immediately:"
+            if [[ -s "$okp_pf_log" ]]; then
+                tail -25 "$okp_pf_log" 2>/dev/null | sed 's/^/[e2e-ops] /' || true
+            fi
+            kill_stale_okp_forward "$local_port"
+            sleep 2
+            continue
+        fi
+        sleep 4
+
+        if verify_okp_connectivity 12; then
+            echo "$pf_pid" >"$E2E_OKP_PORT_FORWARD_PID_FILE"
+            echo "✓ OKP Solr port-forward established (PID: $pf_pid)"
+            return 0
+        fi
+
+        if [[ $attempt -lt $max_attempts ]]; then
+            echo "OKP forward attempt $attempt failed (connectivity check failed), retrying..."
+            kill -9 "$pf_pid" 2>/dev/null || true
+            kill_stale_okp_forward "$local_port"
+            sleep 3
+        fi
+    done
+
+    echo "Failed to establish OKP Solr port-forward after $max_attempts attempts"
+    if [[ -s "$okp_pf_log" ]]; then
+        echo "Port-forward log (tail 30):"
+        tail -30 "$okp_pf_log" 2>/dev/null | sed 's/^/[e2e-ops] /' || true
+    fi
     return 1
 }
 
@@ -1030,7 +1130,10 @@ cmd_restore_okp_solr() {
     echo "Restoring OKP Solr service in namespace $NAMESPACE..."
     oc apply -n "$NAMESPACE" -f "$MANIFEST_DIR/okp-solr.yaml"
     wait_for_pod "okp-solr-service" 60
-    echo "✓ OKP Solr service restored and ready"
+    echo "✓ OKP Solr pod restored and ready"
+
+    # Restart port-forward since pod was replaced
+    cmd_restart_okp_port_forward
 }
 
 # ============================================================================
@@ -1055,6 +1158,9 @@ case "$COMMAND" in
         ;;
     restart-jwks-port-forward)
         cmd_restart_jwks_port_forward
+        ;;
+    restart-okp-port-forward)
+        cmd_restart_okp_port_forward
         ;;
     restart-port-forward)
         cmd_restart_port_forward
@@ -1124,6 +1230,7 @@ case "$COMMAND" in
         echo "  restart-llama-stack             - Restart/restore llama-stack pod"
         echo "  restart-both-services           - Full llama-stack + lightspeed-stack restart (explicit)"
         echo "  restart-llama-port-forward      - Re-establish port-forward for OGX (8321)"
+        echo "  restart-okp-port-forward        - Re-establish port-forward for OKP Solr (8081)"
         echo "  restart-port-forward            - Re-establish port-forward for lightspeed"
         echo "  wait-for-pod <name> [attempts]  - Wait for a pod to be ready"
         echo "  update-configmap <name> <file>  - Update ConfigMap from file"
