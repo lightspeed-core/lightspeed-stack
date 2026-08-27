@@ -96,11 +96,40 @@ oc secrets link default quay-lightspeed-pull-secret --for=pull -n "$NAMESPACE" 2
 # Credentials from Prow secrets (environment variables or mounted volumes)
 if [[ -n "${REDHAT_REGISTRY_USERNAME:-}" ]] && [[ -n "${REDHAT_REGISTRY_PASSWORD:-}" ]]; then
   echo "Creating Red Hat registry pull secret from environment..."
-  oc create secret docker-registry redhat-registry-pull-secret \
-    --docker-server=registry.redhat.io \
-    --docker-username="$REDHAT_REGISTRY_USERNAME" \
-    --docker-password="$REDHAT_REGISTRY_PASSWORD" \
-    -n "$NAMESPACE" 2>/dev/null && echo "✅ Red Hat registry pull secret created" || echo "⚠️  Secret exists or creation failed"
+
+  # Get current pipeline Pod metadata for ownerReference (ensures cleanup after job completes)
+  PIPELINE_POD_NAME="${HOSTNAME}"
+  if PIPELINE_POD_UID=$(oc get pod "$PIPELINE_POD_NAME" -n "$NAMESPACE" -o jsonpath='{.metadata.uid}' 2>/dev/null); then
+    echo "Setting ownerReference to pipeline Pod: $PIPELINE_POD_NAME"
+
+    # Create secret with ownerReference using YAML (ensures automatic cleanup)
+    cat <<EOF | oc apply -f -
+apiVersion: v1
+kind: Secret
+metadata:
+  name: redhat-registry-pull-secret
+  namespace: $NAMESPACE
+  ownerReferences:
+  - apiVersion: v1
+    kind: Pod
+    name: $PIPELINE_POD_NAME
+    uid: $PIPELINE_POD_UID
+    controller: false
+    blockOwnerDeletion: false
+type: kubernetes.io/dockerconfigjson
+data:
+  .dockerconfigjson: $(echo -n '{"auths":{"registry.redhat.io":{"username":"'"$REDHAT_REGISTRY_USERNAME"'","password":"'"$REDHAT_REGISTRY_PASSWORD"'","auth":"'$(echo -n "$REDHAT_REGISTRY_USERNAME:$REDHAT_REGISTRY_PASSWORD" | base64 -w0)'"}}}' | base64 -w0)
+EOF
+    echo "✅ Red Hat registry pull secret created with ownerReference"
+  else
+    # Fallback: create without ownerReference if Pod metadata unavailable
+    echo "⚠️  Could not get pipeline Pod UID - creating secret without ownerReference"
+    oc create secret docker-registry redhat-registry-pull-secret \
+      --docker-server=registry.redhat.io \
+      --docker-username="$REDHAT_REGISTRY_USERNAME" \
+      --docker-password="$REDHAT_REGISTRY_PASSWORD" \
+      -n "$NAMESPACE" 2>/dev/null && echo "✅ Red Hat registry pull secret created" || echo "⚠️  Secret exists or creation failed"
+  fi
 
   # Link to default service account
   oc secrets link default redhat-registry-pull-secret --for=pull -n "$NAMESPACE" 2>/dev/null || echo "⚠️  Secret already linked to default SA"

@@ -130,11 +130,39 @@ if [[ -d /var/run/redhat-registry-username ]] && [[ -d /var/run/redhat-registry-
   shopt -u nullglob
 
   if [[ -n "$REDHAT_USERNAME" ]] && [[ -n "$REDHAT_PASSWORD" ]]; then
-    oc create secret docker-registry redhat-registry-pull-secret \
-      --docker-server=registry.redhat.io \
-      --docker-username="$REDHAT_USERNAME" \
-      --docker-password="$REDHAT_PASSWORD" \
-      -n "$NAMESPACE" 2>/dev/null && log "✅ Red Hat registry pull secret created" || log "⚠️  Secret exists or creation failed"
+    # Get current pipeline Pod metadata for ownerReference (ensures cleanup after job completes)
+    PIPELINE_POD_NAME="${HOSTNAME}"
+    if PIPELINE_POD_UID=$(oc get pod "$PIPELINE_POD_NAME" -n "$NAMESPACE" -o jsonpath='{.metadata.uid}' 2>/dev/null); then
+      log "Setting ownerReference to pipeline Pod: $PIPELINE_POD_NAME"
+
+      # Create secret with ownerReference using YAML (ensures automatic cleanup)
+      cat <<EOF | oc apply -f -
+apiVersion: v1
+kind: Secret
+metadata:
+  name: redhat-registry-pull-secret
+  namespace: $NAMESPACE
+  ownerReferences:
+  - apiVersion: v1
+    kind: Pod
+    name: $PIPELINE_POD_NAME
+    uid: $PIPELINE_POD_UID
+    controller: false
+    blockOwnerDeletion: false
+type: kubernetes.io/dockerconfigjson
+data:
+  .dockerconfigjson: $(echo -n '{"auths":{"registry.redhat.io":{"username":"'"$REDHAT_USERNAME"'","password":"'"$REDHAT_PASSWORD"'","auth":"'$(echo -n "$REDHAT_USERNAME:$REDHAT_PASSWORD" | base64 -w0)'"}}}' | base64 -w0)
+EOF
+      log "✅ Red Hat registry pull secret created with ownerReference"
+    else
+      # Fallback: create without ownerReference if Pod metadata unavailable
+      log "⚠️  Could not get pipeline Pod UID - creating secret without ownerReference"
+      oc create secret docker-registry redhat-registry-pull-secret \
+        --docker-server=registry.redhat.io \
+        --docker-username="$REDHAT_USERNAME" \
+        --docker-password="$REDHAT_PASSWORD" \
+        -n "$NAMESPACE" 2>/dev/null && log "✅ Red Hat registry pull secret created" || log "⚠️  Secret exists or creation failed"
+    fi
 
     # Link to default service account
     oc secrets link default redhat-registry-pull-secret --for=pull -n "$NAMESPACE" 2>/dev/null || echo "⚠️  Secret already linked to default SA"
