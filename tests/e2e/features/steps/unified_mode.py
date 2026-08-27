@@ -475,16 +475,20 @@ def container_logs_show_synthesis(context: Context) -> None:
     The message text follows the OGX rename (PRs #2516/#2547): client.py logs
     "Using synthesized OGX config at %s" and llama_stack_configuration.py logs
     "Wrote synthesized OGX configuration to %s (mode 0600)".
+
+    Every accepted pattern must carry a path. The entrypoint echoes "(mode
+    auto-detected)" *before* synthesis runs and unconditionally, so matching it
+    would let the scenario pass on a failed synthesis — the opposite of what
+    R10 asks. "Using generated config: <path>" is only echoed on success.
     """
     if context.is_library_mode:
         container = "lightspeed-stack"
-        pattern = r"Using synthesized OGX config|synthesized.*run\.yaml"
+        pattern = r"Using synthesized OGX config at \S+"
     else:
         container = "llama-stack"
         pattern = (
-            r"Wrote synthesized OGX configuration"
-            r"|Using generated config:.*run\.yaml"
-            r"|mode auto-detected"
+            r"Wrote synthesized OGX configuration to \S+"
+            r"|Using generated config:\s*\S+"
         )
 
     result = subprocess.run(
