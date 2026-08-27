@@ -334,13 +334,10 @@ def after_scenario(context: Context, scenario: Scenario) -> None:
     # Restart OKP server if it was stopped during the scenario
     if getattr(context, "okp_was_running", False):
         if is_prow_environment():
-            # Prow/OpenShift: restore pod
+            # Prow/OpenShift: restore pod and raise on failure
             from tests.e2e.utils.prow_utils import restore_okp_solr_pod
 
-            try:
-                restore_okp_solr_pod()
-            except Exception as e:  # pylint: disable=broad-exception-caught
-                print(f"Warning: Could not restore OKP Solr pod: {e}")
+            restore_okp_solr_pod()
         else:
             # Docker mode: recreate or restart container
             from tests.e2e.features.steps.okp_rag import (
@@ -363,56 +360,50 @@ def after_scenario(context: Context, scenario: Scenario) -> None:
                     print(
                         f"OKP container '{container_name}' was removed, recreating from {OKP_IMAGE_NAME}..."
                     )
-                    try:
-                        subprocess.run(
-                            [
-                                "docker",
-                                "run",
-                                "--rm",
-                                "-d",
-                                "-p",
-                                "8081:8080",
-                                OKP_IMAGE_NAME,
-                            ],
-                            capture_output=True,
-                            text=True,
-                            check=True,
-                        )
-                    except subprocess.CalledProcessError as e:
-                        print(f"Warning: Could not recreate OKP container: {e}")
-                        if e.stderr:
-                            print(f"  Error: {e.stderr}")
+                    subprocess.run(
+                        [
+                            "docker",
+                            "run",
+                            "--rm",
+                            "-d",
+                            "-p",
+                            "8081:8080",
+                            OKP_IMAGE_NAME,
+                        ],
+                        capture_output=True,
+                        text=True,
+                        check=True,
+                    )
                 else:
                     # Container exists - just start it
-                    try:
-                        subprocess.run(
-                            ["docker", "start", container_name],
-                            capture_output=True,
-                            text=True,
-                            check=True,
-                        )
-                    except subprocess.CalledProcessError as e:
-                        print(
-                            f"Warning: Could not start OKP container '{container_name}': {e}"
-                        )
-                        if e.stderr:
-                            print(f"  Error: {e.stderr}")
+                    subprocess.run(
+                        ["docker", "start", container_name],
+                        capture_output=True,
+                        text=True,
+                        check=True,
+                    )
 
                 # Wait for the server to be ready
                 max_attempts = 30
+                okp_ready = False
                 for attempt in range(max_attempts):
                     try:
                         resp = requests.get(OKP_DEFAULT_URL, timeout=5)
                         if resp.status_code < 500:
                             print("✓ OKP server restarted successfully")
+                            okp_ready = True
                             break
+                        # HTTP 5xx: delay and retry
+                        if attempt < max_attempts - 1:
+                            time.sleep(1)
                     except requests.ConnectionError:
                         if attempt < max_attempts - 1:
                             time.sleep(1)
-                        else:
-                            print(
-                                "Warning: OKP server may not be fully ready after restart"
-                            )
+
+                if not okp_ready:
+                    raise RuntimeError(
+                        f"OKP server failed to become ready after {max_attempts} attempts"
+                    )
 
 
 def _print_llama_stack_diagnostics() -> None:

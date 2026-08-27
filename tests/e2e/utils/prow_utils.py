@@ -379,7 +379,11 @@ def restore_okp_solr_pod() -> None:
         subprocess.CalledProcessError: If oc/e2e-ops restore fails.
         subprocess.TimeoutExpired: If the operation times out.
     """
-    result = run_e2e_ops("restore-okp-solr", timeout=180)
+    # restore-okp-solr can spend 180 seconds in wait_for_pod, plus oc apply time.
+    # This caller also times out at 180 seconds. after_scenario catches that timeout
+    # and only logs a warning, so later scenarios can run while OKP remains unavailable.
+    # Use a timeout with margin, such as 240 seconds.
+    result = run_e2e_ops("restore-okp-solr", timeout=240)
     print(result.stdout, end="")
     if result.returncode != 0:
         print(result.stderr, end="")

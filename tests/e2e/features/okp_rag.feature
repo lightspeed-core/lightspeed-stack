@@ -24,8 +24,6 @@ Feature: OKP(Solr) RAG retrieval tests
     {"query": "configure remote desktop using gnome", "model": "{MODEL}", "provider": "{PROVIDER}"}
     """
     Then The status code of the response is 200
-      And The response contains non-empty rag_chunks
-      And The response contains non-empty referenced_documents
       And The number of rag_chunk returned is 1
       And Each rag_chunk has a non-empty score
       And Each rag_chunk source is "okp"
@@ -47,7 +45,6 @@ Feature: OKP(Solr) RAG retrieval tests
     """
     Then The status code of the response is 200
       And I wait for the response to be completed
-      And The response contains non-empty referenced_documents
       And Each referenced_document has fields doc_url, doc_title, source, and document_id
       And The number of eferenced_document returned is 3
       And Each referenced_document doc_url contains "docs.redhat.com"
@@ -78,8 +75,6 @@ Feature: OKP(Solr) RAG retrieval tests
     """
     Then The status code of the response is 200
       And The response contains "security best practices"
-      And The response contains non-empty rag_chunks
-      And The response contains non-empty referenced_documents
       And The number of rag_chunk returned is 1
       And Each rag_chunk has a non-empty score
       And Each rag_chunk source is "okp"
@@ -94,7 +89,7 @@ Feature: OKP(Solr) RAG retrieval tests
 
   Scenario: Offline query API with OKP tool RAG has rag_chunk and referenced_documents returned
     Given The service uses the lightspeed-stack-okp-tool-offline.yaml configuration
-      # And The service is restarted
+      And The service is restarted
     When I use "query" to ask question with authorization header
     """
     {
@@ -160,7 +155,7 @@ Feature: OKP(Solr) RAG retrieval tests
     Given The service uses the lightspeed-stack-okp-online.yaml configuration
       And The service is restarted
       And The OKP(Solr) server is stopped
-    When I use "query" to ask question with authorization header
+    When I use "streaming_query" to ask question with authorization header
     """
     {"query": "configure remote desktop using gnome", "model": "{MODEL}", "provider": "{PROVIDER}"}
     """

@@ -37,4 +37,3 @@ rag:
     rhokp_url: ${env.RH_SERVER_OKP:=http://localhost:8081/solr}
     offline: true
     max_chunks: 5
-
