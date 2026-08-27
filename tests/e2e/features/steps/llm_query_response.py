@@ -198,6 +198,8 @@ def ask_question_authorized(context: Context, endpoint: str) -> None:
             headers=context.auth_headers,
             timeout=DEFAULT_LLM_TIMEOUT,
         )
+        # Reset flag so assertions read from response.json(), not stale response_data
+        context.use_streaming_response_data = False
 
 
 # Query length chosen to exceed typical model context windows (e.g. 128k tokens)

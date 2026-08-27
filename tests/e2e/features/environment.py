@@ -396,7 +396,7 @@ def after_scenario(context: Context, scenario: Scenario) -> None:
                         # HTTP 5xx: delay and retry
                         if attempt < max_attempts - 1:
                             time.sleep(1)
-                    except requests.ConnectionError:
+                    except (requests.ConnectionError, requests.Timeout):
                         if attempt < max_attempts - 1:
                             time.sleep(1)
 
