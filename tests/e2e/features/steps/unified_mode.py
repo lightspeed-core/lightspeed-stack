@@ -466,19 +466,23 @@ def container_logs_show_synthesis(context: Context) -> None:
     """Assert the container that synthesizes logged the synthesized-config path.
 
     Library mode: the lightspeed-stack container itself synthesizes in-process
-    and logs "Using synthesized Llama Stack config at <path>". Server mode:
-    synthesis happens in the llama-stack container (entrypoint + config CLI),
-    which logs the generated-config path — the Gherkin names lightspeed-stack,
-    but the scenario's intent (R10: the path is logged at startup) can only be
-    observed on the synthesizing container. Deviation agreed in planning (Q2).
+    and logs "Using synthesized OGX config at <path>". Server mode: synthesis
+    happens in the llama-stack container (entrypoint + config CLI), which logs
+    the generated-config path — the Gherkin names lightspeed-stack, but the
+    scenario's intent (R10: the path is logged at startup) can only be observed
+    on the synthesizing container. Deviation agreed in planning (Q2).
+
+    The message text follows the OGX rename (PRs #2516/#2547): client.py logs
+    "Using synthesized OGX config at %s" and llama_stack_configuration.py logs
+    "Wrote synthesized OGX configuration to %s (mode 0600)".
     """
     if context.is_library_mode:
         container = "lightspeed-stack"
-        pattern = r"synthesized.*run\.yaml|Using synthesized Llama Stack config"
+        pattern = r"Using synthesized OGX config|synthesized.*run\.yaml"
     else:
         container = "llama-stack"
         pattern = (
-            r"Wrote synthesized Llama Stack configuration"
+            r"Wrote synthesized OGX configuration"
             r"|Using generated config:.*run\.yaml"
             r"|mode auto-detected"
         )
