@@ -1,6 +1,9 @@
 SHELL := /bin/bash
 #TODO: We need to rename all those python and config files as well
 
+# Define comma for use in $(if) expressions (where commas are argument separators)
+COMMA := ,
+
 ARTIFACT_DIR := $(if $(ARTIFACT_DIR),$(ARTIFACT_DIR),tests/test_results)
 PATH_TO_PLANTUML := ~/bin
 
@@ -87,8 +90,8 @@ start-ogx-container: build-ogx-image ## Start OGX container
 		-v $(PWD)/$(CONFIG):/opt/app-root/lightspeed-stack.yaml:ro,z \
 		-v $(PWD)/scripts/llama-stack-entrypoint.sh:/opt/app-root/enrich-entrypoint.sh:ro,z \
 		-v $(PWD)/src/llama_stack_configuration.py:/opt/app-root/llama_stack_configuration.py:ro,z \
-		$(if $(LIGHTSPEED_PROVIDERS_DIR),-v $(LIGHTSPEED_PROVIDERS_DIR)/lightspeed_stack_providers:/opt/app-root/providers/lightspeed_stack_providers:ro,z) \
-		$(if $(LIGHTSPEED_PROVIDERS_DIR),-v $(LIGHTSPEED_PROVIDERS_DIR)/resources/external_providers:/opt/app-root/src/.llama/providers.d:ro,z) \
+		$(if $(LIGHTSPEED_PROVIDERS_DIR),-v $(LIGHTSPEED_PROVIDERS_DIR)/lightspeed_stack_providers:/opt/app-root/providers/lightspeed_stack_providers:ro$(COMMA)z) \
+		$(if $(LIGHTSPEED_PROVIDERS_DIR),-v $(LIGHTSPEED_PROVIDERS_DIR)/resources/external_providers:/opt/app-root/src/.llama/providers.d:ro$(COMMA)z) \
 		$(if $(LIGHTSPEED_PROVIDERS_DIR),-e EXTERNAL_PROVIDERS_DIR=/opt/app-root/src/.llama/providers.d) \
 		-e OPENAI_API_KEY \
 		-e BRAVE_SEARCH_API_KEY \
