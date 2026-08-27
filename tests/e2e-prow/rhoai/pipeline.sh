@@ -232,6 +232,22 @@ oc wait pod/mock-jwks pod/mock-mcp \
 }
 echo "✅ Mock servers deployed"
 
+# Deploy OKP Solr server for RAG tests
+echo "Deploying OKP Solr server..."
+oc apply -n "$NAMESPACE" -f "$PIPELINE_DIR/manifests/lightspeed/okp-solr.yaml"
+
+# Wait for OKP Solr to be ready
+echo "Waiting for OKP Solr to be ready..."
+oc wait pod/okp-solr-service \
+    -n "$NAMESPACE" --for=condition=Ready --timeout=180s || {
+    echo "⚠️  OKP Solr not ready, checking status..."
+    oc get pods -n "$NAMESPACE" | grep okp-solr || true
+    oc describe pod okp-solr-service -n "$NAMESPACE" 2>/dev/null | tail -30 || true
+    echo "❌ OKP Solr failed to become ready"
+    exit 1
+}
+echo "✅ OKP Solr deployed"
+
 #========================================
 # 8. BUILD OGX IMAGE
 #========================================
@@ -375,9 +391,11 @@ oc describe pod llama-stack-service -n "$NAMESPACE" || true
 export E2E_LSC_PORT_FORWARD_PID_FILE="${E2E_LSC_PORT_FORWARD_PID_FILE:-/tmp/e2e-lightspeed-port-forward.pid}"
 export E2E_LLAMA_PORT_FORWARD_PID_FILE="${E2E_LLAMA_PORT_FORWARD_PID_FILE:-/tmp/e2e-llama-port-forward.pid}"
 export E2E_JWKS_PORT_FORWARD_PID_FILE="${E2E_JWKS_PORT_FORWARD_PID_FILE:-/tmp/e2e-jwks-port-forward.pid}"
+export E2E_OKP_PORT_FORWARD_PID_FILE="${E2E_OKP_PORT_FORWARD_PID_FILE:-/tmp/e2e-okp-port-forward.pid}"
 rm -f "$E2E_LSC_PORT_FORWARD_PID_FILE"
 rm -f "$E2E_LLAMA_PORT_FORWARD_PID_FILE"
 rm -f "$E2E_JWKS_PORT_FORWARD_PID_FILE"
+rm -f "$E2E_OKP_PORT_FORWARD_PID_FILE"
 
 oc label pod lightspeed-stack-service pod=lightspeed-stack-service -n $NAMESPACE
 
@@ -387,16 +405,18 @@ oc expose pod lightspeed-stack-service \
   --type=ClusterIP \
   -n $NAMESPACE
 
-# Kill any existing processes on ports 8080, 8000, and 8321 (lsof may be missing in minimal images)
-echo "Checking for existing processes on ports 8080, 8000, and 8321..."
+# Kill any existing processes on ports 8080, 8000, 8321, and 8081 (lsof may be missing in minimal images)
+echo "Checking for existing processes on ports 8080, 8000, 8321, and 8081..."
 if command -v lsof >/dev/null 2>&1; then
     lsof -ti:8080 | xargs kill -9 2>/dev/null || true
     lsof -ti:8000 | xargs kill -9 2>/dev/null || true
     lsof -ti:8321 | xargs kill -9 2>/dev/null || true
+    lsof -ti:8081 | xargs kill -9 2>/dev/null || true
 elif command -v fuser >/dev/null 2>&1; then
     fuser -k 8080/tcp 2>/dev/null || true
     fuser -k 8000/tcp 2>/dev/null || true
     fuser -k 8321/tcp 2>/dev/null || true
+    fuser -k 8081/tcp 2>/dev/null || true
 fi
 
 # Start port-forward for lightspeed-stack
@@ -417,6 +437,12 @@ echo "Starting port-forward for llama-stack..."
 oc port-forward svc/llama-stack-service-svc 8321:8321 -n $NAMESPACE &
 PF_LLAMA_PID=$!
 echo "$PF_LLAMA_PID" >"$E2E_LLAMA_PORT_FORWARD_PID_FILE"
+
+# Start port-forward for OKP Solr (RAG tests)
+echo "Starting port-forward for OKP Solr..."
+oc port-forward svc/okp-solr-service-svc 8081:8080 -n $NAMESPACE &
+PF_OKP_PID=$!
+echo "$PF_OKP_PID" >"$E2E_OKP_PORT_FORWARD_PID_FILE"
 
 # Wait for port-forward to be usable (app may not be listening immediately; port-forward can drop)
 echo "Waiting for port-forward to lightspeed-stack to be ready..."
@@ -439,6 +465,7 @@ for i in $(seq 1 36); do
     kill $PF_LCS_PID 2>/dev/null || true
     kill $PF_JWKS_PID 2>/dev/null || true
     kill $PF_LLAMA_PID 2>/dev/null || true
+    kill $PF_OKP_PID 2>/dev/null || true
     exit 1
   fi
   # If port-forward process died, restart it (e.g. "connection refused" / "lost connection to pod")
@@ -464,6 +491,7 @@ for i in $(seq 1 36); do
     kill $PF_LCS_PID 2>/dev/null || true
     kill $PF_JWKS_PID 2>/dev/null || true
     kill $PF_LLAMA_PID 2>/dev/null || true
+    kill $PF_OKP_PID 2>/dev/null || true
     exit 1
   fi
   if ! kill -0 $PF_LLAMA_PID 2>/dev/null; then
@@ -475,13 +503,35 @@ for i in $(seq 1 36); do
   sleep 5
 done
 
+# Wait for OKP Solr port-forward to be usable (non-fatal - OKP is optional)
+echo "Waiting for OKP Solr port-forward (localhost:8081 /solr)..."
+for i in $(seq 1 24); do
+  if curl -sf http://localhost:8081/solr > /dev/null 2>&1; then
+    echo "✅ OKP Solr port-forward ready after $(( i * 5 ))s"
+    break
+  fi
+  if [ $i -eq 24 ]; then
+    echo "⚠️  Port-forward to OKP Solr never became healthy (2 min) - OKP RAG tests may fail"
+    # Don't exit - OKP is optional, other tests can still run
+  fi
+  if ! kill -0 $PF_OKP_PID 2>/dev/null; then
+    echo "OKP port-forward died, restarting (attempt $i)..."
+    oc port-forward svc/okp-solr-service-svc 8081:8080 -n $NAMESPACE &
+    PF_OKP_PID=$!
+    echo "$PF_OKP_PID" >"$E2E_OKP_PORT_FORWARD_PID_FILE"
+  fi
+  sleep 5
+done
+
 export E2E_LSC_HOSTNAME="localhost"
 export E2E_JWKS_HOSTNAME="localhost"
 export E2E_DEFAULT_MODEL_OVERRIDE="$MODEL_NAME"
 export E2E_DEFAULT_PROVIDER_OVERRIDE="vllm"
+export E2E_OKP_URL="http://localhost:8081"
 echo "LCS accessible at: http://$E2E_LSC_HOSTNAME:8080"
 echo "Mock JWKS accessible at: http://$E2E_JWKS_HOSTNAME:8000"
 echo "OGX accessible at: http://localhost:8321"
+echo "OKP Solr (RAG tests) at: $E2E_OKP_URL"
 
 
 
@@ -505,10 +555,12 @@ TEST_EXIT_CODE=$(cat "$E2E_EXIT_CODE_FILE" 2>/dev/null || echo 1)
 kill $PF_LCS_PID 2>/dev/null || true
 kill $PF_JWKS_PID 2>/dev/null || true
 kill $PF_LLAMA_PID 2>/dev/null || true
+kill $PF_OKP_PID 2>/dev/null || true
 wait $PF_LCS_PID 2>/dev/null || true
 wait $PF_JWKS_PID 2>/dev/null || true
 wait $PF_LLAMA_PID 2>/dev/null || true
-rm -f "$E2E_LSC_PORT_FORWARD_PID_FILE" "$E2E_LLAMA_PORT_FORWARD_PID_FILE" "$E2E_JWKS_PORT_FORWARD_PID_FILE"
+wait $PF_OKP_PID 2>/dev/null || true
+rm -f "$E2E_LSC_PORT_FORWARD_PID_FILE" "$E2E_LLAMA_PORT_FORWARD_PID_FILE" "$E2E_JWKS_PORT_FORWARD_PID_FILE" "$E2E_OKP_PORT_FORWARD_PID_FILE"
 set -e
 trap 'echo "❌ Pipeline failed at line $LINENO"; exit 1' ERR
 

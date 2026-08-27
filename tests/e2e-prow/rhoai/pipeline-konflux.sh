@@ -182,6 +182,22 @@ oc wait pod/mock-jwks pod/mock-mcp \
 }
 log "✅ Mock servers deployed"
 
+# Deploy OKP Solr server for RAG tests
+log "Deploying OKP Solr server..."
+oc apply -n "$NAMESPACE" -f "$PIPELINE_DIR/manifests/lightspeed/okp-solr.yaml"
+
+# Wait for OKP Solr to be ready
+log "Waiting for OKP Solr to be ready..."
+oc wait pod/okp-solr-service \
+    -n "$NAMESPACE" --for=condition=Ready --timeout=180s || {
+    echo "⚠️  OKP Solr not ready, checking status..."
+    oc get pods -n "$NAMESPACE" | grep okp-solr || true
+    oc describe pod okp-solr-service -n "$NAMESPACE" 2>/dev/null | tail -30 || true
+    echo "❌ OKP Solr failed to become ready"
+    exit 1
+}
+log "✅ OKP Solr deployed"
+
 # e2e-tunnel-proxy and e2e-interception-proxy are deployed from proxy.feature steps
 # (see tests/e2e/features/steps/proxy.py + e2e-ops deploy-e2e-*-proxy).
 
@@ -333,8 +349,10 @@ fi
 # Debug hook/port churn: export E2E_OPS_VERBOSE=1 before running pipeline.sh
 export E2E_LSC_PORT_FORWARD_PID_FILE="${E2E_LSC_PORT_FORWARD_PID_FILE:-/tmp/e2e-lightspeed-port-forward.pid}"
 export E2E_LLAMA_PORT_FORWARD_PID_FILE="${E2E_LLAMA_PORT_FORWARD_PID_FILE:-/tmp/e2e-llama-port-forward.pid}"
+export E2E_OKP_PORT_FORWARD_PID_FILE="${E2E_OKP_PORT_FORWARD_PID_FILE:-/tmp/e2e-okp-port-forward.pid}"
 rm -f "$E2E_LSC_PORT_FORWARD_PID_FILE"
 rm -f "$E2E_LLAMA_PORT_FORWARD_PID_FILE"
+rm -f "$E2E_OKP_PORT_FORWARD_PID_FILE"
 
 oc label pod lightspeed-stack-service pod=lightspeed-stack-service -n $NAMESPACE
 
@@ -355,7 +373,7 @@ kill_listeners_on_ports() {
     fi
   done
 }
-kill_listeners_on_ports 8080 8000 8321
+kill_listeners_on_ports 8080 8000 8321 8081
 
 # Start port-forward for lightspeed-stack
 progress "Starting port-forward, then E2E tests"
@@ -374,6 +392,12 @@ log "Starting port-forward for llama-stack (MCP / ogx_client hooks)..."
 oc port-forward svc/llama-stack-service-svc 8321:8321 -n $NAMESPACE &
 PF_LLAMA_PID=$!
 echo "$PF_LLAMA_PID" >"$E2E_LLAMA_PORT_FORWARD_PID_FILE"
+
+# Start port-forward for OKP Solr (RAG tests)
+log "Starting port-forward for OKP Solr..."
+oc port-forward svc/okp-solr-service-svc 8081:8080 -n $NAMESPACE &
+PF_OKP_PID=$!
+echo "$PF_OKP_PID" >"$E2E_OKP_PORT_FORWARD_PID_FILE"
 
 # Wait for port-forward to be usable (app may not be listening immediately; port-forward can drop)
 log "Waiting for port-forward to lightspeed-stack to be ready..."
@@ -395,6 +419,7 @@ for i in $(seq 1 36); do
     kill $PF_LCS_PID 2>/dev/null || true
     kill $PF_JWKS_PID 2>/dev/null || true
     kill $PF_LLAMA_PID 2>/dev/null || true
+    kill $PF_OKP_PID 2>/dev/null || true
     exit 1
   fi
   # If port-forward process died, restart it (e.g. "connection refused" / "lost connection to pod")
@@ -421,6 +446,7 @@ for i in $(seq 1 36); do
     kill $PF_LCS_PID 2>/dev/null || true
     kill $PF_JWKS_PID 2>/dev/null || true
     kill $PF_LLAMA_PID 2>/dev/null || true
+    kill $PF_OKP_PID 2>/dev/null || true
     exit 1
   fi
   if ! kill -0 $PF_LLAMA_PID 2>/dev/null; then
@@ -432,10 +458,30 @@ for i in $(seq 1 36); do
   sleep 5
 done
 
+log "Waiting for OKP Solr port-forward (localhost:8081 /solr)..."
+for i in $(seq 1 24); do
+  if curl -sf http://localhost:8081/solr > /dev/null 2>&1; then
+    log "✅ OKP Solr port-forward ready after $(( i * 5 ))s"
+    break
+  fi
+  if [ $i -eq 24 ]; then
+    echo "⚠️  Port-forward to OKP Solr never became healthy (2 min) - OKP RAG tests may fail" | tee /dev/stderr
+    # Don't exit - OKP is optional, other tests can still run
+  fi
+  if ! kill -0 $PF_OKP_PID 2>/dev/null; then
+    log "OKP port-forward died, restarting (attempt $i)..."
+    oc port-forward svc/okp-solr-service-svc 8081:8080 -n $NAMESPACE &
+    PF_OKP_PID=$!
+    echo "$PF_OKP_PID" >"$E2E_OKP_PORT_FORWARD_PID_FILE"
+  fi
+  sleep 5
+done
+
 export E2E_LSC_HOSTNAME="localhost"
 export E2E_JWKS_HOSTNAME="localhost"
 export E2E_LLAMA_HOSTNAME="localhost"
 export E2E_LLAMA_PORT="8321"
+export E2E_OKP_URL="http://localhost:8081"
 # Same pattern as tests/e2e-prow/rhoai/pipeline.sh and .github/workflows/e2e_tests_*.yaml:
 # Behave {MODEL}/{PROVIDER} use these when set; avoids wrong fallbacks if /v1/models
 # discovery in before_all is empty (matches run-ci.yaml openai + E2E_OPENAI_MODEL).
@@ -450,6 +496,7 @@ export E2E_DEFAULT_PROVIDER_OVERRIDE E2E_DEFAULT_MODEL_OVERRIDE
 log "LCS accessible at: http://$E2E_LSC_HOSTNAME:8080"
 log "Mock JWKS accessible at: http://$E2E_JWKS_HOSTNAME:8000"
 log "OGX (e2e client hooks) at: http://$E2E_LLAMA_HOSTNAME:$E2E_LLAMA_PORT"
+log "OKP Solr (RAG tests) at: $E2E_OKP_URL"
 
 #========================================
 # 7. RUN TESTS
@@ -484,13 +531,22 @@ if [[ -n "${E2E_LLAMA_PORT_FORWARD_PID_FILE:-}" && -f "$E2E_LLAMA_PORT_FORWARD_P
   fi
   rm -f "$E2E_LLAMA_PORT_FORWARD_PID_FILE"
 fi
+if [[ -n "${E2E_OKP_PORT_FORWARD_PID_FILE:-}" && -f "$E2E_OKP_PORT_FORWARD_PID_FILE" ]]; then
+  read -r _okp_pf <"$E2E_OKP_PORT_FORWARD_PID_FILE" 2>/dev/null || true
+  if [[ "${_okp_pf:-}" =~ ^[0-9]+$ ]]; then
+    kill -9 "$_okp_pf" 2>/dev/null || true
+  fi
+  rm -f "$E2E_OKP_PORT_FORWARD_PID_FILE"
+fi
 
 kill $PF_LCS_PID 2>/dev/null || true
 kill $PF_JWKS_PID 2>/dev/null || true
 kill $PF_LLAMA_PID 2>/dev/null || true
+kill $PF_OKP_PID 2>/dev/null || true
 wait $PF_LCS_PID 2>/dev/null || true
 wait $PF_JWKS_PID 2>/dev/null || true
 wait $PF_LLAMA_PID 2>/dev/null || true
+wait $PF_OKP_PID 2>/dev/null || true
 set -e
 trap 'echo "❌ Pipeline failed at line $LINENO"; exit 1' ERR
 
