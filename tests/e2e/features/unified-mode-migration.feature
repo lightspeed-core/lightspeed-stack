@@ -23,7 +23,7 @@ Feature: Legacy to unified configuration migration
   # --- library mode (@skip-in-server-mode) ---
 
   @skip-in-server-mode
-  Scenario: Migrated unified configuration drives byte-identical OGX behavior in library mode
+  Scenario: Migrated unified configuration boots and serves queries in library mode
     Given lightspeed-stack --migrate-config is run for the legacy migration fixture pair
       And The service uses the lightspeed-stack-unified-migrated.yaml configuration
       And The service is restarted
@@ -39,7 +39,7 @@ Feature: Legacy to unified configuration migration
   # --- server mode (@skip-in-library-mode) ---
 
   @skip-in-library-mode
-  Scenario: Migrated unified configuration drives byte-identical OGX behavior in server mode
+  Scenario: Migrated unified configuration boots and serves queries in server mode
     Given lightspeed-stack --migrate-config is run for the legacy migration fixture pair
       And The service uses the lightspeed-stack-unified-migrated.yaml configuration
       And OGX is restarted
