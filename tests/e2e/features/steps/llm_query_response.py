@@ -95,7 +95,14 @@ def responses_output_should_include_one_of_types(context: Context) -> None:
 @step("I wait for the response to be completed")
 def wait_for_complete_response(context: Context) -> None:
     """Wait for the response to be complete."""
-    context.response_data = _parse_streaming_response(context.response.text)
+    # Reuse cached parse result if it was created for the current response
+    if not (
+        hasattr(context, "response_data")
+        and hasattr(context, "_response_data_source")
+        and context._response_data_source is context.response
+    ):
+        context.response_data = _parse_streaming_response(context.response.text)
+        context._response_data_source = context.response
     context.response.raise_for_status()
     assert context.response_data["finished"] is True
     context.use_streaming_response_data = True
@@ -157,7 +164,29 @@ def ask_question_authorized(context: Context, endpoint: str) -> None:
         resp._content = body.encode(resp.encoding or "utf-8")
         context.response = resp
         # Parse SSE events and make data available for assertions
+        # Preserve existing conversation_id if the new response doesn't have one
+        # (e.g., 403 errors won't have a 'start' event with conversation_id)
+        old_conversation_id = (
+            context.response_data.get("conversation_id")
+            if hasattr(context, "response_data")
+            else None
+        )
         context.response_data = _parse_streaming_response(body)
+        # Extract conversation from terminal event if not found in start event (Responses API)
+        if not context.response_data.get("conversation_id"):
+            if old_conversation_id:
+                # Preserve from previous response (for 403 error scenarios)
+                context.response_data["conversation_id"] = old_conversation_id
+            else:
+                # Try to extract from terminal event (Responses API streaming format)
+                try:
+                    terminal = parse_responses_sse_final_response_object(body)
+                    context.response_data["conversation"] = terminal.get("conversation")
+                    context.response_data["conversation_id"] = terminal.get("conversation")
+                except AssertionError:
+                    pass  # No terminal event found (e.g., error responses)
+        # Mark that this parsed data is from the current response (for cache reuse)
+        context._response_data_source = resp
         context.use_streaming_response_data = True
     else:
         context.response = request_with_transient_retry(
@@ -189,15 +218,33 @@ def ask_question_too_long_authorized(context: Context, endpoint: str) -> None:
 
 @step("I store conversation details")
 def store_conversation_details(context: Context) -> None:
-    """Store details about the conversation."""
+    """Store details about the conversation.
+
+    Reuses cached parse result if it was created for the current response.
+    """
+    # Reuse if already parsed for this response
+    if (
+        hasattr(context, "response_data")
+        and hasattr(context, "_response_data_source")
+        and context._response_data_source is context.response
+    ):
+        return
+
     try:
         context.response_data = json.loads(context.response.text)
+        context._response_data_source = context.response
     except json.JSONDecodeError:
+        # Streaming response - parse it
         context.response_data = _parse_streaming_response(context.response.text)
+        # Extract conversation from terminal event if not in start event (Responses API)
         if not context.response_data.get("conversation_id"):
-            terminal = parse_responses_sse_final_response_object(context.response.text)
-            context.response_data["conversation"] = terminal.get("conversation")
-            context.response_data["conversation_id"] = terminal.get("conversation")
+            try:
+                terminal = parse_responses_sse_final_response_object(context.response.text)
+                context.response_data["conversation"] = terminal.get("conversation")
+                context.response_data["conversation_id"] = terminal.get("conversation")
+            except AssertionError:
+                pass  # No terminal event found
+        context._response_data_source = context.response
 
 
 @step('I use "{endpoint}" to ask question with same conversation_id')

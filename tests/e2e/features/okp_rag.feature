@@ -1,4 +1,4 @@
-@cfg_okp @skip
+@cfg_okp 
 Feature: OKP(Solr) RAG retrieval tests
 
   # Offline Knowledge Portal (OKP) provides a Solr-backed RAG source to LSC.
