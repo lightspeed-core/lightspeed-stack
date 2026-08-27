@@ -170,6 +170,13 @@ def run_migrate_config(context: Context) -> None:
     assert pair_lcs.is_file(), f"missing migration fixture {pair_lcs}"
     assert pair_run.is_file(), "repo-root run.yaml (harness-materialized) missing"
 
+    # Migrate into a scratch directory so the CLI's own artifact keeps the
+    # mode it was written with and can be asserted on (R10) instead of being
+    # relaxed in place.
+    scratch = Path(tempfile.mkdtemp(prefix="lcore-e2e-migrate-"))
+    context.add_cleanup(lambda: shutil.rmtree(scratch, ignore_errors=True))
+    cli_output = scratch / MIGRATED_CONFIG_BASENAME
+
     result = _run_cli(
         [
             "src/lightspeed_stack.py",
@@ -179,18 +186,29 @@ def run_migrate_config(context: Context) -> None:
             "-c",
             str(pair_lcs),
             "--migrate-output",
-            str(output),
+            str(cli_output),
         ]
     )
-    assert result.returncode == 0 and output.is_file(), (
+    assert result.returncode == 0 and cli_output.is_file(), (
         f"--migrate-config failed (rc={result.returncode}).\n"
         f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
     )
-    # The CLI writes 0600 (R10: migrated files may carry lifted secrets), but
-    # the container user must be able to read the copy configure_service puts
-    # at the repo root to boot it. The fixture pair is env-reference-only by
-    # design, so relaxing the harness copy is safe.
+    # R10: migrated files may carry lifted secrets, so the CLI must write them
+    # owner-only. Assert it here rather than silently relaxing the artifact.
+    cli_mode = stat.S_IMODE(os.stat(cli_output).st_mode)
+    assert cli_mode == 0o600, (
+        f"--migrate-config wrote {cli_output} with mode {oct(cli_mode)}, "
+        "expected 0o600 (R10)"
+    )
+
+    # configure_service boots a repo-root copy of this file, and the container
+    # user cannot read a host-owned 0600 file. Publish a deliberate 0644 *copy*
+    # into the fixture directory for the harness to boot; the CLI artifact
+    # above keeps its 0600 mode. The fixture pair is env-reference-only by
+    # design, so nothing secret is widened.
+    shutil.copyfile(cli_output, output)
     os.chmod(output, 0o644)
+    context.migrated_cli_output_path = cli_output
     context.migrated_config_path = output
     context.migration_pair_run_yaml = pair_run
     context.add_cleanup(lambda: output.unlink(missing_ok=True))
