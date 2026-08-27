@@ -524,8 +524,9 @@ def restart_lightspeed_stack_service(
 
 
 def wait_for_lightspeed_stack_http_ready(
-    max_attempts: int = 80,
+    timeout_s: float = 120.0,
     delay_s: float = 1.5,
+    request_timeout_s: float = 5.0,
 ) -> None:
     """Block until Lightspeed Stack accepts HTTP on the host-mapped port.
 
@@ -536,10 +537,18 @@ def wait_for_lightspeed_stack_http_ready(
     Treats HTTP 200 and 401 as success: the process is listening. Auth-enabled
     configs (e.g. RBAC jwk-token) return 401 on probes without a Bearer token.
 
+    Bounded by a single monotonic deadline covering both the requests and the
+    sleeps, and each request is additionally capped at the time remaining, so
+    the total wait cannot exceed ``timeout_s``. An attempt-counted loop cannot
+    give that guarantee: with a per-request timeout the worst case is
+    ``attempts * request_timeout + (attempts - 1) * delay``, which for the
+    previous defaults was 518.5s while the failure message reported 120s.
+
     Parameters:
     ----------
-        max_attempts: Maximum GET attempts.
+        timeout_s: Total wall-clock budget for becoming reachable.
         delay_s: Sleep between attempts.
+        request_timeout_s: Per-request timeout, clamped to the time remaining.
     Raises:
     ------
         AssertionError: If ``/liveness`` does not return an accepted status in time.
@@ -549,26 +558,35 @@ def wait_for_lightspeed_stack_http_ready(
     host = os.getenv("E2E_LSC_HOSTNAME", "localhost")
     port = os.getenv("E2E_LSC_PORT", "8080")
     url = f"http://{host}:{port}/liveness"
-    for attempt in range(max_attempts):
+    started = time.monotonic()
+    deadline = started + timeout_s
+    attempt = 0
+    while True:
+        attempt += 1
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            break
         try:
-            response = requests.get(url, timeout=5)
+            response = requests.get(url, timeout=min(request_timeout_s, remaining))
             if response.status_code in (200, 401):
                 return
             detail = response.text[:200].replace("\n", " ")
             print(
-                f"⏱ HTTP wait LSC {attempt + 1}/{max_attempts} "
+                f"⏱ HTTP wait LSC attempt {attempt} "
                 f"({url} -> {response.status_code}: {detail})..."
             )
         except requests.RequestException as exc:
             print(
-                f"⏱ HTTP wait LSC {attempt + 1}/{max_attempts} "
+                f"⏱ HTTP wait LSC attempt {attempt} "
                 f"({url} -> {exc.__class__.__name__}: {exc})..."
             )
-        if attempt < max_attempts - 1:
-            time.sleep(delay_s)
+        if time.monotonic() + delay_s >= deadline:
+            break
+        time.sleep(delay_s)
+    elapsed = time.monotonic() - started
     raise AssertionError(
         f"Lightspeed Stack did not become reachable at {url!r} "
-        f"after {max_attempts} attempts (~{max_attempts * delay_s:.0f}s)"
+        f"after {attempt} attempts / {elapsed:.0f}s (budget {timeout_s:.0f}s)"
     )
 
 
