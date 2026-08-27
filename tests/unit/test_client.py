@@ -17,8 +17,8 @@ from pytest_mock import MockerFixture
 
 from authorization.azure_token_manager import AzureEntraIDManager
 from client import AsyncOgxClientHolder
-from configuration import AzureEntraIdConfiguration
-from models.config import LlamaStackConfiguration
+from configuration import AppConfig, AzureEntraIdConfiguration
+from models.config import OgxConfiguration
 from utils.types import Singleton
 
 
@@ -26,6 +26,12 @@ from utils.types import Singleton
 def reset_singleton() -> None:
     """Reset singleton state between tests."""
     Singleton._instances = {}
+
+
+@pytest.fixture(autouse=True)
+def load_app_config_for_enrichment(minimal_config: AppConfig) -> None:
+    """Ensure AppConfig is loaded for library client enrichment."""
+    _ = minimal_config
 
 
 def test_async_client_get_client_method() -> None:
@@ -45,7 +51,7 @@ def test_async_client_get_client_method() -> None:
 @pytest.mark.asyncio
 async def test_get_async_llama_stack_library_client() -> None:
     """Test the initialization of asynchronous OGX client in library mode."""
-    cfg = LlamaStackConfiguration(
+    cfg = OgxConfiguration(
         url=None,
         api_key=None,
         use_as_library_client=True,
@@ -66,7 +72,7 @@ async def test_get_async_llama_stack_library_client() -> None:
 @pytest.mark.asyncio
 async def test_get_async_llama_stack_remote_client() -> None:
     """Test the initialization of asynchronous OGX client in server mode."""
-    cfg = LlamaStackConfiguration(
+    cfg = OgxConfiguration(
         url=AnyHttpUrl("http://localhost:8321"),
         api_key=None,
         use_as_library_client=False,
@@ -94,7 +100,7 @@ async def test_get_async_llama_stack_wrong_configuration(
     source" guarantee itself lives on the root Configuration validator.)
     """
     monkeypatch.delenv("LIGHTSPEED_STACK_CONFIG_PATH", raising=False)
-    cfg = LlamaStackConfiguration(
+    cfg = OgxConfiguration(
         url=None,
         api_key=None,
         use_as_library_client=True,
@@ -126,7 +132,7 @@ async def test_update_azure_token_service_client() -> None:
     manager.set_base_url("https://api.example.com")
     manager._update_access_token("fresh-token", int(time.time()) + 3600)
 
-    cfg = LlamaStackConfiguration(
+    cfg = OgxConfiguration(
         url=AnyHttpUrl("http://localhost:8321"),
         api_key=None,
         use_as_library_client=False,
@@ -163,7 +169,7 @@ async def test_load_service_client_defers_azure_provider_data() -> None:
     manager.set_base_url("https://ols-test.openai.azure.com/openai/v1")
     manager._update_access_token("startup-token", int(time.time()) + 3600)
 
-    cfg = LlamaStackConfiguration(
+    cfg = OgxConfiguration(
         url=AnyHttpUrl("http://localhost:8321"),
         api_key=None,
         use_as_library_client=False,
@@ -189,7 +195,7 @@ async def test_load_service_client_defers_azure_provider_data() -> None:
 @pytest.mark.asyncio
 async def test_reload_library_client() -> None:
     """Test that reload_library_client reloads and returns new client."""
-    cfg = LlamaStackConfiguration(
+    cfg = OgxConfiguration(
         url=None,
         api_key=None,
         use_as_library_client=True,

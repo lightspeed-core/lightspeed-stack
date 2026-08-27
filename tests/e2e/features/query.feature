@@ -180,6 +180,48 @@ Scenario: Check if LLM responds for query request with error for missing query
           | Fragments in LLM response |
           | image                     |
 
+  @flaky
+  Scenario: Check if LLM responds properly when a valid WebP image attachment is sent
+    When I use "query" to ask question with authorization header
+    """
+    {
+      "query": "Describe this image",
+      "attachments": [
+        {
+          "attachment_type": "image",
+          "content": "UklGRjwAAABXRUJQVlA4IDAAAADQAQCdASoBAAEAAUAmJaACdLoB+AADsAD+8ut//NgVzXPv9//S4P0uD9Lg/9KQAAA=",
+          "content_type": "image/webp"
+        }
+      ],
+      "model": "{MODEL}",
+      "provider": "{PROVIDER}",
+      "system_prompt": "You are a helpful assistant"
+    }
+    """
+    Then The status code of the response is 200
+      And The response contains following fragments
+          | Fragments in LLM response |
+          | image                     |
+
+  Scenario: Check if query rejects WebP-declared attachment with mismatched magic bytes
+    When I use "query" to ask question with authorization header
+    """
+    {
+      "query": "Describe this image",
+      "attachments": [
+        {
+          "attachment_type": "image",
+          "content": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC",
+          "content_type": "image/webp"
+        }
+      ],
+      "model": "{MODEL}",
+      "provider": "{PROVIDER}"
+    }
+    """
+    Then The status code of the response is 422
+      And The body of the response contains invalid image data
+
   Scenario: Check if query rejects image attachment with mismatched attachment_type and content_type
     When I use "query" to ask question with authorization header
     """

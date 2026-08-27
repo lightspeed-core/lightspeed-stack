@@ -43,7 +43,7 @@ def test_loading_proper_configuration(configuration_filename: str) -> None:
 
     # check that all configuration sections exist
     assert cfg.configuration is not None
-    assert cfg.llama_stack_configuration is not None
+    assert cfg.ogx_configuration is not None
     assert cfg.service_configuration is not None
     assert cfg.user_data_collection_configuration is not None
     assert cfg.mcp_servers is not None
@@ -68,7 +68,7 @@ def test_loading_proper_configuration(configuration_filename: str) -> None:
     assert cors_config.allow_headers == ["foo_header", "bar_header", "baz_header"]
 
     # check 'llama_stack' section
-    ls_config = cfg.llama_stack_configuration
+    ls_config = cfg.ogx_configuration
     assert ls_config.use_as_library_client is False
     assert str(ls_config.url) == "http://localhost:8321/"
     assert ls_config.api_key is not None

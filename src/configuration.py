@@ -24,8 +24,8 @@ from models.config import (
     Customization,
     DatabaseConfiguration,
     InferenceConfiguration,
-    LlamaStackConfiguration,
     ModelContextProtocolServer,
+    OgxConfiguration,
     OkpConfiguration,
     QuotaHandlersConfiguration,
     RagConfiguration,
@@ -173,11 +173,11 @@ class AppConfig:  # pylint: disable=too-many-public-methods
         return self._configuration.service
 
     @property
-    def llama_stack_configuration(self) -> LlamaStackConfiguration:
+    def ogx_configuration(self) -> OgxConfiguration:
         """Return OGX configuration.
 
         Returns:
-            LlamaStackConfiguration: The configured OGX settings.
+            OgxConfiguration: The configured OGX settings.
 
         Raises:
             LogicError: If the application configuration has not been loaded.

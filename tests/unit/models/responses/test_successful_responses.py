@@ -46,7 +46,7 @@ from models.common.turn_summary import (
 )
 from models.config import (
     Configuration,
-    LlamaStackConfiguration,
+    OgxConfiguration,
     ServiceConfiguration,
     UserDataCollection,
 )
@@ -1102,7 +1102,7 @@ class TestConfigurationResponse:
                 access_log=True,
                 root_path="/.",
             ),
-            llama_stack=LlamaStackConfiguration(
+            llama_stack=OgxConfiguration(
                 url=AnyHttpUrl("http://localhost:8321"),
                 use_as_library_client=False,
                 api_key=None,

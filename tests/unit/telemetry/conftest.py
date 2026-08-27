@@ -32,8 +32,8 @@ from models.config import (
     JwkConfiguration,
     JwtConfiguration,
     JwtRoleRule,
-    LlamaStackConfiguration,
     ModelContextProtocolServer,
+    OgxConfiguration,
     OkpConfiguration,
     PgvectorVectorStoreProvider,
     PgvectorVectorStoreProviderConfig,
@@ -59,7 +59,7 @@ from models.config import (
     TrustedProxyConfiguration,
     TrustedProxyServiceAccount,
     UnifiedInferenceProvider,
-    UnifiedLlamaStackConfig,
+    UnifiedOgxConfig,
     UserDataCollection,
     VectorStoreConfiguration,
 )
@@ -336,7 +336,7 @@ def build_fully_populated_config() -> Configuration:
                 allow_headers=["Authorization", "Content-Type"],
             ),
         ),
-        llama_stack=LlamaStackConfiguration.model_construct(
+        llama_stack=OgxConfiguration.model_construct(
             url=PII_LLAMA_URL,
             api_key=SecretStr(PII_API_KEY),
             use_as_library_client=False,
@@ -345,7 +345,7 @@ def build_fully_populated_config() -> Configuration:
             max_retries=5,
             retry_delay=2,
             allow_degraded_mode=True,
-            config=UnifiedLlamaStackConfig.model_construct(
+            config=UnifiedOgxConfig.model_construct(
                 baseline="default",
                 profile=PII_LS_PROFILE,
                 native_override={"key": PII_LS_NATIVE_OVERRIDE},
@@ -685,7 +685,7 @@ def build_minimal_config() -> Configuration:
                 allow_headers=["*"],
             ),
         ),
-        llama_stack=LlamaStackConfiguration.model_construct(
+        llama_stack=OgxConfiguration.model_construct(
             url=None,
             api_key=None,
             use_as_library_client=True,

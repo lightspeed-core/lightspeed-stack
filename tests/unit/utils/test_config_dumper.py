@@ -94,7 +94,7 @@ def test_dump_schema(tmpdir: Path) -> None:
             "JwkConfiguration",
             "JwtConfiguration",
             "JwtRoleRule",
-            "LlamaStackConfiguration",
+            "OgxConfiguration",
             "ModelContextProtocolServer",
             "OkpConfiguration",
             "PostgreSQLDatabaseConfiguration",

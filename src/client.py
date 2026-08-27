@@ -22,7 +22,7 @@ from llama_stack_configuration import (
 )
 from log import get_logger, setup_logging
 from models.api.responses.error import ServiceUnavailableResponse
-from models.config import LlamaStackConfiguration
+from models.config import OgxConfiguration
 from utils.model_list import parse_model_list_response
 from utils.types import Singleton
 
@@ -40,17 +40,17 @@ class AsyncOgxClientHolder(metaclass=Singleton):
         """Check if using library mode client."""
         return isinstance(self._lsc, AsyncOGXAsLibraryClient)
 
-    async def load(self, llama_stack_config: LlamaStackConfiguration) -> None:
+    async def load(self, ogx_config: OgxConfiguration) -> None:
         """Initialize the OGX client based on configuration."""
         if self._lsc is not None:  # early stopping - client already initialized
             return
 
-        if llama_stack_config.use_as_library_client:
-            await self._load_library_client(llama_stack_config)
+        if ogx_config.use_as_library_client:
+            await self._load_library_client(ogx_config)
         else:
-            self._load_service_client(llama_stack_config)
+            self._load_service_client(ogx_config)
 
-    async def _load_library_client(self, config: LlamaStackConfiguration) -> None:
+    async def _load_library_client(self, config: OgxConfiguration) -> None:
         """Initialize client in library mode.
 
         Forks on configuration shape: legacy mode (a library_client_config_path
@@ -118,7 +118,7 @@ class AsyncOgxClientHolder(metaclass=Singleton):
         logger.info("Using synthesized OGX config at %s", output_path)
         return output_path
 
-    def _load_service_client(self, config: LlamaStackConfiguration) -> None:
+    def _load_service_client(self, config: OgxConfiguration) -> None:
         """Initialize client in service mode (remote HTTP)."""
         logger.info("Using OGX running as a service")
         logger.info("Using timeout of %d seconds for OGX requests", config.timeout)

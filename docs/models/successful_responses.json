@@ -708,7 +708,7 @@
                         "title": "Service configuration"
                     },
                     "llama_stack": {
-                        "$ref": "`#/components/schemas/`LlamaStackConfiguration",
+                        "$ref": "`#/components/schemas/`OgxConfiguration",
                         "description": "This section contains OGX configuration. Lightspeed Core Stack service can call OGX in library mode or in server mode.",
                         "title": "OGX configuration"
                     },
@@ -1022,6 +1022,13 @@
                 ],
                 "title": "ConfigurationResponse",
                 "type": "object"
+            },
+            "ContextStatus": {
+                "enum": [
+                    "full",
+                    "summarized"
+                ],
+                "type": "string"
             },
             "ConversationData": {
                 "description": "Model representing conversation data returned by cache list operations.\n\nAttributes:\n    conversation_id: The conversation ID\n    topic_summary: The topic summary for the conversation (can be None)\n    last_message_timestamp: The timestamp of the last message in the conversation",
@@ -1883,7 +1890,7 @@
                             "0.2.21",
                             "0.2.22"
                         ],
-                        "title": "OGX Version",
+                        "title": "Llama Stack Version",
                         "type": "string"
                     }
                 },
@@ -2021,83 +2028,6 @@
                     "alive"
                 ],
                 "title": "LivenessResponse",
-                "type": "object"
-            },
-            "LlamaStackConfiguration": {
-                "additionalProperties": false,
-                "description": "OGX configuration.\n\nOGX is a comprehensive system that provides a uniform set of tools\nfor building, scaling, and deploying generative AI applications, enabling\ndevelopers to create, integrate, and orchestrate multiple AI services and\ncapabilities into an adaptable setup.\n\nUseful resources:\n\n  - [OGX](https://www.llama.com/products/llama-stack/)\n  - [Python OGX client](https://github.com/llamastack/llama-stack-client-python)\n  - [Build AI Applications with OGX](https://llamastack.github.io/)",
-                "properties": {
-                    "url": {
-                        "type": "string",
-                        "nullable": true,
-                        "default": null,
-                        "description": "URL to OGX service; used when library mode is disabled. Must be a valid HTTP or HTTPS URL.",
-                        "title": "OGX URL"
-                    },
-                    "api_key": {
-                        "type": "string",
-                        "nullable": true,
-                        "default": null,
-                        "description": "API key to access OGX service",
-                        "title": "API key"
-                    },
-                    "use_as_library_client": {
-                        "type": "boolean",
-                        "nullable": true,
-                        "default": null,
-                        "description": "When set to true OGX will be used in library mode, not in server mode (default)",
-                        "title": "Use as library"
-                    },
-                    "library_client_config_path": {
-                        "type": "string",
-                        "nullable": true,
-                        "default": null,
-                        "description": "Path to configuration file used when OGX is run in library mode. DEPRECATED legacy two-file setup: logs a startup warning since 0.6 and is removed in 0.7 \u2014 use unified mode instead (the config block below, and/or the root-level inference.providers section); migrate with lightspeed-stack --migrate-config.",
-                        "title": "OGX configuration path (legacy, deprecated)"
-                    },
-                    "timeout": {
-                        "default": 180,
-                        "description": "Timeout in seconds for requests to OGX service. Default is 180 seconds (3 minutes) to accommodate long-running RAG queries.",
-                        "minimum": 0,
-                        "title": "Request timeout",
-                        "type": "integer"
-                    },
-                    "max_retries": {
-                        "default": 5,
-                        "description": "Maximum number of connection attempts before giving up. Used on startup to connect to OGX and retrieve its version. Connection attempts are retried with a fixed delay to handle the case where OGX is still starting up (e.g., when running as a sidecar in the same pod).",
-                        "minimum": 0,
-                        "title": "Maximum number of connection attempts before giving up",
-                        "type": "integer"
-                    },
-                    "retry_delay": {
-                        "default": 2,
-                        "description": "Delay in seconds between retry attempts. Used on startup to connect to OGX and retrieve its version. Connection attempts are retried with a fixed delay to handle the case where OGX is still starting up (e.g., when running as a sidecar in the same pod).",
-                        "minimum": 0,
-                        "title": "Delay in seconds between retry attempts",
-                        "type": "integer"
-                    },
-                    "allow_degraded_mode": {
-                        "type": "boolean",
-                        "nullable": true,
-                        "default": false,
-                        "description": "If enabled, Lightspeed Core can be started even when OGX is not accessible (valid for server mode only)",
-                        "title": "Allow degraded mode"
-                    },
-                    "config": {
-                        "anyOf": [
-                            {
-                                "$ref": "`#/components/schemas/`UnifiedLlamaStackConfig"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "default": null,
-                        "description": "Backend-specific knobs for unified mode, where LCORE synthesizes the OGX run.yaml instead of reading an external file. Holds the baseline selector, an optional profile path, and a raw native_override escape hatch. Backend-agnostic high-level sections (e.g. inference.providers) live at the configuration root, not here. Mutually exclusive with library_client_config_path; that cross-field check lives on the root Configuration model. When set in library mode, library_client_config_path is not required.",
-                        "title": "Unified OGX configuration"
-                    }
-                },
-                "title": "LlamaStackConfiguration",
                 "type": "object"
             },
             "MCPClientAuthOptionsResponse": {
@@ -2499,6 +2429,83 @@
                     }
                 },
                 "title": "ObservabilityConfiguration",
+                "type": "object"
+            },
+            "OgxConfiguration": {
+                "additionalProperties": false,
+                "description": "OGX configuration.\n\nOGX is a comprehensive system that provides a uniform set of tools\nfor building, scaling, and deploying generative AI applications, enabling\ndevelopers to create, integrate, and orchestrate multiple AI services and\ncapabilities into an adaptable setup.\n\nUseful resources:\n\n  - [OGX](https://www.llama.com/products/llama-stack/)\n  - [Python OGX client](https://github.com/llamastack/llama-stack-client-python)\n  - [Build AI Applications with OGX](https://llamastack.github.io/)",
+                "properties": {
+                    "url": {
+                        "type": "string",
+                        "nullable": true,
+                        "default": null,
+                        "description": "URL to OGX service; used when library mode is disabled. Must be a valid HTTP or HTTPS URL.",
+                        "title": "OGX URL"
+                    },
+                    "api_key": {
+                        "type": "string",
+                        "nullable": true,
+                        "default": null,
+                        "description": "API key to access OGX service",
+                        "title": "API key"
+                    },
+                    "use_as_library_client": {
+                        "type": "boolean",
+                        "nullable": true,
+                        "default": null,
+                        "description": "When set to true OGX will be used in library mode, not in server mode (default)",
+                        "title": "Use as library"
+                    },
+                    "library_client_config_path": {
+                        "type": "string",
+                        "nullable": true,
+                        "default": null,
+                        "description": "Path to configuration file used when OGX is run in library mode. DEPRECATED legacy two-file setup: logs a startup warning since 0.6 and is removed in 0.8 \u2014 use unified mode instead (the config block below, and/or the root-level inference.providers section); migrate with lightspeed-stack --migrate-config.",
+                        "title": "OGX configuration path (legacy, deprecated)"
+                    },
+                    "timeout": {
+                        "default": 180,
+                        "description": "Timeout in seconds for requests to OGX service. Default is 180 seconds (3 minutes) to accommodate long-running RAG queries.",
+                        "minimum": 0,
+                        "title": "Request timeout",
+                        "type": "integer"
+                    },
+                    "max_retries": {
+                        "default": 5,
+                        "description": "Maximum number of connection attempts before giving up. Used on startup to connect to OGX and retrieve its version. Connection attempts are retried with a fixed delay to handle the case where OGX is still starting up (e.g., when running as a sidecar in the same pod).",
+                        "minimum": 0,
+                        "title": "Maximum number of connection attempts before giving up",
+                        "type": "integer"
+                    },
+                    "retry_delay": {
+                        "default": 2,
+                        "description": "Delay in seconds between retry attempts. Used on startup to connect to OGX and retrieve its version. Connection attempts are retried with a fixed delay to handle the case where OGX is still starting up (e.g., when running as a sidecar in the same pod).",
+                        "minimum": 0,
+                        "title": "Delay in seconds between retry attempts",
+                        "type": "integer"
+                    },
+                    "allow_degraded_mode": {
+                        "type": "boolean",
+                        "nullable": true,
+                        "default": false,
+                        "description": "If enabled, Lightspeed Core can be started even when OGX is not accessible (valid for server mode only)",
+                        "title": "Allow degraded mode"
+                    },
+                    "config": {
+                        "anyOf": [
+                            {
+                                "$ref": "`#/components/schemas/`UnifiedOgxConfig"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "default": null,
+                        "description": "Backend-specific knobs for unified mode, where LCORE synthesizes the OGX run.yaml instead of reading an external file. Holds the baseline selector, an optional profile path, and a raw native_override escape hatch. Backend-agnostic high-level sections (e.g. inference.providers) live at the configuration root, not here. Mutually exclusive with library_client_config_path; that cross-field check lives on the root Configuration model. When set in library mode, library_client_config_path is not required.",
+                        "title": "Unified OGX configuration"
+                    }
+                },
+                "title": "OgxConfiguration",
                 "type": "object"
             },
             "OkpConfiguration": {
@@ -4307,13 +4314,14 @@
                 "type": "object"
             },
             "QueryResponse": {
-                "description": "Model representing LLM response to a query.\n\nAttributes:\n    conversation_id: The optional conversation ID (UUID).\n    response: The response.\n    rag_chunks: Deprecated. List of RAG chunks used to generate the response.\n        This information is now available in tool_results under file_search_call type.\n    referenced_documents: The URLs and titles for the documents used to generate the response.\n    tool_calls: List of tool calls made during response generation.\n    tool_results: List of tool results.\n    truncated: Whether conversation history was truncated.\n    input_tokens: Number of tokens sent to LLM.\n    output_tokens: Number of tokens received from LLM.\n    available_quotas: Quota available as measured by all configured quota limiters.",
+                "description": "Model representing LLM response to a query.\n\nAttributes:\n    conversation_id: The optional conversation ID (UUID).\n    response: The response.\n    rag_chunks: Deprecated. List of RAG chunks used to generate the response.\n        This information is now available in tool_results under file_search_call type.\n    referenced_documents: The URLs and titles for the documents used to generate the response.\n    tool_calls: List of tool calls made during response generation.\n    tool_results: List of tool results.\n    truncated: Whether conversation history was truncated.\n    context_status: Whether the conversation context was sent in full\n        (\"full\") or older turns were replaced by a summary (\"summarized\").\n    input_tokens: Number of tokens sent to LLM.\n    output_tokens: Number of tokens received from LLM.\n    available_quotas: Quota available as measured by all configured quota limiters.",
                 "examples": [
                     {
                         "available_quotas": {
                             "ClusterQuotaLimiter": 998911,
                             "UserQuotaLimiter": 998911
                         },
+                        "context_status": "full",
                         "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
                         "input_tokens": 123,
                         "output_tokens": 456,
@@ -4396,6 +4404,15 @@
                         ],
                         "title": "Truncated",
                         "type": "boolean"
+                    },
+                    "context_status": {
+                        "$ref": "`#/components/schemas/`ContextStatus",
+                        "default": "full",
+                        "description": "Context status: \"full\" (no compaction) or \"summarized\" (older turns replaced by a summary)",
+                        "examples": [
+                            "full",
+                            "summarized"
+                        ]
                     },
                     "input_tokens": {
                         "default": 0,
@@ -6286,7 +6303,7 @@
             "StreamingQueryResponse": {
                 "description": "Documentation-only model for streaming query responses using Server-Sent Events (SSE).",
                 "examples": [
-                    "data: {\"event\": \"start\", \"data\": {\"conversation_id\": \"123e4567-e89b-12d3-a456-426614174000\", \"request_id\": \"123e4567-e89b-12d3-a456-426614174001\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 0, \"token\": \"No Violation\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 1, \"token\": \"\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 2, \"token\": \"Hello\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 3, \"token\": \"!\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 4, \"token\": \" How\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 5, \"token\": \" can\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 6, \"token\": \" I\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 7, \"token\": \" assist\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 8, \"token\": \" you\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 9, \"token\": \" today\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 10, \"token\": \"?\"}}\n\ndata: {\"event\": \"turn_complete\", \"data\": {\"token\": \"Hello! How can I assist you today?\"}}\n\ndata: {\"event\": \"end\", \"data\": {\"referenced_documents\": [], \"truncated\": null, \"input_tokens\": 11, \"output_tokens\": 19}, \"available_quotas\": {}}\n\n"
+                    "data: {\"event\": \"start\", \"data\": {\"conversation_id\": \"123e4567-e89b-12d3-a456-426614174000\", \"request_id\": \"123e4567-e89b-12d3-a456-426614174001\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 0, \"token\": \"No Violation\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 1, \"token\": \"\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 2, \"token\": \"Hello\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 3, \"token\": \"!\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 4, \"token\": \" How\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 5, \"token\": \" can\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 6, \"token\": \" I\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 7, \"token\": \" assist\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 8, \"token\": \" you\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 9, \"token\": \" today\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 10, \"token\": \"?\"}}\n\ndata: {\"event\": \"turn_complete\", \"data\": {\"token\": \"Hello! How can I assist you today?\"}}\n\ndata: {\"event\": \"end\", \"data\": {\"referenced_documents\": [], \"truncated\": null, \"context_status\": \"full\", \"input_tokens\": 11, \"output_tokens\": 19}, \"available_quotas\": {}}\n\n"
                 ],
                 "properties": {},
                 "title": "StreamingQueryResponse",
@@ -6479,7 +6496,7 @@
             },
             "UnifiedInferenceProvider": {
                 "additionalProperties": false,
-                "description": "A high-level inference provider entry for unified-mode synthesis.\n\nOperators describe inference providers at this high level (backend-agnostic\nvocabulary) instead of authoring raw OGX provider blocks. The\nsynthesizer (`apply_high_level_inference`) expands each entry into a Llama\nStack `providers.inference` entry, mapping `type` to a `provider_type` and\nemitting `${env.<VAR>}` references for secrets (never literal values).\n\nAttributes:\n    type: Canonical provider identifier. Vendor-neutral so it survives a\n        future backend change; each backend-specific synthesizer maps it to\n        its own provider vocabulary.\n    id: Optional identifier emitted as the OGX provider_id. When\n        omitted, synthesized as type with underscores hyphenated. If set,\n        must be non-empty after stripping whitespace and may contain only\n        lowercase letters, digits, underscores, and hyphens.\n    api_key_env: Name of the environment variable holding the provider API\n        key. Emitted verbatim as `${env.<name>}` so the secret never lands\n        on disk resolved.\n    allowed_models: Optional allow-list of model identifiers passed through\n        to the synthesized provider config.\n    extra: Additional provider-config keys merged verbatim into the\n        synthesized provider's `config` block \u2014 an escape hatch for\n        provider-specific knobs not modeled here.",
+                "description": "A high-level inference provider entry for unified-mode synthesis.\n\nOperators describe inference providers at this high level (backend-agnostic\nvocabulary) instead of authoring raw OGX provider blocks. The\nsynthesizer (`apply_high_level_inference`) expands each entry into an OGX\n`providers.inference` entry, mapping `type` to a `provider_type` and\nemitting `${env.<VAR>}` references for secrets (never literal values).\n\nAttributes:\n    type: Canonical provider identifier. Vendor-neutral so it survives a\n        future backend change; each backend-specific synthesizer maps it to\n        its own provider vocabulary.\n    id: Optional identifier emitted as the OGX provider_id. When\n        omitted, synthesized as type with underscores hyphenated. If set,\n        must be non-empty after stripping whitespace and may contain only\n        lowercase letters, digits, underscores, and hyphens.\n    api_key_env: Name of the environment variable holding the provider API\n        key. Emitted verbatim as `${env.<name>}` so the secret never lands\n        on disk resolved.\n    allowed_models: Optional allow-list of model identifiers passed through\n        to the synthesized provider config.\n    extra: Additional provider-config keys merged verbatim into the\n        synthesized provider's `config` block \u2014 an escape hatch for\n        provider-specific knobs not modeled here.",
                 "properties": {
                     "type": {
                         "description": "Canonical, backend-agnostic provider identifier mapped to an OGX provider_type by the synthesizer.",
@@ -6531,9 +6548,9 @@
                 "title": "UnifiedInferenceProvider",
                 "type": "object"
             },
-            "UnifiedLlamaStackConfig": {
+            "UnifiedOgxConfig": {
                 "additionalProperties": false,
-                "description": "Backend-specific knobs for unified-mode OGX synthesis.\n\nPer Decision S5 of the design spike, backend-agnostic high-level sections\n(inference, ...) live at the configuration root, not here. This block holds\nonly the OGX-specific synthesis controls: which baseline to start\nfrom, an optional profile file, and a raw native_override escape hatch.\n\nAttributes:\n    baseline: Synthesis starting point. \"default\" begins from LCORE's\n        built-in baseline (src/data/default_run.yaml); \"empty\" begins from\n        an empty dict (used by the migration tool for an exact round-trip).\n        Ignored when `profile` is set.\n    profile: Optional path to a user-authored run.yaml-shaped file used as\n        the synthesis baseline. Relative paths resolve against the directory\n        of the loaded lightspeed-stack.yaml.\n    native_override: Raw OGX schema deep-merged last (maps merge\n        recursively, lists and scalars replace). The escape hatch for\n        anything the high-level sections do not express.",
+                "description": "Backend-specific knobs for unified-mode OGX synthesis.\n\nPer Decision S5 of the design spike, backend-agnostic high-level sections\n(inference, ...) live at the configuration root, not here. This block holds\nonly the OGX-specific synthesis controls: which baseline to start\nfrom, an optional profile file, and a raw native_override escape hatch.\n\nAttributes:\n    baseline: Synthesis starting point. \"default\" begins from LCORE's\n        built-in baseline (src/data/default_run.yaml) including the\n        conditional OpenAI inference provider. \"byo-llm\" begins from the\n        same file with that OpenAI row removed. \"empty\" begins from an\n        empty dict (used by the migration tool for an exact round-trip).\n        Ignored when `profile` is set.\n    profile: Optional path to a user-authored run.yaml-shaped file used as\n        the synthesis baseline. Relative paths resolve against the directory\n        of the loaded lightspeed-stack.yaml.\n    native_override: Raw OGX schema deep-merged last (maps merge\n        recursively, lists and scalars replace). The escape hatch for\n        anything the high-level sections do not express.",
                 "properties": {
                     "baseline": {
                         "default": "default",
@@ -6560,7 +6577,7 @@
                         "type": "object"
                     }
                 },
-                "title": "UnifiedLlamaStackConfig",
+                "title": "UnifiedOgxConfig",
                 "type": "object"
             },
             "UserDataCollection": {

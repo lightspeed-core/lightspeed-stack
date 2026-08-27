@@ -6,6 +6,13 @@
     },
     "components": {
         "schemas": {
+            "ContextStatus": {
+                "enum": [
+                    "full",
+                    "summarized"
+                ],
+                "type": "string"
+            },
             "EndEventData": {
                 "description": "Nested data for event: \"end\".",
                 "properties": {
@@ -20,6 +27,10 @@
                         "type": "boolean",
                         "nullable": true,
                         "title": "Truncated"
+                    },
+                    "context_status": {
+                        "$ref": "`#/components/schemas/`ContextStatus",
+                        "default": "full"
                     },
                     "input_tokens": {
                         "title": "Input Tokens",

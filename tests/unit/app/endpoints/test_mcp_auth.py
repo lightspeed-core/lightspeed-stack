@@ -13,8 +13,8 @@ from configuration import AppConfig
 from models.api.responses.successful import MCPClientAuthOptionsResponse
 from models.config import (
     Configuration,
-    LlamaStackConfiguration,
     ModelContextProtocolServer,
+    OgxConfiguration,
     ServiceConfiguration,
     UserDataCollection,
 )
@@ -29,7 +29,7 @@ def mock_configuration_with_client_auth() -> Configuration:
     return Configuration(  # type: ignore[call-arg]
         name="test",
         service=ServiceConfiguration(),  # type: ignore[call-arg]
-        llama_stack=LlamaStackConfiguration(url="http://localhost:8321"),  # type: ignore[call-arg]
+        llama_stack=OgxConfiguration(url="http://localhost:8321"),  # type: ignore[call-arg]
         user_data_collection=UserDataCollection(feedback_enabled=False),  # type: ignore[call-arg]
         mcp_servers=[
             ModelContextProtocolServer(
@@ -57,7 +57,7 @@ def mock_configuration_mixed_auth() -> Configuration:
     return Configuration(  # type: ignore[call-arg]
         name="test",
         service=ServiceConfiguration(),  # type: ignore[call-arg]
-        llama_stack=LlamaStackConfiguration(url="http://localhost:8321"),  # type: ignore[call-arg]
+        llama_stack=OgxConfiguration(url="http://localhost:8321"),  # type: ignore[call-arg]
         user_data_collection=UserDataCollection(feedback_enabled=False),  # type: ignore[call-arg]
         mcp_servers=[
             ModelContextProtocolServer(
@@ -88,7 +88,7 @@ def mock_configuration_no_client_auth() -> Configuration:
     return Configuration(  # type: ignore[call-arg]
         name="test",
         service=ServiceConfiguration(),  # type: ignore[call-arg]
-        llama_stack=LlamaStackConfiguration(url="http://localhost:8321"),  # type: ignore[call-arg]
+        llama_stack=OgxConfiguration(url="http://localhost:8321"),  # type: ignore[call-arg]
         user_data_collection=UserDataCollection(feedback_enabled=False),  # type: ignore[call-arg]
         mcp_servers=[
             ModelContextProtocolServer(
@@ -215,7 +215,7 @@ async def test_get_mcp_client_auth_options_empty_config(
     mock_config = Configuration(  # type: ignore[call-arg]
         name="test",
         service=ServiceConfiguration(),  # type: ignore[call-arg]
-        llama_stack=LlamaStackConfiguration(url="http://localhost:8321"),  # type: ignore[call-arg]
+        llama_stack=OgxConfiguration(url="http://localhost:8321"),  # type: ignore[call-arg]
         user_data_collection=UserDataCollection(feedback_enabled=False),  # type: ignore[call-arg]
         mcp_servers=[],
     )  # type: ignore[call-arg]
@@ -249,7 +249,7 @@ async def test_get_mcp_client_auth_options_whitespace_handling(
     mock_config = Configuration(  # type: ignore[call-arg]
         name="test",
         service=ServiceConfiguration(),  # type: ignore[call-arg]
-        llama_stack=LlamaStackConfiguration(url="http://localhost:8321"),  # type: ignore[call-arg]
+        llama_stack=OgxConfiguration(url="http://localhost:8321"),  # type: ignore[call-arg]
         user_data_collection=UserDataCollection(feedback_enabled=False),  # type: ignore[call-arg]
         mcp_servers=[
             ModelContextProtocolServer(
@@ -297,7 +297,7 @@ async def test_get_mcp_client_auth_options_multiple_headers_single_server(
     mock_config = Configuration(  # type: ignore[call-arg]
         name="test",
         service=ServiceConfiguration(),  # type: ignore[call-arg]
-        llama_stack=LlamaStackConfiguration(url="http://localhost:8321"),  # type: ignore[call-arg]
+        llama_stack=OgxConfiguration(url="http://localhost:8321"),  # type: ignore[call-arg]
         user_data_collection=UserDataCollection(feedback_enabled=False),  # type: ignore[call-arg]
         mcp_servers=[
             ModelContextProtocolServer(

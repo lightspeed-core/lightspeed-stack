@@ -1210,11 +1210,13 @@ def synthesize_configuration(  # pylint: disable=too-many-locals
     """Synthesize a full OGX ``run.yaml`` dict from a unified config.
 
     Implements the unified-mode synthesis pipeline: select a baseline (profile
-    file, empty, byo-llm, or the built-in default), apply the existing enrichment
-    (Azure Entra ID, BYOK RAG, Solr/OKP) for parity with legacy mode (R7),
-    expand the high-level ``inference.providers`` section, ensure the default
-    MCP tool_runtime provider when the baseline was not empty, and deep-merge
-    the raw ``native_override`` last (R5).
+    file, empty, byo-llm, or the built-in default), expand the high-level
+    ``inference.providers`` section, ensure the default MCP tool_runtime
+    provider when the baseline was not empty, deep-merge the raw
+    ``native_override`` (R5: it wins over the baseline and the high-level
+    expansion), and apply the existing enrichment (Azure Entra ID, BYOK RAG,
+    vector_store, Solr/OKP) last — matching legacy mode, where enrichment
+    always post-processes the operator's final run.yaml (R7, LCORE-3370).
 
     Parameters:
         lcs_config: The full ``lightspeed-stack.yaml`` parsed into a dict.
@@ -1275,8 +1277,30 @@ def synthesize_configuration(  # pylint: disable=too-many-locals
     # 3. Normalize duplicated vector_io providers in the baseline.
     dedupe_providers_vector_io(ls_config)
 
-    # 4. Existing enrichment — same calls as legacy generate_configuration so
+    # 4. High-level inference providers (Decision S5 — a root-level section).
+    inference = lcs_config.get("inference") or {}
+    if inference.get("providers"):
+        apply_high_level_inference(ls_config, inference)
+
+    # 5. Ensure MCP tool_runtime for default/profile baselines (skipped for
+    #    baseline: empty so migrate round-trips stay lossless).
+    if not baseline_was_empty:
+        ensure_mcp_tool_runtime(ls_config)
+
+    # 6. Raw escape hatch, deep-merged with list replacement. It wins over the
+    #    baseline and the high-level expansion (R5) but deliberately NOT over
+    #    enrichment (step 7).
+    if unified and unified.get("native_override"):
+        ls_config = deep_merge_list_replace(ls_config, unified["native_override"])
+
+    # 7. Existing enrichment — same calls as legacy generate_configuration so
     #    unified output matches legacy output for equivalent inputs (R7).
+    #    Applied AFTER the native_override merge (LCORE-3370): in legacy mode
+    #    enrichment always post-processes the operator's final run.yaml, so a
+    #    migrated config (whose native_override IS the lifted run.yaml) must
+    #    get the same treatment or list-shaped enrichment artifacts
+    #    (vector_io providers, registered models, azure model_validation) are
+    #    replaced wholesale by the lifted lists and silently lost.
     enrich_azure_entra_id_inference(ls_config, lcs_config.get("azure_entra_id"))
     rag_section = lcs_config.get("rag", {})
     byok_stores = rag_section.get("byok", {}).get("stores", [])
@@ -1289,20 +1313,6 @@ def synthesize_configuration(  # pylint: disable=too-many-locals
     okp_config = rag_section.get("okp", {})
     enrich_solr(ls_config, rag_config_for_solr, okp_config)
     enrich_vector_store(ls_config, lcs_config.get("vector_store"))
-
-    # 5. High-level inference providers (Decision S5 — a root-level section).
-    inference = lcs_config.get("inference") or {}
-    if inference.get("providers"):
-        apply_high_level_inference(ls_config, inference)
-
-    # 6. Ensure MCP tool_runtime for default/profile baselines (skipped for
-    #    baseline: empty so migrate round-trips stay lossless).
-    if not baseline_was_empty:
-        ensure_mcp_tool_runtime(ls_config)
-
-    # 7. Raw escape hatch, deep-merged last with list replacement (R5).
-    if unified and unified.get("native_override"):
-        ls_config = deep_merge_list_replace(ls_config, unified["native_override"])
 
     # 8. Dedupe again in case native_override or enrichment reintroduced dupes.
     dedupe_providers_vector_io(ls_config)
@@ -1483,10 +1493,45 @@ def generate_configuration(
 # =============================================================================
 
 
+def has_synthesis_input(lcs_config: dict[str, Any]) -> bool:
+    """Return True when a raw lightspeed config carries a synthesis input.
+
+    Mirrors the unified-vs-legacy detection of the root ``Configuration``
+    model (``check_unified_vs_legacy``) for callers that work with the raw
+    YAML dict, such as the CLI: a non-empty top-level ``inference.providers``,
+    a non-empty ``vector_store.providers``, or a ``llama_stack.config`` block
+    signal unified mode (R11).
+
+    Parameters:
+        lcs_config: The ``lightspeed-stack.yaml`` contents parsed into a dict.
+
+    Returns:
+        bool: True when any synthesis input is present.
+    """
+    inference = lcs_config.get("inference") or {}
+    vector_store = lcs_config.get("vector_store") or {}
+    llama_stack = lcs_config.get("llama_stack") or {}
+    return (
+        bool(inference.get("providers"))
+        or bool(vector_store.get("providers"))
+        or llama_stack.get("config") is not None
+    )
+
+
 def main() -> None:
-    """CLI entry point."""
+    """CLI entry point with unified-vs-legacy auto-detection.
+
+    Auto-detects the configuration shape from the ``--config`` file (spec
+    "Trigger mechanism"): when it carries a synthesis input the full run.yaml
+    is synthesized from it and ``--input`` is ignored, so no external
+    run.yaml needs to exist; otherwise the legacy path enriches the
+    ``--input`` run.yaml in place. Server-mode container entrypoints rely on
+    this dispatch to serve both modes with a single invocation.
+    """
     parser = ArgumentParser(
-        description="Enrich OGX config with Lightspeed values",
+        description="Generate the OGX run configuration from a "
+        "lightspeed-stack.yaml: synthesized in unified mode, or enriched "
+        "from --input in legacy mode (auto-detected)",
     )
     parser.add_argument(
         "-c",
@@ -1498,20 +1543,25 @@ def main() -> None:
         "-i",
         "--input",
         default="run.yaml",
-        help="Input OGX config (default: run.yaml)",
+        help="Input OGX config enriched in legacy mode; ignored in "
+        "unified mode (default: run.yaml)",
     )
     parser.add_argument(
         "-o",
         "--output",
         default="run_.yaml",
-        help="Output enriched config (default: run_.yaml)",
+        help="Output generated config (default: run_.yaml)",
     )
     args = parser.parse_args()
 
     with open(args.config, "r", encoding="utf-8") as f:
         config = yaml.safe_load(f)
 
-    generate_configuration(args.input, args.output, config)
+    if has_synthesis_input(config):
+        config_file_dir = os.path.dirname(os.path.abspath(args.config))
+        synthesize_to_file(config, args.output, config_file_dir)
+    else:
+        generate_configuration(args.input, args.output, config)
 
 
 if __name__ == "__main__":

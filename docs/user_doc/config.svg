@@ -365,7 +365,7 @@
       <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="168.5454" x="3593.57" y="461.4514">url : Optional[AnyHttpUrl]</text>
       <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="240.6031" x="3593.57" y="480.5193">use_as_library_client : Optional[bool]</text>
       <line style="stroke:#181818;stroke-width:0.5;" x1="3588.57" x2="3887.7669" y1="488.6213" y2="488.6213"/>
-      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="219.8271" x="3593.57" y="507.5872">check_llama_stack_model() -&gt; Self</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="219.8271" x="3593.57" y="507.5872">check_ogx_model() -&gt; Self</text>
     </g>
     <!--class src.models.config.ModelContextProtocolServer-->
     <g id="elem_src.models.config.ModelContextProtocolServer">

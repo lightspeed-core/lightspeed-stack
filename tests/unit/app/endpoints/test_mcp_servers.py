@@ -22,8 +22,8 @@ from models.api.responses.successful import (
 from models.config import (
     Configuration,
     CORSConfiguration,
-    LlamaStackConfiguration,
     ModelContextProtocolServer,
+    OgxConfiguration,
     ServiceConfiguration,
     TLSConfiguration,
     UserDataCollection,
@@ -58,7 +58,7 @@ def mock_configuration() -> Configuration:
             access_log=True,
             root_path="/.",
         ),
-        llama_stack=LlamaStackConfiguration(
+        llama_stack=OgxConfiguration(
             url=AnyHttpUrl("http://localhost:8321"),
             api_key=SecretStr("xyzzy"),
             use_as_library_client=False,

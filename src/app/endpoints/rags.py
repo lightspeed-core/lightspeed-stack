@@ -89,8 +89,8 @@ async def rags_endpoint_handler(
         # make sure that the configuration is loaded
         check_configuration_loaded(configuration)
 
-        llama_stack_configuration = configuration.llama_stack_configuration
-        logger.info("OGX config: %s", llama_stack_configuration)
+        ogx_configuration = configuration.ogx_configuration
+        logger.info("OGX config: %s", ogx_configuration)
 
         try:
             # try to get OGX client
@@ -178,8 +178,8 @@ async def get_rag_endpoint_handler(
     with tracer.start_as_current_span("rags.get") as span:
         check_configuration_loaded(configuration)
 
-        llama_stack_configuration = configuration.llama_stack_configuration
-        logger.info("OGX config: %s", llama_stack_configuration)
+        ogx_configuration = configuration.ogx_configuration
+        logger.info("OGX config: %s", ogx_configuration)
 
         # Resolve user-facing rag_id to OGX vector_db_id
         vector_db_id = _resolve_rag_id_to_vector_db_id(

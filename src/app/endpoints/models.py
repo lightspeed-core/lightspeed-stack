@@ -89,8 +89,8 @@ async def models_endpoint_handler(
     with tracer.start_as_current_span("models.list") as span:
         check_configuration_loaded(configuration)
 
-        llama_stack_configuration = configuration.llama_stack_configuration
-        logger.info("OGX config: %s", llama_stack_configuration)
+        ogx_configuration = configuration.ogx_configuration
+        logger.info("OGX config: %s", ogx_configuration)
 
         try:
             # try to get OGX client

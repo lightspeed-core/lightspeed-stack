@@ -27,7 +27,7 @@ from metrics.utils import setup_model_metrics
 from models.api.responses.error import InternalServerErrorResponse
 from sentry import initialize_sentry
 from utils.degraded_mode import DegradedModeTracker
-from utils.llama_stack_version import check_llama_stack_version
+from utils.llama_stack_version import check_ogx_version
 
 logger = get_logger(__name__)
 
@@ -83,35 +83,35 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
 
     initialize_sentry()
 
-    llama_stack_config = configuration.configuration.llama_stack
-    await AsyncOgxClientHolder().load(llama_stack_config)
+    ogx_config = configuration.configuration.llama_stack
+    await AsyncOgxClientHolder().load(ogx_config)
     client: AsyncOgxClient = AsyncOgxClientHolder().get_client()
     logger.debug("OGX client initialized, trying to connect to OGX")
     # Check connectivity to OGX and set degraded mode if unavailable
     degraded_tracker = DegradedModeTracker()
     try:
-        llama_stack_version = await check_llama_stack_version(
-            client, llama_stack_config.max_retries, llama_stack_config.retry_delay
+        ogx_version = await check_ogx_version(
+            client, ogx_config.max_retries, ogx_config.retry_delay
         )
-        if llama_stack_version is None:
+        if ogx_version is None:
             logger.error("Cannot retrieve OGX version, check connection")
-            if llama_stack_config.allow_degraded_mode:
+            if ogx_config.allow_degraded_mode:
                 degraded_tracker.set_degraded("OGX connection check failed")
         else:
-            logger.debug("OGX version: %s", llama_stack_version)
+            logger.debug("OGX version: %s", ogx_version)
             degraded_tracker.set_healthy()
     except APIConnectionError as e:
         # if degraded mode is allowed, simply ignore the exception
-        llama_stack_url = llama_stack_config.url
+        ogx_url = ogx_config.url
         logger.error(
             "Failed to connect to OGX at '%s'. "
             "Please verify that the 'llama_stack.url' configuration is correct "
             "and that the OGX service is running and accessible. "
             "Original error: %s",
-            llama_stack_url,
+            ogx_url,
             e,
         )
-        if llama_stack_config.allow_degraded_mode:
+        if ogx_config.allow_degraded_mode:
             logger.info("Entering degraded mode: LCORE running w/o OGX")
             degraded_tracker.set_degraded(f"Failed to connect to OGX: {e!s}")
         else:

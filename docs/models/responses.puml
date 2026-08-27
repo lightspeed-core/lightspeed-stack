@@ -181,6 +181,7 @@ class "ProvidersListResponse" as src.models.api.responses.successful.catalog.Pro
 }
 class "QueryResponse" as src.models.api.responses.successful.query.QueryResponse {
   available_quotas : Optional[dict[str, int]]
+  context_status : Optional[ContextStatus]
   conversation_id : Optional[str]
   input_tokens : Optional[int]
   model_config : dict

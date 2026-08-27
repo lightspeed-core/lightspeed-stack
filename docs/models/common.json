@@ -1912,7 +1912,7 @@
                 "type": "object"
             },
             "TurnSummary": {
-                "description": "Summary of a turn in llama stack.",
+                "description": "Summary of a turn in OGX.",
                 "properties": {
                     "id": {
                         "default": "",

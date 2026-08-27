@@ -89,8 +89,8 @@ async def providers_endpoint_handler(
     with tracer.start_as_current_span("providers.list") as span:
         check_configuration_loaded(configuration)
 
-        llama_stack_configuration = configuration.llama_stack_configuration
-        logger.info("OGX config: %s", llama_stack_configuration)
+        ogx_configuration = configuration.ogx_configuration
+        logger.info("OGX config: %s", ogx_configuration)
 
         try:
             client = AsyncOgxClientHolder().get_client()
@@ -161,8 +161,8 @@ async def get_provider_endpoint_handler(
     with tracer.start_as_current_span("providers.get") as span:
         check_configuration_loaded(configuration)
 
-        llama_stack_configuration = configuration.llama_stack_configuration
-        logger.info("OGX config: %s", llama_stack_configuration)
+        ogx_configuration = configuration.ogx_configuration
+        logger.info("OGX config: %s", ogx_configuration)
 
         try:
             client = AsyncOgxClientHolder().get_client()

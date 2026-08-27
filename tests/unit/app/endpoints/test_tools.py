@@ -22,8 +22,8 @@ from models.common.tools import ListedMcpTool
 from models.config import (
     Configuration,
     CORSConfiguration,
-    LlamaStackConfiguration,
     ModelContextProtocolServer,
+    OgxConfiguration,
     ServiceConfiguration,
     SkillsConfiguration,
     TLSConfiguration,
@@ -84,7 +84,7 @@ def mock_configuration() -> Configuration:
             access_log=True,
             root_path="/.",
         ),
-        llama_stack=LlamaStackConfiguration(
+        llama_stack=OgxConfiguration(
             url=AnyHttpUrl("http://localhost:8321"),
             api_key=SecretStr("xyzzy"),
             use_as_library_client=False,

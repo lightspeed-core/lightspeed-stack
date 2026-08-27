@@ -76,6 +76,7 @@ class "ConversationTurn" as src.models.common.conversation.ConversationTurn {
   tool_results : Optional[list[ToolResultSummary]]
 }
 class "EndEventData" as src.models.common.agents.stream_payloads.EndEventData {
+  context_status : Literal
   input_tokens : int
   output_tokens : int
   referenced_documents : list[ReferencedDocument]

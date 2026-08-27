@@ -170,6 +170,25 @@ Feature: streaming_query endpoint API tests
           | Fragments in LLM response |
           | image                     |
 
+  Scenario: Check if streaming_query rejects WebP-declared attachment with mismatched magic bytes
+    When I use "streaming_query" to ask question with authorization header
+    """
+    {
+      "query": "Describe this image",
+      "attachments": [
+        {
+          "attachment_type": "image",
+          "content": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC",
+          "content_type": "image/webp"
+        }
+      ],
+      "model": "{MODEL}",
+      "provider": "{PROVIDER}"
+    }
+    """
+    Then The status code of the response is 422
+      And The body of the response contains invalid image data
+
   Scenario: Check if streaming_query rejects image attachment with mismatched attachment_type and content_type
     When I use "streaming_query" to ask question with authorization header
     """

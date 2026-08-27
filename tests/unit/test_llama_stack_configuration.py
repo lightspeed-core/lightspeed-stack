@@ -24,7 +24,7 @@ from llama_stack_configuration import (
 from models.config import (
     Configuration,
     InferenceConfiguration,
-    LlamaStackConfiguration,
+    OgxConfiguration,
     ServiceConfiguration,
     UserDataCollection,
 )
@@ -713,7 +713,7 @@ def test_generate_configuration_with_pydantic_model(tmp_path: Path) -> None:
     cfg = Configuration(  # type: ignore[call-arg]
         name="test",
         service=ServiceConfiguration(),  # type: ignore[call-arg]
-        llama_stack=LlamaStackConfiguration(  # type: ignore[call-arg]
+        llama_stack=OgxConfiguration(  # type: ignore[call-arg]
             use_as_library_client=True,
             library_client_config_path="run.yaml",
         ),

@@ -69,8 +69,9 @@ detail that LCORE owns, not an operator-facing artifact.
   server modes and serves `/v1/query` successfully.
 - **R2:** Legacy mode (`llama_stack.library_client_config_path` +
   external `run.yaml`) works unchanged through the deprecation window:
-  fully functional with a startup deprecation WARN in 0.6, removed in
-  0.7 (Decision S2, confirmed 2026-05-20).
+  fully functional with a startup deprecation WARN in 0.6 and 0.7,
+  removed in 0.8 (Decision S2, confirmed 2026-05-20, schedule revised
+  2026-08-24).
 - **R3:** Setting both `llama_stack.config` and
   `llama_stack.library_client_config_path` in the same file fails at
   configuration load time with a clear error message pointing to the
@@ -83,7 +84,10 @@ detail that LCORE owns, not an operator-facing artifact.
 - **R5:** When `llama_stack.config.native_override` overlaps a key set
   by the high-level section or by the baseline, deep-merge semantics
   apply with list replacement (maps merge recursively; lists are
-  replaced wholesale; scalars are replaced).
+  replaced wholesale; scalars are replaced). The override wins over the
+  baseline and the high-level expansion; enrichment (R7) applies after
+  the merge, exactly as in legacy mode, where enrichment always
+  post-processes the operator's final run.yaml (LCORE-3370).
 - **R6:** Secrets that LCORE itself emits are never resolved on disk:
   `apply_high_level_inference` writes `${env.<VAR>}` references
   verbatim, and LCORE does not eagerly resolve env refs in the
@@ -430,8 +434,14 @@ Three operator-facing migration paths (choose per deployment):
 Deprecation schedule (Decision S2, confirmed by @sbunciak 2026-05-20):
 unified mode ships in 0.6 with legacy mode fully functional plus a
 startup deprecation WARN (no breaking change); the legacy two-file path
-is removed in 0.7. Tentative releases: 0.6 end of June 2026, 0.7 end of
-September 2026.
+is removed in 0.8.
+
+Schedule revised 2026-08-24 (confirmed by @sbunciak): removal moves from
+0.7 to 0.8. Removing in 0.7 would satisfy the Engineering Support
+Agreement's one-minor-release deprecation phase only formally -- the
+unified replacement is itself only completed in 0.7, so operators would
+not have had a full release with a working migration path. Releases:
+0.6 June 2026, 0.7 September 2026, 0.8 December 2026.
 
 ## Implementation Suggestions
 
@@ -557,8 +567,10 @@ reference.
 | Date | Change | Reason |
 |---|---|---|
 | 2026-04-23 | Initial version | Spike completion |
+| 2026-08-04 | R5: enrichment applies after the `native_override` merge | LCORE-3370 — migrated configs (run.yaml lifted into the override) replaced list-shaped enrichment artifacts wholesale, silently dropping BYOK/Solr providers, registered embedding models, and Azure `model_validation`; ordering now matches legacy, where the operator's run.yaml never beats enrichment |
 | 2026-08-20 | Default baseline openai provider is conditional on `OPENAI_API_KEY` | LCORE-3607: `baseline: default` must load when the key is unset |
 | 2026-08-21 | Add `baseline: byo-llm` (default_run.yaml minus the OpenAI row) | LCORE-3654: opt-in openai-free baseline |
+| 2026-08-24 | Legacy two-file removal moves from 0.7 to 0.8 | Unified replacement only completed in 0.7; operators need a full release with a working migration path (confirmed by @sbunciak) |
 | 2026-08-25 | `baseline: default`'s built-in OpenAI provider deprecated in 0.7, removed in 0.8 | LCORE-3696: `default` shipped in 0.6.0 GA, so the ESA one-minor deprecation phase applies (confirmed by @sbunciak) |
 
 ## Appendix A — Worked example: legacy → unified migration

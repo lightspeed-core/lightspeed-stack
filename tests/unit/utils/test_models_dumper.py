@@ -872,7 +872,7 @@ def test_dump_models(tmpdir: Path) -> None:
                             "title": "Service configuration"
                         },
                         "llama_stack": {
-                            "$ref": "`#/components/schemas/`LlamaStackConfiguration",
+                            "$ref": "`#/components/schemas/`OgxConfiguration",
                             "description": "This section contains OGX configuration. Lightspeed Core Stack service can call OGX in library mode or in server mode.",
                             "title": "OGX configuration"
                         },
@@ -2885,7 +2885,7 @@ def test_dump_models(tmpdir: Path) -> None:
                     "title": "LivenessResponse",
                     "type": "object"
                 },
-                "LlamaStackConfiguration": {
+                "OgxConfiguration": {
                     "additionalProperties": false,
                     "description": "OGX configuration.\n\nOGX is a comprehensive system that provides a uniform set of tools\nfor building, scaling, and deploying generative AI applications, enabling\ndevelopers to create, integrate, and orchestrate multiple AI services and\ncapabilities into an adaptable setup.\n\nUseful resources:\n\n  - [OGX](https://www.llama.com/products/llama-stack/)\n  - [Python OGX client](https://github.com/llamastack/llama-stack-client-python)\n  - [Build AI Applications with OGX](https://llamastack.github.io/)",
                     "properties": {
@@ -2948,7 +2948,7 @@ def test_dump_models(tmpdir: Path) -> None:
                         "config": {
                             "anyOf": [
                                 {
-                                    "$ref": "`#/components/schemas/`UnifiedLlamaStackConfig"
+                                    "$ref": "`#/components/schemas/`UnifiedOgxConfig"
                                 },
                                 {
                                     "type": "null"
@@ -2959,7 +2959,7 @@ def test_dump_models(tmpdir: Path) -> None:
                             "title": "Unified OGX configuration"
                         }
                     },
-                    "title": "LlamaStackConfiguration",
+                    "title": "OgxConfiguration",
                     "type": "object"
                 },
                 "MCPClientAuthOptionsResponse": {
@@ -9282,7 +9282,7 @@ def test_dump_models(tmpdir: Path) -> None:
                     "title": "UnifiedInferenceProvider",
                     "type": "object"
                 },
-                "UnifiedLlamaStackConfig": {
+                "UnifiedOgxConfig": {
                     "additionalProperties": false,
                     "description": "Backend-specific knobs for unified-mode OGX synthesis.\n\nPer Decision S5 of the design spike, backend-agnostic high-level sections\n(inference, ...) live at the configuration root, not here. This block holds\nonly the OGX-specific synthesis controls: which baseline to start\nfrom, an optional profile file, and a raw native_override escape hatch.\n\nAttributes:\n    baseline: Synthesis starting point. \"default\" begins from LCORE's\n        built-in baseline (src/data/default_run.yaml); \"empty\" begins from\n        an empty dict (used by the migration tool for an exact round-trip).\n        Ignored when `profile` is set.\n    profile: Optional path to a user-authored run.yaml-shaped file used as\n        the synthesis baseline. Relative paths resolve against the directory\n        of the loaded lightspeed-stack.yaml.\n    native_override: Raw ogx schema deep-merged last (maps merge\n        recursively, lists and scalars replace). The escape hatch for\n        anything the high-level sections do not express.",
                     "properties": {
@@ -9311,7 +9311,7 @@ def test_dump_models(tmpdir: Path) -> None:
                             "type": "object"
                         }
                     },
-                    "title": "UnifiedLlamaStackConfig",
+                    "title": "UnifiedOgxConfig",
                     "type": "object"
                 },
                 "UnprocessableEntityResponse": {
@@ -10120,7 +10120,7 @@ def test_dump_models(tmpdir: Path) -> None:
             "JwtConfiguration",
             "JwtRoleRule",
             "LivenessResponse",
-            "LlamaStackConfiguration",
+            "OgxConfiguration",
             "MCPClientAuthOptionsResponse",
             "MCPListToolsSummary",
             "MCPListToolsTool",
@@ -10259,7 +10259,7 @@ def test_dump_models(tmpdir: Path) -> None:
             "TurnSummary",
             "UnauthorizedResponse",
             "UnifiedInferenceProvider",
-            "UnifiedLlamaStackConfig",
+            "UnifiedOgxConfig",
             "UnprocessableEntityResponse",
             "UserDataCollection",
             "VectorStoreConfiguration",

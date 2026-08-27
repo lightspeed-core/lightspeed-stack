@@ -10,19 +10,19 @@ from semver import Version
 from constants import (
     DEFAULT_MAX_RETRIES,
     DEFAULT_RETRY_DELAY,
-    MAXIMAL_SUPPORTED_LLAMA_STACK_VERSION,
-    MINIMAL_SUPPORTED_LLAMA_STACK_VERSION,
+    MAXIMAL_SUPPORTED_OGX_VERSION,
+    MINIMAL_SUPPORTED_OGX_VERSION,
 )
 from log import get_logger
 
 logger = get_logger(__name__)
 
 
-class InvalidLlamaStackVersionException(Exception):
+class InvalidOgxVersionException(Exception):
     """OGX version is not valid."""
 
 
-async def check_llama_stack_version(
+async def check_ogx_version(
     client: AsyncOgxClient,
     max_retries: int = DEFAULT_MAX_RETRIES,
     retry_delay: int = DEFAULT_RETRY_DELAY,
@@ -43,7 +43,7 @@ async def check_llama_stack_version(
 
     Raises:
         APIConnectionError: If OGX is unreachable after all retries.
-        InvalidLlamaStackVersionException: If the detected version is outside
+        InvalidOgxVersionException: If the detected version is outside
         the supported range or cannot be parsed.
     """
     if max_retries < 1:
@@ -54,8 +54,8 @@ async def check_llama_stack_version(
             version_info = await client.inspect.version()
             compare_versions(
                 version_info.version,
-                MINIMAL_SUPPORTED_LLAMA_STACK_VERSION,
-                MAXIMAL_SUPPORTED_LLAMA_STACK_VERSION,
+                MINIMAL_SUPPORTED_OGX_VERSION,
+                MAXIMAL_SUPPORTED_OGX_VERSION,
             )
             return version_info.version
         except APIConnectionError:
@@ -78,7 +78,7 @@ def compare_versions(version_info: str, minimal: str, maximal: str) -> None:
 
     Parses `version_info`, `minimal`, and `maximal` with semver.Version.parse
     and compares them.  If the current version is lower than `minimal` or
-    higher than `maximal`, an InvalidLlamaStackVersionException is raised.
+    higher than `maximal`, an InvalidOgxVersionException is raised.
 
     Parameters:
     ----------
@@ -89,7 +89,7 @@ def compare_versions(version_info: str, minimal: str, maximal: str) -> None:
 
     Raises:
     ------
-        InvalidLlamaStackVersionException: If `version_info` is outside the
+        InvalidOgxVersionException: If `version_info` is outside the
         inclusive range defined by `minimal` and `maximal`.
     """
     version_pattern = r"\d+\.\d+\.\d+"
@@ -99,7 +99,7 @@ def compare_versions(version_info: str, minimal: str, maximal: str) -> None:
             "Failed to extract version pattern from '%s'. Skipping version check.",
             version_info,
         )
-        raise InvalidLlamaStackVersionException(
+        raise InvalidOgxVersionException(
             f"Failed to extract version pattern from '{version_info}'. Skipping version check."
         )
 
@@ -109,7 +109,7 @@ def compare_versions(version_info: str, minimal: str, maximal: str) -> None:
         current_version = Version.parse(normalized_version)
     except ValueError as e:
         logger.warning("Failed to parse OGX version '%s'.", version_info)
-        raise InvalidLlamaStackVersionException(
+        raise InvalidOgxVersionException(
             f"Failed to parse OGX version '{version_info}'."
         ) from e
 
@@ -120,11 +120,11 @@ def compare_versions(version_info: str, minimal: str, maximal: str) -> None:
     logger.debug("Maximal version: %s", maximal_version)
 
     if current_version < minimal_version:
-        raise InvalidLlamaStackVersionException(
+        raise InvalidOgxVersionException(
             f"OGX version >= {minimal_version} is required, but {current_version} is used"
         )
     if current_version > maximal_version:
-        raise InvalidLlamaStackVersionException(
+        raise InvalidOgxVersionException(
             f"OGX version <= {maximal_version} is required, but {current_version} is used"
         )
     logger.info("Correct OGX version: %s", current_version)

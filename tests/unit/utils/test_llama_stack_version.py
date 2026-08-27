@@ -10,50 +10,50 @@ from pytest_subtests import SubTests
 from semver import Version
 
 from constants import (
-    MAXIMAL_SUPPORTED_LLAMA_STACK_VERSION,
-    MINIMAL_SUPPORTED_LLAMA_STACK_VERSION,
+    MAXIMAL_SUPPORTED_OGX_VERSION,
+    MINIMAL_SUPPORTED_OGX_VERSION,
 )
 from utils.llama_stack_version import (
-    InvalidLlamaStackVersionException,
-    check_llama_stack_version,
+    InvalidOgxVersionException,
+    check_ogx_version,
 )
 
 
 @pytest.mark.asyncio
-async def test_check_llama_stack_version_minimal_supported_version(
+async def test_check_ogx_version_minimal_supported_version(
     mocker: MockerFixture,
 ) -> None:
-    """Test the check_llama_stack_version function."""
+    """Test the check_ogx_version function."""
     # mock the OGX client
     mock_client = mocker.AsyncMock()
     mock_client.inspect.version.return_value = VersionInfo(
-        version=MINIMAL_SUPPORTED_LLAMA_STACK_VERSION
+        version=MINIMAL_SUPPORTED_OGX_VERSION
     )
 
     # test if the version is checked
-    await check_llama_stack_version(mock_client)
+    await check_ogx_version(mock_client)
 
 
 @pytest.mark.asyncio
-async def test_check_llama_stack_version_maximal_supported_version(
+async def test_check_ogx_version_maximal_supported_version(
     mocker: MockerFixture,
 ) -> None:
-    """Test the check_llama_stack_version function."""
+    """Test the check_ogx_version function."""
     # mock the OGX client
     mock_client = mocker.AsyncMock()
     mock_client.inspect.version.return_value = VersionInfo(
-        version=MAXIMAL_SUPPORTED_LLAMA_STACK_VERSION
+        version=MAXIMAL_SUPPORTED_OGX_VERSION
     )
 
     # test if the version is checked
-    await check_llama_stack_version(mock_client)
+    await check_ogx_version(mock_client)
 
 
 @pytest.mark.asyncio
-async def test_check_llama_stack_version_too_small_version(
+async def test_check_ogx_version_too_small_version(
     mocker: MockerFixture,
 ) -> None:
-    """Test the check_llama_stack_version function."""
+    """Test the check_ogx_version function."""
     # mock the OGX client
     mock_client = mocker.AsyncMock()
 
@@ -61,12 +61,12 @@ async def test_check_llama_stack_version_too_small_version(
     mock_client.inspect.version.return_value = VersionInfo(version="0.0.0")
 
     expected_exception_msg = (
-        f"OGX version >= {MINIMAL_SUPPORTED_LLAMA_STACK_VERSION} "
+        f"OGX version >= {MINIMAL_SUPPORTED_OGX_VERSION} "
         + "is required, but 0.0.0 is used"
     )
     # test if the version is checked
-    with pytest.raises(InvalidLlamaStackVersionException, match=expected_exception_msg):
-        await check_llama_stack_version(mock_client)
+    with pytest.raises(InvalidOgxVersionException, match=expected_exception_msg):
+        await check_ogx_version(mock_client)
 
 
 async def _check_version_must_fail(mock_client: Any, bigger_version: Version) -> None:
@@ -77,29 +77,29 @@ async def _check_version_must_fail(mock_client: Any, bigger_version: Version) ->
         bigger_version: A version object representing a version higher than the supported version.
 
     Raises:
-        InvalidLlamaStackVersionException: If the OGX version is greater than the
+        InvalidOgxVersionException: If the OGX version is greater than the
         maximal supported version.
     """
     mock_client.inspect.version.return_value = VersionInfo(version=str(bigger_version))
 
     expected_exception_msg = (
-        f"OGX version <= {MAXIMAL_SUPPORTED_LLAMA_STACK_VERSION} is required, "
+        f"OGX version <= {MAXIMAL_SUPPORTED_OGX_VERSION} is required, "
         + f"but {bigger_version} is used"
     )
     # test if the version is checked
-    with pytest.raises(InvalidLlamaStackVersionException, match=expected_exception_msg):
-        await check_llama_stack_version(mock_client)
+    with pytest.raises(InvalidOgxVersionException, match=expected_exception_msg):
+        await check_ogx_version(mock_client)
 
 
 @pytest.mark.asyncio
-async def test_check_llama_stack_version_too_big_version(
+async def test_check_ogx_version_too_big_version(
     mocker: MockerFixture, subtests: SubTests
 ) -> None:
-    """Test the check_llama_stack_version function."""
+    """Test the check_ogx_version function."""
     # mock the OGX client
     mock_client = mocker.AsyncMock()
 
-    max_version = Version.parse(MAXIMAL_SUPPORTED_LLAMA_STACK_VERSION)
+    max_version = Version.parse(MAXIMAL_SUPPORTED_OGX_VERSION)
 
     with subtests.test(msg="Increased patch number"):
         bigger_version = max_version.bump_patch()
@@ -119,10 +119,10 @@ async def test_check_llama_stack_version_too_big_version(
 
 
 @pytest.mark.asyncio
-async def test_check_llama_stack_version_retries_on_connection_error(
+async def test_check_ogx_version_retries_on_connection_error(
     mocker: MockerFixture,
 ) -> None:
-    """Test that check_llama_stack_version retries on APIConnectionError."""
+    """Test that check_ogx_version retries on APIConnectionError."""
     mock_client = mocker.AsyncMock()
     mock_sleep = mocker.patch("utils.llama_stack_version.asyncio.sleep")
 
@@ -130,20 +130,20 @@ async def test_check_llama_stack_version_retries_on_connection_error(
     mock_client.inspect.version.side_effect = [
         APIConnectionError(request=mocker.MagicMock()),
         APIConnectionError(request=mocker.MagicMock()),
-        VersionInfo(version=MINIMAL_SUPPORTED_LLAMA_STACK_VERSION),
+        VersionInfo(version=MINIMAL_SUPPORTED_OGX_VERSION),
     ]
 
-    await check_llama_stack_version(mock_client, max_retries=5, retry_delay=1)
+    await check_ogx_version(mock_client, max_retries=5, retry_delay=1)
 
     assert mock_client.inspect.version.call_count == 3
     assert mock_sleep.call_count == 2
 
 
 @pytest.mark.asyncio
-async def test_check_llama_stack_version_raises_after_max_retries(
+async def test_check_ogx_version_raises_after_max_retries(
     mocker: MockerFixture,
 ) -> None:
-    """Test that check_llama_stack_version raises after all retries are exhausted."""
+    """Test that check_ogx_version raises after all retries are exhausted."""
     mock_client = mocker.AsyncMock()
     mock_sleep = mocker.patch("utils.llama_stack_version.asyncio.sleep")
 
@@ -152,7 +152,7 @@ async def test_check_llama_stack_version_raises_after_max_retries(
     )
 
     with pytest.raises(APIConnectionError):
-        await check_llama_stack_version(mock_client, max_retries=3, retry_delay=1)
+        await check_ogx_version(mock_client, max_retries=3, retry_delay=1)
 
     assert mock_client.inspect.version.call_count == 3
     assert mock_sleep.call_count == 2

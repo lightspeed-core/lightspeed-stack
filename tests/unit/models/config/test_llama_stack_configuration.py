@@ -1,4 +1,4 @@
-"""Unit tests for LlamaStackConfiguration model."""
+"""Unit tests for OgxConfiguration model."""
 
 import copy
 from typing import Any
@@ -11,8 +11,8 @@ from pytest_subtests import SubTests
 import constants
 from models.config import (
     Configuration,
-    LlamaStackConfiguration,
-    UnifiedLlamaStackConfig,
+    OgxConfiguration,
+    UnifiedOgxConfig,
 )
 from utils.checks import InvalidConfigurationError
 
@@ -30,12 +30,12 @@ def _base_config_dict() -> dict[str, Any]:
 
 def test_llama_stack_configuration_constructor(subtests: SubTests) -> None:
     """
-    Verify that the LlamaStackConfiguration constructor accepts
+    Verify that the OgxConfiguration constructor accepts
     valid combinations of parameters and creates instances
     successfully.
     """
     with subtests.test(msg="Configuration for library mode"):
-        llama_stack_configuration = LlamaStackConfiguration(
+        llama_stack_configuration = OgxConfiguration(
             use_as_library_client=True,
             library_client_config_path="tests/configuration/run.yaml",
             url=None,
@@ -48,7 +48,7 @@ def test_llama_stack_configuration_constructor(subtests: SubTests) -> None:
         assert llama_stack_configuration.retry_delay == constants.DEFAULT_RETRY_DELAY
 
     with subtests.test(msg="Configuration for server mode"):
-        llama_stack_configuration = LlamaStackConfiguration(
+        llama_stack_configuration = OgxConfiguration(
             use_as_library_client=False,
             url=AnyHttpUrl("http://localhost"),
             library_client_config_path=None,
@@ -61,7 +61,7 @@ def test_llama_stack_configuration_constructor(subtests: SubTests) -> None:
         assert llama_stack_configuration.retry_delay == constants.DEFAULT_RETRY_DELAY
 
     with subtests.test(msg="Minimal configuration for server mode"):
-        llama_stack_configuration = LlamaStackConfiguration(
+        llama_stack_configuration = OgxConfiguration(
             url="http://localhost"
         )  # pyright: ignore[reportCallIssue]
         assert llama_stack_configuration is not None
@@ -70,7 +70,7 @@ def test_llama_stack_configuration_constructor(subtests: SubTests) -> None:
         assert llama_stack_configuration.retry_delay == constants.DEFAULT_RETRY_DELAY
 
     with subtests.test(msg="Full configuration for server mode"):
-        llama_stack_configuration = LlamaStackConfiguration(
+        llama_stack_configuration = OgxConfiguration(
             use_as_library_client=False, url="http://localhost", api_key="foo"
         )  # pyright: ignore[reportCallIssue]
         assert llama_stack_configuration is not None
@@ -79,7 +79,7 @@ def test_llama_stack_configuration_constructor(subtests: SubTests) -> None:
         assert llama_stack_configuration.retry_delay == constants.DEFAULT_RETRY_DELAY
 
     with subtests.test(msg="Degraded mode enabled"):
-        llama_stack_configuration = LlamaStackConfiguration(
+        llama_stack_configuration = OgxConfiguration(
             url="http://localhost",
             allow_degraded_mode=True,
         )  # pyright: ignore[reportCallIssue]
@@ -91,7 +91,7 @@ def test_llama_stack_configuration_constructor(subtests: SubTests) -> None:
 
 def test_llama_stack_configuration_no_run_yaml() -> None:
     """
-    Verify that constructing a LlamaStackConfiguration with a
+    Verify that constructing a OgxConfiguration with a
     non-existent or invalid library_client_config_path raises
     InvalidConfigurationError.
     """
@@ -99,7 +99,7 @@ def test_llama_stack_configuration_no_run_yaml() -> None:
         InvalidConfigurationError,
         match="OGX configuration file 'not a file' is not a file",
     ):
-        LlamaStackConfiguration(
+        OgxConfiguration(
             use_as_library_client=True,
             library_client_config_path="not a file",
         )  # pyright: ignore[reportCallIssue]
@@ -107,7 +107,7 @@ def test_llama_stack_configuration_no_run_yaml() -> None:
 
 def test_llama_stack_wrong_configuration_constructor_no_url() -> None:
     """
-    Verify that constructing a LlamaStackConfiguration without
+    Verify that constructing a OgxConfiguration without
     specifying either a URL or enabling library client mode raises
     a ValueError.
     """
@@ -115,16 +115,16 @@ def test_llama_stack_wrong_configuration_constructor_no_url() -> None:
         ValueError,
         match="OGX URL is not specified and library client mode is not specified",
     ):
-        LlamaStackConfiguration()  # pyright: ignore[reportCallIssue]
+        OgxConfiguration()  # pyright: ignore[reportCallIssue]
 
 
 def test_llama_stack_wrong_configuration_constructor_library_mode_off() -> None:
-    """Test the LlamaStackConfiguration constructor."""
+    """Test the OgxConfiguration constructor."""
     with pytest.raises(
         ValueError,
         match="OGX URL is not specified and library client mode is not enabled",
     ):
-        LlamaStackConfiguration(
+        OgxConfiguration(
             use_as_library_client=False
         )  # pyright: ignore[reportCallIssue]
 
@@ -138,7 +138,7 @@ def test_llama_stack_library_mode_without_source_is_allowed_on_nested_model() ->
     test_root_rejects_library_mode_without_run_source). Constructing the nested
     model alone with neither a path nor a config block must therefore succeed.
     """
-    cfg = LlamaStackConfiguration(
+    cfg = OgxConfiguration(
         use_as_library_client=True
     )  # pyright: ignore[reportCallIssue]
     assert cfg.use_as_library_client is True
@@ -148,7 +148,7 @@ def test_llama_stack_library_mode_without_source_is_allowed_on_nested_model() ->
 
 def test_llama_stack_configuration_valid_http_url() -> None:
     """Test that valid HTTP URLs are accepted."""
-    config = LlamaStackConfiguration(
+    config = OgxConfiguration(
         url="http://localhost:8321"
     )  # pyright: ignore[reportCallIssue]
     assert config is not None
@@ -157,7 +157,7 @@ def test_llama_stack_configuration_valid_http_url() -> None:
 
 def test_llama_stack_configuration_valid_https_url() -> None:
     """Test that valid HTTPS URLs are accepted."""
-    config = LlamaStackConfiguration(
+    config = OgxConfiguration(
         url="https://llama-stack.example.com:8321"
     )  # pyright: ignore[reportCallIssue]
     assert config is not None
@@ -167,30 +167,26 @@ def test_llama_stack_configuration_valid_https_url() -> None:
 def test_llama_stack_configuration_malformed_url_rejected() -> None:
     """Test that malformed URLs are rejected with a ValidationError."""
     with pytest.raises(ValidationError, match="Input should be a valid URL"):
-        LlamaStackConfiguration(
-            url="not-a-valid-url"
-        )  # pyright: ignore[reportCallIssue]
+        OgxConfiguration(url="not-a-valid-url")  # pyright: ignore[reportCallIssue]
 
 
 def test_llama_stack_configuration_invalid_scheme_rejected() -> None:
     """Test that URLs without http/https scheme are rejected."""
     with pytest.raises(ValidationError, match="URL scheme should be 'http' or 'https'"):
-        LlamaStackConfiguration(
-            url="ftp://localhost:8321"
-        )  # pyright: ignore[reportCallIssue]
+        OgxConfiguration(url="ftp://localhost:8321")  # pyright: ignore[reportCallIssue]
 
 
 def test_llama_stack_configuration_wrong_max_retries_count(subtests: SubTests) -> None:
     """Test that malformed URLs are rejected with a ValidationError."""
     with subtests.test(msg="Configuration with zero max_retries count"):
         with pytest.raises(ValidationError, match="Input should be greater than 0"):
-            LlamaStackConfiguration(
+            OgxConfiguration(
                 url="https://llama-stack.example.com:8321",
                 max_retries=0,
             )  # pyright: ignore[reportCallIssue]
     with subtests.test(msg="Configuration with negative max_retries count"):
         with pytest.raises(ValidationError, match="Input should be greater than 0"):
-            LlamaStackConfiguration(
+            OgxConfiguration(
                 url="https://llama-stack.example.com:8321",
                 max_retries=-1,
             )  # pyright: ignore[reportCallIssue]
@@ -200,13 +196,13 @@ def test_llama_stack_configuration_wrong_retry_delay_value(subtests: SubTests) -
     """Test that malformed URLs are rejected with a ValidationError."""
     with subtests.test(msg="Configuration with zero retry_delay value"):
         with pytest.raises(ValidationError, match="Input should be greater than 0"):
-            LlamaStackConfiguration(
+            OgxConfiguration(
                 url="https://llama-stack.example.com:8321",
                 retry_delay=0,
             )  # pyright: ignore[reportCallIssue]
     with subtests.test(msg="Configuration with negative retry_delay value"):
         with pytest.raises(ValidationError, match="Input should be greater than 0"):
-            LlamaStackConfiguration(
+            OgxConfiguration(
                 url="https://llama-stack.example.com:8321",
                 retry_delay=-1,
             )  # pyright: ignore[reportCallIssue]
@@ -219,23 +215,23 @@ def test_llama_stack_configuration_wrong_retry_delay_value(subtests: SubTests) -
 
 def test_library_mode_with_unified_config_no_path_is_valid() -> None:
     """Library mode driven by llama_stack.config needs no library_client_config_path."""
-    cfg = LlamaStackConfiguration(
+    cfg = OgxConfiguration(
         use_as_library_client=True,
-        config=UnifiedLlamaStackConfig(),
+        config=UnifiedOgxConfig(),
     )  # pyright: ignore[reportCallIssue]
     assert cfg.config is not None
     assert cfg.library_client_config_path is None
 
 
 def test_unified_config_rejects_unknown_fields() -> None:
-    """UnifiedLlamaStackConfig forbids extra keys (extra='forbid', R9)."""
+    """UnifiedOgxConfig forbids extra keys (extra='forbid', R9)."""
     with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
-        UnifiedLlamaStackConfig(bogus=True)  # pyright: ignore[reportCallIssue]
+        UnifiedOgxConfig(bogus=True)  # pyright: ignore[reportCallIssue]
 
 
 def test_unified_config_accepts_byo_llm_baseline() -> None:
     """byo-llm is a valid baseline selector (LCORE-3654)."""
-    cfg = UnifiedLlamaStackConfig(baseline="byo-llm")
+    cfg = UnifiedOgxConfig(baseline="byo-llm")
     assert cfg.baseline == "byo-llm"
 
 

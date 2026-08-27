@@ -761,7 +761,7 @@ class UnifiedInferenceProvider(ConfigurationBase):
         return stripped
 
 
-class UnifiedLlamaStackConfig(ConfigurationBase):
+class UnifiedOgxConfig(ConfigurationBase):
     """Backend-specific knobs for unified-mode OGX synthesis.
 
     Per Decision S5 of the design spike, backend-agnostic high-level sections
@@ -808,7 +808,7 @@ class UnifiedLlamaStackConfig(ConfigurationBase):
     )
 
 
-class LlamaStackConfiguration(ConfigurationBase):
+class OgxConfiguration(ConfigurationBase):
     """OGX configuration.
 
     OGX is a comprehensive system that provides a uniform set of tools
@@ -848,7 +848,7 @@ class LlamaStackConfiguration(ConfigurationBase):
         title="OGX configuration path (legacy, deprecated)",
         description="Path to configuration file used when OGX is run "
         "in library mode. DEPRECATED legacy two-file setup: logs a "
-        "startup warning since 0.6 and is removed in 0.7 "
+        "startup warning since 0.6 and is removed in 0.8 "
         "— use unified mode instead (the config block below, "
         "and/or the root-level inference.providers section); "
         "migrate with lightspeed-stack --migrate-config.",
@@ -886,7 +886,7 @@ class LlamaStackConfiguration(ConfigurationBase):
         "OGX is not accessible (valid for server mode only)",
     )
 
-    config: Optional["UnifiedLlamaStackConfig"] = Field(
+    config: Optional["UnifiedOgxConfig"] = Field(
         None,
         title="Unified OGX configuration",
         description="Backend-specific knobs for unified mode, where LCORE synthesizes "
@@ -901,7 +901,7 @@ class LlamaStackConfiguration(ConfigurationBase):
     )
 
     @model_validator(mode="after")
-    def check_llama_stack_model(self) -> Self:
+    def check_ogx_model(self) -> Self:
         """
         Validate the OGX configuration and enforce mode-specific requirements.
 
@@ -920,7 +920,7 @@ class LlamaStackConfiguration(ConfigurationBase):
         (`check_unified_vs_legacy`).
 
         Returns:
-            Self: The validated LlamaStackConfiguration instance.
+            Self: The validated OgxConfiguration instance.
 
         Raises:
             ValueError: If no URL is provided and library-client mode is
@@ -3147,7 +3147,7 @@ class Configuration(ConfigurationBase):
         description="This section contains Lightspeed Core Stack service configuration.",
     )
 
-    llama_stack: LlamaStackConfiguration = Field(
+    llama_stack: OgxConfiguration = Field(
         ...,
         title="OGX configuration",
         description="This section contains OGX configuration. Lightspeed Core Stack service can "
@@ -3458,7 +3458,7 @@ class Configuration(ConfigurationBase):
         ``vector_store.providers``, and/or a ``llama_stack.config`` block. The
         legacy path is ``llama_stack.library_client_config_path`` pointing at an
         external run.yaml. Both checks live here on the root model rather than
-        on ``LlamaStackConfiguration`` (which cannot see root-level provider
+        on ``OgxConfiguration`` (which cannot see root-level provider
         lists):
 
         - A synthesis input and the legacy path are mutually exclusive — a

@@ -185,15 +185,16 @@ def main() -> None:
 
     configuration.load_configuration(args.config_file)
     logger.info("Configuration: %s", configuration.configuration)
-    logger.info("OGX configuration: %s", configuration.llama_stack_configuration)
+    logger.info("OGX configuration: %s", configuration.ogx_configuration)
 
     # Deprecation schedule (Decision S2): the legacy two-file path keeps
-    # working through 0.6 with this single startup WARN and is removed in 0.7.
-    if configuration.llama_stack_configuration.library_client_config_path is not None:
+    # working through 0.6 and 0.7 with this single startup WARN and is removed
+    # in 0.8 (schedule revised 2026-08-24, confirmed by @sbunciak).
+    if configuration.ogx_configuration.library_client_config_path is not None:
         logger.warning(
             "DEPRECATED: the two-file configuration "
             "(llama_stack.library_client_config_path + external run.yaml) is "
-            "deprecated and will be removed in release 0.7. Migrate to the "
+            "deprecated and will be removed in release 0.8. Migrate to the "
             "unified lightspeed-stack.yaml: https://lightspeed-core.github.io"
             "/lightspeed-stack/design/llama-stack-config-merge"
             "/llama-stack-config-merge.html#migration--backwards-compatibility"
