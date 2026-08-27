@@ -45,4 +45,3 @@ shields:
       rules:
         - pattern: '\d+'
           replacement: '[NUM]'
-
