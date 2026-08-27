@@ -182,7 +182,9 @@ def ask_question_authorized(context: Context, endpoint: str) -> None:
                 try:
                     terminal = parse_responses_sse_final_response_object(body)
                     context.response_data["conversation"] = terminal.get("conversation")
-                    context.response_data["conversation_id"] = terminal.get("conversation")
+                    context.response_data["conversation_id"] = terminal.get(
+                        "conversation"
+                    )
                 except AssertionError:
                     pass  # No terminal event found (e.g., error responses)
         # Mark that this parsed data is from the current response (for cache reuse)
@@ -239,7 +241,9 @@ def store_conversation_details(context: Context) -> None:
         # Extract conversation from terminal event if not in start event (Responses API)
         if not context.response_data.get("conversation_id"):
             try:
-                terminal = parse_responses_sse_final_response_object(context.response.text)
+                terminal = parse_responses_sse_final_response_object(
+                    context.response.text
+                )
                 context.response_data["conversation"] = terminal.get("conversation")
                 context.response_data["conversation_id"] = terminal.get("conversation")
             except AssertionError:
