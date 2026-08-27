@@ -535,7 +535,7 @@ done
 # Wait for OKP Solr port-forward to be usable (non-fatal - OKP is optional)
 echo "Waiting for OKP Solr port-forward (localhost:8081 /solr)..."
 for i in $(seq 1 24); do
-  if curl -sf http://localhost:8081/solr > /dev/null 2>&1; then
+  if curl -sf --max-time 5 http://localhost:8081/solr > /dev/null 2>&1; then
     echo "✅ OKP Solr port-forward ready after $(( i * 5 ))s"
     break
   fi
