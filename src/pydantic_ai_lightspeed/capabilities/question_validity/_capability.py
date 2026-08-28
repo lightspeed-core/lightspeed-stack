@@ -22,7 +22,6 @@ from pydantic_ai.direct import model_request
 from pydantic_ai.messages import (
     ModelRequest,
     ModelResponse,
-    TextContent,
     TextPart,
     UserContent,
 )
@@ -40,6 +39,10 @@ from models.config import (
     QuestionValidityConfig,
 )
 from pydantic_ai_lightspeed.capabilities.base import AbstractSafetyCapability
+from pydantic_ai_lightspeed.capabilities.utils import (
+    extract_conversation_id,
+    message_to_str,
+)
 from pydantic_ai_lightspeed.ogx import OgxResponsesModel
 from utils.conversations import append_turn_to_conversation
 
@@ -47,67 +50,6 @@ logger = get_logger(__name__)
 
 SUBJECT_REJECTED = "REJECTED"
 SUBJECT_ALLOWED = "ALLOWED"
-
-
-def _extract_message_str_from_user_content(user_content: Sequence[UserContent]) -> str:
-    """Extract and combine all text content into a string from a UserContent sequence.
-
-    Parameters:
-        user_content: A sequence of user content items to extract text from.
-
-    Returns:
-        A single string with all text content joined by newlines.
-    """
-    str_arr: list[str] = []
-    for c in user_content:
-        match c:
-            case str() as s:
-                str_arr.append(s)
-            case TextContent(content=c):
-                str_arr.append(c)
-
-    return "\n".join(str_arr)
-
-
-def _message_to_str(message: Optional[str | Sequence[UserContent]]) -> str:
-    """Convert a user message (string, content sequence, or None) to plain text.
-
-    Parameters:
-        message: The user input as a string, sequence of user content, or None.
-
-    Returns:
-        A plain-text representation of the message, or an empty string for None.
-    """
-    match message:
-        case str() as s:
-            return s
-        case Sequence() as seq:
-            return _extract_message_str_from_user_content(seq)
-        case None:
-            return ""
-
-
-def _extract_conversation_id(model: Model) -> Optional[str]:
-    """Extract the OGX conversation ID from the agent's model settings.
-
-    The main agent's model is built with ``conversation`` in its
-    ``extra_body`` model settings (see ``OgxResponsesModel.from_ogx_client``).
-    This pulls it back out so the capability can persist the rejected turn
-    to the same conversation.
-
-    Parameters:
-        model: The model bound to the current agent run (``ctx.model``).
-
-    Returns:
-        The conversation ID, or None if the model has no such setting
-        (e.g. when used outside an OGX-backed agent).
-    """
-    extra_body = (model.settings or {}).get("extra_body")
-    if not isinstance(extra_body, dict):
-        return None
-
-    conversation_id = extra_body.get("conversation")
-    return conversation_id if isinstance(conversation_id, str) else None
 
 
 @dataclass
@@ -149,7 +91,7 @@ class QuestionValidity(AbstractSafetyCapability):
             The rendered prompt string ready to send to the validity model.
         """
         return Template(self.config.model_prompt).substitute(
-            message=_message_to_str(message),
+            message=message_to_str(message),
             allowed=SUBJECT_ALLOWED,
             rejected=SUBJECT_REJECTED,
         )
@@ -185,7 +127,7 @@ class QuestionValidity(AbstractSafetyCapability):
             return await handler()  # proceed with the real run
 
         # short-circuit: return the rejection message with shield usage tracked
-        user_message = _message_to_str(ctx.prompt)
+        user_message = message_to_str(ctx.prompt)
         state = GraphAgentState(
             usage=ctx.usage,
             message_history=[
@@ -197,7 +139,7 @@ class QuestionValidity(AbstractSafetyCapability):
             ],
         )
 
-        conversation_id = _extract_conversation_id(ctx.model)
+        conversation_id = extract_conversation_id(ctx.model)
         if conversation_id is not None:
             await append_turn_to_conversation(
                 AsyncOgxClientHolder().get_client(),
