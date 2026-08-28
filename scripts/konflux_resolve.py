@@ -985,13 +985,8 @@ def load_wheel_only(path: str) -> set[str]:
 
 _UV_COMPILED_RE = re.compile(r"^([a-zA-Z0-9][a-zA-Z0-9._-]*)([=<>!~].*)?$")
 
-
-UV_BINARY = os.environ.get(
-    "UV_BINARY",
-    os.path.join(
-        os.path.dirname(__file__), "..", "..", "uv", "target", "release", "uv"
-    ),
-)
+UV_IMAGE = os.environ.get("UV_IMAGE", "quay.io/syedriko/uv:prefer-index")
+CONTAINER_RUNTIME = os.environ.get("CONTAINER_RUNTIME", "podman")
 
 
 def uv_resolve(
@@ -1012,9 +1007,15 @@ def uv_resolve(
             else "requirements.overrides.txt"
         ),
     )
-    uv = UV_BINARY if os.path.isfile(UV_BINARY) else "uv"
     cmd = [
-        uv,
+        CONTAINER_RUNTIME,
+        "run",
+        "--rm",
+        "--volume",
+        f"{os.getcwd()}:/io:ro",
+        "--workdir",
+        "/io",
+        UV_IMAGE,
         "pip",
         "compile",
         "pyproject.toml",
@@ -1027,6 +1028,8 @@ def uv_resolve(
         rhoai_index_url,
         "--default-index",
         "https://pypi.org/simple/",
+        "--index-strategy",
+        "prefer-index",
         "--emit-index-annotation",
         "--no-sources",
         "--group",
