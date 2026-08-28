@@ -23,11 +23,15 @@ from models.common.moderation import (
 )
 from models.config import (
     GraniteGuardianConfig,
+    GuardrailPoint,
     QuestionValidityConfig,
     RedactionConfig,
     ShieldConfiguration,
 )
 from pydantic_ai_lightspeed.capabilities.base import AbstractSafetyCapability
+from pydantic_ai_lightspeed.capabilities.granite_guardian import (
+    GraniteGuardian,
+)
 from pydantic_ai_lightspeed.capabilities.question_validity._capability import (
     QuestionValidity,
 )
@@ -82,6 +86,7 @@ async def run_shield_moderation_v2(
     input_text: str,
     shield_configs: list[ShieldConfiguration],
     selected_shield_ids: Optional[list[str]] = None,
+    guardrail_point: GuardrailPoint = "input",
 ) -> ShieldModerationResult:
     """Run v2 shield moderation on input text.
 
@@ -120,7 +125,7 @@ async def run_shield_moderation_v2(
         )
 
         for shield_config in selected_shield_configs:
-            shield = build_shield(shield_config)
+            shield = build_shield(shield_config, guardrail_point)
 
             try:
                 shield_result = await shield.run(input_text)
@@ -149,7 +154,10 @@ async def run_shield_moderation_v2(
         return ShieldModerationPassed()
 
 
-def build_shield(shield_config: ShieldConfiguration) -> AbstractSafetyCapability:
+def build_shield(
+    shield_config: ShieldConfiguration,
+    guardrail_point: GuardrailPoint = "input",
+) -> AbstractSafetyCapability:
     """Build a safety capability instance from a shield configuration.
 
     Parameters:
@@ -164,7 +172,7 @@ def build_shield(shield_config: ShieldConfiguration) -> AbstractSafetyCapability
         case RedactionConfig():
             return PiiRedactionCapability(shield_config.config)
         case GraniteGuardianConfig():
-            raise NotImplementedError("Granite Guardian capability not implemented")
+            return GraniteGuardian(shield_config.config, guardrail_point)
         case _:
             raise ValueError(
                 f"Unsupported shield config type for shield '{shield_config.name}': "
