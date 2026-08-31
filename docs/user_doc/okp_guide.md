@@ -51,10 +51,18 @@ validating that queries return referenced chunks.
 
 ## Step 1: Launch OKP
 
-Start the OKP RAG service with Podman:
+Start the OKP RAG service with Podman or Docker:
 
+**Using Podman:**
 ```bash
+podman login registry.redhat.io
 podman run --rm -d -p 8081:8080 registry.redhat.io/offline-knowledge-portal/rhokp-rhel9:latest
+```
+
+**Using Docker:**
+```bash
+docker login registry.redhat.io
+docker run --rm -d -p 8081:8080 registry.redhat.io/offline-knowledge-portal/rhokp-rhel9:latest
 ```
 
 > **Note:** Remove `-d` to run in the foreground.
@@ -105,32 +113,43 @@ Edit your Lightspeed Stack config file (e.g. `lightspeed-stack.yaml`) and add
 the following top-level sections so that OKP is used for either inline or tool
 RAG:
 
-Inline RAG:
+**Inline RAG:**
 
 ```yaml
 # RAG configuration
 rag:
-  inline:
-  - okp
-okp:
-  rhokp_url: ${env.RH_SERVER_OKP}
-  offline: true
+  retrieval:
+    inline:
+      sources:
+        - okp
+      max_chunks: 3      # Final tight cap on chunks returned to user
+  okp:
+    rhokp_url: ${env.RH_SERVER_OKP}
+    offline: true
+    max_chunks: 5        # Initial generous fetch from OKP
 ```
 
-Tool RAG:
+**Tool RAG:**
 
 ```yaml
 # RAG configuration
 rag:
-  tool:
-  - okp
-okp:
-  rhokp_url: ${env.RH_SERVER_OKP}
-  offline: true
+  retrieval:
+    tool:
+      sources:
+        - okp
+      max_chunks: 10     # Tool RAG limit
+  okp:
+    rhokp_url: ${env.RH_SERVER_OKP}
+    offline: true
+    max_chunks: 5
 ```
 
-* **`rag.inline`** and **`rag.tool`**: Enable OKP as the RAG source for inline context injection and for the RAG tool.  Tool rag means the LLM will be provided a search tool it can choose to invoke to find relevant content and augment the user prompt.  The tool may or may not be invoked.  Inline means a rag search and prompt augmentation will always occur.
+* **`rag.retrieval.inline`** and **`rag.retrieval.tool`**: Enable OKP as the RAG source for inline context injection and for the RAG tool. Tool RAG means the LLM will be provided a search tool it can choose to invoke to find relevant content and augment the user prompt. The tool may or may not be invoked. Inline RAG means a RAG search and prompt augmentation will always occur.
 * **`okp.offline`**: When `true`, source URLs use `parent_id` (offline/Mimir-style). When `false`, use `reference_url` (online).
+* **`max_chunks` behavior**:
+  - **Inline RAG**: `rag.retrieval.inline.max_chunks` is the final tight cap on chunks returned in the response, while `rag.okp.max_chunks` is the initial generous fetch from OKP before filtering and ranking.
+  - **Tool RAG**: `rag.retrieval.tool.max_chunks` sets the limit on chunks available to the tool.
 
 If you want to filter the docs to a specific product, you can include a static query filter such as:
 
@@ -139,6 +158,8 @@ okp:
   offline: true
   chunk_filter_query: "product:*openshift* AND product_version:4.21"
 ```
+
+> **Important:** When running OGX in **Server mode**, changes to static filters like `chunk_filter_query` require an OGX restart to take effect. The static query configuration is loaded at startup and will not propagate automatically during runtime.
 
 When you launch Lightspeed Stack it will augment the OGX configuration (the synthesized run.yaml in unified mode, or your external run.yaml in the deprecated legacy mode) with
 configuration for OKP.
