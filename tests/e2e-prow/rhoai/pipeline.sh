@@ -93,9 +93,53 @@ oc create secret docker-registry quay-lightspeed-pull-secret \
 oc secrets link default quay-lightspeed-pull-secret --for=pull -n "$NAMESPACE" 2>/dev/null || echo "⚠️  Secret already linked to default SA"
 
 # Create Red Hat registry pull secret for OKP images
-# Credentials from Prow secrets (environment variables or mounted volumes)
-if [[ -n "${REDHAT_REGISTRY_USERNAME:-}" ]] && [[ -n "${REDHAT_REGISTRY_PASSWORD:-}" ]]; then
-  echo "Creating Red Hat registry pull secret from environment..."
+# Option 1: Use mounted docker-registry secret (preferred - simpler)
+if [[ -f /var/run/redhat-registry-pull-secret/.dockerconfigjson ]]; then
+  echo "Creating Red Hat registry pull secret from mounted docker-registry secret..."
+
+  DOCKERCONFIG_BASE64=$(cat /var/run/redhat-registry-pull-secret/.dockerconfigjson | base64 -w0)
+
+  # Get current pipeline Pod metadata for ownerReference (ensures cleanup after job completes)
+  PIPELINE_POD_NAME="${HOSTNAME}"
+  # Pipeline pod runs in its own namespace, not $NAMESPACE - don't specify -n
+  if PIPELINE_POD_UID=$(oc get pod "$PIPELINE_POD_NAME" -o jsonpath='{.metadata.uid}' 2>/dev/null) && \
+     PIPELINE_POD_NAMESPACE=$(oc get pod "$PIPELINE_POD_NAME" -o jsonpath='{.metadata.namespace}' 2>/dev/null); then
+    echo "Setting ownerReference to pipeline Pod: $PIPELINE_POD_NAME (namespace: $PIPELINE_POD_NAMESPACE)"
+
+    # Create secret with ownerReference using YAML (ensures automatic cleanup)
+    cat <<EOF | oc apply -f -
+apiVersion: v1
+kind: Secret
+metadata:
+  name: redhat-registry-pull-secret
+  namespace: $NAMESPACE
+  ownerReferences:
+  - apiVersion: v1
+    kind: Pod
+    name: $PIPELINE_POD_NAME
+    uid: $PIPELINE_POD_UID
+    controller: false
+    blockOwnerDeletion: false
+type: kubernetes.io/dockerconfigjson
+data:
+  .dockerconfigjson: $DOCKERCONFIG_BASE64
+EOF
+    echo "✅ Red Hat registry pull secret created with ownerReference"
+
+    # Link to default service account
+    oc secrets link default redhat-registry-pull-secret --for=pull -n "$NAMESPACE" 2>/dev/null || echo "⚠️  Secret already linked to default SA"
+  else
+    # SECURITY: Fail closed if we cannot set ownerReference
+    # Creating secrets without ownerReference leads to credential sprawl
+    echo "❌ FATAL: Cannot get pipeline Pod metadata for ownerReference"
+    echo "   Secret creation requires valid owner UID to ensure cleanup"
+    echo "   Pipeline Pod: $PIPELINE_POD_NAME"
+    exit 1
+  fi
+
+# Option 2: Fallback to environment variables (legacy Prow approach)
+elif [[ -n "${REDHAT_REGISTRY_USERNAME:-}" ]] && [[ -n "${REDHAT_REGISTRY_PASSWORD:-}" ]]; then
+  echo "Creating Red Hat registry pull secret from environment variables..."
 
   # Get current pipeline Pod metadata for ownerReference (ensures cleanup after job completes)
   PIPELINE_POD_NAME="${HOSTNAME}"
