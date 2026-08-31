@@ -212,6 +212,12 @@ spec:
           - name: quay-aipcc-password
             secret:
               secretName: quay-aipcc-password
+          - name: redhat-registry-username
+            secret:
+              secretName: redhat-registry-username
+          - name: redhat-registry-password
+            secret:
+              secretName: redhat-registry-password
           - name: credentials
             emptyDir: {}
         steps:
@@ -251,6 +257,10 @@ spec:
                 mountPath: /var/run/quay-aipcc-name
               - name: quay-aipcc-password
                 mountPath: /var/run/quay-aipcc-password
+              - name: redhat-registry-username
+                mountPath: /var/run/redhat-registry-username
+              - name: redhat-registry-password
+                mountPath: /var/run/redhat-registry-password
               - name: credentials
                 mountPath: /credentials
             env:

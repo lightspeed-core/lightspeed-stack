@@ -265,16 +265,68 @@ echo "✅ Mock servers deployed"
 echo "Deploying OKP Solr server..."
 oc apply -n "$NAMESPACE" -f "$PIPELINE_DIR/manifests/lightspeed/okp-solr.yaml"
 
+# Check if redhat-registry-pull-secret exists before waiting
+if oc get secret redhat-registry-pull-secret -n "$NAMESPACE" &>/dev/null; then
+    echo "✅ redhat-registry-pull-secret exists"
+else
+    echo "❌ WARNING: redhat-registry-pull-secret NOT found - image pull will fail"
+    echo "Available secrets in namespace $NAMESPACE:"
+    oc get secrets -n "$NAMESPACE" | grep -E "NAME|pull-secret" || true
+fi
+
 # Wait for OKP Solr to be ready
-echo "Waiting for OKP Solr to be ready..."
-oc wait pod/okp-solr-service \
-    -n "$NAMESPACE" --for=condition=Ready --timeout=180s || {
-    echo "⚠️  OKP Solr not ready, checking status..."
-    oc get pods -n "$NAMESPACE" | grep okp-solr || true
-    oc describe pod okp-solr-service -n "$NAMESPACE" 2>/dev/null | tail -30 || true
-    echo "❌ OKP Solr failed to become ready"
+echo "Waiting for OKP Solr to be ready (180s timeout)..."
+echo "Initial pod status:"
+oc get pod okp-solr-service -n "$NAMESPACE" || true
+
+if ! oc wait pod/okp-solr-service \
+    -n "$NAMESPACE" --for=condition=Ready --timeout=180s; then
+
+    echo "=========================================="
+    echo "⚠️  OKP Solr not ready - DETAILED DIAGNOSTICS"
+    echo "=========================================="
+
+    echo ""
+    echo "=== Pod Status ==="
+    oc get pod okp-solr-service -n "$NAMESPACE" -o wide || true
+
+    echo ""
+    echo "=== Container State ==="
+    oc get pod okp-solr-service -n "$NAMESPACE" \
+        -o jsonpath='{.status.containerStatuses[*].state}' | jq '.' || echo "No container status available"
+
+    echo ""
+    echo "=== Image Pull Status ==="
+    oc get pod okp-solr-service -n "$NAMESPACE" \
+        -o jsonpath='{.status.containerStatuses[*].image}' && echo "" || true
+    oc get pod okp-solr-service -n "$NAMESPACE" \
+        -o jsonpath='{.status.containerStatuses[*].imageID}' && echo "" || true
+
+    echo ""
+    echo "=== Pod Events (last 30) ==="
+    oc get events -n "$NAMESPACE" --sort-by='.lastTimestamp' \
+        --field-selector involvedObject.name=okp-solr-service 2>/dev/null | tail -30 || \
+        oc get events -n "$NAMESPACE" --sort-by='.lastTimestamp' | grep okp-solr || true
+
+    echo ""
+    echo "=== Full Pod Description ==="
+    oc describe pod okp-solr-service -n "$NAMESPACE" || true
+
+    echo ""
+    echo "=== Red Hat Registry Secret Status ==="
+    if oc get secret redhat-registry-pull-secret -n "$NAMESPACE" &>/dev/null; then
+        oc get secret redhat-registry-pull-secret -n "$NAMESPACE" -o yaml | grep -A 2 "type:"
+    else
+        echo "❌ redhat-registry-pull-secret NOT FOUND"
+    fi
+
+    echo ""
+    echo "=========================================="
+    echo "❌ OKP Solr failed to become ready within 180s"
+    echo "=========================================="
     exit 1
-}
+fi
+
 echo "✅ OKP Solr deployed"
 
 #========================================
