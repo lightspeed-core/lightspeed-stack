@@ -124,20 +124,12 @@ data:
 EOF
     echo "✅ Red Hat registry pull secret created with ownerReference"
   else
-    # Fallback: create without ownerReference if Pod metadata unavailable
-    echo "⚠️  Could not get pipeline Pod metadata - creating secret without ownerReference"
-    # Delete existing secret if any (may be stale from previous run)
-    oc delete secret redhat-registry-pull-secret -n "$NAMESPACE" --ignore-not-found=true 2>/dev/null || true
-    if oc create secret docker-registry redhat-registry-pull-secret \
-      --docker-server=registry.redhat.io \
-      --docker-username="$REDHAT_REGISTRY_USERNAME" \
-      --docker-password="$REDHAT_REGISTRY_PASSWORD" \
-      -n "$NAMESPACE" 2>&1; then
-      echo "✅ Red Hat registry pull secret created"
-    else
-      echo "❌ FATAL: Failed to create redhat-registry-pull-secret"
-      exit 1
-    fi
+    # SECURITY: Fail closed if we cannot set ownerReference
+    # Creating secrets without ownerReference leads to credential sprawl
+    echo "❌ FATAL: Cannot get pipeline Pod metadata for ownerReference"
+    echo "   Secret creation requires valid owner UID to ensure cleanup"
+    echo "   Pipeline Pod: $PIPELINE_POD_NAME"
+    exit 1
   fi
 
   # Link to default service account
@@ -279,8 +271,9 @@ if oc get secret redhat-registry-pull-secret -n "$NAMESPACE" &>/dev/null; then
     echo "✅ redhat-registry-pull-secret exists"
 else
     echo "❌ WARNING: redhat-registry-pull-secret NOT found - image pull will fail"
-    echo "Available secrets in namespace $NAMESPACE:"
-    oc get secrets -n "$NAMESPACE" | grep -E "NAME|pull-secret" || true
+    echo "Checking for pull secrets in namespace $NAMESPACE:"
+    oc get secrets -n "$NAMESPACE" --field-selector type=kubernetes.io/dockerconfigjson -o name 2>/dev/null || \
+        echo "No dockerconfigjson secrets found"
 fi
 
 # Wait for OKP Solr to be ready
@@ -313,9 +306,10 @@ if ! oc wait pod/okp-solr-service \
 
     echo ""
     echo "=== Pod Events (last 30) ==="
+    # Use server-side filtering with a limit to avoid unbounded list calls
     oc get events -n "$NAMESPACE" --sort-by='.lastTimestamp' \
-        --field-selector involvedObject.name=okp-solr-service 2>/dev/null | tail -30 || \
-        oc get events -n "$NAMESPACE" --sort-by='.lastTimestamp' | grep okp-solr || true
+        --field-selector involvedObject.name=okp-solr-service \
+        --limit=30 2>/dev/null || echo "No events found for okp-solr-service"
 
     echo ""
     echo "=== Full Pod Description ==="
