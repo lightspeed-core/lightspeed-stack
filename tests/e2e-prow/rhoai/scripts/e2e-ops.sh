@@ -580,11 +580,12 @@ verify_llama_local_forward() {
 
 verify_okp_connectivity() {
     local max_attempts="${1:-15}"
+    local local_port="${2:-8081}"
     local http_code=""
     local attempt
 
     for ((attempt=1; attempt<=max_attempts; attempt++)); do
-        http_code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 "http://localhost:8081/solr" 2>/dev/null) || http_code="000"
+        http_code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 "http://localhost:${local_port}/solr" 2>/dev/null) || http_code="000"
         # OKP Solr returns various 200-399 codes for /solr endpoint
         if [[ "$http_code" =~ ^[23][0-9][0-9]$ ]]; then
             return 0
@@ -593,7 +594,7 @@ verify_okp_connectivity() {
             sleep 2
         fi
     done
-    echo "OKP Solr localhost:8081 connectivity check failed (HTTP: ${http_code:-unknown})"
+    echo "OKP Solr localhost:${local_port} connectivity check failed (HTTP: ${http_code:-unknown})"
     return 1
 }
 
@@ -758,7 +759,7 @@ cmd_restart_okp_port_forward() {
         fi
         sleep 4
 
-        if verify_okp_connectivity 12; then
+        if verify_okp_connectivity 12 "$local_port"; then
             echo "$pf_pid" >"$E2E_OKP_PORT_FORWARD_PID_FILE"
             echo "✓ OKP Solr port-forward established (PID: $pf_pid)"
             return 0

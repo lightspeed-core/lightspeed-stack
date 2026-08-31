@@ -101,9 +101,17 @@ if [[ -f /var/run/redhat-registry-pull-secret/.dockerconfigjson ]]; then
 
   # Get current pipeline Pod metadata for ownerReference (ensures cleanup after job completes)
   PIPELINE_POD_NAME="${HOSTNAME}"
-  # Pipeline pod runs in its own namespace, not $NAMESPACE - don't specify -n
-  if PIPELINE_POD_UID=$(oc get pod "$PIPELINE_POD_NAME" -o jsonpath='{.metadata.uid}' 2>/dev/null) && \
-     PIPELINE_POD_NAMESPACE=$(oc get pod "$PIPELINE_POD_NAME" -o jsonpath='{.metadata.namespace}' 2>/dev/null); then
+  # Pipeline pod runs in its own namespace - read from service account mount
+  PIPELINE_POD_NAMESPACE=""
+  if [[ -f /var/run/secrets/kubernetes.io/serviceaccount/namespace ]]; then
+    PIPELINE_POD_NAMESPACE="$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace)"
+  fi
+  if [[ -z "$PIPELINE_POD_NAMESPACE" ]]; then
+    echo "❌ FATAL: Cannot determine pipeline pod namespace"
+    echo "   Service account namespace file not found or empty"
+    exit 1
+  fi
+  if PIPELINE_POD_UID=$(oc get pod "$PIPELINE_POD_NAME" -n "$PIPELINE_POD_NAMESPACE" -o jsonpath='{.metadata.uid}' 2>/dev/null); then
     echo "Setting ownerReference to pipeline Pod: $PIPELINE_POD_NAME (namespace: $PIPELINE_POD_NAMESPACE)"
 
     # Create secret with ownerReference using YAML (ensures automatic cleanup)
@@ -143,29 +151,29 @@ elif [[ -n "${REDHAT_REGISTRY_USERNAME:-}" ]] && [[ -n "${REDHAT_REGISTRY_PASSWO
 
   # Get current pipeline Pod metadata for ownerReference (ensures cleanup after job completes)
   PIPELINE_POD_NAME="${HOSTNAME}"
-  # Pipeline pod runs in its own namespace, not $NAMESPACE - don't specify -n
-  if PIPELINE_POD_UID=$(oc get pod "$PIPELINE_POD_NAME" -o jsonpath='{.metadata.uid}' 2>/dev/null) && \
-     PIPELINE_POD_NAMESPACE=$(oc get pod "$PIPELINE_POD_NAME" -o jsonpath='{.metadata.namespace}' 2>/dev/null); then
+  # Pipeline pod runs in its own namespace - read from service account mount
+  PIPELINE_POD_NAMESPACE=""
+  if [[ -f /var/run/secrets/kubernetes.io/serviceaccount/namespace ]]; then
+    PIPELINE_POD_NAMESPACE="$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace)"
+  fi
+  if [[ -z "$PIPELINE_POD_NAMESPACE" ]]; then
+    echo "❌ FATAL: Cannot determine pipeline pod namespace"
+    echo "   Service account namespace file not found or empty"
+    exit 1
+  fi
+  if PIPELINE_POD_UID=$(oc get pod "$PIPELINE_POD_NAME" -n "$PIPELINE_POD_NAMESPACE" -o jsonpath='{.metadata.uid}' 2>/dev/null); then
     echo "Setting ownerReference to pipeline Pod: $PIPELINE_POD_NAME (namespace: $PIPELINE_POD_NAMESPACE)"
 
-    # Create secret with ownerReference using YAML (ensures automatic cleanup)
-    cat <<EOF | oc apply -f -
-apiVersion: v1
-kind: Secret
-metadata:
-  name: redhat-registry-pull-secret
-  namespace: $NAMESPACE
-  ownerReferences:
-  - apiVersion: v1
-    kind: Pod
-    name: $PIPELINE_POD_NAME
-    uid: $PIPELINE_POD_UID
-    controller: false
-    blockOwnerDeletion: false
-type: kubernetes.io/dockerconfigjson
-data:
-  .dockerconfigjson: $(echo -n '{"auths":{"registry.redhat.io":{"username":"'"$REDHAT_REGISTRY_USERNAME"'","password":"'"$REDHAT_REGISTRY_PASSWORD"'","auth":"'$(echo -n "$REDHAT_REGISTRY_USERNAME:$REDHAT_REGISTRY_PASSWORD" | base64 -w0)'"}}}' | base64 -w0)
-EOF
+    # Create secret with ownerReference (oc handles JSON encoding safely)
+    oc create secret docker-registry redhat-registry-pull-secret \
+      --docker-server=registry.redhat.io \
+      --docker-username="$REDHAT_REGISTRY_USERNAME" \
+      --docker-password="$REDHAT_REGISTRY_PASSWORD" \
+      -n "$NAMESPACE" \
+      --dry-run=client -o json | \
+    jq --arg name "$PIPELINE_POD_NAME" --arg uid "$PIPELINE_POD_UID" \
+      '.metadata.ownerReferences = [{"apiVersion":"v1","kind":"Pod","name":$name,"uid":$uid,"controller":false,"blockOwnerDeletion":false}]' | \
+    oc apply -f -
     echo "✅ Red Hat registry pull secret created with ownerReference"
   else
     # SECURITY: Fail closed if we cannot set ownerReference
