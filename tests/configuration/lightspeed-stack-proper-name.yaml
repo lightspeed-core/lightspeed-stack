@@ -20,7 +20,7 @@ service:
       - foo_header
       - bar_header
       - baz_header
-llama_stack:
+ogx:
   # Uses a remote OGX service
   # The instance would have already been started with a llama-stack-run.yaml file
   use_as_library_client: false

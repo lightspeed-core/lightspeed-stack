@@ -186,7 +186,7 @@
       <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="60.4378" x="2692.61" y="864.9372">database</text>
       <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="198.6872" x="2692.61" y="884.0051">deployment_environment : str</text>
       <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="61.9217" x="2692.61" y="903.073">inference</text>
-      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="76.0477" x="2692.61" y="922.1409">llama_stack</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="76.0477" x="2692.61" y="922.1409">ogx</text>
       <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="311.6108" x="2692.61" y="941.2089">mcp_servers : list[ModelContextProtocolServer]</text>
       <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="66.0658" x="2692.61" y="960.2768">name : str</text>
       <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="24.5559" x="2692.61" y="979.3447">okp</text>
@@ -909,7 +909,7 @@
     <g id="link_src.models.config.LlamaStackConfiguration_src.models.config.Configuration">
       <path codeLine="371" d="M3640.57,515.94 C3619.37,534.85 3595.6,551.92 3570.17,563.36 C3478.16,604.76 3205.3,544.26 3117.17,593.36 C3092.97,606.84 3079.3514,615.6339 3058.6914,634.7339 " fill="none" id="src.models.config.LlamaStackConfiguration-to-src.models.config.Configuration" style="stroke:#181818;stroke-width:1.0;"/>
       <polygon fill="#181818" points="3049.88,642.88,3057.0011,641.7441,3058.6914,634.7339,3051.5703,635.8698,3049.88,642.88" style="stroke:#181818;stroke-width:1.0;"/>
-      <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="70.616" x="3118.17" y="608.257">llama_stack</text>
+      <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="70.616" x="3118.17" y="608.257">ogx</text>
     </g>
     <!--link src.models.config.OkpConfiguration to src.models.config.Configuration-->
     <g id="link_src.models.config.OkpConfiguration_src.models.config.Configuration">

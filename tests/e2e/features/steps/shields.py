@@ -3,7 +3,7 @@
 from behave import given  # pyright: ignore[reportAttributeAccessIssue]
 from behave.runner import Context
 
-from tests.e2e.utils.llama_stack_utils import unregister_shield
+from tests.e2e.utils.ogx_utils import unregister_shield
 
 
 @given("shields are disabled for this scenario")

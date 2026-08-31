@@ -8,6 +8,7 @@ from types import SimpleNamespace
 from typing import Any, Optional, cast
 
 import pytest
+from fastapi import HTTPException
 from ogx_api.openai_responses import OpenAIResponseMessage
 from pytest_mock import MockerFixture
 
@@ -126,6 +127,59 @@ def test_compaction_result_context_status() -> None:
     params = _params()
     assert cc.CompactionResult(params, compacted=False).context_status == "full"
     assert cc.CompactionResult(params, compacted=True).context_status == "summarized"
+
+
+def test_agent_prompt_text_string_input() -> None:
+    """A plain string input is returned unchanged."""
+    assert cc.agent_prompt_text(_params("what is a pod?")) == "what is a pod?"
+
+
+def test_agent_prompt_text_explicit_list_returns_last_message_text() -> None:
+    """For compacted explicit input, the trailing user query text is returned."""
+    params = _params()
+    explicit = cc._build_explicit_input(
+        ["earlier summary"], [_msg("assistant", "prior answer")], "new question"
+    )
+    compacted = params.model_copy(update={"input": explicit, "omit_conversation": True})
+    assert cc.agent_prompt_text(compacted) == "new question"
+
+
+@pytest.mark.parametrize(
+    ("omit_conversation", "has_images"),
+    [(True, False), (False, True), (False, False)],
+)
+def test_reject_image_attachments_allows_supported_combinations(
+    omit_conversation: bool, has_images: bool
+) -> None:
+    """Only a compacted turn carrying images is rejected; the rest pass through."""
+    params = _params().model_copy(update={"omit_conversation": omit_conversation})
+    attachments = [object()] if has_images else None
+    cc.reject_image_attachments_in_compacted_mode(params, attachments)
+
+
+def test_reject_image_attachments_in_compacted_mode_raises_422() -> None:
+    """A compacted turn with images fails explicitly instead of ignoring them.
+
+    The explicit-input override replaces the prompt-derived request input, and
+    the explicit list is text-only, so the images would never reach the model.
+    Answering anyway would return a confident response that never saw the
+    image, with nothing telling the caller it was dropped (LCORE-3582).
+    """
+    params = _params().model_copy(update={"omit_conversation": True})
+
+    with pytest.raises(HTTPException) as exc_info:
+        cc.reject_image_attachments_in_compacted_mode(params, [object()])
+
+    assert exc_info.value.status_code == 422
+    detail = exc_info.value.detail
+    assert "Image attachments are not supported" in detail["response"]
+    assert "compacted" in detail["cause"]
+
+
+def test_agent_prompt_text_empty_list_returns_empty() -> None:
+    """An empty explicit list yields an empty prompt rather than crashing."""
+    params = _params().model_copy(update={"input": [], "omit_conversation": True})
+    assert cc.agent_prompt_text(params) == ""
 
 
 # --- apply_compaction ---

@@ -75,7 +75,7 @@ spec:
           export GIT_TERMINAL_PROMPT=0
           git clone -q "${REPO_URL}" /opt/app-root/repo
           cd /opt/app-root/repo && git fetch origin "${REPO_REVISION}" 2>/dev/null || true && git checkout -q "${REPO_REVISION}"
-          uv sync --locked --no-install-project --group llslibdev
+          uv sync --locked --no-install-project --group ogxlibdev
           (cd /opt/app-root/repo && tar cf - .) | (cd /opt/app-root && tar xf -)
           rm -rf /opt/app-root/repo
           sed -i 's|/opt/app-root/repo/.venv|/opt/app-root/.venv|g' /opt/app-root/.venv/bin/* 2>/dev/null || true

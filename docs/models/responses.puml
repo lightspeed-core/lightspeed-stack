@@ -98,7 +98,7 @@ class "ForbiddenResponse" as src.models.api.responses.error.forbidden.ForbiddenR
   saved_prompt(action: str, resource_id: str, user_id: str) -> Self
 }
 class "InfoResponse" as src.models.api.responses.successful.probes.InfoResponse {
-  llama_stack_version : Optional[str]
+  ogx_version : Optional[str]
   model_config : dict
   name : Optional[str]
   service_version : Optional[str]
@@ -317,6 +317,12 @@ class "StreamingInterruptResponse" as src.models.api.responses.successful.query.
 class "StreamingQueryResponse" as src.models.api.responses.successful.query.StreamingQueryResponse {
   model_config : dict
   openapi_response() -> dict[str, Any]
+}
+class "TooManyConcurrentRequestsResponse" as src.models.api.responses.error.too_many_requests.TooManyConcurrentRequestsResponse {
+  description : ClassVar[str]
+  model_config : dict
+  file_upload() -> Self
+  vector_store_attach() -> Self
 }
 class "ToolsResponse" as src.models.api.responses.successful.catalog.ToolsResponse {
   model_config : dict

@@ -6,6 +6,7 @@ from typing import Any, Optional
 
 import pytest
 from fastapi import HTTPException
+from ogx_api.openai_responses import OpenAIResponseMessage
 from ogx_client import APIConnectionError, APIStatusError
 from pydantic_ai.messages import (
     FinishReason,
@@ -426,6 +427,141 @@ class TestRetrieveAgentResponse:
         mock_agent.run.assert_awaited_once_with("Say hello")
         assert summary.llm_response == "Hello!"
         assert summary.id == "resp-success"
+
+    @pytest.mark.asyncio
+    async def test_compacted_input_runs_agent_with_prompt_text(
+        self,
+        mocker: MockerFixture,
+        make_agent_run_result: Callable[..., Any],
+        make_responses_params: Callable[..., ResponsesApiParams],
+        patch_recording_metrics: None,
+    ) -> None:
+        """Test compacted explicit input is reduced to the query text for agent.run."""
+        explicit = [
+            OpenAIResponseMessage(
+                role="user", content="Summary of earlier conversation:\nS1"
+            ),
+            OpenAIResponseMessage(role="user", content="new question"),
+        ]
+        params = make_responses_params(input_text="ignored").model_copy(
+            update={"input": explicit, "omit_conversation": True}
+        )
+        run_result = make_agent_run_result(content="Answer")
+        mock_agent = mocker.AsyncMock()
+        mock_agent.run = mocker.AsyncMock(return_value=run_result)
+        mocker.patch("utils.agents.query.build_agent", return_value=mock_agent)
+
+        summary = await retrieve_agent_response(
+            client=mocker.AsyncMock(),
+            responses_params=params,
+            moderation_result=ShieldModerationPassed(),
+            endpoint_path=ENDPOINT_PATH_QUERY,
+        )
+
+        mock_agent.run.assert_awaited_once_with("new question")
+        assert summary.llm_response == "Answer"
+
+    @pytest.mark.asyncio
+    async def test_blocked_moderation_compacted_skips_append(
+        self,
+        mocker: MockerFixture,
+        make_responses_params: Callable[..., ResponsesApiParams],
+        blocked_moderation: ShieldModerationBlocked,
+    ) -> None:
+        """Test blocked moderation does not append explicit input in compacted mode."""
+        params = make_responses_params().model_copy(
+            update={
+                "input": [OpenAIResponseMessage(role="user", content="q")],
+                "omit_conversation": True,
+            }
+        )
+        mock_append = mocker.patch(
+            "utils.agents.query.append_turn_items_to_conversation",
+            new=mocker.AsyncMock(),
+        )
+
+        summary = await retrieve_agent_response(
+            client=mocker.AsyncMock(),
+            responses_params=params,
+            moderation_result=blocked_moderation,
+            endpoint_path=ENDPOINT_PATH_QUERY,
+        )
+
+        mock_append.assert_not_awaited()
+        assert summary.llm_response == "Content blocked by shield."
+
+    @pytest.mark.asyncio
+    async def test_inference_error_is_logged(
+        self,
+        mocker: MockerFixture,
+        make_responses_params: Callable[..., ResponsesApiParams],
+        patch_recording_metrics: None,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Test an upstream connection failure logs a warning, not an error.
+
+        APIConnectionError maps to 503: the backend is down, which is not a
+        service fault of ours, so it must not be logged at error level with a
+        traceback — that noise would bury the genuine 500s this logging exists
+        to surface (LCORE-3582).
+        """
+        mock_agent = mocker.AsyncMock()
+        mock_agent.run = mocker.AsyncMock(
+            side_effect=APIConnectionError(request=mocker.Mock())
+        )
+        mocker.patch("utils.agents.query.build_agent", return_value=mock_agent)
+
+        with caplog.at_level("WARNING"):
+            with pytest.raises(HTTPException):
+                await retrieve_agent_response(
+                    client=mocker.AsyncMock(),
+                    responses_params=make_responses_params(),
+                    moderation_result=ShieldModerationPassed(),
+                    endpoint_path=ENDPOINT_PATH_QUERY,
+                )
+
+        assert any(
+            record.levelname == "WARNING"
+            and "Agent inference returned 503" in record.message
+            for record in caplog.records
+        )
+        assert not any(record.levelname == "ERROR" for record in caplog.records)
+
+    @pytest.mark.asyncio
+    async def test_unclassified_inference_error_is_logged_with_traceback(
+        self,
+        mocker: MockerFixture,
+        make_responses_params: Callable[..., ResponsesApiParams],
+        patch_recording_metrics: None,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Test an unclassified failure is logged at error level with the traceback.
+
+        This is the case the logging was added for: it maps to a generic 500,
+        the mapped HTTPException discards the original exception, and callers
+        raise without logging, so without this the failure left nothing behind.
+        """
+        mock_agent = mocker.AsyncMock()
+        mock_agent.run = mocker.AsyncMock(side_effect=RuntimeError("kaboom"))
+        mocker.patch("utils.agents.query.build_agent", return_value=mock_agent)
+
+        with caplog.at_level("ERROR"):
+            with pytest.raises(HTTPException):
+                await retrieve_agent_response(
+                    client=mocker.AsyncMock(),
+                    responses_params=make_responses_params(),
+                    moderation_result=ShieldModerationPassed(),
+                    endpoint_path=ENDPOINT_PATH_QUERY,
+                )
+
+        matching = [
+            record
+            for record in caplog.records
+            if record.levelname == "ERROR"
+            and "Agent inference failed" in record.message
+        ]
+        assert matching, "unclassified failure was not logged at error level"
+        assert matching[0].exc_info is not None, "traceback was not attached"
 
     @pytest.mark.asyncio
     async def test_success_with_image_attachments_sends_multimodal_prompt(

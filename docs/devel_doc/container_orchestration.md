@@ -53,7 +53,7 @@ The Makefile will auto-detect which runtime is available.
 
 ```bash
 # Install dependencies
-uv sync --group dev --group llslibdev
+uv sync --group dev --group ogxlibdev
 
 # Generate OGX config (run.yaml)
 ./scripts/generate_local_run.sh

@@ -190,7 +190,7 @@ To quickly get hands on LCS, we can run it using the default configurations prov
 
 0. install dependencies using [uv](https://docs.astral.sh/uv/getting-started/installation/)
    ```bash
-   uv sync --group dev --group llslibdev
+   uv sync --group dev --group ogxlibdev
    ```
 1. create OGX `run.yaml`. you can do this by running the local run generation script
    ```bash

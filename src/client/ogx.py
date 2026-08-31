@@ -3,11 +3,13 @@
 import json
 import os
 import tempfile
-from typing import Optional, cast
+from typing import Any, Literal, Optional, cast
 
 import yaml
-from fastapi import HTTPException
+from fastapi import HTTPException, UploadFile
 from ogx.core.library_client import AsyncOGXAsLibraryClient
+from ogx_api import Api
+from ogx_api.files import OpenAIFileUploadPurpose, UploadFileRequest
 from ogx_client import APIConnectionError, APIStatusError, AsyncOgxClient
 
 import constants
@@ -184,6 +186,60 @@ class AsyncOgxClientHolder(metaclass=Singleton):
                 "AsyncOgxClient has not been initialised. Ensure 'load(..)' has been called."
             )
         return self._lsc
+
+    async def upload_file(
+        self,
+        file: UploadFile,
+        filename: str,
+        purpose: Literal[
+            "assistants", "batch", "fine-tune", "vision", "user_data", "evals"
+        ],
+    ) -> Any:
+        """Upload a file, avoiding a library-mode buffering issue.
+
+        In library mode, the OpenAI-SDK-style `client.files.create()` call
+        only forwards the upload when given a BytesIO instance (see
+        ogx.core.library_client._handle_file_uploads), and even then
+        re-buffers it into a second in-memory copy on top of anything the
+        caller passes. Since the library client runs the Files provider
+        in-process, this calls its `openai_upload_file` directly with the
+        original spooled file instead, skipping both extra copies. The
+        provider itself still reads the whole file into memory once (it is
+        not a streaming implementation), so this is copy-once rather than
+        copy-thrice, not zero-copy.
+
+        Args:
+            file: The uploaded file.
+            filename: Filename to store the upload under.
+            purpose: OpenAI file purpose (e.g. "assistants").
+
+        Returns:
+            The created file object (id, filename, bytes, created_at, purpose, object).
+
+        Raises:
+            RuntimeError: If in library mode but the client has not finished initializing.
+        """
+        client = self.get_client()
+        if self.is_library_client:
+            logger.info(
+                "Library client detected - bypassing client.files.create() and "
+                "calling the Files provider directly for filename: %s",
+                filename,
+            )
+            library_client = cast(AsyncOGXAsLibraryClient, client)
+            if library_client.impls is None:
+                raise RuntimeError("OGX library client is not initialized")
+            file.filename = filename
+            files_impl = library_client.impls[Api.files]
+            return await files_impl.openai_upload_file(
+                request=UploadFileRequest(purpose=OpenAIFileUploadPurpose(purpose)),
+                file=file,
+            )
+        logger.info(
+            "Service client detected - using client.files.create() for filename: %s",
+            filename,
+        )
+        return await client.files.create(file=(filename, file.file), purpose=purpose)
 
     async def reload_library_client(self) -> AsyncOgxClient:
         """Reload library client to pick up env var changes.

@@ -19,6 +19,7 @@ This document explains how to configure and customize your RAG pipeline. You wil
 * [Configure Dynamic Vector Store Providers](#configure-dynamic-vector-store-providers)
 * [Add an Inference Model (LLM)](#add-an-inference-model-llm)
 * [Complete Configuration Reference](#complete-configuration-reference)
+* [Upload and Concurrency Limits](#upload-and-concurrency-limits)
 * [System Prompt Guidance for RAG (as a tool)](#system-prompt-guidance-for-rag-as-a-tool)
 * [RAG annotations](#rag-annotations)
 * [References](#references)
@@ -472,6 +473,42 @@ rag:
 ```
 
 BYOK providers and registered resources are generated at startup from `rag.byok.stores`. Dynamic providers and create defaults are generated from `vector_store` during unified synthesis. Embedding models for those providers are registered automatically when needed. Inference models and providers must still be configured separately (for example in your baseline / profile `run.yaml`).
+
+---
+
+# Upload and Concurrency Limits
+
+`POST /v1/files` and `POST /v1/vector-stores/{id}/files` each cap how many
+requests run at once, since every in-flight upload or attachment holds file
+content in memory. Configure these under `service` in `lightspeed-stack.yaml`:
+
+```yaml
+service:
+  max_concurrent_file_uploads: 5           # default: 5
+  max_concurrent_vector_store_attaches: 5  # default: 5
+```
+
+Requests beyond the configured limit get `429 Too Many Requests` until a slot
+frees up. Size these against available memory: each concurrent upload or
+attachment can hold up to the maximum upload size (100MB by default) in
+memory.
+
+By default, files remain reusable across multiple vector stores, matching the
+OpenAI Files API — a file stays available until you explicitly delete it,
+even after being attached. Since nothing actively reaps unused files, they
+will otherwise accumulate on disk indefinitely. If your deployment always
+uploads a file for exactly one vector store, you can opt into automatic
+cleanup instead:
+
+```yaml
+service:
+  delete_file_after_vector_store_attach: false  # default: false
+```
+
+When enabled, a file is deleted once it's successfully attached to a vector
+store, since the vector store keeps its own chunked/embedded copy. Enabling
+this makes attached files single-use: re-attaching the same `file_id` to
+another vector store will fail once it has been deleted.
 
 ---
 

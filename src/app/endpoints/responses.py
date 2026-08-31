@@ -32,16 +32,11 @@ from openai._exceptions import (
 )
 from opentelemetry import trace
 
-from app.endpoints.responses_telemetry import (
-    queue_blocked_response_event,
-    queue_completed_response_event,
-    queue_responses_error_event,
-)
 from authentication import get_auth_dependency
 from authentication.interface import AuthTuple
 from authorization.azure_token_manager import AzureEntraIDManager
 from authorization.middleware import authorize
-from client import AsyncOgxClientHolder
+from client.ogx import AsyncOgxClientHolder
 from configuration import configuration
 from constants import ENDPOINT_PATH_RESPONSES, SUBSTITUTED_INSTRUCTIONS_PLACEHOLDER
 from log import get_logger
@@ -67,6 +62,11 @@ from models.common.responses.responses_api_params import ResponsesApiParams
 from models.common.responses.types import ResponseInput, ResponseMessage
 from models.common.turn_summary import TurnSummary
 from models.config import Action
+from observability.responses_telemetry import (
+    queue_blocked_response_event,
+    queue_completed_response_event,
+    queue_responses_error_event,
+)
 from utils.conversation_compaction import (
     apply_compaction_blocking,
     configured_conversation_cache,

@@ -560,7 +560,7 @@ def test_synthesize_default_baseline_ensures_mcp() -> None:
         },
     }
     lcs_config = {
-        "llama_stack": {"config": {"baseline": "default"}},
+        "ogx": {"config": {"baseline": "default"}},
         "inference": {"providers": []},
     }
     result = synthesize_configuration(lcs_config, default_baseline=default_baseline)
@@ -571,7 +571,7 @@ def test_synthesize_default_baseline_ensures_mcp() -> None:
 def test_synthesize_empty_baseline_skips_mcp_ensure() -> None:
     """baseline: empty must not assume MCP."""
     lcs_config = {
-        "llama_stack": {
+        "ogx": {
             "config": {
                 "baseline": "empty",
                 "native_override": {
@@ -590,7 +590,7 @@ def test_synthesize_empty_baseline_skips_mcp_ensure() -> None:
 def test_synthesize_empty_baseline_keeps_mcp_from_override() -> None:
     """MCP already in native_override is preserved when ensure is skipped."""
     lcs_config = {
-        "llama_stack": {
+        "ogx": {
             "config": {
                 "baseline": "empty",
                 "native_override": {
@@ -618,7 +618,7 @@ def test_synthesize_native_override_can_opt_out_of_mcp() -> None:
         "providers": {"tool_runtime": []},
     }
     lcs_config = {
-        "llama_stack": {
+        "ogx": {
             "config": {
                 "baseline": "default",
                 "native_override": {
@@ -654,7 +654,7 @@ def test_synthesize_profile_missing_mcp_gets_ensure(
         encoding="utf-8",
     )
     lcs_config = {
-        "llama_stack": {"config": {"profile": str(profile)}},
+        "ogx": {"config": {"profile": str(profile)}},
     }
     result = synthesize_configuration(lcs_config)
     assert "tool_runtime" in result["apis"]
@@ -666,7 +666,7 @@ def test_synthesize_empty_profile_still_ensures_mcp(tmp_path: Path) -> None:
     profile = tmp_path / "empty-profile.yaml"
     profile.write_text("{}\n", encoding="utf-8")
     lcs_config = {
-        "llama_stack": {"config": {"profile": str(profile)}},
+        "ogx": {"config": {"profile": str(profile)}},
     }
     result = synthesize_configuration(lcs_config)
     assert "tool_runtime" in result["apis"]
@@ -676,7 +676,7 @@ def test_synthesize_empty_profile_still_ensures_mcp(tmp_path: Path) -> None:
 def test_synthesize_from_empty_baseline_only_native_override() -> None:
     """baseline: empty starts from {} so native_override is the whole output."""
     lcs = {
-        "llama_stack": {
+        "ogx": {
             "config": {
                 "baseline": "empty",
                 "native_override": {"version": 2, "apis": ["inference"]},
@@ -690,7 +690,7 @@ def test_synthesize_from_empty_baseline_only_native_override() -> None:
 def test_synthesize_from_default_baseline_applies_inference_and_override() -> None:
     """Default baseline + high-level inference + native_override compose (R1/R5)."""
     lcs = {
-        "llama_stack": {
+        "ogx": {
             "config": {
                 "baseline": "default",
                 "native_override": {"safety": {"default_shield_id": "custom"}},
@@ -717,7 +717,7 @@ def test_synthesize_vllm_appends_and_keeps_conditional_openai(
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     monkeypatch.setenv("VLLM_API_KEY", "vllm-test-key")
     lcs = {
-        "llama_stack": {"config": {"baseline": "default"}},
+        "ogx": {"config": {"baseline": "default"}},
         "inference": {
             "providers": [
                 {
@@ -756,8 +756,8 @@ def _byo_llm_deprecation_warnings(caplog: pytest.LogCaptureFixture) -> list[str]
 @pytest.mark.parametrize(
     "lcs",
     [
-        {"llama_stack": {"config": {"baseline": "default"}}},
-        {"llama_stack": {"config": {}}},
+        {"ogx": {"config": {"baseline": "default"}}},
+        {"ogx": {"config": {}}},
         {},
     ],
 )
@@ -781,7 +781,7 @@ def test_synthesize_default_path_keeps_conditional_openai(
 
 def test_synthesize_byo_llm_strips_openai(caplog: pytest.LogCaptureFixture) -> None:
     """byo-llm drops the OpenAI row, keeps the embedder, and does not warn."""
-    lcs = {"llama_stack": {"config": {"baseline": "byo-llm"}}}
+    lcs = {"ogx": {"config": {"baseline": "byo-llm"}}}
     with caplog.at_level(
         "WARNING", logger="lightspeed_stack.llama_stack_configuration"
     ):
@@ -796,7 +796,7 @@ def test_synthesize_byo_llm_strips_openai(caplog: pytest.LogCaptureFixture) -> N
 def test_synthesize_byo_llm_with_vllm_appends_without_openai() -> None:
     """byo-llm + high-level vLLM appends vLLM and does not restore OpenAI."""
     lcs = {
-        "llama_stack": {"config": {"baseline": "byo-llm"}},
+        "ogx": {"config": {"baseline": "byo-llm"}},
         "inference": {
             "providers": [
                 {
@@ -821,7 +821,7 @@ def test_synthesize_byo_llm_with_vllm_appends_without_openai() -> None:
 def test_synthesize_byo_llm_with_openai_appends_one_row() -> None:
     """byo-llm + high-level openai appends a single openai row."""
     lcs = {
-        "llama_stack": {"config": {"baseline": "byo-llm"}},
+        "ogx": {"config": {"baseline": "byo-llm"}},
         "inference": {
             "providers": [{"type": "openai", "api_key_env": "OPENAI_API_KEY"}]
         },
@@ -838,7 +838,7 @@ def test_synthesize_empty_baseline_does_not_strip_openai(
 ) -> None:
     """baseline: empty is unchanged: no OpenAI strip and no deprecation WARN."""
     lcs = {
-        "llama_stack": {
+        "ogx": {
             "config": {
                 "baseline": "empty",
                 "native_override": {"version": 2, "apis": ["inference"]},
@@ -873,7 +873,7 @@ def test_synthesize_profile_ignores_byo_llm(
     }
     (tmp_path / "my-profile.yaml").write_text(yaml.dump(profile), encoding="utf-8")
     lcs = {
-        "llama_stack": {
+        "ogx": {
             "config": {
                 "profile": "my-profile.yaml",
                 "baseline": "byo-llm",
@@ -895,14 +895,14 @@ def test_synthesize_loads_profile_relative_to_config_dir(tmp_path: Path) -> None
     """A relative profile: resolves against the config file's directory (R8)."""
     profile = {"version": 2, "apis": ["inference"], "marker": "from-profile"}
     (tmp_path / "my-profile.yaml").write_text(yaml.dump(profile), encoding="utf-8")
-    lcs = {"llama_stack": {"config": {"profile": "my-profile.yaml"}}}
+    lcs = {"ogx": {"config": {"profile": "my-profile.yaml"}}}
     result = synthesize_configuration(lcs, config_file_dir=str(tmp_path))
     assert result["marker"] == "from-profile"
 
 
 def test_synthesize_uses_provided_default_baseline() -> None:
     """An explicit default_baseline arg is used without touching the shipped one."""
-    lcs: dict[str, Any] = {"llama_stack": {"config": {"baseline": "default"}}}
+    lcs: dict[str, Any] = {"ogx": {"config": {"baseline": "default"}}}
     result = synthesize_configuration(lcs, default_baseline={"marker": "injected"})
     assert result["marker"] == "injected"
 
@@ -910,7 +910,7 @@ def test_synthesize_uses_provided_default_baseline() -> None:
 def test_synthesize_enriches_byok_rag_like_legacy() -> None:
     """BYOK RAG enrichment runs during synthesis for legacy parity (R7)."""
     lcs = {
-        "llama_stack": {"config": {"baseline": "empty"}},
+        "ogx": {"config": {"baseline": "empty"}},
         "rag": {
             "byok": {
                 "stores": [
@@ -933,7 +933,7 @@ def test_synthesize_enriches_byok_rag_like_legacy() -> None:
 def test_synthesize_includes_vector_store() -> None:
     """vector_store enrichment runs during unified synthesis."""
     lcs_config = {
-        "llama_stack": {
+        "ogx": {
             "use_as_library_client": True,
             "config": {"baseline": "default"},
         },
@@ -967,9 +967,7 @@ def test_synthesize_includes_vector_store() -> None:
 def test_synthesize_to_file_writes_mode_0600(tmp_path: Path) -> None:
     """The synthesized file is written owner-only (R10) and round-trips."""
     out = tmp_path / "nested" / "run.yaml"
-    lcs = {
-        "llama_stack": {"config": {"baseline": "empty", "native_override": {"v": 2}}}
-    }
+    lcs = {"ogx": {"config": {"baseline": "empty", "native_override": {"v": 2}}}}
     synthesize_to_file(lcs, str(out), str(tmp_path))
     assert out.exists()
     assert stat.S_IMODE(os.stat(out).st_mode) == 0o600
@@ -981,9 +979,7 @@ def test_synthesize_to_file_tightens_perms_on_overwrite(tmp_path: Path) -> None:
     out = tmp_path / "run.yaml"
     out.write_text("stale", encoding="utf-8")
     os.chmod(out, 0o644)
-    lcs = {
-        "llama_stack": {"config": {"baseline": "empty", "native_override": {"v": 3}}}
-    }
+    lcs = {"ogx": {"config": {"baseline": "empty", "native_override": {"v": 3}}}}
     synthesize_to_file(lcs, str(out), str(tmp_path))
     assert stat.S_IMODE(os.stat(out).st_mode) == 0o600
     assert yaml.safe_load(out.read_text(encoding="utf-8")) == {"v": 3}
@@ -1025,7 +1021,7 @@ def _write_legacy_pair(tmp_path: Path) -> tuple[str, str]:
     lcs = {
         "name": "LCS",
         "service": {"host": "localhost", "port": 8080},
-        "llama_stack": {
+        "ogx": {
             "use_as_library_client": True,
             "library_client_config_path": "run.yaml",
         },
@@ -1046,11 +1042,11 @@ def test_migrate_config_dumb_structure(tmp_path: Path) -> None:
     assert migrated["name"] == "LCS"
     assert migrated["service"] == {"host": "localhost", "port": 8080}
     # legacy path dropped; use_as_library_client preserved
-    assert "library_client_config_path" not in migrated["llama_stack"]
-    assert migrated["llama_stack"]["use_as_library_client"] is True
+    assert "library_client_config_path" not in migrated["ogx"]
+    assert migrated["ogx"]["use_as_library_client"] is True
     # whole run.yaml lifted into native_override with an empty baseline
-    assert migrated["llama_stack"]["config"]["baseline"] == "empty"
-    assert migrated["llama_stack"]["config"]["native_override"] == _LEGACY_RUN_YAML
+    assert migrated["ogx"]["config"]["baseline"] == "empty"
+    assert migrated["ogx"]["config"]["native_override"] == _LEGACY_RUN_YAML
 
 
 def test_migrate_then_synthesize_reproduces_run_yaml(tmp_path: Path) -> None:
@@ -1105,7 +1101,7 @@ def test_reference_profiles_exist() -> None:
 @pytest.mark.parametrize("profile_path", REFERENCE_PROFILES, ids=lambda p: p.name)
 def test_reference_profile_loads_via_synthesizer(profile_path: Path) -> None:
     """Every examples/profiles/*.yaml loads cleanly as a synthesis baseline."""
-    lcs = {"llama_stack": {"config": {"profile": profile_path.name}}}
+    lcs = {"ogx": {"config": {"profile": profile_path.name}}}
     result = synthesize_configuration(lcs, config_file_dir=str(profile_path.parent))
     # The profile drives the baseline: run.yaml-shaped keys survive synthesis.
     assert result["version"] == 2
@@ -1120,16 +1116,14 @@ def test_reference_profile_loads_via_synthesizer(profile_path: Path) -> None:
 
 def test_has_synthesis_input_detection() -> None:
     """The raw-dict detection mirrors the root-model synthesis-input check."""
-    assert has_synthesis_input({"llama_stack": {"config": {"baseline": "default"}}})
+    assert has_synthesis_input({"ogx": {"config": {"baseline": "default"}}})
     assert has_synthesis_input({"inference": {"providers": [{"type": "openai"}]}})
     assert has_synthesis_input({"vector_store": {"providers": [{"id": "nb"}]}})
     assert not has_synthesis_input({})
-    assert not has_synthesis_input(
-        {"llama_stack": {"library_client_config_path": "run.yaml"}}
-    )
+    assert not has_synthesis_input({"ogx": {"library_client_config_path": "run.yaml"}})
     # empty provider lists and null sections are not synthesis inputs
     assert not has_synthesis_input({"inference": {"providers": []}})
-    assert not has_synthesis_input({"inference": None, "llama_stack": None})
+    assert not has_synthesis_input({"inference": None, "ogx": None})
 
 
 def _run_main(monkeypatch: pytest.MonkeyPatch, argv: list[str]) -> None:
@@ -1148,7 +1142,7 @@ def test_main_unified_config_synthesizes_without_input_file(
     to exist.
     """
     lcs = {
-        "llama_stack": {
+        "ogx": {
             "config": {
                 "baseline": "empty",
                 "native_override": {"version": 2, "marker": "synthesized"},
@@ -1185,7 +1179,7 @@ def test_main_unified_config_resolves_relative_profile(
     """A relative profile: in the config resolves against the config's dir (R8)."""
     profile = {"version": 2, "apis": ["inference"], "marker": "from-profile"}
     (tmp_path / "my-profile.yaml").write_text(yaml.dump(profile), encoding="utf-8")
-    lcs = {"llama_stack": {"config": {"profile": "my-profile.yaml"}}}
+    lcs = {"ogx": {"config": {"profile": "my-profile.yaml"}}}
     cfg_path = tmp_path / "lightspeed-stack.yaml"
     cfg_path.write_text(yaml.dump(lcs), encoding="utf-8")
     out_path = tmp_path / "generated-run.yaml"
@@ -1205,7 +1199,7 @@ def test_main_legacy_config_enriches_input_file(
     run_path = tmp_path / "run.yaml"
     run_path.write_text(yaml.dump(run_yaml), encoding="utf-8")
     lcs = {
-        "llama_stack": {"library_client_config_path": str(run_path)},
+        "ogx": {"library_client_config_path": str(run_path)},
         "rag": {
             "byok": {
                 "stores": [

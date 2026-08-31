@@ -436,9 +436,9 @@ class TestBuildLightspeedStackSnapshot:
         assert snapshot["service"]["tls_config"]["tls_key_path"] == CONFIGURED
         assert snapshot["service"]["tls_config"]["tls_key_password"] == CONFIGURED
         assert snapshot["service"]["cors"]["allow_origins"] == CONFIGURED
-        assert snapshot["llama_stack"]["url"] == CONFIGURED
-        assert snapshot["llama_stack"]["api_key"] == CONFIGURED
-        assert snapshot["llama_stack"]["library_client_config_path"] == CONFIGURED
+        assert snapshot["ogx"]["url"] == CONFIGURED
+        assert snapshot["ogx"]["api_key"] == CONFIGURED
+        assert snapshot["ogx"]["library_client_config_path"] == CONFIGURED
         assert snapshot["authentication"]["k8s_cluster_api"] == CONFIGURED
         assert snapshot["authentication"]["k8s_ca_cert_path"] == CONFIGURED
         assert snapshot["authentication"]["jwk_config"]["url"] == CONFIGURED
@@ -464,7 +464,7 @@ class TestBuildLightspeedStackSnapshot:
         assert snapshot["service"]["access_log"] is False
         assert snapshot["service"]["cors"]["allow_credentials"] is True
         assert snapshot["service"]["cors"]["allow_methods"] == ["GET", "POST"]
-        assert snapshot["llama_stack"]["use_as_library_client"] is False
+        assert snapshot["ogx"]["use_as_library_client"] is False
         assert snapshot["inference"]["default_model"] == "gpt-4o-mini"
         assert snapshot["inference"]["default_provider"] == "openai"
         assert snapshot["authentication"]["module"] == "jwk_token"
@@ -477,8 +477,8 @@ class TestBuildLightspeedStackSnapshot:
             snapshot["service"]["tls_config"]["tls_certificate_path"] == NOT_CONFIGURED
         )
         assert snapshot["service"]["tls_config"]["tls_key_path"] == NOT_CONFIGURED
-        assert snapshot["llama_stack"]["url"] == NOT_CONFIGURED
-        assert snapshot["llama_stack"]["api_key"] == NOT_CONFIGURED
+        assert snapshot["ogx"]["url"] == NOT_CONFIGURED
+        assert snapshot["ogx"]["api_key"] == NOT_CONFIGURED
         assert snapshot["authentication"]["jwk_config"]["url"] == NOT_CONFIGURED
         assert snapshot["customization"]["system_prompt"] == NOT_CONFIGURED
         assert snapshot["database"]["postgres"]["host"] == NOT_CONFIGURED
@@ -556,44 +556,44 @@ class TestBuildLightspeedStackSnapshot:
     def test_llama_stack_timeout_passthrough(self) -> None:
         """Test llama_stack timeout passes through."""
         snapshot = build_lightspeed_stack_snapshot(build_fully_populated_config())
-        assert snapshot["llama_stack"]["timeout"] == 180
+        assert snapshot["ogx"]["timeout"] == 180
 
     def test_llama_stack_max_retries_passthrough(self) -> None:
         """Test llama_stack max_retries passes through."""
         snapshot = build_lightspeed_stack_snapshot(build_fully_populated_config())
-        assert snapshot["llama_stack"]["max_retries"] == 5
+        assert snapshot["ogx"]["max_retries"] == 5
 
     def test_llama_stack_retry_delay_passthrough(self) -> None:
         """Test llama_stack retry_delay passes through."""
         snapshot = build_lightspeed_stack_snapshot(build_fully_populated_config())
-        assert snapshot["llama_stack"]["retry_delay"] == 2
+        assert snapshot["ogx"]["retry_delay"] == 2
 
     def test_llama_stack_allow_degraded_mode_passthrough(self) -> None:
         """Test llama_stack allow_degraded_mode passes through."""
         snapshot = build_lightspeed_stack_snapshot(build_fully_populated_config())
-        assert snapshot["llama_stack"]["allow_degraded_mode"] is True
+        assert snapshot["ogx"]["allow_degraded_mode"] is True
 
     def test_llama_stack_config_baseline_passthrough(self) -> None:
         """Test llama_stack config baseline passes through."""
         snapshot = build_lightspeed_stack_snapshot(build_fully_populated_config())
-        assert snapshot["llama_stack"]["config"]["baseline"] == "default"
+        assert snapshot["ogx"]["config"]["baseline"] == "default"
 
     def test_llama_stack_config_profile_masked(self) -> None:
         """Test llama_stack config profile is masked as sensitive."""
         snapshot = build_lightspeed_stack_snapshot(build_fully_populated_config())
-        assert snapshot["llama_stack"]["config"]["profile"] == CONFIGURED
+        assert snapshot["ogx"]["config"]["profile"] == CONFIGURED
 
     def test_llama_stack_config_native_override_masked(self) -> None:
         """Test llama_stack config native_override is masked as sensitive."""
         snapshot = build_lightspeed_stack_snapshot(build_fully_populated_config())
-        assert snapshot["llama_stack"]["config"]["native_override"] == CONFIGURED
+        assert snapshot["ogx"]["config"]["native_override"] == CONFIGURED
 
     def test_llama_stack_config_none(self) -> None:
         """Test llama_stack config fields when config is None."""
         snapshot = build_lightspeed_stack_snapshot(build_minimal_config())
-        assert snapshot["llama_stack"]["config"]["baseline"] is None
-        assert snapshot["llama_stack"]["config"]["profile"] == NOT_CONFIGURED
-        assert snapshot["llama_stack"]["config"]["native_override"] == NOT_CONFIGURED
+        assert snapshot["ogx"]["config"]["baseline"] is None
+        assert snapshot["ogx"]["config"]["profile"] == NOT_CONFIGURED
+        assert snapshot["ogx"]["config"]["native_override"] == NOT_CONFIGURED
 
     def test_inference_context_windows_passthrough(self) -> None:
         """Test inference context_windows passes through."""
@@ -1161,8 +1161,8 @@ class TestBuildConfigurationSnapshot:
         """Test that snapshot contains both lightspeed_stack and llama_stack."""
         result = await build_configuration_snapshot(build_minimal_config(), None)
         assert "lightspeed_stack" in result
-        assert "llama_stack" in result
-        assert result["llama_stack"] == {"status": NOT_AVAILABLE}
+        assert "ogx" in result
+        assert result["ogx"] == {"status": NOT_AVAILABLE}
         assert result["lightspeed_stack"]["name"] == "minimal"
 
     @pytest.mark.asyncio
@@ -1172,7 +1172,7 @@ class TestBuildConfigurationSnapshot:
             build_minimal_config(), llama_stack_config_file
         )
         assert result["lightspeed_stack"]["name"] == "minimal"
-        assert result["llama_stack"]["version"] == 2
+        assert result["ogx"]["version"] == 2
 
 
 # =============================================================================

@@ -94,7 +94,7 @@ class "Configuration" as src.models.config.Configuration {
   database
   deployment_environment : str
   inference
-  llama_stack
+  ogx
   mcp_servers : list[ModelContextProtocolServer]
   name : str
   okp
@@ -106,6 +106,7 @@ class "Configuration" as src.models.config.Configuration {
   skills : Optional[SkillsConfiguration]
   splunk : Optional[SplunkConfiguration]
   user_data_collection
+  accept_llama_stack_section_alias(data: Any) -> Any
   check_unified_vs_legacy() -> Self
   dump(filename: str | Path) -> None
   validate_mcp_auth_headers() -> Self
@@ -370,7 +371,7 @@ src.models.config.DatabaseConfiguration --* src.models.config.Configuration : da
 src.models.config.InferenceConfiguration --* src.models.config.Configuration : inference
 src.models.config.JsonPathOperator --* src.models.config.JwtRoleRule : operator
 src.models.config.JwtConfiguration --* src.models.config.JwkConfiguration : jwt_configuration
-src.models.config.LlamaStackConfiguration --* src.models.config.Configuration : llama_stack
+src.models.config.LlamaStackConfiguration --* src.models.config.Configuration : ogx
 src.models.config.OkpConfiguration --* src.models.config.Configuration : okp
 src.models.config.QuotaHandlersConfiguration --* src.models.config.Configuration : quota_handlers
 src.models.config.QuotaSchedulerConfiguration --* src.models.config.QuotaHandlersConfiguration : scheduler

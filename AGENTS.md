@@ -420,7 +420,7 @@ Allowed prefixes: `LCORE-`, `RSPEED-`, `MGTM-`, `OLS-`, `RHIDP-`, `LEADS-`, `CWF
 - ❌ `feat(observability): add user_agent to ResponsesEventData`
 
 ## Development Workflow
-1. Use `uv sync --group dev --group llslibdev` for dependencies
+1. Use `uv sync --group dev --group ogxlibdev` for dependencies
 2. Always use `uv run` prefix for commands
 3. **ALWAYS** check `pyproject.toml` for existing dependencies and versions before adding new ones
 4. Follow existing code patterns in the module you're modifying

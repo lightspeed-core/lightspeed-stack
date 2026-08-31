@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Optional, cast
+from typing import Optional
 
 from fastapi import HTTPException
 from ogx_client import APIConnectionError, APIStatusError, AsyncOgxClient
@@ -35,6 +35,10 @@ from utils.agents.tool_processor import (
     process_function_tool_result,
     process_native_tool_call,
     process_native_tool_result,
+)
+from utils.conversation_compaction import (
+    agent_prompt_text,
+    reject_image_attachments_in_compacted_mode,
 )
 from utils.conversations import append_turn_items_to_conversation
 from utils.otel_tracing import (
@@ -276,12 +280,13 @@ async def retrieve_agent_response(
         )
 
         if moderation_result.decision == "blocked":
-            await append_turn_items_to_conversation(
-                client,
-                responses_params.conversation,
-                responses_params.input,
-                [moderation_result.refusal_response],
-            )
+            if not responses_params.omit_conversation:
+                await append_turn_items_to_conversation(
+                    client,
+                    responses_params.conversation,
+                    responses_params.input,
+                    [moderation_result.refusal_response],
+                )
             return TurnSummary(
                 id=moderation_result.moderation_id,
                 llm_response=moderation_result.message,
@@ -299,13 +304,16 @@ async def retrieve_agent_response(
                 no_tools=no_tools,
             )
             logger.debug("Starting agent non-streaming response processing")
+            reject_image_attachments_in_compacted_mode(
+                responses_params, image_attachments
+            )
             if image_attachments:
                 prompt = build_multimodal_input(
-                    cast(str, responses_params.input),
+                    agent_prompt_text(responses_params),
                     image_attachments,
                 )
             else:
-                prompt = cast(str, responses_params.input)
+                prompt = agent_prompt_text(responses_params)
             run_result = await agent.run(prompt)
         except (
             AgentRunError,

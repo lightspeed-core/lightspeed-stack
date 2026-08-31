@@ -10,7 +10,7 @@ from authentication import get_auth_dependency
 from authentication.interface import AuthTuple
 from authorization.azure_token_manager import AzureEntraIDManager
 from authorization.middleware import authorize
-from client import AsyncOgxClientHolder
+from client.ogx import AsyncOgxClientHolder
 from configuration import configuration
 from constants import ENDPOINT_PATH_QUERY, IMAGE_CONTENT_TYPES
 from log import get_logger

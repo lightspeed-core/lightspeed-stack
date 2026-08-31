@@ -11,7 +11,7 @@ service:
   workers: 1
   color_log: true
   access_log: true
-llama_stack:
+ogx:
   use_as_library_client: true
   # Unified mode: run.yaml (materialized per provider by CI/the harness)
   # is consumed as the synthesis profile instead of the legacy two-file path.

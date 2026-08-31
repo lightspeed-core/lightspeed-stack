@@ -103,7 +103,7 @@ def _minimal_configuration_kwargs() -> dict:
     return {
         "name": "test",
         "service": ServiceConfiguration(),
-        "llama_stack": OgxConfiguration(
+        "ogx": OgxConfiguration(
             use_as_library_client=True,
             library_client_config_path="tests/configuration/run.yaml",
         ),

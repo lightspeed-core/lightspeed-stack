@@ -1,5 +1,6 @@
 """Error mapping for agent inference failures to structured API error responses."""
 
+from fastapi import status
 from ogx_client import APIConnectionError, APIStatusError
 from pydantic_ai.exceptions import (
     AgentRunError,
@@ -51,18 +52,35 @@ def map_agent_inference_error(
     """
     match exc:
         case AgentRunError() as agent_exc:
-            return map_pydantic_agent_run_error(agent_exc, model_id)
+            response = map_pydantic_agent_run_error(agent_exc, model_id)
         case APIStatusError() as status_exc:
-            return handle_known_apistatus_errors(status_exc, model_id)
+            response = handle_known_apistatus_errors(status_exc, model_id)
         case APIConnectionError() as connection_exc:
-            return ServiceUnavailableResponse(
+            response = ServiceUnavailableResponse(
                 backend_name="OGX",
                 cause=str(connection_exc),
             )
         case RuntimeError() as runtime_exc if is_context_length_error(str(runtime_exc)):
-            return PromptTooLongResponse(model=model_id)
+            response = PromptTooLongResponse(model=model_id)
         case _:
-            return InternalServerErrorResponse.generic()
+            response = InternalServerErrorResponse.generic()
+
+    # The mapped HTTPException loses the original exception, and callers raise
+    # it without logging — log here so failures are diagnosable (LCORE-3582).
+    # Only unclassified failures are genuine service faults worth a traceback:
+    # a mapped 4xx is caller-caused (413 over-long prompt, 429 rate limit) and
+    # a 503 is an upstream outage, so logging those at error level with a stack
+    # trace would bury the 500s this logging exists to surface.
+    status_code = getattr(response, "status_code", None)
+    caller_or_upstream = isinstance(status_code, int) and (
+        status_code < status.HTTP_500_INTERNAL_SERVER_ERROR
+        or status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+    )
+    if caller_or_upstream:
+        logger.warning("Agent inference returned %s: %s", status_code, exc)
+    else:
+        logger.error("Agent inference failed: %s", exc, exc_info=exc)
+    return response
 
 
 def map_pydantic_agent_run_error(  # pylint: disable=too-many-return-statements

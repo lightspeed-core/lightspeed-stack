@@ -171,7 +171,7 @@ test-e2e-local: ## Run end to end tests for the service (no script wrapper)
 
 # Tag-based subsets (@cfg_* on features/scenarios). Default runs all config groups; override for one shard, e.g.
 #   E2E_BEHAVE_TAG_EXPR='not @skip and @cfg_authorized' make test-e2e-tagged-local
-E2E_BEHAVE_TAG_EXPR ?= not @skip and (@cfg_default or @cfg_authorized or @cfg_mcp or @cfg_mcp_invalid or @cfg_mcp_api_auth or @cfg_rbac or @cfg_rh_identity or @cfg_negative or @cfg_skills or @cfg_skills_directory or @cfg_byok_pdf or @cfg_tls or @cfg_degraded or @cfg_unified or @cfg_okp)
+E2E_BEHAVE_TAG_EXPR ?= not @skip and (@cfg_default or @cfg_authorized or @cfg_mcp or @cfg_mcp_invalid or @cfg_mcp_api_auth or @cfg_rbac or @cfg_rh_identity or @cfg_negative or @cfg_skills or @cfg_skills_directory or @cfg_shields or @cfg_byok_pdf or @cfg_tls or @cfg_degraded or @cfg_unified or @cfg_okp)
 
 test-e2e-tagged: ## Run e2e tests with E2E_BEHAVE_TAG_EXPR (default: all @cfg_*)
 	script -q -e -c "uv run behave --color --format pretty --tags=\"$(E2E_BEHAVE_TAG_EXPR)\" -D dump_errors=true @tests/e2e/test_list.txt"

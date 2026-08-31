@@ -13,7 +13,7 @@ export NAMESPACE
 MODEL_NAME="meta-llama/Llama-3.1-8B-Instruct"
 PIPELINE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# RHOAI OGX image (unused when building from source via llama-stack-openai.yaml)
+# RHOAI OGX image (unused when building from source via ogx-openai.yaml)
 # LLAMA_STACK_IMAGE="${LLAMA_STACK_IMAGE:-quay.io/rhoai/odh-llama-stack-core-rhel9:rhoai-3.4-ea.2}"
 # echo "Using OGX image: $LLAMA_STACK_IMAGE"
 # export LLAMA_STACK_IMAGE

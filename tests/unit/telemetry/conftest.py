@@ -336,7 +336,7 @@ def build_fully_populated_config() -> Configuration:
                 allow_headers=["Authorization", "Content-Type"],
             ),
         ),
-        llama_stack=OgxConfiguration.model_construct(
+        ogx=OgxConfiguration.model_construct(
             url=PII_LLAMA_URL,
             api_key=SecretStr(PII_API_KEY),
             use_as_library_client=False,
@@ -685,7 +685,7 @@ def build_minimal_config() -> Configuration:
                 allow_headers=["*"],
             ),
         ),
-        llama_stack=OgxConfiguration.model_construct(
+        ogx=OgxConfiguration.model_construct(
             url=None,
             api_key=None,
             use_as_library_client=True,

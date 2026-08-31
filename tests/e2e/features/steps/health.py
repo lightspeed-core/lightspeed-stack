@@ -57,7 +57,7 @@ def llama_stack_connection_broken(context: Context) -> None:
 
     Checks whether the Docker container named "llama-stack" is running; if it
     is, stops the container, waits briefly for the disruption to take effect,
-    and sets `context.llama_stack_was_running` to True so callers can restore
+    and sets `context.ogx_was_running` to True so callers can restore
     state later. If the container is not running, the flag remains False. On
     failure to run Docker commands, prints a warning message describing the
     error.
@@ -75,14 +75,14 @@ def llama_stack_connection_broken(context: Context) -> None:
     # Store original state for restoration (only on the real disruption path).
     # Write to both context (backward compat) and module-level dict (survives
     # Behave's per-scenario context clearing).
-    context.llama_stack_was_running = False
+    context.ogx_was_running = False
     _llama_stack_was_running["value"] = False
 
     if is_prow_environment():
         from tests.e2e.utils.prow_utils import disrupt_llama_stack_pod
 
         was_running = disrupt_llama_stack_pod()
-        context.llama_stack_was_running = was_running
+        context.ogx_was_running = was_running
         _llama_stack_was_running["value"] = was_running
         _llama_stack_disrupt_once["applied"] = True
         _force_lightspeed_restart_after_llama_disrupt(context)
@@ -98,7 +98,7 @@ def llama_stack_connection_broken(context: Context) -> None:
         )
 
         if result.stdout.strip():
-            context.llama_stack_was_running = True
+            context.ogx_was_running = True
             _llama_stack_was_running["value"] = True
             subprocess.run(
                 ["docker", "stop", "llama-stack"], check=True, capture_output=True

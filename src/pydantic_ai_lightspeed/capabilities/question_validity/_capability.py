@@ -29,7 +29,7 @@ from pydantic_ai.messages import (
 from pydantic_ai.models import Model
 from pydantic_ai.models.openai import OpenAIResponsesModelSettings
 
-from client import AsyncOgxClientHolder
+from client.ogx import AsyncOgxClientHolder
 from log import get_logger
 from models.common.moderation import (
     ShieldModerationBlocked,

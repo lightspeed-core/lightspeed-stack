@@ -34,6 +34,27 @@ from log import get_logger
 
 logger = get_logger(__name__)
 
+
+def ogx_config_section(lcs_config: dict[str, Any]) -> dict[str, Any]:
+    """Return the OGX section from a raw lightspeed-stack.yaml dict.
+
+    Accepts the canonical ``ogx`` key and the deprecated ``llama_stack`` alias.
+
+    Parameters:
+        lcs_config: Parsed lightspeed-stack.yaml contents.
+
+    Returns:
+        The OGX configuration mapping, or an empty dict when absent.
+    """
+    ogx = lcs_config.get("ogx")
+    if isinstance(ogx, dict):
+        return ogx
+    llama_stack = lcs_config.get("llama_stack")
+    if isinstance(llama_stack, dict):
+        return llama_stack
+    return {}
+
+
 # Maps a UnifiedInferenceProvider.type (canonical, backend-agnostic vocabulary)
 # to the OGX provider_type emitted by apply_high_level_inference. The
 # completeness of this map against UnifiedInferenceProvider.type is asserted by
@@ -1228,7 +1249,7 @@ def synthesize_configuration(  # pylint: disable=too-many-locals
     Returns:
         dict[str, Any]: The synthesized OGX configuration.
     """
-    unified = (lcs_config.get("llama_stack") or {}).get("config")
+    unified = ogx_config_section(lcs_config).get("config")
 
     # 1-2. Select the baseline.
     baseline_was_empty = False
@@ -1266,7 +1287,7 @@ def synthesize_configuration(  # pylint: disable=too-many-locals
         else:
             logger.warning(
                 "DEPRECATED: the built-in OpenAI inference provider in "
-                "llama_stack.config.baseline 'default' is deprecated and will "
+                "ogx.config.baseline 'default' is deprecated and will "
                 "be removed in release 0.8. Set baseline to 'byo-llm' and "
                 "declare your LLM providers under inference.providers: "
                 "https://lightspeed-core.github.io/lightspeed-stack/design"
@@ -1372,7 +1393,7 @@ def migrate_config_dumb(
     """Migrate a legacy two-file config to a unified single file (dumb mode).
 
     "Dumb" lift-and-shift: the operator's ``lightspeed-stack.yaml`` is kept
-    verbatim except for its ``llama_stack`` section, where
+    verbatim except for its ``ogx`` section, where
     ``library_client_config_path`` is dropped and replaced by a unified
     ``config`` block that lifts the *entire* legacy ``run.yaml`` body into
     ``native_override`` with ``baseline: empty``. Synthesizing the result then
@@ -1414,15 +1435,15 @@ def migrate_config_dumb(
     if not isinstance(run_yaml, dict):
         raise ValueError(f"{run_yaml_path} did not parse to a mapping; cannot migrate.")
 
-    # Preserve the whole lightspeed-stack.yaml; only rewrite the llama_stack
-    # section: drop the legacy path, add the unified config block.
-    llama_stack = dict(lcs_config.get("llama_stack") or {})
-    llama_stack.pop("library_client_config_path", None)
-    llama_stack["config"] = {
+    # Preserve the whole lightspeed-stack.yaml; only rewrite the ogx section.
+    ogx_section = dict(ogx_config_section(lcs_config))
+    ogx_section.pop("library_client_config_path", None)
+    ogx_section["config"] = {
         "baseline": "empty",
         "native_override": run_yaml,
     }
-    lcs_config["llama_stack"] = llama_stack
+    lcs_config.pop("llama_stack", None)
+    lcs_config["ogx"] = ogx_section
 
     logger.info(
         "Migrating legacy config (%s + %s) to unified %s",
@@ -1499,7 +1520,7 @@ def has_synthesis_input(lcs_config: dict[str, Any]) -> bool:
     Mirrors the unified-vs-legacy detection of the root ``Configuration``
     model (``check_unified_vs_legacy``) for callers that work with the raw
     YAML dict, such as the CLI: a non-empty top-level ``inference.providers``,
-    a non-empty ``vector_store.providers``, or a ``llama_stack.config`` block
+    a non-empty ``vector_store.providers``, or an ``ogx.config`` block
     signal unified mode (R11).
 
     Parameters:
@@ -1510,11 +1531,11 @@ def has_synthesis_input(lcs_config: dict[str, Any]) -> bool:
     """
     inference = lcs_config.get("inference") or {}
     vector_store = lcs_config.get("vector_store") or {}
-    llama_stack = lcs_config.get("llama_stack") or {}
+    ogx_section = ogx_config_section(lcs_config)
     return (
         bool(inference.get("providers"))
         or bool(vector_store.get("providers"))
-        or llama_stack.get("config") is not None
+        or ogx_section.get("config") is not None
     )
 
 

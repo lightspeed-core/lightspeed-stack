@@ -32,7 +32,7 @@ from tests.e2e.features.steps.tls import (
     prepare_tls_feature_entry_on_prow,
     reset_tls_prow_state,
 )
-from tests.e2e.utils.llama_stack_utils import register_shield
+from tests.e2e.utils.ogx_utils import register_shield
 from tests.e2e.utils.prow_utils import (
     restart_pod,
     restore_llama_stack_pod,
@@ -159,7 +159,7 @@ def _ensure_prow_port_forward(context: Context) -> None:
     restart-port-forward to re-establish the tunnel before the scenario runs.
 
     Treat HTTP 503 like 200/401 here: it means the tunnel reached Lightspeed and the
-    app responded. ``llama_stack_disrupted`` leaves Llama stopped on purpose; readiness
+    app responded. ``ogx_disrupted`` leaves Llama stopped on purpose; readiness
     then returns 503. Previously we treated 503 as a dead tunnel and ran
     ``restart-lightspeed``, which restores Llama via e2e-ops and breaks later scenarios
     that skip disruption (once-per-feature) while expecting Llama to stay down.
@@ -584,7 +584,7 @@ def after_feature(context: Context, feature: Feature) -> None:
     """
     # Restore OGX FIRST (before any lightspeed-stack restart).
     # Read from module-level state — Behave clears custom context attributes
-    # between scenarios, so context.llama_stack_was_running is unreliable here.
+    # between scenarios, so context.ogx_was_running is unreliable here.
     if get_llama_stack_was_running():
         _restore_llama_stack()
         reset_llama_stack_was_running()

@@ -273,7 +273,7 @@ def minimal_config_fixture() -> AppConfig:
         {
             "name": "test",
             "service": {"host": "localhost", "port": 8080},
-            "llama_stack": {
+            "ogx": {
                 "api_key": "test-key",
                 "url": "http://test.com:1234",
                 "use_as_library_client": False,
@@ -1754,7 +1754,7 @@ class TestResponsesInstructionResolution:
             {
                 "name": "test",
                 "service": {"host": "localhost", "port": 8080},
-                "llama_stack": {
+                "ogx": {
                     "api_key": "test-key",
                     "url": "http://test.com:1234",
                     "use_as_library_client": False,
@@ -1817,7 +1817,7 @@ class TestResponsesInstructionResolution:
             {
                 "name": "test",
                 "service": {"host": "localhost", "port": 8080},
-                "llama_stack": {
+                "ogx": {
                     "api_key": "test-key",
                     "url": "http://test.com:1234",
                     "use_as_library_client": False,

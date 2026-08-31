@@ -8,7 +8,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 import constants
 from app.database import get_session
-from client import AsyncOgxClientHolder
+from client.ogx import AsyncOgxClientHolder
 from configuration import AppConfig, LogicError
 from log import get_logger
 from models.api.responses.error import (

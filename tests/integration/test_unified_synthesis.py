@@ -219,7 +219,7 @@ def test_synthesis_parity_with_legacy_enrichment(
 
     run_path = tmp_path / "run.yaml"  # written by _legacy_enriched
     unified_cfg: dict[str, Any] = {
-        "llama_stack": {
+        "ogx": {
             "use_as_library_client": True,
             "config": {"profile": str(run_path)},
         },
@@ -240,7 +240,7 @@ def test_synthesis_parity_holds_through_real_config_load(tmp_path: Path) -> None
     legacy = _legacy_enriched(tmp_path, _BYOK_INPUTS)
 
     lcs_dict = _base_config_dict()
-    lcs_dict["llama_stack"] = {
+    lcs_dict["ogx"] = {
         "use_as_library_client": True,
         "config": {"profile": "run.yaml"},  # relative to the config file dir
     }
@@ -258,7 +258,7 @@ def test_synthesis_parity_holds_through_real_config_load(tmp_path: Path) -> None
 def test_default_baseline_through_real_load(tmp_path: Path) -> None:
     """baseline: default synthesizes from the shipped src/data/default_run.yaml."""
     lcs_dict = _base_config_dict()
-    lcs_dict["llama_stack"] = {
+    lcs_dict["ogx"] = {
         "use_as_library_client": True,
         "config": {"baseline": "default"},
     }
@@ -274,7 +274,7 @@ def test_default_baseline_through_real_load(tmp_path: Path) -> None:
 def test_byo_llm_baseline_through_real_load(tmp_path: Path) -> None:
     """baseline: byo-llm synthesizes from default_run.yaml without the OpenAI row."""
     lcs_dict = _base_config_dict()
-    lcs_dict["llama_stack"] = {
+    lcs_dict["ogx"] = {
         "use_as_library_client": True,
         "config": {"baseline": "byo-llm"},
     }
@@ -305,7 +305,7 @@ def test_empty_baseline_with_native_override_through_real_load(
 ) -> None:
     """baseline: empty + native_override reproduces the override exactly (T7)."""
     lcs_dict = _base_config_dict()
-    lcs_dict["llama_stack"] = {
+    lcs_dict["ogx"] = {
         "use_as_library_client": True,
         "config": {
             "baseline": "empty",
@@ -329,7 +329,7 @@ def test_profile_baseline_through_real_load_gets_mcp_ensured(
     _write_yaml(tmp_path / "my-profile.yaml", profile)
 
     lcs_dict = _base_config_dict()
-    lcs_dict["llama_stack"] = {
+    lcs_dict["ogx"] = {
         "use_as_library_client": True,
         "config": {"profile": "my-profile.yaml"},
     }
@@ -362,7 +362,7 @@ def test_native_override_deep_merge_through_real_load(tmp_path: Path) -> None:
     _write_yaml(tmp_path / "my-profile.yaml", profile)
 
     lcs_dict = _base_config_dict()
-    lcs_dict["llama_stack"] = {
+    lcs_dict["ogx"] = {
         "use_as_library_client": True,
         "config": {
             "profile": "my-profile.yaml",
@@ -395,7 +395,7 @@ def test_native_override_deep_merge_through_real_load(tmp_path: Path) -> None:
 def test_synthesized_file_written_owner_only(tmp_path: Path) -> None:
     """The synthesized run.yaml lands on disk with mode 0600 (R10)."""
     lcs_dict = _base_config_dict()
-    lcs_dict["llama_stack"] = {
+    lcs_dict["ogx"] = {
         "use_as_library_client": True,
         "config": {"baseline": "empty", "native_override": {"version": 2}},
     }
@@ -418,7 +418,7 @@ def _migrate_then_synthesize(
     """
     run_path = _write_yaml(tmp_path / "run.yaml", run_yaml)
     lcs_dict = _base_config_dict()
-    lcs_dict["llama_stack"] = {
+    lcs_dict["ogx"] = {
         "use_as_library_client": True,
         "library_client_config_path": str(run_path),
     }
@@ -473,7 +473,7 @@ def test_load_rejects_config_block_and_legacy_path_together(
 ) -> None:
     """A llama_stack.config block plus a legacy path fails the real load (R3)."""
     lcs_dict = _base_config_dict()
-    lcs_dict["llama_stack"] = {
+    lcs_dict["ogx"] = {
         "use_as_library_client": True,
         "library_client_config_path": "tests/configuration/run.yaml",
         "config": {"baseline": "default"},
@@ -488,7 +488,7 @@ def test_load_rejects_inference_providers_and_legacy_path_together(
 ) -> None:
     """Top-level inference.providers plus a legacy path fails the real load."""
     lcs_dict = _base_config_dict()
-    lcs_dict["llama_stack"] = {
+    lcs_dict["ogx"] = {
         "use_as_library_client": True,
         "library_client_config_path": "tests/configuration/run.yaml",
     }
@@ -503,7 +503,7 @@ def test_load_rejects_inference_providers_and_legacy_path_together(
 def test_load_rejects_library_mode_without_run_source(tmp_path: Path) -> None:
     """Library mode with neither synthesis input nor legacy path fails."""
     lcs_dict = _base_config_dict()
-    lcs_dict["llama_stack"] = {"use_as_library_client": True}
+    lcs_dict["ogx"] = {"use_as_library_client": True}
     cfg_path = _write_yaml(tmp_path / "lightspeed-stack.yaml", lcs_dict)
     with pytest.raises(ValidationError, match="requires a run-configuration source"):
         configuration.load_configuration(str(cfg_path))
@@ -512,7 +512,7 @@ def test_load_rejects_library_mode_without_run_source(tmp_path: Path) -> None:
 def test_load_accepts_minimal_unified_config(tmp_path: Path) -> None:
     """A minimal unified config (inference.providers only) loads cleanly."""
     lcs_dict = _base_config_dict()
-    lcs_dict["llama_stack"] = {"use_as_library_client": True}
+    lcs_dict["ogx"] = {"use_as_library_client": True}
     lcs_dict["inference"] = {
         "providers": [{"type": "openai", "api_key_env": "OPENAI_API_KEY"}]
     }
@@ -520,5 +520,5 @@ def test_load_accepts_minimal_unified_config(tmp_path: Path) -> None:
     configuration.load_configuration(str(cfg_path))
 
     loaded = configuration.configuration
-    assert loaded.llama_stack.config is None
+    assert loaded.ogx.config is None
     assert loaded.inference.providers[0].type == "openai"

@@ -238,7 +238,7 @@ def test_unified_config_accepts_byo_llm_baseline() -> None:
 def test_root_rejects_config_and_legacy_path_together() -> None:
     """A llama_stack.config block and a legacy path in one file fail at load (R3)."""
     config_dict = _base_config_dict()
-    config_dict["llama_stack"] = {
+    config_dict["ogx"] = {
         "use_as_library_client": True,
         "library_client_config_path": "tests/configuration/run.yaml",
         "config": {"baseline": "default"},
@@ -250,7 +250,7 @@ def test_root_rejects_config_and_legacy_path_together() -> None:
 def test_root_rejects_inference_providers_and_legacy_path_together() -> None:
     """Top-level inference.providers plus a legacy path fail at load (R3)."""
     config_dict = _base_config_dict()
-    config_dict["llama_stack"] = {
+    config_dict["ogx"] = {
         "use_as_library_client": True,
         "library_client_config_path": "tests/configuration/run.yaml",
     }
@@ -264,7 +264,7 @@ def test_root_rejects_inference_providers_and_legacy_path_together() -> None:
 def test_root_rejects_vector_store_providers_and_legacy_path_together() -> None:
     """Non-empty vector_store.providers plus a legacy path fail at load."""
     config_dict = _base_config_dict()
-    config_dict["llama_stack"] = {
+    config_dict["ogx"] = {
         "use_as_library_client": True,
         "library_client_config_path": "tests/configuration/run.yaml",
     }
@@ -287,7 +287,7 @@ def test_root_rejects_vector_store_providers_and_legacy_path_together() -> None:
 def test_root_accepts_vector_store_providers_only_no_config_block() -> None:
     """Library mode driven by vector_store.providers alone is valid."""
     config_dict = _base_config_dict()
-    config_dict["llama_stack"] = {"use_as_library_client": True}
+    config_dict["ogx"] = {"use_as_library_client": True}
     config_dict["inference"] = {"providers": []}
     config_dict["vector_store"] = {
         "default_provider": "notebooks",
@@ -303,7 +303,7 @@ def test_root_accepts_vector_store_providers_only_no_config_block() -> None:
     }
     cfg = Configuration(**config_dict)
     # pylint: disable=no-member
-    assert cfg.llama_stack.config is None
+    assert cfg.ogx.config is None
     assert cfg.vector_store.default_provider == "notebooks"
     assert len(cfg.vector_store.providers) == 1
 
@@ -311,7 +311,7 @@ def test_root_accepts_vector_store_providers_only_no_config_block() -> None:
 def test_root_accepts_unified_library_config() -> None:
     """A unified library-mode config (no legacy path) loads cleanly (R1)."""
     config_dict = _base_config_dict()
-    config_dict["llama_stack"] = {
+    config_dict["ogx"] = {
         "use_as_library_client": True,
         "config": {"baseline": "default"},
     }
@@ -320,7 +320,7 @@ def test_root_accepts_unified_library_config() -> None:
     }
     cfg = Configuration(**config_dict)
     # pylint: disable=no-member
-    assert cfg.llama_stack.config is not None
+    assert cfg.ogx.config is not None
     assert cfg.inference.providers[0].type == "openai"
 
 
@@ -331,20 +331,20 @@ def test_root_accepts_inference_providers_only_no_config_block() -> None:
     non-empty top-level inference.providers is a sufficient synthesis input.
     """
     config_dict = _base_config_dict()
-    config_dict["llama_stack"] = {"use_as_library_client": True}
+    config_dict["ogx"] = {"use_as_library_client": True}
     config_dict["inference"] = {
         "providers": [{"type": "openai", "api_key_env": "OPENAI_API_KEY"}]
     }
     cfg = Configuration(**config_dict)
     # pylint: disable=no-member
-    assert cfg.llama_stack.config is None
+    assert cfg.ogx.config is None
     assert cfg.inference.providers[0].type == "openai"
 
 
 def test_root_rejects_library_mode_without_run_source() -> None:
     """Library mode with no synthesis input and no legacy path fails at load."""
     config_dict = _base_config_dict()
-    config_dict["llama_stack"] = {"use_as_library_client": True}
+    config_dict["ogx"] = {"use_as_library_client": True}
     config_dict["inference"] = {"providers": []}
     with pytest.raises(ValidationError, match="requires a run-configuration source"):
         Configuration(**config_dict)
@@ -353,13 +353,13 @@ def test_root_rejects_library_mode_without_run_source() -> None:
 def test_root_accepts_remote_url_with_unified_config() -> None:
     """url + unified config (server mode) is allowed — url is orthogonal (R11)."""
     config_dict = _base_config_dict()
-    config_dict["llama_stack"] = {
+    config_dict["ogx"] = {
         "use_as_library_client": False,
         "url": "http://localhost:8321",
         "config": {"baseline": "default"},
     }
     cfg = Configuration(**config_dict)
-    assert cfg.llama_stack.config is not None  # pylint: disable=no-member
+    assert cfg.ogx.config is not None  # pylint: disable=no-member
 
 
 # ---------------------------------------------------------------------------
@@ -369,7 +369,7 @@ def test_root_accepts_remote_url_with_unified_config() -> None:
 
 def _unified_body(config_dict: dict[str, Any]) -> dict[str, Any]:
     """Give the base config a unified shape (synthesis input present)."""
-    config_dict["llama_stack"] = {"use_as_library_client": True}
+    config_dict["ogx"] = {"use_as_library_client": True}
     config_dict["inference"] = {
         "providers": [{"type": "openai", "api_key_env": "OPENAI_API_KEY"}]
     }
@@ -390,7 +390,7 @@ def _clear_synthesis_inputs(config_dict: dict[str, Any]) -> dict[str, Any]:
 def _legacy_body(config_dict: dict[str, Any]) -> dict[str, Any]:
     """Give the base config a legacy shape (external run.yaml path)."""
     config_dict = _clear_synthesis_inputs(config_dict)
-    config_dict["llama_stack"] = {
+    config_dict["ogx"] = {
         "use_as_library_client": True,
         "library_client_config_path": "tests/configuration/run.yaml",
     }
@@ -400,7 +400,7 @@ def _legacy_body(config_dict: dict[str, Any]) -> dict[str, Any]:
 def _remote_body(config_dict: dict[str, Any]) -> dict[str, Any]:
     """Give the base config a remote shape (url only, no synthesis input)."""
     config_dict = _clear_synthesis_inputs(config_dict)
-    config_dict["llama_stack"] = {
+    config_dict["ogx"] = {
         "use_as_library_client": False,
         "url": "http://localhost:8321",
     }
@@ -472,7 +472,7 @@ def test_root_rejects_unknown_config_format_version_value() -> None:
 def test_root_accepts_unified_marker_with_vector_store_providers_body() -> None:
     """'unified' agrees with a body whose only synthesis input is vector_store."""
     config_dict = _base_config_dict()
-    config_dict["llama_stack"] = {"use_as_library_client": True}
+    config_dict["ogx"] = {"use_as_library_client": True}
     config_dict["inference"] = {"providers": []}
     config_dict["vector_store"] = {
         "default_provider": "notebooks",
@@ -494,7 +494,7 @@ def test_root_accepts_unified_marker_with_vector_store_providers_body() -> None:
 def test_root_accepts_unified_marker_with_config_block_body() -> None:
     """'unified' agrees with a body whose only synthesis input is llama_stack.config."""
     config_dict = _clear_synthesis_inputs(_base_config_dict())
-    config_dict["llama_stack"] = {
+    config_dict["ogx"] = {
         "use_as_library_client": True,
         "config": {"baseline": "default"},
     }
@@ -510,7 +510,7 @@ def test_missing_run_source_error_precedes_marker_check() -> None:
     but the missing-run-source check runs first and its error must win.
     """
     config_dict = _clear_synthesis_inputs(_base_config_dict())
-    config_dict["llama_stack"] = {"use_as_library_client": True}
+    config_dict["ogx"] = {"use_as_library_client": True}
     config_dict["config_format_version"] = "unified"
     with pytest.raises(ValidationError, match="requires a run-configuration source"):
         Configuration(**config_dict)
@@ -524,9 +524,20 @@ def test_mutual_exclusion_error_precedes_marker_check() -> None:
     --migrate-config guidance must win.
     """
     config_dict = _unified_body(_base_config_dict())
-    config_dict["llama_stack"][
-        "library_client_config_path"
-    ] = "tests/configuration/run.yaml"
+    config_dict["ogx"]["library_client_config_path"] = "tests/configuration/run.yaml"
     config_dict["config_format_version"] = "legacy"
     with pytest.raises(ValidationError, match="mutually exclusive"):
         Configuration(**config_dict)
+
+
+def test_root_accepts_deprecated_llama_stack_yaml_key(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Deprecated ``llama_stack`` top-level key loads as ``ogx`` with a warning."""
+    config_dict = _remote_body(_base_config_dict())
+    ogx_section = config_dict.pop("ogx")
+    config_dict["llama_stack"] = ogx_section
+    with caplog.at_level("WARNING"):
+        cfg = Configuration(**config_dict)
+    assert "deprecated" in caplog.text.lower()
+    assert str(cfg.ogx.url) == "http://localhost:8321/"  # pylint: disable=no-member

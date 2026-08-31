@@ -9,6 +9,8 @@ from typing import Any
 
 import pytest
 from fastapi import HTTPException
+from ogx_api import Api
+from ogx_api.files import OpenAIFileUploadPurpose
 from ogx_client import APIConnectionError, APIStatusError
 from ogx_client.types import ListModelsResponse
 from ogx_client.types.model import Model
@@ -16,7 +18,7 @@ from pydantic import AnyHttpUrl, SecretStr
 from pytest_mock import MockerFixture
 
 from authorization.azure_token_manager import AzureEntraIDManager
-from client import AsyncOgxClientHolder
+from client.ogx import AsyncOgxClientHolder
 from configuration import AppConfig, AzureEntraIdConfiguration
 from models.config import OgxConfiguration
 from utils.types import Singleton
@@ -399,3 +401,87 @@ class TestCheckModelAvailable:
 
         assert available is False
         assert "not found in model registry" in reason
+
+
+class TestUploadFile:
+    """Test cases for the upload_file method."""
+
+    @pytest.fixture
+    def holder_with_mock_client(
+        self, mocker: MockerFixture
+    ) -> tuple[AsyncOgxClientHolder, Any]:
+        """Create a holder with a mocked async client."""
+        holder = AsyncOgxClientHolder()
+        mock_client = mocker.AsyncMock()
+        holder._lsc = mock_client
+        return holder, mock_client
+
+    @pytest.mark.asyncio
+    async def test_service_mode_uses_files_create(
+        self,
+        mocker: MockerFixture,
+        holder_with_mock_client: tuple[AsyncOgxClientHolder, Any],
+    ) -> None:
+        """Test service mode calls client.files.create() with a (filename, fileobj) tuple."""
+        holder, mock_client = holder_with_mock_client
+        mock_client.files.create.return_value = "created-file"
+        file = mocker.Mock(filename="original.txt", file=mocker.Mock())
+
+        result = await holder.upload_file(file, "renamed.txt", purpose="assistants")
+
+        assert result == "created-file"
+        mock_client.files.create.assert_awaited_once_with(
+            file=("renamed.txt", file.file), purpose="assistants"
+        )
+        # Service mode streams via httpx and must not mutate the caller's file.
+        assert file.filename == "original.txt"
+
+    @pytest.mark.asyncio
+    async def test_library_mode_calls_files_provider_directly(
+        self,
+        mocker: MockerFixture,
+        holder_with_mock_client: tuple[AsyncOgxClientHolder, Any],
+    ) -> None:
+        """Test library mode bypasses files.create() and calls the Files provider directly."""
+        holder, mock_client = holder_with_mock_client
+        mocker.patch.object(
+            AsyncOgxClientHolder,
+            "is_library_client",
+            new_callable=mocker.PropertyMock,
+            return_value=True,
+        )
+        files_impl = mocker.AsyncMock()
+        files_impl.openai_upload_file.return_value = "uploaded-file"
+        mock_client.impls = {Api.files: files_impl}
+        file = mocker.Mock(filename="original")
+
+        result = await holder.upload_file(file, "original.txt", purpose="assistants")
+
+        assert result == "uploaded-file"
+        # The Files provider reads file.filename directly, so it must be
+        # corrected here rather than relying on the caller's original name.
+        assert file.filename == "original.txt"
+        files_impl.openai_upload_file.assert_awaited_once()
+        call_kwargs = files_impl.openai_upload_file.call_args.kwargs
+        assert call_kwargs["file"] is file
+        assert call_kwargs["request"].purpose == OpenAIFileUploadPurpose.ASSISTANTS
+
+    @pytest.mark.asyncio
+    async def test_library_mode_raises_when_impls_not_initialized(
+        self,
+        mocker: MockerFixture,
+        holder_with_mock_client: tuple[AsyncOgxClientHolder, Any],
+    ) -> None:
+        """Test library mode raises RuntimeError if impls is not yet populated."""
+        holder, mock_client = holder_with_mock_client
+        mocker.patch.object(
+            AsyncOgxClientHolder,
+            "is_library_client",
+            new_callable=mocker.PropertyMock,
+            return_value=True,
+        )
+        mock_client.impls = None
+        file = mocker.Mock(filename="original.txt")
+
+        with pytest.raises(RuntimeError, match="not initialized"):
+            await holder.upload_file(file, "original.txt", purpose="assistants")

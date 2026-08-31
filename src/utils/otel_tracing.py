@@ -52,6 +52,11 @@ class SpanAttributes(StrEnum):
     FEEDBACK_CATEGORIES = "feedback.categories"
     FEEDBACK_STATUS_CODE = "feedback.status.code"
     FEEDBACK_STORAGE_OUTCOME = "feedback.storage.outcome"
+    MCP_SERVER_NAME = "mcp.server.name"
+    MCP_SERVER_PROVIDER_ID = "mcp.server.provider_id"
+    MCP_SERVERS_COUNT = "mcp.servers.count"
+    MCP_OPERATION = "mcp.operation"
+    MCP_SERVER_DELETED = "mcp.server.deleted"
 
 
 class SpanEvents(StrEnum):

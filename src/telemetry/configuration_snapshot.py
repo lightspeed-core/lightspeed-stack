@@ -100,17 +100,17 @@ LIGHTSPEED_STACK_FIELDS: tuple[FieldSpec | ListFieldSpec, ...] = (
     FieldSpec("service.cors.allow_methods", MaskingType.PASSTHROUGH),
     FieldSpec("service.cors.allow_headers", MaskingType.PASSTHROUGH),
     # LLM Integration Architecture
-    FieldSpec("llama_stack.use_as_library_client", MaskingType.PASSTHROUGH),
-    FieldSpec("llama_stack.url", MaskingType.SENSITIVE),
-    FieldSpec("llama_stack.api_key", MaskingType.SENSITIVE),
-    FieldSpec("llama_stack.library_client_config_path", MaskingType.SENSITIVE),
-    FieldSpec("llama_stack.timeout", MaskingType.PASSTHROUGH),
-    FieldSpec("llama_stack.max_retries", MaskingType.PASSTHROUGH),
-    FieldSpec("llama_stack.retry_delay", MaskingType.PASSTHROUGH),
-    FieldSpec("llama_stack.allow_degraded_mode", MaskingType.PASSTHROUGH),
-    FieldSpec("llama_stack.config.baseline", MaskingType.PASSTHROUGH),
-    FieldSpec("llama_stack.config.profile", MaskingType.SENSITIVE),
-    FieldSpec("llama_stack.config.native_override", MaskingType.SENSITIVE),
+    FieldSpec("ogx.use_as_library_client", MaskingType.PASSTHROUGH),
+    FieldSpec("ogx.url", MaskingType.SENSITIVE),
+    FieldSpec("ogx.api_key", MaskingType.SENSITIVE),
+    FieldSpec("ogx.library_client_config_path", MaskingType.SENSITIVE),
+    FieldSpec("ogx.timeout", MaskingType.PASSTHROUGH),
+    FieldSpec("ogx.max_retries", MaskingType.PASSTHROUGH),
+    FieldSpec("ogx.retry_delay", MaskingType.PASSTHROUGH),
+    FieldSpec("ogx.allow_degraded_mode", MaskingType.PASSTHROUGH),
+    FieldSpec("ogx.config.baseline", MaskingType.PASSTHROUGH),
+    FieldSpec("ogx.config.profile", MaskingType.SENSITIVE),
+    FieldSpec("ogx.config.native_override", MaskingType.SENSITIVE),
     FieldSpec("inference.default_model", MaskingType.PASSTHROUGH),
     FieldSpec("inference.default_provider", MaskingType.PASSTHROUGH),
     FieldSpec("inference.context_windows", MaskingType.PASSTHROUGH),
@@ -781,10 +781,10 @@ async def build_configuration_snapshot(
 
     Returns:
     -------
-        A dict with 'lightspeed_stack' and 'llama_stack' keys containing
+        A dict with 'lightspeed_stack' and 'ogx' keys containing
         the respective masked snapshots, ready for JSON serialization.
     """
     return {
         "lightspeed_stack": build_lightspeed_stack_snapshot(config),
-        "llama_stack": await build_llama_stack_snapshot(llama_stack_config_path),
+        "ogx": await build_llama_stack_snapshot(llama_stack_config_path),
     }

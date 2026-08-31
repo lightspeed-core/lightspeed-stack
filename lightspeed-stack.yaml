@@ -12,7 +12,7 @@ service:
 # This llama_stack section controls where lightspeed-core connects to OGX.
 # To use a different port: override with 'make run LLAMA_STACK_PORT=<port>' and update the url below,
 # or run ogx manually and don't use 'make run'.
-llama_stack:
+ogx:
   use_as_library_client: false
   url: http://localhost:8321
   # api_key: custom-key  # Uncomment if your OGX requires authentication

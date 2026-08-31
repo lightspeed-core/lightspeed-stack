@@ -377,7 +377,7 @@ _restart_llama_stack_core() {
             --from-literal=key="$_LLAMA_SVC_FQDN" \
             -n "$NAMESPACE" \
             --dry-run=client -o yaml | oc apply -f -
-        oc apply -n "$NAMESPACE" -f "$MANIFEST_DIR/llama-stack-openai.yaml"
+        oc apply -n "$NAMESPACE" -f "$MANIFEST_DIR/ogx-openai.yaml"
         # Konflux: setup-from-source init (dnf, git, uv) often needs 6–15 min before the main container is Ready.
         local llama_wait_attempts=90
         if [[ "${E2E_KONFLUX_E2E:-0}" == "1" ]]; then
@@ -400,7 +400,7 @@ _restart_llama_stack_core() {
             return 1
         fi
     else
-        sed "s|\${LLAMA_STACK_IMAGE}|${LLAMA_STACK_IMAGE:-}|g" "$MANIFEST_DIR/llama-stack-prow.yaml" |
+        sed "s|\${LLAMA_STACK_IMAGE}|${LLAMA_STACK_IMAGE:-}|g" "$MANIFEST_DIR/ogx-prow.yaml" |
             oc apply -n "$NAMESPACE" -f -
         if ! wait_for_pod "llama-stack-service" 24; then
             echo "===== Llama-stack restore FAILED (pod not ready) ====="
@@ -895,7 +895,7 @@ _verify_interception_ca_mounted_in_llama() {
 }
 
 cmd_copy_interception_proxy_ca_to_llama() {
-    # Legacy name: publish CA via Secret (mounted by llama-stack-openai.yaml).
+    # Legacy name: publish CA via Secret (mounted by ogx-openai.yaml).
     cmd_sync_interception_proxy_ca_secret
 }
 

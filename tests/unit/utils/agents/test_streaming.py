@@ -10,6 +10,7 @@ from typing import Any, Optional
 
 import pytest
 from fastapi import HTTPException
+from ogx_api.openai_responses import OpenAIResponseMessage
 from ogx_client import APIStatusError
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
     InMemorySpanExporter,
@@ -1283,6 +1284,57 @@ class TestAgentResponseGenerator:
         assert turn_summary.id == "resp-stream-1"
         assert turn_summary.token_usage.input_tokens == 4
         assert turn_summary.token_usage.output_tokens == 2
+
+    @pytest.mark.asyncio
+    async def test_compacted_input_streams_with_prompt_text(
+        self,
+        mocker: MockerFixture,
+        make_generator_context: Callable[..., ResponseGeneratorContext],
+        make_responses_params: Callable[..., ResponsesApiParams],
+        make_agent_run_result: Callable[..., Any],
+        patch_recording_metrics: None,
+    ) -> None:
+        """Test compacted explicit input is reduced to the query text for streaming."""
+        context = make_generator_context()
+        turn_summary = TurnSummary()
+        run_result = make_agent_run_result(content="Answer", response_id="resp-c1")
+        events = [
+            PartStartEvent(index=0, part=TextPart(content="Answer")),
+            AgentRunResultEvent(result=run_result),
+        ]
+        mock_agent = mocker.Mock()
+        mock_agent.run_stream_events.return_value = _mock_run_stream(events)
+        mocker.patch(
+            "utils.agents.streaming.get_agent_finish_reason",
+            return_value=AgentFinishReason.SUCCESS,
+        )
+        mocker.patch(
+            "utils.agents.streaming.deduplicate_referenced_documents",
+            side_effect=lambda docs: docs,
+        )
+
+        explicit = [
+            OpenAIResponseMessage(
+                role="user", content="Summary of earlier conversation:\nS1"
+            ),
+            OpenAIResponseMessage(role="user", content="new question"),
+        ]
+        params = make_responses_params(input_text="ignored").model_copy(
+            update={"input": explicit, "omit_conversation": True}
+        )
+
+        _ = [
+            event
+            async for event in agent_response_generator(
+                mock_agent,
+                params,
+                context,
+                turn_summary,
+                ENDPOINT_PATH_STREAMING_QUERY,
+            )
+        ]
+
+        assert mock_agent.run_stream_events.call_args[0][0] == "new question"
 
     @pytest.mark.asyncio
     async def test_streams_with_image_attachments_passes_multimodal_prompt(

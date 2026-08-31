@@ -14,7 +14,7 @@ from llama_stack_configuration import migrate_config_dumb
 from log import get_logger, setup_logging
 from runners.quota_scheduler import start_quota_scheduler
 from runners.uvicorn import start_uvicorn
-from utils import config_dumper, models_dumper
+from utils.dumpers import config_dumper, models_dumper
 
 setup_logging()
 logger = get_logger(__name__)
@@ -110,7 +110,7 @@ def create_argument_parser() -> ArgumentParser:
         dest="migrate_config",
         help="migrate a legacy two-file config to a unified single file and "
         "exit. Lifts the run.yaml given by --run-yaml into the "
-        "llama_stack.config.native_override of the -c lightspeed-stack.yaml "
+        "ogx.config.native_override of the -c lightspeed-stack.yaml "
         "and writes the result to --migrate-output. Replace literal secrets "
         "with ${env.VAR} references before or after migrating.",
         action="store_true",
@@ -193,7 +193,7 @@ def main() -> None:
     if configuration.ogx_configuration.library_client_config_path is not None:
         logger.warning(
             "DEPRECATED: the two-file configuration "
-            "(llama_stack.library_client_config_path + external run.yaml) is "
+            "(ogx.library_client_config_path + external run.yaml) is "
             "deprecated and will be removed in release 0.8. Migrate to the "
             "unified lightspeed-stack.yaml: https://lightspeed-core.github.io"
             "/lightspeed-stack/design/llama-stack-config-merge"

@@ -213,7 +213,7 @@ class TestGetProvidersHealthStatuses:
         - unhealthy_provider: status ERROR, message "Connection failed"
         """
         # Mock the imports
-        mock_lsc = mocker.patch("client.AsyncOgxClientHolder.get_client")
+        mock_lsc = mocker.patch("client.ogx.AsyncOgxClientHolder.get_client")
 
         # Mock the client and its methods
         mock_client = mocker.AsyncMock()
@@ -267,7 +267,7 @@ class TestGetProvidersHealthStatuses:
     ) -> None:
         """Test get_providers_health_statuses when connection fails."""
         # Mock the imports
-        mock_lsc = mocker.patch("client.AsyncOgxClientHolder.get_client")
+        mock_lsc = mocker.patch("client.ogx.AsyncOgxClientHolder.get_client")
 
         # Mock get_ogx_client to raise an exception
         mock_lsc.side_effect = APIConnectionError(request=mocker.Mock())

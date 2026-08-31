@@ -79,7 +79,7 @@ podman run --rm -d -p 8081:8080 registry.redhat.io/offline-knowledge-portal/rhok
 Install dependencies:
 
 ```bash
-uv sync --group dev --group llslibdev
+uv sync --group dev --group ogxlibdev
 ```
 
 Set required environment variables:

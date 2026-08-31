@@ -3,7 +3,7 @@
 from json import load
 from pathlib import Path
 
-from utils.config_dumper import dump_schema
+from utils.dumpers.config_dumper import dump_schema
 
 
 def test_dump_schema(tmpdir: Path) -> None:

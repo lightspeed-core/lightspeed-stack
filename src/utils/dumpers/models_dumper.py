@@ -11,7 +11,7 @@ import models.common as c
 import models.common.agents as a
 import models.common.responses as cr
 import models.compaction as models_compaction
-from utils.openapi_schema_dumper import dump_openapi_schema
+from utils.dumpers.openapi_schema_dumper import dump_openapi_schema
 
 conversation_summary_models: list[type[BaseModel]] = [
     models_compaction.ConversationSummary

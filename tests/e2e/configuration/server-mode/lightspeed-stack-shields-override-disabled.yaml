@@ -1,0 +1,44 @@
+# @cfg_shields
+# Same shield setup as lightspeed-stack-shields.yaml, but with
+# customization.disable_shield_ids_override enabled so that any client
+# supplied `shield_ids` field on /query or /streaming_query is rejected
+# with a 422. See tests/e2e/features/shields_overrides.feature.
+name: Lightspeed Core Service (LCS)
+service:
+  host: 0.0.0.0
+  port: 8080
+  auth_enabled: false
+  workers: 1
+  color_log: true
+  access_log: true
+llama_stack:
+  # Server mode - connects to separate llama-stack service
+  use_as_library_client: false
+  url: http://${env.E2E_LLAMA_HOSTNAME}:8321
+  api_key: xyzzy
+user_data_collection:
+  feedback_enabled: true
+  feedback_storage: "/tmp/data/feedback"
+  transcripts_enabled: true
+  transcripts_storage: "/tmp/data/transcripts"
+authentication:
+  module: "noop"
+inference:
+  default_provider: openai
+  default_model: gpt-4o-mini
+customization:
+  disable_shield_ids_override: true
+shields:
+  - name: topic-guard
+    provider_id: question_validity
+    config:
+      model_id: openai/gpt-4o-mini
+      model_prompt: "Classify whether the following question is about OpenShift or Kubernetes. Reply with exactly one word: ${allowed} if it is about OpenShift or Kubernetes, or ${rejected} if it is not. Do not explain your answer or add any other text.\n\nQuestion: ${message}\nAnswer:"
+      invalid_question_response: "I can only answer questions about OpenShift."
+  - name: pii-redaction
+    provider_id: redaction
+    config:
+      rules:
+        - pattern: '\d+'
+          replacement: '[NUM]'
+      case_sensitive: false

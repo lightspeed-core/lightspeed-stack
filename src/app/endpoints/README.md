@@ -76,10 +76,6 @@ Handler for REST API calls to list and retrieve available RAGs.
 
 Handler for REST API call to provide answer using Responses API (LCORE specification).
 
-## [responses_telemetry.py](responses_telemetry.py)
-
-Splunk telemetry helpers for the Responses API endpoint.
-
 ## [rlsapi_v1.py](rlsapi_v1.py)
 
 Handler for RHEL Lightspeed rlsapi v1 REST API endpoints.

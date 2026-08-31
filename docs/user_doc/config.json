@@ -440,7 +440,7 @@
             "type": "string",
             "nullable": true,
             "default": null,
-            "description": "Optional explicit marker of the configuration format. When set, it must agree with the shape detected from the configuration body: 'unified' requires a synthesis input (a non-empty inference.providers, a non-empty vector_store.providers, or a llama_stack.config block), 'legacy' requires no synthesis input. Reserved as the lever for a future breaking change of the unified schema (R11).",
+            "description": "Optional explicit marker of the configuration format. When set, it must agree with the shape detected from the configuration body: 'unified' requires a synthesis input (a non-empty inference.providers, a non-empty vector_store.providers, or an ogx.config block), 'legacy' requires no synthesis input. Reserved as the lever for a future breaking change of the unified schema (R11).",
             "title": "Configuration format version"
           },
           "service": {
@@ -448,7 +448,7 @@
             "description": "This section contains Lightspeed Core Stack service configuration.",
             "title": "Service configuration"
           },
-          "llama_stack": {
+          "ogx": {
             "$ref": "`#/components/schemas/`LlamaStackConfiguration",
             "description": "This section contains OGX configuration. Lightspeed Core Stack service can call OGX in library mode or in server mode.",
             "title": "OGX configuration"
@@ -625,7 +625,7 @@
         "required": [
           "name",
           "service",
-          "llama_stack",
+          "ogx",
           "user_data_collection"
         ],
         "title": "Configuration",

@@ -752,14 +752,14 @@ Model representing a response to an info request.
 Attributes:
     name: Service name.
     service_version: Service version.
-    llama_stack_version: OGX version.
+    ogx_version: OGX version.
 
 
 | Field | Type | Description |
 |-------|------|-------------|
 | name | string | Service name |
 | service_version | string | Service version |
-| llama_stack_version | string | OGX version |
+| ogx_version | string | OGX version |
 
 
 ## JsonPathOperator
@@ -2598,6 +2598,9 @@ the service can handle requests concurrently.
 | base_url | string | Externally reachable base URL for the service; needed for A2A support. |
 | auth_enabled | boolean | Enables the authentication subsystem |
 | workers | integer | Number of Uvicorn worker processes to start |
+| max_concurrent_file_uploads | integer | Maximum number of file uploads (POST /v1/files) processed concurrently per worker. Each in-flight upload can hold up to the configured maximum file size in memory, so this bounds worst-case memory usage from concurrent uploads. Additional uploads are rejected with 429 until a slot frees up. |
+| max_concurrent_vector_store_attaches | integer | Maximum number of vector store file attachments (POST /v1/vector-stores/{id}/files) processed concurrently per worker. Each in-flight attachment re-reads and chunks the source file, so this bounds worst-case memory usage independently of max_concurrent_file_uploads. Additional attachments are rejected with 429 until a slot frees up. |
+| delete_file_after_vector_store_attach | boolean | When true, deletes a file (POST /v1/files) once it has been successfully attached to a vector store, since the vector store keeps its own chunked/embedded copy of the content. Defaults to false to match the OpenAI Files API, where a file remains reusable across multiple vector stores until the caller explicitly deletes it - enabling this makes attached files single-use: re-attaching the same file_id to another vector store will fail once it has been deleted. |
 | color_log | boolean | Enables colorized logging |
 | access_log | boolean | Enables logging of all access information |
 | tls_config |  | Transport Layer Security configuration for HTTPS support |

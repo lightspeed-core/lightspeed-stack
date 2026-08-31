@@ -97,7 +97,7 @@ def test_dump_configuration_minimal_cfg(tmp_path: Path) -> None:
             ),
             cors=CORSConfiguration(),
         ),
-        llama_stack=OgxConfiguration(
+        ogx=OgxConfiguration(
             use_as_library_client=True,
             library_client_config_path="tests/configuration/run.yaml",
             api_key=SecretStr("whatever"),
@@ -118,7 +118,7 @@ def test_dump_configuration_minimal_cfg(tmp_path: Path) -> None:
         # all sections must exists
         assert "name" in content
         assert "service" in content
-        assert "llama_stack" in content
+        assert "ogx" in content
         assert "user_data_collection" in content
         assert "mcp_servers" in content
         assert "authentication" in content
@@ -141,6 +141,9 @@ def test_dump_configuration_minimal_cfg(tmp_path: Path) -> None:
                 "base_url": None,
                 "auth_enabled": False,
                 "workers": 1,
+                "max_concurrent_file_uploads": 5,
+                "max_concurrent_vector_store_attaches": 5,
+                "delete_file_after_vector_store_attach": False,
                 "color_log": True,
                 "access_log": True,
                 "tls_config": {
@@ -162,7 +165,7 @@ def test_dump_configuration_minimal_cfg(tmp_path: Path) -> None:
                     ],
                 },
             },
-            "llama_stack": {
+            "ogx": {
                 "url": None,
                 "use_as_library_client": True,
                 "api_key": "**********",
@@ -302,7 +305,7 @@ def test_dump_configuration_valid_values(tmp_path: Path) -> None:
                 allow_headers=["foo_header", "bar_header", "baz_header"],
             ),
         ),
-        llama_stack=OgxConfiguration(
+        ogx=OgxConfiguration(
             use_as_library_client=True,
             library_client_config_path="tests/configuration/run.yaml",
             api_key=SecretStr("whatever"),
@@ -341,7 +344,7 @@ def test_dump_configuration_valid_values(tmp_path: Path) -> None:
         # all sections must exists
         assert "name" in content
         assert "service" in content
-        assert "llama_stack" in content
+        assert "ogx" in content
         assert "user_data_collection" in content
         assert "mcp_servers" in content
         assert "authentication" in content
@@ -364,6 +367,9 @@ def test_dump_configuration_valid_values(tmp_path: Path) -> None:
                 "base_url": None,
                 "auth_enabled": False,
                 "workers": 1,
+                "max_concurrent_file_uploads": 5,
+                "max_concurrent_vector_store_attaches": 5,
+                "delete_file_after_vector_store_attach": False,
                 "color_log": True,
                 "access_log": True,
                 "tls_config": {
@@ -391,7 +397,7 @@ def test_dump_configuration_valid_values(tmp_path: Path) -> None:
                     ],
                 },
             },
-            "llama_stack": {
+            "ogx": {
                 "url": None,
                 "use_as_library_client": True,
                 "api_key": "**********",
@@ -532,7 +538,7 @@ def test_dump_configuration_with_one_mcp_server(tmp_path: Path) -> None:
     cfg = Configuration(
         name="test_name",
         service=ServiceConfiguration(),
-        llama_stack=OgxConfiguration(
+        ogx=OgxConfiguration(
             use_as_library_client=True,
             library_client_config_path="tests/configuration/run.yaml",
         ),
@@ -584,7 +590,7 @@ def test_dump_configuration_with_more_mcp_servers(tmp_path: Path) -> None:
     cfg = Configuration(
         name="test_name",
         service=ServiceConfiguration(),
-        llama_stack=OgxConfiguration(
+        ogx=OgxConfiguration(
             use_as_library_client=True,
             library_client_config_path="tests/configuration/run.yaml",
         ),
@@ -658,7 +664,7 @@ def test_dump_configuration_with_quota_limiters(tmp_path: Path) -> None:
                 allow_headers=["foo_header", "bar_header", "baz_header"],
             ),
         ),
-        llama_stack=OgxConfiguration(
+        ogx=OgxConfiguration(
             use_as_library_client=True,
             library_client_config_path="tests/configuration/run.yaml",
             api_key=SecretStr("whatever"),
@@ -717,7 +723,7 @@ def test_dump_configuration_with_quota_limiters(tmp_path: Path) -> None:
         # all sections must exists
         assert "name" in content
         assert "service" in content
-        assert "llama_stack" in content
+        assert "ogx" in content
         assert "user_data_collection" in content
         assert "mcp_servers" in content
         assert "authentication" in content
@@ -740,6 +746,9 @@ def test_dump_configuration_with_quota_limiters(tmp_path: Path) -> None:
                 "base_url": None,
                 "auth_enabled": False,
                 "workers": 1,
+                "max_concurrent_file_uploads": 5,
+                "max_concurrent_vector_store_attaches": 5,
+                "delete_file_after_vector_store_attach": False,
                 "color_log": True,
                 "access_log": True,
                 "tls_config": {
@@ -767,7 +776,7 @@ def test_dump_configuration_with_quota_limiters(tmp_path: Path) -> None:
                     ],
                 },
             },
-            "llama_stack": {
+            "ogx": {
                 "url": None,
                 "use_as_library_client": True,
                 "api_key": "**********",
@@ -931,7 +940,7 @@ def test_dump_configuration_with_quota_limiters_different_values(
                 allow_headers=["foo_header", "bar_header", "baz_header"],
             ),
         ),
-        llama_stack=OgxConfiguration(
+        ogx=OgxConfiguration(
             use_as_library_client=True,
             library_client_config_path="tests/configuration/run.yaml",
             api_key=SecretStr("whatever"),
@@ -994,7 +1003,7 @@ def test_dump_configuration_with_quota_limiters_different_values(
         # all sections must exists
         assert "name" in content
         assert "service" in content
-        assert "llama_stack" in content
+        assert "ogx" in content
         assert "user_data_collection" in content
         assert "mcp_servers" in content
         assert "authentication" in content
@@ -1015,6 +1024,9 @@ def test_dump_configuration_with_quota_limiters_different_values(
                 "base_url": None,
                 "auth_enabled": False,
                 "workers": 1,
+                "max_concurrent_file_uploads": 5,
+                "max_concurrent_vector_store_attaches": 5,
+                "delete_file_after_vector_store_attach": False,
                 "color_log": True,
                 "access_log": True,
                 "tls_config": {
@@ -1042,7 +1054,7 @@ def test_dump_configuration_with_quota_limiters_different_values(
                     ],
                 },
             },
-            "llama_stack": {
+            "ogx": {
                 "url": None,
                 "use_as_library_client": True,
                 "api_key": "**********",
@@ -1194,7 +1206,7 @@ def test_dump_configuration_with_vector_store(tmp_path: Path) -> None:
             ),
             cors=CORSConfiguration(),
         ),
-        llama_stack=OgxConfiguration(
+        ogx=OgxConfiguration(
             use_as_library_client=True,
             config=UnifiedOgxConfig(baseline="default"),
             api_key=SecretStr("whatever"),
@@ -1255,7 +1267,7 @@ def test_dump_configuration_byok(tmp_path: Path) -> None:
                 allow_headers=["foo_header", "bar_header", "baz_header"],
             ),
         ),
-        llama_stack=OgxConfiguration(
+        ogx=OgxConfiguration(
             use_as_library_client=True,
             library_client_config_path="tests/configuration/run.yaml",
             api_key=SecretStr("whatever"),
@@ -1306,7 +1318,7 @@ def test_dump_configuration_byok(tmp_path: Path) -> None:
         # all sections must exists
         assert "name" in content
         assert "service" in content
-        assert "llama_stack" in content
+        assert "ogx" in content
         assert "user_data_collection" in content
         assert "mcp_servers" in content
         assert "authentication" in content
@@ -1327,6 +1339,9 @@ def test_dump_configuration_byok(tmp_path: Path) -> None:
                 "base_url": None,
                 "auth_enabled": False,
                 "workers": 1,
+                "max_concurrent_file_uploads": 5,
+                "max_concurrent_vector_store_attaches": 5,
+                "delete_file_after_vector_store_attach": False,
                 "color_log": True,
                 "access_log": True,
                 "tls_config": {
@@ -1354,7 +1369,7 @@ def test_dump_configuration_byok(tmp_path: Path) -> None:
                     ],
                 },
             },
-            "llama_stack": {
+            "ogx": {
                 "url": None,
                 "use_as_library_client": True,
                 "api_key": "**********",
@@ -1519,7 +1534,7 @@ def test_dump_configuration_pg_namespace(tmp_path: Path) -> None:
                 allow_headers=["foo_header", "bar_header", "baz_header"],
             ),
         ),
-        llama_stack=OgxConfiguration(
+        ogx=OgxConfiguration(
             use_as_library_client=True,
             library_client_config_path="tests/configuration/run.yaml",
             api_key=SecretStr("whatever"),
@@ -1559,7 +1574,7 @@ def test_dump_configuration_pg_namespace(tmp_path: Path) -> None:
         # all sections must exists
         assert "name" in content
         assert "service" in content
-        assert "llama_stack" in content
+        assert "ogx" in content
         assert "user_data_collection" in content
         assert "mcp_servers" in content
         assert "authentication" in content
@@ -1580,6 +1595,9 @@ def test_dump_configuration_pg_namespace(tmp_path: Path) -> None:
                 "base_url": None,
                 "auth_enabled": False,
                 "workers": 1,
+                "max_concurrent_file_uploads": 5,
+                "max_concurrent_vector_store_attaches": 5,
+                "delete_file_after_vector_store_attach": False,
                 "color_log": True,
                 "access_log": True,
                 "tls_config": {
@@ -1607,7 +1625,7 @@ def test_dump_configuration_pg_namespace(tmp_path: Path) -> None:
                     ],
                 },
             },
-            "llama_stack": {
+            "ogx": {
                 "url": None,
                 "use_as_library_client": True,
                 "api_key": "**********",
@@ -1753,7 +1771,7 @@ def test_dump_configuration_with_one_skill(tmp_path: Path) -> None:
                 allow_headers=["foo_header", "bar_header", "baz_header"],
             ),
         ),
-        llama_stack=OgxConfiguration(
+        ogx=OgxConfiguration(
             use_as_library_client=True,
             library_client_config_path="tests/configuration/run.yaml",
             api_key=SecretStr("whatever"),
@@ -1828,7 +1846,7 @@ def test_dump_configuration_with_skills(tmp_path: Path) -> None:
                 allow_headers=["foo_header", "bar_header", "baz_header"],
             ),
         ),
-        llama_stack=OgxConfiguration(
+        ogx=OgxConfiguration(
             use_as_library_client=True,
             library_client_config_path="tests/configuration/run.yaml",
             api_key=SecretStr("whatever"),
@@ -1912,7 +1930,7 @@ def test_dump_configuration_allow_degraded_mode(tmp_path: Path) -> None:
                 allow_headers=["foo_header", "bar_header", "baz_header"],
             ),
         ),
-        llama_stack=OgxConfiguration(
+        ogx=OgxConfiguration(
             use_as_library_client=False,
             url="http://localhost",
             api_key=SecretStr("whatever"),
@@ -1952,7 +1970,7 @@ def test_dump_configuration_allow_degraded_mode(tmp_path: Path) -> None:
         # all sections must exists
         assert "name" in content
         assert "service" in content
-        assert "llama_stack" in content
+        assert "ogx" in content
         assert "user_data_collection" in content
         assert "mcp_servers" in content
         assert "authentication" in content
@@ -1975,6 +1993,9 @@ def test_dump_configuration_allow_degraded_mode(tmp_path: Path) -> None:
                 "base_url": None,
                 "auth_enabled": False,
                 "workers": 1,
+                "max_concurrent_file_uploads": 5,
+                "max_concurrent_vector_store_attaches": 5,
+                "delete_file_after_vector_store_attach": False,
                 "color_log": True,
                 "access_log": True,
                 "tls_config": {
@@ -2002,7 +2023,7 @@ def test_dump_configuration_allow_degraded_mode(tmp_path: Path) -> None:
                     ],
                 },
             },
-            "llama_stack": {
+            "ogx": {
                 "url": "http://localhost/",
                 "use_as_library_client": False,
                 "api_key": "**********",
@@ -2153,7 +2174,7 @@ def test_dump_configuration_max_retries_settings(tmp_path: Path) -> None:
                 allow_headers=["foo_header", "bar_header", "baz_header"],
             ),
         ),
-        llama_stack=OgxConfiguration(
+        ogx=OgxConfiguration(
             use_as_library_client=True,
             library_client_config_path="tests/configuration/run.yaml",
             api_key=SecretStr("whatever"),
@@ -2193,7 +2214,7 @@ def test_dump_configuration_max_retries_settings(tmp_path: Path) -> None:
         # all sections must exists
         assert "name" in content
         assert "service" in content
-        assert "llama_stack" in content
+        assert "ogx" in content
         assert "user_data_collection" in content
         assert "mcp_servers" in content
         assert "authentication" in content
@@ -2216,6 +2237,9 @@ def test_dump_configuration_max_retries_settings(tmp_path: Path) -> None:
                 "base_url": None,
                 "auth_enabled": False,
                 "workers": 1,
+                "max_concurrent_file_uploads": 5,
+                "max_concurrent_vector_store_attaches": 5,
+                "delete_file_after_vector_store_attach": False,
                 "color_log": True,
                 "access_log": True,
                 "tls_config": {
@@ -2243,7 +2267,7 @@ def test_dump_configuration_max_retries_settings(tmp_path: Path) -> None:
                     ],
                 },
             },
-            "llama_stack": {
+            "ogx": {
                 "url": None,
                 "use_as_library_client": True,
                 "api_key": "**********",
@@ -2394,7 +2418,7 @@ def test_dump_configuration_retry_count_settings(tmp_path: Path) -> None:
                 allow_headers=["foo_header", "bar_header", "baz_header"],
             ),
         ),
-        llama_stack=OgxConfiguration(
+        ogx=OgxConfiguration(
             use_as_library_client=True,
             library_client_config_path="tests/configuration/run.yaml",
             api_key=SecretStr("whatever"),
@@ -2434,7 +2458,7 @@ def test_dump_configuration_retry_count_settings(tmp_path: Path) -> None:
         # all sections must exists
         assert "name" in content
         assert "service" in content
-        assert "llama_stack" in content
+        assert "ogx" in content
         assert "user_data_collection" in content
         assert "mcp_servers" in content
         assert "authentication" in content
@@ -2457,6 +2481,9 @@ def test_dump_configuration_retry_count_settings(tmp_path: Path) -> None:
                 "base_url": None,
                 "auth_enabled": False,
                 "workers": 1,
+                "max_concurrent_file_uploads": 5,
+                "max_concurrent_vector_store_attaches": 5,
+                "delete_file_after_vector_store_attach": False,
                 "color_log": True,
                 "access_log": True,
                 "tls_config": {
@@ -2484,7 +2511,7 @@ def test_dump_configuration_retry_count_settings(tmp_path: Path) -> None:
                     ],
                 },
             },
-            "llama_stack": {
+            "ogx": {
                 "url": None,
                 "use_as_library_client": True,
                 "api_key": "**********",
@@ -2635,7 +2662,7 @@ def test_dump_configuration_specific_compaction_values(tmp_path: Path) -> None:
                 allow_headers=["foo_header", "bar_header", "baz_header"],
             ),
         ),
-        llama_stack=OgxConfiguration(
+        ogx=OgxConfiguration(
             use_as_library_client=True,
             library_client_config_path="tests/configuration/run.yaml",
             api_key=SecretStr("whatever"),
@@ -2681,7 +2708,7 @@ def test_dump_configuration_specific_compaction_values(tmp_path: Path) -> None:
         # all sections must exists
         assert "name" in content
         assert "service" in content
-        assert "llama_stack" in content
+        assert "ogx" in content
         assert "user_data_collection" in content
         assert "mcp_servers" in content
         assert "authentication" in content
@@ -2705,6 +2732,9 @@ def test_dump_configuration_specific_compaction_values(tmp_path: Path) -> None:
                 "base_url": None,
                 "auth_enabled": False,
                 "workers": 1,
+                "max_concurrent_file_uploads": 5,
+                "max_concurrent_vector_store_attaches": 5,
+                "delete_file_after_vector_store_attach": False,
                 "color_log": True,
                 "access_log": True,
                 "tls_config": {
@@ -2732,7 +2762,7 @@ def test_dump_configuration_specific_compaction_values(tmp_path: Path) -> None:
                     ],
                 },
             },
-            "llama_stack": {
+            "ogx": {
                 "url": None,
                 "use_as_library_client": True,
                 "api_key": "**********",

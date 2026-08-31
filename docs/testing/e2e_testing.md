@@ -58,7 +58,7 @@ tests/e2e/
 ├── utils/
 │   ├── utils.py                 # restart_container, switch_config, wait_for_container_health, etc.
 │   ├── prow_utils.py            # Prow/OpenShift helpers (restore_llama_stack_pod, etc.)
-│   └── llama_stack_utils.py    # Toolgroups + shield unregister/register (server mode, optional)
+│   └── ogx_utils.py             # Toolgroups + shield unregister/register (server mode, optional)
 ├── mock_mcp_server/             # Mock MCP server for MCP tests
 └── rag/                         # RAG test data (e.g. for FAISS)
 ```
@@ -72,7 +72,7 @@ tests/e2e-prow/
     ├── pipeline.sh              # Prow: full vLLM + LCS + behave (main branch workflow)
     ├── pipeline-konflux.sh      # Konflux: OpenAI Llama run-from-source + run-ci.yaml + behave
     ├── pipeline-services.sh     # Services for Prow (vLLM OGX image + LCS)
-    ├── pipeline-services-konflux.sh  # Services for Konflux (llama-stack-openai + templated LCS)
+    ├── pipeline-services-konflux.sh  # Services for Konflux (ogx-openai + templated LCS)
     ├── pipeline-vllm.sh         # vLLM cluster setup (called from pipeline.sh)
     ├── pipeline-test-pod.sh     # Test pod pipeline
     ├── configs/                 # vLLM OGX `run.yaml` (used by pipeline.sh for llama-stack-config)

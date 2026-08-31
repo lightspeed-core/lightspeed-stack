@@ -10,7 +10,7 @@ oc create secret generic llama-stack-ip-secret \
     -n "$NAMESPACE" 2>/dev/null || echo "Secret llama-stack-ip-secret exists"
 
 # Deploy OGX (substitute only LLAMA_STACK_IMAGE, leave other ${} intact)
-envsubst '${LLAMA_STACK_IMAGE}' < "$BASE_DIR/manifests/lightspeed/llama-stack-prow.yaml" | oc apply -n "$NAMESPACE" -f -
+envsubst '${LLAMA_STACK_IMAGE}' < "$BASE_DIR/manifests/lightspeed/ogx-prow.yaml" | oc apply -n "$NAMESPACE" -f -
 
 oc wait pod/llama-stack-service \
   -n "$NAMESPACE" --for=condition=Ready --timeout=600s

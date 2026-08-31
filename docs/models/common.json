@@ -46,7 +46,8 @@
                         "examples": [
                             "text/plain",
                             "image/jpeg",
-                            "image/png"
+                            "image/png",
+                            "image/webp"
                         ],
                         "title": "Content Type",
                         "type": "string"

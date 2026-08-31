@@ -87,7 +87,7 @@ def setup_configuration_fixture(mocker: MockerFixture) -> AppConfig:
             "auth_enabled": False,
             "base_url": "http://localhost:8080",
         },
-        "llama_stack": {
+        "ogx": {
             "api_key": "test-key",
             "url": "http://test.com:1234",
             "use_as_library_client": False,
@@ -138,7 +138,7 @@ def setup_minimal_configuration_fixture(mocker: MockerFixture) -> AppConfig:
             "host": "localhost",
             "port": 8080,
         },
-        "llama_stack": {
+        "ogx": {
             "api_key": "test-key",
             "url": "http://test.com:1234",
             "use_as_library_client": False,
@@ -407,7 +407,7 @@ class TestGetLightspeedAgentCard:
                 "auth_enabled": False,
                 "base_url": "http://localhost:8080",
             },
-            "llama_stack": {
+            "ogx": {
                 "api_key": "test-key",
                 "url": "http://test.com:1234",
                 "use_as_library_client": False,

@@ -6602,14 +6602,14 @@ Model representing a response to an info request.
 Attributes:
     name: Service name.
     service_version: Service version.
-    llama_stack_version: OGX version.
+    ogx_version: OGX version.
 
 
 | Field | Type | Description |
 |-------|------|-------------|
 | name | string | Service name |
 | service_version | string | Service version |
-| llama_stack_version | string | OGX version |
+| ogx_version | string | OGX version |
 
 
 ## InputToolMCP

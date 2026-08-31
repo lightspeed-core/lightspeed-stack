@@ -15,7 +15,7 @@ from typing import Any, Optional
 from behave import given  # pyright: ignore[reportAttributeAccessIssue]
 from behave.runner import Context
 
-from tests.e2e.utils.llama_config_utils import (
+from tests.e2e.utils.ogx_config_utils import (
     backup_llama_config,
     clear_llama_config_backup,
     load_llama_config,

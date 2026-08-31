@@ -627,7 +627,7 @@ It is possible to run Lightspeed Core Stack service with OGX "embedded" as a Pyt
 1. Clone LCS repository
 1. Add and install all required dependencies
     ```bash
-    uv sync --group llslibdev
+    uv sync --group ogxlibdev
     ```
 
 #### OGX configuration

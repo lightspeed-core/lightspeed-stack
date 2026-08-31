@@ -19,16 +19,16 @@ from app.endpoints.responses import (
     handle_non_streaming_response,
     handle_streaming_response,
 )
-from app.endpoints.responses_telemetry import queue_responses_splunk_event
 from configuration import AppConfig
 from models.api.requests import ResponsesRequest
 from models.common.turn_summary import RAGContext, TurnSummary
 from observability.formats.responses import ResponsesEventData
+from observability.responses_telemetry import queue_responses_splunk_event
 from observability.splunk import _fire_and_forget_tasks
 from tests.unit.app.endpoints.test_responses import build_api_params_and_context
 
 MODULE = "app.endpoints.responses"
-TELEMETRY_MODULE = "app.endpoints.responses_telemetry"
+TELEMETRY_MODULE = "observability.responses_telemetry"
 MOCK_AUTH = (
     "00000001-0001-0001-0001-000000000001",
     "mock_username",
@@ -81,7 +81,7 @@ def minimal_config_fixture() -> AppConfig:
         {
             "name": "test",
             "service": {"host": "localhost", "port": 8080},
-            "llama_stack": {
+            "ogx": {
                 "api_key": "test-key",
                 "url": "http://test.com:1234",
                 "use_as_library_client": False,

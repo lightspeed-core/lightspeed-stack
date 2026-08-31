@@ -1,7 +1,7 @@
 """Utility functions for metrics handling."""
 
 import metrics
-from client import AsyncOgxClientHolder
+from client.ogx import AsyncOgxClientHolder
 from configuration import configuration
 from log import get_logger
 from utils.endpoints import check_configuration_loaded

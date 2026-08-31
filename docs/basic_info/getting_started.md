@@ -128,7 +128,7 @@ service:
   workers: 1
   color_log: true
   access_log: true
-llama_stack:
+ogx:
   use_as_library_client: true
   # Unified mode (recommended): the run.yaml created above is consumed as
   # the synthesis profile. The legacy library_client_config_path setup is

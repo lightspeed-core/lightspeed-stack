@@ -8,10 +8,6 @@ Unit tests.
 
 Shared pytest fixtures for unit tests.
 
-## [test_client.py](test_client.py)
-
-Unit tests for functions defined in src/client.py.
-
 ## [test_configuration.py](test_configuration.py)
 
 Unit tests for functions defined in src/configuration.py.
@@ -39,8 +35,4 @@ Unit tests for unified-mode OGX configuration synthesis (LCORE-2336).
 ## [test_log.py](test_log.py)
 
 Unit tests for functions defined in src/log.py.
-
-## [test_sentry.py](test_sentry.py)
-
-Unit tests for functions defined in src/sentry.py.
 

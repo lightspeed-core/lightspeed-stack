@@ -120,7 +120,7 @@ explicit = true
 
 [tool.uv.sources]
 torch = [
-    { index = "pytorch-cpu", group = "llslibdev" },
+    { index = "pytorch-cpu", group = "ogxlibdev" },
 ]
 
 [dependency-groups]
@@ -151,7 +151,7 @@ dev = [
     "pip==26.1",
     "pytest-benchmark>=5.2.3",
 ]
-llslibdev = [
+ogxlibdev = [
     # To check OGX API provider dependecies:
     #
     #    $ uv run ogx stack list-providers

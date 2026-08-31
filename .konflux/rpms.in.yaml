@@ -9,7 +9,9 @@ packages:
   ]
 upgradePackages:
   [
-    thrift,
+    libxslt,
+    libarchive,
+    python3-urllib3,
   ]
 contentOrigin:
   repofiles: ["./redhat.repo"]

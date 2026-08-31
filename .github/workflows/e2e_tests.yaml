@@ -33,6 +33,8 @@ jobs:
             tags: "not @skip and @cfg_rbac"
           - name: skills
             tags: "not @skip and (@cfg_skills or @cfg_skills_directory)"
+          - name: shields
+            tags: "not @skip and @cfg_shields"
           - name: other
             tags: "not @skip and (@cfg_rh_identity or @cfg_negative or @cfg_byok_pdf or @cfg_degraded or @cfg_unified)"
           # Server-only; listed in shard (not matrix.include) so it expands with
@@ -152,7 +154,7 @@ jobs:
           echo "Models: $(grep -c "model_id:" run.yaml)"
           echo ""
           echo "=== lightspeed-stack.yaml ==="
-          grep -A 3 "llama_stack:" lightspeed-stack.yaml
+          grep -A 3 "ogx:" lightspeed-stack.yaml
 
       - name: Cache HuggingFace embedding model
         uses: actions/cache@v4

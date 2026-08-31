@@ -40,7 +40,7 @@ class ConfigurationResponse(AbstractSuccessfulResponse):
                                 "allow_headers": ["*"],
                             },
                         },
-                        "llama_stack": {
+                        "ogx": {
                             "url": "http://localhost:8321",
                             "api_key": "*****",
                             "use_as_library_client": False,

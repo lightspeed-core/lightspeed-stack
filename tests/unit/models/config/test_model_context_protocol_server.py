@@ -106,7 +106,7 @@ def test_configuration_empty_mcp_servers() -> None:
     cfg = Configuration(
         name="test_name",
         service=ServiceConfiguration(),
-        llama_stack=OgxConfiguration(
+        ogx=OgxConfiguration(
             use_as_library_client=True,
             library_client_config_path="tests/configuration/run.yaml",
         ),
@@ -131,7 +131,7 @@ def test_configuration_single_mcp_server() -> None:
     cfg = Configuration(
         name="test_name",
         service=ServiceConfiguration(),
-        llama_stack=OgxConfiguration(
+        ogx=OgxConfiguration(
             use_as_library_client=True,
             library_client_config_path="tests/configuration/run.yaml",
         ),
@@ -163,7 +163,7 @@ def test_configuration_multiple_mcp_servers() -> None:
     cfg = Configuration(
         name="test_name",
         service=ServiceConfiguration(),
-        llama_stack=OgxConfiguration(
+        ogx=OgxConfiguration(
             use_as_library_client=True,
             library_client_config_path="tests/configuration/run.yaml",
         ),
@@ -283,7 +283,7 @@ def test_configuration_mcp_servers_with_mixed_auth_headers(tmp_path: Path) -> No
     cfg = Configuration(
         name="test_name",
         service=ServiceConfiguration(),
-        llama_stack=OgxConfiguration(
+        ogx=OgxConfiguration(
             use_as_library_client=True,
             library_client_config_path="tests/configuration/run.yaml",
         ),

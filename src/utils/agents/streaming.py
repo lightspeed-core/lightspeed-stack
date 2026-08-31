@@ -8,7 +8,7 @@ import asyncio
 import datetime
 from collections.abc import AsyncIterator
 from functools import singledispatch
-from typing import Any, Final, Optional, cast
+from typing import Any, Final, Optional
 
 from fastapi import HTTPException
 from ogx_client import APIConnectionError, APIStatusError
@@ -59,6 +59,10 @@ from utils.agents.tool_processor import (
     process_function_tool_result,
     process_native_tool_call,
     process_native_tool_result,
+)
+from utils.conversation_compaction import (
+    agent_prompt_text,
+    reject_image_attachments_in_compacted_mode,
 )
 from utils.conversations import append_turn_items_to_conversation
 from utils.otel_tracing import (
@@ -386,13 +390,14 @@ async def agent_response_generator(
         rag_id_mapping=context.rag_id_mapping,
         turn_summary=turn_summary,
     )
+    reject_image_attachments_in_compacted_mode(responses_params, image_attachments)
     if image_attachments:
         prompt = build_multimodal_input(
-            cast(str, responses_params.input),
+            agent_prompt_text(responses_params),
             image_attachments,
         )
     else:
-        prompt = cast(str, responses_params.input)
+        prompt = agent_prompt_text(responses_params)
 
     logger.debug("Starting agent streaming response processing")
     async with agent.run_stream_events(prompt) as stream:

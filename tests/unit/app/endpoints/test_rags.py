@@ -265,7 +265,7 @@ def _make_byok_config(tmp_path: Any) -> AppConfig:
         {
             "name": "test",
             "service": {"host": "localhost", "port": 8080},
-            "llama_stack": {
+            "ogx": {
                 "api_key": "test-key",
                 "url": "http://test.com:1234",
                 "use_as_library_client": False,

@@ -1,9 +1,14 @@
-# pylint: disable=protected-access
+# pylint: disable=protected-access,redefined-outer-name
 # pyright: reportCallIssue=false
 
 """Unit tests for MCP auth endpoint."""
 
+from typing import Any
+
 import pytest
+from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
+    InMemorySpanExporter,
+)
 from pytest_mock import MockerFixture
 
 # Import the function directly to bypass decorators
@@ -29,7 +34,7 @@ def mock_configuration_with_client_auth() -> Configuration:
     return Configuration(  # type: ignore[call-arg]
         name="test",
         service=ServiceConfiguration(),  # type: ignore[call-arg]
-        llama_stack=OgxConfiguration(url="http://localhost:8321"),  # type: ignore[call-arg]
+        ogx=OgxConfiguration(url="http://localhost:8321"),  # type: ignore[call-arg]
         user_data_collection=UserDataCollection(feedback_enabled=False),  # type: ignore[call-arg]
         mcp_servers=[
             ModelContextProtocolServer(
@@ -57,7 +62,7 @@ def mock_configuration_mixed_auth() -> Configuration:
     return Configuration(  # type: ignore[call-arg]
         name="test",
         service=ServiceConfiguration(),  # type: ignore[call-arg]
-        llama_stack=OgxConfiguration(url="http://localhost:8321"),  # type: ignore[call-arg]
+        ogx=OgxConfiguration(url="http://localhost:8321"),  # type: ignore[call-arg]
         user_data_collection=UserDataCollection(feedback_enabled=False),  # type: ignore[call-arg]
         mcp_servers=[
             ModelContextProtocolServer(
@@ -88,7 +93,7 @@ def mock_configuration_no_client_auth() -> Configuration:
     return Configuration(  # type: ignore[call-arg]
         name="test",
         service=ServiceConfiguration(),  # type: ignore[call-arg]
-        llama_stack=OgxConfiguration(url="http://localhost:8321"),  # type: ignore[call-arg]
+        ogx=OgxConfiguration(url="http://localhost:8321"),  # type: ignore[call-arg]
         user_data_collection=UserDataCollection(feedback_enabled=False),  # type: ignore[call-arg]
         mcp_servers=[
             ModelContextProtocolServer(
@@ -110,7 +115,7 @@ def mock_configuration_no_client_auth() -> Configuration:
 @pytest.mark.asyncio
 async def test_get_mcp_client_auth_options_success(
     mocker: MockerFixture,
-    mock_configuration_with_client_auth: Configuration,  # pylint: disable=redefined-outer-name
+    mock_configuration_with_client_auth: Configuration,
 ) -> None:
     """Test successful retrieval of MCP servers with client auth options."""
     # Mock configuration - wrap in AppConfig
@@ -146,7 +151,7 @@ async def test_get_mcp_client_auth_options_success(
 @pytest.mark.asyncio
 async def test_get_mcp_client_auth_options_mixed_auth(
     mocker: MockerFixture,
-    mock_configuration_mixed_auth: Configuration,  # pylint: disable=redefined-outer-name
+    mock_configuration_mixed_auth: Configuration,
 ) -> None:
     """Test retrieval with mixed auth types - should only return client auth servers."""
     # Mock configuration - wrap in AppConfig
@@ -181,7 +186,7 @@ async def test_get_mcp_client_auth_options_mixed_auth(
 @pytest.mark.asyncio
 async def test_get_mcp_client_auth_options_no_client_auth(
     mocker: MockerFixture,
-    mock_configuration_no_client_auth: Configuration,  # pylint: disable=redefined-outer-name
+    mock_configuration_no_client_auth: Configuration,
 ) -> None:
     """Test retrieval when no servers have client auth - should return empty list."""
     # Mock configuration - wrap in AppConfig
@@ -215,7 +220,7 @@ async def test_get_mcp_client_auth_options_empty_config(
     mock_config = Configuration(  # type: ignore[call-arg]
         name="test",
         service=ServiceConfiguration(),  # type: ignore[call-arg]
-        llama_stack=OgxConfiguration(url="http://localhost:8321"),  # type: ignore[call-arg]
+        ogx=OgxConfiguration(url="http://localhost:8321"),  # type: ignore[call-arg]
         user_data_collection=UserDataCollection(feedback_enabled=False),  # type: ignore[call-arg]
         mcp_servers=[],
     )  # type: ignore[call-arg]
@@ -249,7 +254,7 @@ async def test_get_mcp_client_auth_options_whitespace_handling(
     mock_config = Configuration(  # type: ignore[call-arg]
         name="test",
         service=ServiceConfiguration(),  # type: ignore[call-arg]
-        llama_stack=OgxConfiguration(url="http://localhost:8321"),  # type: ignore[call-arg]
+        ogx=OgxConfiguration(url="http://localhost:8321"),  # type: ignore[call-arg]
         user_data_collection=UserDataCollection(feedback_enabled=False),  # type: ignore[call-arg]
         mcp_servers=[
             ModelContextProtocolServer(
@@ -297,7 +302,7 @@ async def test_get_mcp_client_auth_options_multiple_headers_single_server(
     mock_config = Configuration(  # type: ignore[call-arg]
         name="test",
         service=ServiceConfiguration(),  # type: ignore[call-arg]
-        llama_stack=OgxConfiguration(url="http://localhost:8321"),  # type: ignore[call-arg]
+        ogx=OgxConfiguration(url="http://localhost:8321"),  # type: ignore[call-arg]
         user_data_collection=UserDataCollection(feedback_enabled=False),  # type: ignore[call-arg]
         mcp_servers=[
             ModelContextProtocolServer(
@@ -337,3 +342,105 @@ async def test_get_mcp_client_auth_options_multiple_headers_single_server(
         "X-API-Key",
         "X-Custom-Token",
     }
+
+
+class TestMcpAuthOtelSpans:
+    """OTEL instrumentation tests for the /mcp-auth endpoints."""
+
+    @pytest.mark.asyncio
+    async def test_get_client_options_span_attributes(
+        self,
+        mocker: MockerFixture,
+        mock_configuration_with_client_auth: Configuration,
+        otel: tuple[Any, InMemorySpanExporter],
+    ) -> None:
+        """Test that get_mcp_client_auth_options emits a span with correct attributes."""
+        tracer, exporter = otel
+        mocker.patch("app.endpoints.mcp_auth.tracer", tracer)
+
+        app_config = AppConfig()
+        app_config._configuration = mock_configuration_with_client_auth
+        mocker.patch("app.endpoints.mcp_auth.configuration", app_config)
+        mocker.patch(
+            "app.endpoints.mcp_auth.authorize",
+            lambda action: lambda func: func,
+        )
+
+        mock_request = mocker.Mock()
+        await mcp_auth.get_mcp_client_auth_options.__wrapped__(  # type: ignore
+            mock_request, MOCK_AUTH
+        )
+
+        spans = exporter.get_finished_spans()
+        assert len(spans) == 1
+        span = spans[0]
+        assert span.name == "mcp_auth.get_client_options"
+        attrs = dict(span.attributes or {})
+        assert attrs["mcp.operation"] == "get_client_options"
+        assert attrs["mcp.servers.count"] == 2
+
+    @pytest.mark.asyncio
+    async def test_get_client_options_span_empty_result(
+        self,
+        mocker: MockerFixture,
+        mock_configuration_no_client_auth: Configuration,
+        otel: tuple[Any, InMemorySpanExporter],
+    ) -> None:
+        """Test span when no servers have client auth — count should be 0."""
+        tracer, exporter = otel
+        mocker.patch("app.endpoints.mcp_auth.tracer", tracer)
+
+        app_config = AppConfig()
+        app_config._configuration = mock_configuration_no_client_auth
+        mocker.patch("app.endpoints.mcp_auth.configuration", app_config)
+        mocker.patch(
+            "app.endpoints.mcp_auth.authorize",
+            lambda action: lambda func: func,
+        )
+
+        mock_request = mocker.Mock()
+        await mcp_auth.get_mcp_client_auth_options.__wrapped__(  # type: ignore
+            mock_request, MOCK_AUTH
+        )
+
+        spans = exporter.get_finished_spans()
+        assert len(spans) == 1
+        attrs = dict(spans[0].attributes or {})
+        assert attrs["mcp.servers.count"] == 0
+
+    @pytest.mark.asyncio
+    async def test_get_client_options_span_no_secrets(
+        self,
+        mocker: MockerFixture,
+        mock_configuration_with_client_auth: Configuration,
+        otel: tuple[Any, InMemorySpanExporter],
+    ) -> None:
+        """Verify that no auth tokens, headers, or secrets appear in span attributes."""
+        tracer, exporter = otel
+        mocker.patch("app.endpoints.mcp_auth.tracer", tracer)
+
+        app_config = AppConfig()
+        app_config._configuration = mock_configuration_with_client_auth
+        mocker.patch("app.endpoints.mcp_auth.configuration", app_config)
+        mocker.patch(
+            "app.endpoints.mcp_auth.authorize",
+            lambda action: lambda func: func,
+        )
+
+        mock_request = mocker.Mock()
+        await mcp_auth.get_mcp_client_auth_options.__wrapped__(  # type: ignore
+            mock_request, MOCK_AUTH
+        )
+
+        spans = exporter.get_finished_spans()
+        assert len(spans) == 1
+        attrs = dict(spans[0].attributes or {})
+        forbidden_keys = {"authorization", "token", "secret", "header", "key"}
+        for attr_key in attrs:
+            assert not any(
+                word in str(attr_key).lower() for word in forbidden_keys
+            ), f"Span attribute '{attr_key}' may contain sensitive data"
+        for attr_val in attrs.values():
+            val_lower = str(attr_val).lower()
+            assert "bearer" not in val_lower
+            assert "client" not in val_lower or attr_val == "get_client_options"

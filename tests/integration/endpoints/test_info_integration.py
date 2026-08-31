@@ -80,7 +80,7 @@ async def test_info_endpoint_returns_service_information(
     # Verify values from real configuration
     assert response.name == "foo bar baz"  # From lightspeed-stack.yaml
     assert response.service_version == __version__
-    assert response.llama_stack_version == "0.2.22"
+    assert response.ogx_version == "0.2.22"
 
     # Verify the OGX client was called
     mock_ogx_client.inspect.version.assert_called_once()

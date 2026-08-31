@@ -84,10 +84,6 @@ Unit tests for the /responses REST API endpoint (LCORE Responses API).
 
 OpenTelemetry unit tests for the /responses REST API endpoint.
 
-## [test_responses_splunk.py](test_responses_splunk.py)
-
-Unit tests for Splunk telemetry in the /responses endpoint.
-
 ## [test_rlsapi_v1.py](test_rlsapi_v1.py)
 
 Unit tests for the rlsapi v1 /infer REST API endpoint.

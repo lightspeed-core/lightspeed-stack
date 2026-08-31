@@ -84,7 +84,7 @@ def mock_configuration() -> Configuration:
             access_log=True,
             root_path="/.",
         ),
-        llama_stack=OgxConfiguration(
+        ogx=OgxConfiguration(
             url=AnyHttpUrl("http://localhost:8321"),
             api_key=SecretStr("xyzzy"),
             use_as_library_client=False,

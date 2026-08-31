@@ -154,7 +154,7 @@ def test_init_from_dict() -> None:
             "color_log": True,
             "access_log": True,
         },
-        "llama_stack": {
+        "ogx": {
             "api_key": "xyzzy",
             "url": "http://x.y.com:1234",
             "use_as_library_client": False,
@@ -262,7 +262,7 @@ def test_init_from_dict_with_shields() -> None:
             "color_log": True,
             "access_log": True,
         },
-        "llama_stack": {
+        "ogx": {
             "api_key": "xyzzy",
             "url": "http://x.y.com:1234",
             "use_as_library_client": False,
@@ -323,7 +323,7 @@ def test_init_from_dict_with_mcp_servers() -> None:
             "color_log": True,
             "access_log": True,
         },
-        "llama_stack": {
+        "ogx": {
             "api_key": "xyzzy",
             "url": "http://x.y.com:1234",
             "use_as_library_client": False,
@@ -376,7 +376,7 @@ def test_init_from_dict_with_authorization_configuration() -> None:
             "color_log": True,
             "access_log": True,
         },
-        "llama_stack": {
+        "ogx": {
             "api_key": "xyzzy",
             "url": "http://x.y.com:1234",
             "use_as_library_client": False,
@@ -414,7 +414,7 @@ service:
   workers: 1
   color_log: true
   access_log: true
-llama_stack:
+ogx:
   use_as_library_client: false
   url: http://localhost:8321
   api_key: xyzzy
@@ -444,7 +444,7 @@ service:
   workers: 1
   color_log: true
   access_log: true
-llama_stack:
+ogx:
   use_as_library_client: false
   url: http://localhost:8321
   api_key: test-key
@@ -482,7 +482,7 @@ def test_mcp_servers_property_empty() -> None:
             "color_log": True,
             "access_log": True,
         },
-        "llama_stack": {
+        "ogx": {
             "api_key": "test-key",
             "url": "http://localhost:8321",
             "use_as_library_client": False,
@@ -513,7 +513,7 @@ def test_mcp_servers_property_with_servers() -> None:
             "color_log": True,
             "access_log": True,
         },
-        "llama_stack": {
+        "ogx": {
             "api_key": "test-key",
             "url": "http://localhost:8321",
             "use_as_library_client": False,
@@ -613,7 +613,7 @@ service:
   workers: 1
   color_log: true
   access_log: true
-llama_stack:
+ogx:
   use_as_library_client: false
   url: http://localhost:8321
   api_key: test-key
@@ -651,7 +651,7 @@ service:
   workers: 1
   color_log: true
   access_log: true
-llama_stack:
+ogx:
   use_as_library_client: false
   url: http://localhost:8321
   api_key: test-key
@@ -694,7 +694,7 @@ service:
   workers: 1
   color_log: true
   access_log: true
-llama_stack:
+ogx:
   use_as_library_client: false
   url: http://localhost:8321
   api_key: test-key
@@ -735,7 +735,7 @@ service:
   workers: 1
   color_log: true
   access_log: true
-llama_stack:
+ogx:
   use_as_library_client: false
   url: http://localhost:8321
   api_key: test-key
@@ -772,7 +772,7 @@ service:
   workers: 1
   color_log: true
   access_log: true
-llama_stack:
+ogx:
   use_as_library_client: false
   url: http://localhost:8321
   api_key: test-key
@@ -809,7 +809,7 @@ service:
   workers: 1
   color_log: true
   access_log: true
-llama_stack:
+ogx:
   use_as_library_client: false
   url: http://localhost:8321
   api_key: test-key
@@ -846,7 +846,7 @@ service:
   workers: 1
   color_log: true
   access_log: true
-llama_stack:
+ogx:
   use_as_library_client: false
   url: http://localhost:8321
   api_key: test-key
@@ -898,7 +898,7 @@ service:
   workers: 1
   color_log: true
   access_log: true
-llama_stack:
+ogx:
   use_as_library_client: false
   url: http://localhost:8321
   api_key: test-key
@@ -936,7 +936,7 @@ service:
   workers: 1
   color_log: true
   access_log: true
-llama_stack:
+ogx:
   use_as_library_client: false
   url: http://localhost:8321
   api_key: test-key
@@ -1001,7 +1001,7 @@ service:
   workers: 1
   color_log: true
   access_log: true
-llama_stack:
+ogx:
   api_key: test-key
   url: http://localhost:8321
   use_as_library_client: false
@@ -1036,7 +1036,7 @@ service:
   workers: 1
   color_log: true
   access_log: true
-llama_stack:
+ogx:
   api_key: test-key
   url: http://localhost:8321
   use_as_library_client: false
@@ -1066,7 +1066,7 @@ def test_rag_id_mapping_includes_solr_when_okp_in_inline() -> None:
         {
             "name": "test",
             "service": {"host": "localhost", "port": 8080},
-            "llama_stack": {
+            "ogx": {
                 "api_key": "k",
                 "url": "http://test.com:1234",
                 "use_as_library_client": False,
@@ -1094,7 +1094,7 @@ def test_rag_id_mapping_includes_solr_when_okp_in_tool() -> None:
         {
             "name": "test",
             "service": {"host": "localhost", "port": 8080},
-            "llama_stack": {
+            "ogx": {
                 "api_key": "k",
                 "url": "http://test.com:1234",
                 "use_as_library_client": False,
@@ -1124,7 +1124,7 @@ def test_rag_id_mapping_with_byok(tmp_path: Path) -> None:
         {
             "name": "test",
             "service": {"host": "localhost", "port": 8080},
-            "llama_stack": {
+            "ogx": {
                 "api_key": "k",
                 "url": "http://test.com:1234",
                 "use_as_library_client": False,
@@ -1156,7 +1156,7 @@ def test_rag_id_mapping_with_byok_and_okp(tmp_path: Path) -> None:
         {
             "name": "test",
             "service": {"host": "localhost", "port": 8080},
-            "llama_stack": {
+            "ogx": {
                 "api_key": "k",
                 "url": "http://test.com:1234",
                 "use_as_library_client": False,
@@ -1221,7 +1221,7 @@ def test_score_multiplier_mapping_with_byok_defaults(tmp_path: Path) -> None:
         {
             "name": "test",
             "service": {"host": "localhost", "port": 8080},
-            "llama_stack": {
+            "ogx": {
                 "api_key": "k",
                 "url": "http://test.com:1234",
                 "use_as_library_client": False,
@@ -1255,7 +1255,7 @@ def test_score_multiplier_mapping_with_custom_values(tmp_path: Path) -> None:
         {
             "name": "test",
             "service": {"host": "localhost", "port": 8080},
-            "llama_stack": {
+            "ogx": {
                 "api_key": "k",
                 "url": "http://test.com:1234",
                 "use_as_library_client": False,
@@ -1307,7 +1307,7 @@ def test_relevance_cutoff_mapping_with_byok_defaults(tmp_path: Path) -> None:
         {
             "name": "test",
             "service": {"host": "localhost", "port": 8080},
-            "llama_stack": {
+            "ogx": {
                 "api_key": "k",
                 "url": "http://test.com:1234",
                 "use_as_library_client": False,
@@ -1343,7 +1343,7 @@ def test_relevance_cutoff_mapping_with_custom_values(tmp_path: Path) -> None:
         {
             "name": "test",
             "service": {"host": "localhost", "port": 8080},
-            "llama_stack": {
+            "ogx": {
                 "api_key": "k",
                 "url": "http://test.com:1234",
                 "use_as_library_client": False,
@@ -1412,7 +1412,7 @@ wrong_configurations = [
                 ],
             },
         },
-        "llama_stack": {
+        "ogx": {
             "url": "https://www.west.com/",
             "api_key": "api_key",
             "use_as_library_client": False,
@@ -1638,7 +1638,7 @@ wrong_configurations = [
                 "allow_headers": ["At professor seek hospital eat."],
             },
         },
-        "llama_stack": {
+        "ogx": {
             "url": None,
             "api_key": None,
             "use_as_library_client": None,
@@ -1930,7 +1930,7 @@ wrong_configurations = [
                 ],
             },
         },
-        "llama_stack": {
+        "ogx": {
             "url": "http://www.cameron.com/",
             "api_key": "xyzzy",
             "use_as_library_client": False,
@@ -2123,7 +2123,7 @@ wrong_configurations = [
                 "allow_headers": ["Experience east herself outside."],
             },
         },
-        "llama_stack": {
+        "ogx": {
             "url": "https://www.savage.com/",
             "api_key": "xyzzy",
             "use_as_library_client": False,
@@ -2357,7 +2357,7 @@ wrong_configurations = [
                 ],
             },
         },
-        "llama_stack": {
+        "ogx": {
             "url": None,
             "api_key": "xyzzy",
             "use_as_library_client": True,
@@ -2570,7 +2570,7 @@ wrong_configurations = [
                 ],
             },
         },
-        "llama_stack": {
+        "ogx": {
             "url": None,
             "api_key": "xyzzy",
             "use_as_library_client": None,
@@ -2850,7 +2850,7 @@ wrong_configurations = [
                 ],
             },
         },
-        "llama_stack": {
+        "ogx": {
             "url": "http://fowler-webb.com/",
             "api_key": "xyzzy",
             "use_as_library_client": None,
@@ -3093,7 +3093,7 @@ wrong_configurations = [
                 ],
             },
         },
-        "llama_stack": {
+        "ogx": {
             "url": None,
             "api_key": "xyzzy",
             "use_as_library_client": True,
@@ -3307,7 +3307,7 @@ wrong_configurations = [
                 "allow_headers": ["Form figure letter far."],
             },
         },
-        "llama_stack": {
+        "ogx": {
             "url": "https://murphy-thomas.com/",
             "api_key": None,
             "use_as_library_client": False,
@@ -3515,7 +3515,7 @@ wrong_configurations = [
                 "allow_headers": ["Site build professor affect consider."],
             },
         },
-        "llama_stack": {
+        "ogx": {
             "url": None,
             "api_key": "xyzzy",
             "use_as_library_client": False,
@@ -3750,7 +3750,7 @@ wrong_configurations = [
                 ],
             },
         },
-        "llama_stack": {
+        "ogx": {
             "url": "http://willis-jensen.com/",
             "api_key": "xyzzy",
             "use_as_library_client": None,
@@ -3984,7 +3984,7 @@ wrong_configurations = [
                 ],
             },
         },
-        "llama_stack": {
+        "ogx": {
             "url": "https://carroll.com/",
             "api_key": "/",
             "use_as_library_client": None,
@@ -4189,7 +4189,7 @@ def test_native_override_env_refs_not_resolved(
     monkeypatch.setenv("LCORE_TEST_MODEL", "gpt-4o-mini")
     config_dict = {
         "inference": {"default_model": "${env.LCORE_TEST_MODEL}"},
-        "llama_stack": {
+        "ogx": {
             "config": {
                 "baseline": "empty",
                 "native_override": {
@@ -4206,13 +4206,41 @@ def test_native_override_env_refs_not_resolved(
     resolved = replace_env_vars_preserving_native_override(config_dict)
 
     # native_override keeps the reference verbatim — the secret never resolved
+    override_api_key = resolved["ogx"]["config"]["native_override"]["providers"][
+        "inference"
+    ][0]["config"]["api_key"]
+    assert override_api_key == "${env.LCORE_TEST_SECRET}"
+    assert "supersecret" not in str(resolved["ogx"])
+    # everything outside native_override still resolves
+    assert resolved["inference"]["default_model"] == "gpt-4o-mini"
+
+
+def test_replace_env_vars_preserves_native_override_under_deprecated_llama_stack_key(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Deprecated ``llama_stack`` key is treated like ``ogx`` for env resolution."""
+    monkeypatch.setenv("LCORE_TEST_SECRET", "supersecret")
+    config_dict = {
+        "llama_stack": {
+            "config": {
+                "native_override": {
+                    "providers": {
+                        "inference": [
+                            {"config": {"api_key": "${env.LCORE_TEST_SECRET}"}}
+                        ]
+                    }
+                }
+            }
+        }
+    }
+
+    resolved = replace_env_vars_preserving_native_override(config_dict)
+
     override_api_key = resolved["llama_stack"]["config"]["native_override"][
         "providers"
     ]["inference"][0]["config"]["api_key"]
     assert override_api_key == "${env.LCORE_TEST_SECRET}"
     assert "supersecret" not in str(resolved["llama_stack"])
-    # everything outside native_override still resolves
-    assert resolved["inference"]["default_model"] == "gpt-4o-mini"
 
 
 def test_replace_env_vars_without_native_override_resolves_all(

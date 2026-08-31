@@ -51,7 +51,7 @@ def replace_env_vars_preserving_native_override(
 
     LCORE resolves environment-variable references throughout
     lightspeed-stack.yaml so typed fields receive concrete values. But
-    ``llama_stack.config.native_override`` is raw OGX schema that OGX
+    ``ogx.config.native_override`` is raw OGX schema that OGX
     resolves itself, in memory, at its own startup. Resolving it eagerly
     here would (a) defeat the ${env.*} pattern LCORE recommends for secrets and
     (b) pull resolved secrets into the loaded Configuration model, which is
@@ -70,8 +70,10 @@ def replace_env_vars_preserving_native_override(
     if not isinstance(config_dict, dict):
         return replace_env_vars(config_dict)
 
-    llama_stack = config_dict.get("llama_stack")
-    ls_config = llama_stack.get("config") if isinstance(llama_stack, dict) else None
+    ogx_section = config_dict.get("ogx")
+    if ogx_section is None:
+        ogx_section = config_dict.get("llama_stack")
+    ls_config = ogx_section.get("config") if isinstance(ogx_section, dict) else None
     if not (isinstance(ls_config, dict) and "native_override" in ls_config):
         return replace_env_vars(config_dict)
 
@@ -79,9 +81,11 @@ def replace_env_vars_preserving_native_override(
     ls_config["native_override"] = {}  # keep secrets out of env resolution
     resolved = replace_env_vars(config_dict)
     ls_config["native_override"] = raw_override  # restore source dict if reused
-    resolved_ls = (resolved.get("llama_stack") or {}).get("config")
-    if isinstance(resolved_ls, dict):
-        resolved_ls["native_override"] = raw_override
+    resolved_ogx = (resolved.get("ogx") or resolved.get("llama_stack") or {}).get(
+        "config"
+    )
+    if isinstance(resolved_ogx, dict):
+        resolved_ogx["native_override"] = raw_override
     return resolved
 
 
@@ -184,7 +188,7 @@ class AppConfig:  # pylint: disable=too-many-public-methods
         """
         if self._configuration is None:
             raise LogicError("logic error: configuration is not loaded")
-        return self._configuration.llama_stack
+        return self._configuration.ogx
 
     @property
     def user_data_collection_configuration(self) -> UserDataCollection:

@@ -55,7 +55,7 @@ from app.endpoints.a2a_openapi import a2a_jsonrpc_responses
 from authentication import get_auth_dependency
 from authentication.interface import AuthTuple
 from authorization.middleware import authorize
-from client import AsyncOgxClientHolder
+from client.ogx import AsyncOgxClientHolder
 from configuration import configuration
 from constants import MEDIA_TYPE_EVENT_STREAM
 from log import get_logger

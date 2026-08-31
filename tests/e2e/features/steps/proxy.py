@@ -32,7 +32,7 @@ from tests.e2e.proxy.interception_proxy import (
     DEFAULT_INTERCEPTION_PROXY_PORT,
 )
 from tests.e2e.proxy.tunnel_proxy import DEFAULT_PROXY_PORT
-from tests.e2e.utils.llama_config_utils import (
+from tests.e2e.utils.ogx_config_utils import (
     backup_llama_config,
     load_llama_config,
     restore_llama_config_if_modified,

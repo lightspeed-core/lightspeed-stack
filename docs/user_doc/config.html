@@ -629,7 +629,7 @@ endpoints.</td>
           <td>Optional explicit marker of the configuration format. When set, it
 must agree with the shape detected from the configuration body:
 &#x2018;unified&#x2019; requires a synthesis input (a non-empty inference.providers, a
-non-empty vector_store.providers, or a llama_stack.config block),
+non-empty vector_store.providers, or a ogx.config block),
 &#x2018;legacy&#x2019; requires no synthesis input. Reserved as the lever for a future
 breaking change of the unified schema (R11).</td>
         </tr>
@@ -640,7 +640,7 @@ breaking change of the unified schema (R11).</td>
 configuration.</td>
         </tr>
         <tr class="even">
-          <td>llama_stack</td>
+          <td>ogx</td>
           <td/>
           <td>This section contains OGX configuration. Lightspeed Core
 Stack service can call OGX in library mode or in server

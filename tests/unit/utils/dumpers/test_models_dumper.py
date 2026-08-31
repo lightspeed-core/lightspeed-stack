@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from utils.models_dumper import dump_models, dump_models_group
+from utils.dumpers.models_dumper import dump_models, dump_models_group
 
 
 def test_dump_models(tmpdir: Path) -> None:
@@ -871,7 +871,7 @@ def test_dump_models(tmpdir: Path) -> None:
                             "description": "This section contains Lightspeed Core Stack service configuration.",
                             "title": "Service configuration"
                         },
-                        "llama_stack": {
+                        "ogx": {
                             "$ref": "`#/components/schemas/`OgxConfiguration",
                             "description": "This section contains OGX configuration. Lightspeed Core Stack service can call OGX in library mode or in server mode.",
                             "title": "OGX configuration"
@@ -1066,7 +1066,7 @@ def test_dump_models(tmpdir: Path) -> None:
                     "required": [
                         "name",
                         "service",
-                        "llama_stack",
+                        "ogx",
                         "user_data_collection"
                     ],
                     "title": "Configuration",
@@ -1102,7 +1102,7 @@ def test_dump_models(tmpdir: Path) -> None:
                                     "default_model": "gpt-4-turbo",
                                     "default_provider": "openai"
                                 },
-                                "llama_stack": {
+                                "ogx": {
                                     "api_key": "*****",
                                     "library_client_config_path": null,
                                     "url": "http://localhost:8321",
@@ -2504,10 +2504,10 @@ def test_dump_models(tmpdir: Path) -> None:
                     "type": "object"
                 },
                 "InfoResponse": {
-                    "description": "Model representing a response to an info request.\n\nAttributes:\n    name: Service name.\n    service_version: Service version.\n    llama_stack_version: OGX version.",
+                    "description": "Model representing a response to an info request.\n\nAttributes:\n    name: Service name.\n    service_version: Service version.\n    ogx_version: OGX version.",
                     "examples": [
                         {
-                            "llama_stack_version": "1.0.0",
+                            "ogx_version": "1.0.0",
                             "name": "Lightspeed Stack",
                             "service_version": "1.0.0"
                         }
@@ -2531,7 +2531,7 @@ def test_dump_models(tmpdir: Path) -> None:
                             "title": "Service Version",
                             "type": "string"
                         },
-                        "llama_stack_version": {
+                        "ogx_version": {
                             "description": "OGX version",
                             "examples": [
                                 "0.2.1",
@@ -2547,7 +2547,7 @@ def test_dump_models(tmpdir: Path) -> None:
                     "required": [
                         "name",
                         "service_version",
-                        "llama_stack_version"
+                        "ogx_version"
                     ],
                     "title": "InfoResponse",
                     "type": "object"

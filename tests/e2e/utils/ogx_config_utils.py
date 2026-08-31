@@ -8,7 +8,7 @@ from typing import Any, Optional
 
 import yaml
 
-from tests.e2e.utils.llama_prow_utils import (
+from tests.e2e.utils.ogx_prow_utils import (
     backup_llama_run_config_to_memory,
     get_llama_run_config_content,
     remove_llama_run_config_backup,

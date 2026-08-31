@@ -19,7 +19,7 @@ COPY src ./src
 COPY providers ./providers
 
 # Install dependencies using uv sync
-RUN uv sync --locked --no-install-project --group llslibdev
+RUN uv sync --locked --no-install-project --group ogxlibdev
 
 # Add virtual environment to PATH for llama command
 # Add providers to PYTHONPATH so lightspeed_stack_providers modules can be imported

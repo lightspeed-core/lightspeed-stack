@@ -1030,7 +1030,7 @@ def uv_resolve(
         "--emit-index-annotation",
         "--no-sources",
         "--group",
-        "llslibdev",
+        "ogxlibdev",
     ]
     if os.path.exists(overrides_file):
         cmd += ["--override", overrides_file]
