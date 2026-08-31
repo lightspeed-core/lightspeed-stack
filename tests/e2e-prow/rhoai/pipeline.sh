@@ -99,8 +99,10 @@ if [[ -n "${REDHAT_REGISTRY_USERNAME:-}" ]] && [[ -n "${REDHAT_REGISTRY_PASSWORD
 
   # Get current pipeline Pod metadata for ownerReference (ensures cleanup after job completes)
   PIPELINE_POD_NAME="${HOSTNAME}"
-  if PIPELINE_POD_UID=$(oc get pod "$PIPELINE_POD_NAME" -n "$NAMESPACE" -o jsonpath='{.metadata.uid}' 2>/dev/null); then
-    echo "Setting ownerReference to pipeline Pod: $PIPELINE_POD_NAME"
+  # Pipeline pod runs in its own namespace, not $NAMESPACE - don't specify -n
+  if PIPELINE_POD_UID=$(oc get pod "$PIPELINE_POD_NAME" -o jsonpath='{.metadata.uid}' 2>/dev/null) && \
+     PIPELINE_POD_NAMESPACE=$(oc get pod "$PIPELINE_POD_NAME" -o jsonpath='{.metadata.namespace}' 2>/dev/null); then
+    echo "Setting ownerReference to pipeline Pod: $PIPELINE_POD_NAME (namespace: $PIPELINE_POD_NAMESPACE)"
 
     # Create secret with ownerReference using YAML (ensures automatic cleanup)
     cat <<EOF | oc apply -f -
@@ -123,12 +125,19 @@ EOF
     echo "✅ Red Hat registry pull secret created with ownerReference"
   else
     # Fallback: create without ownerReference if Pod metadata unavailable
-    echo "⚠️  Could not get pipeline Pod UID - creating secret without ownerReference"
-    oc create secret docker-registry redhat-registry-pull-secret \
+    echo "⚠️  Could not get pipeline Pod metadata - creating secret without ownerReference"
+    # Delete existing secret if any (may be stale from previous run)
+    oc delete secret redhat-registry-pull-secret -n "$NAMESPACE" --ignore-not-found=true 2>/dev/null || true
+    if oc create secret docker-registry redhat-registry-pull-secret \
       --docker-server=registry.redhat.io \
       --docker-username="$REDHAT_REGISTRY_USERNAME" \
       --docker-password="$REDHAT_REGISTRY_PASSWORD" \
-      -n "$NAMESPACE" 2>/dev/null && echo "✅ Red Hat registry pull secret created" || echo "⚠️  Secret exists or creation failed"
+      -n "$NAMESPACE" 2>&1; then
+      echo "✅ Red Hat registry pull secret created"
+    else
+      echo "❌ FATAL: Failed to create redhat-registry-pull-secret"
+      exit 1
+    fi
   fi
 
   # Link to default service account
@@ -426,32 +435,47 @@ fi
 
 ./pipeline-services.sh
 
-echo "--> Final wait for both lightspeed-stack-service and llama-stack-service pods..."
-if ! oc wait pod/lightspeed-stack-service pod/llama-stack-service \
-    -n "$NAMESPACE" --for=condition=Ready --timeout=600s; then
-  echo ""
-  echo "❌ One or both service pods failed to become ready within timeout"
-  echo ""
-  echo "DEBUG: Pod status:"
-  oc get pods -n "$NAMESPACE" -o wide || true
-  echo ""
-  echo "DEBUG: lightspeed-stack-service description:"
-  oc describe pod lightspeed-stack-service -n "$NAMESPACE" || true
-  echo ""
-  echo "DEBUG: llama-stack-service description:"
-  oc describe pod llama-stack-service -n "$NAMESPACE" || true
-  echo ""
-  echo "DEBUG: lightspeed-stack-service logs:"
-  oc logs lightspeed-stack-service -n "$NAMESPACE" --tail=100 || true
-  echo ""
-  echo "DEBUG: llama-stack-service logs:"
-  oc logs llama-stack-service -n "$NAMESPACE" --tail=100 || true
-  echo ""
-  echo "DEBUG: Recent events in namespace:"
-  oc get events -n "$NAMESPACE" --sort-by='.lastTimestamp' | tail -20 || true
-  exit 1
-fi
-echo "✅ Both service pods are ready"
+echo "--> Waiting for both lightspeed-stack-service and llama-stack-service pods (up to 10 min)..."
+for i in $(seq 1 60); do
+  lcs_ready=$(oc get pod lightspeed-stack-service -n "$NAMESPACE" -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "False")
+  llama_ready=$(oc get pod llama-stack-service -n "$NAMESPACE" -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "False")
+
+  if [[ "$lcs_ready" == "True" ]] && [[ "$llama_ready" == "True" ]]; then
+    echo "✅ Both service pods are ready after $(( i * 10 ))s"
+    break
+  fi
+
+  if [ $((i % 6)) -eq 0 ]; then
+    lcs_status=$(oc get pod lightspeed-stack-service -n "$NAMESPACE" -o jsonpath='{.status.phase}' 2>/dev/null || echo "unknown")
+    llama_status=$(oc get pod llama-stack-service -n "$NAMESPACE" -o jsonpath='{.status.phase}' 2>/dev/null || echo "unknown")
+    echo "[$(( i * 10 ))s] lightspeed-stack: $lcs_status ($lcs_ready), llama-stack: $llama_status ($llama_ready)"
+  fi
+
+  if [ $i -eq 60 ]; then
+    echo ""
+    echo "❌ One or both service pods failed to become ready within 600s timeout"
+    echo ""
+    echo "DEBUG: Pod status:"
+    oc get pods -n "$NAMESPACE" -o wide || true
+    echo ""
+    echo "DEBUG: lightspeed-stack-service description:"
+    oc describe pod lightspeed-stack-service -n "$NAMESPACE" || true
+    echo ""
+    echo "DEBUG: llama-stack-service description:"
+    oc describe pod llama-stack-service -n "$NAMESPACE" || true
+    echo ""
+    echo "DEBUG: lightspeed-stack-service logs:"
+    oc logs lightspeed-stack-service -n "$NAMESPACE" --tail=100 || true
+    echo ""
+    echo "DEBUG: llama-stack-service logs:"
+    oc logs llama-stack-service -n "$NAMESPACE" --tail=100 || true
+    echo ""
+    echo "DEBUG: Recent events in namespace:"
+    oc get events -n "$NAMESPACE" --sort-by='.lastTimestamp' | tail -20 || true
+    exit 1
+  fi
+  sleep 10
+done
 
 oc get pods -n "$NAMESPACE"
 

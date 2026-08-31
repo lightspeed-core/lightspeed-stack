@@ -132,8 +132,10 @@ if [[ -d /var/run/redhat-registry-username ]] && [[ -d /var/run/redhat-registry-
   if [[ -n "$REDHAT_USERNAME" ]] && [[ -n "$REDHAT_PASSWORD" ]]; then
     # Get current pipeline Pod metadata for ownerReference (ensures cleanup after job completes)
     PIPELINE_POD_NAME="${HOSTNAME}"
-    if PIPELINE_POD_UID=$(oc get pod "$PIPELINE_POD_NAME" -n "$NAMESPACE" -o jsonpath='{.metadata.uid}' 2>/dev/null); then
-      log "Setting ownerReference to pipeline Pod: $PIPELINE_POD_NAME"
+    # Pipeline pod runs in its own namespace, not $NAMESPACE - don't specify -n
+    if PIPELINE_POD_UID=$(oc get pod "$PIPELINE_POD_NAME" -o jsonpath='{.metadata.uid}' 2>/dev/null) && \
+       PIPELINE_POD_NAMESPACE=$(oc get pod "$PIPELINE_POD_NAME" -o jsonpath='{.metadata.namespace}' 2>/dev/null); then
+      log "Setting ownerReference to pipeline Pod: $PIPELINE_POD_NAME (namespace: $PIPELINE_POD_NAMESPACE)"
 
       # Create secret with ownerReference using YAML (ensures automatic cleanup)
       cat <<EOF | oc apply -f -
@@ -156,12 +158,19 @@ EOF
       log "✅ Red Hat registry pull secret created with ownerReference"
     else
       # Fallback: create without ownerReference if Pod metadata unavailable
-      log "⚠️  Could not get pipeline Pod UID - creating secret without ownerReference"
-      oc create secret docker-registry redhat-registry-pull-secret \
+      log "⚠️  Could not get pipeline Pod metadata - creating secret without ownerReference"
+      # Delete existing secret if any (may be stale from previous run)
+      oc delete secret redhat-registry-pull-secret -n "$NAMESPACE" --ignore-not-found=true 2>/dev/null || true
+      if oc create secret docker-registry redhat-registry-pull-secret \
         --docker-server=registry.redhat.io \
         --docker-username="$REDHAT_USERNAME" \
         --docker-password="$REDHAT_PASSWORD" \
-        -n "$NAMESPACE" 2>/dev/null && log "✅ Red Hat registry pull secret created" || log "⚠️  Secret exists or creation failed"
+        -n "$NAMESPACE" 2>&1; then
+        log "✅ Red Hat registry pull secret created"
+      else
+        echo "❌ FATAL: Failed to create redhat-registry-pull-secret"
+        exit 1
+      fi
     fi
 
     # Link to default service account
@@ -401,14 +410,29 @@ e2e_echo_pod_logs() {
   done < <(oc logs llama-stack-service -n "$NAMESPACE" --tail="$n" 2>&1) || true
 }
 
-progress "Waiting for lightspeed-stack and llama-stack pods"
-if ! oc wait pod/lightspeed-stack-service pod/llama-stack-service \
-    -n "$NAMESPACE" --for=condition=Ready --timeout=600s; then
-  progress "❌ One or both service pods failed to become ready within timeout"
-  e2e_echo_pod_logs 200
-  exit 1
-fi
-log "✅ Both service pods are ready"
+progress "Waiting for lightspeed-stack and llama-stack pods (up to 10 min)"
+for i in $(seq 1 60); do
+  lcs_ready=$(oc get pod lightspeed-stack-service -n "$NAMESPACE" -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "False")
+  llama_ready=$(oc get pod llama-stack-service -n "$NAMESPACE" -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "False")
+
+  if [[ "$lcs_ready" == "True" ]] && [[ "$llama_ready" == "True" ]]; then
+    log "✅ Both service pods are ready after $(( i * 10 ))s"
+    break
+  fi
+
+  if [ $((i % 6)) -eq 0 ]; then
+    lcs_status=$(oc get pod lightspeed-stack-service -n "$NAMESPACE" -o jsonpath='{.status.phase}' 2>/dev/null || echo "unknown")
+    llama_status=$(oc get pod llama-stack-service -n "$NAMESPACE" -o jsonpath='{.status.phase}' 2>/dev/null || echo "unknown")
+    progress "[$(( i * 10 ))s] lightspeed-stack: $lcs_status ($lcs_ready), llama-stack: $llama_status ($llama_ready)"
+  fi
+
+  if [ $i -eq 60 ]; then
+    progress "❌ One or both service pods failed to become ready within 600s timeout"
+    e2e_echo_pod_logs 200
+    exit 1
+  fi
+  sleep 10
+done
 
 if [ "$QUIET" = "1" ]; then
   e2e_echo_pod_logs 80

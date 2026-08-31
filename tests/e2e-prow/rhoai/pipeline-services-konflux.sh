@@ -43,8 +43,26 @@ PVCEOF
 
 timeout 120 oc delete pod llama-stack-service -n "$NAMESPACE" --ignore-not-found=true --wait=true 2>/dev/null || true
 oc apply -n "$NAMESPACE" -f "$BASE_DIR/manifests/lightspeed/llama-stack-openai.yaml"
-# First boot runs the full init (dnf + git clone + uv sync ≈ 6-15 min); use a generous timeout.
-oc wait pod/llama-stack-service -n "$NAMESPACE" --for=condition=Ready --timeout=900s
+
+# First boot runs the full init (dnf + git clone + uv sync ≈ 6-15 min); poll with progress updates
+echo "Waiting for llama-stack-service to be ready (up to 15 min for first boot)..."
+for i in $(seq 1 90); do
+  if oc get pod llama-stack-service -n "$NAMESPACE" -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null | grep -q "True"; then
+    echo "✅ llama-stack-service ready after $(( i * 10 ))s"
+    break
+  fi
+  if [ $((i % 6)) -eq 0 ]; then
+    echo "[$(( i * 10 ))s] Still waiting for llama-stack-service... (pod status: $(oc get pod llama-stack-service -n "$NAMESPACE" -o jsonpath='{.status.phase}' 2>/dev/null || echo 'unknown'))"
+  fi
+  if [ $i -eq 90 ]; then
+    echo "❌ llama-stack-service not ready after 900s"
+    oc get pod llama-stack-service -n "$NAMESPACE" -o wide 2>/dev/null || true
+    oc describe pod llama-stack-service -n "$NAMESPACE" 2>/dev/null | tail -50 || true
+    exit 1
+  fi
+  sleep 10
+done
+
 oc label pod llama-stack-service pod=llama-stack-service -n "$NAMESPACE"
 oc expose pod llama-stack-service --name=llama-stack-service-svc --port=8321 --type=ClusterIP -n "$NAMESPACE"
 
