@@ -7,7 +7,7 @@ from typing import Final, Literal
 
 # Minimal and maximal supported Llama Stack version
 MINIMAL_SUPPORTED_LLAMA_STACK_VERSION: Final[str] = "0.2.17"
-MAXIMAL_SUPPORTED_LLAMA_STACK_VERSION: Final[str] = "1.3.0"
+MAXIMAL_SUPPORTED_LLAMA_STACK_VERSION: Final[str] = "1.2.5"
 
 # Path to the lightspeed-stack.yaml, exported so uvicorn workers (separate
 # processes) can reload the configuration that the parent process selected.
