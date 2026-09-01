@@ -2,6 +2,7 @@
 
 import importlib
 import os
+from collections import defaultdict
 from collections.abc import AsyncIterator, Generator
 from pathlib import Path
 from typing import Any, Optional
@@ -11,6 +12,9 @@ from fastapi import Request, Response
 from fastapi.testclient import TestClient
 from ogx_api.openai_responses import OpenAIResponseObject
 from ogx_client.types import ListModelsResponse, VersionInfo
+from ogx_client.types.conversations.item_list_response import (
+    OpenAIResponseMessageOutput,
+)
 from ogx_client.types.model import Model
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
@@ -362,6 +366,7 @@ def mock_agent_run_stream(events: list[Any]) -> Any:
     """Build an async context manager that yields pydantic-ai stream events."""
 
     async def _event_stream() -> AsyncIterator[Any]:
+        """Yield pre-built events one at a time."""
         for event in events:
             yield event
 
@@ -481,6 +486,86 @@ def shutdown_integration_otel_provider(provider: TracerProvider) -> None:
     provider.shutdown()
     trace._TRACER_PROVIDER_SET_ONCE._done = False  # pylint: disable=protected-access
     trace._TRACER_PROVIDER = None  # pylint: disable=protected-access
+
+
+# ==========================================
+# In-Memory Conversation Store
+# ==========================================
+
+
+class InMemoryConversationStore:
+    """In-memory fake for the Llama Stack conversations.items API.
+
+    Provides stateful ``list`` and ``create`` methods that can be wired onto a
+    mock ``AsyncOgxClient`` so that ``get_all_conversation_items`` and
+    ``_write_summary_marker`` (and ``append_turn_items_to_conversation``) work
+    without patching.
+    """
+
+    def __init__(self) -> None:
+        """Initialize an empty in-memory conversation store."""
+        self._store: dict[str, list[OpenAIResponseMessageOutput]] = defaultdict(list)
+
+    @property
+    def store(self) -> dict[str, list[OpenAIResponseMessageOutput]]:
+        """Direct access to the backing store for seeding data in tests."""
+        return self._store
+
+    def _dict_to_message(self, raw: dict[str, Any]) -> OpenAIResponseMessageOutput:
+        """Convert a raw item dict (as sent by production code) to a typed object."""
+        content = raw.get("content", "")
+        if isinstance(content, list):
+            content = " ".join(
+                part.get("text", "") for part in content if isinstance(part, dict)
+            )
+        role = raw.get("role", "user")
+        return OpenAIResponseMessageOutput.model_construct(
+            type="message",
+            role=role,
+            content=content,
+        )
+
+    async def create(self, conversation_id: str, *, items: Any, **_kwargs: Any) -> Any:
+        """Async fake for ``client.conversations.items.create``."""
+        for raw in items:
+            if isinstance(raw, dict):
+                self._store[conversation_id].append(self._dict_to_message(raw))
+            else:
+                self._store[conversation_id].append(raw)
+
+    def list(self, conversation_id: str, **_kwargs: Any) -> "_FakePaginator":
+        """Fake for ``client.conversations.items.list`` (returns an awaitable)."""
+        return _FakePaginator(list(self._store.get(conversation_id, [])))
+
+
+class _FakePage:
+    """Single-page result matching the ``AsyncOpenAICursorPage`` protocol."""
+
+    def __init__(self, data: list[OpenAIResponseMessageOutput]) -> None:
+        self.data = data
+
+    def has_next_page(self) -> bool:
+        """Return False — the fake always returns all items in one page."""
+        return False
+
+    async def get_next_page(self) -> "_FakePage":
+        """Return an empty page (should never be called)."""
+        return _FakePage([])
+
+
+class _FakePaginator:  # pylint: disable=too-few-public-methods
+    """Awaitable object matching the ``AsyncPaginator`` protocol."""
+
+    def __init__(self, data: list[OpenAIResponseMessageOutput]) -> None:
+        self._page = _FakePage(data)
+
+    def __await__(self) -> Any:
+        """Allow ``await paginator`` to return the page."""
+        return self._resolve().__await__()  # pylint: disable=no-member
+
+    async def _resolve(self) -> _FakePage:
+        """Return the single pre-built page."""
+        return self._page
 
 
 # ==========================================
@@ -799,9 +884,11 @@ def mock_ogx_client_fixture(
     defaults for integration tests. Individual tests can override specific
     behaviors as needed.
 
-    Patches AsyncOgxClientHolder in both app.endpoints.query and app.main
-    to ensure the mock is active during TestClient startup (when app.main imports
-    and initializes the client) and during endpoint execution.
+    Patches AsyncOgxClientHolder in app.endpoints.query, app.main,
+    app.endpoints.a2a, app.endpoints.responses, utils.endpoints, and
+    app.endpoints.streaming_query to ensure the mock is active during
+    TestClient startup (when app.main imports and initializes the
+    client) and during endpoint execution.
 
     Args:
         mocker: pytest-mock fixture used to create and patch mocks.
@@ -816,6 +903,12 @@ def mock_ogx_client_fixture(
     mocker.patch("app.main.AsyncOgxClientHolder", mock_holder_class)
     mocker.patch(
         "app.endpoints.conversations_v1.AsyncOgxClientHolder", mock_holder_class
+    )
+    mocker.patch("app.endpoints.a2a.AsyncOgxClientHolder", mock_holder_class)
+    mocker.patch("app.endpoints.responses.AsyncOgxClientHolder", mock_holder_class)
+    mocker.patch("utils.endpoints.AsyncOgxClientHolder", mock_holder_class)
+    mocker.patch(
+        "app.endpoints.streaming_query.AsyncOgxClientHolder", mock_holder_class
     )
 
     mock_client = mocker.AsyncMock()
@@ -878,6 +971,29 @@ def mock_ogx_client_fixture(
     mock_holder_instance.get_client.return_value = mock_client
 
     yield mock_client
+
+
+@pytest.fixture(name="mock_conversation_store")
+def conversation_store_fixture(
+    mock_ogx_client: Any,
+) -> InMemoryConversationStore:
+    """Wire an in-memory conversation store into the mock Llama Stack client.
+
+    Replaces ``conversations.items.list`` and ``conversations.items.create``
+    on the mock client with stateful fakes so that conversation items persist
+    across calls within a single test. Use ``await store.create(conv_id, items=...)``
+    to pre-populate a conversation.
+
+    Args:
+        mock_ogx_client: The mocked Llama Stack client from mock_ogx_client_fixture.
+
+    Returns:
+        The InMemoryConversationStore instance backing the mock client.
+    """
+    store = InMemoryConversationStore()
+    mock_ogx_client.conversations.items.list = store.list
+    mock_ogx_client.conversations.items.create = store.create
+    return store
 
 
 @pytest.fixture(name="mock_query_agent")
