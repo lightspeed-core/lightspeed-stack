@@ -417,37 +417,6 @@ def remove_config_backup(backup_path: str) -> None:
             print(f"Warning: Could not remove backup file {backup_path}: {e}")
 
 
-def clear_llama_stack_storage(container_name: str = "lightspeed-stack") -> None:
-    """Clear Llama Stack storage in library mode (embedded Llama Stack).
-
-    Removes the ~/.llama directory so embedded Llama Stack persisted state is
-    reset. Used before MCP config scenarios in library mode.
-    Only runs when using Docker (skipped in Prow).
-
-    Parameters:
-    ----------
-        container_name (str): Docker container name (default "lightspeed-stack").
-
-    Returns:
-    -------
-        None
-    """
-    if is_prow_environment():
-        return
-
-    try:
-        subprocess.run(
-            ["docker", "exec", container_name, "sh", "-c", "rm -rf ~/.llama"],
-            capture_output=True,
-            text=True,
-            timeout=10,
-            check=False,
-        )
-    except subprocess.TimeoutExpired as e:
-        print(f"Failed to clear Llama Stack storage: {e}")
-        raise
-
-
 def restart_container(container_name: str) -> None:
     """Restart a Docker container by name and wait until it is healthy.
 
