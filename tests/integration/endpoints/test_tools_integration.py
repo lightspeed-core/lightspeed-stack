@@ -12,8 +12,8 @@ from authentication.interface import AuthTuple
 from configuration import AppConfig
 
 
-@pytest.fixture(name="mock_llama_stack_tools")
-def mock_llama_stack_tools_fixture(
+@pytest.fixture(name="mock_ogx_tools")
+def mock_ogx_tools_fixture(
     mocker: MockerFixture,
 ) -> Generator[Any, None, None]:
     """Mock the OGX client for tools endpoint.
@@ -50,7 +50,7 @@ TOOLS_OAUTH_401_TEST_CASES = [
 async def test_tools_endpoint_returns_401_for_mcp_oauth(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     test_case: dict,
     test_config: AppConfig,
-    mock_llama_stack_tools: Any,
+    mock_ogx_tools: Any,
     test_request: Request,
     test_auth: AuthTuple,
     mocker: MockerFixture,
@@ -67,13 +67,13 @@ async def test_tools_endpoint_returns_401_for_mcp_oauth(  # pylint: disable=too-
     Parameters:
         test_case: Dictionary containing test parameters (www_authenticate, expect_www_authenticate)
         test_config: Test configuration
-        mock_llama_stack_tools: Mocked OGX client
+        mock_ogx_tools: Mocked OGX client
         test_request: FastAPI request
         test_auth: noop authentication tuple
         mocker: pytest-mock fixture
     """
     _ = test_config
-    _ = mock_llama_stack_tools
+    _ = mock_ogx_tools
 
     www_authenticate = test_case["www_authenticate"]
     expect_www_authenticate = test_case["expect_www_authenticate"]

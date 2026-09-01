@@ -48,7 +48,7 @@ Input sanitization to detect and block obfuscated prompt injection attempts.
 
 Function to transform a JSON Schema-like dictionary into an OpenAPI-compatible schema.
 
-## [llama_stack_version.py](llama_stack_version.py)
+## [ogx_version.py](ogx_version.py)
 
 Check if the OGX version is supported by the LCS.
 

@@ -422,9 +422,9 @@ oc new-build --name=llama-stack-e2e \
   --to="llama-stack-e2e:latest" \
   -n "$NAMESPACE" 2>/dev/null || echo "BuildConfig llama-stack-e2e already exists"
 
-# Patch BuildConfig to use deploy/llama-stack/test.containerfile instead of Dockerfile
+# Patch BuildConfig to use deploy/ogx/test.containerfile instead of Dockerfile
 oc patch bc llama-stack-e2e -n "$NAMESPACE" --type=json \
-  -p '[{"op":"replace","path":"/spec/strategy/dockerStrategy/dockerfilePath","value":"deploy/llama-stack/test.containerfile"}]' 2>/dev/null || true
+  -p '[{"op":"replace","path":"/spec/strategy/dockerStrategy/dockerfilePath","value":"deploy/ogx/test.containerfile"}]' 2>/dev/null || true
 
 # Build from repo root
 oc start-build llama-stack-e2e \

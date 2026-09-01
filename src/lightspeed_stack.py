@@ -10,8 +10,8 @@ from argparse import ArgumentParser
 import constants
 from configuration import configuration
 from constants import LIGHTSPEED_STACK_LOG_LEVEL_ENV_VAR
-from llama_stack_configuration import migrate_config_dumb
 from log import get_logger, setup_logging
+from ogx_configuration import migrate_config_dumb
 from runners.quota_scheduler import start_quota_scheduler
 from runners.uvicorn import start_uvicorn
 from utils.dumpers import config_dumper, models_dumper
@@ -32,7 +32,7 @@ def create_argument_parser() -> ArgumentParser:
                       error_responses,common,agents,common_responses}
                       dump schemas for selected models group into OpenAPI-compatible file and quit
     - -c / --config: path to the configuration file (default "lightspeed-stack.yaml")
-    - -g / --generate-llama-stack-configuration: generate an OGX
+    - -g / --generate-ogx-configuration: generate an OGX
                                                  configuration from the service configuration
     - -i / --input-config-file: OGX input configuration filename (default "run.yaml")
     - -o / --output-config-file: OGX output configuration filename (default "run_.yaml")
@@ -196,8 +196,8 @@ def main() -> None:
             "(ogx.library_client_config_path + external run.yaml) is "
             "deprecated and will be removed in release 0.8. Migrate to the "
             "unified lightspeed-stack.yaml: https://lightspeed-core.github.io"
-            "/lightspeed-stack/design/llama-stack-config-merge"
-            "/llama-stack-config-merge.html#migration--backwards-compatibility"
+            "/lightspeed-stack/design/ogx-config-merge"
+            "/ogx-config-merge.html#migration--backwards-compatibility"
         )
 
     # -d or --dump-configuration CLI flags are used to dump the actual configuration

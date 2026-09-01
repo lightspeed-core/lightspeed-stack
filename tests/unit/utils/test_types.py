@@ -1,7 +1,6 @@
 """Unit tests for functions and types defined in utils/types.py."""
 
 import pytest
-from ogx_api import URL, ImageContentItem, TextContentItem, _URLOrData
 from pydantic import AnyUrl, ValidationError
 
 from models.common.responses.responses_api_params import ResponsesApiParams
@@ -11,60 +10,6 @@ from models.common.turn_summary import (
     ToolCallSummary,
     ToolResultSummary,
 )
-from utils.types import content_to_str
-
-
-class TestContentToStr:
-    """Tests for content_to_str function."""
-
-    def test_content_to_str_none(self) -> None:
-        """Test content_to_str with None."""
-        assert content_to_str(None) == ""
-
-    def test_content_to_str_string(self) -> None:
-        """Test content_to_str with string."""
-        assert content_to_str("test string") == "test string"
-
-    def test_content_to_str_text_content_item(self) -> None:
-        """Test content_to_str with TextContentItem."""
-        text_item = TextContentItem(text="text content")
-        result = content_to_str(text_item)
-        assert result == "text content"
-
-    def test_content_to_str_image_content_item(self) -> None:
-        """Test content_to_str with ImageContentItem."""
-        image_item = ImageContentItem(
-            image=_URLOrData(url=URL(uri="http://example.com/img.png"))
-        )
-        result = content_to_str(image_item)
-        assert result == "<image>"
-
-    def test_content_to_str_list(self) -> None:
-        """Test content_to_str with list."""
-        result = content_to_str(["item1", "item2", "item3"])
-        assert result == "item1 item2 item3"
-
-    def test_content_to_str_nested_list(self) -> None:
-        """Test content_to_str with nested list."""
-        text_item = TextContentItem(text="nested text")
-        result = content_to_str(["outer", text_item, ["inner1", "inner2"]])
-        assert "outer" in result
-        assert "nested text" in result
-        assert "inner1" in result
-        assert "inner2" in result
-
-    def test_content_to_str_mixed_types(self) -> None:
-        """Test content_to_str with mixed types in list."""
-        text_item = TextContentItem(text="text")
-        result = content_to_str(["string", text_item, 123, None])
-        assert "string" in result
-        assert "text" in result
-        assert "123" in result
-
-    def test_content_to_str_other_type(self) -> None:
-        """Test content_to_str with other type falls back to str()."""
-        result = content_to_str(123)
-        assert result == "123"
 
 
 class TestToolCallSummary:

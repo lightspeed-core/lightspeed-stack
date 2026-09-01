@@ -404,7 +404,7 @@ refusals. Every hard part of LCORE-230 is precisely what it does not do,
 and LCS's own capabilities are better fitted on all five axes (real LLM
 detector, refusal-string semantics, true redaction, careful multimodal
 handling, Pydantic config). This also matches the precedent already set
-in `docs/design/llama-stack-config-merge/llama-stack-config-merge-spike.md:220`
+in `docs/design/ogx-config-merge/ogx-config-merge-spike.md:220`
 ("Do not preemptively abstract `safety.*`").
 
 **Already taken from it**: the `AsyncGuardrail` blocking/concurrent/

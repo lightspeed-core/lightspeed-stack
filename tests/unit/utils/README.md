@@ -44,7 +44,7 @@ Unit tests for utils/input_sanitization.py.
 
 Unit tests for utils/json_schema_updater module.
 
-## [test_llama_stack_version.py](test_llama_stack_version.py)
+## [test_ogx_version.py](test_ogx_version.py)
 
 Unit tests for utility function to check OGX version.
 

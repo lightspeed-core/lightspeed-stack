@@ -21,7 +21,7 @@ MUST_HAVE_FILES = [
     "/opt/app-root/run.yaml",
     "/opt/app-root/lightspeed-stack.yaml",
     "/opt/app-root/enrich-entrypoint.sh",
-    "/opt/app-root/llama_stack_configuration.py",
+    "/opt/app-root/ogx_configuration.py",
 ]
 DEFAULT_TIMEOUT = 60
 NETWORK_BINDING_MAX_ATTEMPTS = 5

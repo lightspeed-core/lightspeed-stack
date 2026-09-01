@@ -8,7 +8,7 @@ from behave.runner import Context
 
 from tests.e2e.utils.utils import (
     absolute_repo_path,
-    clear_llama_stack_storage,
+    clear_ogx_storage,
     create_config_backup,
     is_prow_environment,
     restart_container,
@@ -185,7 +185,7 @@ def reset_mcp_configuration_for_new_scenario(context: Context) -> None:
     context.force_lightspeed_restart_after_mcp_config_reset = True
     context.lightspeed_stack_skip_restart = False
     if context.is_library_mode:
-        clear_llama_stack_storage()
+        clear_ogx_storage()
 
 
 @given("The service is restarted")

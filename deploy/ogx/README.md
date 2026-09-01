@@ -5,13 +5,13 @@
 Llama Stack distribution itself, the image bundles the pieces needed to
 generate its run configuration at container start:
 
-- `/opt/app-root/llama_stack_configuration.py` — the config-generation
-  script (copied from `src/llama_stack_configuration.py`).
+- `/opt/app-root/ogx_configuration.py` — the config-generation
+  script (copied from `src/ogx_configuration.py`).
 - `/opt/app-root/data/default_run.yaml` — the shipped default baseline
   (copied from `src/data/`), resolved by the script as `./data/` relative
   to its own location.
 - `/opt/app-root/enrich-entrypoint.sh` — the entrypoint (copied from
-  `scripts/llama-stack-entrypoint.sh`).
+  `scripts/ogx-entrypoint.sh`).
 
 ## Startup modes
 
@@ -36,7 +36,7 @@ services:
   llama-stack:
     build:
       context: .
-      dockerfile: deploy/llama-stack/test.containerfile
+      dockerfile: deploy/ogx/test.containerfile
     ports:
       - "8321:8321"
     volumes:

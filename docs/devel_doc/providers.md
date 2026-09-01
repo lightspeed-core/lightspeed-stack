@@ -384,4 +384,4 @@ Shields are owned by LCORE (configured under `shields:` block), not as OGX `prov
 
 ---
 
-For a deeper understanding, see the [official OGX providers documentation](https://llamastack.github.io/docs/providers).
+For a deeper understanding, see the [official OGX providers documentation](https://ogx-ai.github.io/docs/providers).

@@ -319,9 +319,9 @@ Next Steps:
 4. Experiment with different models and tools
 
 Resources:
-- This tutorial script: ./llama_stack_tutorial.sh
-- Run without pauses: ./llama_stack_tutorial.sh --no-wait
-- Python version: ./llama_stack_tutorial.py (requires: uv run python3)
+- This tutorial script: ./ogx_tutorial.sh
+- Run without pauses: ./ogx_tutorial.sh --no-wait
+- Python version: ./ogx_tutorial.py (requires: uv run python3)
 - Interactive docs: http://localhost:8321/docs
 
 Happy exploring! 🚀

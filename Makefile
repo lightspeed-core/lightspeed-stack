@@ -52,7 +52,7 @@ build-ogx-image: remove-ogx-container ## Build OGX container image
 		echo "ERROR: No container runtime found. Install podman or docker."; \
 		exit 1; \
 	fi
-	$(CONTAINER_RUNTIME) build -f deploy/llama-stack/test.containerfile -t $(OGX_IMAGE) .
+	$(CONTAINER_RUNTIME) build -f deploy/ogx/test.containerfile -t $(OGX_IMAGE) .
 
 stop-ogx-container: ## Gracefully stop OGX container
 	@if [ -n "$(CONTAINER_RUNTIME)" ] && $(CONTAINER_RUNTIME) inspect $(OGX_CONTAINER_NAME) >/dev/null 2>&1; then \
@@ -88,8 +88,8 @@ start-ogx-container: build-ogx-image ## Start OGX container
 		--health-start-period 20s \
 		-v $(PWD)/$(OGX_CONFIG):/opt/app-root/run.yaml:z \
 		-v $(PWD)/$(CONFIG):/opt/app-root/lightspeed-stack.yaml:ro,z \
-		-v $(PWD)/scripts/llama-stack-entrypoint.sh:/opt/app-root/enrich-entrypoint.sh:ro,z \
-		-v $(PWD)/src/llama_stack_configuration.py:/opt/app-root/llama_stack_configuration.py:ro,z \
+		-v $(PWD)/scripts/ogx-entrypoint.sh:/opt/app-root/enrich-entrypoint.sh:ro,z \
+		-v $(PWD)/src/ogx_configuration.py:/opt/app-root/ogx_configuration.py:ro,z \
 		$(if $(LIGHTSPEED_PROVIDERS_DIR),-v $(LIGHTSPEED_PROVIDERS_DIR)/lightspeed_stack_providers:/opt/app-root/providers/lightspeed_stack_providers:ro$(COMMA)z) \
 		$(if $(LIGHTSPEED_PROVIDERS_DIR),-v $(LIGHTSPEED_PROVIDERS_DIR)/resources/external_providers:/opt/app-root/src/.llama/providers.d:ro$(COMMA)z) \
 		$(if $(LIGHTSPEED_PROVIDERS_DIR),-e EXTERNAL_PROVIDERS_DIR=/opt/app-root/src/.llama/providers.d) \
@@ -150,7 +150,7 @@ clean-ogx: remove-ogx-container ## Remove container and image
 	fi
 
 run-ogx-local: ## Start OGX with enriched config (for local service mode)
-	uv run src/llama_stack_configuration.py -c $(CONFIG) -i $(OGX_CONFIG) -o $(OGX_CONFIG) && \
+	uv run src/ogx_configuration.py -c $(CONFIG) -i $(OGX_CONFIG) -o $(OGX_CONFIG) && \
 	uv run ogx stack run $(OGX_CONFIG)
 
 test-unit: ## Run the unit tests

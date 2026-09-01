@@ -203,7 +203,7 @@ src/
 │   │   └── redaction/                            # PII redaction capability for Pydantic AI agents
 │   │       ├── capability.py                     # Pydantic AI capability for PII redaction of model messages
 │   │       └── core.py                           # Core redaction logic for PII detection and replacement
-│   └── llamastack/                               # Pydantic AI provider for OGX
+│   └── ogx/                                      # Pydantic AI provider for OGX
 │       ├── _model.py                             # Custom OpenAI Responses model that works around OGX streaming quirks
 │       ├── _provider.py                          # OGX provider implementation for Pydantic AI
 │       └── _transport.py                         # httpx transport that routes OpenAI-compatible requests through an OGX library client
@@ -224,7 +224,7 @@ src/
 │   ├── degraded_mode.py                          # Degraded mode state tracking
 │   ├── endpoints.py                              # Utility functions for endpoint handlers
 │   ├── json_schema_updater.py                    # Function to transform a JSON Schema-like dictionary into an OpenAPI-compatible schema
-│   ├── llama_stack_version.py                    # Check if the OGX version is supported by the LCS
+│   ├── ogx_version.py                            # Check if the OGX version is supported by the LCS
 │   ├── markdown_repair.py                        # Utilities for repairing truncated markdown content
 │   ├── mcp_auth_headers.py                       # Utilities for resolving MCP server authorization headers
 │   ├── mcp_headers.py                            # MCP headers handling
@@ -250,7 +250,7 @@ src/
 │   └── vector_search.py                          # Vector search utilities for query endpoints
 ├── sentry.py                                     # Sentry error tracking initialization and configuration
 ├── lightspeed_stack.py                           # Entry point to the Lightspeed Core Stack REST API service
-├── llama_stack_configuration.py                  # OGX configuration enrichment and synthesis
+├── ogx_configuration.py                          # OGX configuration enrichment and synthesis
 ├── log.py                                        # Log utilities
 ├── client.py                                     # OGX client wrapper (Singleton)
 ├── configuration.py                              # Config management (Singleton)

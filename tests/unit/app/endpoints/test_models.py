@@ -414,7 +414,7 @@ async def test_models_endpoint_handler_model_list_retrieved_with_query_parameter
 
 
 @pytest.mark.asyncio
-async def test_models_endpoint_llama_stack_connection_error(
+async def test_models_endpoint_ogx_connection_error(
     mocker: MockerFixture,
 ) -> None:
     """Test the model endpoint when OGX connection fails."""

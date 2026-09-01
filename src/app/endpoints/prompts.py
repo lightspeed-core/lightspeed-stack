@@ -145,7 +145,7 @@ async def create_prompt_handler(
         raise HTTPException(**response.model_dump()) from e
     except (LLSApiStatusError, OpenAIAPIStatusError) as e:
         logger.error("API status error while creating prompt: %s", e)
-        error_response = handle_known_apistatus_errors(e, "llama-stack")
+        error_response = handle_known_apistatus_errors(e, "ogx")
         raise HTTPException(**error_response.model_dump()) from e
 
 
@@ -194,7 +194,7 @@ async def list_prompts_handler(
         raise HTTPException(**response.model_dump()) from e
     except (LLSApiStatusError, OpenAIAPIStatusError) as e:
         logger.error("API status error while listing prompts: %s", e)
-        error_response = handle_known_apistatus_errors(e, "llama-stack")
+        error_response = handle_known_apistatus_errors(e, "ogx")
         raise HTTPException(**error_response.model_dump()) from e
 
 
@@ -260,7 +260,7 @@ async def get_prompt_handler(
         raise HTTPException(**response.model_dump()) from e
     except (LLSApiStatusError, OpenAIAPIStatusError) as e:
         logger.error("API status error while retrieving prompt: %s", e)
-        error_response = handle_known_apistatus_errors(e, "llama-stack")
+        error_response = handle_known_apistatus_errors(e, "ogx")
         raise HTTPException(**error_response.model_dump()) from e
 
 
@@ -329,7 +329,7 @@ async def update_prompt_handler(
         raise HTTPException(**response.model_dump()) from e
     except (LLSApiStatusError, OpenAIAPIStatusError) as e:
         logger.error("API status error while updating prompt: %s", e)
-        error_response = handle_known_apistatus_errors(e, "llama-stack")
+        error_response = handle_known_apistatus_errors(e, "ogx")
         raise HTTPException(**error_response.model_dump()) from e
 
 
@@ -393,5 +393,5 @@ async def delete_prompt_handler(
         return PromptDeleteResponse(deleted=False, prompt_id=prompt_id)
     except (LLSApiStatusError, OpenAIAPIStatusError) as e:
         logger.error("API status error while deleting prompt: %s", e)
-        error_response = handle_known_apistatus_errors(e, "llama-stack")
+        error_response = handle_known_apistatus_errors(e, "ogx")
         raise HTTPException(**error_response.model_dump()) from e

@@ -51,7 +51,7 @@ def _local_llama_config_backup_path() -> str:
     )
 
 
-def backup_llama_config() -> None:
+def backup_ogx_config() -> None:
     """Create a backup of the current OGX run config once per scenario."""
     if is_prow_environment():
         if _llama_config_backup_key["value"] is None:

@@ -367,7 +367,7 @@ LIGHTSPEED_STACK_FIELDS: tuple[FieldSpec | ListFieldSpec, ...] = (
     ),
 )
 
-LLAMA_STACK_FIELDS: tuple[FieldSpec | ListFieldSpec, ...] = (
+OGX_FIELDS: tuple[FieldSpec | ListFieldSpec, ...] = (
     # Operational Configuration
     FieldSpec("version", MaskingType.PASSTHROUGH),
     FieldSpec("image_name", MaskingType.PASSTHROUGH),
@@ -728,7 +728,7 @@ def _read_yaml_file(config_path: str) -> Any:
         return None
 
 
-async def build_llama_stack_snapshot(
+async def build_ogx_snapshot(
     config_path: Optional[str] = None,
 ) -> dict[str, Any]:
     """Build snapshot of OGX configuration with PII masking.
@@ -756,7 +756,7 @@ async def build_llama_stack_snapshot(
         logger.warning("OGX config is not a dict, skipping snapshot")
         return {"status": NOT_AVAILABLE}
 
-    snapshot = _extract_snapshot_fields(ls_config, LLAMA_STACK_FIELDS)
+    snapshot = _extract_snapshot_fields(ls_config, OGX_FIELDS)
     snapshot["inference_store"] = _extract_store_info(ls_config, "inference")
     snapshot["metadata_store"] = _extract_store_info(ls_config, "metadata")
     return snapshot
@@ -764,7 +764,7 @@ async def build_llama_stack_snapshot(
 
 async def build_configuration_snapshot(
     config: Configuration,
-    llama_stack_config_path: Optional[str] = None,
+    ogx_config_path: Optional[str] = None,
 ) -> dict[str, Any]:
     """Build a complete configuration snapshot with PII masking.
 
@@ -776,7 +776,7 @@ async def build_configuration_snapshot(
     Parameters:
     ----------
         config: The lightspeed-stack Configuration object.
-        llama_stack_config_path: Path to the OGX YAML config file.
+        ogx_config_path: Path to the OGX YAML config file.
             If None (service mode), OGX section is marked not available.
 
     Returns:
@@ -786,5 +786,5 @@ async def build_configuration_snapshot(
     """
     return {
         "lightspeed_stack": build_lightspeed_stack_snapshot(config),
-        "ogx": await build_llama_stack_snapshot(llama_stack_config_path),
+        "ogx": await build_ogx_snapshot(ogx_config_path),
     }

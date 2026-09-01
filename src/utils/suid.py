@@ -84,25 +84,21 @@ def normalize_conversation_id(conversation_id: str) -> str:
     return conversation_id
 
 
-def to_llama_stack_conversation_id(conversation_id: str) -> str:
-    """
-    Convert a database conversation ID to OGX format.
+def to_ogx_conversation_id(conversation_id: str) -> str:
+    """Convert a database conversation ID to OGX format.
 
-    Adds the 'conv_' prefix if not already present.
+    Adds the ``conv_`` prefix if not already present.
 
     Parameters:
-    ----------
         conversation_id: The conversation ID from database.
 
     Returns:
-    -------
-        str: The conversation ID in OGX format (conv_xxx).
+        The conversation ID in OGX format (``conv_xxx``).
 
     Examples:
-    --------
-        >>> to_llama_stack_conversation_id('abc123')
+        >>> to_ogx_conversation_id('abc123')
         'conv_abc123'
-        >>> to_llama_stack_conversation_id('conv_abc123')
+        >>> to_ogx_conversation_id('conv_abc123')
         'conv_abc123'
     """
     if not conversation_id.startswith("conv_"):

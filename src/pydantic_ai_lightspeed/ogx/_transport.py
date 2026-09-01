@@ -19,10 +19,7 @@ from ogx.core.server.routes import find_matching_route
 from ogx.core.utils.context import preserve_contexts_async_generator
 from starlette.responses import StreamingResponse
 
-_PROVIDER_DATA_HEADER_KEYS = (
-    "X-OGX-Provider-Data",
-    "x-llamastack-provider-data",
-)
+_PROVIDER_DATA_HEADER_KEY = "X-OGX-Provider-Data"
 
 
 def decode_request_headers(request: httpx.Request) -> dict[str, str]:
@@ -57,10 +54,10 @@ def inject_provider_data_into_headers(
     """
     if not provider_data:
         return dict(headers)
-    if any(key in headers for key in _PROVIDER_DATA_HEADER_KEYS):
+    if _PROVIDER_DATA_HEADER_KEY in headers:
         return dict(headers)
     result = dict(headers)
-    result["X-OGX-Provider-Data"] = json.dumps(provider_data)
+    result[_PROVIDER_DATA_HEADER_KEY] = json.dumps(provider_data)
     return result
 
 

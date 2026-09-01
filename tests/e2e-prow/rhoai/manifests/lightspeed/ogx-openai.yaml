@@ -1,5 +1,5 @@
 # OGX from source on UBI: init clones repo + seeds FAISS, main restores seed then uses
-# scripts/llama-stack-entrypoint.sh (same enrich/start path as GitHub Actions docker-compose).
+# scripts/ogx-entrypoint.sh (same enrich/start path as GitHub Actions docker-compose).
 # Needs ConfigMaps: llama-stack-config (run.yaml), rag-data (kv_store.db.gz), lightspeed-stack-config;
 # optional OGX-source for repo_url / repo_revision.
 #
@@ -45,7 +45,9 @@ spec:
           # reduces per-restart time from ~6-15 min to ~30-90 s (just RAG seed refresh + chown).
           if [[ -d /opt/app-root/.venv ]] \
               && /opt/app-root/.venv/bin/python --version >/dev/null 2>&1 \
-              && [[ -d /opt/app-root/src ]]; then
+              && [[ -d /opt/app-root/src ]] \
+              && [[ -f /opt/app-root/scripts/ogx-entrypoint.sh ]] \
+              && [[ -f /opt/app-root/src/ogx_configuration.py ]]; then
             echo "PVC cache hit: app-root already provisioned — skipping full install"
             mkdir -p /opt/app-root/.e2e-rag-seed /opt/app-root/.e2e-rag-work /opt/app-root/src/.ogx /opt/app-root/src/.llama/storage/files
             if [[ -f /rag-seed/kv_store.db.gz ]]; then
@@ -57,8 +59,8 @@ spec:
               fi
               cp -f /opt/app-root/.e2e-rag-seed/kv_store.db /opt/app-root/.e2e-rag-work/kv_store.db
             fi
-            cp -f /opt/app-root/scripts/llama-stack-entrypoint.sh /opt/app-root/enrich-entrypoint.sh
-            cp -f /opt/app-root/src/llama_stack_configuration.py /opt/app-root/llama_stack_configuration.py
+            cp -f /opt/app-root/scripts/ogx-entrypoint.sh /opt/app-root/enrich-entrypoint.sh
+            cp -f /opt/app-root/src/ogx_configuration.py /opt/app-root/ogx_configuration.py
             chmod 755 /opt/app-root/enrich-entrypoint.sh
             chmod -R 775 /opt/app-root && chown -R 1001:0 /opt/app-root
             echo "PVC fast-path complete"
@@ -92,8 +94,8 @@ spec:
             exit 1
           fi
           cp -f /opt/app-root/.e2e-rag-seed/kv_store.db /opt/app-root/.e2e-rag-work/kv_store.db
-          cp -f /opt/app-root/scripts/llama-stack-entrypoint.sh /opt/app-root/enrich-entrypoint.sh
-          cp -f /opt/app-root/src/llama_stack_configuration.py /opt/app-root/llama_stack_configuration.py
+          cp -f /opt/app-root/scripts/ogx-entrypoint.sh /opt/app-root/enrich-entrypoint.sh
+          cp -f /opt/app-root/src/ogx_configuration.py /opt/app-root/ogx_configuration.py
           chmod 755 /opt/app-root/enrich-entrypoint.sh
           chmod -R 775 /opt/app-root && chown -R 1001:0 /opt/app-root
       volumeMounts:
@@ -139,7 +141,7 @@ spec:
           value: "/opt/app-root/src"
         - name: HOME
           value: "/opt/app-root/src"
-        # Match GitHub Actions docker-compose + llama-stack-entrypoint.sh:
+        # Match GitHub Actions docker-compose + ogx-entrypoint.sh:
         # registry/SQL under /tmp (writable); FAISS BYOK reads restored fixture outside ~/.llama
         # so OGX migrate_legacy_config_dir() cannot move it away on startup.
         - name: OGX_CONFIG_DIR

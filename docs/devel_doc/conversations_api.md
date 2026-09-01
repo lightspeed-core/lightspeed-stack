@@ -85,14 +85,14 @@ This 48-character format is what users see and work with.
 LCS provides utilities in `src/utils/suid.py` for ID conversion:
 
 ```python
-from utils.suid import normalize_conversation_id, to_llama_stack_conversation_id
+from utils.suid import normalize_conversation_id, to_ogx_conversation_id
 
 # Convert from OGX format to normalized format
 normalized_id = normalize_conversation_id("conv_0d21ba731f21f798dc9680125d5d6f493e4a7ab79f25670e")
 # Returns: "0d21ba731f21f798dc9680125d5d6f493e4a7ab79f25670e"
 
 # Convert from normalized format to OGX format
-llama_stack_id = to_llama_stack_conversation_id("0d21ba731f21f798dc9680125d5d6f493e4a7ab79f25670e")
+ogx_id = to_ogx_conversation_id("0d21ba731f21f798dc9680125d5d6f493e4a7ab79f25670e")
 # Returns: "conv_0d21ba731f21f798dc9680125d5d6f493e4a7ab79f25670e"
 ```
 
@@ -145,7 +145,7 @@ When a user provides an existing `conversation_id`:
 ```python
 # Conversation ID was provided - convert to OGX format
 conversation_id = query_request.conversation_id
-llama_stack_conv_id = to_llama_stack_conversation_id(conversation_id)
+ogx_conv_id = to_ogx_conversation_id(conversation_id)
 
 # Use the existing conversation
 response = await client.responses.create(

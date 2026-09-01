@@ -252,7 +252,7 @@ def wait_for_container_health(
     return False
 
 
-def wait_for_llama_stack_ready(
+def wait_for_ogx_ready(
     max_attempts: Optional[int] = None,
 ) -> bool:
     """Wait until the OGX container HEALTHCHECK reports healthy.
@@ -438,7 +438,7 @@ def remove_config_backup(backup_path: str) -> None:
             print(f"Warning: Could not remove backup file {backup_path}: {e}")
 
 
-def clear_llama_stack_storage(container_name: str = "lightspeed-stack") -> None:
+def clear_ogx_storage(container_name: str = "lightspeed-stack") -> None:
     """Clear OGX storage in library mode (embedded OGX).
 
     Removes the ~/.llama directory so embedded OGX persisted state is

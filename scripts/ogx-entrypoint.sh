@@ -2,7 +2,7 @@
 # Entrypoint for OGX container.
 #
 # Generates the run configuration from the mounted lightspeed-stack.yaml and
-# starts OGX. The Python CLI (llama_stack_configuration.py) auto-detects the
+# starts OGX. The Python CLI (ogx_configuration.py) auto-detects the
 # configuration shape:
 #   - unified mode: the lightspeed config carries a synthesis input (a
 #     non-empty inference.providers or vector_store.providers, or a
@@ -23,7 +23,7 @@ LIGHTSPEED_CONFIG="${LIGHTSPEED_CONFIG:-/opt/app-root/lightspeed-stack.yaml}"
 if [ -f "$LIGHTSPEED_CONFIG" ]; then
     echo "Generating llama-stack config from $LIGHTSPEED_CONFIG (mode auto-detected)..."
     GENERATION_FAILED=0
-    /opt/app-root/.venv/bin/python3 /opt/app-root/llama_stack_configuration.py \
+    /opt/app-root/.venv/bin/python3 /opt/app-root/ogx_configuration.py \
         -c "$LIGHTSPEED_CONFIG" \
         -i "$INPUT_CONFIG" \
         -o "$GENERATED_CONFIG" 2>&1 || GENERATION_FAILED=1

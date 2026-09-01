@@ -40,7 +40,7 @@ from models.config import (
     QuestionValidityConfig,
 )
 from pydantic_ai_lightspeed.capabilities.base import AbstractSafetyCapability
-from pydantic_ai_lightspeed.llamastack import OgxResponsesModel
+from pydantic_ai_lightspeed.ogx import OgxResponsesModel
 from utils.conversations import append_turn_to_conversation
 
 logger = get_logger(__name__)

@@ -252,7 +252,7 @@ __Note__: Support for individual models is dependent on the specific inference p
 | WatsonX        | meta-llama/llama-3-3-70b-instruct                                            | Yes           | remote::watsonx  | [1](examples/watsonx-run.yaml)                                             |
 | AWS Bedrock    | deepseek.v3-v1                                                               | Yes           | remote::bedrock  | [1](examples/bedrock-run.yaml)                                             |
 
-[^1]: List of models is limited by design in OGX, future versions will probably allow to use more models (see [here](https://github.com/llamastack/llama-stack/blob/release-0.3.x/llama_stack/providers/remote/inference/vertexai/vertexai.py#L54))
+[^1]: List of models is limited by design in OGX, future versions will probably allow to use more models (see [here](https://github.com/ogx-ai/ogx/blob/main/ogx/providers/remote/inference/vertexai/vertexai.py#L54))
 
 The "provider_type" is used in the OGX configuration file when refering to the provider.
 

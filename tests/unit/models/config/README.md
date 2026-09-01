@@ -56,7 +56,7 @@ Unit tests for InferenceConfiguration model.
 
 Unit tests for JwtRoleRule model.
 
-## [test_llama_stack_configuration.py](test_llama_stack_configuration.py)
+## [test_ogx_configuration.py](test_ogx_configuration.py)
 
 Unit tests for OgxConfiguration model.
 

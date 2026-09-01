@@ -22,7 +22,7 @@ from models.common.responses.responses_conversation_context import (
 from models.common.turn_summary import RAGChunk, ReferencedDocument, TurnSummary
 from models.database.conversations import UserConversation, UserTurn
 from utils.responses import create_new_conversation
-from utils.suid import normalize_conversation_id, to_llama_stack_conversation_id
+from utils.suid import normalize_conversation_id, to_ogx_conversation_id
 
 logger = get_logger(__name__)
 
@@ -228,7 +228,7 @@ async def resolve_response_context(
             others_allowed=others_allowed,
         )
         return ResponsesConversationContext(
-            conversation=to_llama_stack_conversation_id(user_conversation.id),
+            conversation=to_ogx_conversation_id(user_conversation.id),
             user_conversation=user_conversation,
             generate_topic_summary=False,
         )
@@ -260,7 +260,7 @@ async def resolve_response_context(
                 generate_topic_summary=want_topic_summary,
             )
         return ResponsesConversationContext(
-            conversation=to_llama_stack_conversation_id(user_conversation.id),
+            conversation=to_ogx_conversation_id(user_conversation.id),
             user_conversation=user_conversation,
             generate_topic_summary=False,
         )

@@ -809,7 +809,7 @@ class TestA2AAgentExecutor:
         )
 
         # Mock build_agent to return an agent whose run_stream_events raises
-        mock_request = httpx.Request("POST", "http://test-llama-stack/responses")
+        mock_request = httpx.Request("POST", "http://test-ogx/responses")
         mock_agent = mocker.MagicMock()
         mock_stream_ctx = mocker.AsyncMock()
         mock_stream_ctx.__aenter__ = mocker.AsyncMock(

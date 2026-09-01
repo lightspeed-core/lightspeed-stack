@@ -2887,7 +2887,7 @@ def test_dump_models(tmpdir: Path) -> None:
                 },
                 "OgxConfiguration": {
                     "additionalProperties": false,
-                    "description": "OGX configuration.\n\nOGX is a comprehensive system that provides a uniform set of tools\nfor building, scaling, and deploying generative AI applications, enabling\ndevelopers to create, integrate, and orchestrate multiple AI services and\ncapabilities into an adaptable setup.\n\nUseful resources:\n\n  - [OGX](https://www.llama.com/products/llama-stack/)\n  - [Python OGX client](https://github.com/llamastack/llama-stack-client-python)\n  - [Build AI Applications with OGX](https://llamastack.github.io/)",
+                    "description": "OGX configuration.\n\nOGX is a comprehensive system that provides a uniform set of tools\nfor building, scaling, and deploying generative AI applications, enabling\ndevelopers to create, integrate, and orchestrate multiple AI services and\ncapabilities into an adaptable setup.\n\nUseful resources:\n\n  - [OGX](https://ogx-ai.github.io/)\n  - [Python OGX client](https://github.com/ogx-ai/ogx-client-python)\n  - [Build AI Applications with OGX](https://ogx-ai.github.io/)",
                     "properties": {
                         "url": {
                             "type": "string",
@@ -6936,7 +6936,7 @@ def test_dump_models(tmpdir: Path) -> None:
                             "type": "object",
                             "nullable": true,
                             "default": null,
-                            "description": "Extra HTTP headers to send with the request (e.g. x-llamastack-provider-data)",
+                            "description": "Extra HTTP headers to send with the request (e.g. X-OGX-Provider-Data)",
                             "title": "Extra Headers"
                         },
                         "omit_conversation": {

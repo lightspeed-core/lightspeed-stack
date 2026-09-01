@@ -1,4 +1,4 @@
-"""Unit tests for src/llama_stack_configuration.py."""
+"""Unit tests for src/ogx_configuration.py."""
 
 # pylint: disable=too-many-lines
 
@@ -8,7 +8,14 @@ from typing import Any
 import pytest
 import yaml
 
-from llama_stack_configuration import (
+from models.config import (
+    Configuration,
+    InferenceConfiguration,
+    OgxConfiguration,
+    ServiceConfiguration,
+    UserDataCollection,
+)
+from ogx_configuration import (
     _build_vector_io_config,
     construct_models_section,
     construct_storage_backends_section,
@@ -20,13 +27,6 @@ from llama_stack_configuration import (
     enrich_solr,
     enrich_vector_store,
     generate_configuration,
-)
-from models.config import (
-    Configuration,
-    InferenceConfiguration,
-    OgxConfiguration,
-    ServiceConfiguration,
-    UserDataCollection,
 )
 
 # =============================================================================

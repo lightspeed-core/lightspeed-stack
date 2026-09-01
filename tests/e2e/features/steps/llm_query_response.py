@@ -453,24 +453,25 @@ def _parse_streaming_response(response_text: str) -> dict:
                 data = json.loads(line[6:])  # Remove 'data: ' prefix
                 event = data.get("event")
 
-                if event == "start":
-                    conversation_id = data["data"]["conversation_id"]
-                elif event == "token":
-                    full_response_split.append(data["data"]["token"])
-                elif event == "tool_call":
-                    tool_calls.append(data["data"])
-                elif event == "tool_result":
-                    tool_results.append(data["data"])
-                elif event == "turn_complete":
-                    full_response = data["data"]["token"]
-                elif event == "end":
-                    finished = True
-                    end_data = data.get("data") or {}
-                    referenced_documents = end_data.get(
-                        "referenced_documents", referenced_documents
+                match event:
+                    case "start":
+                        conversation_id = data["data"]["conversation_id"]
+                    case "token":
+                        full_response_split.append(data["data"]["token"])
+                    case "tool_call":
+                        tool_calls.append(data["data"])
+                    case "tool_result":
+                        tool_results.append(data["data"])
+                    case "turn_complete":
+                        full_response = data["data"]["token"]
+                    case "end":
+                        finished = True
+                        end_data = data.get("data") or {}
+                        referenced_documents = end_data.get(
+                            "referenced_documents", referenced_documents
                     )
-                elif event == "error":
-                    stream_error = data.get("data") or {}
+                    case "error":
+                        stream_error = data.get("data") or {}
             except json.JSONDecodeError:
                 continue  # Skip malformed lines
 

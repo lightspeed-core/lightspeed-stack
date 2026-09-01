@@ -1984,7 +1984,7 @@ class TestPrepareResponsesParams:
         mocker.patch("utils.responses.prepare_tools", return_value=None)
         mocker.patch("utils.responses.prepare_input", return_value="test")
         mocker.patch(
-            "utils.responses.to_llama_stack_conversation_id", return_value="llama_conv1"
+            "utils.responses.to_ogx_conversation_id", return_value="llama_conv1"
         )
 
         result = await prepare_responses_params(
@@ -2125,7 +2125,7 @@ class TestPrepareResponsesParams:
     async def test_prepare_responses_params_includes_mcp_provider_data_headers(
         self, mocker: MockerFixture
     ) -> None:
-        """Test that extra_headers with x-llamastack-provider-data is set when MCP tools have headers."""
+        """Test that extra_headers with X-OGX-Provider-Data is set when MCP tools have headers."""
         mock_client = mocker.AsyncMock()
         mock_client.models.list = mocker.AsyncMock(
             return_value=ListModelsResponse.model_construct(
@@ -2181,16 +2181,14 @@ class TestPrepareResponsesParams:
             mock_client, query_request, None, "token"
         )
 
-        # The result should contain extra_headers with x-llamastack-provider-data
+        # The result should contain extra_headers with X-OGX-Provider-Data
         dumped = result.model_dump()
         assert (
             dumped["extra_headers"] is not None
         ), "extra_headers should not be None when MCP tools have headers"
-        assert "x-llamastack-provider-data" in dumped["extra_headers"]
+        assert "X-OGX-Provider-Data" in dumped["extra_headers"]
 
-        provider_data = json.loads(
-            dumped["extra_headers"]["x-llamastack-provider-data"]
-        )
+        provider_data = json.loads(dumped["extra_headers"]["X-OGX-Provider-Data"])
         assert "mcp_headers" in provider_data
         assert provider_data["mcp_headers"] == {
             "http://aap.foo.redhat.com:8004/sse": {"X-Authorization": "client-token"},

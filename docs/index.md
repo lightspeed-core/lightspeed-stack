@@ -164,9 +164,9 @@ product questions using backend LLM services, agents, and RAG databases.
 
 *** ogx config merge (unified `lightspeed-stack.yaml`) ***
 
-[Spike](https://lightspeed-core.github.io/lightspeed-stack/design/llama-stack-config-merge/llama-stack-config-merge-spike.html)
+[Spike](https://lightspeed-core.github.io/lightspeed-stack/design/ogx-config-merge/ogx-config-merge-spike.html)
 
-[Design](https://lightspeed-core.github.io/lightspeed-stack/design/llama-stack-config-merge/llama-stack-config-merge.html)
+[Design](https://lightspeed-core.github.io/lightspeed-stack/design/ogx-config-merge/ogx-config-merge.html)
 
 [Profiles (Deployment Guide)](https://lightspeed-core.github.io/lightspeed-stack/deployment_guide.html#profiles)
 

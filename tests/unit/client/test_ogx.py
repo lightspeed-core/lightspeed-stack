@@ -51,7 +51,7 @@ def test_async_client_get_client_method() -> None:
 
 
 @pytest.mark.asyncio
-async def test_get_async_llama_stack_library_client() -> None:
+async def test_get_async_ogx_library_client() -> None:
     """Test the initialization of asynchronous OGX client in library mode."""
     cfg = OgxConfiguration(
         url=None,
@@ -72,7 +72,7 @@ async def test_get_async_llama_stack_library_client() -> None:
 
 
 @pytest.mark.asyncio
-async def test_get_async_llama_stack_remote_client() -> None:
+async def test_get_async_ogx_remote_client() -> None:
     """Test the initialization of asynchronous OGX client in server mode."""
     cfg = OgxConfiguration(
         url=AnyHttpUrl("http://localhost:8321"),
@@ -90,7 +90,7 @@ async def test_get_async_llama_stack_remote_client() -> None:
 
 
 @pytest.mark.asyncio
-async def test_get_async_llama_stack_wrong_configuration(
+async def test_get_async_ogx_wrong_configuration(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """A library config with no legacy path routes to synthesis.

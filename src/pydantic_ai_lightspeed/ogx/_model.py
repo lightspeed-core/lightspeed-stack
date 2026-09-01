@@ -48,7 +48,7 @@ from pydantic_ai.settings import ModelSettings
 
 from log import get_logger
 from models.common.responses.responses_api_params import ResponsesApiParams
-from pydantic_ai_lightspeed.llamastack._provider import OgxProvider
+from pydantic_ai_lightspeed.ogx._provider import OgxProvider
 
 logger = get_logger(__name__)
 

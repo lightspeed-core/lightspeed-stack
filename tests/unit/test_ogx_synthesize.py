@@ -1,7 +1,7 @@
 """Unit tests for unified-mode OGX configuration synthesis (LCORE-2336).
 
 Covers the synthesizer pipeline and its helpers in
-``src/llama_stack_configuration.py``: baseline loading, deep-merge semantics,
+``src/ogx_configuration.py``: baseline loading, deep-merge semantics,
 high-level inference expansion, the full synthesis pipeline, and the
 write-to-file step (persistent path, mode 0600).
 """
@@ -19,7 +19,8 @@ import pytest
 import yaml
 from ogx.core.stack import replace_env_vars
 
-from llama_stack_configuration import (
+from models.config import UnifiedInferenceProvider
+from ogx_configuration import (
     CONDITIONAL_OPENAI_PROVIDER_ID,
     PROVIDER_TYPE_MAP,
     apply_high_level_inference,
@@ -32,7 +33,6 @@ from llama_stack_configuration import (
     synthesize_configuration,
     synthesize_to_file,
 )
-from models.config import UnifiedInferenceProvider
 
 OPENAI_CONDITIONAL_PROVIDER_ID = CONDITIONAL_OPENAI_PROVIDER_ID
 OPENAI_CONDITIONAL_API_KEY = "${env.OPENAI_API_KEY:=}"
@@ -315,7 +315,7 @@ def test_apply_high_level_inference_replaces_existing_provider_id(
         }
     }
     inference = {"providers": [{"type": "openai", "api_key_env": "NEW_KEY"}]}
-    with caplog.at_level("INFO", logger="lightspeed_stack.llama_stack_configuration"):
+    with caplog.at_level("INFO", logger="lightspeed_stack.ogx_configuration"):
         apply_high_level_inference(ls_config, inference)
     ids = [p["provider_id"] for p in ls_config["providers"]["inference"]]
     assert ids == ["openai", "other"]  # replaced in place, not duplicated
@@ -415,7 +415,7 @@ def test_apply_high_level_inference_duplicate_id_last_wins(
             },
         ]
     }
-    with caplog.at_level("INFO", logger="lightspeed_stack.llama_stack_configuration"):
+    with caplog.at_level("INFO", logger="lightspeed_stack.ogx_configuration"):
         apply_high_level_inference(ls_config, inference)
     entries = ls_config["providers"]["inference"]
     assert len(entries) == 1
@@ -765,9 +765,7 @@ def test_synthesize_default_path_keeps_conditional_openai(
     lcs: dict[str, Any], caplog: pytest.LogCaptureFixture
 ) -> None:
     """default or omitted baseline keeps the OpenAI row and warns naming byo-llm."""
-    with caplog.at_level(
-        "WARNING", logger="lightspeed_stack.llama_stack_configuration"
-    ):
+    with caplog.at_level("WARNING", logger="lightspeed_stack.ogx_configuration"):
         result = synthesize_configuration(lcs)
     warnings = _byo_llm_deprecation_warnings(caplog)
     assert len(warnings) == 1
@@ -782,9 +780,7 @@ def test_synthesize_default_path_keeps_conditional_openai(
 def test_synthesize_byo_llm_strips_openai(caplog: pytest.LogCaptureFixture) -> None:
     """byo-llm drops the OpenAI row, keeps the embedder, and does not warn."""
     lcs = {"ogx": {"config": {"baseline": "byo-llm"}}}
-    with caplog.at_level(
-        "WARNING", logger="lightspeed_stack.llama_stack_configuration"
-    ):
+    with caplog.at_level("WARNING", logger="lightspeed_stack.ogx_configuration"):
         result = synthesize_configuration(lcs)
     assert _byo_llm_deprecation_warnings(caplog) == []
     assert _openai_inference_entries(result) == []
@@ -845,9 +841,7 @@ def test_synthesize_empty_baseline_does_not_strip_openai(
             }
         }
     }
-    with caplog.at_level(
-        "WARNING", logger="lightspeed_stack.llama_stack_configuration"
-    ):
+    with caplog.at_level("WARNING", logger="lightspeed_stack.ogx_configuration"):
         result = synthesize_configuration(lcs)
     assert _byo_llm_deprecation_warnings(caplog) == []
     assert result == {"version": 2, "apis": ["inference"]}
@@ -880,9 +874,7 @@ def test_synthesize_profile_ignores_byo_llm(
             }
         }
     }
-    with caplog.at_level(
-        "WARNING", logger="lightspeed_stack.llama_stack_configuration"
-    ):
+    with caplog.at_level("WARNING", logger="lightspeed_stack.ogx_configuration"):
         result = synthesize_configuration(lcs, config_file_dir=str(tmp_path))
     assert _byo_llm_deprecation_warnings(caplog) == []
     assert result["marker"] == "from-profile"
@@ -1128,7 +1120,7 @@ def test_has_synthesis_input_detection() -> None:
 
 def _run_main(monkeypatch: pytest.MonkeyPatch, argv: list[str]) -> None:
     """Invoke the module CLI with the given arguments."""
-    monkeypatch.setattr(sys, "argv", ["llama_stack_configuration.py", *argv])
+    monkeypatch.setattr(sys, "argv", ["ogx_configuration.py", *argv])
     main()
 
 

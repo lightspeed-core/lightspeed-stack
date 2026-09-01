@@ -1,4 +1,4 @@
-"""Unit tests for pydantic_ai_lightspeed.llamastack._provider module."""
+"""Unit tests for pydantic_ai_lightspeed.ogx._provider module."""
 
 # pylint: disable=protected-access
 
@@ -9,20 +9,20 @@ from ogx_client import AsyncOgxClient
 from openai import AsyncOpenAI
 from pytest_mock import MockerFixture
 
-from pydantic_ai_lightspeed.llamastack._provider import (
+from pydantic_ai_lightspeed.ogx._provider import (
     DEFAULT_BASE_URL,
     OgxProvider,
 )
-from pydantic_ai_lightspeed.llamastack._transport import OgxServerTransport
+from pydantic_ai_lightspeed.ogx._transport import OgxServerTransport
 
 
 class TestOgxProviderProperties:
     """Tests for OgxProvider basic properties."""
 
     def test_name(self) -> None:
-        """Test that the provider name is 'llama-stack'."""
+        """Test that the provider name is 'ogx'."""
         provider = OgxProvider()
-        assert provider.name == "llama-stack"
+        assert provider.name == "ogx"
 
     def test_base_url_default(self) -> None:
         """Test that the default base URL matches the expected default."""
@@ -39,7 +39,7 @@ class TestOgxProviderProperties:
         provider = OgxProvider()
         result = repr(provider)
         assert "OgxProvider" in result
-        assert "llama-stack" in result
+        assert "ogx" in result
 
     def test_model_profile_known_model(self) -> None:
         """Test model_profile returns a profile for a known OpenAI model."""
@@ -88,7 +88,7 @@ class TestOgxProviderLibraryMode:
         provider = OgxProvider(library_client=mock_lib_client)
 
         assert provider._library_client is mock_lib_client
-        assert "llama-stack-library" in provider.base_url
+        assert "ogx-library" in provider.base_url
 
     def test_library_client_api_key_is_not_needed(self, mocker: MockerFixture) -> None:
         """Test that library mode sets the API key to 'not-needed'."""
@@ -159,7 +159,7 @@ class TestFromOgxClient:
         provider = OgxProvider.from_ogx_client(mock_lib_client)
 
         assert provider._library_client is mock_lib_client
-        assert "llama-stack-library" in provider.base_url
+        assert "ogx-library" in provider.base_url
 
     def test_server_client_extracts_base_url_with_v1(
         self, mocker: MockerFixture

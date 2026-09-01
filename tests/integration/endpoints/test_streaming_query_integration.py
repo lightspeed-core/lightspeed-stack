@@ -19,7 +19,7 @@ from models.common.query import Attachment
 
 
 @pytest.fixture(name="mock_streaming_ogx_client")
-def mock_llama_stack_streaming_fixture(
+def mock_ogx_streaming_fixture(
     mocker: MockerFixture,
     mock_streaming_query_agent: AsyncMockType,
 ) -> Generator[Any, None, None]:

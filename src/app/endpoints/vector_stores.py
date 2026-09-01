@@ -224,7 +224,7 @@ async def create_vector_store(
         raise HTTPException(**response.model_dump()) from e
     except (LLSApiStatusError, OpenAIAPIStatusError) as e:
         logger.error("API status error while creating vector store: %s", e)
-        error_response = handle_known_apistatus_errors(e, "llama-stack")
+        error_response = handle_known_apistatus_errors(e, "ogx")
         raise HTTPException(**error_response.model_dump()) from e
 
 
@@ -280,7 +280,7 @@ async def list_vector_stores(
         raise HTTPException(**response.model_dump()) from e
     except (LLSApiStatusError, OpenAIAPIStatusError) as e:
         logger.error("API status error while listing vector stores: %s", e)
-        error_response = handle_known_apistatus_errors(e, "llama-stack")
+        error_response = handle_known_apistatus_errors(e, "ogx")
         raise HTTPException(**error_response.model_dump()) from e
 
 
@@ -340,7 +340,7 @@ async def get_vector_store(
         raise HTTPException(**response.model_dump()) from e
     except (LLSApiStatusError, OpenAIAPIStatusError) as e:
         logger.error("API status error while getting vector store: %s", e)
-        error_response = handle_known_apistatus_errors(e, "llama-stack")
+        error_response = handle_known_apistatus_errors(e, "ogx")
         raise HTTPException(**error_response.model_dump()) from e
 
 
@@ -404,7 +404,7 @@ async def update_vector_store(
         raise HTTPException(**response.model_dump()) from e
     except (LLSApiStatusError, OpenAIAPIStatusError) as e:
         logger.error("API status error while updating vector store: %s", e)
-        error_response = handle_known_apistatus_errors(e, "llama-stack")
+        error_response = handle_known_apistatus_errors(e, "ogx")
         raise HTTPException(**error_response.model_dump()) from e
 
 
@@ -453,7 +453,7 @@ async def delete_vector_store(
         return VectorStoreDeleteResponse(deleted=False, vector_store_id=vector_store_id)
     except (LLSApiStatusError, OpenAIAPIStatusError) as e:
         logger.error("API status error while deleting vector store: %s", e)
-        error_response = handle_known_apistatus_errors(e, "llama-stack")
+        error_response = handle_known_apistatus_errors(e, "ogx")
         raise HTTPException(**error_response.model_dump()) from e
 
 
@@ -586,7 +586,7 @@ async def create_file(  # pylint: disable=too-many-branches,too-many-statements
         raise HTTPException(**response.model_dump()) from e
     except (LLSApiStatusError, OpenAIAPIStatusError) as e:
         logger.error("API status error while uploading file: %s", e)
-        error_response = handle_known_apistatus_errors(e, "llama-stack")
+        error_response = handle_known_apistatus_errors(e, "ogx")
         raise HTTPException(**error_response.model_dump()) from e
 
 
@@ -738,7 +738,7 @@ async def add_file_to_vector_store(  # pylint: disable=too-many-locals,too-many-
         raise HTTPException(**response.model_dump()) from e
     except (LLSApiStatusError, OpenAIAPIStatusError) as e:
         logger.error("API status error while adding file to vector store: %s", e)
-        error_response = handle_known_apistatus_errors(e, "llama-stack")
+        error_response = handle_known_apistatus_errors(e, "ogx")
         raise HTTPException(**error_response.model_dump()) from e
 
 
@@ -807,7 +807,7 @@ async def list_vector_store_files(
         raise HTTPException(**response.model_dump()) from e
     except (LLSApiStatusError, OpenAIAPIStatusError) as e:
         logger.error("API status error while listing vector store files: %s", e)
-        error_response = handle_known_apistatus_errors(e, "llama-stack")
+        error_response = handle_known_apistatus_errors(e, "ogx")
         raise HTTPException(**error_response.model_dump()) from e
 
 
@@ -875,7 +875,7 @@ async def get_vector_store_file(
         raise HTTPException(**response.model_dump()) from e
     except (LLSApiStatusError, OpenAIAPIStatusError) as e:
         logger.error("API status error while getting vector store file: %s", e)
-        error_response = handle_known_apistatus_errors(e, "llama-stack")
+        error_response = handle_known_apistatus_errors(e, "ogx")
         raise HTTPException(**error_response.model_dump()) from e
 
 
@@ -929,5 +929,5 @@ async def delete_vector_store_file(
         return VectorStoreFileDeleteResponse(deleted=False, file_id=file_id)
     except (LLSApiStatusError, OpenAIAPIStatusError) as e:
         logger.error("API status error while deleting vector store file: %s", e)
-        error_response = handle_known_apistatus_errors(e, "llama-stack")
+        error_response = handle_known_apistatus_errors(e, "ogx")
         raise HTTPException(**error_response.model_dump()) from e

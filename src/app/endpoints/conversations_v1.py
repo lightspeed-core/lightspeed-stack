@@ -53,7 +53,7 @@ from utils.endpoints import (
 from utils.suid import (
     check_suid,
     normalize_conversation_id,
-    to_llama_stack_conversation_id,
+    to_ogx_conversation_id,
 )
 
 logger = get_logger(__name__)
@@ -246,17 +246,17 @@ async def get_conversation_endpoint_handler(  # pylint: disable=too-many-locals,
             client = AsyncOgxClientHolder().get_client()
 
             # Convert to OGX format (add 'conv_' prefix if needed)
-            llama_stack_conv_id = to_llama_stack_conversation_id(normalized_conv_id)
+            ogx_conv_id = to_ogx_conversation_id(normalized_conv_id)
             logger.debug(
                 "Calling OGX list_items with conversation_id: %s",
-                llama_stack_conv_id,
+                ogx_conv_id,
             )
 
             # Retrieve turns metadata from database
             db_turns = retrieve_conversation_turns(normalized_conv_id)
 
             # Use Conversations API to retrieve conversation items
-            items = await get_all_conversation_items(client, llama_stack_conv_id)
+            items = await get_all_conversation_items(client, ogx_conv_id)
             if not items:
                 logger.error("No items found for conversation %s", conversation_id)
                 response = NotFoundResponse(
@@ -383,11 +383,11 @@ async def delete_conversation_endpoint_handler(
             client = AsyncOgxClientHolder().get_client()
 
             # Convert to OGX format (add 'conv_' prefix if needed)
-            llama_stack_conv_id = to_llama_stack_conversation_id(normalized_conv_id)
+            ogx_conv_id = to_ogx_conversation_id(normalized_conv_id)
 
             # Use Conversations API to delete the conversation
             delete_response = await client.conversations.delete(
-                conversation_id=llama_stack_conv_id
+                conversation_id=ogx_conv_id
             )
             logger.info(
                 "Remote deletion of %s: success=%s",
@@ -497,14 +497,14 @@ async def update_conversation_endpoint_handler(
             client = AsyncOgxClientHolder().get_client()
 
             # Convert to OGX format (add 'conv_' prefix if needed)
-            llama_stack_conv_id = to_llama_stack_conversation_id(normalized_conv_id)
+            ogx_conv_id = to_ogx_conversation_id(normalized_conv_id)
 
             # Prepare metadata with topic summary
             metadata = {"topic_summary": update_request.topic_summary}
 
             # Use Conversations API to update the conversation metadata
             await client.conversations.update(
-                conversation_id=llama_stack_conv_id,
+                conversation_id=ogx_conv_id,
                 metadata=metadata,
             )
 

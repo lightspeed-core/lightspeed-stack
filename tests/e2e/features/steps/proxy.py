@@ -33,7 +33,7 @@ from tests.e2e.proxy.interception_proxy import (
 )
 from tests.e2e.proxy.tunnel_proxy import DEFAULT_PROXY_PORT
 from tests.e2e.utils.ogx_config_utils import (
-    backup_llama_config,
+    backup_ogx_config,
     load_llama_config,
     restore_llama_config_if_modified,
     write_llama_config,
@@ -322,7 +322,7 @@ def restore_if_modified(context: Context) -> None:
 
 
 @given("Llama Stack is restarted")
-def restart_llama_stack(context: Context) -> None:
+def restart_ogx(context: Context) -> None:
     """Restart the OGX container."""
     from tests.e2e.features.steps.tls import (
         is_tls_configuration_feature,
@@ -395,7 +395,7 @@ def start_tunnel_proxy(context: Context, port: int) -> None:
 @given("Llama Stack is configured to route inference through the tunnel proxy")
 def configure_llama_tunnel_proxy(context: Context) -> None:
     """Modify run.yaml with proxy config pointing to the tunnel proxy."""
-    backup_llama_config()
+    backup_ogx_config()
     if is_prow_environment():
         proxy_port = getattr(context, "cluster_tunnel_proxy_port", DEFAULT_PROXY_PORT)
     else:
@@ -419,7 +419,7 @@ def configure_llama_tunnel_proxy(context: Context) -> None:
 @given('Llama Stack is configured to route inference through proxy "{proxy_url}"')
 def configure_llama_unreachable_proxy(context: Context, proxy_url: str) -> None:
     """Modify run.yaml with a proxy URL (may be unreachable)."""
-    backup_llama_config()
+    backup_ogx_config()
     config = load_llama_config()
     provider = _find_inference_provider(context, config)
 
@@ -504,7 +504,7 @@ def start_interception_proxy(context: Context, port: int) -> None:
 )
 def configure_llama_interception_with_ca(context: Context) -> None:
     """Modify run.yaml with interception proxy and CA cert config."""
-    backup_llama_config()
+    backup_ogx_config()
     context.needs_interception_ca_on_llama = True
     if is_prow_environment():
         os.environ["E2E_COPY_INTERCEPTION_CA_TO_LLAMA"] = "1"
@@ -543,7 +543,7 @@ def configure_llama_interception_with_ca(context: Context) -> None:
 )
 def configure_llama_interception_no_ca(context: Context) -> None:
     """Modify run.yaml with interception proxy but NO CA cert."""
-    backup_llama_config()
+    backup_ogx_config()
     context.needs_interception_ca_on_llama = False
     os.environ.pop("E2E_COPY_INTERCEPTION_CA_TO_LLAMA", None)
     if is_prow_environment():
@@ -575,7 +575,7 @@ def configure_llama_interception_no_ca(context: Context) -> None:
 @given('Llama Stack is configured with minimum TLS version "{version}"')
 def configure_llama_tls_version(context: Context, version: str) -> None:
     """Modify run.yaml with TLS version config."""
-    backup_llama_config()
+    backup_ogx_config()
     config = load_llama_config()
     provider = _find_inference_provider(context, config)
 
@@ -593,7 +593,7 @@ def configure_llama_tls_version(context: Context, version: str) -> None:
 @given('Llama Stack is configured with ciphers "{ciphers}"')
 def configure_llama_ciphers(context: Context, ciphers: str) -> None:
     """Modify run.yaml with cipher suite config."""
-    backup_llama_config()
+    backup_ogx_config()
     config = load_llama_config()
     provider = _find_inference_provider(context, config)
 

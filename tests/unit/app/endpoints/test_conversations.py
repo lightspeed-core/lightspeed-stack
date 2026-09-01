@@ -2270,7 +2270,7 @@ class TestConversationsV1Otel:
         ).return_value.get_client.return_value = mocker.AsyncMock()
 
         mocker.patch(
-            "app.endpoints.conversations_v1.to_llama_stack_conversation_id",
+            "app.endpoints.conversations_v1.to_ogx_conversation_id",
             return_value=f"conv_{VALID_CONVERSATION_ID}",
         )
 
@@ -2400,7 +2400,7 @@ class TestConversationsV1Otel:
         ).return_value.get_client.return_value = mock_client
 
         mocker.patch(
-            "app.endpoints.conversations_v1.to_llama_stack_conversation_id",
+            "app.endpoints.conversations_v1.to_ogx_conversation_id",
             return_value=f"conv_{VALID_CONVERSATION_ID}",
         )
 
@@ -2479,7 +2479,7 @@ class TestConversationsV1Otel:
         ).return_value.get_client.return_value = mock_client
 
         mocker.patch(
-            "app.endpoints.conversations_v1.to_llama_stack_conversation_id",
+            "app.endpoints.conversations_v1.to_ogx_conversation_id",
             return_value=f"conv_{VALID_CONVERSATION_ID}",
         )
 

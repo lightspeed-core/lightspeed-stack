@@ -1,4 +1,4 @@
-"""Unit tests for pydantic_ai_lightspeed.llamastack._model module."""
+"""Unit tests for pydantic_ai_lightspeed.ogx._model module."""
 
 # pylint: disable=protected-access,too-few-public-methods
 
@@ -19,7 +19,7 @@ from pydantic_ai.settings import ModelSettings
 from pytest_mock import MockerFixture
 
 from models.common.responses.responses_api_params import ResponsesApiParams
-from pydantic_ai_lightspeed.llamastack._model import (
+from pydantic_ai_lightspeed.ogx._model import (
     _LLS_RESPONSES_EXTRA_FIELDS,
     OgxResponsesModel,
     _FilteredResponseStream,
@@ -209,7 +209,7 @@ class TestFromOgxClient:
         """Test that responses_params is converted and forwarded."""
         mock_provider = mocker.Mock()
         mocker.patch(
-            "pydantic_ai_lightspeed.llamastack._model.OgxProvider.from_ogx_client",
+            "pydantic_ai_lightspeed.ogx._model.OgxProvider.from_ogx_client",
             return_value=mock_provider,
         )
         mock_init = mocker.patch.object(
@@ -232,7 +232,7 @@ class TestFromOgxClient:
         """Test that model_settings is forwarded directly."""
         mock_provider = mocker.Mock()
         mocker.patch(
-            "pydantic_ai_lightspeed.llamastack._model.OgxProvider.from_ogx_client",
+            "pydantic_ai_lightspeed.ogx._model.OgxProvider.from_ogx_client",
             return_value=mock_provider,
         )
         mock_init = mocker.patch.object(
@@ -256,7 +256,7 @@ class TestFromOgxClient:
         """Test that settings is None when neither param is provided."""
         mock_provider = mocker.Mock()
         mocker.patch(
-            "pydantic_ai_lightspeed.llamastack._model.OgxProvider.from_ogx_client",
+            "pydantic_ai_lightspeed.ogx._model.OgxProvider.from_ogx_client",
             return_value=mock_provider,
         )
         mock_init = mocker.patch.object(
@@ -276,7 +276,7 @@ class TestFromOgxClient:
     def test_both_raises_value_error(self, mocker: MockerFixture) -> None:
         """Test that providing both raises ValueError."""
         mocker.patch(
-            "pydantic_ai_lightspeed.llamastack._model.OgxProvider.from_ogx_client",
+            "pydantic_ai_lightspeed.ogx._model.OgxProvider.from_ogx_client",
             return_value=mocker.Mock(),
         )
 
@@ -555,9 +555,7 @@ class TestRequestStream:
         model._provider = mocker.Mock()
         model._provider.name = "test-provider"
         model._provider.base_url = "http://localhost"
-        mocker.patch(
-            "pydantic_ai_lightspeed.llamastack._model.check_allow_model_requests"
-        )
+        mocker.patch("pydantic_ai_lightspeed.ogx._model.check_allow_model_requests")
         mocker.patch.object(
             type(model),
             "profile",

@@ -24,7 +24,7 @@ import yaml
 from pydantic import ValidationError
 
 from configuration import configuration
-from llama_stack_configuration import (
+from ogx_configuration import (
     CONDITIONAL_OPENAI_PROVIDER_ID,
     generate_configuration,
     load_default_baseline,

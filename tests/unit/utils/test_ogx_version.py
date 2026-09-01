@@ -13,7 +13,7 @@ from constants import (
     MAXIMAL_SUPPORTED_OGX_VERSION,
     MINIMAL_SUPPORTED_OGX_VERSION,
 )
-from utils.llama_stack_version import (
+from utils.ogx_version import (
     InvalidOgxVersionException,
     check_ogx_version,
 )
@@ -124,7 +124,7 @@ async def test_check_ogx_version_retries_on_connection_error(
 ) -> None:
     """Test that check_ogx_version retries on APIConnectionError."""
     mock_client = mocker.AsyncMock()
-    mock_sleep = mocker.patch("utils.llama_stack_version.asyncio.sleep")
+    mock_sleep = mocker.patch("utils.ogx_version.asyncio.sleep")
 
     # Fail twice with connection error, then succeed
     mock_client.inspect.version.side_effect = [
@@ -145,7 +145,7 @@ async def test_check_ogx_version_raises_after_max_retries(
 ) -> None:
     """Test that check_ogx_version raises after all retries are exhausted."""
     mock_client = mocker.AsyncMock()
-    mock_sleep = mocker.patch("utils.llama_stack_version.asyncio.sleep")
+    mock_sleep = mocker.patch("utils.ogx_version.asyncio.sleep")
 
     mock_client.inspect.version.side_effect = APIConnectionError(
         request=mocker.MagicMock()

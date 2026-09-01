@@ -23,9 +23,9 @@ from tests.e2e.features.steps.common import (
     reset_active_lightspeed_stack_config_basename,
 )
 from tests.e2e.features.steps.health import (
-    get_llama_stack_was_running,
+    get_ogx_was_running,
     reset_llama_stack_disrupt_once_tracking,
-    reset_llama_stack_was_running,
+    reset_ogx_was_running,
 )
 from tests.e2e.features.steps.tls import (
     is_tls_feature_file,
@@ -35,7 +35,7 @@ from tests.e2e.features.steps.tls import (
 from tests.e2e.utils.ogx_utils import register_shield
 from tests.e2e.utils.prow_utils import (
     restart_pod,
-    restore_llama_stack_pod,
+    restore_ogx_pod,
     run_e2e_ops,
 )
 from tests.e2e.utils.utils import (
@@ -300,7 +300,7 @@ def after_scenario(context: Context, scenario: Scenario) -> None:
             - scenario_lightspeed_override_active: set by ``configure_service``
               when a scenario switches YAML after Background.
             - is_library_mode (bool): whether tests run in library mode.
-            - llama_stack_was_running (bool, optional): whether OGX was
+            - ogx_was_running (bool, optional): whether OGX was
               running before the scenario.
             - hostname_llama, port_llama (str/int, optional): host and port
               used for the OGX health check.
@@ -406,7 +406,7 @@ def after_scenario(context: Context, scenario: Scenario) -> None:
                     )
 
 
-def _print_llama_stack_diagnostics() -> None:
+def _print_ogx_diagnostics() -> None:
     """Print container state, health, and recent logs to diagnose why OGX did not recover."""
     print("--- llama-stack diagnostics ---")
     for label, cmd in [
@@ -442,7 +442,7 @@ def _restore_llama_stack() -> None:
     if is_prow_environment():
         # Recreate llama pod, then restart LCS so in-process clients reconnect (Llama IP/pod changed).
         try:
-            restore_llama_stack_pod()
+            restore_ogx_pod()
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
             print(f"Warning: Could not restore OGX pod on Prow: {e}")
             return
@@ -513,7 +513,7 @@ def _restore_llama_stack() -> None:
                 time.sleep(2)
             else:
                 print("Warning: OGX may not be fully healthy after restoration")
-                _print_llama_stack_diagnostics()
+                _print_ogx_diagnostics()
 
     except subprocess.CalledProcessError as e:
         print(f"Warning: Could not restore OGX connection: {e}")
@@ -521,7 +521,7 @@ def _restore_llama_stack() -> None:
             print(f"  docker start stderr: {e.stderr}")
         if e.stdout:
             print(f"  docker start stdout: {e.stdout}")
-        _print_llama_stack_diagnostics()
+        _print_ogx_diagnostics()
 
 
 def before_feature(context: Context, feature: Feature) -> None:
@@ -585,9 +585,9 @@ def after_feature(context: Context, feature: Feature) -> None:
     # Restore OGX FIRST (before any lightspeed-stack restart).
     # Read from module-level state — Behave clears custom context attributes
     # between scenarios, so context.ogx_was_running is unreliable here.
-    if get_llama_stack_was_running():
+    if get_ogx_was_running():
         _restore_llama_stack()
-        reset_llama_stack_was_running()
+        reset_ogx_was_running()
 
     if getattr(context, "feedback_e2e_conversation_cleanup", False):
         token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva"

@@ -42,12 +42,12 @@ RUN mkdir -p /opt/app-root/src/.llama/storage \
 # Copy the config-generation script for runtime synthesis (unified mode) or
 # enrichment (legacy mode), plus the shipped default baseline it resolves as
 # ./data/default_run.yaml relative to its own location (load_default_baseline)
-COPY src/llama_stack_configuration.py /opt/app-root/llama_stack_configuration.py
+COPY src/ogx_configuration.py /opt/app-root/ogx_configuration.py
 COPY src/data /opt/app-root/data
-COPY scripts/llama-stack-entrypoint.sh /opt/app-root/enrich-entrypoint.sh
+COPY scripts/ogx-entrypoint.sh /opt/app-root/enrich-entrypoint.sh
 RUN chmod +x /opt/app-root/enrich-entrypoint.sh && \
     chown -R 1001:0 /opt/app-root/enrich-entrypoint.sh \
-        /opt/app-root/llama_stack_configuration.py /opt/app-root/data
+        /opt/app-root/ogx_configuration.py /opt/app-root/data
 
 # Switch back to the original user
 USER 1001

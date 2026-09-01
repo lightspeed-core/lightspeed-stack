@@ -119,7 +119,7 @@ class ResponsesApiParams(BaseModel):
     )
     extra_headers: Optional[dict[str, str]] = Field(
         default=None,
-        description="Extra HTTP headers to send with the request (e.g. x-llamastack-provider-data)",
+        description="Extra HTTP headers to send with the request (e.g. X-OGX-Provider-Data)",
     )
     omit_conversation: bool = Field(
         default=False,

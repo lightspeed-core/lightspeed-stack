@@ -521,20 +521,20 @@ async def append_turn_items_to_conversation(
 
 async def get_all_conversation_items(
     client: AsyncOgxClient,
-    conversation_id_llama_stack: str,
+    conversation_id_ogx: str,
 ) -> list[ItemListResponse]:
     """Fetch all items for a conversation (Conversations API), paginating as needed.
 
     Args:
         client: OGX client.
-        conversation_id_llama_stack: Conversation ID in OGX format.
+        conversation_id_ogx: Conversation ID in OGX format.
 
     Returns:
         List of all items in the conversation, oldest first.
     """
     try:
         paginator = client.conversations.items.list(
-            conversation_id=conversation_id_llama_stack,
+            conversation_id=conversation_id_ogx,
             order="asc",
         )
         first_page = await paginator

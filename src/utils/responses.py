@@ -129,7 +129,7 @@ from utils.query import (
     normalize_vertex_ai_model_id,
     prepare_input,
 )
-from utils.suid import to_llama_stack_conversation_id
+from utils.suid import to_ogx_conversation_id
 from utils.token_counter import TokenCounter
 
 logger = get_logger(__name__)
@@ -317,14 +317,14 @@ def _build_provider_data_headers(
     """Build extra HTTP headers containing MCP provider data for OGX.
 
     Extracts per-server auth headers from MCP tool definitions and encodes
-    them as a JSON ``x-llamastack-provider-data`` header that OGX
+    them as a JSON ``X-OGX-Provider-Data`` header that OGX
     uses to authenticate with downstream MCP servers.
 
     Args:
         tools: Prepared tool definitions (may include MCP and non-MCP tools).
 
     Returns:
-        Dict with a single ``x-llamastack-provider-data`` key, or None when
+        Dict with a single ``X-OGX-Provider-Data`` key, or None when
         no MCP tools carry headers.
     """
     if not tools:
@@ -339,7 +339,7 @@ def _build_provider_data_headers(
     if not mcp_headers:
         return None
 
-    return {"x-llamastack-provider-data": json.dumps({"mcp_headers": mcp_headers})}
+    return {"X-OGX-Provider-Data": json.dumps({"mcp_headers": mcp_headers})}
 
 
 async def prepare_responses_params(  # pylint: disable=too-many-arguments,too-many-locals,too-many-positional-arguments
@@ -405,7 +405,7 @@ async def prepare_responses_params(  # pylint: disable=too-many-arguments,too-ma
     if conversation_id:
         # Conversation ID was provided - convert to OGX format
         logger.debug("Using existing conversation ID: %s", conversation_id)
-        llama_stack_conv_id = to_llama_stack_conversation_id(conversation_id)
+        ogx_conv_id = to_ogx_conversation_id(conversation_id)
     else:
         # No conversation_id provided - create a new conversation first
         logger.debug("No conversation_id provided, creating new conversation")
@@ -421,13 +421,13 @@ async def prepare_responses_params(  # pylint: disable=too-many-arguments,too-ma
             error_response = InternalServerErrorResponse.generic()
             raise HTTPException(**error_response.model_dump()) from e
 
-        llama_stack_conv_id = conversation.id
+        ogx_conv_id = conversation.id
         logger.info(
             "Created new conversation with ID: %s",
-            llama_stack_conv_id,
+            ogx_conv_id,
         )
 
-    # Build x-llamastack-provider-data header from MCP tool headers
+    # Build X-OGX-Provider-Data header from MCP tool headers
     extra_headers = _build_provider_data_headers(tools)
 
     # Normalize Vertex AI model IDs to work around OGX 0.6.x bug
@@ -438,7 +438,7 @@ async def prepare_responses_params(  # pylint: disable=too-many-arguments,too-ma
         model=normalized_model,
         instructions=system_prompt,
         tools=tools,
-        conversation=llama_stack_conv_id,
+        conversation=ogx_conv_id,
         stream=stream,
         store=store,
         extra_headers=extra_headers,
@@ -1422,7 +1422,7 @@ async def select_model_for_responses(
         user_conversation: The user conversation if conversation_id was provided, None otherwise
 
     Returns:
-        The llama_stack_model_id in "provider/model" format
+        The OGX model ID in "provider/model" format
 
     Raises:
         HTTPException: If models cannot be fetched or an error occurs, or if no LLM model is found

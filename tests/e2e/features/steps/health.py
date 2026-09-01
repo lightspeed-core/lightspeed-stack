@@ -15,23 +15,23 @@ _llama_stack_disrupt_once: dict[str, bool] = {"applied": False}
 
 # Behave clears user attributes on ``context`` between scenarios; store
 # ``was_running`` at module level so ``after_feature`` can still see it.
-_llama_stack_was_running: dict[str, bool] = {"value": False}
+_ogx_was_running: dict[str, bool] = {"value": False}
 
 
-def get_llama_stack_was_running() -> bool:
+def get_ogx_was_running() -> bool:
     """Return whether OGX was running before the disruption step."""
-    return _llama_stack_was_running["value"]
+    return _ogx_was_running["value"]
 
 
-def reset_llama_stack_was_running() -> None:
+def reset_ogx_was_running() -> None:
     """Clear the module-level was_running flag after restoration."""
-    _llama_stack_was_running["value"] = False
+    _ogx_was_running["value"] = False
 
 
 def reset_llama_stack_disrupt_once_tracking() -> None:
     """Reset before each feature; see ``environment.before_feature``."""
     _llama_stack_disrupt_once["applied"] = False
-    _llama_stack_was_running["value"] = False
+    _ogx_was_running["value"] = False
 
 
 def _force_lightspeed_restart_after_llama_disrupt(context: Context) -> None:
@@ -65,7 +65,7 @@ def llama_stack_connection_broken(context: Context) -> None:
     Parameters:
     ----------
         context (behave.runner.Context): Behave context used to store
-        `llama_stack_was_running` and share state between steps.
+        `ogx_was_running` and share state between steps.
     """
     if _llama_stack_disrupt_once["applied"]:
         print("OGX disruption skipped (already applied once this feature)")
@@ -76,14 +76,14 @@ def llama_stack_connection_broken(context: Context) -> None:
     # Write to both context (backward compat) and module-level dict (survives
     # Behave's per-scenario context clearing).
     context.ogx_was_running = False
-    _llama_stack_was_running["value"] = False
+    _ogx_was_running["value"] = False
 
     if is_prow_environment():
         from tests.e2e.utils.prow_utils import disrupt_llama_stack_pod
 
         was_running = disrupt_llama_stack_pod()
         context.ogx_was_running = was_running
-        _llama_stack_was_running["value"] = was_running
+        _ogx_was_running["value"] = was_running
         _llama_stack_disrupt_once["applied"] = True
         _force_lightspeed_restart_after_llama_disrupt(context)
         return
@@ -99,7 +99,7 @@ def llama_stack_connection_broken(context: Context) -> None:
 
         if result.stdout.strip():
             context.ogx_was_running = True
-            _llama_stack_was_running["value"] = True
+            _ogx_was_running["value"] = True
             subprocess.run(
                 ["docker", "stop", "llama-stack"], check=True, capture_output=True
             )

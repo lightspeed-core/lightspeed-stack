@@ -444,9 +444,9 @@ capabilities into an adaptable setup.
 
 Useful resources:
 
-  - [OGX](https://www.llama.com/products/llama-stack/)
-  - [Python OGX client](https://github.com/llamastack/llama-stack-client-python)
-  - [Build AI Applications with OGX](https://llamastack.github.io/)
+  - [OGX](https://ogx-ai.github.io/)
+  - [Python OGX client](https://github.com/ogx-ai/ogx-client-python)
+  - [Build AI Applications with OGX](https://ogx-ai.github.io/)
 
 
 | Field                      | Type    | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |

@@ -57,7 +57,7 @@ tests/e2e/
 ├── configs/                     # OGX run configs (run-ci.yaml, etc.)
 ├── utils/
 │   ├── utils.py                 # restart_container, switch_config, wait_for_container_health, etc.
-│   ├── prow_utils.py            # Prow/OpenShift helpers (restore_llama_stack_pod, etc.)
+│   ├── prow_utils.py            # Prow/OpenShift helpers (restore_ogx_pod, etc.)
 │   └── ogx_utils.py             # Toolgroups + shield unregister/register (server mode, optional)
 ├── mock_mcp_server/             # Mock MCP server for MCP tests
 └── rag/                         # RAG test data (e.g. for FAISS)
@@ -75,7 +75,7 @@ tests/e2e-prow/
     ├── pipeline-services-konflux.sh  # Services for Konflux (ogx-openai + templated LCS)
     ├── pipeline-vllm.sh         # vLLM cluster setup (called from pipeline.sh)
     ├── pipeline-test-pod.sh     # Test pod pipeline
-    ├── configs/                 # vLLM OGX `run.yaml` (used by pipeline.sh for llama-stack-config)
+    ├── configs/                 # vLLM OGX `run.yaml` (used by pipeline.sh for ogx-config ConfigMap seed)
     ├── scripts/
     │   ├── e2e-ops.sh           # E2E ops (e.g. disrupt/restore OGX) — called from prow_utils
     │   ├── bootstrap.sh
@@ -258,7 +258,7 @@ Key step modules:
 - **common_http.py**: Status code, body content, headers.
 - **auth.py**: Set Authorization header.
 - **llm_query_response.py**: Call query/streaming_query, too-long query, parse streamed response, assert fragments and error messages.
-- **health.py**: "The OGX connection is disrupted" (stop container in server mode; sets `llama_stack_was_running` for restore in after_scenario).
+- **health.py**: "The OGX connection is disrupted" (stop container in server mode; sets `ogx_was_running` for restore in after_scenario).
 
 ---
 
@@ -349,7 +349,7 @@ Here, **Given** sets state, **When** performs the HTTP call, **Then** and **And*
 
 ## Troubleshooting
 
-- **503 or "Unable to connect to OGX"**: In server mode, ensure the OGX container is running and healthy. After a scenario that disrupts OGX, `after_scenario` restores it; if restore fails, check diagnostics (see `_print_llama_stack_diagnostics` in `environment.py` if present) and container logs.
+- **503 or "Unable to connect to OGX"**: In server mode, ensure the OGX container is running and healthy. After a scenario that disrupts OGX, `after_scenario` restores it; if restore fails, check diagnostics (see `_print_ogx_diagnostics` in `environment.py` if present) and container logs.
 - **"Container state improper" / restart fails**: Usually the OGX container is in a bad state. Ensure it is started (or recreated) before restarting lightspeed-stack; see Docker/Podman and compose usage in the project.
 - **Readonly database (SQLite) in OGX**: If the RAG KV DB is on a bind-mounted path that becomes read-only (e.g. after restart), move it to a named volume (e.g. via `KV_RAG_PATH` in docker-compose) so writes succeed.
 - **ChunkedEncodingError on streaming_query**: The step for streaming_query uses `stream=True` and consumes the stream; if you add new streaming steps, avoid reading the full response with `response.content` and use the same stream-reading pattern so a server close after an error event does not raise.

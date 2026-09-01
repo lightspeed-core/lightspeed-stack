@@ -75,7 +75,7 @@ PII_TLS_PASS = "/etc/ssl/private/key_password.txt"
 PII_CORS_ORIGIN = "https://internal.corp.com"
 PII_LLAMA_URL = "https://llama.internal.corp.com:8321"
 PII_API_KEY = "sk-super-secret-api-key-12345"
-PII_LIB_CONFIG = "/opt/llama-stack/run.yaml"
+PII_LIB_CONFIG = "/opt/ogx/run.yaml"
 PII_K8S_API = "https://k8s.internal.corp.com:6443"
 PII_K8S_CERT = "/var/run/secrets/ca.crt"
 PII_JWK_URL = "https://auth.internal.corp.com/.well-known/jwks.json"
@@ -143,7 +143,7 @@ PII_RH_IDENTITY_ENTITLEMENTS = "insights,openshift"
 PII_TRUSTED_PROXY_SA_NS = "proxy-namespace-secret"
 PII_TRUSTED_PROXY_SA_NAME = "proxy-sa-secret-name"
 PII_SKILLS_PATH = "/opt/lightspeed/skills"
-PII_LS_PROFILE = "/opt/llama-stack/custom-profile.yaml"
+PII_LS_PROFILE = "/opt/ogx/custom-profile.yaml"
 PII_LS_NATIVE_OVERRIDE = "override-secret-value"
 PII_PROVIDER_API_KEY_ENV = "OPENAI_API_KEY"
 
@@ -792,8 +792,8 @@ def build_minimal_config() -> Configuration:
     )
 
 
-@pytest.fixture(name="llama_stack_config_file")
-def llama_stack_config_file_fixture(tmp_path: Path) -> str:
+@pytest.fixture(name="ogx_config_file")
+def ogx_config_file_fixture(tmp_path: Path) -> str:
     """Write SAMPLE_LLAMA_STACK_CONFIG to a temp YAML file and return its path.
 
     Parameters:
@@ -804,6 +804,6 @@ def llama_stack_config_file_fixture(tmp_path: Path) -> str:
     -------
         str: Path to the temporary YAML file.
     """
-    path = tmp_path / "llama_stack_config.yaml"
+    path = tmp_path / "ogx_config.yaml"
     path.write_text(yaml.dump(SAMPLE_LLAMA_STACK_CONFIG))
     return str(path)

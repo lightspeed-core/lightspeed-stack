@@ -6,7 +6,7 @@
 | **Component**      | Lightspeed Core Stack (src/models/config.py, src/llama_stack_configuration.py, src/client.py, src/lightspeed_stack.py, scripts/llama-stack-entrypoint.sh) |
 | **Authors**        | Maxim Svistunov                                                                   |
 | **Feature**        | [LCORE-836](https://redhat.atlassian.net/browse/LCORE-836)                       |
-| **Spike**          | [llama-stack-config-merge-spike.md](llama-stack-config-merge-spike.md)           |
+| **Spike**          | [ogx-config-merge-spike.md](ogx-config-merge-spike.md)           |
 | **Links**          | LCORE-509 (Epic), LCORE-777 (Epic), LCORE-518 (prior spike, Closed), LCORE-779 (auto-regen, Closed) |
 
 ## What

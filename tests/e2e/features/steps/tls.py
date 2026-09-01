@@ -16,7 +16,7 @@ from behave import given  # pyright: ignore[reportAttributeAccessIssue]
 from behave.runner import Context
 
 from tests.e2e.utils.ogx_config_utils import (
-    backup_llama_config,
+    backup_ogx_config,
     clear_llama_config_backup,
     load_llama_config,
     reset_llama_run_config_to_pipeline_default,
@@ -238,7 +238,7 @@ def _configure_tls(tls_config: dict[str, Any], base_url: Optional[str] = None) -
         tls_config: The TLS configuration dictionary.
         base_url: Optional base URL override for the provider.
     """
-    backup_llama_config()
+    backup_ogx_config()
     config = load_llama_config()
     provider = _ensure_tls_provider(config)
     provider.setdefault("config", {}).setdefault("network", {})

@@ -39,14 +39,15 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self) -> None:
         """Handle GET requests."""
-        if self.path == "/.well-known/jwks.json":
-            self._json_response(JWKS)
-        elif self.path == "/tokens":
-            self._json_response(TOKENS)
-        elif self.path == "/health":
-            self._json_response({"status": "ok"})
-        else:
-            self.send_error(404)
+        match self.path:
+            case "/.well-known/jwks.json":
+                self._json_response(JWKS)
+            case "/tokens":
+                self._json_response(TOKENS)
+            case "/health":
+                self._json_response({"status": "ok"})
+            case _:
+                self.send_error(404)
 
     def _json_response(self, data: dict) -> None:
         """Send JSON response."""

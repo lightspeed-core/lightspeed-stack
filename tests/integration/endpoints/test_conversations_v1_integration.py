@@ -582,7 +582,7 @@ async def test_get_conversation_with_turns_metadata(
 
 
 @pytest.mark.asyncio
-async def test_delete_conversation_deletes_from_database_and_llama_stack(
+async def test_delete_conversation_deletes_from_database_and_ogx(
     test_config: AppConfig,
     mock_ogx_client: AsyncMockType,
     non_admin_test_request: Request,
@@ -648,7 +648,7 @@ async def test_delete_conversation_deletes_from_database_and_llama_stack(
 
 
 @pytest.mark.asyncio
-async def test_delete_conversation_handles_not_found_in_llama_stack(
+async def test_delete_conversation_handles_not_found_in_ogx(
     test_config: AppConfig,
     mock_ogx_client: AsyncMockType,
     non_admin_test_request: Request,

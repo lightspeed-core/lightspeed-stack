@@ -146,7 +146,7 @@ def restart_pod(container_name: str) -> None:
         raise
 
 
-def restore_llama_stack_pod() -> None:
+def restore_ogx_pod() -> None:
     """Restore OGX pod in Prow/OpenShift environment.
 
     Raises:

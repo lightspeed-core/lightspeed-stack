@@ -699,7 +699,7 @@
                         "type": "string",
                         "nullable": true,
                         "default": null,
-                        "description": "Optional explicit marker of the configuration format. When set, it must agree with the shape detected from the configuration body: 'unified' requires a synthesis input (a non-empty inference.providers, a non-empty vector_store.providers, or a llama_stack.config block), 'legacy' requires no synthesis input. Reserved as the lever for a future breaking change of the unified schema (R11).",
+                        "description": "Optional explicit marker of the configuration format. When set, it must agree with the shape detected from the configuration body: 'unified' requires a synthesis input (a non-empty inference.providers, a non-empty vector_store.providers, or an ogx.config block), 'legacy' requires no synthesis input. Reserved as the lever for a future breaking change of the unified schema (R11).",
                         "title": "Configuration format version"
                     },
                     "service": {
@@ -707,7 +707,7 @@
                         "description": "This section contains Lightspeed Core Stack service configuration.",
                         "title": "Service configuration"
                     },
-                    "llama_stack": {
+                    "ogx": {
                         "$ref": "`#/components/schemas/`OgxConfiguration",
                         "description": "This section contains OGX configuration. Lightspeed Core Stack service can call OGX in library mode or in server mode.",
                         "title": "OGX configuration"
@@ -884,7 +884,7 @@
                 "required": [
                     "name",
                     "service",
-                    "llama_stack",
+                    "ogx",
                     "user_data_collection"
                 ],
                 "title": "Configuration",
@@ -919,12 +919,6 @@
                                 "default_model": "gpt-4-turbo",
                                 "default_provider": "openai"
                             },
-                            "llama_stack": {
-                                "api_key": "*****",
-                                "library_client_config_path": null,
-                                "url": "http://localhost:8321",
-                                "use_as_library_client": false
-                            },
                             "mcp_servers": [
                                 {
                                     "name": "server1",
@@ -941,6 +935,12 @@
                                     "OTEL_SDK_DISABLED": "true",
                                     "OTEL_SERVICE_NAME": ""
                                 }
+                            },
+                            "ogx": {
+                                "api_key": "*****",
+                                "library_client_config_path": null,
+                                "url": "http://localhost:8321",
+                                "use_as_library_client": false
                             },
                             "quota_handlers": {
                                 "enable_token_history": false,
@@ -2433,7 +2433,7 @@
             },
             "OgxConfiguration": {
                 "additionalProperties": false,
-                "description": "OGX configuration.\n\nOGX is a comprehensive system that provides a uniform set of tools\nfor building, scaling, and deploying generative AI applications, enabling\ndevelopers to create, integrate, and orchestrate multiple AI services and\ncapabilities into an adaptable setup.\n\nUseful resources:\n\n  - [OGX](https://www.llama.com/products/llama-stack/)\n  - [Python OGX client](https://github.com/llamastack/llama-stack-client-python)\n  - [Build AI Applications with OGX](https://llamastack.github.io/)",
+                "description": "OGX configuration.\n\nOGX is a comprehensive system that provides a uniform set of tools\nfor building, scaling, and deploying generative AI applications, enabling\ndevelopers to create, integrate, and orchestrate multiple AI services and\ncapabilities into an adaptable setup.\n\nUseful resources:\n\n  - [OGX](https://ogx-ai.github.io/)\n  - [Python OGX client](https://github.com/ogx-ai/ogx-client-python)\n  - [Build AI Applications with OGX](https://ogx-ai.github.io/)",
                 "properties": {
                     "url": {
                         "type": "string",

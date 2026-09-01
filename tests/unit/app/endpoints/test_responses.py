@@ -390,7 +390,7 @@ class TestResponsesEndpointHandler:
             return_value=VALID_CONV_ID_NORMALIZED,
         )
         mocker.patch(
-            f"{ENDPOINTS_MODULE}.to_llama_stack_conversation_id",
+            f"{ENDPOINTS_MODULE}.to_ogx_conversation_id",
             return_value=VALID_CONV_ID,
         )
         mocker.patch(
@@ -629,7 +629,7 @@ class TestResponsesEndpointHandler:
             return_value=VALID_CONV_ID_NORMALIZED,
         )
         mocker.patch(
-            f"{ENDPOINTS_MODULE}.to_llama_stack_conversation_id",
+            f"{ENDPOINTS_MODULE}.to_ogx_conversation_id",
             return_value=VALID_CONV_ID,
         )
         mocker.patch(

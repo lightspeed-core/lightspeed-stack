@@ -358,9 +358,9 @@ Global service configuration.
 | Field | Type | Description |
 |-------|------|-------------|
 | name | string | Name of the service. That value will be used in REST API endpoints. |
-| config_format_version | string | Optional explicit marker of the configuration format. When set, it must agree with the shape detected from the configuration body: 'unified' requires a synthesis input (a non-empty inference.providers, a non-empty vector_store.providers, or a llama_stack.config block), 'legacy' requires no synthesis input. Reserved as the lever for a future breaking change of the unified schema (R11). |
+| config_format_version | string | Optional explicit marker of the configuration format. When set, it must agree with the shape detected from the configuration body: 'unified' requires a synthesis input (a non-empty inference.providers, a non-empty vector_store.providers, or an ogx.config block), 'legacy' requires no synthesis input. Reserved as the lever for a future breaking change of the unified schema (R11). |
 | service |  | This section contains Lightspeed Core Stack service configuration. |
-| llama_stack |  | This section contains OGX configuration. Lightspeed Core Stack service can call OGX in library mode or in server mode. |
+| ogx |  | This section contains OGX configuration. Lightspeed Core Stack service can call OGX in library mode or in server mode. |
 | user_data_collection |  | This section contains configuration for subsystem that collects user data(transcription history and feedbacks). |
 | database |  | Configuration for database to store conversation IDs and other runtime data |
 | mcp_servers | array | MCP (Model Context Protocol) servers provide tools and capabilities to the AI agents. These are configured in this section. Only MCP servers defined in the lightspeed-stack.yaml configuration are available to the agents. Tools configured in the OGX run.yaml are not accessible to lightspeed-core agents. |
@@ -1049,9 +1049,9 @@ capabilities into an adaptable setup.
 
 Useful resources:
 
-  - [OGX](https://www.llama.com/products/llama-stack/)
-  - [Python OGX client](https://github.com/llamastack/llama-stack-client-python)
-  - [Build AI Applications with OGX](https://llamastack.github.io/)
+  - [OGX](https://ogx-ai.github.io/)
+  - [Python OGX client](https://github.com/ogx-ai/ogx-client-python)
+  - [Build AI Applications with OGX](https://ogx-ai.github.io/)
 
 
 | Field | Type | Description |
