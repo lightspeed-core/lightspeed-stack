@@ -321,12 +321,13 @@ else
 fi
 
 # Wait for OKP Solr to be ready
-echo "Waiting for OKP Solr to be ready (180s timeout)..."
+# Large image (7GB) requires extended timeout for first pull (10-15 min typical)
+echo "Waiting for OKP Solr to be ready (900s timeout for 7GB image pull)..."
 echo "Initial pod status:"
 oc get pod okp-solr-service -n "$NAMESPACE" || true
 
 if ! oc wait pod/okp-solr-service \
-    -n "$NAMESPACE" --for=condition=Ready --timeout=180s; then
+    -n "$NAMESPACE" --for=condition=Ready --timeout=900s; then
 
     echo "=========================================="
     echo "⚠️  OKP Solr not ready - DETAILED DIAGNOSTICS"
@@ -369,7 +370,8 @@ if ! oc wait pod/okp-solr-service \
 
     echo ""
     echo "=========================================="
-    echo "❌ OKP Solr failed to become ready within 180s"
+    echo "❌ OKP Solr failed to become ready within 900s"
+    echo "   (7GB image - check node network to registry.redhat.io)"
     echo "=========================================="
     exit 1
 fi
