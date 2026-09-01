@@ -469,7 +469,7 @@ def _parse_streaming_response(response_text: str) -> dict:
                         end_data = data.get("data") or {}
                         referenced_documents = end_data.get(
                             "referenced_documents", referenced_documents
-                    )
+                        )
                     case "error":
                         stream_error = data.get("data") or {}
             except json.JSONDecodeError:

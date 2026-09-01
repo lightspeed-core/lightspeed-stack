@@ -1194,9 +1194,7 @@ class TestPiiLeakPrevention:
             ), f"PII leaked in lightspeed-stack snapshot: '{pii_value}'"
 
     @pytest.mark.asyncio
-    async def test_no_pii_in_ogx_snapshot(
-        self, ogx_config_file: str
-    ) -> None:
+    async def test_no_pii_in_ogx_snapshot(self, ogx_config_file: str) -> None:
         """Verify no PII leaks in OGX snapshot JSON."""
         json_str = json.dumps(await build_ogx_snapshot(ogx_config_file))
         for pii_value in LLAMA_STACK_PII_VALUES:
@@ -1205,9 +1203,7 @@ class TestPiiLeakPrevention:
             ), f"PII leaked in llama-stack snapshot: '{pii_value}'"
 
     @pytest.mark.asyncio
-    async def test_no_pii_in_combined_snapshot(
-        self, ogx_config_file: str
-    ) -> None:
+    async def test_no_pii_in_combined_snapshot(self, ogx_config_file: str) -> None:
         """Verify no PII leaks in the combined snapshot JSON."""
         snapshot = await build_configuration_snapshot(
             build_fully_populated_config(), ogx_config_file
@@ -1228,9 +1224,7 @@ class TestPiiLeakPrevention:
         ), f"Snapshot contains unexpected top-level keys: {unexpected}"
 
     @pytest.mark.asyncio
-    async def test_provider_config_not_leaked(
-        self, ogx_config_file: str
-    ) -> None:
+    async def test_provider_config_not_leaked(self, ogx_config_file: str) -> None:
         """Verify provider config sections (with secrets) are not included."""
         json_str = json.dumps(await build_ogx_snapshot(ogx_config_file))
         assert "api_key" not in json_str
