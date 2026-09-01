@@ -129,7 +129,19 @@ if [[ -f /var/run/redhat-registry-pull-secret/.dockerconfigjson ]]; then
     echo "   Service account namespace file not found or empty"
     exit 1
   fi
-  if PIPELINE_POD_UID=$(oc get pod "$PIPELINE_POD_NAME" -n "$PIPELINE_POD_NAMESPACE" -o jsonpath='{.metadata.uid}' 2>/dev/null); then
+  log "DEBUG: PIPELINE_POD_NAME=$PIPELINE_POD_NAME"
+  log "DEBUG: PIPELINE_POD_NAMESPACE=$PIPELINE_POD_NAMESPACE"
+  log "DEBUG: Attempting: oc get pod $PIPELINE_POD_NAME -n $PIPELINE_POD_NAMESPACE"
+
+  PIPELINE_POD_UID=""
+  if ! PIPELINE_POD_UID=$(oc get pod "$PIPELINE_POD_NAME" -n "$PIPELINE_POD_NAMESPACE" -o jsonpath='{.metadata.uid}' 2>&1); then
+    log "DEBUG: oc get pod failed with: $PIPELINE_POD_UID"
+    # Try listing pods in the namespace to see what's available
+    log "DEBUG: Pods in namespace $PIPELINE_POD_NAMESPACE:"
+    oc get pods -n "$PIPELINE_POD_NAMESPACE" -o name 2>&1 | head -10 || true
+  fi
+
+  if [[ -n "$PIPELINE_POD_UID" ]]; then
     log "Setting ownerReference to pipeline Pod: $PIPELINE_POD_NAME (namespace: $PIPELINE_POD_NAMESPACE)"
 
     # Create secret with ownerReference using YAML (ensures automatic cleanup)
@@ -194,7 +206,19 @@ elif [[ -d /var/run/redhat-registry-username ]] && [[ -d /var/run/redhat-registr
       echo "   Service account namespace file not found or empty"
       exit 1
     fi
-    if PIPELINE_POD_UID=$(oc get pod "$PIPELINE_POD_NAME" -n "$PIPELINE_POD_NAMESPACE" -o jsonpath='{.metadata.uid}' 2>/dev/null); then
+    log "DEBUG: PIPELINE_POD_NAME=$PIPELINE_POD_NAME"
+    log "DEBUG: PIPELINE_POD_NAMESPACE=$PIPELINE_POD_NAMESPACE"
+    log "DEBUG: Attempting: oc get pod $PIPELINE_POD_NAME -n $PIPELINE_POD_NAMESPACE"
+
+    PIPELINE_POD_UID=""
+    if ! PIPELINE_POD_UID=$(oc get pod "$PIPELINE_POD_NAME" -n "$PIPELINE_POD_NAMESPACE" -o jsonpath='{.metadata.uid}' 2>&1); then
+      log "DEBUG: oc get pod failed with: $PIPELINE_POD_UID"
+      # Try listing pods in the namespace to see what's available
+      log "DEBUG: Pods in namespace $PIPELINE_POD_NAMESPACE:"
+      oc get pods -n "$PIPELINE_POD_NAMESPACE" -o name 2>&1 | head -10 || true
+    fi
+
+    if [[ -n "$PIPELINE_POD_UID" ]]; then
       log "Setting ownerReference to pipeline Pod: $PIPELINE_POD_NAME (namespace: $PIPELINE_POD_NAMESPACE)"
 
       # Create secret with ownerReference (oc handles JSON encoding safely)
