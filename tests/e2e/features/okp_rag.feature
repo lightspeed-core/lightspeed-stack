@@ -5,7 +5,6 @@ Feature: OKP(Solr) RAG retrieval tests
   # Tests verify that Lightspeed Stack can use OKP for both Inline RAG
   # (context injected before the LLM request) and Tool RAG (context
   # retrieved on demand via file_search), in both offline and online modes.
-
   Background:
     Given The service is started locally
       And The system is in default state
