@@ -107,7 +107,7 @@ async def test_shields_endpoint_handler_configured_shields(
             "provider_id": "question_validity",
             "config": {
                 "model_id": "openai/gpt-4o-mini",
-                "model_prompt": "Is this question valid?",
+                "model_prompt": "Is this question valid? ${message}",
                 "invalid_question_response": "I can only answer product questions.",
             },
         },
@@ -139,6 +139,9 @@ async def test_shields_endpoint_handler_configured_shields(
     assert response.shields[0].provider_id == "question_validity"
     assert response.shields[0].type == "shield"
     assert response.shields[0].config["model_id"] == "openai/gpt-4o-mini"
+    assert response.shields[0].config["model_prompt"] == (
+        "Is this question valid? ${message}"
+    )
     assert response.shields[1].name == "pii-redaction"
     assert response.shields[1].provider_id == "redaction"
     assert response.shields[1].type == "shield"

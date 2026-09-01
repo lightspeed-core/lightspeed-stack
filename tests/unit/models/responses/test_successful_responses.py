@@ -193,7 +193,7 @@ class TestShieldsResponse:
                 "type": "shield",
                 "config": {
                     "model_id": "openai/gpt-4o-mini",
-                    "model_prompt": "Is this question valid?",
+                    "model_prompt": "Is this question valid? ${message}",
                     "invalid_question_response": (
                         "I can only answer questions about the product."
                     ),
