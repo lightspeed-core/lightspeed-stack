@@ -200,7 +200,7 @@ backend-specific synthesizer translates the canonical LCORE vocabulary to
 its target shape; we do not adopt either backend's surface verbatim.
 
 **Pydantic AI research findings** (full report:
-[`pydantic-ai-research.md`](https://github.com/lightspeed-core/lightspeed-stack/blob/42844d068b488cc7d72928068b5606a7941f8c15/docs/design/ogx-config-merge/poc-results/pydantic-ai-research.md),
+[`pydantic-ai-research.md`](https://github.com/lightspeed-core/lightspeed-stack/blob/42844d068b488cc7d72928068b5606a7941f8c15/docs/design/llama-stack-config-merge/poc-results/pydantic-ai-research.md),
 pass dated 2026-05-20 against `pydantic-ai 1.98.0`):
 
 - Pydantic AI's per-Agent `<provider>:<model>` string + `Provider(...)`
@@ -884,13 +884,13 @@ removed from the tree after merge (PoC validation results aren't kept on
 `main`); the links below are permalinks to the files at the merge commit,
 where they remain in history:
 
-- [`lightspeed-stack-unified-library.yaml`](https://github.com/lightspeed-core/lightspeed-stack/blob/42844d068b488cc7d72928068b5606a7941f8c15/docs/design/ogx-config-merge/poc-results/lightspeed-stack-unified-library.yaml)
+- [`lightspeed-stack-unified-library.yaml`](https://github.com/lightspeed-core/lightspeed-stack/blob/42844d068b488cc7d72928068b5606a7941f8c15/docs/design/llama-stack-config-merge/poc-results/lightspeed-stack-unified-library.yaml)
   — the unified-mode config used.
-- [`library-mode/synthesized-run.yaml`](https://github.com/lightspeed-core/lightspeed-stack/blob/42844d068b488cc7d72928068b5606a7941f8c15/docs/design/ogx-config-merge/poc-results/library-mode/synthesized-run.yaml)
+- [`library-mode/synthesized-run.yaml`](https://github.com/lightspeed-core/lightspeed-stack/blob/42844d068b488cc7d72928068b5606a7941f8c15/docs/design/llama-stack-config-merge/poc-results/library-mode/synthesized-run.yaml)
   — what LCORE produced (3.7 KB).
-- [`library-mode/query-response.json`](https://github.com/lightspeed-core/lightspeed-stack/blob/42844d068b488cc7d72928068b5606a7941f8c15/docs/design/ogx-config-merge/poc-results/library-mode/query-response.json)
+- [`library-mode/query-response.json`](https://github.com/lightspeed-core/lightspeed-stack/blob/42844d068b488cc7d72928068b5606a7941f8c15/docs/design/llama-stack-config-merge/poc-results/library-mode/query-response.json)
   — a real `/v1/query` round-trip.
-- [`library-mode/README.md`](https://github.com/lightspeed-core/lightspeed-stack/blob/42844d068b488cc7d72928068b5606a7941f8c15/docs/design/ogx-config-merge/poc-results/library-mode/README.md)
+- [`library-mode/README.md`](https://github.com/lightspeed-core/lightspeed-stack/blob/42844d068b488cc7d72928068b5606a7941f8c15/docs/design/llama-stack-config-merge/poc-results/library-mode/README.md)
   — walkthrough.
 
 Summary of validation:
@@ -943,7 +943,7 @@ Summary of validation:
   query. The implementation JIRAs' e2e coverage must exercise a real
   Llama Guard model (e.g. `meta-llama/Llama-Guard-3-8B`) end-to-end.
   Caught by CodeRabbit on the PoC artifact at
-  [`synthesized-run.yaml` L110](https://github.com/lightspeed-core/lightspeed-stack/blob/42844d068b488cc7d72928068b5606a7941f8c15/docs/design/ogx-config-merge/poc-results/library-mode/synthesized-run.yaml#L110).
+  [`synthesized-run.yaml` L110](https://github.com/lightspeed-core/lightspeed-stack/blob/42844d068b488cc7d72928068b5606a7941f8c15/docs/design/llama-stack-config-merge/poc-results/library-mode/synthesized-run.yaml#L110).
 
 ---
 
@@ -1175,7 +1175,7 @@ adjust it for your environment before running.)
 # 0. Fetch the PoC config from the merge commit (removed from the tree post-merge)
 mkdir -p /tmp/lcore-836-poc
 curl -sSL -o /tmp/lcore-836-poc/lightspeed-stack-unified-library.yaml \
-  https://raw.githubusercontent.com/lightspeed-core/lightspeed-stack/42844d068b488cc7d72928068b5606a7941f8c15/docs/design/ogx-config-merge/poc-results/lightspeed-stack-unified-library.yaml
+  https://raw.githubusercontent.com/lightspeed-core/lightspeed-stack/42844d068b488cc7d72928068b5606a7941f8c15/docs/design/llama-stack-config-merge/poc-results/lightspeed-stack-unified-library.yaml
 
 # 1. Start LCORE in library mode with the unified config
 export OPENAI_API_KEY=<your-key>
