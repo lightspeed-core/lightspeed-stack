@@ -4,7 +4,8 @@ from typing import Any, Optional
 
 import pytest
 from fastapi import HTTPException, Request, status
-from ogx_client import ApiException, BadRequestError
+from ogx_api import PromptNotFoundError
+from ogx_client import ApiException, NotFoundError
 from ogx_client.models.prompt import Prompt
 from pytest_mock import MockerFixture
 
@@ -193,13 +194,10 @@ async def test_delete_prompt_success(
 async def test_delete_prompt_not_found_returns_body(
     prompts_client_mocks: tuple[Any, Any],
     prompts_http_request: Request,
-    mocker: MockerFixture,
 ) -> None:
-    """delete_prompt returns deleted=False on Llama Stack BadRequestError (v2 style)."""
+    """delete_prompt returns deleted=False on OGX not-found errors (v2 style)."""
     _, mock_prompts = prompts_client_mocks
-    mock_response = mocker.Mock()
-    mock_response.request = mocker.Mock()
-    mock_prompts.delete.side_effect = BadRequestError(status=400, reason="not found")
+    mock_prompts.delete.side_effect = NotFoundError(status=404, reason="not found")
 
     result = await delete_prompt_handler(
         request=prompts_http_request,
@@ -250,16 +248,13 @@ async def test_get_prompt_api_connection_error(
 
 
 @pytest.mark.asyncio
-async def test_get_prompt_bad_request_maps_to_404(
+async def test_get_prompt_not_found_maps_to_404(
     prompts_client_mocks: tuple[Any, Any],
     prompts_http_request: Request,
-    mocker: MockerFixture,
 ) -> None:
-    """get_prompt maps Llama Stack BadRequestError to 404 NotFoundResponse."""
+    """get_prompt maps OGX not-found errors to 404 NotFoundResponse."""
     _, mock_prompts = prompts_client_mocks
-    mock_response = mocker.Mock()
-    mock_response.request = mocker.Mock()
-    mock_prompts.retrieve.side_effect = BadRequestError(status=400, reason="not found")
+    mock_prompts.retrieve.side_effect = NotFoundError(status=404, reason="not found")
 
     with pytest.raises(HTTPException) as exc_info:
         await get_prompt_handler(
@@ -278,18 +273,13 @@ async def test_get_prompt_bad_request_maps_to_404(
 
 
 @pytest.mark.asyncio
-async def test_update_prompt_bad_request_maps_to_404(
+async def test_update_prompt_not_found_maps_to_404(
     prompts_client_mocks: tuple[Any, Any],
     prompts_http_request: Request,
-    mocker: MockerFixture,
 ) -> None:
-    """update_prompt maps Llama Stack BadRequestError to 404 NotFoundResponse."""
+    """update_prompt maps OGX not-found errors to 404 NotFoundResponse."""
     _, mock_prompts = prompts_client_mocks
-    mock_response = mocker.Mock()
-    mock_response.request = mocker.Mock()
-    mock_prompts.update.side_effect = BadRequestError(
-        status=400, reason="invalid version"
-    )
+    mock_prompts.update.side_effect = PromptNotFoundError(VALID_PMPT_ID_NOT_FOUND)
 
     body = PromptUpdateRequest(
         prompt="x", version=99, set_as_default=False, variables=None

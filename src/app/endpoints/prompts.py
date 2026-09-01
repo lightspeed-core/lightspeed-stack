@@ -3,7 +3,8 @@
 from typing import Annotated, Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from ogx_client import ApiException, BadRequestError
+from ogx_api import PromptNotFoundError, PromptVersionNotFoundError
+from ogx_client import ApiException, NotFoundError
 
 from authentication import get_auth_dependency
 from authentication.interface import AuthTuple
@@ -248,7 +249,7 @@ async def get_prompt_handler(
         client = AsyncOgxClientHolder().get_client()
         retrieved = await client.prompts.retrieve(prompt_id, version=version)
         return PromptResourceResponse.model_validate(dump_ogx_model(retrieved))
-    except (BadRequestError, ValueError) as e:
+    except (NotFoundError, PromptNotFoundError, PromptVersionNotFoundError) as e:
         logger.error("Prompt not found: %s", e)
         response = NotFoundResponse(resource="prompt", resource_id=prompt_id)
         raise HTTPException(**response.model_dump()) from e
@@ -318,7 +319,7 @@ async def update_prompt_handler(
         payload = body.model_dump(exclude_none=True, exclude_unset=True)
         updated = await client.prompts.update(prompt_id, **payload)
         return PromptResourceResponse.model_validate(dump_ogx_model(updated))
-    except (BadRequestError, ValueError) as e:
+    except (NotFoundError, PromptNotFoundError) as e:
         logger.error("Prompt update failed: %s", e)
         response = NotFoundResponse(resource="prompt", resource_id=prompt_id)
         raise HTTPException(**response.model_dump()) from e
@@ -384,7 +385,7 @@ async def delete_prompt_handler(
         client = AsyncOgxClientHolder().get_client()
         await client.prompts.delete(prompt_id)
         return PromptDeleteResponse(deleted=True, prompt_id=prompt_id)
-    except (BadRequestError, ValueError) as e:
+    except (NotFoundError, PromptNotFoundError) as e:
         logger.error("Prompt delete failed: %s", e)
         return PromptDeleteResponse(deleted=False, prompt_id=prompt_id)
     except ApiException as e:
