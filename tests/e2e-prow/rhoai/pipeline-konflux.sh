@@ -117,32 +117,10 @@ if [[ -f /var/run/redhat-registry-pull-secret/.dockerconfigjson ]]; then
 
   DOCKERCONFIG_BASE64=$(cat /var/run/redhat-registry-pull-secret/.dockerconfigjson | base64 -w0)
 
-  # Get current pipeline Pod metadata for ownerReference (ensures cleanup after job completes)
-  PIPELINE_POD_NAME="${HOSTNAME}"
-  # Pipeline pod runs in its own namespace - read from service account mount
-  PIPELINE_POD_NAMESPACE=""
-  if [[ -f /var/run/secrets/kubernetes.io/serviceaccount/namespace ]]; then
-    PIPELINE_POD_NAMESPACE="$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace)"
-  fi
-  if [[ -z "$PIPELINE_POD_NAMESPACE" ]]; then
-    echo "❌ FATAL: Cannot determine pipeline pod namespace"
-    echo "   Service account namespace file not found or empty"
-    exit 1
-  fi
-  log "DEBUG: PIPELINE_POD_NAME=$PIPELINE_POD_NAME"
-  log "DEBUG: PIPELINE_POD_NAMESPACE=$PIPELINE_POD_NAMESPACE"
-  log "DEBUG: Attempting: oc get pod $PIPELINE_POD_NAME -n $PIPELINE_POD_NAMESPACE"
-
-  PIPELINE_POD_UID=""
-  if ! PIPELINE_POD_UID=$(oc get pod "$PIPELINE_POD_NAME" -n "$PIPELINE_POD_NAMESPACE" -o jsonpath='{.metadata.uid}' 2>&1); then
-    log "DEBUG: oc get pod failed with: $PIPELINE_POD_UID"
-    # Try listing pods in the namespace to see what's available
-    log "DEBUG: Pods in namespace $PIPELINE_POD_NAMESPACE:"
-    oc get pods -n "$PIPELINE_POD_NAMESPACE" -o name 2>&1 | head -10 || true
-  fi
-
-  if [[ -n "$PIPELINE_POD_UID" ]]; then
-    log "Setting ownerReference to pipeline Pod: $PIPELINE_POD_NAME (namespace: $PIPELINE_POD_NAMESPACE)"
+  # Use PipelineRun metadata for ownerReference (provided by Tekton context)
+  # This ensures automatic cleanup when the PipelineRun completes
+  if [[ -n "${TEKTON_PIPELINERUN_NAME:-}" && -n "${TEKTON_PIPELINERUN_UID:-}" ]]; then
+    log "Setting ownerReference to PipelineRun: $TEKTON_PIPELINERUN_NAME (UID: ${TEKTON_PIPELINERUN_UID:0:8}...)"
 
     # Create secret with ownerReference using YAML (ensures automatic cleanup)
     cat <<EOF | oc apply -f -
@@ -152,10 +130,10 @@ metadata:
   name: redhat-registry-pull-secret
   namespace: $NAMESPACE
   ownerReferences:
-  - apiVersion: v1
-    kind: Pod
-    name: $PIPELINE_POD_NAME
-    uid: $PIPELINE_POD_UID
+  - apiVersion: tekton.dev/v1beta1
+    kind: PipelineRun
+    name: $TEKTON_PIPELINERUN_NAME
+    uid: $TEKTON_PIPELINERUN_UID
     controller: false
     blockOwnerDeletion: false
 type: kubernetes.io/dockerconfigjson
@@ -167,12 +145,22 @@ EOF
     # Link to default service account
     oc secrets link default redhat-registry-pull-secret --for=pull -n "$NAMESPACE" 2>/dev/null || echo "⚠️  Secret already linked to default SA"
   else
-    # SECURITY: Fail closed if we cannot set ownerReference
-    # Creating secrets without ownerReference leads to credential sprawl
-    echo "❌ FATAL: Cannot get pipeline Pod metadata for ownerReference"
-    echo "   Secret creation requires valid owner UID to ensure cleanup"
-    echo "   Pipeline Pod: $PIPELINE_POD_NAME"
-    exit 1
+    # Fallback: create without ownerReference (requires manual cleanup)
+    log "⚠️  TEKTON_PIPELINERUN_NAME/UID not set - creating secret without ownerReference"
+    log "⚠️  Manual cleanup required after test completion"
+
+    cat <<EOF | oc apply -f -
+apiVersion: v1
+kind: Secret
+metadata:
+  name: redhat-registry-pull-secret
+  namespace: $NAMESPACE
+type: kubernetes.io/dockerconfigjson
+data:
+  .dockerconfigjson: $DOCKERCONFIG_BASE64
+EOF
+    log "✅ Red Hat registry pull secret created (without ownerReference)"
+    oc secrets link default redhat-registry-pull-secret --for=pull -n "$NAMESPACE" 2>/dev/null || echo "⚠️  Secret already linked to default SA"
   fi
 
 # Option 2: Fallback to username/password mounted separately (legacy approach)
@@ -194,32 +182,9 @@ elif [[ -d /var/run/redhat-registry-username ]] && [[ -d /var/run/redhat-registr
   shopt -u nullglob
 
   if [[ -n "$REDHAT_USERNAME" ]] && [[ -n "$REDHAT_PASSWORD" ]]; then
-    # Get current pipeline Pod metadata for ownerReference (ensures cleanup after job completes)
-    PIPELINE_POD_NAME="${HOSTNAME}"
-    # Pipeline pod runs in its own namespace - read from service account mount
-    PIPELINE_POD_NAMESPACE=""
-    if [[ -f /var/run/secrets/kubernetes.io/serviceaccount/namespace ]]; then
-      PIPELINE_POD_NAMESPACE="$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace)"
-    fi
-    if [[ -z "$PIPELINE_POD_NAMESPACE" ]]; then
-      echo "❌ FATAL: Cannot determine pipeline pod namespace"
-      echo "   Service account namespace file not found or empty"
-      exit 1
-    fi
-    log "DEBUG: PIPELINE_POD_NAME=$PIPELINE_POD_NAME"
-    log "DEBUG: PIPELINE_POD_NAMESPACE=$PIPELINE_POD_NAMESPACE"
-    log "DEBUG: Attempting: oc get pod $PIPELINE_POD_NAME -n $PIPELINE_POD_NAMESPACE"
-
-    PIPELINE_POD_UID=""
-    if ! PIPELINE_POD_UID=$(oc get pod "$PIPELINE_POD_NAME" -n "$PIPELINE_POD_NAMESPACE" -o jsonpath='{.metadata.uid}' 2>&1); then
-      log "DEBUG: oc get pod failed with: $PIPELINE_POD_UID"
-      # Try listing pods in the namespace to see what's available
-      log "DEBUG: Pods in namespace $PIPELINE_POD_NAMESPACE:"
-      oc get pods -n "$PIPELINE_POD_NAMESPACE" -o name 2>&1 | head -10 || true
-    fi
-
-    if [[ -n "$PIPELINE_POD_UID" ]]; then
-      log "Setting ownerReference to pipeline Pod: $PIPELINE_POD_NAME (namespace: $PIPELINE_POD_NAMESPACE)"
+    # Use PipelineRun metadata for ownerReference (provided by Tekton context)
+    if [[ -n "${TEKTON_PIPELINERUN_NAME:-}" && -n "${TEKTON_PIPELINERUN_UID:-}" ]]; then
+      log "Setting ownerReference to PipelineRun: $TEKTON_PIPELINERUN_NAME (UID: ${TEKTON_PIPELINERUN_UID:0:8}...)"
 
       # Create secret with ownerReference (oc handles JSON encoding safely)
       oc create secret docker-registry redhat-registry-pull-secret \
@@ -228,17 +193,20 @@ elif [[ -d /var/run/redhat-registry-username ]] && [[ -d /var/run/redhat-registr
         --docker-password="$REDHAT_PASSWORD" \
         -n "$NAMESPACE" \
         --dry-run=client -o json | \
-      jq --arg name "$PIPELINE_POD_NAME" --arg uid "$PIPELINE_POD_UID" \
-        '.metadata.ownerReferences = [{"apiVersion":"v1","kind":"Pod","name":$name,"uid":$uid,"controller":false,"blockOwnerDeletion":false}]' | \
+      jq --arg name "$TEKTON_PIPELINERUN_NAME" --arg uid "$TEKTON_PIPELINERUN_UID" \
+        '.metadata.ownerReferences = [{"apiVersion":"tekton.dev/v1beta1","kind":"PipelineRun","name":$name,"uid":$uid,"controller":false,"blockOwnerDeletion":false}]' | \
       oc apply -f -
       log "✅ Red Hat registry pull secret created with ownerReference"
     else
-      # SECURITY: Fail closed if we cannot set ownerReference
-      # Creating secrets without ownerReference leads to credential sprawl
-      echo "❌ FATAL: Cannot get pipeline Pod metadata for ownerReference"
-      echo "   Secret creation requires valid owner UID to ensure cleanup"
-      echo "   Pipeline Pod: $PIPELINE_POD_NAME"
-      exit 1
+      # Fallback: create without ownerReference
+      log "⚠️  TEKTON_PIPELINERUN_NAME/UID not set - creating secret without ownerReference"
+      log "⚠️  Manual cleanup required after test completion"
+
+      oc create secret docker-registry redhat-registry-pull-secret \
+        --docker-server=registry.redhat.io \
+        --docker-username="$REDHAT_USERNAME" \
+        --docker-password="$REDHAT_PASSWORD" \
+        -n "$NAMESPACE" 2>/dev/null && log "✅ Red Hat registry pull secret created" || log "⚠️  Secret exists or creation failed"
     fi
 
     # Link to default service account

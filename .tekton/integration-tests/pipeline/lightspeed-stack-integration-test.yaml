@@ -281,6 +281,11 @@ spec:
                 value: "true"
               - name: OTEL_ANONYMIZATION_SECRET
                 value: "lightspeed-stack-otel-anonymization-dev-default"
+              # PipelineRun metadata for ownerReference in secret creation
+              - name: TEKTON_PIPELINERUN_NAME
+                value: "$(context.pipelineRun.name)"
+              - name: TEKTON_PIPELINERUN_UID
+                value: "$(context.pipelineRun.uid)"
             image: registry.access.redhat.com/ubi9/ubi-minimal
             script: |
               set +e
