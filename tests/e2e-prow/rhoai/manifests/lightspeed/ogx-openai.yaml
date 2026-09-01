@@ -138,7 +138,7 @@ spec:
         - name: PATH
           value: "/opt/app-root/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
         - name: PYTHONPATH
-          value: "/opt/app-root/src"
+          value: "/opt/app-root:/opt/app-root/src"
         - name: HOME
           value: "/opt/app-root/src"
         # Match GitHub Actions docker-compose + ogx-entrypoint.sh:
