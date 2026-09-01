@@ -8,7 +8,6 @@ from behave.runner import Context
 
 from tests.e2e.utils.utils import (
     absolute_repo_path,
-    clear_llama_stack_storage,
     create_config_backup,
     is_prow_environment,
     restart_container,
@@ -171,20 +170,16 @@ def configure_service(context: Context, config_name: str) -> None:
 @given("MCP configuration is reset for a new scenario")
 @given("MCP toolgroups are reset for a new MCP configuration")
 def reset_mcp_configuration_for_new_scenario(context: Context) -> None:
-    """Reset MCP-related state before applying a different MCP config.
+    """Force a Lightspeed restart before applying a different MCP config.
 
-    Llama Stack 0.7 no longer registers MCP servers as toolgroups. In library
-    mode, clear embedded Llama Stack storage so the next config applies cleanly.
-    In server mode, only force a Lightspeed restart on the next config apply.
-
-    Sets ``force_lightspeed_restart_after_mcp_config_reset`` so the next
+    MCP servers live in Lightspeed configuration only (not OGX toolgroups), so a
+    process restart is enough to load the next per-auth YAML. Sets
+    ``force_lightspeed_restart_after_mcp_config_reset`` so the next
     ``The service uses ...`` step cannot skip ``The service is restarted`` when
     the YAML basename is unchanged.
     """
     context.force_lightspeed_restart_after_mcp_config_reset = True
     context.lightspeed_stack_skip_restart = False
-    if context.is_library_mode:
-        clear_llama_stack_storage()
 
 
 @given("The service is restarted")
