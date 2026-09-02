@@ -819,64 +819,21 @@ def enrich_vector_store(
 # =============================================================================
 
 
-def enrich_solr(  # pylint: disable=too-many-locals,too-many-statements
-    ls_config: dict[str, Any],
-    rag_config: dict[str, Any],
-    okp_config: dict[str, Any],
+def _add_solr_vector_io_provider(
+    ls_config: dict[str, Any], solr_url: str, chunk_filter_query: str
 ) -> None:
-    """Enrich OGX config with Solr settings.
+    """Add Solr vector_io provider to OGX config if not already present.
 
     Parameters:
         ls_config: OGX configuration dict (modified in place)
-        rag_config: RAG configuration dict. Used keys:
-            - inline (list[str]): inline RAG IDs
-            - tool (list[str]): tool RAG IDs
-        okp_config: OKP configuration dict. Used keys:
-            - chunk_filter_query (str): Solr filter query for chunk retrieval
-            - rhokp_url (str): OKP/Solr base URL (e.g. from ${env.RH_SERVER_OKP})
+        solr_url: Solr base URL
+        chunk_filter_query: Solr filter query for chunk retrieval
     """
-    inline_ids = rag_config.get("inline") or []
-    tool_ids = rag_config.get("tool") or []
-    okp_enabled = constants.OKP_RAG_ID in inline_ids or constants.OKP_RAG_ID in tool_ids
-
-    if not okp_enabled:
-        logger.info("OKP is not enabled: skipping")
-        return
-
-    user_filter = okp_config.get("chunk_filter_query")
-    chunk_filter_query = (
-        f"{constants.SOLR_CHUNK_FILTER_QUERY} AND {user_filter}"
-        if user_filter
-        else constants.SOLR_CHUNK_FILTER_QUERY
-    )
-
-    rhokp_raw = okp_config.get("rhokp_url")
-    base_url_raw = (
-        str(rhokp_raw) if rhokp_raw is not None else constants.RH_SERVER_OKP_DEFAULT_URL
-    )
-    # Resolve environment variables in the URL (e.g., ${env.RH_SERVER_OKP})
-    base_url = replace_env_vars(base_url_raw)
-    solr_url = urljoin(base_url, "/solr")
-
-    logger.info("Enriching OGX config with OKP")
-
-    # Set external_providers_dir so OGX can resolve remote::solr_vector_io provider type
-    if "external_providers_dir" not in ls_config:
-        # Use environment variable if set, otherwise default to container path
-        ls_config["external_providers_dir"] = (
-            "${env.EXTERNAL_PROVIDERS_DIR:=/app-root/providers.d}"
-        )
-        logger.info(
-            "Added external_providers_dir to OGX config for remote provider resolution"
-        )
-
-    # Add vector_io provider for Solr
     if "providers" not in ls_config:
         ls_config["providers"] = {}
     if "vector_io" not in ls_config["providers"]:
         ls_config["providers"]["vector_io"] = []
 
-    # Add Solr provider if not already present
     existing_providers = [
         p.get("provider_id") for p in ls_config["providers"]["vector_io"]
     ]
@@ -928,13 +885,18 @@ def enrich_solr(  # pylint: disable=too-many-locals,too-many-statements
         )
         logger.info("Added OKP provider to providers/vector_io")
 
-    # Add vector store registration for Solr
+
+def _add_solr_vector_store(ls_config: dict[str, Any]) -> None:
+    """Add Solr vector store registration to OGX config if not already present.
+
+    Parameters:
+        ls_config: OGX configuration dict (modified in place)
+    """
     if "registered_resources" not in ls_config:
         ls_config["registered_resources"] = {}
     if "vector_stores" not in ls_config["registered_resources"]:
         ls_config["registered_resources"]["vector_stores"] = []
 
-    # Add Solr vector store if not already present
     existing_stores = [
         vs.get("vector_store_id")
         for vs in ls_config["registered_resources"]["vector_stores"]
@@ -953,21 +915,24 @@ def enrich_solr(  # pylint: disable=too-many-locals,too-many-statements
             constants.SOLR_DEFAULT_VECTOR_STORE_ID,
         )
 
-    # Add Solr embedding model to registered_resources.models if not already present
+
+def _add_solr_embedding_model(ls_config: dict[str, Any]) -> None:
+    """Add Solr embedding model to registered_resources.models if not already present.
+
+    Parameters:
+        ls_config: OGX configuration dict (modified in place)
+    """
     if "models" not in ls_config["registered_resources"]:
         ls_config["registered_resources"]["models"] = []
 
-    # Strip sentence-transformers/ prefix from constant for provider_model_id
-    provider_model_id = constants.SOLR_DEFAULT_EMBEDDING_MODEL
-    provider_model_id = provider_model_id.removeprefix("sentence-transformers/")
+    provider_model_id = constants.SOLR_DEFAULT_EMBEDDING_MODEL.removeprefix(
+        "sentence-transformers/"
+    )
 
-    # Check if already registered
     registered_models = ls_config["registered_resources"]["models"]
     existing_model_ids = [m.get("provider_model_id") for m in registered_models]
     if provider_model_id not in existing_model_ids:
-        # Build environment variable expression
         provider_model_env = f"${{env.SOLR_EMBEDDING_MODEL:={provider_model_id}}}"
-
         ls_config["registered_resources"]["models"].append(
             {
                 "model_id": constants.SOLR_EMBEDDING_MODEL_ID,
@@ -981,14 +946,19 @@ def enrich_solr(  # pylint: disable=too-many-locals,too-many-statements
         )
         logger.info("Added OKP embedding model to registered_resources.models")
 
-    # Propagate search_mode to OGX's top-level vector_stores config so that
-    # rag.tool (file_search) uses keyword/hybrid instead of defaulting to
-    # vector similarity — critical for air-gap environments without an
-    # embedding model.
+
+def _propagate_solr_search_mode(
+    ls_config: dict[str, Any], okp_config: dict[str, Any]
+) -> None:
+    """Propagate search_mode to OGX's top-level vector_stores config.
+
+    Parameters:
+        ls_config: OGX configuration dict (modified in place)
+        okp_config: OKP configuration dict
+    """
     okp_search_mode = okp_config.get("search_mode")
     if okp_search_mode:
         ogx_mode = constants.SOLR_SEARCH_MODE_MAP.get(okp_search_mode, okp_search_mode)
-        # LCORE uses "semantic"; OGX uses "vector"
         if ogx_mode == "semantic":
             ogx_mode = "vector"
         if "vector_stores" not in ls_config:
@@ -1001,6 +971,60 @@ def enrich_solr(  # pylint: disable=too-many-locals,too-many-statements
             "Set vector_stores.chunk_retrieval_params.default_search_mode=%s",
             ogx_mode,
         )
+
+
+def enrich_solr(
+    ls_config: dict[str, Any],
+    rag_config: dict[str, Any],
+    okp_config: dict[str, Any],
+) -> None:
+    """Enrich OGX config with Solr settings.
+
+    Parameters:
+        ls_config: OGX configuration dict (modified in place)
+        rag_config: RAG configuration dict. Used keys:
+            - inline (list[str]): inline RAG IDs
+            - tool (list[str]): tool RAG IDs
+        okp_config: OKP configuration dict. Used keys:
+            - chunk_filter_query (str): Solr filter query for chunk retrieval
+            - rhokp_url (str): OKP/Solr base URL (e.g. from ${env.RH_SERVER_OKP})
+    """
+    inline_ids = rag_config.get("inline") or []
+    tool_ids = rag_config.get("tool") or []
+    okp_enabled = constants.OKP_RAG_ID in inline_ids or constants.OKP_RAG_ID in tool_ids
+
+    if not okp_enabled:
+        logger.info("OKP is not enabled: skipping")
+        return
+
+    user_filter = okp_config.get("chunk_filter_query")
+    chunk_filter_query = (
+        f"{constants.SOLR_CHUNK_FILTER_QUERY} AND {user_filter}"
+        if user_filter
+        else constants.SOLR_CHUNK_FILTER_QUERY
+    )
+
+    rhokp_raw = okp_config.get("rhokp_url")
+    base_url_raw = (
+        str(rhokp_raw) if rhokp_raw is not None else constants.RH_SERVER_OKP_DEFAULT_URL
+    )
+    base_url = replace_env_vars(base_url_raw)
+    solr_url = urljoin(base_url, "/solr")
+
+    logger.info("Enriching OGX config with OKP")
+
+    if "external_providers_dir" not in ls_config:
+        ls_config["external_providers_dir"] = (
+            "${env.EXTERNAL_PROVIDERS_DIR:=/app-root/providers.d}"
+        )
+        logger.info(
+            "Added external_providers_dir to OGX config for remote provider resolution"
+        )
+
+    _add_solr_vector_io_provider(ls_config, solr_url, chunk_filter_query)
+    _add_solr_vector_store(ls_config)
+    _add_solr_embedding_model(ls_config)
+    _propagate_solr_search_mode(ls_config, okp_config)
 
 
 # =============================================================================
