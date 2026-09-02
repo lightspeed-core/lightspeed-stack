@@ -43,12 +43,20 @@ spec:
           # Fast-path: PVC already has a valid venv from a previous pod creation in this pipeline run.
           # TLS scenarios delete+recreate this pod up to 16 times; skipping the expensive install
           # reduces per-restart time from ~6-15 min to ~30-90 s (just RAG seed refresh + chown).
+          # Check if cached revision matches requested revision
+          CACHED_REVISION=""
+          if [[ -f /opt/app-root/.cached-revision ]]; then
+            CACHED_REVISION=$(cat /opt/app-root/.cached-revision)
+          fi
+          REPO_REVISION="${REPO_REVISION:-main}"
+
           if [[ -d /opt/app-root/.venv ]] \
               && /opt/app-root/.venv/bin/python --version >/dev/null 2>&1 \
               && [[ -d /opt/app-root/src ]] \
               && [[ -f /opt/app-root/scripts/ogx-entrypoint.sh ]] \
-              && [[ -f /opt/app-root/src/ogx_configuration.py ]]; then
-            echo "PVC cache hit: app-root already provisioned — skipping full install"
+              && [[ -f /opt/app-root/src/ogx_configuration.py ]] \
+              && [[ "$CACHED_REVISION" == "$REPO_REVISION" ]]; then
+            echo "PVC cache hit: app-root already provisioned at $REPO_REVISION — skipping full install"
             mkdir -p /opt/app-root/.e2e-rag-seed /opt/app-root/.e2e-rag-work /opt/app-root/src/.ogx /opt/app-root/src/.llama/storage/files
             if [[ -f /rag-seed/kv_store.db.gz ]]; then
               gzip -dc /rag-seed/kv_store.db.gz > /opt/app-root/.e2e-rag-seed/kv_store.db
@@ -96,6 +104,8 @@ spec:
           cp -f /opt/app-root/.e2e-rag-seed/kv_store.db /opt/app-root/.e2e-rag-work/kv_store.db
           cp -f /opt/app-root/scripts/ogx-entrypoint.sh /opt/app-root/enrich-entrypoint.sh
           cp -f /opt/app-root/src/ogx_configuration.py /opt/app-root/ogx_configuration.py
+          # Save the provisioned revision for cache validation
+          echo "${REPO_REVISION:-main}" > /opt/app-root/.cached-revision
           chmod 755 /opt/app-root/enrich-entrypoint.sh
           chmod -R 775 /opt/app-root && chown -R 1001:0 /opt/app-root
       volumeMounts:
