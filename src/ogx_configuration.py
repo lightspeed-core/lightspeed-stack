@@ -860,6 +860,16 @@ def enrich_solr(  # pylint: disable=too-many-locals,too-many-statements
 
     logger.info("Enriching OGX config with OKP")
 
+    # Set external_providers_dir so OGX can resolve remote::solr_vector_io provider type
+    if "external_providers_dir" not in ls_config:
+        # Use environment variable if set, otherwise default to container path
+        ls_config["external_providers_dir"] = (
+            "${env.EXTERNAL_PROVIDERS_DIR:=/app-root/providers.d}"
+        )
+        logger.info(
+            "Added external_providers_dir to OGX config for remote provider resolution"
+        )
+
     # Add vector_io provider for Solr
     if "providers" not in ls_config:
         ls_config["providers"] = {}

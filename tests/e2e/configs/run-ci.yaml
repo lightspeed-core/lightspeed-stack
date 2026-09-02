@@ -10,7 +10,7 @@ apis:
 - conversations
 - vector_io
 
-external_providers_dir: ${env.EXTERNAL_PROVIDERS_DIR:=/app-root/providers.d}
+# external_providers_dir: /opt/app-root/src/.llama/providers.d
 
 providers:
   inference:
