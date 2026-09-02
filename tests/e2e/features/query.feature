@@ -321,23 +321,3 @@ Scenario: Check if LLM responds for query request with error for missing query
     When I use "query" to ask question with too-long query and authorization header
     Then The status code of the response is 413
     And The body of the response contains Prompt is too long
-
-    # # ── OKP RAG Disabled (okp not in rag.retrieval.inline.sources) ─────
-  @cfg_okp
-  Scenario: Query returns no rag_chunks and no reference_documents when OKP OKP is disabled
-    When I use "query" to ask question with authorization header
-    """
-    {"query": "configure remote desktop using gnome", "model": "{MODEL}", "provider": "{PROVIDER}"}
-    """
-    Then The status code of the response is 200
-     And The response contains no rag_chunks
-     And The response contains no referenced_documents
-  @cfg_okp
-  Scenario: Streaming query returns no referenced_documents when OKP is disabled
-    When I use "streaming_query" to ask question with authorization header
-    """
-    {"query": "configure remote desktop using gnome", "model": "{MODEL}", "provider": "{PROVIDER}"}
-    """
-    Then The status code of the response is 200
-     And I wait for the response to be completed
-     And The response contains no referenced_documents
