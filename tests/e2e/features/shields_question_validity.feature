@@ -23,15 +23,10 @@ Feature: question_validity shield functional tests
       | endpoint  | request_body                                                                                                              | expected_fragment                            |
       | query     | {"query": "What is OpenShift and how do I deploy an application on it?", "model": "{MODEL}", "provider": "{PROVIDER}"}   | deploy                                       |
       | query     | {"query": "What is the best topping for a pizza?", "model": "{MODEL}", "provider": "{PROVIDER}"}                         | I can only answer questions about OpenShift. |
+      | responses | {"input": "What is OpenShift and how do I deploy an application on it?", "model": "{PROVIDER}/{MODEL}", "stream": false} | deploy                                       |
       | responses | {"input": "What is the best topping for a pizza?", "model": "{PROVIDER}/{MODEL}", "stream": false}                       | I can only answer questions about OpenShift. |
+      | infer     | {"question": "What is OpenShift and how do I deploy an application on it?"}                                              | deploy                                       |
       | infer     | {"question": "What is the best topping for a pizza?"}                                                                    | I can only answer questions about OpenShift. |
-
-    # disabled due to https://redhat.atlassian.net/browse/LCORE-3756
-    @skip
-    Examples:
-      | endpoint  | request_body                                                                                                              | expected_fragment |
-      | responses | {"input": "What is OpenShift and how do I deploy an application on it?", "model": "{PROVIDER}/{MODEL}", "stream": false} | deploy             |
-      | infer     | {"question": "What is OpenShift and how do I deploy an application on it?"}                                              | deploy             |
 
   @cfg_shields @flaky
   Scenario Outline: question_validity allows in-topic and rejects off-topic questions via streaming_query
