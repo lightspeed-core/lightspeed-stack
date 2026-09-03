@@ -539,11 +539,31 @@ def before_feature(context: Context, feature: Feature) -> None:
     ``max_attempts`` times before accepting failure. The cap defaults to
     ``_E2E_FLAKY_MAX_ATTEMPTS`` and can be overridden with the
     ``E2E_FLAKY_MAX_ATTEMPTS`` environment variable.
+
+    Features tagged ``@library-mode-in-konflux`` run in library mode when
+    ``E2E_KONFLUX_E2E=1``, overriding the global deployment mode. This allows
+    expensive pod-restart tests (e.g. OKP RAG) to run faster on Konflux by
+    avoiding llama-stack recreation.
     """
     setattr(feature, _E2E_FEATURE_PERF_START_ATTR, time.perf_counter())
     context.feature_config = None
     context.scenario_lightspeed_override_active = False
     context.active_lightspeed_stack_config_basename = None
+
+    # Override to library mode for specific features in Konflux
+    context.original_deployment_mode = getattr(context, "deployment_mode", "server")
+    context.original_is_library_mode = getattr(context, "is_library_mode", False)
+
+    if (
+        os.environ.get("E2E_KONFLUX_E2E") == "1"
+        and "library-mode-in-konflux" in feature.tags
+    ):
+        context.deployment_mode = "library"
+        context.is_library_mode = True
+        print(
+            f"[before_feature] Using library mode for {feature.name} "
+            "(tagged @library-mode-in-konflux)"
+        )
     # One real Llama disruption per feature (module-level flag; survives context resets)
     reset_llama_stack_disrupt_once_tracking()
     if feature.filename and is_tls_feature_file(feature.filename):
@@ -581,7 +601,17 @@ def after_feature(context: Context, feature: Feature) -> None:
     ``E2E_RESTORE_CONFIG_AFTER_FEATURE=1``, otherwise keep the active config;
     when ``context.feedback_e2e_conversation_cleanup`` is set by feedback steps,
     delete tracked feedback test conversations.
+
+    Restores original deployment mode if it was overridden by
+    ``@library-mode-in-konflux`` tag.
     """
+    # Restore original deployment mode if it was overridden for this feature
+    if hasattr(context, "original_deployment_mode"):
+        context.deployment_mode = context.original_deployment_mode
+        context.is_library_mode = context.original_is_library_mode
+        delattr(context, "original_deployment_mode")
+        delattr(context, "original_is_library_mode")
+
     # Restore OGX FIRST (before any lightspeed-stack restart).
     # Read from module-level state — Behave clears custom context attributes
     # between scenarios, so context.ogx_was_running is unreliable here.
