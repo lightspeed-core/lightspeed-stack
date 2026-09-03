@@ -1,4 +1,4 @@
-@cfg_authorized @OTel @skip
+@cfg_authorized @OTel
 Feature: OpenTelemetry observability tests
 
   Background:
