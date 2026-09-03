@@ -1,26 +1,20 @@
 """Unit tests for conversation utility functions."""
 
-# pylint: disable=too-many-lines
-
 from datetime import UTC, datetime
 from typing import Any
 
 import pytest
 from fastapi import HTTPException
 from ogx_api import OpenAIResponseMessage
-from ogx_client import ApiException
-from ogx_client.models.add_items_request import AddItemsRequest
-from ogx_client.models.open_ai_response_input_function_tool_call_output import (
-    OpenAIResponseInputFunctionToolCallOutput as FunctionCallOutput,
+from ogx_client import APIConnectionError, APIStatusError
+from ogx_client.types.conversations.item_list_response import (
+    OpenAIResponseInputFunctionToolCallOutputOutputListOpenAIResponseInputMessageContentTextOpenAIResponseInputMessageContentImageOpenAIResponseInputMessageContentFileOpenAIResponseInputMessageContentFile as FunctionCallOutputFile,  # pylint: disable=line-too-long
 )
-from ogx_client.models.open_ai_response_input_message_content_file import (
-    OpenAIResponseInputMessageContentFile as InputFileContent,
+from ogx_client.types.conversations.item_list_response import (
+    OpenAIResponseInputFunctionToolCallOutputOutputListOpenAIResponseInputMessageContentTextOpenAIResponseInputMessageContentImageOpenAIResponseInputMessageContentFileOpenAIResponseInputMessageContentImage as FunctionCallOutputImage,  # pylint: disable=line-too-long
 )
-from ogx_client.models.open_ai_response_input_message_content_image import (
-    OpenAIResponseInputMessageContentImage as InputImageContent,
-)
-from ogx_client.models.open_ai_response_input_message_content_text import (
-    OpenAIResponseInputMessageContentText as InputTextContent,
+from ogx_client.types.conversations.item_list_response import (
+    OpenAIResponseInputFunctionToolCallOutputOutputListOpenAIResponseInputMessageContentTextOpenAIResponseInputMessageContentImageOpenAIResponseInputMessageContentFileOpenAIResponseInputMessageContentText as FunctionCallOutputText,  # pylint: disable=line-too-long
 )
 from pytest_mock import MockerFixture
 
@@ -33,10 +27,8 @@ from utils.conversations import (
     _function_call_output_to_str,
     append_turn_items_to_conversation,
     append_turn_to_conversation,
-    build_add_items_request,
     build_conversation_turns_from_items,
     get_all_conversation_items,
-    to_conversation_item,
 )
 
 # Default conversation start time for tests
@@ -342,18 +334,15 @@ class TestBuildToolCallSummaryFromItem:
         assert tool_result is not None
         assert tool_result.content == "{}"
 
-    def test_function_call_output(self) -> None:
+    def test_function_call_output(self, mocker: MockerFixture) -> None:
         """Test parsing a function_call_output item."""
-        item = FunctionCallOutput.from_dict(
-            {
-                "call_id": "call_123",
-                "output": "Function result",
-                "type": "function_call_output",
-                "status": "success",
-            }
-        )
+        mock_item = mocker.Mock()
+        mock_item.type = "function_call_output"
+        mock_item.call_id = "call_123"
+        mock_item.status = "success"
+        mock_item.output = "Function result"
 
-        tool_call, tool_result = _build_tool_call_summary_from_item(item)
+        tool_call, tool_result = _build_tool_call_summary_from_item(mock_item)
 
         assert tool_call is None
         assert tool_result is not None
@@ -363,44 +352,41 @@ class TestBuildToolCallSummaryFromItem:
         assert tool_result.type == "function_call_output"
         assert tool_result.round == 1
 
-    def test_function_call_output_without_status(self) -> None:
+    def test_function_call_output_without_status(self, mocker: MockerFixture) -> None:
         """Test parsing a function_call_output item without status."""
-        item = FunctionCallOutput.from_dict(
-            {
-                "call_id": "call_123",
-                "output": "Function result",
-                "type": "function_call_output",
-            }
-        )
+        mock_item = mocker.Mock()
+        mock_item.type = "function_call_output"
+        mock_item.call_id = "call_123"
+        mock_item.status = None
+        mock_item.output = "Function result"
 
-        _, tool_result = _build_tool_call_summary_from_item(item)
+        _, tool_result = _build_tool_call_summary_from_item(mock_item)
 
         assert tool_result is not None
         assert tool_result.status == "success"  # Defaults to "success"
 
-    def test_function_call_output_with_structured_content(self) -> None:
+    def test_function_call_output_with_structured_content(
+        self, mocker: MockerFixture
+    ) -> None:
         """Test parsing function_call_output with mixed content parts."""
-        item = FunctionCallOutput.from_dict(
-            {
-                "call_id": "call_456",
-                "output": [
-                    {"type": "input_text", "text": "result text"},
-                    {
-                        "type": "input_image",
-                        "image_url": "https://example.com/image.png",
-                    },
-                    {
-                        "type": "input_file",
-                        "file_id": "file_123",
-                        "filename": "report.pdf",
-                    },
-                ],
-                "type": "function_call_output",
-                "status": "success",
-            }
-        )
+        mock_item = mocker.Mock()
+        mock_item.type = "function_call_output"
+        mock_item.call_id = "call_456"
+        mock_item.status = "success"
+        mock_item.output = [
+            FunctionCallOutputText(type="input_text", text="result text"),
+            FunctionCallOutputImage(
+                type="input_image",
+                image_url="https://example.com/image.png",
+            ),
+            FunctionCallOutputFile(
+                type="input_file",
+                file_id="file_123",
+                filename="report.pdf",
+            ),
+        ]
 
-        _, tool_result = _build_tool_call_summary_from_item(item)
+        _, tool_result = _build_tool_call_summary_from_item(mock_item)
 
         assert tool_result is not None
         content = tool_result.model_dump()["content"]
@@ -420,9 +406,9 @@ class TestFunctionCallOutputToStr:
     def test_extracts_text_and_serializes_other_parts(self) -> None:
         """Extract text parts and JSON-serialize image/file parts."""
         output = [
-            InputTextContent(type="input_text", text="hello"),
-            InputImageContent(type="input_image", file_id="img_1"),
-            InputFileContent(type="input_file", filename="data.csv"),
+            FunctionCallOutputText(type="input_text", text="hello"),
+            FunctionCallOutputImage(type="input_image", file_id="img_1"),
+            FunctionCallOutputFile(type="input_file", filename="data.csv"),
         ]
 
         content = _function_call_output_to_str(output)
@@ -556,18 +542,15 @@ class TestBuildConversationTurnsFromItems:
         create_mock_user_turn: Any,
     ) -> None:
         """Test building a turn with tool results."""
-        function_output = FunctionCallOutput.from_dict(
-            {
-                "call_id": "call_1",
-                "output": "Result",
-                "type": "function_call_output",
-                "status": "success",
-            }
-        )
+        mock_function_output = mocker.Mock()
+        mock_function_output.type = "function_call_output"
+        mock_function_output.call_id = "call_1"
+        mock_function_output.status = "success"
+        mock_function_output.output = "Result"
 
         items = [
             mocker.Mock(type="message", role="user", content="Use tool"),
-            function_output,
+            mock_function_output,
             mocker.Mock(type="message", role="assistant", content="Done"),
         ]
         turns_metadata = [create_mock_user_turn(turn_number=1)]
@@ -592,19 +575,16 @@ class TestBuildConversationTurnsFromItems:
         mock_function_call.name = "test_tool"
         mock_function_call.arguments = "{}"
 
-        function_output = FunctionCallOutput.from_dict(
-            {
-                "call_id": "call_1",
-                "output": "Result",
-                "type": "function_call_output",
-                "status": "success",
-            }
-        )
+        mock_function_output = mocker.Mock()
+        mock_function_output.type = "function_call_output"
+        mock_function_output.call_id = "call_1"
+        mock_function_output.status = "success"
+        mock_function_output.output = "Result"
 
         items = [
             mocker.Mock(type="message", role="user", content="Use tool"),
             mock_function_call,
-            function_output,
+            mock_function_output,
             mocker.Mock(type="message", role="assistant", content="Done"),
         ]
         turns_metadata = [create_mock_user_turn(turn_number=1)]
@@ -812,72 +792,6 @@ class TestBuildConversationTurnsFromItems:
         assert turn.completed_at == "2024-01-01T10:00:00Z"
 
 
-class TestToConversationItem:
-    """Tests for to_conversation_item."""
-
-    def test_parses_message_dict(self) -> None:
-        """Valid message dict becomes a conversation item."""
-        item = to_conversation_item(
-            {"type": "message", "role": "user", "content": "Hello"}
-        )
-        assert item is not None
-        assert item.type == "message"
-        assert item.role == "user"
-        assert item.content == "Hello"
-
-    def test_parses_model_dump_payload(self) -> None:
-        """model_dump() of an ogx_api message is accepted."""
-        payload = OpenAIResponseMessage(
-            type="message",
-            role="assistant",
-            content="Hi",
-        ).model_dump(exclude_none=True)
-        item = to_conversation_item(payload)
-        assert item is not None
-        assert item.role == "assistant"
-        assert item.content == "Hi"
-
-    def test_returns_none_for_invalid_payload(self) -> None:
-        """Unrecognized oneOf payload returns None instead of raising."""
-        assert to_conversation_item({"type": "not_a_real_variant"}) is None
-
-
-class TestBuildAddItemsRequest:
-    """Tests for build_add_items_request."""
-
-    def test_builds_request_from_message_dicts(self) -> None:
-        """Dicts are validated into AddItemsRequest items."""
-        request = build_add_items_request(
-            [
-                {"type": "message", "role": "user", "content": "Hello"},
-                {
-                    "type": "message",
-                    "role": "assistant",
-                    "content": "I cannot help with that",
-                },
-            ]
-        )
-        assert isinstance(request, AddItemsRequest)
-        items = list(request)
-        assert len(items) == 2
-        assert items[0].type == "message" and items[0].role == "user"
-        assert items[0].content == "Hello"
-        assert items[1].type == "message" and items[1].role == "assistant"
-        assert items[1].content == "I cannot help with that"
-
-    def test_skips_invalid_dicts(self) -> None:
-        """Invalid payloads are filtered out of the request."""
-        request = build_add_items_request(
-            [
-                {"type": "message", "role": "user", "content": "ok"},
-                {"type": "not_a_real_variant"},
-            ]
-        )
-        items = list(request)
-        assert len(items) == 1
-        assert items[0].content == "ok"
-
-
 class TestAppendTurnItemsToConversation:  # pylint: disable=too-few-public-methods
     """Tests for append_turn_items_to_conversation function."""
 
@@ -887,7 +801,7 @@ class TestAppendTurnItemsToConversation:  # pylint: disable=too-few-public-metho
     ) -> None:
         """Test that append_turn_items_to_conversation creates conversation items correctly."""
         mock_client = mocker.Mock()
-        mock_client.items.create = mocker.AsyncMock(return_value=None)
+        mock_client.conversations.items.create = mocker.AsyncMock(return_value=None)
         assistant_msg = OpenAIResponseMessage(
             type="message",
             role="assistant",
@@ -901,17 +815,15 @@ class TestAppendTurnItemsToConversation:  # pylint: disable=too-few-public-metho
             llm_output=[assistant_msg],
         )
 
-        mock_client.items.create.assert_called_once()
-        call_args = mock_client.items.create.call_args
+        mock_client.conversations.items.create.assert_called_once()
+        call_args = mock_client.conversations.items.create.call_args
         assert call_args[0][0] == "conv-123"
-        request = call_args[1]["add_items_request"]
-        assert isinstance(request, AddItemsRequest)
-        items = list(request)
+        items = call_args[1]["items"]
         assert len(items) == 2
-        assert items[0].type == "message" and items[0].role == "user"
-        assert items[0].content == "Hello"
-        assert items[1].type == "message" and items[1].role == "assistant"
-        assert items[1].content == "I cannot help with that"
+        assert items[0]["type"] == "message" and items[0]["role"] == "user"
+        assert items[0]["content"] == "Hello"
+        assert items[1]["type"] == "message" and items[1]["role"] == "assistant"
+        assert items[1]["content"] == "I cannot help with that"
 
 
 class TestAppendTurnToConversation:  # pylint: disable=too-few-public-methods
@@ -923,7 +835,7 @@ class TestAppendTurnToConversation:  # pylint: disable=too-few-public-methods
     ) -> None:
         """Test that append_turn_to_conversation creates conversation items correctly."""
         mock_client = mocker.Mock()
-        mock_client.items.create = mocker.AsyncMock(return_value=None)
+        mock_client.conversations.items.create = mocker.AsyncMock(return_value=None)
 
         await append_turn_to_conversation(
             mock_client,
@@ -932,17 +844,17 @@ class TestAppendTurnToConversation:  # pylint: disable=too-few-public-methods
             assistant_message="I cannot help with that",
         )
 
-        mock_client.items.create.assert_called_once()
-        call_args = mock_client.items.create.call_args
-        assert call_args[0][0] == "conv-123"
-        request = call_args[1]["add_items_request"]
-        assert isinstance(request, AddItemsRequest)
-        items = list(request)
-        assert len(items) == 2
-        assert items[0].type == "message" and items[0].role == "user"
-        assert items[0].content == "Hello"
-        assert items[1].type == "message" and items[1].role == "assistant"
-        assert items[1].content == "I cannot help with that"
+        mock_client.conversations.items.create.assert_called_once_with(
+            "conv-123",
+            items=[
+                {"type": "message", "role": "user", "content": "Hello"},
+                {
+                    "type": "message",
+                    "role": "assistant",
+                    "content": "I cannot help with that",
+                },
+            ],
+        )
 
 
 class TestGetAllConversationItems:
@@ -956,19 +868,18 @@ class TestGetAllConversationItems:
         item_b = mocker.Mock(type="message", role="assistant", content="Hi")
         mock_page = mocker.Mock()
         mock_page.data = [item_a, item_b]
-        mock_page.has_more = False
+        mock_page.has_next_page.return_value = False
 
-        mock_client.items.list = mocker.AsyncMock(return_value=mock_page)
+        mock_client.conversations.items.list = mocker.AsyncMock(return_value=mock_page)
 
         result = await get_all_conversation_items(
             mock_client, "conv_0d21ba731f21f798dc9680125d5d6f49"
         )
 
         assert result == [item_a, item_b]
-        mock_client.items.list.assert_called_once_with(
+        mock_client.conversations.items.list.assert_called_once_with(
             conversation_id="conv_0d21ba731f21f798dc9680125d5d6f49",
             order="asc",
-            after=None,
         )
 
     @pytest.mark.asyncio
@@ -981,14 +892,14 @@ class TestGetAllConversationItems:
 
         first_page = mocker.Mock()
         first_page.data = [item_1]
-        first_page.has_more = True
-        first_page.last_id = "item_1"
-
+        first_page.has_next_page.return_value = True
         second_page = mocker.Mock()
         second_page.data = [item_2, item_3]
-        second_page.has_more = False
+        second_page.has_next_page.return_value = False
 
-        mock_client.items.list = mocker.AsyncMock(side_effect=[first_page, second_page])
+        first_page.get_next_page = mocker.AsyncMock(return_value=second_page)
+
+        mock_client.conversations.items.list = mocker.AsyncMock(return_value=first_page)
 
         result = await get_all_conversation_items(mock_client, "conv_abc")
 
@@ -996,13 +907,13 @@ class TestGetAllConversationItems:
 
     @pytest.mark.asyncio
     async def test_handles_empty_data(self, mocker: MockerFixture) -> None:
-        """Test that empty page data is handled."""
+        """Test that None or empty page data is handled."""
         mock_client = mocker.Mock()
         mock_page = mocker.Mock()
-        mock_page.data = []
-        mock_page.has_more = False
+        mock_page.data = None
+        mock_page.has_next_page.return_value = False
 
-        mock_client.items.list = mocker.AsyncMock(return_value=mock_page)
+        mock_client.conversations.items.list = mocker.AsyncMock(return_value=mock_page)
 
         result = await get_all_conversation_items(mock_client, "conv_empty")
 
@@ -1010,10 +921,12 @@ class TestGetAllConversationItems:
 
     @pytest.mark.asyncio
     async def test_handles_connection_error(self, mocker: MockerFixture) -> None:
-        """Test that ApiException is converted to HTTPException 503."""
+        """Test that APIConnectionError is converted to HTTPException 503."""
         mock_client = mocker.Mock()
-        mock_client.items.list = mocker.AsyncMock(
-            side_effect=ApiException(status=None, reason="connection refused")
+        mock_client.conversations.items.list = mocker.AsyncMock(
+            side_effect=APIConnectionError(
+                message="connection refused", request=mocker.Mock()
+            )
         )
 
         with pytest.raises(HTTPException) as exc_info:
@@ -1024,10 +937,14 @@ class TestGetAllConversationItems:
 
     @pytest.mark.asyncio
     async def test_handles_api_status_error(self, mocker: MockerFixture) -> None:
-        """Test that ApiException is converted to HTTPException 500."""
+        """Test that APIStatusError is converted to HTTPException 500."""
         mock_client = mocker.Mock()
-        mock_client.items.list = mocker.AsyncMock(
-            side_effect=ApiException(status=500, reason="internal error")
+        mock_client.conversations.items.list = mocker.AsyncMock(
+            side_effect=APIStatusError(
+                message="internal error",
+                response=mocker.Mock(request=None),
+                body=None,
+            )
         )
 
         with pytest.raises(HTTPException) as exc_info:

@@ -9,8 +9,8 @@ import sentry_sdk  # pyright: ignore[reportMissingImports]
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from fastapi.routing import iter_route_contexts
-from ogx_client import ApiException, AsyncOgxClient
+from ogx_client import APIConnectionError, AsyncOgxClient
+from starlette.routing import Mount, Route, WebSocketRoute
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 import version
@@ -19,16 +19,15 @@ from app import routers
 from app.database import create_tables, initialize_database
 from app.endpoints.streaming_query import shutdown_background_topic_summary_tasks
 from authorization.azure_token_manager import AzureEntraIDManager
-from client.ogx import AsyncOgxClientHolder
+from client import AsyncOgxClientHolder
 from configuration import configuration
 from log import get_logger
 from metrics import recording
 from metrics.utils import setup_model_metrics
 from models.api.responses.error import InternalServerErrorResponse
-from observability.profiling import initialize_pyroscope
-from observability.sentry import initialize_sentry
+from sentry import initialize_sentry
 from utils.degraded_mode import DegradedModeTracker
-from utils.ogx_version import check_ogx_version
+from utils.llama_stack_version import check_llama_stack_version
 
 logger = get_logger(__name__)
 
@@ -63,7 +62,6 @@ _OPENAPI_TAGS: Final[list[dict[str, str]]] = [
         "description": "Saved prompts configuration and management.",
     },
     {"name": "shields", "description": "Safety shields."},
-    {"name": "skills", "description": "Agent skills."},
     {"name": "streaming_query", "description": "Streaming query (SSE)."},
     {"name": "streaming_query_interrupt", "description": "Streaming interrupt."},
     {"name": "tools", "description": "Tools."},
@@ -77,45 +75,44 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     """
     Initialize app resources.
 
-    FastAPI lifespan context: initializes configuration, OGX client, MCP servers,
+    FastAPI lifespan context: initializes configuration, Llama client, MCP servers,
     logger, and database before serving requests.
     """
     configuration.load_configuration(os.environ["LIGHTSPEED_STACK_CONFIG_PATH"])
 
     initialize_sentry()
-    initialize_pyroscope()
 
-    ogx_config = configuration.configuration.ogx
-    await AsyncOgxClientHolder().load(ogx_config)
+    llama_stack_config = configuration.configuration.llama_stack
+    await AsyncOgxClientHolder().load(llama_stack_config)
     client: AsyncOgxClient = AsyncOgxClientHolder().get_client()
-    logger.debug("OGX client initialized, trying to connect to OGX")
-    # Check connectivity to OGX and set degraded mode if unavailable
+    logger.debug("Llama Stack client initialized, trying to connect to Llama Stack")
+    # Check connectivity to Llama Stack and set degraded mode if unavailable
     degraded_tracker = DegradedModeTracker()
     try:
-        ogx_version = await check_ogx_version(
-            client, ogx_config.max_retries, ogx_config.retry_delay
+        llama_stack_version = await check_llama_stack_version(
+            client, llama_stack_config.max_retries, llama_stack_config.retry_delay
         )
-        if ogx_version is None:
-            logger.error("Cannot retrieve OGX version, check connection")
-            if ogx_config.allow_degraded_mode:
-                degraded_tracker.set_degraded("OGX connection check failed")
+        if llama_stack_version is None:
+            logger.error("Cannot retrieve Llama Stack version, check connection")
+            if llama_stack_config.allow_degraded_mode:
+                degraded_tracker.set_degraded("Llama Stack connection check failed")
         else:
-            logger.debug("OGX version: %s", ogx_version)
+            logger.debug("Llama Stack version: %s", llama_stack_version)
             degraded_tracker.set_healthy()
-    except ApiException as e:
+    except APIConnectionError as e:
         # if degraded mode is allowed, simply ignore the exception
-        ogx_url = ogx_config.url
+        llama_stack_url = llama_stack_config.url
         logger.error(
-            "Failed to connect to OGX at '%s'. "
-            "Please verify that the 'ogx.url' configuration is correct "
-            "and that the OGX service is running and accessible. "
+            "Failed to connect to Llama Stack at '%s'. "
+            "Please verify that the 'llama_stack.url' configuration is correct "
+            "and that the Llama Stack service is running and accessible. "
             "Original error: %s",
-            ogx_url,
+            llama_stack_url,
             e,
         )
-        if ogx_config.allow_degraded_mode:
-            logger.info("Entering degraded mode: LCORE running w/o OGX")
-            degraded_tracker.set_degraded(f"Failed to connect to OGX: {e!s}")
+        if llama_stack_config.allow_degraded_mode:
+            logger.info("Entering degraded mode: LCORE running w/o Llama Stack")
+            degraded_tracker.set_degraded(f"Failed to connect to Llama Stack: {e!s}")
         else:
             raise
 
@@ -129,7 +126,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     if not degraded_tracker.is_degraded():
         try:
             await setup_model_metrics()
-        except ApiException as e:
+        except APIConnectionError as e:
             logger.warning("Failed to set up model metrics: %s", e, exc_info=True)
 
     logger.info("App startup complete")
@@ -214,7 +211,7 @@ class RestApiMetricsMiddleware:  # pylint: disable=too-few-public-methods
         # requests with the full prefixed path (/api/lightspeed/v1/infer) but
         # app_routes_paths contains only application-level paths (/v1/infer).
         # Strip the prefix so the path check and metric labels match the routes.
-        root_path: str = app.root_path
+        root_path = scope.get("root_path", "")
         path: str = scope["path"]
         if root_path and path.startswith(root_path + "/"):
             path = path[len(root_path) :]
@@ -294,10 +291,9 @@ logger.info("Including routers")
 routers.include_routers(app)
 
 app_routes_paths = [
-    rc.original_route.path  # pyright: ignore[reportAttributeAccessIssue]
-    for rc in iter_route_contexts(app.routes)
-    if hasattr(rc.original_route, "path")
-    and rc.original_route.path  # pyright: ignore[reportAttributeAccessIssue]
+    route.path
+    for route in app.routes
+    if isinstance(route, (Mount, Route, WebSocketRoute))
 ]
 
 # Register pure ASGI middlewares.  Middleware execution order is the reverse of

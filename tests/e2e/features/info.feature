@@ -1,4 +1,4 @@
-@cfg_default
+@e2e_group_3
 Feature: Info tests
 
 
@@ -7,7 +7,7 @@ Feature: Info tests
       And The system is in default state
       And REST API service prefix is /v1
       And the Lightspeed stack configuration directory is "tests/e2e/configuration"
-      And The service uses the lightspeed-stack-default.yaml configuration
+      And The service uses the lightspeed-stack.yaml configuration
       And The service is restarted
 
   Scenario: Check if the OpenAPI endpoint works as expected
@@ -19,7 +19,13 @@ Feature: Info tests
      When I access REST API endpoint "info" using HTTP GET method
      Then The status code of the response is 200
       And The body of the response has proper name Lightspeed Core Service (LCS) and version 0.7.0rc1
-      And The body of the response has ogx version 1.2.5
+      And The body of the response has llama-stack version 1.0.2
+
+  Scenario: Check if shields endpoint is working
+     When I access REST API endpoint "shields" using HTTP GET method
+     Then The status code of the response is 200
+      And The body of the response has proper shield structure
+
 
   Scenario: Check if tools endpoint is working
      When I access REST API endpoint "tools" using HTTP GET method

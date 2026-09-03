@@ -1,9 +1,3 @@
-# @cfg_mcp
-# Merges: lightspeed-stack-mcp.yaml + lightspeed-stack-mcp-file-auth.yaml +
-#         lightspeed-stack-mcp-client-auth.yaml + lightspeed-stack-mcp-oauth-auth.yaml +
-#         lightspeed-stack-mcp-kubernetes-auth.yaml (valid tokens only)
-# All four MCP auth flavours share one process; scenarios select a server by name.
-# Keep @cfg_mcp_invalid separate (bad file token must be the only mcp-file entry).
 name: Lightspeed Core Service (LCS)
 service:
   host: 0.0.0.0
@@ -12,8 +6,8 @@ service:
   workers: 1
   color_log: true
   access_log: true
-ogx:
-  # Server mode - connects to separate OGX service
+llama_stack:
+  # Server mode - connects to separate llama-stack service
   use_as_library_client: false
   url: http://${env.E2E_LLAMA_HOSTNAME}:8321
   api_key: xyzzy

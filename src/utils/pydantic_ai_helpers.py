@@ -1,4 +1,4 @@
-"""Helpers for running Pydantic AI agents against OGX (Responses API compatibility)."""
+"""Helpers for running Pydantic AI agents against Llama Stack (Responses API compatibility)."""
 
 from __future__ import annotations
 
@@ -12,9 +12,7 @@ from pydantic_ai.capabilities import AbstractCapability, AgentCapability
 from pydantic_ai_skills import SkillsCapability
 
 from configuration import AppConfig
-from log import get_logger
 from models.common.responses.responses_api_params import ResponsesApiParams
-from models.common.skills import SkillMetadata
 from models.common.tools import CatalogTool, CatalogToolParameter
 from models.config import (
     QuestionValidityConfig,
@@ -24,7 +22,9 @@ from models.config import (
 )
 from pydantic_ai_lightspeed.capabilities import QuestionValidity
 from pydantic_ai_lightspeed.capabilities.redaction import PiiRedactionCapability
-from pydantic_ai_lightspeed.ogx import OgxResponsesModel
+from pydantic_ai_lightspeed.llamastack import (
+    OgxResponsesModel,
+)
 from utils.shields import get_shields_for_request
 
 _AGENT_SKILLS_PROVIDER_ID: Final[str] = "agent-skills"
@@ -112,26 +112,6 @@ def _capability_tools_from_toolset(toolset: Any) -> list[CatalogTool]:
     return tools
 
 
-def get_skills_metadata(
-    skills: Optional[SkillsConfiguration],
-) -> list[SkillMetadata]:
-    """Return metadata for all loaded skills.
-
-    Parameters:
-        skills: Agent skills configuration from LCS, or None when skills are disabled.
-
-    Returns:
-        List of ``SkillMetadata`` with ``name`` and ``description`` for each loaded skill.
-    """
-    capability = _skills_capability(skills)
-    if capability is None:
-        return []
-    return [
-        SkillMetadata(name=skill.name, description=skill.description)
-        for skill in capability.toolset.skills.values()
-    ]
-
-
 def get_agent_capability_tools(
     skills: Optional[SkillsConfiguration],
 ) -> list[CatalogTool]:
@@ -215,38 +195,6 @@ def _agent_capabilities(
     return capabilities or None
 
 
-logger = get_logger(__name__)
-
-
-def captured_output_items(agent: Any) -> list[Any]:
-    """Return the structured output items captured from the last OGX call.
-
-    In compacted mode the ``conversation`` parameter is not sent, so OGX does
-    not persist the turn and lightspeed-stack must append it itself. The items
-    are captured verbatim from the OGX response by
-    :class:`OgxResponsesModel`, so the stored turn matches what OGX would have
-    stored (LCORE-3883).
-
-    Parameters:
-        agent: The pydantic-ai agent whose model performed the call.
-
-    Returns:
-        The captured output items, or an empty list when the model did not
-        capture any (for example a non-OGX model in a test double).
-    """
-    model = getattr(agent, "model", None)
-    items = getattr(model, "last_output_items", None)
-    if not isinstance(items, list):
-        # Either the model captured nothing yet, or it is not an
-        # OgxResponsesModel (a test double, or a future backend). Persisting an
-        # empty output is preferable to raising on an otherwise good turn.
-        logger.debug(
-            "No captured output items available from model %s", type(model).__name__
-        )
-        return []
-    return list(items)
-
-
 def build_agent(
     client: AsyncOgxClient | AsyncOGXAsLibraryClient,
     responses_params: ResponsesApiParams,
@@ -254,15 +202,15 @@ def build_agent(
     shields: Optional[list[str]] = None,
     no_tools: bool = False,
 ) -> Agent[None, str]:
-    """Build a Pydantic AI agent that mirrors ``responses_params`` on the OGX backend.
+    """Build a Pydantic AI agent that mirrors ``responses_params`` on the Llama Stack backend.
 
     Uses ``OgxProvider`` with the same ``AsyncOgxClient`` (or library client)
     as the query endpoint, and ``OpenAIResponsesModel`` so requests follow the Responses API.
-    OGX-specific fields (conversation, tools, MCP headers, etc.) are passed via
+    Llama-Stack-specific fields (conversation, tools, MCP headers, etc.) are passed via
     ``model_settings['extra_body']`` so they merge into the OpenAI client request body.
 
     Parameters:
-        client: Initialized OGX client from ``AsyncOgxClientHolder().get_client()``.
+        client: Initialized Llama Stack client from ``AsyncOgxClientHolder().get_client()``.
         responses_params: Parameters produced by ``prepare_responses_params`` for this turn.
         config: Application configuration. Agent skills (``config.skills``) and the
             configured guardrail shields (``config.shields``) are extracted from it.

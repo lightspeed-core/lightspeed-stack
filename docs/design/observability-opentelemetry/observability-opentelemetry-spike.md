@@ -134,7 +134,7 @@ The shared HTTP client for backend calls injects the active trace context into o
 LCORE does not propagate trace context to backends and does not merge backend-exported spans into the trace. Instead, LCORE constructs the full span tree itself—one span per prescribed pipeline step (e.g. retrieval, each tool call, response generation)—populated from internal summary objects gathered during request handling (timings, anonymized inputs/outputs, source lists, tool-call records). Backend services remain implementation details; their own telemetry, if any, stays outside the LCORE trace contract.
 
 - **Pros:** Same structured trace for remote and in-process backends; no cross-service propagation contract; backend OTel remains an independent operator concern. LCORE alone defines span names, parent/child links, sequence, and step metadata so every export matches unified schema.  
-- **Cons:** Finer backend-internal breakdown (e.g. individual HTTP retries inside OGX) is not visible unless LCORE chooses to surface it in step metadata; operators rely on LCORE’s summaries rather than raw backend traces.
+- **Cons:** Finer backend-internal breakdown (e.g. individual HTTP retries inside Llama Stack) is not visible unless LCORE chooses to surface it in step metadata; operators rely on LCORE’s summaries rather than raw backend traces.
 
 **Recommendation:** **Option B.** Observability follows a unified schema with prescribed step types and fields. LCORE must emit that multi-span tree from its own pipeline summaries; accepting backend service spans would break the contract (foreign names, wrong granularity, missing sequence metadata). Do not inject trace context to external backends.
 

@@ -19,7 +19,7 @@ providers:
     config:
       project: ${env.VERTEX_AI_PROJECT}
       location: ${env.VERTEX_AI_LOCATION}
-      allowed_models: ["publishers/google/models/gemini-2.5-flash"]
+      allowed_models: ["google/gemini-2.5-flash"]
   - provider_id: openai
     provider_type: remote::openai
     config:
@@ -98,10 +98,6 @@ storage:
       backend: sql_default
 registered_resources:
   models:
-  - model_id: publishers/google/models/gemini-2.5-flash
-    provider_id: google-vertex
-    model_type: llm
-    provider_model_id: publishers/google/models/gemini-2.5-flash
   - model_id: all-mpnet-base-v2
     model_type: embedding
     provider_id: sentence-transformers

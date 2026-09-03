@@ -18,8 +18,8 @@ if [ -f "$REPO_ROOT/tests/e2e/secrets/invalid-mcp-token" ]; then
     --dry-run=client -o yaml | oc apply -f -
 fi
 
-# 1. OGX (run from source). Cluster DNS name matches oc expose --name=llama-stack-service-svc.
-# Secret must exist before the pod: both LCS and OGX-container use E2E_LLAMA_HOSTNAME from it.
+# 1. Llama Stack (run from source). Cluster DNS name matches oc expose --name=llama-stack-service-svc.
+# Secret must exist before the pod: both LCS and llama-stack-container use E2E_LLAMA_HOSTNAME from it.
 _LLAMA_SVC_FQDN="llama-stack-service-svc.${NAMESPACE}.svc.cluster.local"
 oc create secret generic llama-stack-ip-secret \
   --from-literal=key="$_LLAMA_SVC_FQDN" \
@@ -42,7 +42,7 @@ spec:
 PVCEOF
 
 timeout 120 oc delete pod llama-stack-service -n "$NAMESPACE" --ignore-not-found=true --wait=true 2>/dev/null || true
-oc apply -n "$NAMESPACE" -f "$BASE_DIR/manifests/lightspeed/ogx-openai.yaml"
+oc apply -n "$NAMESPACE" -f "$BASE_DIR/manifests/lightspeed/llama-stack-openai.yaml"
 # First boot runs the full init (dnf + git clone + uv sync ≈ 6-15 min); use a generous timeout.
 oc wait pod/llama-stack-service -n "$NAMESPACE" --for=condition=Ready --timeout=900s
 oc label pod llama-stack-service pod=llama-stack-service -n "$NAMESPACE"

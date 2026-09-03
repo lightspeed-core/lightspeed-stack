@@ -70,12 +70,6 @@ roles = {
         "permissions": ["query"],
     },
     "no_role": {"sub": "norole-id", "name": "No Role User", "admin": False},
-    "user2": {
-        "sub": "user2-id",
-        "name": "Regular User 2",
-        "admin": False,
-        "role": "user",
-    },
 }
 
 tokens = {}

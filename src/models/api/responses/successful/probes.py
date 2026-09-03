@@ -17,7 +17,7 @@ class InfoResponse(AbstractSuccessfulResponse):
     Attributes:
         name: Service name.
         service_version: Service version.
-        ogx_version: OGX version.
+        llama_stack_version: Llama Stack version.
     """
 
     name: str = Field(
@@ -30,8 +30,8 @@ class InfoResponse(AbstractSuccessfulResponse):
         examples=["0.1.0", "0.2.0", "1.0.0"],
     )
 
-    ogx_version: str = Field(
-        description="OGX version",
+    llama_stack_version: str = Field(
+        description="Llama Stack version",
         examples=["0.2.1", "0.2.2", "0.2.18", "0.2.21", "0.2.22"],
     )
 
@@ -42,7 +42,7 @@ class InfoResponse(AbstractSuccessfulResponse):
                 {
                     "name": "Lightspeed Stack",
                     "service_version": "1.0.0",
-                    "ogx_version": "1.0.0",
+                    "llama_stack_version": "1.0.0",
                 }
             ]
         }

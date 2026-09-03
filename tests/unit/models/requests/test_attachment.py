@@ -64,31 +64,6 @@ class TestAttachment:
         assert a.attachment_type == "image"
         assert a.content_type == "image/png"
 
-    def test_valid_image_attachment_webp(self) -> None:
-        """Test that a valid WebP image attachment is accepted."""
-        image_data = base64.b64encode(
-            b"RIFF" + b"\x00\x00\x00\x00" + b"WEBP" + b"\x00" * 100
-        ).decode()
-        a = Attachment(
-            attachment_type="image",
-            content_type="image/webp",
-            content=image_data,
-        )
-        assert a.attachment_type == "image"
-        assert a.content_type == "image/webp"
-
-    def test_image_attachment_riff_but_not_webp_rejected(self) -> None:
-        """Test that a non-WebP RIFF file (e.g. WAV) declared as WebP is rejected."""
-        wav_data = base64.b64encode(
-            b"RIFF" + b"\x00\x00\x00\x00" + b"WAVE" + b"\x00" * 100
-        ).decode()
-        with pytest.raises(ValidationError, match="invalid image data"):
-            Attachment(
-                attachment_type="image",
-                content_type="image/webp",
-                content=wav_data,
-            )
-
     def test_image_content_type_requires_image_attachment_type(self) -> None:
         """Test that image content_type requires attachment_type='image'."""
         image_data = base64.b64encode(b"\xff\xd8\xff\xe0").decode()

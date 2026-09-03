@@ -1,9 +1,5 @@
 """Concrete successful HTTP response models grouped by domain."""
 
-from models.api.responses.successful.bases import (
-    AbstractDeleteResponse,
-    AbstractSuccessfulResponse,
-)
 from models.api.responses.successful.catalog import (
     ModelsResponse,
     ProviderResponse,
@@ -11,7 +7,6 @@ from models.api.responses.successful.catalog import (
     RAGInfoResponse,
     RAGListResponse,
     ShieldsResponse,
-    SkillsResponse,
     ToolsResponse,
 )
 from models.api.responses.successful.configuration import ConfigurationResponse
@@ -71,8 +66,6 @@ from models.api.responses.successful.vector_stores import (
 )
 
 __all__ = [
-    "AbstractDeleteResponse",
-    "AbstractSuccessfulResponse",
     "AuthorizedResponse",
     "ConfigurationResponse",
     "ConversationDeleteResponse",
@@ -107,7 +100,6 @@ __all__ = [
     "SavedPromptsConfigResponse",
     "SavedPromptsListResponse",
     "ShieldsResponse",
-    "SkillsResponse",
     "StatusResponse",
     "StreamingInterruptResponse",
     "StreamingQueryResponse",

@@ -4,14 +4,16 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from ogx_api import ConversationNotFoundError, InvalidParameterError
-from ogx_client import ApiException
-from opentelemetry import trace
+from ogx_client import (
+    APIConnectionError,
+    APIStatusError,
+)
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.database import get_session
 from authentication import get_auth_dependency
 from authorization.middleware import authorize
-from client.ogx import AsyncOgxClientHolder
+from client import AsyncOgxClientHolder
 from configuration import configuration
 from log import get_logger
 from models.api.requests import ConversationUpdateRequest
@@ -50,11 +52,10 @@ from utils.endpoints import (
 from utils.suid import (
     check_suid,
     normalize_conversation_id,
-    to_ogx_conversation_id,
+    to_llama_stack_conversation_id,
 )
 
 logger = get_logger(__name__)
-tracer = trace.get_tracer(__name__)
 router = APIRouter(tags=["conversations_v1"])
 
 conversation_get_responses: dict[int | str, dict[str, Any]] = {
@@ -67,7 +68,7 @@ conversation_get_responses: dict[int | str, dict[str, Any]] = {
         examples=["database", "configuration"]
     ),
     503: ServiceUnavailableResponse.openapi_response(
-        examples=["OGX", "kubernetes api"]
+        examples=["ogx", "kubernetes api"]
     ),
 }
 
@@ -82,7 +83,7 @@ conversation_delete_responses: dict[int | str, dict[str, Any]] = {
         examples=["database", "configuration"]
     ),
     503: ServiceUnavailableResponse.openapi_response(
-        examples=["OGX", "kubernetes api"]
+        examples=["ogx", "kubernetes api"]
     ),
 }
 
@@ -94,7 +95,7 @@ conversations_list_responses: dict[int | str, dict[str, Any]] = {
         examples=["database", "configuration"]
     ),
     503: ServiceUnavailableResponse.openapi_response(
-        examples=["OGX", "kubernetes api"]
+        examples=["ogx", "kubernetes api"]
     ),
 }
 
@@ -108,7 +109,7 @@ conversation_update_responses: dict[int | str, dict[str, Any]] = {
         examples=["database", "configuration"]
     ),
     503: ServiceUnavailableResponse.openapi_response(
-        examples=["OGX", "kubernetes api"]
+        examples=["ogx", "kubernetes api"]
     ),
 }
 
@@ -124,59 +125,54 @@ async def get_conversations_list_endpoint_handler(
     auth: Any = Depends(get_auth_dependency()),
 ) -> ConversationsListResponse:
     """Handle request to retrieve all conversations for the authenticated user."""
-    with tracer.start_as_current_span("conversations_v1.list") as span:
-        check_configuration_loaded(configuration)
+    check_configuration_loaded(configuration)
 
-        user_id = auth[0]
+    user_id = auth[0]
 
-        logger.info("Retrieving conversations for user %s", user_id)
+    logger.info("Retrieving conversations for user %s", user_id)
 
-        with get_session() as session:
-            try:
-                query = session.query(UserConversation)
+    with get_session() as session:
+        try:
+            query = session.query(UserConversation)
 
-                filtered_query = (
-                    query
-                    if Action.LIST_OTHERS_CONVERSATIONS
-                    in request.state.authorized_actions
-                    else query.filter_by(user_id=user_id)
+            filtered_query = (
+                query
+                if Action.LIST_OTHERS_CONVERSATIONS in request.state.authorized_actions
+                else query.filter_by(user_id=user_id)
+            )
+
+            user_conversations = filtered_query.all()
+
+            # Return conversation summaries with metadata
+            conversations = [
+                ConversationDetails(
+                    conversation_id=conv.id,
+                    created_at=conv.created_at.isoformat() if conv.created_at else None,
+                    last_message_at=(
+                        conv.last_message_at.isoformat()
+                        if conv.last_message_at
+                        else None
+                    ),
+                    message_count=conv.message_count,
+                    last_used_model=conv.last_used_model,
+                    last_used_provider=conv.last_used_provider,
+                    topic_summary=conv.topic_summary,
                 )
+                for conv in user_conversations
+            ]
 
-                user_conversations = filtered_query.all()
+            logger.info(
+                "Found %d conversations for user %s", len(conversations), user_id
+            )
 
-                # Return conversation summaries with metadata
-                conversations = [
-                    ConversationDetails(
-                        conversation_id=conv.id,
-                        created_at=(
-                            conv.created_at.isoformat() if conv.created_at else None
-                        ),
-                        last_message_at=(
-                            conv.last_message_at.isoformat()
-                            if conv.last_message_at
-                            else None
-                        ),
-                        message_count=conv.message_count,
-                        last_used_model=conv.last_used_model,
-                        last_used_provider=conv.last_used_provider,
-                        topic_summary=conv.topic_summary,
-                    )
-                    for conv in user_conversations
-                ]
+            return ConversationsListResponse(conversations=conversations)
 
-                logger.info(
-                    "Found %d conversations for user %s", len(conversations), user_id
-                )
-
-                span.set_attribute("conversations.count", len(conversations))
-                return ConversationsListResponse(conversations=conversations)
-
-            except SQLAlchemyError as e:
-                logger.exception(
-                    "Error retrieving conversations for user %s: %s", user_id, e
-                )
-                response = InternalServerErrorResponse.database_error()
-                raise HTTPException(**response.model_dump()) from e
+        except SQLAlchemyError as e:
+            logger.exception(
+                "Error retrieving conversations for user %s: %s", user_id, e
+            )
+            response = InternalServerErrorResponse.database_error()
+            raise HTTPException(**response.model_dump()) from e
 
 
 @router.get(
@@ -192,7 +188,7 @@ async def get_conversation_endpoint_handler(  # pylint: disable=too-many-locals,
 ) -> ConversationResponse:
     """Handle request to retrieve a conversation identified by ID using Conversations API.
 
-    Retrieve a conversation's chat history by its ID using the OGX
+    Retrieve a conversation's chat history by its ID using the LlamaStack
     Conversations API. This endpoint fetches the conversation items from
     the backend, simplifies them to essential chat history, and returns
     them in a structured response. Raises HTTP 400 for invalid IDs, 404
@@ -208,97 +204,89 @@ async def get_conversation_endpoint_handler(  # pylint: disable=too-many-locals,
         ConversationResponse: Structured response containing the conversation
         ID and simplified chat history
     """
-    with tracer.start_as_current_span("conversations_v1.get") as span:
-        check_configuration_loaded(configuration)
+    check_configuration_loaded(configuration)
 
-        # Validate conversation ID format
-        if not check_suid(conversation_id):
-            logger.error("Invalid conversation ID format: %s", conversation_id)
-            response = BadRequestResponse(
-                resource="conversation", resource_id=conversation_id
+    # Validate conversation ID format
+    if not check_suid(conversation_id):
+        logger.error("Invalid conversation ID format: %s", conversation_id)
+        response = BadRequestResponse(
+            resource="conversation", resource_id=conversation_id
+        ).model_dump()
+        raise HTTPException(**response)
+
+    # Normalize the conversation ID for database operations (strip conv_ prefix if present)
+    normalized_conv_id = normalize_conversation_id(conversation_id)
+    logger.debug(
+        "GET conversation - original ID: %s, normalized ID: %s",
+        conversation_id,
+        normalized_conv_id,
+    )
+
+    user_id = auth[0]
+    conversation = validate_and_retrieve_conversation(
+        normalized_conv_id=normalized_conv_id,
+        user_id=user_id,
+        others_allowed=(
+            Action.READ_OTHERS_CONVERSATIONS in request.state.authorized_actions
+        ),
+    )
+    logger.info(
+        "Retrieving conversation %s using Conversations API", normalized_conv_id
+    )
+
+    try:
+        client = AsyncOgxClientHolder().get_client()
+
+        # Convert to llama-stack format (add 'conv_' prefix if needed)
+        llama_stack_conv_id = to_llama_stack_conversation_id(normalized_conv_id)
+        logger.debug(
+            "Calling llama-stack list_items with conversation_id: %s",
+            llama_stack_conv_id,
+        )
+
+        # Retrieve turns metadata from database (can be empty for legacy conversations)
+        db_turns = retrieve_conversation_turns(normalized_conv_id)
+
+        # Use Conversations API to retrieve conversation items
+        items = await get_all_conversation_items(client, llama_stack_conv_id)
+        if not items:
+            logger.error("No items found for conversation %s", conversation_id)
+            response = NotFoundResponse(
+                resource="conversation", resource_id=normalized_conv_id
             ).model_dump()
             raise HTTPException(**response)
 
-        # Normalize the conversation ID for database operations
-        normalized_conv_id = normalize_conversation_id(conversation_id)
-        logger.debug(
-            "GET conversation - original ID: %s, normalized ID: %s",
-            conversation_id,
-            normalized_conv_id,
-        )
-
-        user_id = auth[0]
-        conversation = validate_and_retrieve_conversation(
-            normalized_conv_id=normalized_conv_id,
-            user_id=user_id,
-            others_allowed=(
-                Action.READ_OTHERS_CONVERSATIONS in request.state.authorized_actions
-            ),
-        )
         logger.info(
-            "Retrieving conversation %s using Conversations API", normalized_conv_id
+            "Successfully retrieved %d items for conversation %s",
+            len(items),
+            conversation_id,
         )
 
-        try:
-            client = AsyncOgxClientHolder().get_client()
+        # Build conversation turns from items and populate turns metadata
+        # Use conversation.created_at for legacy conversations without turn metadata
+        chat_history = build_conversation_turns_from_items(
+            items, db_turns, conversation.created_at
+        )
 
-            # Convert to OGX format (add 'conv_' prefix if needed)
-            ogx_conv_id = to_ogx_conversation_id(normalized_conv_id)
-            logger.debug(
-                "Calling OGX list_items with conversation_id: %s",
-                ogx_conv_id,
-            )
+        return ConversationResponse(
+            conversation_id=normalized_conv_id,
+            chat_history=chat_history,
+        )
 
-            # Retrieve turns metadata from database
-            db_turns = retrieve_conversation_turns(normalized_conv_id)
+    except APIConnectionError as e:
+        logger.error("Unable to connect to Llama Stack: %s", e)
+        response = ServiceUnavailableResponse(
+            backend_name="OGX", cause=str(e)
+        ).model_dump()
+        raise HTTPException(**response) from e
 
-            # Use Conversations API to retrieve conversation items
-            items = await get_all_conversation_items(client, ogx_conv_id)
-            if not items:
-                logger.error("No items found for conversation %s", conversation_id)
-                response = NotFoundResponse(
-                    resource="conversation", resource_id=normalized_conv_id
-                ).model_dump()
-                raise HTTPException(**response)
-
-            logger.info(
-                "Successfully retrieved %d items for conversation %s",
-                len(items),
-                conversation_id,
-            )
-
-            # Build conversation turns from items and populate turns metadata
-            chat_history = build_conversation_turns_from_items(
-                items, db_turns, conversation.created_at
-            )
-
-            span.set_attribute("conversations.found", True)
-            span.set_attribute("conversations.turns.count", len(chat_history))
-            return ConversationResponse(
-                conversation_id=normalized_conv_id,
-                chat_history=chat_history,
-            )
-
-        except ApiException as e:
-            if not e.status:
-                logger.error("Unable to connect to OGX: %s", e)
-                response = ServiceUnavailableResponse(
-                    backend_name="OGX",
-                ).model_dump()
-                raise HTTPException(**response) from e
-            # In library mode, ConversationNotFoundError is raised instead of ApiException
-            logger.error("Conversation not found: %s", e)
-            response = NotFoundResponse(
-                resource="conversation", resource_id=normalized_conv_id
-            ).model_dump()
-            raise HTTPException(**response) from e
-        except ConversationNotFoundError as e:
-            # In library mode, ConversationNotFoundError is raised instead of ApiException
-            logger.error("Conversation not found: %s", e)
-            response = NotFoundResponse(
-                resource="conversation", resource_id=normalized_conv_id
-            ).model_dump()
-            raise HTTPException(**response) from e
+    except (APIStatusError, ConversationNotFoundError) as e:
+        # In library mode, ConversationNotFoundError is raised instead of APIStatusError
+        logger.error("Conversation not found: %s", e)
+        response = NotFoundResponse(
+            resource="conversation", resource_id=normalized_conv_id
+        ).model_dump()
+        raise HTTPException(**response) from e
 
 
 @router.delete(
@@ -315,7 +303,7 @@ async def delete_conversation_endpoint_handler(
     """Handle request to delete a conversation by ID using Conversations API.
 
     Validates the conversation ID format and attempts to delete the
-    conversation from the OGX backend using the Conversations API.
+    conversation from the Llama Stack backend using the Conversations API.
     Raises HTTP errors for invalid IDs, not found conversations, connection
     issues, or unexpected failures.
 
@@ -327,98 +315,90 @@ async def delete_conversation_endpoint_handler(
     Returns:
         ConversationDeleteResponse: Response indicating the result of the deletion operation
     """
-    with tracer.start_as_current_span("conversations_v1.delete") as span:
-        check_configuration_loaded(configuration)
+    check_configuration_loaded(configuration)
 
-        # Validate conversation ID format
-        if not check_suid(conversation_id):
-            logger.error("Invalid conversation ID format: %s", conversation_id)
-            response = BadRequestResponse(
-                resource="conversation", resource_id=conversation_id
-            ).model_dump()
-            raise HTTPException(**response)
+    # Validate conversation ID format
+    if not check_suid(conversation_id):
+        logger.error("Invalid conversation ID format: %s", conversation_id)
+        response = BadRequestResponse(
+            resource="conversation", resource_id=conversation_id
+        ).model_dump()
+        raise HTTPException(**response)
 
-        # Normalize the conversation ID for database operations
-        normalized_conv_id = normalize_conversation_id(conversation_id)
+    # Normalize the conversation ID for database operations (strip conv_ prefix if present)
+    normalized_conv_id = normalize_conversation_id(conversation_id)
 
-        # Check if user has access to delete this conversation
-        user_id = auth[0]
-        if not can_access_conversation(
-            normalized_conv_id,
+    # Check if user has access to delete this conversation
+    user_id = auth[0]
+    if not can_access_conversation(
+        normalized_conv_id,
+        user_id,
+        others_allowed=(
+            Action.DELETE_OTHERS_CONVERSATIONS in request.state.authorized_actions
+        ),
+    ):
+        logger.warning(
+            "User %s attempted to delete conversation %s they don't have access to",
             user_id,
-            others_allowed=(
-                Action.DELETE_OTHERS_CONVERSATIONS in request.state.authorized_actions
-            ),
-        ):
-            logger.warning(
-                "User %s attempted to delete conversation %s they don't have access to",
-                user_id,
-                normalized_conv_id,
-            )
-            response = ForbiddenResponse.conversation(
-                action="delete",
-                resource_id=normalized_conv_id,
-                user_id=user_id,
-            ).model_dump()
-            raise HTTPException(**response)
-
-        # If reached this, user is authorized to delete this conversation
-        try:
-            local_deleted = delete_conversation(normalized_conv_id)
-            if not local_deleted:
-                logger.info(
-                    "Conversation %s not found locally when deleting.",
-                    normalized_conv_id,
-                )
-        except SQLAlchemyError as e:
-            logger.error(
-                "Database error while deleting conversation %s",
-                normalized_conv_id,
-            )
-            response = InternalServerErrorResponse.database_error()
-            raise HTTPException(**response.model_dump()) from e
-
-        logger.info(
-            "Deleting conversation %s using Conversations API", normalized_conv_id
+            normalized_conv_id,
         )
+        response = ForbiddenResponse.conversation(
+            action="delete",
+            resource_id=normalized_conv_id,
+            user_id=user_id,
+        ).model_dump()
+        raise HTTPException(**response)
 
-        try:
-            # Get OGX client
-            client = AsyncOgxClientHolder().get_client()
-
-            # Convert to OGX format (add 'conv_' prefix if needed)
-            ogx_conv_id = to_ogx_conversation_id(normalized_conv_id)
-
-            # Use Conversations API to delete the conversation
-            delete_response = await client.conversations.delete(
-                conversation_id=ogx_conv_id
-            )
+    # If reached this, user is authorized to delete this conversation
+    try:
+        local_deleted = delete_conversation(normalized_conv_id)
+        if not local_deleted:
             logger.info(
-                "Remote deletion of %s: success=%s",
-                normalized_conv_id,
-                delete_response.deleted,
-            )
-        except ApiException as e:
-            if not e.status:
-                response = ServiceUnavailableResponse(backend_name="OGX")
-                raise HTTPException(**response.model_dump()) from e
-            # In library mode, ConversationNotFoundError is raised instead of ApiException
-            logger.warning(
-                "Conversation %s in OGX not found. Treating as already deleted.",
+                "Conversation %s not found locally when deleting.",
                 normalized_conv_id,
             )
-        except (ConversationNotFoundError, InvalidParameterError):
-            # In library mode, ConversationNotFoundError is raised instead of ApiException
-            logger.warning(
-                "Conversation %s in OGX not found. Treating as already deleted.",
-                normalized_conv_id,
-            )
-
-        span.set_attribute("conversations.deleted", local_deleted)
-        return ConversationDeleteResponse(
-            conversation_id=normalized_conv_id,
-            deleted=local_deleted,
+    except SQLAlchemyError as e:
+        logger.error(
+            "Database error while deleting conversation %s",
+            normalized_conv_id,
         )
+        response = InternalServerErrorResponse.database_error()
+        raise HTTPException(**response.model_dump()) from e
+
+    logger.info("Deleting conversation %s using Conversations API", normalized_conv_id)
+
+    try:
+        # Get Llama Stack client
+        client = AsyncOgxClientHolder().get_client()
+
+        # Convert to llama-stack format (add 'conv_' prefix if needed)
+        llama_stack_conv_id = to_llama_stack_conversation_id(normalized_conv_id)
+
+        # Use Conversations API to delete the conversation
+        delete_response = await client.conversations.delete(
+            conversation_id=llama_stack_conv_id
+        )
+        logger.info(
+            "Remote deletion of %s: success=%s",
+            normalized_conv_id,
+            delete_response.deleted,
+        )
+
+    except APIConnectionError as e:
+        response = ServiceUnavailableResponse(backend_name="OGX", cause=str(e))
+        raise HTTPException(**response.model_dump()) from e
+
+    except (APIStatusError, ConversationNotFoundError, InvalidParameterError):
+        # In library mode, ConversationNotFoundError is raised instead of APIStatusError
+        logger.warning(
+            "Conversation %s in LlamaStack not found. Treating as already deleted.",
+            normalized_conv_id,
+        )
+
+    return ConversationDeleteResponse(
+        conversation_id=normalized_conv_id,
+        deleted=local_deleted,
+    )
 
 
 @router.put(
@@ -427,7 +407,7 @@ async def delete_conversation_endpoint_handler(
     summary="Conversation Update Endpoint Handler V1",
 )
 @authorize(Action.UPDATE_CONVERSATION)
-async def update_conversation_endpoint_handler(  # pylint: disable=too-many-statements
+async def update_conversation_endpoint_handler(
     request: Request,
     conversation_id: str,
     update_request: ConversationUpdateRequest,
@@ -436,7 +416,7 @@ async def update_conversation_endpoint_handler(  # pylint: disable=too-many-stat
     """Handle request to update a conversation metadata using Conversations API.
 
     Updates the conversation metadata (including topic summary) in both the
-    OGX backend using the Conversations API and the local database.
+    LlamaStack backend using the Conversations API and the local database.
 
     Args:
         request: The FastAPI request object
@@ -447,128 +427,117 @@ async def update_conversation_endpoint_handler(  # pylint: disable=too-many-stat
     Returns:
         ConversationUpdateResponse: Response indicating the result of the update operation
     """
-    with tracer.start_as_current_span("conversations_v1.update") as span:
-        check_configuration_loaded(configuration)
+    check_configuration_loaded(configuration)
 
-        # Validate conversation ID format
-        if not check_suid(conversation_id):
-            logger.error("Invalid conversation ID format: %s", conversation_id)
-            response = BadRequestResponse(
-                resource="conversation", resource_id=conversation_id
-            ).model_dump()
-            raise HTTPException(**response)
+    # Validate conversation ID format
+    if not check_suid(conversation_id):
+        logger.error("Invalid conversation ID format: %s", conversation_id)
+        response = BadRequestResponse(
+            resource="conversation", resource_id=conversation_id
+        ).model_dump()
+        raise HTTPException(**response)
 
-        # Normalize the conversation ID for database operations
-        normalized_conv_id = normalize_conversation_id(conversation_id)
+    # Normalize the conversation ID for database operations (strip conv_ prefix if present)
+    normalized_conv_id = normalize_conversation_id(conversation_id)
 
-        user_id = auth[0]
-        if not can_access_conversation(
-            normalized_conv_id,
+    user_id = auth[0]
+    if not can_access_conversation(
+        normalized_conv_id,
+        user_id,
+        others_allowed=(
+            Action.QUERY_OTHERS_CONVERSATIONS in request.state.authorized_actions
+        ),
+    ):
+        logger.warning(
+            "User %s attempted to update conversation %s they don't have access to",
             user_id,
-            others_allowed=(
-                Action.QUERY_OTHERS_CONVERSATIONS in request.state.authorized_actions
-            ),
-        ):
-            logger.warning(
-                "User %s attempted to update conversation %s they don't have access to",
-                user_id,
-                normalized_conv_id,
-            )
-            response = ForbiddenResponse.conversation(
-                action="update", resource_id=normalized_conv_id, user_id=user_id
+            normalized_conv_id,
+        )
+        response = ForbiddenResponse.conversation(
+            action="update", resource_id=normalized_conv_id, user_id=user_id
+        ).model_dump()
+        raise HTTPException(**response)
+
+    # If reached this, user is authorized to update this conversation
+    try:
+        conversation = retrieve_conversation(normalized_conv_id)
+        if conversation is None:
+            response = NotFoundResponse(
+                resource="conversation", resource_id=normalized_conv_id
             ).model_dump()
             raise HTTPException(**response)
 
-        # If reached this, user is authorized to update this conversation
-        try:
-            conversation = retrieve_conversation(normalized_conv_id)
-            if conversation is None:
-                response = NotFoundResponse(
-                    resource="conversation", resource_id=normalized_conv_id
-                ).model_dump()
-                raise HTTPException(**response)
+    except SQLAlchemyError as e:
+        logger.error(
+            "Database error occurred while retrieving conversation %s.",
+            normalized_conv_id,
+        )
+        response = InternalServerErrorResponse.database_error()
+        raise HTTPException(**response.model_dump()) from e
 
-        except SQLAlchemyError as e:
-            logger.error(
-                "Database error occurred while retrieving conversation %s.",
-                normalized_conv_id,
-            )
-            response = InternalServerErrorResponse.database_error()
-            raise HTTPException(**response.model_dump()) from e
+    logger.info(
+        "Updating metadata for conversation %s using Conversations API",
+        normalized_conv_id,
+    )
+
+    try:
+        # Get Llama Stack client
+        client = AsyncOgxClientHolder().get_client()
+
+        # Convert to llama-stack format (add 'conv_' prefix if needed)
+        llama_stack_conv_id = to_llama_stack_conversation_id(normalized_conv_id)
+
+        # Prepare metadata with topic summary
+        metadata = {"topic_summary": update_request.topic_summary}
+
+        # Use Conversations API to update the conversation metadata
+        await client.conversations.update(
+            conversation_id=llama_stack_conv_id,
+            metadata=metadata,
+        )
 
         logger.info(
-            "Updating metadata for conversation %s using Conversations API",
+            "Successfully updated metadata for conversation %s in LlamaStack",
             normalized_conv_id,
         )
 
-        try:
-            # Get OGX client
-            client = AsyncOgxClientHolder().get_client()
-
-            # Convert to OGX format (add 'conv_' prefix if needed)
-            ogx_conv_id = to_ogx_conversation_id(normalized_conv_id)
-
-            # Prepare metadata with topic summary
-            metadata = {"topic_summary": update_request.topic_summary}
-
-            # Use Conversations API to update the conversation metadata
-            await client.conversations.update(
-                conversation_id=ogx_conv_id,
-                metadata=metadata,
+        # Also update in local database
+        with get_session() as session:
+            db_conversation = (
+                session.query(UserConversation).filter_by(id=normalized_conv_id).first()
             )
-
-            logger.info(
-                "Successfully updated metadata for conversation %s in OGX",
-                normalized_conv_id,
-            )
-
-            # Also update in local database
-            with get_session() as session:
-                db_conversation = (
-                    session.query(UserConversation)
-                    .filter_by(id=normalized_conv_id)
-                    .first()
+            if db_conversation:
+                db_conversation.topic_summary = update_request.topic_summary
+                session.commit()
+                logger.info(
+                    "Successfully updated topic summary in local database for conversation %s",
+                    normalized_conv_id,
                 )
-                if db_conversation:
-                    db_conversation.topic_summary = update_request.topic_summary
-                    session.commit()
-                    logger.info(
-                        "Successfully updated topic summary in local database "
-                        "for conversation %s",
-                        normalized_conv_id,
-                    )
 
-            span.set_attribute("conversations.updated", True)
-            return ConversationUpdateResponse(
-                conversation_id=normalized_conv_id,
-                success=True,
-                message="Topic summary updated successfully",
-            )
+        return ConversationUpdateResponse(
+            conversation_id=normalized_conv_id,
+            success=True,
+            message="Topic summary updated successfully",
+        )
 
-        except ApiException as e:
-            if not e.status:
-                response = ServiceUnavailableResponse(
-                    backend_name="OGX",
-                ).model_dump()
-                raise HTTPException(**response) from e
-            # In library mode, ConversationNotFoundError is raised instead of ApiException
-            logger.error("Conversation not found: %s", e)
-            response = NotFoundResponse(
-                resource="conversation", resource_id=normalized_conv_id
-            ).model_dump()
-            raise HTTPException(**response) from e
-        except ConversationNotFoundError as e:
-            # In library mode, ConversationNotFoundError is raised instead of ApiException
-            logger.error("Conversation not found: %s", e)
-            response = NotFoundResponse(
-                resource="conversation", resource_id=normalized_conv_id
-            ).model_dump()
-            raise HTTPException(**response) from e
+    except APIConnectionError as e:
+        response = ServiceUnavailableResponse(
+            backend_name="OGX", cause=str(e)
+        ).model_dump()
+        raise HTTPException(**response) from e
 
-        except SQLAlchemyError as e:
-            logger.error(
-                "Database error occurred while updating conversation %s.",
-                normalized_conv_id,
-            )
-            response = InternalServerErrorResponse.database_error()
-            raise HTTPException(**response.model_dump()) from e
+    except (APIStatusError, ConversationNotFoundError) as e:
+        # In library mode, ConversationNotFoundError is raised instead of APIStatusError
+        logger.error("Conversation not found: %s", e)
+        response = NotFoundResponse(
+            resource="conversation", resource_id=normalized_conv_id
+        ).model_dump()
+        raise HTTPException(**response) from e
+
+    except SQLAlchemyError as e:
+        logger.error(
+            "Database error occurred while updating conversation %s.",
+            normalized_conv_id,
+        )
+        response = InternalServerErrorResponse.database_error()
+        raise HTTPException(**response.model_dump()) from e

@@ -17,7 +17,6 @@ from pydantic_ai.messages import (
 )
 from pydantic_ai.native_tools import FileSearchTool, MCPServerTool, WebSearchTool
 
-import constants
 from constants import DEFAULT_RAG_TOOL
 from log import get_logger
 from models.common.agents import AgentTurnAccumulator
@@ -29,7 +28,7 @@ from models.common.turn_summary import (
     ToolInfoSummary,
     ToolResultSummary,
 )
-from utils.responses import _build_okp_doc_url, resolve_source_for_result
+from utils.responses import resolve_source_for_result
 
 logger = get_logger(__name__)
 
@@ -287,17 +286,9 @@ def build_referenced_document(
         Referenced document when metadata is present, otherwise None.
     """
     attributes = result.attributes or {}
-    resolved_source = resolve_source_for_result(
-        attributes, vector_store_ids, rag_id_mapping
-    )
 
     doc_url = _file_search_attribute_url(attributes)
     doc_title = _file_search_attribute_str(attributes, "title")
-
-    # OKP/Solr chunks need URL construction with the OKP base URL
-    if resolved_source == constants.OKP_RAG_ID:
-        doc_url = _build_okp_doc_url(attributes) or doc_url
-
     if not (doc_title or doc_url):
         return None
 
@@ -307,7 +298,7 @@ def build_referenced_document(
     return ReferencedDocument(
         doc_url=AnyUrl(doc_url) if doc_url else None,
         doc_title=doc_title,
-        source=resolved_source,
+        source=resolve_source_for_result(attributes, vector_store_ids, rag_id_mapping),
         document_id=doc_id,
     )
 

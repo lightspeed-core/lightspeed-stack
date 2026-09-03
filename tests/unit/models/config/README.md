@@ -1,126 +1,95 @@
 # List of source files stored in `tests/unit/models/config` directory
 
 ## [__init__.py](__init__.py)
-
 Unit tests for models defined in config.py.
 
 ## [test_a2a_state_configuration.py](test_a2a_state_configuration.py)
-
 Unit tests for A2AStateConfiguration.
 
 ## [test_approvals_configuration.py](test_approvals_configuration.py)
-
 Unit tests for human-in-the-loop approvals configuration models.
 
 ## [test_authentication_configuration.py](test_authentication_configuration.py)
-
 Unit tests for AuthenticationConfiguration model.
 
 ## [test_byok_rag.py](test_byok_rag.py)
-
-Unit tests for RagStore model.
+Unit tests for ByokRag model.
 
 ## [test_compaction_configuration.py](test_compaction_configuration.py)
-
 Unit tests for CompactionConfiguration and its placement on Configuration.
 
 ## [test_conversation_history.py](test_conversation_history.py)
-
 Unit tests for ConversationHistoryConfiguration model.
 
 ## [test_cors.py](test_cors.py)
-
 Unit tests for CORSConfiguration model.
 
 ## [test_customization.py](test_customization.py)
-
 Unit tests for Customization model.
 
 ## [test_database_configuration.py](test_database_configuration.py)
-
 Unit tests for DatabaseConfiguration model.
 
 ## [test_dump_configuration.py](test_dump_configuration.py)
-
 Unit tests checking ability to dump configuration.
 
 ## [test_in_memory_cache_configuration.py](test_in_memory_cache_configuration.py)
-
 Unit tests for InMemoryCache model.
 
 ## [test_inference_configuration.py](test_inference_configuration.py)
-
 Unit tests for InferenceConfiguration model.
 
 ## [test_jwt_role_rule.py](test_jwt_role_rule.py)
-
 Unit tests for JwtRoleRule model.
 
-## [test_ogx_configuration.py](test_ogx_configuration.py)
-
-Unit tests for OgxConfiguration model.
+## [test_llama_stack_configuration.py](test_llama_stack_configuration.py)
+Unit tests for LlamaStackConfiguration model.
 
 ## [test_model_context_protocol_server.py](test_model_context_protocol_server.py)
-
 Unit tests for ModelContextProtocolServer model.
 
 ## [test_observability_configuration.py](test_observability_configuration.py)
-
 Unit tests for ObservabilityConfiguration model.
 
 ## [test_postgresql_database_configuration.py](test_postgresql_database_configuration.py)
-
 Unit tests for PostgreSQLDatabaseConfiguration model.
 
 ## [test_quota_handlers_config.py](test_quota_handlers_config.py)
-
 Unit tests for QuotaHandlersConfiguration model.
 
 ## [test_quota_limiter_config.py](test_quota_limiter_config.py)
-
 Unit tests for QuotaLimiterConfig model.
 
 ## [test_quota_scheduler_config.py](test_quota_scheduler_config.py)
-
 Unit tests for QuotaSchedulerConfig model.
 
 ## [test_rag_configuration.py](test_rag_configuration.py)
-
 Unit tests for RAG and OKP configuration models.
 
 ## [test_reranker_configuration.py](test_reranker_configuration.py)
-
 Unit tests for RerankerConfiguration model.
 
 ## [test_rlsapi_v1_configuration.py](test_rlsapi_v1_configuration.py)
-
 Unit tests for RlsapiV1Configuration and related startup validators.
 
 ## [test_service_configuration.py](test_service_configuration.py)
-
 Unit tests for ServiceConfiguration model.
 
 ## [test_shields_configuration.py](test_shields_configuration.py)
-
 Unit tests for ShieldConfiguration model and the Configuration.shields list.
 
 ## [test_skills_configuration.py](test_skills_configuration.py)
-
 Unit tests for SkillsConfiguration model.
 
 ## [test_splunk_configuration.py](test_splunk_configuration.py)
-
 Unit tests for SplunkConfiguration model.
 
 ## [test_tls_configuration.py](test_tls_configuration.py)
-
 Unit tests for TLSConfiguration model.
 
 ## [test_user_data_collection.py](test_user_data_collection.py)
-
 Unit tests for UserDataCollection model.
 
 ## [test_vector_store.py](test_vector_store.py)
-
 Unit tests for vector_store configuration models.
 

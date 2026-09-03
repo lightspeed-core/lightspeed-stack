@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 
 
 class PromptCreateRequest(BaseModel):
-    """Request body to create a stored prompt template in OGX.
+    """Request body to create a stored prompt template in Llama Stack.
 
     Attributes:
         prompt: Prompt text with variable placeholders.

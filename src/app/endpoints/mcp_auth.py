@@ -3,7 +3,6 @@
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Request
-from opentelemetry import trace
 
 import constants
 from authentication import get_auth_dependency
@@ -22,10 +21,8 @@ from models.api.responses.successful import MCPClientAuthOptionsResponse
 from models.common import MCPServerAuthInfo
 from models.config import Action
 from utils.endpoints import check_configuration_loaded
-from utils.otel_tracing import SpanAttributes, set_span_attributes
 
 logger = get_logger(__name__)
-tracer = trace.get_tracer(__name__)
 router = APIRouter(prefix="/mcp-auth", tags=["mcp-auth"])
 
 
@@ -71,32 +68,27 @@ async def get_mcp_client_auth_options(
     # Nothing interesting in the request
     _ = request
 
-    with tracer.start_as_current_span("mcp_auth.get_client_options") as span:
-        set_span_attributes(span, {SpanAttributes.MCP_OPERATION: "get_client_options"})
+    check_configuration_loaded(configuration)
 
-        check_configuration_loaded(configuration)
+    servers_info = []
 
-        servers_info = []
+    for mcp_server in configuration.mcp_servers:
+        if not mcp_server.authorization_headers:
+            continue
 
-        for mcp_server in configuration.mcp_servers:
-            if not mcp_server.authorization_headers:
-                continue
+        # Find headers with "client" value
+        client_headers = [
+            header_name
+            for header_name, header_value in mcp_server.authorization_headers.items()
+            if header_value.strip() == constants.MCP_AUTH_CLIENT
+        ]
 
-            # Find headers with "client" value
-            client_headers = [
-                header_name
-                for header_name, header_value in mcp_server.authorization_headers.items()
-                if header_value.strip() == constants.MCP_AUTH_CLIENT
-            ]
-
-            if client_headers:
-                servers_info.append(
-                    MCPServerAuthInfo(
-                        name=mcp_server.name,
-                        client_auth_headers=client_headers,
-                    )
+        if client_headers:
+            servers_info.append(
+                MCPServerAuthInfo(
+                    name=mcp_server.name,
+                    client_auth_headers=client_headers,
                 )
+            )
 
-        set_span_attributes(span, {SpanAttributes.MCP_SERVERS_COUNT: len(servers_info)})
-
-        return MCPClientAuthOptionsResponse(servers=servers_info)
+    return MCPClientAuthOptionsResponse(servers=servers_info)

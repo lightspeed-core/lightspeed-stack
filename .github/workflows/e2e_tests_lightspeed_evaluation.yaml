@@ -1,16 +1,9 @@
 name: E2E Tests for Lightspeed Evaluation
 
-on:
-  []
+on: [push, pull_request_target]
 
 jobs:
-  # Own job so repository secrets are never sent to a runner unless this passes.
-  authorize:
-    uses: ./.github/workflows/e2e_authorize.yaml
-
   e2e_tests:
-    needs: authorize
-    if: needs.authorize.outputs.authorized == 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -30,9 +23,9 @@ jobs:
           # On push      → falls back to the current repository.
           repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
 
-          # On PR_TARGET → the PR head commit at event time (not the moving branch).
+          # On PR_TARGET → the PR head *commit* (reproducible).
           # On push      → the pushed commit that triggered the workflow.
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ github.event.pull_request.head.ref || github.sha }}
 
           # Don’t keep credentials when running untrusted PR code under PR_TARGET.
           persist-credentials: ${{ github.event_name != 'pull_request_target' }}
@@ -94,7 +87,7 @@ jobs:
           echo "Models: $(grep -c "model_id:" run.yaml)"
           echo ""
           echo "=== lightspeed-stack.yaml ==="
-          grep -A 3 "ogx:" lightspeed-stack.yaml
+          grep -A 3 "llama_stack:" lightspeed-stack.yaml
 
       - name: Run services (Library Mode)
         env: 

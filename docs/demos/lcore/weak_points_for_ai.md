@@ -49,7 +49,7 @@ ptisnovs@redhat.com
 * Without global mutable state (exc. DB)
 * Async code for streaming queries
 * Lots of ad-hoc data transformations
-    - OGX API is pretty weak
+    - Llama Stack API is pretty weak
 
 ---
 

@@ -3,52 +3,45 @@
 import json
 from collections.abc import Sequence
 from datetime import UTC, datetime
-from typing import Any, Literal, Optional, cast
+from typing import Any, Optional, cast
 
 from fastapi import HTTPException
-from ogx_api import OpenAIResponseOutput
-from ogx_client import ApiException, AsyncOgxClient
-from ogx_client.models.add_items_request import AddItemsRequest
-from ogx_client.models.open_ai_response_input_function_tool_call_output import (
-    OpenAIResponseInputFunctionToolCallOutput as FunctionCallOutput,
-)
-from ogx_client.models.open_ai_response_input_message_content_file import (
-    OpenAIResponseInputMessageContentFile as InputFileContent,
-)
-from ogx_client.models.open_ai_response_input_message_content_image import (
-    OpenAIResponseInputMessageContentImage as InputImageContent,
-)
-from ogx_client.models.open_ai_response_input_message_content_text import (
-    OpenAIResponseInputMessageContentText as InputTextContent,
-)
-from ogx_client.models.open_ai_response_mcp_approval_request import (
-    OpenAIResponseMCPApprovalRequest as MCPApprovalRequest,
-)
-from ogx_client.models.open_ai_response_mcp_approval_response import (
-    OpenAIResponseMCPApprovalResponse as MCPApprovalResponse,
-)
-from ogx_client.models.open_ai_response_message import (
-    OpenAIResponseMessage as ConversationMessage,
-)
-from ogx_client.models.open_ai_response_message11_variants import (
-    OpenAIResponseMessage11Variants as ConversationItem,
-)
-from ogx_client.models.open_ai_response_output_message_file_search_tool_call import (
+from ogx_api import OpenAIResponseMessage, OpenAIResponseOutput
+from ogx_api.openai_responses import (
     OpenAIResponseOutputMessageFileSearchToolCall as FileSearchCall,
 )
-from ogx_client.models.open_ai_response_output_message_function_tool_call import (
+from ogx_api.openai_responses import (
     OpenAIResponseOutputMessageFunctionToolCall as FunctionCall,
 )
-from ogx_client.models.open_ai_response_output_message_mcp_call import (
+from ogx_api.openai_responses import (
     OpenAIResponseOutputMessageMCPCall as MCPCall,
 )
-from ogx_client.models.open_ai_response_output_message_mcp_list_tools import (
+from ogx_api.openai_responses import (
     OpenAIResponseOutputMessageMCPListTools as MCPListTools,
 )
-from ogx_client.models.open_ai_response_output_message_web_search_tool_call import (
+from ogx_api.openai_responses import (
     OpenAIResponseOutputMessageWebSearchToolCall as WebSearchCall,
 )
-from pydantic import ValidationError
+from ogx_client import APIConnectionError, APIStatusError, AsyncOgxClient
+from ogx_client.types.conversations.item_create_params import Item
+from ogx_client.types.conversations.item_list_response import (
+    ItemListResponse,
+)
+from ogx_client.types.conversations.item_list_response import (
+    OpenAIResponseInputFunctionToolCallOutput as FunctionToolCallOutput,
+)
+from ogx_client.types.conversations.item_list_response import (
+    OpenAIResponseInputFunctionToolCallOutputOutputListOpenAIResponseInputMessageContentTextOpenAIResponseInputMessageContentImageOpenAIResponseInputMessageContentFile as FunctionCallOutputContentPart,  # pylint: disable=line-too-long
+)
+from ogx_client.types.conversations.item_list_response import (
+    OpenAIResponseMcpApprovalRequest as MCPApprovalRequest,
+)
+from ogx_client.types.conversations.item_list_response import (
+    OpenAIResponseMcpApprovalResponse as MCPApprovalResponse,
+)
+from ogx_client.types.conversations.item_list_response import (
+    OpenAIResponseMessageOutput as MessageOutput,
+)
 
 from constants import DEFAULT_RAG_TOOL
 from models.api.responses.error import (
@@ -64,45 +57,8 @@ from models.common.turn_summary import ToolCallSummary, ToolResultSummary
 from models.database.conversations import UserTurn
 from utils.responses import parse_arguments_string
 
-type FunctionCallOutputPart = InputTextContent | InputImageContent | InputFileContent
-type FunctionCallOutputContent = str | list[FunctionCallOutputPart]
 
-
-def to_conversation_item(data: dict[str, Any]) -> Optional[ConversationItem]:
-    """Attempt to parse a raw dict into a oneOf wrapper.
-
-    Parameters:
-        data: Raw dict to parse.
-
-    Returns:
-        ConversationItem if parsing succeeds,
-        None otherwise.
-    """
-    try:
-        return ConversationItem.from_dict(data)
-    except (ValidationError, ValueError):
-        return None
-
-
-def build_add_items_request(items: Sequence[dict[str, Any]]) -> AddItemsRequest:
-    """Build an ``AddItemsRequest`` from conversation items.
-
-    Parameters:
-        items: Conversation items to append.
-
-    Returns:
-        Request body for items.create.
-    """
-    return AddItemsRequest(
-        items=[
-            conversation_item
-            for item in items
-            if (conversation_item := to_conversation_item(item)) is not None
-        ]
-    )
-
-
-def _extract_text_from_content(content: Any) -> str:
+def _extract_text_from_content(content: str | list[Any]) -> str:
     """Extract text content from message content.
 
     Args:
@@ -136,7 +92,9 @@ def _extract_text_from_content(content: Any) -> str:
     return "".join(text_fragments)
 
 
-def _function_call_output_to_str(output: FunctionCallOutputContent) -> str:
+def _function_call_output_to_str(
+    output: str | list[FunctionCallOutputContentPart],
+) -> str:
     """Convert function call output content into a string summary.
 
     Parameters:
@@ -150,15 +108,14 @@ def _function_call_output_to_str(output: FunctionCallOutputContent) -> str:
 
     fragments: list[str] = []
     for part in output:
-        if getattr(part, "type", None) == "input_text":
-            text_part = cast(InputTextContent, part)
-            fragments.append(text_part.text)
+        if part.type == "input_text":
+            fragments.append(part.text)
         else:
             fragments.append(part.model_dump_json(exclude_none=True))
     return "\n\n".join(fragments)
 
 
-def _parse_message_item(item: ConversationMessage) -> Message:
+def _parse_message_item(item: MessageOutput) -> Message:
     """Parse a message item into a Message object.
 
     Args:
@@ -167,15 +124,13 @@ def _parse_message_item(item: ConversationMessage) -> Message:
     Returns:
         Message object with extracted content and type (user or assistant)
     """
-    return Message(
-        content=_extract_text_from_content(item.content),
-        type=cast(Literal["user", "assistant", "system", "developer"], item.role),
-        referenced_documents=None,
-    )
+    content_text = _extract_text_from_content(item.content)
+    message_type = item.role
+    return Message(content=content_text, type=message_type, referenced_documents=None)
 
 
 def _build_tool_call_summary_from_item(  # pylint: disable=too-many-return-statements
-    item: ConversationItem,
+    item: ItemListResponse,
 ) -> tuple[Optional[ToolCallSummary], Optional[ToolResultSummary]]:
     """Translate Conversations API tool items into ToolCallSummary and ToolResultSummary records.
 
@@ -324,15 +279,13 @@ def _build_tool_call_summary_from_item(  # pylint: disable=too-many-return-state
         )
 
     if item_type == "function_call_output":
-        function_output = cast(FunctionCallOutput, item)
+        function_output = cast(FunctionToolCallOutput, item)
         return (
             None,
             ToolResultSummary(
                 id=function_output.call_id,
                 status=function_output.status or "success",
-                content=_function_call_output_to_str(
-                    cast(FunctionCallOutputContent, function_output.output)
-                ),
+                content=_function_call_output_to_str(function_output.output),
                 type="function_call_output",
                 round=1,
             ),
@@ -396,8 +349,8 @@ def _create_turn_from_db_metadata(
 
 
 def _group_items_into_turns(
-    items: list[ConversationItem],
-) -> list[list[ConversationItem]]:
+    items: list[ItemListResponse],
+) -> list[list[ItemListResponse]]:
     """Group conversation items into turns.
 
     Each turn starts with a user message. All subsequent messages and tool items
@@ -409,15 +362,15 @@ def _group_items_into_turns(
     Returns:
         List of turns, where each turn is a list of items belonging to that turn
     """
-    turns: list[list[ConversationItem]] = []
-    current_turn_items: list[ConversationItem] = []
+    turns: list[list[ItemListResponse]] = []
+    current_turn_items: list[ItemListResponse] = []
 
     for item in items:
         item_type = getattr(item, "type", None)
 
         # User message marks the beginning of a new turn
         if item_type == "message":
-            message_item = cast(ConversationMessage, item)
+            message_item = cast(MessageOutput, item)
             if message_item.role == "user":
                 # If we have accumulated items, finish the previous turn
                 if current_turn_items:
@@ -441,7 +394,7 @@ def _group_items_into_turns(
 
 
 def _process_turn_items(
-    turn_items: list[ConversationItem],
+    turn_items: list[ItemListResponse],
 ) -> tuple[list[Message], list[ToolCallSummary], list[ToolResultSummary]]:
     """Process items from a single turn into messages, tool calls, and tool results.
 
@@ -459,7 +412,7 @@ def _process_turn_items(
         item_type = getattr(item, "type", None)
 
         if item_type == "message":
-            message_item = cast(ConversationMessage, item)
+            message_item = cast(MessageOutput, item)
             message = _parse_message_item(message_item)
             messages.append(message)
         else:
@@ -473,7 +426,7 @@ def _process_turn_items(
 
 
 def build_conversation_turns_from_items(
-    items: list[ConversationItem],
+    items: list[ItemListResponse],
     turns_metadata: list[UserTurn],
     conversation_start_time: datetime,
 ) -> list[ConversationTurn]:
@@ -533,31 +486,35 @@ async def append_turn_items_to_conversation(
     Append a turn (user input + LLM output) to a conversation in LLS database.
 
     Args:
-        client: The OGX client.
-        conversation_id: The OGX conversation ID.
+        client: The Llama Stack client.
+        conversation_id: The Llama Stack conversation ID.
         user_input: User input text or list of ResponseItem.
         llm_output: Output from the LLM: a list of OpenAIResponseOutput.
     """
     if isinstance(user_input, str):
-        items: list[dict[str, Any]] = [
-            {"type": "message", "role": "user", "content": user_input}
-        ]
-    else:
-        items = [item.model_dump(exclude_none=True) for item in user_input]
-
-    items.extend(item.model_dump(exclude_none=True) for item in llm_output)
-    try:
-        await client.items.create(
-            conversation_id,
-            add_items_request=build_add_items_request(items),
+        user_message = OpenAIResponseMessage(
+            role="user",
+            content=user_input,
         )
-    except ApiException as e:
-        if not e.status:
-            error_response = ServiceUnavailableResponse(
-                backend_name="OGX",
-            )
-            raise HTTPException(**error_response.model_dump()) from e
+        user_items = [user_message.model_dump()]
+    else:
+        user_items = [item.model_dump() for item in user_input]
 
+    output_items = [item.model_dump() for item in llm_output]
+
+    items = user_items + output_items
+    try:
+        await client.conversations.items.create(
+            conversation_id,
+            items=cast(list[Item], items),
+        )
+    except APIConnectionError as e:
+        error_response = ServiceUnavailableResponse(
+            backend_name="OGX",
+            cause=str(e),
+        )
+        raise HTTPException(**error_response.model_dump()) from e
+    except APIStatusError as e:
         error_response = InternalServerErrorResponse.generic()
         raise HTTPException(**error_response.model_dump()) from e
 
@@ -565,37 +522,35 @@ async def append_turn_items_to_conversation(
 async def get_all_conversation_items(
     client: AsyncOgxClient,
     conversation_id_llama_stack: str,
-) -> list[ConversationItem]:
+) -> list[ItemListResponse]:
     """Fetch all items for a conversation (Conversations API), paginating as needed.
 
     Args:
-        client: OGX client.
-        conversation_id_ogx: Conversation ID in OGX format.
+        client: Llama Stack client.
+        conversation_id_llama_stack: Conversation ID in Llama Stack format.
 
     Returns:
         List of all items in the conversation, oldest first.
     """
-    items: list[ConversationItem] = []
-    after: Optional[str] = None
-    has_more = True
     try:
-        while has_more:
-            page = await client.items.list(
-                conversation_id=conversation_id_llama_stack,
-                order="asc",
-                after=after,
-            )
-            items.extend(page.data)
-            has_more = page.has_more
-            after = page.last_id
+        paginator = client.conversations.items.list(
+            conversation_id=conversation_id_llama_stack,
+            order="asc",
+        )
+        first_page = await paginator
+        items: list[ItemListResponse] = list(first_page.data or [])
+        page = first_page
+        while page.has_next_page():
+            page = await page.get_next_page()
+            items.extend(page.data or [])
         return items
-    except ApiException as e:
-        if not e.status:
-            error_response = ServiceUnavailableResponse(
-                backend_name="OGX",
-            )
-            raise HTTPException(**error_response.model_dump()) from e
-
+    except APIConnectionError as e:
+        error_response = ServiceUnavailableResponse(
+            backend_name="OGX",
+            cause=str(e),
+        )
+        raise HTTPException(**error_response.model_dump()) from e
+    except APIStatusError as e:
         error_response = InternalServerErrorResponse.generic()
         raise HTTPException(**error_response.model_dump()) from e
 
@@ -614,31 +569,25 @@ async def append_turn_to_conversation(
 
     Parameters:
     ----------
-        client: The OGX client.
-        conversation_id: The OGX conversation ID.
+        client: The Llama Stack client.
+        conversation_id: The Llama Stack conversation ID.
         user_message: The user's input message.
         assistant_message: The shield violation response message.
     """
     try:
-        await client.items.create(
+        await client.conversations.items.create(
             conversation_id,
-            add_items_request=build_add_items_request(
-                [
-                    {"type": "message", "role": "user", "content": user_message},
-                    {
-                        "type": "message",
-                        "role": "assistant",
-                        "content": assistant_message,
-                    },
-                ]
-            ),
+            items=[
+                {"type": "message", "role": "user", "content": user_message},
+                {"type": "message", "role": "assistant", "content": assistant_message},
+            ],
         )
-    except ApiException as e:
-        if not e.status:
-            error_response = ServiceUnavailableResponse(
-                backend_name="OGX",
-            )
-            raise HTTPException(**error_response.model_dump()) from e
-
+    except APIConnectionError as e:
+        error_response = ServiceUnavailableResponse(
+            backend_name="OGX",
+            cause=str(e),
+        )
+        raise HTTPException(**error_response.model_dump()) from e
+    except APIStatusError as e:
         error_response = InternalServerErrorResponse.generic()
         raise HTTPException(**error_response.model_dump()) from e

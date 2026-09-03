@@ -1,4 +1,4 @@
-@cfg_mcp_api_auth @MCPServerAPIAuth
+@e2e_group_1 @MCPServerAPIAuth
 Feature: MCP Server Management API authentication tests
 
   Tests that the MCP server management endpoints enforce authentication
@@ -9,7 +9,7 @@ Feature: MCP Server Management API authentication tests
       And The system is in default state
       And REST API service prefix is /v1
       And the Lightspeed stack configuration directory is "tests/e2e/configuration"
-      And The service uses the lightspeed-stack-mcp-api-auth.yaml configuration
+      And The service uses the lightspeed-stack-mcp-auth.yaml configuration
       And The service is restarted
 
   Scenario: List MCP servers returns 401 without auth token

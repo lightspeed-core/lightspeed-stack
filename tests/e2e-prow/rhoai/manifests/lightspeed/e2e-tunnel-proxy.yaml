@@ -1,5 +1,5 @@
 # In-cluster HTTP CONNECT tunnel proxy for proxy.feature (Konflux / Prow).
-# OGX run.yaml points at http://e2e-tunnel-proxy.<ns>.svc.cluster.local:8888
+# Llama Stack run.yaml points at http://e2e-tunnel-proxy.<ns>.svc.cluster.local:8888
 apiVersion: v1
 kind: Pod
 metadata:

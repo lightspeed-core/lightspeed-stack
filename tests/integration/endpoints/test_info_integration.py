@@ -5,8 +5,8 @@ from typing import Any
 
 import pytest
 from fastapi import HTTPException, Request, status
-from ogx_client import ApiException
-from ogx_client.models.version_info import VersionInfo
+from ogx_client import APIConnectionError
+from ogx_client.types import VersionInfo
 from pytest_mock import AsyncMockType, MockerFixture
 
 from app.endpoints.info import info_endpoint_handler
@@ -19,7 +19,7 @@ from version import __version__
 def mock_ogx_client_fixture(
     mocker: MockerFixture,
 ) -> Generator[Any, None, None]:
-    """Mock only the external OGX client.
+    """Mock only the external Llama Stack client.
 
     This is the only external dependency we mock for integration tests,
     as it represents an external service call.
@@ -30,7 +30,7 @@ def mock_ogx_client_fixture(
 
     Yields:
     ------
-        AsyncMock: A mocked OGX client configured for tests.
+        AsyncMock: A mocked Llama Stack client configured for tests.
     """
     mock_holder_class = mocker.patch("app.endpoints.info.AsyncOgxClientHolder")
 
@@ -57,14 +57,14 @@ async def test_info_endpoint_returns_service_information(
     This integration test verifies:
     - Endpoint handler integrates with configuration system
     - Configuration values are correctly accessed
-    - OGX client is properly called
+    - Llama Stack client is properly called
     - Real noop authentication is used
     - Response structure matches expected format
 
     Parameters:
     ----------
         test_config: Loads real configuration (required for endpoint to access config)
-        mock_ogx_client: Mocked OGX client
+        mock_ogx_client: Mocked Llama Stack client
         test_request: FastAPI request
         test_auth: noop authentication tuple
 
@@ -80,9 +80,9 @@ async def test_info_endpoint_returns_service_information(
     # Verify values from real configuration
     assert response.name == "foo bar baz"  # From lightspeed-stack.yaml
     assert response.service_version == __version__
-    assert response.ogx_version == "0.2.22"
+    assert response.llama_stack_version == "0.2.22"
 
-    # Verify the OGX client was called
+    # Verify the Llama Stack client was called
     mock_ogx_client.inspect.version.assert_called_once()
 
 
@@ -92,8 +92,9 @@ async def test_info_endpoint_handles_connection_error(
     mock_ogx_client: AsyncMockType,
     test_request: Request,
     test_auth: AuthTuple,
+    mocker: MockerFixture,
 ) -> None:
-    """Test that info endpoint properly handles OGX connection errors.
+    """Test that info endpoint properly handles Llama Stack connection errors.
 
     This integration test verifies:
     - Error handling when external service is unavailable
@@ -103,14 +104,17 @@ async def test_info_endpoint_handles_connection_error(
     Parameters:
     ----------
         test_config: Loads real configuration (required for endpoint to access config)
-        mock_ogx_client: Mocked OGX client
+        mock_ogx_client: Mocked Llama Stack client
         test_request: FastAPI request
         test_auth: noop authentication tuple
+        mocker: pytest-mock fixture for creating mocks
     """
     # test_config fixture loads configuration, which is required for the endpoint
     _ = test_config
     # Configure mock to raise connection error
-    mock_ogx_client.inspect.version.side_effect = ApiException(status=None)
+    mock_ogx_client.inspect.version.side_effect = APIConnectionError(
+        request=mocker.Mock()
+    )
 
     # Verify that HTTPException is raised
     with pytest.raises(HTTPException) as exc_info:
@@ -141,7 +145,7 @@ async def test_info_endpoint_uses_configuration_values(
     Parameters:
     ----------
         test_config: Loads real configuration (required for endpoint to access config)
-        mock_ogx_client: Mocked OGX client
+        mock_ogx_client: Mocked Llama Stack client
         test_request: Real FastAPI request
         test_auth: Real noop authentication tuple
     """

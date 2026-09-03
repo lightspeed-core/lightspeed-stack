@@ -709,17 +709,16 @@ class TestInternalServerErrorResponse:
 class TestServiceUnavailableResponse:
     """Test cases for ServiceUnavailableResponse."""
 
-    def test_constructor_default_cause(self) -> None:
-        """Test ServiceUnavailableResponse uses the default connection error cause."""
-        response = ServiceUnavailableResponse(backend_name="OGX")
+    def test_constructor(self) -> None:
+        """Test ServiceUnavailableResponse with valid parameters."""
+        response = ServiceUnavailableResponse(
+            backend_name="OGX", cause="Connection timeout"
+        )
         assert isinstance(response, AbstractErrorResponse)
         assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
         assert isinstance(response.detail, DetailModel)
         assert response.detail.response == "Unable to connect to OGX"
-        assert (
-            response.detail.cause
-            == "Connection error while trying to reach backend service."
-        )
+        assert response.detail.cause == "Connection timeout"
 
     def test_different_backend_names(self) -> None:
         """Test ServiceUnavailableResponse with different backend names."""
@@ -747,21 +746,21 @@ class TestServiceUnavailableResponse:
         assert expected_count == 2
 
         # Verify example structure
-        assert "OGX" in examples
+        assert "ogx" in examples
         assert "kubernetes api" in examples
-        ogx_example = examples["OGX"]
+        ogx_example = examples["ogx"]
         assert "value" in ogx_example
         assert "detail" in ogx_example["value"]
         assert ogx_example["value"]["detail"]["response"] == "Unable to connect to OGX"
 
     def test_openapi_response_with_explicit_examples(self) -> None:
         """Test ServiceUnavailableResponse.openapi_response() with explicit examples."""
-        result = ServiceUnavailableResponse.openapi_response(examples=["OGX"])
+        result = ServiceUnavailableResponse.openapi_response(examples=["ogx"])
         examples = result["content"]["application/json"]["examples"]
 
         # Verify only 1 example is returned when explicitly specified
         assert len(examples) == 1
-        assert "OGX" in examples
+        assert "ogx" in examples
 
 
 class TestPromptTooLongResponse:

@@ -6,7 +6,7 @@
 
 import pytest
 from fastapi import HTTPException, Request, status
-from ogx_client import ApiException
+from ogx_client import APIConnectionError
 from pytest_mock import AsyncMockType, MockerFixture
 from sqlalchemy.orm import Session
 
@@ -53,14 +53,14 @@ async def test_query_v2_endpoint_successful_response(
 
     This integration test verifies:
     - Endpoint handler integrates with configuration system
-    - OGX Responses API is properly called
+    - Llama Stack Responses API is properly called
     - Response is correctly formatted
     - Conversation ID is returned
 
     Parameters:
     ----------
         test_config: Test configuration
-        mock_ogx_client: Mocked OGX client
+        mock_ogx_client: Mocked Llama Stack client
         mock_query_agent: Mocked Pydantic AI agent for build_agent/agent.run
         test_request: FastAPI request
         test_auth: noop authentication tuple
@@ -97,8 +97,9 @@ async def test_query_v2_endpoint_handles_connection_error(
     mock_query_agent: AsyncMockType,
     test_request: Request,
     test_auth: AuthTuple,
+    mocker: MockerFixture,
 ) -> None:
-    """Test that query v2 endpoint properly handles OGX connection errors.
+    """Test that query v2 endpoint properly handles Llama Stack connection errors.
 
     This integration test verifies:
     - Error handling when external service is unavailable
@@ -108,10 +109,11 @@ async def test_query_v2_endpoint_handles_connection_error(
     Parameters:
     ----------
         test_config: Test configuration
-        mock_ogx_client: Mocked OGX client
+        mock_ogx_client: Mocked Llama Stack client
         mock_query_agent: Mocked Pydantic AI agent for build_agent/agent.run
         test_request: FastAPI request
         test_auth: noop authentication tuple
+        mocker: pytest-mock fixture
 
     Returns:
     -------
@@ -121,7 +123,7 @@ async def test_query_v2_endpoint_handles_connection_error(
     _ = mock_ogx_client
     _ = mock_query_agent
 
-    mock_query_agent.run.side_effect = ApiException(status=None)
+    mock_query_agent.run.side_effect = APIConnectionError(request=mocker.Mock())
 
     query_request = QueryRequest(query="What is Ansible?")
 
@@ -184,7 +186,7 @@ async def test_query_v2_endpoint_returns_401_for_mcp_oauth(
         test_case: Dictionary containing test parameters (www_authenticate,
             expect_www_authenticate)
         test_config: Test configuration
-        mock_ogx_client: Mocked OGX client
+        mock_ogx_client: Mocked Llama Stack client
         mock_query_agent: Mocked Pydantic AI agent for build_agent/agent.run
         test_request: FastAPI request
         test_auth: noop authentication tuple
@@ -250,7 +252,7 @@ async def test_query_v2_endpoint_empty_query(
     Parameters:
     ----------
         test_config: Test configuration
-        mock_ogx_client: Mocked OGX client
+        mock_ogx_client: Mocked Llama Stack client
         mock_query_agent: Mocked Pydantic AI agent for build_agent/agent.run
         test_request: FastAPI request
         test_auth: noop authentication tuple
@@ -388,7 +390,7 @@ async def test_query_v2_endpoint_attachment_handling(
         test_case: Dictionary containing test parameters (attachments,
             expected_status, expected_error)
         test_config: Test configuration
-        mock_ogx_client: Mocked OGX client
+        mock_ogx_client: Mocked Llama Stack client
         mock_query_agent: Mocked Pydantic AI agent for build_agent/agent.run
         test_request: FastAPI request
         test_auth: noop authentication tuple
@@ -460,7 +462,7 @@ async def test_query_v2_endpoint_with_tool_calls(
     Parameters:
     ----------
         test_config: Test configuration
-        mock_ogx_client: Mocked OGX client
+        mock_ogx_client: Mocked Llama Stack client
         mock_query_agent: Mocked Pydantic AI agent for build_agent/agent.run
         test_request: FastAPI request
         test_auth: noop authentication tuple
@@ -522,7 +524,7 @@ async def test_query_v2_endpoint_with_mcp_list_tools(
     Parameters:
     ----------
         test_config: Test configuration
-        mock_ogx_client: Mocked OGX client
+        mock_ogx_client: Mocked Llama Stack client
         mock_query_agent: Mocked Pydantic AI agent for build_agent/agent.run
         test_request: FastAPI request
         test_auth: noop authentication tuple
@@ -583,7 +585,7 @@ async def test_query_v2_endpoint_with_multiple_tool_types(
     Parameters:
     ----------
         test_config: Test configuration
-        mock_ogx_client: Mocked OGX client
+        mock_ogx_client: Mocked Llama Stack client
         mock_query_agent: Mocked Pydantic AI agent for build_agent/agent.run
         test_request: FastAPI request
         test_auth: noop authentication tuple
@@ -626,14 +628,14 @@ async def test_query_v2_endpoint_bypasses_tools_when_no_tools_true(
 
     This integration test verifies:
     - no_tools=True bypasses tool preparation
-    - No tools are passed to OGX even when vector stores are available
+    - No tools are passed to Llama Stack even when vector stores are available
     - Response succeeds without tools
     - Integration between query handler and tool preparation
 
     Parameters:
     ----------
         test_config: Test configuration
-        mock_ogx_client: Mocked OGX client
+        mock_ogx_client: Mocked Llama Stack client
         mock_query_agent: Mocked Pydantic AI agent for build_agent/agent.run
         test_request: FastAPI request
         test_auth: noop authentication tuple
@@ -650,7 +652,10 @@ async def test_query_v2_endpoint_bypasses_tools_when_no_tools_true(
     mock_vector_store = mocker.MagicMock()
     mock_vector_store.id = "vs-test-123"
 
-    mock_ogx_client.vector_stores.list.return_value = [mock_vector_store]
+    mock_list_result = mocker.MagicMock()
+    mock_list_result.data = [mock_vector_store]
+
+    mock_ogx_client.vector_stores.list.return_value = mock_list_result
 
     query_request = QueryRequest(query="What is Ansible?", no_tools=True)
 
@@ -682,14 +687,14 @@ async def test_query_v2_endpoint_uses_tools_when_available(  # pylint: disable=u
 
     This integration test verifies:
     - Tool preparation logic retrieves available tools
-    - Tools are passed to OGX when available
+    - Tools are passed to Llama Stack when available
     - Response succeeds with tools enabled
     - Integration between query handler, vector stores, and tool preparation
 
     Parameters:
     ----------
         test_config: Test configuration
-        mock_ogx_client: Mocked OGX client
+        mock_ogx_client: Mocked Llama Stack client
         mock_query_agent: Mocked Pydantic AI agent for build_agent/agent.run
         test_request: FastAPI request
         test_auth: noop authentication tuple
@@ -700,9 +705,9 @@ async def test_query_v2_endpoint_uses_tools_when_available(  # pylint: disable=u
     -------
         None
     """
-    # prepare_tools does not require OGX client anymore so the way to
+    # prepare_tools does not require llama-stack client anymore so the way to
     # enable RAG tools is through config
-    test_config.rag.retrieval.tool.sources = ["vs-test-123"]
+    test_config.rag.tool = ["vs-test-123"]
     _ = patch_db_session
 
     query_request = QueryRequest(query="What is Ansible?", no_tools=False)
@@ -748,7 +753,7 @@ async def test_query_v2_endpoint_persists_conversation_to_database(
     Parameters:
     ----------
         test_config: Test configuration
-        mock_ogx_client: Mocked OGX client
+        mock_ogx_client: Mocked Llama Stack client
         mock_query_agent: Mocked Pydantic AI agent for build_agent/agent.run
         test_request: FastAPI request
         test_auth: noop authentication tuple
@@ -804,7 +809,7 @@ async def test_query_v2_endpoint_updates_existing_conversation(
     Parameters:
     ----------
         test_config: Test configuration
-        mock_ogx_client: Mocked OGX client
+        mock_ogx_client: Mocked Llama Stack client
         mock_query_agent: Mocked Pydantic AI agent for build_agent/agent.run
         test_request: FastAPI request
         test_auth: noop authentication tuple
@@ -877,7 +882,7 @@ async def test_query_v2_endpoint_conversation_ownership_validation(
     Parameters:
     ----------
         test_config: Test configuration
-        mock_ogx_client: Mocked OGX client
+        mock_ogx_client: Mocked Llama Stack client
         mock_query_agent: Mocked Pydantic AI agent for build_agent/agent.run
         test_request: FastAPI request
         test_auth: noop authentication tuple
@@ -937,7 +942,7 @@ async def test_query_v2_endpoint_creates_valid_cache_entry(
     Parameters:
     ----------
         test_config: Test configuration
-        mock_ogx_client: Mocked OGX client
+        mock_ogx_client: Mocked Llama Stack client
         mock_query_agent: Mocked Pydantic AI agent for build_agent/agent.run
         test_request: FastAPI request
         test_auth: noop authentication tuple
@@ -1004,7 +1009,7 @@ async def test_query_v2_endpoint_conversation_not_found_returns_404(
     Parameters:
     ----------
         test_config: Test configuration
-        mock_ogx_client: Mocked OGX client
+        mock_ogx_client: Mocked Llama Stack client
         mock_query_agent: Mocked Pydantic AI agent for build_agent/agent.run
         test_request: FastAPI request
         test_auth: noop authentication tuple
@@ -1052,7 +1057,7 @@ async def test_query_v2_endpoint_with_shield_violation(
     """Test that shield violations are detected and logged.
 
     This integration test verifies:
-    - OGX returns response with violation (refusal)
+    - Llama Stack returns response with violation (refusal)
     - Shield detection processes the violation
     - Metrics are updated (validation error counter)
     - Processing continues (consistent with V1 behavior)
@@ -1064,12 +1069,12 @@ async def test_query_v2_endpoint_with_shield_violation(
     Parameters:
     ----------
         test_config: Test configuration
-        mock_ogx_client: Mocked OGX client
+        mock_ogx_client: Mocked Llama Stack client
         mock_query_agent: Mocked Pydantic AI agent for build_agent/agent.run
         test_request: FastAPI request
         test_auth: noop authentication tuple
         patch_db_session: Test database session
-        mocker: pytest-mock fixture (only for OGX response)
+        mocker: pytest-mock fixture (only for Llama Stack response)
     """
     _ = test_config
     _ = mock_ogx_client
@@ -1114,7 +1119,7 @@ async def test_query_v2_endpoint_without_shields(
     """Test that endpoint works without shields configured.
 
     This integration test verifies:
-    - Empty shields list from OGX is handled gracefully
+    - Empty shields list from Llama Stack is handled gracefully
     - Shield retrieval processes empty list
     - extra_body.guardrails is not included when no shields
     - Response succeeds without shields
@@ -1122,7 +1127,7 @@ async def test_query_v2_endpoint_without_shields(
     Parameters:
     ----------
         test_config: Test configuration
-        mock_ogx_client: Mocked OGX client
+        mock_ogx_client: Mocked Llama Stack client
         mock_query_agent: Mocked Pydantic AI agent for build_agent/agent.run
         test_request: FastAPI request
         test_auth: noop authentication tuple
@@ -1131,7 +1136,7 @@ async def test_query_v2_endpoint_without_shields(
     _ = test_config
     _ = patch_db_session
 
-    # Configure OGX client mock to return no shields (default behavior)
+    # Configure Llama Stack client mock to return no shields (default behavior)
     mock_ogx_client.shields.list.return_value = []
 
     query_request = QueryRequest(query="What is Ansible?")
@@ -1172,7 +1177,7 @@ async def test_query_v2_endpoint_handles_empty_llm_response(
     Parameters:
     ----------
         test_config: Test configuration
-        mock_ogx_client: Mocked OGX client
+        mock_ogx_client: Mocked Llama Stack client
         mock_query_agent: Mocked Pydantic AI agent for build_agent/agent.run
         test_request: FastAPI request
         test_auth: noop authentication tuple
@@ -1224,13 +1229,13 @@ async def test_query_v2_endpoint_quota_integration(
     This integration test verifies:
     - Quota consumption logic is triggered with correct token counts
     - Available quotas are retrieved and returned in response
-    - Token usage from OGX flows through quota system
+    - Token usage from Llama Stack flows through quota system
     - Complete integration between query handler and quota management
 
     Parameters:
     ----------
         test_config: Test configuration
-        mock_ogx_client: Mocked OGX client
+        mock_ogx_client: Mocked Llama Stack client
         mock_query_agent: Mocked Pydantic AI agent for build_agent/agent.run
         test_request: FastAPI request
         test_auth: noop authentication tuple
@@ -1299,7 +1304,7 @@ async def test_query_v2_endpoint_rejects_query_when_quota_exceeded(
     Parameters:
     ----------
         test_config: Test configuration
-        mock_ogx_client: Mocked OGX client
+        mock_ogx_client: Mocked Llama Stack client
         mock_query_agent: Mocked Pydantic AI agent for build_agent/agent.run
         test_request: FastAPI request
         test_auth: noop authentication tuple
@@ -1368,7 +1373,7 @@ async def test_query_v2_endpoint_transcript_behavior(
     Parameters:
     ----------
         test_config: Test configuration
-        mock_ogx_client: Mocked OGX client
+        mock_ogx_client: Mocked Llama Stack client
         mock_query_agent: Mocked Pydantic AI agent for build_agent/agent.run
         test_request: FastAPI request
         test_auth: noop authentication tuple
@@ -1462,7 +1467,7 @@ async def test_query_v2_endpoint_uses_conversation_history_model(
     Parameters:
     ----------
         test_config: Test configuration
-        mock_ogx_client: Mocked OGX client
+        mock_ogx_client: Mocked Llama Stack client
         mock_query_agent: Mocked Pydantic AI agent for build_agent/agent.run
         test_request: FastAPI request
         test_auth: noop authentication tuple

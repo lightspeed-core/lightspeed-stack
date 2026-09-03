@@ -4,6 +4,7 @@
 
 from collections.abc import Callable
 
+import httpx
 import pytest
 from fastapi import HTTPException
 from ogx.core.library_client import AsyncOGXAsLibraryClient
@@ -22,14 +23,12 @@ from models.config import (
 )
 from pydantic_ai_lightspeed.capabilities import QuestionValidity
 from pydantic_ai_lightspeed.capabilities.redaction import PiiRedactionCapability
-from tests.unit.conftest import attach_mock_api_client
 from utils.pydantic_ai_helpers import (
     _agent_capabilities,
     _shield_capability,
     _skills_capability,
     build_agent,
     get_agent_capability_tools,
-    get_skills_metadata,
 )
 
 _QUESTION_VALIDITY_MODULE = (
@@ -179,7 +178,8 @@ class TestBuildAgent:
         mock_client = mocker.Mock()
         mock_client.base_url = "http://localhost:8321"
         mock_client.api_key = "test-key"
-        attach_mock_api_client(mocker, mock_client)
+        mock_client._client = mocker.Mock(spec=httpx.AsyncClient)
+        mock_client.default_headers = {}
 
         mock_params = mocker.Mock()
         mock_params.model = "provider/my-model"
@@ -208,7 +208,8 @@ class TestBuildAgent:
         mock_client = mocker.Mock()
         mock_client.base_url = "http://localhost:8321"
         mock_client.api_key = "test-key"
-        attach_mock_api_client(mocker, mock_client)
+        mock_client._client = mocker.Mock(spec=httpx.AsyncClient)
+        mock_client.default_headers = {}
 
         mock_params = mocker.Mock()
         mock_params.model = "provider/my-model"
@@ -419,25 +420,6 @@ class TestBuildAgent:
             build_agent(mock_client, mock_params, config, shields=["missing-shield"])
 
         assert exc_info.value.status_code == 404
-
-
-class TestGetSkillsMetadata:
-    """Tests for get_skills_metadata."""
-
-    def test_returns_empty_list_when_skills_not_configured(self) -> None:
-        """Test that missing skills configuration yields no metadata."""
-        assert get_skills_metadata(None) == []
-        assert get_skills_metadata(SkillsConfiguration(paths=[])) == []
-
-    def test_returns_metadata_when_configured(
-        self, mock_skills_configuration: SkillsConfiguration
-    ) -> None:
-        """Test that configured skills return name and description."""
-        metadata = get_skills_metadata(mock_skills_configuration)
-
-        assert len(metadata) == 1
-        assert metadata[0].name == "test-skill"
-        assert metadata[0].description == "Test skill."
 
 
 class TestGetAgentCapabilityTools:

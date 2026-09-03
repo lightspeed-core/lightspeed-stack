@@ -396,10 +396,6 @@ spec:
                 value: "$(params.vllm-api-key)"
               - name: VLLM_MODEL
                 value: "$(params.model)"
-              - name: OTEL_SDK_DISABLED
-                value: "true"
-              - name: OTEL_ANONYMIZATION_SECRET
-                value: "lightspeed-stack-otel-anonymization-dev-default"
             image: registry.access.redhat.com/ubi9/ubi-minimal
             script: |
               set +e

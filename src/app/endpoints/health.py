@@ -8,13 +8,12 @@ methods. For HEAD HTTP method, just the HTTP response code is used.
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Response, status
-from ogx_client import ApiException
-from opentelemetry import trace
+from ogx_client import APIConnectionError
 
 from authentication import get_auth_dependency
 from authentication.interface import AuthTuple
 from authorization.middleware import authorize
-from client.ogx import AsyncOgxClientHolder
+from client import AsyncOgxClientHolder
 from configuration import configuration
 from log import get_logger
 from models.api.responses.constants import UNAUTHORIZED_OPENAPI_EXAMPLES
@@ -35,7 +34,6 @@ from models.config import Action
 from utils.degraded_mode import DegradedModeTracker
 
 logger = get_logger(__name__)
-tracer = trace.get_tracer(__name__)
 router = APIRouter(tags=["health"])
 
 
@@ -44,7 +42,7 @@ get_readiness_responses: dict[int | str, dict[str, Any]] = {
     401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
     503: ServiceUnavailableResponse.openapi_response(
-        examples=["OGX", "kubernetes api"]
+        examples=["ogx", "kubernetes api"]
     ),
 }
 
@@ -80,7 +78,7 @@ async def get_providers_health_statuses() -> list[ProviderHealthStatus]:
             for provider in providers
         ]
 
-    except ApiException as e:
+    except APIConnectionError as e:
         logger.error("Failed to check providers health: %s", e)
         return [
             ProviderHealthStatus(
@@ -150,87 +148,81 @@ async def readiness_probe_get_method(
     # Used only for authorization
     _ = auth
 
-    with tracer.start_as_current_span("readiness.handle_request") as span:
-        logger.info("Response to /readiness endpoint")
+    logger.info("Response to /readiness endpoint")
 
-        degraded_tracker = DegradedModeTracker()
-        is_degraded = degraded_tracker.is_degraded()
+    degraded_tracker = DegradedModeTracker()
+    is_degraded = degraded_tracker.is_degraded()
 
-        # Determine overall status
-        if is_degraded:
-            # Service is ready (can serve health checks, metrics, etc.) but degraded
-            impacts = [
-                "LLM inference unavailable",
-                "RAG functionality unavailable",
-                "Agent tools unavailable",
-            ]
-            span.set_attribute("http.status_code", 200)
-            return ReadinessResponse(
-                ready=True,
-                reason="Service running in degraded mode",
-                overall_status=HealthStatus.DEGRADED,
-                impacts=impacts,
-                providers=[],
-            )
-
-        # Not in degraded mode - check provider health
-        provider_statuses = await get_providers_health_statuses()
-        unhealthy_providers = [
-            p for p in provider_statuses if p.status == HealthStatus.ERROR.value
+    # Determine overall status
+    if is_degraded:
+        # Service is ready (can serve health checks, metrics, etc.) but degraded
+        impacts = [
+            "LLM inference unavailable",
+            "RAG functionality unavailable",
+            "Agent tools unavailable",
         ]
-
-        if unhealthy_providers:
-            # Check if this is a connection error (provider_id="unknown")
-            is_connection_error = any(
-                p.provider_id == "unknown" for p in unhealthy_providers
-            )
-
-            if is_connection_error:
-                reason = "Cannot connect to backend service"
-                impacts = [
-                    "LLM inference unavailable",
-                    "Provider health checks unavailable",
-                ]
-            else:
-                unhealthy_provider_names = [p.provider_id for p in unhealthy_providers]
-                reason = f"Providers not healthy: {', '.join(unhealthy_provider_names)}"
-                impacts = [
-                    f"Provider {p.provider_id}: {p.message}"
-                    for p in unhealthy_providers
-                ]
-
-            response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
-            span.set_attribute("http.status_code", 503)
-            return ReadinessResponse(
-                ready=False,
-                reason=reason,
-                overall_status=HealthStatus.UNHEALTHY,
-                impacts=impacts,
-                providers=unhealthy_providers if not is_connection_error else [],
-            )
-
-        # Check that the default model is registered in the model registry
-        model_available, model_reason = await check_default_model_available()
-        if not model_available:
-            response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
-            span.set_attribute("http.status_code", 503)
-            return ReadinessResponse(
-                ready=False,
-                reason=model_reason,
-                overall_status=HealthStatus.UNHEALTHY,
-                impacts=["Default model not available in registry"],
-                providers=[],
-            )
-
-        # All healthy
-        span.set_attribute("http.status_code", 200)
         return ReadinessResponse(
             ready=True,
-            reason="All providers are healthy",
-            overall_status=HealthStatus.HEALTHY,
-            impacts=None,
+            reason="Service running in degraded mode",
+            overall_status=HealthStatus.DEGRADED,
+            impacts=impacts,
             providers=[],
         )
+
+    # Not in degraded mode - check provider health
+    provider_statuses = await get_providers_health_statuses()
+    unhealthy_providers = [
+        p for p in provider_statuses if p.status == HealthStatus.ERROR.value
+    ]
+
+    if unhealthy_providers:
+        # Check if this is a connection error (provider_id="unknown")
+        is_connection_error = any(
+            p.provider_id == "unknown" for p in unhealthy_providers
+        )
+
+        if is_connection_error:
+            reason = "Cannot connect to backend service"
+            impacts = [
+                "LLM inference unavailable",
+                "Provider health checks unavailable",
+            ]
+        else:
+            unhealthy_provider_names = [p.provider_id for p in unhealthy_providers]
+            reason = f"Providers not healthy: {', '.join(unhealthy_provider_names)}"
+            impacts = [
+                f"Provider {p.provider_id}: {p.message}" for p in unhealthy_providers
+            ]
+
+        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+        return ReadinessResponse(
+            ready=False,
+            reason=reason,
+            overall_status=HealthStatus.UNHEALTHY,
+            impacts=impacts,
+            providers=unhealthy_providers if not is_connection_error else [],
+        )
+
+    # Check that the default model is registered in the model registry
+    model_available, model_reason = await check_default_model_available()
+    if not model_available:
+        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+        return ReadinessResponse(
+            ready=False,
+            reason=model_reason,
+            overall_status=HealthStatus.UNHEALTHY,
+            impacts=["Default model not available in registry"],
+            providers=[],
+        )
+
+    # All healthy
+    return ReadinessResponse(
+        ready=True,
+        reason="All providers are healthy",
+        overall_status=HealthStatus.HEALTHY,
+        impacts=None,
+        providers=[],
+    )
 
 
 @router.get("/liveness", responses=get_liveness_responses)
@@ -250,7 +242,7 @@ async def liveness_probe_get_method(
     - HTTPException: with status 500 and a detail object containing `response`
       and `cause` when service configuration is wrong or incomplete.
     - HTTPException: with status 503 and a detail object containing `response`
-      and `cause` when unable to connect to OGX.
+      and `cause` when unable to connect to Llama Stack.
 
     ### Returns:
     - LivenessResponse: Indicates that the service is alive.
@@ -258,7 +250,6 @@ async def liveness_probe_get_method(
     # Used only for authorization
     _ = auth
 
-    with tracer.start_as_current_span("liveness.handle_request") as span:
-        logger.info("Response to /v1/liveness endpoint")
-        span.set_attribute("http.status_code", 200)
-        return LivenessResponse(alive=True)
+    logger.info("Response to /v1/liveness endpoint")
+
+    return LivenessResponse(alive=True)

@@ -206,7 +206,7 @@ async def background_update_topic_summary(
                 user_id=context.user_id,
                 skip_userid_check=context.skip_userid_check,
             )
-    except TimeoutError:
+    except asyncio.TimeoutError:
         logger.warning(
             "Topic summary timed out for interrupted turn, request %s",
             context.request_id,

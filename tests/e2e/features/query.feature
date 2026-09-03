@@ -1,4 +1,4 @@
-@cfg_authorized @Authorized
+@e2e_group_3 @Authorized
 Feature: Query endpoint API tests
 
   Background:
@@ -7,7 +7,7 @@ Feature: Query endpoint API tests
       And I set the Authorization header to Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva
       And REST API service prefix is /v1
       And the Lightspeed stack configuration directory is "tests/e2e/configuration"
-      And The service uses the lightspeed-stack-authorized.yaml configuration
+      And The service uses the lightspeed-stack-auth-noop-token.yaml configuration
       And The service is restarted
 
   @flaky
@@ -180,48 +180,6 @@ Scenario: Check if LLM responds for query request with error for missing query
           | Fragments in LLM response |
           | image                     |
 
-  @flaky
-  Scenario: Check if LLM responds properly when a valid WebP image attachment is sent
-    When I use "query" to ask question with authorization header
-    """
-    {
-      "query": "Describe this image",
-      "attachments": [
-        {
-          "attachment_type": "image",
-          "content": "UklGRjwAAABXRUJQVlA4IDAAAADQAQCdASoBAAEAAUAmJaACdLoB+AADsAD+8ut//NgVzXPv9//S4P0uD9Lg/9KQAAA=",
-          "content_type": "image/webp"
-        }
-      ],
-      "model": "{MODEL}",
-      "provider": "{PROVIDER}",
-      "system_prompt": "You are a helpful assistant"
-    }
-    """
-    Then The status code of the response is 200
-      And The response contains following fragments
-          | Fragments in LLM response |
-          | image                     |
-
-  Scenario: Check if query rejects WebP-declared attachment with mismatched magic bytes
-    When I use "query" to ask question with authorization header
-    """
-    {
-      "query": "Describe this image",
-      "attachments": [
-        {
-          "attachment_type": "image",
-          "content": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC",
-          "content_type": "image/webp"
-        }
-      ],
-      "model": "{MODEL}",
-      "provider": "{PROVIDER}"
-    }
-    """
-    Then The status code of the response is 422
-      And The body of the response contains invalid image data
-
   Scenario: Check if query rejects image attachment with mismatched attachment_type and content_type
     When I use "query" to ask question with authorization header
     """
@@ -321,25 +279,3 @@ Scenario: Check if LLM responds for query request with error for missing query
     When I use "query" to ask question with too-long query and authorization header
     Then The status code of the response is 413
     And The body of the response contains Prompt is too long
-
-    # # ── OKP RAG Disabled (okp not in rag.retrieval.inline.sources) ─────
-  @cfg_okp
-  @skip
-  Scenario: Query returns no rag_chunks and no reference_documents when OKP OKP is disabled
-    When I use "query" to ask question with authorization header
-    """
-    {"query": "configure remote desktop using gnome", "model": "{MODEL}", "provider": "{PROVIDER}"}
-    """
-    Then The status code of the response is 200
-     And The response contains no rag_chunks
-     And The response contains no referenced_documents
-  @cfg_okp
-  @skip
-  Scenario: Streaming query returns no referenced_documents when OKP is disabled
-    When I use "streaming_query" to ask question with authorization header
-    """
-    {"query": "configure remote desktop using gnome", "model": "{MODEL}", "provider": "{PROVIDER}"}
-    """
-    Then The status code of the response is 200
-     And I wait for the response to be completed
-     And The response contains no referenced_documents

@@ -97,7 +97,7 @@ storage:
       backend: sql_default
 registered_resources:
   models:
-  - model_id: deepseek.v3-v1:0
+  - model_id: custom-bedrock-model
     model_type: llm
     provider_id: aws-bedrock
     provider_model_id: deepseek.v3-v1:0

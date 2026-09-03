@@ -4,11 +4,9 @@ from typing import Any
 
 import pytest
 from fastapi import HTTPException, Request, status
-from ogx_client import ApiException
-from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
-    InMemorySpanExporter,
-)
-from opentelemetry.trace import StatusCode
+from ogx_client import APIConnectionError
+from ogx_client.types import ListModelsResponse
+from ogx_client.types.model import Model
 from pytest_mock import MockerFixture
 from pytest_subtests import SubTests
 
@@ -16,8 +14,21 @@ from app.endpoints.models import models_endpoint_handler
 from authentication.interface import AuthTuple
 from configuration import AppConfig
 from models.api.requests import ModelFilter
-from tests.unit.conftest import make_openai_model, make_openai_models_list_response
 from tests.unit.utils.auth_helpers import mock_authorization_resolvers
+
+
+def _make_model(model_id: str, provider_id: str, model_type: str) -> Model:
+    """Build an OGX Model for models-endpoint tests."""
+    return Model.model_construct(
+        id=model_id,
+        created=0,
+        owned_by="test",
+        object="model",
+        custom_metadata={
+            "model_type": model_type,
+            "provider_id": provider_id,
+        },
+    )
 
 
 @pytest.mark.asyncio
@@ -56,11 +67,11 @@ async def test_models_endpoint_handler_configuration_loaded(
     """Test the models endpoint handler if configuration is loaded.
 
     Verify the models endpoint raises HTTP 503 when configuration is loaded but
-    the OGX client cannot connect.
+    the Llama Stack client cannot connect.
 
     Loads an AppConfig from a test dictionary, patches the endpoint's
     configuration and AsyncOgxClientHolder so that get_client raises
-    ApiException, issues a request with an authorization header, and
+    APIConnectionError, issues a request with an authorization header, and
     asserts that calling the handler raises an HTTPException with status 503
     and a detail response of "Unable to connect to OGX".
     """
@@ -77,7 +88,7 @@ async def test_models_endpoint_handler_configuration_loaded(
             "color_log": True,
             "access_log": True,
         },
-        "ogx": {
+        "llama_stack": {
             "api_key": "xyzzy",
             "url": "http://x.y.com:1234",
             "use_as_library_client": False,
@@ -94,7 +105,9 @@ async def test_models_endpoint_handler_configuration_loaded(
 
     mocker.patch("app.endpoints.models.configuration", cfg)
     mock_client_holder = mocker.patch("app.endpoints.models.AsyncOgxClientHolder")
-    mock_client_holder.return_value.get_client.side_effect = ApiException(status=None)
+    mock_client_holder.return_value.get_client.side_effect = APIConnectionError(
+        request=mocker.Mock()
+    )
 
     request = Request(
         scope={
@@ -132,7 +145,7 @@ async def test_models_endpoint_handler_unable_to_retrieve_models_list(
             "color_log": True,
             "access_log": True,
         },
-        "ogx": {
+        "llama_stack": {
             "api_key": "xyzzy",
             "url": "http://x.y.com:1234",
             "use_as_library_client": False,
@@ -147,9 +160,9 @@ async def test_models_endpoint_handler_unable_to_retrieve_models_list(
     cfg = AppConfig()
     cfg.init_from_dict(config_dict)
 
-    # Mock the OGX client
+    # Mock the LlamaStack client
     mock_client = mocker.AsyncMock()
-    mock_client.openai.list.return_value = make_openai_models_list_response()
+    mock_client.models.list.return_value = ListModelsResponse.model_construct(data=[])
     mock_lsc = mocker.patch("app.endpoints.models.AsyncOgxClientHolder.get_client")
     mock_lsc.return_value = mock_client
     mock_config = mocker.Mock()
@@ -189,7 +202,7 @@ async def test_models_endpoint_handler_model_type_query_parameter(
             "color_log": True,
             "access_log": True,
         },
-        "ogx": {
+        "llama_stack": {
             "api_key": "xyzzy",
             "url": "http://x.y.com:1234",
             "use_as_library_client": False,
@@ -204,9 +217,9 @@ async def test_models_endpoint_handler_model_type_query_parameter(
     cfg = AppConfig()
     cfg.init_from_dict(config_dict)
 
-    # Mock the OGX client
+    # Mock the LlamaStack client
     mock_client = mocker.AsyncMock()
-    mock_client.openai.list.return_value = make_openai_models_list_response()
+    mock_client.models.list.return_value = ListModelsResponse.model_construct(data=[])
     mock_lsc = mocker.patch("app.endpoints.models.AsyncOgxClientHolder.get_client")
     mock_lsc.return_value = mock_client
     mock_config = mocker.Mock()
@@ -245,7 +258,7 @@ async def test_models_endpoint_handler_model_list_retrieved(
             "color_log": True,
             "access_log": True,
         },
-        "ogx": {
+        "llama_stack": {
             "api_key": "xyzzy",
             "url": "http://x.y.com:1234",
             "use_as_library_client": False,
@@ -260,17 +273,15 @@ async def test_models_endpoint_handler_model_list_retrieved(
     cfg = AppConfig()
     cfg.init_from_dict(config_dict)
 
-    # Mock the OGX client
+    # Mock the LlamaStack client
     mock_client = mocker.AsyncMock()
-    mock_client.openai.list.return_value = make_openai_models_list_response(
-        make_openai_model(model_id="model1", provider_id="provider1", model_type="llm"),
-        make_openai_model(
-            model_id="model2", provider_id="provider2", model_type="embedding"
-        ),
-        make_openai_model(model_id="model3", provider_id="provider3", model_type="llm"),
-        make_openai_model(
-            model_id="model4", provider_id="provider4", model_type="embedding"
-        ),
+    mock_client.models.list.return_value = ListModelsResponse.model_construct(
+        data=[
+            _make_model("model1", "provider1", "llm"),
+            _make_model("model2", "provider2", "embedding"),
+            _make_model("model3", "provider3", "llm"),
+            _make_model("model4", "provider4", "embedding"),
+        ]
     )
     mock_lsc = mocker.patch("app.endpoints.models.AsyncOgxClientHolder.get_client")
     mock_lsc.return_value = mock_client
@@ -321,7 +332,7 @@ async def test_models_endpoint_handler_model_list_retrieved_with_query_parameter
             "color_log": True,
             "access_log": True,
         },
-        "ogx": {
+        "llama_stack": {
             "api_key": "xyzzy",
             "url": "http://x.y.com:1234",
             "use_as_library_client": False,
@@ -336,17 +347,15 @@ async def test_models_endpoint_handler_model_list_retrieved_with_query_parameter
     cfg = AppConfig()
     cfg.init_from_dict(config_dict)
 
-    # Mock the OGX client
+    # Mock the LlamaStack client
     mock_client = mocker.AsyncMock()
-    mock_client.openai.list.return_value = make_openai_models_list_response(
-        make_openai_model(model_id="model1", provider_id="provider1", model_type="llm"),
-        make_openai_model(
-            model_id="model2", provider_id="provider2", model_type="embedding"
-        ),
-        make_openai_model(model_id="model3", provider_id="provider3", model_type="llm"),
-        make_openai_model(
-            model_id="model4", provider_id="provider4", model_type="embedding"
-        ),
+    mock_client.models.list.return_value = ListModelsResponse.model_construct(
+        data=[
+            _make_model("model1", "provider1", "llm"),
+            _make_model("model2", "provider2", "embedding"),
+            _make_model("model3", "provider3", "llm"),
+            _make_model("model4", "provider4", "embedding"),
+        ]
     )
     mock_lsc = mocker.patch("app.endpoints.models.AsyncOgxClientHolder.get_client")
     mock_lsc.return_value = mock_client
@@ -401,10 +410,10 @@ async def test_models_endpoint_handler_model_list_retrieved_with_query_parameter
 
 
 @pytest.mark.asyncio
-async def test_models_endpoint_ogx_connection_error(
+async def test_models_endpoint_llama_stack_connection_error(
     mocker: MockerFixture,
 ) -> None:
-    """Test the model endpoint when OGX connection fails."""
+    """Test the model endpoint when LlamaStack connection fails."""
     mock_authorization_resolvers(mocker)
 
     # configuration for tests
@@ -418,7 +427,7 @@ async def test_models_endpoint_ogx_connection_error(
             "color_log": True,
             "access_log": True,
         },
-        "ogx": {
+        "llama_stack": {
             "api_key": "xyzzy",
             "url": "http://x.y.com:1234",
             "use_as_library_client": False,
@@ -431,10 +440,10 @@ async def test_models_endpoint_ogx_connection_error(
         "authentication": {"module": "noop"},
     }
 
-    # mock AsyncOgxClientHolder to raise ApiException
-    # when openai.list() method is called
+    # mock AsyncOgxClientHolder to raise APIConnectionError
+    # when models.list() method is called
     mock_client = mocker.AsyncMock()
-    mock_client.openai.list.side_effect = ApiException(status=None)  # type: ignore
+    mock_client.models.list.side_effect = APIConnectionError(request=None)  # type: ignore
     mock_client_holder = mocker.patch("app.endpoints.models.AsyncOgxClientHolder")
     mock_client_holder.return_value.get_client.return_value = mock_client
 
@@ -457,79 +466,4 @@ async def test_models_endpoint_ogx_connection_error(
         )
         assert e.value.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
         assert e.value.detail["response"] == "Unable to connect to OGX"  # type: ignore
-        assert (
-            "Connection error while trying to reach backend service."
-            in e.value.detail["cause"]
-        )  # type: ignore
-
-
-class TestModelsEndpointOtel:
-    """OTEL instrumentation tests for the /models endpoint."""
-
-    @pytest.mark.asyncio
-    async def test_emits_span_with_model_count(
-        self,
-        mocker: MockerFixture,
-        otel: tuple[Any, InMemorySpanExporter],
-    ) -> None:
-        """Test that a successful /models request emits a span with models.count."""
-        tracer, exporter = otel
-        mocker.patch("app.endpoints.models.tracer", tracer)
-        mock_authorization_resolvers(mocker)
-
-        mock_client = mocker.AsyncMock()
-        mock_client.openai.list.return_value = make_openai_models_list_response(
-            make_openai_model(model_id="m1", provider_id="p1"),
-            make_openai_model(model_id="m2", provider_id="p2"),
-        )
-        mocker.patch(
-            "app.endpoints.models.AsyncOgxClientHolder"
-        ).return_value.get_client.return_value = mock_client
-        mock_config = mocker.Mock()
-        mocker.patch("app.endpoints.models.configuration", mock_config)
-
-        request = Request(scope={"type": "http"})
-        auth: AuthTuple = ("uid", "uname", True, "tok")
-
-        await models_endpoint_handler(
-            request=request, auth=auth, model_type=ModelFilter(model_type=None)
-        )
-
-        spans = exporter.get_finished_spans()
-        assert len(spans) == 1
-        span = spans[0]
-        assert span.name == "models.list"
-        assert span.attributes is not None
-        assert span.attributes["models.count"] == 2
-
-    @pytest.mark.asyncio
-    async def test_span_records_error_on_connection_failure(
-        self,
-        mocker: MockerFixture,
-        otel: tuple[Any, InMemorySpanExporter],
-    ) -> None:
-        """Test that the span records an error on OGX connection failure."""
-        tracer, exporter = otel
-        mocker.patch("app.endpoints.models.tracer", tracer)
-        mock_authorization_resolvers(mocker)
-
-        mock_client = mocker.AsyncMock()
-        mock_client.openai.list.side_effect = ApiException(status=None)
-        mocker.patch(
-            "app.endpoints.models.AsyncOgxClientHolder"
-        ).return_value.get_client.return_value = mock_client
-        mock_config = mocker.Mock()
-        mocker.patch("app.endpoints.models.configuration", mock_config)
-
-        request = Request(scope={"type": "http"})
-        auth: AuthTuple = ("uid", "uname", True, "tok")
-
-        with pytest.raises(HTTPException):
-            await models_endpoint_handler(
-                request=request, auth=auth, model_type=ModelFilter(model_type=None)
-            )
-
-        spans = exporter.get_finished_spans()
-        assert len(spans) == 1
-        assert spans[0].name == "models.list"
-        assert spans[0].status.status_code == StatusCode.ERROR
+        assert "Unable to connect to OGX" in e.value.detail["cause"]  # type: ignore

@@ -6,7 +6,7 @@ service:
   workers: 1
   color_log: true
   access_log: true
-ogx:
+llama_stack:
   use_as_library_client: true
   library_client_config_path: run.yaml
 user_data_collection:
@@ -16,19 +16,17 @@ user_data_collection:
   transcripts_storage: "/tmp/data/transcripts"
 authentication:
   module: "noop"
-# LCORE-owned safety shields (not OGX / OGX Safety API resources).
+# LCORE-owned safety shields (not Llama Stack / OGX Safety API resources).
 # Listed via GET /v1/shields; selected per request with optional shield_ids.
 shields:
-  - name: topic-guard
+  - identifier: topic-guard
     provider_id: question_validity
     config:
       model_id: openai/gpt-4o-mini
-      # Optional; omit to use built-in defaults. Must reference ${message}
-      # (string.Template substitution) or the classifier never sees the
-      # question it's meant to classify.
-      model_prompt: "Classify whether the following question is about OpenShift or Kubernetes. Reply with exactly one word: ${allowed} if it is about OpenShift or Kubernetes, or ${rejected} if it is not. Do not explain your answer or add any other text.\n\nQuestion: ${message}\nAnswer:"
+      # Optional; omit to use built-in defaults:
+      model_prompt: "Classify whether the question is about OpenShift. Reply ALLOWED or REJECTED."
       invalid_question_response: "I can only answer questions about OpenShift."
-  - name: pii-redaction
+  - identifier: pii-redaction
     provider_id: redaction
     config:
       rules:

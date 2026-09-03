@@ -59,7 +59,7 @@ def config_with_custom_saved_prompts_fixture() -> AppConfig:
         {
             "name": "test",
             "service": {"host": "localhost", "port": 8080},
-            "ogx": {
+            "llama_stack": {
                 "api_key": "test-key",
                 "url": "http://test.com:1234",
                 "use_as_library_client": False,

@@ -4,7 +4,6 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
-from opentelemetry import trace
 
 from authentication import get_auth_dependency
 from authentication.interface import AuthTuple
@@ -19,7 +18,6 @@ from models.api.responses.error import (
 from models.config import Action
 
 logger = get_logger(__name__)
-tracer = trace.get_tracer(__name__)
 router = APIRouter(tags=["root"])
 
 
@@ -818,7 +816,5 @@ async def root_endpoint_handler(
     # Nothing interesting in the request
     _ = request
 
-    with tracer.start_as_current_span("root.handle_request") as span:
-        logger.info("Serving index page")
-        span.set_attribute("http.status_code", 200)
-        return HTMLResponse(INDEX_PAGE)
+    logger.info("Serving index page")
+    return HTMLResponse(INDEX_PAGE)

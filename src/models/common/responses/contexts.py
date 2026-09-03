@@ -6,7 +6,6 @@ from typing import Optional
 
 from fastapi import BackgroundTasks
 from ogx_client import AsyncOgxClient
-from opentelemetry import trace
 from pydantic import BaseModel, ConfigDict, Field
 
 from models.api.requests import QueryRequest
@@ -21,7 +20,7 @@ class ResponsesContext(BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    client: AsyncOgxClient = Field(description="The OGX client")
+    client: AsyncOgxClient = Field(description="The Llama Stack client")
     auth: tuple[str, str, bool, str] = Field(
         description="Authentication tuple (user_id, username, skip_userid_check, token)",
     )
@@ -59,14 +58,11 @@ class ResponsesContext(BaseModel):
     )
     compacted_original_input: Optional[ResponseInput] = Field(
         default=None,
-        description="Set only when conversation compaction (LCORE-1572) rewrote the request: "
-        "the original user input before the explicit-input rewrite. When "
-        "present, the completed turn is appended to the conversation "
-        "using this input, since the conversation parameter was dropped "
-        "and OGX therefore does not store the turn.",
-    )
-    root_span: trace.Span = Field(
-        description="OpenTelemetry root span for this request",
+        description="Set only when conversation compaction (LCORE-1572) rewrote "
+        "the request: the original user input before the explicit-input "
+        "rewrite. When present, the completed turn is appended to the "
+        "conversation using this input, since the conversation parameter was "
+        "dropped and Llama Stack therefore does not store the turn.",
     )
 
 
@@ -86,7 +82,7 @@ class ResponseGeneratorContext:  # pylint: disable=too-many-instance-attributes
         model_id: The model identifier
         query_request: The query request object
         started_at: Timestamp when the request started (ISO 8601 format)
-        client: The OGX client for API interactions
+        client: The Llama Stack client for API interactions
         moderation_result: The moderation result
         inline_rag_context: Inline RAG context
         vector_store_ids: Vector store IDs used in the query for source resolution.

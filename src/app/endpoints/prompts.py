@@ -1,15 +1,16 @@
-"""Handler for REST API calls to manage OGX stored prompt templates."""
+"""Handler for REST API calls to manage Llama Stack stored prompt templates."""
 
 from typing import Annotated, Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from ogx_api import PromptNotFoundError, PromptVersionNotFoundError
-from ogx_client import ApiException, NotFoundError
+from ogx_client import APIConnectionError, BadRequestError
+from ogx_client import APIStatusError as LLSApiStatusError
+from openai._exceptions import APIStatusError as OpenAIAPIStatusError
 
 from authentication import get_auth_dependency
 from authentication.interface import AuthTuple
 from authorization.middleware import authorize
-from client.ogx import AsyncOgxClientHolder
+from client import AsyncOgxClientHolder
 from configuration import configuration
 from log import get_logger
 from models.api.requests import PromptCreateRequest, PromptUpdateRequest
@@ -29,7 +30,6 @@ from models.api.responses.successful import (
 )
 from models.config import Action
 from utils.endpoints import check_configuration_loaded
-from utils.ogx_serialization import dump_ogx_model
 from utils.query import handle_known_apistatus_errors
 from utils.suid import check_suid_prompt
 
@@ -44,7 +44,7 @@ prompt_create_responses: dict[int | str, dict[str, Any]] = {
     403: ForbiddenResponse.openapi_response(examples=["endpoint", "prompt manage"]),
     500: InternalServerErrorResponse.openapi_response(examples=["configuration"]),
     503: ServiceUnavailableResponse.openapi_response(
-        examples=["OGX", "kubernetes api"]
+        examples=["ogx", "kubernetes api"]
     ),
 }
 
@@ -54,7 +54,7 @@ prompt_list_responses: dict[int | str, dict[str, Any]] = {
     403: ForbiddenResponse.openapi_response(examples=["endpoint", "prompt read"]),
     500: InternalServerErrorResponse.openapi_response(examples=["configuration"]),
     503: ServiceUnavailableResponse.openapi_response(
-        examples=["OGX", "kubernetes api"]
+        examples=["ogx", "kubernetes api"]
     ),
 }
 
@@ -66,7 +66,7 @@ prompt_get_responses: dict[int | str, dict[str, Any]] = {
     404: NotFoundResponse.openapi_response(examples=["prompt"]),
     500: InternalServerErrorResponse.openapi_response(examples=["configuration"]),
     503: ServiceUnavailableResponse.openapi_response(
-        examples=["OGX", "kubernetes api"]
+        examples=["ogx", "kubernetes api"]
     ),
 }
 
@@ -78,7 +78,7 @@ prompt_update_responses: dict[int | str, dict[str, Any]] = {
     404: NotFoundResponse.openapi_response(examples=["prompt"]),
     500: InternalServerErrorResponse.openapi_response(examples=["configuration"]),
     503: ServiceUnavailableResponse.openapi_response(
-        examples=["OGX", "kubernetes api"]
+        examples=["ogx", "kubernetes api"]
     ),
 }
 
@@ -89,7 +89,7 @@ prompt_delete_responses: dict[int | str, dict[str, Any]] = {
     403: ForbiddenResponse.openapi_response(examples=["endpoint", "prompt manage"]),
     500: InternalServerErrorResponse.openapi_response(examples=["configuration"]),
     503: ServiceUnavailableResponse.openapi_response(
-        examples=["OGX", "kubernetes api"]
+        examples=["ogx", "kubernetes api"]
     ),
 }
 
@@ -104,7 +104,7 @@ async def create_prompt_handler(
     r"""
     Handle requests to the POST /prompts endpoint.
 
-    Process requests to create a stored prompt template in OGX. The
+    Process requests to create a stored prompt template in Llama Stack. The
     body must include the prompt text and may include template variable names.
     For example:
 
@@ -124,10 +124,10 @@ async def create_prompt_handler(
     - HTTPException: with status 500 and a detail object containing `response`
       and `cause` when service configuration is wrong or incomplete.
     - HTTPException: with status 503 and a detail object containing `response`
-      and `cause` when unable to connect to OGX.
+      and `cause` when unable to connect to Llama Stack.
 
     ### Returns:
-    - PromptResourceResponse: The created prompt as returned by OGX.
+    - PromptResourceResponse: The created prompt as returned by Llama Stack.
     """
     _ = auth
     _ = request
@@ -138,15 +138,14 @@ async def create_prompt_handler(
         client = AsyncOgxClientHolder().get_client()
         payload = body.model_dump(exclude_none=True)
         created = await client.prompts.create(**payload)
-        return PromptResourceResponse.model_validate(dump_ogx_model(created))
-    except ApiException as e:
-        if not e.status:
-            logger.error("Unable to connect to OGX: %s", e)
-            response = ServiceUnavailableResponse(backend_name="OGX")
-            raise HTTPException(**response.model_dump()) from e
-
+        return PromptResourceResponse.model_validate(created.model_dump())
+    except APIConnectionError as e:
+        logger.error("Unable to connect to Llama Stack: %s", e)
+        response = ServiceUnavailableResponse(backend_name="OGX", cause=str(e))
+        raise HTTPException(**response.model_dump()) from e
+    except (LLSApiStatusError, OpenAIAPIStatusError) as e:
         logger.error("API status error while creating prompt: %s", e)
-        error_response = handle_known_apistatus_errors(e, "ogx")
+        error_response = handle_known_apistatus_errors(e, "llama-stack")
         raise HTTPException(**error_response.model_dump()) from e
 
 
@@ -159,8 +158,8 @@ async def list_prompts_handler(
     """
     Handle requests to the GET /prompts endpoint.
 
-    Process GET requests that list all stored prompt templates from the OGX
-    service. For example:
+    Process GET requests that list all stored prompt templates from the Llama
+    Stack service. For example:
 
         curl http://localhost:8080/v1/prompts
 
@@ -174,7 +173,7 @@ async def list_prompts_handler(
     - HTTPException: with status 500 and a detail object containing `response`
       and `cause` when service configuration is wrong or incomplete.
     - HTTPException: with status 503 and a detail object containing `response`
-      and `cause` when unable to connect to OGX.
+      and `cause` when unable to connect to Llama Stack.
 
     ### Returns:
     - PromptsListResponse: An object containing the list of prompts.
@@ -187,16 +186,15 @@ async def list_prompts_handler(
     try:
         client = AsyncOgxClientHolder().get_client()
         items = await client.prompts.list()
-        data = [PromptResourceResponse.model_validate(dump_ogx_model(p)) for p in items]
+        data = [PromptResourceResponse.model_validate(p.model_dump()) for p in items]
         return PromptsListResponse(data=data)
-    except ApiException as e:
-        if not e.status:
-            logger.error("Unable to connect to OGX: %s", e)
-            response = ServiceUnavailableResponse(backend_name="OGX")
-            raise HTTPException(**response.model_dump()) from e
-
+    except APIConnectionError as e:
+        logger.error("Unable to connect to Llama Stack: %s", e)
+        response = ServiceUnavailableResponse(backend_name="OGX", cause=str(e))
+        raise HTTPException(**response.model_dump()) from e
+    except (LLSApiStatusError, OpenAIAPIStatusError) as e:
         logger.error("API status error while listing prompts: %s", e)
-        error_response = handle_known_apistatus_errors(e, "ogx")
+        error_response = handle_known_apistatus_errors(e, "llama-stack")
         raise HTTPException(**error_response.model_dump()) from e
 
 
@@ -219,7 +217,7 @@ async def get_prompt_handler(
 
     ### Parameters:
     - request: The incoming HTTP request (used by middleware).
-    - prompt_id: The OGX prompt identifier.
+    - prompt_id: The Llama Stack prompt identifier.
     - auth: Authentication tuple from the auth dependency (used by middleware).
     - version: Optional version number (latest when omitted).
 
@@ -230,7 +228,7 @@ async def get_prompt_handler(
     - HTTPException: with status 500 and a detail object containing `response`
       and `cause` when service configuration is wrong or incomplete.
     - HTTPException: with status 503 and a detail object containing `response`
-      and `cause` when unable to connect to OGX.
+      and `cause` when unable to connect to Llama Stack.
 
     ### Returns:
     - PromptResourceResponse: The requested prompt object.
@@ -247,20 +245,22 @@ async def get_prompt_handler(
 
     try:
         client = AsyncOgxClientHolder().get_client()
-        retrieved = await client.prompts.retrieve(prompt_id, version=version)
-        return PromptResourceResponse.model_validate(dump_ogx_model(retrieved))
-    except (NotFoundError, PromptNotFoundError, PromptVersionNotFoundError) as e:
+        if version is not None:
+            retrieved = await client.prompts.retrieve(prompt_id, version=version)
+        else:
+            retrieved = await client.prompts.retrieve(prompt_id)
+        return PromptResourceResponse.model_validate(retrieved.model_dump())
+    except APIConnectionError as e:
+        logger.error("Unable to connect to Llama Stack: %s", e)
+        response = ServiceUnavailableResponse(backend_name="OGX", cause=str(e))
+        raise HTTPException(**response.model_dump()) from e
+    except (BadRequestError, ValueError) as e:
         logger.error("Prompt not found: %s", e)
         response = NotFoundResponse(resource="prompt", resource_id=prompt_id)
         raise HTTPException(**response.model_dump()) from e
-    except ApiException as e:
-        if not e.status:
-            logger.error("Unable to connect to OGX: %s", e)
-            response = ServiceUnavailableResponse(backend_name="OGX")
-            raise HTTPException(**response.model_dump()) from e
-
+    except (LLSApiStatusError, OpenAIAPIStatusError) as e:
         logger.error("API status error while retrieving prompt: %s", e)
-        error_response = handle_known_apistatus_errors(e, "ogx")
+        error_response = handle_known_apistatus_errors(e, "llama-stack")
         raise HTTPException(**error_response.model_dump()) from e
 
 
@@ -275,7 +275,7 @@ async def update_prompt_handler(
     r"""
     Handle requests to the PUT /prompts/{prompt_id} endpoint.
 
-    Process requests to update a stored prompt; OGX increments the
+    Process requests to update a stored prompt; Llama Stack increments the
     version. The body includes the new text, the current version being
     replaced, and optional fields such as ``set_as_default`` and ``variables``.
     For example:
@@ -286,7 +286,7 @@ async def update_prompt_handler(
 
     ### Parameters:
     - request: The incoming HTTP request (used by middleware).
-    - prompt_id: The OGX prompt identifier.
+    - prompt_id: The Llama Stack prompt identifier.
     - auth: Authentication tuple from the auth dependency (used by middleware).
     - body: Prompt update parameters.
 
@@ -299,10 +299,10 @@ async def update_prompt_handler(
     - HTTPException: with status 500 and a detail object containing `response`
       and `cause` when service configuration is wrong or incomplete.
     - HTTPException: with status 503 and a detail object containing `response`
-      and `cause` when unable to connect to OGX.
+      and `cause` when unable to connect to Llama Stack.
 
     ### Returns:
-    - PromptResourceResponse: The updated prompt object returned by OGX.
+    - PromptResourceResponse: The updated prompt object returned by Llama Stack.
     """
     _ = auth
     _ = request
@@ -318,19 +318,18 @@ async def update_prompt_handler(
         client = AsyncOgxClientHolder().get_client()
         payload = body.model_dump(exclude_none=True, exclude_unset=True)
         updated = await client.prompts.update(prompt_id, **payload)
-        return PromptResourceResponse.model_validate(dump_ogx_model(updated))
-    except (NotFoundError, PromptNotFoundError) as e:
+        return PromptResourceResponse.model_validate(updated.model_dump())
+    except APIConnectionError as e:
+        logger.error("Unable to connect to Llama Stack: %s", e)
+        response = ServiceUnavailableResponse(backend_name="OGX", cause=str(e))
+        raise HTTPException(**response.model_dump()) from e
+    except (BadRequestError, ValueError) as e:
         logger.error("Prompt update failed: %s", e)
         response = NotFoundResponse(resource="prompt", resource_id=prompt_id)
         raise HTTPException(**response.model_dump()) from e
-    except ApiException as e:
-        if not e.status:
-            logger.error("Unable to connect to OGX: %s", e)
-            response = ServiceUnavailableResponse(backend_name="OGX")
-            raise HTTPException(**response.model_dump()) from e
-
+    except (LLSApiStatusError, OpenAIAPIStatusError) as e:
         logger.error("API status error while updating prompt: %s", e)
-        error_response = handle_known_apistatus_errors(e, "ogx")
+        error_response = handle_known_apistatus_errors(e, "llama-stack")
         raise HTTPException(**error_response.model_dump()) from e
 
 
@@ -344,7 +343,7 @@ async def delete_prompt_handler(
     """
     Handle requests to the DELETE /prompts/{prompt_id} endpoint.
 
-    Process requests to delete a stored prompt in OGX. The response
+    Process requests to delete a stored prompt in Llama Stack. The response
     always uses HTTP 200 with a JSON body indicating whether the deletion
     succeeded (same pattern as deleting a conversation in ``/v2``). For example:
 
@@ -355,7 +354,7 @@ async def delete_prompt_handler(
 
     ### Parameters:
     - request: The incoming HTTP request (used by middleware).
-    - prompt_id: The OGX prompt identifier.
+    - prompt_id: The Llama Stack prompt identifier.
     - auth: Authentication tuple from the auth dependency (used by middleware).
 
     ### Raises:
@@ -365,7 +364,7 @@ async def delete_prompt_handler(
     - HTTPException: with status 500 and a detail object containing `response`
       and `cause` when service configuration is wrong or incomplete.
     - HTTPException: with status 503 and a detail object containing `response`
-      and `cause` when unable to connect to OGX.
+      and `cause` when unable to connect to Llama Stack.
 
     ### Returns:
     - PromptDeleteResponse: An object describing whether the prompt was
@@ -385,15 +384,14 @@ async def delete_prompt_handler(
         client = AsyncOgxClientHolder().get_client()
         await client.prompts.delete(prompt_id)
         return PromptDeleteResponse(deleted=True, prompt_id=prompt_id)
-    except (NotFoundError, PromptNotFoundError) as e:
+    except APIConnectionError as e:
+        logger.error("Unable to connect to Llama Stack: %s", e)
+        response = ServiceUnavailableResponse(backend_name="OGX", cause=str(e))
+        raise HTTPException(**response.model_dump()) from e
+    except (BadRequestError, ValueError) as e:
         logger.error("Prompt delete failed: %s", e)
         return PromptDeleteResponse(deleted=False, prompt_id=prompt_id)
-    except ApiException as e:
-        if not e.status:
-            logger.error("Unable to connect to OGX: %s", e)
-            response = ServiceUnavailableResponse(backend_name="OGX")
-            raise HTTPException(**response.model_dump()) from e
-
+    except (LLSApiStatusError, OpenAIAPIStatusError) as e:
         logger.error("API status error while deleting prompt: %s", e)
-        error_response = handle_known_apistatus_errors(e, "ogx")
+        error_response = handle_known_apistatus_errors(e, "llama-stack")
         raise HTTPException(**error_response.model_dump()) from e

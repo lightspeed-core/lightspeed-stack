@@ -68,6 +68,6 @@ class UserTurn(Base):  # pylint: disable=too-few-public-methods
 
     model: Mapped[str] = mapped_column(nullable=False)
 
-    # OGX response ID for this turn (1:1); nullable for legacy turns without it.
+    # Llama Stack response ID for this turn (1:1); nullable for legacy turns without it.
     # Indexed for fast lookup when resolving previous_response_id to conversation.
     response_id: Mapped[str] = mapped_column(nullable=True, index=True)

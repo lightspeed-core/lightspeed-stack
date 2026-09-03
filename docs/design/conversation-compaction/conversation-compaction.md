@@ -14,16 +14,16 @@
 
 Conversation history compaction for lightspeed-stack. When a conversation's token count approaches the model's context window limit, lightspeed-stack summarizes older turns using the LLM and keeps recent turns verbatim. The conversation continues without hitting HTTP 413.
 
-Full conversation history is preserved in OGX for UI display and audit. Only the LLM's input context is compacted.
+Full conversation history is preserved in Llama Stack for UI display and audit. Only the LLM's input context is compacted.
 
 # Why
 
-Today, when a conversation exceeds the model's context window, OGX's inference provider rejects the request. lightspeed-stack catches this and returns HTTP 413 (`PromptTooLongResponse`). The conversation is stuck — the user must start over.
+Today, when a conversation exceeds the model's context window, Llama Stack's inference provider rejects the request. lightspeed-stack catches this and returns HTTP 413 (`PromptTooLongResponse`). The conversation is stuck — the user must start over.
 
 Current failure path (verified in code):
 
 ```
-OGX sends full prompt → provider rejects (400/413, "context_length")
+Llama Stack sends full prompt → provider rejects (400/413, "context_length")
 → lightspeed-stack catches RuntimeError or APIStatusError
 → returns PromptTooLongResponse (HTTP 413)
 → no recovery, no truncation, no summarization
@@ -49,7 +49,7 @@ R5
 The same model used for the user's query must be used for summarization.
 
 R6  
-Full conversation history must remain accessible via the OGX Conversations API (for UI display and audit). Only the LLM's input context uses summaries.
+Full conversation history must remain accessible via the Llama Stack Conversations API (for UI display and audit). Only the LLM's input context uses summaries.
 
 R7  
 The response must include a `context_status` field indicating `"full"` (no compaction) or `"summarized"` (compaction occurred).
@@ -61,7 +61,7 @@ R9
 Compaction configuration must be admin-configurable via YAML: threshold ratio, fixed token floor, and buffer zone size.
 
 R10
-After compaction, lightspeed-stack builds the LLM input explicitly — the summaries plus the recent verbatim turns plus the new query — and stops passing the OGX `conversation` parameter for that request, because OGX always reloads the full message history when the `conversation` parameter is set (verified empirically on OGX 0.6.0; see the Changelog and the spike doc). The summary is still written into the conversation as a marked item so it appears in the Conversations API, but the marker is lightspeed-stack's own boundary bookkeeping, not an OGX selection mechanism. The `conversation_id` is preserved across the whole conversation, and the full history (including pre-compaction turns) remains in the conversation's items for UI/audit. Because the `conversation` parameter is no longer sent in compacted mode, lightspeed-stack appends each completed turn to the conversation itself.
+After compaction, lightspeed-stack builds the LLM input explicitly — the summaries plus the recent verbatim turns plus the new query — and stops passing the Llama Stack `conversation` parameter for that request, because Llama Stack always reloads the full message history when the `conversation` parameter is set (verified empirically on llama-stack 0.6.0; see the Changelog and the spike doc). The summary is still written into the conversation as a marked item so it appears in the Conversations API, but the marker is lightspeed-stack's own boundary bookkeeping, not a Llama Stack selection mechanism. The `conversation_id` is preserved across the whole conversation, and the full history (including pre-compaction turns) remains in the conversation's items for UI/audit. Because the `conversation` parameter is no longer sent in compacted mode, lightspeed-stack appends each completed turn to the conversation itself.
 
 This applies to every endpoint that builds context from a growing conversation and calls the Responses API: `/v1/query`, `/v1/streaming_query`, the A2A executor, and `/v1/responses`. (The `/v1/rlsapi` inference path is stateless — no stored conversation — and is therefore out of scope.)
 
@@ -100,22 +100,22 @@ User Query → lightspeed-stack
   4. Estimate total tokens (tiktoken): system + (summaries + recent items) + new query
   5. If compaction needed (tokens > threshold) OR a prior summary marker exists:
      a. Emit compaction event (native streaming endpoint only)
-     b. Retrieve conversation items from OGX
+     b. Retrieve conversation items from Llama Stack
      c. Split into "old" (summarize) and "recent" (keep)
         — degrading guard: reduce recent turns if they exceed token budget
      d. Summarize old turns → write summary as a marked item into conversation
   6. Build EXPLICIT input: [summary markers] + [recent items after last marker] + new query
-  7. Call OGX Responses API WITHOUT the conversation parameter
-     (so OGX does not reload the full history)
+  7. Call Llama Stack Responses API WITHOUT the conversation parameter
+     (so Llama Stack does not reload the full history)
   ↓
-OGX
+Llama Stack
   8. Processes exactly the explicit input
   ↓
 lightspeed-stack
   9. Append the completed turn to the conversation items (continuous history,
-     same conversation_id) — OGX did not auto-store it (no conversation param)
+     same conversation_id) — Llama Stack did not auto-store it (no conversation param)
   10. Release per-conversation lock
-  11. Return response (context_status="summarized" when compacted; "full" otherwise — LCORE-1573)
+  11. Return response (context_status="summarized" when 1573 lands; "full" otherwise)
 ```
 
 Note: when no prior summary exists and the request is below the threshold,
@@ -225,42 +225,29 @@ class ConversationSummary(BaseModel):
 
 A conversation may have multiple summary chunks (one per compaction event). All cache backends (SQLite, Postgres, memory) need this schema extension.
 
-As built, the cache is the **preferred source of truth** for summary text at runtime: each chunk is written on compaction (`store_summary`) and the active set is read back from it (`get_summaries`). The OGX marker items remain an authoritative fallback — used when no persisting cache is configured — and the audit record; the marker position still defines the recent-verbatim boundary. The recursive fold persists through `replace_summaries` (atomic delete-all + insert of the folded chunk), a cache operation added for this (LCORE-1571).
+As built, the cache is the **preferred source of truth** for summary text at runtime: each chunk is written on compaction (`store_summary`) and the active set is read back from it (`get_summaries`). The Llama Stack marker items remain an authoritative fallback — used when no persisting cache is configured — and the audit record; the marker position still defines the recent-verbatim boundary. The recursive fold persists through `replace_summaries` (atomic delete-all + insert of the folded chunk), a cache operation added for this (LCORE-1571).
 
 ## Changed request flow after compaction
 
 After compaction, lightspeed-stack writes the summary as a marked conversation item (a message whose text begins with a recognizable sentinel) so it appears in the Conversations API and serves as lightspeed-stack's own boundary marker.
 
-When building context for a compacted conversation, lightspeed-stack fetches the conversation items, reads the active summaries from the summary cache (LCORE-1571) — falling back to the marker texts when no persisting cache is configured — takes the items after the last marker as the recent verbatim buffer, and sends `[summaries] + [recent items] + [new query]` as **explicit input**, **without** the `conversation` parameter. This is necessary because OGX reloads the *full* stored message history whenever the `conversation` parameter is set — there is no marker-based selection hook (verified empirically; see the Changelog). Each completed turn is then appended back to the conversation items by lightspeed-stack, since OGX no longer auto-stores it.
+When building context for a compacted conversation, lightspeed-stack fetches the conversation items, reads the active summaries from the summary cache (LCORE-1571) — falling back to the marker texts when no persisting cache is configured — takes the items after the last marker as the recent verbatim buffer, and sends `[summaries] + [recent items] + [new query]` as **explicit input**, **without** the `conversation` parameter. This is necessary because Llama Stack reloads the *full* stored message history whenever the `conversation` parameter is set — there is no marker-based selection hook (verified empirically; see the Changelog). Each completed turn is then appended back to the conversation items by lightspeed-stack, since Llama Stack no longer auto-stores it.
 
 This preserves a single continuous conversation identity. The `conversation_id` never changes, the user sees one conversation in the UI, and the Conversations API returns the full history including the summary marker items.
 
 ## API response changes
 
-The `context_status` field is added in two places (LCORE-1573):
-
-- `QueryResponse` (`src/models/api/responses/successful/query.py`) — the
-  non-streaming `/v1/query` response body.
-- `EndEventData` (`src/models/common/agents/stream_payloads.py`) — the SSE
-  `end` event payload that streaming `/v1/streaming_query` clients actually
-  receive on the wire, alongside the analogous `truncated` signal.
+Add `context_status` field to `QueryResponse` and `StreamingQueryResponse`:
 
 ``` python
-context_status: ContextStatus = Field(
+context_status: str = Field(
     "full",
-    description='Context status: "full" (no compaction) or '
-    '"summarized" (older turns replaced by a summary)',
+    description="Context status: 'full' (no compaction), "
+    "'summarized' (older turns summarized).",
 )
 ```
 
-`StreamingQueryResponse` is a documentation-only class with an empty body
-(its `openapi_response()` inlines an SSE example string); adding a field
-there would change nothing on the wire, so it is intentionally skipped —
-only its SSE example is updated to show `context_status` in the `end` event.
-
-The value maps directly from `CompactionResult.compacted`
-(`utils/conversation_compaction.py`): `"summarized"` when True, `"full"`
-otherwise. The existing `truncated` field remains deprecated.
+The existing `truncated` field remains deprecated.
 
 ## Configuration
 
@@ -320,8 +307,7 @@ Add `compaction` field to the root `Configuration` class.
 | `src/app/endpoints/streaming_query.py` | Compaction-aware SSE path that emits the `compaction` event before summarizing (R12) |
 | `src/app/endpoints/a2a.py`             | Inline compaction (no SSE event); store the turn on `response.completed` |
 | `src/app/endpoints/responses.py`       | Silent compaction (OpenAI-compatible); store the turn via `_append_previous_response_turn` |
-| `src/models/api/responses/successful/query.py` | `context_status` on `QueryResponse` (non-streaming `/v1/query`) — LCORE-1573 |
-| `src/models/common/agents/stream_payloads.py` | `context_status` on `EndEventData`, the streaming SSE `end` event payload (`StreamingQueryResponse` is docs-only and intentionally skipped) — LCORE-1573 |
+| `src/models/responses.py` (now relocated) | `context_status` field — deferred to LCORE-1573 |
 | `src/cache/` (all backends)            | `ConversationSummary` storage — LCORE-1571 |
 
 ## How compaction is invoked
@@ -370,7 +356,7 @@ Example config files go in `examples/`.
 ## Test patterns
 
 - Framework: pytest + pytest-asyncio + pytest-mock. unittest is banned by ruff.
-- Mock OGX client: `mocker.AsyncMock(spec=AsyncOgxClient)`.
+- Mock Llama Stack client: `mocker.AsyncMock(spec=AsyncOgxClient)`.
 - Patch at module level: `mocker.patch("utils.responses.compact_conversation_if_needed", ...)`.
 - Async mocking pattern: see `tests/unit/utils/test_shields.py`.
 - Config validation tests: see `tests/unit/models/config/`.
@@ -396,7 +382,7 @@ Compaction adds latency only on the trigger turn. In PoC testing, compaction tur
 # Changelog
 
 **2026-05-26 — R10 redesign (Option A) during LCORE-1572 implementation.**
-A live experiment on the deployed OGX 0.6.0 showed that passing the
+A live experiment on the deployed llama-stack 0.6.0 showed that passing the
 `conversation` parameter to the Responses API always reloads the *full* stored
 message history, with no marker-based selection hook. The original R10
 (inject a marker, keep the `conversation` parameter, "select from the marker
@@ -408,7 +394,7 @@ and the full item history while controlling the LLM context. This restores the
 spike's *original* Decision 6 recommendation (which a later spike edit had
 changed to the marker approach). The summary cache (Decision 8 / LCORE-1571)
 becomes a parallel persistence layer; the runtime boundary is the marker item
-in OGX. Compaction was also confirmed to apply to four endpoints —
+in Llama Stack. Compaction was also confirmed to apply to four endpoints —
 `/v1/query`, `/v1/streaming_query`, the A2A executor, and `/v1/responses` —
 not the two originally listed; `/v1/responses` compacts silently in this
 iteration to keep the endpoint a drop-in for clients written against the
@@ -420,7 +406,7 @@ option). Evidence and full reasoning: the spike doc
 Refining the entry above (which framed the cache as "a parallel persistence
 layer"): as built, the summary cache (LCORE-1571) is the *preferred source of
 truth* for summary text. On each request the active summaries are read from the
-cache; the OGX marker texts remain an authoritative fallback (used when
+cache; the Llama Stack marker texts remain an authoritative fallback (used when
 no persisting cache is configured) and the audit record, and the marker position
 still defines the recent-verbatim boundary. The recursive re-summarization
 fallback (R3) is implemented as a *persisted* fold: when the accumulated

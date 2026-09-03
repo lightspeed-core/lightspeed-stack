@@ -5,4 +5,4 @@ release that includes breaking or notable configuration changes.
 
 | Version | Description |
 |---------|-------------|
-| [v0.7.0](v0.7.0.md) | RAG configuration restructured; `ogx` naming with optional deprecated `llama_stack` alias |
+| [v0.7.0](v0.7.0.md) | RAG configuration restructured under a unified `rag` section |

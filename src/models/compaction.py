@@ -2,7 +2,7 @@
 
 Defines ``ConversationSummary`` — one chunk produced each time
 compaction triggers. The compaction module (``src/utils/compaction.py``)
-creates instances of this model from raw OGX conversation
+creates instances of this model from raw Llama Stack conversation
 items; the conversation cache (LCORE-1571) is responsible for
 persisting them.
 

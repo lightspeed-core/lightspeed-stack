@@ -10,11 +10,11 @@ from argparse import ArgumentParser
 import constants
 from configuration import configuration
 from constants import LIGHTSPEED_STACK_LOG_LEVEL_ENV_VAR
+from llama_stack_configuration import migrate_config_dumb
 from log import get_logger, setup_logging
-from ogx_configuration import migrate_config_dumb
 from runners.quota_scheduler import start_quota_scheduler
 from runners.uvicorn import start_uvicorn
-from utils.dumpers import config_dumper, models_dumper
+from utils import config_dumper, models_dumper
 
 setup_logging()
 logger = get_logger(__name__)
@@ -32,10 +32,10 @@ def create_argument_parser() -> ArgumentParser:
                       error_responses,common,agents,common_responses}
                       dump schemas for selected models group into OpenAPI-compatible file and quit
     - -c / --config: path to the configuration file (default "lightspeed-stack.yaml")
-    - -g / --generate-ogx-configuration: generate an OGX
+    - -g / --generate-llama-stack-configuration: generate a Llama Stack
                                                  configuration from the service configuration
-    - -i / --input-config-file: OGX input configuration filename (default "run.yaml")
-    - -o / --output-config-file: OGX output configuration filename (default "run_.yaml")
+    - -i / --input-config-file: Llama Stack input configuration filename (default "run.yaml")
+    - -o / --output-config-file: Llama Stack output configuration filename (default "run_.yaml")
 
     Returns:
         Configured ArgumentParser for parsing the service CLI options.
@@ -100,7 +100,7 @@ def create_argument_parser() -> ArgumentParser:
     parser.add_argument(
         "--synthesized-config-output",
         dest="synthesized_config_output",
-        help="path where the synthesized OGX run.yaml is written in "
+        help="path where the synthesized Llama Stack run.yaml is written in "
         "unified library mode (overwritten each boot, mode 0600; default: "
         f"{constants.DEFAULT_SYNTHESIZED_CONFIG_PATH})",
         default=None,
@@ -110,7 +110,7 @@ def create_argument_parser() -> ArgumentParser:
         dest="migrate_config",
         help="migrate a legacy two-file config to a unified single file and "
         "exit. Lifts the run.yaml given by --run-yaml into the "
-        "ogx.config.native_override of the -c lightspeed-stack.yaml "
+        "llama_stack.config.native_override of the -c lightspeed-stack.yaml "
         "and writes the result to --migrate-output. Replace literal secrets "
         "with ${env.VAR} references before or after migrating.",
         action="store_true",
@@ -119,8 +119,8 @@ def create_argument_parser() -> ArgumentParser:
     parser.add_argument(
         "--run-yaml",
         dest="run_yaml",
-        help="path to the legacy OGX run.yaml "
-        "to migrate (used with --migrate-config)",
+        help="path to the legacy Llama Stack run.yaml to migrate "
+        "(used with --migrate-config)",
         default=None,
     )
     parser.add_argument(
@@ -154,7 +154,7 @@ def main() -> None:
       the quota scheduler, and starts the Uvicorn web service.
 
     Raises:
-        SystemExit: when configuration dumping or OGX generation fails
+        SystemExit: when configuration dumping or Llama Stack generation fails
                     (exits with status 1).
     """
     logger.info("Lightspeed Core Stack startup")
@@ -185,19 +185,20 @@ def main() -> None:
 
     configuration.load_configuration(args.config_file)
     logger.info("Configuration: %s", configuration.configuration)
-    logger.info("OGX configuration: %s", configuration.ogx_configuration)
+    logger.info(
+        "Llama Stack configuration: %s", configuration.llama_stack_configuration
+    )
 
     # Deprecation schedule (Decision S2): the legacy two-file path keeps
-    # working through 0.6 and 0.7 with this single startup WARN and is removed
-    # in 0.8 (schedule revised 2026-08-24, confirmed by @sbunciak).
-    if configuration.ogx_configuration.library_client_config_path is not None:
+    # working through 0.6 with this single startup WARN and is removed in 0.7.
+    if configuration.llama_stack_configuration.library_client_config_path is not None:
         logger.warning(
             "DEPRECATED: the two-file configuration "
-            "(ogx.library_client_config_path + external run.yaml) is "
-            "deprecated and will be removed in release 0.8. Migrate to the "
+            "(llama_stack.library_client_config_path + external run.yaml) is "
+            "deprecated and will be removed in release 0.7. Migrate to the "
             "unified lightspeed-stack.yaml: https://lightspeed-core.github.io"
-            "/lightspeed-stack/design/ogx-config-merge"
-            "/ogx-config-merge.html#migration--backwards-compatibility"
+            "/lightspeed-stack/design/llama-stack-config-merge"
+            "/llama-stack-config-merge.html#migration--backwards-compatibility"
         )
 
     # -d or --dump-configuration CLI flags are used to dump the actual configuration

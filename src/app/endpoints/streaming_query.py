@@ -7,15 +7,19 @@ from typing import Annotated, Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
-from ogx_client import ApiException
+from ogx_client import (
+    APIConnectionError,
+)
+from ogx_client import (
+    APIStatusError as LLSApiStatusError,
+)
 from openai._exceptions import APIStatusError as OpenAIAPIStatusError
-from opentelemetry import trace
 
 from authentication import get_auth_dependency
 from authentication.interface import AuthTuple
 from authorization.azure_token_manager import AzureEntraIDManager
 from authorization.middleware import authorize
-from client.ogx import AsyncOgxClientHolder
+from client import AsyncOgxClientHolder
 from configuration import configuration
 from constants import (
     ENDPOINT_PATH_STREAMING_QUERY,
@@ -43,7 +47,6 @@ from models.common.query import Attachment
 from models.common.responses.contexts import ResponseGeneratorContext
 from models.common.responses.responses_api_params import ResponsesApiParams
 from models.common.responses.types import ResponseInput
-from models.common.turn_summary import ContextStatus
 from models.config import Action
 from utils.agents.streaming import (
     generate_agent_response,
@@ -62,13 +65,6 @@ from utils.endpoints import (
 )
 from utils.mcp_headers import McpHeaders, mcp_headers_dependency
 from utils.mcp_oauth_probe import check_mcp_auth
-from utils.otel_tracing import (
-    SpanAttributes,
-    SpanEvents,
-    add_span_event,
-    anonymize_value,
-    set_span_attributes,
-)
 from utils.query import (
     extract_provider_and_model_from_model_id,
     handle_known_apistatus_errors,
@@ -97,7 +93,6 @@ from utils.suid import get_suid, normalize_conversation_id
 from utils.vector_search import build_rag_context
 
 logger = get_logger(__name__)
-tracer = trace.get_tracer(__name__)
 router = APIRouter(tags=["streaming_query"])
 
 # Tracks background topic summary tasks for graceful shutdown.
@@ -119,7 +114,7 @@ streaming_query_responses: dict[int | str, dict[str, Any]] = {
     429: QuotaExceededResponse.openapi_response(),
     500: InternalServerErrorResponse.openapi_response(examples=["configuration"]),
     503: ServiceUnavailableResponse.openapi_response(
-        examples=["OGX", "kubernetes api"]
+        examples=["ogx", "kubernetes api"]
     ),
 }
 
@@ -163,54 +158,10 @@ async def streaming_query_endpoint_handler(  # pylint: disable=too-many-locals
     - 500: Internal Server Error - Configuration not loaded or other server errors
     - 503: Service Unavailable - Unable to connect to OGX backend
     """
-    root_span = tracer.start_span("streaming_query.handle_request")
-    try:
-        return await _handle_streaming_query_with_tracing(
-            request, query_request, auth, mcp_headers, root_span
-        )
-    except Exception:
-        root_span.end()
-        raise
-
-
-async def _handle_streaming_query_with_tracing(  # pylint: disable=too-many-locals
-    request: Request,
-    query_request: QueryRequest,
-    auth: AuthTuple,
-    mcp_headers: McpHeaders,
-    root_span: trace.Span,
-) -> StreamingResponse:
-    """Handle streaming query request with OTEL tracing instrumentation.
-
-    Parameters:
-        request: The incoming HTTP request.
-        query_request: Request payload containing query and optional parameters.
-        auth: Authentication tuple (user_id, username, skip_check, token).
-        mcp_headers: Headers to be passed to MCP servers.
-        root_span: OpenTelemetry root span for this request.
-
-    Returns:
-        StreamingResponse with SSE-formatted events.
-
-    Raises:
-        HTTPException: On authentication, authorization, quota, or model errors.
-    """
     check_configuration_loaded(configuration)
 
     user_id, _user_name, _skip_userid_check, token = auth
     started_at = datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
-
-    # Set initial span attributes
-    set_span_attributes(
-        root_span,
-        {
-            SpanAttributes.USER_ID: anonymize_value(user_id),
-            SpanAttributes.INPUT: anonymize_value(query_request.query),
-            SpanAttributes.REQUEST_ATTACHMENTS_COUNT: (
-                len(query_request.attachments) if query_request.attachments else 0
-            ),
-        },
-    )
 
     # Check MCP Auth
     await check_mcp_auth(configuration, mcp_headers, token, request.headers)
@@ -229,9 +180,6 @@ async def _handle_streaming_query_with_tracing(  # pylint: disable=too-many-loca
     # Validate attachments if provided
     if query_request.attachments:
         validate_attachments_metadata(query_request.attachments)
-
-    # Validation completed
-    add_span_event(root_span, SpanEvents.VALIDATION_COMPLETED)
 
     # Retrieve conversation if conversation_id is provided
     user_conversation = None
@@ -343,7 +291,6 @@ async def _handle_streaming_query_with_tracing(  # pylint: disable=too-many-loca
                 responses_params=responses_params,
                 endpoint_path=endpoint_path,
                 image_attachments=image_attachments,
-                root_span=root_span,
             ),
             media_type=response_media_type,
         )
@@ -369,7 +316,6 @@ async def _handle_streaming_query_with_tracing(  # pylint: disable=too-many-loca
             responses_params=responses_params,
             turn_summary=turn_summary,
             background_topic_summary_tasks=_background_topic_summary_tasks,
-            root_span=root_span,
         ),
         media_type=response_media_type,
     )
@@ -398,7 +344,6 @@ async def generate_response_with_compaction(
     responses_params: ResponsesApiParams,
     endpoint_path: str,
     image_attachments: Optional[list[Attachment]] = None,
-    root_span: Optional[trace.Span] = None,
 ) -> AsyncIterator[str]:
     """Stream a response for a conversation that requires compaction.
 
@@ -414,94 +359,79 @@ async def generate_response_with_compaction(
         responses_params: The base Responses API parameters.
         endpoint_path: API endpoint path used for metric labeling.
         image_attachments: Image attachments for multimodal prompt construction.
-        root_span: OpenTelemetry root span for this request.
 
     Yields:
         SSE-formatted strings.
     """
+    media_type = context.query_request.media_type or MEDIA_TYPE_JSON
+    yield stream_start_event(
+        conversation_id=context.conversation_id,
+        request_id=context.request_id,
+    )
+
+    compacted_original_input: Optional[ResponseInput] = None
     try:
-        media_type = context.query_request.media_type or MEDIA_TYPE_JSON
-        yield stream_start_event(
-            conversation_id=context.conversation_id,
-            request_id=context.request_id,
+        async for item in apply_compaction(
+            context.client,
+            responses_params,
+            configuration.inference,
+            configuration.compaction,
+            emit_events=True,
+            cache=configured_conversation_cache(),
+            user_id=context.user_id,
+            skip_user_id_check=context.skip_userid_check,
+        ):
+            if isinstance(item, CompactionStartedEvent):
+                yield stream_compaction_event(context.conversation_id)
+            elif isinstance(item, CompactionResult):
+                responses_params = item.params
+                compacted_original_input = item.original_input
+
+        generator, turn_summary = await retrieve_agent_response_generator(
+            responses_params=responses_params,
+            context=context,
+            endpoint_path=endpoint_path,
+            image_attachments=image_attachments,
+        )
+    except HTTPException as e:
+        yield http_exception_stream_event(e)
+        return
+    except RuntimeError as e:  # library mode wraps 413 into runtime error
+        error_response = (
+            PromptTooLongResponse(model=responses_params.model)
+            if is_context_length_error(str(e))
+            else InternalServerErrorResponse.generic()
+        )
+        yield stream_http_error_event(error_response, media_type)
+        return
+    except APIConnectionError as e:
+        yield stream_http_error_event(
+            ServiceUnavailableResponse(backend_name="OGX", cause=str(e)),
+            media_type,
+        )
+        return
+    except (LLSApiStatusError, OpenAIAPIStatusError) as e:
+        yield stream_http_error_event(
+            handle_known_apistatus_errors(e, responses_params.model), media_type
+        )
+        return
+
+    # Combine inline RAG results (BYOK + Solr) with tool-based results
+    if context.moderation_result.decision == "passed":
+        turn_summary.referenced_documents = deduplicate_referenced_documents(
+            context.inline_rag_context.referenced_documents
+            + turn_summary.referenced_documents
         )
 
-        compacted_original_input: Optional[ResponseInput] = None
-        context_status: ContextStatus = "full"
-        try:
-            async for item in apply_compaction(
-                context.client,
-                responses_params,
-                configuration.inference,
-                configuration.compaction,
-                emit_events=True,
-                cache=configured_conversation_cache(),
-                user_id=context.user_id,
-                skip_user_id_check=context.skip_userid_check,
-            ):
-                if isinstance(item, CompactionStartedEvent):
-                    yield stream_compaction_event(context.conversation_id)
-                elif isinstance(item, CompactionResult):
-                    responses_params = item.params
-                    compacted_original_input = item.original_input
-                    context_status = item.context_status
-
-            generator, turn_summary = await retrieve_agent_response_generator(
-                responses_params=responses_params,
-                context=context,
-                endpoint_path=endpoint_path,
-                image_attachments=image_attachments,
-            )
-        except HTTPException as e:
-            yield http_exception_stream_event(e)
-            return
-        except RuntimeError as e:  # library mode wraps 413 into runtime error
-            error_response = (
-                PromptTooLongResponse(model=responses_params.model)
-                if is_context_length_error(str(e))
-                else InternalServerErrorResponse.generic()
-            )
-            yield stream_http_error_event(error_response, media_type)
-            return
-        except ApiException as e:
-            if not e.status:
-                yield stream_http_error_event(
-                    ServiceUnavailableResponse(backend_name="OGX"),
-                    media_type,
-                )
-                return
-
-            yield stream_http_error_event(
-                handle_known_apistatus_errors(e, responses_params.model), media_type
-            )
-            return
-        except OpenAIAPIStatusError as e:
-            yield stream_http_error_event(
-                handle_known_apistatus_errors(e, responses_params.model), media_type
-            )
-            return
-
-        # Combine inline RAG results (BYOK + Solr) with tool-based results
-        if context.moderation_result.decision == "passed":
-            turn_summary.referenced_documents = deduplicate_referenced_documents(
-                context.inline_rag_context.referenced_documents
-                + turn_summary.referenced_documents
-            )
-
-        # The start event was already emitted above; delegate the rest (re-yield,
-        # finalization, compacted-turn storage) to the shared generator.
-        async for event in generate_agent_response(
-            generator,
-            context,
-            responses_params,
-            turn_summary,
-            background_topic_summary_tasks=_background_topic_summary_tasks,
-            emit_start=False,
-            original_input=compacted_original_input,
-            root_span=root_span,
-            context_status=context_status,
-        ):
-            yield event
-    finally:
-        if root_span is not None:
-            root_span.end()
+    # The start event was already emitted above; delegate the rest (re-yield,
+    # finalization, compacted-turn storage) to the shared generator.
+    async for event in generate_agent_response(
+        generator,
+        context,
+        responses_params,
+        turn_summary,
+        background_topic_summary_tasks=_background_topic_summary_tasks,
+        emit_start=False,
+        original_input=compacted_original_input,
+    ):
+        yield event

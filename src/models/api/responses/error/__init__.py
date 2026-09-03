@@ -11,10 +11,7 @@ from models.api.responses.error.forbidden import ForbiddenResponse
 from models.api.responses.error.internal import InternalServerErrorResponse
 from models.api.responses.error.not_found import NotFoundResponse
 from models.api.responses.error.service_unavailable import ServiceUnavailableResponse
-from models.api.responses.error.too_many_requests import (
-    QuotaExceededResponse,
-    TooManyConcurrentRequestsResponse,
-)
+from models.api.responses.error.too_many_requests import QuotaExceededResponse
 from models.api.responses.error.unauthorized import UnauthorizedResponse
 from models.api.responses.error.unprocessable_entity import UnprocessableEntityResponse
 
@@ -30,7 +27,6 @@ __all__ = [
     "PromptTooLongResponse",
     "QuotaExceededResponse",
     "ServiceUnavailableResponse",
-    "TooManyConcurrentRequestsResponse",
     "UnauthorizedResponse",
     "UnprocessableEntityResponse",
 ]

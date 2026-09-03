@@ -7,7 +7,7 @@
 | **Authors**        | Lightspeed Core Team                      |
 | **Feature**        | [LCORE-268](https://redhat.atlassian.net/browse/LCORE-268) |
 | **Spike**          | [LCORE-1589](https://redhat.atlassian.net/browse/LCORE-1589) |
-| **Links**          | [MCP Spec](https://modelcontextprotocol.io), [OGX](https://github.com/meta-llama/llama-stack) |
+| **Links**          | [MCP Spec](https://modelcontextprotocol.io), [Llama Stack](https://github.com/meta-llama/llama-stack) |
 
 ## What
 
@@ -75,8 +75,8 @@ With HIL:
 ├──────────────────────────────────────────────────────────────────────────────┤
 │                                                                              │
 │  ┌────────┐   POST /query    ┌─────────────────┐   responses.create   ┌───────────┐
-│  │  User  │ ───────────────► │ LCS Query       │ ───────────────────► │ OGX       │
-│  │        │                  │ Endpoint        │                      │           │
+│  │  User  │ ───────────────► │ LCS Query       │ ───────────────────► │ Llama     │
+│  │        │                  │ Endpoint        │                      │ Stack     │
 │  └────────┘                  └─────────────────┘                      └───────────┘
 │       │                             │                                        │
 │       │                             │ ◄─────── mcp_approval_request ─────────┤
@@ -110,13 +110,13 @@ HIL is triggered when:
 1. An MCP server is configured with `require_approval != "never"`
 2. The tool being invoked is not in the server's `never` list (if using
    `ApprovalFilter`)
-3. OGX emits an `mcp_approval_request` output item
+3. Llama Stack emits an `mcp_approval_request` output item
 
 When triggered:
 1. LCS stores the approval request in the cache database
 2. LCS returns HTTP 200 with `status: "requires_action"`
 3. Client polls or submits approval via `/approvals/{id}`
-4. On approval: LCS submits `mcp_approval_response` to OGX
+4. On approval: LCS submits `mcp_approval_response` to Llama Stack
 5. On denial: LCS submits denial and returns graceful message
 6. On expiry: LCS returns error on next interaction
 
@@ -526,7 +526,7 @@ async def get_mcp_tools(...) -> list[InputToolMCP]:
         # Determine require_approval value
         require_approval = mcp_server.require_approval
         if isinstance(require_approval, ApprovalFilter):
-            # Convert to OGX's ApprovalFilter format
+            # Convert to Llama Stack's ApprovalFilter format
             require_approval = LlamaStackApprovalFilter(
                 always=require_approval.always or None,
                 never=require_approval.never or None,
@@ -564,13 +564,13 @@ Example config files go in `examples/`.
 ### Test patterns
 
 - Framework: pytest + pytest-asyncio + pytest-mock. unittest is banned by ruff.
-- Mock OGX client: `mocker.AsyncMock(spec=AsyncOgxClient)`.
+- Mock Llama Stack client: `mocker.AsyncMock(spec=AsyncOgxClient)`.
 - Patch at module level: `mocker.patch("utils.module.function_name", ...)`.
 - Async mocking pattern: see `tests/unit/utils/test_shields.py`.
 - Config validation tests: see `tests/unit/models/config/`.
 
 **HIL-specific test considerations:**
-- Mock `mcp_approval_request` events from OGX
+- Mock `mcp_approval_request` events from Llama Stack
 - Test approval storage CRUD operations
 - Test TTL expiration logic
 - Test authorization checks on approval endpoints
@@ -594,7 +594,7 @@ Example config files go in `examples/`.
 | 2026-04-13 | Added data retention policy section | Prevent database bloat from accumulated approval records |
 | 2026-04-01 | Initial version | LCORE-1589 spike |
 
-## Appendix A: OGX Types Reference
+## Appendix A: Llama Stack Types Reference
 
 From `llama_stack_api.openai_responses`:
 

@@ -26,9 +26,9 @@ def test_loading_proper_configuration(configuration_filename: str) -> None:
     Validate that loading the given configuration YAML populates all expected sections and values.
 
     Loads configuration from the provided file and asserts presence and
-    correctness of top-level sections (configuration, service, ogx,
+    correctness of top-level sections (configuration, service, llama_stack,
     user_data_collection, mcp_servers) and selected field values including
-    service host and flags, CORS settings, OGX URL and API key secret,
+    service host and flags, CORS settings, llama stack URL and API key secret,
     user data collection settings, and three MCP server entries.
 
     Parameters:
@@ -43,7 +43,7 @@ def test_loading_proper_configuration(configuration_filename: str) -> None:
 
     # check that all configuration sections exist
     assert cfg.configuration is not None
-    assert cfg.ogx_configuration is not None
+    assert cfg.llama_stack_configuration is not None
     assert cfg.service_configuration is not None
     assert cfg.user_data_collection_configuration is not None
     assert cfg.mcp_servers is not None
@@ -67,8 +67,8 @@ def test_loading_proper_configuration(configuration_filename: str) -> None:
     assert cors_config.allow_methods == ["foo_method", "bar_method", "baz_method"]
     assert cors_config.allow_headers == ["foo_header", "bar_header", "baz_header"]
 
-    # check 'ogx' section
-    ls_config = cfg.ogx_configuration
+    # check 'llama_stack' section
+    ls_config = cfg.llama_stack_configuration
     assert ls_config.use_as_library_client is False
     assert str(ls_config.url) == "http://localhost:8321/"
     assert ls_config.api_key is not None

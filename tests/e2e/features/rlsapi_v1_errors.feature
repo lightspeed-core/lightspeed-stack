@@ -1,4 +1,4 @@
-@cfg_rbac @RBAC
+@e2e_group_1 @RBAC
 Feature: rlsapi v1 /infer endpoint error response tests
 
   Tests for error conditions on the rlsapi v1 /infer endpoint including

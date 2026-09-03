@@ -1,13 +1,41 @@
 """Common types for the project."""
 
 from re import Pattern
-from typing import TypeVar, cast
+from typing import Any
 
-type SingletonInstances = dict[type, object]
+from ogx_api import ImageContentItem, TextContentItem
+
+type SingletonInstances = dict[type, Any]
 
 CompiledPatterns = list[tuple[Pattern[str], str]]
 
-T = TypeVar("T")
+
+def content_to_str(content: Any) -> str:
+    """Convert content (str, TextContentItem, ImageContentItem, or list) to string.
+
+    Parameters:
+    ----------
+        content: Value to normalize into a string (may be None,
+                 str, content item, list, or any other object).
+
+    Returns:
+    -------
+        str: The normalized string representation of the content.
+    """
+    match content:
+        case None:
+            return ""
+        case str():
+            return content
+        case TextContentItem():
+            # help the type checkers to infer return data type
+            return str(content.text)
+        case ImageContentItem():
+            return "<image>"
+        case list():
+            return " ".join(content_to_str(item) for item in content)
+        case _:
+            return str(content)
 
 
 class Singleton(type):
@@ -15,14 +43,13 @@ class Singleton(type):
 
     _instances: SingletonInstances = {}
 
-    def __call__(cls: type[T], *args: object, **kwargs: object) -> T:
+    def __call__(cls, *args: Any, **kwargs: Any) -> Any:
         """
-        Return the cached singleton instance, creating it if necessary.
+        Return the single cached instance of the class, creating and caching it on first call.
 
         Returns:
-            The singleton instance for this class.
+            object: The singleton instance for this class.
         """
-        if cls not in Singleton._instances:
-            Singleton._instances[cls] = type.__call__(cls, *args, **kwargs)
-
-        return cast(T, Singleton._instances[cls])
+        if cls not in cls._instances:
+            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
+        return cls._instances[cls]

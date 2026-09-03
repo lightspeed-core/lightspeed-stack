@@ -4,7 +4,6 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Request
 from fastapi.params import Depends
-from opentelemetry import trace
 
 from authentication import get_auth_dependency
 from authentication.interface import AuthTuple
@@ -23,7 +22,6 @@ from models.config import Action
 from utils.endpoints import check_configuration_loaded
 
 logger = get_logger(__name__)
-tracer = trace.get_tracer(__name__)
 router = APIRouter(tags=["shields"])
 
 
@@ -66,13 +64,11 @@ async def shields_endpoint_handler(
     # Nothing interesting in the request
     _ = request
 
-    with tracer.start_as_current_span("shields.list") as span:
-        check_configuration_loaded(configuration)
+    check_configuration_loaded(configuration)
 
-        shields = [
-            CatalogShield.model_validate(shield.model_dump())
-            for shield in configuration.shields
-        ]
-        logger.info("Returning %d configured shield(s)", len(shields))
-        span.set_attribute("shields.count", len(shields))
-        return ShieldsResponse(shields=shields)
+    shields = [
+        CatalogShield.model_validate(shield.model_dump())
+        for shield in configuration.shields
+    ]
+    logger.info("Returning %d configured shield(s)", len(shields))
+    return ShieldsResponse(shields=shields)

@@ -13,16 +13,15 @@ import jinja2
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from jinja2.sandbox import SandboxedEnvironment
 from ogx_api.openai_responses import OpenAIResponseObject
-from ogx_client import ApiException, RateLimitError
+from ogx_client import APIConnectionError, APIStatusError, RateLimitError
 from openai._exceptions import APIStatusError as OpenAIAPIStatusError
-from opentelemetry import trace
 
 import constants
 from authentication import get_auth_dependency
 from authentication.interface import AuthTuple
 from authorization.azure_token_manager import AzureEntraIDManager
 from authorization.middleware import authorize
-from client.ogx import AsyncOgxClientHolder
+from client import AsyncOgxClientHolder
 from configuration import configuration
 from constants import ENDPOINT_PATH_INFER
 from log import get_logger
@@ -48,13 +47,6 @@ from observability import InferenceEventData, build_inference_event, send_splunk
 from pydantic_ai_lightspeed.capabilities.redaction.core import redact_text
 from utils.endpoints import check_configuration_loaded
 from utils.model_list import parse_model_list_response
-from utils.otel_tracing import (
-    SpanAttributes,
-    SpanEvents,
-    add_span_event,
-    anonymize_value,
-    set_span_attributes,
-)
 from utils.query import (
     consume_query_tokens,
     extract_provider_and_model_from_model_id,
@@ -75,7 +67,6 @@ from utils.shields import run_shield_moderation_v2
 from utils.suid import get_suid
 
 logger = get_logger(__name__)
-tracer = trace.get_tracer(__name__)
 router = APIRouter(tags=["rlsapi-v1"])
 
 
@@ -88,8 +79,9 @@ class TemplateRenderError(Exception):
 _INFER_HANDLED_EXCEPTIONS = (
     TemplateRenderError,
     RuntimeError,
-    ApiException,
+    APIConnectionError,
     RateLimitError,
+    APIStatusError,
     OpenAIAPIStatusError,
 )
 
@@ -104,7 +96,7 @@ infer_responses: dict[int | str, dict[str, Any]] = {
     429: QuotaExceededResponse.openapi_response(),
     500: InternalServerErrorResponse.openapi_response(examples=["configuration"]),
     503: ServiceUnavailableResponse.openapi_response(
-        examples=["OGX", "kubernetes api"]
+        examples=["ogx", "kubernetes api"]
     ),
 }
 
@@ -168,7 +160,7 @@ async def _get_default_model_id() -> str:
 
     Model selection precedence:
     1. If default model and provider are configured, use them.
-    2. Otherwise, query OGX for available LLM models and select the first one.
+    2. Otherwise, query Llama Stack for available LLM models and select the first one.
 
     Returns:
         The model identifier string in "provider/model" format.
@@ -189,21 +181,21 @@ async def _get_default_model_id() -> str:
             )
             return f"{provider_id}/{model_id}"
 
-    # 2. Auto-discover from OGX
+    # 2. Auto-discover from Llama Stack
     logger.info(
         "No complete default model configured for rlsapi v1, "
         "auto-discovering LLM model"
     )
     client = AsyncOgxClientHolder().get_client()
     try:
-        models = parse_model_list_response(await client.openai.list())
-    except ApiException as e:
-        if not e.status:
-            error_response = ServiceUnavailableResponse(
-                backend_name="OGX",
-            )
-            raise HTTPException(**error_response.model_dump()) from e
-
+        models = parse_model_list_response(await client.models.list())
+    except APIConnectionError as e:
+        error_response = ServiceUnavailableResponse(
+            backend_name="OGX",
+            cause=str(e),
+        )
+        raise HTTPException(**error_response.model_dump()) from e
+    except APIStatusError as e:
         error_response = InternalServerErrorResponse.generic()
         raise HTTPException(**error_response.model_dump()) from e
 
@@ -223,7 +215,7 @@ async def _get_default_model_id() -> str:
 
 
 async def _resolve_validated_model_id() -> str:
-    """Resolve and validate the default model against OGX.
+    """Resolve and validate the default model against Llama Stack.
 
     Combines model resolution with existence validation so callers get
     either a known-good model ID or a clear 404 error.
@@ -232,8 +224,8 @@ async def _resolve_validated_model_id() -> str:
         The validated model identifier string in "provider/model" format.
 
     Raises:
-        HTTPException: 404 if the resolved model does not exist in OGX.
-        HTTPException: 503 if OGX is unreachable during resolution or validation.
+        HTTPException: 404 if the resolved model does not exist in Llama Stack.
+        HTTPException: 503 if Llama Stack is unreachable during resolution or validation.
     """
     model_id = await _get_default_model_id()
     client = AsyncOgxClientHolder().get_client()
@@ -267,7 +259,7 @@ async def _call_llm(
         The full OpenAIResponseObject from the LLM.
 
     Raises:
-        ApiException: If the OGX service is unreachable.
+        APIConnectionError: If the Llama Stack service is unreachable.
         HTTPException: 503 if no default model is configured.
     """
     client = AsyncOgxClientHolder().get_client()
@@ -284,7 +276,7 @@ async def _call_llm(
 
     logger.debug("Using model %s for rlsapi v1 inference", resolved_model_id)
 
-    # Normalize Vertex AI model IDs to work around OGX 0.6.x bug
+    # Normalize Vertex AI model IDs to work around llama-stack 0.6.x bug
     normalized_model = normalize_vertex_ai_model_id(resolved_model_id)
 
     response = await client.responses.create(
@@ -624,7 +616,7 @@ def _map_inference_error_to_http_exception(  # pylint: disable=too-many-return-s
         )
         return None
 
-    if isinstance(error, ApiException) and not error.status:
+    if isinstance(error, APIConnectionError):
         logger.error(
             "Unable to connect to OGX for request %s: %s",
             request_id,
@@ -632,6 +624,7 @@ def _map_inference_error_to_http_exception(  # pylint: disable=too-many-return-s
         )
         error_response = ServiceUnavailableResponse(
             backend_name="OGX",
+            cause="Unable to connect to the inference backend",
         )
         return HTTPException(**error_response.model_dump())
 
@@ -647,7 +640,7 @@ def _map_inference_error_to_http_exception(  # pylint: disable=too-many-return-s
         )
         return HTTPException(**error_response.model_dump())
 
-    if isinstance(error, (ApiException, OpenAIAPIStatusError)):
+    if isinstance(error, (APIStatusError, OpenAIAPIStatusError)):
         logger.error("API error for request %s: %s", request_id, type(error).__name__)
         error_response = handle_known_apistatus_errors(error, model_id)
         return HTTPException(**error_response.model_dump())
@@ -683,206 +676,164 @@ async def infer_endpoint(  # pylint: disable=R0914,R0915
         HTTPException: 503 if the LLM service is unavailable.
     """
     # Authentication enforced by get_auth_dependency(), authorization by @authorize decorator.
-    with tracer.start_as_current_span("rlsapi_v1.infer") as span:
-        check_configuration_loaded(configuration)
-        endpoint_path = ENDPOINT_PATH_INFER
-        request_id = get_suid()
+    check_configuration_loaded(configuration)
+    endpoint_path = ENDPOINT_PATH_INFER
+    request_id = get_suid()
 
-        span.set_attribute(
-            SpanAttributes.INPUT, anonymize_value(infer_request.question)
-        )
+    logger.info("Processing rlsapi v1 /infer request %s", request_id)
 
-        logger.info("Processing rlsapi v1 /infer request %s", request_id)
-
-        # Quota enforcement: resolve subject and check availability before any work.
-        # No-op when quota_subject is not configured or no quota limiters exist.
-        quota_id = _resolve_quota_subject(request, auth)
-        if quota_id is not None:
-            logger.info(
-                "Checking quota availability for rlsapi v1 request %s using subject type %s",
-                request_id,
-                configuration.rlsapi_v1.quota_subject,
-            )
-            check_tokens_available(configuration.quota_limiters, quota_id)
-            span.set_attribute(SpanAttributes.QUOTA_CHECK_PASSED, True)
-            logger.info(
-                "Quota availability check passed for rlsapi v1 request %s", request_id
-            )
-        else:
-            logger.info(
-                "Quota enforcement disabled for rlsapi v1 request %s", request_id
-            )
-
-        input_source = infer_request.get_input_source()
+    # Quota enforcement: resolve subject and check availability before any work.
+    # No-op when quota_subject is not configured or no quota limiters exist.
+    quota_id = _resolve_quota_subject(request, auth)
+    if quota_id is not None:
         logger.info(
-            "Prepared rlsapi v1 request %s input source; metadata requested: %s",
+            "Checking quota availability for rlsapi v1 request %s using subject type %s",
             request_id,
-            infer_request.include_metadata,
+            configuration.rlsapi_v1.quota_subject,
         )
+        check_tokens_available(configuration.quota_limiters, quota_id)
+        logger.info(
+            "Quota availability check passed for rlsapi v1 request %s", request_id
+        )
+    else:
+        logger.info("Quota enforcement disabled for rlsapi v1 request %s", request_id)
 
-        # Run shield moderation on user input before inference.
-        # Uses all configured shields; no-op when no shields are registered.
-        # Runs before model/tool discovery so blocked requests short-circuit
-        # without incurring external I/O.
-        blocked_response, moderated_input = await _check_shield_moderation(
-            input_source,
+    input_source = infer_request.get_input_source()
+    logger.info(
+        "Prepared rlsapi v1 request %s input source; metadata requested: %s",
+        request_id,
+        infer_request.include_metadata,
+    )
+
+    # Run shield moderation on user input before inference.
+    # Uses all configured shields; no-op when no shields are registered.
+    # Runs before model/tool discovery so blocked requests short-circuit
+    # without incurring external I/O.
+    blocked_response, moderated_input = await _check_shield_moderation(
+        input_source,
+        request_id,
+        background_tasks,
+        infer_request,
+        request,
+    )
+    if blocked_response is not None:
+        return blocked_response
+
+    model_id = await _resolve_validated_model_id()
+    provider, model = extract_provider_and_model_from_model_id(model_id)
+    logger.info(
+        "Resolved rlsapi v1 request %s model provider=%s model=%s",
+        request_id,
+        provider,
+        model,
+    )
+    mcp_tools: list[Any] = await get_mcp_tools(request_headers=request.headers)
+    logger.info(
+        "Retrieved %d MCP tools for rlsapi v1 request %s",
+        len(mcp_tools),
+        request_id,
+    )
+
+    start_time = time.monotonic()
+    verbose_enabled = (
+        configuration.rlsapi_v1.allow_verbose_infer and infer_request.include_metadata
+    )
+    logger.info(
+        "Starting LLM call for rlsapi v1 request %s with verbose metadata enabled: %s",
+        request_id,
+        verbose_enabled,
+    )
+
+    response = None
+    try:
+        logger.info("Building instructions for rlsapi v1 request %s", request_id)
+        instructions = _build_instructions(infer_request.context.systeminfo)
+        response = await _call_llm(
+            moderated_input,
+            instructions,
+            tools=cast(list[Any], mcp_tools),
+            model_id=model_id,
+        )
+        response_text = extract_text_from_response_items(response.output)
+        token_usage = extract_token_usage(response.usage, model_id, endpoint_path)
+        inference_time = time.monotonic() - start_time
+        recording.record_llm_inference_duration(
+            provider, model, endpoint_path, "success", inference_time
+        )
+        logger.info(
+            "LLM call completed for rlsapi v1 request %s in %.3f seconds "
+            "with %d input tokens and %d output tokens",
             request_id,
+            inference_time,
+            token_usage.input_tokens,
+            token_usage.output_tokens,
+        )
+    except _INFER_HANDLED_EXCEPTIONS as error:
+        if response is not None:
+            extract_token_usage(response.usage, model_id, endpoint_path)
+        _record_inference_failure(
             background_tasks,
             infer_request,
             request,
-        )
-
-        if moderated_input != input_source:
-            add_span_event(span, SpanEvents.PII_DETECTED)
-
-        if blocked_response is not None:
-            span.set_attribute(SpanAttributes.SHIELD_RESULT, "blocked")
-            add_span_event(span, SpanEvents.SHIELD_REJECTED)
-            return blocked_response
-
-        span.set_attribute(SpanAttributes.SHIELD_RESULT, "passed")
-
-        model_id = await _resolve_validated_model_id()
-        provider, model = extract_provider_and_model_from_model_id(model_id)
-        set_span_attributes(
-            span,
-            {
-                SpanAttributes.LLM_MODEL_ID: model_id,
-                SpanAttributes.LLM_PROVIDER_ID: provider,
-            },
-        )
-        logger.info(
-            "Resolved rlsapi v1 request %s model provider=%s model=%s",
             request_id,
-            provider,
+            error,
+            start_time,
             model,
-        )
-        mcp_tools: list[Any] = await get_mcp_tools(request_headers=request.headers)
-        logger.info(
-            "Retrieved %d MCP tools for rlsapi v1 request %s",
-            len(mcp_tools),
-            request_id,
-        )
-
-        start_time = time.monotonic()
-        verbose_enabled = (
-            configuration.rlsapi_v1.allow_verbose_infer
-            and infer_request.include_metadata
-        )
-        logger.info(
-            "Starting LLM call for rlsapi v1 request %s with verbose metadata enabled: %s",
-            request_id,
-            verbose_enabled,
-        )
-
-        response = None
-        try:
-            logger.info("Building instructions for rlsapi v1 request %s", request_id)
-            instructions = _build_instructions(infer_request.context.systeminfo)
-            span.set_attribute(SpanAttributes.RLS_TEMPLATE_OK, True)
-            add_span_event(span, SpanEvents.RLS_TEMPLATE_RENDERED)
-
-            add_span_event(span, SpanEvents.LLM_INFERENCE_STARTED)
-            response = await _call_llm(
-                moderated_input,
-                instructions,
-                tools=cast(list[Any], mcp_tools),
-                model_id=model_id,
-            )
-            response_text = extract_text_from_response_items(response.output)
-            token_usage = extract_token_usage(response.usage, model_id, endpoint_path)
-            add_span_event(span, SpanEvents.LLM_INFERENCE_COMPLETED)
-
-            set_span_attributes(
-                span,
-                {
-                    SpanAttributes.LLM_USAGE_INPUT_TOKENS: token_usage.input_tokens,
-                    SpanAttributes.LLM_USAGE_OUTPUT_TOKENS: token_usage.output_tokens,
-                    SpanAttributes.OUTPUT: anonymize_value(response_text),
-                },
-            )
-
-            inference_time = time.monotonic() - start_time
-            recording.record_llm_inference_duration(
-                provider, model, endpoint_path, "success", inference_time
-            )
-            logger.info(
-                "LLM call completed for rlsapi v1 request %s in %.3f seconds "
-                "with %d input tokens and %d output tokens",
-                request_id,
-                inference_time,
-                token_usage.input_tokens,
-                token_usage.output_tokens,
-            )
-        except _INFER_HANDLED_EXCEPTIONS as error:
-            if isinstance(error, TemplateRenderError):
-                span.set_attribute(SpanAttributes.RLS_TEMPLATE_OK, False)
-            if response is not None:
-                extract_token_usage(response.usage, model_id, endpoint_path)
-            _record_inference_failure(
-                background_tasks,
-                infer_request,
-                request,
-                request_id,
-                error,
-                start_time,
-                model,
-                provider,
-                endpoint_path,
-            )
-            mapped_error = _map_inference_error_to_http_exception(
-                error,
-                model_id,
-                request_id,
-            )
-            if mapped_error is not None:
-                raise mapped_error from error
-            raise
-
-        if not response_text:
-            logger.warning("Empty response from LLM for request %s", request_id)
-            response_text = constants.UNABLE_TO_PROCESS_RESPONSE
-
-        # Consume quota tokens after successful inference.
-        if quota_id is not None:
-            logger.info(
-                "Consuming quota tokens for rlsapi v1 request %s: input=%d output=%d",
-                request_id,
-                token_usage.input_tokens,
-                token_usage.output_tokens,
-            )
-            consume_query_tokens(
-                user_id=quota_id,
-                model_id=model_id,
-                token_usage=token_usage,
-            )
-            logger.info(
-                "Quota token consumption completed for rlsapi v1 request %s",
-                request_id,
-            )
-
-        _queue_splunk_event(
-            background_tasks,
-            infer_request,
-            request,
-            request_id,
-            response_text,
-            inference_time,
-            "infer_with_llm",
-            input_tokens=token_usage.input_tokens,
-            output_tokens=token_usage.output_tokens,
-        )
-
-        logger.info(
-            "Completed rlsapi v1 /infer request %s in %.3f seconds",
-            request_id,
-            inference_time,
-        )
-
-        return _build_infer_response(
-            response_text,
-            request_id,
-            response if verbose_enabled else None,
-            model_id,
+            provider,
             endpoint_path,
         )
+        mapped_error = _map_inference_error_to_http_exception(
+            error,
+            model_id,
+            request_id,
+        )
+        if mapped_error is not None:
+            raise mapped_error from error
+        raise
+
+    if not response_text:
+        logger.warning("Empty response from LLM for request %s", request_id)
+        response_text = constants.UNABLE_TO_PROCESS_RESPONSE
+
+    # Consume quota tokens after successful inference.
+    if quota_id is not None:
+        logger.info(
+            "Consuming quota tokens for rlsapi v1 request %s: input=%d output=%d",
+            request_id,
+            token_usage.input_tokens,
+            token_usage.output_tokens,
+        )
+        consume_query_tokens(
+            user_id=quota_id,
+            model_id=model_id,
+            token_usage=token_usage,
+        )
+        logger.info(
+            "Quota token consumption completed for rlsapi v1 request %s", request_id
+        )
+
+    _queue_splunk_event(
+        background_tasks,
+        infer_request,
+        request,
+        request_id,
+        response_text,
+        inference_time,
+        "infer_with_llm",
+        input_tokens=token_usage.input_tokens,
+        output_tokens=token_usage.output_tokens,
+    )
+
+    logger.info(
+        "Completed rlsapi v1 /infer request %s in %.3f seconds",
+        request_id,
+        inference_time,
+    )
+
+    return _build_infer_response(
+        response_text,
+        request_id,
+        response if verbose_enabled else None,
+        model_id,
+        endpoint_path,
+    )

@@ -93,7 +93,7 @@ unchanged pages).
 │   skip, deletion diff              MarkdownNodeParser (380/0)    │
 │                                         │ embed (pinned model)   │
 │                                         ▼                        │
-│                              faiss_store.db (+ run.yaml)         │
+│                              faiss_store.db (+ llama-stack.yaml) │
 │                              [optional --output-image OCI tar]   │
 └──────────────────────────────────────────────────────────────────┘
         ▲ CronJob (scheduled)                  │ artifact on shared

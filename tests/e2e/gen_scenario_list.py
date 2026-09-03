@@ -55,7 +55,7 @@ for filename in files:
         with open(
             os.path.join(FEATURE_DIRECTORY, filename), "r", encoding="utf-8"
         ) as fin:
-            for line in fin:
+            for line in fin.readlines():
                 line = line.strip()
                 # process all scenarios and scenario outlines
                 for prefix in PREFIXES:

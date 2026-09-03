@@ -4,14 +4,13 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.params import Depends
-from ogx_client import ApiException, BadRequestError
-from ogx_client.models.list_providers_response import ListProvidersResponse
-from opentelemetry import trace
+from ogx_client import APIConnectionError, BadRequestError
+from ogx_client.types import ProviderListResponse
 
 from authentication import get_auth_dependency
 from authentication.interface import AuthTuple
 from authorization.middleware import authorize
-from client.ogx import AsyncOgxClientHolder
+from client import AsyncOgxClientHolder
 from configuration import configuration
 from log import get_logger
 from models.api.responses.constants import UNAUTHORIZED_OPENAPI_EXAMPLES
@@ -28,10 +27,8 @@ from models.api.responses.successful import (
 )
 from models.config import Action
 from utils.endpoints import check_configuration_loaded
-from utils.ogx_serialization import dump_ogx_model
 
 logger = get_logger(__name__)
-tracer = trace.get_tracer(__name__)
 router = APIRouter(tags=["providers"])
 
 
@@ -41,7 +38,7 @@ providers_list_responses: dict[int | str, dict[str, Any]] = {
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
     500: InternalServerErrorResponse.openapi_response(examples=["configuration"]),
     503: ServiceUnavailableResponse.openapi_response(
-        examples=["OGX", "kubernetes api"]
+        examples=["ogx", "kubernetes api"]
     ),
 }
 
@@ -52,7 +49,7 @@ provider_get_responses: dict[int | str, dict[str, Any]] = {
     404: NotFoundResponse.openapi_response(examples=["provider"]),
     500: InternalServerErrorResponse.openapi_response(examples=["configuration"]),
     503: ServiceUnavailableResponse.openapi_response(
-        examples=["OGX", "kubernetes api"]
+        examples=["ogx", "kubernetes api"]
     ),
 }
 
@@ -76,7 +73,7 @@ async def providers_endpoint_handler(
     - HTTPException: with status 500 and a detail object containing `response`
       and `cause` when service configuration is wrong or incomplete.
     - HTTPException: with status 503 and a detail object containing `response`
-      and `cause` when unable to connect to OGX.
+      and `cause` when unable to connect to Llama Stack.
 
     ### Returns:
     - ProvidersListResponse: Mapping from API type to list of providers.
@@ -87,27 +84,23 @@ async def providers_endpoint_handler(
     # Nothing interesting in the request
     _ = request
 
-    with tracer.start_as_current_span("providers.list") as span:
-        check_configuration_loaded(configuration)
+    check_configuration_loaded(configuration)
 
-        ogx_configuration = configuration.ogx_configuration
-        logger.info("OGX config: %s", ogx_configuration)
+    llama_stack_configuration = configuration.llama_stack_configuration
+    logger.info("Llama Stack config: %s", llama_stack_configuration)
 
-        try:
-            client = AsyncOgxClientHolder().get_client()
-            providers: ListProvidersResponse = await client.providers.list()
-        except ApiException as e:
-            logger.error("Unable to connect to OGX: %s", e)
-            response = ServiceUnavailableResponse(backend_name="OGX")
-            raise HTTPException(**response.model_dump()) from e
+    try:
+        client = AsyncOgxClientHolder().get_client()
+        providers: ProviderListResponse = await client.providers.list()
+    except APIConnectionError as e:
+        logger.error("Unable to connect to Llama Stack: %s", e)
+        response = ServiceUnavailableResponse(backend_name="OGX", cause=str(e))
+        raise HTTPException(**response.model_dump()) from e
 
-        span.set_attribute("providers.count", len(providers))
-        return ProvidersListResponse(providers=group_providers(providers))
+    return ProvidersListResponse(providers=group_providers(providers))
 
 
-def group_providers(
-    providers: ListProvidersResponse,
-) -> dict[str, list[dict[str, Any]]]:
+def group_providers(providers: ProviderListResponse) -> dict[str, list[dict[str, Any]]]:
     """Group a list of ProviderInfo objects by their API type.
 
     Args:
@@ -150,7 +143,7 @@ async def get_provider_endpoint_handler(
     - HTTPException: with status 500 and a detail object containing `response`
       and `cause` when service configuration is wrong or incomplete.
     - HTTPException: with status 503 and a detail object containing `response`
-      and `cause` when unable to connect to OGX.
+      and `cause` when unable to connect to Llama Stack.
 
     ### Returns:
     - ProviderResponse: Provider details.
@@ -161,27 +154,21 @@ async def get_provider_endpoint_handler(
     # Nothing interesting in the request
     _ = request
 
-    with tracer.start_as_current_span("providers.get") as span:
-        check_configuration_loaded(configuration)
+    check_configuration_loaded(configuration)
 
-        ogx_configuration = configuration.ogx_configuration
-        logger.info("OGX config: %s", ogx_configuration)
+    llama_stack_configuration = configuration.llama_stack_configuration
+    logger.info("Llama Stack config: %s", llama_stack_configuration)
 
-        try:
-            client = AsyncOgxClientHolder().get_client()
-            provider = await client.providers.retrieve(provider_id)
-            span.set_attribute("providers.found", True)
-            return ProviderResponse(**dump_ogx_model(provider))
+    try:
+        client = AsyncOgxClientHolder().get_client()
+        provider = await client.providers.retrieve(provider_id)
+        return ProviderResponse(**provider.model_dump())
 
-        except (BadRequestError, ValueError) as e:
-            # Server mode raises BadRequestError; library mode raises ValueError.
-            logger.error("Provider not found: %s", e)
-            response = NotFoundResponse(resource="provider", resource_id=provider_id)
-            raise HTTPException(**response.model_dump()) from e
+    except APIConnectionError as e:
+        logger.error("Unable to connect to Llama Stack: %s", e)
+        response = ServiceUnavailableResponse(backend_name="OGX", cause=str(e))
+        raise HTTPException(**response.model_dump()) from e
 
-        except ApiException as e:
-            if e.status:
-                raise
-            logger.error("Unable to connect to OGX: %s", e)
-            response = ServiceUnavailableResponse(backend_name="OGX")
-            raise HTTPException(**response.model_dump()) from e
+    except BadRequestError as e:
+        response = NotFoundResponse(resource="provider", resource_id=provider_id)
+        raise HTTPException(**response.model_dump()) from e

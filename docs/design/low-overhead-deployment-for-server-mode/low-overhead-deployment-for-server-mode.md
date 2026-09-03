@@ -87,7 +87,7 @@ safer, more predictable upgrades across the platform.
 
 # Why
 
-One of the current deployment options is to run OGX as a separate
+One of the current deployment options is to run Llama Stack as a separate
 server, which places an extra operational burden on teams. Developers and
 administrators must learn the deployment mechanics, manage an additional
 service lifecycle, and troubleshoot issues specific to that server. This
@@ -95,7 +95,7 @@ complexity increases the number of manual steps required to get Lightspeed Core
 running for local development or test environments, slowing onboarding and
 raising the chance of configuration errors that can block progress.
 
-Because the OGX team prefers and recommends server mode, we should
+Because the Llama Stack team prefers and recommends server mode, we should
 simplify that experience for Lightspeed developers. Providing streamlined
 deployment artifacts, clear documentation, and automated setup scripts or
 tooling will reduce friction and prevent divergent local setups. By making the
@@ -112,7 +112,7 @@ and reducing environment-related failures.
 ## R1  
 
 Lightspeed Core includes an automated startup mechanism that launches both
-LCORE and OGX images with a single command, removing manual
+LCORE and Llama Stack images with a single command, removing manual
 orchestration steps. This unified command initializes the required containers
 or services, applies sensible defaults, and wires together networking and
 configuration so developers don't need to perform separate launches or
@@ -130,19 +130,19 @@ across machines and teams. Built-in checks and logs surface any boot-time
 issues and provide clear next steps for resolution, while configuration
 overrides allow experienced users to customize behavior without abandoning the
 convenience of automation. Overall, this feature streamlines getting Lightspeed
-Core and OGX running together, improving developer velocity and
+Core and Llama Stack running together, improving developer velocity and
 reliability.
 
 
 
 ## R3
 
-Lightspeed developers must not be required to interact directly with the OGX
-server; the platform should hide that complexity behind stable Lightspeed
-interfaces. Requiring teams to manage or troubleshoot the OGX service
+Lightspeed developers must not be required to interact directly with the Llama
+Stack server; the platform should hide that complexity behind stable Lightspeed
+interfaces. Requiring teams to manage or troubleshoot the Llama Stack service
 would increase cognitive load, introduce variability across developer
 environments, and create additional failure modes unrelated to application
-logic. Instead, Lightspeed should surface any necessary OGX
+logic. Instead, Lightspeed should surface any necessary Llama Stack
 capabilities through the core API and configuration layer so developers can
 build and run features without learning server internals or adjusting low-level
 deployment parameters.
@@ -151,11 +151,11 @@ deployment parameters.
 
 ## R4
 
-Until the official OGX distribution from RHOAI includes native
+Until the official Llama Stack distribution from RHOAI includes native
 lightspeed-providers, we should provide an interim, supported distribution of
-OGX tailored for Lightspeed. This custom distribution would bundle the
-providers, sensible defaults, and integration glue so teams can consume OGX
-functionality transparently. Delivering it as part of Lightspeed’s
+Llama Stack tailored for Lightspeed. This custom distribution would bundle the
+providers, sensible defaults, and integration glue so teams can consume Llama
+Stack functionality transparently. Delivering it as part of Lightspeed’s
 tooling—via automated images, single-command startup, and documented
 configuration overlays—ensures consistent behavior across local, CI, and
 staging environments while we coordinate with RHOAI on upstream support.
@@ -250,21 +250,21 @@ incompatibilities.
 
 ## U1
 
-Developers run Lightspeed Core and OGX together locally with a single
+Developers run Lightspeed Core and Llama Stack together locally with a single
 command.
 
 
 
 ## U2  
 
-Teams avoid interacting directly with OGX server; Lightspeed surfaces
+Teams avoid interacting directly with Llama Stack server; Lightspeed surfaces
 functionality via core API/config.
 
 
 
 ## U3  
 
-Provide an interim Lightspeed-tailored OGX distribution (until upstream
+Provide an interim Lightspeed-tailored Llama Stack distribution (until upstream
 includes lightspeed-providers - which is very unlikely).
 
 
@@ -285,7 +285,7 @@ upstream Kubernetes, k3s/minikube).
 
 ## U6
 
-Start LCORE & OGX images with one automated startup command for CI,
+Start LCORE & Llama Stack images with one automated startup command for CI,
 onboarding, and reproducible dev environments.
 
 
@@ -300,7 +300,7 @@ configuration.
 ## U8
 
 Ship streamlined deployment artifacts, documentation, and tooling to simplify
-server-mode OGX setup.
+server-mode Llama Stack setup.
 
 
 
@@ -339,7 +339,7 @@ environments (persistence, resource limits, observability).
 ## S1
 
 Single-command local orchestration based on Docker Compose / Podman Compose:
-define LCORE + OGX services, networks, volumes, env overrides; good for
+define LCORE + Llama Stack services, networks, volumes, env overrides; good for
 simple local/dev setups and CI. CLI wrapper: single command that calls compose,
 applies config transforms, and runs health checks.
 
@@ -363,18 +363,18 @@ provider configs, secrets, and envs.
 ## S4
 
 
-LCORE can launch OGX directly as part of its own lifecycle, embedding
+LCORE can launch Llama Stack directly as part of its own lifecycle, embedding
 the model service startup into the core workflow so teams don't have to manage
 a separate server. When invoked, LCORE will detect the available container
-runtime (Podman or Docker) and instantiate the specified OGX image with
+runtime (Podman or Docker) and instantiate the specified Llama Stack image with
 the correct network, volumes, and environment configuration derived from
-Lightspeed Core configuration. This ensures the OGX process is created
+Lightspeed Core configuration. This ensures the Llama Stack process is created
 with consistent defaults, exposed ports, and health checks, and that any
 runtime options or provider plugins required by Lightspeed are injected
 automatically.
 
 During teardown, LCORE will also be responsible for a clean shutdown of the
-OGX instance, sequencing termination to avoid data loss or orphaned
+Llama Stack instance, sequencing termination to avoid data loss or orphaned
 resources. The shutdown routine will run graceful stop commands, wait for
 configured timeouts, capture and surface container logs if failures occur, and
 remove ephemeral artifacts created for the session (temporary volumes,
@@ -386,7 +386,7 @@ deployments, reducing manual cleanup and simplifying troubleshooting.
 
 ## S5
 
-Similar to the container-based approach, LCORE can start a local OGX
+Similar to the container-based approach, LCORE can start a local Llama Stack
 process directly by invoking the uv (or equivalent) command, embedding the
 model runtime as a local binary rather than a container. LCORE would assemble
 the required command-line arguments, environment variables, and configuration
@@ -410,7 +410,7 @@ while preserving reproducible defaults for typical developer setups.
 # Chosen approach and configuration (target state)
 
 We propose supporting both production and local deployments by implementing solutions
-S4 and S5. OGX startup mode (containerized or local binary) will be
+S4 and S5. Llama Stack startup mode (containerized or local binary) will be
 selectable via future `lightspeed-stack.yaml` schema changes, allowing teams and
 environments to choose the best runtime without code changes.
 
@@ -436,7 +436,7 @@ per-environment overrides and CLI flags.
 
 ## D3
 
-Distribution: publish a Lightspeed-tailored OGX OCI image
+Distribution: publish a Lightspeed-tailored Llama Stack OCI image
 (lightspeed-providers included) and make it the default container image in
 configs.
 
@@ -459,7 +459,7 @@ using Compose/Kind or local-process harnesses to ensure parity.
 
 # Conclusion
 
-This design gives teams one declarative place to control OGX behavior
+This design gives teams one declarative place to control Llama Stack behavior
 while supporting both lightweight local runs and production-ready containerized
 deployments.
 
@@ -507,7 +507,7 @@ deployments.
 
 * Which architectures must be supported?
 * Performance/overhead impact of LCORE-managed lifecycle vs. current separate deployments
-* Migration strategy for teams currently running standalone OGX
+* Migration strategy for teams currently running standalone Llama Stack
 * Backward compatibility guarantees for existing configurations
 * Resource requirements and scaling characteristics for each runtime mode
 * Testing strategy for ensuring parity between containerized and local modes

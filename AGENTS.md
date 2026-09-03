@@ -1,20 +1,7 @@
 # Lightspeed Core Stack Development Guide
 
-## Workflow Rules
-
-### CI/Quality Checks Before Completion
-After making code changes, proactively run the full CI/linting pipeline before presenting changes as complete. Do not wait for the user to report CI failures.
-
-**Required checks:**
-- `uv run make format` - Black formatting
-- `uv run make verify` - All linters (pylint, pyright, ruff, docstyle)
-- `uv run make test-unit` - Unit tests
-- OpenAPI schema regeneration if models changed
-
-Only report work as complete after all checks pass.
-
 ## Project Overview
-Lightspeed Core Stack (LCS) is an AI-powered assistant built on FastAPI that provides answers using LLM services, agents, and RAG databases. It integrates with OGX for AI operations.
+Lightspeed Core Stack (LCS) is an AI-powered assistant built on FastAPI that provides answers using LLM services, agents, and RAG databases. It integrates with Llama Stack for AI operations.
 
 ## Development Environment
 - **Python**: Check `pyproject.toml` for supported Python versions
@@ -22,22 +9,6 @@ Lightspeed Core Stack (LCS) is an AI-powered assistant built on FastAPI that pro
 - **Required Commands**:
   - `uv run make format` - Format code (black + ruff)
   - `uv run make verify` - Run all linters (black, pylint, pyright, ruff, docstyle, check-types)
-
-## Environment & Dependencies
-
-This project uses Python with uv for dependency management. When debugging dependency/import issues, check:
-
-1. **Which Python binary is being invoked** (system vs venv)
-   - Run `which python` to verify the active Python
-   - Check if `.venv/bin/python` is being used
-   - System Python vs venv Python can cause ModuleNotFoundError
-
-2. **Whether `uv sync` was run in the correct environment**
-   - Run `uv sync --group dev` to install all dependencies
-   - Verify packages are installed in `.venv/lib/python*/site-packages/`
-   - Ensure the command was run in the project root directory
-
-Do not suggest generic venv activation without checking these first.
 
 ## Code Architecture & Patterns
 
@@ -60,7 +31,7 @@ src/
 │   │   ├── mcp_servers.py                        # Handler for REST API calls to dynamically manage MCP servers
 │   │   ├── metrics.py                            # Handler for REST API call to provide metrics
 │   │   ├── models.py                             # Handler for REST API call to list available models
-│   │   ├── prompts.py                            # Handler for REST API calls to manage OGX stored prompt templates
+│   │   ├── prompts.py                            # Handler for REST API calls to manage Llama Stack stored prompt templates
 │   │   ├── providers.py                          # Handler for REST API calls to list and retrieve available providers
 │   │   ├── query.py                              # Handler for REST API call to provide answer to query using Response API
 │   │   ├── rags.py                               # Handler for REST API calls to list and retrieve available RAGs
@@ -106,7 +77,7 @@ src/
 │   ├── noop_cache.py                             # No-operation cache implementation
 │   ├── postgres_cache.py                         # PostgreSQL cache implementation
 │   └── sqlite_cache.py                           # Cache that uses SQLite to store cached values
-├── data/                                         # Built-in default OGX baseline for unified-mode synthesis
+├── data/                                         # Built-in default Llama Stack baseline for unified-mode synthesis
 │   └── default_run.yaml                          # The starting point when a unified `lightspeed-stack.yaml` select default baseline
 ├── quota/                                        # Quota limiter and token usage tracking
 │   ├── cluster_quota_limiter.py                  # Simple cluster quota limiter where quota is fixed for the whole cluster
@@ -173,7 +144,7 @@ src/
 │   │   │   └── turn_accumulator.py               # Mutable per-turn state for agent response processing
 │   │   ├── responses/                            # Shared models for the OpenAI-compatible Responses API pipeline
 │   │   │   ├── contexts.py                       # Context objects for the responses endpoint pipeline and streaming query generators.
-│   │   │   ├── responses_api_params.py           # Request parameter model for OGX responses API calls
+│   │   │   ├── responses_api_params.py           # Request parameter model for Llama Stack responses API calls
 │   │   │   ├── responses_conversation_context.py # Conversation resolution result model for the OpenAI-compatible responses endpoint
 │   │   │   └── types.py                          # Type aliases for OpenAI-compatible Responses API input shapes
 │   │   ├── conversation.py                       # Conversation list rows, metadata, and simplified turn/message shapes for APIs
@@ -203,10 +174,10 @@ src/
 │   │   └── redaction/                            # PII redaction capability for Pydantic AI agents
 │   │       ├── capability.py                     # Pydantic AI capability for PII redaction of model messages
 │   │       └── core.py                           # Core redaction logic for PII detection and replacement
-│   └── ogx/                                      # Pydantic AI provider for OGX
-│       ├── _model.py                             # Custom OpenAI Responses model that works around OGX streaming quirks
-│       ├── _provider.py                          # OGX provider implementation for Pydantic AI
-│       └── _transport.py                         # httpx transport that routes OpenAI-compatible requests through an OGX library client
+│   └── llamastack/                               # Pydantic AI provider for Llama Stack
+│       ├── _model.py                             # Custom OpenAI Responses model that works around Llama Stack streaming quirks
+│       ├── _provider.py                          # Llama Stack provider implementation for Pydantic AI
+│       └── _transport.py                         # httpx transport that routes OpenAI-compatible requests through a Llama Stack library client
 ├── telemetry/                                    # Telemetry module for configuration snapshot collection
 │   └── configuration_snapshot.py                 # Configuration snapshot with PII masking for telemetry
 ├── utils/                                        # Utility functions
@@ -224,7 +195,7 @@ src/
 │   ├── degraded_mode.py                          # Degraded mode state tracking
 │   ├── endpoints.py                              # Utility functions for endpoint handlers
 │   ├── json_schema_updater.py                    # Function to transform a JSON Schema-like dictionary into an OpenAPI-compatible schema
-│   ├── ogx_version.py                            # Check if the OGX version is supported by the LCS
+│   ├── llama_stack_version.py                    # Check if the Llama Stack version is supported by the LCS
 │   ├── markdown_repair.py                        # Utilities for repairing truncated markdown content
 │   ├── mcp_auth_headers.py                       # Utilities for resolving MCP server authorization headers
 │   ├── mcp_headers.py                            # MCP headers handling
@@ -232,13 +203,13 @@ src/
 │   ├── models_dumper.py                          # Function to dump the schema of all data models into OpenAPI-compatible format
 │   ├── openapi_schema_dumper.py                  # Utility function to dump schema with list of models into OpenAPI-compatible JSON format
 │   ├── prompts.py                                # Utility functions for system prompts
-│   ├── pydantic_ai_helpers.py                    # Helpers for running Pydantic AI agents against OGX (Responses API compatibility)
+│   ├── pydantic_ai_helpers.py                    # Helpers for running Pydantic AI agents against Llama Stack (Responses API compatibility)
 │   ├── query.py                                  # Utility functions for working with queries
 │   ├── quota_utils.py                            # Quota handling helper functions
 │   ├── reranker.py                               # Reranker utilities for RAG chunk reranking
 │   ├── responses.py                              # Utility functions for processing Responses API output
 │   ├── rh_identity.py                            # Utility functions for extracting RH Identity context for telemetry
-│   ├── shields.py                                # Utility functions for working with OGX shields
+│   ├── shields.py                                # Utility functions for working with Llama Stack shields
 │   ├── streaming_sse.py                          # SSE formatting helpers for streaming query responses
 │   ├── stream_interrupts.py                      # Stream interrupt registry and persistence utilities
 │   ├── suid.py                                   # Session ID utility functions
@@ -250,9 +221,9 @@ src/
 │   └── vector_search.py                          # Vector search utilities for query endpoints
 ├── sentry.py                                     # Sentry error tracking initialization and configuration
 ├── lightspeed_stack.py                           # Entry point to the Lightspeed Core Stack REST API service
-├── ogx_configuration.py                          # OGX configuration enrichment and synthesis
+├── llama_stack_configuration.py                  # Llama Stack configuration enrichment and synthesis
 ├── log.py                                        # Log utilities
-├── client.py                                     # OGX client wrapper (Singleton)
+├── client.py                                     # Llama Stack client wrapper (Singleton)
 ├── configuration.py                              # Config management (Singleton)
 ├── constants.py                                  # Shared (final) constants
 └── version.py                                    # Service version that is read by project manager tools
@@ -263,7 +234,7 @@ src/
 #### Imports & Dependencies
 - Use absolute imports for internal modules: `from authentication import get_auth_dependency`
 - FastAPI dependencies: `from fastapi import APIRouter, HTTPException, Request, status, Depends`
-- OGX imports: `from ogx_client import AsyncOgxClient`
+- Llama Stack imports: `from ogx_client import AsyncOgxClient`
 - **ALWAYS** check `pyproject.toml` for existing dependencies before adding new ones
 - **ALWAYS** verify current library versions in `pyproject.toml` rather than assuming versions
 - Check `constants.py` for shared constants before defining new ones
@@ -304,7 +275,7 @@ src/
 - **Async Functions**: Use `async def` for I/O operations and external API calls
 - **Error Handling**:
   - Use FastAPI `HTTPException` with appropriate status codes for API endpoints
-  - Handle `APIConnectionError` from OGX
+  - Handle `APIConnectionError` from Llama Stack
 
 #### Logging Standards
 - Use `from log import get_logger` and module logger pattern: `logger = get_logger(__name__)`
@@ -405,7 +376,7 @@ uv run make test-e2e         # End-to-end tests
 ## Key Dependencies
 **IMPORTANT**: Always check `pyproject.toml` for current versions rather than relying on this list:
 - **FastAPI**: Web framework
-- **OGX**: AI integration
+- **Llama Stack**: AI integration
 - **Pydantic**: Data validation/serialization
 - **SQLAlchemy**: Database ORM
 - **Kubernetes**: K8s auth integration
@@ -420,7 +391,7 @@ Allowed prefixes: `LCORE-`, `RSPEED-`, `MGTM-`, `OLS-`, `RHIDP-`, `LEADS-`, `CWF
 - ❌ `feat(observability): add user_agent to ResponsesEventData`
 
 ## Development Workflow
-1. Use `uv sync --group dev --group ogxlibdev` for dependencies
+1. Use `uv sync --group dev --group llslibdev` for dependencies
 2. Always use `uv run` prefix for commands
 3. **ALWAYS** check `pyproject.toml` for existing dependencies and versions before adding new ones
 4. Follow existing code patterns in the module you're modifying

@@ -329,7 +329,7 @@ async def test_health_probe_skip_enabled(mocker: MockerFixture) -> None:
             "color_log": True,
             "access_log": True,
         },
-        "ogx": {
+        "llama_stack": {
             "api_key": "test-key",
             "url": "http://test.com:1234",
             "use_as_library_client": False,
@@ -385,7 +385,7 @@ async def test_health_probe_skip_disabled(mocker: MockerFixture) -> None:
             "color_log": True,
             "access_log": True,
         },
-        "ogx": {
+        "llama_stack": {
             "api_key": "test-key",
             "url": "http://test.com:1234",
             "use_as_library_client": False,
@@ -438,7 +438,7 @@ async def test_metrics_skip_enabled(mocker: MockerFixture) -> None:
             "color_log": True,
             "access_log": True,
         },
-        "ogx": {
+        "llama_stack": {
             "api_key": "test-key",
             "url": "http://test.com:1234",
             "use_as_library_client": False,

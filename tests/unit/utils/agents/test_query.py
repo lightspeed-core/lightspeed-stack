@@ -6,8 +6,7 @@ from typing import Any, Optional
 
 import pytest
 from fastapi import HTTPException
-from ogx_api.openai_responses import OpenAIResponseMessage
-from ogx_client import ApiException
+from ogx_client import APIConnectionError, APIStatusError
 from pydantic_ai.messages import (
     FinishReason,
     ImageUrl,
@@ -429,139 +428,6 @@ class TestRetrieveAgentResponse:
         assert summary.id == "resp-success"
 
     @pytest.mark.asyncio
-    async def test_compacted_input_runs_agent_with_prompt_text(
-        self,
-        mocker: MockerFixture,
-        make_agent_run_result: Callable[..., Any],
-        make_responses_params: Callable[..., ResponsesApiParams],
-        patch_recording_metrics: None,
-    ) -> None:
-        """Test compacted explicit input is reduced to the query text for agent.run."""
-        explicit = [
-            OpenAIResponseMessage(
-                role="user", content="Summary of earlier conversation:\nS1"
-            ),
-            OpenAIResponseMessage(role="user", content="new question"),
-        ]
-        params = make_responses_params(input_text="ignored").model_copy(
-            update={"input": explicit, "omit_conversation": True}
-        )
-        run_result = make_agent_run_result(content="Answer")
-        mock_agent = mocker.AsyncMock()
-        mock_agent.run = mocker.AsyncMock(return_value=run_result)
-        mocker.patch("utils.agents.query.build_agent", return_value=mock_agent)
-
-        summary = await retrieve_agent_response(
-            client=mocker.AsyncMock(),
-            responses_params=params,
-            moderation_result=ShieldModerationPassed(),
-            endpoint_path=ENDPOINT_PATH_QUERY,
-        )
-
-        mock_agent.run.assert_awaited_once_with("new question")
-        assert summary.llm_response == "Answer"
-
-    @pytest.mark.asyncio
-    async def test_blocked_moderation_compacted_skips_append(
-        self,
-        mocker: MockerFixture,
-        make_responses_params: Callable[..., ResponsesApiParams],
-        blocked_moderation: ShieldModerationBlocked,
-    ) -> None:
-        """Test blocked moderation does not append explicit input in compacted mode."""
-        params = make_responses_params().model_copy(
-            update={
-                "input": [OpenAIResponseMessage(role="user", content="q")],
-                "omit_conversation": True,
-            }
-        )
-        mock_append = mocker.patch(
-            "utils.agents.query.append_turn_items_to_conversation",
-            new=mocker.AsyncMock(),
-        )
-
-        summary = await retrieve_agent_response(
-            client=mocker.AsyncMock(),
-            responses_params=params,
-            moderation_result=blocked_moderation,
-            endpoint_path=ENDPOINT_PATH_QUERY,
-        )
-
-        mock_append.assert_not_awaited()
-        assert summary.llm_response == "Content blocked by shield."
-
-    @pytest.mark.asyncio
-    async def test_inference_error_is_logged(
-        self,
-        mocker: MockerFixture,
-        make_responses_params: Callable[..., ResponsesApiParams],
-        patch_recording_metrics: None,
-        caplog: pytest.LogCaptureFixture,
-    ) -> None:
-        """Test an upstream connection failure logs a warning, not an error.
-
-        ApiException with no status maps to 503: the backend is down, which is not a
-        service fault of ours, so it must not be logged at error level with a
-        traceback — that noise would bury the genuine 500s this logging exists
-        to surface (LCORE-3582).
-        """
-        mock_agent = mocker.AsyncMock()
-        mock_agent.run = mocker.AsyncMock(side_effect=ApiException(status=None))
-        mocker.patch("utils.agents.query.build_agent", return_value=mock_agent)
-
-        with caplog.at_level("WARNING"):
-            with pytest.raises(HTTPException):
-                await retrieve_agent_response(
-                    client=mocker.AsyncMock(),
-                    responses_params=make_responses_params(),
-                    moderation_result=ShieldModerationPassed(),
-                    endpoint_path=ENDPOINT_PATH_QUERY,
-                )
-
-        assert any(
-            record.levelname == "WARNING"
-            and "Agent inference returned 503" in record.message
-            for record in caplog.records
-        )
-        assert not any(record.levelname == "ERROR" for record in caplog.records)
-
-    @pytest.mark.asyncio
-    async def test_unclassified_inference_error_is_logged_with_traceback(
-        self,
-        mocker: MockerFixture,
-        make_responses_params: Callable[..., ResponsesApiParams],
-        patch_recording_metrics: None,
-        caplog: pytest.LogCaptureFixture,
-    ) -> None:
-        """Test an unclassified failure is logged at error level with the traceback.
-
-        This is the case the logging was added for: it maps to a generic 500,
-        the mapped HTTPException discards the original exception, and callers
-        raise without logging, so without this the failure left nothing behind.
-        """
-        mock_agent = mocker.AsyncMock()
-        mock_agent.run = mocker.AsyncMock(side_effect=RuntimeError("kaboom"))
-        mocker.patch("utils.agents.query.build_agent", return_value=mock_agent)
-
-        with caplog.at_level("ERROR"):
-            with pytest.raises(HTTPException):
-                await retrieve_agent_response(
-                    client=mocker.AsyncMock(),
-                    responses_params=make_responses_params(),
-                    moderation_result=ShieldModerationPassed(),
-                    endpoint_path=ENDPOINT_PATH_QUERY,
-                )
-
-        matching = [
-            record
-            for record in caplog.records
-            if record.levelname == "ERROR"
-            and "Agent inference failed" in record.message
-        ]
-        assert matching, "unclassified failure was not logged at error level"
-        assert matching[0].exc_info is not None, "traceback was not attached"
-
-    @pytest.mark.asyncio
     async def test_success_with_image_attachments_sends_multimodal_prompt(
         self,
         mocker: MockerFixture,
@@ -611,9 +477,11 @@ class TestRetrieveAgentResponse:
         mocker: MockerFixture,
         responses_params: ResponsesApiParams,
     ) -> None:
-        """Test OGX connection errors are mapped to HTTPException."""
+        """Test Llama Stack connection errors are mapped to HTTPException."""
         mock_agent = mocker.AsyncMock()
-        mock_agent.run = mocker.AsyncMock(side_effect=ApiException(status=None))
+        mock_agent.run = mocker.AsyncMock(
+            side_effect=APIConnectionError(request=mocker.Mock())
+        )
         mocker.patch(
             "utils.agents.query.build_agent",
             return_value=mock_agent,
@@ -639,7 +507,11 @@ class TestRetrieveAgentResponse:
         """Test API status errors from the agent run are mapped to HTTPException."""
         mock_agent = mocker.AsyncMock()
         mock_agent.run = mocker.AsyncMock(
-            side_effect=ApiException(status=500, reason="quota exceeded")
+            side_effect=APIStatusError(
+                message="quota exceeded",
+                response=mocker.Mock(),
+                body=None,
+            )
         )
         mocker.patch(
             "utils.agents.query.build_agent",
@@ -664,94 +536,3 @@ class TestRetrieveAgentResponse:
             )
 
         assert exc_info.value.status_code == 429
-
-
-class TestQueryCompactedTurnPersistence:
-    """Compacted-mode turn persistence on /v1/query (LCORE-3883).
-
-    Asserts against the conversation items that actually land rather than the
-    arguments of a mocked helper, so a break in the write path is caught.
-    """
-
-    @staticmethod
-    def _client_capturing_writes(mocker: MockerFixture) -> tuple[Any, list[Any]]:
-        """Return a client whose conversation writes are recorded."""
-        stored: list[Any] = []
-
-        async def _create(
-            conversation_id: str, *, add_items_request: Any = None, **_: Any
-        ) -> None:
-            _ = conversation_id
-            stored.extend(getattr(add_items_request, "items", add_items_request) or [])
-
-        client = mocker.AsyncMock()
-        client.items.create = _create
-        return client, stored
-
-    @pytest.mark.asyncio
-    async def test_compacted_success_appends_turn_with_captured_output(
-        self,
-        mocker: MockerFixture,
-        make_agent_run_result: Callable[..., Any],
-        make_responses_params: Callable[..., ResponsesApiParams],
-        patch_recording_metrics: None,
-    ) -> None:
-        """A compacted turn is written back using the items OGX returned."""
-        explicit = [
-            OpenAIResponseMessage(role="user", content="Summary:\nS1"),
-            OpenAIResponseMessage(role="user", content="new question"),
-        ]
-        params = make_responses_params(input_text="ignored").model_copy(
-            update={"input": explicit, "omit_conversation": True}
-        )
-        mock_agent = mocker.AsyncMock()
-        mock_agent.run = mocker.AsyncMock(
-            return_value=make_agent_run_result(content="Answer")
-        )
-        # The model captured the genuine OGX output items for this call.
-        mock_agent.model.last_output_items = [
-            OpenAIResponseMessage(role="assistant", content="Answer")
-        ]
-        mocker.patch("utils.agents.query.build_agent", return_value=mock_agent)
-        client, stored = self._client_capturing_writes(mocker)
-
-        await retrieve_agent_response(
-            client=client,
-            responses_params=params,
-            moderation_result=ShieldModerationPassed(),
-            endpoint_path=ENDPOINT_PATH_QUERY,
-            original_input="new question",
-        )
-
-        texts = [str(item) for item in stored]
-        assert len(stored) == 2, f"expected user turn + output, got {texts}"
-        assert any("new question" in t for t in texts)
-        assert any("Answer" in t for t in texts)
-
-    @pytest.mark.asyncio
-    async def test_non_compacted_success_does_not_append_turn(
-        self,
-        mocker: MockerFixture,
-        make_agent_run_result: Callable[..., Any],
-        make_responses_params: Callable[..., ResponsesApiParams],
-        patch_recording_metrics: None,
-    ) -> None:
-        """Without compaction OGX persists the turn, so we must not duplicate it."""
-        mock_agent = mocker.AsyncMock()
-        mock_agent.run = mocker.AsyncMock(
-            return_value=make_agent_run_result(content="Answer")
-        )
-        mock_agent.model.last_output_items = [
-            OpenAIResponseMessage(role="assistant", content="Answer")
-        ]
-        mocker.patch("utils.agents.query.build_agent", return_value=mock_agent)
-        client, stored = self._client_capturing_writes(mocker)
-
-        await retrieve_agent_response(
-            client=client,
-            responses_params=make_responses_params(input_text="hi"),
-            moderation_result=ShieldModerationPassed(),
-            endpoint_path=ENDPOINT_PATH_QUERY,
-        )
-
-        assert stored == []

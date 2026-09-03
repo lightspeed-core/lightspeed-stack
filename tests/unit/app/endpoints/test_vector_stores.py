@@ -2,14 +2,11 @@
 
 # pylint: disable=too-many-lines
 
-import asyncio
-import io
-from collections.abc import Iterator
 from typing import Any
 
 import pytest
 from fastapi import HTTPException, Request, status
-from ogx_client import ApiException, BadRequestError
+from ogx_client import APIConnectionError, BadRequestError
 from pytest_mock import MockerFixture
 
 from app.endpoints.vector_stores import (
@@ -65,14 +62,6 @@ class VectorStoresList:
         """Initialize vector stores list mock."""
         self.data = stores
 
-    def __iter__(self) -> Iterator[VectorStore]:
-        """Iterate over vector stores."""
-        return iter(self.data)
-
-    def __len__(self) -> int:
-        """Return number of vector stores."""
-        return len(self.data)
-
 
 # pylint: disable=R0903
 class File:
@@ -113,14 +102,6 @@ class VectorStoreFilesList:
         """Initialize vector store files list mock."""
         self.data = files
 
-    def __iter__(self) -> Iterator[VectorStoreFile]:
-        """Iterate over vector store files."""
-        return iter(self.data)
-
-    def __len__(self) -> int:
-        """Return number of files."""
-        return len(self.data)
-
 
 def get_test_config() -> dict[str, Any]:
     """Get test configuration dictionary.
@@ -138,7 +119,7 @@ def get_test_config() -> dict[str, Any]:
             "color_log": True,
             "access_log": True,
         },
-        "ogx": {
+        "llama_stack": {
             "api_key": "xyzzy",
             "url": "http://x.y.com:1234",
             "use_as_library_client": False,
@@ -234,7 +215,7 @@ async def test_create_vector_store_connection_error(mocker: MockerFixture) -> No
     cfg.init_from_dict(config_dict)
 
     mock_client = mocker.AsyncMock()
-    mock_client.vector_stores.create.side_effect = ApiException(status=None)  # type: ignore
+    mock_client.vector_stores.create.side_effect = APIConnectionError(request=None)  # type: ignore
     mock_lsc = mocker.patch(
         "app.endpoints.vector_stores.AsyncOgxClientHolder.get_client"
     )
@@ -325,7 +306,7 @@ async def test_get_vector_store_not_found(mocker: MockerFixture) -> None:
     mock_response = mocker.Mock()
     mock_response.request = mocker.Mock()
     mock_client.vector_stores.retrieve.side_effect = BadRequestError(
-        status=400, reason="Not found"
+        message="Not found", response=mock_response, body=None
     )
     mock_lsc = mocker.patch(
         "app.endpoints.vector_stores.AsyncOgxClientHolder.get_client"
@@ -423,21 +404,13 @@ async def test_create_file_success(mocker: MockerFixture) -> None:
     mock_file = mocker.AsyncMock()
     mock_file.filename = "test.txt"
     mock_file.size = 12  # Size of "test content"
-    mock_file.file = io.BytesIO(b"test content")
+    mock_file.read.return_value = b"test content"
 
     response = await create_file(request=request, auth=auth, file=mock_file)
     assert response is not None
     assert response.id == "file_123"
     assert response.filename == "test.txt"
     assert response.bytes == 1024
-
-    # mock_client is a plain AsyncMock, not an AsyncOGXAsLibraryClient, so
-    # create_file takes the service-client branch: a (filename, fileobj)
-    # tuple passed straight to client.files.create() for httpx to stream.
-    file_arg = mock_client.files.create.call_args.kwargs["file"]
-    filename_arg, fileobj_arg = file_arg
-    assert filename_arg == "test.txt"
-    assert fileobj_arg.read() == b"test content"
 
 
 @pytest.mark.asyncio
@@ -450,7 +423,7 @@ async def test_add_file_to_vector_store_success(mocker: MockerFixture) -> None:
     cfg.init_from_dict(config_dict)
 
     mock_client = mocker.AsyncMock()
-    mock_client.vector_stores_files.create.return_value = VectorStoreFile(
+    mock_client.vector_stores.files.create.return_value = VectorStoreFile(
         "file_123", "vs_123"
     )
     mock_lsc = mocker.patch(
@@ -485,7 +458,7 @@ async def test_add_file_to_vector_store_retry_on_database_lock(
 
     mock_client = mocker.AsyncMock()
     # First call raises database lock error, second call succeeds
-    mock_client.vector_stores_files.create.side_effect = [
+    mock_client.vector_stores.files.create.side_effect = [
         Exception("database is locked"),
         VectorStoreFile("file_123", "vs_123"),
     ]
@@ -511,7 +484,7 @@ async def test_add_file_to_vector_store_retry_on_database_lock(
     assert response.status == "completed"
 
     # Verify retry logic was triggered
-    assert mock_client.vector_stores_files.create.call_count == 2
+    assert mock_client.vector_stores.files.create.call_count == 2
     # Verify sleep was called once with 0.5 seconds (first retry delay)
     mock_sleep.assert_called_once_with(0.5)
 
@@ -529,7 +502,7 @@ async def test_add_file_to_vector_store_max_retries_exceeded(
 
     mock_client = mocker.AsyncMock()
     # All attempts fail with database lock error
-    mock_client.vector_stores_files.create.side_effect = Exception("database is locked")
+    mock_client.vector_stores.files.create.side_effect = Exception("database is locked")
     mock_lsc = mocker.patch(
         "app.endpoints.vector_stores.AsyncOgxClientHolder.get_client"
     )
@@ -550,7 +523,7 @@ async def test_add_file_to_vector_store_max_retries_exceeded(
     assert e.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
 
     # Verify all 3 retry attempts were made
-    assert mock_client.vector_stores_files.create.call_count == 3
+    assert mock_client.vector_stores.files.create.call_count == 3
     # Verify exponential backoff: 0.5s, then 1s (0.5 * 2)
     assert mock_sleep.call_count == 2
     assert mock_sleep.call_args_list[0][0][0] == 0.5
@@ -573,7 +546,7 @@ async def test_add_file_to_vector_store_non_lock_error_no_retry(
 
     mock_client = mocker.AsyncMock()
     # Raise a non-lock error
-    mock_client.vector_stores_files.create.side_effect = Exception("Some other error")
+    mock_client.vector_stores.files.create.side_effect = Exception("Some other error")
     mock_lsc = mocker.patch(
         "app.endpoints.vector_stores.AsyncOgxClientHolder.get_client"
     )
@@ -594,210 +567,9 @@ async def test_add_file_to_vector_store_non_lock_error_no_retry(
         )
 
     # Verify only one attempt was made (no retries for non-lock errors)
-    assert mock_client.vector_stores_files.create.call_count == 1
+    assert mock_client.vector_stores.files.create.call_count == 1
     # Verify sleep was not called (no retry)
     mock_sleep.assert_not_called()
-
-
-@pytest.mark.asyncio
-async def test_create_file_rejects_when_semaphore_saturated(
-    mocker: MockerFixture,
-    caplog: pytest.LogCaptureFixture,
-) -> None:
-    """Test create_file returns 429 when the upload concurrency limit is hit."""
-    mock_authorization_resolvers(mocker)
-
-    config_dict = get_test_config()
-    cfg = AppConfig()
-    cfg.init_from_dict(config_dict)
-
-    mocker.patch("app.endpoints.vector_stores.configuration", cfg)
-    # A Semaphore(0) is always locked, simulating every slot in use.
-    mocker.patch(
-        "app.endpoints.vector_stores._get_file_upload_semaphore",
-        return_value=asyncio.Semaphore(0),
-    )
-
-    request = get_test_request()
-    auth = get_test_auth()
-
-    mock_file = mocker.AsyncMock()
-    mock_file.filename = "test.txt"
-    mock_file.size = 12
-    mock_file.file = io.BytesIO(b"test content")
-
-    with caplog.at_level("WARNING"):
-        with pytest.raises(HTTPException) as e:
-            await create_file(request=request, auth=auth, file=mock_file)
-    assert e.value.status_code == status.HTTP_429_TOO_MANY_REQUESTS
-    assert "concurrency limit" in caplog.text
-
-
-@pytest.mark.asyncio
-async def test_add_file_to_vector_store_rejects_when_semaphore_saturated(
-    mocker: MockerFixture,
-    caplog: pytest.LogCaptureFixture,
-) -> None:
-    """Test add_file_to_vector_store returns 429 when the attach limit is hit."""
-    mock_authorization_resolvers(mocker)
-
-    config_dict = get_test_config()
-    cfg = AppConfig()
-    cfg.init_from_dict(config_dict)
-
-    mocker.patch("app.endpoints.vector_stores.configuration", cfg)
-    mocker.patch(
-        "app.endpoints.vector_stores._get_vector_store_attach_semaphore",
-        return_value=asyncio.Semaphore(0),
-    )
-
-    request = get_test_request()
-    auth = get_test_auth()
-    body = VectorStoreFileCreateRequest(file_id="file_123")
-
-    with caplog.at_level("WARNING"):
-        with pytest.raises(HTTPException) as e:
-            await add_file_to_vector_store(
-                request=request, vector_store_id="vs_123", auth=auth, body=body
-            )
-    assert e.value.status_code == status.HTTP_429_TOO_MANY_REQUESTS
-    assert "concurrency limit" in caplog.text
-
-
-@pytest.mark.asyncio
-async def test_add_file_to_vector_store_deletes_file_on_success(
-    mocker: MockerFixture,
-) -> None:
-    """Test the source file is deleted after a completed attach when enabled."""
-    mock_authorization_resolvers(mocker)
-
-    config_dict = get_test_config()
-    config_dict["service"]["delete_file_after_vector_store_attach"] = True
-    cfg = AppConfig()
-    cfg.init_from_dict(config_dict)
-
-    mock_client = mocker.AsyncMock()
-    mock_client.vector_stores_files.create.return_value = VectorStoreFile(
-        "file_123", "vs_123", file_status="completed"
-    )
-    mock_lsc = mocker.patch(
-        "app.endpoints.vector_stores.AsyncOgxClientHolder.get_client"
-    )
-    mock_lsc.return_value = mock_client
-    mocker.patch("app.endpoints.vector_stores.configuration", cfg)
-
-    request = get_test_request()
-    auth = get_test_auth()
-    body = VectorStoreFileCreateRequest(file_id="file_123")
-
-    response = await add_file_to_vector_store(
-        request=request, vector_store_id="vs_123", auth=auth, body=body
-    )
-    assert response.status == "completed"
-    mock_client.files.delete.assert_awaited_once_with("file_123")
-
-
-@pytest.mark.asyncio
-async def test_add_file_to_vector_store_keeps_file_reusable_by_default(
-    mocker: MockerFixture,
-) -> None:
-    """Test the source file is kept by default, so it can be attached elsewhere.
-
-    Matches the OpenAI Files API, where a file stays reusable across
-    multiple vector stores until the caller explicitly deletes it.
-    """
-    mock_authorization_resolvers(mocker)
-
-    config_dict = get_test_config()
-    cfg = AppConfig()
-    cfg.init_from_dict(config_dict)
-
-    mock_client = mocker.AsyncMock()
-    mock_client.vector_stores_files.create.return_value = VectorStoreFile(
-        "file_123", "vs_123", file_status="completed"
-    )
-    mock_lsc = mocker.patch(
-        "app.endpoints.vector_stores.AsyncOgxClientHolder.get_client"
-    )
-    mock_lsc.return_value = mock_client
-    mocker.patch("app.endpoints.vector_stores.configuration", cfg)
-
-    request = get_test_request()
-    auth = get_test_auth()
-    body = VectorStoreFileCreateRequest(file_id="file_123")
-
-    response = await add_file_to_vector_store(
-        request=request, vector_store_id="vs_123", auth=auth, body=body
-    )
-    assert response.status == "completed"
-    mock_client.files.delete.assert_not_awaited()
-
-
-@pytest.mark.asyncio
-async def test_add_file_to_vector_store_does_not_delete_file_on_failure(
-    mocker: MockerFixture,
-) -> None:
-    """Test the source file is kept when the attach fails, so it can be retried."""
-    mock_authorization_resolvers(mocker)
-
-    config_dict = get_test_config()
-    config_dict["service"]["delete_file_after_vector_store_attach"] = True
-    cfg = AppConfig()
-    cfg.init_from_dict(config_dict)
-
-    mock_client = mocker.AsyncMock()
-    mock_client.vector_stores_files.create.return_value = VectorStoreFile(
-        "file_123", "vs_123", file_status="failed"
-    )
-    mock_lsc = mocker.patch(
-        "app.endpoints.vector_stores.AsyncOgxClientHolder.get_client"
-    )
-    mock_lsc.return_value = mock_client
-    mocker.patch("app.endpoints.vector_stores.configuration", cfg)
-
-    request = get_test_request()
-    auth = get_test_auth()
-    body = VectorStoreFileCreateRequest(file_id="file_123")
-
-    response = await add_file_to_vector_store(
-        request=request, vector_store_id="vs_123", auth=auth, body=body
-    )
-    assert response.status == "failed"
-    mock_client.files.delete.assert_not_awaited()
-
-
-@pytest.mark.asyncio
-async def test_add_file_to_vector_store_delete_failure_is_non_fatal(
-    mocker: MockerFixture,
-) -> None:
-    """Test a cleanup failure doesn't turn a successful attach into an error."""
-    mock_authorization_resolvers(mocker)
-
-    config_dict = get_test_config()
-    config_dict["service"]["delete_file_after_vector_store_attach"] = True
-    cfg = AppConfig()
-    cfg.init_from_dict(config_dict)
-
-    mock_client = mocker.AsyncMock()
-    mock_client.vector_stores_files.create.return_value = VectorStoreFile(
-        "file_123", "vs_123", file_status="completed"
-    )
-    mock_client.files.delete.side_effect = Exception("disk unavailable")
-    mock_lsc = mocker.patch(
-        "app.endpoints.vector_stores.AsyncOgxClientHolder.get_client"
-    )
-    mock_lsc.return_value = mock_client
-    mocker.patch("app.endpoints.vector_stores.configuration", cfg)
-
-    request = get_test_request()
-    auth = get_test_auth()
-    body = VectorStoreFileCreateRequest(file_id="file_123")
-
-    response = await add_file_to_vector_store(
-        request=request, vector_store_id="vs_123", auth=auth, body=body
-    )
-    assert response.status == "completed"
-    mock_client.files.delete.assert_awaited_once_with("file_123")
 
 
 @pytest.mark.asyncio
@@ -810,7 +582,7 @@ async def test_list_vector_store_files_success(mocker: MockerFixture) -> None:
     cfg.init_from_dict(config_dict)
 
     mock_client = mocker.AsyncMock()
-    mock_client.vector_stores_files.list.return_value = VectorStoreFilesList(
+    mock_client.vector_stores.files.list.return_value = VectorStoreFilesList(
         [
             VectorStoreFile("file_1", "vs_123"),
             VectorStoreFile("file_2", "vs_123"),
@@ -844,7 +616,7 @@ async def test_get_vector_store_file_success(mocker: MockerFixture) -> None:
     cfg.init_from_dict(config_dict)
 
     mock_client = mocker.AsyncMock()
-    mock_client.vector_stores_files.retrieve.return_value = VectorStoreFile(
+    mock_client.vector_stores.files.retrieve.return_value = VectorStoreFile(
         "file_123", "vs_123"
     )
     mock_lsc = mocker.patch(
@@ -874,7 +646,7 @@ async def test_delete_vector_store_file_success(mocker: MockerFixture) -> None:
     cfg.init_from_dict(config_dict)
 
     mock_client = mocker.AsyncMock()
-    mock_client.vector_stores_files.delete.return_value = None
+    mock_client.vector_stores.files.delete.return_value = None
     mock_lsc = mocker.patch(
         "app.endpoints.vector_stores.AsyncOgxClientHolder.get_client"
     )
@@ -904,7 +676,7 @@ async def test_list_vector_stores_connection_error(mocker: MockerFixture) -> Non
     cfg.init_from_dict(config_dict)
 
     mock_client = mocker.AsyncMock()
-    mock_client.vector_stores.list.side_effect = ApiException(status=None)  # type: ignore
+    mock_client.vector_stores.list.side_effect = APIConnectionError(request=None)  # type: ignore
     mock_lsc = mocker.patch(
         "app.endpoints.vector_stores.AsyncOgxClientHolder.get_client"
     )
@@ -929,7 +701,7 @@ async def test_update_vector_store_connection_error(mocker: MockerFixture) -> No
     cfg.init_from_dict(config_dict)
 
     mock_client = mocker.AsyncMock()
-    mock_client.vector_stores.update.side_effect = ApiException(status=None)  # type: ignore
+    mock_client.vector_stores.update.side_effect = APIConnectionError(request=None)  # type: ignore
     mock_lsc = mocker.patch(
         "app.endpoints.vector_stores.AsyncOgxClientHolder.get_client"
     )
@@ -960,7 +732,7 @@ async def test_update_vector_store_not_found(mocker: MockerFixture) -> None:
     mock_response = mocker.Mock()
     mock_response.request = mocker.Mock()
     mock_client.vector_stores.update.side_effect = BadRequestError(
-        status=400, reason="Not found"
+        message="Not found", response=mock_response, body=None
     )
     mock_lsc = mocker.patch(
         "app.endpoints.vector_stores.AsyncOgxClientHolder.get_client"
@@ -989,7 +761,7 @@ async def test_delete_vector_store_connection_error(mocker: MockerFixture) -> No
     cfg.init_from_dict(config_dict)
 
     mock_client = mocker.AsyncMock()
-    mock_client.vector_stores.delete.side_effect = ApiException(status=None)  # type: ignore
+    mock_client.vector_stores.delete.side_effect = APIConnectionError(request=None)  # type: ignore
     mock_lsc = mocker.patch(
         "app.endpoints.vector_stores.AsyncOgxClientHolder.get_client"
     )
@@ -1017,7 +789,7 @@ async def test_delete_vector_store_not_found(mocker: MockerFixture) -> None:
     mock_response = mocker.Mock()
     mock_response.request = mocker.Mock()
     mock_client.vector_stores.delete.side_effect = BadRequestError(
-        status=400, reason="Not found"
+        message="Not found", response=mock_response, body=None
     )
     mock_lsc = mocker.patch(
         "app.endpoints.vector_stores.AsyncOgxClientHolder.get_client"
@@ -1045,7 +817,7 @@ async def test_create_file_connection_error(mocker: MockerFixture) -> None:
     cfg.init_from_dict(config_dict)
 
     mock_client = mocker.AsyncMock()
-    mock_client.files.create.side_effect = ApiException(status=None)  # type: ignore
+    mock_client.files.create.side_effect = APIConnectionError(request=None)  # type: ignore
     mock_lsc = mocker.patch(
         "app.endpoints.vector_stores.AsyncOgxClientHolder.get_client"
     )
@@ -1058,7 +830,7 @@ async def test_create_file_connection_error(mocker: MockerFixture) -> None:
     mock_file = mocker.AsyncMock()
     mock_file.filename = "test.txt"
     mock_file.size = 12  # Size of "test content"
-    mock_file.file = io.BytesIO(b"test content")
+    mock_file.read.return_value = b"test content"
 
     with pytest.raises(HTTPException) as e:
         await create_file(request=request, auth=auth, file=mock_file)
@@ -1078,7 +850,7 @@ async def test_create_file_bad_request(mocker: MockerFixture) -> None:
     mock_response = mocker.Mock()
     mock_response.request = mocker.Mock()
     mock_client.files.create.side_effect = BadRequestError(
-        status=400, reason="File too large"
+        message="File too large", response=mock_response, body=None
     )
     mock_lsc = mocker.patch(
         "app.endpoints.vector_stores.AsyncOgxClientHolder.get_client"
@@ -1092,7 +864,7 @@ async def test_create_file_bad_request(mocker: MockerFixture) -> None:
     mock_file = mocker.AsyncMock()
     mock_file.filename = "test.txt"
     mock_file.size = 12  # Size of "test content"
-    mock_file.file = io.BytesIO(b"test content")
+    mock_file.read.return_value = b"test content"
 
     with pytest.raises(HTTPException) as e:
         await create_file(request=request, auth=auth, file=mock_file)
@@ -1174,7 +946,9 @@ async def test_add_file_to_vector_store_connection_error(
     cfg.init_from_dict(config_dict)
 
     mock_client = mocker.AsyncMock()
-    mock_client.vector_stores_files.create.side_effect = ApiException(status=None)
+    mock_client.vector_stores.files.create.side_effect = APIConnectionError(
+        request=None  # type: ignore
+    )
     mock_lsc = mocker.patch(
         "app.endpoints.vector_stores.AsyncOgxClientHolder.get_client"
     )
@@ -1204,8 +978,8 @@ async def test_add_file_to_vector_store_not_found(mocker: MockerFixture) -> None
     mock_client = mocker.AsyncMock()
     mock_response = mocker.Mock()
     mock_response.request = mocker.Mock()
-    mock_client.vector_stores_files.create.side_effect = BadRequestError(
-        status=400, reason="File not found"
+    mock_client.vector_stores.files.create.side_effect = BadRequestError(
+        message="File not found", response=mock_response, body=None
     )
     mock_lsc = mocker.patch(
         "app.endpoints.vector_stores.AsyncOgxClientHolder.get_client"
@@ -1236,7 +1010,9 @@ async def test_list_vector_store_files_connection_error(
     cfg.init_from_dict(config_dict)
 
     mock_client = mocker.AsyncMock()
-    mock_client.vector_stores_files.list.side_effect = ApiException(status=None)
+    mock_client.vector_stores.files.list.side_effect = APIConnectionError(
+        request=None  # type: ignore
+    )
     mock_lsc = mocker.patch(
         "app.endpoints.vector_stores.AsyncOgxClientHolder.get_client"
     )
@@ -1265,8 +1041,8 @@ async def test_list_vector_store_files_not_found(mocker: MockerFixture) -> None:
     mock_client = mocker.AsyncMock()
     mock_response = mocker.Mock()
     mock_response.request = mocker.Mock()
-    mock_client.vector_stores_files.list.side_effect = BadRequestError(
-        status=400, reason="Vector store not found"
+    mock_client.vector_stores.files.list.side_effect = BadRequestError(
+        message="Vector store not found", response=mock_response, body=None
     )
     mock_lsc = mocker.patch(
         "app.endpoints.vector_stores.AsyncOgxClientHolder.get_client"
@@ -1295,7 +1071,9 @@ async def test_get_vector_store_file_connection_error(mocker: MockerFixture) -> 
     cfg.init_from_dict(config_dict)
 
     mock_client = mocker.AsyncMock()
-    mock_client.vector_stores_files.retrieve.side_effect = ApiException(status=None)
+    mock_client.vector_stores.files.retrieve.side_effect = APIConnectionError(
+        request=None  # type: ignore
+    )
     mock_lsc = mocker.patch(
         "app.endpoints.vector_stores.AsyncOgxClientHolder.get_client"
     )
@@ -1324,8 +1102,8 @@ async def test_get_vector_store_file_not_found(mocker: MockerFixture) -> None:
     mock_client = mocker.AsyncMock()
     mock_response = mocker.Mock()
     mock_response.request = mocker.Mock()
-    mock_client.vector_stores_files.retrieve.side_effect = BadRequestError(
-        status=400, reason="File not found"
+    mock_client.vector_stores.files.retrieve.side_effect = BadRequestError(
+        message="File not found", response=mock_response, body=None
     )
     mock_lsc = mocker.patch(
         "app.endpoints.vector_stores.AsyncOgxClientHolder.get_client"
@@ -1355,7 +1133,9 @@ async def test_delete_vector_store_file_connection_error(
     cfg.init_from_dict(config_dict)
 
     mock_client = mocker.AsyncMock()
-    mock_client.vector_stores_files.delete.side_effect = ApiException(status=None)
+    mock_client.vector_stores.files.delete.side_effect = APIConnectionError(
+        request=None  # type: ignore
+    )
     mock_lsc = mocker.patch(
         "app.endpoints.vector_stores.AsyncOgxClientHolder.get_client"
     )
@@ -1384,8 +1164,8 @@ async def test_delete_vector_store_file_not_found(mocker: MockerFixture) -> None
     mock_client = mocker.AsyncMock()
     mock_response = mocker.Mock()
     mock_response.request = mocker.Mock()
-    mock_client.vector_stores_files.delete.side_effect = BadRequestError(
-        status=400, reason="File not found"
+    mock_client.vector_stores.files.delete.side_effect = BadRequestError(
+        message="File not found", response=mock_response, body=None
     )
     mock_lsc = mocker.patch(
         "app.endpoints.vector_stores.AsyncOgxClientHolder.get_client"
@@ -1413,7 +1193,9 @@ async def test_get_vector_store_connection_error(mocker: MockerFixture) -> None:
     cfg.init_from_dict(config_dict)
 
     mock_client = mocker.AsyncMock()
-    mock_client.vector_stores.retrieve.side_effect = ApiException(status=None)
+    mock_client.vector_stores.retrieve.side_effect = APIConnectionError(
+        request=None  # type: ignore
+    )
     mock_lsc = mocker.patch(
         "app.endpoints.vector_stores.AsyncOgxClientHolder.get_client"
     )
@@ -1453,15 +1235,14 @@ async def test_create_file_adds_txt_extension_when_missing(
     mock_file = mocker.AsyncMock()
     mock_file.filename = "uploaded_file"
     mock_file.size = 12
-    mock_file.file = io.BytesIO(b"test content")
+    mock_file.read.return_value = b"test content"
 
     response = await create_file(request=request, auth=auth, file=mock_file)
     assert response is not None
     assert response.filename == "uploaded_file.txt"
 
     file_arg = mock_client.files.create.call_args.kwargs["file"]
-    filename_arg, _fileobj_arg = file_arg
-    assert filename_arg == "uploaded_file.txt"
+    assert file_arg.name == "uploaded_file.txt"
 
 
 @pytest.mark.asyncio
@@ -1479,7 +1260,7 @@ async def test_create_file_non_size_bad_request_returns_400(
     mock_response = mocker.Mock()
     mock_response.request = mocker.Mock()
     mock_client.files.create.side_effect = BadRequestError(
-        status=400, reason="Invalid file format"
+        message="Invalid file format", response=mock_response, body=None
     )
     mock_lsc = mocker.patch(
         "app.endpoints.vector_stores.AsyncOgxClientHolder.get_client"
@@ -1493,7 +1274,7 @@ async def test_create_file_non_size_bad_request_returns_400(
     mock_file = mocker.AsyncMock()
     mock_file.filename = "test.txt"
     mock_file.size = 12
-    mock_file.file = io.BytesIO(b"test content")
+    mock_file.read.return_value = b"test content"
 
     with pytest.raises(HTTPException) as e:
         await create_file(request=request, auth=auth, file=mock_file)

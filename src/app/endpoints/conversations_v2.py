@@ -3,7 +3,6 @@
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from opentelemetry import trace
 
 from authentication import get_auth_dependency
 from authorization.middleware import authorize
@@ -35,7 +34,6 @@ from utils.endpoints import check_configuration_loaded
 from utils.suid import check_suid
 
 logger = get_logger(__name__)
-tracer = trace.get_tracer(__name__)
 router = APIRouter(tags=["conversations_v2"])
 
 
@@ -92,27 +90,23 @@ async def get_conversations_list_endpoint_handler(
     auth: Any = Depends(get_auth_dependency()),
 ) -> ConversationsListResponseV2:
     """Handle request to retrieve all conversations for the authenticated user."""
-    with tracer.start_as_current_span("conversations_v2.list") as span:
-        check_configuration_loaded(configuration)
+    check_configuration_loaded(configuration)
 
-        user_id = auth[0]
+    user_id = auth[0]
 
-        logger.info("Retrieving conversations for user %s", user_id)
+    logger.info("Retrieving conversations for user %s", user_id)
 
-        skip_userid_check = auth[2]
+    skip_userid_check = auth[2]
 
-        if configuration.conversation_cache_configuration.type is None:
-            logger.warning("Conversation cache is not configured")
-            response = InternalServerErrorResponse.cache_unavailable()
-            raise HTTPException(**response.model_dump())
+    if configuration.conversation_cache_configuration.type is None:
+        logger.warning("Conversation cache is not configured")
+        response = InternalServerErrorResponse.cache_unavailable()
+        raise HTTPException(**response.model_dump())
 
-        conversations = configuration.conversation_cache.list(
-            user_id, skip_userid_check
-        )
-        logger.info("Conversations for user %s: %s", user_id, len(conversations))
+    conversations = configuration.conversation_cache.list(user_id, skip_userid_check)
+    logger.info("Conversations for user %s: %s", user_id, len(conversations))
 
-        span.set_attribute("conversations.count", len(conversations))
-        return ConversationsListResponseV2(conversations=conversations)
+    return ConversationsListResponseV2(conversations=conversations)
 
 
 @router.get(
@@ -126,35 +120,32 @@ async def get_conversation_endpoint_handler(
     auth: Any = Depends(get_auth_dependency()),
 ) -> ConversationResponse:
     """Handle request to retrieve a conversation identified by its ID."""
-    with tracer.start_as_current_span("conversations_v2.get") as span:
-        check_configuration_loaded(configuration)
-        check_valid_conversation_id(conversation_id)
+    check_configuration_loaded(configuration)
+    check_valid_conversation_id(conversation_id)
 
-        user_id = auth[0]
-        logger.info("Retrieving conversation %s for user %s", conversation_id, user_id)
+    user_id = auth[0]
+    logger.info("Retrieving conversation %s for user %s", conversation_id, user_id)
 
-        skip_userid_check = auth[2]
+    skip_userid_check = auth[2]
 
-        if configuration.conversation_cache_configuration.type is None:
-            logger.warning("Conversation cache is not configured")
-            response = InternalServerErrorResponse.cache_unavailable()
-            raise HTTPException(**response.model_dump())
+    if configuration.conversation_cache_configuration.type is None:
+        logger.warning("Conversation cache is not configured")
+        response = InternalServerErrorResponse.cache_unavailable()
+        raise HTTPException(**response.model_dump())
 
-        check_conversation_existence(user_id, conversation_id)
+    check_conversation_existence(user_id, conversation_id)
 
-        conversation = configuration.conversation_cache.get(
-            user_id, conversation_id, skip_userid_check
-        )
-        # Each entry in conversation is a single turn
-        chat_history: list[ConversationTurn] = [
-            build_conversation_turn_from_cache_entry(entry) for entry in conversation
-        ]
+    conversation = configuration.conversation_cache.get(
+        user_id, conversation_id, skip_userid_check
+    )
+    # Each entry in conversation is a single turn
+    chat_history: list[ConversationTurn] = [
+        build_conversation_turn_from_cache_entry(entry) for entry in conversation
+    ]
 
-        span.set_attribute("conversations.found", True)
-        span.set_attribute("conversations.turns.count", len(chat_history))
-        return ConversationResponse(
-            conversation_id=conversation_id, chat_history=chat_history
-        )
+    return ConversationResponse(
+        conversation_id=conversation_id, chat_history=chat_history
+    )
 
 
 @router.delete(
@@ -167,28 +158,24 @@ async def delete_conversation_endpoint_handler(
     auth: Any = Depends(get_auth_dependency()),
 ) -> ConversationDeleteResponse:
     """Handle request to delete a conversation by ID."""
-    with tracer.start_as_current_span("conversations_v2.delete") as span:
-        check_configuration_loaded(configuration)
-        check_valid_conversation_id(conversation_id)
+    check_configuration_loaded(configuration)
+    check_valid_conversation_id(conversation_id)
 
-        user_id = auth[0]
-        logger.info("Deleting conversation %s for user %s", conversation_id, user_id)
+    user_id = auth[0]
+    logger.info("Deleting conversation %s for user %s", conversation_id, user_id)
 
-        skip_userid_check = auth[2]
+    skip_userid_check = auth[2]
 
-        if configuration.conversation_cache_configuration.type is None:
-            logger.warning("Conversation cache is not configured")
-            response = InternalServerErrorResponse.cache_unavailable()
-            raise HTTPException(**response.model_dump())
+    if configuration.conversation_cache_configuration.type is None:
+        logger.warning("Conversation cache is not configured")
+        response = InternalServerErrorResponse.cache_unavailable()
+        raise HTTPException(**response.model_dump())
 
-        logger.info("Deleting conversation %s for user %s", conversation_id, user_id)
-        deleted = configuration.conversation_cache.delete(
-            user_id, conversation_id, skip_userid_check
-        )
-        span.set_attribute("conversations.deleted", deleted)
-        return ConversationDeleteResponse(
-            deleted=deleted, conversation_id=conversation_id
-        )
+    logger.info("Deleting conversation %s for user %s", conversation_id, user_id)
+    deleted = configuration.conversation_cache.delete(
+        user_id, conversation_id, skip_userid_check
+    )
+    return ConversationDeleteResponse(deleted=deleted, conversation_id=conversation_id)
 
 
 @router.put("/conversations/{conversation_id}", responses=conversation_update_responses)
@@ -199,43 +186,41 @@ async def update_conversation_endpoint_handler(
     auth: Any = Depends(get_auth_dependency()),
 ) -> ConversationUpdateResponse:
     """Handle request to update a conversation topic summary by ID."""
-    with tracer.start_as_current_span("conversations_v2.update") as span:
-        check_configuration_loaded(configuration)
-        check_valid_conversation_id(conversation_id)
+    check_configuration_loaded(configuration)
+    check_valid_conversation_id(conversation_id)
 
-        user_id = auth[0]
-        logger.info(
-            "Updating topic summary for conversation %s for user %s",
-            conversation_id,
-            user_id,
-        )
+    user_id = auth[0]
+    logger.info(
+        "Updating topic summary for conversation %s for user %s",
+        conversation_id,
+        user_id,
+    )
 
-        skip_userid_check = auth[2]
+    skip_userid_check = auth[2]
 
-        if configuration.conversation_cache_configuration.type is None:
-            logger.warning("Conversation cache is not configured")
-            response = InternalServerErrorResponse.cache_unavailable()
-            raise HTTPException(**response.model_dump())
+    if configuration.conversation_cache_configuration.type is None:
+        logger.warning("Conversation cache is not configured")
+        response = InternalServerErrorResponse.cache_unavailable()
+        raise HTTPException(**response.model_dump())
 
-        check_conversation_existence(user_id, conversation_id)
+    check_conversation_existence(user_id, conversation_id)
 
-        # Update the topic summary in the cache
-        configuration.conversation_cache.set_topic_summary(
-            user_id, conversation_id, update_request.topic_summary, skip_userid_check
-        )
+    # Update the topic summary in the cache
+    configuration.conversation_cache.set_topic_summary(
+        user_id, conversation_id, update_request.topic_summary, skip_userid_check
+    )
 
-        logger.info(
-            "Successfully updated topic summary for conversation %s for user %s",
-            conversation_id,
-            user_id,
-        )
+    logger.info(
+        "Successfully updated topic summary for conversation %s for user %s",
+        conversation_id,
+        user_id,
+    )
 
-        span.set_attribute("conversations.updated", True)
-        return ConversationUpdateResponse(
-            conversation_id=conversation_id,
-            success=True,
-            message="Topic summary updated successfully",
-        )
+    return ConversationUpdateResponse(
+        conversation_id=conversation_id,
+        success=True,
+        message="Topic summary updated successfully",
+    )
 
 
 def check_valid_conversation_id(conversation_id: str) -> None:
