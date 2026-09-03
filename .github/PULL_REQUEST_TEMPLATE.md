@@ -12,7 +12,8 @@
 - [ ] Documentation Update
 - [ ] Configuration Update
 - [ ] Bump-up service version
-- [ ] Bump-up dependent library
+- [ ] Bump-up dependent library [`pyproject.toml` + `uv.lock`]
+- [ ] Bump-up dependent library [`requirements.*.txt` for Konflux]
 - [ ] Bump-up library or tool used for development (does not change the final image)
 - [ ] CI configuration change
 - [ ] Konflux configuration change

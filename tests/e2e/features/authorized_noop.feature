@@ -1,4 +1,4 @@
-@e2e_group_1
+@cfg_default
 Feature: Authorized endpoint API tests for the noop authentication module
 
   Background:
@@ -6,7 +6,7 @@ Feature: Authorized endpoint API tests for the noop authentication module
       And The system is in default state
       And REST API service prefix is /v1
       And the Lightspeed stack configuration directory is "tests/e2e/configuration"
-      And The service uses the lightspeed-stack.yaml configuration
+      And The service uses the lightspeed-stack-default.yaml configuration
       And The service is restarted
 
   Scenario: Check if the authorized endpoint works fine when user_id and auth header are not provided 

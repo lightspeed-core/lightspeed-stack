@@ -1,4 +1,4 @@
-@e2e_group_2 @skip
+@cfg_unified @skip
 Feature: Legacy two-file configuration during deprecation window
 
   Background:

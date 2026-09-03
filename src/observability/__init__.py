@@ -13,6 +13,7 @@ default implementation, or create your own format module.
 observability/
 ├── __init__.py          # Public API exports
 ├── splunk.py            # Async Splunk HEC client
+├── sentry.py            # Sentry error tracking client
 └── formats/
     ├── __init__.py      # Format exports
     ├── rlsapi.py        # rlsapi v1 event format

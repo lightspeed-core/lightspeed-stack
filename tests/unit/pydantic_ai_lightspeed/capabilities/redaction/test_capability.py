@@ -268,7 +268,9 @@ class TestPiiRedactionCapability:
         )
         result = await capability.before_model_request(mocker.Mock(), request_context)
         assert result is request_context
-        assert req.parts[0].content == "safe text"
+        part = req.parts[0]
+        assert isinstance(part, UserPromptPart)
+        assert part.content == "safe text"
 
     @pytest.mark.asyncio()
     async def test_after_model_request_redacts_response(

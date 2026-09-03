@@ -11,12 +11,12 @@ service:
   workers: 1
   color_log: true
   access_log: true
-llama_stack:
+ogx:
   use_as_library_client: false
   url: http://localhost:8321
 inference:
   # Configure the default model for rlsapi v1 inference
-  # Provider ID must match the provider_id in your Llama Stack config
+  # Provider ID must match the provider_id in your OGX config
   default_provider: google-vertex
   default_model: gemini-2.5-flash
 

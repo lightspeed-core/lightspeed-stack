@@ -1,4 +1,4 @@
-@e2e_group_2 @skip
+@cfg_unified @skip
 Feature: Unified mode configuration validation
 
   Background:
@@ -17,6 +17,7 @@ Feature: Unified mode configuration validation
     Given The service uses the lightspeed-stack-invalid-config-and-legacy.yaml configuration
      When configuration validation is attempted for the active configuration
      Then the validation error contains --migrate-config
+
 
 
   Scenario: config_format_version legacy with unified-shaped body fails at load

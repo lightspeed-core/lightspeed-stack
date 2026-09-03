@@ -14,4 +14,3 @@ def place_holder_set_mcp_server_header(context: Context, header_value: str) -> N
         header_name (str): The name of the header to set.
         header_value (str): The value to set for the header.
     """
-    pass

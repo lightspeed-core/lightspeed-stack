@@ -1,11 +1,16 @@
 """Unit tests for the /rags REST API endpoints."""
 
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
 import pytest
 from fastapi import HTTPException, Request, status
-from ogx_client import APIConnectionError, BadRequestError
+from ogx_client import ApiException, BadRequestError
+from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
+    InMemorySpanExporter,
+)
+from opentelemetry.trace import StatusCode
 from pytest_mock import MockerFixture
 
 from app.endpoints.rags import (
@@ -41,10 +46,10 @@ async def test_rags_endpoint_configuration_not_loaded(
 async def test_rags_endpoint_connection_error(
     mocker: MockerFixture, minimal_config: AppConfig
 ) -> None:
-    """Test that /rags endpoint raises HTTP 503 if Llama Stack connection fails."""
+    """Test that /rags endpoint raises HTTP 503 if OGX connection fails."""
     mocker.patch("app.endpoints.rags.configuration", minimal_config)
     mock_client = mocker.AsyncMock()
-    mock_client.vector_stores.list.side_effect = APIConnectionError(request=None)  # type: ignore
+    mock_client.vector_stores.list.side_effect = ApiException(status=None)  # type: ignore
     mocker.patch(
         "app.endpoints.rags.AsyncOgxClientHolder"
     ).return_value.get_client.return_value = mock_client
@@ -100,6 +105,14 @@ async def test_rags_endpoint_success(
                 RagInfo("vs_7b52a8cf-0fa3-489c-cafe-27e061d102f3"),
             ]
 
+        def __iter__(self) -> "Iterator[RagInfo]":
+            """Iterate over RAG entries."""
+            return iter(self.data)
+
+        def __len__(self) -> int:
+            """Return number of RAG entries."""
+            return len(self.data)
+
     mock_client = mocker.AsyncMock()
     mock_client.vector_stores.list.return_value = RagList()
     mocker.patch(
@@ -142,11 +155,7 @@ async def test_rag_info_endpoint_rag_not_found(
     mocker.patch("app.endpoints.rags.configuration", minimal_config)
     mock_client = mocker.AsyncMock()
     mock_client.vector_stores.retrieve = mocker.AsyncMock(
-        side_effect=BadRequestError(
-            message="RAG not found",
-            response=mocker.Mock(request=None),
-            body=None,
-        )
+        side_effect=BadRequestError(status=400, reason="RAG not found")
     )  # type: ignore
     mocker.patch(
         "app.endpoints.rags.AsyncOgxClientHolder"
@@ -170,12 +179,10 @@ async def test_rag_info_endpoint_rag_not_found(
 async def test_rag_info_endpoint_connection_error(
     mocker: MockerFixture, minimal_config: AppConfig
 ) -> None:
-    """Test that /rags/{rag_id} endpoint raises HTTP 503 if Llama Stack connection fails."""
+    """Test that /rags/{rag_id} endpoint raises HTTP 503 if OGX connection fails."""
     mocker.patch("app.endpoints.rags.configuration", minimal_config)
     mock_client = mocker.AsyncMock()
-    mock_client.vector_stores.retrieve.side_effect = APIConnectionError(
-        request=None  # type: ignore
-    )
+    mock_client.vector_stores.retrieve.side_effect = ApiException(status=None)
     mocker.patch(
         "app.endpoints.rags.AsyncOgxClientHolder"
     ).return_value.get_client.return_value = mock_client
@@ -261,7 +268,7 @@ def _make_byok_config(tmp_path: Any) -> AppConfig:
         {
             "name": "test",
             "service": {"host": "localhost", "port": 8080},
-            "llama_stack": {
+            "ogx": {
                 "api_key": "test-key",
                 "url": "http://test.com:1234",
                 "use_as_library_client": False,
@@ -269,24 +276,28 @@ def _make_byok_config(tmp_path: Any) -> AppConfig:
             "user_data_collection": {},
             "authentication": {"module": "noop"},
             "authorization": {"access_rules": []},
-            "byok_rag": [
-                {
-                    "rag_id": "ocp-4.18-docs",
-                    "rag_type": "inline::faiss",
-                    "embedding_model": "all-MiniLM-L6-v2",
-                    "embedding_dimension": 384,
-                    "vector_db_id": "vs_abc123",
-                    "db_path": str(db_file),
+            "rag": {
+                "byok": {
+                    "stores": [
+                        {
+                            "rag_id": "ocp-4.18-docs",
+                            "backend": "faiss",
+                            "embedding_model": "all-MiniLM-L6-v2",
+                            "embedding_dimension": 384,
+                            "vector_db_id": "vs_abc123",
+                            "db_path": str(db_file),
+                        },
+                        {
+                            "rag_id": "company-kb",
+                            "backend": "faiss",
+                            "embedding_model": "all-MiniLM-L6-v2",
+                            "embedding_dimension": 384,
+                            "vector_db_id": "vs_def456",
+                            "db_path": str(db_file),
+                        },
+                    ],
                 },
-                {
-                    "rag_id": "company-kb",
-                    "rag_type": "inline::faiss",
-                    "embedding_model": "all-MiniLM-L6-v2",
-                    "embedding_dimension": 384,
-                    "vector_db_id": "vs_def456",
-                    "db_path": str(db_file),
-                },
-            ],
+            },
         }
     )
     return cfg
@@ -296,7 +307,7 @@ def _make_byok_config(tmp_path: Any) -> AppConfig:
 async def test_rags_endpoint_returns_rag_ids_from_config(
     mocker: MockerFixture, tmp_path: Path
 ) -> None:
-    """Test that /rags endpoint maps llama-stack IDs to user-facing rag_ids."""
+    """Test that /rags endpoint maps OGX IDs to user-facing rag_ids."""
     byok_config = _make_byok_config(str(tmp_path))
     mocker.patch("app.endpoints.rags.configuration", byok_config)
 
@@ -319,6 +330,14 @@ async def test_rags_endpoint_returns_rag_ids_from_config(
                 RagInfo("vs_def456"),  # mapped to company-kb
                 RagInfo("vs_unmapped"),  # not in config, passed through
             ]
+
+        def __iter__(self) -> "Iterator[RagInfo]":
+            """Iterate over RAG entries."""
+            return iter(self.data)
+
+        def __len__(self) -> int:
+            """Return number of RAG entries."""
+            return len(self.data)
 
     mock_client = mocker.AsyncMock()
     mock_client.vector_stores.list.return_value = RagList()
@@ -379,7 +398,7 @@ async def test_rag_info_endpoint_accepts_rag_id_from_config(
 def test_resolve_rag_id_to_vector_db_id_with_mapping(tmp_path: Path) -> None:
     """Test that _resolve_rag_id_to_vector_db_id maps rag_id to vector_db_id."""
     byok_config = _make_byok_config(str(tmp_path))
-    byok_rags = byok_config.configuration.byok_rag
+    byok_rags = byok_config.configuration.rag.byok.stores
     assert _resolve_rag_id_to_vector_db_id("ocp-4.18-docs", byok_rags) == "vs_abc123"
     assert _resolve_rag_id_to_vector_db_id("company-kb", byok_rags) == "vs_def456"
 
@@ -387,5 +406,167 @@ def test_resolve_rag_id_to_vector_db_id_with_mapping(tmp_path: Path) -> None:
 def test_resolve_rag_id_to_vector_db_id_passthrough(tmp_path: Path) -> None:
     """Test that unmapped IDs are passed through unchanged."""
     byok_config = _make_byok_config(str(tmp_path))
-    byok_rags = byok_config.configuration.byok_rag
+    byok_rags = byok_config.configuration.rag.byok.stores
     assert _resolve_rag_id_to_vector_db_id("vs_unknown", byok_rags) == "vs_unknown"
+
+
+class TestRagsEndpointOtel:
+    """OTEL instrumentation tests for the /rags endpoints."""
+
+    @pytest.mark.asyncio
+    async def test_list_emits_span_with_count(
+        self,
+        mocker: MockerFixture,
+        minimal_config: AppConfig,
+        otel: tuple[Any, InMemorySpanExporter],
+    ) -> None:
+        """Test that a successful /rags list emits a span with rags.count."""
+        tracer, exporter = otel
+        mocker.patch("app.endpoints.rags.tracer", tracer)
+        mocker.patch("app.endpoints.rags.configuration", minimal_config)
+
+        # pylint: disable=R0903
+        class RagInfo:
+            """RagInfo mock."""
+
+            def __init__(self, rag_id: str) -> None:
+                """Initialize with ID."""
+                self.id = rag_id
+
+        class RagList:
+            """List of RAGs mock."""
+
+            def __init__(self) -> None:
+                """Initialize with mock data."""
+                self.data = [RagInfo("vs_1"), RagInfo("vs_2")]
+
+            def __iter__(self) -> Iterator[Any]:
+                """Iterate over RAG entries (matches VectorStoreListResponse)."""
+                return iter(self.data)
+
+            def __len__(self) -> int:
+                """Return number of RAG entries."""
+                return len(self.data)
+
+        mock_client = mocker.AsyncMock()
+        mock_client.vector_stores.list.return_value = RagList()
+        mocker.patch(
+            "app.endpoints.rags.AsyncOgxClientHolder"
+        ).return_value.get_client.return_value = mock_client
+
+        request = Request(scope={"type": "http"})
+        auth: AuthTuple = ("uid", "uname", True, "tok")
+
+        await rags_endpoint_handler(request=request, auth=auth)
+
+        spans = exporter.get_finished_spans()
+        assert len(spans) == 1
+        span = spans[0]
+        assert span.name == "rags.list"
+        assert span.attributes is not None
+        assert span.attributes["rags.count"] == 2
+
+    @pytest.mark.asyncio
+    async def test_list_span_records_error_on_connection_failure(
+        self,
+        mocker: MockerFixture,
+        minimal_config: AppConfig,
+        otel: tuple[Any, InMemorySpanExporter],
+    ) -> None:
+        """Test that the list span records an error on connection failure."""
+        tracer, exporter = otel
+        mocker.patch("app.endpoints.rags.tracer", tracer)
+        mocker.patch("app.endpoints.rags.configuration", minimal_config)
+
+        mock_client = mocker.AsyncMock()
+        mock_client.vector_stores.list.side_effect = ApiException(status=None)
+        mocker.patch(
+            "app.endpoints.rags.AsyncOgxClientHolder"
+        ).return_value.get_client.return_value = mock_client
+
+        request = Request(scope={"type": "http"})
+        auth: AuthTuple = ("uid", "uname", True, "tok")
+
+        with pytest.raises(HTTPException):
+            await rags_endpoint_handler(request=request, auth=auth)
+
+        spans = exporter.get_finished_spans()
+        assert len(spans) == 1
+        assert spans[0].name == "rags.list"
+        assert spans[0].status.status_code == StatusCode.ERROR
+
+    @pytest.mark.asyncio
+    async def test_get_emits_span_with_found(
+        self,
+        mocker: MockerFixture,
+        minimal_config: AppConfig,
+        otel: tuple[Any, InMemorySpanExporter],
+    ) -> None:
+        """Test that /rags/{rag_id} emits a span with rags.found on success."""
+        tracer, exporter = otel
+        mocker.patch("app.endpoints.rags.tracer", tracer)
+        mocker.patch("app.endpoints.rags.configuration", minimal_config)
+
+        # pylint: disable=R0902,R0903
+        class RagInfo:
+            """RagInfo mock."""
+
+            def __init__(self) -> None:
+                """Initialize with test data."""
+                self.id = "xyzzy"
+                self.name = "rag_name"
+                self.created_at = 123456
+                self.last_active_at = 1234567
+                self.expires_at = 12345678
+                self.object = "faiss"
+                self.status = "completed"
+                self.usage_bytes = 100
+
+        mock_client = mocker.AsyncMock()
+        mock_client.vector_stores.retrieve.return_value = RagInfo()
+        mocker.patch(
+            "app.endpoints.rags.AsyncOgxClientHolder"
+        ).return_value.get_client.return_value = mock_client
+
+        request = Request(scope={"type": "http"})
+        auth: AuthTuple = ("uid", "uname", True, "tok")
+
+        await get_rag_endpoint_handler(request=request, auth=auth, rag_id="xyzzy")
+
+        spans = exporter.get_finished_spans()
+        assert len(spans) == 1
+        span = spans[0]
+        assert span.name == "rags.get"
+        assert span.attributes is not None
+        assert span.attributes["rags.found"] is True
+
+    @pytest.mark.asyncio
+    async def test_get_span_records_error_on_not_found(
+        self,
+        mocker: MockerFixture,
+        minimal_config: AppConfig,
+        otel: tuple[Any, InMemorySpanExporter],
+    ) -> None:
+        """Test that the get span records an error when RAG is not found."""
+        tracer, exporter = otel
+        mocker.patch("app.endpoints.rags.tracer", tracer)
+        mocker.patch("app.endpoints.rags.configuration", minimal_config)
+
+        mock_client = mocker.AsyncMock()
+        mock_client.vector_stores.retrieve = mocker.AsyncMock(
+            side_effect=BadRequestError(status=400, reason="RAG not found")
+        )  # type: ignore
+        mocker.patch(
+            "app.endpoints.rags.AsyncOgxClientHolder"
+        ).return_value.get_client.return_value = mock_client
+
+        request = Request(scope={"type": "http"})
+        auth: AuthTuple = ("uid", "uname", True, "tok")
+
+        with pytest.raises(HTTPException):
+            await get_rag_endpoint_handler(request=request, auth=auth, rag_id="missing")
+
+        spans = exporter.get_finished_spans()
+        assert len(spans) == 1
+        assert spans[0].name == "rags.get"
+        assert spans[0].status.status_code == StatusCode.ERROR

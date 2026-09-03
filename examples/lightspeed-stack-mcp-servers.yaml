@@ -6,7 +6,7 @@ service:
   workers: 1
   color_log: true
   access_log: true
-llama_stack:
+ogx:
   use_as_library_client: false
   url: http://localhost:8321
   api_key: xyzzy
@@ -46,7 +46,7 @@ mcp_servers:
     url: "http://url.com:6"
     authorization_headers:
       Authorization: "client"  # Special value to forward the client's token
-    timeout: 30  # Optional: timeout in seconds (future Llama Stack feature)
+    timeout: 30  # Optional: timeout in seconds (future OGX feature)
   # Example with automatic header propagation from incoming request (HCC use case)
   # Headers listed here are automatically extracted from the incoming HTTP request
   # and forwarded to this MCP server. Useful when infrastructure components (e.g.

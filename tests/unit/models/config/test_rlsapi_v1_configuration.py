@@ -66,7 +66,7 @@ def _build_config_dict(**overrides: Any) -> dict[str, Any]:
     base: dict[str, Any] = {
         "name": "test",
         "service": {"host": "localhost", "port": 8080},
-        "llama_stack": {
+        "ogx": {
             "api_key": "test-key",
             "url": "http://test.com:1234",
             "use_as_library_client": False,

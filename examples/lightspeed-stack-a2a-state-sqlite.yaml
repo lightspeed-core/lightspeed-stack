@@ -7,7 +7,7 @@ service:
   workers: 1
   color_log: true
   access_log: true
-llama_stack:
+ogx:
   use_as_library_client: true
   library_client_config_path: run.yaml
 user_data_collection:

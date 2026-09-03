@@ -33,7 +33,8 @@ from a2a.types import (
 )
 from a2a.utils import new_agent_text_message, new_task
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from ogx_client import APIConnectionError, APIStatusError
+from ogx_client import ApiException
+from opentelemetry import trace
 from pydantic_ai import AgentRunResultEvent
 from pydantic_ai.exceptions import AgentRunError
 from pydantic_ai.messages import (
@@ -54,21 +55,35 @@ from app.endpoints.a2a_openapi import a2a_jsonrpc_responses
 from authentication import get_auth_dependency
 from authentication.interface import AuthTuple
 from authorization.middleware import authorize
-from client import AsyncOgxClientHolder
+from client.ogx import AsyncOgxClientHolder
 from configuration import configuration
 from constants import MEDIA_TYPE_EVENT_STREAM
 from log import get_logger
 from models.api.requests import QueryRequest
+from models.common.responses.responses_api_params import ResponsesApiParams
 from models.config import Action
 from utils.agents.error_handler import map_agent_inference_error
-from utils.conversation_compaction import apply_compaction_blocking
+from utils.conversation_compaction import (
+    CompactionResult,
+    apply_compaction_blocking,
+    store_compacted_turn,
+)
 from utils.mcp_headers import McpHeaders, mcp_headers_dependency
-from utils.pydantic_ai_helpers import build_agent
+from utils.otel_tracing import (
+    SpanAttributes,
+    SpanEvents,
+    add_span_event,
+    anonymize_value,
+    set_span_attributes,
+)
+from utils.pydantic_ai_helpers import build_agent, captured_output_items
+from utils.query import extract_provider_and_model_from_model_id
 from utils.responses import prepare_responses_params
 from utils.suid import normalize_conversation_id
 from version import __version__
 
 logger = get_logger(__name__)
+tracer = trace.get_tracer(__name__)
 router = APIRouter(tags=["a2a"])
 
 auth_dependency = get_auth_dependency()
@@ -136,6 +151,101 @@ def _build_a2a_parts_from_agent_result(
     return [Part(root=A2ATextPart(text=final_text))]
 
 
+def _record_model_span(span: trace.Span, model_id: str) -> None:
+    """Set LLM model and provider attributes on a span.
+
+    Parameters:
+        span: The active OpenTelemetry span.
+        model_id: Full model identifier in "provider/model" format.
+    """
+    provider_id, _ = extract_provider_and_model_from_model_id(model_id)
+    set_span_attributes(
+        span,
+        {
+            SpanAttributes.LLM_MODEL_ID: model_id,
+            SpanAttributes.LLM_PROVIDER_ID: provider_id,
+        },
+    )
+
+
+def _record_execution_span(
+    span: trace.Span,
+    tool_call_names: list[str],
+    run_result: Optional[AgentRunResult[str]],
+) -> None:
+    """Record tool-call metrics, token usage, and output on an a2a.execute span.
+
+    Parameters:
+        span: The active OpenTelemetry span.
+        tool_call_names: Tool names collected during streaming.
+        run_result: Completed agent run result, or None.
+    """
+    if tool_call_names:
+        set_span_attributes(
+            span,
+            {
+                SpanAttributes.TOOL_CALLS_COUNT: len(tool_call_names),
+                SpanAttributes.TOOL_CALLS_NAMES: ",".join(sorted(set(tool_call_names))),
+            },
+        )
+        add_span_event(span, SpanEvents.TOOL_EXECUTION_COMPLETED)
+
+    if run_result is not None:
+        usage = run_result.usage
+        set_span_attributes(
+            span,
+            {
+                SpanAttributes.LLM_USAGE_INPUT_TOKENS: usage.input_tokens,
+                SpanAttributes.LLM_USAGE_OUTPUT_TOKENS: usage.output_tokens,
+            },
+        )
+        add_span_event(span, SpanEvents.LLM_INFERENCE_COMPLETED)
+
+        output_text = run_result.response.text
+        if output_text:
+            span.set_attribute(SpanAttributes.OUTPUT, anonymize_value(output_text))
+
+
+async def _persist_compacted_a2a_turn(
+    client: Any,
+    responses_params: ResponsesApiParams,
+    compaction: CompactionResult,
+    agent: Any,
+    task_id: str,
+) -> None:
+    """Append a completed compacted A2A turn to the conversation (LCORE-3883).
+
+    In compacted mode the ``conversation`` parameter is not sent, so OGX does
+    not store the turn and lightspeed-stack must append it itself, keeping the
+    recent-turn buffer and audit history intact for the next turn in this A2A
+    context.
+
+    Parameters:
+        client: OGX client used to write the conversation items.
+        responses_params: Prepared Responses API parameters.
+        compaction: Outcome of applying compaction. Nothing is written unless
+            the request was served in compacted mode.
+        agent: The pydantic-ai agent whose model captured the output items.
+        task_id: A2A task identifier, used for error reporting.
+    """
+    if not compaction.compacted or compaction.original_input is None:
+        return
+    try:
+        await store_compacted_turn(
+            client,
+            responses_params.conversation,
+            compaction.original_input,
+            captured_output_items(agent),
+        )
+    except Exception:  # pylint: disable=broad-except
+        # The caller already has its answer; the cost of the failure is that the
+        # next turn in this context loses this one.
+        logger.exception(
+            "Failed to append compacted turn to conversation for A2A task %s",
+            task_id,
+        )
+
+
 class TaskResultAggregator:
     """Aggregates the task status updates and provides the final task state."""
 
@@ -200,7 +310,7 @@ class TaskResultAggregator:
 # Agent Executor Implementation
 # -----------------------------
 class A2AAgentExecutor(AgentExecutor):
-    """Agent Executor for A2A using Llama Stack Responses API.
+    """Agent Executor for A2A using OGX Responses API.
 
     This executor implements the A2A AgentExecutor interface and handles
     routing queries to the LLM backend using the Responses API.
@@ -223,6 +333,7 @@ class A2AAgentExecutor(AgentExecutor):
         self.mcp_headers: McpHeaders = mcp_headers or {}
         self.request_headers: Optional[Mapping[str, str]] = request_headers
         self._run_result: Optional[AgentRunResult[str]] = None
+        self._tool_call_names: list[str] = []
 
     async def execute(
         self,
@@ -292,179 +403,197 @@ class A2AAgentExecutor(AgentExecutor):
         if not task_id or not context_id:
             raise ValueError("Task ID and Context ID are required")
 
-        # Extract user input using SDK utility
-        user_input = context.get_user_input()
-        if not user_input:
-            await task_updater.update_status(
-                TaskState.input_required,
-                message=new_agent_text_message(
-                    "No input received. Please provide your input.",
-                    context_id=context_id,
-                    task_id=task_id,
-                ),
-                final=True,
-            )
-            return
+        with tracer.start_as_current_span("a2a.execute") as span:
+            span.set_attribute(SpanAttributes.SESSION_ID, context_id)
 
-        preview = user_input[:200] + ("..." if len(user_input) > 200 else "")
-        logger.info("Processing A2A request: %s", preview)
+            # Extract user input using SDK utility
+            user_input = context.get_user_input()
+            if not user_input:
+                await task_updater.update_status(
+                    TaskState.input_required,
+                    message=new_agent_text_message(
+                        "No input received. Please provide your input.",
+                        context_id=context_id,
+                        task_id=task_id,
+                    ),
+                    final=True,
+                )
+                return
 
-        # Extract routing metadata from A2A message context.
-        # Supported metadata fields (see docs/a2a_protocol.md for details):
-        #   - model: LLM model to use (e.g., "gpt-4", "llama3.1")
-        #   - provider: LLM provider to use (e.g., "openai", "watsonx")
-        #   - vector_store_ids: list of vector store IDs for RAG queries
-        metadata = context.message.metadata if context.message else {}
-        model = metadata.get("model") if metadata else None
-        provider = metadata.get("provider") if metadata else None
-        vector_store_ids = metadata.get("vector_store_ids") if metadata else None
+            span.set_attribute(SpanAttributes.INPUT, anonymize_value(user_input))
+            preview = user_input[:200] + ("..." if len(user_input) > 200 else "")
+            logger.info("Processing A2A request: %s", preview)
 
-        # Resolve conversation_id from A2A contextId for multi-turn
-        a2a_context_id = context_id
-        context_store = await _get_context_store()
-        conversation_id = await context_store.get(a2a_context_id)
-        logger.info(
-            "A2A contextId %s maps to conversation_id %s",
-            a2a_context_id,
-            conversation_id,
-        )
+            # Extract routing metadata from A2A message context.
+            # Supported metadata fields (see docs/a2a_protocol.md for details):
+            #   - model: LLM model to use (e.g., "gpt-4", "llama3.1")
+            #   - provider: LLM provider to use (e.g., "openai", "watsonx")
+            #   - vector_store_ids: list of vector store IDs for RAG queries
+            metadata = context.message.metadata if context.message else {}
 
-        # Build internal query request (conversation_id may be None for first turn)
-        query_request = QueryRequest(
-            query=user_input,
-            conversation_id=conversation_id,
-            model=model,
-            provider=provider,
-            system_prompt=None,
-            attachments=None,
-            no_tools=False,
-            generate_topic_summary=True,
-            media_type=None,
-            vector_store_ids=vector_store_ids,
-            shield_ids=None,
-            solr=None,
-        )
-
-        # Get LLM client and select model
-        client = AsyncOgxClientHolder().get_client()
-        try:
-            responses_params = await prepare_responses_params(
-                client,
-                query_request,
-                None,
-                self.auth_token,
-                self.mcp_headers,
-                stream=True,
-                store=True,
-                request_headers=self.request_headers,
-            )
-            # Compact the conversation if it is approaching the context window
-            # limit. A2A is not a browser SSE stream, so no progress event is
-            # emitted; the blocking variant summarizes inline before the call.
-            # No conversation cache is passed: the A2A executor has no resolved
-            # user_id for the (user_id, conversation_id) cache key, so A2A runs
-            # in marker-only mode (additive summaries, no persisted fold).
-            compaction = await apply_compaction_blocking(
-                client,
-                responses_params,
-                configuration.inference,
-                configuration.compaction,
-            )
-            responses_params = compaction.params
-
-            agent = build_agent(
-                client,
-                responses_params,
-                configuration,
-                shields=query_request.shield_ids,
-            )
-        except (AgentRunError, APIStatusError, APIConnectionError, RuntimeError) as e:
-            error_response = map_agent_inference_error(e, query_request.model or "")
-            logger.error("Error preparing A2A agent: %s", str(e), exc_info=True)
-            await task_updater.update_status(
-                TaskState.failed,
-                message=new_agent_text_message(
-                    error_response.detail.response,
-                    context_id=context_id,
-                    task_id=task_id,
-                ),
-                final=True,
-            )
-            return
-
-        # Persist conversation_id for next turn in same A2A context
-        conversation_id = conversation_id or normalize_conversation_id(
-            responses_params.conversation
-        )
-        if conversation_id:
-            await context_store.set(a2a_context_id, conversation_id)
+            # Resolve conversation_id from A2A contextId for multi-turn
+            context_store = await _get_context_store()
+            conversation_id = await context_store.get(context_id)
             logger.info(
-                "Persisted conversation_id %s for A2A contextId %s",
-                conversation_id,
-                a2a_context_id,
-            )
-
-        # Initialize result aggregator
-        aggregator = TaskResultAggregator()
-        event_queue = task_updater.event_queue
-
-        # Emit working status with metadata before processing stream
-        await event_queue.enqueue_event(
-            TaskStatusUpdateEvent(
-                task_id=task_id,
-                status=TaskStatus(
-                    state=TaskState.working,
-                    timestamp=datetime.now(UTC).isoformat(),
-                ),
-                context_id=context_id,
-                final=False,
-                metadata={
-                    "model": responses_params.model,
-                    "conversation_id": conversation_id,
-                },
-            )
-        )
-
-        # Run the pydantic-ai agent and convert stream events to A2A events.
-        prompt = user_input
-        try:
-            async for a2a_event in self._convert_stream_to_events(
-                agent,
-                prompt,
-                task_id,
+                "A2A contextId %s maps to conversation_id %s",
                 context_id,
-                conversation_id=conversation_id,
-            ):
-                aggregator.process_event(a2a_event)
-                await event_queue.enqueue_event(a2a_event)
-        except (AgentRunError, APIStatusError, APIConnectionError, RuntimeError) as e:
-            error_response = map_agent_inference_error(e, responses_params.model)
-            logger.error("Error during A2A agent run: %s", str(e), exc_info=True)
-            await task_updater.update_status(
-                TaskState.failed,
-                message=new_agent_text_message(
-                    error_response.detail.response,
-                    context_id=context_id,
-                    task_id=task_id,
-                ),
-                final=True,
+                conversation_id,
             )
-            return
 
-        # Publish the final task result event
-        if aggregator.task_state == TaskState.working:
-            await task_updater.update_status(
-                TaskState.completed,
-                timestamp=datetime.now(UTC).isoformat(),
-                final=True,
+            # Build internal query request (conversation_id may be None for first turn)
+            query_request = QueryRequest(
+                query=user_input,
+                conversation_id=conversation_id,
+                model=metadata.get("model") if metadata else None,
+                provider=metadata.get("provider") if metadata else None,
+                system_prompt=None,
+                attachments=None,
+                no_tools=False,
+                generate_topic_summary=True,
+                media_type=None,
+                vector_store_ids=(
+                    metadata.get("vector_store_ids") if metadata else None
+                ),
+                shield_ids=None,
+                solr=None,
             )
-        else:
-            await task_updater.update_status(
-                aggregator.task_state,
-                message=aggregator.task_status_message,
-                timestamp=datetime.now(UTC).isoformat(),
-                final=True,
+
+            # Get LLM client and select model
+            client = AsyncOgxClientHolder().get_client()
+            try:
+                responses_params = await prepare_responses_params(
+                    client,
+                    query_request,
+                    None,
+                    self.auth_token,
+                    self.mcp_headers,
+                    stream=True,
+                    store=True,
+                    request_headers=self.request_headers,
+                )
+                # Compact the conversation if it is approaching the context window
+                # limit. A2A is not a browser SSE stream, so no progress event is
+                # emitted; the blocking variant summarizes inline before the call.
+                # No conversation cache is passed: the A2A executor has no resolved
+                # user_id for the (user_id, conversation_id) cache key, so A2A runs
+                # in marker-only mode (additive summaries, no persisted fold).
+                compaction = await apply_compaction_blocking(
+                    client,
+                    responses_params,
+                    configuration.inference,
+                    configuration.compaction,
+                )
+                responses_params = compaction.params
+
+                _record_model_span(span, responses_params.model)
+                agent = build_agent(
+                    client,
+                    responses_params,
+                    configuration,
+                    shields=query_request.shield_ids,
+                )
+            except (
+                AgentRunError,
+                ApiException,
+                RuntimeError,
+            ) as e:
+                error_response = map_agent_inference_error(e, query_request.model or "")
+                logger.error("Error preparing A2A agent: %s", str(e), exc_info=True)
+                await task_updater.update_status(
+                    TaskState.failed,
+                    message=new_agent_text_message(
+                        error_response.detail.response,
+                        context_id=context_id,
+                        task_id=task_id,
+                    ),
+                    final=True,
+                )
+                return
+
+            # Persist conversation_id for next turn in same A2A context
+            conversation_id = conversation_id or normalize_conversation_id(
+                responses_params.conversation
             )
+            if conversation_id:
+                await context_store.set(context_id, conversation_id)
+                logger.info(
+                    "Persisted conversation_id %s for A2A contextId %s",
+                    conversation_id,
+                    context_id,
+                )
+
+            # Initialize result aggregator
+            aggregator = TaskResultAggregator()
+            event_queue = task_updater.event_queue
+
+            # Emit working status with metadata before processing stream
+            await event_queue.enqueue_event(
+                TaskStatusUpdateEvent(
+                    task_id=task_id,
+                    status=TaskStatus(
+                        state=TaskState.working,
+                        timestamp=datetime.now(UTC).isoformat(),
+                    ),
+                    context_id=context_id,
+                    final=False,
+                    metadata={
+                        "model": responses_params.model,
+                        "conversation_id": conversation_id,
+                    },
+                )
+            )
+
+            # Run the pydantic-ai agent and convert stream events to A2A events.
+            prompt = user_input
+            self._tool_call_names = []
+            try:
+                async for a2a_event in self._convert_stream_to_events(
+                    agent,
+                    prompt,
+                    task_id,
+                    context_id,
+                    conversation_id=conversation_id,
+                ):
+                    aggregator.process_event(a2a_event)
+                    await event_queue.enqueue_event(a2a_event)
+            except (
+                AgentRunError,
+                ApiException,
+                RuntimeError,
+            ) as e:
+                error_response = map_agent_inference_error(e, responses_params.model)
+                logger.error("Error during A2A agent run: %s", str(e), exc_info=True)
+                await task_updater.update_status(
+                    TaskState.failed,
+                    message=new_agent_text_message(
+                        error_response.detail.response,
+                        context_id=context_id,
+                        task_id=task_id,
+                    ),
+                    final=True,
+                )
+                return
+
+            await _persist_compacted_a2a_turn(
+                client, responses_params, compaction, agent, task_id
+            )
+
+            _record_execution_span(span, self._tool_call_names, self._run_result)
+
+            # Publish the final task result event
+            if aggregator.task_state == TaskState.working:
+                await task_updater.update_status(
+                    TaskState.completed,
+                    timestamp=datetime.now(UTC).isoformat(),
+                    final=True,
+                )
+            else:
+                await task_updater.update_status(
+                    aggregator.task_state,
+                    message=aggregator.task_status_message,
+                    timestamp=datetime.now(UTC).isoformat(),
+                    final=True,
+                )
 
     async def _convert_stream_to_events(
         self,
@@ -499,6 +628,12 @@ class A2AAgentExecutor(AgentExecutor):
                     run_result = event.result
                     self._run_result = run_result
                     continue
+                if isinstance(event, FunctionToolCallEvent):
+                    self._tool_call_names.append(event.part.tool_name)
+                elif isinstance(event, PartEndEvent) and isinstance(
+                    event.part, NativeToolCallPart
+                ):
+                    self._tool_call_names.append(event.part.tool_name)
                 a2a_event = self._dispatch_agent_event(
                     event, task_id, context_id, text_parts, artifact_id
                 )
@@ -741,7 +876,7 @@ async def get_agent_card(  # pylint: disable=unused-argument
     - HTTPException: with status 500 and a detail object containing `response`
       and `cause` when service configuration is wrong or incomplete.
     - HTTPException: with status 503 and a detail object containing `response`
-      and `cause` when unable to connect to Llama Stack.
+      and `cause` when unable to connect to OGX.
 
     ### Returns:
     - AgentCard: The agent card describing this agent's capabilities.
@@ -828,7 +963,7 @@ async def handle_a2a_jsonrpc_get(
     - HTTPException: with status 500 and a detail object containing `response`
       and `cause` when service configuration is wrong or incomplete.
     - HTTPException: with status 503 and a detail object containing `response`
-      and `cause` when unable to connect to Llama Stack.
+      and `cause` when unable to connect to OGX.
 
     ### Returns:
     - ``Response`` with the full buffered JSON-RPC (or HTTP)
@@ -874,7 +1009,7 @@ async def handle_a2a_jsonrpc_post(
     - HTTPException: with status 401 for unauthorized access.
     - HTTPException: with status 403 if permission is denied.
     - HTTPException: with status 503 and a detail object containing `response`
-      and `cause` when unable to connect to Llama Stack.
+      and `cause` when unable to connect to OGX.
 
     ### Returns:
     - ``Response`` with the full buffered JSON-RPC (or HTTP)
@@ -928,6 +1063,8 @@ async def _handle_a2a_jsonrpc(  # pylint: disable=too-many-locals,too-many-state
 
     # Detect if this is a streaming request by checking the JSON-RPC method
     is_streaming_request = False
+    rpc_method = ""
+    rpc_request_id = ""
     body = b""
     try:
         # Read and parse the request body to check the method
@@ -937,11 +1074,12 @@ async def _handle_a2a_jsonrpc(  # pylint: disable=too-many-locals,too-many-state
             try:
                 rpc_request = json.loads(body)
                 # Check if the method is message/stream
-                method = rpc_request.get("method", "")
-                is_streaming_request = method == "message/stream"
+                rpc_method = rpc_request.get("method", "")
+                rpc_request_id = str(rpc_request.get("id", ""))
+                is_streaming_request = rpc_method == "message/stream"
                 logger.info(
                     "A2A request method: %s, streaming: %s",
-                    method,
+                    rpc_method,
                     is_streaming_request,
                 )
             except (json.JSONDecodeError, AttributeError) as e:
@@ -951,124 +1089,145 @@ async def _handle_a2a_jsonrpc(  # pylint: disable=too-many-locals,too-many-state
     except Exception as e:  # pylint: disable=broad-except
         logger.error("Error detecting streaming request: %s", str(e))
 
-    # Setup scope for A2A app
-    scope = dict(request.scope)
-    scope["path"] = "/"  # A2A app expects root path
-
-    # We need to re-provide the body since we already read it
-    body_sent = False
-
-    async def receive() -> MutableMapping[str, Any]:
-        nonlocal body_sent
-        if not body_sent:
-            body_sent = True
-            return {"type": "http.request", "body": body, "more_body": False}
-
-        # After sending body once, delegate to original receive
-        # This prevents infinite loops - the original receive() will block/disconnect properly
-        return await request.receive()
-
-    if is_streaming_request:
-        # Streaming mode: Forward chunks to client as they arrive
-        logger.info("Handling A2A streaming request")
-
-        # Create queue for passing chunks from ASGI app to response generator
-        chunk_queue: asyncio.Queue[Optional[bytes]] = asyncio.Queue()
-
-        async def streaming_send(message: dict[str, Any]) -> None:
-            """Send callback that queues chunks for streaming."""
-            if message["type"] == "http.response.body":
-                body_chunk = message.get("body", b"")
-                if body_chunk:
-                    await chunk_queue.put(body_chunk)
-                # Signal end of stream if no more body
-                if not message.get("more_body", False):
-                    logger.debug("Streaming: End of stream signaled")
-                    await chunk_queue.put(None)
-
-        # Run the A2A app in a background task
-        async def run_a2a_app() -> None:
-            """Run A2A app and handle any errors."""
-            try:
-                logger.debug("Streaming: Starting A2A app execution")
-                await a2a_app(scope, receive, streaming_send)
-                logger.debug("Streaming: A2A app execution completed")
-            except Exception as exc:  # pylint: disable=broad-except
-                logger.error(
-                    "Error in A2A app during streaming: %s", str(exc), exc_info=True
-                )
-                await chunk_queue.put(None)  # Signal end even on error
-
-        # Start the A2A app task
-        app_task = asyncio.create_task(run_a2a_app())
-
-        async def response_generator() -> AsyncIterator[bytes]:
-            """Generate chunks from the queue for streaming response."""
-            chunk_count = 0
-            try:
-                while True:
-                    # Get chunk from queue with timeout to prevent hanging
-                    try:
-                        chunk = await asyncio.wait_for(chunk_queue.get(), timeout=300.0)
-                    except asyncio.TimeoutError:
-                        logger.error("Timeout waiting for chunk from A2A app")
-                        break
-
-                    if chunk is None:
-                        # End of stream
-                        logger.debug(
-                            "Streaming: Stream ended after %d chunks", chunk_count
-                        )
-                        break
-                    chunk_count += 1
-                    logger.debug("Chunk sent to A2A client: %s", str(chunk))
-                    yield chunk
-            finally:
-                # Ensure the app task is cleaned up
-                if not app_task.done():
-                    app_task.cancel()
-                    try:
-                        await app_task
-                    except asyncio.CancelledError:
-                        pass
-
-        # Return streaming response immediately
-        # The status code and headers will be determined by the first chunk
-        # We can't wait for the response to start because that would cause a deadlock:
-        # the ASGI app won't send data until the client starts consuming
-        logger.debug("Streaming: Returning StreamingResponse")
-
-        # Return streaming response with SSE content type for A2A protocol
-        return StreamingResponse(
-            response_generator(),
-            media_type=MEDIA_TYPE_EVENT_STREAM,
+    with tracer.start_as_current_span("a2a.dispatch") as span:
+        set_span_attributes(
+            span,
+            {
+                SpanAttributes.A2A_RPC_METHOD: rpc_method,
+                SpanAttributes.A2A_REQUEST_ID: (
+                    anonymize_value(rpc_request_id) if rpc_request_id else ""
+                ),
+                SpanAttributes.USER_ID: anonymize_value(auth[0]) if auth[0] else "",
+            },
         )
+        add_span_event(span, SpanEvents.A2A_DISPATCH_START)
 
-    # Non-streaming mode: Buffer entire response
-    logger.info("Handling A2A non-streaming request")
+        # Setup scope for A2A app
+        scope = dict(request.scope)
+        scope["path"] = "/"  # A2A app expects root path
 
-    response_started = False
-    response_body = []
-    status_code = 200
-    headers = []
+        # We need to re-provide the body since we already read it
+        body_sent = False
 
-    async def buffering_send(message: dict[str, Any]) -> None:
-        nonlocal response_started, status_code, headers
-        if message["type"] == "http.response.start":
-            response_started = True
-            status_code = message["status"]
-            headers = message.get("headers", [])
-        elif message["type"] == "http.response.body":
-            response_body.append(message.get("body", b""))
+        async def receive() -> MutableMapping[str, Any]:
+            nonlocal body_sent
+            if not body_sent:
+                body_sent = True
+                return {"type": "http.request", "body": body, "more_body": False}
 
-    await a2a_app(scope, receive, buffering_send)
+            # After sending body once, delegate to original receive
+            # This prevents infinite loops - the original receive() will block/disconnect properly
+            return await request.receive()
 
-    # Return the response from A2A app
-    return Response(
-        content=b"".join(response_body),
-        status_code=status_code,
-        headers=dict((k.decode(), v.decode()) for k, v in headers),
-    )
+        if is_streaming_request:
+            # Streaming mode: Forward chunks to client as they arrive
+            logger.info("Handling A2A streaming request")
+
+            # Create queue for passing chunks from ASGI app to response generator
+            chunk_queue: asyncio.Queue[Optional[bytes]] = asyncio.Queue()
+
+            async def streaming_send(message: dict[str, Any]) -> None:
+                """Send callback that queues chunks for streaming."""
+                if message["type"] == "http.response.body":
+                    body_chunk = message.get("body", b"")
+                    if body_chunk:
+                        await chunk_queue.put(body_chunk)
+                    # Signal end of stream if no more body
+                    if not message.get("more_body", False):
+                        logger.debug("Streaming: End of stream signaled")
+                        await chunk_queue.put(None)
+
+            # Run the A2A app in a background task
+            async def run_a2a_app() -> None:
+                """Run A2A app and handle any errors."""
+                try:
+                    logger.debug("Streaming: Starting A2A app execution")
+                    await a2a_app(scope, receive, streaming_send)
+                    logger.debug("Streaming: A2A app execution completed")
+                except Exception as exc:  # pylint: disable=broad-except
+                    logger.error(
+                        "Error in A2A app during streaming: %s",
+                        str(exc),
+                        exc_info=True,
+                    )
+                    await chunk_queue.put(None)  # Signal end even on error
+
+            # Start the A2A app task
+            app_task = asyncio.create_task(run_a2a_app())
+
+            async def response_generator() -> AsyncIterator[bytes]:
+                """Generate chunks from the queue for streaming response."""
+                chunk_count = 0
+                try:
+                    while True:
+                        # Get chunk from queue with timeout to prevent hanging
+                        try:
+                            chunk = await asyncio.wait_for(
+                                chunk_queue.get(), timeout=300.0
+                            )
+                        except TimeoutError:
+                            logger.error("Timeout waiting for chunk from A2A app")
+                            break
+
+                        if chunk is None:
+                            # End of stream
+                            logger.debug(
+                                "Streaming: Stream ended after %d chunks", chunk_count
+                            )
+                            break
+                        chunk_count += 1
+                        logger.debug("Chunk sent to A2A client: %s", str(chunk))
+                        yield chunk
+                finally:
+                    # Ensure the app task is cleaned up
+                    if not app_task.done():
+                        app_task.cancel()
+                        try:
+                            await app_task
+                        except asyncio.CancelledError:
+                            pass
+
+            # Return streaming response immediately
+            # The status code and headers will be determined by the first chunk
+            # We can't wait for the response to start because that would cause a deadlock:
+            # the ASGI app won't send data until the client starts consuming
+            logger.debug("Streaming: Returning StreamingResponse")
+
+            add_span_event(span, SpanEvents.A2A_DISPATCH_END)
+
+            # Return streaming response with SSE content type for A2A protocol
+            return StreamingResponse(
+                response_generator(),
+                media_type=MEDIA_TYPE_EVENT_STREAM,
+            )
+
+        # Non-streaming mode: Buffer entire response
+        logger.info("Handling A2A non-streaming request")
+
+        response_started = False
+        response_body = []
+        status_code = 200
+        headers = []
+
+        async def buffering_send(message: dict[str, Any]) -> None:
+            nonlocal response_started, status_code, headers
+            if message["type"] == "http.response.start":
+                response_started = True
+                status_code = message["status"]
+                headers = message.get("headers", [])
+            elif message["type"] == "http.response.body":
+                response_body.append(message.get("body", b""))
+
+        await a2a_app(scope, receive, buffering_send)
+
+        add_span_event(span, SpanEvents.A2A_DISPATCH_END)
+
+        # Return the response from A2A app
+        return Response(
+            content=b"".join(response_body),
+            status_code=status_code,
+            headers=dict((k.decode(), v.decode()) for k, v in headers),
+        )
 
 
 @router.get("/a2a/health")

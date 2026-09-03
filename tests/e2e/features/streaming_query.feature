@@ -1,4 +1,4 @@
-@e2e_group_2 @Authorized
+@cfg_authorized @Authorized
 Feature: streaming_query endpoint API tests
 
   Background:
@@ -7,7 +7,7 @@ Feature: streaming_query endpoint API tests
       And I set the Authorization header to Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva
       And REST API service prefix is /v1
       And the Lightspeed stack configuration directory is "tests/e2e/configuration"
-      And The service uses the lightspeed-stack-auth-noop-token.yaml configuration
+      And The service uses the lightspeed-stack-authorized.yaml configuration
       And The service is restarted
 
   Scenario: Check if streaming_query response in tokens matches the full response
@@ -169,6 +169,25 @@ Feature: streaming_query endpoint API tests
       And The streamed response contains following fragments
           | Fragments in LLM response |
           | image                     |
+
+  Scenario: Check if streaming_query rejects WebP-declared attachment with mismatched magic bytes
+    When I use "streaming_query" to ask question with authorization header
+    """
+    {
+      "query": "Describe this image",
+      "attachments": [
+        {
+          "attachment_type": "image",
+          "content": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC",
+          "content_type": "image/webp"
+        }
+      ],
+      "model": "{MODEL}",
+      "provider": "{PROVIDER}"
+    }
+    """
+    Then The status code of the response is 422
+      And The body of the response contains invalid image data
 
   Scenario: Check if streaming_query rejects image attachment with mismatched attachment_type and content_type
     When I use "streaming_query" to ask question with authorization header

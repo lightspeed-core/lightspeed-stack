@@ -389,6 +389,40 @@ class ServiceConfiguration(ConfigurationBase):
         description="Number of Uvicorn worker processes to start",
     )
 
+    max_concurrent_file_uploads: PositiveInt = Field(
+        5,
+        title="Maximum concurrent file uploads",
+        description="Maximum number of file uploads (POST /v1/files) processed "
+        "concurrently per worker. Each in-flight upload can hold up to the "
+        "configured maximum file size in memory, so this bounds worst-case "
+        "memory usage from concurrent uploads. Additional uploads are "
+        "rejected with 429 until a slot frees up.",
+    )
+
+    max_concurrent_vector_store_attaches: PositiveInt = Field(
+        5,
+        title="Maximum concurrent vector store file attachments",
+        description="Maximum number of vector store file attachments "
+        "(POST /v1/vector-stores/{id}/files) processed concurrently per "
+        "worker. Each in-flight attachment re-reads and chunks the source "
+        "file, so this bounds worst-case memory usage independently of "
+        "max_concurrent_file_uploads. Additional attachments are rejected "
+        "with 429 until a slot frees up.",
+    )
+
+    delete_file_after_vector_store_attach: bool = Field(
+        False,
+        title="Delete file after vector store attach",
+        description="When true, deletes a file (POST /v1/files) once it has "
+        "been successfully attached to a vector store, since the vector "
+        "store keeps its own chunked/embedded copy of the content. "
+        "Defaults to false to match the OpenAI Files API, where a file "
+        "remains reusable across multiple vector stores until the caller "
+        "explicitly deletes it - enabling this makes attached files "
+        "single-use: re-attaching the same file_id to another vector store "
+        "will fail once it has been deleted.",
+    )
+
     color_log: bool = Field(
         True,
         title="Color log",
@@ -534,7 +568,7 @@ class ModelContextProtocolServer(ConfigurationBase):
     MCP (Model Context Protocol) servers provide tools and capabilities to the
     AI agents. These are configured by this structure. Only MCP servers
     defined in the lightspeed-stack.yaml configuration are available to the
-    agents. Tools configured in the llama-stack run.yaml are not accessible to
+    agents. Tools configured in the OGX run.yaml are not accessible to
     lightspeed-core agents.
 
     Useful resources:
@@ -630,9 +664,9 @@ class ModelContextProtocolServer(ConfigurationBase):
         default=None,
         title="Request timeout",
         description=(
-            "Timeout in seconds for requests to the MCP server. "
-            "If not specified, the default timeout from Llama Stack will be used. "
-            "Note: This field is reserved for future use when Llama Stack adds timeout support."
+            "Timeout in seconds for requests to the MCP server. If not "
+            "specified, the default timeout from OGX will be used. Note: This "
+            "field is reserved for future use when OGX adds timeout support."
         ),
     )
 
@@ -659,16 +693,16 @@ class UnifiedInferenceProvider(ConfigurationBase):
     """A high-level inference provider entry for unified-mode synthesis.
 
     Operators describe inference providers at this high level (backend-agnostic
-    vocabulary) instead of authoring raw Llama Stack provider blocks. The
-    synthesizer (`apply_high_level_inference`) expands each entry into a Llama
-    Stack `providers.inference` entry, mapping `type` to a `provider_type` and
+    vocabulary) instead of authoring raw OGX provider blocks. The
+    synthesizer (`apply_high_level_inference`) expands each entry into an OGX
+    `providers.inference` entry, mapping `type` to a `provider_type` and
     emitting `${env.<VAR>}` references for secrets (never literal values).
 
     Attributes:
         type: Canonical provider identifier. Vendor-neutral so it survives a
             future backend change; each backend-specific synthesizer maps it to
             its own provider vocabulary.
-        id: Optional identifier emitted as the Llama Stack provider_id. When
+        id: Optional identifier emitted as the OGX provider_id. When
             omitted, synthesized as type with underscores hyphenated. If set,
             must be non-empty after stripping whitespace and may contain only
             lowercase letters, digits, underscores, and hyphens.
@@ -695,16 +729,16 @@ class UnifiedInferenceProvider(ConfigurationBase):
     ] = Field(
         ...,
         title="Provider type",
-        description="Canonical, backend-agnostic provider identifier mapped to a "
-        "Llama Stack provider_type by the synthesizer.",
+        description="Canonical, backend-agnostic provider identifier mapped to "
+        "an OGX provider_type by the synthesizer.",
     )
 
     id: Optional[str] = Field(
         None,
         title="Provider ID",
-        description="Optional identifier emitted as the Llama Stack provider_id. "
-        "When omitted, synthesized as type with underscores hyphenated. If set, "
-        "must be non-empty after stripping whitespace and may contain only "
+        description="Optional identifier emitted as the OGX provider_id. When omitted, "
+        "synthesized as type with underscores hyphenated. If set, must "
+        "be non-empty after stripping whitespace and may contain only "
         "lowercase letters, digits, underscores, and hyphens.",
     )
 
@@ -761,32 +795,36 @@ class UnifiedInferenceProvider(ConfigurationBase):
         return stripped
 
 
-class UnifiedLlamaStackConfig(ConfigurationBase):
-    """Backend-specific knobs for unified-mode Llama Stack synthesis.
+class UnifiedOgxConfig(ConfigurationBase):
+    """Backend-specific knobs for unified-mode OGX synthesis.
 
     Per Decision S5 of the design spike, backend-agnostic high-level sections
     (inference, ...) live at the configuration root, not here. This block holds
-    only the Llama-Stack-specific synthesis controls: which baseline to start
+    only the OGX-specific synthesis controls: which baseline to start
     from, an optional profile file, and a raw native_override escape hatch.
 
     Attributes:
         baseline: Synthesis starting point. "default" begins from LCORE's
-            built-in baseline (src/data/default_run.yaml); "empty" begins from
-            an empty dict (used by the migration tool for an exact round-trip).
+            built-in baseline (src/data/default_run.yaml) including the
+            conditional OpenAI inference provider. "byo-llm" begins from the
+            same file with that OpenAI row removed. "empty" begins from an
+            empty dict (used by the migration tool for an exact round-trip).
             Ignored when `profile` is set.
         profile: Optional path to a user-authored run.yaml-shaped file used as
             the synthesis baseline. Relative paths resolve against the directory
             of the loaded lightspeed-stack.yaml.
-        native_override: Raw Llama Stack schema deep-merged last (maps merge
+        native_override: Raw OGX schema deep-merged last (maps merge
             recursively, lists and scalars replace). The escape hatch for
             anything the high-level sections do not express.
     """
 
-    baseline: Literal["default", "empty"] = Field(
+    baseline: Literal["default", "empty", "byo-llm"] = Field(
         "default",
         title="Baseline selector",
         description="Synthesis starting point: 'default' uses LCORE's built-in "
-        "baseline, 'empty' starts from {}. Ignored when 'profile' is set.",
+        "baseline including the conditional OpenAI provider, 'byo-llm' uses "
+        "the same baseline without that OpenAI row, 'empty' starts from {}. "
+        "Ignored when 'profile' is set.",
     )
 
     profile: Optional[str] = Field(
@@ -799,101 +837,107 @@ class UnifiedLlamaStackConfig(ConfigurationBase):
     native_override: dict[str, object] = Field(
         default_factory=dict,
         title="Native override",
-        description="Raw Llama Stack schema deep-merged last (maps merge "
-        "recursively; lists and scalars replace).",
+        description="Raw OGX schema deep-merged last (maps "
+        "merge recursively; lists and scalars replace).",
     )
 
 
-class LlamaStackConfiguration(ConfigurationBase):
-    """Llama stack configuration.
+class OgxConfiguration(ConfigurationBase):
+    """OGX configuration.
 
-    Llama Stack is a comprehensive system that provides a uniform set of tools
+    OGX is a comprehensive system that provides a uniform set of tools
     for building, scaling, and deploying generative AI applications, enabling
     developers to create, integrate, and orchestrate multiple AI services and
     capabilities into an adaptable setup.
 
     Useful resources:
 
-      - [Llama Stack](https://www.llama.com/products/llama-stack/)
-      - [Python Llama Stack client](https://github.com/llamastack/llama-stack-client-python)
-      - [Build AI Applications with Llama Stack](https://llamastack.github.io/)
+      - [OGX](https://ogx-ai.github.io/)
+      - [Python OGX client](https://github.com/ogx-ai/ogx-client-python)
+      - [Build AI Applications with OGX](https://ogx-ai.github.io/)
     """
 
     url: Optional[AnyHttpUrl] = Field(
         None,
-        title="Llama Stack URL",
-        description="URL to Llama Stack service; used when library mode is disabled. "
-        "Must be a valid HTTP or HTTPS URL.",
+        title="OGX URL",
+        description="URL to OGX service; used when library mode is "
+        "disabled. Must be a valid HTTP or HTTPS URL.",
     )
 
     api_key: Optional[SecretStr] = Field(
         None,
         title="API key",
-        description="API key to access Llama Stack service",
+        description="API key to access OGX service",
     )
 
     use_as_library_client: Optional[bool] = Field(
         None,
         title="Use as library",
-        description="When set to true Llama Stack will be used in library mode, not in "
-        "server mode (default)",
+        description="When set to true OGX will be used "
+        "in library mode, not in server mode (default)",
     )
 
     library_client_config_path: Optional[str] = Field(
         None,
-        title="Llama Stack configuration path",
-        description="Path to configuration file used when Llama Stack is run in library mode",
+        title="OGX configuration path (legacy, deprecated)",
+        description="Path to configuration file used when OGX is run "
+        "in library mode. DEPRECATED legacy two-file setup: logs a "
+        "startup warning since 0.6 and is removed in 0.8 "
+        "— use unified mode instead (the config block below, "
+        "and/or the root-level inference.providers section); "
+        "migrate with lightspeed-stack --migrate-config.",
     )
 
     timeout: PositiveInt = Field(
         180,
         title="Request timeout",
-        description="Timeout in seconds for requests to Llama Stack service. "
-        "Default is 180 seconds (3 minutes) to accommodate long-running RAG queries.",
+        description="Timeout in seconds for requests to OGX service. Default is "
+        "180 seconds (3 minutes) to accommodate long-running RAG queries.",
     )
 
     max_retries: PositiveInt = Field(
         constants.DEFAULT_MAX_RETRIES,
         title="Maximum number of connection attempts before giving up",
-        description="Maximum number of connection attempts before giving up. "
-        "Used on startup to connect to Llama Stack and retrieve its version. Connection attempts "
-        "are retried with a fixed delay to handle the case where Llama Stack is still starting "
+        description="Maximum number of connection attempts before giving up. Used on startup to "
+        "connect to OGX and retrieve its version. Connection attempts are retried with "
+        "a fixed delay to handle the case where OGX is still starting "
         "up (e.g., when running as a sidecar in the same pod).",
     )
 
     retry_delay: PositiveInt = Field(
         constants.DEFAULT_RETRY_DELAY,
         title="Delay in seconds between retry attempts",
-        description="Delay in seconds between retry attempts. Used on startup to connect to Llama "
-        "Stack and retrieve its version. Connection attempts are retried with a fixed delay to "
-        "handle the case where Llama Stack is still starting up (e.g., when running as a sidecar "
-        "in the same pod).",
+        description="Delay in seconds between retry attempts. Used on startup to connect to "
+        "OGX and retrieve its version. Connection attempts are retried with a fixed "
+        "delay to handle the case where OGX is still starting up (e.g., "
+        "when running as a sidecar in the same pod).",
     )
 
     allow_degraded_mode: Optional[bool] = Field(
         False,
         title="Allow degraded mode",
-        description="If enabled, Lightspeed Core can be started even when Llama Stack "
-        "is not accessible (valid for server mode only)",
+        description="If enabled, Lightspeed Core can be started even when "
+        "OGX is not accessible (valid for server mode only)",
     )
 
-    config: Optional["UnifiedLlamaStackConfig"] = Field(
+    config: Optional["UnifiedOgxConfig"] = Field(
         None,
-        title="Unified Llama Stack configuration",
-        description="Backend-specific knobs for unified mode, where LCORE "
-        "synthesizes the Llama Stack run.yaml instead of reading an external "
-        "file. Holds the baseline selector, an optional profile path, and a "
-        "raw native_override escape hatch. Backend-agnostic high-level "
-        "sections (e.g. inference.providers) live at the configuration root, "
-        "not here. Mutually exclusive with library_client_config_path; that "
-        "cross-field check lives on the root Configuration model. When set in "
-        "library mode, library_client_config_path is not required.",
+        title="Unified OGX configuration",
+        description="Backend-specific knobs for unified mode, where LCORE synthesizes "
+        "the OGX run.yaml instead of reading an external "
+        "file. Holds the baseline selector, an optional profile "
+        "path, and a raw native_override escape hatch. Backend-agnostic "
+        "high-level sections (e.g. inference.providers) live at the configuration "
+        "root, not here. Mutually exclusive with library_client_config_path; that "
+        "cross-field check lives on the root Configuration model. "
+        "When set in library mode, library_client_config_path is not "
+        "required.",
     )
 
     @model_validator(mode="after")
-    def check_llama_stack_model(self) -> Self:
+    def check_ogx_model(self) -> Self:
         """
-        Validate the Llama Stack configuration and enforce mode-specific requirements.
+        Validate the OGX configuration and enforce mode-specific requirements.
 
         If no URL is provided, requires explicit library-client mode selection.
         When a legacy `library_client_config_path` is given (and no unified
@@ -910,22 +954,22 @@ class LlamaStackConfiguration(ConfigurationBase):
         (`check_unified_vs_legacy`).
 
         Returns:
-            Self: The validated LlamaStackConfiguration instance.
+            Self: The validated OgxConfiguration instance.
 
         Raises:
             ValueError: If no URL is provided and library-client mode is
             unspecified or disabled.
         """
         if self.url is None:
-            # when URL is not set, it is supposed that Llama Stack should be run in library mode
+            # when URL is not set, it is supposed that OGX should be run in library mode
             # it means that use_as_library_client attribute must be set to True
             if self.use_as_library_client is None:
                 raise ValueError(
-                    "Llama Stack URL is not specified and library client mode is not specified"
+                    "OGX URL is not specified and library client mode is not specified"
                 )
             if self.use_as_library_client is False:
                 raise ValueError(
-                    "Llama Stack URL is not specified and library client mode is not enabled"
+                    "OGX URL is not specified and library client mode is not enabled"
                 )
 
         # None -> False conversion
@@ -933,7 +977,7 @@ class LlamaStackConfiguration(ConfigurationBase):
             self.use_as_library_client = False
 
         if self.use_as_library_client:
-            # In library mode Llama Stack runs embedded. A legacy
+            # In library mode OGX runs embedded. A legacy
             # library_client_config_path (with no unified config block) must
             # point to a regular readable YAML file. A unified config — driven
             # by a config block here or by inference.providers at the root —
@@ -942,7 +986,7 @@ class LlamaStackConfiguration(ConfigurationBase):
             if self.library_client_config_path is not None and self.config is None:
                 checks.file_check(
                     Path(self.library_client_config_path),
-                    "Llama Stack configuration file",
+                    "OGX configuration file",
                 )
         return self
 
@@ -1274,6 +1318,7 @@ class Action(str, Enum):
     FEEDBACK = "feedback"
     GET_MODELS = "get_models"
     GET_TOOLS = "get_tools"
+    GET_SKILLS = "get_skills"
     GET_SHIELDS = "get_shields"
     LIST_PROVIDERS = "list_providers"
     GET_PROVIDER = "get_provider"
@@ -1304,7 +1349,7 @@ class Action(str, Enum):
     READ_VECTOR_STORES = "read_vector_stores"
     MANAGE_FILES = "manage_files"
 
-    # Llama Stack stored prompt templates (/v1/prompts)
+    # OGX stored prompt templates (/v1/prompts)
     MANAGE_PROMPTS = "manage_prompts"
     READ_PROMPTS = "read_prompts"
 
@@ -1769,13 +1814,16 @@ class InferenceConfiguration(ConfigurationBase):
     providers: list[UnifiedInferenceProvider] = Field(
         default_factory=list,
         title="High-level inference providers",
-        description="Unified-mode synthesis input (Decision S5): a high-level, "
-        "backend-agnostic list of inference providers the synthesizer expands "
-        "into Llama Stack provider entries. Lives at the configuration root so "
-        "it survives a future backend change. A non-empty list signals unified "
-        "mode. Empty (the default) leaves legacy/remote modes unaffected. The "
-        "sibling default_model / default_provider keep their query-time routing "
-        "meaning and are independent of this list.",
+        description=(
+            "Unified-mode synthesis input (Decision S5): a high-level, backend-agnostic "
+            "list of inference providers the synthesizer expands into "
+            "OGX provider entries. Lives at the configuration root "
+            "so it survives a future backend change. A "
+            "non-empty list signals unified mode. Empty (the default) "
+            "leaves legacy/remote modes unaffected. The sibling default_model / "
+            "default_provider keep their query-time routing meaning and are "
+            "independent of this list."
+        ),
     )
 
     max_infer_iters: Optional[PositiveInt] = Field(
@@ -2026,8 +2074,8 @@ class A2AStateConfiguration(ConfigurationBase):
         return None
 
 
-class ByokRag(ConfigurationBase):
-    """BYOK (Bring Your Own Knowledge) RAG configuration."""
+class RagStore(ConfigurationBase):
+    """BYOK (Bring Your Own Knowledge) RAG store configuration."""
 
     rag_id: str = Field(
         ...,
@@ -2036,12 +2084,23 @@ class ByokRag(ConfigurationBase):
         description="Unique RAG ID",
     )
 
-    rag_type: str = Field(
-        constants.DEFAULT_RAG_TYPE,
+    backend: str = Field(
+        constants.DEFAULT_RAG_BACKEND,
         min_length=1,
-        title="RAG type",
-        description="Type of RAG database (e.g. 'inline::faiss', 'remote::pgvector').",
+        title="RAG backend",
+        description="Type of RAG database (e.g. 'faiss', 'pgvector').",
     )
+
+    @field_validator("backend")
+    @classmethod
+    def validate_backend(cls, value: str) -> str:
+        """Reject unsupported backend values at config load time."""
+        if value not in constants.SUPPORTED_RAG_BACKENDS:
+            raise ValueError(
+                f"Unsupported RAG backend '{value}'. "
+                f"Supported backends: {sorted(constants.SUPPORTED_RAG_BACKENDS)}"
+            )
+        return value
 
     embedding_model: str = Field(
         constants.DEFAULT_EMBEDDING_MODEL,
@@ -2066,7 +2125,7 @@ class ByokRag(ConfigurationBase):
     db_path: Optional[str] = Field(
         default=None,
         title="DB path",
-        description="Path to RAG database. Required for inline::faiss.",
+        description="Path to RAG database. Required for faiss backend.",
     )
 
     score_multiplier: float = Field(
@@ -2078,48 +2137,56 @@ class ByokRag(ConfigurationBase):
         "Values > 1 boost this store's results; values < 1 reduce them.",
     )
 
+    relevance_cutoff_score: float = Field(
+        constants.DEFAULT_BYOK_RAG_RELEVANCE_CUTOFF_SCORE,
+        gt=0,
+        title="Relevance cutoff score",
+        description="Minimum raw similarity score to consider a result relevant. "
+        "Results with a similarity score below this threshold are not returned.",
+    )
+
     host: Optional[str] = Field(
         default=None,
         title="PostgreSQL host",
-        description="PostgreSQL host for remote::pgvector. "
-        "Defaults to ${env.POSTGRES_HOST} when rag_type is remote::pgvector.",
+        description="PostgreSQL host for pgvector backend. "
+        "Defaults to ${env.POSTGRES_HOST} when backend is pgvector.",
     )
 
-    port: Optional[str] = Field(
+    port: Optional[str | int] = Field(
         default=None,
         title="PostgreSQL port",
-        description="PostgreSQL port for remote::pgvector. "
-        "Defaults to ${env.POSTGRES_PORT} when rag_type is remote::pgvector.",
+        description="PostgreSQL port for pgvector backend. "
+        "Defaults to ${env.POSTGRES_PORT} when backend is pgvector.",
     )
 
     db: Optional[str] = Field(
         default=None,
         title="PostgreSQL database",
-        description="PostgreSQL database name for remote::pgvector. "
-        "Defaults to ${env.POSTGRES_DATABASE} when rag_type is remote::pgvector.",
+        description="PostgreSQL database name for pgvector backend. "
+        "Defaults to ${env.POSTGRES_DATABASE} when backend is pgvector.",
     )
 
     user: Optional[str] = Field(
         default=None,
         title="PostgreSQL user",
-        description="PostgreSQL user for remote::pgvector. "
-        "Defaults to ${env.POSTGRES_USER} when rag_type is remote::pgvector.",
+        description="PostgreSQL user for pgvector backend. "
+        "Defaults to ${env.POSTGRES_USER} when backend is pgvector.",
     )
 
     password: Optional[SecretStr] = Field(
         default=None,
         title="PostgreSQL password",
-        description="PostgreSQL password for remote::pgvector. "
-        "Defaults to ${env.POSTGRES_PASSWORD} when rag_type is remote::pgvector.",
+        description="PostgreSQL password for pgvector backend. "
+        "Defaults to ${env.POSTGRES_PASSWORD} when backend is pgvector.",
     )
 
     @model_validator(mode="after")
-    def validate_rag_type_fields(self) -> Self:
-        """Validate and populate fields based on rag_type."""
-        if self.rag_type == "inline::faiss":
+    def validate_backend_fields(self) -> Self:
+        """Validate and populate fields based on backend."""
+        if self.backend == "faiss":
             if not self.db_path:
-                raise ValueError("db_path is required when rag_type is 'inline::faiss'")
-        elif self.rag_type == "remote::pgvector":
+                raise ValueError("db_path is required when backend is 'faiss'")
+        elif self.backend == "pgvector":
             pgvector_defaults: dict[str, str | SecretStr] = {
                 "host": "${env.POSTGRES_HOST}",
                 "port": "${env.POSTGRES_PORT}",
@@ -2153,10 +2220,11 @@ class PgvectorVectorStoreProviderConfig(ConfigurationBase):
         description="PostgreSQL host. Defaults to ${env.POSTGRES_HOST}.",
     )
 
-    port: Optional[str] = Field(
+    port: Optional[str | int] = Field(
         default=None,
         title="PostgreSQL port",
-        description="PostgreSQL port. Defaults to ${env.POSTGRES_PORT}.",
+        description="PostgreSQL port. Defaults to ${env.POSTGRES_PORT}. "
+        "Accepts string placeholders and integer values.",
     )
 
     db: Optional[str] = Field(
@@ -2197,7 +2265,7 @@ class VectorStoreProviderBase(ConfigurationBase):
     """Shared fields for dynamic vector-store provider capacity entries.
 
     Attributes:
-        id: Llama Stack vector_io provider_id. Surrounding whitespace is
+        id: OGX vector_io provider_id. Surrounding whitespace is
             stripped before validation and emission.
         embedding_model: Embedding model identification used for stores
             created against this provider.
@@ -2210,7 +2278,7 @@ class VectorStoreProviderBase(ConfigurationBase):
         min_length=1,
         title="Provider ID",
         description=(
-            "Llama Stack vector_io provider_id. Surrounding whitespace is "
+            "OGX vector_io provider_id. Surrounding whitespace is "
             "stripped before validation and emission."
         ),
     )
@@ -2299,11 +2367,11 @@ class VectorStoreConfiguration(ConfigurationBase):
 
     Attributes:
         default_provider: Provider id used for vector_stores.default_* in the
-            synthesized Llama Stack config. Required when providers is
+            synthesized OGX config. Required when providers is
             non-empty; must match one of providers[].id. Must be omitted when
             providers is empty.
         providers: Dynamic vector-store provider capacity for runtime
-            POST /v1/vector-stores creates. Not the same as byok_rag (static
+            POST /v1/vector-stores creates. Not the same as rag.byok.stores (static
             registered corpora).
     """
 
@@ -2311,9 +2379,9 @@ class VectorStoreConfiguration(ConfigurationBase):
         None,
         title="Default provider",
         description=(
-            "Provider id used for vector_stores.default_* in the synthesized "
-            "Llama Stack config. Required when providers is non-empty; must "
-            "match one of providers[].id."
+            "Provider id used for vector_stores.default_* in the "
+            "synthesized OGX config. Required when providers is "
+            "non-empty; must match one of providers[].id."
         ),
     )
 
@@ -2323,7 +2391,7 @@ class VectorStoreConfiguration(ConfigurationBase):
         description=(
             "Dynamic vector-store provider capacity for runtime "
             "POST /v1/vector-stores creates. "
-            "Not the same as byok_rag (static registered corpora)."
+            "Not the same as rag.byok.stores (static registered corpora)."
         ),
     )
 
@@ -2498,39 +2566,113 @@ class QuotaHandlersConfiguration(ConfigurationBase):
     )
 
 
-class RagConfiguration(ConfigurationBase):
-    """RAG strategy configuration.
+class RerankerConfiguration(ConfigurationBase):
+    """Reranker configuration for RAG chunk reranking."""
 
-    Controls which RAG sources are used for inline and tool-based retrieval.
-
-    Each strategy lists RAG IDs to include. The special ID ``"okp"`` defined in constants,
-    activates the OKP provider; all other IDs refer to entries in ``byok_rag``.
-
-    Both ``inline`` and ``tool`` default to ``[]`` (disabled).
-    Each must be explicitly configured to activate its respective RAG strategy.
-    """
-
-    inline: list[str] = Field(
-        default_factory=list,
-        title="Inline RAG IDs",
-        description="RAG IDs whose sources are injected as context before the LLM call. "
-        f"Use '{constants.OKP_RAG_ID}' to enable OKP inline RAG. Empty by default (no inline RAG).",
+    enabled: bool = Field(
+        default=False,
+        title="Reranker enabled",
+        description="When True, reranking applied to RAG chunks. "
+        "When False, reranking is disabled and original scoring used.",
+    )
+    model: str = Field(
+        default="cross-encoder/ms-marco-MiniLM-L6-v2",
+        title="Reranker model",
+        description="Cross-encoder model name for reranking RAG chunks. "
+        "Defaults to 'cross-encoder/ms-marco-MiniLM-L6-v2' from sentence-transformers.",
     )
 
-    tool: list[str] = Field(
+    _explicitly_configured: bool = PrivateAttr(default=False)
+
+    @model_validator(mode="after")
+    def mark_as_explicitly_configured(self) -> Self:
+        """Mark this configuration as explicitly set when instantiated from user input."""
+        if self.model_fields_set:
+            self._explicitly_configured = True
+
+        return self
+
+
+class RetrievalStrategyConfiguration(ConfigurationBase):
+    """Configuration for a single retrieval strategy (inline or tool)."""
+
+    sources: list[str] = Field(
         default_factory=list,
-        title="Tool RAG IDs",
-        description="RAG IDs made available to the LLM as a file_search tool. "
-        f"Use '{constants.OKP_RAG_ID}' to include the OKP vector store. "
-        "When omitted, tool RAG is disabled.",
+        title="RAG source IDs",
+        description="RAG IDs to use for this retrieval strategy. "
+        f"Use '{constants.OKP_RAG_ID}' to include the OKP vector store.",
     )
+
+    max_chunks: PositiveInt = Field(
+        default=constants.DEFAULT_INLINE_RAG_MAX_CHUNKS,
+        title="Max chunks",
+        description="Maximum number of chunks returned by this retrieval strategy.",
+    )
+
+    reranker: Optional[RerankerConfiguration] = Field(
+        default=None,
+        title="Reranker configuration",
+        description="Neural reranking of RAG chunks using cross-encoder. "
+        "Only applicable to inline retrieval.",
+    )
+
+
+class RetrievalConfiguration(ConfigurationBase):
+    """Configuration for inline and tool retrieval strategies."""
+
+    inline: RetrievalStrategyConfiguration = Field(
+        default_factory=lambda: RetrievalStrategyConfiguration(
+            max_chunks=constants.DEFAULT_INLINE_RAG_MAX_CHUNKS,
+            reranker=RerankerConfiguration(),
+        ),
+        title="Inline retrieval",
+        description="Inline RAG: context injected before the LLM request.",
+    )
+
+    tool: RetrievalStrategyConfiguration = Field(
+        default_factory=lambda: RetrievalStrategyConfiguration(
+            max_chunks=constants.DEFAULT_TOOL_RAG_MAX_CHUNKS,
+        ),
+        title="Tool retrieval",
+        description="Tool RAG: LLM can call file_search on demand.",
+    )
+
+
+class ByokConfiguration(ConfigurationBase):
+    """BYOK (Bring Your Own Knowledge) configuration."""
+
+    max_chunks: PositiveInt = Field(
+        default=constants.DEFAULT_BYOK_RAG_MAX_CHUNKS,
+        title="Max BYOK chunks",
+        description="Maximum total number of chunks returned across all BYOK stores.",
+    )
+
+    stores: list[RagStore] = Field(
+        default_factory=list,
+        title="BYOK RAG stores",
+        description="List of BYOK RAG store configurations.",
+    )
+
+    @model_validator(mode="after")
+    def validate_unique_rag_ids(self) -> Self:
+        """Reject duplicate rag_id values across stores."""
+        seen: set[str] = set()
+        for store in self.stores:
+            if store.rag_id in seen:
+                raise ValueError(
+                    f"Duplicate rag_id '{store.rag_id}' in rag.byok.stores. "
+                    "Each store must have a unique rag_id."
+                )
+            seen.add(store.rag_id)
+        return self
 
 
 class OkpConfiguration(ConfigurationBase):
     """OKP (Offline Knowledge Portal) provider configuration.
 
     Controls provider-specific behaviour for the OKP vector store.
-    Only relevant when ``"okp"`` is listed in ``rag.inline`` or ``rag.tool``.
+    Only relevant when ``"okp"`` is listed in ``rag.retrieval.inline.sources``
+    or ``rag.retrieval.tool.sources``.
     """
 
     rhokp_url: Optional[AnyHttpUrl] = Field(
@@ -2555,31 +2697,90 @@ class OkpConfiguration(ConfigurationBase):
         "Use Solr boolean syntax, e.g. 'product:ansible AND product:*openshift*'.",
     )
 
-
-class RerankerConfiguration(ConfigurationBase):
-    """Reranker configuration for RAG chunk reranking."""
-
-    enabled: bool = Field(
-        default=False,
-        title="Reranker enabled",
-        description="When True, reranking applied to RAG chunks. "
-        "When False, reranking is disabled and original scoring used.",
-    )
-    model: str = Field(
-        default="cross-encoder/ms-marco-MiniLM-L6-v2",
-        title="Reranker model",
-        description="Cross-encoder model name for reranking RAG chunks. "
-        "Defaults to 'cross-encoder/ms-marco-MiniLM-L6-v2' from sentence-transformers.",
+    search_mode: Optional[Literal["semantic", "hybrid", "keyword"]] = Field(
+        default=None,
+        title="OKP search mode",
+        description="Default Solr search mode for OKP queries. "
+        "'keyword' uses BM25 text search (no embedding model needed). "
+        "'hybrid' combines vector + keyword search. "
+        "'semantic' uses pure vector search. "
+        "When unset, falls back to the global default ('hybrid').",
     )
 
-    # Private attribute to track if this was explicitly configured
-    _explicitly_configured: bool = PrivateAttr(default=False)
+    max_chunks: PositiveInt = Field(
+        default=constants.DEFAULT_OKP_RAG_MAX_CHUNKS,
+        title="Max OKP chunks",
+        description="Maximum number of chunks fetched from OKP.",
+    )
+
+
+class RagConfiguration(ConfigurationBase):
+    """Unified RAG configuration.
+
+    Groups all RAG-related settings: BYOK stores, OKP provider, and
+    retrieval strategies (inline and tool).
+    """
+
+    byok: ByokConfiguration = Field(
+        default_factory=ByokConfiguration,
+        title="BYOK configuration",
+        description="Bring Your Own Knowledge store configurations and settings.",
+    )
+
+    okp: OkpConfiguration = Field(
+        default_factory=OkpConfiguration,
+        title="OKP configuration",
+        description=f"OKP provider settings. Only used when '{constants.OKP_RAG_ID}' "
+        "is listed in retrieval.inline.sources or retrieval.tool.sources.",
+    )
+
+    retrieval: RetrievalConfiguration = Field(
+        default_factory=RetrievalConfiguration,
+        title="Retrieval configuration",
+        description="Inline and tool retrieval strategy settings.",
+    )
 
     @model_validator(mode="after")
-    def mark_as_explicitly_configured(self) -> Self:
-        """Mark this configuration as explicitly set when instantiated from user input."""
-        if self.model_fields_set:
-            self._explicitly_configured = True
+    def validate_retrieval_sources(self) -> Self:
+        """Reject retrieval source IDs not declared in byok.stores or OKP."""
+        # pylint: disable=no-member
+        known_ids = {store.rag_id for store in self.byok.stores}
+        known_ids.add(constants.OKP_RAG_ID)
+
+        for strategy_name in ("inline", "tool"):
+            strategy = getattr(self.retrieval, strategy_name)
+            unknown = set(strategy.sources) - known_ids
+            if unknown:
+                raise ValueError(
+                    f"retrieval.{strategy_name}.sources contains unknown RAG IDs: "
+                    f"{sorted(unknown)}. "
+                    f"Declared IDs: {sorted(known_ids)}"
+                )
+
+        return self
+
+    @model_validator(mode="after")
+    def validate_reranker_auto_enable(self) -> Self:
+        """Automatically enable reranker when both BYOK and OKP RAG are configured."""
+        # pylint: disable=no-member
+        has_byok = len(self.byok.stores) > 0
+        has_okp = constants.OKP_RAG_ID in self.retrieval.inline.sources
+        reranker = self.retrieval.inline.reranker
+
+        if (
+            has_byok
+            and has_okp
+            and reranker is not None
+            and not reranker._explicitly_configured  # pylint: disable=protected-access
+            and not reranker.enabled
+        ):
+            logger.info(
+                "Automatically enabling reranker: Both BYOK RAG (%d stores) and "
+                "OKP are configured. Reranking improves result quality when "
+                "multiple knowledge sources are available.",
+                len(self.byok.stores),
+            )
+            reranker.enabled = True
 
         return self
 
@@ -2956,10 +3157,49 @@ and validates ``config`` against the matching model.
 class Configuration(ConfigurationBase):
     """Global service configuration."""
 
+    @model_validator(mode="before")
+    @classmethod
+    def accept_llama_stack_section_alias(cls, data: Any) -> Any:
+        """Map deprecated ``llama_stack`` YAML key to ``ogx``.
+
+        Parameters:
+            data: Raw configuration mapping from YAML/JSON.
+
+        Returns:
+            Normalized mapping with the OGX section under ``ogx``.
+        """
+        if not isinstance(data, dict):
+            return data
+        if data.get("ogx") is not None:
+            return data
+        llama_stack = data.get("llama_stack")
+        if llama_stack is None:
+            return data
+        logger.warning(
+            "The 'llama_stack' configuration key is deprecated and will be "
+            "removed in a future release; use 'ogx' instead."
+        )
+        data = dict(data)
+        data["ogx"] = llama_stack
+        data.pop("llama_stack")
+        return data
+
     name: str = Field(
         ...,
         title="Service name",
         description="Name of the service. That value will be used in REST API endpoints.",
+    )
+
+    config_format_version: Optional[Literal["legacy", "unified"]] = Field(
+        None,
+        title="Configuration format version",
+        description="Optional explicit marker of the configuration format. "
+        "When set, it must agree with the shape detected from the "
+        "configuration body: 'unified' requires a synthesis input (a "
+        "non-empty inference.providers, a non-empty vector_store.providers, "
+        "or an ogx.config block), 'legacy' requires no synthesis "
+        "input. Reserved as the lever for a future breaking change of the "
+        "unified schema (R11).",
     )
 
     service: ServiceConfiguration = Field(
@@ -2968,11 +3208,11 @@ class Configuration(ConfigurationBase):
         description="This section contains Lightspeed Core Stack service configuration.",
     )
 
-    llama_stack: LlamaStackConfiguration = Field(
+    ogx: OgxConfiguration = Field(
         ...,
-        title="Llama Stack configuration",
-        description="This section contains Llama Stack configuration. "
-        "Lightspeed Core Stack service can call Llama Stack in library mode or in server mode.",
+        title="OGX configuration",
+        description="This section contains OGX configuration. Lightspeed Core Stack service can "
+        "call OGX in library mode or in server mode.",
     )
 
     user_data_collection: UserDataCollection = Field(
@@ -2991,11 +3231,11 @@ class Configuration(ConfigurationBase):
     mcp_servers: list[ModelContextProtocolServer] = Field(
         default_factory=list,
         title="Model Context Protocol Server and tools configuration",
-        description="MCP (Model Context Protocol) servers provide tools and "
-        "capabilities to the AI agents. These are configured in this section. "
-        "Only MCP servers defined in the lightspeed-stack.yaml configuration are "
-        "available to the agents. Tools configured in the llama-stack run.yaml "
-        "are not accessible to lightspeed-core agents.",
+        description="MCP (Model Context Protocol) servers provide tools and capabilities "
+        "to the AI agents. These are configured in this "
+        "section. Only MCP servers defined in the lightspeed-stack.yaml configuration "
+        "are available to the agents. Tools configured in the "
+        "OGX run.yaml are not accessible to lightspeed-core agents.",
     )
 
     authentication: AuthenticationConfiguration = Field(
@@ -3064,13 +3304,6 @@ class Configuration(ConfigurationBase):
         description="Settings for human-in-the-loop approval of MCP tool invocations",
     )
 
-    byok_rag: list[ByokRag] = Field(
-        default_factory=list,
-        title="BYOK RAG configuration",
-        description="BYOK RAG configuration. This configuration can be used to "
-        "reconfigure Llama Stack through its run.yaml configuration file",
-    )
-
     vector_store: VectorStoreConfiguration = Field(
         default_factory=lambda: VectorStoreConfiguration(
             default_provider=None, providers=[]
@@ -3079,7 +3312,7 @@ class Configuration(ConfigurationBase):
         description=(
             "Dynamic vector-store provider capacity for runtime "
             "POST /v1/vector-stores creates. "
-            "Not the same as byok_rag (static registered corpora). "
+            "Not the same as rag.byok.stores (static registered corpora). "
             "When providers is non-empty, default_provider is required and "
             "must match one of providers[].id. Applied in unified synthesis "
             "only."
@@ -3131,20 +3364,8 @@ class Configuration(ConfigurationBase):
     rag: RagConfiguration = Field(
         default_factory=RagConfiguration,
         title="RAG configuration",
-        description="Configuration for all RAG strategies (inline and tool-based).",
-    )
-
-    okp: OkpConfiguration = Field(
-        default_factory=OkpConfiguration,
-        title="OKP configuration",
-        description=f"OKP provider settings. Only used when '{constants.OKP_RAG_ID}' is listed "
-        "in rag.inline or rag.tool.",
-    )
-
-    reranker: RerankerConfiguration = Field(
-        default_factory=RerankerConfiguration,
-        title="Reranker configuration",
-        description="Configuration for neural reranking of RAG chunks using cross-encoder.",
+        description="Unified RAG configuration: BYOK stores, OKP provider, "
+        "and retrieval strategies (inline and tool-based).",
     )
 
     skills: Optional[SkillsConfiguration] = Field(
@@ -3290,96 +3511,72 @@ class Configuration(ConfigurationBase):
         return self
 
     @model_validator(mode="after")
-    def validate_reranker_auto_enable(self) -> Self:
-        """Automatically enable reranker when both BYOK and OKP RAG are configured.
-
-        When users have both BYOK entries in byok_rag and OKP
-        configured in the RAG strategies, automatically
-        enable the reranker if it's not explicitly disabled. This improves result
-        quality when multiple knowledge sources are available.
-
-        Returns:
-            Self: The validated configuration instance with reranker potentially enabled.
-        """
-        # Check if BYOK RAG entries are configured
-        has_byok = len(self.byok_rag) > 0
-
-        # Check if OKP is configured in either inline or tool RAG strategies
-        # pylint: disable=no-member
-        has_okp = constants.OKP_RAG_ID in self.rag.inline
-
-        # If both BYOK and OKP are present and reranker is using default settings,
-        # ensure it's enabled for optimal results
-        if (
-            has_byok
-            and has_okp
-            and not self.reranker._explicitly_configured  # pylint: disable=protected-access
-            and not self.reranker.enabled
-        ):
-            logger.info(
-                "Automatically enabling reranker: Both BYOK RAG (%d entries) or "
-                "other inline RAG and OKP are configured. Reranking improves result "
-                "quality when multiple knowledge sources are available.",
-                len(self.byok_rag),
-            )
-            self.reranker.enabled = True
-
-        return self
-
-    @model_validator(mode="after")
     def check_unified_vs_legacy(self) -> Self:
         """Reconcile unified synthesis inputs, legacy mode, and library-mode needs.
 
         Unified-mode *synthesis inputs* span the configuration root: a non-empty
         top-level ``inference.providers`` (Decision S5), a non-empty
-        ``vector_store.providers``, and/or a ``llama_stack.config`` block. The
-        legacy path is ``llama_stack.library_client_config_path`` pointing at an
+        ``vector_store.providers``, and/or an ``ogx.config`` block. The
+        legacy path is ``ogx.library_client_config_path`` pointing at an
         external run.yaml. Both checks live here on the root model rather than
-        on ``LlamaStackConfiguration`` (which cannot see root-level provider
+        on ``OgxConfiguration`` (which cannot see root-level provider
         lists):
 
         - A synthesis input and the legacy path are mutually exclusive — a
           single file must pick one shape.
         - Library mode needs *some* run source — a synthesis input or the
           legacy path. ``inference.providers`` or ``vector_store.providers``
-          alone is sufficient; no ``llama_stack.config`` block is required.
+          alone is sufficient; no ``ogx.config`` block is required.
+        - An explicit ``config_format_version``, when set, must agree with
+          the detected shape (R11): ``unified`` requires a synthesis input,
+          ``legacy`` requires its absence (remote-only configs count as
+          legacy-compatible).
 
         Returns:
             Self: The validated configuration instance.
 
         Raises:
             ValueError: If a synthesis input and the legacy
-                ``library_client_config_path`` are set together, or if library
-                mode has no run source at all.
+                ``library_client_config_path`` are set together, if library
+                mode has no run source at all, or if ``config_format_version``
+                contradicts the detected shape.
         """
         # pylint: disable=no-member
         synthesis_input = (
             bool(self.inference.providers)
             or bool(self.vector_store.providers)
-            or self.llama_stack.config is not None
+            or self.ogx.config is not None
         )
-        legacy_input = self.llama_stack.library_client_config_path is not None
+        legacy_input = self.ogx.library_client_config_path is not None
         if synthesis_input and legacy_input:
             raise ValueError(
-                "Llama Stack configuration is ambiguous: unified synthesis "
+                "OGX configuration is ambiguous: unified synthesis "
                 "inputs (a non-empty inference.providers, a non-empty "
-                "vector_store.providers, or a llama_stack.config block) are "
+                "vector_store.providers, or an ogx.config block) are "
                 "mutually exclusive with the legacy "
-                "llama_stack.library_client_config_path. Use one or the other. "
+                "ogx.library_client_config_path. Use one or the other. "
                 "To convert a legacy two-file setup to unified mode, run "
                 "`lightspeed-stack --migrate-config`."
             )
-        if (
-            self.llama_stack.use_as_library_client
-            and not synthesis_input
-            and not legacy_input
-        ):
+        if self.ogx.use_as_library_client and not synthesis_input and not legacy_input:
             raise ValueError(
-                "Llama Stack library mode requires a run-configuration source: "
+                "OGX library mode requires a run-configuration source: "
                 "set a non-empty inference.providers, a non-empty "
-                "vector_store.providers, a llama_stack.config block, or "
+                "vector_store.providers, an ogx.config block, or "
                 "library_client_config_path."
             )
+        if self.config_format_version is not None:
+            detected = "unified" if synthesis_input else "legacy"
+            if self.config_format_version != detected:
+                raise ValueError(
+                    f"config_format_version is '{self.config_format_version}' "
+                    f"but the configuration body is {detected}-shaped: a "
+                    "unified configuration carries a synthesis input (a "
+                    "non-empty inference.providers, a non-empty "
+                    "vector_store.providers, or an ogx.config block), "
+                    "a legacy one does not. Fix config_format_version or the "
+                    "configuration body."
+                )
         return self
 
     def dump(self, filename: str | Path = "configuration.json") -> None:

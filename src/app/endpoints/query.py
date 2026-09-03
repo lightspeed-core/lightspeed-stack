@@ -4,12 +4,13 @@ import datetime
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Request
+from opentelemetry import trace
 
 from authentication import get_auth_dependency
 from authentication.interface import AuthTuple
 from authorization.azure_token_manager import AzureEntraIDManager
 from authorization.middleware import authorize
-from client import AsyncOgxClientHolder
+from client.ogx import AsyncOgxClientHolder
 from configuration import configuration
 from constants import ENDPOINT_PATH_QUERY, IMAGE_CONTENT_TYPES
 from log import get_logger
@@ -38,6 +39,13 @@ from utils.endpoints import (
 )
 from utils.mcp_headers import McpHeaders, mcp_headers_dependency
 from utils.mcp_oauth_probe import check_mcp_auth
+from utils.otel_tracing import (
+    SpanAttributes,
+    SpanEvents,
+    add_span_event,
+    anonymize_value,
+    set_span_attributes,
+)
 from utils.query import (
     consume_query_tokens,
     prepare_input,
@@ -56,6 +64,7 @@ from utils.suid import normalize_conversation_id
 from utils.vector_search import build_rag_context
 
 logger = get_logger(__name__)
+tracer = trace.get_tracer(__name__)
 router = APIRouter(tags=["query"])
 
 query_response: dict[int | str, dict[str, Any]] = {
@@ -74,7 +83,7 @@ query_response: dict[int | str, dict[str, Any]] = {
     429: QuotaExceededResponse.openapi_response(),
     500: InternalServerErrorResponse.openapi_response(examples=["configuration"]),
     503: ServiceUnavailableResponse.openapi_response(
-        examples=["ogx", "kubernetes api"]
+        examples=["OGX", "kubernetes api"]
     ),
 }
 
@@ -91,7 +100,7 @@ async def query_endpoint_handler(
     Handle request to the /query endpoint using Responses API.
 
     Processes a POST request to a query endpoint, forwarding the
-    user's query to a selected Llama Stack LLM and returning the generated response.
+    user's query to a selected OGX LLM and returning the generated response.
 
     ### Parameters:
     - request: The incoming HTTP request (used by middleware).
@@ -113,10 +122,50 @@ async def query_endpoint_handler(
     - 500: Internal Server Error - Configuration not loaded or other server errors
     - 503: Service Unavailable - Unable to connect to OGX backend
     """
+    with tracer.start_as_current_span("query.handle_request") as root_span:
+        return await _handle_query_with_tracing(
+            request, query_request, auth, mcp_headers, root_span
+        )
+
+
+async def _handle_query_with_tracing(
+    request: Request,
+    query_request: QueryRequest,
+    auth: AuthTuple,
+    mcp_headers: McpHeaders,
+    root_span: trace.Span,
+) -> QueryResponse:
+    """Handle query request with OTEL tracing instrumentation.
+
+    Parameters:
+        request: The incoming HTTP request.
+        query_request: Request payload containing query and optional parameters.
+        auth: Authentication tuple (user_id, username, skip_check, token).
+        mcp_headers: Headers to be passed to MCP servers.
+        root_span: OpenTelemetry root span for this request.
+
+    Returns:
+        QueryResponse containing conversation ID, LLM response, and metadata.
+
+    Raises:
+        HTTPException: On authentication, authorization, quota, or model errors.
+    """
     check_configuration_loaded(configuration)
 
     started_at = datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
     user_id, _, _skip_userid_check, token = auth
+
+    # Set initial span attributes
+    set_span_attributes(
+        root_span,
+        {
+            SpanAttributes.USER_ID: anonymize_value(user_id),
+            SpanAttributes.INPUT: anonymize_value(query_request.query),
+            SpanAttributes.REQUEST_ATTACHMENTS_COUNT: (
+                len(query_request.attachments) if query_request.attachments else 0
+            ),
+        },
+    )
 
     # Check MCP Auth
     await check_mcp_auth(configuration, mcp_headers, token, request.headers)
@@ -135,6 +184,9 @@ async def query_endpoint_handler(
     # Validate attachments if provided
     if query_request.attachments:
         validate_attachments_metadata(query_request.attachments)
+
+    # Validation completed
+    add_span_event(root_span, SpanEvents.VALIDATION_COMPLETED)
 
     # Retrieve conversation if conversation_id is provided
     user_conversation = None
@@ -277,8 +329,25 @@ async def query_endpoint_handler(
         skip_userid_check=_skip_userid_check,
         topic_summary=topic_summary,
     )
+    # Emit turn persisted event immediately after storing
+    add_span_event(root_span, SpanEvents.TURN_PERSISTED)
 
     logger.info("Building final response")
+
+    # Set final span attributes
+    set_span_attributes(
+        root_span,
+        {
+            SpanAttributes.SESSION_ID: conversation_id,
+            SpanAttributes.LLM_USAGE_INPUT_TOKENS: turn_summary.token_usage.input_tokens,
+            SpanAttributes.LLM_USAGE_OUTPUT_TOKENS: turn_summary.token_usage.output_tokens,
+            SpanAttributes.OUTPUT: anonymize_value(turn_summary.llm_response),
+        },
+    )
+
+    # Emit LLM response completed event
+    add_span_event(root_span, SpanEvents.LLM_RESPONSE_COMPLETED)
+
     return QueryResponse(
         conversation_id=conversation_id,
         response=turn_summary.llm_response,
@@ -287,6 +356,7 @@ async def query_endpoint_handler(
         rag_chunks=turn_summary.rag_chunks,
         referenced_documents=turn_summary.referenced_documents,
         truncated=False,
+        context_status=compaction.context_status,
         input_tokens=turn_summary.token_usage.input_tokens,
         output_tokens=turn_summary.token_usage.output_tokens,
         available_quotas=available_quotas,

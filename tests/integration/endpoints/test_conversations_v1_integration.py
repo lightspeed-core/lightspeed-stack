@@ -8,7 +8,7 @@ from datetime import UTC, datetime
 
 import pytest
 from fastapi import HTTPException, Request, status
-from ogx_client import APIConnectionError, APIStatusError
+from ogx_client import ApiException
 from pytest_mock import AsyncMockType, MockerFixture
 from sqlalchemy.orm import Session
 
@@ -268,7 +268,7 @@ ERROR_HANDLING_TEST_CASES = [
             "endpoint": "get",
             "error_type": "connection",
             "expected_status": 503,
-            "mock_path": "conversations.items.list",
+            "mock_path": "items.list",
         },
         id="get_handles_connection_error",
     ),
@@ -277,7 +277,7 @@ ERROR_HANDLING_TEST_CASES = [
             "endpoint": "get",
             "error_type": "api_status",
             "expected_status": 500,
-            "mock_path": "conversations.items.list",
+            "mock_path": "items.list",
         },
         id="get_handles_api_status_error",
     ),
@@ -320,23 +320,21 @@ async def test_conversation_error_handling(  # pylint: disable=too-many-locals
     non_admin_test_request: Request,
     test_auth: AuthTuple,
     patch_db_session: Session,
-    mocker: MockerFixture,
 ) -> None:
     """Data-driven test for conversation endpoint error handling.
 
     Tests error handling scenarios including:
-    - Llama Stack connection errors (503)
-    - Llama Stack API status errors (500)
+    - OGX connection errors (503)
+    - OGX API status errors (500)
     - Across GET, DELETE, and UPDATE endpoints
 
     Parameters:
         test_case: Dictionary containing test parameters
         test_config: Test configuration
-        mock_ogx_client: Mocked Llama Stack client
+        mock_ogx_client: Mocked OGX client
         non_admin_test_request: FastAPI request with standard user permissions
         test_auth: noop authentication tuple
         patch_db_session: Test database session
-        mocker: pytest-mock fixture
     """
     _ = test_config
 
@@ -365,13 +363,9 @@ async def test_conversation_error_handling(  # pylint: disable=too-many-locals
         mock_method = getattr(mock_method, attr)
 
     if error_type == "connection":
-        mock_method.side_effect = APIConnectionError(request=mocker.Mock())
+        mock_method.side_effect = ApiException(status=None)
     elif error_type == "api_status":
-        mock_method.side_effect = APIStatusError(
-            message="Server error",
-            response=mocker.Mock(status_code=500),
-            body=None,
-        )
+        mock_method.side_effect = ApiException(status=500, reason="Server error")
 
     # Call the appropriate endpoint and expect error
     with pytest.raises(HTTPException) as exc_info:
@@ -413,13 +407,13 @@ async def test_get_conversation_returns_chat_history(
 
     This integration test verifies:
     - Endpoint retrieves conversation from database
-    - Llama Stack client is called to get conversation items
+    - OGX client is called to get conversation items
     - Chat history is properly structured
-    - Integration between database and Llama Stack
+    - Integration between database and OGX
 
     Parameters:
         test_config: Test configuration
-        mock_ogx_client: Mocked Llama Stack client
+        mock_ogx_client: Mocked OGX client
         non_admin_test_request: FastAPI request with standard user permissions
         test_auth: noop authentication tuple
         patch_db_session: Test database session
@@ -442,7 +436,7 @@ async def test_get_conversation_returns_chat_history(
     patch_db_session.add(conversation)
     patch_db_session.commit()
 
-    # Mock Llama Stack conversation items
+    # Mock OGX conversation items
     mock_user_message = mocker.Mock(
         type="message", role="user", content="What is Ansible?"
     )
@@ -450,11 +444,11 @@ async def test_get_conversation_returns_chat_history(
         type="message", role="assistant", content="Ansible is an automation tool."
     )
 
-    # Mock Llama Stack response
+    # Mock OGX response
     mock_items = mocker.Mock()
     mock_items.data = [mock_user_message, mock_assistant_message]
-    mock_items.has_next_page.return_value = False
-    mock_ogx_client.conversations.items.list = mocker.AsyncMock(return_value=mock_items)
+    mock_items.has_more = False
+    mock_ogx_client.items.list = mocker.AsyncMock(return_value=mock_items)
 
     response = await get_conversation_endpoint_handler(
         request=non_admin_test_request,
@@ -494,11 +488,11 @@ async def test_get_conversation_with_turns_metadata(
     This integration test verifies:
     - Turn metadata is retrieved from database
     - Timestamps, provider, and model are included in response
-    - Integration between database turns and Llama Stack items
+    - Integration between database turns and OGX items
 
     Parameters:
         test_config: Test configuration
-        mock_ogx_client: Mocked Llama Stack client
+        mock_ogx_client: Mocked OGX client
         non_admin_test_request: FastAPI request with standard user permissions
         test_auth: noop authentication tuple
         patch_db_session: Test database session
@@ -532,7 +526,7 @@ async def test_get_conversation_with_turns_metadata(
     patch_db_session.add(turn)
     patch_db_session.commit()
 
-    # Mock Llama Stack conversation items - use paginator pattern
+    # Mock OGX conversation items - use paginator pattern
     mock_user_message = mocker.Mock(
         type="message", role="user", content="What is Ansible?"
     )
@@ -543,8 +537,8 @@ async def test_get_conversation_with_turns_metadata(
     # Mock paginator response
     mock_items = mocker.Mock()
     mock_items.data = [mock_user_message, mock_assistant_message]
-    mock_items.has_next_page.return_value = False
-    mock_ogx_client.conversations.items.list = mocker.AsyncMock(return_value=mock_items)
+    mock_items.has_more = False
+    mock_ogx_client.items.list = mocker.AsyncMock(return_value=mock_items)
 
     response = await get_conversation_endpoint_handler(
         request=non_admin_test_request,
@@ -582,7 +576,7 @@ async def test_get_conversation_with_turns_metadata(
 
 
 @pytest.mark.asyncio
-async def test_delete_conversation_deletes_from_database_and_llama_stack(
+async def test_delete_conversation_deletes_from_database_and_ogx(
     test_config: AppConfig,
     mock_ogx_client: AsyncMockType,
     non_admin_test_request: Request,
@@ -590,17 +584,17 @@ async def test_delete_conversation_deletes_from_database_and_llama_stack(
     patch_db_session: Session,
     mocker: MockerFixture,
 ) -> None:
-    """Test that delete conversation removes from both database and Llama Stack.
+    """Test that delete conversation removes from both database and OGX.
 
     This integration test verifies:
     - Conversation is deleted from local database
-    - Llama Stack delete API is called
+    - OGX delete API is called
     - Response indicates successful deletion
-    - Integration between database and Llama Stack operations
+    - Integration between database and OGX operations
 
     Parameters:
         test_config: Test configuration
-        mock_ogx_client: Mocked Llama Stack client
+        mock_ogx_client: Mocked OGX client
         non_admin_test_request: FastAPI request with standard user permissions
         test_auth: noop authentication tuple
         patch_db_session: Test database session
@@ -622,7 +616,7 @@ async def test_delete_conversation_deletes_from_database_and_llama_stack(
     patch_db_session.add(conversation)
     patch_db_session.commit()
 
-    # Mock Llama Stack delete response
+    # Mock OGX delete response
     mock_delete_response = mocker.MagicMock()
     mock_delete_response.deleted = True
     mock_ogx_client.conversations.delete.return_value = mock_delete_response
@@ -648,28 +642,26 @@ async def test_delete_conversation_deletes_from_database_and_llama_stack(
 
 
 @pytest.mark.asyncio
-async def test_delete_conversation_handles_not_found_in_llama_stack(
+async def test_delete_conversation_handles_not_found_in_ogx(
     test_config: AppConfig,
     mock_ogx_client: AsyncMockType,
     non_admin_test_request: Request,
     test_auth: AuthTuple,
     patch_db_session: Session,
-    mocker: MockerFixture,
 ) -> None:
-    """Test that delete conversation handles not found in Llama Stack gracefully.
+    """Test that delete conversation handles not found in OGX gracefully.
 
     This integration test verifies:
-    - API status error from Llama Stack is handled
+    - API status error from OGX is handled
     - Local deletion still succeeds
     - Response indicates successful deletion
 
     Parameters:
         test_config: Test configuration
-        mock_ogx_client: Mocked Llama Stack client
+        mock_ogx_client: Mocked OGX client
         non_admin_test_request: FastAPI request with standard user permissions
         test_auth: noop authentication tuple
         patch_db_session: Test database session
-        mocker: pytest-mock fixture
     """
     _ = test_config
 
@@ -688,10 +680,8 @@ async def test_delete_conversation_handles_not_found_in_llama_stack(
     patch_db_session.commit()
 
     # Configure mock to raise not found error
-    mock_ogx_client.conversations.delete.side_effect = APIStatusError(
-        message="Not found",
-        response=mocker.Mock(status_code=404),
-        body=None,
+    mock_ogx_client.conversations.delete.side_effect = ApiException(
+        status=404, reason="Not found"
     )
 
     response = await delete_conversation_endpoint_handler(
@@ -732,7 +722,7 @@ async def test_delete_conversation_non_existent_returns_success(
 
     Parameters:
         test_config: Test configuration
-        mock_ogx_client: Mocked Llama Stack client
+        mock_ogx_client: Mocked OGX client
         non_admin_test_request: FastAPI request with standard user permissions
         test_auth: noop authentication tuple
         patch_db_session: Test database session
@@ -741,7 +731,7 @@ async def test_delete_conversation_non_existent_returns_success(
     _ = test_config
     _ = patch_db_session
 
-    # Mock Llama Stack delete response
+    # Mock OGX delete response
     mock_delete_response = mocker.MagicMock()
     mock_delete_response.deleted = False
     mock_ogx_client.conversations.delete.return_value = mock_delete_response
@@ -770,17 +760,17 @@ async def test_update_conversation_updates_topic_summary(
     test_auth: AuthTuple,
     patch_db_session: Session,
 ) -> None:
-    """Test that update conversation updates topic summary in database and Llama Stack.
+    """Test that update conversation updates topic summary in database and OGX.
 
     This integration test verifies:
     - Topic summary is updated in local database
-    - Llama Stack update API is called
+    - OGX update API is called
     - Response indicates successful update
-    - Integration between database and Llama Stack operations
+    - Integration between database and OGX operations
 
     Parameters:
         test_config: Test configuration
-        mock_ogx_client: Mocked Llama Stack client
+        mock_ogx_client: Mocked OGX client
         non_admin_test_request: FastAPI request with standard user permissions
         test_auth: noop authentication tuple
         patch_db_session: Test database session
@@ -801,7 +791,7 @@ async def test_update_conversation_updates_topic_summary(
     patch_db_session.add(conversation)
     patch_db_session.commit()
 
-    # Mock Llama Stack update response
+    # Mock OGX update response
     mock_ogx_client.conversations.update.return_value = None
 
     update_request = ConversationUpdateRequest(topic_summary="New topic summary")

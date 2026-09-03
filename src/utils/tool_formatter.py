@@ -157,7 +157,7 @@ def translate_vector_store_ids_to_user_facing(
     Parameters:
     ----------
         tools: Serialized tool dicts.
-        rag_id_mapping: Llama Stack vector_db_id -> user-facing RAG id.
+        rag_id_mapping: OGX vector_db_id -> user-facing RAG id.
 
     Returns:
     -------

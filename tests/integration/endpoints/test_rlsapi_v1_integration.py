@@ -14,7 +14,7 @@ from typing import Any, cast
 import pytest
 from fastapi import HTTPException, status
 from fastapi.testclient import TestClient
-from ogx_client import APIConnectionError
+from ogx_client import ApiException
 from pytest_mock import MockerFixture
 
 import constants
@@ -132,9 +132,9 @@ def _setup_responses_mock(
     return mock_client
 
 
-@pytest.fixture(name="mock_llama_stack")
-def mock_llama_stack_fixture(rlsapi_config: AppConfig, mocker: MockerFixture) -> Any:
-    """Mock Llama Stack client with successful response."""
+@pytest.fixture(name="mock_ogx_client")
+def mock_ogx_client_fixture(rlsapi_config: AppConfig, mocker: MockerFixture) -> Any:
+    """Mock OGX client with successful response."""
     _ = rlsapi_config
     return _setup_responses_mock(mocker)
 
@@ -146,7 +146,7 @@ def mock_llama_stack_fixture(rlsapi_config: AppConfig, mocker: MockerFixture) ->
 
 @pytest.mark.asyncio
 async def test_rlsapi_v1_infer_minimal_request(
-    mock_llama_stack: Any,
+    mock_ogx_client: Any,
     mock_authorization: None,
     mock_request: Any,
     mock_background_tasks: Any,
@@ -201,7 +201,7 @@ async def test_rlsapi_v1_infer_minimal_request(
     ],
 )
 async def test_rlsapi_v1_infer_with_context(
-    mock_llama_stack: Any,
+    mock_ogx_client: Any,
     mock_authorization: None,
     mock_request: Any,
     mock_background_tasks: Any,
@@ -224,7 +224,7 @@ async def test_rlsapi_v1_infer_with_context(
 
 @pytest.mark.asyncio
 async def test_rlsapi_v1_infer_generates_unique_request_ids(
-    mock_llama_stack: Any,
+    mock_ogx_client: Any,
     mock_authorization: None,
     mock_request: Any,
     mock_background_tasks: Any,
@@ -266,9 +266,7 @@ async def test_rlsapi_v1_infer_connection_error_returns_503(
     _ = rlsapi_config
 
     mock_responses = mocker.Mock()
-    mock_responses.create = mocker.AsyncMock(
-        side_effect=APIConnectionError(request=mocker.Mock())
-    )
+    mock_responses.create = mocker.AsyncMock(side_effect=ApiException(status=None))
 
     mock_client = mocker.Mock()
     mock_client.responses = mock_responses
@@ -499,7 +497,7 @@ async def test_rlsapi_v1_infer_mcp_tools_passed_to_llm(
     [pytest.param(False, id="default_false"), pytest.param(True, id="explicit_true")],
 )
 async def test_rlsapi_v1_infer_skip_rag(
-    mock_llama_stack: Any,
+    mock_ogx_client: Any,
     mock_authorization: None,
     mock_request: Any,
     mock_background_tasks: Any,

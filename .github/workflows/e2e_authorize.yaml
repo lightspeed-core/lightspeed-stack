@@ -1,0 +1,76 @@
+# Gate before e2e jobs that use repository secrets (separate job so secrets are not sent if skipped).
+#
+# Uses the same collaborator permission API GitHub uses for push/merge access on
+# this repository (org base permissions, teams, and direct grants).
+name: Authorize E2E secrets access
+
+on:
+  workflow_call:
+    outputs:
+      authorized:
+        value: ${{ jobs.authorize.outputs.authorized }}
+
+jobs:
+  authorize:
+    name: Check repository owner or member
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    if: github.event.action != 'labeled' || github.event.label.name == 'ok-to-test'
+    # Do not set permissions: contents: read — it blocks reading collaborator permissions.
+    outputs:
+      authorized: ${{ steps.check.outputs.authorized }}
+    steps:
+      - name: Allow repo owners and members, or ok-to-test from an owner
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_ACTION: ${{ github.event.action }}
+          IS_FORK: ${{ github.event.repository.fork }}
+          # PR author for merge-rights check (not github.actor — see dependabot hardening).
+          USER: ${{ github.event.pull_request.user.login || github.actor }}
+          ACTOR: ${{ github.actor }}
+          REPO_OWNER: ${{ github.repository_owner }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          allow() { echo "$1"; echo "authorized=true" >> "$GITHUB_OUTPUT"; exit 0; }
+          deny()  { echo "::warning::$1"; echo "authorized=false" >> "$GITHUB_OUTPUT"; exit 0; }
+
+          permission_of() {
+            local url="repos/${REPOSITORY}/collaborators/$(jq -nr --arg u "$1" '$u|@uri')/permission"
+            local perm
+            for attempt in 1 2 3; do
+              perm=$(gh api "$url" --jq .permission 2>/dev/null) && [ -n "$perm" ] && { echo "$perm"; return; }
+              echo "::debug::API attempt $attempt failed for $1, retrying in ${attempt}s…"
+              sleep "$attempt"
+            done
+            echo none
+          }
+
+          [ "$EVENT_NAME" = "schedule" ] && allow "Scheduled run."
+
+          echo "user=${USER} actor=${ACTOR} event=${EVENT_NAME}/${EVENT_ACTION:-none} fork=${IS_FORK}"
+
+          # Push to upstream: only users with push (merge) rights can push here.
+          [ "$EVENT_NAME" = "push" ] && [ "$IS_FORK" != "true" ] && allow "Push to upstream repository."
+
+          # Push to your own fork.
+          [ "$EVENT_NAME" = "push" ] && [ "$ACTOR" = "$REPO_OWNER" ] && allow "Push by fork owner."
+
+          USER_PERM=$(permission_of "$USER")
+          echo "user_permission=${USER_PERM}"
+          case "$USER_PERM" in
+            admin|maintain|write|triage|read)
+              allow "${USER} has repository access (${USER_PERM}, same source as merge rights)."
+              ;;
+          esac
+
+          # Outsider PR: repository owner added ok-to-test on this run.
+          [ "$EVENT_ACTION" = "labeled" ] || deny "${USER} has no repository access."
+
+          LABELER_PERM=$(permission_of "$ACTOR")
+          echo "ok-to-test labeler=${ACTOR} permission=${LABELER_PERM}"
+          [ "$LABELER_PERM" = "admin" ] && allow "Repository owner ${ACTOR} added ok-to-test."
+
+          deny "ok-to-test must be added by a repository owner (admin)."

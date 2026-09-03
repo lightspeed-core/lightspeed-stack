@@ -17,6 +17,12 @@
 
 
 
+## ContextStatus
+
+
+
+
+
 ## EndEventData
 
 
@@ -27,6 +33,7 @@ Nested data for event: "end".
 |-------|------|-------------|
 | referenced_documents | array |  |
 | truncated | boolean |  |
+| context_status |  |  |
 | input_tokens | integer |  |
 | output_tokens | integer |  |
 

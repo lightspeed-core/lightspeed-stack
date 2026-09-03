@@ -1,9 +1,9 @@
-"""Behave steps for temporarily disabling Llama Stack shields in e2e (server mode)."""
+"""Behave steps for temporarily disabling OGX shields in e2e (server mode)."""
 
 from behave import given  # pyright: ignore[reportAttributeAccessIssue]
 from behave.runner import Context
 
-from tests.e2e.utils.llama_stack_utils import unregister_shield
+from tests.e2e.utils.ogx_utils import unregister_shield
 
 
 @given("shields are disabled for this scenario")
@@ -12,7 +12,7 @@ def shields_are_disabled_for_scenario(context: Context) -> None:
 
     Sets ``context.shields_disabled_for_scenario`` so ``environment.after_scenario``
     re-registers the shield. **Server mode only**; in library mode the scenario is skipped
-    (no separate Llama Stack to call).
+    (no separate OGX to call).
 
     Parameters:
     ----------
@@ -20,7 +20,7 @@ def shields_are_disabled_for_scenario(context: Context) -> None:
     """
     if context.is_library_mode:
         context.scenario.skip(
-            "Shield unregister/register only applies in server mode (Llama Stack as a "
+            "Shield unregister/register only applies in server mode (OGX as a "
             "separate service). In library mode the app's shields cannot be disabled from e2e."
         )
         return
@@ -32,6 +32,4 @@ def shields_are_disabled_for_scenario(context: Context) -> None:
         context.shields_disabled_for_scenario = True
         print("Unregistered shield llama-guard for this scenario")
     except Exception as e:  # pylint: disable=broad-exception-caught
-        context.scenario.skip(
-            f"Could not unregister shield (is Llama Stack reachable?): {e}"
-        )
+        context.scenario.skip(f"Could not unregister shield (is OGX reachable?): {e}")

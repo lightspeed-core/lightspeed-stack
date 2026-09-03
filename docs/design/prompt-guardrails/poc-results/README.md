@@ -35,7 +35,7 @@ order; each stands alone.
 3. The layer integrates into `query.py` at the existing moderation seam:
    a block flows through the real HTTP stack as a refusal with the
    validation-error metric, coexisting additively with the pre-existing
-   llama-stack shields (`04`).
+   OGX shields (`04`).
 4. Per-rule confidence thresholds are implementable via `logprobs` on the
    Guardian call (`06`).
 
@@ -79,7 +79,7 @@ LCS_GUARDRAILS_POC_CONFIG=docs/design/prompt-guardrails/poc-results/guardrails-p
   PYTHONPATH=src uv run python docs/design/prompt-guardrails/poc-results/drive_layer.py
 
 # 3. Full stack (see meta/docs/local-stack-testing.md for service startup)
-#    Start Llama Stack (run-ci.yaml) then:
+#    Start OGX (run-ci.yaml) then:
 LCS_GUARDRAILS_POC_CONFIG=docs/design/prompt-guardrails/poc-results/guardrails-poc.yaml \
   uv run src/lightspeed_stack.py -c docs/design/prompt-guardrails/poc-results/lcs-poc-config.yaml
 #    Then POST /v1/query with {"query":"...","shield_ids":[]} to isolate the

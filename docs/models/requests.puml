@@ -2,16 +2,16 @@
 set namespaceSeparator none
 class "ConversationUpdateRequest" as src.models.api.requests.conversations.ConversationUpdateRequest {
   model_config : dict
-  topic_summary : str
+  topic_summary : Optional[str]
 }
 class "FeedbackRequest" as src.models.api.requests.feedback.FeedbackRequest {
   categories : Optional[list[FeedbackCategory]]
-  conversation_id : str
-  llm_response : str
+  conversation_id : Optional[str]
+  llm_response : Optional[str]
   model_config : dict
   sentiment : Optional[int]
   user_feedback : Optional[str]
-  user_question : str
+  user_question : Optional[str]
   check_feedback_provided() -> Self
   check_sentiment(value: Optional[int]) -> Optional[int]
   check_uuid(value: str) -> str
@@ -19,17 +19,17 @@ class "FeedbackRequest" as src.models.api.requests.feedback.FeedbackRequest {
 }
 class "FeedbackStatusUpdateRequest" as src.models.api.requests.feedback.FeedbackStatusUpdateRequest {
   model_config : dict
-  status : bool
+  status : Optional[bool]
   get_value() -> bool
 }
 class "MCPServerRegistrationRequest" as src.models.api.requests.mcp_servers.MCPServerRegistrationRequest {
   authorization_headers : Optional[dict[str, str]]
   headers : Optional[list[str]]
   model_config : dict
-  name : str
-  provider_id : str
+  name : Optional[str]
+  provider_id : Optional[str]
   timeout : Optional[int]
-  url : str
+  url : Optional[str]
   validate_authorization_header_values(value: Optional[dict[str, str]]) -> Optional[dict[str, str]]
   validate_url(value: str) -> str
 }
@@ -39,15 +39,15 @@ class "ModelFilter" as src.models.api.requests.catalog.ModelFilter {
 }
 class "PromptCreateRequest" as src.models.api.requests.prompts.PromptCreateRequest {
   model_config : dict
-  prompt : str
+  prompt : Optional[str]
   variables : Optional[list[str]]
 }
 class "PromptUpdateRequest" as src.models.api.requests.prompts.PromptUpdateRequest {
   model_config : dict
-  prompt : str
+  prompt : Optional[str]
   set_as_default : Optional[bool]
   variables : Optional[list[str]]
-  version : int
+  version : Optional[int]
 }
 class "QueryRequest" as src.models.api.requests.query.QueryRequest {
   attachments : Optional[list[Attachment]]
@@ -58,7 +58,7 @@ class "QueryRequest" as src.models.api.requests.query.QueryRequest {
   model_config : dict
   no_tools : Optional[bool]
   provider : Optional[str]
-  query : str
+  query : Optional[str]
   shield_ids : Optional[list[str]]
   solr : Optional[SolrVectorSearchRequest]
   system_prompt : Optional[str]
@@ -98,46 +98,46 @@ class "ResponsesRequest" as src.models.api.requests.responses_openai.ResponsesRe
   validate_conversation_and_previous_response_id_mutually_exclusive() -> Self
 }
 class "RlsapiV1Attachment" as src.models.api.requests.rlsapi.RlsapiV1Attachment {
-  contents : str
-  mimetype : str
+  contents : Optional[str]
+  mimetype : Optional[str]
 }
 class "RlsapiV1CLA" as src.models.api.requests.rlsapi.RlsapiV1CLA {
-  nevra : str
-  version : str
+  nevra : Optional[str]
+  version : Optional[str]
 }
 class "RlsapiV1Context" as src.models.api.requests.rlsapi.RlsapiV1Context {
-  attachments
-  cla
-  stdin : str
-  systeminfo
-  terminal
+  attachments : Optional[RlsapiV1Attachment]
+  cla : Optional[RlsapiV1CLA]
+  stdin : Optional[str]
+  systeminfo : Optional[RlsapiV1SystemInfo]
+  terminal : Optional[RlsapiV1Terminal]
 }
 class "RlsapiV1InferRequest" as src.models.api.requests.rlsapi.RlsapiV1InferRequest {
-  context
-  include_metadata : bool
-  question : str
-  skip_rag : bool
+  context : Optional[RlsapiV1Context]
+  include_metadata : Optional[bool]
+  question : Optional[str]
+  skip_rag : Optional[bool]
   get_input_source() -> str
   validate_question(value: str) -> str
 }
 class "RlsapiV1SystemInfo" as src.models.api.requests.rlsapi.RlsapiV1SystemInfo {
-  arch : str
+  arch : Optional[str]
   model_config : dict
-  os : str
-  system_id : str
-  version : str
+  os : Optional[str]
+  system_id : Optional[str]
+  version : Optional[str]
 }
 class "RlsapiV1Terminal" as src.models.api.requests.rlsapi.RlsapiV1Terminal {
-  output : str
+  output : Optional[str]
 }
 class "SavedPromptCreateRequest" as src.models.api.requests.saved_prompts.SavedPromptCreateRequest {
-  content : str
+  content : Optional[str]
   model_config : dict
-  name : str
+  name : Optional[str]
 }
 class "StreamingInterruptRequest" as src.models.api.requests.query.StreamingInterruptRequest {
   model_config : dict
-  request_id : str
+  request_id : Optional[str]
   check_request_id(value: str) -> str
 }
 class "VectorStoreCreateRequest" as src.models.api.requests.vector_stores.VectorStoreCreateRequest {
@@ -146,13 +146,13 @@ class "VectorStoreCreateRequest" as src.models.api.requests.vector_stores.Vector
   embedding_model : Optional[str]
   metadata : Optional[dict[str, Any]]
   model_config : dict
-  name : str
+  name : Optional[str]
   provider_id : Optional[str]
 }
 class "VectorStoreFileCreateRequest" as src.models.api.requests.vector_stores.VectorStoreFileCreateRequest {
   attributes : Optional[dict[str, str | float | bool]]
   chunking_strategy : Optional[dict[str, Any]]
-  file_id : str
+  file_id : Optional[str]
   model_config : dict
   validate_attributes(value: Optional[dict[str, str | float | bool]]) -> Optional[dict[str, str | float | bool]]
 }
@@ -163,9 +163,4 @@ class "VectorStoreUpdateRequest" as src.models.api.requests.vector_stores.Vector
   name : Optional[str]
   check_at_least_one_field() -> Self
 }
-src.models.api.requests.rlsapi.RlsapiV1Attachment --* src.models.api.requests.rlsapi.RlsapiV1Context : attachments
-src.models.api.requests.rlsapi.RlsapiV1CLA --* src.models.api.requests.rlsapi.RlsapiV1Context : cla
-src.models.api.requests.rlsapi.RlsapiV1Context --* src.models.api.requests.rlsapi.RlsapiV1InferRequest : context
-src.models.api.requests.rlsapi.RlsapiV1SystemInfo --* src.models.api.requests.rlsapi.RlsapiV1Context : systeminfo
-src.models.api.requests.rlsapi.RlsapiV1Terminal --* src.models.api.requests.rlsapi.RlsapiV1Context : terminal
 @enduml

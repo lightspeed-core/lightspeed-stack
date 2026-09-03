@@ -91,15 +91,15 @@ class TestSUID:
         expected_conv = "e6afd7aaa97b49ce8f4f96a801b07893d9cb784d72e53e3c"
         assert suid.normalize_conversation_id(valid_conv) == expected_conv
 
-    def test_to_llama_stack_conversation_id(self) -> None:
-        """Test the function to_llama_stack_conversation_id."""
+    def test_to_ogx_conversation_id(self) -> None:
+        """Test OGX conversation ID conversion."""
         valid_conv = "conv_e6afd7aaa97b49ce8f4f96a801b07893d9cb784d72e53e3c"
         expected_conv = "conv_e6afd7aaa97b49ce8f4f96a801b07893d9cb784d72e53e3c"
-        assert suid.to_llama_stack_conversation_id(valid_conv) == expected_conv
+        assert suid.to_ogx_conversation_id(valid_conv) == expected_conv
 
         valid_conv = "e6afd7aaa97b49ce8f4f96a801b07893d9cb784d72e53e3c"
         expected_conv = "conv_e6afd7aaa97b49ce8f4f96a801b07893d9cb784d72e53e3c"
-        assert suid.to_llama_stack_conversation_id(valid_conv) == expected_conv
+        assert suid.to_ogx_conversation_id(valid_conv) == expected_conv
 
     def test_is_moderation_id_valid(self) -> None:
         """Test that is_moderation_id returns True for strings starting with 'modr'."""

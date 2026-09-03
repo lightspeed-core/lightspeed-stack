@@ -1,4 +1,4 @@
-# Example llama-stack configuration for OpenAI inference + FAISS (RAG)
+# Example OGX configuration for OpenAI inference + FAISS (RAG)
 #
 # Notes:
 # - You will need an OpenAI API key
@@ -93,7 +93,7 @@ registered_resources:
     model_type: llm
     provider_model_id: gpt-4o-mini
 vector_stores:
-  annotation_prompt_params: # Override the default Llama Stack annotation that adds <| file-xyz |> to responses
+  annotation_prompt_params: # Override the default OGX annotation that adds <| file-xyz |> to responses
     enable_annotations: true
     annotation_instruction_template: >
       When appropriate, cite sources at the end of sentences using doc_url and doc_title format. 

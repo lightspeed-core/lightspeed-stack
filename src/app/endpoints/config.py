@@ -3,6 +3,7 @@
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Request
+from opentelemetry import trace
 
 from authentication import get_auth_dependency
 from authentication.interface import AuthTuple
@@ -21,6 +22,7 @@ from models.config import Action
 from utils.endpoints import check_configuration_loaded
 
 logger = get_logger(__name__)
+tracer = trace.get_tracer(__name__)
 router = APIRouter(tags=["config"])
 
 
@@ -57,7 +59,7 @@ async def config_endpoint_handler(
     - HTTPException: with status 500 and a detail object containing `response`
       and `cause` when service configuration is wrong or incomplete.
     - HTTPException: with status 503 and a detail object containing `response`
-      and `cause` when unable to connect to Llama Stack.
+      and `cause` when unable to connect to OGX.
 
     ### Returns:
     - ConfigurationResponse: The loaded service configuration response.
@@ -68,7 +70,8 @@ async def config_endpoint_handler(
     # Nothing interesting in the request
     _ = request
 
-    # ensure that configuration is loaded
-    check_configuration_loaded(configuration)
+    with tracer.start_as_current_span("config.handle_request"):
+        # ensure that configuration is loaded
+        check_configuration_loaded(configuration)
 
-    return ConfigurationResponse(configuration=configuration.configuration)
+        return ConfigurationResponse(configuration=configuration.configuration)

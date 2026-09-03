@@ -51,7 +51,7 @@ def main() -> None:
     print(reason)
 
     if github_output := os.environ.get("GITHUB_OUTPUT"):
-        with open(github_output, "a") as f:
+        with open(github_output, "a", encoding="utf-8") as f:
             f.write(f"apply_latest={apply_latest}\n")
 
 

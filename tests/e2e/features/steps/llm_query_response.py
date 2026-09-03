@@ -8,7 +8,11 @@ import requests
 from behave import step, then  # pyright: ignore[reportAttributeAccessIssue]
 from behave.runner import Context
 
-from tests.e2e.utils.utils import replace_placeholders, request_with_transient_retry
+from tests.e2e.utils.utils import (
+    parse_responses_sse_final_response_object,
+    replace_placeholders,
+    request_with_transient_retry,
+)
 
 # Longer timeout for Prow/OpenShift with CPU-based vLLM
 DEFAULT_LLM_TIMEOUT = 180 if os.getenv("RUNNING_PROW") else 120
@@ -183,7 +187,14 @@ def ask_question_too_long_authorized(context: Context, endpoint: str) -> None:
 @step("I store conversation details")
 def store_conversation_details(context: Context) -> None:
     """Store details about the conversation."""
-    context.response_data = json.loads(context.response.text)
+    try:
+        context.response_data = json.loads(context.response.text)
+    except json.JSONDecodeError:
+        context.response_data = _parse_streaming_response(context.response.text)
+        if not context.response_data.get("conversation_id"):
+            terminal = parse_responses_sse_final_response_object(context.response.text)
+            context.response_data["conversation"] = terminal.get("conversation")
+            context.response_data["conversation_id"] = terminal.get("conversation")
 
 
 @step('I use "{endpoint}" to ask question with same conversation_id')
@@ -379,20 +390,21 @@ def _parse_streaming_response(response_text: str) -> dict:
                 data = json.loads(line[6:])  # Remove 'data: ' prefix
                 event = data.get("event")
 
-                if event == "start":
-                    conversation_id = data["data"]["conversation_id"]
-                elif event == "token":
-                    full_response_split.append(data["data"]["token"])
-                elif event == "tool_call":
-                    tool_calls.append(data["data"])
-                elif event == "tool_result":
-                    tool_results.append(data["data"])
-                elif event == "turn_complete":
-                    full_response = data["data"]["token"]
-                elif event == "end":
-                    finished = True
-                elif event == "error":
-                    stream_error = data.get("data") or {}
+                match event:
+                    case "start":
+                        conversation_id = data["data"]["conversation_id"]
+                    case "token":
+                        full_response_split.append(data["data"]["token"])
+                    case "tool_call":
+                        tool_calls.append(data["data"])
+                    case "tool_result":
+                        tool_results.append(data["data"])
+                    case "turn_complete":
+                        full_response = data["data"]["token"]
+                    case "end":
+                        finished = True
+                    case "error":
+                        stream_error = data.get("data") or {}
             except json.JSONDecodeError:
                 continue  # Skip malformed lines
 

@@ -1,7 +1,7 @@
 """Integration tests for the /v1/responses endpoint.
 
 These tests exercise the handler → DB persistence path with real configuration
-and an in-memory SQLite database. The Llama Stack client is mocked (no real LLM),
+and an in-memory SQLite database. The OGX client is mocked (no real LLM),
 but all internal subsystems (config, DB, shield moderation, conversation storage)
 run with real code.
 """
@@ -11,8 +11,7 @@ from typing import Any
 import pytest
 from fastapi import Request
 from fastapi.responses import StreamingResponse
-from ogx_client.types import ListModelsResponse
-from ogx_client.types.model import Model
+from ogx_client.models.open_ai_response_object import OpenAIResponseObject
 from pytest_mock import MockerFixture
 from sqlalchemy.orm import Session
 
@@ -24,6 +23,10 @@ from models.api.responses.successful import ResponsesResponse
 from models.common.moderation import ShieldModerationBlocked
 from models.common.responses.contexts import ResponsesContext
 from models.database.conversations import UserConversation, UserTurn
+from tests.integration.conftest import (
+    make_openai_model,
+    make_openai_models_list_response,
+)
 
 MOCK_AUTH: AuthTuple = (
     "00000000-0000-0000-0000-000",
@@ -41,6 +44,7 @@ _RESPONSE_DUMP: dict[str, Any] = {
     "created_at": 1700000000,
     "status": "completed",
     "model": "test-provider/test-model",
+    "store": False,
     "output": [
         {
             "type": "message",
@@ -67,50 +71,25 @@ _RESPONSE_DUMP: dict[str, Any] = {
 
 
 def _build_mock_client(mocker: MockerFixture) -> Any:
-    """Build a mock Llama Stack client for responses integration tests.
+    """Build a mock OGX client for responses integration tests.
 
     Returns a fully-configured AsyncMock client with sensible defaults for
-    responses.create, models.list, shields.list, vector_stores.list, and
+    responses.create, openai.list, shields.list, vector_stores.list, and
     conversations.create.
     """
     mock_client = mocker.AsyncMock()
 
-    mock_response = mocker.MagicMock()
-    mock_response.id = "resp_integ_test"
-    mock_output = mocker.MagicMock()
-    mock_output.type = "message"
-    mock_output.role = "assistant"
-    mock_output.content = "Ansible is an automation tool."
-    mock_output.refusal = None
-    mock_response.output = [mock_output]
-    mock_response.usage = mocker.MagicMock()
-    mock_response.usage.input_tokens = 10
-    mock_response.usage.output_tokens = 5
-    mock_response.status = "completed"
-    mock_response.model = "test-provider/test-model"
-    mock_response.model_dump.return_value = _RESPONSE_DUMP.copy()
-    mock_client.responses.create = mocker.AsyncMock(return_value=mock_response)
+    mock_client.responses.create = mocker.AsyncMock(
+        return_value=OpenAIResponseObject.from_dict(_RESPONSE_DUMP)
+    )
 
-    mock_client.models.list.return_value = ListModelsResponse.model_construct(
-        data=[
-            Model.model_construct(
-                id="test-provider/test-model",
-                created=0,
-                owned_by="test",
-                object="model",
-                custom_metadata={
-                    "provider_id": "test-provider",
-                    "model_type": "llm",
-                },
-            )
-        ]
+    mock_client.openai.list.return_value = make_openai_models_list_response(
+        make_openai_model()
     )
 
     mock_client.shields.list.return_value = []
 
-    mock_vs_resp = mocker.MagicMock()
-    mock_vs_resp.data = []
-    mock_client.vector_stores.list.return_value = mock_vs_resp
+    mock_client.vector_stores.list.return_value = []
 
     mock_conv = mocker.MagicMock()
     mock_conv.id = MOCK_CONV_ID
@@ -146,7 +125,7 @@ def _setup_test(mocker: MockerFixture) -> Any:
     """Set up mock client and patch all holders for a responses integration test.
 
     Returns:
-        The mock Llama Stack client for further test-specific configuration.
+        The mock OGX client for further test-specific configuration.
     """
     mock_client = _build_mock_client(mocker)
     _patch_client_holders(mocker, mock_client)

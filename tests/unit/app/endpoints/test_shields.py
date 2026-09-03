@@ -4,6 +4,10 @@ from typing import Any
 
 import pytest
 from fastapi import HTTPException, Request, status
+from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
+    InMemorySpanExporter,
+)
+from opentelemetry.trace import StatusCode
 from pytest_mock import MockerFixture
 
 from app.endpoints.shields import shields_endpoint_handler
@@ -25,7 +29,7 @@ def _base_config_dict() -> dict[str, Any]:
             "color_log": True,
             "access_log": True,
         },
-        "llama_stack": {
+        "ogx": {
             "api_key": "test-key",
             "url": "http://test.com:1234",
             "use_as_library_client": False,
@@ -139,3 +143,58 @@ async def test_shields_endpoint_handler_configured_shields(
     assert response.shields[1].provider_id == "redaction"
     assert response.shields[1].type == "shield"
     assert response.shields[1].config["rules"][0]["replacement"] == "[REDACTED]"
+
+
+class TestShieldsEndpointOtel:
+    """OTEL instrumentation tests for the /shields endpoint."""
+
+    @pytest.mark.asyncio
+    async def test_emits_span_with_shield_count(
+        self,
+        mocker: MockerFixture,
+        otel: tuple[Any, InMemorySpanExporter],
+    ) -> None:
+        """Test that a successful /shields request emits a span with shields.count."""
+        tracer, exporter = otel
+        mocker.patch("app.endpoints.shields.tracer", tracer)
+        mock_authorization_resolvers(mocker)
+
+        cfg = AppConfig()
+        cfg.init_from_dict(_base_config_dict())
+        mocker.patch("app.endpoints.shields.configuration", cfg)
+
+        request, auth = _auth_request()
+
+        await shields_endpoint_handler(request=request, auth=auth)
+
+        spans = exporter.get_finished_spans()
+        assert len(spans) == 1
+        span = spans[0]
+        assert span.name == "shields.list"
+        assert span.attributes is not None
+        assert span.attributes["shields.count"] == 0
+
+    @pytest.mark.asyncio
+    async def test_span_records_error_when_config_not_loaded(
+        self,
+        mocker: MockerFixture,
+        otel: tuple[Any, InMemorySpanExporter],
+    ) -> None:
+        """Test that the span records an error when configuration is not loaded."""
+        tracer, exporter = otel
+        mocker.patch("app.endpoints.shields.tracer", tracer)
+        mock_authorization_resolvers(mocker)
+
+        mock_config = AppConfig()
+        mock_config._configuration = None  # pylint: disable=protected-access
+        mocker.patch("app.endpoints.shields.configuration", mock_config)
+
+        request, auth = _auth_request()
+
+        with pytest.raises(HTTPException):
+            await shields_endpoint_handler(request=request, auth=auth)
+
+        spans = exporter.get_finished_spans()
+        assert len(spans) == 1
+        assert spans[0].name == "shields.list"
+        assert spans[0].status.status_code == StatusCode.ERROR

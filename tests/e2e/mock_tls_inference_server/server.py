@@ -5,7 +5,7 @@ Serves two HTTPS listeners using trustme-generated test certificates:
   - Port 8443: standard TLS (no client certificate required)
   - Port 8444: mutual TLS (client certificate required, verified against CA)
 
-Implements the minimal OpenAI API surface needed by Llama Stack's
+Implements the minimal OpenAI API surface needed by OGX's
 remote::openai provider: /v1/models and /v1/chat/completions.
 
 Certificates are generated on-the-fly using trustme at server startup.
@@ -61,24 +61,25 @@ class OpenAIHandler(BaseHTTPRequestHandler):
 
     def do_GET(self) -> None:  # pylint: disable=invalid-name
         """Handle GET requests."""
-        if self.path == "/health":
-            self._send_json({"status": "ok"})
-        elif self.path == "/v1/models":
-            self._send_json(
-                {
-                    "object": "list",
-                    "data": [
-                        {
-                            "id": MODEL_ID,
-                            "object": "model",
-                            "created": 1700000000,
-                            "owned_by": "test",
-                        }
-                    ],
-                }
-            )
-        else:
-            self.send_error(404)
+        match self.path:
+            case "/health":
+                self._send_json({"status": "ok"})
+            case "/v1/models":
+                self._send_json(
+                    {
+                        "object": "list",
+                        "data": [
+                            {
+                                "id": MODEL_ID,
+                                "object": "model",
+                                "created": 1700000000,
+                                "owned_by": "test",
+                            }
+                        ],
+                    }
+                )
+            case _:
+                self.send_error(404)
 
     def do_POST(self) -> None:  # pylint: disable=invalid-name
         """Handle POST requests (chat completions)."""
@@ -98,7 +99,7 @@ class OpenAIHandler(BaseHTTPRequestHandler):
         completion_id = "chatcmpl-tls-test-001"
         response_text = "Hello from the TLS mock inference server."
 
-        # Llama Stack calls remote chat completions with stream=True and reads
+        # OGX calls remote chat completions with stream=True and reads
         # assistant text from delta.content chunks.
         if request_data.get("stream"):
             self.send_response(200)

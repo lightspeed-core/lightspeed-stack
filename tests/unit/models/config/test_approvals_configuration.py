@@ -10,7 +10,7 @@ from models.config import (
     ApprovalsConfiguration,
     CompactionConfiguration,
     Configuration,
-    LlamaStackConfiguration,
+    OgxConfiguration,
     ServiceConfiguration,
     UserDataCollection,
 )
@@ -107,7 +107,7 @@ def test_root_configuration_default_includes_approvals() -> None:
     cfg = Configuration(
         name="test",
         service=ServiceConfiguration(),
-        llama_stack=LlamaStackConfiguration(
+        ogx=OgxConfiguration(
             use_as_library_client=True,
             library_client_config_path="tests/configuration/run.yaml",
         ),

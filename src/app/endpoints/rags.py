@@ -4,12 +4,13 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.params import Depends
-from ogx_client import APIConnectionError, BadRequestError
+from ogx_client import ApiException, BadRequestError
+from opentelemetry import trace
 
 from authentication import get_auth_dependency
 from authentication.interface import AuthTuple
 from authorization.middleware import authorize
-from client import AsyncOgxClientHolder
+from client.ogx import AsyncOgxClientHolder
 from configuration import configuration
 from log import get_logger
 from models.api.responses.constants import UNAUTHORIZED_OPENAPI_EXAMPLES
@@ -24,10 +25,11 @@ from models.api.responses.successful import (
     RAGInfoResponse,
     RAGListResponse,
 )
-from models.config import Action, ByokRag
+from models.config import Action, RagStore
 from utils.endpoints import check_configuration_loaded
 
 logger = get_logger(__name__)
+tracer = trace.get_tracer(__name__)
 router = APIRouter(tags=["rags"])
 
 
@@ -37,7 +39,7 @@ rags_responses: dict[int | str, dict[str, Any]] = {
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
     500: InternalServerErrorResponse.openapi_response(examples=["configuration"]),
     503: ServiceUnavailableResponse.openapi_response(
-        examples=["ogx", "kubernetes api"]
+        examples=["OGX", "kubernetes api"]
     ),
 }
 
@@ -48,7 +50,7 @@ rag_responses: dict[int | str, dict[str, Any]] = {
     404: NotFoundResponse.openapi_response(examples=["rag"]),
     500: InternalServerErrorResponse.openapi_response(examples=["configuration"]),
     503: ServiceUnavailableResponse.openapi_response(
-        examples=["ogx", "kubernetes api"]
+        examples=["OGX", "kubernetes api"]
     ),
 }
 
@@ -72,7 +74,7 @@ async def rags_endpoint_handler(
     - HTTPException: with status 500 and a detail object containing `response`
       and `cause` when service configuration is wrong or incomplete.
     - HTTPException: with status 503 and a detail object containing `response`
-      and `cause` when unable to connect to Llama Stack.
+      and `cause` when unable to connect to OGX.
 
     ### Returns:
     - RAGListResponse: List of RAG identifiers.
@@ -83,41 +85,44 @@ async def rags_endpoint_handler(
     # Nothing interesting in the request
     _ = request
 
-    # make sure that the configuration is loaded
-    check_configuration_loaded(configuration)
+    with tracer.start_as_current_span("rags.list") as span:
+        # make sure that the configuration is loaded
+        check_configuration_loaded(configuration)
 
-    llama_stack_configuration = configuration.llama_stack_configuration
-    logger.info("Llama Stack config: %s", llama_stack_configuration)
+        ogx_configuration = configuration.ogx_configuration
+        logger.info("OGX config: %s", ogx_configuration)
 
-    try:
-        # try to get Llama Stack client
-        client = AsyncOgxClientHolder().get_client()
-        # retrieve list of RAGs
-        rags = await client.vector_stores.list()
-        logger.info("List of rags: %d", len(rags.data))
+        try:
+            # try to get OGX client
+            client = AsyncOgxClientHolder().get_client()
+            # retrieve list of RAGs
+            rags = await client.vector_stores.list()
+            logger.info("List of rags: %d", len(rags))
 
-        # Map llama-stack vector store IDs to user-facing rag_ids from config
-        rag_id_mapping = configuration.rag_id_mapping
-        rag_ids = [
-            configuration.resolve_index_name(rag.id, rag_id_mapping)
-            for rag in rags.data
-        ]
+            # Map OGX vector store IDs to user-facing rag_ids from config
+            rag_id_mapping = configuration.rag_id_mapping
+            rag_ids = [
+                configuration.resolve_index_name(rag.id, rag_id_mapping) for rag in rags
+            ]
 
-        return RAGListResponse(rags=rag_ids)
+            span.set_attribute("rags.count", len(rag_ids))
+            return RAGListResponse(rags=rag_ids)
 
-    # connection to Llama Stack server
-    except APIConnectionError as e:
-        logger.error("Unable to connect to Llama Stack: %s", e)
-        response = ServiceUnavailableResponse(backend_name="OGX", cause=str(e))
-        raise HTTPException(**response.model_dump()) from e
+        # connection to OGX server
+        except ApiException as e:
+            if not e.status:
+                logger.error("Unable to connect to OGX: %s", e)
+                response = ServiceUnavailableResponse(backend_name="OGX")
+                raise HTTPException(**response.model_dump()) from e
+            raise
 
 
-def _resolve_rag_id_to_vector_db_id(rag_id: str, byok_rags: list[ByokRag]) -> str:
-    """Resolve a user-facing rag_id to the llama-stack vector_db_id.
+def _resolve_rag_id_to_vector_db_id(rag_id: str, byok_rags: list[RagStore]) -> str:
+    """Resolve a user-facing rag_id to the OGX vector_db_id.
 
     Checks if the given ID matches a rag_id in the BYOK config and returns
     the corresponding vector_db_id. If no match, returns the ID unchanged
-    (assuming it is already a llama-stack vector store ID).
+    (assuming it is already an OGX vector store ID).
 
     Parameters:
     ----------
@@ -126,7 +131,7 @@ def _resolve_rag_id_to_vector_db_id(rag_id: str, byok_rags: list[ByokRag]) -> st
 
     Returns:
     -------
-        The llama-stack vector_db_id, or the original ID if no mapping found.
+        The OGX vector_db_id, or the original ID if no mapping found.
     """
     for brag in byok_rags:
         if brag.rag_id == rag_id:
@@ -143,13 +148,13 @@ async def get_rag_endpoint_handler(
 ) -> RAGInfoResponse:
     """Retrieve a single RAG identified by its unique ID.
 
-    Accepts both user-facing rag_id (from LCORE config) and llama-stack
+    Accepts both user-facing rag_id (from LCORE config) and OGX
     vector_store_id. If a rag_id from config is provided, it is resolved
-    to the underlying vector_store_id for the llama-stack lookup.
+    to the underlying vector_store_id for the OGX lookup.
 
     ### Parameters:
     - request: The incoming HTTP request (used by middleware).
-    - rag_id: rag_id or llama-stack vector_store_id
+    - rag_id: rag_id or OGX vector_store_id
     - auth: Authentication tuple from the auth dependency (used by middleware).
 
     ### Raises:
@@ -160,7 +165,7 @@ async def get_rag_endpoint_handler(
     - HTTPException: with status 500 and a detail object containing `response`
       and `cause` when service configuration is wrong or incomplete.
     - HTTPException: with status 503 and a detail object containing `response`
-      and `cause` when unable to connect to Llama Stack.
+      and `cause` when unable to connect to OGX.
 
     ### Returns:
     - RAGInfoResponse: A single RAG's details.
@@ -171,42 +176,46 @@ async def get_rag_endpoint_handler(
     # Nothing interesting in the request
     _ = request
 
-    check_configuration_loaded(configuration)
+    with tracer.start_as_current_span("rags.get") as span:
+        check_configuration_loaded(configuration)
 
-    llama_stack_configuration = configuration.llama_stack_configuration
-    logger.info("Llama Stack config: %s", llama_stack_configuration)
+        ogx_configuration = configuration.ogx_configuration
+        logger.info("OGX config: %s", ogx_configuration)
 
-    # Resolve user-facing rag_id to llama-stack vector_db_id
-    vector_db_id = _resolve_rag_id_to_vector_db_id(
-        rag_id, configuration.configuration.byok_rag
-    )
-
-    try:
-        # try to get Llama Stack client
-        client = AsyncOgxClientHolder().get_client()
-        # retrieve info about RAG
-        rag_info = await client.vector_stores.retrieve(vector_db_id)
-
-        # Return the user-facing ID (rag_id from config if mapped, otherwise as-is)
-        display_id = configuration.resolve_index_name(
-            rag_info.id, configuration.rag_id_mapping
+        # Resolve user-facing rag_id to OGX vector_db_id
+        vector_db_id = _resolve_rag_id_to_vector_db_id(
+            rag_id, configuration.configuration.rag.byok.stores
         )
 
-        return RAGInfoResponse(
-            id=display_id,
-            name=rag_info.name,
-            created_at=rag_info.created_at,
-            last_active_at=rag_info.last_active_at,
-            expires_at=rag_info.expires_at,
-            object=rag_info.object or "vector_store",
-            status=rag_info.status or "unknown",
-            usage_bytes=rag_info.usage_bytes or 0,
-        )
-    except APIConnectionError as e:
-        logger.error("Unable to connect to Llama Stack: %s", e)
-        response = ServiceUnavailableResponse(backend_name="OGX", cause=str(e))
-        raise HTTPException(**response.model_dump()) from e
-    except BadRequestError as e:
-        logger.error("RAG not found: %s", e)
-        response = NotFoundResponse(resource="rag", resource_id=rag_id)
-        raise HTTPException(**response.model_dump()) from e
+        try:
+            # try to get OGX client
+            client = AsyncOgxClientHolder().get_client()
+            # retrieve info about RAG
+            rag_info = await client.vector_stores.retrieve(vector_db_id)
+
+            # Return the user-facing ID (rag_id from config if mapped, otherwise as-is)
+            display_id = configuration.resolve_index_name(
+                rag_info.id, configuration.rag_id_mapping
+            )
+
+            span.set_attribute("rags.found", True)
+            return RAGInfoResponse(
+                id=display_id,
+                name=rag_info.name,
+                created_at=rag_info.created_at,
+                last_active_at=rag_info.last_active_at,
+                expires_at=rag_info.expires_at,
+                object=rag_info.object or "vector_store",
+                status=rag_info.status or "unknown",
+                usage_bytes=rag_info.usage_bytes or 0,
+            )
+        except BadRequestError as e:
+            logger.error("RAG not found: %s", e)
+            response = NotFoundResponse(resource="rag", resource_id=rag_id)
+            raise HTTPException(**response.model_dump()) from e
+        except ApiException as e:
+            if not e.status:
+                logger.error("Unable to connect to OGX: %s", e)
+                response = ServiceUnavailableResponse(backend_name="OGX")
+                raise HTTPException(**response.model_dump()) from e
+            raise

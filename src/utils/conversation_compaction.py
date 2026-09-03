@@ -4,7 +4,7 @@ This module wires the pure compaction primitives (``utils.compaction``,
 LCORE-1570) and the token estimator (``utils.token_estimator``, LCORE-1569)
 into the actual request path (LCORE-1572). Unlike ``utils.compaction`` — which
 is deliberately side-effect free — this module *does* touch conversation state:
-it fetches conversation items from Llama Stack, calls the summarization LLM,
+it fetches conversation items from OGX, calls the summarization LLM,
 writes summary marker items, reads and writes summaries in the cache, and holds
 a per-conversation lock.
 
@@ -12,17 +12,17 @@ Design (see ``docs/design/conversation-compaction/conversation-compaction.md``):
 
 * **Option A — lightspeed owns the context after compaction.** Once a
   conversation has been compacted, lightspeed-stack stops handing the
-  ``conversation`` parameter to Llama Stack (which would otherwise reload the
+  ``conversation`` parameter to OGX (which would otherwise reload the
   full message history and defeat compaction). Instead it builds the model
   input explicitly from the summaries plus the recent verbatim turns. The
   conversation identity (``conversation_id``) is preserved, and the full
-  history remains in Llama Stack's conversation *items* for UI/audit.
+  history remains in OGX's conversation *items* for UI/audit.
 
 * **Marker items track the boundary.** Each compaction writes the summary into
   the conversation as a recognizable *marker* message (a message whose text
   starts with ``MARKER_SENTINEL``). The items after the last marker are the
   recent verbatim turns; the marker texts are the additive summaries. This is
-  lightspeed's own bookkeeping — Llama Stack never interprets it (we no longer
+  lightspeed's own bookkeeping — OGX never interprets it (we no longer
   pass ``conversation`` to inference once a marker exists).
 
 * **Streaming notification.** When driven by the streaming endpoint, this
@@ -36,7 +36,7 @@ the active summary set is read back from it, and when the summaries themselves
 grow past the threshold they are folded into one and persisted via
 ``replace_summaries`` so the fold is reused rather than recomputed. When no
 persisting cache is configured (or a cache read fails) the module falls back to
-the Llama Stack marker texts, which remain authoritative — marker-only mode
+the OGX marker texts, which remain authoritative — marker-only mode
 keeps additive summaries with no fold. The marker items always carry the
 boundary between summarized history and the recent verbatim turns.
 """
@@ -47,16 +47,18 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from typing import Any, Optional, cast
 
+from fastapi import HTTPException
 from ogx_api.openai_responses import OpenAIResponseMessage
 from ogx_client import AsyncOgxClient
-from ogx_client.types.conversations.item_create_params import Item
 
 from cache.cache import Cache
 from cache.cache_error import CacheError
 from configuration import configuration
 from log import get_logger
+from models.api.responses.error import UnprocessableEntityResponse
 from models.common.responses.responses_api_params import ResponsesApiParams
 from models.common.responses.types import ResponseInput
+from models.common.turn_summary import ContextStatus
 from models.compaction import ConversationSummary
 from models.config import CompactionConfiguration, InferenceConfiguration
 from utils.compaction import (
@@ -66,6 +68,7 @@ from utils.compaction import (
 )
 from utils.conversations import (
     append_turn_items_to_conversation,
+    build_add_items_request,
     get_all_conversation_items,
 )
 from utils.token_estimator import (
@@ -149,7 +152,7 @@ class CompactionStartedEvent:
     formatting by yielding this typed value instead of a formatted string.
 
     Attributes:
-        conversation_id: The conversation being compacted (llama-stack format).
+        conversation_id: The conversation being compacted (OGX format).
     """
 
     conversation_id: str
@@ -174,12 +177,17 @@ class CompactionResult:
             ``compacted`` is True); ``None`` otherwise. In compacted mode the
             caller must append this plus the LLM output to the conversation
             items itself, since the ``conversation`` parameter is no longer
-            passed to Llama Stack.
+            passed to OGX.
     """
 
     params: ResponsesApiParams
     compacted: bool
     original_input: Optional[ResponseInput] = None
+
+    @property
+    def context_status(self) -> ContextStatus:
+        """The API ``context_status`` value for this result (LCORE-1573)."""
+        return "summarized" if self.compacted else "full"
 
 
 def is_marker_item(item: Any) -> bool:
@@ -243,6 +251,85 @@ def _verbatim_input_message(item: Any) -> Optional[OpenAIResponseMessage]:
     return OpenAIResponseMessage(role=cast(Any, role), content=text)
 
 
+def agent_prompt_text(params: ResponsesApiParams) -> str:
+    """Return the textual user prompt for a pydantic-ai agent run.
+
+    In compacted mode ``params.input`` is the explicit item list built by
+    :func:`_build_explicit_input` (summaries + recent turns + new query), so
+    the new user query is the trailing message item. The agent pipeline still
+    needs a plain string prompt (capabilities and multimodal input operate on
+    it); the full explicit list reaches the request body separately via the
+    ``extra_body`` input override (LCORE-3582).
+
+    Args:
+        params: Prepared (possibly compaction-rewritten) request parameters.
+
+    Returns:
+        ``params.input`` unchanged when it is a string; otherwise the text of
+        the last message item in the explicit list, or ``""`` when there is
+        none.
+    """
+    if isinstance(params.input, str):
+        return params.input
+    for item in reversed(list(params.input)):
+        if is_message_item(item):
+            text = extract_message_text(item)
+            if text:
+                return text
+    # The wire input still carries the explicit list via the extra_body
+    # override, so the request itself is well-formed — but capabilities and
+    # multimodal construction operate on this prompt, and an explicit input
+    # with no textual message item means compaction produced something
+    # unexpected. Surface it rather than degrading silently.
+    logger.warning(
+        "Explicit compacted input carries no textual message item; "
+        "agent prompt falls back to an empty string"
+    )
+    return ""
+
+
+def reject_image_attachments_in_compacted_mode(
+    params: ResponsesApiParams,
+    image_attachments: Optional[Sequence[Any]],
+) -> None:
+    """Reject a compacted turn that carries image attachments (LCORE-3582).
+
+    In compacted mode the wire ``input`` is overridden with the explicit item
+    list built by :func:`_build_explicit_input`, which is text-only: image
+    attachments are converted to pydantic-ai ``ImageUrl`` parts on the prompt,
+    and the override replaces the prompt-derived input wholesale, so those
+    parts never reach the request body.
+
+    Answering anyway would return a confident response that never saw the
+    image, with nothing to tell the caller their attachment was ignored. Fail
+    explicitly instead until the explicit input can carry ``input_image``
+    content parts of its own (LCORE-3789).
+
+    Args:
+        params: Prepared (possibly compaction-rewritten) request parameters.
+        image_attachments: Image attachments for this turn, if any.
+
+    Raises:
+        HTTPException: 422 when the turn is compacted and carries images.
+    """
+    if not image_attachments or not params.omit_conversation:
+        return
+    logger.warning(
+        "Rejecting compacted turn with %d image attachment(s): the explicit "
+        "input override cannot carry image content parts (LCORE-3789)",
+        len(image_attachments),
+    )
+    response = UnprocessableEntityResponse(
+        response="Image attachments are not supported on this conversation",
+        cause=(
+            "This conversation has been compacted to fit the model's context "
+            "window, and compacted turns cannot carry image attachments yet. "
+            "Send the image in a new conversation, or retry without it."
+        ),
+    )
+    raise HTTPException(**response.model_dump())
+
+
 def _query_input_message(original_input: ResponseInput) -> list[Any]:
     """Render the new user query as explicit input items.
 
@@ -276,16 +363,17 @@ async def _write_summary_marker(
     summary_text: str,
 ) -> None:
     """Write the summary into the conversation as a recognizable marker message."""
-    marker_item: dict[str, Any] = {
-        "type": "message",
-        "role": "user",
-        "content": [
-            {"type": "input_text", "text": f"{MARKER_SENTINEL} {summary_text}"}
-        ],
-    }
-    await client.conversations.items.create(
+    await client.items.create(
         conversation_id,
-        items=cast(list[Item], [marker_item]),
+        add_items_request=build_add_items_request(
+            [
+                {
+                    "type": "message",
+                    "role": "user",
+                    "content": f"{MARKER_SENTINEL} {summary_text}",
+                }
+            ]
+        ),
     )
 
 
@@ -300,7 +388,7 @@ def _read_cached_summaries(
     The cache is the preferred source of truth for summaries (and the only home
     for a persisted recursive fold). Returns an empty list when no cache is
     configured, the backend does not persist (in-memory/no-op), or a cache error
-    occurs — callers then fall back to the Llama Stack marker texts, which remain
+    occurs — callers then fall back to the OGX marker texts, which remain
     authoritative.
     """
     if cache is None:
@@ -321,7 +409,7 @@ def _store_cached_summary(
 ) -> None:
     """Persist a new summary chunk to the cache (best-effort).
 
-    The summary is also written as a Llama Stack marker by the caller, so a
+    The summary is also written as an OGX marker by the caller, so a
     failed cache write does not lose it — it only forgoes cache-backed reads and
     folding for this conversation.
     """
@@ -386,7 +474,7 @@ def _load_compaction_state(
 ) -> tuple[list[str], list[ConversationSummary], list[Any]]:
     """Read the current summary set and the recent-items buffer from the conversation.
 
-    The cache is the preferred source of truth for summary text; the Llama Stack
+    The cache is the preferred source of truth for summary text; the OGX
     marker texts remain the authoritative fallback when no persisting cache is
     configured. The recent-verbatim boundary is always derived from marker
     position in the conversation items.
@@ -428,7 +516,7 @@ async def _persist_new_summary_chunk(  # pylint: disable=too-many-arguments,too-
     user_id: str,
     skip_user_id_check: bool,
 ) -> None:
-    """Persist a fresh summary chunk: write the Llama Stack marker + best-effort cache."""
+    """Persist a fresh summary chunk: write the OGX marker + best-effort cache."""
     await _write_summary_marker(client, conversation_id, summary.summary_text)
     _store_cached_summary(cache, user_id, conversation_id, summary, skip_user_id_check)
 
@@ -515,7 +603,7 @@ async def apply_compaction(  # pylint: disable=too-many-arguments,too-many-posit
     prior summary marker already exists.
 
     Parameters:
-        client: Llama Stack client.
+        client: OGX client.
         params: The base Responses API params from ``prepare_responses_params``.
         inference_config: Inference config (for the per-model context window).
         compaction_config: Compaction tuning (enabled, threshold, buffer, ...).
@@ -669,7 +757,7 @@ async def needs_compaction_path(
     are actually being compacted.
 
     Parameters:
-        client: Llama Stack client.
+        client: OGX client.
         params: The base Responses API params.
         inference_config: Inference config (for the per-model context window).
         compaction_config: Compaction tuning.
@@ -701,7 +789,7 @@ async def store_compacted_turn(
     """Append a completed turn to the conversation when in compacted mode.
 
     In compacted mode the ``conversation`` parameter is not sent to inference,
-    so Llama Stack does not auto-store the turn. lightspeed-stack appends the
+    so OGX does not auto-store the turn. lightspeed-stack appends the
     user query and the LLM output to the conversation items itself, keeping the
     full history (and the recent-turn buffer for the next request) intact.
     """

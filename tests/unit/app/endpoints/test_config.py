@@ -1,7 +1,13 @@
 """Unit tests for the /config REST API endpoint."""
 
+from typing import Any
+
 import pytest
 from fastapi import HTTPException, Request, status
+from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
+    InMemorySpanExporter,
+)
+from opentelemetry.trace import StatusCode
 from pytest_mock import MockerFixture
 
 from app.endpoints.config import config_endpoint_handler
@@ -72,3 +78,60 @@ async def test_config_endpoint_handler_configuration_loaded(
     )
     assert response is not None
     assert response.configuration == minimal_config.configuration
+
+
+class TestConfigEndpointOtel:
+    """OTEL instrumentation tests for the /config endpoint."""
+
+    @pytest.mark.asyncio
+    async def test_emits_span_on_success(
+        self,
+        mocker: MockerFixture,
+        minimal_config: AppConfig,
+        otel: tuple[Any, InMemorySpanExporter],
+    ) -> None:
+        """Test that a successful /config request emits a span."""
+        tracer, exporter = otel
+        mocker.patch("app.endpoints.config.tracer", tracer)
+        mock_authorization_resolvers(mocker)
+        mocker.patch("app.endpoints.config.configuration", minimal_config)
+
+        request = Request(scope={"type": "http"})
+        auth: AuthTuple = ("uid", "uname", True, "tok")
+
+        await config_endpoint_handler(
+            auth=auth, request=request  # pyright:ignore[reportArgumentType]
+        )
+
+        spans = exporter.get_finished_spans()
+        assert len(spans) == 1
+        assert spans[0].name == "config.handle_request"
+
+    @pytest.mark.asyncio
+    async def test_span_records_error_when_config_not_loaded(
+        self,
+        mocker: MockerFixture,
+        otel: tuple[Any, InMemorySpanExporter],
+    ) -> None:
+        """Test that the span records an error when configuration is not loaded."""
+        tracer, exporter = otel
+        mocker.patch("app.endpoints.config.tracer", tracer)
+        mock_authorization_resolvers(mocker)
+
+        mock_config = AppConfig()
+        mock_config._configuration = None  # pylint: disable=protected-access
+        mocker.patch("app.endpoints.config.configuration", mock_config)
+
+        request = Request(scope={"type": "http"})
+        auth: AuthTuple = ("uid", "uname", True, "tok")
+
+        with pytest.raises(HTTPException):
+            await config_endpoint_handler(
+                auth=auth, request=request  # pyright:ignore[reportArgumentType]
+            )
+
+        spans = exporter.get_finished_spans()
+        assert len(spans) == 1
+        span = spans[0]
+        assert span.name == "config.handle_request"
+        assert span.status.status_code == StatusCode.ERROR

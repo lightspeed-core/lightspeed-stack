@@ -1,4 +1,5 @@
 SHELL := /bin/bash
+#TODO: We need to rename all those python and config files as well
 
 ARTIFACT_DIR := $(if $(ARTIFACT_DIR),$(ARTIFACT_DIR),tests/test_results)
 PATH_TO_PLANTUML := ~/bin
@@ -9,82 +10,82 @@ PYTHON_REGISTRY = pypi
 
 # Default configuration files (override with: make run CONFIG=myconfig.yaml)
 CONFIG ?= lightspeed-stack.yaml
-LLAMA_STACK_CONFIG ?= run.yaml
+OGX_CONFIG ?= run.yaml
 
 # Container configuration
-LLAMA_STACK_CONTAINER_NAME ?= lightspeed-llama-stack
-LLAMA_STACK_IMAGE ?= lightspeed-llama-stack:local
-LLAMA_STACK_PORT ?= 8321
+OGX_CONTAINER_NAME ?= lightspeed-ogx
+OGX_IMAGE ?= lightspeed-ogx:local
+OGX_PORT ?= 8321
 CONTAINER_RUNTIME ?= $(shell command -v podman 2>/dev/null || command -v docker 2>/dev/null)
 
 .PHONY: run \
-	run-stack \
-	build-llama-stack-image \
-	remove-llama-stack-container \
-	stop-llama-stack-container \
-	start-llama-stack-container \
-	wait-for-llama-stack-health \
-	clean-llama-stack \
+	run-ogx \
+	build-ogx-image \
+	remove-ogx-container \
+	stop-ogx-container \
+	start-ogx-container \
+	wait-for-ogx-health \
+	clean-ogx \
 	doc \
 	docs/models \
 	generate-documentation
 
-run-stack: ## Run lightspeed-stack directly, without building dependent service/s
+run-ogx: ## Run lightspeed-stack directly, without building dependent service/s
 	@if [ "$${OTEL_SDK_DISABLED:-true}" = "false" ]; then \
-		uv run opentelemetry-instrument python3.12 src/lightspeed_stack.py -c $(CONFIG); \
+		uv run opentelemetry-instrument python src/lightspeed_stack.py -c $(CONFIG); \
 	else \
-		uv run python3.12 src/lightspeed_stack.py -c $(CONFIG); \
+		uv run python src/lightspeed_stack.py -c $(CONFIG); \
 	fi
 
-run: start-llama-stack-container ## Run the service locally with dependent services
+run: start-ogx-container ## Run the service locally with dependent services
 	@echo "Starting Lightspeed Core Stack..."
-	@trap 'echo ""; echo "Stopping services..."; $(MAKE) stop-llama-stack-container' EXIT INT TERM; \
-	$(MAKE) run-stack
+	@trap 'echo ""; echo "Stopping services..."; $(MAKE) stop-ogx-container' EXIT INT TERM; \
+	$(MAKE) run-ogx
 
-build-llama-stack-image: remove-llama-stack-container ## Build llama-stack container image
-	@echo "Building llama-stack container image..."
+build-ogx-image: remove-ogx-container ## Build OGX container image
+	@echo "Building OGX container image..."
 	@if [ -z "$(CONTAINER_RUNTIME)" ]; then \
 		echo "ERROR: No container runtime found. Install podman or docker."; \
 		exit 1; \
 	fi
-	$(CONTAINER_RUNTIME) build -f deploy/llama-stack/test.containerfile -t $(LLAMA_STACK_IMAGE) .
+	$(CONTAINER_RUNTIME) build -f deploy/ogx/test.containerfile -t $(OGX_IMAGE) .
 
-stop-llama-stack-container: ## Gracefully stop llama-stack container
-	@if [ -n "$(CONTAINER_RUNTIME)" ] && $(CONTAINER_RUNTIME) inspect $(LLAMA_STACK_CONTAINER_NAME) >/dev/null 2>&1; then \
-		echo "Stopping llama-stack container (timeout: 10s)..."; \
-		if $(CONTAINER_RUNTIME) stop -t 10 $(LLAMA_STACK_CONTAINER_NAME) 2>/dev/null; then \
+stop-ogx-container: ## Gracefully stop OGX container
+	@if [ -n "$(CONTAINER_RUNTIME)" ] && $(CONTAINER_RUNTIME) inspect $(OGX_CONTAINER_NAME) >/dev/null 2>&1; then \
+		echo "Stopping OGX container (timeout: 10s)..."; \
+		if $(CONTAINER_RUNTIME) stop -t 10 $(OGX_CONTAINER_NAME) 2>/dev/null; then \
 			echo "✓ Container stopped gracefully"; \
 		else \
 			echo "⚠ Container did not stop gracefully, capturing logs..."; \
-			$(CONTAINER_RUNTIME) logs $(LLAMA_STACK_CONTAINER_NAME) > /tmp/llama-stack-failure.log 2>&1 || true; \
-			echo "Logs saved to /tmp/llama-stack-failure.log"; \
-			$(CONTAINER_RUNTIME) kill $(LLAMA_STACK_CONTAINER_NAME) 2>/dev/null || true; \
+			$(CONTAINER_RUNTIME) logs $(OGX_CONTAINER_NAME) > /tmp/ogx-failure.log 2>&1 || true; \
+			echo "Logs saved to /tmp/ogx-failure.log"; \
+			$(CONTAINER_RUNTIME) kill $(OGX_CONTAINER_NAME) 2>/dev/null || true; \
 		fi; \
 	fi
 
-remove-llama-stack-container: ## Remove llama-stack container (saves logs first)
-	@if [ -n "$(CONTAINER_RUNTIME)" ] && $(CONTAINER_RUNTIME) inspect $(LLAMA_STACK_CONTAINER_NAME) >/dev/null 2>&1; then \
+remove-ogx-container: ## Remove OGX container (saves logs first)
+	@if [ -n "$(CONTAINER_RUNTIME)" ] && $(CONTAINER_RUNTIME) inspect $(OGX_CONTAINER_NAME) >/dev/null 2>&1; then \
 		echo "Saving container logs before removal..."; \
-		$(CONTAINER_RUNTIME) logs $(LLAMA_STACK_CONTAINER_NAME) > /tmp/llama-stack-last-run.log 2>&1 || true; \
-		echo "Removing llama-stack container..."; \
-		$(CONTAINER_RUNTIME) rm -f $(LLAMA_STACK_CONTAINER_NAME); \
-		echo "✓ Container removed (logs saved to /tmp/llama-stack-last-run.log)"; \
+		$(CONTAINER_RUNTIME) logs $(OGX_CONTAINER_NAME) > /tmp/ogx-last-run.log 2>&1 || true; \
+		echo "Removing OGX container..."; \
+		$(CONTAINER_RUNTIME) rm -f $(OGX_CONTAINER_NAME); \
+		echo "✓ Container removed (logs saved to /tmp/ogx-last-run.log)"; \
 	fi
 
-start-llama-stack-container: build-llama-stack-image ## Start llama-stack container
-	@echo "Starting llama-stack container..."
+start-ogx-container: build-ogx-image ## Start OGX container
+	@echo "Starting OGX container..."
 	$(CONTAINER_RUNTIME) run -d \
-		--name $(LLAMA_STACK_CONTAINER_NAME) \
-		-p $(LLAMA_STACK_PORT):8321 \
+		--name $(OGX_CONTAINER_NAME) \
+		-p $(OGX_PORT):8321 \
 		--health-cmd "curl -f http://localhost:8321/v1/health || exit 1" \
 		--health-interval 10s \
-		--health-timeout 5s \
-		--health-retries 3 \
-		--health-start-period 15s \
-		-v $(PWD)/$(LLAMA_STACK_CONFIG):/opt/app-root/run.yaml:z \
+		--health-timeout 10s \
+		--health-retries 5 \
+		--health-start-period 20s \
+		-v $(PWD)/$(OGX_CONFIG):/opt/app-root/run.yaml:z \
 		-v $(PWD)/$(CONFIG):/opt/app-root/lightspeed-stack.yaml:ro,z \
-		-v $(PWD)/scripts/llama-stack-entrypoint.sh:/opt/app-root/enrich-entrypoint.sh:ro,z \
-		-v $(PWD)/src/llama_stack_configuration.py:/opt/app-root/llama_stack_configuration.py:ro,z \
+		-v $(PWD)/scripts/ogx-entrypoint.sh:/opt/app-root/enrich-entrypoint.sh:ro,z \
+		-v $(PWD)/src/ogx_configuration.py:/opt/app-root/ogx_configuration.py:ro,z \
 		-e OPENAI_API_KEY \
 		-e BRAVE_SEARCH_API_KEY \
 		-e TAVILY_SEARCH_API_KEY \
@@ -117,34 +118,33 @@ start-llama-stack-container: build-llama-stack-image ## Start llama-stack contai
 		-e SOLR_CONTENT_FIELD \
 		-e SOLR_EMBEDDING_MODEL \
 		-e SOLR_EMBEDDING_DIM \
-		$(LLAMA_STACK_IMAGE)
-	@$(MAKE) wait-for-llama-stack-health
+		$(OGX_IMAGE)
+	@$(MAKE) wait-for-ogx-health
 
-wait-for-llama-stack-health: ## Wait for llama-stack container to be healthy
-	@echo "Waiting for llama-stack container to be healthy..."
+wait-for-ogx-health: ## Wait for OGX container to be healthy
+	@echo "Waiting for OGX container to be healthy..."
 	@for i in {1..30}; do \
-		STATUS=$$($(CONTAINER_RUNTIME) inspect --format='{{.State.Health.Status}}' $(LLAMA_STACK_CONTAINER_NAME) 2>/dev/null || echo "no-healthcheck"); \
-		if [ "$$STATUS" = "healthy" ]; then \
-			echo "✓ Llama-stack is healthy and ready!"; \
+		if curl -sf http://localhost:$(OGX_PORT)/v1/health >/dev/null 2>&1; then \
+			echo "✓ OGX is healthy and ready!"; \
 			exit 0; \
 		fi; \
-		echo "  Health status: $$STATUS (attempt $$i/30)"; \
+		echo "  Waiting... (attempt $$i/30)"; \
 		sleep 2; \
 	done; \
-	echo "✗ ERROR: Llama-stack did not become healthy within 60 seconds"; \
+	echo "✗ ERROR: OGX did not become healthy within 60 seconds"; \
 	echo "Container logs:"; \
-	$(CONTAINER_RUNTIME) logs $(LLAMA_STACK_CONTAINER_NAME); \
+	$(CONTAINER_RUNTIME) logs $(OGX_CONTAINER_NAME); \
 	exit 1
 
-clean-llama-stack: remove-llama-stack-container ## Remove container and image
-	@if [ -n "$(CONTAINER_RUNTIME)" ] && $(CONTAINER_RUNTIME) images -q $(LLAMA_STACK_IMAGE) | grep -q .; then \
-		echo "Removing llama-stack image..."; \
-		$(CONTAINER_RUNTIME) rmi $(LLAMA_STACK_IMAGE); \
+clean-ogx: remove-ogx-container ## Remove container and image
+	@if [ -n "$(CONTAINER_RUNTIME)" ] && $(CONTAINER_RUNTIME) images -q $(OGX_IMAGE) | grep -q .; then \
+		echo "Removing OGX image..."; \
+		$(CONTAINER_RUNTIME) rmi $(OGX_IMAGE); \
 	fi
 
-run-llama-stack: ## Start Llama Stack with enriched config (for local service mode)
-	uv run src/llama_stack_configuration.py -c $(CONFIG) -i $(LLAMA_STACK_CONFIG) -o $(LLAMA_STACK_CONFIG) && \
-	uv run ogx stack run $(LLAMA_STACK_CONFIG)
+run-ogx-local: ## Start OGX with enriched config (for local service mode)
+	uv run src/ogx_configuration.py -c $(CONFIG) -i $(OGX_CONFIG) -o $(OGX_CONFIG) && \
+	uv run ogx stack run --insecure $(OGX_CONFIG)
 
 test-unit: ## Run the unit tests
 	@echo "Running unit tests..."
@@ -162,11 +162,11 @@ test-e2e: ## Run end to end tests for the service
 test-e2e-local: ## Run end to end tests for the service (no script wrapper)
 	uv run behave --color --format pretty --tags=-skip -D dump_errors=true @tests/e2e/test_list.txt
 
-# Tag-based subsets (@e2e_group_* on feature files). Default runs all groups; override for one shard, e.g.
-#   E2E_BEHAVE_TAG_EXPR='not @skip and @e2e_group_2' make test-e2e-tagged-local
-E2E_BEHAVE_TAG_EXPR ?= not @skip and (e2e_group_1 or e2e_group_2 or e2e_group_3)
+# Tag-based subsets (@cfg_* on features/scenarios). Default runs all config groups; override for one shard, e.g.
+#   E2E_BEHAVE_TAG_EXPR='not @skip and @cfg_authorized' make test-e2e-tagged-local
+E2E_BEHAVE_TAG_EXPR ?= not @skip and (@cfg_default or @cfg_authorized or @cfg_mcp or @cfg_mcp_invalid or @cfg_mcp_api_auth or @cfg_rbac or @cfg_rh_identity or @cfg_negative or @cfg_skills or @cfg_skills_directory or @cfg_shields or @cfg_byok_pdf or @cfg_tls or @cfg_degraded or @cfg_unified)
 
-test-e2e-tagged: ## Run e2e tests with E2E_BEHAVE_TAG_EXPR (default: all @e2e_group_*)
+test-e2e-tagged: ## Run e2e tests with E2E_BEHAVE_TAG_EXPR (default: all @cfg_*)
 	script -q -e -c "uv run behave --color --format pretty --tags=\"$(E2E_BEHAVE_TAG_EXPR)\" -D dump_errors=true @tests/e2e/test_list.txt"
 
 test-e2e-tagged-local: ## Same as test-e2e-tagged without script wrapper
@@ -362,13 +362,13 @@ distribution-archives:	## Generate distribution archives to be uploaded into Pyt
 upload-distribution-archives:	## Upload distribution archives into Python registry
 	uv run python -m twine upload --repository ${PYTHON_REGISTRY} dist/*
 
-konflux-requirements:	## Generate hermetic requirements.*.txt file for konflux build
+konflux-requirements:	## Generate hermetic requirements.*.txt file for Konflux build
 	./scripts/konflux_requirements.sh
 
-konflux-rpm-lock:	## Generate rpm.lock.yaml file for konflux build
+konflux-rpm-lock:	## Generate rpm.lock.yaml file for Konflux build
 	./scripts/generate-rpm-lock.sh
 
-konflux-artifacts-lock: ## Regenerate artifacts.lock.yaml file for konflux build
+konflux-artifacts-lock: ## Regenerate artifacts.lock.yaml file for Konflux build
 	./scripts/generate-artifacts-lock.sh
 
 help: ## Show this help screen

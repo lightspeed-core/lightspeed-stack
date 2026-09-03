@@ -59,18 +59,24 @@ def run_e2e_ops(
         capture_output=True,
         text=True,
         timeout=timeout,
+        check=False,
     )
 
 
-def wait_for_pod_health(pod_name: str, max_attempts: int = 20) -> None:
+def wait_for_pod_health(pod_name: str, max_attempts: int = 60) -> None:
     """Wait for pod to be ready in OpenShift/Prow environment.
 
-    Generous number of attempts to account for OpenTelemetry instrumentation
-    initialization overhead during service startup.
+    Default 60 attempts to account for OpenTelemetry instrumentation
+    initialization overhead and slower pod rollouts.
     """
     actual_pod_name = get_pod_name(pod_name)
     try:
-        result = run_e2e_ops("wait-for-pod", [actual_pod_name, str(max_attempts)])
+        # Subprocess timeout must cover e2e-ops poll budget (attempts × 3s).
+        result = run_e2e_ops(
+            "wait-for-pod",
+            [actual_pod_name, str(max_attempts)],
+            timeout=max(180, max_attempts * 3 + 60),
+        )
         print(result.stdout, end="")
         if result.returncode != 0:
             print(result.stderr, end="")
@@ -85,12 +91,12 @@ _LIGHTSPEED_RESTART_NAMES = frozenset({"lightspeed-stack", "lightspeed-stack-ser
 
 
 def restart_pod(container_name: str) -> None:
-    """Restart Llama Stack or Lightspeed pod in OpenShift/Prow (not Docker).
+    """Restart OGX or Lightspeed pod in OpenShift/Prow (not Docker).
 
     Maps ``container_name`` to the correct e2e-ops command: ``restart-llama-stack``
     vs ``restart-lightspeed``. Unknown names default to Lightspeed with a warning.
 
-    For Lightspeed restarts, e2e-ops ensures Llama is running first. Llama pod logs
+    For Lightspeed restarts, e2e-ops ensures OGX is running first. OGX pod logs
     may look unchanged after apply (no-op when healthy); that is expected.
 
     CI failures with healthy pod logs are often **localhost port-forward** contention
@@ -139,8 +145,8 @@ def restart_pod(container_name: str) -> None:
         raise
 
 
-def restore_llama_stack_pod() -> None:
-    """Restore Llama Stack pod in Prow/OpenShift environment.
+def restore_ogx_pod() -> None:
+    """Restore OGX pod in Prow/OpenShift environment.
 
     Raises:
         subprocess.CalledProcessError: If oc/e2e-ops restore fails.
@@ -159,11 +165,11 @@ def restore_llama_stack_pod() -> None:
         raise subprocess.CalledProcessError(
             result.returncode, "restart-llama-stack", result.stderr
         )
-    print("✓ Llama Stack pod restored successfully")
+    print("✓ OGX pod restored successfully")
 
 
 def disrupt_llama_stack_pod() -> bool:
-    """Disrupt llama-stack connection in Prow/OpenShift environment.
+    """Disrupt OGX connection in Prow/OpenShift environment.
 
     Returns:
         True if the pod was running and has been disrupted, False otherwise.
@@ -173,16 +179,17 @@ def disrupt_llama_stack_pod() -> bool:
         print(result.stdout, end="")
 
         # Exit code 0 = disrupted (was running), exit code 2 = was not running
-        if result.returncode == 0:
-            return True
-        elif result.returncode == 2:
-            return False
-        else:
-            print(result.stderr, end="")
-            return False
+        match result.returncode:
+            case 0:
+                return True
+            case 2:
+                return False
+            case _:
+                print(result.stderr, end="")
+                return False
 
     except subprocess.TimeoutExpired:
-        print("Warning: Timeout while disrupting Llama Stack connection")
+        print("Warning: Timeout while disrupting OGX connection")
         return False
 
 

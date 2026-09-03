@@ -21,13 +21,13 @@ from models.common import HealthStatus
 def mock_ogx_client_fixture(
     mocker: MockerFixture,
 ) -> Generator[Any, None, None]:
-    """Mock only the external Llama Stack client.
+    """Mock only the external OGX client.
 
     This is the only external dependency we mock for integration tests,
     as it represents an external service call.
 
     Returns:
-        mock_client: An AsyncMock representing the Llama Stack client whose
+        mock_client: An AsyncMock representing the OGX client whose
         `inspect.version` returns an empty list.
     """
     mock_holder_class = mocker.patch("app.endpoints.health.AsyncOgxClientHolder")
@@ -81,14 +81,14 @@ async def test_health_readiness_provider_statuses(
        provider health statuses.
 
     This integration test verifies:
-    - Function correctly retrieves provider list from Llama Stack client
+    - Function correctly retrieves provider list from OGX client
     - Both healthy and unhealthy providers are properly processed
     - Provider health status, ID, and error messages are correctly mapped
     - Multiple providers with different health states are handled correctly
 
     Parameters:
     ----------
-        mock_ogx_client_health: Mocked Llama Stack client
+        mock_ogx_client_health: Mocked OGX client
         mocker: pytest-mock fixture for creating mock objects
     """
     # Arrange: Set up mock provider list with mixed health statuses
@@ -139,7 +139,7 @@ async def test_health_readiness_client_error(
     This integration test verifies:
     - RuntimeError from uninitialized client is NOT caught by the endpoint
     - Error propagates from the endpoint handler (desired behavior)
-    - The endpoint does not catch RuntimeError, only APIConnectionError
+    - The endpoint does not catch RuntimeError, only ApiException
 
     Parameters:
     ----------
@@ -171,7 +171,7 @@ async def test_health_readiness(
 
     Parameters:
     ----------
-        mock_ogx_client_health: Mocked Llama Stack client
+        mock_ogx_client_health: Mocked OGX client
         test_response: FastAPI response object
         test_auth: noop authentication tuple
 

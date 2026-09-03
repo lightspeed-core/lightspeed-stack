@@ -27,7 +27,7 @@ def test_construct_transcripts_path(mocker: MockerFixture) -> None:
             "color_log": True,
             "access_log": True,
         },
-        "llama_stack": {
+        "ogx": {
             "api_key": "test-key",
             "url": "http://test.com:1234",
             "use_as_library_client": False,

@@ -2,6 +2,7 @@
 
 import base64
 import binascii
+import re
 from typing import Any, Literal, Optional, Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -15,14 +16,16 @@ from log import get_logger
 
 logger = get_logger(__name__)
 
-_IMAGE_SIGNATURES: dict[str, bytes] = {
-    "image/png": b"\x89PNG",
-    "image/jpeg": b"\xff\xd8\xff",
+_IMAGE_SIGNATURES: dict[str, re.Pattern[bytes]] = {
+    "image/png": re.compile(rb"^\x89PNG"),
+    "image/jpeg": re.compile(rb"^\xff\xd8\xff"),
+    # WebP is a RIFF container: "RIFF", a 4-byte size, then "WEBP".
+    "image/webp": re.compile(rb"^RIFF.{4}WEBP", re.DOTALL),
 }
 
 
 def _validate_image_magic_bytes(data: bytes, content_type: str) -> None:
-    """Verify that decoded image data starts with the expected magic bytes.
+    """Verify that decoded image data matches the expected magic bytes.
 
     Parameters:
         data: Raw decoded image bytes.
@@ -31,8 +34,8 @@ def _validate_image_magic_bytes(data: bytes, content_type: str) -> None:
     Raises:
         ValueError: If the data does not match the expected image format.
     """
-    expected = _IMAGE_SIGNATURES.get(content_type)
-    if expected and not data.startswith(expected):
+    pattern = _IMAGE_SIGNATURES.get(content_type)
+    if pattern and not pattern.match(data):
         raise ValueError(
             f"Image content does not match declared content_type "
             f"'{content_type}': invalid image data"
@@ -56,7 +59,7 @@ class Attachment(BaseModel):
     )
     content_type: str = Field(
         description="The content type as defined in MIME standard",
-        examples=["text/plain", "image/jpeg", "image/png"],
+        examples=["text/plain", "image/jpeg", "image/png", "image/webp"],
     )
     content: str = Field(
         description="The actual attachment content (text or base64-encoded image data)",
@@ -135,7 +138,7 @@ class SolrVectorSearchRequest(BaseModel):
     """LCORE Solr inline RAG options for vector_io.query (mode and provider filters).
 
     Attributes:
-        mode: Solr vector_io search mode. When omitted, the server default (hybrid) is used.
+        mode: Solr vector_io search mode. When omitted, the configured OKP default is used.
         filters: Solr provider filter payload passed through as params['solr'].
 
     Legacy clients may send a plain JSON object with filter keys only;
@@ -144,13 +147,14 @@ class SolrVectorSearchRequest(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    mode: Optional[Literal["semantic", "hybrid", "lexical"]] = Field(
+    mode: Optional[Literal["semantic", "hybrid", "lexical", "keyword"]] = Field(
         None,
         description=(
-            "Solr vector_io search mode. When omitted, the server default "
-            f"({SOLR_VECTOR_SEARCH_DEFAULT_MODE!r}) is used."
+            "Solr vector_io search mode. When omitted, the configured OKP default "
+            f"is used; otherwise {SOLR_VECTOR_SEARCH_DEFAULT_MODE!r} applies. "
+            "'keyword' and 'lexical' both use BM25 text search."
         ),
-        examples=["hybrid", "semantic", "lexical"],
+        examples=["hybrid", "semantic", "keyword", "lexical"],
     )
     filters: Optional[dict[str, Any]] = Field(
         None,
@@ -206,6 +210,6 @@ class SolrVectorSearchRequest(BaseModel):
         logger.warning(
             "Solr inline RAG: sending filter fields at the top level of `solr` without "
             "`mode` or `filters` is deprecated and will be removed; use "
-            '`{"mode": "<semantic|hybrid|lexical>", "filters": {...}}` instead.'
+            '`{"mode": "<semantic|hybrid|lexical|keyword>", "filters": {...}}` instead.'
         )
         return {"mode": None, "filters": data}

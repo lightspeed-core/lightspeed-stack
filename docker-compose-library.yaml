@@ -1,5 +1,5 @@
 services:
-  # Lightspeed Stack with embedded llama-stack (library mode)
+  # Lightspeed Stack with embedded OGX (library mode)
   lightspeed-stack:
     build:
       context: .
@@ -18,11 +18,14 @@ services:
       - ./lightspeed-stack.yaml:/app-root/lightspeed-stack.yaml:Z
       - ./run.yaml:/app-root/run.yaml:Z
       - ${GCP_KEYS_PATH:-./tmp/.gcp-keys-dummy}:/opt/app-root/.gcp-keys:ro
-      - ./tests/e2e/rag:/opt/app-root/src/.llama/storage/rag:Z
-      - ${HF_CACHE_PATH:-./tmp/.hf-cache}:/opt/app-root/src/.cache/huggingface
+      # Read-only e2e FAISS fixtures — never use as the live KV_RAG_PATH
+      - ./tests/e2e/rag:/opt/app-root/src/.llama/storage/.e2e-rag-seed:ro,Z
+      - ${HF_CACHE_PATH:-./tmp/.hf-cache}:/opt/app-root/src/.cache/huggingface:z
       - ./tests/e2e/skills:/app-root/skills:ro,Z
       - ./tests/e2e/secrets/mcp-token:/tmp/mcp-token:ro,z
       - ./tests/e2e/secrets/invalid-mcp-token:/tmp/invalid-mcp-token:ro,z
+      # Host copy so seed-restore entrypoint changes apply without rebuilding
+      - ./scripts/entrypoint.sh:/app-root/entrypoint.sh:ro,z
     environment:
       # LLM Provider API Keys
       - BRAVE_SEARCH_API_KEY=${BRAVE_SEARCH_API_KEY:-}
@@ -59,12 +62,16 @@ services:
       - OGX_LOGGING=${OGX_LOGGING:-}
       # FAISS test and inline RAG config
       - FAISS_VECTOR_STORE_ID=${FAISS_VECTOR_STORE_ID:-}
+      - RAG_SEED_DIR=/opt/app-root/src/.llama/storage/.e2e-rag-seed
+      - KV_RAG_PATH=/tmp/e2e-rag-work/kv_store.db
+      - PDF_KV_RAG_PATH=/tmp/e2e-rag-work/pdf_kv_store.db
       # Prevent HuggingFace Hub update checks (HTTP 429 rate-limiting in CI from parallel jobs).
       - HF_HUB_OFFLINE=1
       # OpenTelemetry configuration (tracing disabled by default)
       - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT:-}
       - OTEL_EXPORTER_OTLP_PROTOCOL=${OTEL_EXPORTER_OTLP_PROTOCOL:-}
       - OTEL_SERVICE_NAME=${OTEL_SERVICE_NAME:-}
+      - OTEL_ANONYMIZATION_SECRET=${OTEL_ANONYMIZATION_SECRET:-lightspeed-stack-otel-anonymization-dev-default}
       - OTEL_SDK_DISABLED=${OTEL_SDK_DISABLED:-true}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/liveness"]
