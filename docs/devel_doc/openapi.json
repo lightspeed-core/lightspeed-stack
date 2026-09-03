@@ -13295,11 +13295,15 @@
                                 },
                                 {
                                     "$ref": "#/components/schemas/RedactionShieldConfiguration"
+                                },
+                                {
+                                    "$ref": "#/components/schemas/GraniteGuardianShieldConfiguration"
                                 }
                             ],
                             "discriminator": {
                                 "propertyName": "provider_id",
                                 "mapping": {
+                                    "granite_guardian": "#/components/schemas/GraniteGuardianShieldConfiguration",
                                     "question_validity": "#/components/schemas/QuestionValidityShieldConfiguration",
                                     "redaction": "#/components/schemas/RedactionShieldConfiguration"
                                 }
@@ -14629,6 +14633,105 @@
                         "label": "mcp server static"
                     }
                 ]
+            },
+            "GraniteGuardianConfig": {
+                "properties": {
+                    "url": {
+                        "type": "string",
+                        "title": "Base URL",
+                        "description": "The model_id to use for the guard"
+                    },
+                    "api_key": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "password",
+                                "writeOnly": true
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Granite Guardian API key",
+                        "description": "API key for the inference"
+                    },
+                    "max_retries": {
+                        "type": "integer",
+                        "maximum": 5.0,
+                        "minimum": 0.0,
+                        "exclusiveMinimum": 0.0,
+                        "title": "Max retries",
+                        "description": "Maximun number of retires",
+                        "default": 2
+                    },
+                    "timeout": {
+                        "type": "integer",
+                        "maximum": 300.0,
+                        "minimum": 5.0,
+                        "exclusiveMinimum": 0.0,
+                        "title": "Timeout",
+                        "description": "Request timeout in seconds",
+                        "default": 30
+                    },
+                    "verify_ssl": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "string"
+                            }
+                        ],
+                        "title": "Verify SSL",
+                        "description": "SSL certificate verification. Can be:\n  - True: Verify using system CA bundle (default, recommended)\n  - False: Disable verification (insecure, for dev only)\n  - str: Path to custom CA bundle file (for internal PKI)",
+                        "default": true
+                    },
+                    "risks": {
+                        "items": {
+                            "$ref": "#/components/schemas/RiskDefinition"
+                        },
+                        "type": "array",
+                        "title": "Defined risks",
+                        "description": "Risks to be considered while applying this guradrail"
+                    }
+                },
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                    "url",
+                    "risks"
+                ],
+                "title": "GraniteGuardianConfig",
+                "description": "Configuration for the Granite Guardian moderation guardrail."
+            },
+            "GraniteGuardianShieldConfiguration": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Shield name",
+                        "description": "Unique, user-facing name identifying this shield instance."
+                    },
+                    "provider_id": {
+                        "type": "string",
+                        "const": "granite_guardian",
+                        "title": "Shield provider id",
+                        "description": "Discriminator identifying this as a granite-guardian shield."
+                    },
+                    "config": {
+                        "$ref": "#/components/schemas/GraniteGuardianConfig",
+                        "title": "Shield configuration",
+                        "description": "Granite-guardian-specific configuration for this shield"
+                    }
+                },
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                    "name",
+                    "provider_id",
+                    "config"
+                ],
+                "title": "GraniteGuardianShieldConfiguration",
+                "description": "Configuration for a named Granite Guardian guardrail shield.\n\nAttributes:\n    name: Unique, user-facing name identifying this shield instance.\n    provider_id: Discriminator identifying this as a granite-guardian shield.\n    config: Granite-guardian-specific configuration."
             },
             "HTTPAuthSecurityScheme": {
                 "properties": {
@@ -20776,6 +20879,69 @@
                 "type": "object",
                 "title": "RetrievalStrategyConfiguration",
                 "description": "Configuration for a single retrieval strategy (inline or tool)."
+            },
+            "RiskDefinition": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Risk name",
+                        "description": "Unique identifier for this risk (e.g., 'liability', 'competitor_mention')"
+                    },
+                    "description": {
+                        "type": "string",
+                        "title": "Rist description",
+                        "description": "Risk definition text passed to Granite Guardian as custom_criteria"
+                    },
+                    "threshold": {
+                        "type": "number",
+                        "maximum": 1.0,
+                        "minimum": 0.0,
+                        "title": "Risk threshold",
+                        "description": "Score threshold for flagging (lower = more sensitive)",
+                        "default": 0.65
+                    },
+                    "enabled": {
+                        "type": "boolean",
+                        "title": "Risk enabled",
+                        "description": "Whether to run this check",
+                        "default": true
+                    },
+                    "enable_thinking": {
+                        "type": "boolean",
+                        "title": "Risk enable thinking",
+                        "description": "Internal field - set via ModerationConfig.thinking_enabled list, not directly. When True, Granite Guardian provides detailed reasoning before scoring.",
+                        "default": false
+                    },
+                    "points": {
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "input",
+                                "output",
+                                "tool"
+                            ]
+                        },
+                        "type": "array",
+                        "minItems": 1,
+                        "title": "Guardrail points",
+                        "description": "Where this risk is evaluated: `input` (user message), `output` (model response), or `tool` (tool/MCP content)."
+                    },
+                    "violation_message": {
+                        "type": "string",
+                        "title": "Violation message",
+                        "description": "Message to be displayed when this risk is violated"
+                    }
+                },
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                    "name",
+                    "description",
+                    "points",
+                    "violation_message"
+                ],
+                "title": "RiskDefinition",
+                "description": "Definition for a custom risk category.\n\nCustom risks allow applications to add use-case-specific safety checks\nbeyond the standard harm, jailbreak, leetspeak, amnesia, and\nhistory_politics checks.\nExample:\n    liability_risk = RiskDefinition(\n        name=\"liability\",\n        description=\"Content requesting legal, medical, or financial advice\",\n        threshold=0.55,\n        points=[\"input\"],\n    )\n    pii_risk = RiskDefinition(\n        name=\"pii_request\",\n        description=\"User is asking the AI to reveal personal information\",\n        threshold=0.50,\n        points=[\"input\", \"tool\"],\n    )\nNote:\n    To enable think mode (detailed reasoning) for a risk, add the risk name\n    to the `thinking_enabled` list in `ModerationConfig`. Do not set\n    `enable_thinking` directly - it is managed internally."
             },
             "RlsapiV1Attachment": {
                 "properties": {

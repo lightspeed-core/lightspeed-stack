@@ -21,7 +21,12 @@ from models.common.moderation import (
     ShieldModerationPassed,
     ShieldModerationResult,
 )
-from models.config import QuestionValidityConfig, RedactionConfig, ShieldConfiguration
+from models.config import (
+    GraniteGuardianConfig,
+    QuestionValidityConfig,
+    RedactionConfig,
+    ShieldConfiguration,
+)
 from pydantic_ai_lightspeed.capabilities.base import AbstractSafetyCapability
 from pydantic_ai_lightspeed.capabilities.question_validity._capability import (
     QuestionValidity,
@@ -158,6 +163,13 @@ def build_shield(shield_config: ShieldConfiguration) -> AbstractSafetyCapability
             return QuestionValidity(shield_config.config)
         case RedactionConfig():
             return PiiRedactionCapability(shield_config.config)
+        case GraniteGuardianConfig():
+            raise NotImplementedError("Granite Guardian capability not implemented")
+        case _:
+            raise ValueError(
+                f"Unsupported shield config type for shield '{shield_config.name}': "
+                f"{type(shield_config.config).__name__}"
+            )
 
 
 async def run_shield_moderation(
