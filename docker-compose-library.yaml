@@ -113,6 +113,25 @@ services:
       retries: 3
       start_period: 2s
 
+  # Mock OTLP/HTTP collector for OpenTelemetry E2E tests.
+  # Brought up on demand by the OTEL scenario; intentionally not a dependency of
+  # lightspeed-stack so non-OTEL features do not require this container.
+  mock-otel:
+    build:
+      context: ./tests/e2e/mock_otel_collector
+      dockerfile: Dockerfile
+    container_name: mock-otel
+    ports:
+      - "4318:4318"
+    networks:
+      - lightspeednet
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:4318/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+      start_period: 2s
+
 
 networks:
   lightspeednet:
