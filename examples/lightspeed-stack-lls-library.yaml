@@ -6,9 +6,13 @@ service:
   workers: 1
   color_log: true
   access_log: true
-llama_stack:
+ogx:
   use_as_library_client: true
-  library_client_config_path: run.yaml
+  # Unified mode: the run.yaml next to this file is consumed as the
+  # synthesis profile (legacy library_client_config_path is deprecated,
+  # removed in 0.7).
+  config:
+    profile: run.yaml
 user_data_collection:
   feedback_enabled: true
   feedback_storage: "/tmp/data/feedback"

@@ -1,12 +1,17 @@
 """Typed JSON bodies for SSE streaming events."""
 
 import json
-from typing import Annotated, Literal, Optional, Self, TypeAlias
+from typing import Annotated, Literal, Optional, Self
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from models.api.responses.error import AbstractErrorResponse
-from models.common import ReferencedDocument, ToolCallSummary, ToolResultSummary
+from models.common import (
+    ContextStatus,
+    ReferencedDocument,
+    ToolCallSummary,
+    ToolResultSummary,
+)
 
 
 class StreamPayloadBase(BaseModel):
@@ -49,6 +54,7 @@ class EndEventData(BaseModel):
 
     referenced_documents: list[ReferencedDocument]
     truncated: Optional[bool]
+    context_status: ContextStatus = "full"
     input_tokens: int
     output_tokens: int
 
@@ -149,6 +155,7 @@ class EndStreamPayload(StreamPayloadBase):
         cls,
         *,
         referenced_documents: list[ReferencedDocument],
+        context_status: ContextStatus,
         input_tokens: int,
         output_tokens: int,
         available_quotas: dict[str, int],
@@ -157,6 +164,9 @@ class EndStreamPayload(StreamPayloadBase):
 
         Args:
             referenced_documents: Documents referenced during the turn.
+            context_status: Whether the conversation context was sent in full
+                ("full") or older turns were replaced by a summary
+                ("summarized").
             input_tokens: Input token count for the turn.
             output_tokens: Output token count for the turn.
             available_quotas: Remaining quota limits by quota name.
@@ -168,6 +178,7 @@ class EndStreamPayload(StreamPayloadBase):
             data=EndEventData(
                 referenced_documents=referenced_documents,
                 truncated=None,
+                context_status=context_status,
                 input_tokens=input_tokens,
                 output_tokens=output_tokens,
             ),
@@ -257,7 +268,7 @@ class ToolResultStreamPayload(StreamPayloadBase):
         return "[Tool Result]\n"
 
 
-StreamEventPayload: TypeAlias = Annotated[
+type StreamEventPayload = Annotated[
     TokenStreamPayload
     | TurnCompleteStreamPayload
     | ToolCallStreamPayload

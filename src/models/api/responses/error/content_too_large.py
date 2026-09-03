@@ -122,7 +122,7 @@ class FileTooLargeResponse(AbstractErrorResponse):
         message: str,
         response: str = "Invalid file upload",
     ) -> Self:
-        """Build a 413 when Llama Stack rejects the upload after we sent it.
+        """Build a 413 when OGX rejects the upload after we sent it.
 
         Args:
             message: Error text from the backend.

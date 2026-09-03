@@ -845,7 +845,7 @@ The top log probability for a token from an OpenAI-compatible chat completion re
 ## PromptCreateRequest
 
 
-Request body to create a stored prompt template in Llama Stack.
+Request body to create a stored prompt template in OGX.
 
 Attributes:
     prompt: Prompt text with variable placeholders.
@@ -1113,6 +1113,25 @@ Attributes:
 | output | string | Terminal output from client |
 
 
+## SavedPromptCreateRequest
+
+
+Request body to create a user-scoped saved prompt.
+
+Length and emptiness limits are enforced by the endpoint using configured
+saved-prompts limits, not by static field constraints here.
+
+Attributes:
+    name: Display name of the saved prompt.
+    content: Prompt body text.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| name | string | Display name of the saved prompt |
+| content | string | Prompt body text |
+
+
 ## SearchRankingOptions
 
 
@@ -1175,7 +1194,7 @@ Examples:
 LCORE Solr inline RAG options for vector_io.query (mode and provider filters).
 
 Attributes:
-    mode: Solr vector_io search mode. When omitted, the server default (hybrid) is used.
+    mode: Solr vector_io search mode. When omitted, the configured OKP default is used.
     filters: Solr provider filter payload passed through as params['solr'].
 
 Legacy clients may send a plain JSON object with filter keys only;
@@ -1184,7 +1203,7 @@ that object is accepted as filters with mode unset (server default applies).
 
 | Field | Type | Description |
 |-------|------|-------------|
-| mode | string | Solr vector_io search mode. When omitted, the server default ('hybrid') is used. |
+| mode | string | Solr vector_io search mode. When omitted, the configured OKP default is used; otherwise 'hybrid' applies. 'keyword' and 'lexical' both use BM25 text search. |
 | filters | object | Solr provider filter payload passed through as params['solr']. Supports structured metadata filters (eq, ne, in, nin comparison operators). Legacy filter-only objects (e.g. fq) are still accepted. |
 
 

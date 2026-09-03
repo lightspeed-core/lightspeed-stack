@@ -16,6 +16,7 @@ import subprocess
 import time
 import tomllib
 import urllib.request
+import sys
 from collections import deque
 from collections.abc import Sequence
 from html.parser import HTMLParser
@@ -67,8 +68,7 @@ def parse_version(
     version_str = version_str.strip()
     if "+" in version_str:
         version_str = version_str.split("+", 1)[0]
-    if version_str.endswith(".*"):
-        version_str = version_str[:-2]
+    version_str = version_str.removesuffix(".*")
     m = _VERSION_RE.match(version_str)
     if m is None:
         raise ValueError(f"Cannot parse version: {version_str!r}")
@@ -1027,18 +1027,21 @@ def uv_resolve(
         rhoai_index_url,
         "--default-index",
         "https://pypi.org/simple/",
-        "--index-strategy",
-        "prefer-index",
         "--emit-index-annotation",
         "--no-sources",
         "--group",
-        "llslibdev",
+        "ogxlibdev",
     ]
     if os.path.exists(overrides_file):
         cmd += ["--override", overrides_file]
 
     logger.debug("Running: %s", " ".join(cmd))
-    result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+    except subprocess.CalledProcessError as e:
+        print("Failed:")
+        print(e.stderr)
+        sys.exit(1)
 
     resolved: dict[str, dict[str, Any]] = {}
     current_package: Optional[str] = None
@@ -1143,11 +1146,11 @@ def _fetch_hashes_for_pypi_packages(
 def _strip_rhoai_duplicates_from_build_deps(
     build_file: str, rhoai_names: set[str]
 ) -> None:
-    """Remove packages from build deps file that already exist as RHOAI wheels.
+    """Remove packages from build deps file that are already provided elsewhere.
 
-    Prevents hermeto from fetching PyPI wheels for packages that are already
-    available from RHOAI, which would cause EC policy violations (binary=true
-    on PyPI-sourced packages).
+    Strips packages that already exist as RHOAI wheels or bootstrap packages
+    to prevent hermeto from fetching PyPI wheels for them, which would cause
+    EC policy violations (binary=true on PyPI-sourced packages).
     """
     with open(build_file) as f:
         lines = f.readlines()
@@ -1271,26 +1274,32 @@ def main() -> None:
                 for name in sorted(sdist_names):
                     info = buckets["pypi_sdist"][name]
                     f.write(f"{name}=={info['version']}\n")
-            subprocess.run(
-                [
-                    "uv",
-                    "run",
-                    "pybuild-deps",
-                    "compile",
-                    f"--output-file={build_output}",
-                    tmp_sdist_file,
-                ],
-                check=True,
-            )
+            try:
+                subprocess.run(
+                    [
+                        "pybuild-deps",
+                        "compile",
+                        f"--output-file={build_output}",
+                        tmp_sdist_file,
+                    ],
+                    check=True,
+                )
+            except subprocess.CalledProcessError as e:
+                print("Failed:")
+                print(e.stderr)
+                sys.exit(1)
         finally:
             if os.path.exists(tmp_sdist_file):
                 os.remove(tmp_sdist_file)
 
-        # Strip build deps that duplicate RHOAI wheel packages to avoid
-        # hermeto fetching them as binary from PyPI (EC policy violation).
+        # Strip build deps that duplicate RHOAI wheel packages or bootstrap
+        # packages to avoid hermeto fetching them as binary from PyPI
+        # (EC policy violation).
         rhoai_names = set(buckets["rhoai_wheel"].keys())
-        rhoai_names.update(normalize_name(p) for p in bootstrap_packages)
-        _strip_rhoai_duplicates_from_build_deps(build_output, rhoai_names)
+        bootstrap_names = {normalize_name(p) for p in bootstrap_packages}
+        _strip_rhoai_duplicates_from_build_deps(
+            build_output, rhoai_names | bootstrap_names
+        )
     else:
         with open(build_output, "w") as f:
             f.write("# No sdist packages — no build dependencies needed.\n")

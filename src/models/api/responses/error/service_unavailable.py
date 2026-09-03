@@ -16,7 +16,7 @@ class ServiceUnavailableResponse(AbstractErrorResponse):
         "json_schema_extra": {
             "examples": [
                 {
-                    "label": "ogx",
+                    "label": "OGX",
                     "detail": {
                         "response": "Unable to connect to OGX",
                         "cause": "Connection error while trying to reach backend service.",
@@ -36,16 +36,16 @@ class ServiceUnavailableResponse(AbstractErrorResponse):
         }
     }
 
-    def __init__(self, *, backend_name: str, cause: str) -> None:
+    def __init__(self, *, backend_name: str, cause: str | None = None) -> None:
         """Construct a response indicating the specified backend cannot be reached.
 
         Args:
             backend_name: Name of the backend service that could not be contacted.
-            cause: Detailed explanation of why the service is unavailable.
+            cause: Optional detailed explanation; defaults to a generic connection error.
         """
         response = f"Unable to connect to {backend_name}"
         super().__init__(
             response=response,
-            cause=cause,
+            cause=cause or "Connection error while trying to reach backend service.",
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
         )

@@ -445,8 +445,8 @@ using a different Azure service.</td>
         </tr>
       </tbody>
     </table>
-    <h2 id="byokrag">ByokRag</h2>
-    <p>BYOK (Bring Your Own Knowledge) RAG configuration.</p>
+    <h2 id="byokconfiguration">ByokConfiguration</h2>
+    <p>BYOK (Bring Your Own Knowledge) configuration.</p>
     <table>
       <colgroup>
         <col style="width: 26%"/>
@@ -462,72 +462,14 @@ using a different Azure service.</td>
       </thead>
       <tbody>
         <tr class="odd">
-          <td>rag_id</td>
-          <td>string</td>
-          <td>Unique RAG ID</td>
-        </tr>
-        <tr class="even">
-          <td>rag_type</td>
-          <td>string</td>
-          <td>Type of RAG database (e.g.&#xA0;&#x2018;inline::faiss&#x2019;,
-&#x2018;remote::pgvector&#x2019;).</td>
-        </tr>
-        <tr class="odd">
-          <td>embedding_model</td>
-          <td>string</td>
-          <td>Embedding model identification</td>
-        </tr>
-        <tr class="even">
-          <td>embedding_dimension</td>
+          <td>max_chunks</td>
           <td>integer</td>
-          <td>Dimensionality of embedding vectors.</td>
-        </tr>
-        <tr class="odd">
-          <td>vector_db_id</td>
-          <td>string</td>
-          <td>Vector database identification.</td>
+          <td>Maximum total number of chunks returned across all BYOK stores.</td>
         </tr>
         <tr class="even">
-          <td>db_path</td>
-          <td>string</td>
-          <td>Path to RAG database. Required for inline::faiss.</td>
-        </tr>
-        <tr class="odd">
-          <td>score_multiplier</td>
-          <td>number</td>
-          <td>Multiplier applied to relevance scores from this vector store. Used
-to weight results when querying multiple knowledge sources. Values &gt;
-1 boost this store&#x2019;s results; values &lt; 1 reduce them.</td>
-        </tr>
-        <tr class="even">
-          <td>host</td>
-          <td>string</td>
-          <td>PostgreSQL host for remote::pgvector. Defaults to
-${env.POSTGRES_HOST} when rag_type is remote::pgvector.</td>
-        </tr>
-        <tr class="odd">
-          <td>port</td>
-          <td>string</td>
-          <td>PostgreSQL port for remote::pgvector. Defaults to
-${env.POSTGRES_PORT} when rag_type is remote::pgvector.</td>
-        </tr>
-        <tr class="even">
-          <td>db</td>
-          <td>string</td>
-          <td>PostgreSQL database name for remote::pgvector. Defaults to
-${env.POSTGRES_DATABASE} when rag_type is remote::pgvector.</td>
-        </tr>
-        <tr class="odd">
-          <td>user</td>
-          <td>string</td>
-          <td>PostgreSQL user for remote::pgvector. Defaults to
-${env.POSTGRES_USER} when rag_type is remote::pgvector.</td>
-        </tr>
-        <tr class="even">
-          <td>password</td>
-          <td>string</td>
-          <td>PostgreSQL password for remote::pgvector. Defaults to
-${env.POSTGRES_PASSWORD} when rag_type is remote::pgvector.</td>
+          <td>stores</td>
+          <td>array</td>
+          <td>List of BYOK RAG store configurations.</td>
         </tr>
       </tbody>
     </table>
@@ -682,45 +624,55 @@ regardless of buffer_turns.</td>
 endpoints.</td>
         </tr>
         <tr class="even">
+          <td>config_format_version</td>
+          <td>string</td>
+          <td>Optional explicit marker of the configuration format. When set, it
+must agree with the shape detected from the configuration body:
+&#x2018;unified&#x2019; requires a synthesis input (a non-empty inference.providers, a
+non-empty vector_store.providers, or a ogx.config block),
+&#x2018;legacy&#x2019; requires no synthesis input. Reserved as the lever for a future
+breaking change of the unified schema (R11).</td>
+        </tr>
+        <tr class="odd">
           <td>service</td>
           <td/>
           <td>This section contains Lightspeed Core Stack service
 configuration.</td>
         </tr>
-        <tr class="odd">
-          <td>llama_stack</td>
+        <tr class="even">
+          <td>ogx</td>
           <td/>
-          <td>This section contains Llama Stack configuration. Lightspeed Core
-Stack service can call Llama Stack in library mode or in server
+          <td>This section contains OGX configuration. Lightspeed Core
+Stack service can call OGX in library mode or in server
 mode.</td>
         </tr>
-        <tr class="even">
+        <tr class="odd">
           <td>user_data_collection</td>
           <td/>
           <td>This section contains configuration for subsystem that collects user
 data(transcription history and feedbacks).</td>
         </tr>
-        <tr class="odd">
+        <tr class="even">
           <td>database</td>
           <td/>
           <td>Configuration for database to store conversation IDs and other
 runtime data</td>
         </tr>
-        <tr class="even">
+        <tr class="odd">
           <td>mcp_servers</td>
           <td>array</td>
           <td>MCP (Model Context Protocol) servers provide tools and capabilities
 to the AI agents. These are configured in this section. Only MCP servers
 defined in the lightspeed-stack.yaml configuration are available to the
-agents. Tools configured in the llama-stack run.yaml are not accessible
+agents. Tools configured in the OGX run.yaml are not accessible
 to lightspeed-core agents.</td>
         </tr>
-        <tr class="odd">
+        <tr class="even">
           <td>authentication</td>
           <td/>
           <td>Authentication configuration</td>
         </tr>
-        <tr class="even">
+        <tr class="odd">
           <td>authorization</td>
           <td/>
           <td>Lightspeed Core Stack implements a modular authentication and
@@ -729,26 +681,26 @@ is configurable through role-based access control. Authentication is
 handled through selectable modules configured via the module field in
 the authentication configuration.</td>
         </tr>
-        <tr class="odd">
+        <tr class="even">
           <td>customization</td>
           <td/>
           <td>It is possible to customize Lightspeed Core Stack via this section.
 System prompt can be customized and also different parts of the service
 can be replaced by custom Python modules.</td>
         </tr>
-        <tr class="even">
+        <tr class="odd">
           <td>inference</td>
           <td/>
           <td>One LLM provider and one its model might be selected as default
 ones. When no provider+model pair is specified in REST API calls (query
 endpoints), the default provider and model are used.</td>
         </tr>
-        <tr class="odd">
+        <tr class="even">
           <td>conversation_cache</td>
           <td/>
           <td/>
         </tr>
-        <tr class="even">
+        <tr class="odd">
           <td>compaction</td>
           <td/>
           <td>Controls when conversation history is summarized to keep the model&#x2019;s
@@ -756,42 +708,51 @@ input below the context window limit. Disabled by default &#x2014; when
 disabled, requests that exceed the window continue to surface as HTTP
 413.</td>
         </tr>
-        <tr class="odd">
+        <tr class="even">
           <td>approvals</td>
           <td/>
           <td>Settings for human-in-the-loop approval of MCP tool invocations</td>
         </tr>
-        <tr class="even">
-          <td>byok_rag</td>
-          <td>array</td>
-          <td>BYOK RAG configuration. This configuration can be used to
-reconfigure Llama Stack through its run.yaml configuration file</td>
-        </tr>
         <tr class="odd">
+          <td>vector_store</td>
+          <td/>
+          <td>Dynamic vector-store provider capacity for runtime POST
+/v1/vector-stores creates. Not the same as rag.byok.stores (static
+registered corpora). When providers is non-empty, default_provider is
+required and must match one of providers[].id. Applied in unified
+synthesis only.</td>
+        </tr>
+        <tr class="even">
           <td>a2a_state</td>
           <td/>
           <td>Configuration for A2A protocol persistent state storage.</td>
         </tr>
-        <tr class="even">
+        <tr class="odd">
           <td>quota_handlers</td>
           <td/>
           <td>Quota handlers configuration</td>
         </tr>
-        <tr class="odd">
+        <tr class="even">
           <td>azure_entra_id</td>
           <td/>
           <td/>
         </tr>
-        <tr class="even">
+        <tr class="odd">
           <td>rlsapi_v1</td>
           <td/>
           <td>Configuration for the rlsapi v1 /infer endpoint used by the RHEL
 Lightspeed Command Line Assistant (CLA).</td>
         </tr>
-        <tr class="odd">
+        <tr class="even">
           <td>splunk</td>
           <td/>
           <td>Splunk HEC configuration for sending telemetry events.</td>
+        </tr>
+        <tr class="odd">
+          <td>observability</td>
+          <td/>
+          <td>OpenTelemetry and observability configuration collected from OTEL_*
+environment variables.</td>
         </tr>
         <tr class="even">
           <td>deployment_environment</td>
@@ -802,25 +763,28 @@ Lightspeed Command Line Assistant (CLA).</td>
         <tr class="odd">
           <td>rag</td>
           <td/>
-          <td>Configuration for all RAG strategies (inline and tool-based).</td>
-        </tr>
-        <tr class="even">
-          <td>okp</td>
-          <td/>
-          <td>OKP provider settings. Only used when &#x2018;okp&#x2019; is listed in rag.inline
-or rag.tool.</td>
-        </tr>
-        <tr class="odd">
-          <td>reranker</td>
-          <td/>
-          <td>Configuration for neural reranking of RAG chunks using
-cross-encoder.</td>
+          <td>Unified RAG configuration: BYOK stores, OKP provider, and retrieval
+strategies (inline and tool-based).</td>
         </tr>
         <tr class="even">
           <td>skills</td>
           <td/>
           <td>Agent skills configuration. Specifies paths to skill
 directories.</td>
+        </tr>
+        <tr class="odd">
+          <td>saved_prompts</td>
+          <td/>
+          <td>Configuration for saved prompts feature limits including maximum
+prompts per user, display name length, and content length.</td>
+        </tr>
+        <tr class="even">
+          <td>shields</td>
+          <td>array</td>
+          <td>List of pydantic-ai-lightspeed agent guardrail shields (question
+validity and PII redaction). Each entry has a unique &#x2018;name&#x2019;, a
+&#x2018;provider_id&#x2019; (&#x2018;question_validity&#x2019; or &#x2018;redaction&#x2019;), and a type-specific
+&#x2018;config&#x2019;.</td>
         </tr>
       </tbody>
     </table>
@@ -962,6 +926,69 @@ stored.</td>
         </tr>
       </tbody>
     </table>
+    <h2 id="faissvectorstoreprovider">FaissVectorStoreProvider</h2>
+    <p>Dynamic FAISS vector-store provider (runtime create capacity).</p>
+    <table>
+      <colgroup>
+        <col style="width: 26%"/>
+        <col style="width: 23%"/>
+        <col style="width: 50%"/>
+      </colgroup>
+      <thead>
+        <tr class="header">
+          <th>Field</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="odd">
+          <td>id</td>
+          <td>string</td>
+          <td>OGX vector_io provider_id. Surrounding whitespace is
+stripped before validation and emission.</td>
+        </tr>
+        <tr class="even">
+          <td>embedding_model</td>
+          <td>string</td>
+          <td>Embedding model identification used for stores created against this
+provider.</td>
+        </tr>
+        <tr class="odd">
+          <td>embedding_dimension</td>
+          <td>integer</td>
+          <td>Dimensionality of embedding vectors for this provider.</td>
+        </tr>
+        <tr class="even">
+          <td>type</td>
+          <td>string</td>
+          <td>Product type for this dynamic vector-store provider.</td>
+        </tr>
+        <tr class="odd">
+          <td>config</td>
+          <td/>
+          <td>FAISS storage settings for this provider.</td>
+        </tr>
+      </tbody>
+    </table>
+    <h2 id="faissvectorstoreproviderconfig">FaissVectorStoreProviderConfig</h2>
+    <p>Storage config for a FAISS dynamic vector-store provider.</p>
+    <table>
+      <thead>
+        <tr class="header">
+          <th>Field</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="odd">
+          <td>path</td>
+          <td>string</td>
+          <td>On-disk FAISS/SQLite path for this provider.</td>
+        </tr>
+      </tbody>
+    </table>
     <h2 id="inmemorycacheconfig">InMemoryCacheConfig</h2>
     <p>In-memory cache configuration.</p>
     <table>
@@ -1028,7 +1055,7 @@ trigger.</td>
           <td>array</td>
           <td>Unified-mode synthesis input (Decision S5): a high-level,
 backend-agnostic list of inference providers the synthesizer expands
-into Llama Stack provider entries. Lives at the configuration root so it
+into OGX provider entries. Lives at the configuration root so it
 survives a future backend change. A non-empty list signals unified mode.
 Empty (the default) leaves legacy/remote modes unaffected. The sibling
 default_model / default_provider keep their query-time routing meaning
@@ -1194,24 +1221,24 @@ Web Tokens</a>
       </tbody>
     </table>
     <h2 id="llamastackconfiguration">LlamaStackConfiguration</h2>
-    <p>Llama stack configuration.</p>
-    <p>Llama Stack is a comprehensive system that provides a uniform set of
+    <p>OGX configuration.</p>
+    <p>OGX is a comprehensive system that provides a uniform set of
 tools for building, scaling, and deploying generative AI applications,
 enabling developers to create, integrate, and orchestrate multiple AI
 services and capabilities into an adaptable setup.</p>
     <p>Useful resources:</p>
     <ul>
       <li>
-        <a href="https://www.llama.com/products/llama-stack/">Llama
+        <a href="https://ogx-ai.github.io/">Llama
 Stack</a>
       </li>
       <li>
-        <a href="https://github.com/llamastack/llama-stack-client-python">Python
-Llama Stack client</a>
+        <a href="https://github.com/ogx-ai/ogx-client-python">Python
+OGX client</a>
       </li>
       <li>
-        <a href="https://llamastack.github.io/">Build AI Applications with
-Llama Stack</a>
+        <a href="https://ogx-ai.github.io/">Build AI Applications with
+OGX</a>
       </li>
     </ul>
     <table>
@@ -1231,37 +1258,40 @@ Llama Stack</a>
         <tr class="odd">
           <td>url</td>
           <td>string</td>
-          <td>URL to Llama Stack service; used when library mode is disabled. Must
+          <td>URL to OGX service; used when library mode is disabled. Must
 be a valid HTTP or HTTPS URL.</td>
         </tr>
         <tr class="even">
           <td>api_key</td>
           <td>string</td>
-          <td>API key to access Llama Stack service</td>
+          <td>API key to access OGX service</td>
         </tr>
         <tr class="odd">
           <td>use_as_library_client</td>
           <td>boolean</td>
-          <td>When set to true Llama Stack will be used in library mode, not in
+          <td>When set to true OGX will be used in library mode, not in
 server mode (default)</td>
         </tr>
         <tr class="even">
           <td>library_client_config_path</td>
           <td>string</td>
-          <td>Path to configuration file used when Llama Stack is run in library
-mode</td>
+          <td>Path to configuration file used when OGX is run in library
+mode. DEPRECATED legacy two-file setup: logs a startup warning since 0.6
+and is removed in 0.8 &#x2014; use unified mode instead (the config block
+below, and/or the root-level inference.providers section); migrate with
+lightspeed-stack &#x2013;migrate-config.</td>
         </tr>
         <tr class="odd">
           <td>timeout</td>
           <td>integer</td>
-          <td>Timeout in seconds for requests to Llama Stack service. Default is
+          <td>Timeout in seconds for requests to OGX service. Default is
 180 seconds (3 minutes) to accommodate long-running RAG queries.</td>
         </tr>
         <tr class="even">
           <td>max_retries</td>
           <td>integer</td>
           <td>Maximum number of connection attempts before giving up. Used on
-startup to connect to Llama Stack and retrieve its version. Connection
+startup to connect to OGX and retrieve its version. Connection
 attempts are retried with a fixed delay to handle the case where Llama
 Stack is still starting up (e.g., when running as a sidecar in the same
 pod).</td>
@@ -1270,21 +1300,21 @@ pod).</td>
           <td>retry_delay</td>
           <td>integer</td>
           <td>Delay in seconds between retry attempts. Used on startup to connect
-to Llama Stack and retrieve its version. Connection attempts are retried
-with a fixed delay to handle the case where Llama Stack is still
+to OGX and retrieve its version. Connection attempts are retried
+with a fixed delay to handle the case where OGX is still
 starting up (e.g., when running as a sidecar in the same pod).</td>
         </tr>
         <tr class="even">
           <td>allow_degraded_mode</td>
           <td>boolean</td>
-          <td>If enabled, Lightspeed Core can be started even when Llama Stack is
+          <td>If enabled, Lightspeed Core can be started even when OGX is
 not accessible (valid for server mode only)</td>
         </tr>
         <tr class="odd">
           <td>config</td>
           <td/>
           <td>Backend-specific knobs for unified mode, where LCORE synthesizes the
-Llama Stack run.yaml instead of reading an external file. Holds the
+OGX run.yaml instead of reading an external file. Holds the
 baseline selector, an optional profile path, and a raw native_override
 escape hatch. Backend-agnostic high-level sections
 (e.g.&#xA0;inference.providers) live at the configuration root, not here.
@@ -1299,7 +1329,7 @@ library_client_config_path is not required.</td>
     <p>MCP (Model Context Protocol) servers provide tools and capabilities
 to the AI agents. These are configured by this structure. Only MCP
 servers defined in the lightspeed-stack.yaml configuration are available
-to the agents. Tools configured in the llama-stack run.yaml are not
+to the agents. Tools configured in the OGX run.yaml are not
 accessible to lightspeed-core agents.</p>
     <p>Useful resources:</p>
     <ul>
@@ -1378,16 +1408,45 @@ ApprovalFilter for granular control.</td>
           <td>timeout</td>
           <td>integer</td>
           <td>Timeout in seconds for requests to the MCP server. If not specified,
-the default timeout from Llama Stack will be used. Note: This field is
-reserved for future use when Llama Stack adds timeout support.</td>
+the default timeout from OGX will be used. Note: This field is
+reserved for future use when OGX adds timeout support.</td>
+        </tr>
+      </tbody>
+    </table>
+    <h2 id="observabilityconfiguration">ObservabilityConfiguration</h2>
+    <p>OpenTelemetry observability configuration.</p>
+    <p>This configuration is automatically populated from OTEL_* environment
+variables to provide visibility into the active tracing setup.</p>
+    <p>Attributes: otel: Dictionary of OTEL_* environment variables with
+secrets redacted.</p>
+    <table>
+      <colgroup>
+        <col style="width: 26%"/>
+        <col style="width: 23%"/>
+        <col style="width: 50%"/>
+      </colgroup>
+      <thead>
+        <tr class="header">
+          <th>Field</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="odd">
+          <td>otel</td>
+          <td>object</td>
+          <td>Active OpenTelemetry configuration from OTEL_* environment
+variables</td>
         </tr>
       </tbody>
     </table>
     <h2 id="okpconfiguration">OkpConfiguration</h2>
     <p>OKP (Offline Knowledge Portal) provider configuration.</p>
     <p>Controls provider-specific behaviour for the OKP vector store. Only
-relevant when <code>"okp"</code> is listed in <code>rag.inline</code> or
-<code>rag.tool</code>.</p>
+relevant when <code>"okp"</code> is listed in
+<code>rag.retrieval.inline.sources</code> or
+<code>rag.retrieval.tool.sources</code>.</p>
     <table>
       <colgroup>
         <col style="width: 26%"/>
@@ -1421,6 +1480,108 @@ reference_url for chunk source URLs.</td>
           <td>Additional OKP filter query applied to every OKP search request. Use
 Solr boolean syntax, e.g.&#xA0;&#x2018;product:ansible AND
 product:<em>openshift</em>&#x2019;.</td>
+        </tr>
+        <tr class="even">
+          <td>search_mode</td>
+          <td>string</td>
+          <td>Default Solr search mode for OKP queries. &#x2018;keyword&#x2019; uses BM25 text
+search (no embedding model needed). &#x2018;hybrid&#x2019; combines vector + keyword
+search. &#x2018;semantic&#x2019; uses pure vector search. When unset, falls back to
+the global default (&#x2018;hybrid&#x2019;).</td>
+        </tr>
+        <tr class="odd">
+          <td>max_chunks</td>
+          <td>integer</td>
+          <td>Maximum number of chunks fetched from OKP.</td>
+        </tr>
+      </tbody>
+    </table>
+    <h2 id="pgvectorvectorstoreprovider">PgvectorVectorStoreProvider</h2>
+    <p>Dynamic pgvector vector-store provider (runtime create capacity).</p>
+    <table>
+      <colgroup>
+        <col style="width: 26%"/>
+        <col style="width: 23%"/>
+        <col style="width: 50%"/>
+      </colgroup>
+      <thead>
+        <tr class="header">
+          <th>Field</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="odd">
+          <td>id</td>
+          <td>string</td>
+          <td>OGX vector_io provider_id. Surrounding whitespace is
+stripped before validation and emission.</td>
+        </tr>
+        <tr class="even">
+          <td>embedding_model</td>
+          <td>string</td>
+          <td>Embedding model identification used for stores created against this
+provider.</td>
+        </tr>
+        <tr class="odd">
+          <td>embedding_dimension</td>
+          <td>integer</td>
+          <td>Dimensionality of embedding vectors for this provider.</td>
+        </tr>
+        <tr class="even">
+          <td>type</td>
+          <td>string</td>
+          <td>Product type for this dynamic vector-store provider.</td>
+        </tr>
+        <tr class="odd">
+          <td>config</td>
+          <td/>
+          <td>pgvector connection settings for this provider.</td>
+        </tr>
+      </tbody>
+    </table>
+    <h2 id="pgvectorvectorstoreproviderconfig">PgvectorVectorStoreProviderConfig</h2>
+    <p>Storage config for a pgvector dynamic vector-store provider.</p>
+    <table>
+      <colgroup>
+        <col style="width: 26%"/>
+        <col style="width: 23%"/>
+        <col style="width: 50%"/>
+      </colgroup>
+      <thead>
+        <tr class="header">
+          <th>Field</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="odd">
+          <td>host</td>
+          <td>string</td>
+          <td>PostgreSQL host. Defaults to ${env.POSTGRES_HOST}.</td>
+        </tr>
+        <tr class="even">
+          <td>port</td>
+          <td/>
+          <td>PostgreSQL port. Defaults to ${env.POSTGRES_PORT}. Accepts string
+placeholders and integer values.</td>
+        </tr>
+        <tr class="odd">
+          <td>db</td>
+          <td>string</td>
+          <td>PostgreSQL database name. Defaults to ${env.POSTGRES_DATABASE}.</td>
+        </tr>
+        <tr class="even">
+          <td>user</td>
+          <td>string</td>
+          <td>PostgreSQL user. Defaults to ${env.POSTGRES_USER}.</td>
+        </tr>
+        <tr class="odd">
+          <td>password</td>
+          <td>string</td>
+          <td>PostgreSQL password. Defaults to ${env.POSTGRES_PASSWORD}.</td>
         </tr>
       </tbody>
     </table>
@@ -1503,6 +1664,78 @@ TCP/IP connection will be negotiated with the server.</td>
           <td>ca_cert_path</td>
           <td>string</td>
           <td>Path to CA certificate</td>
+        </tr>
+      </tbody>
+    </table>
+    <h2 id="questionvalidityconfig">QuestionValidityConfig</h2>
+    <p>Configuration for the question validity guardrail.</p>
+    <table>
+      <colgroup>
+        <col style="width: 26%"/>
+        <col style="width: 23%"/>
+        <col style="width: 50%"/>
+      </colgroup>
+      <thead>
+        <tr class="header">
+          <th>Field</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="odd">
+          <td>model_id</td>
+          <td>string</td>
+          <td>The model_id to use for the guard</td>
+        </tr>
+        <tr class="even">
+          <td>model_prompt</td>
+          <td>string</td>
+          <td>The default prompt sent to the LLM used to validate the Users&#x2019;
+question.</td>
+        </tr>
+        <tr class="odd">
+          <td>invalid_question_response</td>
+          <td>string</td>
+          <td>The default response when the Users&#x2019; question is determined to be
+invalid.</td>
+        </tr>
+      </tbody>
+    </table>
+    <h2 id="questionvalidityshieldconfiguration">QuestionValidityShieldConfiguration</h2>
+    <p>Configuration for a named question-validity guardrail shield.</p>
+    <p>Attributes: name: Unique, user-facing name identifying this shield
+instance. provider_id: Discriminator identifying this as a
+question-validity shield. config: Question-validity-specific
+configuration.</p>
+    <table>
+      <colgroup>
+        <col style="width: 26%"/>
+        <col style="width: 23%"/>
+        <col style="width: 50%"/>
+      </colgroup>
+      <thead>
+        <tr class="header">
+          <th>Field</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="odd">
+          <td>name</td>
+          <td>string</td>
+          <td>Unique, user-facing name identifying this shield instance.</td>
+        </tr>
+        <tr class="even">
+          <td>provider_id</td>
+          <td>string</td>
+          <td>Discriminator identifying this as a question-validity shield.</td>
+        </tr>
+        <tr class="odd">
+          <td>config</td>
+          <td/>
+          <td>Question-validity-specific configuration for this shield.</td>
         </tr>
       </tbody>
     </table>
@@ -1684,17 +1917,9 @@ header. Headers exceeding this size are rejected before decoding.</td>
       </tbody>
     </table>
     <h2 id="ragconfiguration">RagConfiguration</h2>
-    <p>RAG strategy configuration.</p>
-    <p>Controls which RAG sources are used for inline and tool-based
-retrieval.</p>
-    <p>Each strategy lists RAG IDs to include. The special ID
-<code>"okp"</code> defined in constants, activates the OKP provider; all
-other IDs refer to entries in <code>byok_rag</code>.</p>
-    <p>Backward compatibility: - <code>inline</code> defaults to
-<code>[]</code> (no inline RAG). - <code>tool</code> defaults to
-<code>[]</code> (no tool RAG).</p>
-    <p>If no RAG strategy is defined (inline and tool are empty), the RAG
-tool will register all stores available to llama-stack.</p>
+    <p>Unified RAG configuration.</p>
+    <p>Groups all RAG-related settings: BYOK stores, OKP provider, and
+retrieval strategies (inline and tool).</p>
     <table>
       <colgroup>
         <col style="width: 26%"/>
@@ -1710,18 +1935,218 @@ tool will register all stores available to llama-stack.</p>
       </thead>
       <tbody>
         <tr class="odd">
-          <td>inline</td>
-          <td>array</td>
-          <td>RAG IDs whose sources are injected as context before the LLM call.
-Use &#x2018;okp&#x2019; to enable OKP inline RAG. Empty by default (no inline
-RAG).</td>
+          <td>byok</td>
+          <td/>
+          <td>Bring Your Own Knowledge store configurations and settings.</td>
         </tr>
         <tr class="even">
-          <td>tool</td>
+          <td>okp</td>
+          <td/>
+          <td>OKP provider settings. Only used when &#x2018;okp&#x2019; is listed in
+retrieval.inline.sources or retrieval.tool.sources.</td>
+        </tr>
+        <tr class="odd">
+          <td>retrieval</td>
+          <td/>
+          <td>Inline and tool retrieval strategy settings.</td>
+        </tr>
+      </tbody>
+    </table>
+    <h2 id="ragstore">RagStore</h2>
+    <p>BYOK (Bring Your Own Knowledge) RAG store configuration.</p>
+    <table>
+      <colgroup>
+        <col style="width: 26%"/>
+        <col style="width: 23%"/>
+        <col style="width: 50%"/>
+      </colgroup>
+      <thead>
+        <tr class="header">
+          <th>Field</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="odd">
+          <td>rag_id</td>
+          <td>string</td>
+          <td>Unique RAG ID</td>
+        </tr>
+        <tr class="even">
+          <td>backend</td>
+          <td>string</td>
+          <td>Type of RAG database (e.g.&#xA0;&#x2018;faiss&#x2019;, &#x2018;pgvector&#x2019;).</td>
+        </tr>
+        <tr class="odd">
+          <td>embedding_model</td>
+          <td>string</td>
+          <td>Embedding model identification</td>
+        </tr>
+        <tr class="even">
+          <td>embedding_dimension</td>
+          <td>integer</td>
+          <td>Dimensionality of embedding vectors.</td>
+        </tr>
+        <tr class="odd">
+          <td>vector_db_id</td>
+          <td>string</td>
+          <td>Vector database identification.</td>
+        </tr>
+        <tr class="even">
+          <td>db_path</td>
+          <td>string</td>
+          <td>Path to RAG database. Required for faiss backend.</td>
+        </tr>
+        <tr class="odd">
+          <td>score_multiplier</td>
+          <td>number</td>
+          <td>Multiplier applied to relevance scores from this vector store. Used
+to weight results when querying multiple knowledge sources. Values &gt;
+1 boost this store&#x2019;s results; values &lt; 1 reduce them.</td>
+        </tr>
+        <tr class="even">
+          <td>relevance_cutoff_score</td>
+          <td>number</td>
+          <td>Minimum raw similarity score to consider a result relevant. Results
+with a similarity score below this threshold are not returned.</td>
+        </tr>
+        <tr class="odd">
+          <td>host</td>
+          <td>string</td>
+          <td>PostgreSQL host for pgvector backend. Defaults to
+${env.POSTGRES_HOST} when backend is pgvector.</td>
+        </tr>
+        <tr class="even">
+          <td>port</td>
+          <td/>
+          <td>PostgreSQL port for pgvector backend. Defaults to
+${env.POSTGRES_PORT} when backend is pgvector.</td>
+        </tr>
+        <tr class="odd">
+          <td>db</td>
+          <td>string</td>
+          <td>PostgreSQL database name for pgvector backend. Defaults to
+${env.POSTGRES_DATABASE} when backend is pgvector.</td>
+        </tr>
+        <tr class="even">
+          <td>user</td>
+          <td>string</td>
+          <td>PostgreSQL user for pgvector backend. Defaults to
+${env.POSTGRES_USER} when backend is pgvector.</td>
+        </tr>
+        <tr class="odd">
+          <td>password</td>
+          <td>string</td>
+          <td>PostgreSQL password for pgvector backend. Defaults to
+${env.POSTGRES_PASSWORD} when backend is pgvector.</td>
+        </tr>
+      </tbody>
+    </table>
+    <h2 id="redactionconfig">RedactionConfig</h2>
+    <p>Configuration for PII redaction with regex-based rules.</p>
+    <p>Rules are validated and compiled at construction time. Invalid regex
+patterns raise a <code>ValueError</code> immediately.</p>
+    <p>Attributes: rules: Ordered list of redaction rules applied
+sequentially. case_sensitive: When False, patterns are compiled with
+<code>re.IGNORECASE</code>. Defaults to False.</p>
+    <table>
+      <colgroup>
+        <col style="width: 26%"/>
+        <col style="width: 23%"/>
+        <col style="width: 50%"/>
+      </colgroup>
+      <thead>
+        <tr class="header">
+          <th>Field</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="odd">
+          <td>rules</td>
           <td>array</td>
-          <td>RAG IDs made available to the LLM as a file_search tool. Use &#x2018;okp&#x2019;
-to include the OKP vector store. When omitted, all registered BYOK
-vector stores are used (backward compatibility).</td>
+          <td>Ordered list of PII redaction rules</td>
+        </tr>
+        <tr class="even">
+          <td>case_sensitive</td>
+          <td>boolean</td>
+          <td>When False, patterns are compiled with re.IGNORECASE</td>
+        </tr>
+      </tbody>
+    </table>
+    <h2 id="redactionrule">RedactionRule</h2>
+    <p>A single regex-based redaction rule.</p>
+    <p>Attributes: pattern: Raw regex pattern string to match sensitive
+data. replacement: Text to substitute for each match. case_sensitive:
+Per-rule override for case sensitivity. When None, the global
+<code>RedactionConfig.case_sensitive</code> flag applies.</p>
+    <table>
+      <colgroup>
+        <col style="width: 26%"/>
+        <col style="width: 23%"/>
+        <col style="width: 50%"/>
+      </colgroup>
+      <thead>
+        <tr class="header">
+          <th>Field</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="odd">
+          <td>pattern</td>
+          <td>string</td>
+          <td>Regex pattern to match sensitive data</td>
+        </tr>
+        <tr class="even">
+          <td>replacement</td>
+          <td>string</td>
+          <td>Replacement string for matched text</td>
+        </tr>
+        <tr class="odd">
+          <td>case_sensitive</td>
+          <td>boolean</td>
+          <td>Per-rule case sensitivity override. When None, the global config
+flag applies.</td>
+        </tr>
+      </tbody>
+    </table>
+    <h2 id="redactionshieldconfiguration">RedactionShieldConfiguration</h2>
+    <p>Configuration for a named PII-redaction guardrail shield.</p>
+    <p>Attributes: name: Unique, user-facing name identifying this shield
+instance. provider_id: Discriminator identifying this as a redaction
+shield. config: Redaction-specific configuration.</p>
+    <table>
+      <colgroup>
+        <col style="width: 26%"/>
+        <col style="width: 23%"/>
+        <col style="width: 50%"/>
+      </colgroup>
+      <thead>
+        <tr class="header">
+          <th>Field</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="odd">
+          <td>name</td>
+          <td>string</td>
+          <td>Unique, user-facing name identifying this shield instance.</td>
+        </tr>
+        <tr class="even">
+          <td>provider_id</td>
+          <td>string</td>
+          <td>Discriminator identifying this as a redaction shield.</td>
+        </tr>
+        <tr class="odd">
+          <td>config</td>
+          <td/>
+          <td>Redaction-specific configuration for this shield.</td>
         </tr>
       </tbody>
     </table>
@@ -1752,6 +2177,64 @@ disabled and original scoring used.</td>
           <td>string</td>
           <td>Cross-encoder model name for reranking RAG chunks. Defaults to
 &#x2018;cross-encoder/ms-marco-MiniLM-L6-v2&#x2019; from sentence-transformers.</td>
+        </tr>
+      </tbody>
+    </table>
+    <h2 id="retrievalconfiguration">RetrievalConfiguration</h2>
+    <p>Configuration for inline and tool retrieval strategies.</p>
+    <table>
+      <thead>
+        <tr class="header">
+          <th>Field</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="odd">
+          <td>inline</td>
+          <td/>
+          <td>Inline RAG: context injected before the LLM request.</td>
+        </tr>
+        <tr class="even">
+          <td>tool</td>
+          <td/>
+          <td>Tool RAG: LLM can call file_search on demand.</td>
+        </tr>
+      </tbody>
+    </table>
+    <h2 id="retrievalstrategyconfiguration">RetrievalStrategyConfiguration</h2>
+    <p>Configuration for a single retrieval strategy (inline or tool).</p>
+    <table>
+      <colgroup>
+        <col style="width: 26%"/>
+        <col style="width: 23%"/>
+        <col style="width: 50%"/>
+      </colgroup>
+      <thead>
+        <tr class="header">
+          <th>Field</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="odd">
+          <td>sources</td>
+          <td>array</td>
+          <td>RAG IDs to use for this retrieval strategy. Use &#x2018;okp&#x2019; to include the
+OKP vector store.</td>
+        </tr>
+        <tr class="even">
+          <td>max_chunks</td>
+          <td>integer</td>
+          <td>Maximum number of chunks returned by this retrieval strategy.</td>
+        </tr>
+        <tr class="odd">
+          <td>reranker</td>
+          <td/>
+          <td>Neural reranking of RAG chunks using cross-encoder. Only applicable
+to inline retrieval.</td>
         </tr>
       </tbody>
     </table>
@@ -1809,6 +2292,49 @@ is unavailable.</td>
           <td>db_path</td>
           <td>string</td>
           <td>Path to file where SQLite database is stored</td>
+        </tr>
+      </tbody>
+    </table>
+    <h2 id="savedpromptsconfiguration">SavedPromptsConfiguration</h2>
+    <p>Configuration for saved prompts feature limits.</p>
+    <p>Controls the maximum number of prompts a user can save, the maximum
+display name (title) length, and the maximum prompt content length.
+Omitted fields use the defaults defined in constants.</p>
+    <p>Attributes: max_prompts_per_user: Maximum number of saved prompts
+allowed per user. max_display_name_length: Maximum character length for
+the prompt display name. max_content_length: Maximum character length
+for the prompt content body.</p>
+    <table>
+      <colgroup>
+        <col style="width: 26%"/>
+        <col style="width: 23%"/>
+        <col style="width: 50%"/>
+      </colgroup>
+      <thead>
+        <tr class="header">
+          <th>Field</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="odd">
+          <td>max_prompts_per_user</td>
+          <td>integer</td>
+          <td>Maximum number of saved prompts a user can create. Defaults to 50.
+Cannot exceed 200.</td>
+        </tr>
+        <tr class="even">
+          <td>max_display_name_length</td>
+          <td>integer</td>
+          <td>Maximum character length for prompt display name (title). Defaults
+to 255. Cannot exceed 255.</td>
+        </tr>
+        <tr class="odd">
+          <td>max_content_length</td>
+          <td>integer</td>
+          <td>Maximum character length for the prompt content body. Defaults to
+10000. Cannot exceed 30000.</td>
         </tr>
       </tbody>
     </table>
@@ -2096,27 +2622,26 @@ null (no restriction).</td>
     <h2 id="unifiedinferenceprovider">UnifiedInferenceProvider</h2>
     <p>A high-level inference provider entry for unified-mode synthesis.</p>
     <p>Operators describe inference providers at this high level
-(backend-agnostic vocabulary) instead of authoring raw Llama Stack
+(backend-agnostic vocabulary) instead of authoring raw OGX
 provider blocks. The synthesizer
 (<code>apply_high_level_inference</code>) expands each entry into a
-Llama Stack <code>providers.inference</code> entry, mapping
+OGX <code>providers.inference</code> entry, mapping
 <code>type</code> to a <code>provider_type</code> and emitting
 <code>${env.&lt;VAR&gt;}</code> references for secrets (never literal
 values).</p>
     <p>Attributes: type: Canonical provider identifier. Vendor-neutral so it
 survives a future backend change; each backend-specific synthesizer maps
 it to its own provider vocabulary. id: Optional identifier emitted as
-the Llama Stack provider_id. When omitted, synthesized as type with
+the OGX provider_id. When omitted, synthesized as type with
 underscores hyphenated. If set, must be non-empty after stripping
 whitespace and may contain only lowercase letters, digits, underscores,
-and hyphens. api_key_env: Name of the environment
-variable holding the provider API key. Emitted verbatim as
-<code>${env.&lt;name&gt;}</code> so the secret never lands on disk
-resolved. allowed_models: Optional allow-list of model identifiers
-passed through to the synthesized provider config. extra: Additional
-provider-config keys merged verbatim into the synthesized provider&#x2019;s
-<code>config</code> block &#x2014; an escape hatch for provider-specific knobs
-not modeled here.</p>
+and hyphens. api_key_env: Name of the environment variable holding the
+provider API key. Emitted verbatim as <code>${env.&lt;name&gt;}</code>
+so the secret never lands on disk resolved. allowed_models: Optional
+allow-list of model identifiers passed through to the synthesized
+provider config. extra: Additional provider-config keys merged verbatim
+into the synthesized provider&#x2019;s <code>config</code> block &#x2014; an escape
+hatch for provider-specific knobs not modeled here.</p>
     <table>
       <colgroup>
         <col style="width: 26%"/>
@@ -2140,7 +2665,7 @@ Stack provider_type by the synthesizer.</td>
         <tr class="even">
           <td>id</td>
           <td>string</td>
-          <td>Optional identifier emitted as the Llama Stack provider_id. When
+          <td>Optional identifier emitted as the OGX provider_id. When
 omitted, synthesized as type with underscores hyphenated. If set, must
 be non-empty after stripping whitespace and may contain only lowercase
 letters, digits, underscores, and hyphens.</td>
@@ -2166,7 +2691,7 @@ provider&#x2019;s config block.</td>
       </tbody>
     </table>
     <h2 id="unifiedllamastackconfig">UnifiedLlamaStackConfig</h2>
-    <p>Backend-specific knobs for unified-mode Llama Stack synthesis.</p>
+    <p>Backend-specific knobs for unified-mode OGX synthesis.</p>
     <p>Per Decision S5 of the design spike, backend-agnostic high-level
 sections (inference, &#x2026;) live at the configuration root, not here. This
 block holds only the Llama-Stack-specific synthesis controls: which
@@ -2178,7 +2703,7 @@ from an empty dict (used by the migration tool for an exact round-trip).
 Ignored when <code>profile</code> is set. profile: Optional path to a
 user-authored run.yaml-shaped file used as the synthesis baseline.
 Relative paths resolve against the directory of the loaded
-lightspeed-stack.yaml. native_override: Raw Llama Stack schema
+lightspeed-stack.yaml. native_override: Raw OGX schema
 deep-merged last (maps merge recursively, lists and scalars replace).
 The escape hatch for anything the high-level sections do not
 express.</p>
@@ -2211,7 +2736,7 @@ against the directory of the loaded lightspeed-stack.yaml.</td>
         <tr class="odd">
           <td>native_override</td>
           <td>object</td>
-          <td>Raw Llama Stack schema deep-merged last (maps merge recursively;
+          <td>Raw OGX schema deep-merged last (maps merge recursively;
 lists and scalars replace).</td>
         </tr>
       </tbody>
@@ -2255,6 +2780,47 @@ for analysis.</td>
           <td>string</td>
           <td>Path to directory where conversation history will be saved for
 further processing.</td>
+        </tr>
+      </tbody>
+    </table>
+    <h2 id="vectorstoreconfiguration">VectorStoreConfiguration</h2>
+    <p>Configuration for dynamic vector-store providers.</p>
+    <p>Mirrors <code>InferenceConfiguration</code>: a providers list plus a
+sibling <code>default_provider</code> pointer, rather than a per-entry
+default flag.</p>
+    <p>Attributes: default_provider: Provider id used for
+vector_stores.default_* in the synthesized OGX config. Required
+when providers is non-empty; must match one of providers[].id. Must be
+omitted when providers is empty. providers: Dynamic vector-store
+provider capacity for runtime POST /v1/vector-stores creates. Not the
+same as rag.byok.stores (static registered corpora).</p>
+    <table>
+      <colgroup>
+        <col style="width: 26%"/>
+        <col style="width: 23%"/>
+        <col style="width: 50%"/>
+      </colgroup>
+      <thead>
+        <tr class="header">
+          <th>Field</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="odd">
+          <td>default_provider</td>
+          <td>string</td>
+          <td>Provider id used for vector_stores.default_* in the synthesized
+OGX config. Required when providers is non-empty; must match one
+of providers[].id.</td>
+        </tr>
+        <tr class="even">
+          <td>providers</td>
+          <td>array</td>
+          <td>Dynamic vector-store provider capacity for runtime POST
+/v1/vector-stores creates. Not the same as rag.byok.stores (static
+registered corpora).</td>
         </tr>
       </tbody>
     </table>

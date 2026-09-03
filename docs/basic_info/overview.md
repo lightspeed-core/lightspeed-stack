@@ -6,7 +6,7 @@
 
 **Lightspeed Core Stack (LCore)** is an enterprise-grade middleware service that provides a robust layer between client applications and AI Large Language Model (LLM) backends. It adds essential enterprise features such as authentication, authorization, quota management, caching, and observability to LLM interactions.
 
-Current version of LCore is built on **OGX (Llama Stack)** - open-source framework that provides standardized APIs for building LLM applications. OGX offers a unified interface for models, RAG (vector stores), and tools across different providers. LCore communicates with OGX to orchestrate all LLM operations.
+Current version of LCore is built on **OGX** - open-source framework that provides standardized APIs for building LLM applications. OGX offers a unified interface for models, RAG (vector stores), and tools across different providers. LCore communicates with OGX to orchestrate all LLM operations.
 
 To enhance LLM responses, LCore leverages **RAG (Retrieval-Augmented Generation)**, which retrieves relevant context from vector databases before generating answers. OGX manages the vector stores, and LCore queries them to inject relevant documentation, knowledge bases, or previous conversations into the LLM prompt.
 

@@ -28,9 +28,9 @@ dependencies = [
     # Used by authentication/k8s integration
     "kubernetes>=30.1.0",
     # Used to call Llama Stack APIs
-    "ogx==1.0.2",
-    "ogx-client==1.0.2",
-    "ogx-api==1.0.2",
+    "ogx==1.2.5",
+    "ogx-client==1.2.5",
+    "ogx-api==1.2.5",
     # Used by Logger
     "rich>=14.0.0",
     # Used by JWK token auth handler
@@ -52,7 +52,7 @@ dependencies = [
     # Async database drivers for A2A persistent storage
     "aiosqlite>=0.21.0",
     "asyncpg>=0.31.0",
-    # Used by Llama Stack version checker
+    # Used by OGX version checker
     "semver<4.0.0",
     # Used by authorization resolvers
     "jsonpath-ng>=1.6.1",
@@ -80,7 +80,7 @@ dependencies = [
     # Used for token estimation before LLM calls (LCORE-1569 / conversation compaction)
     "tiktoken>=0.8.0",
     # Used for Pydantic AI
-    "pydantic-ai>=2.23.0",
+    "pydantic-ai==2.27.1",
     "pydantic-ai-skills>=0.11.0",
     # Used for OpenTelemetry instrumentation
     "opentelemetry-distro>=0.49b0",
@@ -120,7 +120,7 @@ explicit = true
 
 [tool.uv.sources]
 torch = [
-    { index = "pytorch-cpu", group = "llslibdev" },
+    { index = "pytorch-cpu", group = "ogxlibdev" },
 ]
 
 [dependency-groups]
@@ -150,9 +150,11 @@ dev = [
     "pybuild-deps>=0.5.0",
     "pip==26.1",
     "pytest-benchmark>=5.2.3",
+    "pyroscope-io>=0.8.7",
+    "memray>=1.13.0",
 ]
-llslibdev = [
-    # To check llama-stack API provider dependecies:
+ogxlibdev = [
+    # To check OGX API provider dependecies:
     #
     #    $ uv run ogx stack list-providers
     #
@@ -247,8 +249,8 @@ line-length = 88
 extend-exclude = ["tests/profiles/syntax_error.py"]
 
 [tool.ruff.lint]
-extend-select = ["TID251", "UP006", "UP007", "UP010", "UP017", "UP035", "RUF100", "B009", "B010", "DTZ005", "D202", "I001", "PLR1733", "RUF022"]
-ignore = ["UP040", "UP047", "UP045", "BLE", "S", "C", "RUF", "SIM", "B017", "TRY004", "TRY201", "TRY203", "TRY401", "UP008", "UP012", "UP024", "UP041", "B008", "EXE001", "FURB129", "G201", "ISC004", "LOG014", "PERF402", "PIE790", "PLW1510", "PYI034", "PYI064", "RET501", "TC004"]
+extend-select = ["TID251", "UP006", "UP007", "UP008", "UP010", "UP012", "UP017", "UP024", "UP035", "UP040", "UP041", "RUF100", "B009", "B010", "DTZ005", "D202", "I001", "PLR1733", "RUF022", "PLW1510", "TC004", "PIE790", "PERF402", "FURB129", "RET501"]
+ignore = ["UP047", "UP045", "BLE", "S", "C", "RUF", "SIM", "B017", "TRY004", "TRY201", "TRY203", "TRY401", "B008", "EXE001", "G201", "ISC004", "LOG014", "PYI034", "PYI064"]
 
 [tool.ruff.lint.flake8-tidy-imports.banned-api]
 unittest = { msg = "use pytest instead of unittest" }

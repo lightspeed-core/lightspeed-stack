@@ -1,15 +1,21 @@
 """Unit tests for vector search utilities."""
 
 # pylint: disable=too-many-lines
+from collections.abc import Awaitable, Callable
+from typing import Any
 
 import pytest
+from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
+    InMemorySpanExporter,
+)
 from pydantic import AnyUrl
 from pytest_mock import MockerFixture
 
 import constants
 from configuration import AppConfig
 from models.common.query import SolrVectorSearchRequest
-from models.common.turn_summary import RAGChunk
+from models.common.turn_summary import RAGChunk, ReferencedDocument
+from utils.otel_tracing import SpanAttributes, SpanEvents
 from utils.reranker import (
     _get_cross_encoder,
     apply_byok_rerank_boost,
@@ -22,13 +28,40 @@ from utils.vector_search import (
     _extract_byok_rag_chunks,
     _extract_solr_document_metadata,
     _fetch_byok_rag,
-    _fetch_solr_rag,
+    _fetch_okp_rag,
     _format_rag_context,
     _get_okp_base_url,
     _get_solr_vector_store_ids,
     _is_solr_enabled,
+    _query_store_for_byok_rag,
     build_rag_context,
 )
+
+
+def _vector_io_query_stub_like_backend(
+    chunk_score_pairs: list[tuple[Any, float]], mocker: MockerFixture
+) -> Callable[..., Awaitable[Any]]:
+    """Build an async ``vector_io.query`` stand-in that honors ``score_threshold``.
+
+    Production code forwards ``relevance_cutoff_mapping`` values as ``params['score_threshold']``;
+    OGX filters hits server-side. The stub keeps pairs whose raw score is at or
+    above that minimum (``>=``), matching the docstring on ``_query_store_for_byok_rag``.
+    """
+
+    async def _query(**kwargs: Any) -> Any:
+        threshold = float(kwargs["params"]["score_threshold"])
+        chunks_out: list[Any] = []
+        scores_out: list[float] = []
+        for chunk, raw_score in chunk_score_pairs:
+            if raw_score >= threshold:
+                chunks_out.append(chunk)
+                scores_out.append(raw_score)
+        out = mocker.Mock()
+        out.chunks = chunks_out
+        out.scores = scores_out
+        return out
+
+    return _query
 
 
 class TestIsSolrEnabled:
@@ -159,10 +192,19 @@ class TestBuildQueryParams:
 
     def test_custom_mode(self) -> None:
         """Request mode overrides the default Solr vector_io mode."""
-        solr = SolrVectorSearchRequest(mode="lexical")
+        solr = SolrVectorSearchRequest(mode="lexical", filters=None)
         params = _build_query_params(solr=solr)
 
-        assert params["mode"] == "lexical"
+        # "lexical" is translated to "keyword" for OGX dispatch
+        assert params["mode"] == "keyword"
+        assert "solr" not in params
+
+    def test_keyword_mode_direct(self) -> None:
+        """Request mode 'keyword' is passed through unchanged."""
+        solr = SolrVectorSearchRequest(mode="keyword", filters=None)
+        params = _build_query_params(solr=solr)
+
+        assert params["mode"] == "keyword"
         assert "solr" not in params
 
     def test_mode_with_solr_filters(self) -> None:
@@ -180,11 +222,65 @@ class TestBuildQueryParams:
         """Mode is set to default value when only filters are provided."""
         solr = SolrVectorSearchRequest(
             filters={"fq": ["product:*openshift*"]},
-        )
+        )  # pyright: ignore[reportCallIssue]
         params = _build_query_params(solr=solr)
 
         assert params["mode"] == constants.SOLR_VECTOR_SEARCH_DEFAULT_MODE
         assert params["solr"] == {"fq": ["product:*openshift*"]}
+
+    def test_config_search_mode_keyword(self, mocker: MockerFixture) -> None:
+        """OKP config search_mode is used when no per-request mode is set."""
+        config_mock = mocker.Mock(spec=AppConfig)
+        config_mock.okp.search_mode = "keyword"
+        mocker.patch("utils.vector_search.configuration", config_mock)
+
+        params = _build_query_params()
+
+        assert params["mode"] == "keyword"
+
+    def test_config_search_mode_semantic(self, mocker: MockerFixture) -> None:
+        """OKP config search_mode 'semantic' is used as default."""
+        config_mock = mocker.Mock(spec=AppConfig)
+        config_mock.okp.search_mode = "semantic"
+        mocker.patch("utils.vector_search.configuration", config_mock)
+
+        params = _build_query_params()
+
+        assert params["mode"] == "semantic"
+
+    def test_per_request_mode_overrides_config(self, mocker: MockerFixture) -> None:
+        """Per-request solr mode takes precedence over OKP config default."""
+        config_mock = mocker.Mock(spec=AppConfig)
+        config_mock.okp.search_mode = "keyword"
+        mocker.patch("utils.vector_search.configuration", config_mock)
+
+        solr = SolrVectorSearchRequest(mode="semantic", filters={})
+        params = _build_query_params(solr=solr)
+
+        assert params["mode"] == "semantic"
+
+    def test_no_config_no_request_mode_uses_global_default(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Without config or per-request mode, global default is used."""
+        config_mock = mocker.Mock(spec=AppConfig)
+        config_mock.okp.search_mode = None
+        mocker.patch("utils.vector_search.configuration", config_mock)
+
+        params = _build_query_params()
+
+        assert params["mode"] == constants.SOLR_VECTOR_SEARCH_DEFAULT_MODE
+
+    def test_lexical_config_translated_to_keyword(self, mocker: MockerFixture) -> None:
+        """Per-request 'lexical' is translated to 'keyword' even with config set."""
+        config_mock = mocker.Mock(spec=AppConfig)
+        config_mock.okp.search_mode = "hybrid"
+        mocker.patch("utils.vector_search.configuration", config_mock)
+
+        solr = SolrVectorSearchRequest(mode="lexical", filters={})
+        params = _build_query_params(solr=solr)
+
+        assert params["mode"] == "keyword"
 
 
 class TestExtractByokRagChunks:
@@ -518,8 +614,8 @@ class TestFetchByokRag:
     async def test_byok_no_inline_ids(self, mocker: MockerFixture) -> None:
         """Test when no inline BYOK sources are configured."""
         config_mock = mocker.Mock(spec=AppConfig)
-        config_mock.configuration.rag.inline = []
-        config_mock.configuration.byok_rag = []
+        config_mock.rag.retrieval.inline.sources = []
+        config_mock.rag.byok.stores = []
         mocker.patch("utils.vector_search.configuration", config_mock)
 
         client_mock = mocker.AsyncMock()
@@ -537,9 +633,13 @@ class TestFetchByokRag:
         byok_rag_mock = mocker.Mock()
         byok_rag_mock.rag_id = "rag_1"
         byok_rag_mock.vector_db_id = "vs_1"
-        config_mock.configuration.rag.inline = ["rag_1"]
-        config_mock.configuration.byok_rag = [byok_rag_mock]
+        config_mock.rag.retrieval.inline.sources = ["rag_1"]
+        config_mock.rag.byok.stores = [byok_rag_mock]
+        config_mock.rag.byok.max_chunks = constants.DEFAULT_BYOK_RAG_MAX_CHUNKS
         config_mock.score_multiplier_mapping = {"vs_1": 1.5}
+        config_mock.relevance_cutoff_mapping = {
+            "vs_1": constants.DEFAULT_BYOK_RAG_RELEVANCE_CUTOFF_SCORE,
+        }
         config_mock.rag_id_mapping = {"vs_1": "rag_1"}
         mocker.patch("utils.vector_search.configuration", config_mock)
 
@@ -571,14 +671,18 @@ class TestFetchByokRag:
     async def test_user_facing_ids_translated_to_internal_ids(
         self, mocker: MockerFixture
     ) -> None:
-        """Test that user-facing rag_ids (vector_store_ids) are translated to llama-stack ids."""
+        """Test that user-facing rag_ids (vector_store_ids) are translated to OGX ids."""
         config_mock = mocker.Mock(spec=AppConfig)
         byok_rag_mock = mocker.Mock()
         byok_rag_mock.rag_id = "my-kb"
         byok_rag_mock.vector_db_id = "vs-internal-001"
-        config_mock.configuration.byok_rag = [byok_rag_mock]
-        config_mock.configuration.rag.inline = ["my-kb"]
+        config_mock.rag.byok.stores = [byok_rag_mock]
+        config_mock.rag.retrieval.inline.sources = ["my-kb"]
+        config_mock.rag.byok.max_chunks = constants.DEFAULT_BYOK_RAG_MAX_CHUNKS
         config_mock.score_multiplier_mapping = {"vs-internal-001": 1.0}
+        config_mock.relevance_cutoff_mapping = {
+            "vs-internal-001": constants.DEFAULT_BYOK_RAG_RELEVANCE_CUTOFF_SCORE,
+        }
         config_mock.rag_id_mapping = {"vs-internal-001": "my-kb"}
         mocker.patch("utils.vector_search.configuration", config_mock)
 
@@ -597,11 +701,15 @@ class TestFetchByokRag:
         # Pass user-facing rag_id "my-kb"
         await _fetch_byok_rag(client_mock, "test query", vector_store_ids=["my-kb"])
 
-        # Must be called with the internal llama-stack ID, not the user-facing "my-kb"
+        # Must be called with the internal OGX ID, not the user-facing "my-kb"
         client_mock.vector_io.query.assert_called_once_with(
             vector_store_id="vs-internal-001",
             query="test query",
-            params={"max_chunks": constants.BYOK_RAG_MAX_CHUNKS, "mode": "vector"},
+            params={
+                "max_chunks": constants.DEFAULT_BYOK_RAG_MAX_CHUNKS,
+                "mode": "vector",
+                "score_threshold": constants.DEFAULT_BYOK_RAG_RELEVANCE_CUTOFF_SCORE,
+            },
         )
 
     @pytest.mark.asyncio
@@ -616,9 +724,17 @@ class TestFetchByokRag:
         byok_rag_2 = mocker.Mock()
         byok_rag_2.rag_id = "kb-part2"
         byok_rag_2.vector_db_id = "vs-bbb-222"
-        config_mock.configuration.byok_rag = [byok_rag_1, byok_rag_2]
-        config_mock.configuration.rag.inline = ["kb-part1", "kb-part2"]
+        config_mock.rag.byok.stores = [byok_rag_1, byok_rag_2]
+        config_mock.rag.retrieval.inline.sources = [
+            "kb-part1",
+            "kb-part2",
+        ]
+        config_mock.rag.byok.max_chunks = constants.DEFAULT_BYOK_RAG_MAX_CHUNKS
         config_mock.score_multiplier_mapping = {"vs-aaa-111": 1.0, "vs-bbb-222": 1.0}
+        config_mock.relevance_cutoff_mapping = {
+            "vs-aaa-111": constants.DEFAULT_BYOK_RAG_RELEVANCE_CUTOFF_SCORE,
+            "vs-bbb-222": constants.DEFAULT_BYOK_RAG_RELEVANCE_CUTOFF_SCORE,
+        }
         config_mock.rag_id_mapping = {
             "vs-aaa-111": "kb-part1",
             "vs-bbb-222": "kb-part2",
@@ -653,13 +769,157 @@ class TestFetchByokRag:
         assert "kb-part2" not in call_args
 
     @pytest.mark.asyncio
+    async def test_byok_passes_configured_relevance_cutoff_to_vector_io(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Configured ``relevance_cutoff_score`` is sent as ``score_threshold``."""
+        config_mock = mocker.Mock(spec=AppConfig)
+        byok_rag_mock = mocker.Mock()
+        byok_rag_mock.rag_id = "my-kb"
+        byok_rag_mock.vector_db_id = "vs-internal-001"
+        config_mock.rag.byok.stores = [byok_rag_mock]
+        config_mock.rag.retrieval.inline.sources = ["my-kb"]
+        config_mock.rag.byok.max_chunks = constants.DEFAULT_BYOK_RAG_MAX_CHUNKS
+        config_mock.score_multiplier_mapping = {"vs-internal-001": 1.0}
+        config_mock.relevance_cutoff_mapping = {"vs-internal-001": 0.55}
+        config_mock.rag_id_mapping = {"vs-internal-001": "my-kb"}
+        mocker.patch("utils.vector_search.configuration", config_mock)
+
+        chunk_mock = mocker.Mock()
+        chunk_mock.content = "Test content"
+        chunk_mock.chunk_id = "chunk_1"
+        chunk_mock.metadata = {"document_id": "doc_1"}
+
+        search_response = mocker.Mock()
+        search_response.chunks = [chunk_mock]
+        search_response.scores = [0.9]
+
+        client_mock = mocker.AsyncMock()
+        client_mock.vector_io.query.return_value = search_response
+
+        await _fetch_byok_rag(client_mock, "test query", vector_store_ids=["my-kb"])
+
+        client_mock.vector_io.query.assert_called_once_with(
+            vector_store_id="vs-internal-001",
+            query="test query",
+            params={
+                "max_chunks": constants.DEFAULT_BYOK_RAG_MAX_CHUNKS,
+                "mode": "vector",
+                "score_threshold": 0.55,
+            },
+        )
+
+    @pytest.mark.asyncio
+    async def test_query_store_for_byok_rag_forwards_score_threshold(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Cutoff is applied by vector backends; this layer forwards it on ``vector_io.query``.
+
+        ``_query_store_for_byok_rag`` is the code that maps ``relevance_cutoff`` (via
+        callers) into ``params["score_threshold"]``. It does not re-rank or drop hits by
+        score—whatever ``vector_io.query`` returns is passed to ``_extract_byok_rag_chunks``.
+        """
+        score_threshold = 0.37
+        chunk = mocker.Mock()
+        chunk.content = "chunk text"
+        chunk.chunk_id = "chunk-1"
+        chunk.metadata = {"document_id": "doc-1"}
+
+        search_response = mocker.Mock()
+        search_response.chunks = [chunk]
+        search_response.scores = [0.91]
+
+        client = mocker.AsyncMock()
+        client.vector_io.query.return_value = search_response
+
+        result = await _query_store_for_byok_rag(
+            client,
+            vector_store_id="vs-test",
+            query="q",
+            weight=2.0,
+            score_threshold=score_threshold,
+        )
+
+        client.vector_io.query.assert_awaited_once_with(
+            vector_store_id="vs-test",
+            query="q",
+            params={
+                "max_chunks": constants.DEFAULT_BYOK_RAG_MAX_CHUNKS,
+                "mode": "vector",
+                "score_threshold": score_threshold,
+            },
+        )
+        assert len(result) == 1
+        assert result[0]["content"] == "chunk text"
+        assert result[0]["score"] == 0.91
+        assert result[0]["weighted_score"] == pytest.approx(1.82)
+
+    @pytest.mark.asyncio
+    async def test_fetch_byok_rag_omits_chunks_below_vector_io_score_threshold(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Sub-threshold hits never become ``RAGChunk`` rows when vector_io enforces the cutoff.
+
+        The full path resolves the relevance cutoff via
+        ``relevance_cutoff_mapping``, calls ``vector_io.query`` with
+        ``score_threshold``, then maps the response. The stub models
+        backend filtering so
+        scores strictly below the cutoff are absent from the mocked response.
+        """
+        cutoff = 0.5
+        config_mock = mocker.Mock(spec=AppConfig)
+        byok_rag_mock = mocker.Mock()
+        byok_rag_mock.rag_id = "kb"
+        byok_rag_mock.vector_db_id = "vs-cutoff"
+        config_mock.rag.byok.stores = [byok_rag_mock]
+        config_mock.rag.retrieval.inline.sources = ["kb"]
+        config_mock.rag.byok.max_chunks = constants.DEFAULT_BYOK_RAG_MAX_CHUNKS
+        config_mock.score_multiplier_mapping = {"vs-cutoff": 1.0}
+        config_mock.relevance_cutoff_mapping = {"vs-cutoff": cutoff}
+        config_mock.rag_id_mapping = {"vs-cutoff": "kb"}
+        mocker.patch("utils.vector_search.configuration", config_mock)
+
+        def chunk(content: str, cid: str) -> Any:
+            ch = mocker.Mock()
+            ch.content = content
+            ch.chunk_id = cid
+            ch.metadata = {"document_id": cid}
+            return ch
+
+        chunk_score_pairs: list[tuple[Any, float]] = [
+            (chunk("below_cutoff", "c_low"), 0.3),
+            (chunk("at_cutoff", "c_edge"), cutoff),
+            (chunk("above_cutoff", "c_high"), 0.85),
+        ]
+
+        client = mocker.AsyncMock()
+        client.vector_io.query.side_effect = _vector_io_query_stub_like_backend(
+            chunk_score_pairs, mocker
+        )
+
+        rag_chunks, _referenced = await _fetch_byok_rag(
+            client, "test query", vector_store_ids=["kb"]
+        )
+
+        assert (
+            client.vector_io.query.await_args.kwargs["params"]["score_threshold"]
+            == cutoff
+        )
+        contents = {c.content for c in rag_chunks}
+        assert "below_cutoff" not in contents
+        assert contents == {"at_cutoff", "above_cutoff"}
+        for ch in rag_chunks:
+            assert ch.score is not None
+            assert ch.score >= cutoff
+
+    @pytest.mark.asyncio
     async def test_no_inline_rag_configured_skips_byok(
         self, mocker: MockerFixture
     ) -> None:
         """Test that BYOK inline RAG is skipped when rag.inline is empty."""
         config_mock = mocker.Mock(spec=AppConfig)
-        config_mock.configuration.rag.inline = []
-        config_mock.configuration.byok_rag = []
+        config_mock.rag.retrieval.inline.sources = []
+        config_mock.rag.byok.stores = []
         mocker.patch("utils.vector_search.configuration", config_mock)
 
         client_mock = mocker.AsyncMock()
@@ -678,8 +938,8 @@ class TestFetchByokRag:
     ) -> None:
         """Test that a request vector_store_id not registered in rag.inline is filtered out."""
         config_mock = mocker.Mock(spec=AppConfig)
-        config_mock.configuration.rag.inline = ["registered-id"]
-        config_mock.configuration.byok_rag = []
+        config_mock.rag.retrieval.inline.sources = ["registered-id"]
+        config_mock.rag.byok.stores = []
         mocker.patch("utils.vector_search.configuration", config_mock)
 
         client_mock = mocker.AsyncMock()
@@ -694,7 +954,7 @@ class TestFetchByokRag:
 
 
 class TestFetchSolrRag:
-    """Tests for _fetch_solr_rag async function."""
+    """Tests for _fetch_okp_rag async function."""
 
     @pytest.mark.asyncio
     async def test_solr_disabled(self, mocker: MockerFixture) -> None:
@@ -704,7 +964,7 @@ class TestFetchSolrRag:
         mocker.patch("utils.vector_search.configuration", config_mock)
 
         client_mock = mocker.AsyncMock()
-        rag_chunks, referenced_docs = await _fetch_solr_rag(client_mock, "test query")
+        rag_chunks, referenced_docs = await _fetch_okp_rag(client_mock, "test query")
 
         assert rag_chunks == []
         assert referenced_docs == []
@@ -718,6 +978,7 @@ class TestFetchSolrRag:
         config_mock.inline_solr_enabled = True
         config_mock.okp.offline = True
         config_mock.okp.rhokp_url = "https://okp.test"
+        config_mock.rag.okp.max_chunks = constants.DEFAULT_OKP_RAG_MAX_CHUNKS
         mocker.patch("utils.vector_search.configuration", config_mock)
 
         # Mock chunk
@@ -735,7 +996,7 @@ class TestFetchSolrRag:
         client_mock = mocker.AsyncMock()
         client_mock.vector_io.query.return_value = query_response
 
-        rag_chunks, _referenced_docs = await _fetch_solr_rag(client_mock, "test query")
+        rag_chunks, _referenced_docs = await _fetch_okp_rag(client_mock, "test query")
 
         assert len(rag_chunks) > 0
         assert rag_chunks[0].content == "Solr content"
@@ -750,6 +1011,7 @@ class TestFetchSolrRag:
         config_mock.inline_solr_enabled = True
         config_mock.okp.offline = True
         config_mock.okp.rhokp_url = "https://okp.test"
+        config_mock.rag.okp.max_chunks = constants.DEFAULT_OKP_RAG_MAX_CHUNKS
         mocker.patch("utils.vector_search.configuration", config_mock)
 
         chunk_mock = mocker.Mock()
@@ -764,7 +1026,7 @@ class TestFetchSolrRag:
         client_mock = mocker.AsyncMock()
         client_mock.vector_io.query.return_value = query_response
 
-        await _fetch_solr_rag(
+        await _fetch_okp_rag(
             client_mock,
             "test query",
             SolrVectorSearchRequest(mode="semantic", filters={"fq": ["x:y"]}),
@@ -783,8 +1045,12 @@ class TestBuildRagContext:
     async def test_both_sources_disabled(self, mocker: MockerFixture) -> None:
         """Test when both BYOK inline and Solr inline are not configured."""
         config_mock = mocker.Mock(spec=AppConfig)
-        config_mock.configuration.rag.inline = []
-        config_mock.configuration.byok_rag = []
+        config_mock.rag.retrieval.inline.sources = []
+        config_mock.rag.byok.stores = []
+        config_mock.rag.retrieval.inline.max_chunks = (
+            constants.DEFAULT_INLINE_RAG_MAX_CHUNKS
+        )
+        config_mock.rag.byok.max_chunks = constants.DEFAULT_BYOK_RAG_MAX_CHUNKS
         config_mock.inline_solr_enabled = False
         mocker.patch("utils.vector_search.configuration", config_mock)
 
@@ -803,10 +1069,17 @@ class TestBuildRagContext:
         byok_rag_mock = mocker.Mock()
         byok_rag_mock.rag_id = "rag_1"
         byok_rag_mock.vector_db_id = "vs_1"
-        config_mock.configuration.rag.inline = ["rag_1"]
-        config_mock.configuration.byok_rag = [byok_rag_mock]
+        config_mock.rag.retrieval.inline.sources = ["rag_1"]
+        config_mock.rag.byok.stores = [byok_rag_mock]
+        config_mock.rag.retrieval.inline.max_chunks = (
+            constants.DEFAULT_INLINE_RAG_MAX_CHUNKS
+        )
+        config_mock.rag.byok.max_chunks = constants.DEFAULT_BYOK_RAG_MAX_CHUNKS
         config_mock.inline_solr_enabled = False
         config_mock.score_multiplier_mapping = {"vs_1": 1.0}
+        config_mock.relevance_cutoff_mapping = {
+            "vs_1": constants.DEFAULT_BYOK_RAG_RELEVANCE_CUTOFF_SCORE,
+        }
         config_mock.rag_id_mapping = {"vs_1": "rag_1"}
         mocker.patch("utils.vector_search.configuration", config_mock)
 
@@ -840,10 +1113,17 @@ class TestBuildRagContext:
         byok_rag_mock = mocker.Mock()
         byok_rag_mock.rag_id = "rag_1"
         byok_rag_mock.vector_db_id = "vs_1"
-        config_mock.configuration.rag.inline = ["rag_1"]
-        config_mock.configuration.byok_rag = [byok_rag_mock]
+        config_mock.rag.retrieval.inline.sources = ["rag_1"]
+        config_mock.rag.byok.stores = [byok_rag_mock]
+        config_mock.rag.retrieval.inline.max_chunks = (
+            constants.DEFAULT_INLINE_RAG_MAX_CHUNKS
+        )
+        config_mock.rag.byok.max_chunks = constants.DEFAULT_BYOK_RAG_MAX_CHUNKS
         config_mock.inline_solr_enabled = False
         config_mock.score_multiplier_mapping = {"vs_1": 1.0}
+        config_mock.relevance_cutoff_mapping = {
+            "vs_1": constants.DEFAULT_BYOK_RAG_RELEVANCE_CUTOFF_SCORE,
+        }
         config_mock.rag_id_mapping = {"vs_1": "rag_1"}
         config_mock.reranker.enabled = True
         config_mock.reranker.model = "test-model"
@@ -891,10 +1171,17 @@ class TestBuildRagContext:
         byok_rag_mock = mocker.Mock()
         byok_rag_mock.rag_id = "rag_1"
         byok_rag_mock.vector_db_id = "vs_1"
-        config_mock.configuration.rag.inline = ["rag_1"]
-        config_mock.configuration.byok_rag = [byok_rag_mock]
+        config_mock.rag.retrieval.inline.sources = ["rag_1"]
+        config_mock.rag.byok.stores = [byok_rag_mock]
+        config_mock.rag.retrieval.inline.max_chunks = (
+            constants.DEFAULT_INLINE_RAG_MAX_CHUNKS
+        )
+        config_mock.rag.byok.max_chunks = constants.DEFAULT_BYOK_RAG_MAX_CHUNKS
         config_mock.inline_solr_enabled = False
         config_mock.score_multiplier_mapping = {"vs_1": 1.0}
+        config_mock.relevance_cutoff_mapping = {
+            "vs_1": constants.DEFAULT_BYOK_RAG_RELEVANCE_CUTOFF_SCORE,
+        }
         config_mock.rag_id_mapping = {"vs_1": "rag_1"}
         config_mock.reranker.enabled = False
         mocker.patch("utils.vector_search.configuration", config_mock)
@@ -1142,6 +1429,8 @@ class TestRerankChunksWithCrossEncoder:
         # Content 1: 0.3 * 0.75 + 0.7 * 0.4 = 0.505 (approximately)
         # Content 2: 0.3 * 0.0 + 0.7 * 0.0 = 0.0
         assert result[0].score == 1.0
+        # score is optional: make sure it is set
+        assert result[1].score is not None
         assert abs(result[1].score - 0.505) < 0.01  # Allow small floating point errors
         assert result[2].score == 0.0
 
@@ -1377,8 +1666,151 @@ class TestApplyByokRerankBoost:
         assert len(result) == 1
         assert result[0].content == "Test content"
         assert result[0].source == "byok_store"
+        # score is optional: make sure it is set
+        assert result[0].score is not None
         assert abs(result[0].score - 1.2) < 1e-10  # 0.8 * 1.5
         assert result[0].attributes == {
             "title": "Test Doc",
             "url": "http://example.com",
         }
+
+
+class TestBuildRagContextOtel:
+    """OpenTelemetry attrs/events for build_rag_context."""
+
+    @staticmethod
+    def _patch_rag_config(mocker: MockerFixture) -> None:
+        """Patch vector_search configuration for minimal inline RAG."""
+        config_mock = mocker.Mock(spec=AppConfig)
+        config_mock.rag.retrieval.inline.sources = []
+        config_mock.rag.byok.stores = []
+        config_mock.rag.retrieval.inline.max_chunks = (
+            constants.DEFAULT_INLINE_RAG_MAX_CHUNKS
+        )
+        config_mock.rag.byok.max_chunks = constants.DEFAULT_BYOK_RAG_MAX_CHUNKS
+        config_mock.inline_solr_enabled = False
+        config_mock.reranker = None
+        mocker.patch("utils.vector_search.configuration", config_mock)
+
+    @pytest.mark.asyncio
+    async def test_blocked_moderation_sets_zero_sources_without_completed_event(
+        self,
+        otel: tuple[Any, InMemorySpanExporter],
+        mocker: MockerFixture,
+    ) -> None:
+        """Blocked moderation skips retrieval and does not emit completed event."""
+        tracer, exporter = otel
+        mocker.patch("utils.vector_search.tracer", tracer)
+        mocker.patch(
+            "utils.vector_search.anonymize_value",
+            side_effect=lambda value: f"[anon:{value}]",
+        )
+        self._patch_rag_config(mocker)
+        client = mocker.AsyncMock()
+
+        await build_rag_context(client, "blocked", "test query", None)
+
+        span = next(
+            span
+            for span in exporter.get_finished_spans()
+            if span.name == "rag.retrieve"
+        )
+        assert span.attributes is not None
+        assert span.attributes[SpanAttributes.RAG_INPUT] == "[anon:test query]"
+        assert span.attributes[SpanAttributes.RAG_SOURCES_COUNT] == 0
+        event_names = [event.name for event in span.events]
+        assert SpanEvents.RAG_RETRIEVAL_COMPLETED not in event_names
+
+    @pytest.mark.asyncio
+    async def test_passed_with_no_chunks_emits_zero_count_event(
+        self,
+        otel: tuple[Any, InMemorySpanExporter],
+        mocker: MockerFixture,
+    ) -> None:
+        """Passed moderation with no chunks emits retrieval completed with count 0."""
+        tracer, exporter = otel
+        mocker.patch("utils.vector_search.tracer", tracer)
+        mocker.patch(
+            "utils.vector_search.anonymize_value",
+            side_effect=lambda value: f"[anon:{value}]",
+        )
+        self._patch_rag_config(mocker)
+        mocker.patch(
+            "utils.vector_search._fetch_byok_rag",
+            new=mocker.AsyncMock(return_value=([], [])),
+        )
+        mocker.patch(
+            "utils.vector_search._fetch_okp_rag",
+            new=mocker.AsyncMock(return_value=([], [])),
+        )
+        client = mocker.AsyncMock()
+
+        await build_rag_context(client, "passed", "test query", None)
+
+        span = next(
+            span
+            for span in exporter.get_finished_spans()
+            if span.name == "rag.retrieve"
+        )
+        assert span.attributes is not None
+        assert span.attributes[SpanAttributes.RAG_SOURCES_COUNT] == 0
+        completed = next(
+            event
+            for event in span.events
+            if event.name == SpanEvents.RAG_RETRIEVAL_COMPLETED
+        )
+        completed_attrs = completed.attributes
+        assert completed_attrs is not None
+        assert completed_attrs["rag.chunks.count"] == 0
+
+    @pytest.mark.asyncio
+    async def test_passed_with_chunks_sets_sources_and_chunk_count(
+        self,
+        otel: tuple[Any, InMemorySpanExporter],
+        mocker: MockerFixture,
+    ) -> None:
+        """Passed moderation with chunks sets source attrs and chunk count event."""
+        tracer, exporter = otel
+        mocker.patch("utils.vector_search.tracer", tracer)
+        mocker.patch(
+            "utils.vector_search.anonymize_value",
+            side_effect=lambda value: f"[anon:{value}]",
+        )
+        self._patch_rag_config(mocker)
+        chunk = RAGChunk(
+            content="chunk text",
+            source="source-a",
+            score=0.9,
+            attributes={"doc_url": "http://example.com/doc"},
+        )
+        document = ReferencedDocument(
+            doc_url=AnyUrl("http://example.com/doc"),
+            doc_title="Example Doc",
+        )
+        mocker.patch(
+            "utils.vector_search._fetch_byok_rag",
+            new=mocker.AsyncMock(return_value=([chunk], [document])),
+        )
+        mocker.patch(
+            "utils.vector_search._fetch_okp_rag",
+            new=mocker.AsyncMock(return_value=([], [])),
+        )
+        client = mocker.AsyncMock()
+
+        await build_rag_context(client, "passed", "test query", None)
+
+        span = next(
+            span
+            for span in exporter.get_finished_spans()
+            if span.name == "rag.retrieve"
+        )
+        assert span.attributes is not None
+        assert span.attributes[SpanAttributes.RAG_SOURCES_COUNT] == 1
+        completed = next(
+            event
+            for event in span.events
+            if event.name == SpanEvents.RAG_RETRIEVAL_COMPLETED
+        )
+        completed_attrs = completed.attributes
+        assert completed_attrs is not None
+        assert completed_attrs["rag.chunks.count"] == 1

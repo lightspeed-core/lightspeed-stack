@@ -1,5 +1,5 @@
 # In-cluster TLS-intercepting proxy for proxy.feature (Konflux / Prow).
-# Llama Stack run.yaml points at http://e2e-interception-proxy.<ns>.svc.cluster.local:8889
+# OGX run.yaml points at http://e2e-interception-proxy.<ns>.svc.cluster.local:8889
 apiVersion: v1
 kind: Pod
 metadata:

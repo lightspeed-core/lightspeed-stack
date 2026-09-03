@@ -38,13 +38,13 @@
 * V2 conversations/{conversation_id} endpoint fails when auth header is not present
 * V2 conversations/{conversation_id} GET endpoint fails when conversation_id is malformed
 * V2 conversations/{conversation_id} GET endpoint fails when conversation does not exist
-* Check conversations/{conversation_id} works when llama-stack is down
+* Check conversations/{conversation_id} works when OGX is down
 * Check conversations/{conversation_id} fails when cache not configured
 * V2 conversations DELETE endpoint removes the correct conversation
 * V2 conversations/{conversation_id} DELETE endpoint fails when auth header is not present
 * V2 conversations/{conversation_id} DELETE endpoint fails when conversation_id is malformed
 * V2 conversations DELETE endpoint fails when the conversation does not exist
-* V2 conversations DELETE endpoint works even when llama-stack is down
+* V2 conversations DELETE endpoint works even when OGX is down
 * V2 conversations PUT endpoint successfully updates topic summary
 * V2 conversations PUT endpoint fails when auth header is not present
 * V2 conversations PUT endpoint fails when conversation_id is malformed
@@ -58,16 +58,16 @@
 * Check if conversations/{conversation_id} endpoint finds the correct conversation when it exists
 * Check if conversations/{conversation_id} endpoint fails when the auth header is not present
 * Check if conversations/{conversation_id} GET endpoint fails when conversation_id is malformed
-* Check if conversations/{conversation_id} GET endpoint fails when llama-stack is unavailable
+* Check if conversations/{conversation_id} GET endpoint fails when OGX is unavailable
 * Check if conversations DELETE endpoint removes the correct conversation
 * Check if conversations/{conversation_id} DELETE endpoint fails when conversation_id is malformed
 * Check if conversations DELETE endpoint fails when the conversation does not exist
-* Check if conversations/{conversation_id} DELETE endpoint fails when llama-stack is unavailable
+* Check if conversations/{conversation_id} DELETE endpoint fails when OGX is unavailable
 
 ## [`faiss.feature`](https://github.com/lightspeed-core/lightspeed-stack/blob/main/tests/e2e/features/faiss.feature)
 
 * check if vector store is registered
-* Check if rags endpoint fails when llama-stack is unavailable
+* Check if rags endpoint fails when OGX is unavailable
 * Check if rags endpoints responds with error when not authenticated
 * Query vector db using the file_search tool
 
@@ -94,24 +94,24 @@
 
 * Check if service report proper readiness state
 * Check if service report proper liveness state
-* Check if service report proper readiness state when llama stack is not available
-* Check if service report proper liveness state even when llama stack is not available
+* Check if service report proper readiness state when OGX is not available
+* Check if service report proper liveness state even when OGX is not available
 
 ## [`info.feature`](https://github.com/lightspeed-core/lightspeed-stack/blob/main/tests/e2e/features/info.feature)
 
 * Check if the OpenAPI endpoint works as expected
 * Check if info endpoint is working
-* Check if info endpoint reports error when llama-stack connection is not working
+* Check if info endpoint reports error when OGX connection is not working
 * Check if shields endpoint is working (lists LCORE-configured shields)
 * Check if tools endpoint is working
-* Check if tools endpoint reports error when llama-stack is unreachable
+* Check if tools endpoint reports error when OGX is unreachable
 * Check if metrics endpoint is working
 * Check if MCP client auth options endpoint is working
 
 ## [`models.feature`](https://github.com/lightspeed-core/lightspeed-stack/blob/main/tests/e2e/features/models.feature)
 
 * Check if models endpoint is working
-* Check if models endpoint reports error when llama-stack is unreachable
+* Check if models endpoint reports error when OGX is unreachable
 * Check if models can be filtered
 * Check if filtering can return empty list of models
 
@@ -141,7 +141,7 @@
 * Check if LLM responds for query request with error for missing provider
 * Check if LLM responds for query request with error for unknown model
 * Check if LLM responds for query request with error for unknown provider
-* Check if LLM responds for query request with error for inability to connect to llama-stack
+* Check if LLM responds for query request with error for inability to connect to OGX
 * Check if LLM responds properly when XML and JSON attachments are sent
 
 ## [`rbac.feature`](https://github.com/lightspeed-core/lightspeed-stack/blob/main/tests/e2e/features/rbac.feature)

@@ -13,9 +13,11 @@ from typing import Any, Optional
 
 import pytest
 from fastapi import HTTPException, status
-from ogx_client import APIConnectionError, APIStatusError
-from ogx_client.types import ListModelsResponse
-from ogx_client.types.model import Model
+from ogx_client import ApiException
+from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
+    InMemorySpanExporter,
+)
+from opentelemetry.trace import StatusCode
 from pydantic import ValidationError
 from pytest_mock import MockerFixture
 
@@ -51,6 +53,7 @@ from models.config import (
     RedactionRule,
     RedactionShieldConfiguration,
 )
+from tests.unit.conftest import make_openai_model, make_openai_models_list_response
 from tests.unit.utils.auth_helpers import mock_authorization_resolvers
 from utils.rh_identity import get_rh_identity_context
 from utils.suid import check_suid
@@ -180,10 +183,10 @@ def mock_model_configured_fixture(mocker: MockerFixture) -> None:
 
 @pytest.fixture(name="mock_api_connection_error")
 def mock_api_connection_error_fixture(mocker: MockerFixture) -> None:
-    """Mock responses.create() to raise APIConnectionError."""
+    """Mock responses.create() to raise ApiException."""
     _setup_responses_mock(
         mocker,
-        mocker.AsyncMock(side_effect=APIConnectionError(request=mocker.Mock())),
+        mocker.AsyncMock(side_effect=ApiException(status=None)),
     )
 
 
@@ -198,16 +201,14 @@ def mock_generic_runtime_error_fixture(mocker: MockerFixture) -> None:
 
 @pytest.fixture(name="mock_api_status_error_with_private_text")
 def mock_api_status_error_with_private_text_fixture(mocker: MockerFixture) -> None:
-    """Mock responses.create() to raise APIStatusError with private text."""
+    """Mock responses.create() to raise ApiException with private text."""
     mock_response = mocker.Mock(request=None)
     mock_response.status_code = 500
     _setup_responses_mock(
         mocker,
         mocker.AsyncMock(
-            side_effect=APIStatusError(
-                message="Backend echoed PRIVATE prompt sk-backend-secret",
-                response=mock_response,
-                body=None,
+            side_effect=ApiException(
+                status=500, reason="Backend echoed PRIVATE prompt sk-backend-secret"
             )
         ),
     )
@@ -362,24 +363,22 @@ async def test_get_default_model_id_errors(
     """Test _get_default_model_id fallback failures raise 503 responses."""
     mocker.patch("app.endpoints.rlsapi_v1.configuration", minimal_config)
 
-    mock_embedding_model = Model.model_construct(
-        id="sentence-transformers/all-mpnet-base-v2",
-        created=0,
-        owned_by="test",
-        object="model",
-        custom_metadata={"model_type": "embedding"},
+    mock_embedding_model = make_openai_model(
+        model_id="sentence-transformers/all-mpnet-base-v2",
+        provider_id="sentence-transformers",
+        model_type="embedding",
     )
 
     mock_client = mocker.Mock()
     mock_client.models = mocker.Mock()
 
     if failure_mode == "no_llm_models":
-        mock_client.models.list = mocker.AsyncMock(
-            return_value=ListModelsResponse.model_construct(data=[mock_embedding_model])
+        mock_client.openai.list = mocker.AsyncMock(
+            return_value=make_openai_models_list_response(mock_embedding_model)
         )
     else:
-        mock_client.models.list = mocker.AsyncMock(
-            side_effect=APIConnectionError(request=mocker.Mock())
+        mock_client.openai.list = mocker.AsyncMock(
+            side_effect=ApiException(status=None)
         )
 
     mock_client_holder = mocker.Mock()
@@ -404,24 +403,22 @@ async def test_config_error_503_matches_llm_error_503_shape(
 ) -> None:
     """Test that auto-discovery 503s have the same shape as LLM error 503s.
 
-    Both _get_default_model_id() no-LLM auto-discovery errors and APIConnectionError
+    Both _get_default_model_id() no-LLM auto-discovery errors and ApiException
     handlers use ServiceUnavailableResponse, producing identical detail shapes
     with 'response' and 'cause' keys.
     """
     mocker.patch("app.endpoints.rlsapi_v1.configuration", minimal_config)
 
-    mock_embedding_model = Model.model_construct(
-        id="sentence-transformers/all-mpnet-base-v2",
-        created=0,
-        owned_by="test",
-        object="model",
-        custom_metadata={"model_type": "embedding"},
+    mock_embedding_model = make_openai_model(
+        model_id="sentence-transformers/all-mpnet-base-v2",
+        provider_id="sentence-transformers",
+        model_type="embedding",
     )
 
     mock_client = mocker.Mock()
     mock_client.models = mocker.Mock()
-    mock_client.models.list = mocker.AsyncMock(
-        return_value=ListModelsResponse.model_construct(data=[mock_embedding_model])
+    mock_client.openai.list = mocker.AsyncMock(
+        return_value=make_openai_models_list_response(mock_embedding_model)
     )
 
     mock_client_holder = mocker.Mock()
@@ -437,7 +434,6 @@ async def test_config_error_503_matches_llm_error_503_shape(
     # Build an LLM connection error 503 using the same response model
     llm_response = ServiceUnavailableResponse(
         backend_name="OGX",
-        cause="Unable to connect to the inference backend",
     )
     llm_detail = llm_response.model_dump()["detail"]
 
@@ -454,27 +450,23 @@ async def test_get_default_model_id_auto_discovery_success(
     """Test _get_default_model_id returns first discovered LLM model ID."""
     mocker.patch("app.endpoints.rlsapi_v1.configuration", minimal_config)
 
-    mock_llm_model = Model.model_construct(
-        id="openai/gpt-4o-mini",
-        created=0,
-        owned_by="test",
-        object="model",
-        custom_metadata={"model_type": "llm"},
+    mock_llm_model = make_openai_model(
+        model_id="openai/gpt-4o-mini",
+        provider_id="openai",
+        model_type="llm",
     )
 
-    mock_embedding_model = Model.model_construct(
-        id="sentence-transformers/all-mpnet-base-v2",
-        created=0,
-        owned_by="test",
-        object="model",
-        custom_metadata={"model_type": "embedding"},
+    mock_embedding_model = make_openai_model(
+        model_id="sentence-transformers/all-mpnet-base-v2",
+        provider_id="sentence-transformers",
+        model_type="embedding",
     )
 
     mock_client = mocker.Mock()
     mock_client.models = mocker.Mock()
-    mock_client.models.list = mocker.AsyncMock(
-        return_value=ListModelsResponse.model_construct(
-            data=[mock_embedding_model, mock_llm_model]
+    mock_client.openai.list = mocker.AsyncMock(
+        return_value=make_openai_models_list_response(
+            mock_embedding_model, mock_llm_model
         )
     )
 
@@ -568,7 +560,7 @@ async def test_infer_model_not_found_returns_404(
     mock_request_factory: Callable[..., Any],
     mock_background_tasks: Any,
 ) -> None:
-    """Test /infer returns HTTP 404 when configured model does not exist in Llama Stack."""
+    """Test /infer returns HTTP 404 when configured model does not exist in OGX."""
     mocker.patch(
         "app.endpoints.rlsapi_v1.check_model_configured",
         new=mocker.AsyncMock(return_value=False),
@@ -779,7 +771,7 @@ async def test_infer_api_status_error_logs_class_without_private_text(
             )
 
     assert exc_info.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
-    assert "APIStatusError" in caplog.text
+    assert "ApiException" in caplog.text
     assert "sk-backend-secret" not in caplog.text
     assert "PRIVATE prompt" not in caplog.text
 
@@ -1790,3 +1782,302 @@ async def test_infer_generic_runtime_error_records_failure(
     mock_background_tasks.add_task.assert_called_once()
     call_args = mock_background_tasks.add_task.call_args
     assert call_args[0][2] == "infer_error"
+
+
+class TestInferEndpointOtel:
+    """OTEL instrumentation tests for the /infer endpoint."""
+
+    @pytest.mark.asyncio
+    async def test_infer_span_success_attributes(  # pylint: disable=too-many-locals
+        self,
+        mocker: MockerFixture,
+        mock_configuration: AppConfig,
+        mock_llm_response: None,
+        mock_auth_resolvers: None,
+        mock_request_factory: Callable[..., Any],
+        mock_background_tasks: Any,
+        otel: tuple[Any, InMemorySpanExporter],
+    ) -> None:
+        """Test successful /infer emits span with all expected attributes."""
+        tracer, exporter = otel
+        mocker.patch("app.endpoints.rlsapi_v1.tracer", tracer)
+
+        infer_request = RlsapiV1InferRequest(question="How do I list files?")
+        mock_request = mock_request_factory()
+
+        await infer_endpoint(
+            infer_request=infer_request,
+            request=mock_request,
+            background_tasks=mock_background_tasks,
+            auth=MOCK_AUTH,
+        )
+
+        spans = exporter.get_finished_spans()
+        assert len(spans) == 1
+        span = spans[0]
+        assert span.name == "rlsapi_v1.infer"
+        attrs = span.attributes
+        assert attrs is not None
+        assert attrs["llm.model.id"] == "openai/gpt-4-turbo"
+        assert attrs["llm.provider.id"] == "openai"
+        assert attrs["llm.usage.input_tokens"] == 10
+        assert attrs["llm.usage.output_tokens"] == 5
+        assert attrs["rls.template.ok"] is True
+        assert attrs["shield.result"] == "passed"
+        assert "request.input" in attrs
+        assert "response.output" in attrs
+        assert str(attrs["request.input"]).startswith("[hash:")
+        assert str(attrs["response.output"]).startswith("[hash:")
+
+    @pytest.mark.asyncio
+    async def test_infer_span_events(
+        self,
+        mocker: MockerFixture,
+        mock_configuration: AppConfig,
+        mock_llm_response: None,
+        mock_auth_resolvers: None,
+        mock_request_factory: Callable[..., Any],
+        mock_background_tasks: Any,
+        otel: tuple[Any, InMemorySpanExporter],
+    ) -> None:
+        """Test successful /infer emits expected span events."""
+        tracer, exporter = otel
+        mocker.patch("app.endpoints.rlsapi_v1.tracer", tracer)
+
+        infer_request = RlsapiV1InferRequest(question="How do I list files?")
+        mock_request = mock_request_factory()
+
+        await infer_endpoint(
+            infer_request=infer_request,
+            request=mock_request,
+            background_tasks=mock_background_tasks,
+            auth=MOCK_AUTH,
+        )
+
+        spans = exporter.get_finished_spans()
+        span = spans[0]
+        event_names = [e.name for e in span.events]
+        assert "rls.template.rendered" in event_names
+        assert "llm.inference.started" in event_names
+        assert "llm.inference.completed" in event_names
+
+    @pytest.mark.asyncio
+    async def test_infer_span_shield_blocked(
+        self,
+        mocker: MockerFixture,
+        mock_configuration: AppConfig,
+        mock_llm_response: None,
+        mock_auth_resolvers: None,
+        mock_request_factory: Callable[..., Any],
+        mock_background_tasks: Any,
+        otel: tuple[Any, InMemorySpanExporter],
+    ) -> None:
+        """Test shield-blocked /infer emits shield.rejected event and shield.result=blocked."""
+        tracer, exporter = otel
+        mocker.patch("app.endpoints.rlsapi_v1.tracer", tracer)
+        mocker.patch(
+            "app.endpoints.rlsapi_v1.run_shield_moderation_v2",
+            new=mocker.AsyncMock(
+                return_value=ShieldModerationBlocked(
+                    message="This question is not allowed",
+                    moderation_id="test-moderation-id",
+                )
+            ),
+        )
+
+        infer_request = RlsapiV1InferRequest(question="off-topic question")
+        mock_request = mock_request_factory()
+
+        await infer_endpoint(
+            infer_request=infer_request,
+            request=mock_request,
+            background_tasks=mock_background_tasks,
+            auth=MOCK_AUTH,
+        )
+
+        spans = exporter.get_finished_spans()
+        span = spans[0]
+        assert span.attributes is not None
+        assert span.attributes["shield.result"] == "blocked"
+        event_names = [e.name for e in span.events]
+        assert "shield.rejected" in event_names
+
+    @pytest.mark.asyncio
+    async def test_infer_span_pii_detected(
+        self,
+        mocker: MockerFixture,
+        mock_configuration: AppConfig,
+        mock_llm_response: None,
+        mock_auth_resolvers: None,
+        mock_request_factory: Callable[..., Any],
+        mock_background_tasks: Any,
+        otel: tuple[Any, InMemorySpanExporter],
+    ) -> None:
+        """Test PII redaction emits pii.detected event."""
+        tracer, exporter = otel
+        mocker.patch("app.endpoints.rlsapi_v1.tracer", tracer)
+
+        mock_configuration._configuration.shields = [  # type: ignore[union-attr]
+            RedactionShieldConfiguration(
+                name="pii",
+                provider_id="redaction",
+                config=RedactionConfig(
+                    rules=[
+                        RedactionRule(
+                            pattern=r"\d{3}-\d{2}-\d{4}",
+                            replacement="[REDACTED]",
+                            case_sensitive=False,
+                        )
+                    ],
+                    case_sensitive=False,
+                ),
+            )
+        ]
+
+        infer_request = RlsapiV1InferRequest(question="My SSN is 123-45-6789")
+        mock_request = mock_request_factory()
+
+        await infer_endpoint(
+            infer_request=infer_request,
+            request=mock_request,
+            background_tasks=mock_background_tasks,
+            auth=MOCK_AUTH,
+        )
+
+        spans = exporter.get_finished_spans()
+        span = spans[0]
+        event_names = [e.name for e in span.events]
+        assert "pii.detected" in event_names
+
+    @pytest.mark.asyncio
+    async def test_infer_span_template_error(  # pylint: disable=too-many-locals
+        self,
+        mocker: MockerFixture,
+        mock_configuration: AppConfig,
+        mock_llm_response: None,
+        mock_auth_resolvers: None,
+        mock_request_factory: Callable[..., Any],
+        mock_background_tasks: Any,
+        otel: tuple[Any, InMemorySpanExporter],
+        mock_custom_prompt: Callable[[str], None],
+    ) -> None:
+        """Test malformed template sets rls.template.ok=False on span."""
+        tracer, exporter = otel
+        mocker.patch("app.endpoints.rlsapi_v1.tracer", tracer)
+        mock_custom_prompt("{{ invalid {% block %}")
+
+        infer_request = RlsapiV1InferRequest(question="test question")
+        mock_request = mock_request_factory()
+
+        with pytest.raises(HTTPException) as exc_info:
+            await infer_endpoint(
+                infer_request=infer_request,
+                request=mock_request,
+                background_tasks=mock_background_tasks,
+                auth=MOCK_AUTH,
+            )
+        assert exc_info.value.status_code == 500
+
+        spans = exporter.get_finished_spans()
+        span = spans[0]
+        assert span.attributes is not None
+        assert span.attributes["rls.template.ok"] is False
+        assert span.status.status_code == StatusCode.ERROR
+
+    @pytest.mark.asyncio
+    async def test_infer_span_quota_check_passed(
+        self,
+        mocker: MockerFixture,
+        mock_configuration: AppConfig,
+        mock_llm_response: None,
+        mock_auth_resolvers: None,
+        mock_request_factory: Callable[..., Any],
+        mock_background_tasks: Any,
+        otel: tuple[Any, InMemorySpanExporter],
+    ) -> None:
+        """Test quota check sets quota.check.passed attribute."""
+        tracer, exporter = otel
+        mocker.patch("app.endpoints.rlsapi_v1.tracer", tracer)
+        mock_configuration.rlsapi_v1.quota_subject = "user_id"
+        mocker.patch(
+            "app.endpoints.rlsapi_v1.check_tokens_available",
+            return_value=None,
+        )
+
+        infer_request = RlsapiV1InferRequest(question="How do I list files?")
+        mock_request = mock_request_factory()
+
+        await infer_endpoint(
+            infer_request=infer_request,
+            request=mock_request,
+            background_tasks=mock_background_tasks,
+            auth=MOCK_AUTH,
+        )
+
+        spans = exporter.get_finished_spans()
+        span = spans[0]
+        assert span.attributes is not None
+        assert span.attributes["quota.check.passed"] is True
+
+    @pytest.mark.asyncio
+    async def test_infer_span_error_on_config_not_loaded(
+        self,
+        mocker: MockerFixture,
+        mock_auth_resolvers: None,
+        mock_request_factory: Callable[..., Any],
+        mock_background_tasks: Any,
+        otel: tuple[Any, InMemorySpanExporter],
+    ) -> None:
+        """Test span records error when configuration is not loaded."""
+        tracer, exporter = otel
+        mocker.patch("app.endpoints.rlsapi_v1.tracer", tracer)
+        mocker.patch.object(AppConfig(), "_configuration", None)
+
+        infer_request = RlsapiV1InferRequest(question="test")
+        mock_request = mock_request_factory()
+
+        with pytest.raises(HTTPException) as exc_info:
+            await infer_endpoint(
+                infer_request=infer_request,
+                request=mock_request,
+                background_tasks=mock_background_tasks,
+                auth=MOCK_AUTH,
+            )
+        assert exc_info.value.status_code == 500
+
+        spans = exporter.get_finished_spans()
+        assert len(spans) == 1
+        assert spans[0].name == "rlsapi_v1.infer"
+        assert spans[0].status.status_code == StatusCode.ERROR
+
+    @pytest.mark.asyncio
+    async def test_infer_span_api_connection_error(
+        self,
+        mocker: MockerFixture,
+        mock_configuration: AppConfig,
+        mock_api_connection_error: None,
+        mock_auth_resolvers: None,
+        mock_request_factory: Callable[..., Any],
+        mock_background_tasks: Any,
+        otel: tuple[Any, InMemorySpanExporter],
+    ) -> None:
+        """Test span records error on API connection failure."""
+        tracer, exporter = otel
+        mocker.patch("app.endpoints.rlsapi_v1.tracer", tracer)
+
+        infer_request = RlsapiV1InferRequest(question="test")
+        mock_request = mock_request_factory()
+
+        with pytest.raises(HTTPException) as exc_info:
+            await infer_endpoint(
+                infer_request=infer_request,
+                request=mock_request,
+                background_tasks=mock_background_tasks,
+                auth=MOCK_AUTH,
+            )
+        assert exc_info.value.status_code == 503
+
+        spans = exporter.get_finished_spans()
+        assert len(spans) == 1
+        assert spans[0].name == "rlsapi_v1.infer"
+        assert spans[0].status.status_code == StatusCode.ERROR

@@ -260,7 +260,7 @@ async def test_auth_dependency_no_token_readiness_liveness_endpoints_1(
             "color_log": True,
             "access_log": True,
         },
-        "llama_stack": {
+        "ogx": {
             "api_key": "test-key",
             "url": "http://test.com:1234",
             "use_as_library_client": False,
@@ -335,7 +335,7 @@ async def test_auth_dependency_no_token_readiness_liveness_endpoints_2(
             "color_log": True,
             "access_log": True,
         },
-        "llama_stack": {
+        "ogx": {
             "api_key": "test-key",
             "url": "http://test.com:1234",
             "use_as_library_client": False,
@@ -421,7 +421,7 @@ async def test_auth_dependency_no_token_normal_endpoints(
             "color_log": True,
             "access_log": True,
         },
-        "llama_stack": {
+        "ogx": {
             "api_key": "test-key",
             "url": "http://test.com:1234",
             "use_as_library_client": False,
@@ -499,7 +499,7 @@ async def test_auth_dependency_no_token_metrics_endpoint_skip_enabled(
             "color_log": True,
             "access_log": True,
         },
-        "llama_stack": {
+        "ogx": {
             "api_key": "test-key",
             "url": "http://test.com:1234",
             "use_as_library_client": False,
@@ -567,7 +567,7 @@ async def test_auth_dependency_no_token_metrics_endpoint_skip_disabled(
             "color_log": True,
             "access_log": True,
         },
-        "llama_stack": {
+        "ogx": {
             "api_key": "test-key",
             "url": "http://test.com:1234",
             "use_as_library_client": False,

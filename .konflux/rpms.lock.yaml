@@ -74,13 +74,13 @@ arches:
     name: info
     evr: 6.7-15.el9
     sourcerpm: texinfo-6.7-15.el9.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.6/aarch64/baseos/os/Packages/l/libgcrypt-1.10.0-11.el9_6.1.aarch64.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.6/aarch64/baseos/os/Packages/p/python3-urllib3-1.26.5-6.el9_6.2.noarch.rpm
     repoid: rhel-9-for-aarch64-baseos-eus-rpms__9_DOT_6
-    size: 463379
-    checksum: sha256:ca4492eea2902aa597ddc8f9859f5312f2d4e9beafe94b188c014df6f8bbc91f
-    name: libgcrypt
-    evr: 1.10.0-11.el9_6.1
-    sourcerpm: libgcrypt-1.10.0-11.el9_6.1.src.rpm
+    size: 223128
+    checksum: sha256:177899cd61996a1a459f23508428fe8be31d174cf998c624155e13137a10a4e9
+    name: python3-urllib3
+    evr: 1.26.5-6.el9_6.2
+    sourcerpm: python-urllib3-1.26.5-6.el9_6.2.src.rpm
   source: []
   module_metadata: []
 - arch: x86_64
@@ -155,12 +155,12 @@ arches:
     name: info
     evr: 6.7-15.el9
     sourcerpm: texinfo-6.7-15.el9.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.6/x86_64/baseos/os/Packages/l/libgcrypt-1.10.0-11.el9_6.1.x86_64.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.6/x86_64/baseos/os/Packages/p/python3-urllib3-1.26.5-6.el9_6.2.noarch.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms__9_DOT_6
-    size: 517430
-    checksum: sha256:57bb13f2d7b44dafd7ecd20924a5be434223c567ddf5322c8c2d89c800df6d0e
-    name: libgcrypt
-    evr: 1.10.0-11.el9_6.1
-    sourcerpm: libgcrypt-1.10.0-11.el9_6.1.src.rpm
+    size: 223128
+    checksum: sha256:177899cd61996a1a459f23508428fe8be31d174cf998c624155e13137a10a4e9
+    name: python3-urllib3
+    evr: 1.26.5-6.el9_6.2
+    sourcerpm: python-urllib3-1.26.5-6.el9_6.2.src.rpm
   source: []
   module_metadata: []

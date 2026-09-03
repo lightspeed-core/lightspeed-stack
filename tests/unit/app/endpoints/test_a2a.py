@@ -6,7 +6,6 @@
 
 from typing import Any
 
-import httpx
 import pytest
 from a2a.server.agent_execution import RequestContext
 from a2a.server.events import EventQueue
@@ -22,8 +21,11 @@ from a2a.types import (
 )
 from a2a.utils import new_agent_text_message
 from fastapi import HTTPException, Request
-from ogx_client import APIConnectionError
-from ogx_client.types import ListModelsResponse
+from ogx_client import ApiException
+from ogx_client.models.list_models_response import ListModelsResponse
+from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
+    InMemorySpanExporter,
+)
 from pydantic_ai import AgentRunResultEvent
 from pydantic_ai.exceptions import AgentRunError
 from pydantic_ai.messages import (
@@ -44,12 +46,14 @@ from app.endpoints.a2a import (
     _build_a2a_parts_from_agent_result,
     _get_context_store,
     _get_task_store,
+    _handle_a2a_jsonrpc,
     a2a_health_check,
     get_agent_card,
     get_lightspeed_agent_card,
 )
 from configuration import AppConfig
 from models.config import Action
+from tests.unit.conftest import make_openai_model, make_openai_models_list_response
 
 # User ID must be proper UUID
 MOCK_AUTH = (
@@ -83,7 +87,7 @@ def setup_configuration_fixture(mocker: MockerFixture) -> AppConfig:
             "auth_enabled": False,
             "base_url": "http://localhost:8080",
         },
-        "llama_stack": {
+        "ogx": {
             "api_key": "test-key",
             "url": "http://test.com:1234",
             "use_as_library_client": False,
@@ -134,7 +138,7 @@ def setup_minimal_configuration_fixture(mocker: MockerFixture) -> AppConfig:
             "host": "localhost",
             "port": 8080,
         },
-        "llama_stack": {
+        "ogx": {
             "api_key": "test-key",
             "url": "http://test.com:1234",
             "use_as_library_client": False,
@@ -403,7 +407,7 @@ class TestGetLightspeedAgentCard:
                 "auth_enabled": False,
                 "base_url": "http://localhost:8080",
             },
-            "llama_stack": {
+            "ogx": {
                 "api_key": "test-key",
                 "url": "http://test.com:1234",
                 "use_as_library_client": False,
@@ -686,7 +690,7 @@ class TestA2AAgentExecutor:
         mocker: MockerFixture,
         setup_configuration: AppConfig,  # pylint: disable=unused-argument
     ) -> None:
-        """Test _process_task_streaming handles APIConnectionError from models.list()."""
+        """Test _process_task_streaming handles ApiException from openai.list()."""
         executor = A2AAgentExecutor(auth_token="test-token")
 
         # Mock the context with valid input
@@ -716,19 +720,16 @@ class TestA2AAgentExecutor:
             "app.endpoints.a2a._get_context_store", return_value=mock_context_store
         )
 
-        # Mock the client to raise APIConnectionError on models.list()
+        # Mock the client to raise ApiException on openai.list()
         mock_client = mocker.AsyncMock()
-        # Create a mock httpx.Request for APIConnectionError
-        mock_request = httpx.Request("GET", "http://test-llama-stack/models")
-        mock_client.models.list.side_effect = APIConnectionError(
-            message="Connection refused: unable to reach Llama Stack",
-            request=mock_request,
+        mock_client.openai.list.side_effect = ApiException(
+            status=None, reason="Connection refused: unable to reach OGX"
         )
         mocker.patch(
             "app.endpoints.a2a.AsyncOgxClientHolder"
         ).return_value.get_client.return_value = mock_client
 
-        # prepare_responses_params raises HTTPException when APIConnectionError occurs
+        # prepare_responses_params raises HTTPException when ApiException occurs
         with pytest.raises(HTTPException) as exc_info:
             await executor._process_task_streaming(
                 context, task_updater, context.task_id, context.context_id
@@ -744,7 +745,7 @@ class TestA2AAgentExecutor:
         mocker: MockerFixture,
         setup_configuration: AppConfig,  # pylint: disable=unused-argument
     ) -> None:
-        """Test _process_task_streaming handles APIConnectionError during agent run."""
+        """Test _process_task_streaming handles ApiException during agent run."""
         executor = A2AAgentExecutor(auth_token="test-token")
 
         # Mock the context with valid input
@@ -776,9 +777,10 @@ class TestA2AAgentExecutor:
 
         # Mock the client
         mock_client = mocker.AsyncMock()
-        mock_models = [mocker.MagicMock()]
-        mock_client.models.list = mocker.AsyncMock(
-            return_value=ListModelsResponse.model_construct(data=mock_models)
+        mock_client.openai.list = mocker.AsyncMock(
+            return_value=make_openai_models_list_response(
+                make_openai_model(model_id="test-model")
+            )
         )
         mocker.patch(
             "app.endpoints.a2a.AsyncOgxClientHolder"
@@ -805,13 +807,11 @@ class TestA2AAgentExecutor:
         )
 
         # Mock build_agent to return an agent whose run_stream_events raises
-        mock_request = httpx.Request("POST", "http://test-llama-stack/responses")
         mock_agent = mocker.MagicMock()
         mock_stream_ctx = mocker.AsyncMock()
         mock_stream_ctx.__aenter__ = mocker.AsyncMock(
-            side_effect=APIConnectionError(
-                message="Connection timeout during streaming",
-                request=mock_request,
+            side_effect=ApiException(
+                status=None, reason="Connection timeout during streaming"
             )
         )
         mock_agent.run_stream_events.return_value = mock_stream_ctx
@@ -863,8 +863,8 @@ class TestA2AAgentExecutor:
         )
 
         mock_client = mocker.AsyncMock()
-        mock_client.models.list = mocker.AsyncMock(
-            return_value=ListModelsResponse.model_construct(data=[mocker.MagicMock()])
+        mock_client.openai.list = mocker.AsyncMock(
+            return_value=make_openai_models_list_response(mocker.MagicMock())
         )
         mocker.patch(
             "app.endpoints.a2a.AsyncOgxClientHolder"
@@ -940,8 +940,8 @@ class TestA2AAgentExecutor:
         )
 
         mock_client = mocker.AsyncMock()
-        mock_client.models.list = mocker.AsyncMock(
-            return_value=ListModelsResponse.model_construct(data=[mocker.MagicMock()])
+        mock_client.openai.list = mocker.AsyncMock(
+            return_value=make_openai_models_list_response(mocker.MagicMock())
         )
         mocker.patch(
             "app.endpoints.a2a.AsyncOgxClientHolder"
@@ -1223,3 +1223,528 @@ class TestA2AEndpointHandlers:
         assert isinstance(result, AgentCard)
         assert result.name == "Test Agent"
         assert result.url == "http://localhost:8080/a2a"
+
+
+# -----------------------------
+# Tests for A2A OTEL Spans
+# -----------------------------
+class TestA2AOtelSpans:
+    """Tests for OpenTelemetry span instrumentation on A2A endpoints."""
+
+    @pytest.mark.asyncio
+    async def test_execute_span_success_attributes(  # pylint: disable=too-many-locals,too-many-statements
+        self,
+        mocker: MockerFixture,
+        setup_configuration: AppConfig,  # pylint: disable=unused-argument
+        otel: tuple[Any, InMemorySpanExporter],
+    ) -> None:
+        """Test that a2a.execute span records model, token usage, and output."""
+        tracer, exporter = otel
+        mocker.patch("app.endpoints.a2a.tracer", tracer)
+
+        executor = A2AAgentExecutor(auth_token="test-token")
+
+        mock_message = mocker.MagicMock()
+        mock_message.role = "user"
+        mock_message.parts = [Part(root=TextPart(text="Hello"))]
+        mock_message.metadata = {}
+
+        context = mocker.MagicMock(spec=RequestContext)
+        context.task_id = "task-123"
+        context.context_id = "ctx-456"
+        context.message = mock_message
+        context.get_user_input.return_value = "Hello A2A"
+
+        event_queue = mocker.AsyncMock(spec=EventQueue)
+        task_updater = mocker.MagicMock()
+        task_updater.update_status = mocker.AsyncMock()
+        task_updater.event_queue = event_queue
+
+        mock_context_store = mocker.AsyncMock()
+        mock_context_store.get.return_value = None
+        mocker.patch(
+            "app.endpoints.a2a._get_context_store", return_value=mock_context_store
+        )
+
+        mock_client = mocker.AsyncMock()
+        mock_client.models.list = mocker.AsyncMock(
+            return_value=ListModelsResponse.model_construct(data=[mocker.MagicMock()])
+        )
+        mocker.patch(
+            "app.endpoints.a2a.AsyncOgxClientHolder"
+        ).return_value.get_client.return_value = mock_client
+
+        mock_responses_params = mocker.Mock()
+        mock_responses_params.model = "watsonx/granite-3.1"
+        mock_responses_params.conversation = "conv_x"
+        mocker.patch(
+            "app.endpoints.a2a.prepare_responses_params",
+            new=mocker.AsyncMock(return_value=mock_responses_params),
+        )
+
+        compaction_result = mocker.Mock()
+        compaction_result.params = mock_responses_params
+        mocker.patch(
+            "app.endpoints.a2a.apply_compaction_blocking",
+            new=mocker.AsyncMock(return_value=compaction_result),
+        )
+
+        mock_run_result = mocker.MagicMock()
+        mock_run_result.response.text = "A2A response text"
+        mock_usage = mocker.MagicMock()
+        mock_usage.input_tokens = 42
+        mock_usage.output_tokens = 18
+        mock_run_result.usage = mock_usage
+
+        result_event = mocker.MagicMock(spec=AgentRunResultEvent)
+        result_event.result = mock_run_result
+
+        async def _event_stream() -> Any:
+            yield result_event
+
+        mock_stream_ctx = mocker.AsyncMock()
+        mock_stream_ctx.__aenter__ = mocker.AsyncMock(return_value=_event_stream())
+        mock_stream_ctx.__aexit__ = mocker.AsyncMock(return_value=False)
+        mock_agent = mocker.MagicMock()
+        mock_agent.run_stream_events.return_value = mock_stream_ctx
+        mocker.patch("app.endpoints.a2a.build_agent", return_value=mock_agent)
+
+        await executor._process_task_streaming(
+            context, task_updater, context.task_id, context.context_id
+        )
+
+        spans = exporter.get_finished_spans()
+        execute_spans = [s for s in spans if s.name == "a2a.execute"]
+        assert len(execute_spans) == 1
+        span = execute_spans[0]
+        attrs = dict(span.attributes or {})
+
+        assert attrs["session.id"] == "ctx-456"
+        assert attrs["llm.model.id"] == "watsonx/granite-3.1"
+        assert attrs["llm.provider.id"] == "watsonx"
+        assert attrs["llm.usage.input_tokens"] == 42
+        assert attrs["llm.usage.output_tokens"] == 18
+        assert "request.input" in attrs
+        assert "response.output" in attrs
+
+    @pytest.mark.asyncio
+    async def test_execute_span_tool_calls(  # pylint: disable=too-many-locals,too-many-statements
+        self,
+        mocker: MockerFixture,
+        setup_configuration: AppConfig,  # pylint: disable=unused-argument
+        otel: tuple[Any, InMemorySpanExporter],
+    ) -> None:
+        """Test that tool calls are tracked on the a2a.execute span."""
+        tracer, exporter = otel
+        mocker.patch("app.endpoints.a2a.tracer", tracer)
+
+        executor = A2AAgentExecutor(auth_token="test-token")
+
+        mock_message = mocker.MagicMock()
+        mock_message.role = "user"
+        mock_message.parts = [Part(root=TextPart(text="Hello"))]
+        mock_message.metadata = {}
+
+        context = mocker.MagicMock(spec=RequestContext)
+        context.task_id = "task-123"
+        context.context_id = "ctx-456"
+        context.message = mock_message
+        context.get_user_input.return_value = "Use tools"
+
+        event_queue = mocker.AsyncMock(spec=EventQueue)
+        task_updater = mocker.MagicMock()
+        task_updater.update_status = mocker.AsyncMock()
+        task_updater.event_queue = event_queue
+
+        mock_context_store = mocker.AsyncMock()
+        mock_context_store.get.return_value = None
+        mocker.patch(
+            "app.endpoints.a2a._get_context_store", return_value=mock_context_store
+        )
+
+        mock_client = mocker.AsyncMock()
+        mock_client.models.list = mocker.AsyncMock(
+            return_value=ListModelsResponse.model_construct(data=[mocker.MagicMock()])
+        )
+        mocker.patch(
+            "app.endpoints.a2a.AsyncOgxClientHolder"
+        ).return_value.get_client.return_value = mock_client
+
+        mock_responses_params = mocker.Mock()
+        mock_responses_params.model = "openai/gpt-4"
+        mock_responses_params.conversation = "conv_x"
+        mocker.patch(
+            "app.endpoints.a2a.prepare_responses_params",
+            new=mocker.AsyncMock(return_value=mock_responses_params),
+        )
+
+        compaction_result = mocker.Mock()
+        compaction_result.params = mock_responses_params
+        mocker.patch(
+            "app.endpoints.a2a.apply_compaction_blocking",
+            new=mocker.AsyncMock(return_value=compaction_result),
+        )
+
+        # Stream events: two FunctionToolCallEvents + result
+        tool_event_1 = mocker.MagicMock(spec=FunctionToolCallEvent)
+        tool_event_1.part = mocker.MagicMock()
+        tool_event_1.part.tool_name = "search_docs"
+        tool_event_1.part.tool_call_id = "tc1"
+
+        tool_event_2 = mocker.MagicMock(spec=FunctionToolCallEvent)
+        tool_event_2.part = mocker.MagicMock()
+        tool_event_2.part.tool_name = "get_weather"
+        tool_event_2.part.tool_call_id = "tc2"
+
+        mock_run_result = mocker.MagicMock()
+        mock_run_result.response.text = "Tool result"
+        mock_usage = mocker.MagicMock()
+        mock_usage.input_tokens = 100
+        mock_usage.output_tokens = 50
+        mock_run_result.usage = mock_usage
+
+        result_event = mocker.MagicMock(spec=AgentRunResultEvent)
+        result_event.result = mock_run_result
+
+        async def _event_stream() -> Any:
+            yield tool_event_1
+            yield tool_event_2
+            yield result_event
+
+        mock_stream_ctx = mocker.AsyncMock()
+        mock_stream_ctx.__aenter__ = mocker.AsyncMock(return_value=_event_stream())
+        mock_stream_ctx.__aexit__ = mocker.AsyncMock(return_value=False)
+        mock_agent = mocker.MagicMock()
+        mock_agent.run_stream_events.return_value = mock_stream_ctx
+        mocker.patch("app.endpoints.a2a.build_agent", return_value=mock_agent)
+
+        await executor._process_task_streaming(
+            context, task_updater, context.task_id, context.context_id
+        )
+
+        spans = exporter.get_finished_spans()
+        execute_spans = [s for s in spans if s.name == "a2a.execute"]
+        assert len(execute_spans) == 1
+        span = execute_spans[0]
+        attrs = dict(span.attributes or {})
+
+        assert attrs["tool.calls.count"] == 2
+        assert "get_weather" in attrs["tool.calls.names"]
+        assert "search_docs" in attrs["tool.calls.names"]
+
+        events = span.events
+        event_names = [e.name for e in events]
+        assert "tool.execution.completed" in event_names
+        assert "llm.inference.completed" in event_names
+
+    @pytest.mark.asyncio
+    async def test_execute_span_inference_completed_event(  # pylint: disable=too-many-locals,too-many-statements
+        self,
+        mocker: MockerFixture,
+        setup_configuration: AppConfig,  # pylint: disable=unused-argument
+        otel: tuple[Any, InMemorySpanExporter],
+    ) -> None:
+        """Test that llm.inference.completed event is emitted when result is available."""
+        tracer, exporter = otel
+        mocker.patch("app.endpoints.a2a.tracer", tracer)
+
+        executor = A2AAgentExecutor(auth_token="test-token")
+
+        mock_message = mocker.MagicMock()
+        mock_message.role = "user"
+        mock_message.parts = [Part(root=TextPart(text="Hello"))]
+        mock_message.metadata = {}
+
+        context = mocker.MagicMock(spec=RequestContext)
+        context.task_id = "task-123"
+        context.context_id = "ctx-456"
+        context.message = mock_message
+        context.get_user_input.return_value = "Query"
+
+        event_queue = mocker.AsyncMock(spec=EventQueue)
+        task_updater = mocker.MagicMock()
+        task_updater.update_status = mocker.AsyncMock()
+        task_updater.event_queue = event_queue
+
+        mock_context_store = mocker.AsyncMock()
+        mock_context_store.get.return_value = None
+        mocker.patch(
+            "app.endpoints.a2a._get_context_store", return_value=mock_context_store
+        )
+
+        mock_client = mocker.AsyncMock()
+        mock_client.models.list = mocker.AsyncMock(
+            return_value=ListModelsResponse.model_construct(data=[mocker.MagicMock()])
+        )
+        mocker.patch(
+            "app.endpoints.a2a.AsyncOgxClientHolder"
+        ).return_value.get_client.return_value = mock_client
+
+        mock_responses_params = mocker.Mock()
+        mock_responses_params.model = "test-model"
+        mock_responses_params.conversation = "conv_x"
+        mocker.patch(
+            "app.endpoints.a2a.prepare_responses_params",
+            new=mocker.AsyncMock(return_value=mock_responses_params),
+        )
+
+        compaction_result = mocker.Mock()
+        compaction_result.params = mock_responses_params
+        mocker.patch(
+            "app.endpoints.a2a.apply_compaction_blocking",
+            new=mocker.AsyncMock(return_value=compaction_result),
+        )
+
+        mock_run_result = mocker.MagicMock()
+        mock_run_result.response.text = "Answer"
+        mock_usage = mocker.MagicMock()
+        mock_usage.input_tokens = 10
+        mock_usage.output_tokens = 5
+        mock_run_result.usage = mock_usage
+
+        result_event = mocker.MagicMock(spec=AgentRunResultEvent)
+        result_event.result = mock_run_result
+
+        async def _event_stream() -> Any:
+            yield result_event
+
+        mock_stream_ctx = mocker.AsyncMock()
+        mock_stream_ctx.__aenter__ = mocker.AsyncMock(return_value=_event_stream())
+        mock_stream_ctx.__aexit__ = mocker.AsyncMock(return_value=False)
+        mock_agent = mocker.MagicMock()
+        mock_agent.run_stream_events.return_value = mock_stream_ctx
+        mocker.patch("app.endpoints.a2a.build_agent", return_value=mock_agent)
+
+        await executor._process_task_streaming(
+            context, task_updater, context.task_id, context.context_id
+        )
+
+        spans = exporter.get_finished_spans()
+        execute_spans = [s for s in spans if s.name == "a2a.execute"]
+        assert len(execute_spans) == 1
+        span = execute_spans[0]
+
+        event_names = [e.name for e in span.events]
+        assert "llm.inference.completed" in event_names
+
+    @pytest.mark.asyncio
+    async def test_dispatch_span_attributes(  # pylint: disable=too-many-locals
+        self,
+        mocker: MockerFixture,
+        setup_configuration: AppConfig,  # pylint: disable=unused-argument
+        otel: tuple[Any, InMemorySpanExporter],
+    ) -> None:
+        """Test that a2a.dispatch span records rpc method, request id, and user_id."""
+        tracer, exporter = otel
+        mocker.patch("app.endpoints.a2a.tracer", tracer)
+
+        # Mock the A2A app to return a simple response
+        mock_a2a_app = mocker.AsyncMock()
+
+        async def _mock_asgi(_scope: Any, _receive: Any, send: Any) -> None:
+            await send({"type": "http.response.start", "status": 200, "headers": []})
+            await send(
+                {
+                    "type": "http.response.body",
+                    "body": b'{"jsonrpc":"2.0","id":"req-1","result":{}}',
+                }
+            )
+
+        mock_a2a_app.side_effect = _mock_asgi
+        mocker.patch(
+            "app.endpoints.a2a._create_a2a_app",
+            new=mocker.AsyncMock(return_value=mock_a2a_app),
+        )
+
+        # Build a mock request
+        rpc_body = b'{"jsonrpc":"2.0","method":"message/send","id":"req-1","params":{}}'
+        mock_request = mocker.MagicMock(spec=Request)
+        mock_request.method = "POST"
+        mock_request.url = mocker.MagicMock()
+        mock_request.url.path = "/a2a"
+        mock_request.body = mocker.AsyncMock(return_value=rpc_body)
+        mock_request.scope = {
+            "type": "http",
+            "method": "POST",
+            "path": "/a2a",
+            "headers": [],
+        }
+        mock_request.receive = mocker.AsyncMock()
+        mock_request.headers = {}
+
+        await _handle_a2a_jsonrpc(mock_request, MOCK_AUTH, {})
+
+        spans = exporter.get_finished_spans()
+        dispatch_spans = [s for s in spans if s.name == "a2a.dispatch"]
+        assert len(dispatch_spans) == 1
+        span = dispatch_spans[0]
+        attrs = dict(span.attributes or {})
+
+        assert attrs["a2a.rpc.method"] == "message/send"
+        assert attrs["a2a.request.id"].startswith("[hash:")
+        assert "user.id" in attrs
+
+        event_names = [e.name for e in span.events]
+        assert "a2a.dispatch.start" in event_names
+        assert "a2a.dispatch.end" in event_names
+
+    @pytest.mark.asyncio
+    async def test_dispatch_span_streaming_request(  # pylint: disable=too-many-locals
+        self,
+        mocker: MockerFixture,
+        setup_configuration: AppConfig,  # pylint: disable=unused-argument
+        otel: tuple[Any, InMemorySpanExporter],
+    ) -> None:
+        """Test that a2a.dispatch span is emitted for streaming requests."""
+        tracer, exporter = otel
+        mocker.patch("app.endpoints.a2a.tracer", tracer)
+
+        mock_a2a_app = mocker.AsyncMock()
+
+        async def _mock_asgi(_scope: Any, _receive: Any, send: Any) -> None:
+            await send({"type": "http.response.start", "status": 200, "headers": []})
+            await send(
+                {
+                    "type": "http.response.body",
+                    "body": b"data: chunk\n\n",
+                    "more_body": False,
+                }
+            )
+
+        mock_a2a_app.side_effect = _mock_asgi
+        mocker.patch(
+            "app.endpoints.a2a._create_a2a_app",
+            new=mocker.AsyncMock(return_value=mock_a2a_app),
+        )
+
+        rpc_body = (
+            b'{"jsonrpc":"2.0","method":"message/stream","id":"req-2","params":{}}'
+        )
+        mock_request = mocker.MagicMock(spec=Request)
+        mock_request.method = "POST"
+        mock_request.url = mocker.MagicMock()
+        mock_request.url.path = "/a2a"
+        mock_request.body = mocker.AsyncMock(return_value=rpc_body)
+        mock_request.scope = {
+            "type": "http",
+            "method": "POST",
+            "path": "/a2a",
+            "headers": [],
+        }
+        mock_request.receive = mocker.AsyncMock()
+        mock_request.headers = {}
+
+        response = await _handle_a2a_jsonrpc(mock_request, MOCK_AUTH, {})
+
+        # For streaming, consume the response generator to trigger app execution
+        assert hasattr(response, "body_iterator")
+        chunks = []
+        async for chunk in response.body_iterator:
+            chunks.append(chunk)
+
+        spans = exporter.get_finished_spans()
+        dispatch_spans = [s for s in spans if s.name == "a2a.dispatch"]
+        assert len(dispatch_spans) == 1
+        span = dispatch_spans[0]
+        attrs = dict(span.attributes or {})
+
+        assert attrs["a2a.rpc.method"] == "message/stream"
+        assert attrs["a2a.request.id"].startswith("[hash:")
+
+        event_names = [e.name for e in span.events]
+        assert "a2a.dispatch.start" in event_names
+        assert "a2a.dispatch.end" in event_names
+
+    @pytest.mark.asyncio
+    async def test_execute_span_no_tool_calls(  # pylint: disable=too-many-locals,too-many-statements
+        self,
+        mocker: MockerFixture,
+        setup_configuration: AppConfig,  # pylint: disable=unused-argument
+        otel: tuple[Any, InMemorySpanExporter],
+    ) -> None:
+        """Test that tool attributes are absent when no tools are called."""
+        tracer, exporter = otel
+        mocker.patch("app.endpoints.a2a.tracer", tracer)
+
+        executor = A2AAgentExecutor(auth_token="test-token")
+
+        mock_message = mocker.MagicMock()
+        mock_message.role = "user"
+        mock_message.parts = [Part(root=TextPart(text="Hello"))]
+        mock_message.metadata = {}
+
+        context = mocker.MagicMock(spec=RequestContext)
+        context.task_id = "task-123"
+        context.context_id = "ctx-456"
+        context.message = mock_message
+        context.get_user_input.return_value = "Simple question"
+
+        event_queue = mocker.AsyncMock(spec=EventQueue)
+        task_updater = mocker.MagicMock()
+        task_updater.update_status = mocker.AsyncMock()
+        task_updater.event_queue = event_queue
+
+        mock_context_store = mocker.AsyncMock()
+        mock_context_store.get.return_value = None
+        mocker.patch(
+            "app.endpoints.a2a._get_context_store", return_value=mock_context_store
+        )
+
+        mock_client = mocker.AsyncMock()
+        mock_client.models.list = mocker.AsyncMock(
+            return_value=ListModelsResponse.model_construct(data=[mocker.MagicMock()])
+        )
+        mocker.patch(
+            "app.endpoints.a2a.AsyncOgxClientHolder"
+        ).return_value.get_client.return_value = mock_client
+
+        mock_responses_params = mocker.Mock()
+        mock_responses_params.model = "test-model"
+        mock_responses_params.conversation = "conv_x"
+        mocker.patch(
+            "app.endpoints.a2a.prepare_responses_params",
+            new=mocker.AsyncMock(return_value=mock_responses_params),
+        )
+
+        compaction_result = mocker.Mock()
+        compaction_result.params = mock_responses_params
+        mocker.patch(
+            "app.endpoints.a2a.apply_compaction_blocking",
+            new=mocker.AsyncMock(return_value=compaction_result),
+        )
+
+        mock_run_result = mocker.MagicMock()
+        mock_run_result.response.text = "Simple answer"
+        mock_usage = mocker.MagicMock()
+        mock_usage.input_tokens = 5
+        mock_usage.output_tokens = 3
+        mock_run_result.usage = mock_usage
+
+        result_event = mocker.MagicMock(spec=AgentRunResultEvent)
+        result_event.result = mock_run_result
+
+        async def _event_stream() -> Any:
+            yield result_event
+
+        mock_stream_ctx = mocker.AsyncMock()
+        mock_stream_ctx.__aenter__ = mocker.AsyncMock(return_value=_event_stream())
+        mock_stream_ctx.__aexit__ = mocker.AsyncMock(return_value=False)
+        mock_agent = mocker.MagicMock()
+        mock_agent.run_stream_events.return_value = mock_stream_ctx
+        mocker.patch("app.endpoints.a2a.build_agent", return_value=mock_agent)
+
+        await executor._process_task_streaming(
+            context, task_updater, context.task_id, context.context_id
+        )
+
+        spans = exporter.get_finished_spans()
+        execute_spans = [s for s in spans if s.name == "a2a.execute"]
+        assert len(execute_spans) == 1
+        span = execute_spans[0]
+        attrs = dict(span.attributes or {})
+
+        assert "tool.calls.count" not in attrs
+        assert "tool.calls.names" not in attrs
+
+        event_names = [e.name for e in span.events]
+        assert "tool.execution.completed" not in event_names

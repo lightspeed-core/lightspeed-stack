@@ -7,7 +7,7 @@ request overrides work.
 
 > [!IMPORTANT]
 > Shields used by `/query`, `/streaming_query`, `/responses`, and `/rlsapi` are
-> **owned and configured by Lightspeed Core Stack**, not by the Llama Stack /
+> **owned and configured by Lightspeed Core Stack**, not by the OGX /
 > OGX Safety or Moderations APIs anymore. Do not configure LCORE request guardrails
 > under `providers.safety` / `registered_resources.shields` in the stack
 > `run.yaml`.
@@ -125,7 +125,7 @@ each request. When moderation blocks the input, the endpoint returns a refusal
 # Listing shields (`GET /v1/shields`)
 
 `GET /v1/shields` returns shields from **LCORE configuration only**. It does
-not call Llama Stack / OGX to list Safety or Moderations resources.
+not call OGX / OGX to list Safety or Moderations resources.
 
 Each catalog entry has this shape:
 
@@ -172,7 +172,7 @@ Optional request field on `/v1/query`, `/v1/streaming_query`, and
 | `["topic-guard", ...]` | Apply only those names; unknown IDs yield HTTP **404** |
 
 Values must match configured `name` strings (as returned by
-`GET /v1/shields`), not Llama Stack shield resource names.
+`GET /v1/shields`), not OGX shield resource names.
 
 Example:
 

@@ -1,13 +1,13 @@
 """Step definitions for proxy and TLS networking e2e tests.
 
-These tests configure Llama Stack's run.yaml with NetworkConfig settings
+These tests configure OGX's run.yaml with NetworkConfig settings
 (proxy, TLS) and verify the full pipeline works through the Lightspeed Stack.
-The proxy sits between Llama Stack and whichever remote LLM provider is active.
+The proxy sits between OGX and whichever remote LLM provider is active.
 
 Config switching uses the same pattern as other e2e tests: overwrite the
 host-mounted run.yaml and restart Docker containers. Restarts are not
-triggered from ``The original Llama Stack config is restored if modified``;
-list ``Llama Stack is restarted`` / ``Lightspeed Stack is restarted`` in the
+triggered from ``The original OGX config is restored if modified``;
+list ``OGX is restarted`` / ``Lightspeed Stack is restarted`` in the
 feature file so readers see every restart. Cleanup restores the backup file
 (and stops proxy servers) before each scenario.
 """
@@ -19,6 +19,7 @@ import subprocess
 import tempfile
 import threading
 import time
+from concurrent.futures import CancelledError
 from pathlib import Path
 from typing import Any, Optional
 
@@ -31,8 +32,8 @@ from tests.e2e.proxy.interception_proxy import (
     DEFAULT_INTERCEPTION_PROXY_PORT,
 )
 from tests.e2e.proxy.tunnel_proxy import DEFAULT_PROXY_PORT
-from tests.e2e.utils.llama_config_utils import (
-    backup_llama_config,
+from tests.e2e.utils.ogx_config_utils import (
+    backup_ogx_config,
     load_llama_config,
     restore_llama_config_if_modified,
     write_llama_config,
@@ -63,7 +64,7 @@ def _is_docker_mode() -> bool:
 
 
 def _host_special_dns_from_container(hostname: str) -> Optional[str]:
-    """Resolve a host-gateway hostname inside llama-stack to an IPv4 address.
+    """Resolve a host-gateway hostname inside OGX to an IPv4 address.
 
     Docker exposes ``host.docker.internal`` or ``host.containers.internal``
     for reaching the host. Resolving from inside the container matches the address
@@ -202,7 +203,7 @@ def _sync_interception_proxy_ca_secret() -> None:
 
 
 def _get_proxy_host(is_docker: bool) -> str:
-    """Get the host address that Llama Stack should use to reach the tunnel proxy.
+    """Get the host address that OGX should use to reach the tunnel proxy.
 
     Parameters:
     ----------
@@ -283,10 +284,14 @@ def _stop_proxy(context: Context, attr: str, loop_attr: str) -> None:
         fut = asyncio.run_coroutine_threadsafe(proxy.stop(), loop)
         try:
             fut.result(timeout=30)
-        except Exception:
+        except (CancelledError, TimeoutError):
             pass
         loop.call_soon_threadsafe(loop.stop)
-        time.sleep(0.5)
+        thread = getattr(proxy, "_thread", None)
+        if thread is not None:
+            thread.join(timeout=30)
+        else:
+            time.sleep(0.5)
     if hasattr(context, attr):
         delattr(context, attr)
     if hasattr(context, loop_attr):
@@ -310,15 +315,15 @@ def restore_if_modified(context: Context) -> None:
         delattr(context, "needs_interception_ca_on_llama")
 
     if restore_llama_config_if_modified():
-        print("Restoring original Llama Stack config from backup...")
+        print("Restoring original OGX config from backup...")
 
 
 # --- Service Restart Steps ---
 
 
 @given("Llama Stack is restarted")
-def restart_llama_stack(context: Context) -> None:
-    """Restart the Llama Stack container."""
+def restart_ogx(context: Context) -> None:
+    """Restart the OGX container."""
     from tests.e2e.features.steps.tls import (
         is_tls_configuration_feature,
         restart_llama_for_tls_feature,
@@ -368,10 +373,21 @@ def start_tunnel_proxy(context: Context, port: int) -> None:
 
     def run_proxy() -> None:
         asyncio.set_event_loop(loop)
-        loop.run_until_complete(proxy.start())
-        loop.run_forever()
+        try:
+            loop.run_until_complete(proxy.start())
+            loop.run_forever()
+        finally:
+            # Cancel leftover handler tasks so the loop can close cleanly.
+            if pending := asyncio.all_tasks(loop):
+                for task in pending:
+                    task.cancel()
+                loop.run_until_complete(
+                    asyncio.gather(*pending, return_exceptions=True)
+                )
+            loop.close()
 
     thread = threading.Thread(target=run_proxy, daemon=True)
+    proxy._thread = thread
     thread.start()
     time.sleep(1)
 
@@ -379,7 +395,7 @@ def start_tunnel_proxy(context: Context, port: int) -> None:
 @given("Llama Stack is configured to route inference through the tunnel proxy")
 def configure_llama_tunnel_proxy(context: Context) -> None:
     """Modify run.yaml with proxy config pointing to the tunnel proxy."""
-    backup_llama_config()
+    backup_ogx_config()
     if is_prow_environment():
         proxy_port = getattr(context, "cluster_tunnel_proxy_port", DEFAULT_PROXY_PORT)
     else:
@@ -403,7 +419,7 @@ def configure_llama_tunnel_proxy(context: Context) -> None:
 @given('Llama Stack is configured to route inference through proxy "{proxy_url}"')
 def configure_llama_unreachable_proxy(context: Context, proxy_url: str) -> None:
     """Modify run.yaml with a proxy URL (may be unreachable)."""
-    backup_llama_config()
+    backup_ogx_config()
     config = load_llama_config()
     provider = _find_inference_provider(context, config)
 
@@ -446,7 +462,7 @@ def start_interception_proxy(context: Context, port: int) -> None:
     ca_cert_path = Path(tempfile.gettempdir()) / "interception-proxy-ca.pem"
     proxy.export_ca_cert(ca_cert_path)
 
-    # In Docker mode, copy the cert into the llama-stack container
+    # In Docker mode, copy the cert into the OGX container
     if context.is_docker_mode:
         container_cert_path = "/tmp/interception-proxy-ca.pem"
         subprocess.run(
@@ -463,10 +479,21 @@ def start_interception_proxy(context: Context, port: int) -> None:
 
     def run_proxy() -> None:
         asyncio.set_event_loop(loop)
-        loop.run_until_complete(proxy.start())
-        loop.run_forever()
+        try:
+            loop.run_until_complete(proxy.start())
+            loop.run_forever()
+        finally:
+            # Cancel leftover handler tasks so the loop can close cleanly.
+            if pending := asyncio.all_tasks(loop):
+                for task in pending:
+                    task.cancel()
+                loop.run_until_complete(
+                    asyncio.gather(*pending, return_exceptions=True)
+                )
+            loop.close()
 
     thread = threading.Thread(target=run_proxy, daemon=True)
+    proxy._thread = thread
     thread.start()
     time.sleep(1)
 
@@ -477,7 +504,7 @@ def start_interception_proxy(context: Context, port: int) -> None:
 )
 def configure_llama_interception_with_ca(context: Context) -> None:
     """Modify run.yaml with interception proxy and CA cert config."""
-    backup_llama_config()
+    backup_ogx_config()
     context.needs_interception_ca_on_llama = True
     if is_prow_environment():
         os.environ["E2E_COPY_INTERCEPTION_CA_TO_LLAMA"] = "1"
@@ -516,7 +543,7 @@ def configure_llama_interception_with_ca(context: Context) -> None:
 )
 def configure_llama_interception_no_ca(context: Context) -> None:
     """Modify run.yaml with interception proxy but NO CA cert."""
-    backup_llama_config()
+    backup_ogx_config()
     context.needs_interception_ca_on_llama = False
     os.environ.pop("E2E_COPY_INTERCEPTION_CA_TO_LLAMA", None)
     if is_prow_environment():
@@ -548,7 +575,7 @@ def configure_llama_interception_no_ca(context: Context) -> None:
 @given('Llama Stack is configured with minimum TLS version "{version}"')
 def configure_llama_tls_version(context: Context, version: str) -> None:
     """Modify run.yaml with TLS version config."""
-    backup_llama_config()
+    backup_ogx_config()
     config = load_llama_config()
     provider = _find_inference_provider(context, config)
 
@@ -566,7 +593,7 @@ def configure_llama_tls_version(context: Context, version: str) -> None:
 @given('Llama Stack is configured with ciphers "{ciphers}"')
 def configure_llama_ciphers(context: Context, ciphers: str) -> None:
     """Modify run.yaml with cipher suite config."""
-    backup_llama_config()
+    backup_ogx_config()
     config = load_llama_config()
     provider = _find_inference_provider(context, config)
 

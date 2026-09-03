@@ -5,7 +5,10 @@ from typing import ClassVar
 from fastapi import status
 from typing_extensions import Self  # noqa: UP035
 
-from models.api.responses.constants import QUOTA_EXCEEDED_DESCRIPTION
+from models.api.responses.constants import (
+    QUOTA_EXCEEDED_DESCRIPTION,
+    TOO_MANY_CONCURRENT_REQUESTS_DESCRIPTION,
+)
 from models.api.responses.error.bases import AbstractErrorResponse
 from quota.quota_exceed_error import QuotaExceedError
 
@@ -105,6 +108,77 @@ class QuotaExceededResponse(AbstractErrorResponse):
 
         Args:
             response: Public-facing error message describing the quota condition.
+            cause: Detailed cause stored in the error detail.
+        """
+        super().__init__(
+            response=response,
+            cause=cause,
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+        )
+
+
+class TooManyConcurrentRequestsResponse(AbstractErrorResponse):
+    """429 Too Many Requests - concurrency limit exceeded."""
+
+    description: ClassVar[str] = TOO_MANY_CONCURRENT_REQUESTS_DESCRIPTION
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "label": "file upload",
+                    "detail": {
+                        "response": "Too many concurrent file uploads",
+                        "cause": "The maximum number of concurrent file uploads has been reached.",
+                    },
+                },
+                {
+                    "label": "vector store attach",
+                    "detail": {
+                        "response": "Too many concurrent vector store file attachments",
+                        "cause": (
+                            "The maximum number of concurrent vector store "
+                            "file attachments has been reached."
+                        ),
+                    },
+                },
+            ]
+        }
+    }
+
+    @classmethod
+    def file_upload(cls) -> Self:
+        """Create a TooManyConcurrentRequestsResponse for the file upload endpoint.
+
+        Returns:
+            Response indicating the concurrent file upload limit was reached.
+        """
+        return cls(
+            response="Too many concurrent file uploads",
+            cause="The maximum number of concurrent file uploads has been reached.",
+        )
+
+    @classmethod
+    def vector_store_attach(cls) -> Self:
+        """Create a TooManyConcurrentRequestsResponse for the vector store attach endpoint.
+
+        Returns:
+            Response indicating the concurrent vector store attach limit was reached.
+        """
+        return cls(
+            response="Too many concurrent vector store file attachments",
+            cause=(
+                "The maximum number of concurrent vector store file "
+                "attachments has been reached."
+            ),
+        )
+
+    def __init__(self, *, response: str, cause: str) -> None:
+        """Create a TooManyConcurrentRequestsResponse with a public message and cause.
+
+        Sets the HTTP status code to 429 (Too Many Requests).
+
+        Args:
+            response: Public-facing error message describing the condition.
             cause: Detailed cause stored in the error detail.
         """
         super().__init__(

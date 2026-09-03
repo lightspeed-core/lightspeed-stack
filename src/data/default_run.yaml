@@ -1,28 +1,31 @@
-# Built-in default Llama Stack baseline for unified-mode synthesis.
+# Built-in default OGX baseline for unified-mode synthesis.
 #
 # This file is the starting point when a unified `lightspeed-stack.yaml`
-# selects `llama_stack.config.baseline: default` (the default) and does not
-# point at a `profile:`. The synthesizer (src/llama_stack_configuration.py)
+# selects `ogx.config.baseline: default` (the default) and does not
+# point at a `profile:`. The synthesizer (src/ogx_configuration.py)
 # layers enrichment, high-level `inference.providers`, and `native_override`
-# on top of this baseline to produce the final run.yaml handed to Llama Stack.
+# on top of this baseline to produce the final run.yaml handed to OGX.
 #
 # It is intentionally thinner than the repo-root run.yaml: it carries only the
 # APIs and providers needed to boot a minimal, queryable stack (inference,
-# vector_io, responses, tool_runtime, files) plus the storage backends
-# those providers reference. tool_runtime includes file-search (file_search /
-# RAG) and model-context-protocol (MCP) so those capabilities work when
-# operators enable them. Operators extend it via high-level sections or
-# `native_override`.
+# vector_io, responses, tool_runtime, files, file_processors) plus the storage
+# backends those providers reference. tool_runtime includes file-search
+# (file_search / RAG) and model-context-protocol (MCP) so those capabilities
+# work when operators enable them. file_processors (inline::pypdf) is required
+# for vector-store file attach / Notebook indexing after OGX removed the
+# legacy PyPDF fallback. Operators extend it via high-level sections or
+# `native_override` (e.g. swap pypdf for inline::docling).
 #
 # NOTE: `external_providers_dir` carries a default (`:=~/.llama/providers.d`)
 # so the baseline resolves even when EXTERNAL_PROVIDERS_DIR is unset — see the
-# PoC finding in docs/design/llama-stack-config-merge/llama-stack-config-merge-spike.md.
+# PoC finding in docs/design/ogx-config-merge/ogx-config-merge-spike.md.
 version: 2
 
 apis:
 - responses
 - conversations
 - files
+- file_processors
 - inference
 - tool_runtime
 - vector_io
@@ -32,10 +35,10 @@ external_providers_dir: ${env.EXTERNAL_PROVIDERS_DIR:=~/.llama/providers.d}
 
 providers:
   inference:
-  - provider_id: openai
+  - provider_id: ${env.OPENAI_API_KEY:+openai}
     provider_type: remote::openai
     config:
-      api_key: ${env.OPENAI_API_KEY}
+      api_key: ${env.OPENAI_API_KEY:=}
       allowed_models: ["${env.E2E_OPENAI_MODEL:=gpt-4o-mini}"]
   - provider_id: sentence-transformers
     provider_type: inline::sentence-transformers
@@ -47,6 +50,13 @@ providers:
       storage_dir: ${env.SQLITE_STORE_DIR:=~/.llama/storage/files}
     provider_id: meta-reference-files
     provider_type: inline::localfs
+  # required for /v1/vector-stores to work with files properly
+  file_processors:
+  - provider_id: pypdf
+    provider_type: inline::pypdf
+    config:
+      default_chunk_size_tokens: 800
+      default_chunk_overlap_tokens: 400
   tool_runtime:
   - config: {}
     provider_id: model-context-protocol
@@ -101,10 +111,10 @@ registered_resources:
   models: []
   vector_stores: []
 
-# REQUIRED for file_search tool calls to work. Without it, llama-stack's
+# REQUIRED for file_search tool calls to work. Without it, OGX's
 # file-search runtime silently fails all file_search operations with no error logged.
 vector_stores:
-  # LCORE-1498: Disables Llama Stack RAG annotation generation that causes
+  # LCORE-1498: Disables OGX RAG annotation generation that causes
   # unwanted citation/file markers in model output.
   annotation_prompt_params:
     enable_annotations: false

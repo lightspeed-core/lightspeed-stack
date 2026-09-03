@@ -10,31 +10,31 @@ class "AgentTurnAccumulator" as src.models.common.agents.turn_accumulator.AgentT
   seen_docs : set[tuple[str, str]]
   text_parts : list[str]
   tool_round : int
-  turn_summary
+  turn_summary : TurnSummary
   vector_store_ids : Final[list[str]]
   increment_round_if_pending() -> None
 }
 class "Attachment" as src.models.common.query.Attachment {
-  attachment_type : str
-  content : str
-  content_type : str
+  attachment_type : Optional[str]
+  content : Optional[str]
+  content_type : Optional[str]
   model_config : dict
   validate_image_attachment() -> Self
 }
 class "CatalogModel" as src.models.common.models.CatalogModel {
-  api_model_type : str
-  identifier : str
-  metadata : dict[str, Any]
-  model_type : str
-  provider_id : str
-  provider_resource_id : str
-  type : str
+  api_model_type : Optional[str]
+  identifier : Optional[str]
+  metadata : Optional[dict[str, Any]]
+  model_type : Optional[str]
+  provider_id : Optional[str]
+  provider_resource_id : Optional[str]
+  type : Optional[str]
 }
 class "CatalogShield" as src.models.common.shields.CatalogShield {
-  config : dict[str, Any]
-  name : str
-  provider_id : Literal['question_validity', 'redaction']
-  type : Literal['shield']
+  config : Optional[dict[str, Any]]
+  name : Optional[str]
+  provider_id : Optional[Literal['question_validity', 'redaction']]
+  type : Optional[Literal['shield']]
 }
 class "CatalogTool" as src.models.common.tools.CatalogTool {
   description : str
@@ -58,7 +58,7 @@ class "ConversationData" as src.models.common.conversation.ConversationData {
   topic_summary : Optional[str]
 }
 class "ConversationDetails" as src.models.common.conversation.ConversationDetails {
-  conversation_id : str
+  conversation_id : Optional[str]
   created_at : Optional[str]
   last_message_at : Optional[str]
   last_used_model : Optional[str]
@@ -67,15 +67,16 @@ class "ConversationDetails" as src.models.common.conversation.ConversationDetail
   topic_summary : Optional[str]
 }
 class "ConversationTurn" as src.models.common.conversation.ConversationTurn {
-  completed_at : str
-  messages : list[Message]
-  model : str
-  provider : str
-  started_at : str
-  tool_calls : list[ToolCallSummary]
-  tool_results : list[ToolResultSummary]
+  completed_at : Optional[str]
+  messages : Optional[list[Message]]
+  model : Optional[str]
+  provider : Optional[str]
+  started_at : Optional[str]
+  tool_calls : Optional[list[ToolCallSummary]]
+  tool_results : Optional[list[ToolResultSummary]]
 }
 class "EndEventData" as src.models.common.agents.stream_payloads.EndEventData {
+  context_status : Literal
   input_tokens : int
   output_tokens : int
   referenced_documents : list[ReferencedDocument]
@@ -123,39 +124,39 @@ class "ListedMcpTool" as src.models.common.tools.ListedMcpTool {
   name : str
 }
 class "MCPListToolsSummary" as src.models.common.turn_summary.MCPListToolsSummary {
-  server_label : str
-  tools : list[ToolInfoSummary]
+  server_label : Optional[str]
+  tools : Optional[list[ToolInfoSummary]]
 }
 class "MCPServerAuthInfo" as src.models.common.mcp.MCPServerAuthInfo {
-  client_auth_headers : list[str]
-  name : str
+  client_auth_headers : Optional[list[str]]
+  name : Optional[str]
 }
 class "MCPServerInfo" as src.models.common.mcp.MCPServerInfo {
-  name : str
-  provider_id : str
-  source : str
-  url : str
+  name : Optional[str]
+  provider_id : Optional[str]
+  source : Optional[str]
+  url : Optional[str]
 }
 class "Message" as src.models.common.conversation.Message {
-  content : str
+  content : Optional[str]
   referenced_documents : Optional[list[ReferencedDocument]]
-  type : Literal['user', 'assistant', 'system', 'developer']
+  type : Optional[Literal['user', 'assistant', 'system', 'developer']]
 }
 class "ProviderHealthStatus" as src.models.common.health.ProviderHealthStatus {
   message : Optional[str]
-  provider_id : str
-  status : str
+  provider_id : Optional[str]
+  status : Optional[str]
 }
 class "RAGChunk" as src.models.common.turn_summary.RAGChunk {
   attributes : Optional[dict[str, Any]]
-  content : str
+  content : Optional[str]
   score : Optional[float]
   source : Optional[str]
 }
 class "RAGContext" as src.models.common.turn_summary.RAGContext {
-  context_text : str
-  rag_chunks : list[RAGChunk]
-  referenced_documents : list[ReferencedDocument]
+  context_text : Optional[str]
+  rag_chunks : Optional[list[RAGChunk]]
+  referenced_documents : Optional[list[ReferencedDocument]]
 }
 class "ReferencedDocument" as src.models.common.turn_summary.ReferencedDocument {
   doc_title : Optional[str]
@@ -164,12 +165,12 @@ class "ReferencedDocument" as src.models.common.turn_summary.ReferencedDocument 
   source : Optional[str]
 }
 class "ResponseGeneratorContext" as src.models.common.responses.contexts.ResponseGeneratorContext {
-  client
+  client : AsyncOgxClient
   conversation_id : str
-  inline_rag_context
+  inline_rag_context : RAGContext
   model_id : str
   moderation_result
-  query_request
+  query_request : QueryRequest
   rag_id_mapping : dict[str, str]
   request_id : str
   skip_userid_check : bool
@@ -178,24 +179,24 @@ class "ResponseGeneratorContext" as src.models.common.responses.contexts.Respons
   vector_store_ids : list[str]
 }
 class "ResponsesApiParams" as src.models.common.responses.responses_api_params.ResponsesApiParams {
-  conversation : str
+  conversation : Optional[str]
   extra_headers : Optional[dict[str, str]]
   include : Optional[list[IncludeParameter]]
-  input
+  input : Optional[ResponseInput]
   instructions : Optional[str]
   max_infer_iters : Optional[int]
   max_output_tokens : Optional[int]
   max_tool_calls : Optional[int]
   metadata : Optional[dict[str, str]]
-  model : str
-  omit_conversation : bool
+  model : Optional[str]
+  omit_conversation : Optional[bool]
   parallel_tool_calls : Optional[bool]
   previous_response_id : Optional[str]
   prompt : Optional[Prompt]
   reasoning : Optional[Reasoning]
   safety_identifier : Optional[str]
-  store : bool
-  stream : bool
+  store : Optional[bool]
+  stream : Optional[bool]
   temperature : Optional[float]
   text : Optional[Text]
   tool_choice : Optional[ToolChoice]
@@ -204,40 +205,45 @@ class "ResponsesApiParams" as src.models.common.responses.responses_api_params.R
   model_dump() -> dict[str, Any]
 }
 class "ResponsesContext" as src.models.common.responses.contexts.ResponsesContext {
-  auth : tuple[str, str, bool, str]
+  auth : Optional[tuple[str, str, bool, str]]
   background_tasks : Optional[BackgroundTasks]
-  client
+  client : Optional[AsyncOgxClient]
   compacted_original_input : Optional[ResponseInput]
-  endpoint_path : str
-  filter_server_tools : bool
-  generate_topic_summary : bool
-  inline_rag_context
-  input_text : str
-  model_config
-  moderation_result
-  rh_identity_context : tuple[str, str]
-  started_at : datetime
+  endpoint_path : Optional[str]
+  filter_server_tools : Optional[bool]
+  generate_topic_summary : Optional[bool]
+  inline_rag_context : Optional[RAGContext]
+  input_text : Optional[str]
+  model_config : ConfigDict
+  moderation_result : Optional[ShieldModerationResult]
+  rh_identity_context : Optional[tuple[str, str]]
+  root_span : Span
+  started_at : Optional[datetime]
   user_agent : Optional[str]
 }
 class "ResponsesConversationContext" as src.models.common.responses.responses_conversation_context.ResponsesConversationContext {
-  conversation : str
-  generate_topic_summary : bool
-  model_config
+  conversation : Optional[str]
+  generate_topic_summary : Optional[bool]
+  model_config : ConfigDict
   user_conversation : Optional[UserConversation]
 }
 class "ShieldModerationBlocked" as src.models.common.moderation.ShieldModerationBlocked {
   decision : Literal['blocked']
   message : str
   moderation_id : str
-  refusal_response
+  refusal_response : ResponseMessage
 }
 class "ShieldModerationPassed" as src.models.common.moderation.ShieldModerationPassed {
   decision : Literal['passed']
 }
+class "SkillMetadata" as src.models.common.skills.SkillMetadata {
+  description : Optional[str]
+  name : Optional[str]
+}
 class "SolrVectorSearchRequest" as src.models.common.query.SolrVectorSearchRequest {
   filters : Optional[dict[str, Any]]
-  mode : Optional[Literal['semantic', 'hybrid', 'lexical']]
-  model_config
+  mode : Optional[Literal['semantic', 'hybrid', 'lexical', 'keyword']]
+  model_config : ConfigDict
   coerce_legacy_plain_dict(data: Any) -> Any
 }
 class "StartEventData" as src.models.common.agents.stream_payloads.StartEventData {
@@ -250,7 +256,7 @@ class "StartStreamPayload" as src.models.common.agents.stream_payloads.StartStre
   create() -> Self
 }
 class "StreamPayloadBase" as src.models.common.agents.stream_payloads.StreamPayloadBase {
-  model_config
+  model_config : ConfigDict
   serialize_json() -> str
   serialize_text() -> str
 }
@@ -265,42 +271,42 @@ class "TokenStreamPayload" as src.models.common.agents.stream_payloads.TokenStre
   serialize_text() -> str
 }
 class "ToolCallStreamPayload" as src.models.common.agents.stream_payloads.ToolCallStreamPayload {
-  data
+  data : ToolCallSummary
   event : Literal['tool_call']
   serialize_text() -> str
 }
 class "ToolCallSummary" as src.models.common.turn_summary.ToolCallSummary {
-  args : dict[str, Any]
-  id : str
-  name : str
-  type : str
+  args : Optional[dict[str, Any]]
+  id : Optional[str]
+  name : Optional[str]
+  type : Optional[str]
 }
 class "ToolInfoSummary" as src.models.common.turn_summary.ToolInfoSummary {
   description : Optional[str]
   input_schema : Optional[dict[str, Any]]
-  name : str
+  name : Optional[str]
 }
 class "ToolResultStreamPayload" as src.models.common.agents.stream_payloads.ToolResultStreamPayload {
-  data
+  data : ToolResultSummary
   event : Literal['tool_result']
   serialize_text() -> str
 }
 class "ToolResultSummary" as src.models.common.turn_summary.ToolResultSummary {
-  content : str
-  id : str
-  round : int
-  status : str
-  type : str
+  content : Optional[str]
+  id : Optional[str]
+  round : Optional[int]
+  status : Optional[str]
+  type : Optional[str]
 }
 class "Transcript" as src.models.common.transcripts.Transcript {
-  attachments : list[dict[str, Any]]
+  attachments : Optional[list[dict[str, Any]]]
   llm_response : str
   metadata
   query_is_valid : bool
-  rag_chunks : list[dict[str, Any]]
+  rag_chunks : Optional[list[dict[str, Any]]]
   redacted_query : str
-  tool_calls : list[dict[str, Any]]
-  tool_results : list[dict[str, Any]]
+  tool_calls : Optional[list[dict[str, Any]]]
+  tool_results : Optional[list[dict[str, Any]]]
   truncated : bool
 }
 class "TranscriptMetadata" as src.models.common.transcripts.TranscriptMetadata {
@@ -318,16 +324,16 @@ class "TurnCompleteStreamPayload" as src.models.common.agents.stream_payloads.Tu
   create() -> Self
 }
 class "TurnSummary" as src.models.common.turn_summary.TurnSummary {
-  id : str
+  id : Optional[str]
   llm_response : str
-  next_chunk_id : int
-  output_items : list[OpenAIResponseOutput]
-  partial_tokens : list[str]
-  rag_chunks : list[RAGChunk]
-  referenced_documents : list[ReferencedDocument]
-  token_usage
-  tool_calls : list[ToolCallSummary]
-  tool_results : list[ToolResultSummary]
+  next_chunk_id : Optional[int]
+  output_items : Optional[list[OpenAIResponseOutput]]
+  partial_tokens : Optional[list[str]]
+  rag_chunks : Optional[list[RAGChunk]]
+  referenced_documents : Optional[list[ReferencedDocument]]
+  token_usage : Optional[TokenCounter]
+  tool_calls : Optional[list[ToolCallSummary]]
+  tool_results : Optional[list[ToolResultSummary]]
 }
 src.models.common.agents.stream_payloads.EndStreamPayload --|> src.models.common.agents.stream_payloads.StreamPayloadBase
 src.models.common.agents.stream_payloads.ErrorStreamPayload --|> src.models.common.agents.stream_payloads.StreamPayloadBase
@@ -337,11 +343,11 @@ src.models.common.agents.stream_payloads.TokenStreamPayload --|> src.models.comm
 src.models.common.agents.stream_payloads.ToolCallStreamPayload --|> src.models.common.agents.stream_payloads.StreamPayloadBase
 src.models.common.agents.stream_payloads.ToolResultStreamPayload --|> src.models.common.agents.stream_payloads.StreamPayloadBase
 src.models.common.agents.stream_payloads.TurnCompleteStreamPayload --|> src.models.common.agents.stream_payloads.StreamPayloadBase
-src.models.common.agents.stream_payloads.EndEventData --* src.models.common.agents.stream_payloads.EndStreamPayload : data
-src.models.common.agents.stream_payloads.ErrorEventData --* src.models.common.agents.stream_payloads.ErrorStreamPayload : data
-src.models.common.agents.stream_payloads.InterruptedEventData --* src.models.common.agents.stream_payloads.InterruptedStreamPayload : data
-src.models.common.agents.stream_payloads.StartEventData --* src.models.common.agents.stream_payloads.StartStreamPayload : data
-src.models.common.agents.stream_payloads.TokenChunkData --* src.models.common.agents.stream_payloads.TokenStreamPayload : data
-src.models.common.agents.stream_payloads.TokenChunkData --* src.models.common.agents.stream_payloads.TurnCompleteStreamPayload : data
-src.models.common.transcripts.TranscriptMetadata --* src.models.common.transcripts.Transcript : metadata
+src.models.common.agents.stream_payloads.EndStreamPayload --> src.models.common.agents.stream_payloads.EndEventData : data
+src.models.common.agents.stream_payloads.ErrorStreamPayload --> src.models.common.agents.stream_payloads.ErrorEventData : data
+src.models.common.agents.stream_payloads.InterruptedStreamPayload --> src.models.common.agents.stream_payloads.InterruptedEventData : data
+src.models.common.agents.stream_payloads.StartStreamPayload --> src.models.common.agents.stream_payloads.StartEventData : data
+src.models.common.agents.stream_payloads.TokenStreamPayload --> src.models.common.agents.stream_payloads.TokenChunkData : data
+src.models.common.agents.stream_payloads.TurnCompleteStreamPayload --> src.models.common.agents.stream_payloads.TokenChunkData : data
+src.models.common.transcripts.Transcript --> src.models.common.transcripts.TranscriptMetadata : metadata
 @enduml

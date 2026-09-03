@@ -21,8 +21,8 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install dependencies
-        # Same pattern as local dev (CONTRIBUTING.md): dev + llslibdev for a full app import.
-        run: uv sync --group dev --group llslibdev
+        # Same pattern as local dev (CONTRIBUTING.md): dev + ogxlibdev for a full app import.
+        run: uv sync --group dev --group ogxlibdev
       - name: Install PDM
         # scripts/generate_openapi_schema.py asserts OpenAPI info.version matches `pdm show --version`.
         run: uv pip install pdm

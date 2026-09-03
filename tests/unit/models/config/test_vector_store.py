@@ -5,6 +5,7 @@ from typing import Any
 
 import pytest
 import yaml
+from ogx.core.stack import replace_env_vars
 from pydantic import SecretStr, TypeAdapter, ValidationError
 
 from models.config import Configuration, VectorStoreProvider
@@ -91,6 +92,72 @@ def test_pgvector_applies_env_defaults() -> None:
     )
     assert provider.config.host == "${env.POSTGRES_HOST}"
     assert provider.config.password == SecretStr("${env.POSTGRES_PASSWORD}")
+
+
+def test_pgvector_accepts_int_port_from_env_substitution(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Int port after replace_env_vars type coercion must validate.
+
+    OGX's replace_env_vars converts digit-only env values to int via
+    _convert_string_to_proper_type. LCORE loads config through that helper, so
+    port must accept int as well as str / ${env.*} placeholders.
+
+    Parameters:
+        monkeypatch: Fixture that sets and restores environment variables.
+    """
+    monkeypatch.setenv("PGVECTOR_PORT", "5432")
+    resolved = replace_env_vars({"port": "${env.PGVECTOR_PORT:=5432}"})
+    assert resolved["port"] == 5432
+    assert isinstance(resolved["port"], int)
+
+    provider = _PROVIDER_ADAPTER.validate_python(
+        {
+            "id": "nb-pg",
+            "type": "pgvector",
+            "embedding_model": "/emb",
+            "embedding_dimension": 768,
+            "config": {
+                "host": "db.example.com",
+                "port": resolved["port"],
+                "db": "vectors",
+                "user": "pguser",
+                "password": "secret",
+            },
+        }
+    )
+    assert provider.config.port == 5432
+
+
+def test_pgvector_accepts_int_port_from_env_default(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Unset env with :=default still coerces the default to int and validates.
+
+    Parameters:
+        monkeypatch: Fixture that removes and restores environment variables.
+    """
+    monkeypatch.delenv("PGVECTOR_PORT", raising=False)
+    resolved = replace_env_vars({"port": "${env.PGVECTOR_PORT:=5432}"})
+    assert resolved["port"] == 5432
+    assert isinstance(resolved["port"], int)
+
+    provider = _PROVIDER_ADAPTER.validate_python(
+        {
+            "id": "nb-pg",
+            "type": "pgvector",
+            "embedding_model": "/emb",
+            "embedding_dimension": 768,
+            "config": {
+                "host": "db.example.com",
+                "port": resolved["port"],
+                "db": "vectors",
+                "user": "pguser",
+                "password": "secret",
+            },
+        }
+    )
+    assert provider.config.port == 5432
 
 
 def test_rejects_byok_prefix_id() -> None:

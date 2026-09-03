@@ -1,4 +1,4 @@
-"""Request parameter model for Llama Stack responses API calls."""
+"""Request parameter model for OGX responses API calls."""
 
 from collections.abc import Mapping
 from typing import Any, Final, Optional
@@ -47,15 +47,15 @@ _ECHOED_FIELDS: Final[set[str]] = set(
 
 
 class ResponsesApiParams(BaseModel):
-    """Parameters for a Llama Stack Responses API request.
+    """Parameters for an OGX Responses API request.
 
-    All fields accepted by the Llama Stack client responses.create() body are
+    All fields accepted by the OGX client responses.create() body are
     included so that dumped model can be passed directly to response create.
     """
 
     input: ResponseInput = Field(description="The input text or structured input items")
     model: str = Field(description='The full model ID in format "provider/model"')
-    conversation: str = Field(description="The conversation ID in llama-stack format")
+    conversation: str = Field(description="The conversation ID in OGX format")
     include: Optional[list[IncludeParameter]] = Field(
         default=None,
         description="Output item types to include in the response",
@@ -119,16 +119,16 @@ class ResponsesApiParams(BaseModel):
     )
     extra_headers: Optional[dict[str, str]] = Field(
         default=None,
-        description="Extra HTTP headers to send with the request (e.g. x-llamastack-provider-data)",
+        description="Extra HTTP headers to send with the request (e.g. X-OGX-Provider-Data)",
     )
     omit_conversation: bool = Field(
         default=False,
         exclude=True,
         description="When True, the conversation parameter is dropped from the "
-        "request body while remaining on the object for identity. Set by "
-        "conversation compaction (LCORE-1572): once a conversation is "
+        "request body while remaining on the object for identity. "
+        "Set by conversation compaction (LCORE-1572): once a conversation is "
         "compacted, lightspeed-stack supplies explicit input and must not let "
-        "Llama Stack reload the full history via the conversation parameter.",
+        "OGX reload the full history via the conversation parameter.",
     )
 
     def model_dump(self, *args: Any, **kwargs: Any) -> dict[str, Any]:
@@ -149,7 +149,7 @@ class ResponsesApiParams(BaseModel):
         """Build kwargs echoed into synthetic OpenAI-style responses (e.g. moderation blocks).
 
         Parameters:
-            rag_id_mapping: Llama Stack vector_db_id to user-facing RAG id (from app config).
+            rag_id_mapping: OGX vector_db_id to user-facing RAG id (from app config).
         Returns:
             dict[str, Any]: Field names and values to merge into the response object.
         """

@@ -4,6 +4,7 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import PlainTextResponse
+from opentelemetry import trace
 from prometheus_client import (
     CONTENT_TYPE_LATEST,
     generate_latest,
@@ -21,6 +22,7 @@ from models.api.responses.error import (
 )
 from models.config import Action
 
+tracer = trace.get_tracer(__name__)
 router = APIRouter(tags=["metrics"])
 
 
@@ -29,7 +31,7 @@ metrics_get_responses: dict[int | str, dict[str, Any]] = {
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
     500: InternalServerErrorResponse.openapi_response(examples=["configuration"]),
     503: ServiceUnavailableResponse.openapi_response(
-        examples=["ogx", "kubernetes api"]
+        examples=["OGX", "kubernetes api"]
     ),
 }
 
@@ -62,4 +64,6 @@ async def metrics_endpoint_handler(
     # Nothing interesting in the request
     _ = request
 
-    return PlainTextResponse(generate_latest(), media_type=str(CONTENT_TYPE_LATEST))
+    with tracer.start_as_current_span("metrics.handle_request") as span:
+        span.set_attribute("http.status_code", 200)
+        return PlainTextResponse(generate_latest(), media_type=str(CONTENT_TYPE_LATEST))

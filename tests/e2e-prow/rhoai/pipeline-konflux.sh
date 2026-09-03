@@ -1,5 +1,5 @@
 #!/bin/bash
-# Konflux integration E2E: Llama Stack run-from-source + configurable inference provider.
+# Konflux integration E2E: OGX run-from-source + configurable inference provider.
 # Default: OpenAI (run-ci.yaml). For RHEL AI vLLM: set LLAMA_STACK_CONFIG and LCS_CONFIG env vars.
 # Prow (vLLM) workflow uses pipeline.sh unchanged.
 set -euo pipefail
@@ -21,7 +21,7 @@ log() { [ "$QUIET" != "1" ] && echo "$@"; }
 # Always print progress so Konflux UI shows where we are (short one-liners)
 progress() { echo "[e2e] $*"; }
 
-# Lightspeed-stack image (from Konflux SNAPSHOT or default). Llama Stack runs from source in-pod (no image).
+# Lightspeed-stack image (from Konflux SNAPSHOT or default). OGX runs from source in-pod (no image).
 LIGHTSPEED_STACK_IMAGE="${LIGHTSPEED_STACK_IMAGE:-quay.io/lightspeed-core/lightspeed-stack:dev-latest}"
 log "Using lightspeed-stack image: $LIGHTSPEED_STACK_IMAGE"
 export LIGHTSPEED_STACK_IMAGE
@@ -67,8 +67,10 @@ oc get ns "$NAMESPACE" >/dev/null 2>&1 || oc create namespace "$NAMESPACE"
 
 create_secret() {
     local name=$1; shift
-    log "Creating secret $name..."
-    oc create secret generic "$name" "$@" -n "$NAMESPACE" 2>/dev/null || log "Secret $name exists"
+    log "Creating/updating secret $name..."
+    # Upsert: a stale FAISS_VECTOR_STORE_ID from a prior run in this namespace
+    # would otherwise leave registration/search pointing at the wrong store.
+    oc create secret generic "$name" "$@" -n "$NAMESPACE" --dry-run=client -o yaml | oc apply -f -
 }
 
 create_secret openai-api-key-secret --from-literal=key="$OPENAI_API_KEY"
@@ -97,7 +99,7 @@ else
   log "⚠️  $REPO_ROOT/tests/e2e/secrets/invalid-mcp-token missing — InvalidMCPFileAuth E2E may fail"
 fi
 
-# Create Quay pull secret for llama-stack images
+# Create Quay pull secret for OGX images
 log "Creating Quay pull secret..."
 oc create secret docker-registry quay-lightspeed-pull-secret \
   --docker-server=quay.io \
@@ -148,11 +150,11 @@ log "✅ Mock servers deployed"
 # (see tests/e2e/features/steps/proxy.py + e2e-ops deploy-e2e-*-proxy).
 
 #========================================
-# 5. DEPLOY LIGHTSPEED STACK AND LLAMA STACK
+# 5. DEPLOY LIGHTSPEED STACK AND OGX
 #========================================
 progress "Deploying lightspeed-stack and llama-stack"
 
-# PVC for llama-stack app-root: caches dnf/uv/git install so TLS per-scenario pod
+# PVC for OGX app-root: caches dnf/uv/git install so TLS per-scenario pod
 # recreates skip the expensive init (~6-15 min → ~1-2 min). Delete first to guarantee
 # a fresh checkout for this pipeline revision; re-create immediately so the pod can bind.
 log "Recreating llama-stack-app-root PVC (fresh per pipeline run)..."
@@ -174,7 +176,7 @@ log "✅ llama-stack-app-root PVC created"
 # Configurable config paths: default to OpenAI, override for RHEL AI / vLLM.
 LLAMA_STACK_CONFIG="${LLAMA_STACK_CONFIG:-$REPO_ROOT/tests/e2e/configs/run-ci.yaml}"
 LCS_CONFIG="${LCS_CONFIG:-$REPO_ROOT/tests/e2e/configuration/server-mode/lightspeed-stack.yaml}"
-log "Llama Stack config: $LLAMA_STACK_CONFIG"
+log "OGX config: $LLAMA_STACK_CONFIG"
 log "LCS config: $LCS_CONFIG"
 oc create configmap llama-stack-config -n "$NAMESPACE" \
   --from-file=run.yaml="$LLAMA_STACK_CONFIG" \
@@ -208,14 +210,19 @@ conn.close()
     
     if [ -n "$FAISS_VECTOR_STORE_ID" ]; then
         log "✅ Extracted FAISS_VECTOR_STORE_ID: $FAISS_VECTOR_STORE_ID"
-        # Create secret for llama-stack to use
+        # Create secret for OGX to use
         create_secret faiss-vector-store-secret --from-literal=id="$FAISS_VECTOR_STORE_ID"
     else
         echo "❌ No vector_store found in $RAG_DB_PATH - FAISS tests will fail!"
     fi
 
     gzip -c "$RAG_DB_PATH" > /tmp/kv_store.db.gz
-    oc create configmap rag-data -n "$NAMESPACE" --from-file=kv_store.db.gz=/tmp/kv_store.db.gz
+    # Do not use `oc apply` here: client-side apply stores the full object in
+    # metadata.annotations.kubectl.kubernetes.io/last-applied-configuration
+    # (256KiB limit). The gzipped FAISS fixture (~800KiB+) overflows that.
+    oc delete configmap rag-data -n "$NAMESPACE" --ignore-not-found
+    oc create configmap rag-data -n "$NAMESPACE" \
+      --from-file=kv_store.db.gz=/tmp/kv_store.db.gz
     rm /tmp/kv_store.db.gz
     log "✅ RAG data ConfigMap created from $RAG_DB_PATH"
 else
@@ -236,7 +243,7 @@ else
 fi
 
 
-# ConfigMap for Llama Stack run-from-source (init container clones this repo @ this revision)
+# ConfigMap for OGX run-from-source (init container clones this repo @ this revision)
 REPO_URL="${REPO_URL:-$(cd "$REPO_ROOT" && git config --get remote.origin.url 2>/dev/null)}"
 REPO_REVISION="${REPO_REVISION:-$(cd "$REPO_ROOT" && git rev-parse HEAD 2>/dev/null)}"
 [[ -z "$REPO_URL" ]] && REPO_URL='https://github.com/lightspeed-core/lightspeed-stack.git'
@@ -326,7 +333,7 @@ oc port-forward svc/mock-jwks 8000:8000 -n $NAMESPACE &
 PF_JWKS_PID=$!
 
 # Behave runs in this shell; pipeline-services-konflux.sh cannot export here. MCP hooks call
-# Llama Stack directly — mirror LCS and forward llama-stack-service-svc to localhost:8321.
+# OGX directly — mirror LCS and forward llama-stack-service-svc to localhost:8321.
 log "Starting port-forward for llama-stack (MCP / ogx_client hooks)..."
 oc port-forward svc/llama-stack-service-svc 8321:8321 -n $NAMESPACE &
 PF_LLAMA_PID=$!
@@ -364,10 +371,10 @@ for i in $(seq 1 36); do
   sleep 5
 done
 
-log "Waiting for Llama Stack port-forward (localhost:8321 /v1/health)..."
+log "Waiting for OGX port-forward (localhost:8321 /v1/health)..."
 for i in $(seq 1 36); do
   if curl -sf http://localhost:8321/v1/health > /dev/null 2>&1; then
-    log "✅ Llama Stack port-forward ready after $(( i * 5 ))s"
+    log "✅ OGX port-forward ready after $(( i * 5 ))s"
     break
   fi
   if [ $i -eq 36 ]; then
@@ -406,9 +413,7 @@ fi
 export E2E_DEFAULT_PROVIDER_OVERRIDE E2E_DEFAULT_MODEL_OVERRIDE
 log "LCS accessible at: http://$E2E_LSC_HOSTNAME:8080"
 log "Mock JWKS accessible at: http://$E2E_JWKS_HOSTNAME:8000"
-log "Llama Stack (e2e client hooks) at: http://$E2E_LLAMA_HOSTNAME:$E2E_LLAMA_PORT"
-
-
+log "OGX (e2e client hooks) at: http://$E2E_LLAMA_HOSTNAME:$E2E_LLAMA_PORT"
 
 #========================================
 # 7. RUN TESTS

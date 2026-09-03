@@ -1,4 +1,4 @@
-@e2e_group_3 @skip-in-library-mode @skip-in-prow
+@cfg_default @skip-in-library-mode @skip-in-prow
 Feature: Proxy and TLS networking tests for Llama Stack providers
 
   Verify that the Lightspeed Stack works correctly when Llama Stack's
@@ -14,7 +14,7 @@ Feature: Proxy and TLS networking tests for Llama Stack providers
       And The system is in default state
       And REST API service prefix is /v1
       And the Lightspeed stack configuration directory is "tests/e2e/configuration"
-      And The service uses the lightspeed-stack.yaml configuration
+      And The service uses the lightspeed-stack-default.yaml configuration
       And The service is restarted
       And The original Llama Stack config is restored if modified
 
@@ -34,9 +34,9 @@ Feature: Proxy and TLS networking tests for Llama Stack providers
      Then The status code of the response is 200
       And The tunnel proxy handled at least 1 CONNECT request to the LLM provider
 
-  # NOTE: no_proxy is defined on Llama Stack's ProxyConfig model but not
+  # NOTE: no_proxy is defined on OGX's ProxyConfig model but not
   # implemented in _build_proxy_mounts (http_client.py). The field is ignored.
-  # When Llama Stack implements no_proxy support, add a test here.
+  # When OGX implements no_proxy support, add a test here.
 
   @TunnelProxy
   Scenario: LLM query fails gracefully when proxy is unreachable

@@ -19,7 +19,7 @@ exposes three units of work:
   context window. Lives in a later commit.
 
 This module deliberately does **not** touch conversation state. It does
-not create new Llama Stack conversations, inject marker items, write
+not create new OGX conversations, inject marker items, write
 to the cache, or acquire locks. Those side-effecting concerns belong
 to LCORE-1572 (request-flow integration) and LCORE-1571 (cache
 extension). Keeping this layer pure makes it unit-testable without
@@ -213,7 +213,7 @@ async def summarize_chunk(
        *old_items*.
     2. Calls ``client.responses.create`` once with ``store=False`` (the
        summarization call is a one-shot — its output is not stored as
-       a conversation item by Llama Stack; the caller in LCORE-1572 is
+       a conversation item by OGX; the caller in LCORE-1572 is
        responsible for injecting the summary into the conversation
        under whatever marker scheme it chooses).
     3. Wraps the resulting text in a :class:`ConversationSummary` with
@@ -224,7 +224,7 @@ async def summarize_chunk(
     control and persistence belong to LCORE-1572 / LCORE-1571.
 
     Parameters:
-        client: Llama Stack client to call.
+        client: OGX client to call.
         model: Fully-qualified model identifier (e.g.,
             ``"openai/gpt-4o-mini"``). The spec mandates the same
             model as the user's query (spike decision 3); the choice
@@ -265,7 +265,7 @@ async def summarize_chunk(
     # prompt-injection via user message content that ends up in the
     # transcript.
 
-    # Normalize Vertex AI model IDs to work around llama-stack 0.6.x bug
+    # Normalize Vertex AI model IDs to work around OGX 0.6.x bug
     normalized_model = normalize_vertex_ai_model_id(model)
 
     response = await client.responses.create(
@@ -340,7 +340,7 @@ async def recursively_resummarize(
     we have re-folded, not summarized anything new).
 
     Parameters:
-        client: Llama Stack client to call.
+        client: OGX client to call.
         model: Fully-qualified model identifier used for the LLM call.
         summaries: Existing summary chunks to fold, in chronological
             order (oldest first). Must contain at least two entries —
@@ -377,7 +377,7 @@ async def recursively_resummarize(
     )
     # Same instructions/input split as summarize_chunk — see comment there.
 
-    # Normalize Vertex AI model IDs to work around llama-stack 0.6.x bug
+    # Normalize Vertex AI model IDs to work around OGX 0.6.x bug
     normalized_model = normalize_vertex_ai_model_id(model)
 
     response = await client.responses.create(

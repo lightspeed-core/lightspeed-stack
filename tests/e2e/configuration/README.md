@@ -4,8 +4,8 @@ This directory contains configuration files used for end-to-end testing of Light
 
 ## Directory Structure
 
-- `server-mode/` - Configurations for testing when LCore connects to a separate Llama Stack service
-- `library-mode/` - Configurations for testing when LCore embeds Llama Stack as a library
+- `server-mode/` - Configurations for testing when LCore connects to a separate OGX service
+- `library-mode/` - Configurations for testing when LCore embeds OGX as a library
 
 ## Library mode uses unified configs (LCORE-2342)
 
@@ -31,7 +31,7 @@ profile baseline when missing; many `run-*.yaml` fixtures already include it,
 so the ensure is typically a no-op.
 
 The `tests/e2e/configs/run-*.yaml` files therefore serve a dual role: in
-server mode they are the run configuration of the standalone Llama Stack
+server mode they are the run configuration of the standalone OGX
 service, and in library mode they are consumed as the unified-mode synthesis
 profile. No in-repo test config references them via the legacy mechanism
 anymore.
@@ -54,8 +54,27 @@ Both server-mode and library-mode default configurations include:
 
 3. **User Data Collection** - Enabled for feedback and transcripts testing
 
-### Special-Purpose Configurations
+### Config variants (`@cfg_*` tags)
 
-- `lightspeed-stack-auth-noop-token.yaml` - For authorization testing
-- `lightspeed-stack-invalid-feedback-storage.yaml` - For negative feedback testing
-- `lightspeed-stack-no-cache.yaml` - For cache-disabled scenarios
+Named configs merge compatible options and map to `@cfg_*` Behave tags so CI
+can shard by config (fewer restarts per job). See
+[grouped/README.md](grouped/README.md).
+
+| Config | Purpose |
+|--------|---------|
+| `lightspeed-stack-default.yaml` | Default + inline RAG |
+| `lightspeed-stack-authorized.yaml` | Authorization (noop-token) |
+| `lightspeed-stack-negative.yaml` | No cache + invalid feedback storage |
+| `lightspeed-stack-rbac.yaml` | RBAC (jwk-token auth) |
+| `lightspeed-stack-rh-identity.yaml` | RH Identity header auth |
+| `lightspeed-stack-skills.yaml` / `-skills-directory.yaml` | Agent skills |
+| `lightspeed-stack-mcp.yaml` | All valid MCP servers (`mcp_servers_api`) |
+| `lightspeed-stack-mcp-invalid.yaml` | Invalid MCP file token |
+| `lightspeed-stack-mcp-api-auth.yaml` | MCP server API auth |
+| `lightspeed-stack-mcp-{file,kubernetes,client,oauth}-auth.yaml` | Per-auth MCP (`mcp.feature`) |
+| `lightspeed-stack-byok-pdf.yaml` | BYOK PDF (library only) |
+| `lightspeed-stack-tls.yaml` / `-degraded.yaml` | TLS / degraded mode (server only) |
+
+Bootstrap default: `lightspeed-stack.yaml`. Environment-specific:
+`lightspeed-stack-rhelai.yaml`, `lightspeed-stack-rhoai.yaml`.
+

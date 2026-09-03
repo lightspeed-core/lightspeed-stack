@@ -11,7 +11,7 @@ by GPT-3.5, GPT-4, and GPT-4o). Encodings are cached at module level so
 the wheel-bundled BPE tables are only loaded once per process.
 
 The function ``estimate_conversation_tokens`` understands two shapes of
-chat-message: Llama Stack conversation-item objects (with ``.type``,
+chat-message: OGX conversation-item objects (with ``.type``,
 ``.role``, ``.content`` attributes) and plain ``{"role", "content"}``
 dictionaries. The duck-typed shape lets the caller pass whatever the
 local code path produces without an adapter.
@@ -77,7 +77,7 @@ def estimate_tokens(text: str, encoding_name: str = DEFAULT_ENCODING_NAME) -> in
 
 
 def extract_message_text(message: Any) -> str:
-    """Pull the textual content out of a typed Llama Stack message item.
+    """Pull the textual content out of a typed OGX message item.
 
     Expects the conversation-item shape (``.type == "message"`` with
     ``.role`` and ``.content`` attributes). ``content`` may be a plain
@@ -85,7 +85,7 @@ def extract_message_text(message: Any) -> str:
     Anything unrecognized is coerced via ``str(...)``.
 
     Parameters:
-        message: A Llama Stack message item.
+        message: An OGX message item.
 
     Returns:
         The textual content joined by spaces, or the empty string when
@@ -107,7 +107,7 @@ def extract_message_text(message: Any) -> str:
 
 
 def is_message_item(value: Any) -> bool:
-    """Return True when *value* is a typed Llama Stack message item.
+    """Return True when *value* is a typed OGX message item.
 
     Checks the conversation-item discriminator: an item whose ``.type``
     attribute equals ``"message"``.
@@ -128,7 +128,7 @@ def estimate_conversation_tokens(
     ``is_message_item`` contribute.
 
     Parameters:
-        messages: Chat history of typed Llama Stack conversation items.
+        messages: Chat history of typed OGX conversation items.
         system_prompt: Optional system prompt prepended to the
             estimate.
         encoding_name: Name of the tiktoken encoding to use.

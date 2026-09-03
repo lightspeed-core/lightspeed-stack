@@ -17,7 +17,7 @@
 #     - Frameworky pro GenAI
 #     - Základní vlastnosti LLM
 #     - OpenAI a další standardizovaná API
-#     - Framework Llama Stack
+#     - Framework OGX
 #     - Langchain pro tvorbu aplikací využívajících GenAI
 #     - RAG (Retrieval-augmented generation)
 #     - Evaluace
@@ -414,7 +414,7 @@
 # * controlflow
 # * langflow
 # * LiteLLM (???)
-# * Llama Stack
+# * OGX
 #
 # ---
 #
@@ -465,13 +465,13 @@ for model in models:
 #
 # ---
 #
-# ## Llama Stack
+# ## OGX
 #
-# ![Llama Stack logo](images/llama_stack_logo.png)
+# ![OGX logo](images/llama_stack_logo.png)
 #
 # ---
 #
-# ## Co je to Llama Stack?
+# ## Co je to OGX?
 #
 # * Framework pro tvorbu aplikací s AI
 #     - chat boti
@@ -483,7 +483,7 @@ for model in models:
 #
 # ---
 #
-# ### Nejjednodušší využití Llama Stacku
+# ### Nejjednodušší využití OGX
 #
 # * Volání LLM
 # * Zpracování odpovědi od LLM
@@ -537,18 +537,18 @@ for model in models:
 #
 # ---
 #
-# ### Komunikace s Llama Stackem
+# ### Komunikace s OGX
 #
 # * CLI
 # * REST API
 # * Jako běžná knihovna (Python atd.)
-# * Llama Stack klient
+# * OGX klient
 #     - podporuje REST API
 #     - podporuje i běh formou knihovny (async)
 #
 # ---
 #
-# ### Llama Stack klient
+# ### OGX klient
 #
 # * Python
 # * Swift
@@ -557,13 +557,13 @@ for model in models:
 #
 # ---
 #
-# ### Llama Stack jako knihovna
+# ### OGX jako knihovna
 #
 # ![LS1](images/llama_stack_as_library.png)
 #
 # ---
 #
-# ### Llama Stack jako samostatná služba
+# ### OGX jako samostatná služba
 #
 # ![LS1](images/llama_stack_as_service.png)
 #
@@ -575,10 +575,10 @@ for model in models:
 #
 # ---
 #
-# ### Příklad služby postavené na Llama Stacku
+# ### Příklad služby postavené na OGX
 #
-# * REST API postavené nad API Llama Stacku
-# * Obě možnosti spuštění Llama Stacku
+# * REST API postavené nad API OGX
+# * Obě možnosti spuštění OGX
 # * Implementace formou asynchronního kódu (Python)
 #
 # ---
@@ -659,20 +659,20 @@ for model in models:
 #
 # ---
 #
-# ### Llama Stack klient
+# ### OGX klient
 #
 # * Využijeme klienta pro Python
 #
 # ```bash
 # uv init
-# uv add llama-stack-client
+# uv add OGX-client
 # ```
 #
 # ---
 #
 
 #
-# ### Llama Stack běží jako samostatná služba
+# ### OGX běží jako samostatná služba
 #
 
 # Získání seznamu všech dostupných modelů
@@ -680,7 +680,7 @@ for model in models:
 
 client = OgxClient(base_url="http://localhost:8321")
 
-print(f"Using Llama Stack version {client._version}")
+print(f"Using OGX version {client._version}")
 
 models = client.models.list()
 
@@ -689,7 +689,7 @@ for model in models:
 
 # ---
 #
-# ### Llama Stack je použit jako běžná knihovna
+# ### OGX je použit jako běžná knihovna
 #
 
 # Získání seznamu všech dostupných modelů
@@ -698,7 +698,7 @@ for model in models:
 client = OGXAsLibraryClient("run.yaml")
 client.initialize()
 
-print(f"Using Llama Stack version {client._version}")
+print(f"Using OGX version {client._version}")
 
 models = client.models.list()
 
@@ -711,7 +711,7 @@ for model in models:
 
 client = OgxClient(base_url="http://localhost:8321")
 
-print(f"Using Llama Stack version {client._version}")
+print(f"Using OGX version {client._version}")
 
 models = client.models.list()
 model_id = models[0].identifier
@@ -727,7 +727,7 @@ print(response.to_json())
 
 # ---
 #
-# ### Vývoj Llama Stacku
+# ### Vývoj OGX
 #
 # * Změny v API
 # * Plány na ukončení podpory starších API
@@ -741,7 +741,7 @@ print(response.to_json())
 
 client = OgxClient(base_url="http://localhost:8321")
 
-print(f"Using Llama Stack version {client._version}")
+print(f"Using OGX version {client._version}")
 
 models = client.models.list()
 model_id = models[0].identifier
@@ -770,12 +770,12 @@ print(response.to_json())
 
 # ### Prvotní zpracování dokumentů
 
-# * připojení k Llama Stacku
+# * připojení k OGX
 # * vytvoření nové vektorové databáze
 # * inicializace vektorové databáze
 
 client = OgxClient(base_url="http://localhost:8321")
-print(f"Using Llama Stack version {client._version}")
+print(f"Using OGX version {client._version}")
 
 vector_store_name = f"vec_{str(uuid.uuid4())[0:8]}"
 print(f"Vector store name: {vector_store_name}")
@@ -898,21 +898,21 @@ print_rag_response(response)
 #
 # ---
 #
-# ### Současná situace okolo Llama Stacku
+# ### Současná situace okolo OGX
 #
 # * Meta -> vLLM
 # * Zaměření na kompatibilitu s Responses API (OpenAI)
 # * Podpora pro agentic flow (ovšem jen základní)
 # * Postupně se některé další funkce odstraňují (!)
 # * Výsledkem je nestabilita celé platformy
-# * Pokud vyvíjíte stabilní projekt, je Llama Stack riziko
+# * Pokud vyvíjíte stabilní projekt, je OGX riziko
 #
 # ---
 #
 # ![Langchain logo](images/langchain.png)
 #
 # * začneme jednoduchými příklady, které postupně rozšíříme
-# * poslední příklad bude odpovídat příkladu z Llama Stacku
+# * poslední příklad bude odpovídat příkladu z OGX
 #    - odpovědi
 #    - RAG
 

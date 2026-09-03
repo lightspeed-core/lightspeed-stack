@@ -64,6 +64,11 @@ def is_prow_environment() -> bool:
 E2E_HTTP_TRANSIENT_MAX_ATTEMPTS: int = 3
 E2E_HTTP_TRANSIENT_DELAY_S: float = 0.5
 
+# Override via E2E_CONTAINER_HEALTH_MAX_ATTEMPTS (default 60).
+E2E_CONTAINER_HEALTH_MAX_ATTEMPTS: int = int(
+    os.getenv("E2E_CONTAINER_HEALTH_MAX_ATTEMPTS", "60")
+)
+
 
 def request_with_transient_retry(
     **kwargs: Any,
@@ -181,7 +186,10 @@ def validate_json(message: Any, schema: Any) -> None:
         assert False, "The provided schema is faulty:" + str(e)
 
 
-def wait_for_container_health(container_name: str, max_attempts: int = 20) -> None:
+def wait_for_container_health(
+    container_name: str,
+    max_attempts: Optional[int] = None,
+) -> bool:
     """Wait for container to be healthy.
 
     Polls a Docker container until its health status becomes `healthy` or the
@@ -192,21 +200,25 @@ def wait_for_container_health(container_name: str, max_attempts: int = 20) -> No
     inspect errors or timeouts are ignored and retried; the function returns
     after the container is observed healthy or after all attempts complete.
 
-    OpenTelemetry instrumentation adds initialization overhead, so the default
-    has been set to 20 attempts (40 seconds) to prevent timeouts.
+    OpenTelemetry instrumentation adds initialization overhead; default attempts
+    come from ``E2E_CONTAINER_HEALTH_MAX_ATTEMPTS`` (60).
 
     Returns:
     -------
-        None
+        True if the container reported healthy; False if attempts were exhausted
+        (soft-fail — callers may warn and continue).
 
     Parameters:
     ----------
         container_name (str): Docker container name or ID to check.
-        max_attempts (int): Maximum number of health check attempts (default 20).
+        max_attempts (int | None): Maximum health check attempts (default from env).
     """
+    if max_attempts is None:
+        max_attempts = E2E_CONTAINER_HEALTH_MAX_ATTEMPTS
+
     if is_prow_environment():
         wait_for_pod_health(container_name, max_attempts)
-        return
+        return True
 
     for attempt in range(max_attempts):
         try:
@@ -223,7 +235,7 @@ def wait_for_container_health(container_name: str, max_attempts: int = 20) -> No
                 timeout=5,
             )
             if result.stdout.strip() == "healthy":
-                return
+                return True
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
             pass
 
@@ -235,8 +247,28 @@ def wait_for_container_health(container_name: str, max_attempts: int = 20) -> No
 
     print(
         f"Could not confirm Docker health=healthy for {container_name} "
-        f"after {max_attempts} attempts"
+        f"after {max_attempts} attempts (~{max_attempts * 2}s)"
     )
+    return False
+
+
+def wait_for_ogx_ready(
+    max_attempts: Optional[int] = None,
+) -> bool:
+    """Wait until the OGX container HEALTHCHECK reports healthy.
+
+    Same soft-fail semantics as ``wait_for_container_health``. Prefer this over
+    hand-rolled ``curl /v1/health`` loops (compose already probes that path).
+
+    Parameters:
+    ----------
+        max_attempts: Optional override; defaults to ``E2E_CONTAINER_HEALTH_MAX_ATTEMPTS``.
+
+    Returns:
+    -------
+        True if healthy; False if the wait soft-failed.
+    """
+    return wait_for_container_health("llama-stack", max_attempts=max_attempts)
 
 
 def validate_json_partially(actual: Any, expected: Any) -> None:
@@ -406,37 +438,6 @@ def remove_config_backup(backup_path: str) -> None:
             print(f"Warning: Could not remove backup file {backup_path}: {e}")
 
 
-def clear_llama_stack_storage(container_name: str = "lightspeed-stack") -> None:
-    """Clear Llama Stack storage in library mode (embedded Llama Stack).
-
-    Removes the ~/.llama directory so embedded Llama Stack persisted state is
-    reset. Used before MCP config scenarios in library mode.
-    Only runs when using Docker (skipped in Prow).
-
-    Parameters:
-    ----------
-        container_name (str): Docker container name (default "lightspeed-stack").
-
-    Returns:
-    -------
-        None
-    """
-    if is_prow_environment():
-        return
-
-    try:
-        subprocess.run(
-            ["docker", "exec", container_name, "sh", "-c", "rm -rf ~/.llama"],
-            capture_output=True,
-            text=True,
-            timeout=10,
-            check=False,
-        )
-    except subprocess.TimeoutExpired as e:
-        print(f"Failed to clear Llama Stack storage: {e}")
-        raise
-
-
 def restart_container(container_name: str) -> None:
     """Restart a Docker container by name and wait until it is healthy.
 
@@ -469,11 +470,11 @@ def restart_container(container_name: str) -> None:
         raise
 
     # Wait for container to be healthy.
-    # Library mode embeds llama-stack, so the container takes longer to start
+    # Library mode embeds OGX, so the container takes longer to start
     # (~45-60s vs ~10s in server mode). OpenTelemetry instrumentation adds
     # initialization overhead. Use a generous attempt count so MCP-auth scenarios
     # that restart the container don't time out.
-    wait_for_container_health(container_name, max_attempts=20)
+    wait_for_container_health(container_name)
 
     if container_name == "llama-stack":
         from tests.e2e.features.steps.health import (
@@ -483,16 +484,49 @@ def restart_container(container_name: str) -> None:
         reset_llama_stack_disrupt_once_tracking()
 
 
+def restart_lightspeed_stack_service(
+    *, wait_http: bool = False, skip_llama_restore: bool = False
+) -> None:
+    """Restart the lightspeed-stack container used by Behave steps.
+
+    Wraps ``restart_container("lightspeed-stack")`` and optionally polls the
+    host-mapped port so step modules share one LCS restart path.
+
+    Parameters:
+    ----------
+        wait_http: When True, also call ``wait_for_lightspeed_stack_http_ready``
+            after Docker health. Default False — generic ``The service is
+            restarted`` relies on Docker health only; proxy/tls steps opt in.
+        skip_llama_restore: When True on Prow/Konflux, tell e2e-ops not to
+            bring llama back before recreating LCS (degraded-mode startup).
+    """
+    previous = os.environ.get("E2E_SKIP_LLAMA_RESTORE_ON_LCS_RESTART")
+    if skip_llama_restore:
+        os.environ["E2E_SKIP_LLAMA_RESTORE_ON_LCS_RESTART"] = "1"
+    try:
+        restart_container("lightspeed-stack")
+        if wait_http:
+            wait_for_lightspeed_stack_http_ready()
+    finally:
+        if skip_llama_restore:
+            if previous is None:
+                os.environ.pop("E2E_SKIP_LLAMA_RESTORE_ON_LCS_RESTART", None)
+            else:
+                os.environ["E2E_SKIP_LLAMA_RESTORE_ON_LCS_RESTART"] = previous
+
+
 def wait_for_lightspeed_stack_http_ready(
-    max_attempts: int = 40,
+    max_attempts: int = 80,
     delay_s: float = 1.5,
 ) -> None:
     """Block until Lightspeed Stack accepts HTTP on the host-mapped port.
 
-    Used from proxy e2e steps only: ``docker inspect`` health can report
-    ``healthy`` before the published port accepts connections (Podman/Docker
-    timing). Polls ``/liveness`` using the same host/port as Behave
-    (``E2E_LSC_*``).
+    ``docker inspect`` health can report ``healthy`` before the published port
+    accepts connections (Podman/Docker timing). Polls ``/liveness`` using the
+    same host/port as Behave (``E2E_LSC_*``).
+
+    Treats HTTP 200 and 401 as success: the process is listening. Auth-enabled
+    configs (e.g. RBAC jwk-token) return 401 on probes without a Bearer token.
 
     Parameters:
     ----------
@@ -500,7 +534,7 @@ def wait_for_lightspeed_stack_http_ready(
         delay_s: Sleep between attempts.
     Raises:
     ------
-        AssertionError: If ``/liveness`` does not return HTTP 200 in time.
+        AssertionError: If ``/liveness`` does not return an accepted status in time.
     """
     if is_prow_environment():
         return
@@ -510,12 +544,19 @@ def wait_for_lightspeed_stack_http_ready(
     for attempt in range(max_attempts):
         try:
             response = requests.get(url, timeout=5)
-            if response.status_code == 200:
+            if response.status_code in (200, 401):
                 return
-        except requests.RequestException:
-            pass
+            detail = response.text[:200].replace("\n", " ")
+            print(
+                f"⏱ HTTP wait LSC {attempt + 1}/{max_attempts} "
+                f"({url} -> {response.status_code}: {detail})..."
+            )
+        except requests.RequestException as exc:
+            print(
+                f"⏱ HTTP wait LSC {attempt + 1}/{max_attempts} "
+                f"({url} -> {exc.__class__.__name__}: {exc})..."
+            )
         if attempt < max_attempts - 1:
-            print(f"⏱ HTTP wait LSC {attempt + 1}/{max_attempts} ({url})...")
             time.sleep(delay_s)
     raise AssertionError(
         f"Lightspeed Stack did not become reachable at {url!r} "
@@ -524,17 +565,21 @@ def wait_for_lightspeed_stack_http_ready(
 
 
 def replace_placeholders(context: Context, text: str) -> str:
-    """Replace {MODEL}, {PROVIDER}, and {VECTOR_STORE_ID} placeholders from context.
+    """Replace known placeholders in *text* with values from the Behave context.
+
+    Supported placeholders: ``{MODEL}``, ``{PROVIDER}``, ``{VECTOR_STORE_ID}``,
+    ``{RESPONSES_FIRST_RESPONSE_ID}``, ``{RESPONSES_CONVERSATION_ID}``,
+    ``{RESPONSES_SECOND_RESPONSE_ID}``, and ``{CONVERSATION_ID}``.
 
     Parameters:
     ----------
-        context (Context): Behave context (default_model, default_provider,
-            optional faiss_vector_store_id from ``FAISS_VECTOR_STORE_ID``).
+        context (Context): Behave context carrying model/provider defaults,
+            optional vector-store and response IDs, and ``response_data``.
         text (str): String that may contain placeholders to replace.
 
     Returns:
     -------
-        String with placeholders replaced by actual values
+        String with placeholders replaced by actual values.
     """
     result = text.replace("{MODEL}", context.default_model)
     result = result.replace("{PROVIDER}", context.default_provider)
@@ -551,5 +596,15 @@ def replace_placeholders(context: Context, text: str) -> str:
     if hasattr(context, "responses_second_response_id"):
         result = result.replace(
             "{RESPONSES_SECOND_RESPONSE_ID}", context.responses_second_response_id
+        )
+    if hasattr(context, "response_data") and context.response_data.get(
+        "conversation_id"
+    ):
+        result = result.replace(
+            "{CONVERSATION_ID}", context.response_data["conversation_id"]
+        )
+    if hasattr(context, "response_data") and context.response_data.get("conversation"):
+        result = result.replace(
+            "{CONVERSATION_ID}", context.response_data["conversation"]
         )
     return result

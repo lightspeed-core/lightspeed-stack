@@ -4,8 +4,8 @@
 
 import pytest
 from fastapi import HTTPException
-from ogx_client import APIConnectionError
-from ogx_client.types.shared.provider_info import ProviderInfo
+from ogx_client import ApiException
+from ogx_client.models.provider_info import ProviderInfo
 from pytest_mock import MockerFixture
 
 from utils.builtin_tools import get_file_search_tools
@@ -31,7 +31,7 @@ def _provider(
 async def test_get_file_search_tools_returns_empty_when_not_configured(
     mocker: MockerFixture,
 ) -> None:
-    """Return no tools when Llama Stack has no file-search provider."""
+    """Return no tools when OGX has no file-search provider."""
     client = mocker.AsyncMock()
     client.providers.list = mocker.AsyncMock(
         return_value=[
@@ -96,10 +96,10 @@ async def test_get_file_search_tools_returns_static_catalog_when_provider_presen
 async def test_get_file_search_tools_raises_503_on_provider_connection_error(
     mocker: MockerFixture,
 ) -> None:
-    """Raise HTTP 503 when Llama Stack is unreachable during provider discovery."""
+    """Raise HTTP 503 when OGX is unreachable during provider discovery."""
     client = mocker.AsyncMock()
     client.providers.list = mocker.AsyncMock(
-        side_effect=APIConnectionError(message="down", request=mocker.Mock())
+        side_effect=ApiException(status=None, reason="down")
     )
 
     with pytest.raises(HTTPException) as exc_info:

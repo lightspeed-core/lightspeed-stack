@@ -6,7 +6,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from opentelemetry import trace
 
 from authentication import get_auth_dependency
 from authentication.interface import AuthTuple
@@ -29,9 +30,17 @@ from models.api.responses.successful import (
 )
 from models.config import Action
 from utils.endpoints import check_configuration_loaded, retrieve_conversation
+from utils.otel_tracing import (
+    SpanAttributes,
+    SpanEvents,
+    add_span_event,
+    anonymize_value,
+    set_span_attributes,
+)
 from utils.suid import get_suid
 
 logger = get_logger(__name__)
+tracer = trace.get_tracer(__name__)
 router = APIRouter(prefix="/feedback", tags=["feedback"])
 feedback_status_lock = threading.Lock()
 
@@ -91,6 +100,47 @@ async def assert_feedback_enabled(_request: Request) -> None:
         raise HTTPException(**response.model_dump())
 
 
+def _record_feedback_request_attributes(
+    span: trace.Span, feedback_request: FeedbackRequest, user_id: str
+) -> None:
+    """Set high-level feedback attributes on the root span.
+
+    User-generated free text (the question, LLM response, and comment) is
+    anonymized before being recorded. Low-cardinality signals (rating and
+    categories) are recorded as-is.
+
+    Parameters:
+        span: The root feedback span to annotate.
+        feedback_request: The incoming feedback request.
+        user_id: The authenticated user identifier (anonymized before recording).
+    """
+    set_span_attributes(
+        span,
+        {
+            SpanAttributes.FEEDBACK_OPERATION: "submit",
+            SpanAttributes.USER_ID: anonymize_value(user_id) if user_id else "",
+            SpanAttributes.FEEDBACK_CONVERSATION: feedback_request.conversation_id,
+            SpanAttributes.INPUT: anonymize_value(feedback_request.user_question),
+            SpanAttributes.OUTPUT: anonymize_value(feedback_request.llm_response),
+        },
+    )
+    if feedback_request.sentiment is not None:
+        span.set_attribute(SpanAttributes.FEEDBACK_RATING, feedback_request.sentiment)
+    if feedback_request.user_feedback:
+        span.set_attribute(
+            SpanAttributes.FEEDBACK_COMMENT,
+            anonymize_value(feedback_request.user_feedback),
+        )
+    if feedback_request.categories:
+        span.set_attribute(
+            SpanAttributes.FEEDBACK_CATEGORIES,
+            ",".join(
+                getattr(category, "value", str(category))
+                for category in feedback_request.categories
+            ),
+        )
+
+
 @router.post("", responses=feedback_post_response)
 @authorize(Action.FEEDBACK)
 async def feedback_endpoint_handler(
@@ -121,26 +171,57 @@ async def feedback_endpoint_handler(
     logger.debug("Feedback received %s", str(feedback_request))
 
     user_id, _, _, _ = auth
-    check_configuration_loaded(configuration)
 
-    # Validate conversation exists and belongs to the user
-    conversation_id = feedback_request.conversation_id
-    conversation = retrieve_conversation(conversation_id)
-    if conversation is None:
-        response = NotFoundResponse(
-            resource="conversation", resource_id=conversation_id
-        )
-        raise HTTPException(**response.model_dump())
+    with tracer.start_as_current_span("feedback.submit") as span:
+        _record_feedback_request_attributes(span, feedback_request, user_id)
 
-    if conversation.user_id != user_id:
-        response = ForbiddenResponse.conversation(
-            action="submit feedback for", resource_id=conversation_id, user_id=user_id
-        )
-        raise HTTPException(**response.model_dump())
+        check_configuration_loaded(configuration)
 
-    store_feedback(user_id, feedback_request.model_dump(exclude={"model_config"}))
+        # Validate conversation exists and belongs to the user
+        conversation_id = feedback_request.conversation_id
+        conversation = retrieve_conversation(conversation_id)
+        if conversation is None:
+            span.set_attribute(
+                SpanAttributes.FEEDBACK_STATUS_CODE, status.HTTP_404_NOT_FOUND
+            )
+            response = NotFoundResponse(
+                resource="conversation", resource_id=conversation_id
+            )
+            raise HTTPException(**response.model_dump())
 
-    return FeedbackResponse(response="feedback received")
+        if conversation.user_id != user_id:
+            span.set_attribute(
+                SpanAttributes.FEEDBACK_STATUS_CODE, status.HTTP_403_FORBIDDEN
+            )
+            response = ForbiddenResponse.conversation(
+                action="submit feedback for",
+                resource_id=conversation_id,
+                user_id=user_id,
+            )
+            raise HTTPException(**response.model_dump())
+
+        with tracer.start_as_current_span("feedback.storage") as storage_span:
+            try:
+                store_feedback(
+                    user_id, feedback_request.model_dump(exclude={"model_config"})
+                )
+            except HTTPException:
+                storage_span.set_attribute(
+                    SpanAttributes.FEEDBACK_STORAGE_OUTCOME, "failure"
+                )
+                span.set_attribute(
+                    SpanAttributes.FEEDBACK_STATUS_CODE,
+                    status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
+                raise
+            storage_span.set_attribute(
+                SpanAttributes.FEEDBACK_STORAGE_OUTCOME, "success"
+            )
+
+        span.set_attribute(SpanAttributes.FEEDBACK_STATUS_CODE, status.HTTP_200_OK)
+        add_span_event(span, SpanEvents.FEEDBACK_SUBMITTED)
+
+        return FeedbackResponse(response="feedback received")
 
 
 def store_feedback(user_id: str, feedback: dict) -> None:
@@ -195,10 +276,18 @@ def feedback_status() -> StatusResponse:
     - StatusResponse: Indicates whether feedback collection is enabled.
     """
     logger.debug("Feedback status requested")
-    feedback_status_enabled = is_feedback_enabled()
-    return StatusResponse(
-        functionality="feedback", status={"enabled": feedback_status_enabled}
-    )
+    with tracer.start_as_current_span("feedback.get_status") as span:
+        set_span_attributes(
+            span,
+            {
+                SpanAttributes.FEEDBACK_OPERATION: "get_status",
+                SpanAttributes.FEEDBACK_STATUS_CODE: status.HTTP_200_OK,
+            },
+        )
+        feedback_status_enabled = is_feedback_enabled()
+        return StatusResponse(
+            functionality="feedback", status={"enabled": feedback_status_enabled}
+        )
 
 
 @router.put("/status", responses=feedback_put_response)
@@ -223,26 +312,38 @@ async def update_feedback_status(
     - FeedbackStatusUpdateResponse: Indicates whether feedback is enabled.
     """
     user_id, _, _, _ = auth
-    check_configuration_loaded(configuration)
-    requested_status = feedback_update_request.get_value()
 
-    with feedback_status_lock:
-        previous_status = (
-            configuration.user_data_collection_configuration.feedback_enabled
+    with tracer.start_as_current_span("feedback.update_status") as span:
+        set_span_attributes(
+            span,
+            {
+                SpanAttributes.FEEDBACK_OPERATION: "update_status",
+                SpanAttributes.USER_ID: anonymize_value(user_id) if user_id else "",
+            },
         )
-        configuration.user_data_collection_configuration.feedback_enabled = (
-            requested_status
-        )
-        updated_status = (
-            configuration.user_data_collection_configuration.feedback_enabled
-        )
-        current_time = str(datetime.now(UTC))
 
-    return FeedbackStatusUpdateResponse(
-        status={
-            "previous_status": previous_status,
-            "updated_status": updated_status,
-            "updated_by": user_id,
-            "timestamp": current_time,
-        }
-    )
+        check_configuration_loaded(configuration)
+        requested_status = feedback_update_request.get_value()
+
+        with feedback_status_lock:
+            previous_status = (
+                configuration.user_data_collection_configuration.feedback_enabled
+            )
+            configuration.user_data_collection_configuration.feedback_enabled = (
+                requested_status
+            )
+            updated_status = (
+                configuration.user_data_collection_configuration.feedback_enabled
+            )
+            current_time = str(datetime.now(UTC))
+
+        span.set_attribute(SpanAttributes.FEEDBACK_STATUS_CODE, status.HTTP_200_OK)
+
+        return FeedbackStatusUpdateResponse(
+            status={
+                "previous_status": previous_status,
+                "updated_status": updated_status,
+                "updated_by": user_id,
+                "timestamp": current_time,
+            }
+        )

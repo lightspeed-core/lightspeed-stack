@@ -13,7 +13,7 @@ from pydantic import SecretStr
 
 import constants
 from models.config import (
-    ByokRag,
+    ByokConfiguration,
     CompactionConfiguration,
     Configuration,
     CORSConfiguration,
@@ -21,16 +21,18 @@ from models.config import (
     FaissVectorStoreProvider,
     FaissVectorStoreProviderConfig,
     InferenceConfiguration,
-    LlamaStackConfiguration,
     ModelContextProtocolServer,
+    OgxConfiguration,
     PostgreSQLDatabaseConfiguration,
     QuotaHandlersConfiguration,
     QuotaLimiterConfiguration,
     QuotaSchedulerConfiguration,
+    RagConfiguration,
+    RagStore,
     ServiceConfiguration,
     SkillsConfiguration,
     TLSConfiguration,
-    UnifiedLlamaStackConfig,
+    UnifiedOgxConfig,
     UserDataCollection,
     VectorStoreConfiguration,
 )
@@ -95,7 +97,7 @@ def test_dump_configuration_minimal_cfg(tmp_path: Path) -> None:
             ),
             cors=CORSConfiguration(),
         ),
-        llama_stack=LlamaStackConfiguration(
+        ogx=OgxConfiguration(
             use_as_library_client=True,
             library_client_config_path="tests/configuration/run.yaml",
             api_key=SecretStr("whatever"),
@@ -116,7 +118,7 @@ def test_dump_configuration_minimal_cfg(tmp_path: Path) -> None:
         # all sections must exists
         assert "name" in content
         assert "service" in content
-        assert "llama_stack" in content
+        assert "ogx" in content
         assert "user_data_collection" in content
         assert "mcp_servers" in content
         assert "authentication" in content
@@ -124,20 +126,24 @@ def test_dump_configuration_minimal_cfg(tmp_path: Path) -> None:
         assert "customization" in content
         assert "inference" in content
         assert "database" in content
-        assert "byok_rag" in content
+        assert "rag" in content
         assert "quota_handlers" in content
         assert "azure_entra_id" in content
-        assert "reranker" in content
+        assert "reranker" in content["rag"]["retrieval"]["inline"]
 
         # check the whole deserialized JSON file content
         assert content == {
             "name": "test_name",
+            "config_format_version": None,
             "service": {
                 "host": "localhost",
                 "port": 8080,
                 "base_url": None,
                 "auth_enabled": False,
                 "workers": 1,
+                "max_concurrent_file_uploads": 5,
+                "max_concurrent_vector_store_attaches": 5,
+                "delete_file_after_vector_store_attach": False,
                 "color_log": True,
                 "access_log": True,
                 "tls_config": {
@@ -159,7 +165,7 @@ def test_dump_configuration_minimal_cfg(tmp_path: Path) -> None:
                     ],
                 },
             },
-            "llama_stack": {
+            "ogx": {
                 "url": None,
                 "use_as_library_client": True,
                 "api_key": "**********",
@@ -219,7 +225,6 @@ def test_dump_configuration_minimal_cfg(tmp_path: Path) -> None:
                 "buffer_max_ratio": 0.3,
             },
             "approvals": _DEFAULT_APPROVALS_DUMP,
-            "byok_rag": [],
             "vector_store": {
                 "default_provider": None,
                 "providers": [],
@@ -241,13 +246,25 @@ def test_dump_configuration_minimal_cfg(tmp_path: Path) -> None:
             },
             "azure_entra_id": None,
             "rag": {
-                "inline": [],
-                "tool": [],
-            },
-            "okp": {
-                "rhokp_url": None,
-                "offline": True,
-                "chunk_filter_query": None,
+                "byok": {"max_chunks": 10, "stores": []},
+                "okp": {
+                    "rhokp_url": None,
+                    "offline": True,
+                    "chunk_filter_query": None,
+                    "search_mode": None,
+                    "max_chunks": 5,
+                },
+                "retrieval": {
+                    "inline": {
+                        "sources": [],
+                        "max_chunks": 10,
+                        "reranker": {
+                            "enabled": False,
+                            "model": "cross-encoder/ms-marco-MiniLM-L6-v2",
+                        },
+                    },
+                    "tool": {"sources": [], "max_chunks": 10, "reranker": None},
+                },
             },
             "rlsapi_v1": {
                 "allow_verbose_infer": False,
@@ -256,10 +273,6 @@ def test_dump_configuration_minimal_cfg(tmp_path: Path) -> None:
             "splunk": None,
             "observability": _get_expected_observability_dump(),
             "deployment_environment": "development",
-            "reranker": {
-                "enabled": False,
-                "model": "cross-encoder/ms-marco-MiniLM-L6-v2",
-            },
             "saved_prompts": _DEFAULT_SAVED_PROMPTS_DUMP,
             "skills": None,
             "shields": [],
@@ -292,7 +305,7 @@ def test_dump_configuration_valid_values(tmp_path: Path) -> None:
                 allow_headers=["foo_header", "bar_header", "baz_header"],
             ),
         ),
-        llama_stack=LlamaStackConfiguration(
+        ogx=OgxConfiguration(
             use_as_library_client=True,
             library_client_config_path="tests/configuration/run.yaml",
             api_key=SecretStr("whatever"),
@@ -331,7 +344,7 @@ def test_dump_configuration_valid_values(tmp_path: Path) -> None:
         # all sections must exists
         assert "name" in content
         assert "service" in content
-        assert "llama_stack" in content
+        assert "ogx" in content
         assert "user_data_collection" in content
         assert "mcp_servers" in content
         assert "authentication" in content
@@ -339,20 +352,24 @@ def test_dump_configuration_valid_values(tmp_path: Path) -> None:
         assert "customization" in content
         assert "inference" in content
         assert "database" in content
-        assert "byok_rag" in content
+        assert "rag" in content
         assert "quota_handlers" in content
         assert "azure_entra_id" in content
-        assert "reranker" in content
+        assert "reranker" in content["rag"]["retrieval"]["inline"]
 
         # check the whole deserialized JSON file content
         assert content == {
             "name": "test_name",
+            "config_format_version": None,
             "service": {
                 "host": "localhost",
                 "port": 8080,
                 "base_url": None,
                 "auth_enabled": False,
                 "workers": 1,
+                "max_concurrent_file_uploads": 5,
+                "max_concurrent_vector_store_attaches": 5,
+                "delete_file_after_vector_store_attach": False,
                 "color_log": True,
                 "access_log": True,
                 "tls_config": {
@@ -380,7 +397,7 @@ def test_dump_configuration_valid_values(tmp_path: Path) -> None:
                     ],
                 },
             },
-            "llama_stack": {
+            "ogx": {
                 "url": None,
                 "use_as_library_client": True,
                 "api_key": "**********",
@@ -448,7 +465,6 @@ def test_dump_configuration_valid_values(tmp_path: Path) -> None:
                 "buffer_max_ratio": 0.3,
             },
             "approvals": _DEFAULT_APPROVALS_DUMP,
-            "byok_rag": [],
             "vector_store": {
                 "default_provider": None,
                 "providers": [],
@@ -470,13 +486,28 @@ def test_dump_configuration_valid_values(tmp_path: Path) -> None:
             },
             "azure_entra_id": None,
             "rag": {
-                "inline": [],
-                "tool": [],
-            },
-            "okp": {
-                "rhokp_url": None,
-                "offline": True,
-                "chunk_filter_query": None,
+                "byok": {
+                    "max_chunks": 10,
+                    "stores": [],
+                },
+                "okp": {
+                    "rhokp_url": None,
+                    "offline": True,
+                    "chunk_filter_query": None,
+                    "search_mode": None,
+                    "max_chunks": 5,
+                },
+                "retrieval": {
+                    "inline": {
+                        "sources": [],
+                        "max_chunks": 10,
+                        "reranker": {
+                            "enabled": False,
+                            "model": "cross-encoder/ms-marco-MiniLM-L6-v2",
+                        },
+                    },
+                    "tool": {"sources": [], "max_chunks": 10, "reranker": None},
+                },
             },
             "rlsapi_v1": {
                 "allow_verbose_infer": False,
@@ -485,10 +516,6 @@ def test_dump_configuration_valid_values(tmp_path: Path) -> None:
             "splunk": None,
             "observability": _get_expected_observability_dump(),
             "deployment_environment": "development",
-            "reranker": {
-                "enabled": False,
-                "model": "cross-encoder/ms-marco-MiniLM-L6-v2",
-            },
             "saved_prompts": _DEFAULT_SAVED_PROMPTS_DUMP,
             "skills": None,
             "shields": [],
@@ -511,7 +538,7 @@ def test_dump_configuration_with_one_mcp_server(tmp_path: Path) -> None:
     cfg = Configuration(
         name="test_name",
         service=ServiceConfiguration(),
-        llama_stack=LlamaStackConfiguration(
+        ogx=OgxConfiguration(
             use_as_library_client=True,
             library_client_config_path="tests/configuration/run.yaml",
         ),
@@ -563,7 +590,7 @@ def test_dump_configuration_with_more_mcp_servers(tmp_path: Path) -> None:
     cfg = Configuration(
         name="test_name",
         service=ServiceConfiguration(),
-        llama_stack=LlamaStackConfiguration(
+        ogx=OgxConfiguration(
             use_as_library_client=True,
             library_client_config_path="tests/configuration/run.yaml",
         ),
@@ -637,7 +664,7 @@ def test_dump_configuration_with_quota_limiters(tmp_path: Path) -> None:
                 allow_headers=["foo_header", "bar_header", "baz_header"],
             ),
         ),
-        llama_stack=LlamaStackConfiguration(
+        ogx=OgxConfiguration(
             use_as_library_client=True,
             library_client_config_path="tests/configuration/run.yaml",
             api_key=SecretStr("whatever"),
@@ -696,7 +723,7 @@ def test_dump_configuration_with_quota_limiters(tmp_path: Path) -> None:
         # all sections must exists
         assert "name" in content
         assert "service" in content
-        assert "llama_stack" in content
+        assert "ogx" in content
         assert "user_data_collection" in content
         assert "mcp_servers" in content
         assert "authentication" in content
@@ -704,20 +731,24 @@ def test_dump_configuration_with_quota_limiters(tmp_path: Path) -> None:
         assert "customization" in content
         assert "inference" in content
         assert "database" in content
-        assert "byok_rag" in content
+        assert "rag" in content
         assert "quota_handlers" in content
         assert "azure_entra_id" in content
-        assert "reranker" in content
+        assert "reranker" in content["rag"]["retrieval"]["inline"]
 
         # check the whole deserialized JSON file content
         assert content == {
             "name": "test_name",
+            "config_format_version": None,
             "service": {
                 "host": "localhost",
                 "port": 8080,
                 "base_url": None,
                 "auth_enabled": False,
                 "workers": 1,
+                "max_concurrent_file_uploads": 5,
+                "max_concurrent_vector_store_attaches": 5,
+                "delete_file_after_vector_store_attach": False,
                 "color_log": True,
                 "access_log": True,
                 "tls_config": {
@@ -745,7 +776,7 @@ def test_dump_configuration_with_quota_limiters(tmp_path: Path) -> None:
                     ],
                 },
             },
-            "llama_stack": {
+            "ogx": {
                 "url": None,
                 "use_as_library_client": True,
                 "api_key": "**********",
@@ -813,7 +844,6 @@ def test_dump_configuration_with_quota_limiters(tmp_path: Path) -> None:
                 "buffer_max_ratio": 0.3,
             },
             "approvals": _DEFAULT_APPROVALS_DUMP,
-            "byok_rag": [],
             "vector_store": {
                 "default_provider": None,
                 "providers": [],
@@ -850,13 +880,28 @@ def test_dump_configuration_with_quota_limiters(tmp_path: Path) -> None:
             },
             "azure_entra_id": None,
             "rag": {
-                "inline": [],
-                "tool": [],
-            },
-            "okp": {
-                "rhokp_url": None,
-                "offline": True,
-                "chunk_filter_query": None,
+                "byok": {
+                    "max_chunks": 10,
+                    "stores": [],
+                },
+                "okp": {
+                    "rhokp_url": None,
+                    "offline": True,
+                    "chunk_filter_query": None,
+                    "search_mode": None,
+                    "max_chunks": 5,
+                },
+                "retrieval": {
+                    "inline": {
+                        "sources": [],
+                        "max_chunks": 10,
+                        "reranker": {
+                            "enabled": False,
+                            "model": "cross-encoder/ms-marco-MiniLM-L6-v2",
+                        },
+                    },
+                    "tool": {"sources": [], "max_chunks": 10, "reranker": None},
+                },
             },
             "rlsapi_v1": {
                 "allow_verbose_infer": False,
@@ -865,10 +910,6 @@ def test_dump_configuration_with_quota_limiters(tmp_path: Path) -> None:
             "splunk": None,
             "observability": _get_expected_observability_dump(),
             "deployment_environment": "development",
-            "reranker": {
-                "enabled": False,
-                "model": "cross-encoder/ms-marco-MiniLM-L6-v2",
-            },
             "saved_prompts": _DEFAULT_SAVED_PROMPTS_DUMP,
             "skills": None,
             "shields": [],
@@ -899,7 +940,7 @@ def test_dump_configuration_with_quota_limiters_different_values(
                 allow_headers=["foo_header", "bar_header", "baz_header"],
             ),
         ),
-        llama_stack=LlamaStackConfiguration(
+        ogx=OgxConfiguration(
             use_as_library_client=True,
             library_client_config_path="tests/configuration/run.yaml",
             api_key=SecretStr("whatever"),
@@ -962,7 +1003,7 @@ def test_dump_configuration_with_quota_limiters_different_values(
         # all sections must exists
         assert "name" in content
         assert "service" in content
-        assert "llama_stack" in content
+        assert "ogx" in content
         assert "user_data_collection" in content
         assert "mcp_servers" in content
         assert "authentication" in content
@@ -970,18 +1011,22 @@ def test_dump_configuration_with_quota_limiters_different_values(
         assert "customization" in content
         assert "inference" in content
         assert "database" in content
-        assert "byok_rag" in content
+        assert "rag" in content
         assert "quota_handlers" in content
 
         # check the whole deserialized JSON file content
         assert content == {
             "name": "test_name",
+            "config_format_version": None,
             "service": {
                 "host": "localhost",
                 "port": 8080,
                 "base_url": None,
                 "auth_enabled": False,
                 "workers": 1,
+                "max_concurrent_file_uploads": 5,
+                "max_concurrent_vector_store_attaches": 5,
+                "delete_file_after_vector_store_attach": False,
                 "color_log": True,
                 "access_log": True,
                 "tls_config": {
@@ -1009,7 +1054,7 @@ def test_dump_configuration_with_quota_limiters_different_values(
                     ],
                 },
             },
-            "llama_stack": {
+            "ogx": {
                 "url": None,
                 "use_as_library_client": True,
                 "api_key": "**********",
@@ -1077,7 +1122,6 @@ def test_dump_configuration_with_quota_limiters_different_values(
                 "buffer_max_ratio": 0.3,
             },
             "approvals": _DEFAULT_APPROVALS_DUMP,
-            "byok_rag": [],
             "vector_store": {
                 "default_provider": None,
                 "providers": [],
@@ -1114,13 +1158,28 @@ def test_dump_configuration_with_quota_limiters_different_values(
             },
             "azure_entra_id": None,
             "rag": {
-                "inline": [],
-                "tool": [],
-            },
-            "okp": {
-                "rhokp_url": None,
-                "offline": True,
-                "chunk_filter_query": None,
+                "byok": {
+                    "max_chunks": 10,
+                    "stores": [],
+                },
+                "okp": {
+                    "rhokp_url": None,
+                    "offline": True,
+                    "chunk_filter_query": None,
+                    "search_mode": None,
+                    "max_chunks": 5,
+                },
+                "retrieval": {
+                    "inline": {
+                        "sources": [],
+                        "max_chunks": 10,
+                        "reranker": {
+                            "enabled": False,
+                            "model": "cross-encoder/ms-marco-MiniLM-L6-v2",
+                        },
+                    },
+                    "tool": {"sources": [], "max_chunks": 10, "reranker": None},
+                },
             },
             "rlsapi_v1": {
                 "allow_verbose_infer": False,
@@ -1129,10 +1188,6 @@ def test_dump_configuration_with_quota_limiters_different_values(
             "splunk": None,
             "observability": _get_expected_observability_dump(),
             "deployment_environment": "development",
-            "reranker": {
-                "enabled": False,
-                "model": "cross-encoder/ms-marco-MiniLM-L6-v2",
-            },
             "saved_prompts": _DEFAULT_SAVED_PROMPTS_DUMP,
             "skills": None,
             "shields": [],
@@ -1151,9 +1206,9 @@ def test_dump_configuration_with_vector_store(tmp_path: Path) -> None:
             ),
             cors=CORSConfiguration(),
         ),
-        llama_stack=LlamaStackConfiguration(
+        ogx=OgxConfiguration(
             use_as_library_client=True,
-            config=UnifiedLlamaStackConfig(baseline="default"),
+            config=UnifiedOgxConfig(baseline="default"),
             api_key=SecretStr("whatever"),
         ),
         user_data_collection=UserDataCollection(
@@ -1212,7 +1267,7 @@ def test_dump_configuration_byok(tmp_path: Path) -> None:
                 allow_headers=["foo_header", "bar_header", "baz_header"],
             ),
         ),
-        llama_stack=LlamaStackConfiguration(
+        ogx=OgxConfiguration(
             use_as_library_client=True,
             library_client_config_path="tests/configuration/run.yaml",
             api_key=SecretStr("whatever"),
@@ -1239,13 +1294,17 @@ def test_dump_configuration_byok(tmp_path: Path) -> None:
             default_provider="default_provider",
             default_model="default_model",
         ),
-        byok_rag=[
-            ByokRag(
-                rag_id="rag_id",
-                vector_db_id="vector_db_id",
-                db_path="tests/configuration/rag.txt",
+        rag=RagConfiguration(
+            byok=ByokConfiguration(
+                stores=[
+                    RagStore(
+                        rag_id="rag_id",
+                        vector_db_id="vector_db_id",
+                        db_path="tests/configuration/rag.txt",
+                    ),
+                ],
             ),
-        ],
+        ),
     )
     assert cfg is not None
     dump_file = tmp_path / "test.json"
@@ -1259,7 +1318,7 @@ def test_dump_configuration_byok(tmp_path: Path) -> None:
         # all sections must exists
         assert "name" in content
         assert "service" in content
-        assert "llama_stack" in content
+        assert "ogx" in content
         assert "user_data_collection" in content
         assert "mcp_servers" in content
         assert "authentication" in content
@@ -1267,18 +1326,22 @@ def test_dump_configuration_byok(tmp_path: Path) -> None:
         assert "customization" in content
         assert "inference" in content
         assert "database" in content
-        assert "byok_rag" in content
+        assert "rag" in content
         assert "quota_handlers" in content
 
         # check the whole deserialized JSON file content
         assert content == {
             "name": "test_name",
+            "config_format_version": None,
             "service": {
                 "host": "localhost",
                 "port": 8080,
                 "base_url": None,
                 "auth_enabled": False,
                 "workers": 1,
+                "max_concurrent_file_uploads": 5,
+                "max_concurrent_vector_store_attaches": 5,
+                "delete_file_after_vector_store_attach": False,
                 "color_log": True,
                 "access_log": True,
                 "tls_config": {
@@ -1306,7 +1369,7 @@ def test_dump_configuration_byok(tmp_path: Path) -> None:
                     ],
                 },
             },
-            "llama_stack": {
+            "ogx": {
                 "url": None,
                 "use_as_library_client": True,
                 "api_key": "**********",
@@ -1374,22 +1437,6 @@ def test_dump_configuration_byok(tmp_path: Path) -> None:
                 "buffer_max_ratio": 0.3,
             },
             "approvals": _DEFAULT_APPROVALS_DUMP,
-            "byok_rag": [
-                {
-                    "db_path": "tests/configuration/rag.txt",
-                    "embedding_dimension": 768,
-                    "embedding_model": "sentence-transformers/all-mpnet-base-v2",
-                    "rag_id": "rag_id",
-                    "rag_type": "inline::faiss",
-                    "vector_db_id": "vector_db_id",
-                    "score_multiplier": 1.0,
-                    "host": None,
-                    "port": None,
-                    "db": None,
-                    "user": None,
-                    "password": None,
-                },
-            ],
             "vector_store": {
                 "default_provider": None,
                 "providers": [],
@@ -1411,13 +1458,46 @@ def test_dump_configuration_byok(tmp_path: Path) -> None:
             },
             "azure_entra_id": None,
             "rag": {
-                "inline": [],
-                "tool": [],
-            },
-            "okp": {
-                "rhokp_url": None,
-                "offline": True,
-                "chunk_filter_query": None,
+                "byok": {
+                    "max_chunks": 10,
+                    "stores": [
+                        {
+                            "rag_id": "rag_id",
+                            "backend": "faiss",
+                            "embedding_model": "sentence-transformers/all-mpnet-base-v2",
+                            "embedding_dimension": 768,
+                            "vector_db_id": "vector_db_id",
+                            "db_path": "tests/configuration/rag.txt",
+                            "score_multiplier": 1.0,
+                            "relevance_cutoff_score": (
+                                constants.DEFAULT_BYOK_RAG_RELEVANCE_CUTOFF_SCORE
+                            ),
+                            "host": None,
+                            "port": None,
+                            "db": None,
+                            "user": None,
+                            "password": None,
+                        },
+                    ],
+                },
+                "okp": {
+                    "rhokp_url": None,
+                    "offline": True,
+                    "chunk_filter_query": None,
+                    "search_mode": None,
+                    "max_chunks": 5,
+                },
+                "retrieval": {
+                    "inline": {
+                        "sources": [],
+                        "max_chunks": 10,
+                        "reranker": {
+                            "enabled": False,
+                            "model": "cross-encoder/ms-marco-MiniLM-L6-v2",
+                        },
+                    },
+                    "tool": {"sources": [], "max_chunks": 10, "reranker": None},
+                },
             },
             "rlsapi_v1": {
                 "allow_verbose_infer": False,
@@ -1426,10 +1506,6 @@ def test_dump_configuration_byok(tmp_path: Path) -> None:
             "splunk": None,
             "observability": _get_expected_observability_dump(),
             "deployment_environment": "development",
-            "reranker": {
-                "enabled": False,
-                "model": "cross-encoder/ms-marco-MiniLM-L6-v2",
-            },
             "saved_prompts": _DEFAULT_SAVED_PROMPTS_DUMP,
             "skills": None,
             "shields": [],
@@ -1458,7 +1534,7 @@ def test_dump_configuration_pg_namespace(tmp_path: Path) -> None:
                 allow_headers=["foo_header", "bar_header", "baz_header"],
             ),
         ),
-        llama_stack=LlamaStackConfiguration(
+        ogx=OgxConfiguration(
             use_as_library_client=True,
             library_client_config_path="tests/configuration/run.yaml",
             api_key=SecretStr("whatever"),
@@ -1498,7 +1574,7 @@ def test_dump_configuration_pg_namespace(tmp_path: Path) -> None:
         # all sections must exists
         assert "name" in content
         assert "service" in content
-        assert "llama_stack" in content
+        assert "ogx" in content
         assert "user_data_collection" in content
         assert "mcp_servers" in content
         assert "authentication" in content
@@ -1506,18 +1582,22 @@ def test_dump_configuration_pg_namespace(tmp_path: Path) -> None:
         assert "customization" in content
         assert "inference" in content
         assert "database" in content
-        assert "byok_rag" in content
+        assert "rag" in content
         assert "quota_handlers" in content
 
         # check the whole deserialized JSON file content
         assert content == {
             "name": "test_name",
+            "config_format_version": None,
             "service": {
                 "host": "localhost",
                 "port": 8080,
                 "base_url": None,
                 "auth_enabled": False,
                 "workers": 1,
+                "max_concurrent_file_uploads": 5,
+                "max_concurrent_vector_store_attaches": 5,
+                "delete_file_after_vector_store_attach": False,
                 "color_log": True,
                 "access_log": True,
                 "tls_config": {
@@ -1545,7 +1625,7 @@ def test_dump_configuration_pg_namespace(tmp_path: Path) -> None:
                     ],
                 },
             },
-            "llama_stack": {
+            "ogx": {
                 "url": None,
                 "use_as_library_client": True,
                 "api_key": "**********",
@@ -1613,7 +1693,6 @@ def test_dump_configuration_pg_namespace(tmp_path: Path) -> None:
                 "buffer_max_ratio": 0.3,
             },
             "approvals": _DEFAULT_APPROVALS_DUMP,
-            "byok_rag": [],
             "vector_store": {
                 "default_provider": None,
                 "providers": [],
@@ -1635,13 +1714,28 @@ def test_dump_configuration_pg_namespace(tmp_path: Path) -> None:
             },
             "azure_entra_id": None,
             "rag": {
-                "inline": [],
-                "tool": [],
-            },
-            "okp": {
-                "rhokp_url": None,
-                "offline": True,
-                "chunk_filter_query": None,
+                "byok": {
+                    "max_chunks": 10,
+                    "stores": [],
+                },
+                "okp": {
+                    "rhokp_url": None,
+                    "offline": True,
+                    "chunk_filter_query": None,
+                    "search_mode": None,
+                    "max_chunks": 5,
+                },
+                "retrieval": {
+                    "inline": {
+                        "sources": [],
+                        "max_chunks": 10,
+                        "reranker": {
+                            "enabled": False,
+                            "model": "cross-encoder/ms-marco-MiniLM-L6-v2",
+                        },
+                    },
+                    "tool": {"sources": [], "max_chunks": 10, "reranker": None},
+                },
             },
             "rlsapi_v1": {
                 "allow_verbose_infer": False,
@@ -1650,10 +1744,6 @@ def test_dump_configuration_pg_namespace(tmp_path: Path) -> None:
             "splunk": None,
             "observability": _get_expected_observability_dump(),
             "deployment_environment": "development",
-            "reranker": {
-                "enabled": False,
-                "model": "cross-encoder/ms-marco-MiniLM-L6-v2",
-            },
             "saved_prompts": _DEFAULT_SAVED_PROMPTS_DUMP,
             "skills": None,
             "shields": [],
@@ -1681,7 +1771,7 @@ def test_dump_configuration_with_one_skill(tmp_path: Path) -> None:
                 allow_headers=["foo_header", "bar_header", "baz_header"],
             ),
         ),
-        llama_stack=LlamaStackConfiguration(
+        ogx=OgxConfiguration(
             use_as_library_client=True,
             library_client_config_path="tests/configuration/run.yaml",
             api_key=SecretStr("whatever"),
@@ -1756,7 +1846,7 @@ def test_dump_configuration_with_skills(tmp_path: Path) -> None:
                 allow_headers=["foo_header", "bar_header", "baz_header"],
             ),
         ),
-        llama_stack=LlamaStackConfiguration(
+        ogx=OgxConfiguration(
             use_as_library_client=True,
             library_client_config_path="tests/configuration/run.yaml",
             api_key=SecretStr("whatever"),
@@ -1840,7 +1930,7 @@ def test_dump_configuration_allow_degraded_mode(tmp_path: Path) -> None:
                 allow_headers=["foo_header", "bar_header", "baz_header"],
             ),
         ),
-        llama_stack=LlamaStackConfiguration(
+        ogx=OgxConfiguration(
             use_as_library_client=False,
             url="http://localhost",
             api_key=SecretStr("whatever"),
@@ -1880,7 +1970,7 @@ def test_dump_configuration_allow_degraded_mode(tmp_path: Path) -> None:
         # all sections must exists
         assert "name" in content
         assert "service" in content
-        assert "llama_stack" in content
+        assert "ogx" in content
         assert "user_data_collection" in content
         assert "mcp_servers" in content
         assert "authentication" in content
@@ -1888,20 +1978,24 @@ def test_dump_configuration_allow_degraded_mode(tmp_path: Path) -> None:
         assert "customization" in content
         assert "inference" in content
         assert "database" in content
-        assert "byok_rag" in content
+        assert "rag" in content
         assert "quota_handlers" in content
         assert "azure_entra_id" in content
-        assert "reranker" in content
+        assert "reranker" in content["rag"]["retrieval"]["inline"]
 
         # check the whole deserialized JSON file content
         assert content == {
             "name": "test_name",
+            "config_format_version": None,
             "service": {
                 "host": "localhost",
                 "port": 8080,
                 "base_url": None,
                 "auth_enabled": False,
                 "workers": 1,
+                "max_concurrent_file_uploads": 5,
+                "max_concurrent_vector_store_attaches": 5,
+                "delete_file_after_vector_store_attach": False,
                 "color_log": True,
                 "access_log": True,
                 "tls_config": {
@@ -1929,7 +2023,7 @@ def test_dump_configuration_allow_degraded_mode(tmp_path: Path) -> None:
                     ],
                 },
             },
-            "llama_stack": {
+            "ogx": {
                 "url": "http://localhost/",
                 "use_as_library_client": False,
                 "api_key": "**********",
@@ -1997,7 +2091,6 @@ def test_dump_configuration_allow_degraded_mode(tmp_path: Path) -> None:
                 "buffer_max_ratio": 0.3,
             },
             "approvals": _DEFAULT_APPROVALS_DUMP,
-            "byok_rag": [],
             "vector_store": {
                 "default_provider": None,
                 "providers": [],
@@ -2019,13 +2112,28 @@ def test_dump_configuration_allow_degraded_mode(tmp_path: Path) -> None:
             },
             "azure_entra_id": None,
             "rag": {
-                "inline": [],
-                "tool": [],
-            },
-            "okp": {
-                "rhokp_url": None,
-                "offline": True,
-                "chunk_filter_query": None,
+                "byok": {
+                    "max_chunks": 10,
+                    "stores": [],
+                },
+                "okp": {
+                    "rhokp_url": None,
+                    "offline": True,
+                    "chunk_filter_query": None,
+                    "search_mode": None,
+                    "max_chunks": 5,
+                },
+                "retrieval": {
+                    "inline": {
+                        "sources": [],
+                        "max_chunks": 10,
+                        "reranker": {
+                            "enabled": False,
+                            "model": "cross-encoder/ms-marco-MiniLM-L6-v2",
+                        },
+                    },
+                    "tool": {"sources": [], "max_chunks": 10, "reranker": None},
+                },
             },
             "rlsapi_v1": {
                 "allow_verbose_infer": False,
@@ -2034,10 +2142,6 @@ def test_dump_configuration_allow_degraded_mode(tmp_path: Path) -> None:
             "splunk": None,
             "observability": _get_expected_observability_dump(),
             "deployment_environment": "development",
-            "reranker": {
-                "enabled": False,
-                "model": "cross-encoder/ms-marco-MiniLM-L6-v2",
-            },
             "saved_prompts": _DEFAULT_SAVED_PROMPTS_DUMP,
             "skills": None,
             "shields": [],
@@ -2070,7 +2174,7 @@ def test_dump_configuration_max_retries_settings(tmp_path: Path) -> None:
                 allow_headers=["foo_header", "bar_header", "baz_header"],
             ),
         ),
-        llama_stack=LlamaStackConfiguration(
+        ogx=OgxConfiguration(
             use_as_library_client=True,
             library_client_config_path="tests/configuration/run.yaml",
             api_key=SecretStr("whatever"),
@@ -2110,7 +2214,7 @@ def test_dump_configuration_max_retries_settings(tmp_path: Path) -> None:
         # all sections must exists
         assert "name" in content
         assert "service" in content
-        assert "llama_stack" in content
+        assert "ogx" in content
         assert "user_data_collection" in content
         assert "mcp_servers" in content
         assert "authentication" in content
@@ -2118,20 +2222,24 @@ def test_dump_configuration_max_retries_settings(tmp_path: Path) -> None:
         assert "customization" in content
         assert "inference" in content
         assert "database" in content
-        assert "byok_rag" in content
+        assert "rag" in content
         assert "quota_handlers" in content
         assert "azure_entra_id" in content
-        assert "reranker" in content
+        assert "reranker" in content["rag"]["retrieval"]["inline"]
 
         # check the whole deserialized JSON file content
         assert content == {
             "name": "test_name",
+            "config_format_version": None,
             "service": {
                 "host": "localhost",
                 "port": 8080,
                 "base_url": None,
                 "auth_enabled": False,
                 "workers": 1,
+                "max_concurrent_file_uploads": 5,
+                "max_concurrent_vector_store_attaches": 5,
+                "delete_file_after_vector_store_attach": False,
                 "color_log": True,
                 "access_log": True,
                 "tls_config": {
@@ -2159,7 +2267,7 @@ def test_dump_configuration_max_retries_settings(tmp_path: Path) -> None:
                     ],
                 },
             },
-            "llama_stack": {
+            "ogx": {
                 "url": None,
                 "use_as_library_client": True,
                 "api_key": "**********",
@@ -2227,7 +2335,6 @@ def test_dump_configuration_max_retries_settings(tmp_path: Path) -> None:
                 "buffer_max_ratio": 0.3,
             },
             "approvals": _DEFAULT_APPROVALS_DUMP,
-            "byok_rag": [],
             "vector_store": {
                 "default_provider": None,
                 "providers": [],
@@ -2249,13 +2356,28 @@ def test_dump_configuration_max_retries_settings(tmp_path: Path) -> None:
             },
             "azure_entra_id": None,
             "rag": {
-                "inline": [],
-                "tool": [],
-            },
-            "okp": {
-                "rhokp_url": None,
-                "offline": True,
-                "chunk_filter_query": None,
+                "byok": {
+                    "max_chunks": 10,
+                    "stores": [],
+                },
+                "okp": {
+                    "rhokp_url": None,
+                    "offline": True,
+                    "chunk_filter_query": None,
+                    "search_mode": None,
+                    "max_chunks": 5,
+                },
+                "retrieval": {
+                    "inline": {
+                        "sources": [],
+                        "max_chunks": 10,
+                        "reranker": {
+                            "enabled": False,
+                            "model": "cross-encoder/ms-marco-MiniLM-L6-v2",
+                        },
+                    },
+                    "tool": {"sources": [], "max_chunks": 10, "reranker": None},
+                },
             },
             "rlsapi_v1": {
                 "allow_verbose_infer": False,
@@ -2264,10 +2386,6 @@ def test_dump_configuration_max_retries_settings(tmp_path: Path) -> None:
             "splunk": None,
             "observability": _get_expected_observability_dump(),
             "deployment_environment": "development",
-            "reranker": {
-                "enabled": False,
-                "model": "cross-encoder/ms-marco-MiniLM-L6-v2",
-            },
             "saved_prompts": _DEFAULT_SAVED_PROMPTS_DUMP,
             "skills": None,
             "shields": [],
@@ -2300,7 +2418,7 @@ def test_dump_configuration_retry_count_settings(tmp_path: Path) -> None:
                 allow_headers=["foo_header", "bar_header", "baz_header"],
             ),
         ),
-        llama_stack=LlamaStackConfiguration(
+        ogx=OgxConfiguration(
             use_as_library_client=True,
             library_client_config_path="tests/configuration/run.yaml",
             api_key=SecretStr("whatever"),
@@ -2340,7 +2458,7 @@ def test_dump_configuration_retry_count_settings(tmp_path: Path) -> None:
         # all sections must exists
         assert "name" in content
         assert "service" in content
-        assert "llama_stack" in content
+        assert "ogx" in content
         assert "user_data_collection" in content
         assert "mcp_servers" in content
         assert "authentication" in content
@@ -2348,20 +2466,24 @@ def test_dump_configuration_retry_count_settings(tmp_path: Path) -> None:
         assert "customization" in content
         assert "inference" in content
         assert "database" in content
-        assert "byok_rag" in content
+        assert "rag" in content
         assert "quota_handlers" in content
         assert "azure_entra_id" in content
-        assert "reranker" in content
+        assert "reranker" in content["rag"]["retrieval"]["inline"]
 
         # check the whole deserialized JSON file content
         assert content == {
             "name": "test_name",
+            "config_format_version": None,
             "service": {
                 "host": "localhost",
                 "port": 8080,
                 "base_url": None,
                 "auth_enabled": False,
                 "workers": 1,
+                "max_concurrent_file_uploads": 5,
+                "max_concurrent_vector_store_attaches": 5,
+                "delete_file_after_vector_store_attach": False,
                 "color_log": True,
                 "access_log": True,
                 "tls_config": {
@@ -2389,7 +2511,7 @@ def test_dump_configuration_retry_count_settings(tmp_path: Path) -> None:
                     ],
                 },
             },
-            "llama_stack": {
+            "ogx": {
                 "url": None,
                 "use_as_library_client": True,
                 "api_key": "**********",
@@ -2457,7 +2579,6 @@ def test_dump_configuration_retry_count_settings(tmp_path: Path) -> None:
                 "buffer_max_ratio": 0.3,
             },
             "approvals": _DEFAULT_APPROVALS_DUMP,
-            "byok_rag": [],
             "vector_store": {
                 "default_provider": None,
                 "providers": [],
@@ -2479,13 +2600,28 @@ def test_dump_configuration_retry_count_settings(tmp_path: Path) -> None:
             },
             "azure_entra_id": None,
             "rag": {
-                "inline": [],
-                "tool": [],
-            },
-            "okp": {
-                "rhokp_url": None,
-                "offline": True,
-                "chunk_filter_query": None,
+                "byok": {
+                    "max_chunks": 10,
+                    "stores": [],
+                },
+                "okp": {
+                    "rhokp_url": None,
+                    "offline": True,
+                    "chunk_filter_query": None,
+                    "search_mode": None,
+                    "max_chunks": 5,
+                },
+                "retrieval": {
+                    "inline": {
+                        "sources": [],
+                        "max_chunks": 10,
+                        "reranker": {
+                            "enabled": False,
+                            "model": "cross-encoder/ms-marco-MiniLM-L6-v2",
+                        },
+                    },
+                    "tool": {"sources": [], "max_chunks": 10, "reranker": None},
+                },
             },
             "rlsapi_v1": {
                 "allow_verbose_infer": False,
@@ -2494,10 +2630,6 @@ def test_dump_configuration_retry_count_settings(tmp_path: Path) -> None:
             "splunk": None,
             "observability": _get_expected_observability_dump(),
             "deployment_environment": "development",
-            "reranker": {
-                "enabled": False,
-                "model": "cross-encoder/ms-marco-MiniLM-L6-v2",
-            },
             "saved_prompts": _DEFAULT_SAVED_PROMPTS_DUMP,
             "skills": None,
             "shields": [],
@@ -2530,7 +2662,7 @@ def test_dump_configuration_specific_compaction_values(tmp_path: Path) -> None:
                 allow_headers=["foo_header", "bar_header", "baz_header"],
             ),
         ),
-        llama_stack=LlamaStackConfiguration(
+        ogx=OgxConfiguration(
             use_as_library_client=True,
             library_client_config_path="tests/configuration/run.yaml",
             api_key=SecretStr("whatever"),
@@ -2576,7 +2708,7 @@ def test_dump_configuration_specific_compaction_values(tmp_path: Path) -> None:
         # all sections must exists
         assert "name" in content
         assert "service" in content
-        assert "llama_stack" in content
+        assert "ogx" in content
         assert "user_data_collection" in content
         assert "mcp_servers" in content
         assert "authentication" in content
@@ -2584,21 +2716,25 @@ def test_dump_configuration_specific_compaction_values(tmp_path: Path) -> None:
         assert "customization" in content
         assert "inference" in content
         assert "database" in content
-        assert "byok_rag" in content
+        assert "rag" in content
         assert "quota_handlers" in content
         assert "azure_entra_id" in content
-        assert "reranker" in content
+        assert "reranker" in content["rag"]["retrieval"]["inline"]
         assert "compaction" in content
 
         # check the whole deserialized JSON file content
         assert content == {
             "name": "test_name",
+            "config_format_version": None,
             "service": {
                 "host": "localhost",
                 "port": 8080,
                 "base_url": None,
                 "auth_enabled": False,
                 "workers": 1,
+                "max_concurrent_file_uploads": 5,
+                "max_concurrent_vector_store_attaches": 5,
+                "delete_file_after_vector_store_attach": False,
                 "color_log": True,
                 "access_log": True,
                 "tls_config": {
@@ -2626,7 +2762,7 @@ def test_dump_configuration_specific_compaction_values(tmp_path: Path) -> None:
                     ],
                 },
             },
-            "llama_stack": {
+            "ogx": {
                 "url": None,
                 "use_as_library_client": True,
                 "api_key": "**********",
@@ -2694,7 +2830,6 @@ def test_dump_configuration_specific_compaction_values(tmp_path: Path) -> None:
                 "buffer_max_ratio": 0.5,
             },
             "approvals": _DEFAULT_APPROVALS_DUMP,
-            "byok_rag": [],
             "vector_store": {
                 "default_provider": None,
                 "providers": [],
@@ -2716,13 +2851,25 @@ def test_dump_configuration_specific_compaction_values(tmp_path: Path) -> None:
             },
             "azure_entra_id": None,
             "rag": {
-                "inline": [],
-                "tool": [],
-            },
-            "okp": {
-                "rhokp_url": None,
-                "offline": True,
-                "chunk_filter_query": None,
+                "byok": {"max_chunks": 10, "stores": []},
+                "okp": {
+                    "rhokp_url": None,
+                    "offline": True,
+                    "chunk_filter_query": None,
+                    "search_mode": None,
+                    "max_chunks": 5,
+                },
+                "retrieval": {
+                    "inline": {
+                        "sources": [],
+                        "max_chunks": 10,
+                        "reranker": {
+                            "enabled": False,
+                            "model": "cross-encoder/ms-marco-MiniLM-L6-v2",
+                        },
+                    },
+                    "tool": {"sources": [], "max_chunks": 10, "reranker": None},
+                },
             },
             "rlsapi_v1": {
                 "allow_verbose_infer": False,
@@ -2731,10 +2878,6 @@ def test_dump_configuration_specific_compaction_values(tmp_path: Path) -> None:
             "splunk": None,
             "observability": _get_expected_observability_dump(),
             "deployment_environment": "development",
-            "reranker": {
-                "enabled": False,
-                "model": "cross-encoder/ms-marco-MiniLM-L6-v2",
-            },
             "saved_prompts": _DEFAULT_SAVED_PROMPTS_DUMP,
             "skills": None,
             "shields": [],

@@ -8,35 +8,45 @@ from behave.runner import Context
 
 from tests.e2e.utils.utils import (
     absolute_repo_path,
-    clear_llama_stack_storage,
     create_config_backup,
     is_prow_environment,
     restart_container,
+    restart_lightspeed_stack_service,
     switch_config,
 )
 
 # Behave may clear user attributes on ``context`` between scenarios; keep the
-# last applied config basename here so Background can skip re-applying the same
-# YAML across scenarios in one feature. Mutate the dict entry (no global).
+# last applied config basename here so ``The service uses ...`` can skip
+# re-applying the same YAML across scenarios and across feature files in one
+# job (CI shards are config-aligned). Mutate the dict entry (no global).
 _active_lightspeed_stack_config_basename: dict[str, Optional[str]] = {"basename": None}
 
 # Behave clears user attributes on ``context`` between scenarios; store
-# Llama Stack endpoint info at module level so ``after_feature`` can see it.
+# OGX endpoint info at module level so ``after_feature`` can see it.
 _llama_stack_endpoint: dict[str, str] = {"hostname": "localhost", "port": "8321"}
 
 
 def reset_active_lightspeed_stack_config_basename() -> None:
-    """Reset before each feature; see ``environment.before_feature``."""
+    """Clear the applied-config basename tracker.
+
+    Used when ``E2E_RESTORE_CONFIG_AFTER_FEATURE=1`` restores bootstrap YAML so
+    the next configure step does not skip-restart against a stale basename.
+    """
     _active_lightspeed_stack_config_basename["basename"] = None
 
 
+def get_active_lightspeed_stack_config_basename() -> Optional[str]:
+    """Return the last applied Lightspeed config basename, if any."""
+    return _active_lightspeed_stack_config_basename["basename"]
+
+
 def get_llama_stack_hostname() -> str:
-    """Return the Llama Stack hostname surviving per-scenario context clearing."""
+    """Return the OGX hostname surviving per-scenario context clearing."""
     return _llama_stack_endpoint["hostname"]
 
 
 def get_llama_stack_port() -> str:
-    """Return the Llama Stack port surviving per-scenario context clearing."""
+    """Return the OGX port surviving per-scenario context clearing."""
     return _llama_stack_endpoint["port"]
 
 
@@ -87,13 +97,15 @@ def configure_service(context: Context, config_name: str) -> None:
     returns immediately: no backup, no copy, and sets
     ``context.lightspeed_stack_skip_restart`` so the next ``The service is
     restarted`` step can no-op—except after ``MCP configuration is reset for a new
-    scenario`` (library mode clears embedded Llama Stack storage), in which case
+    scenario`` or OGX disruption, in which case
     the restart is not skipped so Lightspeed reloads config and MCP state stays
     consistent. When the basename differs from the last apply, creates the
     backup on first use,
     copies the YAML, updates ``context.feature_config`` / override flags, and
-    stores the basename for the next check. Cleared in ``before_feature`` so a
-    new feature file always applies at least once.
+    stores the basename for the next check. Basename is kept across feature
+    files so consecutive features that share a ``@cfg_*`` YAML skip restart (CI
+    shards are config-aligned). Set ``E2E_RESTORE_CONFIG_AFTER_FEATURE=1`` to
+    restore bootstrap after each feature (legacy; forces re-apply next).
 
     Build path from ``lightspeed_stack_config_directory`` (directory step),
     defaulting base to ``tests/e2e/configuration`` if that step was omitted; then
@@ -104,13 +116,11 @@ def configure_service(context: Context, config_name: str) -> None:
     Parameters:
     ----------
         context (Context): Behave context.
-        config_name (str): Config filename (e.g. lightspeed-stack-inline-rag.yaml).
+        config_name (str): Config filename (e.g. lightspeed-stack-default.yaml).
     """
     config_name = config_name.strip()
     if _active_lightspeed_stack_config_basename["basename"] == config_name:
-        # ``MCP configuration is reset for a new scenario`` may have run (library:
-        # clear ``~/.llama``). The next restart must not be skipped or SQLite
-        # handles / MCP state diverges from the running process.
+        # MCP reset or llama disrupt: do not skip the next restart.
         if getattr(context, "force_lightspeed_restart_after_mcp_config_reset", False):
             context.lightspeed_stack_skip_restart = False
             context.force_lightspeed_restart_after_mcp_config_reset = False
@@ -161,20 +171,16 @@ def configure_service(context: Context, config_name: str) -> None:
 @given("MCP configuration is reset for a new scenario")
 @given("MCP toolgroups are reset for a new MCP configuration")
 def reset_mcp_configuration_for_new_scenario(context: Context) -> None:
-    """Reset MCP-related state before applying a different MCP config.
+    """Force a Lightspeed restart before applying a different MCP config.
 
-    Llama Stack 0.7 no longer registers MCP servers as toolgroups. In library
-    mode, clear embedded Llama Stack storage so the next config applies cleanly.
-    In server mode, only force a Lightspeed restart on the next config apply.
-
-    Sets ``force_lightspeed_restart_after_mcp_config_reset`` so the next
+    MCP servers live in Lightspeed configuration only (not OGX toolgroups), so a
+    process restart is enough to load the next per-auth YAML. Sets
+    ``force_lightspeed_restart_after_mcp_config_reset`` so the next
     ``The service uses ...`` step cannot skip ``The service is restarted`` when
     the YAML basename is unchanged.
     """
     context.force_lightspeed_restart_after_mcp_config_reset = True
     context.lightspeed_stack_skip_restart = False
-    if context.is_library_mode:
-        clear_llama_stack_storage()
 
 
 @given("The service is restarted")
@@ -193,6 +199,21 @@ def restart_service(context: Context) -> None:
         context.lightspeed_stack_skip_restart = False
         return
     restart_container("lightspeed-stack")
+
+
+@given("The service is restarted without restoring llama-stack")
+def restart_service_without_restoring_llama(context: Context) -> None:
+    """Restart LCS while leaving llama disrupted (degraded-mode startup e2e).
+
+    On Prow/Konflux, the default ``restart-lightspeed`` path restores llama when
+    it is unhealthy so LCS can come up. Degraded-mode scenarios need the
+    opposite: LCS must boot with llama still down. Docker Compose already
+    restarts only the LCS container, so this matches local server-mode behavior.
+    """
+    if getattr(context, "lightspeed_stack_skip_restart", False):
+        context.lightspeed_stack_skip_restart = False
+        return
+    restart_lightspeed_stack_service(skip_llama_restore=True, wait_http=False)
 
 
 @given("The system is in default state")

@@ -1,7 +1,7 @@
 #!/bin/sh
 # PoC scenario driver (LCORE-2657). Prerequisites:
 #   - Ollama >= 0.4 serving granite3-guardian:2b on :11434
-#   - MCP mock server on :3000, Llama Stack on :8321 (tests/e2e/configs/run-ci.yaml)
+#   - MCP mock server on :3000, OGX on :8321 (tests/e2e/configs/run-ci.yaml)
 #   - lightspeed-stack on :8080 started with
 #       LCS_GUARDRAILS_POC_CONFIG=docs/design/prompt-guardrails/poc-results/guardrails-poc.yaml
 # Usage: sh run-scenarios.sh [output-dir]

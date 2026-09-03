@@ -63,12 +63,13 @@ server:
   port: 8321
 storage:
   backends:
-    kv_default:  # Single database for registry AND RAG data
+    kv_default:
       type: kv_sqlite
-      db_path: /opt/app-root/src/.llama/storage/rag/kv_store.db
+      db_path: ${env.KV_STORE_PATH:=/opt/app-root/src/.llama/storage/kv_store.db}
     kv_rag:
       type: kv_sqlite
-      db_path: /opt/app-root/src/.llama/storage/rag/kv_store.db
+      # Requires OGX_CONFIG_DIR so migrate_legacy_config_dir() does not move ~/.llama.
+      db_path: ${env.KV_RAG_PATH:=/opt/app-root/src/.llama/storage/rag/kv_store.db}
     sql_default:
       type: sql_sqlite
       db_path: ${env.SQL_STORE_PATH:=/opt/app-root/src/.llama/storage/sql_store.db}

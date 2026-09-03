@@ -2,7 +2,7 @@
 
 This document is the deliverable for LCORE-1314. It presents the design options for conversation history compaction in lightspeed-stack, with a recommendation and a proof-of-concept validation.
 
-**The problem**: When a conversation's token count exceeds the model's context window, Llama Stack's inference provider rejects the request. lightspeed-stack catches this and returns HTTP 413. The conversation is stuck — the user must start over.
+**The problem**: When a conversation's token count exceeds the model's context window, OGX's inference provider rejects the request. lightspeed-stack catches this and returns HTTP 413. The conversation is stuck — the user must start over.
 
 **The recommendation**: Use LLM-based summarization. When estimated tokens approach the context window limit, summarize older turns and keep recent turns verbatim. This is provider-agnostic, proven (Anthropic and LangChain use the same pattern), and can use a domain-specific prompt for Red Hat product support.
 
@@ -17,7 +17,7 @@ These are the high-level decisions that determine scope, approach, and cost. Eac
 When a conversation gets too long for the context window, what should lightspeed-stack do?
 
 | Option | Description                      | Complexity | Context quality |
-|--------|----------------------------------|------------|-----------------|
+| ------ | -------------------------------- | ---------- | --------------- |
 | A      | LLM summarization                | Medium     | Good            |
 | B      | Tiered memory (MemGPT-style)     | High       | Excellent       |
 | C      | Delegate to provider-native APIs | Low-Med    | Varies          |
@@ -44,7 +44,7 @@ See [PoC results](#poc-results) for the experimental evidence.
 ## Decision 3: Which model for summarization?
 
 | Option | Description                                | Cost     | Quality  |
-|--------|--------------------------------------------|----------|----------|
+| ------ | ------------------------------------------ | -------- | -------- |
 | A      | Same model as the user's query             | Higher   | Best     |
 | B      | Configurable (default=same, allow cheaper) | Flexible | Flexible |
 | C      | Always a small/cheap model                 | Lowest   | Varies   |
@@ -58,7 +58,7 @@ How do we decide when to trigger compaction?
 The threshold is a percentage of the model's context window. "70%" means: trigger when estimated input tokens exceed 70% of the window, leaving 30% for the new query and response. The percentage adapts automatically to different models — if you switch from a 128K model to a 32K model, the threshold changes from ~90K to ~22K with no config change.
 
 | Combo | Description                              | Flexibility |
-|-------|------------------------------------------|-------------|
+| ----- | ---------------------------------------- | ----------- |
 | B     | Percentage of context window only        | Low         |
 | B+A   | Percentage + fixed token floor           | Low-Med     |
 | B+D   | Percentage + admin-configurable via YAML | Medium      |
@@ -78,12 +78,12 @@ Example for a 128K context window at 70% threshold:
 ## Decision 5: Where does summarization happen?
 
 | Option | Description                                      |
-|--------|--------------------------------------------------|
+| ------ | ------------------------------------------------ |
 | A      | In lightspeed-stack (recommended)                |
-| B      | In Llama Stack (upstream contribution)           |
+| B      | In OGX (upstream contribution)                   |
 | C      | Split: trigger in lightspeed, summarize in Llama |
 
-**Recommendation**: **A**. lightspeed-stack controls the conversation flow, has the domain knowledge (Red Hat support), and doesn't require upstream coordination. Llama Stack upstream has no active work here — see [Appendix A](#llama-stack-upstream).
+**Recommendation**: **A**. lightspeed-stack controls the conversation flow, has the domain knowledge (Red Hat support), and doesn't require upstream coordination. OGX upstream has no active work here — see [Appendix A](#OGX-upstream).
 
 # Technical decisions — for @ptisnovs
 
@@ -93,11 +93,11 @@ These are implementation-level decisions. They don't affect scope or cost signif
 
 After compaction, the LLM should see the summary + recent turns, not the full original history. How do we achieve this?
 
-| Option | Description                                                            |
-|--------|------------------------------------------------------------------------|
-| A      | Stop using `conversation` param; build full input explicitly           |
-| B      | Inject summary as a message into the existing Llama Stack conversation |
-| C      | Create a new Llama Stack conversation with summary as first message    |
+| Option | Description                                                    |
+| ------ | -------------------------------------------------------------- |
+| A      | Stop using `conversation` param; build full input explicitly   |
+| B      | Inject summary as a message into the existing OGX conversation |
+| C      | Create a new OGX conversation with summary as first message    |
 
 **Recommendation**: **B**. Inject summary as a marked item into the existing conversation, then select from the marker onward when building context. This preserves a single continuous conversation identity — the user sees one conversation, the Conversations API returns complete history, and the audit trail is unbroken. lightspeed-stack still controls what the LLM sees by filtering items at the marker boundary. The PoC used C (new conversation), which validated the summarization mechanism but breaks conversation identity.
 
@@ -106,7 +106,7 @@ After compaction, the LLM should see the summary + recent turns, not the full or
 The `truncated` field in `QueryResponse` is currently deprecated and hardcoded to `False`.
 
 | Option | Description                                     |
-|--------|-------------------------------------------------|
+| ------ | ----------------------------------------------- |
 | A      | Un-deprecate it (`True` when summary is active) |
 | B      | Keep deprecated; add `compacted: bool`          |
 | C      | Add `context_status: "full" / "summarized"`     |
@@ -115,11 +115,11 @@ The `truncated` field in `QueryResponse` is currently deprecated and hardcoded t
 
 ## Decision 8: Summary storage location
 
-| Option | Description                                          |
-|--------|------------------------------------------------------|
-| A      | Extend lightspeed conversation cache (`CacheEntry`)  |
-| B      | New dedicated table                                  |
-| C      | Store in Llama Stack (as conversation item metadata) |
+| Option | Description                                         |
+| ------ | --------------------------------------------------- |
+| A      | Extend lightspeed conversation cache (`CacheEntry`) |
+| B      | New dedicated table                                 |
+| C      | Store in OGX (as conversation item metadata)        |
 
 **Recommendation**: **A**. Co-locates summary with existing conversation metadata. All cache backends (SQLite, Postgres, memory) would need the schema extension.
 
@@ -139,7 +139,7 @@ class ConversationSummary(BaseModel):
 The "buffer zone" is the most recent turns kept verbatim (not summarized).
 
 | Approach | Description                           | Pros                 | Cons                           |
-|----------|---------------------------------------|----------------------|--------------------------------|
+| -------- | ------------------------------------- | -------------------- | ------------------------------ |
 | Turns    | Keep last N turns                     | Simple, intuitive    | Turns vary wildly in size      |
 | Tokens   | Keep last T tokens of recent messages | Precise, predictable | May split a turn in the middle |
 | Hybrid   | Keep last N turns, capped at T tokens | Intuitive + safe     | Slightly more logic            |
@@ -152,11 +152,11 @@ Anthropic's compaction uses token-based thresholds throughout — the buffer is 
 
 What happens if a second request arrives for the same conversation while compaction is running?
 
-| Option | Description                                                |
-|--------|------------------------------------------------------------|
-| A      | No protection (accept race condition risk)                 |
-| B      | Blocking: per-conversation lock, concurrent requests wait  |
-| C      | Optimistic: check if summary already exists, skip if so    |
+| Option | Description                                               |
+| ------ | --------------------------------------------------------- |
+| A      | No protection (accept race condition risk)                |
+| B      | Blocking: per-conversation lock, concurrent requests wait |
+| C      | Optimistic: check if summary already exists, skip if so   |
 
 **Recommendation**: **B** (blocking). Compaction modifies conversation state — concurrent requests could append messages mid-compaction or trigger duplicate compactions. A per-conversation lock ensures consistency. This matches industry practice (Cursor, Claude Code both use synchronous compaction).
 
@@ -164,11 +164,11 @@ What happens if a second request arrives for the same conversation while compact
 
 Should the client be notified that compaction is in progress (before the summarization LLM call)?
 
-| Option | Description                                                     |
-|--------|-----------------------------------------------------------------|
-| A      | No notification (client sees an unexplained delay)              |
-| B      | Streaming event before compaction (e.g., `compaction_started`)  |
-| C      | Response header or field after the fact only                    |
+| Option | Description                                                    |
+| ------ | -------------------------------------------------------------- |
+| A      | No notification (client sees an unexplained delay)             |
+| B      | Streaming event before compaction (e.g., `compaction_started`) |
+| C      | Response header or field after the fact only                   |
 
 **Recommendation**: **B** for the streaming endpoint. Emit a compaction event before the summarization call so the client can display "Compacting conversation..." or similar. Non-streaming requests have no mid-request notification mechanism, so they just see a slower response.
 
@@ -385,7 +385,7 @@ Follow existing cache backend patterns (test_sqlite_cache.py, test_postgres_cach
 
 - Modify `prepare_responses_params()` in `src/utils/responses.py`.
 - Add trigger logic: estimate tokens, check threshold, invoke summarization if needed.
-- After compaction: inject summary as a marked item into the Llama Stack conversation, then select from the marker onward when building context.
+- After compaction: inject summary as a marked item into the OGX conversation, then select from the marker onward when building context.
 - Implement per-conversation blocking lock to prevent concurrent compaction races.
 - Emit compaction streaming event before the summarization LLM call.
 
@@ -393,7 +393,7 @@ Follow existing cache backend patterns (test_sqlite_cache.py, test_postgres_cach
 
 - A conversation exceeding the token threshold triggers compaction automatically.
 - Both `/v1/query` and `/v1/streaming_query` endpoints trigger compaction correctly.
-- Summary is injected into the existing Llama Stack conversation as a marked item.
+- Summary is injected into the existing OGX conversation as a marked item.
 - Subsequent requests select items from the last summary marker onward.
 - Conversation identity is preserved (same `conversation_id` throughout).
 - Full conversation history (including pre-compaction turns) remains accessible via the Conversations API.
@@ -436,18 +436,18 @@ Key files: src/models/responses.py (around line 410, the existing truncated fiel
 
 ### LCORE-1574: Integration tests for conversation compaction
 
-**Description**: Integration tests covering the compaction flow with mocked Llama Stack.
+**Description**: Integration tests covering the compaction flow with mocked OGX.
 
 **Scope**:
 
-- Test compaction trigger logic with mocked Llama Stack client.
+- Test compaction trigger logic with mocked OGX client.
 - Test summary injection as marked conversation item.
 - Test additive summarization (multiple compaction cycles).
 - Test per-conversation blocking lock behavior.
 
 **Acceptance criteria**:
 
-- Full compaction flow exercised end-to-end with mocked Llama Stack.
+- Full compaction flow exercised end-to-end with mocked OGX.
 - Tests cover trigger, partitioning, summarization, marker injection, and context selection.
 
 **Agentic tool instruction**:
@@ -501,16 +501,16 @@ To verify: check that the docs site renders correctly and OpenAPI spec validates
 
 # PoC results
 
-A proof-of-concept was built in lightspeed-stack and tested against a real Llama Stack + OpenAI (gpt-4o-mini) setup.
+A proof-of-concept was built in lightspeed-stack and tested against a real OGX + OpenAI (gpt-4o-mini) setup.
 
 ## What the PoC does
 
 The PoC hooks into `prepare_responses_params()` in `src/utils/responses.py`. When `message_count` (from the lightspeed DB) exceeds a threshold, it:
 
-1.  Fetches full conversation history from Llama Stack.
+1.  Fetches full conversation history from OGX.
 2.  Splits into "old" (to summarize) and "recent" (to keep verbatim).
 3.  Calls the LLM with a summarization prompt to produce a summary.
-4.  Creates a new Llama Stack conversation seeded with \[summary + recent turns\].
+4.  Creates a new OGX conversation seeded with \[summary + recent turns\].
 5.  Uses the new conversation for the current query.
 
 **Important**: The PoC diverges from the production design in several ways:
@@ -553,7 +553,7 @@ Each recursive summary is larger than the last because it carries the weight of 
 ### Summary quality
 
 | Summary | Turns summarized  | Quality | Notes                                     |
-|---------|-------------------|---------|-------------------------------------------|
+| ------- | ----------------- | ------- | ----------------------------------------- |
 | 1       | 1-8               | Good    | Focused, accurate                         |
 | 2       | Summary 1 + 9-18  | Good    | Broader, well-structured                  |
 | 3       | Summary 2 + 19-26 | Good    | Comprehensive, covers all prior topics    |
@@ -579,9 +579,9 @@ All linters pass (black, pylint, pyright, ruff, pydocstyle, mypy).
 User Query → lightspeed-stack
   1. Resolve model, system prompt, tools
   2. Build input (query + inline RAG + attachments)
-  3. Pass =conversation_id= to Llama Stack
+  3. Pass =conversation_id= to OGX
   ↓
-Llama Stack Responses API
+OGX Responses API
   4. Retrieve full conversation history from storage
   5. Build prompt: [system] + [full history] + [user query]
   6. Call LLM inference provider
@@ -597,15 +597,15 @@ lightspeed-stack
 ## Key components
 
 | Component               | Role                                | Code                                                  |
-|-------------------------|-------------------------------------|-------------------------------------------------------|
+| ----------------------- | ----------------------------------- | ----------------------------------------------------- |
 | lightspeed-stack        | FastAPI wrapper; delegates to Llama | `src/utils/responses.py:322-331`                      |
-| Llama Stack             | Conversation storage + LLM calls    | `openai_responses.py:206-278`, `streaming.py:399-413` |
+| OGX                     | Conversation storage + LLM calls    | `openai_responses.py:206-278`, `streaming.py:399-413` |
 | `conversation_items`    | Rich items (tool calls, MCP) for UI | `conversations.py:81-98`                              |
 | `conversation_messages` | Chat messages for LLM context       | `responses_store.py:71-77`                            |
 
 ## What happens when context is exceeded
 
-1.  Llama Stack sends the full prompt to the inference provider.
+1.  OGX sends the full prompt to the inference provider.
 2.  Provider rejects (HTTP 400/413 with "`context_length`" in error message).
 3.  lightspeed-stack catches `RuntimeError` (library mode) or `APIStatusError`.
 4.  Returns `PromptTooLongResponse` (HTTP 413) to the user.
@@ -623,7 +623,7 @@ The `truncated` field exists in `QueryResponse` but is:
 
 It was added anticipating future truncation support, then deprecated when that work didn't happen.
 
-## Llama Stack's truncation support
+## OGX's truncation support
 
 The `truncation` parameter exists in the Responses API:
 
@@ -634,8 +634,8 @@ The TODO at `streaming.py:400` says: *"Implement actual truncation logic when 'a
 
 ## Token estimation
 
-| Capability               | lightspeed-stack | Llama Stack    |
-|--------------------------|------------------|----------------|
+| Capability               | lightspeed-stack | OGX            |
+| ------------------------ | ---------------- | -------------- |
 | Pre-inference estimation | None             | None           |
 | Post-inference (`usage`) | Yes              | Yes            |
 | Tokenizer dependency     | None             | tiktoken (RAG) |
@@ -657,7 +657,7 @@ tiktoken runs on CPU only — no API calls, no GPU. Cost is ~1-5ms for a 10K tok
 - Compaction items are not human-readable — encrypted blobs.
 
 | Pros                               | Cons                                   |
-|------------------------------------|----------------------------------------|
+| ---------------------------------- | -------------------------------------- |
 | Zero developer intervention needed | Opaque: can't inspect what's preserved |
 | Server manages all state           | Vendor lock-in (encrypted blobs)       |
 | Manual `compact` for control       | All input tokens re-billed each turn   |
@@ -678,7 +678,7 @@ Default summarization prompt:
 > "You have written a partial transcript for the initial task above. Please write a summary of the transcript. The purpose of this summary is to provide continuity so you can continue to make progress towards solving the task in a future context, where the raw history above may not be accessible and will be replaced with this summary."
 
 | Pros                                  | Cons                                  |
-|---------------------------------------|---------------------------------------|
+| ------------------------------------- | ------------------------------------- |
 | Transparent, readable summaries       | Custom instructions replace default   |
 | Custom summarization prompts          | Client must handle compaction blocks  |
 | `pause_after_compaction` for control  | Stateless: client manages all history |
@@ -693,7 +693,7 @@ Default summarization prompt:
 - Developer must implement everything client-side.
 
 | Pros                            | Cons                                       |
-|---------------------------------|--------------------------------------------|
+| ------------------------------- | ------------------------------------------ |
 | Model-agnostic (Claude, Llama…) | Zero built-in context management           |
 | No data retention (privacy)     | Full burden on developer                   |
 | Simple, predictable             | Cost grows linearly (full history re-sent) |
@@ -701,7 +701,7 @@ Default summarization prompt:
 ## Comparison
 
 | Feature              | OpenAI      | Anthropic   | Bedrock     |
-|----------------------|-------------|-------------|-------------|
+| -------------------- | ----------- | ----------- | ----------- |
 | State management     | Server-side | Client-side | Client-side |
 | Auto compaction      | Yes         | Yes         | No          |
 | Manual compaction    | Yes         | Via trigger | No          |
@@ -742,7 +742,7 @@ Default summarization prompt:
 ## LangChain
 
 | Strategy            | Trigger         | Preserves        | LLM cost       |
-|---------------------|-----------------|------------------|----------------|
+| ------------------- | --------------- | ---------------- | -------------- |
 | BufferMemory        | None            | Everything       | 0 extra        |
 | WindowMemory        | Message count   | Last k messages  | 0 extra        |
 | SummaryMemory       | Every turn      | Rolling summary  | 1 call/turn    |
@@ -755,16 +755,16 @@ Default summarization prompt:
 
 There are four approaches to handling long conversation history (excluding simple FIFO truncation, which loses all older context and is not considered here):
 
-| \#  | Approach              | Examples                          | Complexity  | Context quality |
-|-----|-----------------------|-----------------------------------|-------------|-----------------|
-| 1   | No management         | Bedrock, raw Anthropic            | Trivial     | Full until fail |
-| 2   | LLM summarization     | Anthropic compact, OpenAI compact | Medium      | Good            |
-| 3   | Hybrid buffer+summary | LangChain SummaryBuffer, Claude   | Medium-High | Very good       |
-| 4   | Tiered hierarchical   | MemGPT/Letta                      | High        | Excellent       |
+| \# | Approach              | Examples                          | Complexity  | Context quality |
+| -- | --------------------- | --------------------------------- | ----------- | --------------- |
+| 1  | No management         | Bedrock, raw Anthropic            | Trivial     | Full until fail |
+| 2  | LLM summarization     | Anthropic compact, OpenAI compact | Medium      | Good            |
+| 3  | Hybrid buffer+summary | LangChain SummaryBuffer, Claude   | Medium-High | Very good       |
+| 4  | Tiered hierarchical   | MemGPT/Letta                      | High        | Excellent       |
 
 # Design alternatives for lightspeed-stack
 
-Given our architecture (lightspeed-stack wraps Llama Stack) and the constraint that we implement in lightspeed-stack (see [Appendix A](#llama-stack-upstream) for why not upstream):
+Given our architecture (lightspeed-stack wraps OGX) and the constraint that we implement in lightspeed-stack (see [Appendix A](#OGX-upstream) for why not upstream):
 
 ## Alternative A: LLM-based summarization (recommended)
 
@@ -781,7 +781,7 @@ When approaching the context limit, use the LLM to summarize older turns. Recent
 3.  Additive: when threshold hit again, generate a new summary for the new chunk and append it to the existing summaries.
 
 | Pros                                         | Cons                                   |
-|----------------------------------------------|----------------------------------------|
+| -------------------------------------------- | -------------------------------------- |
 | Preserves semantic context from older turns  | Extra LLM call for summarization       |
 | Well-proven pattern (Anthropic, LangChain)   | Summarization quality depends on model |
 | Additive — each chunk summarized once        | Latency: adds 1 LLM call at trigger    |
@@ -839,12 +839,12 @@ User Query → lightspeed-stack
   5. If over threshold:
      a. Emit compaction event (streaming)
      b. Summarize old turns
-     c. Inject summary as marked item into Llama Stack conversation
+     c. Inject summary as marked item into OGX conversation
      d. Store summary chunk in cache
   6. Build context: select items from last summary marker onward
-  7. Call Llama Stack with conversation parameter (marker-based selection)
+  7. Call OGX with conversation parameter (marker-based selection)
   ↓
-Llama Stack
+OGX
   8. Processes conversation (marker + recent turns + new query)
   ↓
 lightspeed-stack
@@ -866,7 +866,7 @@ Additional features over A:
 - Extend to support "pinned" messages that the user marks as important.
 
 | Pros                                | Cons                       |
-|-------------------------------------|----------------------------|
+| ----------------------------------- | -------------------------- |
 | All benefits of A                   | All costs of A             |
 | Critical instructions never lost    | Pinning adds UX complexity |
 | Users can protect important context | More state to manage       |
@@ -878,7 +878,7 @@ Additional features over A:
 Three-tier memory: working context, recall storage (searchable conversation history), archival storage (extracted facts).
 
 | Pros                                   | Cons                             |
-|----------------------------------------|----------------------------------|
+| -------------------------------------- | -------------------------------- |
 | Nothing truly lost                     | High complexity                  |
 | LLM can retrieve old context on demand | Requires vector DB for recall    |
 | Best long-term context quality         | Multiple LLM calls per turn      |
@@ -891,7 +891,7 @@ Three-tier memory: working context, recall storage (searchable conversation hist
 Use OpenAI's or Anthropic's native compaction APIs. Implement client-side only for providers without native support.
 
 | Pros                                | Cons                                 |
-|-------------------------------------|--------------------------------------|
+| ----------------------------------- | ------------------------------------ |
 | Leverages best-in-class compaction  | Divergent behavior across providers  |
 | Less code to maintain               | Opaque compaction for OpenAI         |
 | Provider handles edge cases         | Can't customize for Red Hat domain   |
@@ -918,7 +918,7 @@ Example for a 128K context window at 70% threshold:
 ## Latency impact
 
 | Scenario          | Current             | With compaction                   |
-|-------------------|---------------------|-----------------------------------|
+| ----------------- | ------------------- | --------------------------------- |
 | Normal turn       | 1 LLM call          | 1 LLM call (no change)            |
 | Trigger turn      | 1 LLM call (or 413) | 2 LLM calls (summarize + respond) |
 | Post-trigger turn | 1 LLM call          | 1 LLM call (no change)            |
@@ -928,7 +928,7 @@ Summarization adds latency only on the trigger turn. In our PoC, compaction turn
 ## What's required
 
 | Requirement                            | Status        | Effort |
-|----------------------------------------|---------------|--------|
+| -------------------------------------- | ------------- | ------ |
 | Token estimation (tiktoken)            | Not present   | Small  |
 | Context window registry (per model)    | Not present   | Small  |
 | Summary storage in conversation cache  | Schema change | Medium |
@@ -938,17 +938,17 @@ Summarization adds latency only on the trigger turn. In our PoC, compaction turn
 
 ## Dependencies
 
-| Dependency                   | Type           | Blocker? |
-|------------------------------|----------------|----------|
-| tiktoken library             | New dependency | No       |
-| Model context window sizes   | Configuration  | No       |
-| Llama Stack conversation API | Already exists | No       |
-| Conversation cache schema    | Schema change  | No       |
-| Upstream Llama Stack changes | None needed    | No       |
+| Dependency                 | Type           | Blocker? |
+| -------------------------- | -------------- | -------- |
+| tiktoken library           | New dependency | No       |
+| Model context window sizes | Configuration  | No       |
+| OGX conversation API       | Already exists | No       |
+| Conversation cache schema  | Schema change  | No       |
+| Upstream OGX changes       | None needed    | No       |
 
 No external dependencies or cross-team coordination needed. The feature is fully self-contained within lightspeed-stack (except the UI indicator).
 
-# Appendix A: Llama Stack upstream status
+# Appendix A: OGX upstream status
 
 As of 2026-03-16:
 

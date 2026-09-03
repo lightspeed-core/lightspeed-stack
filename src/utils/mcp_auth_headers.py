@@ -46,52 +46,53 @@ def resolve_authorization_headers(
     for header_name, value in authorization_headers.items():
         value = value.strip()
         try:
-            if value == constants.MCP_AUTH_KUBERNETES:
-                # Special case: Keep kubernetes keyword for later substitution
-                resolved[header_name] = constants.MCP_AUTH_KUBERNETES
-                logger.debug(
-                    "Header %s will use Kubernetes token (resolved at request time)",
-                    header_name,
-                )
-            elif value == constants.MCP_AUTH_CLIENT:
-                # Special case: Keep client keyword for later substitution
-                resolved[header_name] = constants.MCP_AUTH_CLIENT
-                logger.debug(
-                    "Header %s will use client-provided token (resolved at request time)",
-                    header_name,
-                )
-            elif value == constants.MCP_AUTH_OAUTH:
-                # Special case: Keep oauth keyword; if no token provided, probe endpoint
-                # and forward 401 WWW-Authenticate for client-driven OAuth flow
-                resolved[header_name] = constants.MCP_AUTH_OAUTH
-                logger.debug(
-                    "Header %s will use OAuth token (resolved at request time or 401)",
-                    header_name,
-                )
-            else:
-                # Regular case: Read secret from file path
-                secret_path = Path(value).expanduser()
-                if secret_path.exists() and secret_path.is_file():
-                    secret_value = secret_path.read_text(encoding="utf-8").strip()
-                    if not secret_value:
-                        logger.warning(
-                            "Secret file %s for header %s is empty",
-                            secret_path,
-                            header_name,
-                        )
-                    else:
-                        resolved[header_name] = secret_value
-                        logger.debug(
-                            "Resolved header %s from secret file %s",
-                            header_name,
-                            secret_path,
-                        )
-                else:
-                    logger.warning(
-                        "Secret file not found or not a file: %s for header %s",
-                        secret_path,
+            match value:
+                case constants.MCP_AUTH_KUBERNETES:
+                    # Special case: Keep kubernetes keyword for later substitution
+                    resolved[header_name] = constants.MCP_AUTH_KUBERNETES
+                    logger.debug(
+                        "Header %s will use Kubernetes token (resolved at request time)",
                         header_name,
                     )
+                case constants.MCP_AUTH_CLIENT:
+                    # Special case: Keep client keyword for later substitution
+                    resolved[header_name] = constants.MCP_AUTH_CLIENT
+                    logger.debug(
+                        "Header %s will use client-provided token (resolved at request time)",
+                        header_name,
+                    )
+                case constants.MCP_AUTH_OAUTH:
+                    # Special case: Keep oauth keyword; if no token provided, probe endpoint
+                    # and forward 401 WWW-Authenticate for client-driven OAuth flow
+                    resolved[header_name] = constants.MCP_AUTH_OAUTH
+                    logger.debug(
+                        "Header %s will use OAuth token (resolved at request time or 401)",
+                        header_name,
+                    )
+                case _:
+                    # Regular case: Read secret from file path
+                    secret_path = Path(value).expanduser()
+                    if secret_path.exists() and secret_path.is_file():
+                        secret_value = secret_path.read_text(encoding="utf-8").strip()
+                        if not secret_value:
+                            logger.warning(
+                                "Secret file %s for header %s is empty",
+                                secret_path,
+                                header_name,
+                            )
+                        else:
+                            resolved[header_name] = secret_value
+                            logger.debug(
+                                "Resolved header %s from secret file %s",
+                                header_name,
+                                secret_path,
+                            )
+                    else:
+                        logger.warning(
+                            "Secret file not found or not a file: %s for header %s",
+                            secret_path,
+                            header_name,
+                        )
         except Exception:  # pylint: disable=broad-except
             # Don't log value: it might be a literal token.
             logger.exception(

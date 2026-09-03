@@ -19,7 +19,7 @@ from models.config import (
     AuthenticationConfiguration,
     Configuration,
     JwkConfiguration,
-    LlamaStackConfiguration,
+    OgxConfiguration,
     RHIdentityConfiguration,
     ServiceConfiguration,
     UserDataCollection,
@@ -307,7 +307,7 @@ def test_authentication_configuration_in_config_noop() -> None:
             workers=1,
             root_path="/.",
         ),
-        llama_stack=LlamaStackConfiguration(
+        ogx=OgxConfiguration(
             use_as_library_client=True,
             library_client_config_path="tests/configuration/run.yaml",
             url=AnyHttpUrl("http://localhost"),
@@ -347,7 +347,7 @@ def test_authentication_configuration_skip_readiness_probe() -> None:
             workers=1,
             root_path="/.",
         ),
-        llama_stack=LlamaStackConfiguration(
+        ogx=OgxConfiguration(
             use_as_library_client=True,
             library_client_config_path="tests/configuration/run.yaml",
             url=AnyHttpUrl("http://localhost"),
@@ -403,7 +403,7 @@ def test_authentication_configuration_in_config_k8s() -> None:
             workers=1,
             root_path="/.",
         ),
-        llama_stack=LlamaStackConfiguration(
+        ogx=OgxConfiguration(
             use_as_library_client=True,
             library_client_config_path="tests/configuration/run.yaml",
             url=AnyHttpUrl("http://localhost"),
@@ -461,7 +461,7 @@ def test_authentication_configuration_in_config_rh_identity() -> None:
             workers=1,
             root_path="/.",
         ),
-        llama_stack=LlamaStackConfiguration(
+        ogx=OgxConfiguration(
             use_as_library_client=True,
             library_client_config_path="tests/configuration/run.yaml",
             url=AnyHttpUrl("http://localhost"),
@@ -509,7 +509,7 @@ def test_authentication_configuration_in_config_jwktoken() -> None:
             workers=1,
             root_path="/.",
         ),
-        llama_stack=LlamaStackConfiguration(
+        ogx=OgxConfiguration(
             use_as_library_client=True,
             library_client_config_path="tests/configuration/run.yaml",
             url=AnyHttpUrl("http://localhost"),

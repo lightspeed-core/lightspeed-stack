@@ -118,8 +118,8 @@ class TestGetAuthorizationResolvers:
 
         roles_resolver, access_resolver = get_authorization_resolvers()
 
-        assert isinstance(roles_resolver, expected_types[0])  # type: ignore
-        assert isinstance(access_resolver, expected_types[1])  # type: ignore
+        assert isinstance(roles_resolver, expected_types[0])
+        assert isinstance(access_resolver, expected_types[1])
 
     @pytest.mark.parametrize(
         "empty_rules", ["role_rules", "access_rules", "both_rules"]
@@ -140,18 +140,19 @@ class TestGetAuthorizationResolvers:
         )
 
         # Create a real rule for the non-empty case
-        if empty_rules == "role_rules":
-            mock_configuration.authorization_configuration.access_rules = [
-                sample_access_rule
-            ]
-        elif empty_rules == "access_rules":
-            jwt_config = (
-                mock_configuration.authentication_configuration.jwk_configuration.jwt_configuration
-            )
-            jwt_config.role_rules = [sample_role_rule]
-        elif empty_rules == "both_rules":
-            # For "both_rules", both lists remain empty (default in fixture)
-            pass
+        match empty_rules:
+            case "role_rules":
+                mock_configuration.authorization_configuration.access_rules = [
+                    sample_access_rule
+                ]
+            case "access_rules":
+                jwt_config = (
+                    mock_configuration.authentication_configuration.jwk_configuration.jwt_configuration  # pylint: disable=line-too-long
+                )
+                jwt_config.role_rules = [sample_role_rule]
+            case "both_rules":
+                # For "both_rules", both lists remain empty (default in fixture)
+                pass
 
         mocker.patch("authorization.middleware.configuration", mock_configuration)
 
@@ -321,7 +322,7 @@ class TestPerformAuthorizationCheck:
                 mock_request,
             ]
 
-        await _perform_authorization_check(Action.QUERY, args, kwargs)  # type: ignore
+        await _perform_authorization_check(Action.QUERY, args, kwargs)
 
         if request_location != "none":
             assert mock_request.state.authorized_actions == {Action.QUERY}

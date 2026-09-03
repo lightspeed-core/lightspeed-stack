@@ -1,27 +1,34 @@
 services:
-  # Red Hat llama-stack distribution with FAISS
+  # Red Hat OGX distribution with FAISS
   llama-stack:
     build:
       context: .
-      dockerfile: deploy/llama-stack/test.containerfile
+      dockerfile: deploy/ogx/test.containerfile
     platform: linux/amd64
     container_name: llama-stack
     ports:
-      - "8321:8321"  # Expose llama-stack on 8321 (adjust if needed)
+      - "8321:8321"  # Expose OGX on 8321 (adjust if needed)
     depends_on:
       mock-tls-inference:
         condition: service_healthy
     volumes:
+      # Used in legacy mode only: with a unified lightspeed-stack.yaml (one
+      # carrying inference.providers / vector_store.providers / a
+      # llama_stack.config block) the entrypoint synthesizes the run config
+      # from lightspeed-stack.yaml and this mount is ignored
       - ./run.yaml:/opt/app-root/run.yaml:z
-      # Host copies so `docker compose up` picks up script changes without rebuilding llama-stack
-      - ./scripts/llama-stack-entrypoint.sh:/opt/app-root/enrich-entrypoint.sh:ro,z
-      - ./src/llama_stack_configuration.py:/opt/app-root/llama_stack_configuration.py:ro,z
+      # Host copies so `docker compose up` picks up script changes without rebuilding OGX
+      - ./scripts/ogx-entrypoint.sh:/opt/app-root/enrich-entrypoint.sh:ro,z
+      - ./src/ogx_configuration.py:/opt/app-root/ogx_configuration.py:ro,z
+      - ./src/data:/opt/app-root/data:ro,z
       - ${GCP_KEYS_PATH:-./tmp/.gcp-keys-dummy}:/opt/app-root/.gcp-keys:ro
       - ./lightspeed-stack.yaml:/opt/app-root/lightspeed-stack.yaml:ro,z
+      # Writable OGX storage (rag/ work copy is re-seeded by entrypoint each start)
       - llama-storage:/opt/app-root/src/.llama/storage
-      - ./tests/e2e/rag:/opt/app-root/src/.llama/storage/rag:z
+      # Read-only e2e FAISS fixtures — never mount these as the live KV_RAG_PATH
+      - ./tests/e2e/rag:/opt/app-root/src/.llama/storage/.e2e-rag-seed:ro,z
       - mock-tls-certs:/certs:ro
-      - ${HF_CACHE_PATH:-./tmp/.hf-cache}:/opt/app-root/src/.cache/huggingface
+      - ${HF_CACHE_PATH:-./tmp/.hf-cache}:/opt/app-root/src/.cache/huggingface:z
     environment:
       - BRAVE_SEARCH_API_KEY=${BRAVE_SEARCH_API_KEY:-}
       - TAVILY_SEARCH_API_KEY=${TAVILY_SEARCH_API_KEY:-}
@@ -57,6 +64,12 @@ services:
       - OGX_LOGGING=${OGX_LOGGING:-}
       # FAISS test
       - FAISS_VECTOR_STORE_ID=${FAISS_VECTOR_STORE_ID:-}
+      # Disable OGX ~/.llama → ~/.ogx migration (bind-mount under ~/.llama/storage/rag).
+      - OGX_CONFIG_DIR=/opt/app-root/src/.ogx
+      # Live RAG DBs under /tmp (writable for UID 1001); seeded from .e2e-rag-seed
+      - RAG_SEED_DIR=/opt/app-root/src/.llama/storage/.e2e-rag-seed
+      - KV_RAG_PATH=/tmp/e2e-rag-work/kv_store.db
+      - PDF_KV_RAG_PATH=/tmp/e2e-rag-work/pdf_kv_store.db
       # Prevent HuggingFace Hub update checks (HTTP 429 rate-limiting in CI from parallel jobs).
       - HF_HUB_OFFLINE=1
       # OKP/Solr RAG
@@ -105,6 +118,7 @@ services:
       - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT:-}
       - OTEL_EXPORTER_OTLP_PROTOCOL=${OTEL_EXPORTER_OTLP_PROTOCOL:-}
       - OTEL_SERVICE_NAME=${OTEL_SERVICE_NAME:-}
+      - OTEL_ANONYMIZATION_SECRET=${OTEL_ANONYMIZATION_SECRET:-lightspeed-stack-otel-anonymization-dev-default}
       - OTEL_SDK_DISABLED=${OTEL_SDK_DISABLED:-true}
     depends_on:
         llama-stack:

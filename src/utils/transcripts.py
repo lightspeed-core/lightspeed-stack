@@ -93,7 +93,7 @@ def store_transcript(
         with open(transcript_file_path, "w", encoding="utf-8") as transcript_file:
             json.dump(transcript.model_dump(), transcript_file)
         logger.info("Transcript successfully stored at: %s", transcript_file_path)
-    except (IOError, OSError) as e:
+    except OSError as e:
         logger.error("Failed to store transcript into %s: %s", transcript_file_path, e)
         response = InternalServerErrorResponse.generic()
         raise HTTPException(**response.model_dump()) from e

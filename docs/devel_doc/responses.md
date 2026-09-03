@@ -1,6 +1,6 @@
 # LCORE OpenResponses API Specification
 
-This document describes the LCORE implementation of the OpenResponses API, exposed via the `POST /v1/responses` endpoint. This endpoint follows the OpenResponses specification and is built on top of the Llama Stack Responses API. In addition, it introduces LCORE-specific extensions to preserve feature parity and defines explicit field mappings to reproduce the functionality of existing `/v1/query` and `/v1/streaming_query` endpoints.
+This document describes the LCORE implementation of the OpenResponses API, exposed via the `POST /v1/responses` endpoint. This endpoint follows the OpenResponses specification and is built on top of the OGX Responses API. In addition, it introduces LCORE-specific extensions to preserve feature parity and defines explicit field mappings to reproduce the functionality of existing `/v1/query` and `/v1/streaming_query` endpoints.
 
 ---
 
@@ -73,7 +73,7 @@ The endpoint is designed to provide feature parity with existing query endpoints
 
 ### Inherited LLS OpenAPI Attributes
 
-The following request attributes are supported as defined by the underlying Llama Stack Responses API and retain their original OpenResponses semantics unless otherwise stated:
+The following request attributes are supported as defined by the underlying OGX Responses API and retain their original OpenResponses semantics unless otherwise stated:
 
 | Field | Type | Description | Required |
 |-------|------|-------------|----------|
@@ -107,7 +107,7 @@ The following fields are LCORE-specific request extensions and are not part of t
 | Field | Type | Description | Required |
 |-------|------|-------------|----------|
 | `generate_topic_summary` | boolean | Generate topic summary for new conversations. Default: true | No |
-| `shield_ids` | array[string] | LCORE-configured shield `name` values to apply. If omitted, all configured shields are used. Not Llama Stack Safety resource names. | No |
+| `shield_ids` | array[string] | LCORE-configured shield `name` values to apply. If omitted, all configured shields are used. Not OGX Safety resource names. | No |
 | `solr` | object | Optional `mode` and `filters`. Legacy top-level filter-only objects are still accepted. | No |
 
 
@@ -123,7 +123,7 @@ The following table maps LCORE query request fields to the OpenResponses request
 | `system_prompt` | `instructions` | Same meaning. Only change in attribute's name |
 | `attachments` | `input` items | Attachments can be passed as input messages with content of type `input_file` |
 | `no_tools` | `tool_choice` | `no_tools=true` mapped to `tool_choice="none"` |
-| `vector_store_ids` | `tools` + `tool_choice` | Restrict via `file_search.vector_store_ids` in **LCORE format**; translated to Llama Stack internally. |
+| `vector_store_ids` | `tools` + `tool_choice` | Restrict via `file_search.vector_store_ids` in **LCORE format**; translated to OGX internally. |
 | `generate_topic_summary` | N/A | Exposed directly (LCORE-specific) |
 | `shield_ids` | N/A | Exposed directly (LCORE-specific) |
 | `solr` | N/A | Exposed directly (LCORE-specific) |
@@ -345,7 +345,7 @@ Each item in `tools` declares one capability: search a set of vector stores (**f
 
 **Tool types (each object has a required `type`):**
 
-- `file_search`: Search within given vector stores. `vector_store_ids` (required): **LCORE format** IDs (mapped to Llama Stack internally). Optional: `max_num_results` (1–50, default 10), `filters`, `ranking_options`.
+- `file_search`: Search within given vector stores. `vector_store_ids` (required): **LCORE format** IDs (mapped to OGX internally). Optional: `max_num_results` (1–50, default 10), `filters`, `ranking_options`.
 - `web_search`: Web search. `type` can be `"web_search"`, `"web_search_preview"`, or other variants. Optional: `search_context_size` (`"low"`, `"medium"`, `"high"`).
 - `function`: Call a named function. `name` (required). Optional: `description`, `parameters` (JSON schema), `strict`.
 - `mcp`: Use tools from an MCP server. `server_label` (required), `server_url` (required). Optional: `headers`, `require_approval`, `allowed_tools`.
@@ -497,7 +497,7 @@ Several behavioral differences and implementation details should be noted:
 
 ### Conversation Handling
 
-The `conversation` field in responses is a LCORE-managed extension. While not natively defined by the Llama Stack specification, it is internally resolved and **always** present in the response to preserve LCORE conversation-based model.
+The `conversation` field in responses is a LCORE-managed extension. While not natively defined by the OGX specification, it is internally resolved and **always** present in the response to preserve LCORE conversation-based model.
 
 The endpoint accepts two conversation ID formats:
 
@@ -530,7 +530,7 @@ Fields such as `media_type`, `tool_calls`, `tool_results`, `rag_chunks`, and `re
 
 Vector store IDs are configured within the `tools` as `file_search` tools rather than through separate parameters. MCP tools are configurable under `mcp` tool type. By default **all** tools that are configured in LCORE are used to support the response. The set of available tools can be maintained per-request by `tool_choice` or `tools` attributes.
 
-**Vector store IDs:** Accepts **LCORE format** in requests and also outputs it in responses; LCORE translates to/from Llama Stack format internally.
+**Vector store IDs:** Accepts **LCORE format** in requests and also outputs it in responses; LCORE translates to/from OGX format internally.
 
 The response includes `tools` and `tool_choice` fields that reflect the internally resolved configuration. More specifically, the final set of tools and selection constraints after internal resolution and filtering.
 
@@ -803,7 +803,7 @@ The endpoint returns standard HTTP status codes and error responses:
 | 422 | Unprocessable Entity | Request validation failed |
 | 429 | Too Many Requests | Token quota exceeded |
 | 500 | Internal Server Error | Configuration not loaded or other server errors |
-| 503 | Service Unavailable | Unable to connect to Llama Stack backend |
+| 503 | Service Unavailable | Unable to connect to OGX backend |
 
 ---
 

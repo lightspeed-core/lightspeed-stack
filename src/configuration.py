@@ -5,7 +5,7 @@ from typing import Any, Optional
 import yaml
 
 # We want to support environment variable replacement in the configuration
-# similarly to how it is done in llama-stack, so we use their function directly
+# similarly to how it is done in OGX, so we use their function directly
 from ogx.core.stack import replace_env_vars
 
 import constants
@@ -24,8 +24,8 @@ from models.config import (
     Customization,
     DatabaseConfiguration,
     InferenceConfiguration,
-    LlamaStackConfiguration,
     ModelContextProtocolServer,
+    OgxConfiguration,
     OkpConfiguration,
     QuotaHandlersConfiguration,
     RagConfiguration,
@@ -51,8 +51,8 @@ def replace_env_vars_preserving_native_override(
 
     LCORE resolves environment-variable references throughout
     lightspeed-stack.yaml so typed fields receive concrete values. But
-    ``llama_stack.config.native_override`` is raw Llama Stack schema that Llama
-    Stack resolves itself, in memory, at its own startup. Resolving it eagerly
+    ``ogx.config.native_override`` is raw OGX schema that OGX
+    resolves itself, in memory, at its own startup. Resolving it eagerly
     here would (a) defeat the ${env.*} pattern LCORE recommends for secrets and
     (b) pull resolved secrets into the loaded Configuration model, which is
     logged at startup. So native_override is held aside, the rest of the config
@@ -70,8 +70,10 @@ def replace_env_vars_preserving_native_override(
     if not isinstance(config_dict, dict):
         return replace_env_vars(config_dict)
 
-    llama_stack = config_dict.get("llama_stack")
-    ls_config = llama_stack.get("config") if isinstance(llama_stack, dict) else None
+    ogx_section = config_dict.get("ogx")
+    if ogx_section is None:
+        ogx_section = config_dict.get("llama_stack")
+    ls_config = ogx_section.get("config") if isinstance(ogx_section, dict) else None
     if not (isinstance(ls_config, dict) and "native_override" in ls_config):
         return replace_env_vars(config_dict)
 
@@ -79,9 +81,11 @@ def replace_env_vars_preserving_native_override(
     ls_config["native_override"] = {}  # keep secrets out of env resolution
     resolved = replace_env_vars(config_dict)
     ls_config["native_override"] = raw_override  # restore source dict if reused
-    resolved_ls = (resolved.get("llama_stack") or {}).get("config")
-    if isinstance(resolved_ls, dict):
-        resolved_ls["native_override"] = raw_override
+    resolved_ogx = (resolved.get("ogx") or resolved.get("llama_stack") or {}).get(
+        "config"
+    )
+    if isinstance(resolved_ogx, dict):
+        resolved_ogx["native_override"] = raw_override
     return resolved
 
 
@@ -173,18 +177,18 @@ class AppConfig:  # pylint: disable=too-many-public-methods
         return self._configuration.service
 
     @property
-    def llama_stack_configuration(self) -> LlamaStackConfiguration:
-        """Return Llama Stack configuration.
+    def ogx_configuration(self) -> OgxConfiguration:
+        """Return OGX configuration.
 
         Returns:
-            LlamaStackConfiguration: The configured Llama Stack settings.
+            OgxConfiguration: The configured OGX settings.
 
         Raises:
             LogicError: If the application configuration has not been loaded.
         """
         if self._configuration is None:
             raise LogicError("logic error: configuration is not loaded")
-        return self._configuration.llama_stack
+        return self._configuration.ogx
 
     @property
     def user_data_collection_configuration(self) -> UserDataCollection:
@@ -538,14 +542,14 @@ class AppConfig:  # pylint: disable=too-many-public-methods
         """Return OKP configuration."""
         if self._configuration is None:
             raise LogicError("logic error: configuration is not loaded")
-        return self._configuration.okp
+        return self._configuration.rag.okp
 
     @property
-    def reranker(self) -> "RerankerConfiguration":
+    def reranker(self) -> Optional["RerankerConfiguration"]:
         """Return reranker configuration."""
         if self._configuration is None:
             raise LogicError("logic error: configuration is not loaded")
-        return self._configuration.reranker
+        return self._configuration.rag.retrieval.inline.reranker
 
     @property
     def skills(self) -> Optional[SkillsConfiguration]:
@@ -566,7 +570,7 @@ class AppConfig:  # pylint: disable=too-many-public-methods
         """Return mapping from vector_db_id to rag_id from BYOK and OKP RAG config.
 
         Returns:
-            dict[str, str]: Mapping where keys are llama-stack vector_store_ids
+            dict[str, str]: Mapping where keys are OGX vector_store_ids
             (old vector_db_id) and values are user-facing rag_ids from configuration.
 
         Raises:
@@ -575,12 +579,15 @@ class AppConfig:  # pylint: disable=too-many-public-methods
         if self._configuration is None:
             raise LogicError("logic error: configuration is not loaded")
         byok_mapping = {
-            brag.vector_db_id: brag.rag_id for brag in self._configuration.byok_rag
+            store.vector_db_id: store.rag_id
+            for store in self._configuration.rag.byok.stores
         }
 
-        rag = self._configuration.rag
+        retrieval = self._configuration.rag.retrieval
         okp_id = constants.OKP_RAG_ID
-        okp_enabled = okp_id in (rag.inline or []) or okp_id in (rag.tool or [])
+        okp_enabled = okp_id in (retrieval.inline.sources or []) or okp_id in (
+            retrieval.tool.sources or []
+        )
         okp_mapping = (
             {constants.SOLR_DEFAULT_VECTOR_STORE_ID: okp_id} if okp_enabled else {}
         )
@@ -591,7 +598,7 @@ class AppConfig:  # pylint: disable=too-many-public-methods
         """Return mapping from vector_db_id to score_multiplier from BYOK RAG config.
 
         Returns:
-            dict[str, float]: Mapping where keys are llama-stack vector_db_ids
+            dict[str, float]: Mapping where keys are OGX vector_db_ids
             and values are score multipliers from configuration.
 
         Raises:
@@ -600,8 +607,26 @@ class AppConfig:  # pylint: disable=too-many-public-methods
         if self._configuration is None:
             raise LogicError("logic error: configuration is not loaded")
         return {
-            brag.vector_db_id: brag.score_multiplier
-            for brag in self._configuration.byok_rag
+            store.vector_db_id: store.score_multiplier
+            for store in self._configuration.rag.byok.stores
+        }
+
+    @property
+    def relevance_cutoff_mapping(self) -> dict[str, float]:
+        """Return mapping from vector_db_id to relevance_cutoff_score from BYOK RAG config.
+
+        Returns:
+            dict[str, float]: Mapping where keys are OGX vector_db_ids
+            and values are relevance cutoff scores from configuration.
+
+        Raises:
+            LogicError: If the configuration has not been loaded.
+        """
+        if self._configuration is None:
+            raise LogicError("logic error: configuration is not loaded")
+        return {
+            store.vector_db_id: store.relevance_cutoff_score
+            for store in self._configuration.rag.byok.stores
         }
 
     @property
@@ -616,7 +641,7 @@ class AppConfig:  # pylint: disable=too-many-public-methods
         """
         if self._configuration is None:
             raise LogicError("logic error: configuration is not loaded")
-        return constants.OKP_RAG_ID in self._configuration.rag.inline
+        return constants.OKP_RAG_ID in self._configuration.rag.retrieval.inline.sources
 
     def resolve_index_name(
         self, vector_store_id: str, rag_id_mapping: Optional[dict[str, str]] = None
@@ -628,7 +653,7 @@ class AppConfig:  # pylint: disable=too-many-public-methods
 
         Parameters:
         ----------
-            vector_store_id: The llama-stack vector store identifier.
+            vector_store_id: The OGX vector store identifier.
             rag_id_mapping: Optional pre-built mapping to avoid repeated lookups.
 
         Returns:

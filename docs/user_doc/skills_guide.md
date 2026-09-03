@@ -16,6 +16,7 @@ This guide covers how to configure Agent Skills in Lightspeed Core Stack and how
   - [Frontmatter Fields](#frontmatter-fields)
   - [Body Content](#body-content)
 - [Creating a Skill](#creating-a-skill)
+- [Inspecting Loaded Skills via REST API](#inspecting-loaded-skills-via-rest-api)
 - [How Skills Work at Runtime](#how-skills-work-at-runtime)
 - [Limitations](#limitations)
 - [References](#references)
@@ -75,7 +76,7 @@ skills:
 > [!TIP]
 > Option A is recommended for most deployments. Use Option B when you need to selectively include specific skills from a larger collection.
 
-See [examples/lightspeed-stack-skills.yaml](../examples/lightspeed-stack-skills.yaml) for a complete configuration example.
+See [examples/lightspeed-stack-skills.yaml](https://github.com/lightspeed-core/lightspeed-stack/blob/main/examples/lightspeed-stack-skills.yaml) for a complete configuration example.
 
 # Skill Directory Structure
 
@@ -205,7 +206,40 @@ skills:
 
 Skills are loaded at startup. Restart Lightspeed Core Stack to pick up new or modified skills.
 
-See [examples/skills/](../examples/skills/) for complete working examples.
+See [examples/skills/](https://github.com/lightspeed-core/lightspeed-stack/tree/main/examples/skills) for complete working examples.
+
+# Inspecting Loaded Skills via REST API
+
+`GET /v1/skills` returns the name and description of every skill loaded
+from the configured `skills.paths`, without going through an LLM/agent
+turn. If authentication is enabled, include the appropriate credentials;
+otherwise the request returns `401`/`403`:
+
+```bash
+curl -H "Authorization: Bearer <token>" \
+  http://localhost:8080/v1/skills
+```
+
+```json
+{
+  "skills": [
+    {
+      "name": "code-review",
+      "description": "Review code for quality and security"
+    },
+    {
+      "name": "openshift-troubleshooting",
+      "description": "Troubleshoot OpenShift cluster issues"
+    }
+  ]
+}
+```
+
+This is useful for clients (e.g. UI integrations or deployment tooling)
+that need to display or verify which skills are configured, and don't
+want to rely on the LLM invoking the `list_skills` tool described below.
+If no skills are configured, `skills` is an empty list. See the
+[README](../../README.md#skills-endpoint) for the full endpoint reference.
 
 # How Skills Work at Runtime
 
@@ -247,6 +281,6 @@ The system prompt contains behavioral instructions telling the LLM how to use th
 
 - [Agent Skills Specification](https://agentskills.io/specification) — the open standard for skill format
 - [Agent Skills Implementation Guide](https://agentskills.io/client-implementation/adding-skills-support) — client implementation guidance
-- [Feature Design Document](design/agent-skills/agent-skills.md) — internal design spec for the Lightspeed Core implementation
-- [Example Skills](../examples/skills/) — working example skills
-- [Example Configuration](../examples/lightspeed-stack-skills.yaml) — example `lightspeed-stack.yaml` with skills configured
+- [Feature Design Document](../design/agent-skills/agent-skills.md) — internal design spec for the Lightspeed Core implementation
+- [Example Skills](https://github.com/lightspeed-core/lightspeed-stack/tree/main/examples/skills) — working example skills
+- [Example Configuration](https://github.com/lightspeed-core/lightspeed-stack/blob/main/examples/lightspeed-stack-skills.yaml) — example `lightspeed-stack.yaml` with skills configured

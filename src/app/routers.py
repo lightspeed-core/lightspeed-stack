@@ -27,6 +27,7 @@ from app.endpoints import (
     root,
     saved_prompts,
     shields,
+    skills,
     stream_interrupt,
     streaming_query,
     tools,
@@ -55,6 +56,7 @@ def include_routers(app: FastAPI) -> None:
     app.include_router(mcp_auth.router, prefix="/v1")
     app.include_router(mcp_servers.router, prefix="/v1")
     app.include_router(shields.router, prefix="/v1")
+    app.include_router(skills.router, prefix="/v1")
     app.include_router(providers.router, prefix="/v1")
     app.include_router(prompts.router, prefix="/v1")
     app.include_router(rags.router, prefix="/v1")

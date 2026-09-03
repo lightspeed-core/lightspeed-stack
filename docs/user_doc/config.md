@@ -141,26 +141,16 @@ Microsoft Entra ID authentication attributes for Azure.
 | scope         | string | Azure Cognitive Services scope for token requests. Override only if using a different Azure service. |
 
 
-## ByokRag
+## ByokConfiguration
 
 
-BYOK (Bring Your Own Knowledge) RAG configuration.
+BYOK (Bring Your Own Knowledge) configuration.
 
 
-| Field               | Type    | Description                                                                                                                                                                                        |
-|---------------------|---------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| rag_id              | string  | Unique RAG ID                                                                                                                                                                                      |
-| rag_type            | string  | Type of RAG database (e.g. 'inline::faiss', 'remote::pgvector').                                                                                                                                   |
-| embedding_model     | string  | Embedding model identification                                                                                                                                                                     |
-| embedding_dimension | integer | Dimensionality of embedding vectors.                                                                                                                                                               |
-| vector_db_id        | string  | Vector database identification.                                                                                                                                                                    |
-| db_path             | string  | Path to RAG database. Required for inline::faiss.                                                                                                                                                  |
-| score_multiplier    | number  | Multiplier applied to relevance scores from this vector store. Used to weight results when querying multiple knowledge sources. Values > 1 boost this store's results; values &lt;; 1 reduce them. |
-| host                | string  | PostgreSQL host for remote::pgvector. Defaults to ${env.POSTGRES_HOST} when rag_type is remote::pgvector.                                                                                          |
-| port                | string  | PostgreSQL port for remote::pgvector. Defaults to ${env.POSTGRES_PORT} when rag_type is remote::pgvector.                                                                                          |
-| db                  | string  | PostgreSQL database name for remote::pgvector. Defaults to ${env.POSTGRES_DATABASE} when rag_type is remote::pgvector.                                                                             |
-| user                | string  | PostgreSQL user for remote::pgvector. Defaults to ${env.POSTGRES_USER} when rag_type is remote::pgvector.                                                                                          |
-| password            | string  | PostgreSQL password for remote::pgvector. Defaults to ${env.POSTGRES_PASSWORD} when rag_type is remote::pgvector.                                                                                  |
+| Field      | Type    | Description                                                     |
+|------------|---------|-----------------------------------------------------------------|
+| max_chunks | integer | Maximum total number of chunks returned across all BYOK stores. |
+| stores     | array   | List of BYOK RAG store configurations.                          |
 
 
 ## CORSConfiguration
@@ -231,34 +221,34 @@ Attributes:
 Global service configuration.
 
 
-| Field                  | Type   | Description                                                                                                                                                                                                                                                                                                             |
-|------------------------|--------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| name                   | string | Name of the service. That value will be used in REST API endpoints.                                                                                                                                                                                                                                                     |
-| service                |        | This section contains Lightspeed Core Stack service configuration.                                                                                                                                                                                                                                                      |
-| llama_stack            |        | This section contains Llama Stack configuration. Lightspeed Core Stack service can call Llama Stack in library mode or in server mode.                                                                                                                                                                                  |
-| user_data_collection   |        | This section contains configuration for subsystem that collects user data(transcription history and feedbacks).                                                                                                                                                                                                         |
-| database               |        | Configuration for database to store conversation IDs and other runtime data                                                                                                                                                                                                                                             |
-| mcp_servers            | array  | MCP (Model Context Protocol) servers provide tools and capabilities to the AI agents. These are configured in this section. Only MCP servers defined in the lightspeed-stack.yaml configuration are available to the agents. Tools configured in the llama-stack run.yaml are not accessible to lightspeed-core agents. |
-| authentication         |        | Authentication configuration                                                                                                                                                                                                                                                                                            |
-| authorization          |        | Lightspeed Core Stack implements a modular authentication and authorization system with multiple authentication methods. Authorization is configurable through role-based access control. Authentication is handled through selectable modules configured via the module field in the authentication configuration.     |
-| customization          |        | It is possible to customize Lightspeed Core Stack via this section. System prompt can be customized and also different parts of the service can be replaced by custom Python modules.                                                                                                                                   |
-| inference              |        | One LLM provider and one its model might be selected as default ones. When no provider+model pair is specified in REST API calls (query endpoints), the default provider and model are used.                                                                                                                            |
-| conversation_cache     |        |                                                                                                                                                                                                                                                                                                                         |
-| compaction             |        | Controls when conversation history is summarized to keep the model's input below the context window limit. Disabled by default — when disabled, requests that exceed the window continue to surface as HTTP 413.                                                                                                        |
-| approvals              |        | Settings for human-in-the-loop approval of MCP tool invocations                                                                                                                                                                                                                                                         |
-| byok_rag               | array  | BYOK RAG configuration. This configuration can be used to reconfigure Llama Stack through its run.yaml configuration file                                                                                                                                                                                               |
-| vector_store           |        | Dynamic vector-store provider capacity for runtime POST /v1/vector-stores creates. Not the same as byok_rag (static registered corpora). When providers is non-empty, default_provider is required and must match one of providers[].id. Applied in unified synthesis only.                                          |
-| a2a_state              |        | Configuration for A2A protocol persistent state storage.                                                                                                                                                                                                                                                                |
-| quota_handlers         |        | Quota handlers configuration                                                                                                                                                                                                                                                                                            |
-| azure_entra_id         |        |                                                                                                                                                                                                                                                                                                                         |
-| rlsapi_v1              |        | Configuration for the rlsapi v1 /infer endpoint used by the RHEL Lightspeed Command Line Assistant (CLA).                                                                                                                                                                                                               |
-| splunk                 |        | Splunk HEC configuration for sending telemetry events.                                                                                                                                                                                                                                                                  |
-| deployment_environment | string | Deployment environment name (e.g., 'development', 'staging', 'production'). Used in telemetry events.                                                                                                                                                                                                                   |
-| rag                    |        | Configuration for all RAG strategies (inline and tool-based).                                                                                                                                                                                                                                                           |
-| okp                    |        | OKP provider settings. Only used when 'okp' is listed in rag.inline or rag.tool.                                                                                                                                                                                                                                        |
-| reranker               |        | Configuration for neural reranking of RAG chunks using cross-encoder.                                                                                                                                                                                                                                                   |
-| skills                 |        | Agent skills configuration. Specifies paths to skill directories.                                                                                                                                                                                                                                                       |
-| shields                | array  | Configuration for a single named guardrail shield (question validity or redaction).                                                                           |
+| Field                  | Type   | Description                                                                                                                                                                                                                                                                                                                                                                                         |
+|------------------------|--------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| name                   | string | Name of the service. That value will be used in REST API endpoints.                                                                                                                                                                                                                                                                                                                                 |
+| config_format_version  | string | Optional explicit marker of the configuration format. When set, it must agree with the shape detected from the configuration body: 'unified' requires a synthesis input (a non-empty inference.providers, a non-empty vector_store.providers, or a ogx.config block), 'legacy' requires no synthesis input. Reserved as the lever for a future breaking change of the unified schema (R11). |
+| service                |        | This section contains Lightspeed Core Stack service configuration.                                                                                                                                                                                                                                                                                                                                  |
+| ogx                    |        | This section contains OGX configuration. Lightspeed Core Stack service can call OGX in library mode or in server mode.                                                                                                                                                                                                                                                              |
+| user_data_collection   |        | This section contains configuration for subsystem that collects user data(transcription history and feedbacks).                                                                                                                                                                                                                                                                                     |
+| database               |        | Configuration for database to store conversation IDs and other runtime data                                                                                                                                                                                                                                                                                                                         |
+| mcp_servers            | array  | MCP (Model Context Protocol) servers provide tools and capabilities to the AI agents. These are configured in this section. Only MCP servers defined in the lightspeed-stack.yaml configuration are available to the agents. Tools configured in the OGX run.yaml are not accessible to lightspeed-core agents.                                                                             |
+| authentication         |        | Authentication configuration                                                                                                                                                                                                                                                                                                                                                                        |
+| authorization          |        | Lightspeed Core Stack implements a modular authentication and authorization system with multiple authentication methods. Authorization is configurable through role-based access control. Authentication is handled through selectable modules configured via the module field in the authentication configuration.                                                                                 |
+| customization          |        | It is possible to customize Lightspeed Core Stack via this section. System prompt can be customized and also different parts of the service can be replaced by custom Python modules.                                                                                                                                                                                                               |
+| inference              |        | One LLM provider and one its model might be selected as default ones. When no provider+model pair is specified in REST API calls (query endpoints), the default provider and model are used.                                                                                                                                                                                                        |
+| conversation_cache     |        |                                                                                                                                                                                                                                                                                                                                                                                                     |
+| compaction             |        | Controls when conversation history is summarized to keep the model's input below the context window limit. Disabled by default — when disabled, requests that exceed the window continue to surface as HTTP 413.                                                                                                                                                                                    |
+| approvals              |        | Settings for human-in-the-loop approval of MCP tool invocations                                                                                                                                                                                                                                                                                                                                     |
+| vector_store           |        | Dynamic vector-store provider capacity for runtime POST /v1/vector-stores creates. Not the same as rag.byok.stores (static registered corpora). When providers is non-empty, default_provider is required and must match one of providers[].id. Applied in unified synthesis only.                                                                                                                  |
+| a2a_state              |        | Configuration for A2A protocol persistent state storage.                                                                                                                                                                                                                                                                                                                                            |
+| quota_handlers         |        | Quota handlers configuration                                                                                                                                                                                                                                                                                                                                                                        |
+| azure_entra_id         |        |                                                                                                                                                                                                                                                                                                                                                                                                     |
+| rlsapi_v1              |        | Configuration for the rlsapi v1 /infer endpoint used by the RHEL Lightspeed Command Line Assistant (CLA).                                                                                                                                                                                                                                                                                           |
+| splunk                 |        | Splunk HEC configuration for sending telemetry events.                                                                                                                                                                                                                                                                                                                                              |
+| observability          |        | OpenTelemetry and observability configuration collected from OTEL_* environment variables.                                                                                                                                                                                                                                                                                                          |
+| deployment_environment | string | Deployment environment name (e.g., 'development', 'staging', 'production'). Used in telemetry events.                                                                                                                                                                                                                                                                                               |
+| rag                    |        | Unified RAG configuration: BYOK stores, OKP provider, and retrieval strategies (inline and tool-based).                                                                                                                                                                                                                                                                                             |
+| skills                 |        | Agent skills configuration. Specifies paths to skill directories.                                                                                                                                                                                                                                                                                                                                   |
+| saved_prompts          |        | Configuration for saved prompts feature limits including maximum prompts per user, display name length, and content length.                                                                                                                                                                                                                                                                         |
+| shields                | array  | List of pydantic-ai-lightspeed agent guardrail shields (question validity and PII redaction). Each entry has a unique 'name', a 'provider_id' ('question_validity' or 'redaction'), and a type-specific 'config'.                                                                                                                                                                                   |
 
 
 ## ConversationHistoryConfiguration
@@ -323,13 +313,13 @@ Database configuration.
 Dynamic FAISS vector-store provider (runtime create capacity).
 
 
-| Field               | Type    | Description                                                                                                                                                         |
-|---------------------|---------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| id                  | string  | Llama Stack vector_io provider_id. Surrounding whitespace is stripped before validation and emission. Must match ``[a-z0-9_-]+`` and must not start with ``byok_``. |
-| type                | string  | Product type for this dynamic vector-store provider. Must be ``faiss``.                                                                                             |
-| embedding_model     | string  | Embedding model identification used for stores created against this provider. Required.                                                                             |
-| embedding_dimension | integer | Dimensionality of embedding vectors for this provider. Required.                                                                                                    |
-| config              |         | FAISS storage settings for this provider.                                                                                                                           |
+| Field               | Type    | Description                                                                                           |
+|---------------------|---------|-------------------------------------------------------------------------------------------------------|
+| id                  | string  | OGX vector_io provider_id. Surrounding whitespace is stripped before validation and emission. |
+| embedding_model     | string  | Embedding model identification used for stores created against this provider.                         |
+| embedding_dimension | integer | Dimensionality of embedding vectors for this provider.                                                |
+| type                | string  | Product type for this dynamic vector-store provider.                                                  |
+| config              |         | FAISS storage settings for this provider.                                                             |
 
 
 ## FaissVectorStoreProviderConfig
@@ -360,14 +350,14 @@ In-memory cache configuration.
 Inference configuration.
 
 
-| Field            | Type    | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-|------------------|---------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| default_model    | string  | Identification of default model used when no other model is specified.                                                                                                                                                                                                                                                                                                                                                                                                    |
-| default_provider | string  | Identification of default provider used when no other model is specified.                                                                                                                                                                                                                                                                                                                                                                                                 |
+| Field            | Type    | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+|------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| default_model    | string  | Identification of default model used when no other model is specified.                                                                                                                                                                                                                                                                                                                                                                                           |
+| default_provider | string  | Identification of default provider used when no other model is specified.                                                                                                                                                                                                                                                                                                                                                                                        |
 | context_windows  | object  | Map of fully-qualified model identifier (e.g., "openai/gpt-4o-mini") to context window size in tokens. Used by the conversation compaction trigger to decide when older turns must be summarized before the input exceeds the window. Models absent from this map have no registered window — callers fall back to their own default or skip the token-based trigger.                                                                                            |
-| providers        | array   | Unified-mode synthesis input (Decision S5): a high-level, backend-agnostic list of inference providers the synthesizer expands into Llama Stack provider entries. Lives at the configuration root so it survives a future backend change. A non-empty list signals unified mode. Empty (the default) leaves legacy/remote modes unaffected. The sibling default_model / default_provider keep their query-time routing meaning and are independent of this list. |
-| max_infer_iters  | integer | Server-side default for the maximum number of inference iterations a model can perform in a single request. Prevents small models from looping indefinitely on tool calls. Per-request values take precedence over this default. Set to None to disable the limit.                                                                                                                                                                                                       |
-| max_tool_calls   | integer | Server-side default for the maximum number of tool calls allowed in a single response. Prevents small models from exhausting the context window with repeated tool calls. Per-request values take precedence over this default. Set to None to disable the limit.                                                                                                                                                                                                  |
+| providers        | array   | Unified-mode synthesis input (Decision S5): a high-level, backend-agnostic list of inference providers the synthesizer expands into OGX provider entries. Lives at the configuration root so it survives a future backend change. A non-empty list signals unified mode. Empty (the default) leaves legacy/remote modes unaffected. The sibling default_model / default_provider keep their query-time routing meaning and are independent of this list. |
+| max_infer_iters  | integer | Server-side default for the maximum number of inference iterations a model can perform in a single request. Prevents small models from looping indefinitely on tool calls. Per-request values take precedence over this default. Set to None to disable the limit.                                                                                                                                                                                               |
+| max_tool_calls   | integer | Server-side default for the maximum number of tool calls allowed in a single response. Prevents small models from exhausting the context window with repeated tool calls. Per-request values take precedence over this default. Set to None to disable the limit.                                                                                                                                                                                                |
 
 
 ## JsonPathOperator
@@ -445,31 +435,31 @@ Rule for extracting roles from JWT claims.
 ## LlamaStackConfiguration
 
 
-Llama stack configuration.
+OGX configuration.
 
-Llama Stack is a comprehensive system that provides a uniform set of tools
+OGX is a comprehensive system that provides a uniform set of tools
 for building, scaling, and deploying generative AI applications, enabling
 developers to create, integrate, and orchestrate multiple AI services and
 capabilities into an adaptable setup.
 
 Useful resources:
 
-  - [Llama Stack](https://www.llama.com/products/llama-stack/)
-  - [Python Llama Stack client](https://github.com/llamastack/llama-stack-client-python)
-  - [Build AI Applications with Llama Stack](https://llamastack.github.io/)
+  - [OGX](https://ogx-ai.github.io/)
+  - [Python OGX client](https://github.com/ogx-ai/ogx-client-python)
+  - [Build AI Applications with OGX](https://ogx-ai.github.io/)
 
 
 | Field                      | Type    | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 |----------------------------|---------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| url                        | string  | URL to Llama Stack service; used when library mode is disabled. Must be a valid HTTP or HTTPS URL.                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| api_key                    | string  | API key to access Llama Stack service                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| use_as_library_client      | boolean | When set to true Llama Stack will be used in library mode, not in server mode (default)                                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| library_client_config_path | string  | Path to configuration file used when Llama Stack is run in library mode                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| timeout                    | integer | Timeout in seconds for requests to Llama Stack service. Default is 180 seconds (3 minutes) to accommodate long-running RAG queries.                                                                                                                                                                                                                                                                                                                                                                                             |
-| max_retries                | integer | Maximum number of connection attempts before giving up. Used on startup to connect to Llama Stack and retrieve its version. Connection attempts are retried with a fixed delay to handle the case where Llama Stack is still starting up (e.g., when running as a sidecar in the same pod).                                                                                                                                                                                                                                     |
-| retry_delay                | integer | Delay in seconds between retry attempts. Used on startup to connect to Llama Stack and retrieve its version. Connection attempts are retried with a fixed delay to handle the case where Llama Stack is still starting up (e.g., when running as a sidecar in the same pod).                                                                                                                                                                                                                                                    |
-| allow_degraded_mode        | boolean | If enabled, Lightspeed Core can be started even when Llama Stack is not accessible (valid for server mode only)                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| config                     |         | Backend-specific knobs for unified mode, where LCORE synthesizes the Llama Stack run.yaml instead of reading an external file. Holds the baseline selector, an optional profile path, and a raw native_override escape hatch. Backend-agnostic high-level sections (e.g. inference.providers) live at the configuration root, not here. Mutually exclusive with library_client_config_path; that cross-field check lives on the root Configuration model. When set in library mode, library_client_config_path is not required. |
+| url                        | string  | URL to OGX service; used when library mode is disabled. Must be a valid HTTP or HTTPS URL.                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| api_key                    | string  | API key to access OGX service                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| use_as_library_client      | boolean | When set to true OGX will be used in library mode, not in server mode (default)                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| library_client_config_path | string  | Path to configuration file used when OGX is run in library mode. DEPRECATED legacy two-file setup: logs a startup warning since 0.6 and is removed in 0.8 — use unified mode instead (the config block below, and/or the root-level inference.providers section); migrate with lightspeed-stack --migrate-config.                                                                                                                                                                                                       |
+| timeout                    | integer | Timeout in seconds for requests to OGX service. Default is 180 seconds (3 minutes) to accommodate long-running RAG queries.                                                                                                                                                                                                                                                                                                                                                                                             |
+| max_retries                | integer | Maximum number of connection attempts before giving up. Used on startup to connect to OGX and retrieve its version. Connection attempts are retried with a fixed delay to handle the case where OGX is still starting up (e.g., when running as a sidecar in the same pod).                                                                                                                                                                                                                                     |
+| retry_delay                | integer | Delay in seconds between retry attempts. Used on startup to connect to OGX and retrieve its version. Connection attempts are retried with a fixed delay to handle the case where OGX is still starting up (e.g., when running as a sidecar in the same pod).                                                                                                                                                                                                                                                    |
+| allow_degraded_mode        | boolean | If enabled, Lightspeed Core can be started even when OGX is not accessible (valid for server mode only)                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| config                     |         | Backend-specific knobs for unified mode, where LCORE synthesizes the OGX run.yaml instead of reading an external file. Holds the baseline selector, an optional profile path, and a raw native_override escape hatch. Backend-agnostic high-level sections (e.g. inference.providers) live at the configuration root, not here. Mutually exclusive with library_client_config_path; that cross-field check lives on the root Configuration model. When set in library mode, library_client_config_path is not required. |
 
 
 ## ModelContextProtocolServer
@@ -480,7 +470,7 @@ Model context protocol server configuration.
 MCP (Model Context Protocol) servers provide tools and capabilities to the
 AI agents. These are configured by this structure. Only MCP servers
 defined in the lightspeed-stack.yaml configuration are available to the
-agents. Tools configured in the llama-stack run.yaml are not accessible to
+agents. Tools configured in the OGX run.yaml are not accessible to
 lightspeed-core agents.
 
 Useful resources:
@@ -498,7 +488,24 @@ Useful resources:
 | authorization_headers | object  | Headers to send to the MCP server. The map contains the header name and the path to a file containing the header value (secret). There are 3 special cases: 1. Usage of the kubernetes token in the header. To specify this use a string 'kubernetes' instead of the file path. 2. Usage of the client-provided token in the header. To specify this use a string 'client' instead of the file path. 3. Usage of the oauth token in the header. To specify this use a string 'oauth' instead of the file path. |
 | headers               | array   | List of HTTP header names to automatically forward from the incoming request to this MCP server. Headers listed here are extracted from the original client request and included when calling the MCP server. This is useful when infrastructure components (e.g. API gateways) inject headers that MCP servers need, such as x-rh-identity in HCC. Header matching is case-insensitive. These headers are additive with authorization_headers and MCP-HEADERS.                                                |
 | require_approval      |         | When to require human approval for tool invocations. 'always' requires approval for all tools, 'never' auto-approves, or use ApprovalFilter for granular control.                                                                                                                                                                                                                                                                                                                                              |
-| timeout               | integer | Timeout in seconds for requests to the MCP server. If not specified, the default timeout from Llama Stack will be used. Note: This field is reserved for future use when Llama Stack adds timeout support.                                                                                                                                                                                                                                                                                                     |
+| timeout               | integer | Timeout in seconds for requests to the MCP server. If not specified, the default timeout from OGX will be used. Note: This field is reserved for future use when OGX adds timeout support.                                                                                                                                                                                                                                                                                                     |
+
+
+## ObservabilityConfiguration
+
+
+OpenTelemetry observability configuration.
+
+This configuration is automatically populated from OTEL_* environment variables
+to provide visibility into the active tracing setup.
+
+Attributes:
+    otel: Dictionary of OTEL_* environment variables with secrets redacted.
+
+
+| Field | Type   | Description                                                          |
+|-------|--------|----------------------------------------------------------------------|
+| otel  | object | Active OpenTelemetry configuration from OTEL_* environment variables |
 
 
 ## OkpConfiguration
@@ -507,14 +514,17 @@ Useful resources:
 OKP (Offline Knowledge Portal) provider configuration.
 
 Controls provider-specific behaviour for the OKP vector store.
-Only relevant when ``"okp"`` is listed in ``rag.inline`` or ``rag.tool``.
+Only relevant when ``"okp"`` is listed in ``rag.retrieval.inline.sources``
+or ``rag.retrieval.tool.sources``.
 
 
-| Field              | Type    | Description                                                                                                                                                         |
-|--------------------|---------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| rhokp_url          | string  | Base URL for the OKP server (http or https). Set to `${env.RH_SERVER_OKP}` in YAML to use the environment variable. When unset, the default from constants is used. |
-| offline            | boolean | When True, use parent_id for OKP chunk source URLs. When False, use reference_url for chunk source URLs.                                                            |
-| chunk_filter_query | string  | Additional OKP filter query applied to every OKP search request. Use Solr boolean syntax, e.g. 'product:ansible AND product:*openshift*'.                           |
+| Field              | Type    | Description                                                                                                                                                                                                                                    |
+|--------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| rhokp_url          | string  | Base URL for the OKP server (http or https). Set to `${env.RH_SERVER_OKP}` in YAML to use the environment variable. When unset, the default from constants is used.                                                                            |
+| offline            | boolean | When True, use parent_id for OKP chunk source URLs. When False, use reference_url for chunk source URLs.                                                                                                                                       |
+| chunk_filter_query | string  | Additional OKP filter query applied to every OKP search request. Use Solr boolean syntax, e.g. 'product:ansible AND product:*openshift*'.                                                                                                      |
+| search_mode        | string  | Default Solr search mode for OKP queries. 'keyword' uses BM25 text search (no embedding model needed). 'hybrid' combines vector + keyword search. 'semantic' uses pure vector search. When unset, falls back to the global default ('hybrid'). |
+| max_chunks         | integer | Maximum number of chunks fetched from OKP.                                                                                                                                                                                                     |
 
 
 ## PgvectorVectorStoreProvider
@@ -523,13 +533,13 @@ Only relevant when ``"okp"`` is listed in ``rag.inline`` or ``rag.tool``.
 Dynamic pgvector vector-store provider (runtime create capacity).
 
 
-| Field               | Type    | Description                                                                                                                                                         |
-|---------------------|---------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| id                  | string  | Llama Stack vector_io provider_id. Surrounding whitespace is stripped before validation and emission. Must match ``[a-z0-9_-]+`` and must not start with ``byok_``. |
-| type                | string  | Product type for this dynamic vector-store provider. Must be ``pgvector``.                                                                                          |
-| embedding_model     | string  | Embedding model identification used for stores created against this provider. Required.                                                                             |
-| embedding_dimension | integer | Dimensionality of embedding vectors for this provider. Required.                                                                                                    |
-| config              |         | pgvector connection settings for this provider.                                                                                                                     |
+| Field               | Type    | Description                                                                                           |
+|---------------------|---------|-------------------------------------------------------------------------------------------------------|
+| id                  | string  | OGX vector_io provider_id. Surrounding whitespace is stripped before validation and emission. |
+| embedding_model     | string  | Embedding model identification used for stores created against this provider.                         |
+| embedding_dimension | integer | Dimensionality of embedding vectors for this provider.                                                |
+| type                | string  | Product type for this dynamic vector-store provider.                                                  |
+| config              |         | pgvector connection settings for this provider.                                                       |
 
 
 ## PgvectorVectorStoreProviderConfig
@@ -538,13 +548,13 @@ Dynamic pgvector vector-store provider (runtime create capacity).
 Storage config for a pgvector dynamic vector-store provider.
 
 
-| Field    | Type   | Description                                                     |
-|----------|--------|-----------------------------------------------------------------|
-| host     | string | PostgreSQL host. Defaults to ${env.POSTGRES_HOST}.              |
-| port     | string | PostgreSQL port. Defaults to ${env.POSTGRES_PORT}.              |
-| db       | string | PostgreSQL database name. Defaults to ${env.POSTGRES_DATABASE}. |
-| user     | string | PostgreSQL user. Defaults to ${env.POSTGRES_USER}.              |
-| password | string | PostgreSQL password. Defaults to ${env.POSTGRES_PASSWORD}.      |
+| Field    | Type   | Description                                                                                        |
+|----------|--------|----------------------------------------------------------------------------------------------------|
+| host     | string | PostgreSQL host. Defaults to ${env.POSTGRES_HOST}.                                                 |
+| port     |        | PostgreSQL port. Defaults to ${env.POSTGRES_PORT}. Accepts string placeholders and integer values. |
+| db       | string | PostgreSQL database name. Defaults to ${env.POSTGRES_DATABASE}.                                    |
+| user     | string | PostgreSQL user. Defaults to ${env.POSTGRES_USER}.                                                 |
+| password | string | PostgreSQL password. Defaults to ${env.POSTGRES_PASSWORD}.                                         |
 
 
 ## PostgreSQLDatabaseConfiguration
@@ -574,6 +584,37 @@ Useful resources:
 | ssl_mode     | string  | SSL mode                                                                                                                |
 | gss_encmode  | string  | This option determines whether or with what priority a secure GSS TCP/IP connection will be negotiated with the server. |
 | ca_cert_path | string  | Path to CA certificate                                                                                                  |
+
+
+## QuestionValidityConfig
+
+
+Configuration for the question validity guardrail.
+
+
+| Field                     | Type   | Description                                                                |
+|---------------------------|--------|----------------------------------------------------------------------------|
+| model_id                  | string | The model_id to use for the guard                                          |
+| model_prompt              | string | The default prompt sent to the LLM used to validate the Users' question.   |
+| invalid_question_response | string | The default response when the Users' question is determined to be invalid. |
+
+
+## QuestionValidityShieldConfiguration
+
+
+Configuration for a named question-validity guardrail shield.
+
+Attributes:
+    name: Unique, user-facing name identifying this shield instance.
+    provider_id: Discriminator identifying this as a question-validity shield.
+    config: Question-validity-specific configuration.
+
+
+| Field       | Type   | Description                                                   |
+|-------------|--------|---------------------------------------------------------------|
+| name        | string | Unique, user-facing name identifying this shield instance.    |
+| provider_id | string | Discriminator identifying this as a question-validity shield. |
+| config      |        | Question-validity-specific configuration for this shield.     |
 
 
 ## QuotaHandlersConfiguration
@@ -657,21 +698,98 @@ Red Hat Identity authentication configuration.
 ## RagConfiguration
 
 
-RAG strategy configuration.
+Unified RAG configuration.
 
-Controls which RAG sources are used for inline and tool-based retrieval.
-
-Each strategy lists RAG IDs to include. The special ID ``"okp"`` defined in constants,
-activates the OKP provider; all other IDs refer to entries in ``byok_rag``.
-
-Both ``inline`` and ``tool`` default to ``[]`` (disabled).
-Each must be explicitly configured to activate its respective RAG strategy.
+Groups all RAG-related settings: BYOK stores, OKP provider, and
+retrieval strategies (inline and tool).
 
 
-| Field  | Type  | Description                                                                                                                                                                            |
-|--------|-------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| inline | array | RAG IDs whose sources are injected as context before the LLM call. Use 'okp' to enable OKP inline RAG. Empty by default (no inline RAG).                                               |
-| tool   | array | RAG IDs made available to the LLM as a file_search tool. Use 'okp' to include the OKP vector store. When omitted, tool RAG is disabled.                                               |
+| Field     | Type | Description                                                                                                  |
+|-----------|------|--------------------------------------------------------------------------------------------------------------|
+| byok      |      | Bring Your Own Knowledge store configurations and settings.                                                  |
+| okp       |      | OKP provider settings. Only used when 'okp' is listed in retrieval.inline.sources or retrieval.tool.sources. |
+| retrieval |      | Inline and tool retrieval strategy settings.                                                                 |
+
+
+## RagStore
+
+
+BYOK (Bring Your Own Knowledge) RAG store configuration.
+
+
+| Field                  | Type    | Description                                                                                                                                                                                    |
+|------------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| rag_id                 | string  | Unique RAG ID                                                                                                                                                                                  |
+| backend                | string  | Type of RAG database (e.g. 'faiss', 'pgvector').                                                                                                                                               |
+| embedding_model        | string  | Embedding model identification                                                                                                                                                                 |
+| embedding_dimension    | integer | Dimensionality of embedding vectors.                                                                                                                                                           |
+| vector_db_id           | string  | Vector database identification.                                                                                                                                                                |
+| db_path                | string  | Path to RAG database. Required for faiss backend.                                                                                                                                              |
+| score_multiplier       | number  | Multiplier applied to relevance scores from this vector store. Used to weight results when querying multiple knowledge sources. Values > 1 boost this store's results; values < 1 reduce them. |
+| relevance_cutoff_score | number  | Minimum raw similarity score to consider a result relevant. Results with a similarity score below this threshold are not returned.                                                             |
+| host                   | string  | PostgreSQL host for pgvector backend. Defaults to ${env.POSTGRES_HOST} when backend is pgvector.                                                                                               |
+| port                   |         | PostgreSQL port for pgvector backend. Defaults to ${env.POSTGRES_PORT} when backend is pgvector.                                                                                               |
+| db                     | string  | PostgreSQL database name for pgvector backend. Defaults to ${env.POSTGRES_DATABASE} when backend is pgvector.                                                                                  |
+| user                   | string  | PostgreSQL user for pgvector backend. Defaults to ${env.POSTGRES_USER} when backend is pgvector.                                                                                               |
+| password               | string  | PostgreSQL password for pgvector backend. Defaults to ${env.POSTGRES_PASSWORD} when backend is pgvector.                                                                                       |
+
+
+## RedactionConfig
+
+
+Configuration for PII redaction with regex-based rules.
+
+Rules are validated and compiled at construction time. Invalid
+regex patterns raise a ``ValueError`` immediately.
+
+Attributes:
+    rules: Ordered list of redaction rules applied sequentially.
+    case_sensitive: When False, patterns are compiled with
+        ``re.IGNORECASE``. Defaults to False.
+
+
+| Field          | Type    | Description                                          |
+|----------------|---------|------------------------------------------------------|
+| rules          | array   | Ordered list of PII redaction rules                  |
+| case_sensitive | boolean | When False, patterns are compiled with re.IGNORECASE |
+
+
+## RedactionRule
+
+
+A single regex-based redaction rule.
+
+Attributes:
+    pattern: Raw regex pattern string to match sensitive data.
+    replacement: Text to substitute for each match.
+    case_sensitive: Per-rule override for case sensitivity.
+        When None, the global ``RedactionConfig.case_sensitive``
+        flag applies.
+
+
+| Field          | Type    | Description                                                                    |
+|----------------|---------|--------------------------------------------------------------------------------|
+| pattern        | string  | Regex pattern to match sensitive data                                          |
+| replacement    | string  | Replacement string for matched text                                            |
+| case_sensitive | boolean | Per-rule case sensitivity override. When None, the global config flag applies. |
+
+
+## RedactionShieldConfiguration
+
+
+Configuration for a named PII-redaction guardrail shield.
+
+Attributes:
+    name: Unique, user-facing name identifying this shield instance.
+    provider_id: Discriminator identifying this as a redaction shield.
+    config: Redaction-specific configuration.
+
+
+| Field       | Type   | Description                                                |
+|-------------|--------|------------------------------------------------------------|
+| name        | string | Unique, user-facing name identifying this shield instance. |
+| provider_id | string | Discriminator identifying this as a redaction shield.      |
+| config      |        | Redaction-specific configuration for this shield.          |
 
 
 ## RerankerConfiguration
@@ -684,6 +802,31 @@ Reranker configuration for RAG chunk reranking.
 |---------|---------|----------------------------------------------------------------------------------------------------------------------------------|
 | enabled | boolean | When True, reranking applied to RAG chunks. When False, reranking is disabled and original scoring used.                         |
 | model   | string  | Cross-encoder model name for reranking RAG chunks. Defaults to 'cross-encoder/ms-marco-MiniLM-L6-v2' from sentence-transformers. |
+
+
+## RetrievalConfiguration
+
+
+Configuration for inline and tool retrieval strategies.
+
+
+| Field  | Type | Description                                          |
+|--------|------|------------------------------------------------------|
+| inline |      | Inline RAG: context injected before the LLM request. |
+| tool   |      | Tool RAG: LLM can call file_search on demand.        |
+
+
+## RetrievalStrategyConfiguration
+
+
+Configuration for a single retrieval strategy (inline or tool).
+
+
+| Field      | Type    | Description                                                                              |
+|------------|---------|------------------------------------------------------------------------------------------|
+| sources    | array   | RAG IDs to use for this retrieval strategy. Use 'okp' to include the OKP vector store.   |
+| max_chunks | integer | Maximum number of chunks returned by this retrieval strategy.                            |
+| reranker   |         | Neural reranking of RAG chunks using cross-encoder. Only applicable to inline retrieval. |
 
 
 ## RlsapiV1Configuration
@@ -711,6 +854,28 @@ SQLite database configuration.
 | Field   | Type   | Description                                  |
 |---------|--------|----------------------------------------------|
 | db_path | string | Path to file where SQLite database is stored |
+
+
+## SavedPromptsConfiguration
+
+
+Configuration for saved prompts feature limits.
+
+Controls the maximum number of prompts a user can save, the maximum
+display name (title) length, and the maximum prompt content length.
+Omitted fields use the defaults defined in constants.
+
+Attributes:
+    max_prompts_per_user: Maximum number of saved prompts allowed per user.
+    max_display_name_length: Maximum character length for the prompt display name.
+    max_content_length: Maximum character length for the prompt content body.
+
+
+| Field                   | Type    | Description                                                                                   |
+|-------------------------|---------|-----------------------------------------------------------------------------------------------|
+| max_prompts_per_user    | integer | Maximum number of saved prompts a user can create. Defaults to 50. Cannot exceed 200.         |
+| max_display_name_length | integer | Maximum character length for prompt display name (title). Defaults to 255. Cannot exceed 255. |
+| max_content_length      | integer | Maximum character length for the prompt content body. Defaults to 10000. Cannot exceed 30000. |
 
 
 ## ServiceConfiguration
@@ -756,70 +921,6 @@ Paths are validated at startup to ensure they exist and contain valid SKILL.md f
 | Field | Type  | Description                                                                |
 |-------|-------|----------------------------------------------------------------------------|
 | paths | array | Paths to skill directories or directories containing skill subdirectories. |
-
-
-## QuestionValidityConfig
-
-
-Configuration for the question validity guardrail.
-
-
-| Field                     | Type   | Description                                                   |
-|---------------------------|--------|---------------------------------------------------------------|
-| model_id                  | string | The model_id to use for the guard                             |
-| model_prompt              | string | Prompt sent to the LLM used to validate the user's question   |
-| invalid_question_response | string | Response when the user's question is determined to be invalid |
-
-
-## QuestionValidityShieldConfiguration
-
-
-Configuration for a named question-validity guardrail shield.
-
-
-| Field       | Type   | Description                                                  |
-|-------------|--------|--------------------------------------------------------------|
-| name        | string | Unique, user-facing name identifying this shield instance    |
-| provider_id | string | Discriminator identifying this as a question-validity shield |
-| config      |        | Question-validity-specific configuration for this shield     |
-
-
-## RedactionRule
-
-
-A single regex-based redaction rule.
-
-
-| Field          | Type    | Description                                                           |
-|----------------|---------|-----------------------------------------------------------------------|
-| pattern        | string  | Regex pattern to match sensitive data                                 |
-| replacement    | string  | Replacement string for matched text                                   |
-| case_sensitive | boolean | Per-rule override; when null, the global RedactionConfig flag applies |
-
-
-## RedactionConfig
-
-
-Configuration for PII redaction with regex-based rules.
-
-
-| Field          | Type    | Description                                            |
-|----------------|---------|--------------------------------------------------------|
-| rules          | array   | Ordered list of PII redaction rules                    |
-| case_sensitive | boolean | When false, patterns are compiled with `re.IGNORECASE` |
-
-
-## RedactionShieldConfiguration
-
-
-Configuration for a named PII-redaction guardrail shield.
-
-
-| Field       | Type   | Description                                               |
-|-------------|--------|-----------------------------------------------------------|
-| name        | string | Unique, user-facing name identifying this shield instance |
-| provider_id | string | Discriminator identifying this as a redaction shield      |
-| config      |        | Redaction-specific configuration for this shield          |
 
 
 ## SplunkConfiguration
@@ -903,16 +1004,16 @@ A Kubernetes ServiceAccount identity for trusted-proxy allowlist.
 A high-level inference provider entry for unified-mode synthesis.
 
 Operators describe inference providers at this high level (backend-agnostic
-vocabulary) instead of authoring raw Llama Stack provider blocks. The
-synthesizer (`apply_high_level_inference`) expands each entry into a Llama
-Stack `providers.inference` entry, mapping `type` to a `provider_type` and
+vocabulary) instead of authoring raw OGX provider blocks. The
+synthesizer (`apply_high_level_inference`) expands each entry into an OGX
+`providers.inference` entry, mapping `type` to a `provider_type` and
 emitting `${env.<VAR>}` references for secrets (never literal values).
 
 Attributes:
     type: Canonical provider identifier. Vendor-neutral so it survives a
         future backend change; each backend-specific synthesizer maps it to
         its own provider vocabulary.
-    id: Optional identifier emitted as the Llama Stack provider_id. When
+    id: Optional identifier emitted as the OGX provider_id. When
         omitted, synthesized as type with underscores hyphenated. If set,
         must be non-empty after stripping whitespace and may contain only
         lowercase letters, digits, underscores, and hyphens.
@@ -926,19 +1027,19 @@ Attributes:
         provider-specific knobs not modeled here.
 
 
-| Field          | Type   | Description                                                                                                                                                  |
-|----------------|--------|--------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| type           | string | Canonical, backend-agnostic provider identifier mapped to a Llama Stack provider_type by the synthesizer.                                                    |
-| id             | string | Optional identifier emitted as the Llama Stack provider_id. When omitted, synthesized as type with underscores hyphenated. If set, must be non-empty after stripping whitespace and may contain only lowercase letters, digits, underscores, and hyphens. |
-| api_key_env    | string | Name of the environment variable holding the provider API key. Emitted as a ${env.<name>} reference so the secret is never written to disk in resolved form. |
-| allowed_models | array  | Optional allow-list of model identifiers for this provider.                                                                                                  |
-| extra          | object | Additional provider-config keys merged verbatim into the synthesized provider's config block.                                                                |
+| Field          | Type   | Description                                                                                                                                                                                                                                               |
+|----------------|--------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| type           | string | Canonical, backend-agnostic provider identifier mapped to a OGX provider_type by the synthesizer.                                                                                                                                                 |
+| id             | string | Optional identifier emitted as the OGX provider_id. When omitted, synthesized as type with underscores hyphenated. If set, must be non-empty after stripping whitespace and may contain only lowercase letters, digits, underscores, and hyphens. |
+| api_key_env    | string | Name of the environment variable holding the provider API key. Emitted as a ${env.<name>} reference so the secret is never written to disk in resolved form.                                                                                              |
+| allowed_models | array  | Optional allow-list of model identifiers for this provider.                                                                                                                                                                                               |
+| extra          | object | Additional provider-config keys merged verbatim into the synthesized provider's config block.                                                                                                                                                             |
 
 
 ## UnifiedLlamaStackConfig
 
 
-Backend-specific knobs for unified-mode Llama Stack synthesis.
+Backend-specific knobs for unified-mode OGX synthesis.
 
 Per Decision S5 of the design spike, backend-agnostic high-level sections
 (inference, ...) live at the configuration root, not here. This block holds
@@ -946,7 +1047,7 @@ only the Llama-Stack-specific synthesis controls: which baseline to start
 from, an optional profile file, and a raw native_override escape hatch.
 
 During synthesis from the default baseline or a profile, LCORE ensures the
-Llama Stack MCP tool_runtime provider (`provider_id: model-context-protocol`,
+OGX MCP tool_runtime provider (`provider_id: model-context-protocol`,
 `provider_type: remote::model-context-protocol`) is present so static
 `mcp_servers` and dynamic MCP registration work. That ensure is skipped when
 `baseline: empty` (migration / blank-slate); supply MCP via `native_override`
@@ -954,22 +1055,24 @@ in that case.
 
 Attributes:
     baseline: Synthesis starting point. "default" begins from LCORE's
-        built-in baseline (src/data/default_run.yaml); "empty" begins from
-        an empty dict (used by the migration tool for an exact round-trip).
+        built-in baseline (src/data/default_run.yaml) including the
+        conditional OpenAI inference provider. "byo-llm" begins from the
+        same file with that OpenAI row removed. "empty" begins from an
+        empty dict (used by the migration tool for an exact round-trip).
         Ignored when `profile` is set.
     profile: Optional path to a user-authored run.yaml-shaped file used as
         the synthesis baseline. Relative paths resolve against the directory
         of the loaded lightspeed-stack.yaml.
-    native_override: Raw Llama Stack schema deep-merged last (maps merge
+    native_override: Raw OGX schema deep-merged last (maps merge
         recursively, lists and scalars replace). The escape hatch for
         anything the high-level sections do not express.
 
 
 | Field           | Type   | Description                                                                                                                |
 |-----------------|--------|----------------------------------------------------------------------------------------------------------------------------|
-| baseline        | string | Synthesis starting point: 'default' uses LCORE's built-in baseline, 'empty' starts from {}. Ignored when 'profile' is set. |
+| baseline        | string | Synthesis starting point: 'default' uses LCORE's built-in baseline including the conditional OpenAI provider, 'byo-llm' uses the same baseline without that OpenAI row, 'empty' starts from {}. Ignored when 'profile' is set. |
 | profile         | string | Path to a run.yaml-shaped baseline file. Relative paths resolve against the directory of the loaded lightspeed-stack.yaml. |
-| native_override | object | Raw Llama Stack schema deep-merged last (maps merge recursively; lists and scalars replace).                               |
+| native_override | object | Raw OGX schema deep-merged last (maps merge recursively; lists and scalars replace).                               |
 
 
 ## UserDataCollection
@@ -994,8 +1097,17 @@ Configuration for dynamic vector-store providers.
 Mirrors ``InferenceConfiguration``: a providers list plus a sibling
 ``default_provider`` pointer, rather than a per-entry default flag.
 
+Attributes:
+    default_provider: Provider id used for vector_stores.default_* in the
+        synthesized OGX config. Required when providers is
+        non-empty; must match one of providers[].id. Must be omitted when
+        providers is empty.
+    providers: Dynamic vector-store provider capacity for runtime
+        POST /v1/vector-stores creates. Not the same as rag.byok.stores (static
+        registered corpora).
 
-| Field            | Type   | Description                                                                                                                                                                                   |
-|------------------|--------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| default_provider | string | Provider id used for vector_stores.default_* in the synthesized Llama Stack config. Required when providers is non-empty; must match one of providers[].id. Must be omitted when providers is empty. |
-| providers        | array  | Dynamic vector-store provider capacity for runtime POST /v1/vector-stores creates. Not the same as byok_rag (static registered corpora).                                                              |
+
+| Field            | Type   | Description                                                                                                                                                 |
+|------------------|--------|-------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| default_provider | string | Provider id used for vector_stores.default_* in the synthesized OGX config. Required when providers is non-empty; must match one of providers[].id. |
+| providers        | array  | Dynamic vector-store provider capacity for runtime POST /v1/vector-stores creates. Not the same as rag.byok.stores (static registered corpora).             |

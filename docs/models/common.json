@@ -46,7 +46,8 @@
                         "examples": [
                             "text/plain",
                             "image/jpeg",
-                            "image/png"
+                            "image/png",
+                            "image/webp"
                         ],
                         "title": "Content Type",
                         "type": "string"
@@ -66,6 +67,182 @@
                     "content"
                 ],
                 "title": "Attachment",
+                "type": "object"
+            },
+            "CatalogModel": {
+                "description": "Normalized model entry used by ``/models`` and internal model resolution.\n\nUnifies OpenAI-style, Anthropic, and Google ``models.list()`` payloads into\none catalog shape.",
+                "properties": {
+                    "identifier": {
+                        "description": "Model identifier",
+                        "title": "Identifier",
+                        "type": "string"
+                    },
+                    "metadata": {
+                        "additionalProperties": true,
+                        "description": "Provider-specific metadata excluding core catalog fields",
+                        "title": "Metadata",
+                        "type": "object"
+                    },
+                    "api_model_type": {
+                        "description": "API model type (typically mirrors model_type)",
+                        "title": "Api Model Type",
+                        "type": "string"
+                    },
+                    "provider_id": {
+                        "description": "Provider identifier",
+                        "title": "Provider Id",
+                        "type": "string"
+                    },
+                    "type": {
+                        "default": "model",
+                        "description": "Object type, always 'model'",
+                        "title": "Type",
+                        "type": "string"
+                    },
+                    "provider_resource_id": {
+                        "default": "",
+                        "description": "Provider-native resource identifier for the model",
+                        "title": "Provider Resource Id",
+                        "type": "string"
+                    },
+                    "model_type": {
+                        "description": "Model type such as 'llm' or 'embedding'",
+                        "title": "Model Type",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "identifier",
+                    "api_model_type",
+                    "provider_id",
+                    "model_type"
+                ],
+                "title": "CatalogModel",
+                "type": "object"
+            },
+            "CatalogShield": {
+                "description": "Shield entry in the ``/shields`` catalog response.\n\nAttributes:\n    name: Unique, user-facing name identifying this shield instance.\n    provider_id: Shield provider / type discriminator.\n    type: Catalog entry type; always shield.\n    config: Type-specific shield configuration.",
+                "properties": {
+                    "name": {
+                        "description": "Unique, user-facing name of the shield instance",
+                        "title": "Name",
+                        "type": "string"
+                    },
+                    "provider_id": {
+                        "description": "Shield provider / type discriminator",
+                        "enum": [
+                            "question_validity",
+                            "redaction"
+                        ],
+                        "title": "Provider Id",
+                        "type": "string"
+                    },
+                    "type": {
+                        "const": "shield",
+                        "default": "shield",
+                        "description": "Catalog entry type; always shield",
+                        "title": "Type",
+                        "type": "string"
+                    },
+                    "config": {
+                        "additionalProperties": true,
+                        "description": "Type-specific shield configuration",
+                        "title": "Config",
+                        "type": "object"
+                    }
+                },
+                "required": [
+                    "name",
+                    "provider_id",
+                    "config"
+                ],
+                "title": "CatalogShield",
+                "type": "object"
+            },
+            "CatalogTool": {
+                "description": "Tool entry in the ``/tools`` catalog response.",
+                "properties": {
+                    "identifier": {
+                        "title": "Identifier",
+                        "type": "string"
+                    },
+                    "description": {
+                        "title": "Description",
+                        "type": "string"
+                    },
+                    "parameters": {
+                        "items": {
+                            "$ref": "`#/components/schemas/`CatalogToolParameter"
+                        },
+                        "title": "Parameters",
+                        "type": "array"
+                    },
+                    "provider_id": {
+                        "title": "Provider Id",
+                        "type": "string"
+                    },
+                    "toolgroup_id": {
+                        "title": "Toolgroup Id",
+                        "type": "string"
+                    },
+                    "server_source": {
+                        "title": "Server Source",
+                        "type": "string"
+                    },
+                    "type": {
+                        "default": "tool",
+                        "title": "Type",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "identifier",
+                    "description",
+                    "parameters",
+                    "provider_id",
+                    "toolgroup_id",
+                    "server_source"
+                ],
+                "title": "CatalogTool",
+                "type": "object"
+            },
+            "CatalogToolParameter": {
+                "description": "Parameter entry for a tool in the ``/tools`` catalog response.",
+                "properties": {
+                    "name": {
+                        "title": "Name",
+                        "type": "string"
+                    },
+                    "description": {
+                        "title": "Description",
+                        "type": "string"
+                    },
+                    "parameter_type": {
+                        "title": "Parameter Type",
+                        "type": "string"
+                    },
+                    "required": {
+                        "default": false,
+                        "title": "Required",
+                        "type": "boolean"
+                    },
+                    "default": {
+                        "anyOf": [
+                            {},
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "default": null,
+                        "title": "Default"
+                    }
+                },
+                "required": [
+                    "name",
+                    "description",
+                    "parameter_type"
+                ],
+                "title": "CatalogToolParameter",
                 "type": "object"
             },
             "ConversationData": {
@@ -240,6 +417,32 @@
                     "completed_at"
                 ],
                 "title": "ConversationTurn",
+                "type": "object"
+            },
+            "ListedMcpTool": {
+                "description": "Tool metadata returned from an MCP ``tools/list`` call.",
+                "properties": {
+                    "name": {
+                        "title": "Name",
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string",
+                        "nullable": true,
+                        "default": null,
+                        "title": "Description"
+                    },
+                    "input_schema": {
+                        "type": "object",
+                        "nullable": true,
+                        "default": null,
+                        "title": "Input Schema"
+                    }
+                },
+                "required": [
+                    "name"
+                ],
+                "title": "ListedMcpTool",
                 "type": "object"
             },
             "MCPListToolsSummary": {
@@ -1385,18 +1588,40 @@
                 "title": "ShieldModerationPassed",
                 "type": "object"
             },
+            "SkillMetadata": {
+                "description": "Metadata describing a single loaded agent skill.\n\nAttributes:\n    name: Unique name of the skill.\n    description: Human readable description of what the skill does.",
+                "properties": {
+                    "name": {
+                        "description": "Unique name of the skill",
+                        "title": "Name",
+                        "type": "string"
+                    },
+                    "description": {
+                        "description": "Human readable description of what the skill does",
+                        "title": "Description",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "name",
+                    "description"
+                ],
+                "title": "SkillMetadata",
+                "type": "object"
+            },
             "SolrVectorSearchRequest": {
                 "additionalProperties": false,
-                "description": "LCORE Solr inline RAG options for vector_io.query (mode and provider filters).\n\nAttributes:\n    mode: Solr vector_io search mode. When omitted, the server default (hybrid) is used.\n    filters: Solr provider filter payload passed through as params['solr'].\n\nLegacy clients may send a plain JSON object with filter keys only;\nthat object is accepted as filters with mode unset (server default applies).",
+                "description": "LCORE Solr inline RAG options for vector_io.query (mode and provider filters).\n\nAttributes:\n    mode: Solr vector_io search mode. When omitted, the configured OKP default is used.\n    filters: Solr provider filter payload passed through as params['solr'].\n\nLegacy clients may send a plain JSON object with filter keys only;\nthat object is accepted as filters with mode unset (server default applies).",
                 "properties": {
                     "mode": {
                         "type": "string",
                         "nullable": true,
                         "default": null,
-                        "description": "Solr vector_io search mode. When omitted, the server default ('hybrid') is used.",
+                        "description": "Solr vector_io search mode. When omitted, the configured OKP default is used; otherwise 'hybrid' applies. 'keyword' and 'lexical' both use BM25 text search.",
                         "examples": [
                             "hybrid",
                             "semantic",
+                            "keyword",
                             "lexical"
                         ],
                         "title": "Mode"
@@ -1688,7 +1913,7 @@
                 "type": "object"
             },
             "TurnSummary": {
-                "description": "Summary of a turn in llama stack.",
+                "description": "Summary of a turn in OGX.",
                 "properties": {
                     "id": {
                         "default": "",
