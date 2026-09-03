@@ -260,7 +260,7 @@ Lightspeed Core Stack (LCS) service API specification.
     * [JwtConfiguration](#jwtconfiguration)
     * [JwtRoleRule](#jwtrolerule)
     * [LivenessResponse](#livenessresponse)
-    * [LlamaStackConfiguration](#llamastackconfiguration)
+    * [OgxConfiguration](#ogxconfiguration)
     * [MCPClientAuthOptionsResponse](#mcpclientauthoptionsresponse)
     * [MCPListToolsTool](#mcplisttoolstool)
     * [MCPServerAuthInfo](#mcpserverauthinfo)
@@ -6728,7 +6728,7 @@ Attributes:
 | alive | boolean | Flag indicating that the app is alive |
 
 
-## LlamaStackConfiguration
+## OgxConfiguration
 
 
 OGX configuration.
@@ -6742,7 +6742,7 @@ Useful resources:
 
   - [OGX](https://ogx-ai.github.io/)
   - [Python OGX client](https://github.com/ogx-ai/ogx-client-python)
-  - [Build AI Applications with OGX](https://ogx-ai.github.io/)
+  - [Build AI Applications with OGX](https://ogx-ai.github.io/docs/building_applications)
 
 
 | Field | Type | Description |

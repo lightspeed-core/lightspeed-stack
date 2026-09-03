@@ -432,7 +432,7 @@ Rule for extracting roles from JWT claims.
 | roles    | array   | Roles to be assigned if the rule matches                |
 
 
-## LlamaStackConfiguration
+## OgxConfiguration
 
 
 OGX configuration.
@@ -446,7 +446,7 @@ Useful resources:
 
   - [OGX](https://ogx-ai.github.io/)
   - [Python OGX client](https://github.com/ogx-ai/ogx-client-python)
-  - [Build AI Applications with OGX](https://ogx-ai.github.io/)
+  - [Build AI Applications with OGX](https://ogx-ai.github.io/docs/building_applications)
 
 
 | Field                      | Type    | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
@@ -1036,7 +1036,7 @@ Attributes:
 | extra          | object | Additional provider-config keys merged verbatim into the synthesized provider's config block.                                                                                                                                                             |
 
 
-## UnifiedLlamaStackConfig
+## UnifiedOgxConfig
 
 
 Backend-specific knobs for unified-mode OGX synthesis.

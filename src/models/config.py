@@ -854,7 +854,7 @@ class OgxConfiguration(ConfigurationBase):
 
       - [OGX](https://ogx-ai.github.io/)
       - [Python OGX client](https://github.com/ogx-ai/ogx-client-python)
-      - [Build AI Applications with OGX](https://ogx-ai.github.io/)
+      - [Build AI Applications with OGX](https://ogx-ai.github.io/docs/building_applications)
     """
 
     url: Optional[AnyHttpUrl] = Field(
