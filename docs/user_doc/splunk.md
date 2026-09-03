@@ -85,7 +85,7 @@ Events follow the rlsapi telemetry format for consistency with existing analytic
     "system_id": "abc-def-123",
     "total_llm_tokens": 0,
     "request_id": "req_xyz789",
-    "cla_version": "CLA/0.7.0rc1",
+    "cla_version": "CLA/0.7.0rc2",
     "system_os": "RHEL",
     "system_version": "9.3",
     "system_arch": "x86_64"
