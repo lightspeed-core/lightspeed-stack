@@ -550,20 +550,19 @@ def before_feature(context: Context, feature: Feature) -> None:
     context.scenario_lightspeed_override_active = False
     context.active_lightspeed_stack_config_basename = None
 
-    # Override to library mode for specific features in Konflux
+    # Override to library mode for specific features
     context.original_deployment_mode = getattr(context, "deployment_mode", "server")
     context.original_is_library_mode = getattr(context, "is_library_mode", False)
 
-    if (
-        os.environ.get("E2E_KONFLUX_E2E") == "1"
-        and "library-mode-in-konflux" in feature.tags
-    ):
+    # Features tagged @library-mode-in-konflux always run in library mode
+    # (originally for Konflux performance, but beneficial everywhere)
+    if "library-mode-in-konflux" in feature.tags:
         context.deployment_mode = "library"
         context.is_library_mode = True
-        print(
-            f"[before_feature] Using library mode for {feature.name} "
-            "(tagged @library-mode-in-konflux)"
-        )
+        # Print to stdout so it appears in test logs
+        print(f"✓ Switching to library mode for feature: {feature.name}")
+        print(f"  Reason: Feature tagged @library-mode-in-konflux")
+        print(f"  Config directory will be: tests/e2e/configuration/library-mode/")
     # One real Llama disruption per feature (module-level flag; survives context resets)
     reset_llama_stack_disrupt_once_tracking()
     if feature.filename and is_tls_feature_file(feature.filename):
