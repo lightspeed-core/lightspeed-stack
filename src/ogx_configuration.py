@@ -1015,7 +1015,7 @@ def enrich_solr(
 
     if "external_providers_dir" not in ls_config:
         ls_config["external_providers_dir"] = (
-            "${env.EXTERNAL_PROVIDERS_DIR:=/app-root/providers.d}"
+            "${env.EXTERNAL_PROVIDERS_DIR:=/opt/app-root/providers.d}"
         )
         logger.info(
             "Added external_providers_dir to OGX config for remote provider resolution"
