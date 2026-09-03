@@ -217,8 +217,9 @@ class QuestionValidity(AbstractSafetyCapability):
 
     async def run(self, input_text: str) -> ShieldModerationResult:
         """Run question-validity check and return a moderation result."""
+        prompt = self._build_prompt(input_text)
         result = await model_request(
-            model=self._model, messages=[ModelRequest.user_text_prompt(input_text)]
+            model=self._model, messages=[ModelRequest.user_text_prompt(prompt)]
         )
 
         if result.text is not None and result.text.strip() == SUBJECT_ALLOWED:

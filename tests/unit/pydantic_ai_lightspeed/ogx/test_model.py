@@ -846,3 +846,95 @@ class TestFilteredResponseStream:
         result = [e async for e in stream]
 
         assert result == [announcement, delta]
+
+
+class TestOutputItemCapture:
+    """Capture of OGX output items for compacted-mode persistence (LCORE-3883)."""
+
+    @staticmethod
+    def _completed_event(text: str) -> responses.ResponseCompletedEvent:
+        """Build a ``response.completed`` event carrying one output message."""
+        return responses.ResponseCompletedEvent(
+            response=responses.Response(
+                id="resp-1",
+                created_at=0,
+                model="test",
+                object="response",
+                output=[
+                    responses.ResponseOutputMessage(
+                        id="msg-1",
+                        type="message",
+                        role="assistant",
+                        status="completed",
+                        content=[
+                            responses.ResponseOutputText(
+                                type="output_text", text=text, annotations=[]
+                            )
+                        ],
+                    )
+                ],
+                parallel_tool_calls=False,
+                tool_choice="auto",
+                tools=[],
+                status="completed",
+            ),
+            sequence_number=0,
+            type="response.completed",
+        )
+
+    def test_last_output_items_is_empty_before_any_call(self) -> None:
+        """A fresh model has captured nothing."""
+        model = OgxResponsesModel.__new__(OgxResponsesModel)
+
+        assert not model.last_output_items
+
+    def test_capture_records_output_items_verbatim(self) -> None:
+        """Captured items are the OGX objects themselves, not a reconstruction."""
+        model = OgxResponsesModel.__new__(OgxResponsesModel)
+        response = self._completed_event("hello").response
+
+        model._capture_output_items(response)  # pylint: disable=protected-access
+
+        assert model.last_output_items == list(response.output)
+        assert model.last_output_items[0] is response.output[0]
+
+    def test_capture_ignores_a_response_without_output(self) -> None:
+        """An empty output must not clobber previously captured items."""
+        model = OgxResponsesModel.__new__(OgxResponsesModel)
+        response = self._completed_event("hello").response
+        model._capture_output_items(response)  # pylint: disable=protected-access
+
+        empty = self._completed_event("hello").response
+        empty.output = []
+        model._capture_output_items(empty)  # pylint: disable=protected-access
+
+        assert len(model.last_output_items) == 1
+
+    @pytest.mark.asyncio
+    async def test_streaming_captures_on_completed_event(
+        self, mocker: MockerFixture
+    ) -> None:
+        """The filtered stream hands the completed response to the callback."""
+        captured: list[Any] = []
+        event = self._completed_event("streamed answer")
+        source = mocker.Mock()
+        source.__aiter__ = lambda _: _async_iter([event])
+
+        stream = _FilteredResponseStream(source, on_completed=captured.append)
+        result = [e async for e in stream]
+
+        assert result == [event]
+        assert captured == [event.response]
+
+    @pytest.mark.asyncio
+    async def test_filtered_stream_without_callback_still_works(
+        self, mocker: MockerFixture
+    ) -> None:
+        """The callback is optional, so existing callers are unaffected."""
+        event = self._completed_event("x")
+        source = mocker.Mock()
+        source.__aiter__ = lambda _: _async_iter([event])
+
+        stream = _FilteredResponseStream(source)
+
+        assert [e async for e in stream] == [event]
