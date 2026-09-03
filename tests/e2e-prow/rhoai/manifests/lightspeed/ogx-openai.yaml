@@ -55,6 +55,8 @@ spec:
               && [[ -d /opt/app-root/src ]] \
               && [[ -f /opt/app-root/scripts/ogx-entrypoint.sh ]] \
               && [[ -f /opt/app-root/src/ogx_configuration.py ]] \
+              && [[ -d /opt/app-root/lightspeed_stack_providers ]] \
+              && [[ -d /opt/app-root/providers.d ]] \
               && [[ "$CACHED_REVISION" == "$REPO_REVISION" ]]; then
             echo "PVC cache hit: app-root already provisioned at $REPO_REVISION — skipping full install"
             mkdir -p /opt/app-root/.e2e-rag-seed /opt/app-root/.e2e-rag-work /opt/app-root/src/.ogx /opt/app-root/src/.llama/storage/files
@@ -89,6 +91,18 @@ spec:
           (cd /opt/app-root/repo && tar cf - .) | (cd /opt/app-root && tar xf -)
           rm -rf /opt/app-root/repo
           sed -i 's|/opt/app-root/repo/.venv|/opt/app-root/.venv|g' /opt/app-root/.venv/bin/* 2>/dev/null || true
+          # Download lightspeed-providers (external provider code + specs) — matches Containerfile
+          PROVIDERS_COMMIT="8cd1b3d3bdd841ea99d31b334ae00a275581661c"
+          ZIP_PATH="/tmp/lightspeed-providers.zip"
+          EXTRACT_DIR="/tmp/providers"
+          curl -fL --retry 2 --retry-delay 5 "https://github.com/lightspeed-core/lightspeed-providers/archive/${PROVIDERS_COMMIT}.zip" -o "${ZIP_PATH}"
+          mkdir -p "${EXTRACT_DIR}"
+          python3 -c "import os, zipfile; zipfile.ZipFile(os.environ['ZIP_PATH']).extractall(os.environ['EXTRACT_DIR'])" ZIP_PATH="${ZIP_PATH}" EXTRACT_DIR="${EXTRACT_DIR}"
+          ROOT_DIR=$(python3 -c "import os, zipfile; z=zipfile.ZipFile(os.environ['ZIP_PATH']); print(z.namelist()[0].split('/')[0])" ZIP_PATH="${ZIP_PATH}")
+          mv "${EXTRACT_DIR}/${ROOT_DIR}/lightspeed_stack_providers" /opt/app-root/
+          mkdir -p /opt/app-root/providers.d
+          mv "${EXTRACT_DIR}/${ROOT_DIR}/resources/external_providers"/* /opt/app-root/providers.d/
+          rm -rf "${ZIP_PATH}" "${EXTRACT_DIR}"
           mkdir -p /opt/app-root/.e2e-rag-seed /opt/app-root/.e2e-rag-work /opt/app-root/src/.ogx /opt/app-root/src/.llama/storage/files
           if [[ ! -f /rag-seed/kv_store.db.gz ]]; then
             echo "FATAL: missing /rag-seed/kv_store.db.gz (ConfigMap rag-data key kv_store.db.gz)"
