@@ -11,17 +11,17 @@ from models.api.responses.successful.bases import (
 
 
 class PromptResourceResponse(AbstractSuccessfulResponse):
-    """A stored prompt template as returned by OGX.
+    """A stored prompt template as returned by Llama Stack.
 
     Attributes:
-        prompt_id: Prompt identifier from OGX.
+        prompt_id: Prompt identifier from Llama Stack.
         version: Version number for this prompt.
         is_default: Whether this version is the default.
         prompt: Prompt text with placeholders.
         variables: Variable names used in the template.
     """
 
-    prompt_id: str = Field(..., description="Prompt identifier from OGX")
+    prompt_id: str = Field(..., description="Prompt identifier from Llama Stack")
     version: int = Field(..., description="Version number for this prompt")
     is_default: Optional[bool] = Field(
         None, description="Whether this version is the default"
@@ -48,15 +48,15 @@ class PromptResourceResponse(AbstractSuccessfulResponse):
 
 
 class PromptsListResponse(AbstractSuccessfulResponse):
-    """List of stored prompt templates returned by OGX.
+    """List of stored prompt templates returned by Llama Stack.
 
     Attributes:
-        data: Prompt entries as returned by the OGX list API.
+        data: Prompt entries as returned by the Llama Stack list API.
     """
 
     data: list[PromptResourceResponse] = Field(
         default_factory=list,
-        description="Prompt entries (as returned by OGX list)",
+        description="Prompt entries (as returned by Llama Stack list)",
     )
 
     model_config = {

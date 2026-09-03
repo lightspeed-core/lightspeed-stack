@@ -61,31 +61,6 @@
                 "title": "APIKeyTokenConfiguration",
                 "type": "object"
             },
-            "AbstractDeleteResponse": {
-                "description": "Base model for successful delete responses.",
-                "properties": {
-                    "deleted": {
-                        "description": "Whether the deletion was successful.",
-                        "examples": [
-                            true,
-                            false
-                        ],
-                        "title": "Deleted",
-                        "type": "boolean"
-                    }
-                },
-                "required": [
-                    "deleted"
-                ],
-                "title": "AbstractDeleteResponse",
-                "type": "object"
-            },
-            "AbstractSuccessfulResponse": {
-                "description": "Base class for all successful response models.",
-                "properties": {},
-                "title": "AbstractSuccessfulResponse",
-                "type": "object"
-            },
             "AccessRule": {
                 "additionalProperties": false,
                 "description": "Rule defining what actions a role can perform.",
@@ -129,7 +104,6 @@
                     "feedback",
                     "get_models",
                     "get_tools",
-                    "get_skills",
                     "get_shields",
                     "list_providers",
                     "get_provider",
@@ -400,27 +374,98 @@
                 "title": "AzureEntraIdConfiguration",
                 "type": "object"
             },
-            "ByokConfiguration": {
+            "ByokRag": {
                 "additionalProperties": false,
-                "description": "BYOK (Bring Your Own Knowledge) configuration.",
+                "description": "BYOK (Bring Your Own Knowledge) RAG configuration.",
                 "properties": {
-                    "max_chunks": {
-                        "default": 10,
-                        "description": "Maximum total number of chunks returned across all BYOK stores.",
+                    "rag_id": {
+                        "description": "Unique RAG ID",
+                        "minLength": 1,
+                        "title": "RAG ID",
+                        "type": "string"
+                    },
+                    "rag_type": {
+                        "default": "inline::faiss",
+                        "description": "Type of RAG database (e.g. 'inline::faiss', 'remote::pgvector').",
+                        "minLength": 1,
+                        "title": "RAG type",
+                        "type": "string"
+                    },
+                    "embedding_model": {
+                        "default": "sentence-transformers/all-mpnet-base-v2",
+                        "description": "Embedding model identification",
+                        "minLength": 1,
+                        "title": "Embedding model",
+                        "type": "string"
+                    },
+                    "embedding_dimension": {
+                        "default": 768,
+                        "description": "Dimensionality of embedding vectors.",
                         "minimum": 0,
-                        "title": "Max BYOK chunks",
+                        "title": "Embedding dimension",
                         "type": "integer"
                     },
-                    "stores": {
-                        "description": "List of BYOK RAG store configurations.",
-                        "items": {
-                            "$ref": "`#/components/schemas/`RagStore"
-                        },
-                        "title": "BYOK RAG stores",
-                        "type": "array"
+                    "vector_db_id": {
+                        "description": "Vector database identification.",
+                        "minLength": 1,
+                        "title": "Vector DB ID",
+                        "type": "string"
+                    },
+                    "db_path": {
+                        "type": "string",
+                        "nullable": true,
+                        "default": null,
+                        "description": "Path to RAG database. Required for inline::faiss.",
+                        "title": "DB path"
+                    },
+                    "score_multiplier": {
+                        "default": 1.0,
+                        "description": "Multiplier applied to relevance scores from this vector store. Used to weight results when querying multiple knowledge sources. Values > 1 boost this store's results; values < 1 reduce them.",
+                        "minimum": 0,
+                        "title": "Score multiplier",
+                        "type": "number"
+                    },
+                    "host": {
+                        "type": "string",
+                        "nullable": true,
+                        "default": null,
+                        "description": "PostgreSQL host for remote::pgvector. Defaults to ${env.POSTGRES_HOST} when rag_type is remote::pgvector.",
+                        "title": "PostgreSQL host"
+                    },
+                    "port": {
+                        "type": "string",
+                        "nullable": true,
+                        "default": null,
+                        "description": "PostgreSQL port for remote::pgvector. Defaults to ${env.POSTGRES_PORT} when rag_type is remote::pgvector.",
+                        "title": "PostgreSQL port"
+                    },
+                    "db": {
+                        "type": "string",
+                        "nullable": true,
+                        "default": null,
+                        "description": "PostgreSQL database name for remote::pgvector. Defaults to ${env.POSTGRES_DATABASE} when rag_type is remote::pgvector.",
+                        "title": "PostgreSQL database"
+                    },
+                    "user": {
+                        "type": "string",
+                        "nullable": true,
+                        "default": null,
+                        "description": "PostgreSQL user for remote::pgvector. Defaults to ${env.POSTGRES_USER} when rag_type is remote::pgvector.",
+                        "title": "PostgreSQL user"
+                    },
+                    "password": {
+                        "type": "string",
+                        "nullable": true,
+                        "default": null,
+                        "description": "PostgreSQL password for remote::pgvector. Defaults to ${env.POSTGRES_PASSWORD} when rag_type is remote::pgvector.",
+                        "title": "PostgreSQL password"
                     }
                 },
-                "title": "ByokConfiguration",
+                "required": [
+                    "rag_id",
+                    "vector_db_id"
+                ],
+                "title": "ByokRag",
                 "type": "object"
             },
             "CORSConfiguration": {
@@ -695,22 +740,15 @@
                         "title": "Service name",
                         "type": "string"
                     },
-                    "config_format_version": {
-                        "type": "string",
-                        "nullable": true,
-                        "default": null,
-                        "description": "Optional explicit marker of the configuration format. When set, it must agree with the shape detected from the configuration body: 'unified' requires a synthesis input (a non-empty inference.providers, a non-empty vector_store.providers, or an ogx.config block), 'legacy' requires no synthesis input. Reserved as the lever for a future breaking change of the unified schema (R11).",
-                        "title": "Configuration format version"
-                    },
                     "service": {
                         "$ref": "`#/components/schemas/`ServiceConfiguration",
                         "description": "This section contains Lightspeed Core Stack service configuration.",
                         "title": "Service configuration"
                     },
-                    "ogx": {
-                        "$ref": "`#/components/schemas/`OgxConfiguration",
-                        "description": "This section contains OGX configuration. Lightspeed Core Stack service can call OGX in library mode or in server mode.",
-                        "title": "OGX configuration"
+                    "llama_stack": {
+                        "$ref": "`#/components/schemas/`LlamaStackConfiguration",
+                        "description": "This section contains Llama Stack configuration. Lightspeed Core Stack service can call Llama Stack in library mode or in server mode.",
+                        "title": "Llama Stack configuration"
                     },
                     "user_data_collection": {
                         "$ref": "`#/components/schemas/`UserDataCollection",
@@ -723,7 +761,7 @@
                         "title": "Database Configuration"
                     },
                     "mcp_servers": {
-                        "description": "MCP (Model Context Protocol) servers provide tools and capabilities to the AI agents. These are configured in this section. Only MCP servers defined in the lightspeed-stack.yaml configuration are available to the agents. Tools configured in the OGX run.yaml are not accessible to lightspeed-core agents.",
+                        "description": "MCP (Model Context Protocol) servers provide tools and capabilities to the AI agents. These are configured in this section. Only MCP servers defined in the lightspeed-stack.yaml configuration are available to the agents. Tools configured in the llama-stack run.yaml are not accessible to lightspeed-core agents.",
                         "items": {
                             "$ref": "`#/components/schemas/`ModelContextProtocolServer"
                         },
@@ -780,9 +818,17 @@
                         "description": "Settings for human-in-the-loop approval of MCP tool invocations",
                         "title": "Approvals configuration"
                     },
+                    "byok_rag": {
+                        "description": "BYOK RAG configuration. This configuration can be used to reconfigure Llama Stack through its run.yaml configuration file",
+                        "items": {
+                            "$ref": "`#/components/schemas/`ByokRag"
+                        },
+                        "title": "BYOK RAG configuration",
+                        "type": "array"
+                    },
                     "vector_store": {
                         "$ref": "`#/components/schemas/`VectorStoreConfiguration",
-                        "description": "Dynamic vector-store provider capacity for runtime POST /v1/vector-stores creates. Not the same as rag.byok.stores (static registered corpora). When providers is non-empty, default_provider is required and must match one of providers[].id. Applied in unified synthesis only.",
+                        "description": "Dynamic vector-store provider capacity for runtime POST /v1/vector-stores creates. Not the same as byok_rag (static registered corpora). When providers is non-empty, default_provider is required and must match one of providers[].id. Applied in unified synthesis only.",
                         "title": "Vector store configuration"
                     },
                     "a2a_state": {
@@ -837,8 +883,18 @@
                     },
                     "rag": {
                         "$ref": "`#/components/schemas/`RagConfiguration",
-                        "description": "Unified RAG configuration: BYOK stores, OKP provider, and retrieval strategies (inline and tool-based).",
+                        "description": "Configuration for all RAG strategies (inline and tool-based).",
                         "title": "RAG configuration"
+                    },
+                    "okp": {
+                        "$ref": "`#/components/schemas/`OkpConfiguration",
+                        "description": "OKP provider settings. Only used when 'okp' is listed in rag.inline or rag.tool.",
+                        "title": "OKP configuration"
+                    },
+                    "reranker": {
+                        "$ref": "`#/components/schemas/`RerankerConfiguration",
+                        "description": "Configuration for neural reranking of RAG chunks using cross-encoder.",
+                        "title": "Reranker configuration"
                     },
                     "skills": {
                         "anyOf": [
@@ -884,7 +940,7 @@
                 "required": [
                     "name",
                     "service",
-                    "ogx",
+                    "llama_stack",
                     "user_data_collection"
                 ],
                 "title": "Configuration",
@@ -902,6 +958,7 @@
                             "authorization": {
                                 "access_rules": []
                             },
+                            "byok_rag": [],
                             "conversation_cache": {
                                 "memory": null,
                                 "postgres": null,
@@ -918,6 +975,12 @@
                             "inference": {
                                 "default_model": "gpt-4-turbo",
                                 "default_provider": "openai"
+                            },
+                            "llama_stack": {
+                                "api_key": "*****",
+                                "library_client_config_path": null,
+                                "url": "http://localhost:8321",
+                                "use_as_library_client": false
                             },
                             "mcp_servers": [
                                 {
@@ -936,12 +999,6 @@
                                     "OTEL_SERVICE_NAME": ""
                                 }
                             },
-                            "ogx": {
-                                "api_key": "*****",
-                                "library_client_config_path": null,
-                                "url": "http://localhost:8321",
-                                "use_as_library_client": false
-                            },
                             "quota_handlers": {
                                 "enable_token_history": false,
                                 "limiters": [],
@@ -950,33 +1007,6 @@
                                     "period": 1
                                 },
                                 "sqlite": null
-                            },
-                            "rag": {
-                                "byok": {
-                                    "max_chunks": 10,
-                                    "stores": []
-                                },
-                                "okp": {
-                                    "chunk_filter_query": null,
-                                    "max_chunks": 5,
-                                    "offline": true,
-                                    "rhokp_url": null
-                                },
-                                "retrieval": {
-                                    "inline": {
-                                        "max_chunks": 10,
-                                        "reranker": {
-                                            "enabled": false,
-                                            "model": "cross-encoder/ms-marco-MiniLM-L6-v2"
-                                        },
-                                        "sources": []
-                                    },
-                                    "tool": {
-                                        "max_chunks": 10,
-                                        "reranker": null,
-                                        "sources": []
-                                    }
-                                }
                             },
                             "service": {
                                 "access_log": true,
@@ -1022,13 +1052,6 @@
                 ],
                 "title": "ConfigurationResponse",
                 "type": "object"
-            },
-            "ContextStatus": {
-                "enum": [
-                    "full",
-                    "summarized"
-                ],
-                "type": "string"
             },
             "ConversationData": {
                 "description": "Model representing conversation data returned by cache list operations.\n\nAttributes:\n    conversation_id: The conversation ID\n    topic_summary: The topic summary for the conversation (can be None)\n    last_message_timestamp: The timestamp of the last message in the conversation",
@@ -1609,7 +1632,7 @@
                 "description": "Dynamic FAISS vector-store provider (runtime create capacity).",
                 "properties": {
                     "id": {
-                        "description": "OGX vector_io provider_id. Surrounding whitespace is stripped before validation and emission.",
+                        "description": "Llama Stack vector_io provider_id. Surrounding whitespace is stripped before validation and emission.",
                         "minLength": 1,
                         "title": "Provider ID",
                         "type": "string"
@@ -1770,7 +1793,7 @@
                 "type": "object"
             },
             "HealthStatus": {
-                "description": "Health status enum for provider and service health checks.\n\nThis enum serves two purposes:\n\n1. Provider-level health (returned by OGX providers):\n   - OK: Provider is healthy and operational\n   - ERROR: Provider is unhealthy or failed health check\n   - NOT_IMPLEMENTED: Provider does not implement health checks\n   - UNKNOWN: Fallback when provider status cannot be determined\n\n2. Service-level health (overall LCORE status):\n   - HEALTHY: All systems operational, LLS connected, all providers healthy\n   - DEGRADED: Service running with reduced functionality (e.g., LLS unavailable)\n   - UNHEALTHY: Service connected but one or more providers are unhealthy",
+                "description": "Health status enum for provider and service health checks.\n\nThis enum serves two purposes:\n\n1. Provider-level health (returned by Llama Stack providers):\n   - OK: Provider is healthy and operational\n   - ERROR: Provider is unhealthy or failed health check\n   - NOT_IMPLEMENTED: Provider does not implement health checks\n   - UNKNOWN: Fallback when provider status cannot be determined\n\n2. Service-level health (overall LCORE status):\n   - HEALTHY: All systems operational, LLS connected, all providers healthy\n   - DEGRADED: Service running with reduced functionality (e.g., LLS unavailable)\n   - UNHEALTHY: Service connected but one or more providers are unhealthy",
                 "enum": [
                     "ok",
                     "error",
@@ -1828,7 +1851,7 @@
                         "type": "object"
                     },
                     "providers": {
-                        "description": "Unified-mode synthesis input (Decision S5): a high-level, backend-agnostic list of inference providers the synthesizer expands into OGX provider entries. Lives at the configuration root so it survives a future backend change. A non-empty list signals unified mode. Empty (the default) leaves legacy/remote modes unaffected. The sibling default_model / default_provider keep their query-time routing meaning and are independent of this list.",
+                        "description": "Unified-mode synthesis input (Decision S5): a high-level, backend-agnostic list of inference providers the synthesizer expands into Llama Stack provider entries. Lives at the configuration root so it survives a future backend change. A non-empty list signals unified mode. Empty (the default) leaves legacy/remote modes unaffected. The sibling default_model / default_provider keep their query-time routing meaning and are independent of this list.",
                         "items": {
                             "$ref": "`#/components/schemas/`UnifiedInferenceProvider"
                         },
@@ -1854,11 +1877,11 @@
                 "type": "object"
             },
             "InfoResponse": {
-                "description": "Model representing a response to an info request.\n\nAttributes:\n    name: Service name.\n    service_version: Service version.\n    ogx_version: OGX version.",
+                "description": "Model representing a response to an info request.\n\nAttributes:\n    name: Service name.\n    service_version: Service version.\n    llama_stack_version: Llama Stack version.",
                 "examples": [
                     {
+                        "llama_stack_version": "1.0.0",
                         "name": "Lightspeed Stack",
-                        "ogx_version": "1.0.0",
                         "service_version": "1.0.0"
                     }
                 ],
@@ -1881,8 +1904,8 @@
                         "title": "Service Version",
                         "type": "string"
                     },
-                    "ogx_version": {
-                        "description": "OGX version",
+                    "llama_stack_version": {
+                        "description": "Llama Stack version",
                         "examples": [
                             "0.2.1",
                             "0.2.2",
@@ -1890,14 +1913,14 @@
                             "0.2.21",
                             "0.2.22"
                         ],
-                        "title": "Ogx Version",
+                        "title": "Llama Stack Version",
                         "type": "string"
                     }
                 },
                 "required": [
                     "name",
                     "service_version",
-                    "ogx_version"
+                    "llama_stack_version"
                 ],
                 "title": "InfoResponse",
                 "type": "object"
@@ -2028,6 +2051,83 @@
                     "alive"
                 ],
                 "title": "LivenessResponse",
+                "type": "object"
+            },
+            "LlamaStackConfiguration": {
+                "additionalProperties": false,
+                "description": "Llama stack configuration.\n\nLlama Stack is a comprehensive system that provides a uniform set of tools\nfor building, scaling, and deploying generative AI applications, enabling\ndevelopers to create, integrate, and orchestrate multiple AI services and\ncapabilities into an adaptable setup.\n\nUseful resources:\n\n  - [Llama Stack](https://www.llama.com/products/llama-stack/)\n  - [Python Llama Stack client](https://github.com/llamastack/llama-stack-client-python)\n  - [Build AI Applications with Llama Stack](https://llamastack.github.io/)",
+                "properties": {
+                    "url": {
+                        "type": "string",
+                        "nullable": true,
+                        "default": null,
+                        "description": "URL to Llama Stack service; used when library mode is disabled. Must be a valid HTTP or HTTPS URL.",
+                        "title": "Llama Stack URL"
+                    },
+                    "api_key": {
+                        "type": "string",
+                        "nullable": true,
+                        "default": null,
+                        "description": "API key to access Llama Stack service",
+                        "title": "API key"
+                    },
+                    "use_as_library_client": {
+                        "type": "boolean",
+                        "nullable": true,
+                        "default": null,
+                        "description": "When set to true Llama Stack will be used in library mode, not in server mode (default)",
+                        "title": "Use as library"
+                    },
+                    "library_client_config_path": {
+                        "type": "string",
+                        "nullable": true,
+                        "default": null,
+                        "description": "Path to configuration file used when Llama Stack is run in library mode",
+                        "title": "Llama Stack configuration path"
+                    },
+                    "timeout": {
+                        "default": 180,
+                        "description": "Timeout in seconds for requests to Llama Stack service. Default is 180 seconds (3 minutes) to accommodate long-running RAG queries.",
+                        "minimum": 0,
+                        "title": "Request timeout",
+                        "type": "integer"
+                    },
+                    "max_retries": {
+                        "default": 5,
+                        "description": "Maximum number of connection attempts before giving up. Used on startup to connect to Llama Stack and retrieve its version. Connection attempts are retried with a fixed delay to handle the case where Llama Stack is still starting up (e.g., when running as a sidecar in the same pod).",
+                        "minimum": 0,
+                        "title": "Maximum number of connection attempts before giving up",
+                        "type": "integer"
+                    },
+                    "retry_delay": {
+                        "default": 2,
+                        "description": "Delay in seconds between retry attempts. Used on startup to connect to Llama Stack and retrieve its version. Connection attempts are retried with a fixed delay to handle the case where Llama Stack is still starting up (e.g., when running as a sidecar in the same pod).",
+                        "minimum": 0,
+                        "title": "Delay in seconds between retry attempts",
+                        "type": "integer"
+                    },
+                    "allow_degraded_mode": {
+                        "type": "boolean",
+                        "nullable": true,
+                        "default": false,
+                        "description": "If enabled, Lightspeed Core can be started even when Llama Stack is not accessible (valid for server mode only)",
+                        "title": "Allow degraded mode"
+                    },
+                    "config": {
+                        "anyOf": [
+                            {
+                                "$ref": "`#/components/schemas/`UnifiedLlamaStackConfig"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "default": null,
+                        "description": "Backend-specific knobs for unified mode, where LCORE synthesizes the Llama Stack run.yaml instead of reading an external file. Holds the baseline selector, an optional profile path, and a raw native_override escape hatch. Backend-agnostic high-level sections (e.g. inference.providers) live at the configuration root, not here. Mutually exclusive with library_client_config_path; that cross-field check lives on the root Configuration model. When set in library mode, library_client_config_path is not required.",
+                        "title": "Unified Llama Stack configuration"
+                    }
+                },
+                "title": "LlamaStackConfiguration",
                 "type": "object"
             },
             "MCPClientAuthOptionsResponse": {
@@ -2316,7 +2416,7 @@
             },
             "ModelContextProtocolServer": {
                 "additionalProperties": false,
-                "description": "Model context protocol server configuration.\n\nMCP (Model Context Protocol) servers provide tools and capabilities to the\nAI agents. These are configured by this structure. Only MCP servers\ndefined in the lightspeed-stack.yaml configuration are available to the\nagents. Tools configured in the OGX run.yaml are not accessible to\nlightspeed-core agents.\n\nUseful resources:\n\n- [Model Context Protocol](https://modelcontextprotocol.io/docs/getting-started/intro)\n- [MCP FAQs](https://modelcontextprotocol.io/faqs)\n- [Wikipedia article](https://en.wikipedia.org/wiki/Model_Context_Protocol)",
+                "description": "Model context protocol server configuration.\n\nMCP (Model Context Protocol) servers provide tools and capabilities to the\nAI agents. These are configured by this structure. Only MCP servers\ndefined in the lightspeed-stack.yaml configuration are available to the\nagents. Tools configured in the llama-stack run.yaml are not accessible to\nlightspeed-core agents.\n\nUseful resources:\n\n- [Model Context Protocol](https://modelcontextprotocol.io/docs/getting-started/intro)\n- [MCP FAQs](https://modelcontextprotocol.io/faqs)\n- [Wikipedia article](https://en.wikipedia.org/wiki/Model_Context_Protocol)",
                 "properties": {
                     "name": {
                         "description": "MCP server name that must be unique",
@@ -2371,7 +2471,7 @@
                         "type": "integer",
                         "nullable": true,
                         "default": null,
-                        "description": "Timeout in seconds for requests to the MCP server. If not specified, the default timeout from OGX will be used. Note: This field is reserved for future use when OGX adds timeout support.",
+                        "description": "Timeout in seconds for requests to the MCP server. If not specified, the default timeout from Llama Stack will be used. Note: This field is reserved for future use when Llama Stack adds timeout support.",
                         "title": "Request timeout"
                     }
                 },
@@ -2431,86 +2531,9 @@
                 "title": "ObservabilityConfiguration",
                 "type": "object"
             },
-            "OgxConfiguration": {
-                "additionalProperties": false,
-                "description": "OGX configuration.\n\nOGX is a comprehensive system that provides a uniform set of tools\nfor building, scaling, and deploying generative AI applications, enabling\ndevelopers to create, integrate, and orchestrate multiple AI services and\ncapabilities into an adaptable setup.\n\nUseful resources:\n\n  - [OGX](https://ogx-ai.github.io/)\n  - [Python OGX client](https://github.com/ogx-ai/ogx-client-python)\n  - [Build AI Applications with OGX](https://ogx-ai.github.io/)",
-                "properties": {
-                    "url": {
-                        "type": "string",
-                        "nullable": true,
-                        "default": null,
-                        "description": "URL to OGX service; used when library mode is disabled. Must be a valid HTTP or HTTPS URL.",
-                        "title": "OGX URL"
-                    },
-                    "api_key": {
-                        "type": "string",
-                        "nullable": true,
-                        "default": null,
-                        "description": "API key to access OGX service",
-                        "title": "API key"
-                    },
-                    "use_as_library_client": {
-                        "type": "boolean",
-                        "nullable": true,
-                        "default": null,
-                        "description": "When set to true OGX will be used in library mode, not in server mode (default)",
-                        "title": "Use as library"
-                    },
-                    "library_client_config_path": {
-                        "type": "string",
-                        "nullable": true,
-                        "default": null,
-                        "description": "Path to configuration file used when OGX is run in library mode. DEPRECATED legacy two-file setup: logs a startup warning since 0.6 and is removed in 0.8 \u2014 use unified mode instead (the config block below, and/or the root-level inference.providers section); migrate with lightspeed-stack --migrate-config.",
-                        "title": "OGX configuration path (legacy, deprecated)"
-                    },
-                    "timeout": {
-                        "default": 180,
-                        "description": "Timeout in seconds for requests to OGX service. Default is 180 seconds (3 minutes) to accommodate long-running RAG queries.",
-                        "minimum": 0,
-                        "title": "Request timeout",
-                        "type": "integer"
-                    },
-                    "max_retries": {
-                        "default": 5,
-                        "description": "Maximum number of connection attempts before giving up. Used on startup to connect to OGX and retrieve its version. Connection attempts are retried with a fixed delay to handle the case where OGX is still starting up (e.g., when running as a sidecar in the same pod).",
-                        "minimum": 0,
-                        "title": "Maximum number of connection attempts before giving up",
-                        "type": "integer"
-                    },
-                    "retry_delay": {
-                        "default": 2,
-                        "description": "Delay in seconds between retry attempts. Used on startup to connect to OGX and retrieve its version. Connection attempts are retried with a fixed delay to handle the case where OGX is still starting up (e.g., when running as a sidecar in the same pod).",
-                        "minimum": 0,
-                        "title": "Delay in seconds between retry attempts",
-                        "type": "integer"
-                    },
-                    "allow_degraded_mode": {
-                        "type": "boolean",
-                        "nullable": true,
-                        "default": false,
-                        "description": "If enabled, Lightspeed Core can be started even when OGX is not accessible (valid for server mode only)",
-                        "title": "Allow degraded mode"
-                    },
-                    "config": {
-                        "anyOf": [
-                            {
-                                "$ref": "`#/components/schemas/`UnifiedOgxConfig"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "default": null,
-                        "description": "Backend-specific knobs for unified mode, where LCORE synthesizes the OGX run.yaml instead of reading an external file. Holds the baseline selector, an optional profile path, and a raw native_override escape hatch. Backend-agnostic high-level sections (e.g. inference.providers) live at the configuration root, not here. Mutually exclusive with library_client_config_path; that cross-field check lives on the root Configuration model. When set in library mode, library_client_config_path is not required.",
-                        "title": "Unified OGX configuration"
-                    }
-                },
-                "title": "OgxConfiguration",
-                "type": "object"
-            },
             "OkpConfiguration": {
                 "additionalProperties": false,
-                "description": "OKP (Offline Knowledge Portal) provider configuration.\n\nControls provider-specific behaviour for the OKP vector store.\nOnly relevant when ``\"okp\"`` is listed in ``rag.retrieval.inline.sources``\nor ``rag.retrieval.tool.sources``.",
+                "description": "OKP (Offline Knowledge Portal) provider configuration.\n\nControls provider-specific behaviour for the OKP vector store.\nOnly relevant when ``\"okp\"`` is listed in ``rag.inline`` or ``rag.tool``.",
                 "properties": {
                     "rhokp_url": {
                         "type": "string",
@@ -2531,20 +2554,6 @@
                         "default": null,
                         "description": "Additional OKP filter query applied to every OKP search request. Use Solr boolean syntax, e.g. 'product:ansible AND product:*openshift*'.",
                         "title": "OKP chunk filter query"
-                    },
-                    "search_mode": {
-                        "type": "string",
-                        "nullable": true,
-                        "default": null,
-                        "description": "Default Solr search mode for OKP queries. 'keyword' uses BM25 text search (no embedding model needed). 'hybrid' combines vector + keyword search. 'semantic' uses pure vector search. When unset, falls back to the global default ('hybrid').",
-                        "title": "OKP search mode"
-                    },
-                    "max_chunks": {
-                        "default": 5,
-                        "description": "Maximum number of chunks fetched from OKP.",
-                        "minimum": 0,
-                        "title": "Max OKP chunks",
-                        "type": "integer"
                     }
                 },
                 "title": "OkpConfiguration",
@@ -3873,7 +3882,7 @@
                 "description": "Dynamic pgvector vector-store provider (runtime create capacity).",
                 "properties": {
                     "id": {
-                        "description": "OGX vector_io provider_id. Surrounding whitespace is stripped before validation and emission.",
+                        "description": "Llama Stack vector_io provider_id. Surrounding whitespace is stripped before validation and emission.",
                         "minLength": 1,
                         "title": "Provider ID",
                         "type": "string"
@@ -3924,19 +3933,10 @@
                         "title": "PostgreSQL host"
                     },
                     "port": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "integer"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
+                        "type": "string",
+                        "nullable": true,
                         "default": null,
-                        "description": "PostgreSQL port. Defaults to ${env.POSTGRES_PORT}. Accepts string placeholders and integer values.",
+                        "description": "PostgreSQL port. Defaults to ${env.POSTGRES_PORT}.",
                         "title": "PostgreSQL port"
                     },
                     "db": {
@@ -4094,7 +4094,7 @@
             },
             "PromptResourceResponse": {
                 "additionalProperties": false,
-                "description": "A stored prompt template as returned by OGX.\n\nAttributes:\n    prompt_id: Prompt identifier from OGX.\n    version: Version number for this prompt.\n    is_default: Whether this version is the default.\n    prompt: Prompt text with placeholders.\n    variables: Variable names used in the template.",
+                "description": "A stored prompt template as returned by Llama Stack.\n\nAttributes:\n    prompt_id: Prompt identifier from Llama Stack.\n    version: Version number for this prompt.\n    is_default: Whether this version is the default.\n    prompt: Prompt text with placeholders.\n    variables: Variable names used in the template.",
                 "examples": [
                     {
                         "is_default": true,
@@ -4108,7 +4108,7 @@
                 ],
                 "properties": {
                     "prompt_id": {
-                        "description": "Prompt identifier from OGX",
+                        "description": "Prompt identifier from Llama Stack",
                         "title": "Prompt Id",
                         "type": "string"
                     },
@@ -4148,7 +4148,7 @@
             },
             "PromptsListResponse": {
                 "additionalProperties": false,
-                "description": "List of stored prompt templates returned by OGX.\n\nAttributes:\n    data: Prompt entries as returned by the OGX list API.",
+                "description": "List of stored prompt templates returned by Llama Stack.\n\nAttributes:\n    data: Prompt entries as returned by the Llama Stack list API.",
                 "examples": [
                     {
                         "data": [
@@ -4166,7 +4166,7 @@
                 ],
                 "properties": {
                     "data": {
-                        "description": "Prompt entries (as returned by OGX list)",
+                        "description": "Prompt entries (as returned by Llama Stack list)",
                         "items": {
                             "$ref": "`#/components/schemas/`PromptResourceResponse"
                         },
@@ -4314,14 +4314,13 @@
                 "type": "object"
             },
             "QueryResponse": {
-                "description": "Model representing LLM response to a query.\n\nAttributes:\n    conversation_id: The optional conversation ID (UUID).\n    response: The response.\n    rag_chunks: Deprecated. List of RAG chunks used to generate the response.\n        This information is now available in tool_results under file_search_call type.\n    referenced_documents: The URLs and titles for the documents used to generate the response.\n    tool_calls: List of tool calls made during response generation.\n    tool_results: List of tool results.\n    truncated: Whether conversation history was truncated.\n    context_status: Whether the conversation context was sent in full\n        (\"full\") or older turns were replaced by a summary (\"summarized\").\n    input_tokens: Number of tokens sent to LLM.\n    output_tokens: Number of tokens received from LLM.\n    available_quotas: Quota available as measured by all configured quota limiters.",
+                "description": "Model representing LLM response to a query.\n\nAttributes:\n    conversation_id: The optional conversation ID (UUID).\n    response: The response.\n    rag_chunks: Deprecated. List of RAG chunks used to generate the response.\n        This information is now available in tool_results under file_search_call type.\n    referenced_documents: The URLs and titles for the documents used to generate the response.\n    tool_calls: List of tool calls made during response generation.\n    tool_results: List of tool results.\n    truncated: Whether conversation history was truncated.\n    input_tokens: Number of tokens sent to LLM.\n    output_tokens: Number of tokens received from LLM.\n    available_quotas: Quota available as measured by all configured quota limiters.",
                 "examples": [
                     {
                         "available_quotas": {
                             "ClusterQuotaLimiter": 998911,
                             "UserQuotaLimiter": 998911
                         },
-                        "context_status": "full",
                         "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
                         "input_tokens": 123,
                         "output_tokens": 456,
@@ -4405,15 +4404,6 @@
                         "title": "Truncated",
                         "type": "boolean"
                     },
-                    "context_status": {
-                        "$ref": "`#/components/schemas/`ContextStatus",
-                        "default": "full",
-                        "description": "Context status: \"full\" (no compaction) or \"summarized\" (older turns replaced by a summary)",
-                        "examples": [
-                            "full",
-                            "summarized"
-                        ]
-                    },
                     "input_tokens": {
                         "default": 0,
                         "description": "Number of tokens sent to LLM",
@@ -4483,7 +4473,7 @@
                         "type": "string"
                     },
                     "model_prompt": {
-                        "default": "\nInstructions:\n- You are a question classifying tool\n- You are an expert in Kubernetes and OpenShift\n- Your job is to determine where or a user's question is related to Kubernetes and/or OpenShift technologies and to provide a one-word response.\n- If a question appears to be related to Kubernetes or OpenShift technologies, answer with the word ${allowed}, otherwise answer with the word ${rejected}.\n- Do not explain your answer, just provide the one-word response. Do not give any other response.\n- If the given question is an empty string, answer with the word ${rejected}\n\n\nExample Question:\nWhy is the sky blue?\nExample Response:\n${rejected}\n\nExample Question:\nWhy is the grass green?\nExample Response:\n${rejected}\n\nExample Question:\nWhy is sand yellow?\nExample Response:\n${rejected}\n\nExample Question:\nCan you help configure my cluster to automatically scale?\nExample Response:\n${allowed}\n\nQuestion:\n${message}\nResponse:\n",
+                        "default": "\nInstructions:\n- You are a question classifying tool\n- You are an expert in kubernetes and openshift\n- Your job is to determine where or a user's question is related to kubernetes and/or openshift technologies and to provide a one-word response.\n- If a question appears to be related to kubernetes or openshift technologies, answer with the word ${allowed}, otherwise answer with the word ${rejected}.\n- Do not explain your answer, just provide the one-word response. Do not give any other response.\n- If the given question is an empty string, answer with the word ${rejected}\n\n\nExample Question:\nWhy is the sky blue?\nExample Response:\n${rejected}\n\nExample Question:\nWhy is the grass green?\nExample Response:\n${rejected}\n\nExample Question:\nWhy is sand yellow?\nExample Response:\n${rejected}\n\nExample Question:\nCan you help configure my cluster to automatically scale?\nExample Response:\n${allowed}\n\nQuestion:\n${message}\nResponse:\n",
                         "description": "The default prompt sent to the LLM used to validate the Users' question.",
                         "title": "Model prompt",
                         "type": "string"
@@ -4845,135 +4835,26 @@
             },
             "RagConfiguration": {
                 "additionalProperties": false,
-                "description": "Unified RAG configuration.\n\nGroups all RAG-related settings: BYOK stores, OKP provider, and\nretrieval strategies (inline and tool).",
+                "description": "RAG strategy configuration.\n\nControls which RAG sources are used for inline and tool-based retrieval.\n\nEach strategy lists RAG IDs to include. The special ID ``\"okp\"`` defined in constants,\nactivates the OKP provider; all other IDs refer to entries in ``byok_rag``.\n\nBoth ``inline`` and ``tool`` default to ``[]`` (disabled).\nEach must be explicitly configured to activate its respective RAG strategy.",
                 "properties": {
-                    "byok": {
-                        "$ref": "`#/components/schemas/`ByokConfiguration",
-                        "description": "Bring Your Own Knowledge store configurations and settings.",
-                        "title": "BYOK configuration"
+                    "inline": {
+                        "description": "RAG IDs whose sources are injected as context before the LLM call. Use 'okp' to enable OKP inline RAG. Empty by default (no inline RAG).",
+                        "items": {
+                            "type": "string"
+                        },
+                        "title": "Inline RAG IDs",
+                        "type": "array"
                     },
-                    "okp": {
-                        "$ref": "`#/components/schemas/`OkpConfiguration",
-                        "description": "OKP provider settings. Only used when 'okp' is listed in retrieval.inline.sources or retrieval.tool.sources.",
-                        "title": "OKP configuration"
-                    },
-                    "retrieval": {
-                        "$ref": "`#/components/schemas/`RetrievalConfiguration",
-                        "description": "Inline and tool retrieval strategy settings.",
-                        "title": "Retrieval configuration"
+                    "tool": {
+                        "description": "RAG IDs made available to the LLM as a file_search tool. Use 'okp' to include the OKP vector store. When omitted, tool RAG is disabled.",
+                        "items": {
+                            "type": "string"
+                        },
+                        "title": "Tool RAG IDs",
+                        "type": "array"
                     }
                 },
                 "title": "RagConfiguration",
-                "type": "object"
-            },
-            "RagStore": {
-                "additionalProperties": false,
-                "description": "BYOK (Bring Your Own Knowledge) RAG store configuration.",
-                "properties": {
-                    "rag_id": {
-                        "description": "Unique RAG ID",
-                        "minLength": 1,
-                        "title": "RAG ID",
-                        "type": "string"
-                    },
-                    "backend": {
-                        "default": "faiss",
-                        "description": "Type of RAG database (e.g. 'faiss', 'pgvector').",
-                        "minLength": 1,
-                        "title": "RAG backend",
-                        "type": "string"
-                    },
-                    "embedding_model": {
-                        "default": "sentence-transformers/all-mpnet-base-v2",
-                        "description": "Embedding model identification",
-                        "minLength": 1,
-                        "title": "Embedding model",
-                        "type": "string"
-                    },
-                    "embedding_dimension": {
-                        "default": 768,
-                        "description": "Dimensionality of embedding vectors.",
-                        "minimum": 0,
-                        "title": "Embedding dimension",
-                        "type": "integer"
-                    },
-                    "vector_db_id": {
-                        "description": "Vector database identification.",
-                        "minLength": 1,
-                        "title": "Vector DB ID",
-                        "type": "string"
-                    },
-                    "db_path": {
-                        "type": "string",
-                        "nullable": true,
-                        "default": null,
-                        "description": "Path to RAG database. Required for faiss backend.",
-                        "title": "DB path"
-                    },
-                    "score_multiplier": {
-                        "default": 1.0,
-                        "description": "Multiplier applied to relevance scores from this vector store. Used to weight results when querying multiple knowledge sources. Values > 1 boost this store's results; values < 1 reduce them.",
-                        "minimum": 0,
-                        "title": "Score multiplier",
-                        "type": "number"
-                    },
-                    "relevance_cutoff_score": {
-                        "default": 0.3,
-                        "description": "Minimum raw similarity score to consider a result relevant. Results with a similarity score below this threshold are not returned.",
-                        "minimum": 0,
-                        "title": "Relevance cutoff score",
-                        "type": "number"
-                    },
-                    "host": {
-                        "type": "string",
-                        "nullable": true,
-                        "default": null,
-                        "description": "PostgreSQL host for pgvector backend. Defaults to ${env.POSTGRES_HOST} when backend is pgvector.",
-                        "title": "PostgreSQL host"
-                    },
-                    "port": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "integer"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "default": null,
-                        "description": "PostgreSQL port for pgvector backend. Defaults to ${env.POSTGRES_PORT} when backend is pgvector.",
-                        "title": "PostgreSQL port"
-                    },
-                    "db": {
-                        "type": "string",
-                        "nullable": true,
-                        "default": null,
-                        "description": "PostgreSQL database name for pgvector backend. Defaults to ${env.POSTGRES_DATABASE} when backend is pgvector.",
-                        "title": "PostgreSQL database"
-                    },
-                    "user": {
-                        "type": "string",
-                        "nullable": true,
-                        "default": null,
-                        "description": "PostgreSQL user for pgvector backend. Defaults to ${env.POSTGRES_USER} when backend is pgvector.",
-                        "title": "PostgreSQL user"
-                    },
-                    "password": {
-                        "type": "string",
-                        "nullable": true,
-                        "default": null,
-                        "description": "PostgreSQL password for pgvector backend. Defaults to ${env.POSTGRES_PASSWORD} when backend is pgvector.",
-                        "title": "PostgreSQL password"
-                    }
-                },
-                "required": [
-                    "rag_id",
-                    "vector_db_id"
-                ],
-                "title": "RagStore",
                 "type": "object"
             },
             "ReadinessResponse": {
@@ -5522,60 +5403,6 @@
                 "title": "ResponsesResponse",
                 "type": "object"
             },
-            "RetrievalConfiguration": {
-                "additionalProperties": false,
-                "description": "Configuration for inline and tool retrieval strategies.",
-                "properties": {
-                    "inline": {
-                        "$ref": "`#/components/schemas/`RetrievalStrategyConfiguration",
-                        "description": "Inline RAG: context injected before the LLM request.",
-                        "title": "Inline retrieval"
-                    },
-                    "tool": {
-                        "$ref": "`#/components/schemas/`RetrievalStrategyConfiguration",
-                        "description": "Tool RAG: LLM can call file_search on demand.",
-                        "title": "Tool retrieval"
-                    }
-                },
-                "title": "RetrievalConfiguration",
-                "type": "object"
-            },
-            "RetrievalStrategyConfiguration": {
-                "additionalProperties": false,
-                "description": "Configuration for a single retrieval strategy (inline or tool).",
-                "properties": {
-                    "sources": {
-                        "description": "RAG IDs to use for this retrieval strategy. Use 'okp' to include the OKP vector store.",
-                        "items": {
-                            "type": "string"
-                        },
-                        "title": "RAG source IDs",
-                        "type": "array"
-                    },
-                    "max_chunks": {
-                        "default": 10,
-                        "description": "Maximum number of chunks returned by this retrieval strategy.",
-                        "minimum": 0,
-                        "title": "Max chunks",
-                        "type": "integer"
-                    },
-                    "reranker": {
-                        "anyOf": [
-                            {
-                                "$ref": "`#/components/schemas/`RerankerConfiguration"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "default": null,
-                        "description": "Neural reranking of RAG chunks using cross-encoder. Only applicable to inline retrieval.",
-                        "title": "Reranker configuration"
-                    }
-                },
-                "title": "RetrievalStrategyConfiguration",
-                "type": "object"
-            },
             "RlsapiV1Configuration": {
                 "additionalProperties": false,
                 "description": "Configuration for the rlsapi v1 /infer endpoint.\n\nSettings specific to the RHEL Lightspeed Command Line Assistant (CLA)\nstateless inference endpoint. Kept separate from shared configuration\nsections so that CLA-specific options do not affect other endpoints.",
@@ -5819,50 +5646,6 @@
                 "title": "SavedPromptResponse",
                 "type": "object"
             },
-            "SavedPromptsConfigResponse": {
-                "additionalProperties": false,
-                "description": "Saved prompts configuration limits returned to consuming services.\n\nAttributes:\n    max_prompts_per_user: Maximum number of saved prompts allowed per user.\n    max_display_name_length: Maximum character length for prompt display name.\n    max_content_length: Maximum character length for prompt content body.",
-                "examples": [
-                    {
-                        "max_content_length": 10000,
-                        "max_display_name_length": 255,
-                        "max_prompts_per_user": 50
-                    }
-                ],
-                "properties": {
-                    "max_prompts_per_user": {
-                        "description": "Maximum number of saved prompts allowed per user",
-                        "examples": [
-                            50
-                        ],
-                        "title": "Max Prompts Per User",
-                        "type": "integer"
-                    },
-                    "max_display_name_length": {
-                        "description": "Maximum character length for prompt display name",
-                        "examples": [
-                            255
-                        ],
-                        "title": "Max Display Name Length",
-                        "type": "integer"
-                    },
-                    "max_content_length": {
-                        "description": "Maximum character length for prompt content body",
-                        "examples": [
-                            10000
-                        ],
-                        "title": "Max Content Length",
-                        "type": "integer"
-                    }
-                },
-                "required": [
-                    "max_prompts_per_user",
-                    "max_display_name_length",
-                    "max_content_length"
-                ],
-                "title": "SavedPromptsConfigResponse",
-                "type": "object"
-            },
             "SavedPromptsConfiguration": {
                 "additionalProperties": false,
                 "description": "Configuration for saved prompts feature limits.\n\nControls the maximum number of prompts a user can save, the maximum\ndisplay name (title) length, and the maximum prompt content length.\nOmitted fields use the defaults defined in constants.\n\nAttributes:\n    max_prompts_per_user: Maximum number of saved prompts allowed per user.\n    max_display_name_length: Maximum character length for the prompt display name.\n    max_content_length: Maximum character length for the prompt content body.",
@@ -6014,26 +5797,6 @@
                         "title": "Number of workers",
                         "type": "integer"
                     },
-                    "max_concurrent_file_uploads": {
-                        "default": 5,
-                        "description": "Maximum number of file uploads (POST /v1/files) processed concurrently per worker. Each in-flight upload can hold up to the configured maximum file size in memory, so this bounds worst-case memory usage from concurrent uploads. Additional uploads are rejected with 429 until a slot frees up.",
-                        "minimum": 0,
-                        "title": "Maximum concurrent file uploads",
-                        "type": "integer"
-                    },
-                    "max_concurrent_vector_store_attaches": {
-                        "default": 5,
-                        "description": "Maximum number of vector store file attachments (POST /v1/vector-stores/{id}/files) processed concurrently per worker. Each in-flight attachment re-reads and chunks the source file, so this bounds worst-case memory usage independently of max_concurrent_file_uploads. Additional attachments are rejected with 429 until a slot frees up.",
-                        "minimum": 0,
-                        "title": "Maximum concurrent vector store file attachments",
-                        "type": "integer"
-                    },
-                    "delete_file_after_vector_store_attach": {
-                        "default": false,
-                        "description": "When true, deletes a file (POST /v1/files) once it has been successfully attached to a vector store, since the vector store keeps its own chunked/embedded copy of the content. Defaults to false to match the OpenAI Files API, where a file remains reusable across multiple vector stores until the caller explicitly deletes it - enabling this makes attached files single-use: re-attaching the same file_id to another vector store will fail once it has been deleted.",
-                        "title": "Delete file after vector store attach",
-                        "type": "boolean"
-                    },
                     "color_log": {
                         "default": true,
                         "description": "Enables colorized logging",
@@ -6115,27 +5878,6 @@
                 "title": "ShieldsResponse",
                 "type": "object"
             },
-            "SkillMetadata": {
-                "description": "Metadata describing a single loaded agent skill.\n\nAttributes:\n    name: Unique name of the skill.\n    description: Human readable description of what the skill does.",
-                "properties": {
-                    "name": {
-                        "description": "Unique name of the skill",
-                        "title": "Name",
-                        "type": "string"
-                    },
-                    "description": {
-                        "description": "Human readable description of what the skill does",
-                        "title": "Description",
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "name",
-                    "description"
-                ],
-                "title": "SkillMetadata",
-                "type": "object"
-            },
             "SkillsConfiguration": {
                 "additionalProperties": false,
                 "description": "Agent skills configuration.\n\nSpecifies paths to skill directories. Skill metadata (name, description)\nis read from SKILL.md frontmatter at startup.\n\nEach path can point to either:\n- A directory containing a SKILL.md file (single skill)\n- A directory containing subdirectories with SKILL.md files (multiple skills)\n\nPaths are validated at startup to ensure they exist and contain valid SKILL.md files.",
@@ -6151,38 +5893,6 @@
                     }
                 },
                 "title": "SkillsConfiguration",
-                "type": "object"
-            },
-            "SkillsResponse": {
-                "description": "Model representing a response to skills request.\n\nAttributes:\n    skills: List of loaded skills with metadata (name and description).",
-                "examples": [
-                    {
-                        "skills": [
-                            {
-                                "description": "Review code for quality and security",
-                                "name": "code-review"
-                            },
-                            {
-                                "description": "Troubleshoot OpenShift cluster issues",
-                                "name": "openshift-troubleshooting"
-                            }
-                        ]
-                    }
-                ],
-                "properties": {
-                    "skills": {
-                        "description": "List of loaded skills with metadata",
-                        "items": {
-                            "$ref": "`#/components/schemas/`SkillMetadata"
-                        },
-                        "title": "Skills",
-                        "type": "array"
-                    }
-                },
-                "required": [
-                    "skills"
-                ],
-                "title": "SkillsResponse",
                 "type": "object"
             },
             "SplunkConfiguration": {
@@ -6323,7 +6033,7 @@
             "StreamingQueryResponse": {
                 "description": "Documentation-only model for streaming query responses using Server-Sent Events (SSE).",
                 "examples": [
-                    "data: {\"event\": \"start\", \"data\": {\"conversation_id\": \"123e4567-e89b-12d3-a456-426614174000\", \"request_id\": \"123e4567-e89b-12d3-a456-426614174001\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 0, \"token\": \"No Violation\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 1, \"token\": \"\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 2, \"token\": \"Hello\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 3, \"token\": \"!\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 4, \"token\": \" How\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 5, \"token\": \" can\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 6, \"token\": \" I\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 7, \"token\": \" assist\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 8, \"token\": \" you\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 9, \"token\": \" today\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 10, \"token\": \"?\"}}\n\ndata: {\"event\": \"turn_complete\", \"data\": {\"token\": \"Hello! How can I assist you today?\"}}\n\ndata: {\"event\": \"end\", \"data\": {\"referenced_documents\": [], \"truncated\": null, \"context_status\": \"full\", \"input_tokens\": 11, \"output_tokens\": 19}, \"available_quotas\": {}}\n\n"
+                    "data: {\"event\": \"start\", \"data\": {\"conversation_id\": \"123e4567-e89b-12d3-a456-426614174000\", \"request_id\": \"123e4567-e89b-12d3-a456-426614174001\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 0, \"token\": \"No Violation\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 1, \"token\": \"\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 2, \"token\": \"Hello\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 3, \"token\": \"!\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 4, \"token\": \" How\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 5, \"token\": \" can\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 6, \"token\": \" I\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 7, \"token\": \" assist\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 8, \"token\": \" you\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 9, \"token\": \" today\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 10, \"token\": \"?\"}}\n\ndata: {\"event\": \"turn_complete\", \"data\": {\"token\": \"Hello! How can I assist you today?\"}}\n\ndata: {\"event\": \"end\", \"data\": {\"referenced_documents\": [], \"truncated\": null, \"input_tokens\": 11, \"output_tokens\": 19}, \"available_quotas\": {}}\n\n"
                 ],
                 "properties": {},
                 "title": "StreamingQueryResponse",
@@ -6516,10 +6226,10 @@
             },
             "UnifiedInferenceProvider": {
                 "additionalProperties": false,
-                "description": "A high-level inference provider entry for unified-mode synthesis.\n\nOperators describe inference providers at this high level (backend-agnostic\nvocabulary) instead of authoring raw OGX provider blocks. The\nsynthesizer (`apply_high_level_inference`) expands each entry into an OGX\n`providers.inference` entry, mapping `type` to a `provider_type` and\nemitting `${env.<VAR>}` references for secrets (never literal values).\n\nAttributes:\n    type: Canonical provider identifier. Vendor-neutral so it survives a\n        future backend change; each backend-specific synthesizer maps it to\n        its own provider vocabulary.\n    id: Optional identifier emitted as the OGX provider_id. When\n        omitted, synthesized as type with underscores hyphenated. If set,\n        must be non-empty after stripping whitespace and may contain only\n        lowercase letters, digits, underscores, and hyphens.\n    api_key_env: Name of the environment variable holding the provider API\n        key. Emitted verbatim as `${env.<name>}` so the secret never lands\n        on disk resolved.\n    allowed_models: Optional allow-list of model identifiers passed through\n        to the synthesized provider config.\n    extra: Additional provider-config keys merged verbatim into the\n        synthesized provider's `config` block \u2014 an escape hatch for\n        provider-specific knobs not modeled here.",
+                "description": "A high-level inference provider entry for unified-mode synthesis.\n\nOperators describe inference providers at this high level (backend-agnostic\nvocabulary) instead of authoring raw Llama Stack provider blocks. The\nsynthesizer (`apply_high_level_inference`) expands each entry into a Llama\nStack `providers.inference` entry, mapping `type` to a `provider_type` and\nemitting `${env.<VAR>}` references for secrets (never literal values).\n\nAttributes:\n    type: Canonical provider identifier. Vendor-neutral so it survives a\n        future backend change; each backend-specific synthesizer maps it to\n        its own provider vocabulary.\n    id: Optional identifier emitted as the Llama Stack provider_id. When\n        omitted, synthesized as type with underscores hyphenated. If set,\n        must be non-empty after stripping whitespace and may contain only\n        lowercase letters, digits, underscores, and hyphens.\n    api_key_env: Name of the environment variable holding the provider API\n        key. Emitted verbatim as `${env.<name>}` so the secret never lands\n        on disk resolved.\n    allowed_models: Optional allow-list of model identifiers passed through\n        to the synthesized provider config.\n    extra: Additional provider-config keys merged verbatim into the\n        synthesized provider's `config` block \u2014 an escape hatch for\n        provider-specific knobs not modeled here.",
                 "properties": {
                     "type": {
-                        "description": "Canonical, backend-agnostic provider identifier mapped to an OGX provider_type by the synthesizer.",
+                        "description": "Canonical, backend-agnostic provider identifier mapped to a Llama Stack provider_type by the synthesizer.",
                         "enum": [
                             "openai",
                             "ollama",
@@ -6538,7 +6248,7 @@
                         "type": "string",
                         "nullable": true,
                         "default": null,
-                        "description": "Optional identifier emitted as the OGX provider_id. When omitted, synthesized as type with underscores hyphenated. If set, must be non-empty after stripping whitespace and may contain only lowercase letters, digits, underscores, and hyphens.",
+                        "description": "Optional identifier emitted as the Llama Stack provider_id. When omitted, synthesized as type with underscores hyphenated. If set, must be non-empty after stripping whitespace and may contain only lowercase letters, digits, underscores, and hyphens.",
                         "title": "Provider ID"
                     },
                     "api_key_env": {
@@ -6568,17 +6278,16 @@
                 "title": "UnifiedInferenceProvider",
                 "type": "object"
             },
-            "UnifiedOgxConfig": {
+            "UnifiedLlamaStackConfig": {
                 "additionalProperties": false,
-                "description": "Backend-specific knobs for unified-mode OGX synthesis.\n\nPer Decision S5 of the design spike, backend-agnostic high-level sections\n(inference, ...) live at the configuration root, not here. This block holds\nonly the OGX-specific synthesis controls: which baseline to start\nfrom, an optional profile file, and a raw native_override escape hatch.\n\nAttributes:\n    baseline: Synthesis starting point. \"default\" begins from LCORE's\n        built-in baseline (src/data/default_run.yaml) including the\n        conditional OpenAI inference provider. \"byo-llm\" begins from the\n        same file with that OpenAI row removed. \"empty\" begins from an\n        empty dict (used by the migration tool for an exact round-trip).\n        Ignored when `profile` is set.\n    profile: Optional path to a user-authored run.yaml-shaped file used as\n        the synthesis baseline. Relative paths resolve against the directory\n        of the loaded lightspeed-stack.yaml.\n    native_override: Raw OGX schema deep-merged last (maps merge\n        recursively, lists and scalars replace). The escape hatch for\n        anything the high-level sections do not express.",
+                "description": "Backend-specific knobs for unified-mode Llama Stack synthesis.\n\nPer Decision S5 of the design spike, backend-agnostic high-level sections\n(inference, ...) live at the configuration root, not here. This block holds\nonly the Llama-Stack-specific synthesis controls: which baseline to start\nfrom, an optional profile file, and a raw native_override escape hatch.\n\nAttributes:\n    baseline: Synthesis starting point. \"default\" begins from LCORE's\n        built-in baseline (src/data/default_run.yaml); \"empty\" begins from\n        an empty dict (used by the migration tool for an exact round-trip).\n        Ignored when `profile` is set.\n    profile: Optional path to a user-authored run.yaml-shaped file used as\n        the synthesis baseline. Relative paths resolve against the directory\n        of the loaded lightspeed-stack.yaml.\n    native_override: Raw Llama Stack schema deep-merged last (maps merge\n        recursively, lists and scalars replace). The escape hatch for\n        anything the high-level sections do not express.",
                 "properties": {
                     "baseline": {
                         "default": "default",
-                        "description": "Synthesis starting point: 'default' uses LCORE's built-in baseline including the conditional OpenAI provider, 'byo-llm' uses the same baseline without that OpenAI row, 'empty' starts from {}. Ignored when 'profile' is set.",
+                        "description": "Synthesis starting point: 'default' uses LCORE's built-in baseline, 'empty' starts from {}. Ignored when 'profile' is set.",
                         "enum": [
                             "default",
-                            "empty",
-                            "byo-llm"
+                            "empty"
                         ],
                         "title": "Baseline selector",
                         "type": "string"
@@ -6592,12 +6301,12 @@
                     },
                     "native_override": {
                         "additionalProperties": true,
-                        "description": "Raw OGX schema deep-merged last (maps merge recursively; lists and scalars replace).",
+                        "description": "Raw Llama Stack schema deep-merged last (maps merge recursively; lists and scalars replace).",
                         "title": "Native override",
                         "type": "object"
                     }
                 },
-                "title": "UnifiedOgxConfig",
+                "title": "UnifiedLlamaStackConfig",
                 "type": "object"
             },
             "UserDataCollection": {
@@ -6636,17 +6345,17 @@
             },
             "VectorStoreConfiguration": {
                 "additionalProperties": false,
-                "description": "Configuration for dynamic vector-store providers.\n\nMirrors ``InferenceConfiguration``: a providers list plus a sibling\n``default_provider`` pointer, rather than a per-entry default flag.\n\nAttributes:\n    default_provider: Provider id used for vector_stores.default_* in the\n        synthesized OGX config. Required when providers is\n        non-empty; must match one of providers[].id. Must be omitted when\n        providers is empty.\n    providers: Dynamic vector-store provider capacity for runtime\n        POST /v1/vector-stores creates. Not the same as rag.byok.stores (static\n        registered corpora).",
+                "description": "Configuration for dynamic vector-store providers.\n\nMirrors ``InferenceConfiguration``: a providers list plus a sibling\n``default_provider`` pointer, rather than a per-entry default flag.\n\nAttributes:\n    default_provider: Provider id used for vector_stores.default_* in the\n        synthesized Llama Stack config. Required when providers is\n        non-empty; must match one of providers[].id. Must be omitted when\n        providers is empty.\n    providers: Dynamic vector-store provider capacity for runtime\n        POST /v1/vector-stores creates. Not the same as byok_rag (static\n        registered corpora).",
                 "properties": {
                     "default_provider": {
                         "type": "string",
                         "nullable": true,
                         "default": null,
-                        "description": "Provider id used for vector_stores.default_* in the synthesized OGX config. Required when providers is non-empty; must match one of providers[].id.",
+                        "description": "Provider id used for vector_stores.default_* in the synthesized Llama Stack config. Required when providers is non-empty; must match one of providers[].id.",
                         "title": "Default provider"
                     },
                     "providers": {
-                        "description": "Dynamic vector-store provider capacity for runtime POST /v1/vector-stores creates. Not the same as rag.byok.stores (static registered corpora).",
+                        "description": "Dynamic vector-store provider capacity for runtime POST /v1/vector-stores creates. Not the same as byok_rag (static registered corpora).",
                         "items": {
                             "discriminator": {
                                 "mapping": {

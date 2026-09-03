@@ -3,10 +3,7 @@
 from typing import Any
 
 import pytest
-from ogx_client import ApiException
-from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
-    InMemorySpanExporter,
-)
+from ogx_client import APIConnectionError
 from pytest_mock import MockerFixture
 
 from app.endpoints.health import (
@@ -205,7 +202,7 @@ class TestGetProvidersHealthStatuses:
         Verify get_providers_health_statuses returns a ProviderHealthStatus
         entry for each provider reported by the client.
 
-        Mocks an OGX client whose providers.list() returns three
+        Mocks an AsyncLlamaStack client whose providers.list() returns three
         providers with distinct health dicts, then asserts the function
         produces three results with:
         - provider1: status OK, message "All good"
@@ -213,7 +210,7 @@ class TestGetProvidersHealthStatuses:
         - unhealthy_provider: status ERROR, message "Connection failed"
         """
         # Mock the imports
-        mock_lsc = mocker.patch("client.ogx.AsyncOgxClientHolder.get_client")
+        mock_lsc = mocker.patch("client.AsyncOgxClientHolder.get_client")
 
         # Mock the client and its methods
         mock_client = mocker.AsyncMock()
@@ -267,18 +264,19 @@ class TestGetProvidersHealthStatuses:
     ) -> None:
         """Test get_providers_health_statuses when connection fails."""
         # Mock the imports
-        mock_lsc = mocker.patch("client.ogx.AsyncOgxClientHolder.get_client")
+        mock_lsc = mocker.patch("client.AsyncOgxClientHolder.get_client")
 
         # Mock get_ogx_client to raise an exception
-        mock_lsc.side_effect = ApiException(status=None, reason="Connection error.")
+        mock_lsc.side_effect = APIConnectionError(request=mocker.Mock())
 
         result = await get_providers_health_statuses()
 
         assert len(result) == 1
         assert result[0].provider_id == "unknown"
         assert result[0].status == HealthStatus.ERROR.value
-        assert result[0].message.startswith("Failed to initialize health check:")
-        assert "Connection error." in (result[0].message or "")
+        assert (
+            result[0].message == "Failed to initialize health check: Connection error."
+        )
 
 
 class TestCheckDefaultModelAvailable:
@@ -378,7 +376,7 @@ class TestReadinessDegradedMode:  # pylint: disable=too-few-public-methods
         mock_instance = mock_tracker.return_value
         mock_instance.is_degraded.return_value = True
         mock_instance.get_degraded_reason.return_value = (
-            "Failed to connect to OGX: Connection error"
+            "Failed to connect to Llama Stack: Connection error"
         )
 
         mock_response = mocker.Mock()
@@ -396,107 +394,3 @@ class TestReadinessDegradedMode:  # pylint: disable=too-few-public-methods
         assert "RAG functionality unavailable" in response.impacts
         assert "Agent tools unavailable" in response.impacts
         assert len(response.providers) == 0
-
-
-class TestHealthEndpointOtel:
-    """OTEL instrumentation tests for health probe endpoints."""
-
-    @pytest.mark.asyncio
-    async def test_readiness_emits_span_on_healthy(
-        self,
-        mocker: MockerFixture,
-        otel: tuple[Any, InMemorySpanExporter],
-    ) -> None:
-        """Test that a healthy readiness check emits a span with status 200."""
-        tracer, exporter = otel
-        mocker.patch("app.endpoints.health.tracer", tracer)
-        mock_authorization_resolvers(mocker)
-
-        mock_tracker = mocker.patch("app.endpoints.health.DegradedModeTracker")
-        mock_tracker.return_value.is_degraded.return_value = False
-
-        mocker.patch(
-            "app.endpoints.health.get_providers_health_statuses",
-            return_value=[
-                ProviderHealthStatus(
-                    provider_id="p1",
-                    status=HealthStatus.OK.value,
-                    message="ok",
-                )
-            ],
-        )
-        mocker.patch(
-            "app.endpoints.health.check_default_model_available",
-            return_value=(True, "Model available"),
-        )
-
-        mock_response = mocker.Mock()
-        auth: AuthTuple = ("uid", "uname", True, "tok")
-
-        await readiness_probe_get_method(auth=auth, response=mock_response)
-
-        spans = exporter.get_finished_spans()
-        assert len(spans) == 1
-        span = spans[0]
-        assert span.name == "readiness.handle_request"
-        assert span.attributes is not None
-        assert span.attributes["http.status_code"] == 200
-
-    @pytest.mark.asyncio
-    async def test_readiness_emits_span_with_503_on_unhealthy(
-        self,
-        mocker: MockerFixture,
-        otel: tuple[Any, InMemorySpanExporter],
-    ) -> None:
-        """Test that an unhealthy readiness check emits a span with status 503."""
-        tracer, exporter = otel
-        mocker.patch("app.endpoints.health.tracer", tracer)
-        mock_authorization_resolvers(mocker)
-
-        mock_tracker = mocker.patch("app.endpoints.health.DegradedModeTracker")
-        mock_tracker.return_value.is_degraded.return_value = False
-
-        mocker.patch(
-            "app.endpoints.health.get_providers_health_statuses",
-            return_value=[
-                ProviderHealthStatus(
-                    provider_id="bad-provider",
-                    status=HealthStatus.ERROR.value,
-                    message="down",
-                )
-            ],
-        )
-
-        mock_response = mocker.Mock()
-        auth: AuthTuple = ("uid", "uname", True, "tok")
-
-        await readiness_probe_get_method(auth=auth, response=mock_response)
-
-        spans = exporter.get_finished_spans()
-        assert len(spans) == 1
-        span = spans[0]
-        assert span.name == "readiness.handle_request"
-        assert span.attributes is not None
-        assert span.attributes["http.status_code"] == 503
-
-    @pytest.mark.asyncio
-    async def test_liveness_emits_span(
-        self,
-        mocker: MockerFixture,
-        otel: tuple[Any, InMemorySpanExporter],
-    ) -> None:
-        """Test that the liveness probe emits a span with status 200."""
-        tracer, exporter = otel
-        mocker.patch("app.endpoints.health.tracer", tracer)
-        mock_authorization_resolvers(mocker)
-
-        auth: AuthTuple = ("uid", "uname", True, "tok")
-
-        await liveness_probe_get_method(auth=auth)
-
-        spans = exporter.get_finished_spans()
-        assert len(spans) == 1
-        span = spans[0]
-        assert span.name == "liveness.handle_request"
-        assert span.attributes is not None
-        assert span.attributes["http.status_code"] == 200

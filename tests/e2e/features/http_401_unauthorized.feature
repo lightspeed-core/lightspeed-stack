@@ -1,4 +1,4 @@
-@Authorized @Feedback @RHIdentity @RBAC
+@e2e_group_3 @Authorized @Feedback @RHIdentity @RBAC
 Feature: HTTP 401 Unauthorized
 
   Aggregates end-to-end scenarios that assert a 401 response when authentication
@@ -13,12 +13,8 @@ Feature: HTTP 401 Unauthorized
 
   # --- query / streaming_query ---
 
-# --- @cfg_authorized ---
-
-
-  @cfg_authorized
   Scenario: Check if LLM responds to sent question with error when not authenticated
-    Given The service uses the lightspeed-stack-authorized.yaml configuration
+    Given The service uses the lightspeed-stack-auth-noop-token.yaml configuration
     And The service is restarted
     When I use "query" to ask question
     """
@@ -35,10 +31,8 @@ Feature: HTTP 401 Unauthorized
     }
     """
 
-
-  @cfg_authorized
   Scenario: Check if LLM responds to sent question with error when bearer token is missing
-    Given The service uses the lightspeed-stack-authorized.yaml configuration
+    Given The service uses the lightspeed-stack-auth-noop-token.yaml configuration
     And The service is restarted
     When I use "query" to ask question
     """
@@ -47,10 +41,8 @@ Feature: HTTP 401 Unauthorized
     Then The status code of the response is 401
     And The body of the response contains No Authorization header found
 
-
-  @cfg_authorized
   Scenario: Check if LLM responds to sent question with error when not authenticated (streaming_query)
-    Given The service uses the lightspeed-stack-authorized.yaml configuration
+    Given The service uses the lightspeed-stack-auth-noop-token.yaml configuration
     And The service is restarted
     When I use "streaming_query" to ask question
     """
@@ -69,10 +61,8 @@ Feature: HTTP 401 Unauthorized
 
   # --- conversations ---
 
-
-  @cfg_authorized
   Scenario: Check if conversations endpoint fails when the auth header is not present
-    Given The service uses the lightspeed-stack-authorized.yaml configuration
+    Given The service uses the lightspeed-stack-auth-noop-token.yaml configuration
     And The service is restarted
     Given I set the Authorization header to Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva
     And I use "query" to ask question with authorization header
@@ -94,10 +84,8 @@ Feature: HTTP 401 Unauthorized
     }
     """
 
-
-  @cfg_authorized
   Scenario: Check if conversations/{conversation_id} endpoint fails when the auth header is not present
-    Given The service uses the lightspeed-stack-authorized.yaml configuration
+    Given The service uses the lightspeed-stack-auth-noop-token.yaml configuration
     And The service is restarted
     Given I set the Authorization header to Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva
     And I use "query" to ask question with authorization header
@@ -121,10 +109,8 @@ Feature: HTTP 401 Unauthorized
 
   # --- FAISS ---
 
-
-  @cfg_authorized
   Scenario: Check if rags endpoints responds with error when not authenticated
-    Given The service uses the lightspeed-stack-authorized.yaml configuration
+    Given The service uses the lightspeed-stack-auth-noop-token.yaml configuration
     And The service is restarted
     When I access REST API endpoint rags using HTTP GET method
     Then The status code of the response is 401
@@ -138,30 +124,10 @@ Feature: HTTP 401 Unauthorized
     }
     """
 
-  # --- skills ---
-
-  @cfg_authorized
-  Scenario: Skills list returns 401 when not authenticated
-    Given The service uses the lightspeed-stack-authorized.yaml configuration
-    And The service is restarted
-    When I access REST API endpoint "skills" using HTTP GET method
-    Then The status code of the response is 401
-    And The body of the response is the following
-    """
-    {
-      "detail": {
-        "response": "Missing or invalid credentials provided by client",
-        "cause": "No Authorization header found"
-      }
-    }
-    """
-
   # --- prompts ---
 
-
-  @cfg_authorized
   Scenario: Prompts list returns 401 when not authenticated
-    Given The service uses the lightspeed-stack-authorized.yaml configuration
+    Given The service uses the lightspeed-stack-auth-noop-token.yaml configuration
     And The service is restarted
     When I access REST API endpoint "prompts" using HTTP GET method
     Then The status code of the response is 401
@@ -175,10 +141,8 @@ Feature: HTTP 401 Unauthorized
     }
     """
 
-
-  @cfg_authorized
   Scenario: Prompts create returns 401 when not authenticated
-    Given The service uses the lightspeed-stack-authorized.yaml configuration
+    Given The service uses the lightspeed-stack-auth-noop-token.yaml configuration
     And The service is restarted
     When I access REST API endpoint "prompts" using HTTP POST method
     """
@@ -187,10 +151,8 @@ Feature: HTTP 401 Unauthorized
     Then The status code of the response is 401
     And The body of the response contains No Authorization header found
 
-
-  @cfg_authorized
   Scenario: Prompts get by id returns 401 when not authenticated
-    Given The service uses the lightspeed-stack-authorized.yaml configuration
+    Given The service uses the lightspeed-stack-auth-noop-token.yaml configuration
     And The service is restarted
     When I access REST API endpoint "prompts/pmpt_5c76d7f7c633ef97477adeb2f642150d8d08e8a6526e9909" using HTTP GET method
     Then The status code of the response is 401
@@ -204,10 +166,8 @@ Feature: HTTP 401 Unauthorized
     }
     """
 
-
-  @cfg_authorized
   Scenario: Prompts update returns 401 when not authenticated
-    Given The service uses the lightspeed-stack-authorized.yaml configuration
+    Given The service uses the lightspeed-stack-auth-noop-token.yaml configuration
     And The service is restarted
     When I access REST API endpoint "prompts/pmpt_5c76d7f7c633ef97477adeb2f642150d8d08e8a6526e9909" using HTTP PUT method
     """
@@ -216,10 +176,8 @@ Feature: HTTP 401 Unauthorized
     Then The status code of the response is 401
     And The body of the response contains No Authorization header found
 
-
-  @cfg_authorized
   Scenario: Prompts delete returns 401 when not authenticated
-    Given The service uses the lightspeed-stack-authorized.yaml configuration
+    Given The service uses the lightspeed-stack-auth-noop-token.yaml configuration
     And The service is restarted
     When I access REST API endpoint "prompts/pmpt_5c76d7f7c633ef97477adeb2f642150d8d08e8a6526e9909" using HTTP DELETE method
     Then The status code of the response is 401
@@ -235,10 +193,8 @@ Feature: HTTP 401 Unauthorized
 
   # --- authorized (noop token) ---
 
-
-  @cfg_authorized
   Scenario: Check if the authorized endpoint fails when user_id and auth header are not provided
-    Given The service uses the lightspeed-stack-authorized.yaml configuration
+    Given The service uses the lightspeed-stack-auth-noop-token.yaml configuration
     And The service is restarted
     When I access endpoint "authorized" using HTTP POST method
     """
@@ -255,10 +211,8 @@ Feature: HTTP 401 Unauthorized
     }
     """
 
-
-  @cfg_authorized
   Scenario: Check if the authorized endpoint works with proper user_id but bearer token is not present
-    Given The service uses the lightspeed-stack-authorized.yaml configuration
+    Given The service uses the lightspeed-stack-auth-noop-token.yaml configuration
     And The service is restarted
     When I access endpoint "authorized" using HTTP POST method with user_id "test_user"
     Then The status code of the response is 401
@@ -272,10 +226,8 @@ Feature: HTTP 401 Unauthorized
     }
     """
 
-
-  @cfg_authorized
   Scenario: Check if the authorized endpoint works when auth token is malformed
-    Given The service uses the lightspeed-stack-authorized.yaml configuration
+    Given The service uses the lightspeed-stack-auth-noop-token.yaml configuration
     And The service is restarted
     When I access endpoint "authorized" using HTTP POST method with user_id "test_user"
     Then The status code of the response is 401
@@ -291,10 +243,8 @@ Feature: HTTP 401 Unauthorized
 
   # --- rlsapi v1 ---
 
-
-  @cfg_authorized
   Scenario: Request without authorization returns 401 (rlsapi infer)
-    Given The service uses the lightspeed-stack-authorized.yaml configuration
+    Given The service uses the lightspeed-stack-auth-noop-token.yaml configuration
     And The service is restarted
     When I use "infer" to ask question
     """
@@ -311,10 +261,8 @@ Feature: HTTP 401 Unauthorized
     }
     """
 
-
-  @cfg_authorized
   Scenario: Request with empty bearer token returns 401 (rlsapi infer)
-    Given The service uses the lightspeed-stack-authorized.yaml configuration
+    Given The service uses the lightspeed-stack-auth-noop-token.yaml configuration
     And The service is restarted
     When I use "infer" to ask question
     """
@@ -323,12 +271,26 @@ Feature: HTTP 401 Unauthorized
     Then The status code of the response is 401
     And The body of the response contains No Authorization header found
 
+  # --- rh-identity ---
+
+  Scenario: Request fails when x-rh-identity header is missing (rh-identity)
+    Given The service uses the lightspeed-stack-auth-rh-identity.yaml configuration
+    And The service is restarted
+    And I remove the auth header
+    When I access endpoint "authorized" using HTTP POST method
+    """
+    {"placeholder":"abc"}
+    """
+    Then The status code of the response is 401
+    And The body of the response is the following
+    """
+    {"detail": "Missing x-rh-identity header"}
+    """
+
   # --- RBAC ---
 
-
-  @cfg_authorized
   Scenario: Request without token returns 401 (RBAC)
-    Given The service uses the lightspeed-stack-authorized.yaml configuration
+    Given The service uses the lightspeed-stack-auth-noop-token.yaml configuration
     And The service is restarted
     And I remove the auth header
     When I access REST API endpoint "models" using HTTP GET method
@@ -343,12 +305,17 @@ Feature: HTTP 401 Unauthorized
     }
     """
 
+  Scenario: Request with malformed Authorization header returns 401 (RBAC)
+    Given The service uses the lightspeed-stack-rbac.yaml configuration
+    And The service is restarted
+    And I set the Authorization header to NotBearer sometoken
+    When I access REST API endpoint "models" using HTTP GET method
+    Then The status code of the response is 401
 
   # --- conversation cache v2 ---
 
-  @cfg_authorized
   Scenario: V2 conversations endpoint fails when auth header is not present
-    Given The service uses the lightspeed-stack-authorized.yaml configuration
+    Given The service uses the lightspeed-stack-auth-noop-token.yaml configuration
     And The service is restarted
     Given REST API service prefix is /v2
     And I remove the auth header
@@ -364,10 +331,8 @@ Feature: HTTP 401 Unauthorized
     }
     """
 
-
-  @cfg_authorized
   Scenario: V2 conversations/{conversation_id} endpoint fails when auth header is not present
-    Given The service uses the lightspeed-stack-authorized.yaml configuration
+    Given The service uses the lightspeed-stack-auth-noop-token.yaml configuration
     And The service is restarted
     Given REST API service prefix is /v1
     And I set the Authorization header to Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva
@@ -391,10 +356,8 @@ Feature: HTTP 401 Unauthorized
     }
     """
 
-
-  @cfg_authorized
   Scenario: V2 conversations/{conversation_id} DELETE endpoint fails when auth header is not present
-    Given The service uses the lightspeed-stack-authorized.yaml configuration
+    Given The service uses the lightspeed-stack-auth-noop-token.yaml configuration
     And The service is restarted
     Given REST API service prefix is /v1
     And I set the Authorization header to Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva
@@ -418,10 +381,8 @@ Feature: HTTP 401 Unauthorized
     }
     """
 
-
-  @cfg_authorized
   Scenario: V2 conversations PUT endpoint fails when auth header is not present
-    Given The service uses the lightspeed-stack-authorized.yaml configuration
+    Given The service uses the lightspeed-stack-auth-noop-token.yaml configuration
     And The service is restarted
     Given REST API service prefix is /v1
     And I set the Authorization header to Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva
@@ -447,10 +408,8 @@ Feature: HTTP 401 Unauthorized
 
   # --- responses ---
 
-
-  @cfg_authorized
   Scenario: Responses returns error when not authenticated
-    Given The service uses the lightspeed-stack-authorized.yaml configuration
+    Given The service uses the lightspeed-stack-auth-noop-token.yaml configuration
     And The service is restarted
     Given The system is in default state
     When I use "responses" to ask question
@@ -468,10 +427,8 @@ Feature: HTTP 401 Unauthorized
     }
     """
 
-
-  @cfg_authorized
   Scenario: Responses returns error when bearer token is missing
-    Given The service uses the lightspeed-stack-authorized.yaml configuration
+    Given The service uses the lightspeed-stack-auth-noop-token.yaml configuration
     And The service is restarted
     Given The system is in default state
     And I set the Authorization header to Bearer
@@ -484,10 +441,8 @@ Feature: HTTP 401 Unauthorized
 
   # --- responses streaming ---
 
-
-  @cfg_authorized
   Scenario: Streaming responses returns error when not authenticated
-    Given The service uses the lightspeed-stack-authorized.yaml configuration
+    Given The service uses the lightspeed-stack-auth-noop-token.yaml configuration
     And The service is restarted
     When I use "responses" to ask question
     """
@@ -504,10 +459,8 @@ Feature: HTTP 401 Unauthorized
     }
     """
 
-
-  @cfg_authorized
   Scenario: Streaming responses returns error when bearer token is missing
-    Given The service uses the lightspeed-stack-authorized.yaml configuration
+    Given The service uses the lightspeed-stack-auth-noop-token.yaml configuration
     And The service is restarted
     When I use "responses" to ask question
     """
@@ -518,10 +471,8 @@ Feature: HTTP 401 Unauthorized
 
   # --- feedback ---
 
-
-  @cfg_authorized
   Scenario: Check if feedback endpoint is not working when not authorized
-    Given The service uses the lightspeed-stack-authorized.yaml configuration
+    Given The service uses the lightspeed-stack-auth-noop-token.yaml configuration
     And The service is restarted
     Given I set the Authorization header to Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva
     And A new conversation is initialized
@@ -546,10 +497,8 @@ Feature: HTTP 401 Unauthorized
     }
     """
 
-
-  @cfg_authorized
   Scenario: Check if update feedback status endpoint is not working when not authorized
-    Given The service uses the lightspeed-stack-authorized.yaml configuration
+    Given The service uses the lightspeed-stack-auth-noop-token.yaml configuration
     And The service is restarted
     And I remove the auth header
     When The feedback is enabled
@@ -563,33 +512,3 @@ Feature: HTTP 401 Unauthorized
         }
     }
     """
-# --- @cfg_rh_identity ---
-
-  @cfg_rh_identity
-  Scenario: Request fails when x-rh-identity header is missing (rh-identity)
-    Given The service uses the lightspeed-stack-rh-identity.yaml configuration
-    And The service is restarted
-    And I remove the auth header
-    When I access endpoint "authorized" using HTTP POST method
-    """
-    {"placeholder":"abc"}
-    """
-    Then The status code of the response is 401
-    And The body of the response is the following
-    """
-    {"detail": "Missing x-rh-identity header"}
-    """
-
-  # --- RBAC ---
-
-
-# --- @cfg_rbac ---
-
-  @cfg_rbac
-  Scenario: Request with malformed Authorization header returns 401 (RBAC)
-    Given The service uses the lightspeed-stack-rbac.yaml configuration
-    And The service is restarted
-    And I set the Authorization header to NotBearer sometoken
-    When I access REST API endpoint "models" using HTTP GET method
-    Then The status code of the response is 401
-

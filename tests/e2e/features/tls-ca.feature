@@ -1,4 +1,4 @@
-@cfg_tls @skip-in-library-mode @skip-in-prow
+@e2e_group_1 @skip-in-library-mode @skip-in-prow
 Feature: TLS configuration — CA certificate verification
   Validate Llama Stack NetworkConfig.tls CA trust settings against the mock HTTPS
   inference provider (standard TLS port).

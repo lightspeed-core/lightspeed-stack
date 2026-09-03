@@ -1,18 +1,11 @@
 """Unit tests for the /authorized REST API endpoint."""
 
-from typing import Any
-
 import pytest
 from fastapi import HTTPException
-from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
-    InMemorySpanExporter,
-)
-from pytest_mock import MockerFixture
 from starlette.datastructures import Headers
 
 from app.endpoints.authorized import authorized_endpoint_handler
 from authentication.utils import extract_user_token
-from utils.otel_tracing import SpanAttributes
 
 MOCK_AUTH = ("test-id", "test-user", True, "token")
 
@@ -91,26 +84,3 @@ async def test_authorized_dependency_unauthorized() -> None:
     assert exc_info.value.detail["cause"] == (  # type: ignore[index]
         "No token found in Authorization header"
     )
-
-
-@pytest.mark.asyncio
-async def test_authorized_emits_otel_span_with_user_id(
-    mocker: MockerFixture,
-    otel: tuple[Any, InMemorySpanExporter],
-) -> None:
-    """Test that the handler emits a span with anonymized user ID."""
-    tracer, exporter = otel
-    mocker.patch("app.endpoints.authorized.tracer", tracer)
-    mocker.patch(
-        "app.endpoints.authorized.anonymize_value",
-        side_effect=lambda v: f"[anon:{v}]",
-    )
-
-    await authorized_endpoint_handler(auth=MOCK_AUTH)
-
-    spans = exporter.get_finished_spans()
-    assert len(spans) == 1
-    span = spans[0]
-    assert span.name == "authorized.handle_request"
-    assert span.attributes is not None
-    assert span.attributes[SpanAttributes.USER_ID] == "[anon:test-id]"

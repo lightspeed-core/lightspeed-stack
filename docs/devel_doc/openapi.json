@@ -172,7 +172,7 @@
                     "info"
                 ],
                 "summary": "Info Endpoint Handler",
-                "description": "Handle request to the /info endpoint.\n\nProcess GET requests to the /info endpoint, returning the\nservice name, version and OGX version.\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- auth: Authentication tuple from the auth dependency (used by middleware).\n\n### Raises:\n- HTTPException: with status 401 for unauthorized access.\n- HTTPException: with status 403 if permission is denied.\n- HTTPException: with status 503 and a detail object containing `response`\n  and `cause` when unable to connect to OGX.\n\n### Returns:\n- InfoResponse: An object containing the service's name and version.",
+                "description": "Handle request to the /info endpoint.\n\nProcess GET requests to the /info endpoint, returning the\nservice name, version and Llama-stack version.\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- auth: Authentication tuple from the auth dependency (used by middleware).\n\n### Raises:\n- HTTPException: with status 401 for unauthorized access.\n- HTTPException: with status 403 if permission is denied.\n- HTTPException: with status 503 and a detail object containing `response`\n  and `cause` when unable to connect to Llama Stack.\n\n### Returns:\n- InfoResponse: An object containing the service's name and version.",
                 "operationId": "info_endpoint_handler_v1_info_get",
                 "responses": {
                     "200": {
@@ -183,8 +183,8 @@
                                     "$ref": "#/components/schemas/InfoResponse"
                                 },
                                 "example": {
+                                    "llama_stack_version": "1.0.0",
                                     "name": "Lightspeed Stack",
-                                    "ogx_version": "1.0.0",
                                     "service_version": "1.0.0"
                                 }
                             }
@@ -294,7 +294,7 @@
                                     "$ref": "#/components/schemas/ServiceUnavailableResponse"
                                 },
                                 "examples": {
-                                    "OGX": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
@@ -323,7 +323,7 @@
                     "models"
                 ],
                 "summary": "Models Endpoint Handler",
-                "description": "Handle requests to the /models endpoint.\n\nProcess GET requests to the /models endpoint, returning a list of available\nmodels from the OGX service. It is possible to specify \"model_type\"\nquery parameter that is used as a filter. For example, if model type is set\nto \"llm\", only LLM models will be returned:\n\n    curl http://localhost:8080/v1/models?model_type=llm\n\nThe \"model_type\" query parameter is optional. When not specified, all models\nwill be returned.\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- auth: Authentication tuple from the auth dependency (used by middleware).\n- model_type: Optional filter to return only models matching this type.\n\n### Raises:\n- HTTPException: with status 401 for unauthorized access.\n- HTTPException: with status 403 if permission is denied.\n- HTTPException: with status 422 if model_type parameter is\n  improper.\n- HTTPException: with status 500 and a detail object containing `response`\n  and `cause` when service configuration is wrong or incomplete.\n- HTTPException: with status 503 and a detail object containing `response`\n  and `cause` when unable to connect to OGX.\n\n### Returns:\n- ModelsResponse: An object containing the list of available models.",
+                "description": "Handle requests to the /models endpoint.\n\nProcess GET requests to the /models endpoint, returning a list of available\nmodels from the Llama Stack service. It is possible to specify \"model_type\"\nquery parameter that is used as a filter. For example, if model type is set\nto \"llm\", only LLM models will be returned:\n\n    curl http://localhost:8080/v1/models?model_type=llm\n\nThe \"model_type\" query parameter is optional. When not specified, all models\nwill be returned.\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- auth: Authentication tuple from the auth dependency (used by middleware).\n- model_type: Optional filter to return only models matching this type.\n\n### Raises:\n- HTTPException: with status 401 for unauthorized access.\n- HTTPException: with status 403 if permission is denied.\n- HTTPException: with status 422 if model_type parameter is\n  improper.\n- HTTPException: with status 500 and a detail object containing `response`\n  and `cause` when service configuration is wrong or incomplete.\n- HTTPException: with status 503 and a detail object containing `response`\n  and `cause` when unable to connect to Llama Stack.\n\n### Returns:\n- ModelsResponse: An object containing the list of available models.",
                 "operationId": "models_endpoint_handler_v1_models_get",
                 "parameters": [
                     {
@@ -494,7 +494,7 @@
                         "content": {
                             "application/json": {
                                 "examples": {
-                                    "OGX": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
@@ -536,7 +536,7 @@
                     "tools"
                 ],
                 "summary": "Tools Endpoint Handler",
-                "description": "Handle requests to the /tools endpoint.\n\nProcess GET requests to the /tools endpoint, returning a consolidated list of\navailable tools from all configured MCP servers.\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- auth: Authentication tuple from the auth dependency (used by middleware).\n- mcp_headers: Headers that should be passed to MCP servers.\n\n### Raises:\n- HTTPException: with status 401 for unauthorized access.\n- HTTPException: with status 403 if permission is denied.\n- HTTPException: with status 422 if mcp_headers parameter is\n  improper.\n- HTTPException: with status 500 and a detail object containing `response`\n  and `cause` when service configuration is wrong or incomplete.\n- HTTPException: with status 503 and a detail object containing `response`\n  and `cause` when unable to connect to OGX.\n\n### Returns:\n- ToolsResponse: An object containing the consolidated list of available\n  tools with metadata including tool name, description, parameters, and\n  server source.",
+                "description": "Handle requests to the /tools endpoint.\n\nProcess GET requests to the /tools endpoint, returning a consolidated list of\navailable tools from all configured MCP servers.\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- auth: Authentication tuple from the auth dependency (used by middleware).\n- mcp_headers: Headers that should be passed to MCP servers.\n\n### Raises:\n- HTTPException: with status 401 for unauthorized access.\n- HTTPException: with status 403 if permission is denied.\n- HTTPException: with status 422 if mcp_headers parameter is\n  improper.\n- HTTPException: with status 500 and a detail object containing `response`\n  and `cause` when service configuration is wrong or incomplete.\n- HTTPException: with status 503 and a detail object containing `response`\n  and `cause` when unable to connect to Llama Stack.\n\n### Returns:\n- ToolsResponse: An object containing the consolidated list of available\n  tools with metadata including tool name, description, parameters, and\n  server source.",
                 "operationId": "tools_endpoint_handler_v1_tools_get",
                 "responses": {
                     "200": {
@@ -693,7 +693,7 @@
                                     "$ref": "#/components/schemas/ServiceUnavailableResponse"
                                 },
                                 "examples": {
-                                    "OGX": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
@@ -1584,163 +1584,13 @@
                 }
             }
         },
-        "/v1/skills": {
-            "get": {
-                "tags": [
-                    "skills"
-                ],
-                "summary": "Skills Endpoint Handler",
-                "description": "Handle requests to the /skills endpoint.\n\nProcess GET requests to the /skills endpoint, returning a list of loaded\nagent skills with their metadata (name, description).\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- auth: Authentication tuple from the auth dependency (used by middleware).\n\n### Raises:\n- HTTPException: with status 401 for unauthorized access.\n- HTTPException: with status 403 if permission is denied.\n- HTTPException: with status 500 and a detail object containing `response`\n  and `cause` when service configuration is wrong or incomplete.\n\n### Returns:\n- SkillsResponse: An object containing the list of loaded skills.",
-                "operationId": "skills_endpoint_handler_v1_skills_get",
-                "responses": {
-                    "200": {
-                        "description": "Successful response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/SkillsResponse"
-                                },
-                                "example": {
-                                    "skills": [
-                                        {
-                                            "description": "Review code for quality and security",
-                                            "name": "code-review"
-                                        },
-                                        {
-                                            "description": "Troubleshoot OpenShift cluster issues",
-                                            "name": "openshift-troubleshooting"
-                                        }
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/UnauthorizedResponse"
-                                },
-                                "examples": {
-                                    "missing header": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "No Authorization header found",
-                                                "response": "Missing or invalid credentials provided by client"
-                                            }
-                                        }
-                                    },
-                                    "missing token": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "No token found in Authorization header",
-                                                "response": "Missing or invalid credentials provided by client"
-                                            }
-                                        }
-                                    },
-                                    "expired token": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Token has expired",
-                                                "response": "Missing or invalid credentials provided by client"
-                                            }
-                                        }
-                                    },
-                                    "invalid signature": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Invalid token signature",
-                                                "response": "Missing or invalid credentials provided by client"
-                                            }
-                                        }
-                                    },
-                                    "invalid key": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Token signed by unknown key",
-                                                "response": "Missing or invalid credentials provided by client"
-                                            }
-                                        }
-                                    },
-                                    "missing claim": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Token missing claim: user_id",
-                                                "response": "Missing or invalid credentials provided by client"
-                                            }
-                                        }
-                                    },
-                                    "invalid k8s token": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Invalid or expired Kubernetes token",
-                                                "response": "Missing or invalid credentials provided by client"
-                                            }
-                                        }
-                                    },
-                                    "invalid jwk token": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Authentication key server returned invalid data",
-                                                "response": "Missing or invalid credentials provided by client"
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    "403": {
-                        "description": "Permission denied",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ForbiddenResponse"
-                                },
-                                "examples": {
-                                    "endpoint": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "User 6789 is not authorized to access this endpoint.",
-                                                "response": "User does not have permission to access this endpoint"
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/InternalServerErrorResponse"
-                                },
-                                "examples": {
-                                    "configuration": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Lightspeed Stack configuration has not been initialized.",
-                                                "response": "Configuration is not loaded"
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/v1/providers": {
             "get": {
                 "tags": [
                     "providers"
                 ],
                 "summary": "Providers Endpoint Handler",
-                "description": "List all available providers grouped by API type.\n\n### Parameters:\n- request: The incoming HTTP request.\n- auth: Authentication tuple from the auth dependency.\n\n### Raises:\n- HTTPException: with status 401 for unauthorized access.\n- HTTPException: with status 403 if permission is denied.\n- HTTPException: with status 500 and a detail object containing `response`\n  and `cause` when service configuration is wrong or incomplete.\n- HTTPException: with status 503 and a detail object containing `response`\n  and `cause` when unable to connect to OGX.\n\n### Returns:\n- ProvidersListResponse: Mapping from API type to list of providers.",
+                "description": "List all available providers grouped by API type.\n\n### Parameters:\n- request: The incoming HTTP request.\n- auth: Authentication tuple from the auth dependency.\n\n### Raises:\n- HTTPException: with status 401 for unauthorized access.\n- HTTPException: with status 403 if permission is denied.\n- HTTPException: with status 500 and a detail object containing `response`\n  and `cause` when service configuration is wrong or incomplete.\n- HTTPException: with status 503 and a detail object containing `response`\n  and `cause` when unable to connect to Llama Stack.\n\n### Returns:\n- ProvidersListResponse: Mapping from API type to list of providers.",
                 "operationId": "providers_endpoint_handler_v1_providers_get",
                 "responses": {
                     "200": {
@@ -1897,7 +1747,7 @@
                                     "$ref": "#/components/schemas/ServiceUnavailableResponse"
                                 },
                                 "examples": {
-                                    "OGX": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
@@ -1926,7 +1776,7 @@
                     "providers"
                 ],
                 "summary": "Get Provider Endpoint Handler",
-                "description": "Retrieve a single provider identified by its unique ID.\n\n### Parameters:\n- request: The incoming HTTP request.\n- provider_id: Provider identification string\n- auth: Authentication tuple from the auth dependency.\n\n### Raises:\n- HTTPException: with status 401 for unauthorized access.\n- HTTPException: with status 403 if permission is denied.\n- HTTPException: with status 404 if provider is not found.\n- HTTPException: with status 500 and a detail object containing `response`\n  and `cause` when service configuration is wrong or incomplete.\n- HTTPException: with status 503 and a detail object containing `response`\n  and `cause` when unable to connect to OGX.\n\n### Returns:\n- ProviderResponse: Provider details.",
+                "description": "Retrieve a single provider identified by its unique ID.\n\n### Parameters:\n- request: The incoming HTTP request.\n- provider_id: Provider identification string\n- auth: Authentication tuple from the auth dependency.\n\n### Raises:\n- HTTPException: with status 401 for unauthorized access.\n- HTTPException: with status 403 if permission is denied.\n- HTTPException: with status 404 if provider is not found.\n- HTTPException: with status 500 and a detail object containing `response`\n  and `cause` when service configuration is wrong or incomplete.\n- HTTPException: with status 503 and a detail object containing `response`\n  and `cause` when unable to connect to Llama Stack.\n\n### Returns:\n- ProviderResponse: Provider details.",
                 "operationId": "get_provider_endpoint_handler_v1_providers__provider_id__get",
                 "parameters": [
                     {
@@ -2103,7 +1953,7 @@
                         "content": {
                             "application/json": {
                                 "examples": {
-                                    "OGX": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
@@ -2145,7 +1995,7 @@
                     "prompts"
                 ],
                 "summary": "List Prompts Handler",
-                "description": "Handle requests to the GET /prompts endpoint.\n\nProcess GET requests that list all stored prompt templates from the OGX\nservice. For example:\n\n    curl http://localhost:8080/v1/prompts\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- auth: Authentication tuple from the auth dependency (used by middleware).\n\n### Raises:\n- HTTPException: with status 401 for unauthorized access.\n- HTTPException: with status 403 if permission is denied.\n- HTTPException: with status 500 and a detail object containing `response`\n  and `cause` when service configuration is wrong or incomplete.\n- HTTPException: with status 503 and a detail object containing `response`\n  and `cause` when unable to connect to OGX.\n\n### Returns:\n- PromptsListResponse: An object containing the list of prompts.",
+                "description": "Handle requests to the GET /prompts endpoint.\n\nProcess GET requests that list all stored prompt templates from the Llama\nStack service. For example:\n\n    curl http://localhost:8080/v1/prompts\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- auth: Authentication tuple from the auth dependency (used by middleware).\n\n### Raises:\n- HTTPException: with status 401 for unauthorized access.\n- HTTPException: with status 403 if permission is denied.\n- HTTPException: with status 500 and a detail object containing `response`\n  and `cause` when service configuration is wrong or incomplete.\n- HTTPException: with status 503 and a detail object containing `response`\n  and `cause` when unable to connect to Llama Stack.\n\n### Returns:\n- PromptsListResponse: An object containing the list of prompts.",
                 "operationId": "list_prompts_handler_v1_prompts_get",
                 "responses": {
                     "200": {
@@ -2303,7 +2153,7 @@
                                     "$ref": "#/components/schemas/ServiceUnavailableResponse"
                                 },
                                 "examples": {
-                                    "OGX": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
@@ -2330,7 +2180,7 @@
                     "prompts"
                 ],
                 "summary": "Create Prompt Handler",
-                "description": "Handle requests to the POST /prompts endpoint.\n\nProcess requests to create a stored prompt template in OGX. The\nbody must include the prompt text and may include template variable names.\nFor example:\n\n    curl -X POST http://localhost:8080/v1/prompts \\\\\n      -H 'Content-Type: application/json' \\\\\n      -d '{\"prompt\": \"Hello {{name}}\", \"variables\": [\"name\"]}'\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- auth: Authentication tuple from the auth dependency (used by middleware).\n- body: Prompt creation parameters.\n\n### Raises:\n- HTTPException: with status 401 for unauthorized access.\n- HTTPException: with status 403 if permission is denied.\n- HTTPException: with status 422 if the request body is improper.\n- HTTPException: with status 500 and a detail object containing `response`\n  and `cause` when service configuration is wrong or incomplete.\n- HTTPException: with status 503 and a detail object containing `response`\n  and `cause` when unable to connect to OGX.\n\n### Returns:\n- PromptResourceResponse: The created prompt as returned by OGX.",
+                "description": "Handle requests to the POST /prompts endpoint.\n\nProcess requests to create a stored prompt template in Llama Stack. The\nbody must include the prompt text and may include template variable names.\nFor example:\n\n    curl -X POST http://localhost:8080/v1/prompts \\\\\n      -H 'Content-Type: application/json' \\\\\n      -d '{\"prompt\": \"Hello {{name}}\", \"variables\": [\"name\"]}'\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- auth: Authentication tuple from the auth dependency (used by middleware).\n- body: Prompt creation parameters.\n\n### Raises:\n- HTTPException: with status 401 for unauthorized access.\n- HTTPException: with status 403 if permission is denied.\n- HTTPException: with status 422 if the request body is improper.\n- HTTPException: with status 500 and a detail object containing `response`\n  and `cause` when service configuration is wrong or incomplete.\n- HTTPException: with status 503 and a detail object containing `response`\n  and `cause` when unable to connect to Llama Stack.\n\n### Returns:\n- PromptResourceResponse: The created prompt as returned by Llama Stack.",
                 "operationId": "create_prompt_handler_v1_prompts_post",
                 "requestBody": {
                     "content": {
@@ -2494,7 +2344,7 @@
                                     "$ref": "#/components/schemas/ServiceUnavailableResponse"
                                 },
                                 "examples": {
-                                    "OGX": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
@@ -2533,7 +2383,7 @@
                     "prompts"
                 ],
                 "summary": "Get Prompt Handler",
-                "description": "Handle requests to the GET /prompts/{prompt_id} endpoint.\n\nProcess GET requests to retrieve a single prompt by identifier. The\n``version`` query parameter is optional; when omitted, the latest version is\nreturned. For example:\n\n    curl http://localhost:8080/v1/prompts/pmpt_abc123?version=1\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- prompt_id: The OGX prompt identifier.\n- auth: Authentication tuple from the auth dependency (used by middleware).\n- version: Optional version number (latest when omitted).\n\n### Raises:\n- HTTPException: with status 401 for unauthorized access.\n- HTTPException: with status 403 if permission is denied.\n- HTTPException: with status 404 if prompt is not found.\n- HTTPException: with status 500 and a detail object containing `response`\n  and `cause` when service configuration is wrong or incomplete.\n- HTTPException: with status 503 and a detail object containing `response`\n  and `cause` when unable to connect to OGX.\n\n### Returns:\n- PromptResourceResponse: The requested prompt object.",
+                "description": "Handle requests to the GET /prompts/{prompt_id} endpoint.\n\nProcess GET requests to retrieve a single prompt by identifier. The\n``version`` query parameter is optional; when omitted, the latest version is\nreturned. For example:\n\n    curl http://localhost:8080/v1/prompts/pmpt_abc123?version=1\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- prompt_id: The Llama Stack prompt identifier.\n- auth: Authentication tuple from the auth dependency (used by middleware).\n- version: Optional version number (latest when omitted).\n\n### Raises:\n- HTTPException: with status 401 for unauthorized access.\n- HTTPException: with status 403 if permission is denied.\n- HTTPException: with status 404 if prompt is not found.\n- HTTPException: with status 500 and a detail object containing `response`\n  and `cause` when service configuration is wrong or incomplete.\n- HTTPException: with status 503 and a detail object containing `response`\n  and `cause` when unable to connect to Llama Stack.\n\n### Returns:\n- PromptResourceResponse: The requested prompt object.",
                 "operationId": "get_prompt_handler_v1_prompts__prompt_id__get",
                 "parameters": [
                     {
@@ -2751,7 +2601,7 @@
                         "content": {
                             "application/json": {
                                 "examples": {
-                                    "OGX": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
@@ -2791,7 +2641,7 @@
                     "prompts"
                 ],
                 "summary": "Update Prompt Handler",
-                "description": "Handle requests to the PUT /prompts/{prompt_id} endpoint.\n\nProcess requests to update a stored prompt; OGX increments the\nversion. The body includes the new text, the current version being\nreplaced, and optional fields such as ``set_as_default`` and ``variables``.\nFor example:\n\n    curl -X PUT http://localhost:8080/v1/prompts/pmpt_abc123 \\\\\n      -H 'Content-Type: application/json' \\\\\n      -d '{\"prompt\": \"Hi\", \"version\": 1, \"set_as_default\": true}'\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- prompt_id: The OGX prompt identifier.\n- auth: Authentication tuple from the auth dependency (used by middleware).\n- body: Prompt update parameters.\n\n### Raises:\n- HTTPException: with status 400 when request format is not valid.\n- HTTPException: with status 401 for unauthorized access.\n- HTTPException: with status 403 if permission is denied.\n- HTTPException: with status 404 if prompt is not found.\n- HTTPException: with status 422 if request payload is corrupted.\n- HTTPException: with status 500 and a detail object containing `response`\n  and `cause` when service configuration is wrong or incomplete.\n- HTTPException: with status 503 and a detail object containing `response`\n  and `cause` when unable to connect to OGX.\n\n### Returns:\n- PromptResourceResponse: The updated prompt object returned by OGX.",
+                "description": "Handle requests to the PUT /prompts/{prompt_id} endpoint.\n\nProcess requests to update a stored prompt; Llama Stack increments the\nversion. The body includes the new text, the current version being\nreplaced, and optional fields such as ``set_as_default`` and ``variables``.\nFor example:\n\n    curl -X PUT http://localhost:8080/v1/prompts/pmpt_abc123 \\\\\n      -H 'Content-Type: application/json' \\\\\n      -d '{\"prompt\": \"Hi\", \"version\": 1, \"set_as_default\": true}'\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- prompt_id: The Llama Stack prompt identifier.\n- auth: Authentication tuple from the auth dependency (used by middleware).\n- body: Prompt update parameters.\n\n### Raises:\n- HTTPException: with status 400 when request format is not valid.\n- HTTPException: with status 401 for unauthorized access.\n- HTTPException: with status 403 if permission is denied.\n- HTTPException: with status 404 if prompt is not found.\n- HTTPException: with status 422 if request payload is corrupted.\n- HTTPException: with status 500 and a detail object containing `response`\n  and `cause` when service configuration is wrong or incomplete.\n- HTTPException: with status 503 and a detail object containing `response`\n  and `cause` when unable to connect to Llama Stack.\n\n### Returns:\n- PromptResourceResponse: The updated prompt object returned by Llama Stack.",
                 "operationId": "update_prompt_handler_v1_prompts__prompt_id__put",
                 "parameters": [
                     {
@@ -3003,7 +2853,7 @@
                         "content": {
                             "application/json": {
                                 "examples": {
-                                    "OGX": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
@@ -3043,7 +2893,7 @@
                     "prompts"
                 ],
                 "summary": "Delete Prompt Handler",
-                "description": "Handle requests to the DELETE /prompts/{prompt_id} endpoint.\n\nProcess requests to delete a stored prompt in OGX. The response\nalways uses HTTP 200 with a JSON body indicating whether the deletion\nsucceeded (same pattern as deleting a conversation in ``/v2``). For example:\n\n    curl -X DELETE http://localhost:8080/v1/prompts/pmpt_abc123\n\nWhen the prompt does not exist, the response still returns 200 with\n``deleted`` set to false in the body.\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- prompt_id: The OGX prompt identifier.\n- auth: Authentication tuple from the auth dependency (used by middleware).\n\n### Raises:\n- HTTPException: with status 401 for unauthorized access.\n- HTTPException: with status 403 if permission is denied.\n- HTTPException: with status 422 if request payload is corrupted.\n- HTTPException: with status 500 and a detail object containing `response`\n  and `cause` when service configuration is wrong or incomplete.\n- HTTPException: with status 503 and a detail object containing `response`\n  and `cause` when unable to connect to OGX.\n\n### Returns:\n- PromptDeleteResponse: An object describing whether the prompt was\n  deleted and a human-readable message.",
+                "description": "Handle requests to the DELETE /prompts/{prompt_id} endpoint.\n\nProcess requests to delete a stored prompt in Llama Stack. The response\nalways uses HTTP 200 with a JSON body indicating whether the deletion\nsucceeded (same pattern as deleting a conversation in ``/v2``). For example:\n\n    curl -X DELETE http://localhost:8080/v1/prompts/pmpt_abc123\n\nWhen the prompt does not exist, the response still returns 200 with\n``deleted`` set to false in the body.\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- prompt_id: The Llama Stack prompt identifier.\n- auth: Authentication tuple from the auth dependency (used by middleware).\n\n### Raises:\n- HTTPException: with status 401 for unauthorized access.\n- HTTPException: with status 403 if permission is denied.\n- HTTPException: with status 422 if request payload is corrupted.\n- HTTPException: with status 500 and a detail object containing `response`\n  and `cause` when service configuration is wrong or incomplete.\n- HTTPException: with status 503 and a detail object containing `response`\n  and `cause` when unable to connect to Llama Stack.\n\n### Returns:\n- PromptDeleteResponse: An object describing whether the prompt was\n  deleted and a human-readable message.",
                 "operationId": "delete_prompt_handler_v1_prompts__prompt_id__delete",
                 "parameters": [
                     {
@@ -3232,7 +3082,7 @@
                         "content": {
                             "application/json": {
                                 "examples": {
-                                    "OGX": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
@@ -3274,7 +3124,7 @@
                     "rags"
                 ],
                 "summary": "Rags Endpoint Handler",
-                "description": "List all available RAGs.\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- auth: Authentication tuple from the auth dependency (used by middleware).\n\n### Raises:\n- HTTPException: with status 401 for unauthorized access.\n- HTTPException: with status 403 if permission is denied.\n- HTTPException: with status 500 and a detail object containing `response`\n  and `cause` when service configuration is wrong or incomplete.\n- HTTPException: with status 503 and a detail object containing `response`\n  and `cause` when unable to connect to OGX.\n\n### Returns:\n- RAGListResponse: List of RAG identifiers.",
+                "description": "List all available RAGs.\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- auth: Authentication tuple from the auth dependency (used by middleware).\n\n### Raises:\n- HTTPException: with status 401 for unauthorized access.\n- HTTPException: with status 403 if permission is denied.\n- HTTPException: with status 500 and a detail object containing `response`\n  and `cause` when service configuration is wrong or incomplete.\n- HTTPException: with status 503 and a detail object containing `response`\n  and `cause` when unable to connect to Llama Stack.\n\n### Returns:\n- RAGListResponse: List of RAG identifiers.",
                 "operationId": "rags_endpoint_handler_v1_rags_get",
                 "responses": {
                     "200": {
@@ -3418,7 +3268,7 @@
                                     "$ref": "#/components/schemas/ServiceUnavailableResponse"
                                 },
                                 "examples": {
-                                    "OGX": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
@@ -3447,7 +3297,7 @@
                     "rags"
                 ],
                 "summary": "Get Rag Endpoint Handler",
-                "description": "Retrieve a single RAG identified by its unique ID.\n\nAccepts both user-facing rag_id (from LCORE config) and OGX\nvector_store_id. If a rag_id from config is provided, it is resolved\nto the underlying vector_store_id for the OGX lookup.\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- rag_id: rag_id or OGX vector_store_id\n- auth: Authentication tuple from the auth dependency (used by middleware).\n\n### Raises:\n- HTTPException: with status 401 for unauthorized access.\n- HTTPException: with status 403 if permission is denied.\n- HTTPException: with status 404 if rag_id is not found.\n- HTTPException: with status 422 for incorrect request payload.\n- HTTPException: with status 500 and a detail object containing `response`\n  and `cause` when service configuration is wrong or incomplete.\n- HTTPException: with status 503 and a detail object containing `response`\n  and `cause` when unable to connect to OGX.\n\n### Returns:\n- RAGInfoResponse: A single RAG's details.",
+                "description": "Retrieve a single RAG identified by its unique ID.\n\nAccepts both user-facing rag_id (from LCORE config) and llama-stack\nvector_store_id. If a rag_id from config is provided, it is resolved\nto the underlying vector_store_id for the llama-stack lookup.\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- rag_id: rag_id or llama-stack vector_store_id\n- auth: Authentication tuple from the auth dependency (used by middleware).\n\n### Raises:\n- HTTPException: with status 401 for unauthorized access.\n- HTTPException: with status 403 if permission is denied.\n- HTTPException: with status 404 if rag_id is not found.\n- HTTPException: with status 422 for incorrect request payload.\n- HTTPException: with status 500 and a detail object containing `response`\n  and `cause` when service configuration is wrong or incomplete.\n- HTTPException: with status 503 and a detail object containing `response`\n  and `cause` when unable to connect to Llama Stack.\n\n### Returns:\n- RAGInfoResponse: A single RAG's details.",
                 "operationId": "get_rag_endpoint_handler_v1_rags__rag_id__get",
                 "parameters": [
                     {
@@ -3621,7 +3471,7 @@
                         "content": {
                             "application/json": {
                                 "examples": {
-                                    "OGX": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
@@ -3824,7 +3674,7 @@
                                     "$ref": "#/components/schemas/ServiceUnavailableResponse"
                                 },
                                 "examples": {
-                                    "OGX": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
@@ -4033,7 +3883,7 @@
                                     "$ref": "#/components/schemas/ServiceUnavailableResponse"
                                 },
                                 "examples": {
-                                    "OGX": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
@@ -4252,7 +4102,7 @@
                         "content": {
                             "application/json": {
                                 "examples": {
-                                    "OGX": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
@@ -4482,7 +4332,7 @@
                         "content": {
                             "application/json": {
                                 "examples": {
-                                    "OGX": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
@@ -4683,7 +4533,7 @@
                         "content": {
                             "application/json": {
                                 "examples": {
-                                    "OGX": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
@@ -4725,7 +4575,7 @@
                     "vector-stores"
                 ],
                 "summary": "Create File",
-                "description": "Upload a file.\n\nParameters:\n    request: The incoming HTTP request.\n    auth: Authentication tuple from the auth dependency.\n    file: The file to upload.\n\nReturns:\n    FileResponse: The uploaded file object.\n\nRaises:\n    HTTPException:\n        - 400: Bad request (e.g., file too large, invalid format)\n        - 401: Authentication failed\n        - 403: Authorization failed\n        - 429: Too many concurrent file uploads\n        - 500: Lightspeed Stack configuration not loaded\n        - 503: Unable to connect to OGX",
+                "description": "Upload a file.\n\nParameters:\n    request: The incoming HTTP request.\n    auth: Authentication tuple from the auth dependency.\n    file: The file to upload.\n\nReturns:\n    FileResponse: The uploaded file object.\n\nRaises:\n    HTTPException:\n        - 400: Bad request (e.g., file too large, invalid format)\n        - 401: Authentication failed\n        - 403: Authorization failed\n        - 500: Lightspeed Stack configuration not loaded\n        - 503: Unable to connect to OGX",
                 "operationId": "create_file_v1_files_post",
                 "requestBody": {
                     "content": {
@@ -4880,26 +4730,6 @@
                             }
                         }
                     },
-                    "429": {
-                        "description": "Too many concurrent requests",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/TooManyConcurrentRequestsResponse"
-                                },
-                                "examples": {
-                                    "file upload": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "The maximum number of concurrent file uploads has been reached.",
-                                                "response": "Too many concurrent file uploads"
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    },
                     "500": {
                         "description": "Internal server error",
                         "content": {
@@ -4928,7 +4758,7 @@
                                     "$ref": "#/components/schemas/ServiceUnavailableResponse"
                                 },
                                 "examples": {
-                                    "OGX": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
@@ -4967,7 +4797,7 @@
                     "vector-stores"
                 ],
                 "summary": "Add File To Vector Store",
-                "description": "Add a file to a vector store.\n\nParameters:\n    request: The incoming HTTP request.\n    vector_store_id: ID of the vector store.\n    auth: Authentication tuple from the auth dependency.\n    body: File addition parameters.\n\nReturns:\n    VectorStoreFileResponse: The vector store file object.\n\nRaises:\n    HTTPException:\n        - 401: Authentication failed\n        - 403: Authorization failed\n        - 404: Vector store or file not found\n        - 429: Too many concurrent vector store file attachments\n        - 500: Lightspeed Stack configuration not loaded\n        - 503: Unable to connect to OGX",
+                "description": "Add a file to a vector store.\n\nParameters:\n    request: The incoming HTTP request.\n    vector_store_id: ID of the vector store.\n    auth: Authentication tuple from the auth dependency.\n    body: File addition parameters.\n\nReturns:\n    VectorStoreFileResponse: The vector store file object.\n\nRaises:\n    HTTPException:\n        - 401: Authentication failed\n        - 403: Authorization failed\n        - 404: Vector store or file not found\n        - 500: Lightspeed Stack configuration not loaded\n        - 503: Unable to connect to OGX",
                 "operationId": "add_file_to_vector_store_v1_vector_stores__vector_store_id__files_post",
                 "parameters": [
                     {
@@ -5127,26 +4957,6 @@
                             }
                         }
                     },
-                    "429": {
-                        "description": "Too many concurrent requests",
-                        "content": {
-                            "application/json": {
-                                "examples": {
-                                    "vector store attach": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "The maximum number of concurrent vector store file attachments has been reached.",
-                                                "response": "Too many concurrent vector store file attachments"
-                                            }
-                                        }
-                                    }
-                                },
-                                "schema": {
-                                    "$ref": "#/components/schemas/TooManyConcurrentRequestsResponse"
-                                }
-                            }
-                        }
-                    },
                     "500": {
                         "description": "Internal server error",
                         "content": {
@@ -5172,7 +4982,7 @@
                         "content": {
                             "application/json": {
                                 "examples": {
-                                    "OGX": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
@@ -5397,7 +5207,7 @@
                         "content": {
                             "application/json": {
                                 "examples": {
-                                    "OGX": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
@@ -5598,26 +5408,6 @@
                             }
                         }
                     },
-                    "429": {
-                        "description": "Too many concurrent requests",
-                        "content": {
-                            "application/json": {
-                                "examples": {
-                                    "vector store attach": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "The maximum number of concurrent vector store file attachments has been reached.",
-                                                "response": "Too many concurrent vector store file attachments"
-                                            }
-                                        }
-                                    }
-                                },
-                                "schema": {
-                                    "$ref": "#/components/schemas/TooManyConcurrentRequestsResponse"
-                                }
-                            }
-                        }
-                    },
                     "500": {
                         "description": "Internal server error",
                         "content": {
@@ -5643,7 +5433,7 @@
                         "content": {
                             "application/json": {
                                 "examples": {
-                                    "OGX": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
@@ -5853,7 +5643,7 @@
                         "content": {
                             "application/json": {
                                 "examples": {
-                                    "OGX": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
@@ -5895,7 +5685,7 @@
                     "query"
                 ],
                 "summary": "Query Endpoint Handler",
-                "description": "Handle request to the /query endpoint using Responses API.\n\nProcesses a POST request to a query endpoint, forwarding the\nuser's query to a selected OGX LLM and returning the generated response.\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- query_request: Request to the LLM.\n- auth: Auth context tuple resolved from the authentication dependency.\n- mcp_headers: Headers that should be passed to MCP servers.\n\n### Returns:\n- QueryResponse: Contains the conversation ID and the LLM-generated response.\n\n### Raises:\n- HTTPException:\n- 401: Unauthorized - Missing or invalid credentials\n- 403: Forbidden - Insufficient permissions or model override not allowed\n- 404: Not Found - Conversation, model, or provider not found\n- 413: Prompt too long - Prompt exceeded model's context window size\n- 422: Unprocessable Entity - Request validation failed\n- 429: Quota limit exceeded - The token quota for model or user has been exceeded\n- 500: Internal Server Error - Configuration not loaded or other server errors\n- 503: Service Unavailable - Unable to connect to OGX backend",
+                "description": "Handle request to the /query endpoint using Responses API.\n\nProcesses a POST request to a query endpoint, forwarding the\nuser's query to a selected Llama Stack LLM and returning the generated response.\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- query_request: Request to the LLM.\n- auth: Auth context tuple resolved from the authentication dependency.\n- mcp_headers: Headers that should be passed to MCP servers.\n\n### Returns:\n- QueryResponse: Contains the conversation ID and the LLM-generated response.\n\n### Raises:\n- HTTPException:\n- 401: Unauthorized - Missing or invalid credentials\n- 403: Forbidden - Insufficient permissions or model override not allowed\n- 404: Not Found - Conversation, model, or provider not found\n- 413: Prompt too long - Prompt exceeded model's context window size\n- 422: Unprocessable Entity - Request validation failed\n- 429: Quota limit exceeded - The token quota for model or user has been exceeded\n- 500: Internal Server Error - Configuration not loaded or other server errors\n- 503: Service Unavailable - Unable to connect to OGX backend",
                 "operationId": "query_endpoint_handler_v1_query_post",
                 "requestBody": {
                     "content": {
@@ -5920,7 +5710,6 @@
                                         "ClusterQuotaLimiter": 998911,
                                         "UserQuotaLimiter": 998911
                                     },
-                                    "context_status": "full",
                                     "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
                                     "input_tokens": 123,
                                     "output_tokens": 456,
@@ -6277,7 +6066,7 @@
                                     "$ref": "#/components/schemas/ServiceUnavailableResponse"
                                 },
                                 "examples": {
-                                    "OGX": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
@@ -6326,7 +6115,7 @@
                                 "schema": {
                                     "type": "string"
                                 },
-                                "example": "data: {\"event\": \"start\", \"data\": {\"conversation_id\": \"123e4567-e89b-12d3-a456-426614174000\", \"request_id\": \"123e4567-e89b-12d3-a456-426614174001\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 0, \"token\": \"No Violation\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 1, \"token\": \"\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 2, \"token\": \"Hello\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 3, \"token\": \"!\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 4, \"token\": \" How\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 5, \"token\": \" can\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 6, \"token\": \" I\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 7, \"token\": \" assist\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 8, \"token\": \" you\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 9, \"token\": \" today\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 10, \"token\": \"?\"}}\n\ndata: {\"event\": \"turn_complete\", \"data\": {\"token\": \"Hello! How can I assist you today?\"}}\n\ndata: {\"event\": \"end\", \"data\": {\"referenced_documents\": [], \"truncated\": null, \"context_status\": \"full\", \"input_tokens\": 11, \"output_tokens\": 19}, \"available_quotas\": {}}\n\n"
+                                "example": "data: {\"event\": \"start\", \"data\": {\"conversation_id\": \"123e4567-e89b-12d3-a456-426614174000\", \"request_id\": \"123e4567-e89b-12d3-a456-426614174001\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 0, \"token\": \"No Violation\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 1, \"token\": \"\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 2, \"token\": \"Hello\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 3, \"token\": \"!\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 4, \"token\": \" How\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 5, \"token\": \" can\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 6, \"token\": \" I\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 7, \"token\": \" assist\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 8, \"token\": \" you\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 9, \"token\": \" today\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 10, \"token\": \"?\"}}\n\ndata: {\"event\": \"turn_complete\", \"data\": {\"token\": \"Hello! How can I assist you today?\"}}\n\ndata: {\"event\": \"end\", \"data\": {\"referenced_documents\": [], \"truncated\": null, \"input_tokens\": 11, \"output_tokens\": 19}, \"available_quotas\": {}}\n\n"
                             }
                         }
                     },
@@ -6654,7 +6443,7 @@
                                     "$ref": "#/components/schemas/ServiceUnavailableResponse"
                                 },
                                 "examples": {
-                                    "OGX": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
@@ -6866,7 +6655,7 @@
                     "config"
                 ],
                 "summary": "Config Endpoint Handler",
-                "description": "Handle requests to the /config endpoint.\n\nProcess GET requests to the /config endpoint and returns the\ncurrent service configuration.\n\nEnsures the application configuration is loaded before returning it.\n\n### Parameters:\n- request: The incoming HTTP request.\n- auth: Authentication tuple from the auth dependency.\n\n### Raises:\n- HTTPException: with status 401 for unauthorized access.\n- HTTPException: with status 403 if permission is denied.\n- HTTPException: with status 500 and a detail object containing `response`\n  and `cause` when service configuration is wrong or incomplete.\n- HTTPException: with status 503 and a detail object containing `response`\n  and `cause` when unable to connect to OGX.\n\n### Returns:\n- ConfigurationResponse: The loaded service configuration response.",
+                "description": "Handle requests to the /config endpoint.\n\nProcess GET requests to the /config endpoint and returns the\ncurrent service configuration.\n\nEnsures the application configuration is loaded before returning it.\n\n### Parameters:\n- request: The incoming HTTP request.\n- auth: Authentication tuple from the auth dependency.\n\n### Raises:\n- HTTPException: with status 401 for unauthorized access.\n- HTTPException: with status 403 if permission is denied.\n- HTTPException: with status 500 and a detail object containing `response`\n  and `cause` when service configuration is wrong or incomplete.\n- HTTPException: with status 503 and a detail object containing `response`\n  and `cause` when unable to connect to Llama Stack.\n\n### Returns:\n- ConfigurationResponse: The loaded service configuration response.",
                 "operationId": "config_endpoint_handler_v1_config_get",
                 "responses": {
                     "200": {
@@ -6885,6 +6674,7 @@
                                         "authorization": {
                                             "access_rules": []
                                         },
+                                        "byok_rag": [],
                                         "conversation_cache": {},
                                         "database": {
                                             "sqlite": {
@@ -6894,6 +6684,11 @@
                                         "inference": {
                                             "default_model": "gpt-4-turbo",
                                             "default_provider": "openai"
+                                        },
+                                        "llama_stack": {
+                                            "api_key": "*****",
+                                            "url": "http://localhost:8321",
+                                            "use_as_library_client": false
                                         },
                                         "mcp_servers": [
                                             {
@@ -6912,40 +6707,11 @@
                                                 "OTEL_SERVICE_NAME": ""
                                             }
                                         },
-                                        "ogx": {
-                                            "api_key": "*****",
-                                            "url": "http://localhost:8321",
-                                            "use_as_library_client": false
-                                        },
                                         "quota_handlers": {
                                             "enable_token_history": false,
                                             "limiters": [],
                                             "scheduler": {
                                                 "period": 1
-                                            }
-                                        },
-                                        "rag": {
-                                            "byok": {
-                                                "max_chunks": 10,
-                                                "stores": []
-                                            },
-                                            "okp": {
-                                                "max_chunks": 5,
-                                                "offline": true
-                                            },
-                                            "retrieval": {
-                                                "inline": {
-                                                    "max_chunks": 10,
-                                                    "reranker": {
-                                                        "enabled": false,
-                                                        "model": "cross-encoder/ms-marco-MiniLM-L6-v2"
-                                                    },
-                                                    "sources": []
-                                                },
-                                                "tool": {
-                                                    "max_chunks": 10,
-                                                    "sources": []
-                                                }
                                             }
                                         },
                                         "service": {
@@ -8460,7 +8226,7 @@
                                     "$ref": "#/components/schemas/ServiceUnavailableResponse"
                                 },
                                 "examples": {
-                                    "OGX": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
@@ -8489,7 +8255,7 @@
                     "conversations_v1"
                 ],
                 "summary": "Conversation Get Endpoint Handler V1",
-                "description": "Handle request to retrieve a conversation identified by ID using Conversations API.\n\nRetrieve a conversation's chat history by its ID using the OGX\nConversations API. This endpoint fetches the conversation items from\nthe backend, simplifies them to essential chat history, and returns\nthem in a structured response. Raises HTTP 400 for invalid IDs, 404\nif not found, 503 if the backend is unavailable, and 500 for\nunexpected errors.\n\nArgs:\n    request: The FastAPI request object\n    conversation_id: Unique identifier of the conversation to retrieve\n    auth: Authentication tuple from dependency\n\nReturns:\n    ConversationResponse: Structured response containing the conversation\n    ID and simplified chat history",
+                "description": "Handle request to retrieve a conversation identified by ID using Conversations API.\n\nRetrieve a conversation's chat history by its ID using the LlamaStack\nConversations API. This endpoint fetches the conversation items from\nthe backend, simplifies them to essential chat history, and returns\nthem in a structured response. Raises HTTP 400 for invalid IDs, 404\nif not found, 503 if the backend is unavailable, and 500 for\nunexpected errors.\n\nArgs:\n    request: The FastAPI request object\n    conversation_id: Unique identifier of the conversation to retrieve\n    auth: Authentication tuple from dependency\n\nReturns:\n    ConversationResponse: Structured response containing the conversation\n    ID and simplified chat history",
                 "operationId": "get_conversation_endpoint_handler_v1_conversations__conversation_id__get",
                 "parameters": [
                     {
@@ -8713,7 +8479,7 @@
                         "content": {
                             "application/json": {
                                 "examples": {
-                                    "OGX": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
@@ -8753,7 +8519,7 @@
                     "conversations_v1"
                 ],
                 "summary": "Conversation Delete Endpoint Handler V1",
-                "description": "Handle request to delete a conversation by ID using Conversations API.\n\nValidates the conversation ID format and attempts to delete the\nconversation from the OGX backend using the Conversations API.\nRaises HTTP errors for invalid IDs, not found conversations, connection\nissues, or unexpected failures.\n\nArgs:\n    request: The FastAPI request object\n    conversation_id: Unique identifier of the conversation to delete\n    auth: Authentication tuple from dependency\n\nReturns:\n    ConversationDeleteResponse: Response indicating the result of the deletion operation",
+                "description": "Handle request to delete a conversation by ID using Conversations API.\n\nValidates the conversation ID format and attempts to delete the\nconversation from the Llama Stack backend using the Conversations API.\nRaises HTTP errors for invalid IDs, not found conversations, connection\nissues, or unexpected failures.\n\nArgs:\n    request: The FastAPI request object\n    conversation_id: Unique identifier of the conversation to delete\n    auth: Authentication tuple from dependency\n\nReturns:\n    ConversationDeleteResponse: Response indicating the result of the deletion operation",
                 "operationId": "delete_conversation_endpoint_handler_v1_conversations__conversation_id__delete",
                 "parameters": [
                     {
@@ -8950,7 +8716,7 @@
                         "content": {
                             "application/json": {
                                 "examples": {
-                                    "OGX": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
@@ -8990,7 +8756,7 @@
                     "conversations_v1"
                 ],
                 "summary": "Conversation Update Endpoint Handler V1",
-                "description": "Handle request to update a conversation metadata using Conversations API.\n\nUpdates the conversation metadata (including topic summary) in both the\nOGX backend using the Conversations API and the local database.\n\nArgs:\n    request: The FastAPI request object\n    conversation_id: Unique identifier of the conversation to update\n    update_request: Request containing the topic summary to update\n    auth: Authentication tuple from dependency\n\nReturns:\n    ConversationUpdateResponse: Response indicating the result of the update operation",
+                "description": "Handle request to update a conversation metadata using Conversations API.\n\nUpdates the conversation metadata (including topic summary) in both the\nLlamaStack backend using the Conversations API and the local database.\n\nArgs:\n    request: The FastAPI request object\n    conversation_id: Unique identifier of the conversation to update\n    update_request: Request containing the topic summary to update\n    auth: Authentication tuple from dependency\n\nReturns:\n    ConversationUpdateResponse: Response indicating the result of the update operation",
                 "operationId": "update_conversation_endpoint_handler_v1_conversations__conversation_id__put",
                 "parameters": [
                     {
@@ -9198,7 +8964,7 @@
                         "content": {
                             "application/json": {
                                 "examples": {
-                                    "OGX": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
@@ -10126,7 +9892,7 @@
                     "responses"
                 ],
                 "summary": "Responses Endpoint Handler",
-                "description": "Handle request to the /responses endpoint using Responses API (LCORE specification).\n\nProcesses a POST request to the responses endpoint, forwarding the\nuser's request to a selected OGX LLM and returning the generated response\nfollowing the LCORE OpenAPI specification.\n\nReturns:\n    ResponsesResponse: Contains the response following LCORE specification (non-streaming).\n    StreamingResponse: SSE-formatted streaming response with enriched events (streaming).\n        - response.created event includes conversation attribute\n        - response.completed event includes available_quotas attribute\n\nRaises:\n    HTTPException:\n        - 401: Unauthorized - Missing or invalid credentials\n        - 403: Forbidden - Insufficient permissions or model override not allowed\n        - 404: Not Found - Conversation, model, or provider not found\n        - 413: Prompt too long - Prompt exceeded model's context window size\n        - 422: Unprocessable Entity - Request validation failed\n        - 429: Quota limit exceeded - The token quota for model or user has been exceeded\n        - 500: Internal Server Error - Configuration not loaded or other server errors\n        - 503: Service Unavailable - Unable to connect to OGX backend",
+                "description": "Handle request to the /responses endpoint using Responses API (LCORE specification).\n\nProcesses a POST request to the responses endpoint, forwarding the\nuser's request to a selected Llama Stack LLM and returning the generated response\nfollowing the LCORE OpenAPI specification.\n\nReturns:\n    ResponsesResponse: Contains the response following LCORE specification (non-streaming).\n    StreamingResponse: SSE-formatted streaming response with enriched events (streaming).\n        - response.created event includes conversation attribute\n        - response.completed event includes available_quotas attribute\n\nRaises:\n    HTTPException:\n        - 401: Unauthorized - Missing or invalid credentials\n        - 403: Forbidden - Insufficient permissions or model override not allowed\n        - 404: Not Found - Conversation, model, or provider not found\n        - 413: Prompt too long - Prompt exceeded model's context window size\n        - 422: Unprocessable Entity - Request validation failed\n        - 429: Quota limit exceeded - The token quota for model or user has been exceeded\n        - 500: Internal Server Error - Configuration not loaded or other server errors\n        - 503: Service Unavailable - Unable to connect to OGX backend",
                 "operationId": "responses_endpoint_handler_v1_responses_post",
                 "requestBody": {
                     "content": {
@@ -10553,7 +10319,7 @@
                                     "$ref": "#/components/schemas/ServiceUnavailableResponse"
                                 },
                                 "examples": {
-                                    "OGX": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
@@ -10895,7 +10661,7 @@
                                     "$ref": "#/components/schemas/ServiceUnavailableResponse"
                                 },
                                 "examples": {
-                                    "OGX": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
@@ -11047,7 +10813,7 @@
                                     "$ref": "#/components/schemas/ServiceUnavailableResponse"
                                 },
                                 "examples": {
-                                    "OGX": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
@@ -11076,7 +10842,7 @@
                     "health"
                 ],
                 "summary": "Liveness Probe Get Method",
-                "description": "Return the liveness status of the service.\n\n### Parameters:\n- auth: Authentication tuple from the auth dependency (used by middleware).\n\n### Raises:\n- HTTPException: with status 401 for unauthorized access.\n- HTTPException: with status 403 if permission is denied.\n- HTTPException: with status 500 and a detail object containing `response`\n  and `cause` when service configuration is wrong or incomplete.\n- HTTPException: with status 503 and a detail object containing `response`\n  and `cause` when unable to connect to OGX.\n\n### Returns:\n- LivenessResponse: Indicates that the service is alive.",
+                "description": "Return the liveness status of the service.\n\n### Parameters:\n- auth: Authentication tuple from the auth dependency (used by middleware).\n\n### Raises:\n- HTTPException: with status 401 for unauthorized access.\n- HTTPException: with status 403 if permission is denied.\n- HTTPException: with status 500 and a detail object containing `response`\n  and `cause` when service configuration is wrong or incomplete.\n- HTTPException: with status 503 and a detail object containing `response`\n  and `cause` when unable to connect to Llama Stack.\n\n### Returns:\n- LivenessResponse: Indicates that the service is alive.",
                 "operationId": "liveness_probe_get_method_liveness_get",
                 "responses": {
                     "200": {
@@ -11500,7 +11266,7 @@
                         "content": {
                             "application/json": {
                                 "examples": {
-                                    "OGX": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
@@ -11534,7 +11300,7 @@
                     "a2a"
                 ],
                 "summary": "Get Agent Card",
-                "description": "Serve the A2A Agent Card at the well-known location.\n\nThis endpoint provides the agent card that describes Lightspeed's\ncapabilities according to the A2A protocol specification.\n\n### Parameters:\n- auth: Authentication tuple from the auth dependency (used by middleware).\n\n### Raises:\n- HTTPException: with status 500 and a detail object containing `response`\n  and `cause` when service configuration is wrong or incomplete.\n- HTTPException: with status 503 and a detail object containing `response`\n  and `cause` when unable to connect to OGX.\n\n### Returns:\n- AgentCard: The agent card describing this agent's capabilities.",
+                "description": "Serve the A2A Agent Card at the well-known location.\n\nThis endpoint provides the agent card that describes Lightspeed's\ncapabilities according to the A2A protocol specification.\n\n### Parameters:\n- auth: Authentication tuple from the auth dependency (used by middleware).\n\n### Raises:\n- HTTPException: with status 500 and a detail object containing `response`\n  and `cause` when service configuration is wrong or incomplete.\n- HTTPException: with status 503 and a detail object containing `response`\n  and `cause` when unable to connect to Llama Stack.\n\n### Returns:\n- AgentCard: The agent card describing this agent's capabilities.",
                 "operationId": "get_agent_card__well_known_agent_card_json_get",
                 "responses": {
                     "200": {
@@ -11556,7 +11322,7 @@
                     "a2a"
                 ],
                 "summary": "Get Agent Card",
-                "description": "Serve the A2A Agent Card at the well-known location.\n\nThis endpoint provides the agent card that describes Lightspeed's\ncapabilities according to the A2A protocol specification.\n\n### Parameters:\n- auth: Authentication tuple from the auth dependency (used by middleware).\n\n### Raises:\n- HTTPException: with status 500 and a detail object containing `response`\n  and `cause` when service configuration is wrong or incomplete.\n- HTTPException: with status 503 and a detail object containing `response`\n  and `cause` when unable to connect to OGX.\n\n### Returns:\n- AgentCard: The agent card describing this agent's capabilities.",
+                "description": "Serve the A2A Agent Card at the well-known location.\n\nThis endpoint provides the agent card that describes Lightspeed's\ncapabilities according to the A2A protocol specification.\n\n### Parameters:\n- auth: Authentication tuple from the auth dependency (used by middleware).\n\n### Raises:\n- HTTPException: with status 500 and a detail object containing `response`\n  and `cause` when service configuration is wrong or incomplete.\n- HTTPException: with status 503 and a detail object containing `response`\n  and `cause` when unable to connect to Llama Stack.\n\n### Returns:\n- AgentCard: The agent card describing this agent's capabilities.",
                 "operationId": "get_agent_card__well_known_agent_json_get",
                 "responses": {
                     "200": {
@@ -11802,7 +11568,6 @@
                     "feedback",
                     "get_models",
                     "get_tools",
-                    "get_skills",
                     "get_shields",
                     "list_providers",
                     "get_provider",
@@ -12462,8 +12227,7 @@
                         "examples": [
                             "text/plain",
                             "image/jpeg",
-                            "image/png",
-                            "image/webp"
+                            "image/png"
                         ]
                     },
                     "content": {
@@ -12795,28 +12559,131 @@
                 ],
                 "title": "Body_create_file_v1_files_post"
             },
-            "ByokConfiguration": {
+            "ByokRag": {
                 "properties": {
-                    "max_chunks": {
+                    "rag_id": {
+                        "type": "string",
+                        "minLength": 1,
+                        "title": "RAG ID",
+                        "description": "Unique RAG ID"
+                    },
+                    "rag_type": {
+                        "type": "string",
+                        "minLength": 1,
+                        "title": "RAG type",
+                        "description": "Type of RAG database (e.g. 'inline::faiss', 'remote::pgvector').",
+                        "default": "inline::faiss"
+                    },
+                    "embedding_model": {
+                        "type": "string",
+                        "minLength": 1,
+                        "title": "Embedding model",
+                        "description": "Embedding model identification",
+                        "default": "sentence-transformers/all-mpnet-base-v2"
+                    },
+                    "embedding_dimension": {
                         "type": "integer",
                         "exclusiveMinimum": 0.0,
-                        "title": "Max BYOK chunks",
-                        "description": "Maximum total number of chunks returned across all BYOK stores.",
-                        "default": 10
+                        "title": "Embedding dimension",
+                        "description": "Dimensionality of embedding vectors.",
+                        "default": 768
                     },
-                    "stores": {
-                        "items": {
-                            "$ref": "#/components/schemas/RagStore"
-                        },
-                        "type": "array",
-                        "title": "BYOK RAG stores",
-                        "description": "List of BYOK RAG store configurations."
+                    "vector_db_id": {
+                        "type": "string",
+                        "minLength": 1,
+                        "title": "Vector DB ID",
+                        "description": "Vector database identification."
+                    },
+                    "db_path": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "DB path",
+                        "description": "Path to RAG database. Required for inline::faiss."
+                    },
+                    "score_multiplier": {
+                        "type": "number",
+                        "exclusiveMinimum": 0.0,
+                        "title": "Score multiplier",
+                        "description": "Multiplier applied to relevance scores from this vector store. Used to weight results when querying multiple knowledge sources. Values > 1 boost this store's results; values < 1 reduce them.",
+                        "default": 1.0
+                    },
+                    "host": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "PostgreSQL host",
+                        "description": "PostgreSQL host for remote::pgvector. Defaults to ${env.POSTGRES_HOST} when rag_type is remote::pgvector."
+                    },
+                    "port": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "PostgreSQL port",
+                        "description": "PostgreSQL port for remote::pgvector. Defaults to ${env.POSTGRES_PORT} when rag_type is remote::pgvector."
+                    },
+                    "db": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "PostgreSQL database",
+                        "description": "PostgreSQL database name for remote::pgvector. Defaults to ${env.POSTGRES_DATABASE} when rag_type is remote::pgvector."
+                    },
+                    "user": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "PostgreSQL user",
+                        "description": "PostgreSQL user for remote::pgvector. Defaults to ${env.POSTGRES_USER} when rag_type is remote::pgvector."
+                    },
+                    "password": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "password",
+                                "writeOnly": true
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "PostgreSQL password",
+                        "description": "PostgreSQL password for remote::pgvector. Defaults to ${env.POSTGRES_PASSWORD} when rag_type is remote::pgvector."
                     }
                 },
                 "additionalProperties": false,
                 "type": "object",
-                "title": "ByokConfiguration",
-                "description": "BYOK (Bring Your Own Knowledge) configuration."
+                "required": [
+                    "rag_id",
+                    "vector_db_id"
+                ],
+                "title": "ByokRag",
+                "description": "BYOK (Bring Your Own Knowledge) RAG configuration."
             },
             "CORSConfiguration": {
                 "properties": {
@@ -13120,31 +12987,15 @@
                         "title": "Service name",
                         "description": "Name of the service. That value will be used in REST API endpoints."
                     },
-                    "config_format_version": {
-                        "anyOf": [
-                            {
-                                "type": "string",
-                                "enum": [
-                                    "legacy",
-                                    "unified"
-                                ]
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Configuration format version",
-                        "description": "Optional explicit marker of the configuration format. When set, it must agree with the shape detected from the configuration body: 'unified' requires a synthesis input (a non-empty inference.providers, a non-empty vector_store.providers, or an ogx.config block), 'legacy' requires no synthesis input. Reserved as the lever for a future breaking change of the unified schema (R11)."
-                    },
                     "service": {
                         "$ref": "#/components/schemas/ServiceConfiguration",
                         "title": "Service configuration",
                         "description": "This section contains Lightspeed Core Stack service configuration."
                     },
-                    "ogx": {
-                        "$ref": "#/components/schemas/OgxConfiguration",
-                        "title": "OGX configuration",
-                        "description": "This section contains OGX configuration. Lightspeed Core Stack service can call OGX in library mode or in server mode."
+                    "llama_stack": {
+                        "$ref": "#/components/schemas/LlamaStackConfiguration",
+                        "title": "Llama Stack configuration",
+                        "description": "This section contains Llama Stack configuration. Lightspeed Core Stack service can call Llama Stack in library mode or in server mode."
                     },
                     "user_data_collection": {
                         "$ref": "#/components/schemas/UserDataCollection",
@@ -13162,7 +13013,7 @@
                         },
                         "type": "array",
                         "title": "Model Context Protocol Server and tools configuration",
-                        "description": "MCP (Model Context Protocol) servers provide tools and capabilities to the AI agents. These are configured in this section. Only MCP servers defined in the lightspeed-stack.yaml configuration are available to the agents. Tools configured in the OGX run.yaml are not accessible to lightspeed-core agents."
+                        "description": "MCP (Model Context Protocol) servers provide tools and capabilities to the AI agents. These are configured in this section. Only MCP servers defined in the lightspeed-stack.yaml configuration are available to the agents. Tools configured in the llama-stack run.yaml are not accessible to lightspeed-core agents."
                     },
                     "authentication": {
                         "$ref": "#/components/schemas/AuthenticationConfiguration",
@@ -13212,10 +13063,18 @@
                         "title": "Approvals configuration",
                         "description": "Settings for human-in-the-loop approval of MCP tool invocations"
                     },
+                    "byok_rag": {
+                        "items": {
+                            "$ref": "#/components/schemas/ByokRag"
+                        },
+                        "type": "array",
+                        "title": "BYOK RAG configuration",
+                        "description": "BYOK RAG configuration. This configuration can be used to reconfigure Llama Stack through its run.yaml configuration file"
+                    },
                     "vector_store": {
                         "$ref": "#/components/schemas/VectorStoreConfiguration",
                         "title": "Vector store configuration",
-                        "description": "Dynamic vector-store provider capacity for runtime POST /v1/vector-stores creates. Not the same as rag.byok.stores (static registered corpora). When providers is non-empty, default_provider is required and must match one of providers[].id. Applied in unified synthesis only."
+                        "description": "Dynamic vector-store provider capacity for runtime POST /v1/vector-stores creates. Not the same as byok_rag (static registered corpora). When providers is non-empty, default_provider is required and must match one of providers[].id. Applied in unified synthesis only."
                     },
                     "a2a_state": {
                         "$ref": "#/components/schemas/A2AStateConfiguration",
@@ -13268,7 +13127,17 @@
                     "rag": {
                         "$ref": "#/components/schemas/RagConfiguration",
                         "title": "RAG configuration",
-                        "description": "Unified RAG configuration: BYOK stores, OKP provider, and retrieval strategies (inline and tool-based)."
+                        "description": "Configuration for all RAG strategies (inline and tool-based)."
+                    },
+                    "okp": {
+                        "$ref": "#/components/schemas/OkpConfiguration",
+                        "title": "OKP configuration",
+                        "description": "OKP provider settings. Only used when 'okp' is listed in rag.inline or rag.tool."
+                    },
+                    "reranker": {
+                        "$ref": "#/components/schemas/RerankerConfiguration",
+                        "title": "Reranker configuration",
+                        "description": "Configuration for neural reranking of RAG chunks using cross-encoder."
                     },
                     "skills": {
                         "anyOf": [
@@ -13315,7 +13184,7 @@
                 "required": [
                     "name",
                     "service",
-                    "ogx",
+                    "llama_stack",
                     "user_data_collection"
                 ],
                 "title": "Configuration",
@@ -13343,6 +13212,7 @@
                             "authorization": {
                                 "access_rules": []
                             },
+                            "byok_rag": [],
                             "conversation_cache": {},
                             "database": {
                                 "sqlite": {
@@ -13352,6 +13222,11 @@
                             "inference": {
                                 "default_model": "gpt-4-turbo",
                                 "default_provider": "openai"
+                            },
+                            "llama_stack": {
+                                "api_key": "*****",
+                                "url": "http://localhost:8321",
+                                "use_as_library_client": false
                             },
                             "mcp_servers": [
                                 {
@@ -13370,40 +13245,11 @@
                                     "OTEL_SERVICE_NAME": ""
                                 }
                             },
-                            "ogx": {
-                                "api_key": "*****",
-                                "url": "http://localhost:8321",
-                                "use_as_library_client": false
-                            },
                             "quota_handlers": {
                                 "enable_token_history": false,
                                 "limiters": [],
                                 "scheduler": {
                                     "period": 1
-                                }
-                            },
-                            "rag": {
-                                "byok": {
-                                    "max_chunks": 10,
-                                    "stores": []
-                                },
-                                "okp": {
-                                    "max_chunks": 5,
-                                    "offline": true
-                                },
-                                "retrieval": {
-                                    "inline": {
-                                        "max_chunks": 10,
-                                        "reranker": {
-                                            "enabled": false,
-                                            "model": "cross-encoder/ms-marco-MiniLM-L6-v2"
-                                        },
-                                        "sources": []
-                                    },
-                                    "tool": {
-                                        "max_chunks": 10,
-                                        "sources": []
-                                    }
                                 }
                             },
                             "service": {
@@ -13485,13 +13331,6 @@
                         },
                         "label": "saved prompt"
                     }
-                ]
-            },
-            "ContextStatus": {
-                "type": "string",
-                "enum": [
-                    "full",
-                    "summarized"
                 ]
             },
             "ConversationData": {
@@ -14200,7 +14039,7 @@
                         "type": "string",
                         "minLength": 1,
                         "title": "Provider ID",
-                        "description": "OGX vector_io provider_id. Surrounding whitespace is stripped before validation and emission."
+                        "description": "Llama Stack vector_io provider_id. Surrounding whitespace is stripped before validation and emission."
                     },
                     "embedding_model": {
                         "type": "string",
@@ -14697,7 +14536,7 @@
                     "unhealthy"
                 ],
                 "title": "HealthStatus",
-                "description": "Health status enum for provider and service health checks.\n\nThis enum serves two purposes:\n\n1. Provider-level health (returned by OGX providers):\n   - OK: Provider is healthy and operational\n   - ERROR: Provider is unhealthy or failed health check\n   - NOT_IMPLEMENTED: Provider does not implement health checks\n   - UNKNOWN: Fallback when provider status cannot be determined\n\n2. Service-level health (overall LCORE status):\n   - HEALTHY: All systems operational, LLS connected, all providers healthy\n   - DEGRADED: Service running with reduced functionality (e.g., LLS unavailable)\n   - UNHEALTHY: Service connected but one or more providers are unhealthy"
+                "description": "Health status enum for provider and service health checks.\n\nThis enum serves two purposes:\n\n1. Provider-level health (returned by Llama Stack providers):\n   - OK: Provider is healthy and operational\n   - ERROR: Provider is unhealthy or failed health check\n   - NOT_IMPLEMENTED: Provider does not implement health checks\n   - UNKNOWN: Fallback when provider status cannot be determined\n\n2. Service-level health (overall LCORE status):\n   - HEALTHY: All systems operational, LLS connected, all providers healthy\n   - DEGRADED: Service running with reduced functionality (e.g., LLS unavailable)\n   - UNHEALTHY: Service connected but one or more providers are unhealthy"
             },
             "ImplicitOAuthFlow": {
                 "properties": {
@@ -14811,7 +14650,7 @@
                         },
                         "type": "array",
                         "title": "High-level inference providers",
-                        "description": "Unified-mode synthesis input (Decision S5): a high-level, backend-agnostic list of inference providers the synthesizer expands into OGX provider entries. Lives at the configuration root so it survives a future backend change. A non-empty list signals unified mode. Empty (the default) leaves legacy/remote modes unaffected. The sibling default_model / default_provider keep their query-time routing meaning and are independent of this list."
+                        "description": "Unified-mode synthesis input (Decision S5): a high-level, backend-agnostic list of inference providers the synthesizer expands into Llama Stack provider entries. Lives at the configuration root so it survives a future backend change. A non-empty list signals unified mode. Empty (the default) leaves legacy/remote modes unaffected. The sibling default_model / default_provider keep their query-time routing meaning and are independent of this list."
                     },
                     "max_infer_iters": {
                         "anyOf": [
@@ -14867,10 +14706,10 @@
                             "1.0.0"
                         ]
                     },
-                    "ogx_version": {
+                    "llama_stack_version": {
                         "type": "string",
-                        "title": "Ogx Version",
-                        "description": "OGX version",
+                        "title": "Llama Stack Version",
+                        "description": "Llama Stack version",
                         "examples": [
                             "0.2.1",
                             "0.2.2",
@@ -14884,14 +14723,14 @@
                 "required": [
                     "name",
                     "service_version",
-                    "ogx_version"
+                    "llama_stack_version"
                 ],
                 "title": "InfoResponse",
-                "description": "Model representing a response to an info request.\n\nAttributes:\n    name: Service name.\n    service_version: Service version.\n    ogx_version: OGX version.",
+                "description": "Model representing a response to an info request.\n\nAttributes:\n    name: Service name.\n    service_version: Service version.\n    llama_stack_version: Llama Stack version.",
                 "examples": [
                     {
+                        "llama_stack_version": "1.0.0",
                         "name": "Lightspeed Stack",
-                        "ogx_version": "1.0.0",
                         "service_version": "1.0.0"
                     }
                 ]
@@ -15214,6 +15053,112 @@
                         "alive": true
                     }
                 ]
+            },
+            "LlamaStackConfiguration": {
+                "properties": {
+                    "url": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "minLength": 1,
+                                "format": "uri"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Llama Stack URL",
+                        "description": "URL to Llama Stack service; used when library mode is disabled. Must be a valid HTTP or HTTPS URL."
+                    },
+                    "api_key": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "password",
+                                "writeOnly": true
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "API key",
+                        "description": "API key to access Llama Stack service"
+                    },
+                    "use_as_library_client": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Use as library",
+                        "description": "When set to true Llama Stack will be used in library mode, not in server mode (default)"
+                    },
+                    "library_client_config_path": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Llama Stack configuration path",
+                        "description": "Path to configuration file used when Llama Stack is run in library mode"
+                    },
+                    "timeout": {
+                        "type": "integer",
+                        "exclusiveMinimum": 0.0,
+                        "title": "Request timeout",
+                        "description": "Timeout in seconds for requests to Llama Stack service. Default is 180 seconds (3 minutes) to accommodate long-running RAG queries.",
+                        "default": 180
+                    },
+                    "max_retries": {
+                        "type": "integer",
+                        "exclusiveMinimum": 0.0,
+                        "title": "Maximum number of connection attempts before giving up",
+                        "description": "Maximum number of connection attempts before giving up. Used on startup to connect to Llama Stack and retrieve its version. Connection attempts are retried with a fixed delay to handle the case where Llama Stack is still starting up (e.g., when running as a sidecar in the same pod).",
+                        "default": 5
+                    },
+                    "retry_delay": {
+                        "type": "integer",
+                        "exclusiveMinimum": 0.0,
+                        "title": "Delay in seconds between retry attempts",
+                        "description": "Delay in seconds between retry attempts. Used on startup to connect to Llama Stack and retrieve its version. Connection attempts are retried with a fixed delay to handle the case where Llama Stack is still starting up (e.g., when running as a sidecar in the same pod).",
+                        "default": 2
+                    },
+                    "allow_degraded_mode": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Allow degraded mode",
+                        "description": "If enabled, Lightspeed Core can be started even when Llama Stack is not accessible (valid for server mode only)",
+                        "default": false
+                    },
+                    "config": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/UnifiedLlamaStackConfig"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Unified Llama Stack configuration",
+                        "description": "Backend-specific knobs for unified mode, where LCORE synthesizes the Llama Stack run.yaml instead of reading an external file. Holds the baseline selector, an optional profile path, and a raw native_override escape hatch. Backend-agnostic high-level sections (e.g. inference.providers) live at the configuration root, not here. Mutually exclusive with library_client_config_path; that cross-field check lives on the root Configuration model. When set in library mode, library_client_config_path is not required."
+                    }
+                },
+                "additionalProperties": false,
+                "type": "object",
+                "title": "LlamaStackConfiguration",
+                "description": "Llama stack configuration.\n\nLlama Stack is a comprehensive system that provides a uniform set of tools\nfor building, scaling, and deploying generative AI applications, enabling\ndevelopers to create, integrate, and orchestrate multiple AI services and\ncapabilities into an adaptable setup.\n\nUseful resources:\n\n  - [Llama Stack](https://www.llama.com/products/llama-stack/)\n  - [Python Llama Stack client](https://github.com/llamastack/llama-stack-client-python)\n  - [Build AI Applications with Llama Stack](https://llamastack.github.io/)"
             },
             "MCPClientAuthOptionsResponse": {
                 "properties": {
@@ -15714,7 +15659,7 @@
                             }
                         ],
                         "title": "Request timeout",
-                        "description": "Timeout in seconds for requests to the MCP server. If not specified, the default timeout from OGX will be used. Note: This field is reserved for future use when OGX adds timeout support."
+                        "description": "Timeout in seconds for requests to the MCP server. If not specified, the default timeout from Llama Stack will be used. Note: This field is reserved for future use when Llama Stack adds timeout support."
                     }
                 },
                 "additionalProperties": false,
@@ -15724,7 +15669,7 @@
                     "url"
                 ],
                 "title": "ModelContextProtocolServer",
-                "description": "Model context protocol server configuration.\n\nMCP (Model Context Protocol) servers provide tools and capabilities to the\nAI agents. These are configured by this structure. Only MCP servers\ndefined in the lightspeed-stack.yaml configuration are available to the\nagents. Tools configured in the OGX run.yaml are not accessible to\nlightspeed-core agents.\n\nUseful resources:\n\n- [Model Context Protocol](https://modelcontextprotocol.io/docs/getting-started/intro)\n- [MCP FAQs](https://modelcontextprotocol.io/faqs)\n- [Wikipedia article](https://en.wikipedia.org/wiki/Model_Context_Protocol)"
+                "description": "Model context protocol server configuration.\n\nMCP (Model Context Protocol) servers provide tools and capabilities to the\nAI agents. These are configured by this structure. Only MCP servers\ndefined in the lightspeed-stack.yaml configuration are available to the\nagents. Tools configured in the llama-stack run.yaml are not accessible to\nlightspeed-core agents.\n\nUseful resources:\n\n- [Model Context Protocol](https://modelcontextprotocol.io/docs/getting-started/intro)\n- [MCP FAQs](https://modelcontextprotocol.io/faqs)\n- [Wikipedia article](https://en.wikipedia.org/wiki/Model_Context_Protocol)"
             },
             "ModelsResponse": {
                 "properties": {
@@ -15972,112 +15917,6 @@
                 "title": "ObservabilityConfiguration",
                 "description": "OpenTelemetry observability configuration.\n\nThis configuration is automatically populated from OTEL_* environment variables\nto provide visibility into the active tracing setup.\n\nAttributes:\n    otel: Dictionary of OTEL_* environment variables with secrets redacted."
             },
-            "OgxConfiguration": {
-                "properties": {
-                    "url": {
-                        "anyOf": [
-                            {
-                                "type": "string",
-                                "minLength": 1,
-                                "format": "uri"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "OGX URL",
-                        "description": "URL to OGX service; used when library mode is disabled. Must be a valid HTTP or HTTPS URL."
-                    },
-                    "api_key": {
-                        "anyOf": [
-                            {
-                                "type": "string",
-                                "format": "password",
-                                "writeOnly": true
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "API key",
-                        "description": "API key to access OGX service"
-                    },
-                    "use_as_library_client": {
-                        "anyOf": [
-                            {
-                                "type": "boolean"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Use as library",
-                        "description": "When set to true OGX will be used in library mode, not in server mode (default)"
-                    },
-                    "library_client_config_path": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "OGX configuration path (legacy, deprecated)",
-                        "description": "Path to configuration file used when OGX is run in library mode. DEPRECATED legacy two-file setup: logs a startup warning since 0.6 and is removed in 0.8 \u2014 use unified mode instead (the config block below, and/or the root-level inference.providers section); migrate with lightspeed-stack --migrate-config."
-                    },
-                    "timeout": {
-                        "type": "integer",
-                        "exclusiveMinimum": 0.0,
-                        "title": "Request timeout",
-                        "description": "Timeout in seconds for requests to OGX service. Default is 180 seconds (3 minutes) to accommodate long-running RAG queries.",
-                        "default": 180
-                    },
-                    "max_retries": {
-                        "type": "integer",
-                        "exclusiveMinimum": 0.0,
-                        "title": "Maximum number of connection attempts before giving up",
-                        "description": "Maximum number of connection attempts before giving up. Used on startup to connect to OGX and retrieve its version. Connection attempts are retried with a fixed delay to handle the case where OGX is still starting up (e.g., when running as a sidecar in the same pod).",
-                        "default": 5
-                    },
-                    "retry_delay": {
-                        "type": "integer",
-                        "exclusiveMinimum": 0.0,
-                        "title": "Delay in seconds between retry attempts",
-                        "description": "Delay in seconds between retry attempts. Used on startup to connect to OGX and retrieve its version. Connection attempts are retried with a fixed delay to handle the case where OGX is still starting up (e.g., when running as a sidecar in the same pod).",
-                        "default": 2
-                    },
-                    "allow_degraded_mode": {
-                        "anyOf": [
-                            {
-                                "type": "boolean"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Allow degraded mode",
-                        "description": "If enabled, Lightspeed Core can be started even when OGX is not accessible (valid for server mode only)",
-                        "default": false
-                    },
-                    "config": {
-                        "anyOf": [
-                            {
-                                "$ref": "#/components/schemas/UnifiedOgxConfig"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Unified OGX configuration",
-                        "description": "Backend-specific knobs for unified mode, where LCORE synthesizes the OGX run.yaml instead of reading an external file. Holds the baseline selector, an optional profile path, and a raw native_override escape hatch. Backend-agnostic high-level sections (e.g. inference.providers) live at the configuration root, not here. Mutually exclusive with library_client_config_path; that cross-field check lives on the root Configuration model. When set in library mode, library_client_config_path is not required."
-                    }
-                },
-                "additionalProperties": false,
-                "type": "object",
-                "title": "OgxConfiguration",
-                "description": "OGX configuration.\n\nOGX is a comprehensive system that provides a uniform set of tools\nfor building, scaling, and deploying generative AI applications, enabling\ndevelopers to create, integrate, and orchestrate multiple AI services and\ncapabilities into an adaptable setup.\n\nUseful resources:\n\n  - [OGX](https://ogx-ai.github.io/)\n  - [Python OGX client](https://github.com/ogx-ai/ogx-client-python)\n  - [Build AI Applications with OGX](https://ogx-ai.github.io/)"
-            },
             "OkpConfiguration": {
                 "properties": {
                     "rhokp_url": {
@@ -16111,36 +15950,12 @@
                         ],
                         "title": "OKP chunk filter query",
                         "description": "Additional OKP filter query applied to every OKP search request. Use Solr boolean syntax, e.g. 'product:ansible AND product:*openshift*'."
-                    },
-                    "search_mode": {
-                        "anyOf": [
-                            {
-                                "type": "string",
-                                "enum": [
-                                    "semantic",
-                                    "hybrid",
-                                    "keyword"
-                                ]
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "OKP search mode",
-                        "description": "Default Solr search mode for OKP queries. 'keyword' uses BM25 text search (no embedding model needed). 'hybrid' combines vector + keyword search. 'semantic' uses pure vector search. When unset, falls back to the global default ('hybrid')."
-                    },
-                    "max_chunks": {
-                        "type": "integer",
-                        "exclusiveMinimum": 0.0,
-                        "title": "Max OKP chunks",
-                        "description": "Maximum number of chunks fetched from OKP.",
-                        "default": 5
                     }
                 },
                 "additionalProperties": false,
                 "type": "object",
                 "title": "OkpConfiguration",
-                "description": "OKP (Offline Knowledge Portal) provider configuration.\n\nControls provider-specific behaviour for the OKP vector store.\nOnly relevant when ``\"okp\"`` is listed in ``rag.retrieval.inline.sources``\nor ``rag.retrieval.tool.sources``."
+                "description": "OKP (Offline Knowledge Portal) provider configuration.\n\nControls provider-specific behaviour for the OKP vector store.\nOnly relevant when ``\"okp\"`` is listed in ``rag.inline`` or ``rag.tool``."
             },
             "OpenAIResponseAnnotationCitation": {
                 "properties": {
@@ -16816,42 +16631,19 @@
                         "anyOf": [
                             {
                                 "type": "string",
-                                "enum": [
-                                    "low",
-                                    "medium",
-                                    "high"
-                                ]
+                                "pattern": "^low|medium|high$"
                             },
                             {
                                 "type": "null"
                             }
                         ],
-                        "title": "Search Context Size"
-                    },
-                    "filters": {
-                        "anyOf": [
-                            {
-                                "$ref": "#/components/schemas/WebSearchFilters"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ]
-                    },
-                    "user_location": {
-                        "anyOf": [
-                            {
-                                "$ref": "#/components/schemas/WebSearchUserLocation"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ]
+                        "title": "Search Context Size",
+                        "default": "medium"
                     }
                 },
                 "type": "object",
                 "title": "OpenAIResponseInputToolWebSearch",
-                "description": "Web search tool configuration for OpenAI response inputs."
+                "description": "Web search tool configuration for OpenAI response inputs.\n\n:param type: Web search tool type variant to use\n:param search_context_size: (Optional) Size of search context, must be \"low\", \"medium\", or \"high\""
             },
             "OpenAIResponseMCPApprovalRequest": {
                 "properties": {
@@ -17456,23 +17248,6 @@
                         "const": "web_search_call",
                         "title": "Type",
                         "default": "web_search_call"
-                    },
-                    "action": {
-                        "anyOf": [
-                            {
-                                "$ref": "#/components/schemas/WebSearchActionSearch"
-                            },
-                            {
-                                "$ref": "#/components/schemas/WebSearchActionOpenPage"
-                            },
-                            {
-                                "$ref": "#/components/schemas/WebSearchActionFind"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Action"
                     }
                 },
                 "type": "object",
@@ -17481,7 +17256,7 @@
                     "status"
                 ],
                 "title": "OpenAIResponseOutputMessageWebSearchToolCall",
-                "description": "Web search tool call output message for OpenAI responses."
+                "description": "Web search tool call output message for OpenAI responses.\n\n:param id: Unique identifier for this tool call\n:param status: Current status of the web search operation\n:param type: Tool call type identifier, always \"web_search_call\""
             },
             "OpenAIResponsePrompt": {
                 "properties": {
@@ -17561,24 +17336,6 @@
                         ],
                         "title": "Effort"
                     },
-                    "generate_summary": {
-                        "anyOf": [
-                            {
-                                "type": "string",
-                                "enum": [
-                                    "auto",
-                                    "concise",
-                                    "detailed"
-                                ]
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Generate Summary",
-                        "description": "Deprecated: use 'summary' instead.",
-                        "deprecated": true
-                    },
                     "summary": {
                         "anyOf": [
                             {
@@ -17627,8 +17384,7 @@
                                 "type": "null"
                             }
                         ],
-                        "title": "Verbosity",
-                        "default": "medium"
+                        "title": "Verbosity"
                     }
                 },
                 "type": "object",
@@ -17958,7 +17714,7 @@
                         "type": "string",
                         "minLength": 1,
                         "title": "Provider ID",
-                        "description": "OGX vector_io provider_id. Surrounding whitespace is stripped before validation and emission."
+                        "description": "Llama Stack vector_io provider_id. Surrounding whitespace is stripped before validation and emission."
                     },
                     "embedding_model": {
                         "type": "string",
@@ -18016,14 +17772,11 @@
                                 "type": "string"
                             },
                             {
-                                "type": "integer"
-                            },
-                            {
                                 "type": "null"
                             }
                         ],
                         "title": "PostgreSQL port",
-                        "description": "PostgreSQL port. Defaults to ${env.POSTGRES_PORT}. Accepts string placeholders and integer values."
+                        "description": "PostgreSQL port. Defaults to ${env.POSTGRES_PORT}."
                     },
                     "db": {
                         "anyOf": [
@@ -18201,7 +17954,7 @@
                     "prompt"
                 ],
                 "title": "PromptCreateRequest",
-                "description": "Request body to create a stored prompt template in OGX.\n\nAttributes:\n    prompt: Prompt text with variable placeholders.\n    variables: Variable names allowed in the template.",
+                "description": "Request body to create a stored prompt template in Llama Stack.\n\nAttributes:\n    prompt: Prompt text with variable placeholders.\n    variables: Variable names allowed in the template.",
                 "examples": [
                     {
                         "prompt": "Summarize: {{text}}",
@@ -18269,7 +18022,7 @@
                     "prompt_id": {
                         "type": "string",
                         "title": "Prompt Id",
-                        "description": "Prompt identifier from OGX"
+                        "description": "Prompt identifier from Llama Stack"
                     },
                     "version": {
                         "type": "integer",
@@ -18323,7 +18076,7 @@
                     "version"
                 ],
                 "title": "PromptResourceResponse",
-                "description": "A stored prompt template as returned by OGX.\n\nAttributes:\n    prompt_id: Prompt identifier from OGX.\n    version: Version number for this prompt.\n    is_default: Whether this version is the default.\n    prompt: Prompt text with placeholders.\n    variables: Variable names used in the template.",
+                "description": "A stored prompt template as returned by Llama Stack.\n\nAttributes:\n    prompt_id: Prompt identifier from Llama Stack.\n    version: Version number for this prompt.\n    is_default: Whether this version is the default.\n    prompt: Prompt text with placeholders.\n    variables: Variable names used in the template.",
                 "examples": [
                     {
                         "is_default": true,
@@ -18455,13 +18208,13 @@
                         },
                         "type": "array",
                         "title": "Data",
-                        "description": "Prompt entries (as returned by OGX list)"
+                        "description": "Prompt entries (as returned by Llama Stack list)"
                     }
                 },
                 "additionalProperties": false,
                 "type": "object",
                 "title": "PromptsListResponse",
-                "description": "List of stored prompt templates returned by OGX.\n\nAttributes:\n    data: Prompt entries as returned by the OGX list API.",
+                "description": "List of stored prompt templates returned by Llama Stack.\n\nAttributes:\n    data: Prompt entries as returned by the Llama Stack list API.",
                 "examples": [
                     {
                         "data": [
@@ -18941,15 +18694,6 @@
                             true
                         ]
                     },
-                    "context_status": {
-                        "$ref": "#/components/schemas/ContextStatus",
-                        "description": "Context status: \"full\" (no compaction) or \"summarized\" (older turns replaced by a summary)",
-                        "default": "full",
-                        "examples": [
-                            "full",
-                            "summarized"
-                        ]
-                    },
                     "input_tokens": {
                         "type": "integer",
                         "title": "Input Tokens",
@@ -19008,14 +18752,13 @@
                     "response"
                 ],
                 "title": "QueryResponse",
-                "description": "Model representing LLM response to a query.\n\nAttributes:\n    conversation_id: The optional conversation ID (UUID).\n    response: The response.\n    rag_chunks: Deprecated. List of RAG chunks used to generate the response.\n        This information is now available in tool_results under file_search_call type.\n    referenced_documents: The URLs and titles for the documents used to generate the response.\n    tool_calls: List of tool calls made during response generation.\n    tool_results: List of tool results.\n    truncated: Whether conversation history was truncated.\n    context_status: Whether the conversation context was sent in full\n        (\"full\") or older turns were replaced by a summary (\"summarized\").\n    input_tokens: Number of tokens sent to LLM.\n    output_tokens: Number of tokens received from LLM.\n    available_quotas: Quota available as measured by all configured quota limiters.",
+                "description": "Model representing LLM response to a query.\n\nAttributes:\n    conversation_id: The optional conversation ID (UUID).\n    response: The response.\n    rag_chunks: Deprecated. List of RAG chunks used to generate the response.\n        This information is now available in tool_results under file_search_call type.\n    referenced_documents: The URLs and titles for the documents used to generate the response.\n    tool_calls: List of tool calls made during response generation.\n    tool_results: List of tool results.\n    truncated: Whether conversation history was truncated.\n    input_tokens: Number of tokens sent to LLM.\n    output_tokens: Number of tokens received from LLM.\n    available_quotas: Quota available as measured by all configured quota limiters.",
                 "examples": [
                     {
                         "available_quotas": {
                             "ClusterQuotaLimiter": 998911,
                             "UserQuotaLimiter": 998911
                         },
-                        "context_status": "full",
                         "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
                         "input_tokens": 123,
                         "output_tokens": 456,
@@ -19058,7 +18801,7 @@
                         "type": "string",
                         "title": "Model prompt",
                         "description": "The default prompt sent to the LLM used to validate the Users' question.",
-                        "default": "\nInstructions:\n- You are a question classifying tool\n- You are an expert in Kubernetes and OpenShift\n- Your job is to determine where or a user's question is related to Kubernetes and/or OpenShift technologies and to provide a one-word response.\n- If a question appears to be related to Kubernetes or OpenShift technologies, answer with the word ${allowed}, otherwise answer with the word ${rejected}.\n- Do not explain your answer, just provide the one-word response. Do not give any other response.\n- If the given question is an empty string, answer with the word ${rejected}\n\n\nExample Question:\nWhy is the sky blue?\nExample Response:\n${rejected}\n\nExample Question:\nWhy is the grass green?\nExample Response:\n${rejected}\n\nExample Question:\nWhy is sand yellow?\nExample Response:\n${rejected}\n\nExample Question:\nCan you help configure my cluster to automatically scale?\nExample Response:\n${allowed}\n\nQuestion:\n${message}\nResponse:\n"
+                        "default": "\nInstructions:\n- You are a question classifying tool\n- You are an expert in kubernetes and openshift\n- Your job is to determine where or a user's question is related to kubernetes and/or openshift technologies and to provide a one-word response.\n- If a question appears to be related to kubernetes or openshift technologies, answer with the word ${allowed}, otherwise answer with the word ${rejected}.\n- Do not explain your answer, just provide the one-word response. Do not give any other response.\n- If the given question is an empty string, answer with the word ${rejected}\n\n\nExample Question:\nWhy is the sky blue?\nExample Response:\n${rejected}\n\nExample Question:\nWhy is the grass green?\nExample Response:\n${rejected}\n\nExample Question:\nWhy is sand yellow?\nExample Response:\n${rejected}\n\nExample Question:\nCan you help configure my cluster to automatically scale?\nExample Response:\n${allowed}\n\nQuestion:\n${message}\nResponse:\n"
                     },
                     "invalid_question_response": {
                         "type": "string",
@@ -19526,162 +19269,27 @@
             },
             "RagConfiguration": {
                 "properties": {
-                    "byok": {
-                        "$ref": "#/components/schemas/ByokConfiguration",
-                        "title": "BYOK configuration",
-                        "description": "Bring Your Own Knowledge store configurations and settings."
+                    "inline": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Inline RAG IDs",
+                        "description": "RAG IDs whose sources are injected as context before the LLM call. Use 'okp' to enable OKP inline RAG. Empty by default (no inline RAG)."
                     },
-                    "okp": {
-                        "$ref": "#/components/schemas/OkpConfiguration",
-                        "title": "OKP configuration",
-                        "description": "OKP provider settings. Only used when 'okp' is listed in retrieval.inline.sources or retrieval.tool.sources."
-                    },
-                    "retrieval": {
-                        "$ref": "#/components/schemas/RetrievalConfiguration",
-                        "title": "Retrieval configuration",
-                        "description": "Inline and tool retrieval strategy settings."
+                    "tool": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Tool RAG IDs",
+                        "description": "RAG IDs made available to the LLM as a file_search tool. Use 'okp' to include the OKP vector store. When omitted, tool RAG is disabled."
                     }
                 },
                 "additionalProperties": false,
                 "type": "object",
                 "title": "RagConfiguration",
-                "description": "Unified RAG configuration.\n\nGroups all RAG-related settings: BYOK stores, OKP provider, and\nretrieval strategies (inline and tool)."
-            },
-            "RagStore": {
-                "properties": {
-                    "rag_id": {
-                        "type": "string",
-                        "minLength": 1,
-                        "title": "RAG ID",
-                        "description": "Unique RAG ID"
-                    },
-                    "backend": {
-                        "type": "string",
-                        "minLength": 1,
-                        "title": "RAG backend",
-                        "description": "Type of RAG database (e.g. 'faiss', 'pgvector').",
-                        "default": "faiss"
-                    },
-                    "embedding_model": {
-                        "type": "string",
-                        "minLength": 1,
-                        "title": "Embedding model",
-                        "description": "Embedding model identification",
-                        "default": "sentence-transformers/all-mpnet-base-v2"
-                    },
-                    "embedding_dimension": {
-                        "type": "integer",
-                        "exclusiveMinimum": 0.0,
-                        "title": "Embedding dimension",
-                        "description": "Dimensionality of embedding vectors.",
-                        "default": 768
-                    },
-                    "vector_db_id": {
-                        "type": "string",
-                        "minLength": 1,
-                        "title": "Vector DB ID",
-                        "description": "Vector database identification."
-                    },
-                    "db_path": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "DB path",
-                        "description": "Path to RAG database. Required for faiss backend."
-                    },
-                    "score_multiplier": {
-                        "type": "number",
-                        "exclusiveMinimum": 0.0,
-                        "title": "Score multiplier",
-                        "description": "Multiplier applied to relevance scores from this vector store. Used to weight results when querying multiple knowledge sources. Values > 1 boost this store's results; values < 1 reduce them.",
-                        "default": 1.0
-                    },
-                    "relevance_cutoff_score": {
-                        "type": "number",
-                        "exclusiveMinimum": 0.0,
-                        "title": "Relevance cutoff score",
-                        "description": "Minimum raw similarity score to consider a result relevant. Results with a similarity score below this threshold are not returned.",
-                        "default": 0.3
-                    },
-                    "host": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "PostgreSQL host",
-                        "description": "PostgreSQL host for pgvector backend. Defaults to ${env.POSTGRES_HOST} when backend is pgvector."
-                    },
-                    "port": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "integer"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "PostgreSQL port",
-                        "description": "PostgreSQL port for pgvector backend. Defaults to ${env.POSTGRES_PORT} when backend is pgvector."
-                    },
-                    "db": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "PostgreSQL database",
-                        "description": "PostgreSQL database name for pgvector backend. Defaults to ${env.POSTGRES_DATABASE} when backend is pgvector."
-                    },
-                    "user": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "PostgreSQL user",
-                        "description": "PostgreSQL user for pgvector backend. Defaults to ${env.POSTGRES_USER} when backend is pgvector."
-                    },
-                    "password": {
-                        "anyOf": [
-                            {
-                                "type": "string",
-                                "format": "password",
-                                "writeOnly": true
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "PostgreSQL password",
-                        "description": "PostgreSQL password for pgvector backend. Defaults to ${env.POSTGRES_PASSWORD} when backend is pgvector."
-                    }
-                },
-                "additionalProperties": false,
-                "type": "object",
-                "required": [
-                    "rag_id",
-                    "vector_db_id"
-                ],
-                "title": "RagStore",
-                "description": "BYOK (Bring Your Own Knowledge) RAG store configuration."
+                "description": "RAG strategy configuration.\n\nControls which RAG sources are used for inline and tool-based retrieval.\n\nEach strategy lists RAG IDs to include. The special ID ``\"okp\"`` defined in constants,\nactivates the OKP provider; all other IDs refer to entries in ``byok_rag``.\n\nBoth ``inline`` and ``tool`` default to ``[]`` (disabled).\nEach must be explicitly configured to activate its respective RAG strategy."
             },
             "ReadinessResponse": {
                 "properties": {
@@ -20724,59 +20332,6 @@
                 ],
                 "sse_example": "event: response.created\ndata: {\"type\":\"response.created\",\"sequence_number\":0,\"response\":{\"id\":\"resp_abc\",\"object\":\"response\",\"created_at\":1704067200,\"status\":\"in_progress\",\"model\":\"openai/gpt-4o-mini\",\"output\":[],\"store\":true,\"text\":{\"format\":{\"type\":\"text\"}},\"conversation\":\"0d21ba731f21f798dc9680125d5d6f49\",\"available_quotas\":{},\"output_text\":\"\"}}\n\nevent: response.output_item.added\ndata: {\"type\":\"response.output_item.added\",\"sequence_number\":1,\"response_id\":\"resp_abc\",\"output_index\":0,\"item\":{\"id\":\"msg_abc\",\"type\":\"message\",\"status\":\"in_progress\",\"role\":\"assistant\",\"content\":[]}}\n\n...\n\nevent: response.completed\ndata: {\"type\":\"response.completed\",\"sequence_number\":30,\"response\":{\"id\":\"resp_abc\",\"object\":\"response\",\"created_at\":1704067200,\"status\":\"completed\",\"model\":\"openai/gpt-4o-mini\",\"output\":[{\"id\":\"msg_abc\",\"type\":\"message\",\"status\":\"completed\",\"role\":\"assistant\",\"content\":[{\"type\":\"output_text\",\"text\":\"Hello! How can I help?\",\"annotations\":[]}]}],\"store\":true,\"text\":{\"format\":{\"type\":\"text\"}},\"usage\":{\"input_tokens\":10,\"output_tokens\":6,\"total_tokens\":16,\"input_tokens_details\":{\"cached_tokens\":0},\"output_tokens_details\":{\"reasoning_tokens\":0}},\"conversation\":\"0d21ba731f21f798dc9680125d5d6f49\",\"available_quotas\":{\"daily\":1000,\"monthly\":50000},\"output_text\":\"Hello! How can I help?\"}}\n\ndata: [DONE]\n\n"
             },
-            "RetrievalConfiguration": {
-                "properties": {
-                    "inline": {
-                        "$ref": "#/components/schemas/RetrievalStrategyConfiguration",
-                        "title": "Inline retrieval",
-                        "description": "Inline RAG: context injected before the LLM request."
-                    },
-                    "tool": {
-                        "$ref": "#/components/schemas/RetrievalStrategyConfiguration",
-                        "title": "Tool retrieval",
-                        "description": "Tool RAG: LLM can call file_search on demand."
-                    }
-                },
-                "additionalProperties": false,
-                "type": "object",
-                "title": "RetrievalConfiguration",
-                "description": "Configuration for inline and tool retrieval strategies."
-            },
-            "RetrievalStrategyConfiguration": {
-                "properties": {
-                    "sources": {
-                        "items": {
-                            "type": "string"
-                        },
-                        "type": "array",
-                        "title": "RAG source IDs",
-                        "description": "RAG IDs to use for this retrieval strategy. Use 'okp' to include the OKP vector store."
-                    },
-                    "max_chunks": {
-                        "type": "integer",
-                        "exclusiveMinimum": 0.0,
-                        "title": "Max chunks",
-                        "description": "Maximum number of chunks returned by this retrieval strategy.",
-                        "default": 10
-                    },
-                    "reranker": {
-                        "anyOf": [
-                            {
-                                "$ref": "#/components/schemas/RerankerConfiguration"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Reranker configuration",
-                        "description": "Neural reranking of RAG chunks using cross-encoder. Only applicable to inline retrieval."
-                    }
-                },
-                "additionalProperties": false,
-                "type": "object",
-                "title": "RetrievalStrategyConfiguration",
-                "description": "Configuration for a single retrieval strategy (inline or tool)."
-            },
             "RlsapiV1Attachment": {
                 "properties": {
                     "contents": {
@@ -21516,7 +21071,7 @@
                 },
                 "type": "object",
                 "title": "SearchRankingOptions",
-                "description": "Options for ranking and filtering search results.\n\nThis class configures how search results are ranked and filtered. You can use algorithm-based\nrerankers (weighted, RRF) or neural rerankers. Defaults from VectorStoresConfig are\nused when parameters are not provided.\n\nExamples:\n    # Weighted ranker with custom alpha\n    SearchRankingOptions(ranker=\"weighted\", alpha=0.7)\n\n    # RRF ranker with custom impact factor\n    SearchRankingOptions(ranker=\"rrf\", impact_factor=50.0)\n\n    # Use config defaults (just specify ranker type)\n    SearchRankingOptions(ranker=\"weighted\")  # Uses alpha from VectorStoresConfig\n\n    # Score threshold filtering\n    SearchRankingOptions(ranker=\"weighted\", score_threshold=0.5)\n\n:param ranker: (Optional) Name of the ranking algorithm to use. Supported values:\n    - \"weighted\": Weighted combination of vector and keyword scores\n    - \"rrf\": Reciprocal Rank Fusion algorithm\n    - \"neural\": Neural reranking model (requires model parameter)\n    Note: For OpenAI API compatibility, any string value is accepted, but only the above values are supported.\n:param score_threshold: (Optional) Minimum relevance score threshold for results. Default: 0.0\n:param alpha: (Optional) Weight factor for weighted ranker (0-1).\n    - 0.0 = keyword only\n    - 0.5 = equal weight (default)\n    - 1.0 = vector only\n    Only used when ranker=\"weighted\" and weights is not provided.\n    Falls back to VectorStoresConfig.chunk_retrieval_params.weighted_search_alpha if not provided.\n:param impact_factor: (Optional) Impact factor (k) for RRF algorithm.\n    Lower values emphasize higher-ranked results. Default: 60.0 (optimal from research).\n    Only used when ranker=\"rrf\".\n    Falls back to VectorStoresConfig.chunk_retrieval_params.rrf_impact_factor if not provided.\n:param weights: (Optional) Dictionary of weights for combining different signal types.\n    Keys can be \"vector\", \"keyword\", \"neural\". Values should sum to 1.0.\n    Used when combining algorithm-based reranking with neural reranking.\n    Example: {\"vector\": 0.3, \"keyword\": 0.3, \"neural\": 0.4}\n:param model: (Optional) Model identifier for neural reranker\n    (e.g., \"sentence-transformers/Qwen/Qwen3-Reranker-0.6B\"). Required when ranker=\"neural\" or when\n    weights contains \"neural\"."
+                "description": "Options for ranking and filtering search results.\n\nThis class configures how search results are ranked and filtered. You can use algorithm-based\nrerankers (weighted, RRF) or neural rerankers. Defaults from VectorStoresConfig are\nused when parameters are not provided.\n\nExamples:\n    # Weighted ranker with custom alpha\n    SearchRankingOptions(ranker=\"weighted\", alpha=0.7)\n\n    # RRF ranker with custom impact factor\n    SearchRankingOptions(ranker=\"rrf\", impact_factor=50.0)\n\n    # Use config defaults (just specify ranker type)\n    SearchRankingOptions(ranker=\"weighted\")  # Uses alpha from VectorStoresConfig\n\n    # Score threshold filtering\n    SearchRankingOptions(ranker=\"weighted\", score_threshold=0.5)\n\n:param ranker: (Optional) Name of the ranking algorithm to use. Supported values:\n    - \"weighted\": Weighted combination of vector and keyword scores\n    - \"rrf\": Reciprocal Rank Fusion algorithm\n    - \"neural\": Neural reranking model (requires model parameter)\n    Note: For OpenAI API compatibility, any string value is accepted, but only the above values are supported.\n:param score_threshold: (Optional) Minimum relevance score threshold for results. Default: 0.0\n:param alpha: (Optional) Weight factor for weighted ranker (0-1).\n    - 0.0 = keyword only\n    - 0.5 = equal weight (default)\n    - 1.0 = vector only\n    Only used when ranker=\"weighted\" and weights is not provided.\n    Falls back to VectorStoresConfig.chunk_retrieval_params.weighted_search_alpha if not provided.\n:param impact_factor: (Optional) Impact factor (k) for RRF algorithm.\n    Lower values emphasize higher-ranked results. Default: 60.0 (optimal from research).\n    Only used when ranker=\"rrf\".\n    Falls back to VectorStoresConfig.chunk_retrieval_params.rrf_impact_factor if not provided.\n:param weights: (Optional) Dictionary of weights for combining different signal types.\n    Keys can be \"vector\", \"keyword\", \"neural\". Values should sum to 1.0.\n    Used when combining algorithm-based reranking with neural reranking.\n    Example: {\"vector\": 0.3, \"keyword\": 0.3, \"neural\": 0.4}\n:param model: (Optional) Model identifier for neural reranker (e.g., \"transformers/Qwen/Qwen3-Reranker-0.6B\").\n    Required when ranker=\"neural\" or when weights contains \"neural\"."
             },
             "SecurityScheme": {
                 "anyOf": [
@@ -21578,26 +21133,6 @@
                         "description": "Number of Uvicorn worker processes to start",
                         "default": 1
                     },
-                    "max_concurrent_file_uploads": {
-                        "type": "integer",
-                        "exclusiveMinimum": 0.0,
-                        "title": "Maximum concurrent file uploads",
-                        "description": "Maximum number of file uploads (POST /v1/files) processed concurrently per worker. Each in-flight upload can hold up to the configured maximum file size in memory, so this bounds worst-case memory usage from concurrent uploads. Additional uploads are rejected with 429 until a slot frees up.",
-                        "default": 5
-                    },
-                    "max_concurrent_vector_store_attaches": {
-                        "type": "integer",
-                        "exclusiveMinimum": 0.0,
-                        "title": "Maximum concurrent vector store file attachments",
-                        "description": "Maximum number of vector store file attachments (POST /v1/vector-stores/{id}/files) processed concurrently per worker. Each in-flight attachment re-reads and chunks the source file, so this bounds worst-case memory usage independently of max_concurrent_file_uploads. Additional attachments are rejected with 429 until a slot frees up.",
-                        "default": 5
-                    },
-                    "delete_file_after_vector_store_attach": {
-                        "type": "boolean",
-                        "title": "Delete file after vector store attach",
-                        "description": "When true, deletes a file (POST /v1/files) once it has been successfully attached to a vector store, since the vector store keeps its own chunked/embedded copy of the content. Defaults to false to match the OpenAI Files API, where a file remains reusable across multiple vector stores until the caller explicitly deletes it - enabling this makes attached files single-use: re-attaching the same file_id to another vector store will fail once it has been deleted.",
-                        "default": false
-                    },
                     "color_log": {
                         "type": "boolean",
                         "title": "Color log",
@@ -21657,7 +21192,7 @@
                             "cause": "Connection error while trying to reach backend service.",
                             "response": "Unable to connect to OGX"
                         },
-                        "label": "OGX"
+                        "label": "ogx"
                     },
                     {
                         "detail": {
@@ -21716,27 +21251,6 @@
                     }
                 ]
             },
-            "SkillMetadata": {
-                "properties": {
-                    "name": {
-                        "type": "string",
-                        "title": "Name",
-                        "description": "Unique name of the skill"
-                    },
-                    "description": {
-                        "type": "string",
-                        "title": "Description",
-                        "description": "Human readable description of what the skill does"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "name",
-                    "description"
-                ],
-                "title": "SkillMetadata",
-                "description": "Metadata describing a single loaded agent skill.\n\nAttributes:\n    name: Unique name of the skill.\n    description: Human readable description of what the skill does."
-            },
             "SkillsConfiguration": {
                 "properties": {
                     "paths": {
@@ -21754,38 +21268,6 @@
                 "title": "SkillsConfiguration",
                 "description": "Agent skills configuration.\n\nSpecifies paths to skill directories. Skill metadata (name, description)\nis read from SKILL.md frontmatter at startup.\n\nEach path can point to either:\n- A directory containing a SKILL.md file (single skill)\n- A directory containing subdirectories with SKILL.md files (multiple skills)\n\nPaths are validated at startup to ensure they exist and contain valid SKILL.md files."
             },
-            "SkillsResponse": {
-                "properties": {
-                    "skills": {
-                        "items": {
-                            "$ref": "#/components/schemas/SkillMetadata"
-                        },
-                        "type": "array",
-                        "title": "Skills",
-                        "description": "List of loaded skills with metadata"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "skills"
-                ],
-                "title": "SkillsResponse",
-                "description": "Model representing a response to skills request.\n\nAttributes:\n    skills: List of loaded skills with metadata (name and description).",
-                "examples": [
-                    {
-                        "skills": [
-                            {
-                                "description": "Review code for quality and security",
-                                "name": "code-review"
-                            },
-                            {
-                                "description": "Troubleshoot OpenShift cluster issues",
-                                "name": "openshift-troubleshooting"
-                            }
-                        ]
-                    }
-                ]
-            },
             "SolrVectorSearchRequest": {
                 "properties": {
                     "mode": {
@@ -21795,8 +21277,7 @@
                                 "enum": [
                                     "semantic",
                                     "hybrid",
-                                    "lexical",
-                                    "keyword"
+                                    "lexical"
                                 ]
                             },
                             {
@@ -21804,11 +21285,10 @@
                             }
                         ],
                         "title": "Mode",
-                        "description": "Solr vector_io search mode. When omitted, the configured OKP default is used; otherwise 'hybrid' applies. 'keyword' and 'lexical' both use BM25 text search.",
+                        "description": "Solr vector_io search mode. When omitted, the server default ('hybrid') is used.",
                         "examples": [
                             "hybrid",
                             "semantic",
-                            "keyword",
                             "lexical"
                         ]
                     },
@@ -21864,7 +21344,7 @@
                 "additionalProperties": false,
                 "type": "object",
                 "title": "SolrVectorSearchRequest",
-                "description": "LCORE Solr inline RAG options for vector_io.query (mode and provider filters).\n\nAttributes:\n    mode: Solr vector_io search mode. When omitted, the configured OKP default is used.\n    filters: Solr provider filter payload passed through as params['solr'].\n\nLegacy clients may send a plain JSON object with filter keys only;\nthat object is accepted as filters with mode unset (server default applies)."
+                "description": "LCORE Solr inline RAG options for vector_io.query (mode and provider filters).\n\nAttributes:\n    mode: Solr vector_io search mode. When omitted, the server default (hybrid) is used.\n    filters: Solr provider filter payload passed through as params['solr'].\n\nLegacy clients may send a plain JSON object with filter keys only;\nthat object is accepted as filters with mode unset (server default applies)."
             },
             "SplunkConfiguration": {
                 "properties": {
@@ -22087,42 +21567,6 @@
                 "type": "object",
                 "title": "TLSConfiguration",
                 "description": "TLS configuration.\n\nTransport Layer Security (TLS) is a cryptographic protocol designed to\nprovide communications security over a computer network, such as the\nInternet. The protocol is widely used in applications such as email,\ninstant messaging, and voice over IP, but its use in securing HTTPS remains\nthe most publicly visible.\n\nUseful resources:\n\n  - [FastAPI HTTPS Deployment](https://fastapi.tiangolo.com/deployment/https/)\n  - [Transport Layer Security Overview](https://en.wikipedia.org/wiki/Transport_Layer_Security)\n  - [What is TLS](https://www.ssltrust.eu/learning/ssl/transport-layer-security-tls)"
-            },
-            "TooManyConcurrentRequestsResponse": {
-                "properties": {
-                    "status_code": {
-                        "type": "integer",
-                        "title": "Status Code",
-                        "description": "HTTP status code for the errors response"
-                    },
-                    "detail": {
-                        "$ref": "#/components/schemas/DetailModel",
-                        "description": "The detail model containing error summary and cause"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "status_code",
-                    "detail"
-                ],
-                "title": "TooManyConcurrentRequestsResponse",
-                "description": "429 Too Many Requests - concurrency limit exceeded.",
-                "examples": [
-                    {
-                        "detail": {
-                            "cause": "The maximum number of concurrent file uploads has been reached.",
-                            "response": "Too many concurrent file uploads"
-                        },
-                        "label": "file upload"
-                    },
-                    {
-                        "detail": {
-                            "cause": "The maximum number of concurrent vector store file attachments has been reached.",
-                            "response": "Too many concurrent vector store file attachments"
-                        },
-                        "label": "vector store attach"
-                    }
-                ]
             },
             "ToolCallSummary": {
                 "properties": {
@@ -22388,7 +21832,7 @@
                             "vllm_rhel_ai"
                         ],
                         "title": "Provider type",
-                        "description": "Canonical, backend-agnostic provider identifier mapped to an OGX provider_type by the synthesizer."
+                        "description": "Canonical, backend-agnostic provider identifier mapped to a Llama Stack provider_type by the synthesizer."
                     },
                     "id": {
                         "anyOf": [
@@ -22400,7 +21844,7 @@
                             }
                         ],
                         "title": "Provider ID",
-                        "description": "Optional identifier emitted as the OGX provider_id. When omitted, synthesized as type with underscores hyphenated. If set, must be non-empty after stripping whitespace and may contain only lowercase letters, digits, underscores, and hyphens."
+                        "description": "Optional identifier emitted as the Llama Stack provider_id. When omitted, synthesized as type with underscores hyphenated. If set, must be non-empty after stripping whitespace and may contain only lowercase letters, digits, underscores, and hyphens."
                     },
                     "api_key_env": {
                         "anyOf": [
@@ -22442,19 +21886,18 @@
                     "type"
                 ],
                 "title": "UnifiedInferenceProvider",
-                "description": "A high-level inference provider entry for unified-mode synthesis.\n\nOperators describe inference providers at this high level (backend-agnostic\nvocabulary) instead of authoring raw OGX provider blocks. The\nsynthesizer (`apply_high_level_inference`) expands each entry into an OGX\n`providers.inference` entry, mapping `type` to a `provider_type` and\nemitting `${env.<VAR>}` references for secrets (never literal values).\n\nAttributes:\n    type: Canonical provider identifier. Vendor-neutral so it survives a\n        future backend change; each backend-specific synthesizer maps it to\n        its own provider vocabulary.\n    id: Optional identifier emitted as the OGX provider_id. When\n        omitted, synthesized as type with underscores hyphenated. If set,\n        must be non-empty after stripping whitespace and may contain only\n        lowercase letters, digits, underscores, and hyphens.\n    api_key_env: Name of the environment variable holding the provider API\n        key. Emitted verbatim as `${env.<name>}` so the secret never lands\n        on disk resolved.\n    allowed_models: Optional allow-list of model identifiers passed through\n        to the synthesized provider config.\n    extra: Additional provider-config keys merged verbatim into the\n        synthesized provider's `config` block \u2014 an escape hatch for\n        provider-specific knobs not modeled here."
+                "description": "A high-level inference provider entry for unified-mode synthesis.\n\nOperators describe inference providers at this high level (backend-agnostic\nvocabulary) instead of authoring raw Llama Stack provider blocks. The\nsynthesizer (`apply_high_level_inference`) expands each entry into a Llama\nStack `providers.inference` entry, mapping `type` to a `provider_type` and\nemitting `${env.<VAR>}` references for secrets (never literal values).\n\nAttributes:\n    type: Canonical provider identifier. Vendor-neutral so it survives a\n        future backend change; each backend-specific synthesizer maps it to\n        its own provider vocabulary.\n    id: Optional identifier emitted as the Llama Stack provider_id. When\n        omitted, synthesized as type with underscores hyphenated. If set,\n        must be non-empty after stripping whitespace and may contain only\n        lowercase letters, digits, underscores, and hyphens.\n    api_key_env: Name of the environment variable holding the provider API\n        key. Emitted verbatim as `${env.<name>}` so the secret never lands\n        on disk resolved.\n    allowed_models: Optional allow-list of model identifiers passed through\n        to the synthesized provider config.\n    extra: Additional provider-config keys merged verbatim into the\n        synthesized provider's `config` block \u2014 an escape hatch for\n        provider-specific knobs not modeled here."
             },
-            "UnifiedOgxConfig": {
+            "UnifiedLlamaStackConfig": {
                 "properties": {
                     "baseline": {
                         "type": "string",
                         "enum": [
                             "default",
-                            "empty",
-                            "byo-llm"
+                            "empty"
                         ],
                         "title": "Baseline selector",
-                        "description": "Synthesis starting point: 'default' uses LCORE's built-in baseline including the conditional OpenAI provider, 'byo-llm' uses the same baseline without that OpenAI row, 'empty' starts from {}. Ignored when 'profile' is set.",
+                        "description": "Synthesis starting point: 'default' uses LCORE's built-in baseline, 'empty' starts from {}. Ignored when 'profile' is set.",
                         "default": "default"
                     },
                     "profile": {
@@ -22473,13 +21916,13 @@
                         "additionalProperties": true,
                         "type": "object",
                         "title": "Native override",
-                        "description": "Raw OGX schema deep-merged last (maps merge recursively; lists and scalars replace)."
+                        "description": "Raw Llama Stack schema deep-merged last (maps merge recursively; lists and scalars replace)."
                     }
                 },
                 "additionalProperties": false,
                 "type": "object",
-                "title": "UnifiedOgxConfig",
-                "description": "Backend-specific knobs for unified-mode OGX synthesis.\n\nPer Decision S5 of the design spike, backend-agnostic high-level sections\n(inference, ...) live at the configuration root, not here. This block holds\nonly the OGX-specific synthesis controls: which baseline to start\nfrom, an optional profile file, and a raw native_override escape hatch.\n\nAttributes:\n    baseline: Synthesis starting point. \"default\" begins from LCORE's\n        built-in baseline (src/data/default_run.yaml) including the\n        conditional OpenAI inference provider. \"byo-llm\" begins from the\n        same file with that OpenAI row removed. \"empty\" begins from an\n        empty dict (used by the migration tool for an exact round-trip).\n        Ignored when `profile` is set.\n    profile: Optional path to a user-authored run.yaml-shaped file used as\n        the synthesis baseline. Relative paths resolve against the directory\n        of the loaded lightspeed-stack.yaml.\n    native_override: Raw OGX schema deep-merged last (maps merge\n        recursively, lists and scalars replace). The escape hatch for\n        anything the high-level sections do not express."
+                "title": "UnifiedLlamaStackConfig",
+                "description": "Backend-specific knobs for unified-mode Llama Stack synthesis.\n\nPer Decision S5 of the design spike, backend-agnostic high-level sections\n(inference, ...) live at the configuration root, not here. This block holds\nonly the Llama-Stack-specific synthesis controls: which baseline to start\nfrom, an optional profile file, and a raw native_override escape hatch.\n\nAttributes:\n    baseline: Synthesis starting point. \"default\" begins from LCORE's\n        built-in baseline (src/data/default_run.yaml); \"empty\" begins from\n        an empty dict (used by the migration tool for an exact round-trip).\n        Ignored when `profile` is set.\n    profile: Optional path to a user-authored run.yaml-shaped file used as\n        the synthesis baseline. Relative paths resolve against the directory\n        of the loaded lightspeed-stack.yaml.\n    native_override: Raw Llama Stack schema deep-merged last (maps merge\n        recursively, lists and scalars replace). The escape hatch for\n        anything the high-level sections do not express."
             },
             "UnprocessableEntityResponse": {
                 "properties": {
@@ -22634,7 +22077,7 @@
                             }
                         ],
                         "title": "Default provider",
-                        "description": "Provider id used for vector_stores.default_* in the synthesized OGX config. Required when providers is non-empty; must match one of providers[].id."
+                        "description": "Provider id used for vector_stores.default_* in the synthesized Llama Stack config. Required when providers is non-empty; must match one of providers[].id."
                     },
                     "providers": {
                         "items": {
@@ -22656,13 +22099,13 @@
                         },
                         "type": "array",
                         "title": "Vector store providers",
-                        "description": "Dynamic vector-store provider capacity for runtime POST /v1/vector-stores creates. Not the same as rag.byok.stores (static registered corpora)."
+                        "description": "Dynamic vector-store provider capacity for runtime POST /v1/vector-stores creates. Not the same as byok_rag (static registered corpora)."
                     }
                 },
                 "additionalProperties": false,
                 "type": "object",
                 "title": "VectorStoreConfiguration",
-                "description": "Configuration for dynamic vector-store providers.\n\nMirrors ``InferenceConfiguration``: a providers list plus a sibling\n``default_provider`` pointer, rather than a per-entry default flag.\n\nAttributes:\n    default_provider: Provider id used for vector_stores.default_* in the\n        synthesized OGX config. Required when providers is\n        non-empty; must match one of providers[].id. Must be omitted when\n        providers is empty.\n    providers: Dynamic vector-store provider capacity for runtime\n        POST /v1/vector-stores creates. Not the same as rag.byok.stores (static\n        registered corpora)."
+                "description": "Configuration for dynamic vector-store providers.\n\nMirrors ``InferenceConfiguration``: a providers list plus a sibling\n``default_provider`` pointer, rather than a per-entry default flag.\n\nAttributes:\n    default_provider: Provider id used for vector_stores.default_* in the\n        synthesized Llama Stack config. Required when providers is\n        non-empty; must match one of providers[].id. Must be omitted when\n        providers is empty.\n    providers: Dynamic vector-store provider capacity for runtime\n        POST /v1/vector-stores creates. Not the same as byok_rag (static\n        registered corpora)."
             },
             "VectorStoreCreateRequest": {
                 "properties": {
@@ -22990,7 +22433,19 @@
                     "attributes": {
                         "anyOf": [
                             {
-                                "additionalProperties": true,
+                                "additionalProperties": {
+                                    "anyOf": [
+                                        {
+                                            "type": "string"
+                                        },
+                                        {
+                                            "type": "number"
+                                        },
+                                        {
+                                            "type": "boolean"
+                                        }
+                                    ]
+                                },
                                 "type": "object"
                             },
                             {
@@ -23304,201 +22759,6 @@
                         "object": "list"
                     }
                 ]
-            },
-            "WebSearchActionFind": {
-                "properties": {
-                    "type": {
-                        "type": "string",
-                        "const": "find_in_page",
-                        "title": "Type",
-                        "default": "find_in_page"
-                    },
-                    "url": {
-                        "type": "string",
-                        "title": "Url"
-                    },
-                    "pattern": {
-                        "type": "string",
-                        "title": "Pattern"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "url",
-                    "pattern"
-                ],
-                "title": "WebSearchActionFind",
-                "description": "Web search action: searches for a pattern within a loaded page."
-            },
-            "WebSearchActionOpenPage": {
-                "properties": {
-                    "type": {
-                        "type": "string",
-                        "const": "open_page",
-                        "title": "Type",
-                        "default": "open_page"
-                    },
-                    "url": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Url"
-                    }
-                },
-                "type": "object",
-                "title": "WebSearchActionOpenPage",
-                "description": "Web search action: opens a specific URL from search results."
-            },
-            "WebSearchActionSearch": {
-                "properties": {
-                    "type": {
-                        "type": "string",
-                        "const": "search",
-                        "title": "Type",
-                        "default": "search"
-                    },
-                    "query": {
-                        "type": "string",
-                        "title": "Query"
-                    },
-                    "queries": {
-                        "anyOf": [
-                            {
-                                "items": {
-                                    "type": "string"
-                                },
-                                "type": "array"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Queries"
-                    },
-                    "sources": {
-                        "anyOf": [
-                            {
-                                "items": {
-                                    "$ref": "#/components/schemas/WebSearchSource"
-                                },
-                                "type": "array"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Sources"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "query"
-                ],
-                "title": "WebSearchActionSearch",
-                "description": "Web search action: performs a search query."
-            },
-            "WebSearchFilters": {
-                "properties": {
-                    "allowed_domains": {
-                        "anyOf": [
-                            {
-                                "items": {
-                                    "type": "string"
-                                },
-                                "type": "array"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Allowed Domains"
-                    }
-                },
-                "type": "object",
-                "title": "WebSearchFilters",
-                "description": "Domain filters for web search results."
-            },
-            "WebSearchSource": {
-                "properties": {
-                    "type": {
-                        "type": "string",
-                        "const": "url",
-                        "title": "Type",
-                        "default": "url"
-                    },
-                    "url": {
-                        "type": "string",
-                        "title": "Url"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "url"
-                ],
-                "title": "WebSearchSource",
-                "description": "A source URL returned by a web search action."
-            },
-            "WebSearchUserLocation": {
-                "properties": {
-                    "type": {
-                        "type": "string",
-                        "const": "approximate",
-                        "title": "Type",
-                        "default": "approximate"
-                    },
-                    "city": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "City"
-                    },
-                    "country": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Country"
-                    },
-                    "region": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Region"
-                    },
-                    "timezone": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Timezone"
-                    }
-                },
-                "type": "object",
-                "title": "WebSearchUserLocation",
-                "description": "Approximate user location to refine web search results."
             }
         }
     },
@@ -23586,10 +22846,6 @@
         {
             "name": "shields",
             "description": "Safety shields."
-        },
-        {
-            "name": "skills",
-            "description": "Agent skills."
         },
         {
             "name": "streaming_query",

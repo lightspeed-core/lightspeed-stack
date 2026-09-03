@@ -41,7 +41,7 @@ The A2A protocol is an open standard for agent-to-agent communication that allow
 │                          │                                      │
 │                          ▼                                      │
 │  ┌──────────────────────────────────────────────────────────┐   │
-│  │                  OGX Client                              │   │
+│  │                  Llama Stack Client                      │   │
 │  │  - Responses API (streaming responses)                   │   │
 │  │  - Tools, RAG integration                                │   │
 │  └──────────────────────────────────────────────────────────┘   │
@@ -52,18 +52,18 @@ The A2A protocol is an open standard for agent-to-agent communication that allow
 
 ### Agent Card Discovery
 
-| Endpoint                       | Method | Description                                          |
-|--------------------------------|--------|------------------------------------------------------|
-| `/.well-known/agent.json`      | GET    | Returns the agent card (standard A2A discovery path) |
-| `/.well-known/agent-card.json` | GET    | Returns the agent card (alternate path)              |
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/.well-known/agent.json` | GET | Returns the agent card (standard A2A discovery path) |
+| `/.well-known/agent-card.json` | GET | Returns the agent card (alternate path) |
 
 ### A2A JSON-RPC
 
-| Endpoint      | Method | Description                             |
-|---------------|--------|-----------------------------------------|
-| `/a2a`        | POST   | Main JSON-RPC endpoint for A2A protocol |
-| `/a2a`        | GET    | Agent card retrieval via GET            |
-| `/a2a/health` | GET    | Health check endpoint                   |
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/a2a` | POST | Main JSON-RPC endpoint for A2A protocol |
+| `/a2a` | GET | Agent card retrieval via GET |
+| `/a2a/health` | GET | Health check endpoint |
 
 ## Configuration
 
@@ -250,7 +250,7 @@ PostgreSQL is recommended for:
 The A2A state storage persists:
 
 1. **Task Store**: All A2A task objects, enabling task state queries and resumption
-2. **Context-to-Conversation Mappings**: Maps A2A `contextId` to OGX `conversation_id` for multi-turn conversations
+2. **Context-to-Conversation Mappings**: Maps A2A `contextId` to Llama Stack `conversation_id` for multi-turn conversations
 
 This ensures that:
 - Multi-turn conversations work correctly across workers
@@ -310,7 +310,7 @@ The `A2AAgentExecutor` class implements the A2A `AgentExecutor` interface:
 
 1. **Receives A2A Request**: Extracts user input from the A2A message
 2. **Creates Query Request**: Builds an internal `QueryRequest` with conversation context
-3. **Calls OGX**: Uses the Responses API to get streaming responses
+3. **Calls Llama Stack**: Uses the Responses API to get streaming responses
 4. **Converts Events**: Transforms Responses API streaming chunks to A2A events
 5. **Manages State**: Tracks task state and publishes status updates
 
@@ -331,7 +331,7 @@ A2A Request
     │
     ▼
 ┌─────────────────────┐
-│ Call OGX            │──► TaskStatusUpdateEvent (working)
+│ Call Llama Stack    │──► TaskStatusUpdateEvent (working)
 │ Responses API       │
 └─────────────────────┘
     │
@@ -367,7 +367,7 @@ A2A Request
 
 The A2A implementation supports multi-turn conversations:
 
-1. Each A2A `contextId` maps to an OGX `conversation_id`
+1. Each A2A `contextId` maps to a Llama Stack `conversation_id`
 2. The mapping is stored in the configured A2A context store (memory, SQLite, or PostgreSQL)
 3. Subsequent messages with the same `contextId` continue the conversation
 4. Conversation history is preserved across turns
@@ -527,11 +527,11 @@ curl -X POST http://localhost:8090/a2a \
 
 A2A messages support an optional `metadata` field that can be used to pass additional parameters to control request routing and behavior. The following metadata fields are supported:
 
-| Field              | Type           | Description                                                                                              |
-|--------------------|----------------|----------------------------------------------------------------------------------------------------------|
-| `model`            | `string`       | Specify the LLM model to use for this request (e.g., `"gpt-4"`, `"llama3.1"`)                            |
-| `provider`         | `string`       | Specify the LLM provider to use (e.g., `"openai"`, `"watsonx"`)                                          |
-| `vector_store_ids` | `list[string]` | Specify which vector stores to query for RAG. If not provided, all available vector stores are queried  |
+| Field              | Type           | Description                                                                                            |
+|--------------------|----------------|--------------------------------------------------------------------------------------------------------|
+| `model`            | `string`       | Specify the LLM model to use for this request (e.g., `"gpt-4"`, `"llama3.1"`)                          |
+| `provider`         | `string`       | Specify the LLM provider to use (e.g., `"openai"`, `"watsonx"`)                                        |
+| `vector_store_ids` | `list[string]` | Specify which vector stores to query for RAG. If not provided, all available vector stores are queried |
 
 #### Example: Using Metadata
 
@@ -756,10 +756,10 @@ Each SSE event is wrapped in a JSON-RPC response with `id`, `jsonrpc`, and `resu
 
 4. **Connection Timeout**
    - Streaming responses have a 300-second timeout
-   - Check network connectivity to OGX
+   - Check network connectivity to Llama Stack
 
 5. **No Response from Agent**
-   - Verify OGX is running and accessible
+   - Verify Llama Stack is running and accessible
    - Check logs for errors in the executor
 
 ### Debug Logging
@@ -789,5 +789,5 @@ The protocol version is included in the agent card response and indicates which 
 ## References
 
 - [A2A Protocol Specification](https://github.com/google/A2A)
-- [OGX Documentation](https://llama-stack.readthedocs.io/)
+- [Llama Stack Documentation](https://llama-stack.readthedocs.io/)
 - [FastAPI Documentation](https://fastapi.tiangolo.com/)

@@ -7,7 +7,7 @@ import sys
 
 from fastapi.openapi.utils import get_openapi
 
-from client.ogx import AsyncOgxClientHolder
+from client import AsyncOgxClientHolder
 
 # it is needed to read proper configuration in order to start the app to generate schema
 from configuration import configuration
@@ -15,10 +15,10 @@ from configuration import configuration
 CFG_FILE = "lightspeed-stack.yaml"
 configuration.load_configuration(CFG_FILE)
 
-# OGX client needs to be loaded before REST API is fully initialized
+# Llama Stack client needs to be loaded before REST API is fully initialized
 import asyncio  # noqa: E402  pylint: disable=C0411,C0413
 
-asyncio.run(AsyncOgxClientHolder().load(configuration.configuration.ogx))
+asyncio.run(AsyncOgxClientHolder().load(configuration.configuration.llama_stack))
 
 from app.main import app  # noqa: E402  pylint: disable=C0413
 

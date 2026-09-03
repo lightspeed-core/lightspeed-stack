@@ -7,7 +7,8 @@ from typing import Any
 
 import pytest
 from fastapi import Request
-from ogx_client.models.version_info import VersionInfo
+from ogx_client.types import ListModelsResponse, VersionInfo
+from ogx_client.types.model import Model
 from pytest_mock import AsyncMockType, MockerFixture
 
 import constants
@@ -20,8 +21,6 @@ from tests.integration.conftest import (
     create_agent_run_result,
     create_file_search_agent_run_result,
     create_mock_llm_response,
-    make_openai_model,
-    make_openai_models_list_response,
 )
 
 # ---------------------------------------------------------------------------
@@ -91,7 +90,7 @@ def _make_vector_io_response(
 
 
 def _build_base_mock_client(mocker: MockerFixture) -> Any:
-    """Build a base mock OGX client with common stubs.
+    """Build a base mock Llama Stack client with common stubs.
 
     Configures models, shields, conversations, version, and responses.create
     for topic summary generation. Agent inference is mocked separately via
@@ -100,8 +99,19 @@ def _build_base_mock_client(mocker: MockerFixture) -> Any:
     mock_client = mocker.AsyncMock()
 
     # Model list
-    mock_client.openai.list.return_value = make_openai_models_list_response(
-        make_openai_model()
+    mock_client.models.list.return_value = ListModelsResponse.model_construct(
+        data=[
+            Model.model_construct(
+                id="test-provider/test-model",
+                created=0,
+                owned_by="test",
+                object="model",
+                custom_metadata={
+                    "provider_id": "test-provider",
+                    "model_type": "llm",
+                },
+            )
+        ]
     )
 
     # Shields (empty)
@@ -135,7 +145,7 @@ def mock_byok_client_fixture(
     mocker: MockerFixture,
     mock_query_agent: AsyncMockType,
 ) -> Generator[Any, None, None]:
-    """Mock OGX client with BYOK inline RAG configured.
+    """Mock Llama Stack client with BYOK inline RAG configured.
 
     Configures vector_io.query to return BYOK RAG chunks and sets
     vector_stores.list to empty (no tool-based vector stores).
@@ -157,7 +167,9 @@ def mock_byok_client_fixture(
     )
 
     # No tool-based vector stores
-    mock_client.vector_stores.list.return_value = []
+    mock_vector_stores_response = mocker.MagicMock()
+    mock_vector_stores_response.data = []
+    mock_client.vector_stores.list.return_value = mock_vector_stores_response
 
     mock_holder_class.return_value.get_client.return_value = mock_client
     yield mock_client
@@ -168,7 +180,7 @@ def mock_byok_tool_rag_client_fixture(
     mocker: MockerFixture,
     mock_query_agent: AsyncMockType,
 ) -> Generator[Any, None, None]:
-    """Mock OGX client with BYOK tool RAG (file_search) configured.
+    """Mock Llama Stack client with BYOK tool RAG (file_search) configured.
 
     Configures vector_stores.list with a BYOK store and agent.run to return
     a file_search tool result alongside the assistant message.
@@ -185,7 +197,9 @@ def mock_byok_tool_rag_client_fixture(
     # Tool-based vector stores available
     mock_vector_store = mocker.MagicMock()
     mock_vector_store.id = "vs-byok-knowledge"
-    mock_client.vector_stores.list.return_value = [mock_vector_store]
+    mock_list_result = mocker.MagicMock()
+    mock_list_result.data = [mock_vector_store]
+    mock_client.vector_stores.list.return_value = mock_list_result
 
     tool_run_result = create_file_search_agent_run_result(
         mocker,
@@ -225,7 +239,7 @@ def byok_config_fixture(test_config: AppConfig, mocker: MockerFixture) -> AppCon
     byok_entry.score_multiplier = 1.0
     byok_entry.model_dump.return_value = {
         "rag_id": "test-knowledge",
-        "backend": "faiss",
+        "rag_type": "inline::faiss",
         "embedding_model": "sentence-transformers/all-mpnet-base-v2",
         "embedding_dimension": 768,
         "vector_db_id": "vs-byok-knowledge",
@@ -233,9 +247,9 @@ def byok_config_fixture(test_config: AppConfig, mocker: MockerFixture) -> AppCon
         "score_multiplier": 1.0,
     }
 
-    # Patch the loaded configuration's rag.byok.stores and rag.retrieval.inline.sources
-    test_config.configuration.rag.byok.stores = [byok_entry]
-    test_config.configuration.rag.retrieval.inline.sources = ["test-knowledge"]
+    # Patch the loaded configuration's byok_rag and rag.inline
+    test_config.configuration.byok_rag = [byok_entry]
+    test_config.configuration.rag.inline = ["test-knowledge"]
 
     return test_config
 
@@ -246,8 +260,8 @@ def byok_tool_config_fixture(
 ) -> AppConfig:
     """Load test config with BYOK RAG configured for tool-based (file_search) usage.
 
-    Sets rag.retrieval.inline.sources to empty and rag.retrieval.tool.sources
-    to include the BYOK store, so only tool-based RAG is active.
+    Sets rag.inline to empty and rag.tool to include the BYOK store,
+    so only tool-based RAG is active.
     """
     byok_entry = mocker.MagicMock()
     byok_entry.rag_id = "test-knowledge"
@@ -255,7 +269,7 @@ def byok_tool_config_fixture(
     byok_entry.score_multiplier = 1.0
     byok_entry.model_dump.return_value = {
         "rag_id": "test-knowledge",
-        "backend": "faiss",
+        "rag_type": "inline::faiss",
         "embedding_model": "sentence-transformers/all-mpnet-base-v2",
         "embedding_dimension": 768,
         "vector_db_id": "vs-byok-knowledge",
@@ -263,9 +277,9 @@ def byok_tool_config_fixture(
         "score_multiplier": 1.0,
     }
 
-    test_config.configuration.rag.byok.stores = [byok_entry]
-    test_config.configuration.rag.retrieval.inline.sources = []
-    test_config.configuration.rag.retrieval.tool.sources = ["test-knowledge"]
+    test_config.configuration.byok_rag = [byok_entry]
+    test_config.configuration.rag.inline = []
+    test_config.configuration.rag.tool = ["test-knowledge"]
 
     return test_config
 
@@ -420,8 +434,8 @@ async def test_query_byok_inline_rag_with_request_vector_store_ids(
     entry_b.vector_db_id = "vs-source-b"
     entry_b.score_multiplier = 1.0
 
-    test_config.configuration.rag.byok.stores = [entry_a, entry_b]
-    test_config.configuration.rag.retrieval.inline.sources = ["source-a"]
+    test_config.configuration.byok_rag = [entry_a, entry_b]
+    test_config.configuration.rag.inline = ["source-a"]
 
     mock_holder_class = mocker.patch("app.endpoints.query.AsyncOgxClientHolder")
     mock_client = _build_base_mock_client(mocker)
@@ -430,7 +444,9 @@ async def test_query_byok_inline_rag_with_request_vector_store_ids(
         return_value=_make_byok_vector_io_response(mocker)
     )
 
-    mock_client.vector_stores.list.return_value = []
+    mock_vs_resp = mocker.MagicMock()
+    mock_vs_resp.data = []
+    mock_client.vector_stores.list.return_value = mock_vs_resp
 
     mock_holder_class.return_value.get_client.return_value = mock_client
 
@@ -491,8 +507,8 @@ async def test_query_byok_request_vector_store_ids_filters_configured_stores(
     entry_b.score_multiplier = 1.0
 
     # Both sources are in config
-    test_config.configuration.rag.byok.stores = [entry_a, entry_b]
-    test_config.configuration.rag.retrieval.inline.sources = ["source-a", "source-b"]
+    test_config.configuration.byok_rag = [entry_a, entry_b]
+    test_config.configuration.rag.inline = ["source-a", "source-b"]
 
     mock_holder_class = mocker.patch("app.endpoints.query.AsyncOgxClientHolder")
     mock_client = _build_base_mock_client(mocker)
@@ -501,7 +517,9 @@ async def test_query_byok_request_vector_store_ids_filters_configured_stores(
         return_value=_make_byok_vector_io_response(mocker)
     )
 
-    mock_client.vector_stores.list.return_value = []
+    mock_vs_resp = mocker.MagicMock()
+    mock_vs_resp.data = []
+    mock_client.vector_stores.list.return_value = mock_vs_resp
 
     mock_holder_class.return_value.get_client.return_value = mock_client
 
@@ -750,11 +768,11 @@ async def test_query_byok_combined_inline_and_tool_rag(  # pylint: disable=too-m
     byok_entry.rag_id = "test-knowledge"
     byok_entry.vector_db_id = "vs-byok-knowledge"
     byok_entry.score_multiplier = 1.0
-    test_config.configuration.rag.byok.stores = [byok_entry]
-    test_config.configuration.rag.retrieval.inline.sources = ["test-knowledge"]
-    test_config.configuration.rag.retrieval.tool.sources = ["test-knowledge"]
+    test_config.configuration.byok_rag = [byok_entry]
+    test_config.configuration.rag.inline = ["test-knowledge"]
+    test_config.configuration.rag.tool = ["test-knowledge"]
 
-    # Mock OGX client
+    # Mock Llama Stack client
     mock_holder_class = mocker.patch("app.endpoints.query.AsyncOgxClientHolder")
     mock_client = _build_base_mock_client(mocker)
 
@@ -766,7 +784,9 @@ async def test_query_byok_combined_inline_and_tool_rag(  # pylint: disable=too-m
     # Tool RAG vector stores
     mock_vector_store = mocker.MagicMock()
     mock_vector_store.id = "vs-byok-knowledge"
-    mock_client.vector_stores.list.return_value = [mock_vector_store]
+    mock_list_result = mocker.MagicMock()
+    mock_list_result.data = [mock_vector_store]
+    mock_client.vector_stores.list.return_value = mock_list_result
 
     # Agent run includes file_search tool RAG result
     combined_run_result = create_file_search_agent_run_result(
@@ -859,8 +879,8 @@ async def test_query_byok_inline_rag_only_configured_rag_id_is_queried(
     entry_b.vector_db_id = "vs-source-b"
     entry_b.score_multiplier = 1.0
 
-    test_config.configuration.rag.byok.stores = [entry_a, entry_b]
-    test_config.configuration.rag.retrieval.inline.sources = ["source-a"]
+    test_config.configuration.byok_rag = [entry_a, entry_b]
+    test_config.configuration.rag.inline = ["source-a"]
 
     mock_holder_class = mocker.patch("app.endpoints.query.AsyncOgxClientHolder")
     mock_client = _build_base_mock_client(mocker)
@@ -869,7 +889,9 @@ async def test_query_byok_inline_rag_only_configured_rag_id_is_queried(
         return_value=_make_byok_vector_io_response(mocker)
     )
 
-    mock_client.vector_stores.list.return_value = []
+    mock_vs_resp = mocker.MagicMock()
+    mock_vs_resp.data = []
+    mock_client.vector_stores.list.return_value = mock_vs_resp
 
     mock_holder_class.return_value.get_client.return_value = mock_client
 
@@ -943,8 +965,8 @@ async def test_query_byok_score_multiplier_shifts_chunk_priority(  # pylint: dis
     entry_b.vector_db_id = "vs-source-b"
     entry_b.score_multiplier = 5.0
 
-    test_config.configuration.rag.byok.stores = [entry_a, entry_b]
-    test_config.configuration.rag.retrieval.inline.sources = ["source-a", "source-b"]
+    test_config.configuration.byok_rag = [entry_a, entry_b]
+    test_config.configuration.rag.inline = ["source-a", "source-b"]
 
     mock_holder_class = mocker.patch("app.endpoints.query.AsyncOgxClientHolder")
     mock_client = _build_base_mock_client(mocker)
@@ -972,7 +994,9 @@ async def test_query_byok_score_multiplier_shifts_chunk_priority(  # pylint: dis
 
     mock_client.vector_io.query = mocker.AsyncMock(side_effect=_side_effect)
 
-    mock_client.vector_stores.list.return_value = []
+    mock_vs_resp = mocker.MagicMock()
+    mock_vs_resp.data = []
+    mock_client.vector_stores.list.return_value = mock_vs_resp
 
     mock_holder_class.return_value.get_client.return_value = mock_client
 
@@ -1040,17 +1064,17 @@ async def test_query_rag_content_limit_caps_retrieved_results(  # pylint: disabl
     entry.vector_db_id = "vs-big-source"
     entry.score_multiplier = 1.0
 
-    test_config.configuration.rag.byok.stores = [entry]
-    test_config.configuration.rag.retrieval.inline.sources = ["big-source"]
+    test_config.configuration.byok_rag = [entry]
+    test_config.configuration.rag.inline = ["big-source"]
 
     # Disable reranker for this test since it's testing chunk capping, not reranking
-    test_config.configuration.rag.retrieval.inline.reranker.enabled = False
+    test_config.configuration.reranker.enabled = False
 
     mock_holder_class = mocker.patch("app.endpoints.query.AsyncOgxClientHolder")
     mock_client = _build_base_mock_client(mocker)
 
     # Generate more chunks than INLINE_RAG_MAX_CHUNKS
-    num_chunks = constants.DEFAULT_INLINE_RAG_MAX_CHUNKS + 1
+    num_chunks = constants.INLINE_RAG_MAX_CHUNKS + 1
     chunks_data = [
         (f"Chunk content {i}", f"chunk-{i}", round(0.50 + i * 0.03, 2))
         for i in range(num_chunks)
@@ -1060,7 +1084,9 @@ async def test_query_rag_content_limit_caps_retrieved_results(  # pylint: disabl
         return_value=_make_vector_io_response(mocker, chunks_data)
     )
 
-    mock_client.vector_stores.list.return_value = []
+    mock_vs_resp = mocker.MagicMock()
+    mock_vs_resp.data = []
+    mock_client.vector_stores.list.return_value = mock_vs_resp
 
     mock_holder_class.return_value.get_client.return_value = mock_client
 
@@ -1087,7 +1113,7 @@ async def test_query_rag_content_limit_caps_retrieved_results(  # pylint: disabl
     )
 
     assert response.rag_chunks is not None
-    assert len(response.rag_chunks) == constants.DEFAULT_INLINE_RAG_MAX_CHUNKS
+    assert len(response.rag_chunks) == constants.INLINE_RAG_MAX_CHUNKS
 
     # Check that the score is computed properly
     for chunk in response.rag_chunks:
@@ -1135,14 +1161,14 @@ async def test_query_rag_content_limit_caps_across_multiple_sources(  # pylint: 
     entry_b.vector_db_id = "vs-source-b"
     entry_b.score_multiplier = 1.0
 
-    test_config.configuration.rag.byok.stores = [entry_a, entry_b]
-    test_config.configuration.rag.retrieval.inline.sources = ["source-a", "source-b"]
+    test_config.configuration.byok_rag = [entry_a, entry_b]
+    test_config.configuration.rag.inline = ["source-a", "source-b"]
 
     mock_holder_class = mocker.patch("app.endpoints.query.AsyncOgxClientHolder")
     mock_client = _build_base_mock_client(mocker)
 
     # Overlapping score bands so top-k must pick from both sources
-    n = constants.DEFAULT_INLINE_RAG_MAX_CHUNKS
+    n = constants.INLINE_RAG_MAX_CHUNKS
     resp_a = _make_vector_io_response(
         mocker,
         [
@@ -1165,7 +1191,9 @@ async def test_query_rag_content_limit_caps_across_multiple_sources(  # pylint: 
 
     mock_client.vector_io.query = mocker.AsyncMock(side_effect=_side_effect)
 
-    mock_client.vector_stores.list.return_value = []
+    mock_vs_resp = mocker.MagicMock()
+    mock_vs_resp.data = []
+    mock_client.vector_stores.list.return_value = mock_vs_resp
 
     mock_holder_class.return_value.get_client.return_value = mock_client
 
@@ -1192,7 +1220,7 @@ async def test_query_rag_content_limit_caps_across_multiple_sources(  # pylint: 
     )
 
     assert response.rag_chunks is not None
-    assert len(response.rag_chunks) == constants.DEFAULT_INLINE_RAG_MAX_CHUNKS
+    assert len(response.rag_chunks) == constants.INLINE_RAG_MAX_CHUNKS
 
     # Check that the score is computed properly
     for chunk in response.rag_chunks:
@@ -1232,22 +1260,21 @@ async def test_query_rag_content_limit_caps_inline_rag(  # pylint: disable=too-m
     - Returned chunks are the top-scoring ones
     """
     _ = mock_query_agent
-    mocker.patch("utils.vector_search.constants.DEFAULT_INLINE_RAG_MAX_CHUNKS", 3)
+    mocker.patch("utils.vector_search.constants.INLINE_RAG_MAX_CHUNKS", 3)
 
     entry = mocker.MagicMock()
     entry.rag_id = "big-source"
     entry.vector_db_id = "vs-big-source"
     entry.score_multiplier = 1.0
 
-    test_config.configuration.rag.byok.stores = [entry]
-    test_config.configuration.rag.retrieval.inline.sources = ["big-source"]
-    test_config.configuration.rag.retrieval.inline.max_chunks = 3
-    test_config.configuration.rag.retrieval.inline.reranker.enabled = False
+    test_config.configuration.byok_rag = [entry]
+    test_config.configuration.rag.inline = ["big-source"]
+    test_config.configuration.reranker.enabled = False
 
     mock_holder_class = mocker.patch("app.endpoints.query.AsyncOgxClientHolder")
     mock_client = _build_base_mock_client(mocker)
 
-    num_chunks = constants.DEFAULT_BYOK_RAG_MAX_CHUNKS
+    num_chunks = constants.BYOK_RAG_MAX_CHUNKS
     chunks_data = [
         (f"Chunk content {i}", f"chunk-{i}", round(0.50 + i * 0.03, 2))
         for i in range(num_chunks)
@@ -1256,7 +1283,9 @@ async def test_query_rag_content_limit_caps_inline_rag(  # pylint: disable=too-m
         return_value=_make_vector_io_response(mocker, chunks_data)
     )
 
-    mock_client.vector_stores.list.return_value = []
+    mock_vs_resp = mocker.MagicMock()
+    mock_vs_resp.data = []
+    mock_client.vector_stores.list.return_value = mock_vs_resp
 
     mock_holder_class.return_value.get_client.return_value = mock_client
 

@@ -14,19 +14,19 @@ ptisnovs@redhat.com
 
 ## Agenda
 
-* OGX
+* Llama Stack
 * Lightspeed Core
 * Evaluation
 
 ---
 
-## OGX
+## Llama Stack
 
 ![LCORE](images/llama_stack_logo.png)
 
 ---
 
-## What is OGX?
+## What is Llama Stack?
 
 * Framework to create applications with AI
     - chat bots
@@ -42,7 +42,7 @@ ptisnovs@redhat.com
 
 ---
 
-### Easiest usage of OGX
+### Easiest usage of Llama Stack
 
 * LLM call
 * Processing answer from LLM
@@ -139,18 +139,18 @@ ptisnovs@redhat.com
 
 ---
 
-### Communication with OGX
+### Communication with Llama Stack
 
 * CLI
 * REST API
 * As a common library (Python etc.)
-* OGX client
+* Llama Stack client
     - supports REST API
     - support running as a library (async)
 
 ---
 
-### OGX client
+### Llama Stack client
 
 * Python
 * Swift
@@ -159,13 +159,13 @@ ptisnovs@redhat.com
 
 ---
 
-### OGX as a library
+### Llama Stack as a library
 
 ![LS1](images/llama_stack_as_library.svg)
 
 ---
 
-### OGX as a service
+### Llama Stack as a service
 
 ![LS1](images/llama_stack_as_service.svg)
 
@@ -177,7 +177,7 @@ ptisnovs@redhat.com
 
 ---
 
-### OGX installation
+### Llama Stack installation
 
 ---
 
@@ -221,15 +221,15 @@ distribution = false
 
 ---
 
-### Starting OGX
+### Starting Llama Stack
 
 ```bash
-uv run llama stack run
+uv run llama stack
 ```
 
 ---
 
-### List of OGX API
+### List of Llama Stack API
 
 ```bash
 uv run llama stack list-apis
@@ -331,10 +331,10 @@ uv run llama stack list-providers
 ### Lightspeed Core
 
 * It's own REST API (stable, standard)
-* OGX as backed
+* Llama Stack as backed
     - more modules as LC plugins
-    - supports OGX in service mode
-    - supports OGX in library mode
+    - supports Llama Stack in service mode
+    - supports Llama Stack in library mode
 * Implemented as async Python code
 
 ---
@@ -367,7 +367,7 @@ uv run llama stack list-providers
 
 * AI world is similar to JS world 10 years ago
     - every week new framework is created
-    - OGX is a nice fit to this world
+    - Llama Stack is a nice fit to this world
     - Lightspeed Core as stable layer to keep developers sane
 
 ---

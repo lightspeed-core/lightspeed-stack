@@ -72,7 +72,7 @@ def test_main_migrate_config_writes_unified_file(
         yaml.dump(
             {
                 "name": "LCS",
-                "ogx": {
+                "llama_stack": {
                     "use_as_library_client": True,
                     "library_client_config_path": "run.yaml",
                 },
@@ -98,9 +98,9 @@ def test_main_migrate_config_writes_unified_file(
     main()  # returns early, never starts uvicorn
 
     migrated = yaml.safe_load(out_path.read_text(encoding="utf-8"))
-    assert "library_client_config_path" not in migrated["ogx"]
-    assert migrated["ogx"]["config"]["baseline"] == "empty"
-    assert migrated["ogx"]["config"]["native_override"] == {
+    assert "library_client_config_path" not in migrated["llama_stack"]
+    assert migrated["llama_stack"]["config"]["baseline"] == "empty"
+    assert migrated["llama_stack"]["config"]["native_override"] == {
         "version": 2,
         "apis": ["inference"],
     }
@@ -148,7 +148,7 @@ def test_main_warns_on_legacy_two_file_config(
     run_yaml = tmp_path / "run.yaml"
     run_yaml.write_text("version: 2\n", encoding="utf-8")
     config_yaml = COMMON_CONFIG_SECTIONS + f"""
-ogx:
+llama_stack:
   use_as_library_client: true
   library_client_config_path: {run_yaml}
 """
@@ -170,7 +170,7 @@ def test_main_does_not_warn_in_unified_mode(
 ) -> None:
     """A unified-mode config (llama_stack.config) emits no deprecation WARN."""
     config_yaml = COMMON_CONFIG_SECTIONS + """
-ogx:
+llama_stack:
   use_as_library_client: true
   config:
     baseline: default
@@ -187,7 +187,7 @@ def test_main_does_not_warn_in_server_mode(
 ) -> None:
     """A server-mode config (url, no legacy fields) emits no deprecation WARN."""
     config_yaml = COMMON_CONFIG_SECTIONS + """
-ogx:
+llama_stack:
   use_as_library_client: false
   url: http://localhost:8321
   api_key: xyzzy

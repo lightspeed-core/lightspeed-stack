@@ -3,7 +3,6 @@
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from opentelemetry import trace
 
 from authentication import get_auth_dependency
 from authentication.interface import AuthTuple
@@ -26,10 +25,8 @@ from models.api.responses.successful import (
 from models.common import MCPServerInfo
 from models.config import Action, ModelContextProtocolServer
 from utils.endpoints import check_configuration_loaded
-from utils.otel_tracing import SpanAttributes, set_span_attributes
 
 logger = get_logger(__name__)
-tracer = trace.get_tracer(__name__)
 router = APIRouter(tags=["mcp-servers"])
 
 
@@ -74,37 +71,26 @@ async def register_mcp_server_handler(
     _ = auth
     _ = request
 
-    with tracer.start_as_current_span("mcp_server.register") as span:
-        set_span_attributes(
-            span,
-            {
-                SpanAttributes.MCP_OPERATION: "register",
-                SpanAttributes.MCP_SERVER_NAME: body.name,
-                SpanAttributes.MCP_SERVER_PROVIDER_ID: body.provider_id
-                or "model-context-protocol",
-            },
-        )
+    check_configuration_loaded(configuration)
 
-        check_configuration_loaded(configuration)
+    mcp_server = ModelContextProtocolServer.model_validate(
+        body.model_dump(exclude_none=True)
+    )
 
-        mcp_server = ModelContextProtocolServer.model_validate(
-            body.model_dump(exclude_none=True)
-        )
+    try:
+        configuration.add_mcp_server(mcp_server)
+    except ValueError as e:
+        response = ConflictResponse(resource="MCP server", resource_id=body.name)
+        raise HTTPException(**response.model_dump()) from e
 
-        try:
-            configuration.add_mcp_server(mcp_server)
-        except ValueError as e:
-            response = ConflictResponse(resource="MCP server", resource_id=body.name)
-            raise HTTPException(**response.model_dump()) from e
+    logger.info("Dynamically registered MCP server: %s at %s", body.name, body.url)
 
-        logger.info("Dynamically registered MCP server: %s at %s", body.name, body.url)
-
-        return MCPServerRegistrationResponse(
-            name=mcp_server.name,
-            url=mcp_server.url,
-            provider_id=mcp_server.provider_id,
-            message=f"MCP server '{mcp_server.name}' registered successfully",
-        )
+    return MCPServerRegistrationResponse(
+        name=mcp_server.name,
+        url=mcp_server.url,
+        provider_id=mcp_server.provider_id,
+        message=f"MCP server '{mcp_server.name}' registered successfully",
+    )
 
 
 list_responses: dict[int | str, dict[str, Any]] = {
@@ -139,26 +125,19 @@ async def list_mcp_servers_handler(
     _ = auth
     _ = request
 
-    with tracer.start_as_current_span("mcp_server.list") as span:
-        set_span_attributes(span, {SpanAttributes.MCP_OPERATION: "list"})
+    check_configuration_loaded(configuration)
 
-        check_configuration_loaded(configuration)
+    servers = [
+        MCPServerInfo(
+            name=mcp.name,
+            url=mcp.url,
+            provider_id=mcp.provider_id,
+            source="api" if configuration.is_dynamic_mcp_server(mcp.name) else "config",
+        )
+        for mcp in configuration.mcp_servers
+    ]
 
-        servers = [
-            MCPServerInfo(
-                name=mcp.name,
-                url=mcp.url,
-                provider_id=mcp.provider_id,
-                source=(
-                    "api" if configuration.is_dynamic_mcp_server(mcp.name) else "config"
-                ),
-            )
-            for mcp in configuration.mcp_servers
-        ]
-
-        set_span_attributes(span, {SpanAttributes.MCP_SERVERS_COUNT: len(servers)})
-
-        return MCPServerListResponse(servers=servers)
+    return MCPServerListResponse(servers=servers)
 
 
 delete_responses: dict[int | str, dict[str, Any]] = {
@@ -196,30 +175,19 @@ async def delete_mcp_server_handler(
     _ = auth
     _ = request
 
-    with tracer.start_as_current_span("mcp_server.delete") as span:
-        set_span_attributes(
-            span,
-            {
-                SpanAttributes.MCP_OPERATION: "delete",
-                SpanAttributes.MCP_SERVER_NAME: name,
-            },
-        )
+    check_configuration_loaded(configuration)
 
-        check_configuration_loaded(configuration)
+    if not configuration.is_dynamic_mcp_server(name):
+        static_mcp_names = {s.name for s in configuration.mcp_servers}
+        if name in static_mcp_names:
+            response = ForbiddenResponse.mcp_server_static_config(name)
+            raise HTTPException(**response.model_dump())
 
-        if not configuration.is_dynamic_mcp_server(name):
-            static_mcp_names = {s.name for s in configuration.mcp_servers}
-            if name in static_mcp_names:
-                response = ForbiddenResponse.mcp_server_static_config(name)
-                raise HTTPException(**response.model_dump())
+    try:
+        configuration.remove_mcp_server(name)
+        local_deleted = True
+    except ValueError as e:
+        logger.error("Failed to remove MCP server from configuration: %s", e)
+        local_deleted = False
 
-        try:
-            configuration.remove_mcp_server(name)
-            local_deleted = True
-        except ValueError as e:
-            logger.error("Failed to remove MCP server from configuration: %s", e)
-            local_deleted = False
-
-        set_span_attributes(span, {SpanAttributes.MCP_SERVER_DELETED: local_deleted})
-
-        return MCPServerDeleteResponse(deleted=local_deleted, name=name)
+    return MCPServerDeleteResponse(deleted=local_deleted, name=name)

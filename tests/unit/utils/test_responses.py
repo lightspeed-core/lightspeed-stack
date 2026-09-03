@@ -50,10 +50,9 @@ from ogx_api.openai_responses import (
 from ogx_api.openai_responses import (
     OpenAIResponseOutputMessageWebSearchToolCall as WebSearchCall,
 )
-from ogx_client import ApiException
-from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
-    InMemorySpanExporter,
-)
+from ogx_client import APIConnectionError, APIStatusError, AsyncOgxClient
+from ogx_client.types import ListModelsResponse
+from ogx_client.types.model import Model
 from pydantic import AnyUrl, BaseModel
 from pytest_mock import MockerFixture
 
@@ -63,20 +62,13 @@ from models.common.query import Attachment
 from models.common.responses.types import InputTool, InputToolMCP
 from models.config import (
     ApprovalFilter,
+    ByokRag,
     InferenceConfiguration,
     ModelContextProtocolServer,
-    RagStore,
 )
-from tests.unit.conftest import (
-    make_openai_model,
-    make_openai_models_list_response,
-    mock_async_ogx_client,
-)
-from utils.otel_tracing import SpanAttributes, SpanEvents
 from utils.query import normalize_vertex_ai_model_id
 from utils.responses import (
     _build_chunk_attributes,
-    _build_okp_doc_url,
     _merge_tools,
     build_mcp_tool_call_from_arguments_done,
     build_tool_call_summary,
@@ -91,7 +83,6 @@ from utils.responses import (
     get_rag_tools,
     get_topic_summary,
     is_server_deployed_output,
-    maybe_get_topic_summary,
     parse_arguments_string,
     parse_referenced_documents,
     prepare_responses_params,
@@ -444,7 +435,7 @@ class TestGetMCPTools:
     async def test_get_mcp_tools_require_approval_filter(
         self, mocker: MockerFixture
     ) -> None:
-        """Test get_mcp_tools translates ApprovalFilter to OGX format."""
+        """Test get_mcp_tools translates ApprovalFilter to Llama Stack format."""
         server = ModelContextProtocolServer(
             name="github",
             url="http://localhost:3000",
@@ -855,7 +846,7 @@ class TestGetMCPTools:
 class TestInputToolMCPTypeDiscriminator:
     """Regression tests for RSPEED-3116.
 
-    The OGX client SDK serializes pydantic instances with
+    The llama-stack client SDK serializes pydantic instances with
     ``model_dump(exclude_unset=True)`` before sending them to the server.
     Because Pydantic v2 treats defaulted fields as "unset", the
     ``type: Literal['mcp'] = 'mcp'`` discriminator on the parent class is
@@ -938,7 +929,7 @@ class TestGetTopicSummary:
     @pytest.mark.asyncio
     async def test_get_topic_summary_success(self, mocker: MockerFixture) -> None:
         """Test successful topic summary generation."""
-        mock_client = mock_async_ogx_client(mocker)
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
         mock_output_item = make_output_item(
             item_type="message", role="assistant", content="Topic Summary"
         )
@@ -960,7 +951,7 @@ class TestGetTopicSummary:
         self, mocker: MockerFixture
     ) -> None:
         """Test topic summary with empty response."""
-        mock_client = mock_async_ogx_client(mocker)
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
         mock_response = mocker.Mock()
         mock_response.output = []
         mock_client.responses.create = mocker.AsyncMock(return_value=mock_response)
@@ -978,9 +969,11 @@ class TestGetTopicSummary:
         self, mocker: MockerFixture
     ) -> None:
         """Test topic summary raises HTTPException on connection error."""
-        mock_client = mock_async_ogx_client(mocker)
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
         mock_client.responses.create = mocker.AsyncMock(
-            side_effect=ApiException(status=None, reason="Connection failed")
+            side_effect=APIConnectionError(
+                message="Connection failed", request=mocker.Mock()
+            )
         )
 
         mocker.patch(
@@ -995,9 +988,11 @@ class TestGetTopicSummary:
     @pytest.mark.asyncio
     async def test_get_topic_summary_api_error(self, mocker: MockerFixture) -> None:
         """Test topic summary raises HTTPException on API error."""
-        mock_client = mock_async_ogx_client(mocker)
-        # Create a mock exception that will be caught by except ApiException
-        mock_error = ApiException(status=500, reason="API error")
+        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
+        # Create a mock exception that will be caught by except APIStatusError
+        mock_error = APIStatusError(
+            message="API error", response=mocker.Mock(request=None), body=None
+        )
         mock_client.responses.create = mocker.AsyncMock(side_effect=mock_error)
 
         mocker.patch(
@@ -1016,81 +1011,6 @@ class TestGetTopicSummary:
 
         with pytest.raises(HTTPException):
             await get_topic_summary("test question", mock_client, "model1")
-
-
-class TestMaybeGetTopicSummaryOtel:
-    """OpenTelemetry events/attributes for maybe_get_topic_summary."""
-
-    @pytest.mark.asyncio
-    @pytest.mark.parametrize(
-        ("success", "expect_attr"),
-        [(True, True), (False, False)],
-    )
-    async def test_emits_started_success_and_finished(
-        self,
-        success: bool,
-        expect_attr: bool,
-        mocker: MockerFixture,
-        otel: tuple[Any, InMemorySpanExporter],
-    ) -> None:
-        """Topic summary span records success attr and started/finished events."""
-        tracer, exporter = otel
-        mocker.patch("utils.responses.tracer", tracer)
-        if success:
-            mocker.patch(
-                "utils.responses.get_topic_summary",
-                new=mocker.AsyncMock(return_value="Topic"),
-            )
-            result = await maybe_get_topic_summary(
-                True, "hello", mocker.AsyncMock(), "provider/model"
-            )
-            assert result == "Topic"
-        else:
-            mocker.patch(
-                "utils.responses.get_topic_summary",
-                new=mocker.AsyncMock(side_effect=RuntimeError("boom")),
-            )
-            with pytest.raises(RuntimeError, match="boom"):
-                await maybe_get_topic_summary(
-                    True, "hello", mocker.AsyncMock(), "provider/model"
-                )
-
-        span = next(
-            span
-            for span in exporter.get_finished_spans()
-            if span.name == "topic.summary"
-        )
-        assert span.attributes is not None
-        assert span.attributes[SpanAttributes.TOPIC_SUMMARY_SUCCESS] is expect_attr
-        event_names = [event.name for event in span.events]
-        assert SpanEvents.TOPIC_SUMMARY_TASK_STARTED in event_names
-        assert SpanEvents.TOPIC_SUMMARY_TASK_FINISHED in event_names
-        if success:
-            assert event_names == [
-                SpanEvents.TOPIC_SUMMARY_TASK_STARTED,
-                SpanEvents.TOPIC_SUMMARY_TASK_FINISHED,
-            ]
-        else:
-            assert event_names.index(
-                SpanEvents.TOPIC_SUMMARY_TASK_STARTED
-            ) < event_names.index(SpanEvents.TOPIC_SUMMARY_TASK_FINISHED)
-
-    @pytest.mark.asyncio
-    async def test_disabled_emits_no_span(
-        self,
-        mocker: MockerFixture,
-        otel: tuple[Any, InMemorySpanExporter],
-    ) -> None:
-        """Disabled topic summary does not create a span."""
-        tracer, exporter = otel
-        mocker.patch("utils.responses.tracer", tracer)
-        result = await maybe_get_topic_summary(
-            False, "hello", mocker.AsyncMock(), "provider/model"
-        )
-        assert result is None
-        assert not [
-            s for s in exporter.get_finished_spans() if s.name == "topic.summary"
-        ]
 
 
 class TestResolveToolChoice:
@@ -1724,13 +1644,13 @@ class TestResolveVectorStoreIds:
     """Tests for resolve_vector_store_ids function."""
 
     @staticmethod
-    def _make_byok_rag(rag_id: str, vector_db_id: str) -> RagStore:
-        """Create a RagStore instance for testing."""
-        return RagStore(
+    def _make_byok_rag(rag_id: str, vector_db_id: str) -> ByokRag:
+        """Create a ByokRag instance for testing."""
+        return ByokRag(
             rag_id=rag_id,
             vector_db_id=vector_db_id,
             db_path="tests/configuration/rag.txt",
-            backend="faiss",
+            rag_type="rag",
             embedding_model="model",
             embedding_dimension=768,
             score_multiplier=1.0,
@@ -1752,7 +1672,7 @@ class TestResolveVectorStoreIds:
         assert result == ["unknown-id"]
 
     def test_mixed_known_and_unknown_ids(self) -> None:
-        """Test mix of customer-facing IDs and raw OGX IDs."""
+        """Test mix of customer-facing IDs and raw llama-stack IDs."""
         byok_rags = [self._make_byok_rag("ocp_docs", "vs-001")]
         result = resolve_vector_store_ids(["ocp_docs", "already-internal"], byok_rags)
         assert result == ["vs-001", "already-internal"]
@@ -1793,12 +1713,9 @@ class TestPrepareToolsTranslatesVectorStoreIds:
         mock_byok_rag.rag_id = "ocp_docs"
         mock_byok_rag.vector_db_id = "vs-001"
         mock_config = mocker.Mock()
-        mock_config.configuration.rag.byok.stores = [mock_byok_rag]
-        mock_config.configuration.rag.retrieval.tool.sources = []
-        mock_config.rag.retrieval.tool.max_chunks = (
-            constants.DEFAULT_TOOL_RAG_MAX_CHUNKS
-        )
-        mock_config.configuration.rag.retrieval.inline.sources = []
+        mock_config.configuration.byok_rag = [mock_byok_rag]
+        mock_config.configuration.rag.tool = []
+        mock_config.configuration.rag.inline = []
         mocker.patch("utils.responses.configuration", mock_config)
 
         result = await prepare_tools(["ocp_docs"], False, "token")
@@ -1816,12 +1733,9 @@ class TestPrepareToolsTranslatesVectorStoreIds:
 
         # Configure empty BYOK RAG
         mock_config = mocker.Mock()
-        mock_config.configuration.rag.byok.stores = []
-        mock_config.configuration.rag.retrieval.tool.sources = []
-        mock_config.rag.retrieval.tool.max_chunks = (
-            constants.DEFAULT_TOOL_RAG_MAX_CHUNKS
-        )
-        mock_config.configuration.rag.retrieval.inline.sources = []
+        mock_config.configuration.byok_rag = []
+        mock_config.configuration.rag.tool = []
+        mock_config.configuration.rag.inline = []
         mocker.patch("utils.responses.configuration", mock_config)
 
         result = await prepare_tools(["raw-internal-id"], False, "token")
@@ -1841,15 +1755,9 @@ class TestPrepareToolsVectorStoreResolution:
         mocker.patch("utils.responses.get_mcp_tools", return_value=None)
 
         mock_config = mocker.Mock()
-        mock_config.configuration.rag.byok.stores = []
-        mock_config.configuration.rag.retrieval.tool.sources = [
-            "rag-tool-id-1",
-            "rag-tool-id-2",
-        ]
-        mock_config.rag.retrieval.tool.max_chunks = (
-            constants.DEFAULT_TOOL_RAG_MAX_CHUNKS
-        )
-        mock_config.configuration.rag.retrieval.inline.sources = []
+        mock_config.configuration.byok_rag = []
+        mock_config.configuration.rag.tool = ["rag-tool-id-1", "rag-tool-id-2"]
+        mock_config.configuration.rag.inline = []
         mocker.patch("utils.responses.configuration", mock_config)
 
         result = await prepare_tools(None, False, "token")
@@ -1870,12 +1778,9 @@ class TestPrepareToolsVectorStoreResolution:
         mock_byok_rag.rag_id = "ocp_docs"
         mock_byok_rag.vector_db_id = "vs-001"
         mock_config = mocker.Mock()
-        mock_config.configuration.rag.byok.stores = [mock_byok_rag]
-        mock_config.configuration.rag.retrieval.tool.sources = ["ocp_docs"]
-        mock_config.rag.retrieval.tool.max_chunks = (
-            constants.DEFAULT_TOOL_RAG_MAX_CHUNKS
-        )
-        mock_config.configuration.rag.retrieval.inline.sources = []
+        mock_config.configuration.byok_rag = [mock_byok_rag]
+        mock_config.configuration.rag.tool = ["ocp_docs"]
+        mock_config.configuration.rag.inline = []
         mocker.patch("utils.responses.configuration", mock_config)
 
         result = await prepare_tools(None, False, "token")
@@ -1892,9 +1797,9 @@ class TestPrepareToolsVectorStoreResolution:
         mocker.patch("utils.responses.get_mcp_tools", return_value=None)
 
         mock_config = mocker.Mock()
-        mock_config.configuration.rag.byok.stores = []
-        mock_config.configuration.rag.retrieval.tool.sources = []
-        mock_config.configuration.rag.retrieval.inline.sources = [
+        mock_config.configuration.byok_rag = []
+        mock_config.configuration.rag.tool = []
+        mock_config.configuration.rag.inline = [
             "inline-store-id"
         ]  # inline is configured
         mocker.patch("utils.responses.configuration", mock_config)
@@ -1911,12 +1816,9 @@ class TestPrepareToolsVectorStoreResolution:
         mocker.patch("utils.responses.get_mcp_tools", return_value=None)
 
         mock_config = mocker.Mock()
-        mock_config.configuration.rag.byok.stores = []
-        mock_config.configuration.rag.retrieval.tool.sources = ["config-id-1"]
-        mock_config.rag.retrieval.tool.max_chunks = (
-            constants.DEFAULT_TOOL_RAG_MAX_CHUNKS
-        )
-        mock_config.configuration.rag.retrieval.inline.sources = []
+        mock_config.configuration.byok_rag = []
+        mock_config.configuration.rag.tool = ["config-id-1"]
+        mock_config.configuration.rag.inline = []
         mocker.patch("utils.responses.configuration", mock_config)
 
         result = await prepare_tools(["request-id-1"], False, "token")
@@ -1933,12 +1835,8 @@ class TestPrepareToolsVectorStoreResolution:
         mocker.patch("utils.responses.get_mcp_tools", return_value=None)
 
         mock_config = mocker.Mock()
-        mock_config.configuration.rag.byok.stores = []
-        mock_config.configuration.rag.retrieval.tool.sources = []
-        mock_config.rag.retrieval.tool.max_chunks = (
-            constants.DEFAULT_TOOL_RAG_MAX_CHUNKS
-        )
-        mock_config.configuration.rag.retrieval.inline.sources = []
+        mock_config.configuration.byok_rag = []
+        mock_config.configuration.rag.tool = []
         mocker.patch("utils.responses.configuration", mock_config)
 
         result = await prepare_tools(None, False, "token")
@@ -1954,14 +1852,21 @@ class TestPrepareResponsesParams:
         self, mocker: MockerFixture
     ) -> None:
         """Test prepare_responses_params with existing conversation ID."""
-        mock_client = mock_async_ogx_client(mocker)
-        mock_client.openai.list = mocker.AsyncMock(
-            return_value=make_openai_models_list_response(
-                make_openai_model(
-                    model_id="provider1/model1",
-                    provider_id="provider1",
-                    model_type="llm",
-                )
+        mock_client = mocker.AsyncMock()
+        mock_client.models.list = mocker.AsyncMock(
+            return_value=ListModelsResponse.model_construct(
+                data=[
+                    Model.model_construct(
+                        id="provider1/model1",
+                        created=0,
+                        owned_by="test",
+                        object="model",
+                        custom_metadata={
+                            "model_type": "llm",
+                            "provider_id": "provider1",
+                        },
+                    )
+                ]
             )
         )
 
@@ -1976,7 +1881,7 @@ class TestPrepareResponsesParams:
         mocker.patch("utils.responses.prepare_tools", return_value=None)
         mocker.patch("utils.responses.prepare_input", return_value="test")
         mocker.patch(
-            "utils.responses.to_ogx_conversation_id", return_value="llama_conv1"
+            "utils.responses.to_llama_stack_conversation_id", return_value="llama_conv1"
         )
 
         result = await prepare_responses_params(
@@ -1991,14 +1896,21 @@ class TestPrepareResponsesParams:
         self, mocker: MockerFixture
     ) -> None:
         """Test prepare_responses_params creates new conversation when ID not provided."""
-        mock_client = mock_async_ogx_client(mocker)
-        mock_client.openai.list = mocker.AsyncMock(
-            return_value=make_openai_models_list_response(
-                make_openai_model(
-                    model_id="provider1/model1",
-                    provider_id="provider1",
-                    model_type="llm",
-                )
+        mock_client = mocker.AsyncMock()
+        mock_client.models.list = mocker.AsyncMock(
+            return_value=ListModelsResponse.model_construct(
+                data=[
+                    Model.model_construct(
+                        id="provider1/model1",
+                        created=0,
+                        owned_by="test",
+                        object="model",
+                        custom_metadata={
+                            "model_type": "llm",
+                            "provider_id": "provider1",
+                        },
+                    )
+                ]
             )
         )
 
@@ -2028,9 +1940,11 @@ class TestPrepareResponsesParams:
         self, mocker: MockerFixture
     ) -> None:
         """Test prepare_responses_params raises HTTPException on connection error when fetching models."""
-        mock_client = mock_async_ogx_client(mocker)
-        mock_client.openai.list = mocker.AsyncMock(
-            side_effect=ApiException(status=None, reason="Connection failed")
+        mock_client = mocker.AsyncMock()
+        mock_client.models.list = mocker.AsyncMock(
+            side_effect=APIConnectionError(
+                message="Connection failed", request=mocker.Mock()
+            )
         )
 
         query_request = QueryRequest(query="test")  # pyright: ignore[reportCallIssue]
@@ -2047,18 +1961,27 @@ class TestPrepareResponsesParams:
         self, mocker: MockerFixture
     ) -> None:
         """Test prepare_responses_params raises HTTPException on connection error when creating conversation."""
-        mock_client = mock_async_ogx_client(mocker)
-        mock_client.openai.list = mocker.AsyncMock(
-            return_value=make_openai_models_list_response(
-                make_openai_model(
-                    model_id="provider1/model1",
-                    provider_id="provider1",
-                    model_type="llm",
-                )
+        mock_client = mocker.AsyncMock()
+        mock_client.models.list = mocker.AsyncMock(
+            return_value=ListModelsResponse.model_construct(
+                data=[
+                    Model.model_construct(
+                        id="provider1/model1",
+                        created=0,
+                        owned_by="test",
+                        object="model",
+                        custom_metadata={
+                            "model_type": "llm",
+                            "provider_id": "provider1",
+                        },
+                    )
+                ]
             )
         )
         mock_client.conversations.create = mocker.AsyncMock(
-            side_effect=ApiException(status=None, reason="Connection failed")
+            side_effect=APIConnectionError(
+                message="Connection failed", request=mocker.Mock()
+            )
         )
 
         query_request = QueryRequest(query="test")  # pyright: ignore[reportCallIssue]
@@ -2079,9 +2002,11 @@ class TestPrepareResponsesParams:
         self, mocker: MockerFixture
     ) -> None:
         """Test prepare_responses_params raises HTTPException on API status error when fetching models."""
-        mock_client = mock_async_ogx_client(mocker)
-        mock_client.openai.list = mocker.AsyncMock(
-            side_effect=ApiException(status=500, reason="API error")
+        mock_client = mocker.AsyncMock()
+        mock_client.models.list = mocker.AsyncMock(
+            side_effect=APIStatusError(
+                message="API error", response=mocker.Mock(request=None), body=None
+            )
         )
 
         query_request = QueryRequest(query="test")  # pyright: ignore[reportCallIssue]
@@ -2097,15 +2022,22 @@ class TestPrepareResponsesParams:
     async def test_prepare_responses_params_includes_mcp_provider_data_headers(
         self, mocker: MockerFixture
     ) -> None:
-        """Test that extra_headers with X-OGX-Provider-Data is set when MCP tools have headers."""
-        mock_client = mock_async_ogx_client(mocker)
-        mock_client.openai.list = mocker.AsyncMock(
-            return_value=make_openai_models_list_response(
-                make_openai_model(
-                    model_id="provider1/model1",
-                    provider_id="provider1",
-                    model_type="llm",
-                )
+        """Test that extra_headers with x-llamastack-provider-data is set when MCP tools have headers."""
+        mock_client = mocker.AsyncMock()
+        mock_client.models.list = mocker.AsyncMock(
+            return_value=ListModelsResponse.model_construct(
+                data=[
+                    Model.model_construct(
+                        id="provider1/model1",
+                        created=0,
+                        owned_by="test",
+                        object="model",
+                        custom_metadata={
+                            "model_type": "llm",
+                            "provider_id": "provider1",
+                        },
+                    )
+                ]
             )
         )
 
@@ -2146,14 +2078,16 @@ class TestPrepareResponsesParams:
             mock_client, query_request, None, "token"
         )
 
-        # The result should contain extra_headers with X-OGX-Provider-Data
+        # The result should contain extra_headers with x-llamastack-provider-data
         dumped = result.model_dump()
         assert (
             dumped["extra_headers"] is not None
         ), "extra_headers should not be None when MCP tools have headers"
-        assert "X-OGX-Provider-Data" in dumped["extra_headers"]
+        assert "x-llamastack-provider-data" in dumped["extra_headers"]
 
-        provider_data = json.loads(dumped["extra_headers"]["X-OGX-Provider-Data"])
+        provider_data = json.loads(
+            dumped["extra_headers"]["x-llamastack-provider-data"]
+        )
         assert "mcp_headers" in provider_data
         assert provider_data["mcp_headers"] == {
             "http://aap.foo.redhat.com:8004/sse": {"X-Authorization": "client-token"},
@@ -2165,14 +2099,21 @@ class TestPrepareResponsesParams:
         self, mocker: MockerFixture
     ) -> None:
         """Test that extra_headers is None when no MCP tools have headers."""
-        mock_client = mock_async_ogx_client(mocker)
-        mock_client.openai.list = mocker.AsyncMock(
-            return_value=make_openai_models_list_response(
-                make_openai_model(
-                    model_id="provider1/model1",
-                    provider_id="provider1",
-                    model_type="llm",
-                )
+        mock_client = mocker.AsyncMock()
+        mock_client.models.list = mocker.AsyncMock(
+            return_value=ListModelsResponse.model_construct(
+                data=[
+                    Model.model_construct(
+                        id="provider1/model1",
+                        created=0,
+                        owned_by="test",
+                        object="model",
+                        custom_metadata={
+                            "model_type": "llm",
+                            "provider_id": "provider1",
+                        },
+                    )
+                ]
             )
         )
 
@@ -2203,18 +2144,27 @@ class TestPrepareResponsesParams:
         self, mocker: MockerFixture
     ) -> None:
         """Test prepare_responses_params raises HTTPException on API status error when creating conversation."""
-        mock_client = mock_async_ogx_client(mocker)
-        mock_client.openai.list = mocker.AsyncMock(
-            return_value=make_openai_models_list_response(
-                make_openai_model(
-                    model_id="provider1/model1",
-                    provider_id="provider1",
-                    model_type="llm",
-                )
+        mock_client = mocker.AsyncMock()
+        mock_client.models.list = mocker.AsyncMock(
+            return_value=ListModelsResponse.model_construct(
+                data=[
+                    Model.model_construct(
+                        id="provider1/model1",
+                        created=0,
+                        owned_by="test",
+                        object="model",
+                        custom_metadata={
+                            "model_type": "llm",
+                            "provider_id": "provider1",
+                        },
+                    )
+                ]
             )
         )
         mock_client.conversations.create = mocker.AsyncMock(
-            side_effect=ApiException(status=500, reason="API error")
+            side_effect=APIStatusError(
+                message="API error", response=mocker.Mock(request=None), body=None
+            )
         )
 
         query_request = QueryRequest(query="test")  # pyright: ignore[reportCallIssue]
@@ -2235,7 +2185,7 @@ class TestPrepareResponsesParams:
         self, mocker: MockerFixture
     ) -> None:
         """Test that image attachments are excluded from text input."""
-        mock_client = mock_async_ogx_client(mocker)
+        mock_client = mocker.AsyncMock()
         mock_conversation = mocker.Mock()
         mock_conversation.id = "new_conv_id"
         mock_client.conversations.create = mocker.AsyncMock(
@@ -3196,237 +3146,6 @@ class TestParseReferencedDocumentsWithSource:
         assert docs[0].source is None
 
 
-class TestBuildOkpDocUrl:
-    """Tests for _build_okp_doc_url OKP URL construction."""
-
-    def test_online_mode_uses_reference_url(self, mocker: MockerFixture) -> None:
-        """Test that online mode (offline=False) uses reference_url."""
-        mock_okp = mocker.Mock()
-        mock_okp.offline = False
-        mock_okp.rhokp_url = "https://docs.openshift.com"
-        mock_config = mocker.Mock()
-        mock_config.okp = mock_okp
-        mocker.patch("utils.responses.configuration", mock_config)
-
-        url = _build_okp_doc_url(
-            {
-                "reference_url": "/docs/pipelines/config.html",
-                "source_path": "pipelines/config.html",
-            }
-        )
-        assert url == "https://docs.openshift.com/docs/pipelines/config.html"
-
-    def test_offline_mode_uses_source_path(self, mocker: MockerFixture) -> None:
-        """Test that offline mode (offline=True) uses source_path."""
-        mock_okp = mocker.Mock()
-        mock_okp.offline = True
-        mock_okp.rhokp_url = "https://docs.openshift.com"
-        mock_config = mocker.Mock()
-        mock_config.okp = mock_okp
-        mocker.patch("utils.responses.configuration", mock_config)
-
-        url = _build_okp_doc_url(
-            {
-                "reference_url": "/docs/pipelines/config.html",
-                "source_path": "pipelines/config.html",
-            }
-        )
-        assert url == "https://docs.openshift.com/pipelines/config.html"
-
-    def test_online_falls_back_to_doc_id(self, mocker: MockerFixture) -> None:
-        """Test online mode falls back to doc_id when reference_url is absent."""
-        mock_okp = mocker.Mock()
-        mock_okp.offline = False
-        mock_okp.rhokp_url = "https://docs.openshift.com"
-        mock_config = mocker.Mock()
-        mock_config.okp = mock_okp
-        mocker.patch("utils.responses.configuration", mock_config)
-
-        url = _build_okp_doc_url({"doc_id": "some-doc-id"})
-        assert url == "https://docs.openshift.com/some-doc-id"
-
-    def test_offline_falls_back_to_doc_id(self, mocker: MockerFixture) -> None:
-        """Test offline mode falls back to doc_id when source_path is absent."""
-        mock_okp = mocker.Mock()
-        mock_okp.offline = True
-        mock_okp.rhokp_url = "https://docs.openshift.com"
-        mock_config = mocker.Mock()
-        mock_config.okp = mock_okp
-        mocker.patch("utils.responses.configuration", mock_config)
-
-        url = _build_okp_doc_url({"doc_id": "some-doc-id"})
-        assert url == "https://docs.openshift.com/some-doc-id"
-
-    def test_returns_none_when_no_reference(self, mocker: MockerFixture) -> None:
-        """Test returns None when no reference_url, source_path, or doc_id."""
-        mock_okp = mocker.Mock()
-        mock_okp.offline = False
-        mock_okp.rhokp_url = "https://docs.openshift.com"
-        mock_config = mocker.Mock()
-        mock_config.okp = mock_okp
-        mocker.patch("utils.responses.configuration", mock_config)
-
-        url = _build_okp_doc_url({"title": "Some Doc"})
-        assert url is None
-
-    def test_uses_default_url_when_rhokp_url_is_none(
-        self, mocker: MockerFixture
-    ) -> None:
-        """Test uses RH_SERVER_OKP_DEFAULT_URL when rhokp_url is not configured."""
-        mock_okp = mocker.Mock()
-        mock_okp.offline = False
-        mock_okp.rhokp_url = None
-        mock_config = mocker.Mock()
-        mock_config.okp = mock_okp
-        mocker.patch("utils.responses.configuration", mock_config)
-
-        url = _build_okp_doc_url({"reference_url": "/docs/page.html"})
-        assert url == "http://localhost:8081/docs/page.html"
-
-
-class TestParseReferencedDocumentsOkp:
-    """Tests for parse_referenced_documents with OKP/Solr file_search results."""
-
-    def test_okp_online_builds_full_url(self, mocker: MockerFixture) -> None:
-        """Test OKP result builds full URL from reference_url in online mode."""
-        mock_okp = mocker.Mock()
-        mock_okp.offline = False
-        mock_okp.rhokp_url = "https://docs.openshift.com"
-        mock_config = mocker.Mock()
-        mock_config.okp = mock_okp
-        mocker.patch("utils.responses.configuration", mock_config)
-
-        mock_result = mocker.Mock()
-        mock_result.attributes = {
-            "reference_url": "/docs/pipelines/config.html",
-            "source_path": "pipelines/config.html",
-            "title": "Pipeline Config",
-            "doc_id": "doc-001",
-            "source": "okp",
-        }
-
-        mock_output = mocker.Mock()
-        mock_output.type = "file_search_call"
-        mock_output.results = [mock_result]
-
-        mock_response = mocker.Mock()
-        mock_response.output = [mock_output]
-
-        docs = parse_referenced_documents(
-            mock_response,
-            vector_store_ids=["portal-rag"],
-            rag_id_mapping={"portal-rag": "okp"},
-        )
-
-        assert len(docs) == 1
-        assert (
-            str(docs[0].doc_url)
-            == "https://docs.openshift.com/docs/pipelines/config.html"
-        )
-        assert docs[0].doc_title == "Pipeline Config"
-        assert docs[0].source == "okp"
-
-    def test_okp_offline_builds_url_from_source_path(
-        self, mocker: MockerFixture
-    ) -> None:
-        """Test OKP result builds URL from source_path in offline mode."""
-        mock_okp = mocker.Mock()
-        mock_okp.offline = True
-        mock_okp.rhokp_url = "https://docs.openshift.com"
-        mock_config = mocker.Mock()
-        mock_config.okp = mock_okp
-        mocker.patch("utils.responses.configuration", mock_config)
-
-        mock_result = mocker.Mock()
-        mock_result.attributes = {
-            "reference_url": "/docs/pipelines/config.html",
-            "source_path": "pipelines/config.html",
-            "title": "Pipeline Config",
-            "doc_id": "doc-001",
-            "source": "okp",
-        }
-
-        mock_output = mocker.Mock()
-        mock_output.type = "file_search_call"
-        mock_output.results = [mock_result]
-
-        mock_response = mocker.Mock()
-        mock_response.output = [mock_output]
-
-        docs = parse_referenced_documents(
-            mock_response,
-            vector_store_ids=["portal-rag"],
-            rag_id_mapping={"portal-rag": "okp"},
-        )
-
-        assert len(docs) == 1
-        assert (
-            str(docs[0].doc_url) == "https://docs.openshift.com/pipelines/config.html"
-        )
-        assert docs[0].source == "okp"
-
-    def test_okp_multistore_detected_via_source_attribute(
-        self, mocker: MockerFixture
-    ) -> None:
-        """Test OKP detected in multi-store scenario via source attribute."""
-        mock_okp = mocker.Mock()
-        mock_okp.offline = False
-        mock_okp.rhokp_url = "https://docs.openshift.com"
-        mock_config = mocker.Mock()
-        mock_config.okp = mock_okp
-        mocker.patch("utils.responses.configuration", mock_config)
-
-        mock_result = mocker.Mock()
-        mock_result.attributes = {
-            "reference_url": "/docs/builds.html",
-            "title": "Builds",
-            "source": "okp",
-        }
-
-        mock_output = mocker.Mock()
-        mock_output.type = "file_search_call"
-        mock_output.results = [mock_result]
-
-        mock_response = mocker.Mock()
-        mock_response.output = [mock_output]
-
-        docs = parse_referenced_documents(
-            mock_response,
-            vector_store_ids=["portal-rag", "byok-store"],
-            rag_id_mapping={"portal-rag": "okp", "byok-store": "my-docs"},
-        )
-
-        assert len(docs) == 1
-        assert str(docs[0].doc_url) == "https://docs.openshift.com/docs/builds.html"
-        assert docs[0].source == "okp"
-
-    def test_non_okp_result_unaffected(self, mocker: MockerFixture) -> None:
-        """Test non-OKP results still use existing doc_url/url attribute lookup."""
-        mock_result = mocker.Mock()
-        mock_result.attributes = {
-            "url": "https://example.com/byok-doc",
-            "title": "BYOK Doc",
-            "document_id": "byok-001",
-        }
-
-        mock_output = mocker.Mock()
-        mock_output.type = "file_search_call"
-        mock_output.results = [mock_result]
-
-        mock_response = mocker.Mock()
-        mock_response.output = [mock_output]
-
-        docs = parse_referenced_documents(
-            mock_response,
-            vector_store_ids=["byok-store"],
-            rag_id_mapping={"byok-store": "my-docs"},
-        )
-
-        assert len(docs) == 1
-        assert str(docs[0].doc_url) == "https://example.com/byok-doc"
-        assert docs[0].source == "my-docs"
-
-
 class TestGetRAGToolsWithConfig:
     """Tests for get_rag_tools with configuration checks."""
 
@@ -3618,7 +3337,7 @@ class TestResolveToolChoiceMerge:
     ) -> None:
         """Test client tools used as-is without merge header."""
         mock_config = mocker.Mock()
-        mock_config.configuration.rag.byok.stores = []
+        mock_config.configuration.byok_rag = []
         mock_config.mcp_servers = []
         mocker.patch("utils.responses.configuration", mock_config)
 
@@ -3636,7 +3355,7 @@ class TestResolveToolChoiceMerge:
     async def test_client_tools_with_merge_header(self, mocker: MockerFixture) -> None:
         """Test client tools merged with server tools when header is set."""
         mock_config = mocker.Mock()
-        mock_config.configuration.rag.byok.stores = []
+        mock_config.configuration.byok_rag = []
         mock_config.mcp_servers = []
         mocker.patch("utils.responses.configuration", mock_config)
 
@@ -3666,7 +3385,7 @@ class TestResolveToolChoiceMerge:
     ) -> None:
         """Test 409 when merge header is set and tools conflict."""
         mock_config = mocker.Mock()
-        mock_config.configuration.rag.byok.stores = []
+        mock_config.configuration.byok_rag = []
         mock_config.mcp_servers = []
         mocker.patch("utils.responses.configuration", mock_config)
 
@@ -3711,7 +3430,7 @@ class TestResolveToolChoiceMerge:
     ) -> None:
         """Test merge header with no server tools returns client tools unchanged."""
         mock_config = mocker.Mock()
-        mock_config.configuration.rag.byok.stores = []
+        mock_config.configuration.byok_rag = []
         mock_config.mcp_servers = []
         mocker.patch("utils.responses.configuration", mock_config)
         mocker.patch(

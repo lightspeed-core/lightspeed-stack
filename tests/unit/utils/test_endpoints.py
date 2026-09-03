@@ -307,7 +307,7 @@ class TestResolveResponseContext:
             return_value="conv-normalized-123",
         )
         mocker.patch(
-            "utils.endpoints.to_ogx_conversation_id",
+            "utils.endpoints.to_llama_stack_conversation_id",
             return_value="conv_conv-normalized-123",
         )
         mocker.patch(
@@ -382,7 +382,7 @@ class TestResolveResponseContext:
             return_value=mock_conv,
         )
         mocker.patch(
-            "utils.endpoints.to_ogx_conversation_id",
+            "utils.endpoints.to_llama_stack_conversation_id",
             return_value="conv_conv-existing",
         )
         mock_create = mocker.patch(

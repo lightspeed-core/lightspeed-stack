@@ -59,7 +59,6 @@ providers:
     provider_type: inline::reference
 server:
   port: 8321
-  insecure: true
 storage:
   backends:
     kv_default: # Define the storage backend type for RAG, in this case registry and RAG are unified i.e. information on registered resources (e.g. models, vector_stores) are saved together with the RAG chunks
@@ -90,10 +89,10 @@ registered_resources:
   models: []
   vector_stores: []
 # REQUIRED: This section is necessary for file_search tool calls to work.
-# Without it, OGX's file-search runtime silently fails all file_search operations
+# Without it, llama-stack's file-search runtime silently fails all file_search operations
 # with no error logged.
 vector_stores:
-  # LCORE-1498: Disables OGX RAG annotation generation
+  # LCORE-1498: Disables Llama Stack RAG annotation generation
   # causing unwanted citation/file markers in model output.
   annotation_prompt_params:
     enable_annotations: false

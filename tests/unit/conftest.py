@@ -3,24 +3,13 @@
 from __future__ import annotations
 
 import logging
-import os
 from collections.abc import Callable, Generator
 from pathlib import Path
-from typing import Any, Optional
+from typing import Optional
 
 import httpx
 import pytest
 from ogx_client import AsyncOgxClient
-from ogx_client.models.list_models_v1_models_get200_response import (
-    ListModelsV1ModelsGet200Response,
-)
-from ogx_client.models.open_ai_list_models_response import OpenAIListModelsResponse
-from ogx_client.models.open_ai_model import OpenAIModel
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import SimpleSpanProcessor
-from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
-    InMemorySpanExporter,
-)
 from pytest_mock import AsyncMockType, MockerFixture
 
 from configuration import AppConfig
@@ -36,120 +25,6 @@ type AgentFixtures = Generator[
     None,
     None,
 ]
-
-
-def make_openai_model(
-    *,
-    model_id: str = "provider/model",
-    provider_id: str = "provider",
-    model_type: str = "llm",
-    provider_resource_id: Optional[str] = None,
-    **extra_metadata: Any,
-) -> OpenAIModel:
-    """Build an ``OpenAIModel`` for ``client.openai.list()`` mocks."""
-    custom_metadata: dict[str, Any] = {
-        "provider_id": provider_id,
-        "model_type": model_type,
-        "provider_resource_id": provider_resource_id or model_id,
-        **extra_metadata,
-    }
-    return OpenAIModel.model_construct(
-        id=model_id,
-        created=0,
-        owned_by="test",
-        object="model",
-        custom_metadata=custom_metadata,
-    )
-
-
-def make_openai_models_list_response(
-    *models: OpenAIModel,
-) -> ListModelsV1ModelsGet200Response:
-    """Build a ``client.openai.list()`` response in the OpenAI OneOf shape."""
-    return ListModelsV1ModelsGet200Response(
-        OpenAIListModelsResponse.model_construct(data=list(models))
-    )
-
-
-_DEFAULT_OGX_MOCK_APIS = ("responses", "items", "openai", "conversations")
-
-
-def attach_mock_ogx_api_clients(
-    mocker: MockerFixture,
-    client: Any,
-    *api_names: str,
-) -> Any:
-    """Attach nested API mocks for ``spec=AsyncOgxClient`` clients.
-
-    ``AsyncOgxClient`` creates sub-APIs in ``__init__``, so they are instance
-    attributes rather than class attributes. A spec mock blocks access to them
-    unless they are attached explicitly.
-    """
-    for name in api_names or _DEFAULT_OGX_MOCK_APIS:
-        setattr(client, name, mocker.AsyncMock())
-    return client
-
-
-def mock_async_ogx_client(
-    mocker: MockerFixture,
-    *api_names: str,
-) -> AsyncMockType:
-    """Create a spec'd ``AsyncOgxClient`` mock with nested API clients attached."""
-    client = mocker.AsyncMock(spec=AsyncOgxClient)
-    attach_mock_ogx_api_clients(mocker, client, *api_names)
-    return client
-
-
-def attach_mock_api_client(
-    mocker: MockerFixture,
-    client: Any,
-    *,
-    default_headers: Optional[dict[str, str]] = None,
-    async_http_client: Optional[httpx.AsyncClient] = None,
-) -> Any:
-    """Attach ``api_client`` with headers and async httpx client to a mock OGX client."""
-    api_client = mocker.Mock()
-    api_client.default_headers = default_headers if default_headers is not None else {}
-    api_client.async_client = (
-        async_http_client
-        if async_http_client is not None
-        else mocker.Mock(spec=httpx.AsyncClient)
-    )
-    client.api_client = api_client
-    return api_client
-
-
-@pytest.fixture(autouse=True)
-def otel_anonymization_secret() -> Generator[None, None, None]:
-    """Set OTEL_ANONYMIZATION_SECRET for all unit tests.
-
-    This fixture ensures that the OTEL anonymization secret is available
-    for any code that uses OpenTelemetry tracing during unit tests.
-    """
-    original_value = os.environ.get("OTEL_ANONYMIZATION_SECRET")
-    os.environ["OTEL_ANONYMIZATION_SECRET"] = (
-        "unit-test-secret-do-not-use-in-production"
-    )
-
-    yield
-
-    # Restore original value or remove if it wasn't set
-    if original_value is None:
-        os.environ.pop("OTEL_ANONYMIZATION_SECRET", None)
-    else:
-        os.environ["OTEL_ANONYMIZATION_SECRET"] = original_value
-
-
-@pytest.fixture(name="otel")
-def otel_fixture() -> Generator[tuple[Any, InMemorySpanExporter], None, None]:
-    """Provide an isolated tracer and exporter for OTEL tests."""
-    exporter = InMemorySpanExporter()
-    provider = TracerProvider()
-    provider.add_span_processor(SimpleSpanProcessor(exporter))
-    tracer = provider.get_tracer("unit-test-tracer")
-    yield tracer, exporter
-    exporter.clear()
-    provider.shutdown()
 
 
 @pytest.fixture(autouse=True)
@@ -219,7 +94,7 @@ def minimal_config_fixture() -> AppConfig:
         {
             "name": "test",
             "service": {"host": "localhost", "port": 8080},
-            "ogx": {
+            "llama_stack": {
                 "api_key": "test-key",
                 "url": "http://test.com:1234",
                 "use_as_library_client": False,
@@ -236,12 +111,12 @@ def minimal_config_fixture() -> AppConfig:
 def mock_client_fixture(  # pylint: disable=protected-access
     mocker: MockerFixture,
 ) -> AsyncOgxClient:
-    """Remote OGX client mock for build_agent tests."""
+    """Remote Llama Stack client mock for build_agent tests."""
     client = mocker.Mock(spec=AsyncOgxClient)
     client.base_url = "http://localhost:8321"
     client.api_key = "test-key"
-    attach_mock_ogx_api_clients(mocker, client)
-    attach_mock_api_client(mocker, client)
+    client._client = mocker.Mock(spec=httpx.AsyncClient)
+    client.default_headers = {}
     return client
 
 

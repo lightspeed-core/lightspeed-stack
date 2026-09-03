@@ -1,5 +1,3 @@
-# @cfg_rbac
-# From: lightspeed-stack-rbac.yaml (auth module jwk-token is incompatible with other groups)
 name: Lightspeed Core Service (RBAC E2E Tests - Library Mode)
 service:
   host: 0.0.0.0
@@ -9,7 +7,7 @@ service:
   color_log: true
   access_log: true
 
-ogx:
+llama_stack:
   use_as_library_client: true
   # Unified mode: run.yaml (materialized per provider by CI/the harness)
   # is consumed as the synthesis profile instead of the legacy two-file path.
@@ -80,7 +78,6 @@ authorization:
         - "info"
         - "model_override"
         - "rlsapi_v1_infer"
-        - "responses"
     # Viewer role can only read (no mutations)
     - role: "viewer"
       actions:
@@ -98,21 +95,4 @@ authorization:
     - role: "*"
       actions:
         - "info"
-
-# Same e2e FAISS BYOK as default/authorized. Keep in sync with server-mode rbac
-# so enrichment still registers e2e-test-docs if this config is left active.
-rag:
-  byok:
-    stores:
-      - rag_id: e2e-test-docs
-        backend: faiss
-        embedding_model: sentence-transformers/all-mpnet-base-v2
-        embedding_dimension: 768
-        vector_db_id: ${env.FAISS_VECTOR_STORE_ID}
-        db_path: ${env.KV_RAG_PATH:=~/.llama/storage/rag/kv_store.db}
-        score_multiplier: 1.0
-  retrieval:
-    tool:
-      sources:
-        - e2e-test-docs
 

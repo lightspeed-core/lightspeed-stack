@@ -1,6 +1,6 @@
 """Step definitions for TLS configuration e2e tests.
 
-These tests configure OGX's run.yaml with NetworkConfig TLS settings
+These tests configure Llama Stack's run.yaml with NetworkConfig TLS settings
 and verify the full pipeline works through the Lightspeed Stack.
 
 Config switching uses the same pattern as other e2e tests: overwrite the
@@ -15,8 +15,8 @@ from typing import Any, Optional
 from behave import given  # pyright: ignore[reportAttributeAccessIssue]
 from behave.runner import Context
 
-from tests.e2e.utils.ogx_config_utils import (
-    backup_ogx_config,
+from tests.e2e.utils.llama_config_utils import (
+    backup_llama_config,
     clear_llama_config_backup,
     load_llama_config,
     reset_llama_run_config_to_pipeline_default,
@@ -58,12 +58,14 @@ def prepare_tls_feature_entry_on_prow(feature_filename: Optional[str] = None) ->
     Mock TLS stays up for the whole tls suite (tls-ca → tls-mtls → tls-tlsv13).
     Certs are synced to the Secret only when the mock pod is first deployed
     (``deploy-e2e-mock-tls-inference``). Per-scenario TLS cases change which
-    ``/certs/*`` path OGX uses via run.yaml, not the Secret contents.
+    ``/certs/*`` path Llama uses via run.yaml, not the Secret contents.
     """
     if not is_prow_environment():
         return
     label = os.path.basename(feature_filename or "tls.feature")
-    print(f"[{label}] Prow/Konflux entry: ensure mock TLS, reset run.yaml, warm OGX...")
+    print(
+        f"[{label}] Prow/Konflux entry: ensure mock TLS, reset run.yaml, warm Llama..."
+    )
     reset_llama_run_config_to_pipeline_default()
     _ensure_cluster_mock_tls_inference()
     _prepare_tls_prow_llama_restart_env()
@@ -90,10 +92,10 @@ def _prepare_tls_prow_llama_restart_env() -> None:
 
 
 def _restart_lightspeed_after_llama_tls(context: Context) -> None:
-    """Restart LCS after OGX recreate so the in-process OGX client reconnects.
+    """Restart LCS after Llama recreate so the in-process Llama client reconnects.
 
-    TLS scenarios only change OGX run.yaml; LCS yaml is unchanged. Without this,
-    queries through LCS often fail with 503/connection errors after OGX pod
+    TLS scenarios only change Llama run.yaml; LCS yaml is unchanged. Without this,
+    queries through LCS often fail with 503/connection errors after Llama pod
     recreate on Prow (stale HTTP connections).
     """
     from tests.e2e.utils.utils import (
@@ -106,7 +108,7 @@ def _restart_lightspeed_after_llama_tls(context: Context) -> None:
         getattr(getattr(context, "feature", None), "filename", "") or "tls.feature"
     )
     print(
-        f"[{feature_file}] Lightspeed Stack refresh after OGX recreate "
+        f"[{feature_file}] Lightspeed Stack refresh after Llama recreate "
         f"scenario={scenario!r}",
         flush=True,
     )
@@ -115,7 +117,7 @@ def _restart_lightspeed_after_llama_tls(context: Context) -> None:
 
 
 def restart_llama_for_tls_feature(context: Context) -> None:
-    """Restart OGX for TLS tests (full pod recreate on Prow/Konflux)."""
+    """Restart Llama for TLS tests (full pod recreate on Prow/Konflux)."""
     from tests.e2e.utils.utils import restart_container
 
     if is_prow_environment():
@@ -126,7 +128,7 @@ def restart_llama_for_tls_feature(context: Context) -> None:
         getattr(getattr(context, "feature", None), "filename", "") or "tls.feature"
     )
     print(
-        f"[{feature_file}] OGX restart: full recreate scenario={scenario!r}",
+        f"[{feature_file}] Llama Stack restart: full recreate scenario={scenario!r}",
         flush=True,
     )
     restart_container("llama-stack")
@@ -204,7 +206,7 @@ def _ensure_tls_provider(config: dict[str, Any]) -> dict[str, Any]:
 
     Parameters:
     ----------
-        config: The OGX configuration dictionary.
+        config: The Llama Stack configuration dictionary.
 
     Returns:
     -------
@@ -238,7 +240,7 @@ def _configure_tls(tls_config: dict[str, Any], base_url: Optional[str] = None) -
         tls_config: The TLS configuration dictionary.
         base_url: Optional base URL override for the provider.
     """
-    backup_ogx_config()
+    backup_llama_config()
     config = load_llama_config()
     provider = _ensure_tls_provider(config)
     provider.setdefault("config", {}).setdefault("network", {})
@@ -254,7 +256,7 @@ def _configure_tls(tls_config: dict[str, Any], base_url: Optional[str] = None) -
 
 
 # --- Background Steps ---
-# ``The original OGX config is restored if modified`` only restores
+# ``The original Llama Stack config is restored if modified`` only restores
 # run.yaml (see proxy.py). Restart steps are listed in tls-*.feature / proxy.feature.
 
 

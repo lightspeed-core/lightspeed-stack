@@ -8,7 +8,7 @@ from pydantic import ValidationError
 from models.config import (
     CompactionConfiguration,
     Configuration,
-    OgxConfiguration,
+    LlamaStackConfiguration,
     QuestionValidityConfig,
     QuestionValidityShieldConfiguration,
     RedactionConfig,
@@ -103,7 +103,7 @@ def _minimal_configuration_kwargs() -> dict:
     return {
         "name": "test",
         "service": ServiceConfiguration(),
-        "ogx": OgxConfiguration(
+        "llama_stack": LlamaStackConfiguration(
             use_as_library_client=True,
             library_client_config_path="tests/configuration/run.yaml",
         ),

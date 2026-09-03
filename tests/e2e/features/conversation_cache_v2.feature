@@ -1,4 +1,4 @@
-@Authorized
+@e2e_group_2 @Authorized
 Feature: Conversation Cache V2 API tests
 
   Background:
@@ -6,7 +6,7 @@ Feature: Conversation Cache V2 API tests
       And The system is in default state
       And I set the Authorization header to Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva
       And the Lightspeed stack configuration directory is "tests/e2e/configuration"
-      And The service uses the lightspeed-stack-authorized.yaml configuration
+      And The service uses the lightspeed-stack-auth-noop-token.yaml configuration
       And The service is restarted
 
 
@@ -16,8 +16,7 @@ Feature: Conversation Cache V2 API tests
 
   # BUG: Test without no_tools to expose AttributeError with empty vector database
   # TODO: Remove @skip when bug is fixed (empty vector DB causes 500 error)
-
-  @skip @cfg_authorized
+  @skip
   Scenario: V2 conversations endpoint WITHOUT no_tools (known bug - empty vector DB)
     Given REST API service prefix is /v1
     And I use "query" to ask question with authorization header
@@ -31,7 +30,7 @@ Feature: Conversation Cache V2 API tests
      Then The status code of the response is 200
      And The conversation with conversation_id from above is returned
 
-  @cfg_authorized
+
   Scenario: V2 conversations endpoint finds the correct conversation when it exists
     Given REST API service prefix is /v1
     And I use "query" to ask question with authorization header
@@ -72,7 +71,6 @@ Feature: Conversation Cache V2 API tests
   # V2 Conversation GET by ID Endpoint Tests
   # ====================================================================
 
-  @cfg_authorized
   Scenario: V2 conversations/{conversation_id} endpoint finds conversation with full metadata
     Given REST API service prefix is /v1
     And I use "query" to ask question with authorization header
@@ -135,7 +133,7 @@ Feature: Conversation Cache V2 API tests
      }
      """
 
-  @cfg_authorized
+
   Scenario: V2 conversations/{conversation_id} GET endpoint fails when conversation_id is malformed
     Given REST API service prefix is /v2
      When I use REST API conversation endpoint with conversation_id "abcdef" using HTTP GET method
@@ -150,18 +148,27 @@ Feature: Conversation Cache V2 API tests
      }
      """
 
-  @cfg_authorized
+
   Scenario: V2 conversations/{conversation_id} GET endpoint fails when conversation does not exist
     Given REST API service prefix is /v2
      When I use REST API conversation endpoint with conversation_id "12345678-abcd-0000-0123-456789abcdef" using HTTP GET method
      Then The status code of the response is 404
      And The body of the response contains Conversation not found
 
+  @NoCacheConfig
+  Scenario: Check conversations/{conversation_id} fails when cache not configured
+    Given The service uses the lightspeed-stack-no-cache.yaml configuration
+      And The service is restarted
+      And REST API service prefix is /v2
+     When I access REST API endpoint "conversations" using HTTP GET method
+     Then The status code of the response is 500
+     And The body of the response contains Conversation cache not configured
+
+
   # ====================================================================
   # V2 Conversation DELETE Endpoint Tests
   # ====================================================================
 
-  @cfg_authorized
   Scenario: V2 conversations DELETE endpoint removes the correct conversation
     Given REST API service prefix is /v1
     And I use "query" to ask question with authorization header
@@ -182,14 +189,14 @@ Feature: Conversation Cache V2 API tests
      Then The status code of the response is 404
      And The body of the response contains Conversation not found
 
-  @cfg_authorized
+
   Scenario: V2 conversations/{conversation_id} DELETE endpoint fails when conversation_id is malformed
     Given REST API service prefix is /v2
      When I use REST API conversation endpoint with conversation_id "abcdef" using HTTP DELETE method
      Then The status code of the response is 400
      And The body of the response contains Invalid conversation ID format
 
-  @cfg_authorized
+
   Scenario: V2 conversations DELETE endpoint fails when the conversation does not exist
     Given REST API service prefix is /v2
      When I use REST API conversation endpoint with conversation_id "12345678-abcd-0000-0123-456789abcdef" using HTTP DELETE method
@@ -203,7 +210,6 @@ Feature: Conversation Cache V2 API tests
   # V2 Conversation PUT (Update Topic Summary) Endpoint Tests
   # ====================================================================
 
-  @cfg_authorized
   Scenario: V2 conversations PUT endpoint successfully updates topic summary
     Given REST API service prefix is /v1
     And I use "query" to ask question with authorization header
@@ -225,7 +231,7 @@ Feature: Conversation Cache V2 API tests
      And The conversation with conversation_id from above is returned
      And The conversation topic_summary is "Kubernetes Deployment Strategies"
 
-  @cfg_authorized
+
   Scenario: V2 conversations PUT endpoint fails when conversation_id is malformed
     Given REST API service prefix is /v2
      When I use REST API conversation endpoint with conversation_id "invalid-id" and topic_summary "Updated Summary" using HTTP PUT method
@@ -240,14 +246,14 @@ Feature: Conversation Cache V2 API tests
      }
      """
 
-  @cfg_authorized
+
   Scenario: V2 conversations PUT endpoint fails when conversation does not exist
     Given REST API service prefix is /v2
      When I use REST API conversation endpoint with conversation_id "12345678-abcd-0000-0123-456789abcdef" and topic_summary "Updated Summary" using HTTP PUT method
      Then The status code of the response is 404
      And The body of the response contains Conversation not found
 
-  @cfg_authorized
+
   Scenario: V2 conversations PUT endpoint fails with empty topic summary (422)
     Given REST API service prefix is /v1
     And I use "query" to ask question with authorization header
@@ -260,12 +266,3 @@ Feature: Conversation Cache V2 API tests
      When I use REST API conversation endpoint with conversation_id from above and empty topic_summary using HTTP PUT method
      Then The status code of the response is 422
      And The body of the response contains String should have at least 1 character
-
-  @NoCacheConfig @cfg_negative
-  Scenario: Check conversations/{conversation_id} fails when cache not configured
-    Given The service uses the lightspeed-stack-negative.yaml configuration
-      And The service is restarted
-      And REST API service prefix is /v2
-     When I access REST API endpoint "conversations" using HTTP GET method
-     Then The status code of the response is 500
-     And The body of the response contains Conversation cache not configured

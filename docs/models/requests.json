@@ -78,8 +78,7 @@
                         "examples": [
                             "text/plain",
                             "image/jpeg",
-                            "image/png",
-                            "image/webp"
+                            "image/png"
                         ],
                         "title": "Content Type",
                         "type": "string"
@@ -1804,7 +1803,7 @@
             },
             "PromptCreateRequest": {
                 "additionalProperties": false,
-                "description": "Request body to create a stored prompt template in OGX.\n\nAttributes:\n    prompt: Prompt text with variable placeholders.\n    variables: Variable names allowed in the template.",
+                "description": "Request body to create a stored prompt template in Llama Stack.\n\nAttributes:\n    prompt: Prompt text with variable placeholders.\n    variables: Variable names allowed in the template.",
                 "examples": [
                     {
                         "prompt": "Summarize: {{text}}",
@@ -2575,40 +2574,6 @@
                 "title": "RlsapiV1Terminal",
                 "type": "object"
             },
-            "SavedPromptCreateRequest": {
-                "additionalProperties": false,
-                "description": "Request body to create a user-scoped saved prompt.\n\nLength and emptiness limits are enforced by the endpoint using configured\nsaved-prompts limits, not by static field constraints here.\n\nAttributes:\n    name: Display name of the saved prompt.\n    content: Prompt body text.",
-                "examples": [
-                    {
-                        "content": "Help me write a deployment checklist\u2026",
-                        "name": "Deploy to staging"
-                    }
-                ],
-                "properties": {
-                    "name": {
-                        "description": "Display name of the saved prompt",
-                        "examples": [
-                            "Deploy to staging"
-                        ],
-                        "title": "Name",
-                        "type": "string"
-                    },
-                    "content": {
-                        "description": "Prompt body text",
-                        "examples": [
-                            "Help me write a deployment checklist\u2026"
-                        ],
-                        "title": "Content",
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "name",
-                    "content"
-                ],
-                "title": "SavedPromptCreateRequest",
-                "type": "object"
-            },
             "SearchRankingOptions": {
                 "description": "Options for ranking and filtering search results.\n\nThis class configures how search results are ranked and filtered. You can use algorithm-based\nrerankers (weighted, RRF) or neural rerankers. Defaults from VectorStoresConfig are\nused when parameters are not provided.\n\nExamples:\n    # Weighted ranker with custom alpha\n    SearchRankingOptions(ranker=\"weighted\", alpha=0.7)\n\n    # RRF ranker with custom impact factor\n    SearchRankingOptions(ranker=\"rrf\", impact_factor=50.0)\n\n    # Use config defaults (just specify ranker type)\n    SearchRankingOptions(ranker=\"weighted\")  # Uses alpha from VectorStoresConfig\n\n    # Score threshold filtering\n    SearchRankingOptions(ranker=\"weighted\", score_threshold=0.5)\n\n:param ranker: (Optional) Name of the ranking algorithm to use. Supported values:\n    - \"weighted\": Weighted combination of vector and keyword scores\n    - \"rrf\": Reciprocal Rank Fusion algorithm\n    - \"neural\": Neural reranking model (requires model parameter)\n    Note: For OpenAI API compatibility, any string value is accepted, but only the above values are supported.\n:param score_threshold: (Optional) Minimum relevance score threshold for results. Default: 0.0\n:param alpha: (Optional) Weight factor for weighted ranker (0-1).\n    - 0.0 = keyword only\n    - 0.5 = equal weight (default)\n    - 1.0 = vector only\n    Only used when ranker=\"weighted\" and weights is not provided.\n    Falls back to VectorStoresConfig.chunk_retrieval_params.weighted_search_alpha if not provided.\n:param impact_factor: (Optional) Impact factor (k) for RRF algorithm.\n    Lower values emphasize higher-ranked results. Default: 60.0 (optimal from research).\n    Only used when ranker=\"rrf\".\n    Falls back to VectorStoresConfig.chunk_retrieval_params.rrf_impact_factor if not provided.\n:param weights: (Optional) Dictionary of weights for combining different signal types.\n    Keys can be \"vector\", \"keyword\", \"neural\". Values should sum to 1.0.\n    Used when combining algorithm-based reranking with neural reranking.\n    Example: {\"vector\": 0.3, \"keyword\": 0.3, \"neural\": 0.4}\n:param model: (Optional) Model identifier for neural reranker (e.g., \"transformers/Qwen/Qwen3-Reranker-0.6B\").\n    Required when ranker=\"neural\" or when weights contains \"neural\".",
                 "properties": {
@@ -2658,17 +2623,16 @@
             },
             "SolrVectorSearchRequest": {
                 "additionalProperties": false,
-                "description": "LCORE Solr inline RAG options for vector_io.query (mode and provider filters).\n\nAttributes:\n    mode: Solr vector_io search mode. When omitted, the configured OKP default is used.\n    filters: Solr provider filter payload passed through as params['solr'].\n\nLegacy clients may send a plain JSON object with filter keys only;\nthat object is accepted as filters with mode unset (server default applies).",
+                "description": "LCORE Solr inline RAG options for vector_io.query (mode and provider filters).\n\nAttributes:\n    mode: Solr vector_io search mode. When omitted, the server default (hybrid) is used.\n    filters: Solr provider filter payload passed through as params['solr'].\n\nLegacy clients may send a plain JSON object with filter keys only;\nthat object is accepted as filters with mode unset (server default applies).",
                 "properties": {
                     "mode": {
                         "type": "string",
                         "nullable": true,
                         "default": null,
-                        "description": "Solr vector_io search mode. When omitted, the configured OKP default is used; otherwise 'hybrid' applies. 'keyword' and 'lexical' both use BM25 text search.",
+                        "description": "Solr vector_io search mode. When omitted, the server default ('hybrid') is used.",
                         "examples": [
                             "hybrid",
                             "semantic",
-                            "keyword",
                             "lexical"
                         ],
                         "title": "Mode"

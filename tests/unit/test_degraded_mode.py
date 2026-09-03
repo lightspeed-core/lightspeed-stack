@@ -15,7 +15,7 @@ class TestDegradedModeTracker:
     def test_set_degraded(self) -> None:
         """Test setting degraded mode."""
         tracker = DegradedModeTracker()
-        reason = "Failed to connect to OGX"
+        reason = "Failed to connect to Llama Stack"
 
         tracker.set_degraded(reason)
 

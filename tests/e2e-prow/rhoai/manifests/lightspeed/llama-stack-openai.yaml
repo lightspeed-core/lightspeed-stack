@@ -1,0 +1,269 @@
+# Llama Stack from source on UBI: init clones repo + seeds FAISS, main enriches run.yaml and runs Llama.
+# Needs ConfigMaps: llama-stack-config (run.yaml), rag-data (kv_store.db.gz), lightspeed-stack-config;
+# optional llama-stack-source for repo_url / repo_revision.
+#
+# RAG: seeded in setup-from-source from rag-data ConfigMap (gzip); main re-inflates from rag-data mount.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: llama-stack-service
+  labels:
+    pod: llama-stack-service
+spec:
+  imagePullSecrets:
+    - name: quay-lightspeed-pull-secret
+  securityContext:
+    seccompProfile:
+      type: RuntimeDefault
+  initContainers:
+    - name: setup-from-source
+      image: registry.access.redhat.com/ubi9/python-312
+      securityContext:
+        runAsUser: 0
+      env:
+        - name: REPO_URL
+          valueFrom:
+            configMapKeyRef:
+              name: llama-stack-source
+              key: repo_url
+              optional: true
+        - name: REPO_REVISION
+          valueFrom:
+            configMapKeyRef:
+              name: llama-stack-source
+              key: repo_revision
+              optional: true
+      command:
+        - /bin/bash
+        - -c
+        - |
+          set -e
+          # Fast-path: PVC already has a valid venv from a previous pod creation in this pipeline run.
+          # TLS scenarios delete+recreate this pod up to 16 times; skipping the expensive install
+          # reduces per-restart time from ~6-15 min to ~30-90 s (just RAG seed refresh + chown).
+          if [[ -d /opt/app-root/.venv ]] \
+              && /opt/app-root/.venv/bin/python --version >/dev/null 2>&1 \
+              && [[ -d /opt/app-root/src ]]; then
+            echo "PVC cache hit: app-root already provisioned — skipping full install"
+            mkdir -p /opt/app-root/.e2e-rag-seed /opt/app-root/src/.llama/storage/rag /opt/app-root/src/.llama/storage/files
+            if [[ -f /rag-seed/kv_store.db.gz ]]; then
+              gzip -dc /rag-seed/kv_store.db.gz > /opt/app-root/.e2e-rag-seed/kv_store.db
+              _sz=$(stat -c%s /opt/app-root/.e2e-rag-seed/kv_store.db)
+              if [[ "${_sz}" -lt 1048576 ]]; then
+                echo "FATAL: RAG seed too small (${_sz} bytes); check rag-data ConfigMap"
+                exit 1
+              fi
+              cp -f /opt/app-root/.e2e-rag-seed/kv_store.db /opt/app-root/src/.llama/storage/rag/kv_store.db
+            fi
+            chmod -R 775 /opt/app-root && chown -R 1001:0 /opt/app-root
+            echo "PVC fast-path complete"
+            exit 0
+          fi
+          # Full provisioning (PVC is empty — first pod creation this pipeline run).
+          REPO_URL="${REPO_URL:-https://github.com/lightspeed-core/lightspeed-stack.git}"
+          REPO_REVISION="${REPO_REVISION:-main}"
+          case "$REPO_URL" in git@github.com:*) REPO_URL="https://github.com/${REPO_URL#git@github.com:}"; esac
+          dnf -y install git tar gcc gcc-c++ make gzip
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          export PATH="/root/.local/bin:$PATH"
+          ln -sf /usr/bin/python3.12 /usr/bin/python3 2>/dev/null || true
+          export GIT_TERMINAL_PROMPT=0
+          git clone -q "${REPO_URL}" /opt/app-root/repo
+          cd /opt/app-root/repo && git fetch origin "${REPO_REVISION}" 2>/dev/null || true && git checkout -q "${REPO_REVISION}"
+          uv sync --locked --no-install-project --group llslibdev
+          (cd /opt/app-root/repo && tar cf - .) | (cd /opt/app-root && tar xf -)
+          rm -rf /opt/app-root/repo
+          sed -i 's|/opt/app-root/repo/.venv|/opt/app-root/.venv|g' /opt/app-root/.venv/bin/* 2>/dev/null || true
+          mkdir -p /opt/app-root/.e2e-rag-seed /opt/app-root/src/.llama/storage/rag /opt/app-root/src/.llama/storage/files
+          if [[ ! -f /rag-seed/kv_store.db.gz ]]; then
+            echo "FATAL: missing /rag-seed/kv_store.db.gz (ConfigMap rag-data key kv_store.db.gz)"
+            ls -la /rag-seed || true
+            exit 1
+          fi
+          gzip -dc /rag-seed/kv_store.db.gz > /opt/app-root/.e2e-rag-seed/kv_store.db
+          _sz=$(stat -c%s /opt/app-root/.e2e-rag-seed/kv_store.db)
+          if [[ "${_sz}" -lt 1048576 ]]; then
+            echo "FATAL: RAG seed too small (${_sz} bytes); check rag-data ConfigMap"
+            exit 1
+          fi
+          cp -f /opt/app-root/.e2e-rag-seed/kv_store.db /opt/app-root/src/.llama/storage/rag/kv_store.db
+          cp /opt/app-root/src/llama_stack_configuration.py /opt/app-root/llama_stack_configuration.py
+          chmod -R 775 /opt/app-root && chown -R 1001:0 /opt/app-root
+      volumeMounts:
+        - name: app-root
+          mountPath: /opt/app-root
+        - name: rag-data
+          mountPath: /rag-seed
+          readOnly: true
+    - name: materialize-run-yaml
+      image: busybox:latest
+      securityContext:
+        runAsUser: 0
+      command:
+        - /bin/sh
+        - -c
+        - |
+          set -e
+          cp /cm/run.yaml /work/run.yaml
+          chown 1001:0 /work/run.yaml
+          chmod 664 /work/run.yaml
+      volumeMounts:
+        - name: config-cm
+          mountPath: /cm
+          readOnly: true
+        - name: app-root
+          mountPath: /work
+  containers:
+    - name: llama-stack-container
+      image: registry.access.redhat.com/ubi9/python-312
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: ["ALL"]
+        runAsNonRoot: true
+        runAsUser: 1001
+        seccompProfile:
+          type: RuntimeDefault
+      workingDir: /opt/app-root
+      env:
+        - name: PATH
+          value: "/opt/app-root/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+        - name: PYTHONPATH
+          value: "/opt/app-root/src"
+        - name: HOME
+          value: "/opt/app-root/src"
+        - name: KV_STORE_PATH
+          value: "/opt/app-root/src/.llama/storage/kv_store.db"
+        - name: KV_RAG_PATH
+          value: "/opt/app-root/src/.llama/storage/rag/kv_store.db"
+        - name: SQL_STORE_PATH
+          value: "/opt/app-root/src/.llama/storage/sql_store.db"
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: openai-api-key-secret
+              key: key
+              optional: true
+        - name: E2E_OPENAI_MODEL
+          value: "gpt-4o-mini"
+        - name: VLLM_URL
+          valueFrom:
+            secretKeyRef:
+              name: vllm-url-secret
+              key: key
+              optional: true
+        - name: VLLM_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: vllm-api-key-secret
+              key: key
+              optional: true
+        - name: VLLM_MODEL
+          valueFrom:
+            secretKeyRef:
+              name: vllm-model-secret
+              key: key
+              optional: true
+        - name: FAISS_VECTOR_STORE_ID
+          valueFrom:
+            secretKeyRef:
+              name: faiss-vector-store-secret
+              key: id
+        - name: E2E_LLAMA_HOSTNAME
+          valueFrom:
+            secretKeyRef:
+              name: llama-stack-ip-secret
+              key: key
+      command:
+        - /bin/bash
+        - -c
+        - |
+          set -e
+          RAG_SEED="/opt/app-root/.e2e-rag-seed/kv_store.db"
+          RAG_CM_GZ="/opt/app-root/rag-data-cm/kv_store.db.gz"
+          RAG_WORK="${KV_RAG_PATH:-/opt/app-root/src/.llama/storage/rag/kv_store.db}"
+          restore_rag_seed() {
+            mkdir -p "$(dirname "$RAG_WORK")"
+            if [[ -f "$RAG_CM_GZ" ]]; then
+              RAG_WORK="$RAG_WORK" RAG_CM_GZ="$RAG_CM_GZ" python3 -c 'import gzip, os, shutil, sys; r, g = os.environ["RAG_WORK"], os.environ["RAG_CM_GZ"]; t = r + ".tmp"; i = gzip.open(g, "rb"); o = open(t, "wb"); shutil.copyfileobj(i, o); i.close(); o.close(); sz = os.path.getsize(t); (sz >= 1048576) or (print("FATAL: RAG from ConfigMap too small:", sz, file=sys.stderr) or sys.exit(1)); os.replace(t, r); os.chmod(r, 0o664)' || exit 1
+            elif [[ -f "$RAG_SEED" ]]; then
+              cp -f "$RAG_SEED" "$RAG_WORK"
+              chmod 664 "$RAG_WORK" 2>/dev/null || true
+            fi
+          }
+          restore_rag_seed
+          INPUT_CONFIG="${LLAMA_STACK_CONFIG:-/opt/app-root/run.yaml}"
+          ENRICHED_CONFIG="/opt/app-root/run.yaml"
+          LIGHTSPEED_CONFIG="${LIGHTSPEED_CONFIG:-/opt/app-root/lightspeed-stack.yaml}"
+          if [[ -f "$LIGHTSPEED_CONFIG" ]]; then
+            echo "Enriching llama-stack config..."
+            ENRICHMENT_FAILED=0
+            /opt/app-root/.venv/bin/python3 /opt/app-root/llama_stack_configuration.py \
+              -c "$LIGHTSPEED_CONFIG" \
+              -i "$INPUT_CONFIG" \
+              -o "$ENRICHED_CONFIG" 2>&1 || ENRICHMENT_FAILED=1
+            if [[ -f "$ENRICHED_CONFIG" ]] && [[ "$ENRICHMENT_FAILED" -eq 0 ]]; then
+              echo "Using enriched config: $ENRICHED_CONFIG"
+              restore_rag_seed
+              exec ogx stack run "$ENRICHED_CONFIG"
+            fi
+          fi
+          echo "Using original config: $INPUT_CONFIG"
+          restore_rag_seed
+          exec ogx stack run "$INPUT_CONFIG"
+      ports:
+        - containerPort: 8321
+      readinessProbe:
+        httpGet:
+          path: /v1/health
+          port: 8321
+        initialDelaySeconds: 20
+        periodSeconds: 5
+        failureThreshold: 36
+      livenessProbe:
+        httpGet:
+          path: /v1/health
+          port: 8321
+        initialDelaySeconds: 120
+        periodSeconds: 20
+        failureThreshold: 3
+      volumeMounts:
+        - name: app-root
+          mountPath: /opt/app-root
+        - name: lightspeed-config
+          mountPath: /opt/app-root/lightspeed-stack.yaml
+          subPath: lightspeed-stack.yaml
+          readOnly: true
+        - name: rag-data
+          mountPath: /opt/app-root/rag-data-cm
+          readOnly: true
+        # proxy.feature (interception): PEM from Secret e2e-interception-proxy-ca (optional).
+        - name: interception-proxy-ca
+          mountPath: /tmp/interception-proxy-ca.pem
+          subPath: ca.pem
+          readOnly: true
+        # tls-*.feature: client/CA PEMs from Secret e2e-mock-tls-certs (optional).
+        - name: mock-tls-certs
+          mountPath: /certs
+          readOnly: true
+  volumes:
+    - name: app-root
+      persistentVolumeClaim:
+        claimName: llama-stack-app-root
+    - name: config-cm
+      configMap:
+        name: llama-stack-config
+    - name: lightspeed-config
+      configMap:
+        name: lightspeed-stack-config
+    - name: rag-data
+      configMap:
+        name: rag-data
+    - name: interception-proxy-ca
+      secret:
+        secretName: e2e-interception-proxy-ca
+        optional: true
+    - name: mock-tls-certs
+      secret:
+        secretName: e2e-mock-tls-certs
+        optional: true

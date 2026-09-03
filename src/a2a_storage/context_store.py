@@ -7,7 +7,7 @@ from typing import Optional
 class A2AContextStore(ABC):
     """Abstract base class for storing A2A context-to-conversation mappings.
 
-    This store maps A2A context IDs to OGX conversation IDs to
+    This store maps A2A context IDs to Llama Stack conversation IDs to
     preserve multi-turn conversation history across requests.
 
     For multi-worker deployments, implementations should use persistent
@@ -22,7 +22,7 @@ class A2AContextStore(ABC):
             context_id: The A2A context ID.
 
         Returns:
-            The OGX conversation ID, or None if not found.
+            The Llama Stack conversation ID, or None if not found.
         """
 
     @abstractmethod
@@ -31,7 +31,7 @@ class A2AContextStore(ABC):
 
         Args:
             context_id: The A2A context ID.
-            conversation_id: The OGX conversation ID.
+            conversation_id: The Llama Stack conversation ID.
         """
 
     @abstractmethod

@@ -7,13 +7,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  # Own job so repository secrets are never sent to a runner unless this passes.
-  authorize:
-    uses: ./.github/workflows/e2e_authorize.yaml
-
   e2e_tests:
-    needs: authorize
-    if: needs.authorize.outputs.authorized == 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -21,21 +15,21 @@ jobs:
         mode: ["server", "library"]
         environment: ["azure", "vertexai", "watsonx", "bedrock"]
         # Expected default LLM for Behave (matches tests/e2e/configs/run-<env>.yaml).
-        # | environment | model_id                                   | provider_id   |
-        # |-------------|--------------------------------------------| --------------|
-        # | azure       | gpt-4o-mini                                | azure         |
-        # | vertexai    | publishers/google/models/gemini-2.5-flash  | google-vertex |
-        # | watsonx     | meta-llama/llama-3-3-70b-instruct          | watsonx       |
-        # | bedrock     | deepseek.v3-v1:0                           | aws-bedrock   |
+        # | environment | model_id                            | provider_id   |
+        # |-------------|-------------------------------------|---------------|
+        # | azure       | gpt-4o-mini                         | azure         |
+        # | vertexai    | google/gemini-2.5-flash             | google-vertex |
+        # | watsonx     | meta-llama/llama-3-3-70b-instruct   | watsonx       |
+        # | bedrock     | deepseek.v3-v1:0                    | aws-bedrock   |
         include:
           - environment: azure
             e2e_default_model: gpt-4o-mini
             e2e_default_provider: azure
           - environment: vertexai
-            e2e_default_model: publishers/google/models/gemini-2.5-flash
+            e2e_default_model: google/gemini-2.5-flash
             e2e_default_provider: google-vertex
           - environment: watsonx
-            e2e_default_model: meta-llama/llama-3-3-70b-instruct
+            e2e_default_model: watsonx/meta-llama/llama-3-3-70b-instruct
             e2e_default_provider: watsonx
           - environment: bedrock
             e2e_default_model: deepseek.v3-v1:0
@@ -204,7 +198,7 @@ jobs:
           echo "Models: $(grep -c "model_id:" run.yaml)"
           echo ""
           echo "=== lightspeed-stack.yaml ==="
-          grep -A 3 "ogx:" lightspeed-stack.yaml
+          grep -A 3 "llama_stack:" lightspeed-stack.yaml
 
       - name: Cache HuggingFace embedding model
         uses: actions/cache@v4
@@ -335,6 +329,10 @@ jobs:
       - name: Wait for watsonx library mode to finish
         if: matrix.environment == 'watsonx' && matrix.mode == 'server'
         run: sleep 3600  # 120 minutes
+
+      - name: Remove the prefix for watsonx default model
+        if: matrix.environment == 'watsonx'
+        run: echo "E2E_DEFAULT_MODEL_OVERRIDE=meta-llama/llama-3-3-70b-instruct" >> $GITHUB_ENV
 
       - name: Run e2e tests
         env:

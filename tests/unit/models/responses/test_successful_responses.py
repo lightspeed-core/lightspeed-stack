@@ -46,7 +46,7 @@ from models.common.turn_summary import (
 )
 from models.config import (
     Configuration,
-    OgxConfiguration,
+    LlamaStackConfiguration,
     ServiceConfiguration,
     UserDataCollection,
 )
@@ -403,12 +403,12 @@ class TestInfoResponse:
         response = InfoResponse(
             name="Lightspeed Stack",
             service_version="1.0.0",
-            ogx_version="1.0.0",
+            llama_stack_version="1.0.0",
         )
         assert isinstance(response, AbstractSuccessfulResponse)
         assert response.name == "Lightspeed Stack"
         assert response.service_version == "1.0.0"
-        assert response.ogx_version == "1.0.0"
+        assert response.llama_stack_version == "1.0.0"
 
     def test_missing_required_parameters(self) -> None:
         """Test InfoResponse raises ValidationError when required fields are missing."""
@@ -1102,7 +1102,7 @@ class TestConfigurationResponse:
                 access_log=True,
                 root_path="/.",
             ),
-            ogx=OgxConfiguration(
+            llama_stack=LlamaStackConfiguration(
                 url=AnyHttpUrl("http://localhost:8321"),
                 use_as_library_client=False,
                 api_key=None,

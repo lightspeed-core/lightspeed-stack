@@ -30,7 +30,7 @@ from utils.token_estimator import (
 
 
 class _MessageItem:
-    """Minimal stand-in for an OGX conversation message item."""
+    """Minimal stand-in for a Llama Stack conversation message item."""
 
     def __init__(self, role: str, text: str) -> None:
         self.type = "message"
@@ -53,7 +53,7 @@ class _TextPart:
 
 
 def _make_history(num_pairs: int, words_per_message: int = 1) -> list[Any]:
-    """Build an OGX-shaped conversation with *num_pairs* user/assistant pairs.
+    """Build a Llama-Stack-shaped conversation with *num_pairs* user/assistant pairs.
 
     Each message text is ``words_per_message`` repetitions of a short
     sentence so callers can dial the per-message token cost.
@@ -75,7 +75,7 @@ class TestIsMessageItem:
     """Tests for is_message_item."""
 
     def test_llama_stack_message(self) -> None:
-        """OGX message item is recognised."""
+        """Llama-stack message item is recognised."""
         assert is_message_item(_MessageItem("user", "hi")) is True
 
     def test_llama_stack_tool_call(self) -> None:

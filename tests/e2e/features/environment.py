@@ -23,19 +23,19 @@ from tests.e2e.features.steps.common import (
     reset_active_lightspeed_stack_config_basename,
 )
 from tests.e2e.features.steps.health import (
-    get_ogx_was_running,
+    get_llama_stack_was_running,
     reset_llama_stack_disrupt_once_tracking,
-    reset_ogx_was_running,
+    reset_llama_stack_was_running,
 )
 from tests.e2e.features.steps.tls import (
     is_tls_feature_file,
     prepare_tls_feature_entry_on_prow,
     reset_tls_prow_state,
 )
-from tests.e2e.utils.ogx_utils import register_shield
+from tests.e2e.utils.llama_stack_utils import register_shield
 from tests.e2e.utils.prow_utils import (
     restart_pod,
-    restore_ogx_pod,
+    restore_llama_stack_pod,
     run_e2e_ops,
 )
 from tests.e2e.utils.utils import (
@@ -103,12 +103,6 @@ def before_all(context: Context) -> None:
             - default_model (str): Detected model id or fallback model.
             - default_provider (str): Detected provider id or fallback provider.
     """
-    # Set OTEL anonymization secret for E2E tests if not already configured
-    if not os.environ.get("OTEL_ANONYMIZATION_SECRET"):
-        os.environ["OTEL_ANONYMIZATION_SECRET"] = (
-            "e2e-test-secret-do-not-use-in-production"
-        )
-
     # Detect deployment mode from environment variable
     context.deployment_mode = os.getenv("E2E_DEPLOYMENT_MODE", "server").lower()
     context.is_library_mode = context.deployment_mode == "library"
@@ -159,7 +153,7 @@ def _ensure_prow_port_forward(context: Context) -> None:
     restart-port-forward to re-establish the tunnel before the scenario runs.
 
     Treat HTTP 503 like 200/401 here: it means the tunnel reached Lightspeed and the
-    app responded. ``ogx_disrupted`` leaves Llama stopped on purpose; readiness
+    app responded. ``llama_stack_disrupted`` leaves Llama stopped on purpose; readiness
     then returns 503. Previously we treated 503 as a dead tunnel and ran
     ``restart-lightspeed``, which restores Llama via e2e-ops and breaks later scenarios
     that skip disruption (once-per-feature) while expecting Llama to stay down.
@@ -185,7 +179,7 @@ def _ensure_prow_port_forward(context: Context) -> None:
     except subprocess.TimeoutExpired:
         pass
 
-    # Port-forward alone failed — the pod itself may be dead (e.g. OGX
+    # Port-forward alone failed — the pod itself may be dead (e.g. Llama Stack
     # was never restored after a disruption feature). Attempt a full restart,
     # which also checks Llama health before recreating LCS.
     print("[before_scenario] Port-forward failed; attempting full pod restart...")
@@ -220,14 +214,14 @@ def before_scenario(context: Context, scenario: Scenario) -> None:
         scenario.skip("Marked with @local")
         return
 
-    # Skip scenarios that require separate OGX container in library mode
+    # Skip scenarios that require separate llama-stack container in library mode
     if context.is_library_mode and "skip-in-library-mode" in scenario.effective_tags:
         scenario.skip("Skipped in library mode (no separate llama-stack container)")
         return
 
     # Skip scenarios that rely on a non-default BYOK store. Only library mode
-    # re-enriches the (in-process) OGX with the active config's byok_rag
-    # on restart; in server mode the external OGX keeps its startup
+    # re-enriches the (in-process) llama-stack with the active config's byok_rag
+    # on restart; in server mode the external llama-stack keeps its startup
     # config, so a feature-specific store would not be loaded.
     if not context.is_library_mode and "skip-in-server-mode" in scenario.effective_tags:
         scenario.skip(
@@ -249,8 +243,6 @@ def before_scenario(context: Context, scenario: Scenario) -> None:
 
     context.scenario_lightspeed_override_active = False
     context.lightspeed_stack_skip_restart = False
-    # Reset force-restart from a prior disrupt/MCP reset scenario.
-    context.force_lightspeed_restart_after_mcp_config_reset = False
 
     # Clear shield unregister state from previous scenarios (see ``shields_are_disabled_for_scenario``).
     for _attr in (
@@ -287,11 +279,18 @@ def _dump_pod_logs_on_failure(
 def after_scenario(context: Context, scenario: Scenario) -> None:
     """Run after each scenario is run.
 
-    Perform per-scenario teardown: failure logs (Prow) and shield re-register.
+    Perform per-scenario teardown: restore scenario-specific configuration and,
+    in server mode, attempt to restart and verify the Llama Stack container if
+    it was previously running.
 
     If ``configure_service`` applied a non-baseline YAML during the scenario
-    (``context.scenario_lightspeed_override_active``), clears that flag only;
-    the next ``The service uses ...`` step re-applies config as needed.
+    (``context.scenario_lightspeed_override_active``), copies
+    ``context.feature_config`` back and restarts lightspeed-stack.
+
+    When not running in library mode and the context indicates the Llama Stack
+    was running before the scenario, this function attempts to start the
+    llama-stack container and polls its health endpoint until it becomes
+    healthy or a timeout is reached.
 
     Parameters:
     ----------
@@ -300,10 +299,10 @@ def after_scenario(context: Context, scenario: Scenario) -> None:
             - scenario_lightspeed_override_active: set by ``configure_service``
               when a scenario switches YAML after Background.
             - is_library_mode (bool): whether tests run in library mode.
-            - ogx_was_running (bool, optional): whether OGX was
+            - llama_stack_was_running (bool, optional): whether llama-stack was
               running before the scenario.
             - hostname_llama, port_llama (str/int, optional): host and port
-              used for the OGX health check.
+              used for the llama-stack health check.
         scenario (Scenario): Behave scenario (unused; shield restore uses context flags).
     """
     if is_prow_environment():
@@ -313,6 +312,10 @@ def after_scenario(context: Context, scenario: Scenario) -> None:
 
     if getattr(context, "scenario_lightspeed_override_active", False):
         context.scenario_lightspeed_override_active = False
+        feature_cfg = getattr(context, "feature_config", None)
+        if feature_cfg:
+            switch_config(feature_cfg)
+            restart_container("lightspeed-stack")
 
     # Re-register shield if ``Given shields are disabled for this scenario`` unregistered it.
     if getattr(context, "shields_disabled_for_scenario", False):
@@ -326,12 +329,12 @@ def after_scenario(context: Context, scenario: Scenario) -> None:
                     provider_shield_id=provider_shield_id,
                 )
                 print("Re-registered shield llama-guard")
-            except (TypeError, ValueError, RuntimeError, KeyboardInterrupt) as e:
+            except Exception as e:  # pylint: disable=broad-exception-caught
                 print(f"Warning: Could not re-register shield: {e}")
 
 
-def _print_ogx_diagnostics() -> None:
-    """Print container state, health, and recent logs to diagnose why OGX did not recover."""
+def _print_llama_stack_diagnostics() -> None:
+    """Print container state, health, and recent logs to diagnose why llama-stack did not recover."""
     print("--- llama-stack diagnostics ---")
     for label, cmd in [
         ("State", ["docker", "inspect", "--format={{.State}}", "llama-stack"]),
@@ -362,13 +365,13 @@ def _print_ogx_diagnostics() -> None:
 
 
 def _restore_llama_stack() -> None:
-    """Restore OGX connection after disruption."""
+    """Restore Llama Stack connection after disruption."""
     if is_prow_environment():
         # Recreate llama pod, then restart LCS so in-process clients reconnect (Llama IP/pod changed).
         try:
-            restore_ogx_pod()
+            restore_llama_stack_pod()
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
-            print(f"Warning: Could not restore OGX pod on Prow: {e}")
+            print(f"Warning: Could not restore Llama Stack pod on Prow: {e}")
             return
         last_lcs_err: Optional[
             subprocess.CalledProcessError | subprocess.TimeoutExpired
@@ -377,7 +380,7 @@ def _restore_llama_stack() -> None:
             try:
                 restart_pod("lightspeed-stack")
                 print(
-                    "✓ Prow: OGX restored and lightspeed-stack restarted "
+                    "✓ Prow: Llama Stack restored and lightspeed-stack restarted "
                     "for clean reconnect"
                 )
                 reset_llama_stack_disrupt_once_tracking()
@@ -385,26 +388,26 @@ def _restore_llama_stack() -> None:
             except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
                 last_lcs_err = e
                 print(
-                    f"Warning: lightspeed-stack restart after OGX restore "
+                    f"Warning: lightspeed-stack restart after Llama restore "
                     f"attempt {attempt}/3 failed: {e}"
                 )
                 if attempt < 3:
                     time.sleep(5)
         print(
-            "Warning: Could not restart lightspeed-stack after OGX restore "
+            "Warning: Could not restart lightspeed-stack after Llama restore "
             f"after 3 attempts: {last_lcs_err}"
         )
         return
 
     try:
-        # Start the OGX container again
+        # Start the llama-stack container again
         subprocess.run(
             ["docker", "start", "llama-stack"], check=True, capture_output=True
         )
 
         # Wait for the service to be healthy
-        print("Restoring OGX connection...")
-        max_attempts = 60
+        print("Restoring Llama Stack connection...")
+        max_attempts = 24
         for attempt in range(max_attempts):
             try:
                 result = subprocess.run(
@@ -421,7 +424,7 @@ def _restore_llama_stack() -> None:
                     check=False,
                 )
                 if result.returncode == 0:
-                    print("✓ OGX connection restored successfully")
+                    print("✓ Llama Stack connection restored successfully")
                     reset_llama_stack_disrupt_once_tracking()
                     break
             except subprocess.TimeoutExpired:
@@ -431,21 +434,21 @@ def _restore_llama_stack() -> None:
 
             if attempt < max_attempts - 1:
                 print(
-                    f"Waiting for OGX to be healthy... "
+                    f"Waiting for Llama Stack to be healthy... "
                     f"(attempt {attempt + 1}/{max_attempts})"
                 )
                 time.sleep(2)
             else:
-                print("Warning: OGX may not be fully healthy after restoration")
-                _print_ogx_diagnostics()
+                print("Warning: Llama Stack may not be fully healthy after restoration")
+                _print_llama_stack_diagnostics()
 
     except subprocess.CalledProcessError as e:
-        print(f"Warning: Could not restore OGX connection: {e}")
+        print(f"Warning: Could not restore Llama Stack connection: {e}")
         if e.stderr:
             print(f"  docker start stderr: {e.stderr}")
         if e.stdout:
             print(f"  docker start stdout: {e.stdout}")
-        _print_ogx_diagnostics()
+        _print_llama_stack_diagnostics()
 
 
 def before_feature(context: Context, feature: Feature) -> None:
@@ -453,8 +456,6 @@ def before_feature(context: Context, feature: Feature) -> None:
 
     Per-feature setup that is not expressed in Gherkin.
     Lightspeed YAML is applied in feature Backgrounds via ``configure_service``.
-
-    Does not reset the applied-config basename tracker (skip-restart across features).
 
     Records monotonic start time on ``feature`` for duration logging in
     ``after_feature`` (includes scenarios and feature teardown).
@@ -465,8 +466,7 @@ def before_feature(context: Context, feature: Feature) -> None:
     ``E2E_FLAKY_MAX_ATTEMPTS`` environment variable.
     """
     setattr(feature, _E2E_FEATURE_PERF_START_ATTR, time.perf_counter())
-    context.feature_config = None
-    context.scenario_lightspeed_override_active = False
+    reset_active_lightspeed_stack_config_basename()
     context.active_lightspeed_stack_config_basename = None
     # One real Llama disruption per feature (module-level flag; survives context resets)
     reset_llama_stack_disrupt_once_tracking()
@@ -489,29 +489,19 @@ def before_feature(context: Context, feature: Feature) -> None:
             delattr(context, _attr)
 
 
-def _restore_config_after_feature_enabled() -> bool:
-    """Return True when legacy per-feature bootstrap restore/restart is requested."""
-    return os.getenv("E2E_RESTORE_CONFIG_AFTER_FEATURE", "0").strip().lower() in {
-        "1",
-        "true",
-        "yes",
-    }
-
-
 def after_feature(context: Context, feature: Feature) -> None:
     """Run after each feature file is exercised.
 
-    Perform feature-level teardown: restore bootstrap configuration when
-    ``E2E_RESTORE_CONFIG_AFTER_FEATURE=1``, otherwise keep the active config;
+    Perform feature-level teardown: restore any modified configuration and,
     when ``context.feedback_e2e_conversation_cleanup`` is set by feedback steps,
     delete tracked feedback test conversations.
     """
-    # Restore OGX FIRST (before any lightspeed-stack restart).
+    # Restore Llama Stack FIRST (before any lightspeed-stack restart).
     # Read from module-level state — Behave clears custom context attributes
-    # between scenarios, so context.ogx_was_running is unreliable here.
-    if get_ogx_was_running():
+    # between scenarios, so context.llama_stack_was_running is unreliable here.
+    if get_llama_stack_was_running():
         _restore_llama_stack()
-        reset_ogx_was_running()
+        reset_llama_stack_was_running()
 
     if getattr(context, "feedback_e2e_conversation_cleanup", False):
         token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva"
@@ -523,19 +513,14 @@ def after_feature(context: Context, feature: Feature) -> None:
 
     # Restore Lightspeed Stack config if the generic configure_service step switched it.
     # This cleanup intentionally runs for any feature (not tag-gated) - any feature that
-    # leaves a backup file will trigger config restoration and container restarts when
-    # E2E_RESTORE_CONFIG_AFTER_FEATURE=1; otherwise the backup is dropped only.
+    # leaves a backup file will trigger config restoration and container restarts.
     backup_path = "lightspeed-stack.yaml.backup"
     if os.path.exists(backup_path):
-        if _restore_config_after_feature_enabled():
-            switch_config(backup_path)
-            remove_config_backup(backup_path)
-            if not context.is_library_mode:
-                restart_container("llama-stack")
-            restart_container("lightspeed-stack")
-            reset_active_lightspeed_stack_config_basename()
-        else:
-            remove_config_backup(backup_path)
+        switch_config(backup_path)
+        remove_config_backup(backup_path)
+        if not context.is_library_mode:
+            restart_container("llama-stack")
+        restart_container("lightspeed-stack")
 
     # Clean up any proxy servers left from the last scenario
     if hasattr(context, "tunnel_proxy") or hasattr(context, "interception_proxy"):

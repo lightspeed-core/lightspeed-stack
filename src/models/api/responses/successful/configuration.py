@@ -40,7 +40,7 @@ class ConfigurationResponse(AbstractSuccessfulResponse):
                                 "allow_headers": ["*"],
                             },
                         },
-                        "ogx": {
+                        "llama_stack": {
                             "url": "http://localhost:8321",
                             "api_key": "*****",
                             "use_as_library_client": False,
@@ -79,30 +79,7 @@ class ConfigurationResponse(AbstractSuccessfulResponse):
                             "sqlite": None,
                             "postgres": None,
                         },
-                        "rag": {
-                            "byok": {"max_chunks": 10, "stores": []},
-                            "okp": {
-                                "rhokp_url": None,
-                                "offline": True,
-                                "chunk_filter_query": None,
-                                "max_chunks": 5,
-                            },
-                            "retrieval": {
-                                "inline": {
-                                    "sources": [],
-                                    "max_chunks": 10,
-                                    "reranker": {
-                                        "enabled": False,
-                                        "model": "cross-encoder/ms-marco-MiniLM-L6-v2",
-                                    },
-                                },
-                                "tool": {
-                                    "sources": [],
-                                    "max_chunks": 10,
-                                    "reranker": None,
-                                },
-                            },
-                        },
+                        "byok_rag": [],
                         "quota_handlers": {
                             "sqlite": None,
                             "postgres": None,

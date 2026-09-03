@@ -11,7 +11,7 @@ class HealthStatus(str, Enum):
 
     This enum serves two purposes:
 
-    1. Provider-level health (returned by OGX providers):
+    1. Provider-level health (returned by Llama Stack providers):
        - OK: Provider is healthy and operational
        - ERROR: Provider is unhealthy or failed health check
        - NOT_IMPLEMENTED: Provider does not implement health checks
@@ -23,7 +23,7 @@ class HealthStatus(str, Enum):
        - UNHEALTHY: Service connected but one or more providers are unhealthy
     """
 
-    # Provider-level statuses (from OGX)
+    # Provider-level statuses (from Llama Stack)
     OK = "ok"
     ERROR = "error"
     NOT_IMPLEMENTED = "not_implemented"

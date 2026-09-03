@@ -1,4 +1,4 @@
-"""Utilities for discovering tools from remote MCP servers without OGX."""
+"""Utilities for discovering tools from remote MCP servers without Llama Stack."""
 
 from __future__ import annotations
 
@@ -101,7 +101,7 @@ def _prepare_mcp_request_headers(headers: dict[str, str]) -> dict[str, str]:
 
     File-based secrets are stored as raw tokens. MCP servers expect
     ``Authorization: Bearer <token>``. Query/Responses keep the raw value in
-    ``build_mcp_headers`` and hand it to OGX separately; only this
+    ``build_mcp_headers`` and hand it to Llama Stack separately; only this
     direct client path needs the Bearer scheme.
     """
     prepared = dict(headers)

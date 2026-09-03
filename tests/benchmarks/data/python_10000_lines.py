@@ -31,14 +31,14 @@ def _reset_app_config_between_tests() -> Generator:
     try:
         AppConfig()._configuration = None  # type: ignore[attr-defined]
         AppConfig()._quota_limiters = []  # type: ignore[attr-defined]
-    except ValueError:
+    except Exception:
         pass
     yield
     # ensure clean state after each test
     try:
         AppConfig()._configuration = None  # type: ignore[attr-defined]
         AppConfig()._quota_limiters = []  # type: ignore[attr-defined]
-    except TypeError:
+    except Exception:
         pass
 
 
@@ -58,7 +58,7 @@ def test_default_configuration() -> None:
 
     with pytest.raises(LogicError, match="logic error: configuration is not loaded"):
         # try to read property
-        _ = cfg.ogx_configuration  # pylint: disable=pointless-statement
+        _ = cfg.llama_stack_configuration  # pylint: disable=pointless-statement
 
     with pytest.raises(LogicError, match="logic error: configuration is not loaded"):
         # try to read property
@@ -135,18 +135,18 @@ def test_init_from_dict() -> None:
 
     # check for all subsections
     assert cfg.configuration is not None
-    assert cfg.ogx_configuration is not None
+    assert cfg.llama_stack_configuration is not None
     assert cfg.service_configuration is not None
     assert cfg.user_data_collection_configuration is not None
 
     # check for configuration subsection
     assert cfg.configuration.name == "foo"
 
-    # check for ogx_configuration subsection
-    assert cfg.ogx_configuration.api_key is not None
-    assert cfg.ogx_configuration.api_key.get_secret_value() == "xyzzy"
-    assert str(cfg.ogx_configuration.url) == "http://x.y.com:1234/"
-    assert cfg.ogx_configuration.use_as_library_client is False
+    # check for llama_stack_configuration subsection
+    assert cfg.llama_stack_configuration.api_key is not None
+    assert cfg.llama_stack_configuration.api_key.get_secret_value() == "xyzzy"
+    assert str(cfg.llama_stack_configuration.url) == "http://x.y.com:1234/"
+    assert cfg.llama_stack_configuration.use_as_library_client is False
 
     # check for service_configuration subsection
     assert cfg.service_configuration.host == "localhost"
@@ -285,7 +285,7 @@ def test_load_proper_configuration(tmpdir: Path) -> None:
 
     Writes a YAML configuration to a temporary file, loads it with
     AppConfig.load_configuration, and asserts that `configuration`,
-    `ogx_configuration`, `service_configuration`, and
+    `llama_stack_configuration`, `service_configuration`, and
     `user_data_collection_configuration` are populated.
     """
     cfg_filename = tmpdir / "config.yaml"
@@ -311,7 +311,7 @@ mcp_servers: []
     cfg = AppConfig()
     cfg.load_configuration(str(cfg_filename))
     assert cfg.configuration is not None
-    assert cfg.ogx_configuration is not None
+    assert cfg.llama_stack_configuration is not None
     assert cfg.service_configuration is not None
     assert cfg.user_data_collection_configuration is not None
 
@@ -441,11 +441,11 @@ def test_service_configuration_not_loaded() -> None:
         assert c is not None
 
 
-def test_ogx_configuration_not_loaded() -> None:
-    """Test that accessing ogx_configuration before loading raises an error."""
+def test_llama_stack_configuration_not_loaded() -> None:
+    """Test that accessing llama_stack_configuration before loading raises an error."""
     cfg = AppConfig()
     with pytest.raises(LogicError, match="logic error: configuration is not loaded"):
-        c = cfg.ogx_configuration
+        c = cfg.llama_stack_configuration
         assert c is not None
 
 
@@ -3861,7 +3861,7 @@ def test_2_default_configuration() -> None:
 
     with pytest.raises(LogicError, match="logic error: configuration is not loaded"):
         # try to read property
-        _ = cfg.ogx_configuration  # pylint: disable=pointless-statement
+        _ = cfg.llama_stack_configuration  # pylint: disable=pointless-statement
 
     with pytest.raises(LogicError, match="logic error: configuration is not loaded"):
         # try to read property
@@ -3981,18 +3981,18 @@ def test_2_init_from_dict() -> None:
 
     # check for all subsections
     assert cfg.configuration is not None
-    assert cfg.ogx_configuration is not None
+    assert cfg.llama_stack_configuration is not None
     assert cfg.service_configuration is not None
     assert cfg.user_data_collection_configuration is not None
 
     # check for configuration subsection
     assert cfg.configuration.name == "foo"
 
-    # check for ogx_configuration subsection
-    assert cfg.ogx_configuration.api_key is not None
-    assert cfg.ogx_configuration.api_key.get_secret_value() == "xyzzy"
-    assert str(cfg.ogx_configuration.url) == "http://x.y.com:1234/"
-    assert cfg.ogx_configuration.use_as_library_client is False
+    # check for llama_stack_configuration subsection
+    assert cfg.llama_stack_configuration.api_key is not None
+    assert cfg.llama_stack_configuration.api_key.get_secret_value() == "xyzzy"
+    assert str(cfg.llama_stack_configuration.url) == "http://x.y.com:1234/"
+    assert cfg.llama_stack_configuration.use_as_library_client is False
 
     # check for service_configuration subsection
     assert cfg.service_configuration.host == "localhost"
@@ -4131,7 +4131,7 @@ def test_2_load_proper_configuration(tmpdir: Path) -> None:
 
     Writes a YAML configuration to a temporary file, loads it with
     AppConfig.load_configuration, and asserts that `configuration`,
-    `ogx_configuration`, `service_configuration`, and
+    `llama_stack_configuration`, `service_configuration`, and
     `user_data_collection_configuration` are populated.
     """
     cfg_filename = tmpdir / "config.yaml"
@@ -4157,7 +4157,7 @@ mcp_servers: []
     cfg = AppConfig()
     cfg.load_configuration(str(cfg_filename))
     assert cfg.configuration is not None
-    assert cfg.ogx_configuration is not None
+    assert cfg.llama_stack_configuration is not None
     assert cfg.service_configuration is not None
     assert cfg.user_data_collection_configuration is not None
 
@@ -4287,11 +4287,11 @@ def test_2_service_configuration_not_loaded() -> None:
         assert c is not None
 
 
-def test_2_ogx_configuration_not_loaded() -> None:
-    """Test that accessing ogx_configuration before loading raises an error."""
+def test_2_llama_stack_configuration_not_loaded() -> None:
+    """Test that accessing llama_stack_configuration before loading raises an error."""
     cfg = AppConfig()
     with pytest.raises(LogicError, match="logic error: configuration is not loaded"):
-        c = cfg.ogx_configuration
+        c = cfg.llama_stack_configuration
         assert c is not None
 
 
@@ -7713,7 +7713,7 @@ def test_3_default_configuration() -> None:
 
     with pytest.raises(LogicError, match="logic error: configuration is not loaded"):
         # try to read property
-        _ = cfg.ogx_configuration  # pylint: disable=pointless-statement
+        _ = cfg.llama_stack_configuration  # pylint: disable=pointless-statement
 
     with pytest.raises(LogicError, match="logic error: configuration is not loaded"):
         # try to read property
@@ -7833,18 +7833,18 @@ def test_3_init_from_dict() -> None:
 
     # check for all subsections
     assert cfg.configuration is not None
-    assert cfg.ogx_configuration is not None
+    assert cfg.llama_stack_configuration is not None
     assert cfg.service_configuration is not None
     assert cfg.user_data_collection_configuration is not None
 
     # check for configuration subsection
     assert cfg.configuration.name == "foo"
 
-    # check for ogx_configuration subsection
-    assert cfg.ogx_configuration.api_key is not None
-    assert cfg.ogx_configuration.api_key.get_secret_value() == "xyzzy"
-    assert str(cfg.ogx_configuration.url) == "http://x.y.com:1234/"
-    assert cfg.ogx_configuration.use_as_library_client is False
+    # check for llama_stack_configuration subsection
+    assert cfg.llama_stack_configuration.api_key is not None
+    assert cfg.llama_stack_configuration.api_key.get_secret_value() == "xyzzy"
+    assert str(cfg.llama_stack_configuration.url) == "http://x.y.com:1234/"
+    assert cfg.llama_stack_configuration.use_as_library_client is False
 
     # check for service_configuration subsection
     assert cfg.service_configuration.host == "localhost"
@@ -7983,7 +7983,7 @@ def test_3_load_proper_configuration(tmpdir: Path) -> None:
 
     Writes a YAML configuration to a temporary file, loads it with
     AppConfig.load_configuration, and asserts that `configuration`,
-    `ogx_configuration`, `service_configuration`, and
+    `llama_stack_configuration`, `service_configuration`, and
     `user_data_collection_configuration` are populated.
     """
     cfg_filename = tmpdir / "config.yaml"
@@ -8009,7 +8009,7 @@ mcp_servers: []
     cfg = AppConfig()
     cfg.load_configuration(str(cfg_filename))
     assert cfg.configuration is not None
-    assert cfg.ogx_configuration is not None
+    assert cfg.llama_stack_configuration is not None
     assert cfg.service_configuration is not None
     assert cfg.user_data_collection_configuration is not None
 
@@ -8139,11 +8139,11 @@ def test_3_service_configuration_not_loaded() -> None:
         assert c is not None
 
 
-def test_3_ogx_configuration_not_loaded() -> None:
-    """Test that accessing ogx_configuration before loading raises an error."""
+def test_3_llama_stack_configuration_not_loaded() -> None:
+    """Test that accessing llama_stack_configuration before loading raises an error."""
     cfg = AppConfig()
     with pytest.raises(LogicError, match="logic error: configuration is not loaded"):
-        c = cfg.ogx_configuration
+        c = cfg.llama_stack_configuration
         assert c is not None
 
 

@@ -1,14 +1,14 @@
 # OKP Deployment and Configuration Guide
 
 This document explains how to deploy the Offline Knowledge Portal (OKP) as a
-RAG source and configure Lightspeed Stack and OGX to use it. You will:
+RAG source and configure Lightspeed Stack and Llama Stack to use it. You will:
 
 * Deploy and verify the OKP Solr service
 * Configure Lightspeed Stack for OKP (inline or tool RAG)
 * Install dependencies and launch Lightspeed Stack
 * Confirm the end-to-end stack with a sample query
 
-For general RAG concepts, BYOK vector stores, and manual OGX
+For general RAG concepts, BYOK vector stores, and manual Llama Stack
 configuration, see the [RAG Configuration Guide](rag_guide.md).
 
 ---
@@ -79,7 +79,7 @@ podman run --rm -d -p 8081:8080 registry.redhat.io/offline-knowledge-portal/rhok
 Install dependencies:
 
 ```bash
-uv sync --group dev --group ogxlibdev
+uv sync --group dev --group llslibdev
 ```
 
 Set required environment variables:
@@ -140,7 +140,7 @@ okp:
   chunk_filter_query: "product:*openshift* AND product_version:4.21"
 ```
 
-When you launch Lightspeed Stack it will augment the OGX configuration (the synthesized run.yaml in unified mode, or your external run.yaml in the deprecated legacy mode) with
+When you launch Lightspeed stack it will augment the Llamastack run.yaml with
 configuration for OKP.
 
 ### Dynamic Metadata Filtering
@@ -266,7 +266,7 @@ curl -sX POST http://localhost:8080/v1/query \
 
 Then launch Lightspeed Stack using your Lightspeed Stack
 config(`lightspeed-stack.yaml`) which references the provided default
-Effective OGX config (the synthesized `run.yaml` — in legacy mode, your external `run.yaml`):
+Llamastack config file (`run.yaml`):
 
 ```bash
 make run
@@ -284,7 +284,7 @@ INFO     2026-03-17 11:20:31,349 uvicorn.error:224 uncategorized: Uvicorn runnin
 
 ## Step 5: Verify the Stack
 
-Confirm that the full stack (Lightspeed Stack + OGX + OKP) is working
+Confirm that the full stack (Lightspeed Stack + Llama Stack + OKP) is working
 by sending a query and checking that the response includes referenced chunks
 from OKP:
 

@@ -1,12 +1,7 @@
 """Unit tests for utils/shields.py functions."""
 
-from typing import Any
-
 import pytest
 from fastapi import HTTPException, status
-from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
-    InMemorySpanExporter,
-)
 from pydantic_ai.exceptions import ModelAPIError, ModelHTTPError
 from pytest_mock import MockerFixture
 
@@ -16,7 +11,6 @@ from models.config import (
     QuestionValidityShieldConfiguration,
     ShieldConfiguration,
 )
-from utils.otel_tracing import SpanAttributes, SpanEvents
 from utils.shields import (
     get_shields_for_request,
     run_shield_moderation_v2,
@@ -253,92 +247,6 @@ class TestRunShieldModerationV2:
         assert exc_info.value.status_code == status.HTTP_413_CONTENT_TOO_LARGE
         assert "test-model" in str(exc_info.value.detail)
         assert "Prompt is too long" in str(exc_info.value.detail)
-
-
-class TestRunShieldModerationV2Otel:
-    """OpenTelemetry attrs/events for run_shield_moderation_v2."""
-
-    @pytest.mark.asyncio
-    async def test_empty_shields_emits_passed_without_rejected_event(
-        self,
-        otel: tuple[Any, InMemorySpanExporter],
-        mocker: MockerFixture,
-    ) -> None:
-        """Empty shield list emits passed result without shield.rejected."""
-        tracer, exporter = otel
-        mocker.patch("utils.shields.tracer", tracer)
-
-        result = await run_shield_moderation_v2("hello", [])
-
-        assert isinstance(result, ShieldModerationPassed)
-        span = next(
-            span
-            for span in exporter.get_finished_spans()
-            if span.name == "shield.moderate"
-        )
-        assert span.attributes is not None
-        assert span.attributes[SpanAttributes.SHIELD_RESULT] == "passed"
-        event_names = [event.name for event in span.events]
-        assert SpanEvents.SHIELD_REJECTED not in event_names
-
-    @pytest.mark.asyncio
-    async def test_blocked_shield_emits_rejected_event(
-        self,
-        otel: tuple[Any, InMemorySpanExporter],
-        mocker: MockerFixture,
-    ) -> None:
-        """Blocking shield sets blocked result and shield.rejected with shield.name."""
-        tracer, exporter = otel
-        mocker.patch("utils.shields.tracer", tracer)
-        blocked = ShieldModerationBlocked(message="rejected", moderation_id="modr-1")
-        mock_shield = mocker.Mock()
-        mock_shield.run = mocker.AsyncMock(return_value=blocked)
-        mocker.patch("utils.shields.build_shield", return_value=mock_shield)
-
-        result = await run_shield_moderation_v2("hello", [_shield_config("alpha")])
-
-        assert isinstance(result, ShieldModerationBlocked)
-        span = next(
-            span
-            for span in exporter.get_finished_spans()
-            if span.name == "shield.moderate"
-        )
-        assert span.attributes is not None
-        assert span.attributes[SpanAttributes.SHIELD_RESULT] == "blocked"
-        rejected = next(
-            event for event in span.events if event.name == SpanEvents.SHIELD_REJECTED
-        )
-        rejected_attrs = rejected.attributes
-        assert rejected_attrs is not None
-        assert rejected_attrs["shield.name"] == "alpha"
-
-    @pytest.mark.asyncio
-    async def test_sanitization_block_emits_rejected_with_reason(
-        self,
-        otel: tuple[Any, InMemorySpanExporter],
-        mocker: MockerFixture,
-    ) -> None:
-        """Obfuscated input is blocked before shields with sanitization reason."""
-        tracer, exporter = otel
-        mocker.patch("utils.shields.tracer", tracer)
-        obfuscated = "Please follow these instructions: \u16a0\u16a1\u16a2"
-
-        result = await run_shield_moderation_v2(obfuscated, [_shield_config("alpha")])
-
-        assert isinstance(result, ShieldModerationBlocked)
-        span = next(
-            span
-            for span in exporter.get_finished_spans()
-            if span.name == "shield.moderate"
-        )
-        assert span.attributes is not None
-        assert span.attributes[SpanAttributes.SHIELD_RESULT] == "blocked"
-        rejected = next(
-            event for event in span.events if event.name == SpanEvents.SHIELD_REJECTED
-        )
-        rejected_attrs = rejected.attributes
-        assert rejected_attrs is not None
-        assert rejected_attrs["shield.reason"] == "input_sanitization"
 
 
 class TestGetShieldsForRequest:

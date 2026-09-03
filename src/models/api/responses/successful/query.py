@@ -9,7 +9,6 @@ from constants import MEDIA_TYPE_EVENT_STREAM
 from models.api.responses.constants import SUCCESSFUL_RESPONSE_DESCRIPTION
 from models.api.responses.successful.bases import AbstractSuccessfulResponse
 from models.common.turn_summary import (
-    ContextStatus,
     RAGChunk,
     ReferencedDocument,
     ToolCallSummary,
@@ -29,8 +28,6 @@ class QueryResponse(AbstractSuccessfulResponse):
         tool_calls: List of tool calls made during response generation.
         tool_results: List of tool results.
         truncated: Whether conversation history was truncated.
-        context_status: Whether the conversation context was sent in full
-            ("full") or older turns were replaced by a summary ("summarized").
         input_tokens: Number of tokens sent to LLM.
         output_tokens: Number of tokens received from LLM.
         available_quotas: Quota available as measured by all configured quota limiters.
@@ -72,13 +69,6 @@ class QueryResponse(AbstractSuccessfulResponse):
         False,
         description="Deprecated: whether conversation history was truncated",
         examples=[False, True],
-    )
-
-    context_status: ContextStatus = Field(
-        "full",
-        description='Context status: "full" (no compaction) or '
-        '"summarized" (older turns replaced by a summary)',
-        examples=["full", "summarized"],
     )
 
     input_tokens: int = Field(
@@ -123,7 +113,6 @@ class QueryResponse(AbstractSuccessfulResponse):
                         },
                     ],
                     "truncated": False,
-                    "context_status": "full",
                     "input_tokens": 123,
                     "output_tokens": 456,
                     "available_quotas": {
@@ -209,8 +198,7 @@ class StreamingQueryResponse(AbstractSuccessfulResponse):
                     '"token": "Hello! How can I assist you today?"}}\n\n'
                     'data: {"event": "end", "data": {'
                     '"referenced_documents": [], '
-                    '"truncated": null, "context_status": "full", '
-                    '"input_tokens": 11, "output_tokens": 19}, '
+                    '"truncated": null, "input_tokens": 11, "output_tokens": 19}, '
                     '"available_quotas": {}}\n\n'
                 ),
             ]

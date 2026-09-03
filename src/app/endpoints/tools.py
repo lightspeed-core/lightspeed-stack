@@ -3,12 +3,11 @@
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Request
-from opentelemetry import trace
 
 from authentication import get_auth_dependency
 from authentication.interface import AuthTuple
 from authorization.middleware import authorize
-from client.ogx import AsyncOgxClientHolder
+from client import AsyncOgxClientHolder
 from configuration import configuration
 from log import get_logger
 from models.api.responses.constants import UNAUTHORIZED_OPENAPI_EXAMPLES
@@ -35,7 +34,6 @@ from utils.pydantic_ai_helpers import get_agent_capability_tools
 from utils.tool_formatter import build_catalog_tool
 
 logger = get_logger(__name__)
-tracer = trace.get_tracer(__name__)
 router = APIRouter(tags=["tools"])
 
 
@@ -45,7 +43,7 @@ tools_responses: dict[int | str, dict[str, Any]] = {
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
     500: InternalServerErrorResponse.openapi_response(examples=["configuration"]),
     503: ServiceUnavailableResponse.openapi_response(
-        examples=["OGX", "kubernetes api"]
+        examples=["ogx", "kubernetes api"]
     ),
 }
 
@@ -76,7 +74,7 @@ async def tools_endpoint_handler(  # pylint: disable=too-many-locals
     - HTTPException: with status 500 and a detail object containing `response`
       and `cause` when service configuration is wrong or incomplete.
     - HTTPException: with status 503 and a detail object containing `response`
-      and `cause` when unable to connect to OGX.
+      and `cause` when unable to connect to Llama Stack.
 
     ### Returns:
     - ToolsResponse: An object containing the consolidated list of available
@@ -88,50 +86,46 @@ async def tools_endpoint_handler(  # pylint: disable=too-many-locals
     # Nothing interesting in the request
     _ = request
 
-    with tracer.start_as_current_span("tools.list") as span:
-        check_configuration_loaded(configuration)
+    check_configuration_loaded(configuration)
 
-        complete_mcp_headers = build_mcp_headers(
-            configuration, mcp_headers, request.headers, token
-        )
+    complete_mcp_headers = build_mcp_headers(
+        configuration, mcp_headers, request.headers, token
+    )
 
-        # Check MCP auth
-        await check_mcp_auth(configuration, mcp_headers, token, request.headers)
+    # Check MCP auth
+    await check_mcp_auth(configuration, mcp_headers, token, request.headers)
 
-        client = AsyncOgxClientHolder().get_client()
-        consolidated_tools: list[CatalogTool] = list(
-            await get_file_search_tools(client)
-        )
+    client = AsyncOgxClientHolder().get_client()
+    consolidated_tools: list[CatalogTool] = list(await get_file_search_tools(client))
 
-        for mcp_server in configuration.mcp_servers:
-            consolidated_tools.extend(
-                await _list_tools_for_mcp_server(
-                    mcp_server,
-                    complete_mcp_headers.get(mcp_server.name, {}),
-                )
+    for mcp_server in configuration.mcp_servers:
+        consolidated_tools.extend(
+            await _list_tools_for_mcp_server(
+                mcp_server,
+                complete_mcp_headers.get(mcp_server.name, {}),
             )
-
-        existing_tool_ids = {
-            tool.identifier for tool in consolidated_tools if tool.identifier
-        }
-        for tool in get_agent_capability_tools(configuration.skills):
-            if tool.identifier not in existing_tool_ids:
-                consolidated_tools.append(tool)
-                existing_tool_ids.add(tool.identifier)
-
-        builtin_tool_count = len(
-            [tool for tool in consolidated_tools if tool.server_source == "builtin"]
-        )
-        mcp_tool_count = len(consolidated_tools) - builtin_tool_count
-        logger.info(
-            "Retrieved total of %d tools (%d builtin, %d from MCP servers)",
-            len(consolidated_tools),
-            builtin_tool_count,
-            mcp_tool_count,
         )
 
-        span.set_attribute("tools.count", len(consolidated_tools))
-        return ToolsResponse(tools=consolidated_tools)
+    existing_tool_ids = {
+        tool.identifier for tool in consolidated_tools if tool.identifier
+    }
+    for tool in get_agent_capability_tools(configuration.skills):
+        if tool.identifier not in existing_tool_ids:
+            consolidated_tools.append(tool)
+            existing_tool_ids.add(tool.identifier)
+
+    builtin_tool_count = len(
+        [tool for tool in consolidated_tools if tool.server_source == "builtin"]
+    )
+    mcp_tool_count = len(consolidated_tools) - builtin_tool_count
+    logger.info(
+        "Retrieved total of %d tools (%d builtin, %d from MCP servers)",
+        len(consolidated_tools),
+        builtin_tool_count,
+        mcp_tool_count,
+    )
+
+    return ToolsResponse(tools=consolidated_tools)
 
 
 async def _list_tools_for_mcp_server(

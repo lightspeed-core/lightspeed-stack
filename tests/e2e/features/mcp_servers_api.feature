@@ -1,4 +1,4 @@
-@cfg_mcp @MCP
+@e2e_group_3 @MCP
 Feature: MCP Server Management API tests
 
   Tests for the dynamic MCP server management endpoints:

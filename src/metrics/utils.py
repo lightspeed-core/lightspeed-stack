@@ -1,7 +1,7 @@
 """Utility functions for metrics handling."""
 
 import metrics
-from client.ogx import AsyncOgxClientHolder
+from client import AsyncOgxClientHolder
 from configuration import configuration
 from log import get_logger
 from utils.endpoints import check_configuration_loaded
@@ -14,12 +14,12 @@ async def setup_model_metrics() -> None:
     """Perform setup of all metrics related to LLM model and provider.
 
     Should be called during startup when service is in healthy mode.
-    Skipped in degraded mode to avoid blocking on unavailable OGX.
+    Skipped in degraded mode to avoid blocking on unavailable llama-stack.
     """
     logger.info("Setting up model metrics")
     check_configuration_loaded(configuration)
     model_list = parse_model_list_response(
-        await AsyncOgxClientHolder().get_client().openai.list()
+        await AsyncOgxClientHolder().get_client().models.list()
     )
 
     models = [model for model in model_list if model.model_type == "llm"]

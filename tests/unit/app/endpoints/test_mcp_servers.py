@@ -7,10 +7,6 @@ from typing import Any
 
 import pytest
 from fastapi import HTTPException, status
-from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
-    InMemorySpanExporter,
-)
-from opentelemetry.trace import StatusCode
 from pydantic import AnyHttpUrl, SecretStr
 from pytest_mock import MockerFixture
 
@@ -26,8 +22,8 @@ from models.api.responses.successful import (
 from models.config import (
     Configuration,
     CORSConfiguration,
+    LlamaStackConfiguration,
     ModelContextProtocolServer,
-    OgxConfiguration,
     ServiceConfiguration,
     TLSConfiguration,
     UserDataCollection,
@@ -62,7 +58,7 @@ def mock_configuration() -> Configuration:
             access_log=True,
             root_path="/.",
         ),
-        ogx=OgxConfiguration(
+        llama_stack=LlamaStackConfiguration(
             url=AnyHttpUrl("http://localhost:8321"),
             api_key=SecretStr("xyzzy"),
             use_as_library_client=False,
@@ -401,197 +397,3 @@ def test_mcp_server_registration_rejects_arbitrary_value() -> None:
             authorization_headers={"Authorization": "Bearer my-static-token"},
             provider_id="MCP provider ID",
         )
-
-
-class TestMcpServersOtelSpans:
-    """OTEL instrumentation tests for the /mcp-servers endpoints."""
-
-    @pytest.mark.asyncio
-    async def test_register_span_success(
-        self,
-        mocker: MockerFixture,
-        mock_configuration: Configuration,
-        otel: tuple[Any, InMemorySpanExporter],
-    ) -> None:
-        """Test that register emits a span with server name and provider_id."""
-        tracer, exporter = otel
-        mocker.patch("app.endpoints.mcp_servers.tracer", tracer)
-        _make_app_config(mocker, mock_configuration)
-
-        body = MCPServerRegistrationRequest(
-            name="new-mcp",
-            url="http://localhost:4000",
-            provider_id="model-context-protocol",
-        )
-        await mcp_servers.register_mcp_server_handler(
-            request=mocker.Mock(), body=body, auth=MOCK_AUTH
-        )
-
-        spans = exporter.get_finished_spans()
-        assert len(spans) == 1
-        span = spans[0]
-        assert span.name == "mcp_server.register"
-        attrs = dict(span.attributes or {})
-        assert attrs["mcp.operation"] == "register"
-        assert attrs["mcp.server.name"] == "new-mcp"
-        assert attrs["mcp.server.provider_id"] == "model-context-protocol"
-
-    @pytest.mark.asyncio
-    async def test_register_span_conflict(
-        self,
-        mocker: MockerFixture,
-        mock_configuration: Configuration,
-        otel: tuple[Any, InMemorySpanExporter],
-    ) -> None:
-        """Test that register 409 conflict records error on the span."""
-        tracer, exporter = otel
-        mocker.patch("app.endpoints.mcp_servers.tracer", tracer)
-        _make_app_config(mocker, mock_configuration)
-
-        body = MCPServerRegistrationRequest(
-            name="static-mcp",
-            url="http://localhost:4000",
-            provider_id="model-context-protocol",
-        )
-        with pytest.raises(HTTPException) as exc_info:
-            await mcp_servers.register_mcp_server_handler(
-                request=mocker.Mock(), body=body, auth=MOCK_AUTH
-            )
-        assert exc_info.value.status_code == status.HTTP_409_CONFLICT
-
-        spans = exporter.get_finished_spans()
-        assert len(spans) == 1
-        assert spans[0].name == "mcp_server.register"
-        assert spans[0].status.status_code == StatusCode.ERROR
-
-    @pytest.mark.asyncio
-    async def test_list_span_with_count(
-        self,
-        mocker: MockerFixture,
-        mock_configuration: Configuration,
-        otel: tuple[Any, InMemorySpanExporter],
-    ) -> None:
-        """Test that list emits a span with mcp.servers.count."""
-        tracer, exporter = otel
-        mocker.patch("app.endpoints.mcp_servers.tracer", tracer)
-        _make_app_config(mocker, mock_configuration)
-
-        await mcp_servers.list_mcp_servers_handler(
-            request=mocker.Mock(), auth=MOCK_AUTH
-        )
-
-        spans = exporter.get_finished_spans()
-        assert len(spans) == 1
-        span = spans[0]
-        assert span.name == "mcp_server.list"
-        attrs = dict(span.attributes or {})
-        assert attrs["mcp.operation"] == "list"
-        assert attrs["mcp.servers.count"] == 1
-
-    @pytest.mark.asyncio
-    async def test_delete_span_success(
-        self,
-        mocker: MockerFixture,
-        mock_configuration: Configuration,
-        otel: tuple[Any, InMemorySpanExporter],
-    ) -> None:
-        """Test that delete emits a span with server name and deleted status."""
-        tracer, exporter = otel
-        mocker.patch("app.endpoints.mcp_servers.tracer", tracer)
-        app_config = _make_app_config(mocker, mock_configuration)
-        app_config.add_mcp_server(
-            ModelContextProtocolServer(
-                name="dynamic-mcp",
-                provider_id="model-context-protocol",
-                url="http://localhost:4001",
-            )
-        )
-
-        await mcp_servers.delete_mcp_server_handler(
-            request=mocker.Mock(), name="dynamic-mcp", auth=MOCK_AUTH
-        )
-
-        spans = exporter.get_finished_spans()
-        assert len(spans) == 1
-        span = spans[0]
-        assert span.name == "mcp_server.delete"
-        attrs = dict(span.attributes or {})
-        assert attrs["mcp.operation"] == "delete"
-        assert attrs["mcp.server.name"] == "dynamic-mcp"
-        assert attrs["mcp.server.deleted"] is True
-
-    @pytest.mark.asyncio
-    async def test_delete_span_static_forbidden(
-        self,
-        mocker: MockerFixture,
-        mock_configuration: Configuration,
-        otel: tuple[Any, InMemorySpanExporter],
-    ) -> None:
-        """Test that deleting a static server records error on span."""
-        tracer, exporter = otel
-        mocker.patch("app.endpoints.mcp_servers.tracer", tracer)
-        _make_app_config(mocker, mock_configuration)
-
-        with pytest.raises(HTTPException) as exc_info:
-            await mcp_servers.delete_mcp_server_handler(
-                request=mocker.Mock(), name="static-mcp", auth=MOCK_AUTH
-            )
-        assert exc_info.value.status_code == status.HTTP_403_FORBIDDEN
-
-        spans = exporter.get_finished_spans()
-        assert len(spans) == 1
-        assert spans[0].name == "mcp_server.delete"
-        assert spans[0].status.status_code == StatusCode.ERROR
-
-    @pytest.mark.asyncio
-    async def test_delete_span_not_found(
-        self,
-        mocker: MockerFixture,
-        mock_configuration: Configuration,
-        otel: tuple[Any, InMemorySpanExporter],
-    ) -> None:
-        """Test span when deleting a nonexistent server — deleted=False."""
-        tracer, exporter = otel
-        mocker.patch("app.endpoints.mcp_servers.tracer", tracer)
-        _make_app_config(mocker, mock_configuration)
-
-        await mcp_servers.delete_mcp_server_handler(
-            request=mocker.Mock(), name="no-such-server", auth=MOCK_AUTH
-        )
-
-        spans = exporter.get_finished_spans()
-        assert len(spans) == 1
-        attrs = dict(spans[0].attributes or {})
-        assert attrs["mcp.server.name"] == "no-such-server"
-        assert attrs["mcp.server.deleted"] is False
-
-    @pytest.mark.asyncio
-    async def test_spans_contain_no_secrets(
-        self,
-        mocker: MockerFixture,
-        mock_configuration: Configuration,
-        otel: tuple[Any, InMemorySpanExporter],
-    ) -> None:
-        """Verify no auth tokens, headers, or secrets leak into span attributes."""
-        tracer, exporter = otel
-        mocker.patch("app.endpoints.mcp_servers.tracer", tracer)
-        _make_app_config(mocker, mock_configuration)
-
-        body = MCPServerRegistrationRequest(
-            name="secret-check",
-            url="http://localhost:4000",
-            provider_id="model-context-protocol",
-            authorization_headers={"Authorization": "client"},
-        )
-        await mcp_servers.register_mcp_server_handler(
-            request=mocker.Mock(), body=body, auth=MOCK_AUTH
-        )
-
-        spans = exporter.get_finished_spans()
-        assert len(spans) == 1
-        attrs = dict(spans[0].attributes or {})
-        forbidden_keys = {"authorization", "token", "secret", "header", "key"}
-        for attr_key in attrs:
-            assert not any(
-                word in str(attr_key).lower() for word in forbidden_keys
-            ), f"Span attribute '{attr_key}' may contain sensitive data"

@@ -80,16 +80,15 @@ class RHIdentityData:
             raise HTTPException(status_code=400, detail="Invalid identity data")
 
         identity_type = identity["type"]
-        match identity_type:
-            case "User":
-                self._validate_user_fields(identity)
-            case "System":
-                self._validate_system_fields(identity)
-            case "ServiceAccount":
-                self._validate_service_account_fields(identity)
-            case _:
-                logger.warning("Identity validation failed: unsupported identity type")
-                raise HTTPException(status_code=400, detail="Invalid identity data")
+        if identity_type == "User":
+            self._validate_user_fields(identity)
+        elif identity_type == "System":
+            self._validate_system_fields(identity)
+        elif identity_type == "ServiceAccount":
+            self._validate_service_account_fields(identity)
+        else:
+            logger.warning("Identity validation failed: unsupported identity type")
+            raise HTTPException(status_code=400, detail="Invalid identity data")
 
         # Validate org_id if present and non-empty
         org_id = identity.get("org_id")

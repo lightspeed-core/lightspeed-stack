@@ -190,7 +190,7 @@ Use docling's mock-friendly seam from the HTML tests.
 
 **Acceptance criteria**:
 
-- The e2e feature passes locally with the full stack (OGX + MCP Mock + lightspeed-stack).
+- The e2e feature passes locally with the full stack (Llama Stack + MCP Mock + lightspeed-stack).
 - The feature is added to CI's e2e suite if/when CI supports the rag-content cross-repo dependency.
 
 **Agentic tool instruction**:

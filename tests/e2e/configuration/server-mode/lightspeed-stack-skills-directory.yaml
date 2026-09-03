@@ -1,4 +1,3 @@
-# @cfg_skills_directory
 name: Lightspeed Core Service (LCS)
 service:
   host: 0.0.0.0
@@ -7,8 +6,8 @@ service:
   workers: 1
   color_log: true
   access_log: true
-ogx:
-  # Server mode - connects to separate OGX service
+llama_stack:
+  # Server mode - connects to separate llama-stack service
   use_as_library_client: false
   url: http://${env.E2E_LLAMA_HOSTNAME}:8321
   api_key: xyzzy

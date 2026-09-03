@@ -30,7 +30,7 @@ class PostgresA2AContextStore(A2AContextStore):
 
     The store creates a table 'a2a_contexts' with the following schema:
         context_id (VARCHAR, PRIMARY KEY): The A2A context ID
-        conversation_id (VARCHAR, NOT NULL): The OGX conversation ID
+        conversation_id (VARCHAR, NOT NULL): The Llama Stack conversation ID
     """
 
     def __init__(
@@ -74,7 +74,7 @@ class PostgresA2AContextStore(A2AContextStore):
             context_id: The A2A context ID.
 
         Returns:
-            The OGX conversation ID, or None if not found.
+            The Llama Stack conversation ID, or None if not found.
         """
         await self._ensure_initialized()
 
@@ -98,7 +98,7 @@ class PostgresA2AContextStore(A2AContextStore):
 
         Args:
             context_id: The A2A context ID.
-            conversation_id: The OGX conversation ID.
+            conversation_id: The Llama Stack conversation ID.
         """
         await self._ensure_initialized()
 

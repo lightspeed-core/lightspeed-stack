@@ -3,14 +3,9 @@
 """Unit tests for tools endpoint."""
 
 from pathlib import Path
-from typing import Any, Optional
+from typing import Optional
 
 import pytest
-from fastapi import HTTPException
-from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
-    InMemorySpanExporter,
-)
-from opentelemetry.trace import StatusCode
 from pydantic import AnyHttpUrl, SecretStr
 from pytest_mock import MockerFixture
 
@@ -22,8 +17,8 @@ from models.common.tools import ListedMcpTool
 from models.config import (
     Configuration,
     CORSConfiguration,
+    LlamaStackConfiguration,
     ModelContextProtocolServer,
-    OgxConfiguration,
     ServiceConfiguration,
     SkillsConfiguration,
     TLSConfiguration,
@@ -84,7 +79,7 @@ def mock_configuration() -> Configuration:
             access_log=True,
             root_path="/.",
         ),
-        ogx=OgxConfiguration(
+        llama_stack=LlamaStackConfiguration(
             url=AnyHttpUrl("http://localhost:8321"),
             api_key=SecretStr("xyzzy"),
             use_as_library_client=False,
@@ -361,68 +356,3 @@ async def test_tools_endpoint_includes_agent_capability_tools(
     assert list_skills.provider_id == "agent-skills"
     assert list_skills.toolgroup_id == "builtin::agent-skills"
     assert list_skills.server_source == "builtin"
-
-
-class TestToolsEndpointOtel:
-    """OTEL instrumentation tests for the /tools endpoint."""
-
-    @pytest.mark.asyncio
-    async def test_emits_span_with_tool_count(
-        self,
-        mocker: MockerFixture,
-        mock_configuration: Configuration,
-        otel: tuple[Any, InMemorySpanExporter],
-    ) -> None:
-        """Test that a successful /tools request emits a span with tools.count."""
-        tracer, exporter = otel
-        mocker.patch("app.endpoints.tools.tracer", tracer)
-        _make_app_config(mocker, mock_configuration)
-        mocker.patch(
-            "app.endpoints.tools.check_configuration_loaded", return_value=None
-        )
-        mocker.patch(
-            "app.endpoints.tools.build_mcp_headers",
-            return_value={},
-        )
-        mocker.patch("app.endpoints.tools.check_mcp_auth", return_value=None)
-        mocker.patch("app.endpoints.tools.get_agent_capability_tools", return_value=[])
-        _mock_file_search_tools(mocker, file_search_tools=[])
-        mocker.patch("app.endpoints.tools.list_mcp_tools", return_value=[])
-
-        request = mocker.Mock()
-        request.headers = {}
-
-        await tools.tools_endpoint_handler(request, auth=MOCK_AUTH, mcp_headers={})
-
-        spans = exporter.get_finished_spans()
-        assert len(spans) == 1
-        span = spans[0]
-        assert span.name == "tools.list"
-        assert span.attributes is not None
-        assert span.attributes["tools.count"] == 0
-
-    @pytest.mark.asyncio
-    async def test_span_records_error_on_config_not_loaded(
-        self,
-        mocker: MockerFixture,
-        otel: tuple[Any, InMemorySpanExporter],
-    ) -> None:
-        """Test that the span records an error when configuration is not loaded."""
-        tracer, exporter = otel
-        mocker.patch("app.endpoints.tools.tracer", tracer)
-
-        mock_config = AppConfig()
-        mock_config._configuration = None  # pylint: disable=protected-access
-        mocker.patch("app.endpoints.tools.configuration", mock_config)
-
-        request = mocker.Mock()
-        request.headers = {}
-
-        with pytest.raises(HTTPException) as exc_info:
-            await tools.tools_endpoint_handler(request, auth=MOCK_AUTH, mcp_headers={})
-        assert exc_info.value.status_code == 500
-
-        spans = exporter.get_finished_spans()
-        assert len(spans) == 1
-        assert spans[0].name == "tools.list"
-        assert spans[0].status.status_code == StatusCode.ERROR

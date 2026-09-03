@@ -253,7 +253,7 @@ Key files: src/app/endpoints/query.py, src/app/endpoints/streaming_query.py, src
 ### LCORE-???? Wire `require_approval` to MCP tool creation
 
 **Description**: Pass the configured `require_approval` value to
-`InputToolMCP` when creating MCP tools for OGX requests.
+`InputToolMCP` when creating MCP tools for Llama Stack requests.
 
 **Scope**:
 - Read `require_approval` from MCP server config
@@ -261,7 +261,7 @@ Key files: src/app/endpoints/query.py, src/app/endpoints/streaming_query.py, src
 - Handle `ApprovalFilter` translation
 
 **Acceptance criteria**:
-- [ ] `require_approval` from config passed to OGX
+- [ ] `require_approval` from config passed to Llama Stack
 - [ ] Default remains `"never"` when not configured
 - [ ] Unit tests verify correct value propagation
 
@@ -325,12 +325,12 @@ Reference existing docs in docs/ for style.
 
 No PoC was built for this spike. The core mechanisms are already validated:
 
-1. **OGX approval types exist**: `MCPApprovalRequest` and
+1. **Llama Stack approval types exist**: `MCPApprovalRequest` and
    `MCPApprovalResponse` are defined in `llama_stack_api.openai_responses`
 2. **LCS already parses approval events**: `build_tool_call_summary()` in
    [responses.py:1067-1094](../../../src/utils/responses.py#L1067-L1094) handles
    both `mcp_approval_request` and `mcp_approval_response` types
-3. **OGX supports `require_approval`**: The `InputToolMCP` model
+3. **Llama Stack supports `require_approval`**: The `InputToolMCP` model
    accepts `"always"`, `"never"`, or `ApprovalFilter`
 
 The main implementation work is:
@@ -367,7 +367,7 @@ async def get_mcp_tools(...) -> list[InputToolMCP]:
 - Already parses `mcp_approval_response` into `ToolResultSummary`
 - No storage or API to act on these events
 
-### OGX Support
+### Llama Stack Support
 
 From `llama_stack_api.openai_responses`:
 
@@ -418,7 +418,7 @@ received. This was rejected because:
 
 - **LCORE-268**: Parent feature ticket (Support HIL for write tool calling)
 - **LCORE-233**: Prior demo work (Human in the Loop Demo - Closed)
-- **RHAIRFE-464**: OGX dependency (Allow confirmation by human - Approved)
+- **RHAIRFE-464**: Llama Stack dependency (Allow confirmation by human - Approved)
 
 ## Appendix B: OpenAI Assistants API Reference
 

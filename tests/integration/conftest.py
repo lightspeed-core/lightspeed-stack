@@ -1,6 +1,5 @@
 """Shared fixtures for integration tests."""
 
-import importlib
 import os
 from collections.abc import AsyncIterator, Generator
 from pathlib import Path
@@ -9,19 +8,9 @@ from typing import Any, Optional
 import pytest
 from fastapi import Request, Response
 from fastapi.testclient import TestClient
-from ogx_client.models.list_models_v1_models_get200_response import (
-    ListModelsV1ModelsGet200Response,
-)
-from ogx_client.models.open_ai_list_models_response import OpenAIListModelsResponse
-from ogx_client.models.open_ai_model import OpenAIModel
-from ogx_client.models.open_ai_response_object import OpenAIResponseObject
-from ogx_client.models.version_info import VersionInfo
-from opentelemetry import trace
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import SimpleSpanProcessor
-from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
-    InMemorySpanExporter,
-)
+from ogx_api.openai_responses import OpenAIResponseObject
+from ogx_client.types import ListModelsResponse, VersionInfo
+from ogx_client.types.model import Model
 from pydantic_ai import AgentRunResultEvent
 from pydantic_ai.messages import (
     ModelMessage,
@@ -75,143 +64,52 @@ TEST_MODEL_NAME = "test-model"
 # ==========================================
 
 
-def make_openai_models_list_response(
-    *models: OpenAIModel,
-) -> ListModelsV1ModelsGet200Response:
-    """Build a ``client.openai.list()`` response in the OpenAI OneOf shape.
-
-    Parameters:
-        *models: OpenAI-style model entries for ``data``.
-
-    Returns:
-        ``ListModelsV1ModelsGet200Response`` wrapping ``OpenAIListModelsResponse``.
-    """
-    return ListModelsV1ModelsGet200Response(
-        OpenAIListModelsResponse.model_construct(data=list(models))
-    )
-
-
-def make_openai_model(
-    *,
-    model_id: str = TEST_MODEL,
-    provider_id: str = TEST_PROVIDER,
-    model_type: str = "llm",
-) -> OpenAIModel:
-    """Build an ``OpenAIModel`` for integration ``openai.list`` mocks.
-
-    Parameters:
-        model_id: Full model identifier (provider/name).
-        provider_id: Value stored in ``custom_metadata.provider_id``.
-        model_type: Value stored in ``custom_metadata.model_type``.
-
-    Returns:
-        Constructed ``OpenAIModel`` instance.
-    """
-    return OpenAIModel.model_construct(
-        id=model_id,
-        created=0,
-        owned_by="test",
-        object="model",
-        custom_metadata={
-            "provider_id": provider_id,
-            "model_type": model_type,
-        },
-    )
-
-
-def make_openai_response_object(  # pylint: disable=too-many-arguments,too-many-positional-arguments
-    *,
-    response_id: str = "response-123",
-    content: str = "This is a test response about Ansible.",
-    model: str = TEST_MODEL,
-    tool_calls: Optional[list[dict[str, Any]]] = None,
-    refusal: Optional[str] = None,
-    input_tokens: int = 10,
-    output_tokens: int = 5,
-) -> OpenAIResponseObject:
-    """Build a real ``ogx_client`` OpenAI Responses API object for tests.
-
-    Parameters:
-        response_id: Response identifier returned by the mocked API.
-        content: Assistant message text for the default output item.
-        model: Model identifier on the response object.
-        tool_calls: Optional function-call output items to append.
-        refusal: Optional refusal text; when set, emits a refusal content part.
-        input_tokens: Input token count for usage metadata.
-        output_tokens: Output token count for usage metadata.
-
-    Returns:
-        ``OpenAIResponseObject`` instance suitable for ``dump_ogx_model()``.
-    """
-    output: list[dict[str, Any]] = list(tool_calls or [])
-    message_content: list[dict[str, Any]] = (
-        [{"type": "refusal", "refusal": refusal}]
-        if refusal
-        else [{"type": "output_text", "text": content, "annotations": []}]
-    )
-    output.append(
-        {
-            "type": "message",
-            "id": "msg-1",
-            "role": "assistant",
-            "status": "completed",
-            "content": message_content,
-        }
-    )
-
-    payload: dict[str, Any] = {
-        "id": response_id,
-        "object": "response",
-        "created_at": 1_700_000_000,
-        "status": "completed",
-        "model": model,
-        "store": False,
-        "output": output,
-        "usage": {
-            "input_tokens": input_tokens,
-            "output_tokens": output_tokens,
-            "total_tokens": input_tokens + output_tokens,
-            "input_tokens_details": {"cached_tokens": 0},
-            "output_tokens_details": {"reasoning_tokens": 0},
-        },
-    }
-    response = OpenAIResponseObject.from_dict(payload)
-    assert response is not None
-    return response
-
-
 def create_mock_llm_response(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     mocker: MockerFixture,
     content: str = "This is a test response about Ansible.",
-    tool_calls: Optional[list[dict[str, Any]]] = None,
+    tool_calls: Optional[list[Any]] = None,
     refusal: Optional[str] = None,
     input_tokens: int = 10,
     output_tokens: int = 5,
-) -> OpenAIResponseObject:
-    """Create a customizable LLM response for integration test mocks.
+) -> Any:
+    """Create a customizable mock LLM response.
 
-    Helper function to create ``ogx_client`` response objects with configurable
-    content, tool calls, refusals, and token counts.
+    Helper function to create mock LLM responses with configurable content,
+    tool calls, refusals, and token counts. Useful for tests that need to
+    customize the response behavior.
 
     Args:
-        mocker: pytest-mock fixture (kept for backward compatibility).
-        content: Response content text.
-        tool_calls: Optional function-call output items.
-        refusal: Optional refusal message (for shield violations).
-        input_tokens: Input token count for usage.
-        output_tokens: Output token count for usage.
+        mocker: pytest-mock fixture
+        content: Response content text
+        tool_calls: Optional list of tool calls
+        refusal: Optional refusal message (for shield violations)
+        input_tokens: Input token count for usage
+        output_tokens: Output token count for usage
 
     Returns:
-        ``OpenAIResponseObject`` with the specified configuration.
+        Mock LLM response object with the specified configuration.
     """
-    _ = mocker
-    return make_openai_response_object(
-        content=content,
-        tool_calls=tool_calls,
-        refusal=refusal,
-        input_tokens=input_tokens,
-        output_tokens=output_tokens,
-    )
+    mock_response = mocker.MagicMock(spec=OpenAIResponseObject)
+    mock_response.id = "response-123"
+
+    # Create output message
+    mock_output_item = mocker.MagicMock()
+    mock_output_item.type = "message"
+    mock_output_item.role = "assistant"
+    mock_output_item.content = content
+    mock_output_item.refusal = refusal
+
+    mock_response.output = [mock_output_item]
+    mock_response.stop_reason = "end_turn" if not refusal else "stop"
+    mock_response.tool_calls = tool_calls or []
+
+    # Mock usage
+    mock_usage = mocker.MagicMock()
+    mock_usage.input_tokens = input_tokens
+    mock_usage.output_tokens = output_tokens
+    mock_response.usage = mock_usage
+
+    return mock_response
 
 
 def create_mock_vector_store_response(
@@ -543,76 +441,9 @@ def set_streaming_query_agent_run(
     )
 
 
-OTEL_INSTRUMENTED_MODULES = (
-    "app.endpoints.query",
-    "app.endpoints.responses",
-    "utils.quota_utils",
-    "utils.responses",
-    "utils.shields",
-    "utils.vector_search",
-)
-
-
-def install_integration_otel_provider(
-    exporter: InMemorySpanExporter,
-) -> TracerProvider:
-    """Install a global TracerProvider and refresh cached module tracers."""
-    provider = TracerProvider()
-    provider.add_span_processor(SimpleSpanProcessor(exporter))
-
-    trace._TRACER_PROVIDER_SET_ONCE._done = False  # pylint: disable=protected-access
-    trace._TRACER_PROVIDER = None  # pylint: disable=protected-access
-    trace.set_tracer_provider(provider)
-
-    for module_name in OTEL_INSTRUMENTED_MODULES:
-        module = importlib.import_module(module_name)
-        module.tracer = provider.get_tracer(module_name)
-
-    return provider
-
-
-def shutdown_integration_otel_provider(provider: TracerProvider) -> None:
-    """Shut down the integration OTEL provider and clear global state."""
-    provider.shutdown()
-    trace._TRACER_PROVIDER_SET_ONCE._done = False  # pylint: disable=protected-access
-    trace._TRACER_PROVIDER = None  # pylint: disable=protected-access
-
-
 # ==========================================
 # Fixtures
 # ==========================================
-
-
-@pytest.fixture(name="otel_collector", scope="module")
-def otel_collector_fixture() -> Generator[InMemorySpanExporter, None, None]:
-    """Module-scoped OTEL exporter for integration tests that opt in via fixture."""
-    exporter = InMemorySpanExporter()
-    provider = install_integration_otel_provider(exporter)
-
-    yield exporter
-
-    shutdown_integration_otel_provider(provider)
-
-
-@pytest.fixture(autouse=True)
-def otel_anonymization_secret() -> Generator[None, None, None]:
-    """Set OTEL_ANONYMIZATION_SECRET for all integration tests.
-
-    This fixture ensures that the OTEL anonymization secret is available
-    for any code that uses OpenTelemetry tracing during integration tests.
-    """
-    original_value = os.environ.get("OTEL_ANONYMIZATION_SECRET")
-    os.environ["OTEL_ANONYMIZATION_SECRET"] = (
-        "integration-test-secret-do-not-use-in-production"
-    )
-
-    yield
-
-    # Restore original value or remove if it wasn't set
-    if original_value is None:
-        os.environ.pop("OTEL_ANONYMIZATION_SECRET", None)
-    else:
-        os.environ["OTEL_ANONYMIZATION_SECRET"] = original_value
 
 
 @pytest.fixture(autouse=True)
@@ -888,9 +719,9 @@ def mock_request_with_auth_fixture() -> Request:
 def mock_ogx_client_fixture(
     mocker: MockerFixture,
 ) -> Generator[Any, None, None]:
-    """Mock only the external OGX client for integration tests.
+    """Mock only the external Llama Stack client for integration tests.
 
-    This is a common fixture that mocks the OGX client with sensible
+    This is a common fixture that mocks the Llama Stack client with sensible
     defaults for integration tests. Individual tests can override specific
     behaviors as needed.
 
@@ -902,7 +733,7 @@ def mock_ogx_client_fixture(
         mocker: pytest-mock fixture used to create and patch mocks.
 
     Yields:
-        mock_client: The mocked OGX client instance.
+        mock_client: The mocked Llama Stack client instance.
     """
     # Patch AsyncOgxClientHolder at multiple import locations
     # This ensures the mock is active both during app startup (app.main)
@@ -916,20 +747,49 @@ def mock_ogx_client_fixture(
     mock_client = mocker.AsyncMock()
 
     # Mock responses.create with default assistant response
-    mock_client.responses.create = mocker.AsyncMock(
-        return_value=make_openai_response_object()
-    )
+    mock_response = mocker.MagicMock(spec=OpenAIResponseObject)
+    mock_response.id = "response-123"
 
-    # Mock openai.list
-    mock_client.openai.list.return_value = make_openai_models_list_response(
-        make_openai_model()
+    mock_output_item = mocker.MagicMock()
+    mock_output_item.type = "message"
+    mock_output_item.role = "assistant"
+    mock_output_item.content = "This is a test response about Ansible."
+    mock_output_item.refusal = None
+
+    mock_response.output = [mock_output_item]
+    mock_response.stop_reason = "end_turn"
+    mock_response.tool_calls = []
+
+    mock_usage = mocker.MagicMock()
+    mock_usage.input_tokens = 10
+    mock_usage.output_tokens = 5
+    mock_response.usage = mock_usage
+
+    mock_client.responses.create.return_value = mock_response
+
+    # Mock models.list
+    mock_client.models.list.return_value = ListModelsResponse.model_construct(
+        data=[
+            Model.model_construct(
+                id="test-provider/test-model",
+                created=0,
+                owned_by="test",
+                object="model",
+                custom_metadata={
+                    "provider_id": "test-provider",
+                    "model_type": "llm",
+                },
+            )
+        ]
     )
 
     # Mock shields.list (empty by default)
     mock_client.shields.list.return_value = []
 
     # Mock vector_stores.list (empty by default)
-    mock_client.vector_stores.list.return_value = []
+    mock_vector_stores_response = mocker.MagicMock()
+    mock_vector_stores_response.data = []
+    mock_client.vector_stores.list.return_value = mock_vector_stores_response
 
     # Mock conversations.create
     mock_conversation = mocker.MagicMock()

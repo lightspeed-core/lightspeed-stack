@@ -375,7 +375,7 @@ If the server configuration sets `disable_query_system_prompt` to `true`, reques
 | **422** | Request validation failed (missing fields, invalid formats, attachment errors) |
 | **429** | Token quota exceeded |
 | **500** | Configuration not loaded, unexpected server errors |
-| **503** | Cannot connect to OGX backend |
+| **503** | Cannot connect to Llama Stack backend |
 
 For streaming, errors that occur **after** HTTP 200 headers are sent are delivered as SSE `error` events within the stream.
 

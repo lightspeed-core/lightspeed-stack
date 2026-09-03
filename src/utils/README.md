@@ -1,158 +1,119 @@
 # List of source files stored in `src/utils` directory
 
 ## [__init__.py](__init__.py)
-
 Utility classes and functions for the Lightspeed Stack core service.
 
 ## [builtin_tools.py](builtin_tools.py)
-
 Discover builtin file-search tools when that provider is configured.
 
 ## [checks.py](checks.py)
-
 Checks that are performed to configuration options.
 
 ## [common.py](common.py)
-
 Common utilities for the project.
 
 ## [compaction.py](compaction.py)
-
 Conversation compaction — partitioning, summarization, additive fold-up.
 
-## [connection_decorator.py](connection_decorator.py)
+## [config_dumper.py](config_dumper.py)
+Function to dump the configuration schema into OpenAPI-compatible format.
 
+## [connection_decorator.py](connection_decorator.py)
 Decorator that makes sure the object is 'connected' according to it's connected predicate.
 
 ## [conversation_compaction.py](conversation_compaction.py)
-
 Runtime integration of conversation compaction into the request flow.
 
 ## [conversations.py](conversations.py)
-
 Utilities for conversations.
 
 ## [degraded_mode.py](degraded_mode.py)
-
 Degraded mode state tracking.
 
 ## [endpoints.py](endpoints.py)
-
 Utility functions for endpoint handlers.
 
-## [input_sanitization.py](input_sanitization.py)
-
-Input sanitization to detect and block obfuscated prompt injection attempts.
-
 ## [json_schema_updater.py](json_schema_updater.py)
-
 Function to transform a JSON Schema-like dictionary into an OpenAPI-compatible schema.
 
-## [ogx_version.py](ogx_version.py)
-
-Check if the OGX version is supported by the LCS.
+## [llama_stack_version.py](llama_stack_version.py)
+Check if the Llama Stack version is supported by the LCS.
 
 ## [markdown_repair.py](markdown_repair.py)
-
 Utilities for repairing truncated markdown content.
 
 ## [mcp_auth_headers.py](mcp_auth_headers.py)
-
 Utilities for resolving MCP server authorization headers.
 
 ## [mcp_headers.py](mcp_headers.py)
-
 MCP headers handling.
 
 ## [mcp_oauth_probe.py](mcp_oauth_probe.py)
-
 Probe MCP servers for OAuth and raise 401 with WWW-Authenticate when required.
 
 ## [mcp_tools.py](mcp_tools.py)
-
-Utilities for discovering tools from remote MCP servers without OGX.
+Utilities for discovering tools from remote MCP servers without Llama Stack.
 
 ## [model_list.py](model_list.py)
-
 Helpers for normalizing OGX ``models.list()`` union responses.
 
-## [openapi_schema_dumper.py](openapi_schema_dumper.py)
+## [models_dumper.py](models_dumper.py)
+Function to dump the schema of all data models into OpenAPI-compatible format.
 
+## [openapi_schema_dumper.py](openapi_schema_dumper.py)
 Utility function to dump schema with list of models into OpenAPI-compatible JSON format.
 
-## [otel_tracing.py](otel_tracing.py)
-
-OpenTelemetry tracing utilities for Lightspeed Core Stack.
-
 ## [prompts.py](prompts.py)
-
 Utility functions for system prompts.
 
 ## [pydantic_ai_helpers.py](pydantic_ai_helpers.py)
-
-Helpers for running Pydantic AI agents against OGX (Responses API compatibility).
+Helpers for running Pydantic AI agents against Llama Stack (Responses API compatibility).
 
 ## [query.py](query.py)
-
 Utility functions for working with queries.
 
 ## [quota_utils.py](quota_utils.py)
-
 Quota handling helper functions.
 
 ## [reranker.py](reranker.py)
-
 Reranker utilities for RAG chunk reranking.
 
 ## [responses.py](responses.py)
-
 Utility functions for processing Responses API output.
 
 ## [rh_identity.py](rh_identity.py)
-
 Utility functions for extracting RH Identity context for telemetry.
 
 ## [saved_prompts.py](saved_prompts.py)
-
 Validation helpers and data access for saved prompts.
 
 ## [shields.py](shields.py)
-
 Utility helpers for shield override validation and moderation.
 
 ## [stream_interrupts.py](stream_interrupts.py)
-
 Stream interrupt registry and persistence utilities.
 
 ## [streaming_sse.py](streaming_sse.py)
-
 SSE formatting helpers for streaming query responses.
 
 ## [suid.py](suid.py)
-
 Session ID utility functions.
 
 ## [token_counter.py](token_counter.py)
-
 Helper classes to count tokens sent and received by the LLM.
 
 ## [token_estimator.py](token_estimator.py)
-
 Pre-LLM-call token estimation.
 
 ## [tool_formatter.py](tool_formatter.py)
-
 Utility functions for formatting and parsing MCP tool descriptions.
 
 ## [transcripts.py](transcripts.py)
-
 Transcript handling.
 
 ## [types.py](types.py)
-
 Common types for the project.
 
 ## [vector_search.py](vector_search.py)
-
 Vector search utilities for query endpoints.
 

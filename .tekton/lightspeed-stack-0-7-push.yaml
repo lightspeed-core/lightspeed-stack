@@ -11,8 +11,8 @@ metadata:
     build.appstudio.redhat.com/target_branch: '{{target_branch}}'
     pipelinesascode.tekton.dev/cancel-in-progress: "false"
     pipelinesascode.tekton.dev/max-keep-runs: "3"
-    pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch
-      == "release/0.7"
+    pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch == "release/0.7"
+  creationTimestamp:
   labels:
     appstudio.openshift.io/application: lightspeed-core-0-7
     appstudio.openshift.io/component: lightspeed-stack-0-7
@@ -49,13 +49,12 @@ spec:
           "path": ".konflux",
           "requirements_files": [
             "requirements.hashes.wheel.txt",
-            "requirements.hashes.wheel.pypi.txt",
             "requirements.hashes.source.txt",
             "requirements.hermetic.txt"
           ],
           "requirements_build_files": ["requirements-build.txt"],
           "binary": {
-            "packages": "a2a-sdk,accelerate,aiofile,aiohappyeyeballs,aiohttp,aiosignal,aiosqlite,annotated-doc,annotated-types,anthropic,anyio,argcomplete,asgiref,asyncpg,attrs,authlib,autoevals,azure-core,azure-identity,beartype,cachetools,caio,certifi,cffi,chardet,charset-normalizer,chevron,click,cryptography,datasets,defusedxml,dill,distro,dnspython,docstring-parser,durationpy,einops,email-validator,emoji,exceptiongroup,executing,faiss-cpu,fastapi,fastmcp-slim,fastuuid,filelock,fire,frozenlist,fsspec,google-api-core,google-auth,google-cloud-core,google-cloud-storage,google-crc32c,google-genai,google-resumable-media,googleapis-common-protos,greenlet,griffelib,grpc-google-iam-v1,grpcio,grpcio-status,h11,hf-xet,httpcore,httpcore2,httpx,httpx-sse,httpx2,huggingface-hub,idna,importlib-metadata,jaraco-classes,jaraco-context,jaraco-functools,jeepney,jinja2,jiter,joblib,joserfc,jsonpath-ng,jsonschema,jsonschema-specifications,keyring,kubernetes,langdetect,litellm,logfire-api,markdown-it-py,markupsafe,maturin,mcp,mdurl,models-dev,more-itertools,mpmath,msal,msal-extensions,multidict,multiprocess,narwhals,networkx,nltk,numpy,oauthlib,openai,opentelemetry-api,opentelemetry-distro,opentelemetry-exporter-otlp,opentelemetry-exporter-otlp-proto-common,opentelemetry-exporter-otlp-proto-grpc,opentelemetry-exporter-otlp-proto-http,opentelemetry-exporter-prometheus,opentelemetry-instrumentation,opentelemetry-instrumentation-asgi,opentelemetry-instrumentation-fastapi,opentelemetry-instrumentation-httpx,opentelemetry-proto,opentelemetry-sdk,opentelemetry-semantic-conventions,opentelemetry-util-http,packaging,pandas,peft,pip,platformdirs,polyleven,prometheus-client,prompt-toolkit,propcache,proto-plus,protobuf,psutil,psycopg2-binary,py-key-value-aio,pyaml,pyarrow,pyasn1,pyasn1-modules,pycparser,pydantic,pydantic-core,pydantic-settings,pygments,pyjwt,pypdf,pyperclip,python-dateutil,python-dotenv,python-multipart,pyyaml,referencing,regex,requests,requests-oauthlib,rich,rpds-py,safetensors,scikit-learn,scipy,secretstorage,semver,sentence-transformers,sentry-sdk,setuptools,shellingham,six,sniffio,sqlalchemy,sse-starlette,starlette,structlog,sympy,tenacity,termcolor,threadpoolctl,tiktoken,tokenizers,torch,tqdm,transformers,tree-sitter,triton,trl,truststore,typer,typing-extensions,typing-inspection,urllib3,uv,uv-build,uvicorn,wcwidth,websocket-client,websockets,wrapt,xxhash,yarl,zipp,zstandard",
+            "packages": "a2a-sdk,accelerate,aiofile,aiohappyeyeballs,aiohttp,aiosignal,aiosqlite,annotated-doc,annotated-types,anthropic,anyio,argcomplete,asgiref,asyncpg,attrs,authlib,autoevals,azure-core,azure-identity,beartype,cachetools,caio,certifi,cffi,chardet,charset-normalizer,chevron,click,cryptography,datasets,defusedxml,dill,distro,dnspython,docstring-parser,durationpy,einops,email-validator,emoji,exceptiongroup,executing,faiss-cpu,fastapi,fastmcp-slim,fastuuid,filelock,fire,frozenlist,fsspec,google-api-core,google-auth,google-cloud-core,google-cloud-storage,google-crc32c,google-genai,google-resumable-media,googleapis-common-protos,greenlet,griffelib,grpc-google-iam-v1,grpcio,grpcio-status,h11,hf-xet,httpcore,httpcore2,httpx,httpx-sse,httpx2,huggingface-hub,idna,importlib-metadata,jaraco-classes,jaraco-context,jaraco-functools,jeepney,jinja2,jiter,joblib,joserfc,jsonpath-ng,jsonschema,jsonschema-specifications,keyring,kubernetes,langdetect,litellm,logfire-api,markdown-it-py,markupsafe,maturin,mcp,mdurl,more-itertools,mpmath,msal,msal-extensions,multidict,multiprocess,narwhals,networkx,nltk,numpy,oauthlib,ogx,ogx-api,ogx-client,openai,opentelemetry-api,opentelemetry-distro,opentelemetry-exporter-otlp,opentelemetry-exporter-otlp-proto-common,opentelemetry-exporter-otlp-proto-grpc,opentelemetry-exporter-otlp-proto-http,opentelemetry-instrumentation,opentelemetry-instrumentation-asgi,opentelemetry-instrumentation-fastapi,opentelemetry-instrumentation-httpx,opentelemetry-proto,opentelemetry-sdk,opentelemetry-semantic-conventions,opentelemetry-util-http,packaging,pandas,peft,pip,platformdirs,polyleven,prometheus-client,prompt-toolkit,propcache,proto-plus,protobuf,psutil,psycopg2-binary,py-key-value-aio,pyaml,pyarrow,pyasn1,pyasn1-modules,pycparser,pydantic,pydantic-core,pydantic-settings,pygments,pyjwt,pypdf,pyperclip,python-dateutil,python-dotenv,python-multipart,pyyaml,referencing,regex,requests,requests-oauthlib,rich,rpds-py,safetensors,scikit-learn,scipy,secretstorage,semver,sentence-transformers,sentry-sdk,setuptools,shellingham,six,sniffio,sqlalchemy,sse-starlette,starlette,structlog,sympy,tenacity,termcolor,threadpoolctl,tiktoken,tokenizers,torch,tqdm,transformers,tree-sitter,triton,trl,truststore,typer,typing-extensions,typing-inspection,urllib3,uv,uv-build,uvicorn,wcwidth,websocket-client,websockets,wrapt,xxhash,yarl,zipp,zstandard",
             "os": "linux",
             "arch": "x86_64,aarch64",
             "py_version": 312
@@ -86,13 +85,11 @@ spec:
       name: output-image
       type: string
     - default: .
-      description: Path to the source code of an application's component from where
-        to build image.
+      description: Path to the source code of an application's component from where to build image.
       name: path-context
       type: string
     - default: Dockerfile
-      description: Path to the Dockerfile inside the context specified by parameter
-        path-context
+      description: Path to the Dockerfile inside the context specified by parameter path-context
       name: dockerfile
       type: string
     - default: "false"
@@ -108,8 +105,7 @@ spec:
       name: prefetch-input
       type: string
     - default: ""
-      description: Image tag expiration time, time values could be something like
-        1h, 2d, 3w for hours, days, and weeks, respectively.
+      description: Image tag expiration time, time values could be something like 1h, 2d, 3w for hours, days, and weeks, respectively.
       name: image-expires-after
       type: string
     - default: "false"
@@ -121,20 +117,8 @@ spec:
       name: build-image-index
       type: string
     - default: docker
-      description: The format for the resulting image's mediaType. Valid values are
-        oci or docker.
+      description: The format for the resulting image's mediaType. Valid values are oci or docker.
       name: buildah-format
-      type: string
-    - default: "false"
-      description: Enable cache proxy configuration
-      name: enable-cache-proxy
-    - default: "true"
-      description: Use the package registry proxy when prefetching dependencies
-      name: enable-package-registry-proxy
-    - default: .
-      description: Target directories in component's source code to scan with SAST
-        tools. Multiple values should be separated with commas.
-      name: sast-target-dirs
       type: string
     - default: []
       description: Array of --build-arg values ("arg=value" strings) for buildah
@@ -145,32 +129,34 @@ spec:
       name: build-args-file
       type: string
     - default: "false"
-      description: Whether to enable privileged mode, should be used only with remote
-        VMs
+      description: Whether to enable privileged mode, should be used only with remote VMs
       name: privileged-nested
-      type: string
-    - default: ""
-      description: Sets the image created time and the SOURCE_DATE_EPOCH build argument.
-        On its own, it does not change file timestamps inside the layers (set rewrite-timestamp
-        to "true" for that). Leave empty to keep the actual build time.
-      name: source-date-epoch
-      type: string
-    - default: "false"
-      description: When "true", clamp file modification times in the image layers
-        to at most source-date-epoch. Does nothing unless source-date-epoch is set.
-      name: rewrite-timestamp
-      type: string
-    - default: "false"
-      description: When "true", omit the build history (history timestamps, layer
-        metadata, etc.) from the resulting image.
-      name: omit-history
       type: string
     - default:
       - linux/x86_64
-      description: List of platforms to build the container images on. The available
-        set of values is determined by the configuration of the multi-platform-controller.
+      description: List of platforms to build the container images on. The available set of values is determined by the configuration of the multi-platform-controller.
       name: build-platforms
       type: array
+    - name: enable-package-registry-proxy
+      default: 'true'
+      description: Use the package registry proxy when prefetching dependencies
+      type: string
+    - name: sast-target-dirs
+      type: string
+      default: .
+      description: Target directories to scan with SAST tools. Multiple values should be separated with commas.
+    - name: source-date-epoch
+      type: string
+      default: ''
+      description: Sets the image created time and the SOURCE_DATE_EPOCH build argument. On its own, it does not change file timestamps inside the layers (set rewrite-timestamp to "true" for that). Leave empty to keep the actual build time.
+    - name: rewrite-timestamp
+      type: string
+      default: 'false'
+      description: When "true", clamp file modification times in the image layers to at most source-date-epoch. Does nothing unless source-date-epoch is set.
+    - name: omit-history
+      type: string
+      default: 'false'
+      description: When "true", omit the build history (history timestamps, layer metadata, etc.) from the resulting image.
     results:
     - description: ""
       name: IMAGE_URL
@@ -186,9 +172,6 @@ spec:
       value: $(tasks.clone-repository.results.commit)
     tasks:
     - name: init
-      params:
-      - name: enable-cache-proxy
-        value: $(params.enable-cache-proxy)
       taskRef:
         params:
         - name: name
@@ -226,14 +209,14 @@ spec:
       params:
       - name: input
         value: $(params.prefetch-input)
-      - name: enable-package-registry-proxy
-        value: $(params.enable-package-registry-proxy)
       - name: SOURCE_ARTIFACT
         value: $(tasks.clone-repository.results.SOURCE_ARTIFACT)
       - name: ociStorage
         value: $(params.output-image).prefetch
       - name: ociArtifactExpiresAfter
         value: $(params.image-expires-after)
+      - name: enable-package-registry-proxy
+        value: $(params.enable-package-registry-proxy)
       runAfter:
       - clone-repository
       taskRef:
@@ -286,18 +269,18 @@ spec:
         value: $(tasks.init.results.http-proxy)
       - name: NO_PROXY
         value: $(tasks.init.results.no-proxy)
-      - name: SOURCE_DATE_EPOCH
-        value: $(params.source-date-epoch)
-      - name: REWRITE_TIMESTAMP
-        value: $(params.rewrite-timestamp)
-      - name: OMIT_HISTORY
-        value: $(params.omit-history)
       - name: SOURCE_ARTIFACT
         value: $(tasks.prefetch-dependencies.results.SOURCE_ARTIFACT)
       - name: CACHI2_ARTIFACT
         value: $(tasks.prefetch-dependencies.results.CACHI2_ARTIFACT)
       - name: IMAGE_APPEND_PLATFORM
         value: "true"
+      - name: SOURCE_DATE_EPOCH
+        value: $(params.source-date-epoch)
+      - name: REWRITE_TIMESTAMP
+        value: $(params.rewrite-timestamp)
+      - name: OMIT_HISTORY
+        value: $(params.omit-history)
       runAfter:
       - prefetch-dependencies
       taskRef:
@@ -590,12 +573,12 @@ spec:
         value: $(tasks.build-image-index.results.IMAGE_DIGEST)
       - name: image-url
         value: $(tasks.build-image-index.results.IMAGE_URL)
-      - name: TARGET_DIRS
-        value: $(params.sast-target-dirs)
       - name: SOURCE_ARTIFACT
         value: $(tasks.prefetch-dependencies.results.SOURCE_ARTIFACT)
       - name: CACHI2_ARTIFACT
         value: $(tasks.prefetch-dependencies.results.CACHI2_ARTIFACT)
+      - name: TARGET_DIRS
+        value: $(params.sast-target-dirs)
       runAfter:
       - build-image-index
       taskRef:

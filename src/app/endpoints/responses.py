@@ -21,17 +21,26 @@ from ogx_api import (
 from ogx_api import (
     OpenAIResponseObjectStreamResponseOutputItemDone as OutputItemDoneChunk,
 )
-from ogx_client import ApiException
+from ogx_client import (
+    APIConnectionError,
+)
+from ogx_client import (
+    APIStatusError as LLSApiStatusError,
+)
 from openai._exceptions import (
     APIStatusError as OpenAIAPIStatusError,
 )
-from opentelemetry import trace
 
+from app.endpoints.responses_telemetry import (
+    queue_blocked_response_event,
+    queue_completed_response_event,
+    queue_responses_error_event,
+)
 from authentication import get_auth_dependency
 from authentication.interface import AuthTuple
 from authorization.azure_token_manager import AzureEntraIDManager
 from authorization.middleware import authorize
-from client.ogx import AsyncOgxClientHolder
+from client import AsyncOgxClientHolder
 from configuration import configuration
 from constants import ENDPOINT_PATH_RESPONSES, SUBSTITUTED_INSTRUCTIONS_PLACEHOLDER
 from log import get_logger
@@ -49,19 +58,13 @@ from models.api.responses.error import (
     UnauthorizedResponse,
     UnprocessableEntityResponse,
 )
-from models.api.responses.error.bases import AbstractErrorResponse
 from models.api.responses.successful import ResponsesResponse
 from models.common.moderation import ShieldModerationBlocked
 from models.common.responses.contexts import ResponsesContext
 from models.common.responses.responses_api_params import ResponsesApiParams
-from models.common.responses.types import ResponseInput, ResponseMessage
+from models.common.responses.types import ResponseInput
 from models.common.turn_summary import TurnSummary
 from models.config import Action
-from observability.responses_telemetry import (
-    queue_blocked_response_event,
-    queue_completed_response_event,
-    queue_responses_error_event,
-)
 from utils.conversation_compaction import (
     apply_compaction_blocking,
     configured_conversation_cache,
@@ -73,15 +76,6 @@ from utils.endpoints import (
 )
 from utils.mcp_headers import mcp_headers_dependency
 from utils.mcp_oauth_probe import check_mcp_auth
-from utils.ogx_serialization import dump_ogx_model
-from utils.otel_tracing import (
-    SpanAttributes,
-    SpanEvents,
-    add_span_event,
-    anonymize_value,
-    record_exception,
-    set_span_attributes,
-)
 from utils.prompts import get_system_prompt
 from utils.query import (
     consume_query_tokens,
@@ -122,127 +116,9 @@ from utils.vector_search import (
 )
 
 logger = get_logger(__name__)
-tracer = trace.get_tracer(__name__)
 router = APIRouter(tags=["responses"])
 
 _USER_AGENT_MAX_LENGTH: Final[int] = 128
-
-
-def _count_request_attachments(response_input: ResponseInput) -> int:
-    """Count file and image attachment parts in a Responses API input.
-
-    Args:
-        response_input: Raw Responses API input (string or item list).
-
-    Returns:
-        Number of input_file and input_image content parts.
-    """
-    if isinstance(response_input, str):
-        return 0
-    count = 0
-    for item in response_input:
-        if item.type != "message":
-            continue
-        message = cast(ResponseMessage, item)
-        content = message.content
-        if isinstance(content, str):
-            continue
-        for part in content:
-            if part.type in ("input_file", "input_image"):
-                count += 1
-    return count
-
-
-def _finalize_responses_root_span(
-    root_span: trace.Span,
-    turn_summary: TurnSummary,
-) -> None:
-    """Set final root-span attributes and completion events for /responses.
-
-    Args:
-        root_span: OpenTelemetry root span for the request.
-        turn_summary: Completed turn summary with tokens, tools, and output.
-    """
-    tool_names = [tc.name for tc in turn_summary.tool_calls]
-    set_span_attributes(
-        root_span,
-        {
-            SpanAttributes.TOOL_CALLS_COUNT: len(tool_names),
-            SpanAttributes.TOOL_CALLS_NAMES: tool_names,
-        },
-    )
-    if tool_names:
-        add_span_event(
-            root_span,
-            SpanEvents.TOOL_EXECUTION_COMPLETED,
-            {"tool.calls": ", ".join(tool_names)},
-        )
-
-    set_span_attributes(
-        root_span,
-        {
-            SpanAttributes.LLM_USAGE_INPUT_TOKENS: (
-                turn_summary.token_usage.input_tokens
-            ),
-            SpanAttributes.LLM_USAGE_OUTPUT_TOKENS: (
-                turn_summary.token_usage.output_tokens
-            ),
-            SpanAttributes.OUTPUT: anonymize_value(turn_summary.llm_response),
-        },
-    )
-    add_span_event(root_span, SpanEvents.LLM_RESPONSE_COMPLETED)
-
-
-def _start_llm_inference_span(
-    model_id: str,
-    parent: trace.Span,
-) -> trace.Span:
-    """Start an ``llm.inference`` child span with model/provider attributes.
-
-    Args:
-        model_id: Composite model identifier in ``provider/model`` format.
-        parent: Parent span to nest the inference span under.
-
-    Returns:
-        Started OpenTelemetry span for the inference call.
-    """
-    provider_id, bare_model_id = extract_provider_and_model_from_model_id(model_id)
-    span = tracer.start_span(
-        "llm.inference",
-        context=trace.set_span_in_context(parent),
-    )
-    set_span_attributes(
-        span,
-        {
-            SpanAttributes.LLM_MODEL_ID: bare_model_id,
-            SpanAttributes.LLM_PROVIDER_ID: provider_id,
-        },
-    )
-    add_span_event(span, SpanEvents.LLM_INFERENCE_STARTED)
-    return span
-
-
-def _complete_llm_inference_span(
-    span: trace.Span,
-    input_tokens: int,
-    output_tokens: int,
-) -> None:
-    """Record token usage and completion event, then end an inference span.
-
-    Args:
-        span: The ``llm.inference`` span to finalize.
-        input_tokens: Input token count for the inference call.
-        output_tokens: Output token count for the inference call.
-    """
-    set_span_attributes(
-        span,
-        {
-            SpanAttributes.LLM_USAGE_INPUT_TOKENS: input_tokens,
-            SpanAttributes.LLM_USAGE_OUTPUT_TOKENS: output_tokens,
-        },
-    )
-    add_span_event(span, SpanEvents.LLM_INFERENCE_COMPLETED)
-    span.end()
 
 
 def _get_user_agent(request: Request) -> Optional[str]:
@@ -285,65 +161,44 @@ responses_response: dict[int | str, dict[str, Any]] = {
     429: QuotaExceededResponse.openapi_response(),
     500: InternalServerErrorResponse.openapi_response(examples=["configuration"]),
     503: ServiceUnavailableResponse.openapi_response(
-        examples=["OGX", "kubernetes api"]
+        examples=["ogx", "kubernetes api"]
     ),
 }
 
 
-def _error_response_for_response_api_error(
+def _http_exception_for_response_api_error(
     error: Exception,
     api_params: ResponsesApiParams,
-) -> Optional[AbstractErrorResponse]:
-    """Map known Responses API backend errors to structured error responses.
+) -> Optional[HTTPException]:
+    """Map known Responses API backend errors to HTTP exceptions.
 
     Args:
         error: The backend exception raised while creating a response.
         api_params: Responses API parameters for the request.
 
     Returns:
-        Structured error response for known API failures, or None for unknown errors.
+        HTTPException for known API failures, or None for unknown RuntimeError.
     """
     if isinstance(error, RuntimeError):
         if not is_context_length_error(str(error)):
             return None
-        return PromptTooLongResponse(model=api_params.model)
-    if isinstance(error, ApiException) and not error.status:
-        return ServiceUnavailableResponse(
+        error_response = PromptTooLongResponse(model=api_params.model)
+    elif isinstance(error, APIConnectionError):
+        error_response = ServiceUnavailableResponse(
             backend_name="OGX",
+            cause=str(error),
         )
-    if isinstance(error, (ApiException, OpenAIAPIStatusError)):
-        return handle_known_apistatus_errors(error, api_params.model)
-    return None
-
-
-def _record_inference_span_exception(
-    inference_span: trace.Span,
-    error: Exception,
-    error_response: Optional[AbstractErrorResponse] = None,
-) -> None:
-    """Record a failure on the inference span without ending it.
-
-    Args:
-        inference_span: The ``llm.inference`` span to annotate.
-        error: Exception to record on the span.
-        error_response: Mapped structured error response for attribute enrichment.
-    """
-    attributes = (
-        {
-            SpanAttributes.RESPONSE_ERROR: error_response.detail.response,
-            SpanAttributes.RESPONSE_CAUSE: error_response.detail.cause,
-        }
-        if error_response is not None
-        else None
-    )
-    record_exception(inference_span, error, attributes)
+    elif isinstance(error, (LLSApiStatusError, OpenAIAPIStatusError)):
+        error_response = handle_known_apistatus_errors(error, api_params.model)
+    else:
+        return None
+    return HTTPException(**error_response.model_dump())
 
 
 def _raise_response_api_http_exception(
     error: Exception,
     api_params: ResponsesApiParams,
     context: ResponsesContext,
-    inference_span: trace.Span,
 ) -> NoReturn:
     """Queue error telemetry and raise the mapped Responses API HTTP error.
 
@@ -351,19 +206,16 @@ def _raise_response_api_http_exception(
         error: The backend exception raised while creating a response.
         api_params: Responses API parameters for the request.
         context: Request-scoped Responses API context.
-        inference_span: OpenTelemetry ``llm.inference`` span for this request.
 
     Raises:
         Exception: Re-raises unknown RuntimeError instances unchanged.
         HTTPException: Raised for known Responses API failures.
     """
-    error_response = _error_response_for_response_api_error(error, api_params)
-    _record_inference_span_exception(inference_span, error, error_response)
-    inference_span.end()
-    if error_response is None:
+    http_exception = _http_exception_for_response_api_error(error, api_params)
+    if http_exception is None:
         raise error
     queue_responses_error_event(error, api_params, context)
-    raise HTTPException(**error_response.model_dump()) from error
+    raise http_exception from error
 
 
 async def _persist_blocked_response_turn(
@@ -399,9 +251,9 @@ async def _append_previous_response_turn(
     context: ResponsesContext,
     output: Sequence[OpenAIResponseOutput],
 ) -> None:
-    """Append the completed turn when OGX did not store it automatically.
+    """Append the completed turn when Llama Stack did not store it automatically.
 
-    OGX stores the turn itself only when the conversation parameter is
+    Llama Stack stores the turn itself only when the conversation parameter is
     sent. Two cases bypass that and require an explicit append: continuing from
     a ``previous_response_id``, and conversation compaction (LCORE-1572), where
     the conversation parameter is dropped in favor of explicit input. In the
@@ -437,7 +289,7 @@ def _store_response_query_results(
     turn_summary: TurnSummary,
     completed_at: datetime,
     topic_summary: Optional[str],
-) -> bool:
+) -> None:
     """Persist Responses API query results when request storage is enabled.
 
     Args:
@@ -446,12 +298,9 @@ def _store_response_query_results(
         turn_summary: Summary of the completed model turn.
         completed_at: Time when response handling completed.
         topic_summary: Optional generated topic summary for the conversation.
-
-    Returns:
-        True when query results were stored, False when storage is disabled.
     """
     if not api_params.store:
-        return False
+        return
     user_id, _, skip_userid_check, _ = context.auth
     store_query_results(
         user_id=user_id,
@@ -465,7 +314,6 @@ def _store_response_query_results(
         skip_userid_check=skip_userid_check,
         topic_summary=topic_summary,
     )
-    return True
 
 
 @router.post(
@@ -486,7 +334,7 @@ async def responses_endpoint_handler(
     Handle request to the /responses endpoint using Responses API (LCORE specification).
 
     Processes a POST request to the responses endpoint, forwarding the
-    user's request to a selected OGX LLM and returning the generated response
+    user's request to a selected Llama Stack LLM and returning the generated response
     following the LCORE OpenAPI specification.
 
     Returns:
@@ -506,57 +354,6 @@ async def responses_endpoint_handler(
             - 500: Internal Server Error - Configuration not loaded or other server errors
             - 503: Service Unavailable - Unable to connect to OGX backend
     """
-    span_name = "responses.handle_request"
-    if responses_request.stream:
-        root_span = tracer.start_span(span_name)
-        try:
-            with trace.use_span(  # pylint: disable=not-context-manager
-                root_span, end_on_exit=False
-            ):
-                return await handle_responses_with_tracing(
-                    request,
-                    responses_request,
-                    auth,
-                    mcp_headers,
-                    background_tasks,
-                    root_span,
-                )
-        except Exception:
-            root_span.end()
-            raise
-
-    with tracer.start_as_current_span(span_name) as root_span:
-        return await handle_responses_with_tracing(
-            request,
-            responses_request,
-            auth,
-            mcp_headers,
-            background_tasks,
-            root_span,
-        )
-
-
-async def handle_responses_with_tracing(  # pylint: disable=too-many-locals
-    request: Request,
-    responses_request: ResponsesRequest,
-    auth: AuthTuple,
-    mcp_headers: dict[str, dict[str, str]],
-    background_tasks: BackgroundTasks,
-    root_span: trace.Span,
-) -> ResponsesResponse | StreamingResponse:
-    """Handle responses request with OTEL tracing instrumentation.
-
-    Parameters:
-        request: The incoming HTTP request.
-        responses_request: Request payload for the Responses API.
-        auth: Authentication tuple (user_id, username, skip_check, token).
-        mcp_headers: Headers to be passed to MCP servers.
-        background_tasks: FastAPI background task registry.
-        root_span: OpenTelemetry root span for this request.
-
-    Returns:
-        ResponsesResponse or StreamingResponse depending on ``stream``.
-    """
     original_request = responses_request  # read-only request
     updated_request = responses_request.model_copy(deep=True)
     _ = responses_request
@@ -570,22 +367,6 @@ async def handle_responses_with_tracing(  # pylint: disable=too-many-locals
     started_at = datetime.now(UTC)
     rh_identity_context = get_rh_identity_context(request)
     user_id, _, skip_userid_check, token = auth
-
-    input_text = (
-        original_request.input
-        if isinstance(original_request.input, str)
-        else extract_text_from_response_items(original_request.input)
-    )
-    attachments_count = _count_request_attachments(original_request.input)
-
-    set_span_attributes(
-        root_span,
-        {
-            SpanAttributes.USER_ID: anonymize_value(user_id),
-            SpanAttributes.INPUT: anonymize_value(input_text),
-            SpanAttributes.REQUEST_ATTACHMENTS_COUNT: attachments_count,
-        },
-    )
 
     await check_mcp_auth(configuration, mcp_headers, token, request.headers)
 
@@ -613,14 +394,6 @@ async def handle_responses_with_tracing(  # pylint: disable=too-many-locals
         generate_topic_summary=original_request.generate_topic_summary,
     )
     updated_request.conversation = response_context.conversation
-    set_span_attributes(
-        root_span,
-        {
-            SpanAttributes.SESSION_ID: normalize_conversation_id(
-                response_context.conversation
-            ),
-        },
-    )
     updated_request.generate_topic_summary = response_context.generate_topic_summary
     client = AsyncOgxClientHolder().get_client()
 
@@ -643,8 +416,12 @@ async def handle_responses_with_tracing(  # pylint: disable=too-many-locals
     ):
         client = await AsyncOgxClientHolder().update_azure_token()
 
+    input_text = (
+        original_request.input
+        if isinstance(original_request.input, str)
+        else extract_text_from_response_items(original_request.input)
+    )
     attachments_text = extract_attachments_text(original_request.input)
-    add_span_event(root_span, SpanEvents.VALIDATION_COMPLETED)
 
     endpoint_path = ENDPOINT_PATH_RESPONSES
 
@@ -733,7 +510,6 @@ async def handle_responses_with_tracing(  # pylint: disable=too-many-locals
         endpoint_path=endpoint_path,
         generate_topic_summary=updated_request.generate_topic_summary,
         compacted_original_input=compacted_original_input,
-        root_span=root_span,
     )
     response_handler = (
         handle_streaming_response
@@ -783,13 +559,13 @@ async def handle_streaming_response(
     """Handle streaming response from Responses API.
 
     Args:
+        client: The AsyncOgxClient instance
         original_request: Original request (read-only)
         api_params: API parameters
-        context: Responses context
+        responses_context: Responses context
     Returns:
         StreamingResponse with SSE-formatted events
     """
-    root_span = context.root_span
     turn_summary = TurnSummary()
     # Handle blocked response
     if context.moderation_result.decision == "blocked":
@@ -804,10 +580,6 @@ async def handle_streaming_response(
         )
     else:
         inference_start_time = time.monotonic()
-        inference_span = _start_llm_inference_span(
-            api_params.model,
-            parent=root_span,
-        )
         try:
             response = await context.client.responses.create(
                 **api_params.model_dump(
@@ -821,11 +593,11 @@ async def handle_streaming_response(
                 context=context,
                 turn_summary=turn_summary,
                 inference_start_time=inference_start_time,
-                inference_span=inference_span,
             )
         except (
             RuntimeError,
-            ApiException,
+            APIConnectionError,
+            LLSApiStatusError,
             OpenAIAPIStatusError,
         ) as e:
             _record_response_inference_result(
@@ -835,7 +607,7 @@ async def handle_streaming_response(
                 time.monotonic() - inference_start_time,
                 record_failure=True,
             )
-            _raise_response_api_http_exception(e, api_params, context, inference_span)
+            _raise_response_api_http_exception(e, api_params, context)
 
     return StreamingResponse(
         generate_response(
@@ -948,7 +720,7 @@ def _sanitize_response_dict(
     response object before it is forwarded to the client.
 
     Args:
-        response_dict: Mutable dict produced by ``dump_ogx_model`` on a response
+        response_dict: Mutable dict produced by ``model_dump`` on a response
             object.  Modified in-place.
         configured_mcp_labels: Set of ``server_label`` values that identify
             server-deployed MCP servers.
@@ -1052,7 +824,7 @@ def _populate_turn_summary(
     """Populate turn summary with metadata extracted from the final response object.
 
     Args:
-        response_object: The completed response object from OGX
+        response_object: The completed response object from Llama Stack
         api_params: ResponsesApiParams
         context: Responses context
         turn_summary: TurnSummary to populate
@@ -1089,18 +861,16 @@ async def response_generator(
     context: ResponsesContext,
     turn_summary: TurnSummary,
     inference_start_time: float,
-    inference_span: trace.Span,
 ) -> AsyncIterator[str]:
     """Generate SSE-formatted streaming response with LCORE-enriched events.
 
     Args:
-        stream: The streaming response from OGX
+        stream: The streaming response from Llama Stack
         original_request: Original request (read-only)
         api_params: ResponsesApiParams
         context: Responses context
         turn_summary: TurnSummary to populate during streaming
         inference_start_time: Monotonic timestamp taken before the inference call.
-        inference_span: OpenTelemetry ``llm.inference`` span for this stream.
     Yields:
         SSE-formatted strings for streaming events, ending with [DONE]
     """
@@ -1125,7 +895,7 @@ async def response_generator(
             ):
                 continue
 
-            chunk_dict = dump_ogx_model(chunk)
+            chunk_dict = chunk.model_dump(exclude_none=True, by_alias=True)
 
             # Create own sequence number for chunks to maintain order
             chunk_dict["sequence_number"] = sequence_number
@@ -1204,20 +974,8 @@ async def response_generator(
                 )
                 chunk_dict["response"]["output_text"] = turn_summary.llm_response
 
-                if chunk.type == "response.failed":
-                    _record_inference_span_exception(
-                        inference_span,
-                        Exception(
-                            chunk.response.error.message
-                            if chunk.response.error
-                            else "response.failed"
-                        ),
-                    )
-
             yield f"event: {chunk.type or 'error'}\ndata: {json.dumps(chunk_dict)}\n\n"
-    except Exception as exc:
-        _record_inference_span_exception(inference_span, exc)
-        inference_span.end()
+    except Exception:
         if not inference_metric_recorded:
             _record_response_inference_result(
                 api_params.model,
@@ -1227,12 +985,6 @@ async def response_generator(
                 record_failure=True,
             )
         raise
-
-    _complete_llm_inference_span(
-        inference_span,
-        turn_summary.token_usage.input_tokens,
-        turn_summary.token_usage.output_tokens,
-    )
 
     # Extract response metadata from final response object
     if latest_response_object:
@@ -1266,45 +1018,37 @@ async def generate_response(
 
     Args:
         generator: The SSE event generator
+        turn_summary: TurnSummary populated during streaming
         api_params: ResponsesApiParams
         context: Responses context
         turn_summary: TurnSummary to populate during streaming
     Yields:
         SSE-formatted strings from the generator
     """
-    root_span = context.root_span
-    try:
-        async for event in generator:
-            yield event
+    async for event in generator:
+        yield event
 
-        with trace.use_span(  # pylint: disable=not-context-manager
-            root_span, end_on_exit=False
-        ):
-            topic_summary = await maybe_get_topic_summary(
-                generate_topic_summary=context.generate_topic_summary,
-                input_text=context.input_text,
-                client=context.client,
-                model_id=api_params.model,
-            )
-        completed_at = datetime.now(UTC)
-        if _store_response_query_results(
-            api_params,
-            context,
-            turn_summary,
-            completed_at,
-            topic_summary,
-        ):
-            add_span_event(root_span, SpanEvents.TURN_PERSISTED)
-        queue_completed_response_event(
-            api_params,
-            context,
-            turn_summary,
-            completed_at,
-            turn_summary.llm_response,
-        )
-        _finalize_responses_root_span(root_span, turn_summary)
-    finally:
-        root_span.end()
+    topic_summary = await maybe_get_topic_summary(
+        generate_topic_summary=context.generate_topic_summary,
+        input_text=context.input_text,
+        client=context.client,
+        model_id=api_params.model,
+    )
+    completed_at = datetime.now(UTC)
+    _store_response_query_results(
+        api_params,
+        context,
+        turn_summary,
+        completed_at,
+        topic_summary,
+    )
+    queue_completed_response_event(
+        api_params,
+        context,
+        turn_summary,
+        completed_at,
+        turn_summary.llm_response,
+    )
 
 
 async def handle_non_streaming_response(
@@ -1321,7 +1065,6 @@ async def handle_non_streaming_response(
     Returns:
         ResponsesResponse with the completed response
     """
-    root_span = context.root_span
     user_id = context.auth[0]
 
     # Fork: Get response object (blocked vs normal)
@@ -1340,10 +1083,6 @@ async def handle_non_streaming_response(
     else:
         inference_start_time = time.monotonic()
         inference_metric_recorded = False
-        inference_span = _start_llm_inference_span(
-            api_params.model,
-            parent=root_span,
-        )
         try:
             api_response = cast(
                 OpenAIResponseObject,
@@ -1363,11 +1102,6 @@ async def handle_non_streaming_response(
             token_usage = extract_token_usage(
                 api_response.usage, api_params.model, context.endpoint_path
             )
-            _complete_llm_inference_span(
-                inference_span,
-                token_usage.input_tokens,
-                token_usage.output_tokens,
-            )
             logger.info("Consuming tokens")
             consume_query_tokens(
                 user_id=user_id,
@@ -1384,7 +1118,8 @@ async def handle_non_streaming_response(
 
         except (
             RuntimeError,
-            ApiException,
+            APIConnectionError,
+            LLSApiStatusError,
             OpenAIAPIStatusError,
         ) as e:
             if not inference_metric_recorded:
@@ -1395,7 +1130,7 @@ async def handle_non_streaming_response(
                     time.monotonic() - inference_start_time,
                     record_failure=True,
                 )
-            _raise_response_api_http_exception(e, api_params, context, inference_span)
+            _raise_response_api_http_exception(e, api_params, context)
 
     # Get available quotas
     logger.info("Getting available quotas")
@@ -1424,14 +1159,13 @@ async def handle_non_streaming_response(
     )
     turn_summary.rag_chunks.extend(context.inline_rag_context.rag_chunks)
     completed_at = datetime.now(UTC)
-    if _store_response_query_results(
+    _store_response_query_results(
         api_params,
         context,
         turn_summary,
         completed_at,
         topic_summary,
-    ):
-        add_span_event(root_span, SpanEvents.TURN_PERSISTED)
+    )
     queue_completed_response_event(
         api_params,
         context,
@@ -1439,13 +1173,8 @@ async def handle_non_streaming_response(
         completed_at,
         output_text,
     )
-    _finalize_responses_root_span(root_span, turn_summary)
     configured_mcp_labels = {s.name for s in configuration.mcp_servers}
-    response_dict = (
-        api_response.model_dump(exclude_none=True)
-        if context.moderation_result.decision == "blocked"
-        else dump_ogx_model(api_response)
-    )
+    response_dict = api_response.model_dump(exclude_none=True)
     _sanitize_response_dict(
         response_dict,
         configured_mcp_labels,

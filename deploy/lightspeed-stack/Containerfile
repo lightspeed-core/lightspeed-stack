@@ -25,7 +25,7 @@ USER root
 # (dependency of autoevals, no pre-built binary wheels for linux on aarch64)
 # cmake and cargo are required by fastuuid, maturin
 RUN ${BUILDER_DNF_COMMAND} install -y --nodocs --setopt=keepcache=0 --setopt=tsflags=nodocs gcc gcc-c++ cmake cargo && \
-    ${BUILDER_DNF_COMMAND} update -y --nodocs --setopt=keepcache=0 --setopt=tsflags=nodocs --allowerasing
+    ${BUILDER_DNF_COMMAND} update -y --nodocs --setopt=keepcache=0 --setopt=tsflags=nodocs
 
 # Install uv package manager
 RUN pip3.12 install "uv>=0.8.15"
@@ -37,7 +37,7 @@ COPY ${LSC_SOURCE_DIR}/pyproject.toml ${LSC_SOURCE_DIR}/LICENSE ${LSC_SOURCE_DIR
 
 # lightspeed-providers:
 # Fully hermetic — uses prefetched artifact or pinned commit from GitHub
-ARG LIGHTSPEED_PROVIDERS_COMMIT=faf6a89a3ad7856e2e7a934324f31d146108acdb
+ARG LIGHTSPEED_PROVIDERS_COMMIT=8cd1b3d3bdd841ea99d31b334ae00a275581661c
 RUN set -eux; \
     ZIP_PATH="/tmp/lightspeed-providers.zip"; \
     EXTRACT_DIR="/tmp/providers"; \
@@ -71,10 +71,10 @@ RUN if [ -f /cachi2/cachi2.env ]; then \
     . /cachi2/cachi2.env && \
     uv venv --seed --no-index --find-links ${PIP_FIND_LINKS} && \
     . .venv/bin/activate && \
-    pip install --no-cache-dir --ignore-installed --no-index --find-links ${PIP_FIND_LINKS} --no-deps -r requirements.hashes.wheel.txt -r requirements.hashes.wheel.pypi.txt -r requirements.hashes.source.txt && \
+    pip install --no-cache-dir --ignore-installed --no-index --find-links ${PIP_FIND_LINKS} --no-deps -r requirements.hashes.wheel.txt -r requirements.hashes.source.txt && \
     pip check; \
     else \
-    uv sync --locked --no-dev --group ogxlibdev; \
+    uv sync --locked --no-dev --group llslibdev; \
     fi
 
 # Explicitly remove some packages to mitigate some CVEs
@@ -120,7 +120,7 @@ USER root
 RUN ${RUNTIME_DNF_COMMAND} install -y --nodocs --setopt=keepcache=0 --setopt=tsflags=nodocs jq patch && \
     ${RUNTIME_DNF_COMMAND} update -y --nodocs --setopt=keepcache=0 --setopt=tsflags=nodocs
 
-# Create OGX directories for library mode
+# Create llama-stack directories for library mode
 RUN mkdir -p /opt/app-root/src/.llama/storage /opt/app-root/src/.llama/providers.d && \
     chown -R 1001:1001 /opt/app-root/src/.llama
 
@@ -131,12 +131,9 @@ RUN mkdir -p /opt/app-root/src/.cache/huggingface && \
 # Add executables from .venv to system PATH
 ENV PATH="/app-root/.venv/bin:$PATH"
 
-# Library mode: OGX expects external provider configs under a path named providers.d (hardcoded).
+# Library mode: Llama Stack expects external provider configs under a path named providers.d (hardcoded).
 # We place them at /app-root/providers.d. YAMLs there reference lightspeed_stack_providers.*, so that package must be on PYTHONPATH.
 ENV PYTHONPATH="/app-root"
-# Unified: set the environment variable to mount point of external providers.
-# default_run.yaml sets this to ~/.llama/providers.d if unset.
-ENV EXTERNAL_PROVIDERS_DIR="/app-root/providers.d"
 
 # Copy entrypoint script
 COPY ${LSC_SOURCE_DIR}/scripts/entrypoint.sh /app-root/entrypoint.sh
@@ -149,7 +146,7 @@ ENTRYPOINT ["/app-root/entrypoint.sh"]
 LABEL vendor="Red Hat, Inc." \
     name="lightspeed-core/lightspeed-stack-rhel9" \
     com.redhat.component="lightspeed-core/lightspeed-stack" \
-    cpe="cpe:/a:redhat:lightspeed_core:0.8::el9" \
+    cpe="cpe:/a:redhat:lightspeed_core:0.7::el9" \
     io.k8s.display-name="Lightspeed Stack" \
     summary="A service that provides a REST API for the Lightspeed Core Stack." \
     description="Lightspeed Core Stack (LCS) is an AI-powered assistant that provides answers to product questions using backend LLM services, agents, and RAG databases." \

@@ -44,7 +44,6 @@ def generate_docfile(directory: Path) -> None:
         for file in files:
             if file.endswith(".py"):
                 print(f"## [{file}]({file})", file=indexfile)
-                print(file=indexfile)
                 with open(file, encoding="utf-8") as fin:
                     source = fin.read()
                 try:

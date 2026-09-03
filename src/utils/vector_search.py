@@ -13,8 +13,7 @@ from ogx_api.openai_responses import (
     OpenAIResponseMessage as ResponseMessage,
 )
 from ogx_client import AsyncOgxClient
-from opentelemetry import trace
-from pydantic import AnyUrl, ValidationError
+from pydantic import AnyUrl
 
 import constants
 from configuration import configuration
@@ -22,18 +21,10 @@ from log import get_logger
 from models.common.query import SolrVectorSearchRequest
 from models.common.responses.types import ResponseInput
 from models.common.turn_summary import RAGChunk, RAGContext, ReferencedDocument
-from utils.otel_tracing import (
-    SpanAttributes,
-    SpanEvents,
-    add_span_event,
-    anonymize_value,
-    set_span_attributes,
-)
 from utils.reranker import apply_byok_rerank_boost, rerank_chunks_with_cross_encoder
 from utils.responses import resolve_vector_store_ids
 
 logger = get_logger(__name__)
-tracer = trace.get_tracer(__name__)
 
 
 def _filter_documents_for_chunks(
@@ -130,11 +121,8 @@ def _build_query_params(
     resolved_mode = (
         solr.mode
         if solr is not None and solr.mode is not None
-        else (
-            configuration.okp.search_mode or constants.SOLR_VECTOR_SEARCH_DEFAULT_MODE
-        )
+        else constants.SOLR_VECTOR_SEARCH_DEFAULT_MODE
     )
-    resolved_mode = constants.SOLR_SEARCH_MODE_MAP.get(resolved_mode, resolved_mode)
     params: dict[str, Any] = {
         "k": k if k is not None else constants.SOLR_VECTOR_SEARCH_DEFAULT_K,
         "score_threshold": constants.SOLR_VECTOR_SEARCH_DEFAULT_SCORE_THRESHOLD,
@@ -216,7 +204,7 @@ def _format_rag_context(rag_chunks: list[RAGChunk], query: str) -> str:
     """Format RAG chunks for pre-query context injection.
 
     This format is used for both BYOK RAG and Solr RAG chunks.
-    Format is inspired by OGX file_search tool implementation.
+    Format is inspired by llama-stack file_search tool implementation.
 
     Args:
         rag_chunks: List of RAG chunks from pre-query sources (BYOK + Solr)
@@ -257,13 +245,12 @@ def _format_rag_context(rag_chunks: list[RAGChunk], query: str) -> str:
     return output
 
 
-async def _query_store_for_byok_rag(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+async def _query_store_for_byok_rag(
     client: AsyncOgxClient,
     vector_store_id: str,
     query: str,
     weight: float,
-    score_threshold: float,
-    max_chunks: int = constants.DEFAULT_BYOK_RAG_MAX_CHUNKS,
+    max_chunks: int = constants.BYOK_RAG_MAX_CHUNKS,
 ) -> list[dict[str, Any]]:
     """Query a single vector store for BYOK RAG.
 
@@ -272,7 +259,6 @@ async def _query_store_for_byok_rag(  # pylint: disable=too-many-arguments,too-m
         vector_store_id: ID of the vector store to query
         query: Search query string
         weight: Score multiplier to apply
-        score_threshold: Minimum raw similarity score (``relevance_cutoff_score``)
         max_chunks: Maximum number of chunks to request from this store.
 
     Returns:
@@ -285,13 +271,10 @@ async def _query_store_for_byok_rag(  # pylint: disable=too-many-arguments,too-m
             params={
                 "max_chunks": max_chunks,
                 "mode": "vector",
-                "score_threshold": score_threshold,
             },
         )
         return _extract_byok_rag_chunks(search_response, vector_store_id, weight)
-    except (
-        Exception  # pylint: disable=broad-exception-caught
-    ) as e:  # noqa: BLE001 RUF100
+    except Exception as e:  # pylint: disable=broad-exception-caught
         logger.warning("Failed to search '%s': %s", vector_store_id, e)
         return []
 
@@ -379,7 +362,7 @@ def _process_byok_rag_chunks_for_documents(
             if reference_url:
                 try:
                     parsed_url = AnyUrl(reference_url)
-                except ValidationError:
+                except Exception:  # pylint: disable=broad-exception-caught
                     parsed_url = None
 
             referenced_documents.append(
@@ -437,7 +420,7 @@ def _process_solr_chunks_for_documents(
             if doc_url:
                 try:
                     parsed_url = AnyUrl(doc_url)
-                except ValidationError:
+                except Exception:  # pylint: disable=broad-exception-caught
                     parsed_url = None
 
             doc_ids_from_chunks.append(
@@ -460,6 +443,7 @@ async def _fetch_byok_rag(  # pylint: disable=too-many-locals
     client: AsyncOgxClient,
     query: str,
     vector_store_ids: Optional[list[str]] = None,
+    max_chunks: Optional[int] = None,
 ) -> tuple[list[RAGChunk], list[ReferencedDocument]]:
     """Fetch chunks and documents from BYOK RAG sources.
 
@@ -469,13 +453,15 @@ async def _fetch_byok_rag(  # pylint: disable=too-many-locals
         vector_store_ids: Optional list of vector store IDs to query.
             If provided, only these stores will be queried. If None, all stores
             (excluding Solr) will be queried.
+        max_chunks: Maximum number of chunks to return. If None, uses
+            constants.BYOK_RAG_MAX_CHUNKS.
 
     Returns:
         Tuple containing:
         - rag_chunks: RAG chunks from BYOK RAG
         - referenced_documents: Documents referenced in BYOK RAG results
     """
-    limit = configuration.rag.byok.max_chunks
+    limit = max_chunks if max_chunks is not None else constants.BYOK_RAG_MAX_CHUNKS
     rag_chunks: list[RAGChunk] = []
     referenced_documents: list[ReferencedDocument] = []
 
@@ -484,17 +470,17 @@ async def _fetch_byok_rag(  # pylint: disable=too-many-locals
     # Per-request IDs are intersected with the config to prevent triggering inline RAG
     # for stores not explicitly configured for inline use.
     if vector_store_ids is None:
-        rag_ids_to_query = configuration.rag.retrieval.inline.sources
+        rag_ids_to_query = configuration.configuration.rag.inline
     else:
         rag_ids_to_query = [
             v
             for v in vector_store_ids
-            if v in set(configuration.rag.retrieval.inline.sources)
+            if v in set(configuration.configuration.rag.inline)
         ]
 
-    # Translate user-facing rag_ids to OGX ids
+    # Translate user-facing rag_ids to llama-stack ids
     vector_store_ids_to_query: list[str] = resolve_vector_store_ids(
-        rag_ids_to_query, configuration.rag.byok.stores
+        rag_ids_to_query, configuration.configuration.byok_rag
     )
 
     # Request-level override: filter out Solr store, use the rest
@@ -510,9 +496,8 @@ async def _fetch_byok_rag(  # pylint: disable=too-many-locals
         return rag_chunks, referenced_documents
 
     try:
-        # Get per-store mappings from configuration
+        # Get score multiplier and rag_id mappings
         score_multiplier_mapping = configuration.score_multiplier_mapping
-        relevance_cutoff_mapping = configuration.relevance_cutoff_mapping
         rag_id_mapping = configuration.rag_id_mapping
 
         # Query all vector stores in parallel
@@ -523,10 +508,6 @@ async def _fetch_byok_rag(  # pylint: disable=too-many-locals
                     vector_store_id,
                     query,
                     score_multiplier_mapping.get(vector_store_id, 1.0),
-                    relevance_cutoff_mapping.get(
-                        vector_store_id,
-                        constants.DEFAULT_BYOK_RAG_RELEVANCE_CUTOFF_SCORE,
-                    ),
                     max_chunks=limit,
                 )
                 for vector_store_id in vector_store_ids_to_query
@@ -562,16 +543,14 @@ async def _fetch_byok_rag(  # pylint: disable=too-many-locals
         # Extract referenced documents from BYOK RAG chunks (now with resolved sources)
         referenced_documents = _process_byok_rag_chunks_for_documents(top_results)
 
-    except (
-        Exception  # pylint: disable=broad-exception-caught
-    ) as e:  # noqa: BLE001 RUF100
+    except Exception as e:  # pylint: disable=broad-exception-caught
         logger.warning("Failed to perform BYOK RAG search: %s", e)
         logger.debug("BYOK RAG error details: %s", traceback.format_exc())
 
     return rag_chunks, referenced_documents
 
 
-async def _fetch_okp_rag(  # pylint: disable=too-many-locals
+async def _fetch_solr_rag(  # pylint: disable=too-many-locals
     client: AsyncOgxClient,
     query: str,
     solr: Optional[SolrVectorSearchRequest] = None,
@@ -582,6 +561,8 @@ async def _fetch_okp_rag(  # pylint: disable=too-many-locals
         client: The AsyncOgxClient to use for the request
         query: The user's query
         solr: Structured Solr inline RAG request from the API (optional).
+        max_chunks: Maximum number of chunks to return. If None, uses
+            constants.OKP_RAG_MAX_CHUNKS.
 
     Returns:
         Tuple containing:
@@ -590,7 +571,7 @@ async def _fetch_okp_rag(  # pylint: disable=too-many-locals
     """
     rag_chunks: list[RAGChunk] = []
     referenced_documents: list[ReferencedDocument] = []
-    limit = configuration.rag.okp.max_chunks
+    limit = constants.OKP_RAG_MAX_CHUNKS
 
     if not _is_solr_enabled():
         logger.info("OKP vector IO is disabled, skipping OKP search")
@@ -641,9 +622,7 @@ async def _fetch_okp_rag(  # pylint: disable=too-many-locals
                     len(rag_chunks),
                 )
 
-    except (
-        Exception  # pylint: disable=broad-exception-caught
-    ) as e:  # noqa: BLE001 RUF100
+    except Exception as e:  # pylint: disable=broad-exception-caught
         logger.warning("Failed to query OKP for chunks: %s", e)
         logger.debug("OKP query error details: %s", traceback.format_exc())
 
@@ -673,79 +652,58 @@ async def build_rag_context(  # pylint: disable=too-many-locals,too-many-branche
     Returns:
         RAGContext containing formatted context text and referenced documents
     """
-    with tracer.start_as_current_span("rag.retrieve") as span:
-        # Set RAG input attribute
-        span.set_attribute(SpanAttributes.RAG_INPUT, anonymize_value(query))
+    if moderation_decision == "blocked":
+        return RAGContext()
 
-        if moderation_decision == "blocked":
-            span.set_attribute(SpanAttributes.RAG_SOURCES_COUNT, 0)
-            return RAGContext()
+    top_k = constants.INLINE_RAG_MAX_CHUNKS
 
-        top_k = configuration.rag.retrieval.inline.max_chunks
+    # Fetch from each source using per-source limits for the reranking pool
+    byok_chunks_task = _fetch_byok_rag(
+        client, query, vector_store_ids, max_chunks=constants.BYOK_RAG_MAX_CHUNKS
+    )
+    solr_chunks_task = _fetch_solr_rag(client, query, solr)
 
-        # Fetch from each source using per-source limits for the reranking pool
-        byok_chunks_task = _fetch_byok_rag(client, query, vector_store_ids)
-        solr_chunks_task = _fetch_okp_rag(client, query, solr)
+    (byok_chunks, byok_documents), (solr_chunks, solr_documents) = await asyncio.gather(
+        byok_chunks_task, solr_chunks_task
+    )
 
-        (byok_chunks, byok_documents), (solr_chunks, solr_documents) = (
-            await asyncio.gather(byok_chunks_task, solr_chunks_task)
+    # Merge chunks
+    merged = byok_chunks + solr_chunks
+
+    # Rerank full pool with cross-encoder if enabled; then take top_k
+    if configuration.reranker.enabled:
+        logger.info(
+            "Reranker enabled: processing %d chunks with model '%s'",
+            len(merged),
+            configuration.reranker.model,
         )
-
-        # Merge chunks
-        merged = byok_chunks + solr_chunks
-
-        # Rerank full pool with cross-encoder if enabled; then take top_k
-        if configuration.reranker and configuration.reranker.enabled:
-            logger.info(
-                "Reranker enabled: processing %d chunks with model '%s'",
-                len(merged),
-                configuration.reranker.model,
-            )
-            reranked = await rerank_chunks_with_cross_encoder(
-                query, merged, len(merged)
-            )
-            context_chunks = apply_byok_rerank_boost(reranked)[:top_k]
-            logger.info(
-                "Reranker completed: returned %d top chunks after BYOK boost",
-                len(context_chunks),
-            )
-        else:
-            logger.info("Reranker disabled: using original vector similarity scores")
-            context_chunks = merged[:top_k]
-
-        context_text = _format_rag_context(context_chunks, query)
-
-        logger.debug(
-            "Inline RAG context built: %d chunks (after rerank), %d characters",
+        reranked = await rerank_chunks_with_cross_encoder(query, merged, len(merged))
+        context_chunks = apply_byok_rerank_boost(reranked)[:top_k]
+        logger.info(
+            "Reranker completed: returned %d top chunks after BYOK boost",
             len(context_chunks),
-            len(context_text),
         )
+    else:
+        logger.info("Reranker disabled: using original vector similarity scores")
+        context_chunks = merged[:top_k]
 
-        # Filter documents to match final chunks (after reranking)
-        all_documents = byok_documents + solr_documents
-        top_documents = _filter_documents_for_chunks(all_documents, context_chunks)
+    context_text = _format_rag_context(context_chunks, query)
 
-        # Set RAG attributes
-        set_span_attributes(
-            span,
-            {
-                SpanAttributes.RAG_SOURCES_COUNT: len(top_documents),
-                SpanAttributes.RAG_SOURCES: [doc.doc_url for doc in top_documents],
-            },
-        )
+    logger.debug(
+        "Inline RAG context built: %d chunks (after rerank), %d characters",
+        len(context_chunks),
+        len(context_text),
+    )
 
-        # Emit RAG retrieval completed event
-        add_span_event(
-            span,
-            SpanEvents.RAG_RETRIEVAL_COMPLETED,
-            {"rag.chunks.count": len(context_chunks)},
-        )
+    # Filter documents to match final chunks (after reranking)
+    all_documents = byok_documents + solr_documents
+    top_documents = _filter_documents_for_chunks(all_documents, context_chunks)
 
-        return RAGContext(
-            context_text=context_text,
-            rag_chunks=context_chunks,
-            referenced_documents=top_documents,
-        )
+    return RAGContext(
+        context_text=context_text,
+        rag_chunks=context_chunks,
+        referenced_documents=top_documents,
+    )
 
 
 def _join_okp_doc_url(base_url: AnyUrl, reference: Optional[str]) -> str:

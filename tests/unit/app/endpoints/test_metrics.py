@@ -1,12 +1,7 @@
 """Unit tests for the /metrics REST API endpoint."""
 
-from typing import Any
-
 import pytest
 from fastapi import Request
-from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
-    InMemorySpanExporter,
-)
 from pytest_mock import MockerFixture
 
 import metrics  # noqa: F401 pylint: disable=unused-import
@@ -46,26 +41,3 @@ async def test_metrics_endpoint(mocker: MockerFixture) -> None:
     assert "# TYPE ls_llm_token_sent_total counter" in response_body
     assert "# TYPE ls_llm_token_received_total counter" in response_body
     assert "# TYPE ls_started_in_degraded_mode gauge" in response_body
-
-
-@pytest.mark.asyncio
-async def test_metrics_emits_otel_span(
-    mocker: MockerFixture,
-    otel: tuple[Any, InMemorySpanExporter],
-) -> None:
-    """Test that the metrics handler emits a lightweight span with HTTP status."""
-    tracer, exporter = otel
-    mocker.patch("app.endpoints.metrics.tracer", tracer)
-    mock_authorization_resolvers(mocker)
-
-    request = Request(scope={"type": "http"})
-    auth: AuthTuple = ("uid", "uname", True, "tok")
-
-    await metrics_endpoint_handler(auth=auth, request=request)
-
-    spans = exporter.get_finished_spans()
-    assert len(spans) == 1
-    span = spans[0]
-    assert span.name == "metrics.handle_request"
-    assert span.attributes is not None
-    assert span.attributes["http.status_code"] == 200
