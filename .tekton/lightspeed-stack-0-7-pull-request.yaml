@@ -2,22 +2,19 @@ apiVersion: tekton.dev/v1
 kind: PipelineRun
 metadata:
   annotations:
-    # Cross-repo nudge: after each push build, the Konflux nudge controller
-    # opens an MR in lscore-deploy (gitlab.cee.redhat.com/rhel-lightspeed/lscore-deploy)
-    # to bump the image digest in openshift/lightspeed-stack.yml. See RSPEED-3082.
-    build.appstudio.openshift.io/build-nudge-files: "openshift/lightspeed-stack.yml"
     build.appstudio.openshift.io/repo: https://github.com/lightspeed-core/lightspeed-stack?rev={{revision}}
     build.appstudio.redhat.com/commit_sha: '{{revision}}'
+    build.appstudio.redhat.com/pull_request_number: '{{pull_request_number}}'
     build.appstudio.redhat.com/target_branch: '{{target_branch}}'
-    pipelinesascode.tekton.dev/cancel-in-progress: "false"
+    pipelinesascode.tekton.dev/cancel-in-progress: "true"
     pipelinesascode.tekton.dev/max-keep-runs: "3"
-    pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch
+    pipelinesascode.tekton.dev/on-cel-expression: event == "pull_request" && target_branch
       == "main"
   labels:
-    appstudio.openshift.io/application: lightspeed-core-0-8
-    appstudio.openshift.io/component: lightspeed-stack-0-8
+    appstudio.openshift.io/application: lightspeed-core-0-7
+    appstudio.openshift.io/component: lightspeed-stack-0-7
     pipelines.appstudio.openshift.io/type: build
-  name: lightspeed-stack-0-8-on-push
+  name: lightspeed-stack-0-7-on-pull-request
   namespace: lightspeed-core-tenant
 spec:
   params:
@@ -26,7 +23,9 @@ spec:
   - name: revision
     value: '{{revision}}'
   - name: output-image
-    value: quay.io/redhat-user-workloads/lightspeed-core-tenant/lightspeed-stack-0-8:{{revision}}
+    value: quay.io/redhat-user-workloads/lightspeed-core-tenant/lightspeed-stack-0-7:on-pr-{{revision}}
+  - name: image-expires-after
+    value: 5d
   - name: build-platforms
     value:
     - linux/x86_64
@@ -36,32 +35,32 @@ spec:
   - name: prefetch-input
     value: |
       [
-        {
-          "type": "rpm",
-          "path": ".konflux"
-        },
-        {
-          "type": "generic",
-          "path": ".konflux"
-        },
-        {
-          "type": "pip",
-          "path": ".konflux",
-          "requirements_files": [
-            "requirements.hashes.wheel.txt",
-            "requirements.hashes.wheel.pypi.txt",
-            "requirements.hashes.source.txt",
-            "requirements.hermetic.txt"
-          ],
-          "requirements_build_files": ["requirements-build.txt"],
-          "binary": {
-            "packages": "a2a-sdk,accelerate,aiofile,aiohappyeyeballs,aiohttp,aiosignal,aiosqlite,annotated-doc,annotated-types,anthropic,anyio,argcomplete,asgiref,asyncpg,attrs,authlib,autoevals,azure-core,azure-identity,beartype,cachetools,caio,certifi,cffi,chardet,charset-normalizer,chevron,click,cryptography,datasets,defusedxml,dill,distro,dnspython,docstring-parser,durationpy,einops,email-validator,emoji,exceptiongroup,executing,faiss-cpu,fastapi,fastmcp-slim,fastuuid,filelock,fire,frozenlist,fsspec,google-api-core,google-auth,google-cloud-core,google-cloud-storage,google-crc32c,google-genai,google-resumable-media,googleapis-common-protos,greenlet,griffelib,grpc-google-iam-v1,grpcio,grpcio-status,h11,hf-xet,httpcore,httpcore2,httpx,httpx-sse,httpx2,huggingface-hub,idna,importlib-metadata,jaraco-classes,jaraco-context,jaraco-functools,jeepney,jinja2,jiter,joblib,joserfc,jsonpath-ng,jsonschema,jsonschema-specifications,keyring,kubernetes,langdetect,litellm,logfire-api,markdown-it-py,markupsafe,maturin,mcp,mdurl,more-itertools,mpmath,msal,msal-extensions,multidict,multiprocess,narwhals,networkx,nltk,numpy,oauthlib,ogx,ogx-api,ogx-client,openai,opentelemetry-api,opentelemetry-distro,opentelemetry-exporter-otlp,opentelemetry-exporter-otlp-proto-common,opentelemetry-exporter-otlp-proto-grpc,opentelemetry-exporter-otlp-proto-http,opentelemetry-instrumentation,opentelemetry-instrumentation-asgi,opentelemetry-instrumentation-fastapi,opentelemetry-instrumentation-httpx,opentelemetry-proto,opentelemetry-sdk,opentelemetry-semantic-conventions,opentelemetry-util-http,packaging,pandas,peft,pip,platformdirs,polyleven,prometheus-client,prompt-toolkit,propcache,proto-plus,protobuf,psutil,psycopg2-binary,py-key-value-aio,pyaml,pyarrow,pyasn1,pyasn1-modules,pycparser,pydantic,pydantic-core,pydantic-settings,pygments,pyjwt,pypdf,pyperclip,python-dateutil,python-dotenv,python-multipart,pyyaml,referencing,regex,requests,requests-oauthlib,rich,rpds-py,safetensors,scikit-learn,scipy,secretstorage,semver,sentence-transformers,sentry-sdk,setuptools,shellingham,six,sniffio,sqlalchemy,sse-starlette,starlette,structlog,sympy,tenacity,termcolor,threadpoolctl,tiktoken,tokenizers,torch,tqdm,transformers,tree-sitter,triton,trl,truststore,typer,typing-extensions,typing-inspection,urllib3,uv,uv-build,uvicorn,wcwidth,websocket-client,websockets,wrapt,xxhash,yarl,zipp,zstandard",
-            "os": "linux",
-            "arch": "x86_64,aarch64",
-            "py_version": 312
-          }
-        }
-      ]
+         {
+           "type": "rpm",
+           "path": ".konflux"
+         },
+         {
+           "type": "generic",
+           "path": ".konflux"
+         },
+         {
+           "type": "pip",
+           "path": ".konflux",
+           "requirements_files": [
+             "requirements.hashes.wheel.txt",
+             "requirements.hashes.wheel.pypi.txt",
+             "requirements.hashes.source.txt",
+             "requirements.hermetic.txt"
+           ],
+           "requirements_build_files": ["requirements-build.txt"],
+           "binary": {
+             "packages": "a2a-sdk,accelerate,aiofile,aiohappyeyeballs,aiohttp,aiosignal,aiosqlite,annotated-doc,annotated-types,anthropic,anyio,argcomplete,asgiref,asyncpg,attrs,authlib,autoevals,azure-core,azure-identity,beartype,cachetools,caio,certifi,cffi,chardet,charset-normalizer,chevron,click,cryptography,datasets,defusedxml,dill,distro,dnspython,docstring-parser,durationpy,einops,email-validator,emoji,exceptiongroup,executing,faiss-cpu,fastapi,fastmcp-slim,fastuuid,filelock,fire,frozenlist,fsspec,google-api-core,google-auth,google-cloud-core,google-cloud-storage,google-crc32c,google-genai,google-resumable-media,googleapis-common-protos,greenlet,griffelib,grpc-google-iam-v1,grpcio,grpcio-status,h11,hf-xet,httpcore,httpcore2,httpx,httpx-sse,httpx2,huggingface-hub,idna,importlib-metadata,jaraco-classes,jaraco-context,jaraco-functools,jeepney,jinja2,jiter,joblib,joserfc,jsonpath-ng,jsonschema,jsonschema-specifications,keyring,kubernetes,langdetect,litellm,logfire-api,markdown-it-py,markupsafe,maturin,mcp,mdurl,more-itertools,mpmath,msal,msal-extensions,multidict,multiprocess,narwhals,networkx,nltk,numpy,oauthlib,ogx,ogx-api,ogx-client,openai,opentelemetry-api,opentelemetry-distro,opentelemetry-exporter-otlp,opentelemetry-exporter-otlp-proto-common,opentelemetry-exporter-otlp-proto-grpc,opentelemetry-exporter-otlp-proto-http,opentelemetry-instrumentation,opentelemetry-instrumentation-asgi,opentelemetry-instrumentation-fastapi,opentelemetry-instrumentation-httpx,opentelemetry-proto,opentelemetry-sdk,opentelemetry-semantic-conventions,opentelemetry-util-http,packaging,pandas,peft,pip,platformdirs,polyleven,prometheus-client,prompt-toolkit,propcache,proto-plus,protobuf,psutil,psycopg2-binary,py-key-value-aio,pyaml,pyarrow,pyasn1,pyasn1-modules,pycparser,pydantic,pydantic-core,pydantic-settings,pygments,pyjwt,pypdf,pyperclip,python-dateutil,python-dotenv,python-multipart,pyyaml,referencing,regex,requests,requests-oauthlib,rich,rpds-py,safetensors,scikit-learn,scipy,secretstorage,semver,sentence-transformers,sentry-sdk,setuptools,shellingham,six,sniffio,sqlalchemy,sse-starlette,starlette,structlog,sympy,tenacity,termcolor,threadpoolctl,tiktoken,tokenizers,torch,tqdm,transformers,tree-sitter,triton,trl,truststore,typer,typing-extensions,typing-inspection,urllib3,uv,uv-build,uvicorn,wcwidth,websocket-client,websockets,wrapt,xxhash,yarl,zipp,zstandard",
+             "os": "linux",
+             "arch": "x86_64,aarch64",
+             "py_version": 312
+           }
+         }
+       ]
   - name: hermetic
     value: 'true'
   - name: dockerfile
@@ -618,9 +617,6 @@ spec:
         value: $(tasks.build-image-index.results.IMAGE_URL)
       - name: IMAGE_DIGEST
         value: $(tasks.build-image-index.results.IMAGE_DIGEST)
-      - name: ADDITIONAL_TAGS
-        value:
-          - $(tasks.clone-repository.results.short-commit)
       runAfter:
       - build-image-index
       taskRef:
@@ -686,7 +682,7 @@ spec:
     pipeline: 4h
     tasks: 4h
   taskRunTemplate:
-    serviceAccountName: build-pipeline-lightspeed-stack-0-8
+    serviceAccountName: build-pipeline-lightspeed-stack-0-7
   workspaces:
   - name: git-auth
     secret:
