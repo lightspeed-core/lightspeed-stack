@@ -41,6 +41,8 @@ class ActiveStream:
         on_interrupt: Optional async callback invoked when the stream
             is cancelled, scheduled as a separate task so it runs
             regardless of where the ``CancelledError`` lands.
+        conversation_id: Conversation the streaming request belongs to,
+            surfaced for observability of interrupt requests.
     """
 
     user_id: str
@@ -48,6 +50,7 @@ class ActiveStream:
     on_interrupt: Optional[Callable[[], Coroutine[Any, Any, None]]] = field(
         default=None, repr=False
     )
+    conversation_id: Optional[str] = None
 
 
 class CancelStreamResult(str, Enum):
@@ -73,6 +76,7 @@ class StreamInterruptRegistry(metaclass=Singleton):
         user_id: str,
         task: asyncio.Task[None],
         on_interrupt: Optional[Callable[[], Coroutine[Any, Any, None]]] = None,
+        conversation_id: Optional[str] = None,
     ) -> None:
         """Register an active stream task for interrupt support.
 
@@ -83,10 +87,15 @@ class StreamInterruptRegistry(metaclass=Singleton):
             task: Asyncio task associated with the stream.
             on_interrupt: Optional async callback to run when the stream
                 is cancelled, executed in a separate task.
+            conversation_id: Conversation the stream belongs to, retained
+                for observability of subsequent interrupt requests.
         """
         with self._lock:
             self._streams[request_id] = ActiveStream(
-                user_id=user_id, task=task, on_interrupt=on_interrupt
+                user_id=user_id,
+                task=task,
+                on_interrupt=on_interrupt,
+                conversation_id=conversation_id,
             )
 
     def cancel_stream(self, request_id: str, user_id: str) -> CancelStreamResult:
@@ -384,6 +393,7 @@ def register_interrupt_callback(
             user_id=context.user_id,
             task=current_task,
             on_interrupt=_on_interrupt,
+            conversation_id=context.conversation_id,
         )
     else:
         logger.warning(
