@@ -1,11 +1,11 @@
 services:
   # Red Hat OGX distribution with FAISS
-  llama-stack:
+  ogx:
     build:
       context: .
       dockerfile: deploy/ogx/test.containerfile
     platform: linux/amd64
-    container_name: llama-stack
+    container_name: ogx
     ports:
       - "8321:8321"  # Expose OGX on 8321 (adjust if needed)
     depends_on:
@@ -14,7 +14,7 @@ services:
     volumes:
       # Used in legacy mode only: with a unified lightspeed-stack.yaml (one
       # carrying inference.providers / vector_store.providers / a
-      # llama_stack.config block) the entrypoint synthesizes the run config
+      # ogx.config block) the entrypoint synthesizes the run config
       # from lightspeed-stack.yaml and this mount is ignored
       - ./run.yaml:/opt/app-root/run.yaml:z
       # Host copies so `docker compose up` picks up script changes without rebuilding OGX
@@ -24,7 +24,7 @@ services:
       - ${GCP_KEYS_PATH:-./tmp/.gcp-keys-dummy}:/opt/app-root/.gcp-keys:ro
       - ./lightspeed-stack.yaml:/opt/app-root/lightspeed-stack.yaml:ro,z
       # Writable OGX storage (rag/ work copy is re-seeded by entrypoint each start)
-      - llama-storage:/opt/app-root/src/.llama/storage
+      - ogx-storage:/opt/app-root/src/.llama/storage
       # Read-only e2e FAISS fixtures — never mount these as the live KV_RAG_PATH
       - ./tests/e2e/rag:/opt/app-root/src/.llama/storage/.e2e-rag-seed:ro,z
       - mock-tls-certs:/certs:ro
@@ -80,8 +80,8 @@ services:
       - SOLR_CONTENT_FIELD=${SOLR_CONTENT_FIELD:-}
       - SOLR_EMBEDDING_MODEL=${SOLR_EMBEDDING_MODEL:-}
       - SOLR_EMBEDDING_DIM=${SOLR_EMBEDDING_DIM:-}
-      #required for enrichment
-      - E2E_LLAMA_HOSTNAME=${E2E_LLAMA_HOSTNAME:-llama-stack}
+      # Required for enrichment; E2E_LLAMA_HOSTNAME is the external/GitHub Actions name
+      - E2E_OGX_HOSTNAME=${E2E_OGX_HOSTNAME:-${E2E_LLAMA_HOSTNAME:-ogx}}
     networks:
       - lightspeednet
     healthcheck:
@@ -111,9 +111,9 @@ services:
       - CLIENT_SECRET=${CLIENT_SECRET:-}
       # FAISS vector store ID (used by inline RAG config)
       - FAISS_VECTOR_STORE_ID=${FAISS_VECTOR_STORE_ID:-}
-      # Substituted in mounted lightspeed-stack.yaml (llama_stack.url); GitHub Actions sets via vars
-      - E2E_LLAMA_HOSTNAME=${E2E_LLAMA_HOSTNAME:-llama-stack}
-      - E2E_LLAMA_PORT=${E2E_LLAMA_PORT:-8321}
+      # Substituted in mounted lightspeed-stack.yaml (ogx.url); GitHub Actions sets E2E_LLAMA_HOSTNAME
+      - E2E_OGX_HOSTNAME=${E2E_OGX_HOSTNAME:-${E2E_LLAMA_HOSTNAME:-ogx}}
+      - E2E_OGX_PORT=${E2E_OGX_PORT:-${E2E_LLAMA_PORT:-8321}}
       # OpenTelemetry configuration (tracing disabled by default)
       - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT:-}
       - OTEL_EXPORTER_OTLP_PROTOCOL=${OTEL_EXPORTER_OTLP_PROTOCOL:-}
@@ -121,7 +121,7 @@ services:
       - OTEL_ANONYMIZATION_SECRET=${OTEL_ANONYMIZATION_SECRET:-lightspeed-stack-otel-anonymization-dev-default}
       - OTEL_SDK_DISABLED=${OTEL_SDK_DISABLED:-true}
     depends_on:
-        llama-stack:
+        ogx:
           condition: service_healthy
         mock-mcp:
           condition: service_healthy
@@ -186,7 +186,7 @@ services:
 
 
 volumes:
-  llama-storage:
+  ogx-storage:
   mock-tls-certs:
 
 networks:

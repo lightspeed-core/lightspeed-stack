@@ -564,7 +564,7 @@ async def append_turn_items_to_conversation(
 
 async def get_all_conversation_items(
     client: AsyncOgxClient,
-    conversation_id_llama_stack: str,
+    conversation_id_ogx: str,
 ) -> list[ConversationItem]:
     """Fetch all items for a conversation (Conversations API), paginating as needed.
 
@@ -581,7 +581,7 @@ async def get_all_conversation_items(
     try:
         while has_more:
             page = await client.items.list(
-                conversation_id=conversation_id_llama_stack,
+                conversation_id=conversation_id_ogx,
                 order="asc",
                 after=after,
             )

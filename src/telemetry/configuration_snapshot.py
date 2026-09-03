@@ -647,7 +647,7 @@ def _extract_snapshot_fields(
 # =============================================================================
 
 
-def _extract_store_info(ls_config: dict[str, Any], store_name: str) -> dict[str, Any]:
+def _extract_store_info(ogx_config: dict[str, Any], store_name: str) -> dict[str, Any]:
     """Extract store type and db_path from OGX storage configuration.
 
     Resolves the store → backend → type/db_path chain in the OGX
@@ -655,14 +655,14 @@ def _extract_store_info(ls_config: dict[str, Any], store_name: str) -> dict[str,
 
     Parameters:
     ----------
-        ls_config: The parsed OGX configuration dict.
+        ogx_config: The parsed OGX configuration dict.
         store_name: Name of the store to look up (e.g., "inference", "metadata").
 
     Returns:
     -------
         A dict with 'type' and 'db_path' keys, plus 'namespace' for metadata store.
     """
-    store = get_nested_value(ls_config, f"storage.stores.{store_name}")
+    store = get_nested_value(ogx_config, f"storage.stores.{store_name}")
     if store is None or not isinstance(store, dict):
         return {"type": NOT_CONFIGURED, "db_path": NOT_CONFIGURED}
 
@@ -670,7 +670,7 @@ def _extract_store_info(ls_config: dict[str, Any], store_name: str) -> dict[str,
     if backend_name is None:
         return {"type": NOT_CONFIGURED, "db_path": NOT_CONFIGURED}
 
-    backends = get_nested_value(ls_config, "storage.backends") or {}
+    backends = get_nested_value(ogx_config, "storage.backends") or {}
     backend = backends.get(backend_name, {})
 
     result: dict[str, Any] = {
@@ -750,15 +750,15 @@ async def build_ogx_snapshot(
     if config_path is None:
         return {"status": NOT_AVAILABLE}
 
-    ls_config = await asyncio.to_thread(_read_yaml_file, config_path)
+    ogx_config = await asyncio.to_thread(_read_yaml_file, config_path)
 
-    if not isinstance(ls_config, dict):
+    if not isinstance(ogx_config, dict):
         logger.warning("OGX config is not a dict, skipping snapshot")
         return {"status": NOT_AVAILABLE}
 
-    snapshot = _extract_snapshot_fields(ls_config, OGX_FIELDS)
-    snapshot["inference_store"] = _extract_store_info(ls_config, "inference")
-    snapshot["metadata_store"] = _extract_store_info(ls_config, "metadata")
+    snapshot = _extract_snapshot_fields(ogx_config, OGX_FIELDS)
+    snapshot["inference_store"] = _extract_store_info(ogx_config, "inference")
+    snapshot["metadata_store"] = _extract_store_info(ogx_config, "metadata")
     return snapshot
 
 

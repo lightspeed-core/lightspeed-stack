@@ -351,7 +351,7 @@ None at the REST API surface. Internal API additions in
 - `migrate_config_dumb(run_yaml_path, lightspeed_yaml_path, output_path)
   -> None` — dumb-mode migration (lossless round-trip).
 - `deep_merge_list_replace(base, overlay) -> dict` — merge helper.
-- `apply_high_level_inference(ls_config, inference)` — high-level expansion.
+- `apply_high_level_inference(ogx_config, inference)` — high-level expansion.
 - `load_default_baseline() -> dict` — loads `src/data/default_run.yaml`.
 
 CLI additions in `src/lightspeed_stack.py`:
@@ -474,11 +474,11 @@ not have had a full release with a working migration path. Releases:
 3. Run `dedupe_providers_vector_io` on the baseline.
 4. Apply existing enrichment: `enrich_byok_rag`, `enrich_solr` (Azure
    Entra ID intentionally stays separate because it's a `.env`
-   side-effect, not an `ls_config` mutation).
+   side-effect, not an `ogx_config` mutation).
 5. If top-level `inference.providers` is non-empty →
-   `apply_high_level_inference(ls_config, lcs_config["inference"])`.
+   `apply_high_level_inference(ogx_config, lcs_config["inference"])`.
 6. If `unified` and `unified.native_override` non-empty →
-   `deep_merge_list_replace(ls_config, native_override)`.
+   `deep_merge_list_replace(ogx_config, native_override)`.
 7. `dedupe_providers_vector_io` again for good measure.
 8. Return the final dict.
 

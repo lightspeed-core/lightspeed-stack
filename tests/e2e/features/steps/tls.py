@@ -17,10 +17,10 @@ from behave.runner import Context
 
 from tests.e2e.utils.ogx_config_utils import (
     backup_ogx_config,
-    clear_llama_config_backup,
-    load_llama_config,
-    reset_llama_run_config_to_pipeline_default,
-    write_llama_config,
+    clear_ogx_config_backup,
+    load_ogx_config,
+    reset_ogx_run_config_to_pipeline_default,
+    write_ogx_config,
 )
 from tests.e2e.utils.prow_utils import get_namespace, restart_pod, run_e2e_ops
 from tests.e2e.utils.utils import is_prow_environment
@@ -38,10 +38,10 @@ _TLS_MODEL_RESOURCE: dict[str, str] = {
 
 def reset_tls_prow_state() -> None:
     """Reset per-feature TLS test state (call from ``before_feature``)."""
-    os.environ.pop("E2E_COPY_MOCK_TLS_CERTS_TO_LLAMA", None)
+    os.environ.pop("E2E_COPY_MOCK_TLS_CERTS_TO_OGX", None)
     os.environ.pop("E2E_SYNC_MOCK_TLS_CERTS", None)
     os.environ.pop("E2E_MOCK_TLS_INFERENCE_HOST", None)
-    clear_llama_config_backup()
+    clear_ogx_config_backup()
 
 
 def is_tls_feature_file(feature_filename: Optional[str]) -> bool:
@@ -64,11 +64,11 @@ def prepare_tls_feature_entry_on_prow(feature_filename: Optional[str] = None) ->
         return
     label = os.path.basename(feature_filename or "tls.feature")
     print(f"[{label}] Prow/Konflux entry: ensure mock TLS, reset run.yaml, warm OGX...")
-    reset_llama_run_config_to_pipeline_default()
+    reset_ogx_run_config_to_pipeline_default()
     _ensure_cluster_mock_tls_inference()
-    _prepare_tls_prow_llama_restart_env()
+    _prepare_tls_prow_ogx_restart_env()
     os.environ.pop("E2E_SYNC_MOCK_TLS_CERTS", None)
-    restart_pod("llama-stack")
+    restart_pod("ogx")
     print(f"[{label}] Prow/Konflux entry baseline complete", flush=True)
 
 
@@ -84,12 +84,12 @@ def is_tls_configuration_feature(context: Context) -> bool:
     return "TLS configuration" in name
 
 
-def _prepare_tls_prow_llama_restart_env() -> None:
-    """Set env for full llama pod recreate with mock TLS certs mounted."""
-    os.environ["E2E_COPY_MOCK_TLS_CERTS_TO_LLAMA"] = "1"
+def _prepare_tls_prow_ogx_restart_env() -> None:
+    """Set env for full OGX pod recreate with mock TLS certs mounted."""
+    os.environ["E2E_COPY_MOCK_TLS_CERTS_TO_OGX"] = "1"
 
 
-def _restart_lightspeed_after_llama_tls(context: Context) -> None:
+def _restart_lightspeed_after_ogx_tls(context: Context) -> None:
     """Restart LCS after OGX recreate so the in-process OGX client reconnects.
 
     TLS scenarios only change OGX run.yaml; LCS yaml is unchanged. Without this,
@@ -114,12 +114,12 @@ def _restart_lightspeed_after_llama_tls(context: Context) -> None:
     wait_for_lightspeed_stack_http_ready()
 
 
-def restart_llama_for_tls_feature(context: Context) -> None:
+def restart_ogx_for_tls_feature(context: Context) -> None:
     """Restart OGX for TLS tests (full pod recreate on Prow/Konflux)."""
     from tests.e2e.utils.utils import restart_container
 
     if is_prow_environment():
-        _prepare_tls_prow_llama_restart_env()
+        _prepare_tls_prow_ogx_restart_env()
         os.environ.pop("E2E_SYNC_MOCK_TLS_CERTS", None)
     scenario = getattr(getattr(context, "scenario", None), "name", "") or "?"
     feature_file = os.path.basename(
@@ -129,7 +129,7 @@ def restart_llama_for_tls_feature(context: Context) -> None:
         f"[{feature_file}] OGX restart: full recreate scenario={scenario!r}",
         flush=True,
     )
-    restart_container("llama-stack")
+    restart_container("ogx")
 
 
 def _cluster_mock_tls_inference_host() -> str:
@@ -173,7 +173,7 @@ def _ensure_cluster_mock_tls_inference() -> None:
     """Deploy mock TLS on Prow if missing; keep one pod for the whole tls suite.
 
     ``deploy-e2e-mock-tls-inference`` copies all PEMs into Secret ``e2e-mock-tls-certs``
-    once. Scenarios only change which cert path Llama uses in run.yaml.
+    once. Scenarios only change which cert path OGX uses in run.yaml.
     """
     if _mock_tls_inference_pod_ready():
         print("Using existing e2e-mock-tls-inference deployment")
@@ -239,7 +239,7 @@ def _configure_tls(tls_config: dict[str, Any], base_url: Optional[str] = None) -
         base_url: Optional base URL override for the provider.
     """
     backup_ogx_config()
-    config = load_llama_config()
+    config = load_ogx_config()
     provider = _ensure_tls_provider(config)
     provider.setdefault("config", {}).setdefault("network", {})
     if base_url is not None:
@@ -248,9 +248,9 @@ def _configure_tls(tls_config: dict[str, Any], base_url: Optional[str] = None) -
         provider["config"]["base_url"] = _mock_tls_base_url(_MOCK_TLS_PORT_TLS)
     provider.setdefault("config", {})["refresh_models"] = False
     provider["config"]["network"]["tls"] = tls_config
-    write_llama_config(config)
+    write_ogx_config(config)
     if is_prow_environment():
-        _prepare_tls_prow_llama_restart_env()
+        _prepare_tls_prow_ogx_restart_env()
 
 
 # --- Background Steps ---
@@ -270,25 +270,25 @@ def deploy_mock_tls_inference_server(context: Context) -> None:
 # --- TLS Configuration Steps ---
 
 
-@given("Llama Stack is configured with TLS verification disabled")
+@given("OGX is configured with TLS verification disabled")
 def configure_tls_verify_false(context: Context) -> None:
     """Configure run.yaml with TLS verify: false."""
     _configure_tls({"verify": False})
 
 
-@given("Llama Stack is configured with CA certificate verification")
+@given("OGX is configured with CA certificate verification")
 def configure_tls_verify_ca(context: Context) -> None:
     """Configure run.yaml with TLS verify: /certs/ca.crt."""
     _configure_tls({"verify": "/certs/ca.crt", "min_version": "TLSv1.2"})
 
 
-@given("Llama Stack is configured with TLS verification enabled")
+@given("OGX is configured with TLS verification enabled")
 def configure_tls_verify_true(context: Context) -> None:
     """Configure run.yaml with TLS verify: true (fails with self-signed certs)."""
     _configure_tls({"verify": True})
 
 
-@given("Llama Stack is configured with mutual TLS authentication")
+@given("OGX is configured with mutual TLS authentication")
 def configure_tls_mtls(context: Context) -> None:
     """Configure run.yaml with mutual TLS (client cert and key)."""
     _configure_tls(
@@ -302,7 +302,7 @@ def configure_tls_mtls(context: Context) -> None:
     )
 
 
-@given("Llama Stack is configured for mTLS without client certificate")
+@given("OGX is configured for mTLS without client certificate")
 def configure_tls_mtls_no_client_cert(context: Context) -> None:
     """Configure run.yaml for mTLS port without client cert (should fail)."""
     _configure_tls(
@@ -311,7 +311,7 @@ def configure_tls_mtls_no_client_cert(context: Context) -> None:
     )
 
 
-@given("Llama Stack is configured for mTLS with wrong client certificate")
+@given("OGX is configured for mTLS with wrong client certificate")
 def configure_tls_mtls_wrong_client_cert(context: Context) -> None:
     """Configure run.yaml for mTLS with invalid client cert (CA cert as client cert)."""
     _configure_tls(
@@ -324,7 +324,7 @@ def configure_tls_mtls_wrong_client_cert(context: Context) -> None:
     )
 
 
-@given("Llama Stack is configured for mTLS with untrusted client certificate")
+@given("OGX is configured for mTLS with untrusted client certificate")
 def configure_tls_mtls_untrusted_client_cert(context: Context) -> None:
     """Configure run.yaml with untrusted client certificate."""
     _configure_tls(
@@ -338,7 +338,7 @@ def configure_tls_mtls_untrusted_client_cert(context: Context) -> None:
     )
 
 
-@given("Llama Stack is configured for mTLS with expired client certificate")
+@given("OGX is configured for mTLS with expired client certificate")
 def configure_tls_mtls_expired_client_cert(context: Context) -> None:
     """Configure run.yaml with expired client certificate."""
     _configure_tls(
@@ -352,7 +352,7 @@ def configure_tls_mtls_expired_client_cert(context: Context) -> None:
     )
 
 
-@given("Llama Stack is configured with CA certificate and hostname mismatch server")
+@given("OGX is configured with CA certificate and hostname mismatch server")
 def configure_tls_ca_hostname_mismatch(context: Context) -> None:
     """Configure run.yaml to connect to hostname-mismatch server (should fail)."""
     _configure_tls(
@@ -361,7 +361,7 @@ def configure_tls_ca_hostname_mismatch(context: Context) -> None:
     )
 
 
-@given("Llama Stack is configured with mutual TLS and hostname mismatch server")
+@given("OGX is configured with mutual TLS and hostname mismatch server")
 def configure_tls_mtls_hostname_mismatch(context: Context) -> None:
     """Configure run.yaml with mTLS against hostname-mismatch server."""
     _configure_tls(
@@ -375,14 +375,14 @@ def configure_tls_mtls_hostname_mismatch(context: Context) -> None:
     )
 
 
-@given('Llama Stack is configured with CA certificate path "{path}"')
+@given('OGX is configured with CA certificate path "{path}"')
 def configure_tls_ca_path(context: Context, path: str) -> None:
     """Configure run.yaml with TLS verify pointing to a specific CA cert path."""
     _configure_tls({"verify": path})
 
 
 @given(
-    'Llama Stack is configured with TLS minimum version "{version}" and CA certificate path "{path}"'
+    'OGX is configured with TLS minimum version "{version}" and CA certificate path "{path}"'
 )
 def configure_tls_min_version_and_ca(context: Context, version: str, path: str) -> None:
     """Configure run.yaml with TLS minimum version and a specific CA cert path."""
@@ -390,7 +390,7 @@ def configure_tls_min_version_and_ca(context: Context, version: str, path: str) 
 
 
 @given(
-    'Llama Stack is configured with TLS minimum version "{version}" and hostname mismatch server'
+    'OGX is configured with TLS minimum version "{version}" and hostname mismatch server'
 )
 def configure_tls_min_version_hostname_mismatch(context: Context, version: str) -> None:
     """Configure run.yaml with TLS min version against hostname-mismatch server."""

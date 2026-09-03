@@ -1,7 +1,7 @@
 @cfg_degraded @skip-in-library-mode @Authorized
 Feature: Degraded mode startup
 
-  End-to-end scenarios that test LCORE startup behavior when llama-stack
+  End-to-end scenarios that test LCORE startup behavior when ogx
   is NOT available at startup time and allow_degraded_mode is enabled.
 
   These tests verify that LCORE metrics correctly reflect startup state
@@ -13,26 +13,26 @@ Feature: Degraded mode startup
       And REST API service prefix is /v1
       And the Lightspeed stack configuration directory is "tests/e2e/configuration"
 
-  Scenario: Degraded mode metric is set to 0.0 when started with llama-stack
+  Scenario: Degraded mode metric is set to 0.0 when started with ogx
     Given The service uses the lightspeed-stack-degraded.yaml configuration
       And The service is restarted
     When I access endpoint "metrics" using HTTP GET method
     Then The status code of the response is 200
     And The response body contains "ls_started_in_degraded_mode 0.0"
 
-  Scenario: Degraded mode metric is set to 1.0 when started without llama-stack
-    Given The llama-stack connection is disrupted
+  Scenario: Degraded mode metric is set to 1.0 when started without ogx
+    Given The ogx connection is disrupted
       And The service uses the lightspeed-stack-degraded.yaml configuration
-      # Konflux restart-lightspeed otherwise restores llama before LCS boots.
-      And The service is restarted without restoring llama-stack
+      # Konflux restart-lightspeed otherwise restores OGX before LCS boots.
+      And The service is restarted without restoring ogx
     When I access endpoint "metrics" using HTTP GET method
     Then The status code of the response is 200
     And The response body contains "ls_started_in_degraded_mode 1.0"
 
-  Scenario: Readiness endpoint reports degraded state when started without llama-stack
-    Given The llama-stack connection is disrupted
+  Scenario: Readiness endpoint reports degraded state when started without ogx
+    Given The ogx connection is disrupted
       And The service uses the lightspeed-stack-degraded.yaml configuration
-      And The service is restarted without restoring llama-stack
+      And The service is restarted without restoring ogx
     When I access endpoint "readiness" using HTTP GET method
     Then The status code of the response is 200
     And The body of the response, ignoring the "providers" field, is the following

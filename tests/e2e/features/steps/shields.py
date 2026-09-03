@@ -27,8 +27,8 @@ def shields_are_disabled_for_scenario(context: Context) -> None:
 
     try:
         saved = unregister_shield("llama-guard")
-        context.llama_guard_provider_id = saved[0] if saved else None
-        context.llama_guard_provider_shield_id = saved[1] if saved else None
+        context.ogx_guard_provider_id = saved[0] if saved else None
+        context.ogx_guard_provider_shield_id = saved[1] if saved else None
         context.shields_disabled_for_scenario = True
         print("Unregistered shield llama-guard for this scenario")
     except Exception as e:  # pylint: disable=broad-exception-caught

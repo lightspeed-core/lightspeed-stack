@@ -17,7 +17,7 @@ from models.config import (
 from utils.checks import InvalidConfigurationError
 
 # A complete, valid lightspeed-stack.yaml used as the base for root-model
-# (Configuration) validation tests; individual tests override its llama_stack
+# (Configuration) validation tests; individual tests override its ogx
 # and inference sections to exercise unified-vs-legacy mode detection.
 _BASE_CONFIG_PATH = "tests/configuration/lightspeed-stack.yaml"
 
@@ -28,68 +28,68 @@ def _base_config_dict() -> dict[str, Any]:
         return copy.deepcopy(yaml.safe_load(file))
 
 
-def test_llama_stack_configuration_constructor(subtests: SubTests) -> None:
+def test_ogx_cfg_constructor(subtests: SubTests) -> None:
     """
     Verify that the OgxConfiguration constructor accepts
     valid combinations of parameters and creates instances
     successfully.
     """
     with subtests.test(msg="Configuration for library mode"):
-        llama_stack_configuration = OgxConfiguration(
+        ogx_cfg = OgxConfiguration(
             use_as_library_client=True,
             library_client_config_path="tests/configuration/run.yaml",
             url=None,
             api_key=None,
             timeout=60,
         )
-        assert llama_stack_configuration is not None
-        assert llama_stack_configuration.allow_degraded_mode is False
-        assert llama_stack_configuration.max_retries == constants.DEFAULT_MAX_RETRIES
-        assert llama_stack_configuration.retry_delay == constants.DEFAULT_RETRY_DELAY
+        assert ogx_cfg is not None
+        assert ogx_cfg.allow_degraded_mode is False
+        assert ogx_cfg.max_retries == constants.DEFAULT_MAX_RETRIES
+        assert ogx_cfg.retry_delay == constants.DEFAULT_RETRY_DELAY
 
     with subtests.test(msg="Configuration for server mode"):
-        llama_stack_configuration = OgxConfiguration(
+        ogx_cfg = OgxConfiguration(
             use_as_library_client=False,
             url=AnyHttpUrl("http://localhost"),
             library_client_config_path=None,
             api_key=None,
             timeout=60,
         )
-        assert llama_stack_configuration is not None
-        assert llama_stack_configuration.allow_degraded_mode is False
-        assert llama_stack_configuration.max_retries == constants.DEFAULT_MAX_RETRIES
-        assert llama_stack_configuration.retry_delay == constants.DEFAULT_RETRY_DELAY
+        assert ogx_cfg is not None
+        assert ogx_cfg.allow_degraded_mode is False
+        assert ogx_cfg.max_retries == constants.DEFAULT_MAX_RETRIES
+        assert ogx_cfg.retry_delay == constants.DEFAULT_RETRY_DELAY
 
     with subtests.test(msg="Minimal configuration for server mode"):
-        llama_stack_configuration = OgxConfiguration(
+        ogx_cfg = OgxConfiguration(
             url="http://localhost"
         )  # pyright: ignore[reportCallIssue]
-        assert llama_stack_configuration is not None
-        assert llama_stack_configuration.allow_degraded_mode is False
-        assert llama_stack_configuration.max_retries == constants.DEFAULT_MAX_RETRIES
-        assert llama_stack_configuration.retry_delay == constants.DEFAULT_RETRY_DELAY
+        assert ogx_cfg is not None
+        assert ogx_cfg.allow_degraded_mode is False
+        assert ogx_cfg.max_retries == constants.DEFAULT_MAX_RETRIES
+        assert ogx_cfg.retry_delay == constants.DEFAULT_RETRY_DELAY
 
     with subtests.test(msg="Full configuration for server mode"):
-        llama_stack_configuration = OgxConfiguration(
+        ogx_cfg = OgxConfiguration(
             use_as_library_client=False, url="http://localhost", api_key="foo"
         )  # pyright: ignore[reportCallIssue]
-        assert llama_stack_configuration is not None
-        assert llama_stack_configuration.allow_degraded_mode is False
-        assert llama_stack_configuration.max_retries == constants.DEFAULT_MAX_RETRIES
-        assert llama_stack_configuration.retry_delay == constants.DEFAULT_RETRY_DELAY
+        assert ogx_cfg is not None
+        assert ogx_cfg.allow_degraded_mode is False
+        assert ogx_cfg.max_retries == constants.DEFAULT_MAX_RETRIES
+        assert ogx_cfg.retry_delay == constants.DEFAULT_RETRY_DELAY
 
     with subtests.test(msg="Degraded mode enabled"):
-        llama_stack_configuration = OgxConfiguration(
+        ogx_cfg = OgxConfiguration(
             url="http://localhost",
             allow_degraded_mode=True,
         )  # pyright: ignore[reportCallIssue]
-        assert llama_stack_configuration is not None
-        assert llama_stack_configuration.allow_degraded_mode is True
-        assert llama_stack_configuration.max_retries == constants.DEFAULT_MAX_RETRIES
-        assert llama_stack_configuration.retry_delay == constants.DEFAULT_RETRY_DELAY
+        assert ogx_cfg is not None
+        assert ogx_cfg.allow_degraded_mode is True
+        assert ogx_cfg.max_retries == constants.DEFAULT_MAX_RETRIES
+        assert ogx_cfg.retry_delay == constants.DEFAULT_RETRY_DELAY
 
 
-def test_llama_stack_configuration_no_run_yaml() -> None:
+def test_ogx_cfg_no_run_yaml() -> None:
     """
     Verify that constructing a OgxConfiguration with a
     non-existent or invalid library_client_config_path raises
@@ -105,7 +105,7 @@ def test_llama_stack_configuration_no_run_yaml() -> None:
         )  # pyright: ignore[reportCallIssue]
 
 
-def test_llama_stack_wrong_configuration_constructor_no_url() -> None:
+def test_ogx_wrong_configuration_constructor_no_url() -> None:
     """
     Verify that constructing a OgxConfiguration without
     specifying either a URL or enabling library client mode raises
@@ -118,7 +118,7 @@ def test_llama_stack_wrong_configuration_constructor_no_url() -> None:
         OgxConfiguration()  # pyright: ignore[reportCallIssue]
 
 
-def test_llama_stack_wrong_configuration_constructor_library_mode_off() -> None:
+def test_ogx_wrong_configuration_constructor_library_mode_off() -> None:
     """Test the OgxConfiguration constructor."""
     with pytest.raises(
         ValueError,
@@ -129,7 +129,7 @@ def test_llama_stack_wrong_configuration_constructor_library_mode_off() -> None:
         )  # pyright: ignore[reportCallIssue]
 
 
-def test_llama_stack_library_mode_without_source_is_allowed_on_nested_model() -> None:
+def test_ogx_library_mode_without_source_is_allowed_on_nested_model() -> None:
     """The nested model no longer requires a run source in library mode.
 
     A library-mode config may be driven by the root-level inference.providers,
@@ -146,7 +146,7 @@ def test_llama_stack_library_mode_without_source_is_allowed_on_nested_model() ->
     assert cfg.config is None
 
 
-def test_llama_stack_configuration_valid_http_url() -> None:
+def test_ogx_cfg_valid_http_url() -> None:
     """Test that valid HTTP URLs are accepted."""
     config = OgxConfiguration(
         url="http://localhost:8321"
@@ -155,55 +155,55 @@ def test_llama_stack_configuration_valid_http_url() -> None:
     assert str(config.url) == "http://localhost:8321/"
 
 
-def test_llama_stack_configuration_valid_https_url() -> None:
+def test_ogx_cfg_valid_https_url() -> None:
     """Test that valid HTTPS URLs are accepted."""
     config = OgxConfiguration(
-        url="https://llama-stack.example.com:8321"
+        url="https://ogx.example.com:8321"
     )  # pyright: ignore[reportCallIssue]
     assert config is not None
-    assert str(config.url) == "https://llama-stack.example.com:8321/"
+    assert str(config.url) == "https://ogx.example.com:8321/"
 
 
-def test_llama_stack_configuration_malformed_url_rejected() -> None:
+def test_ogx_cfg_malformed_url_rejected() -> None:
     """Test that malformed URLs are rejected with a ValidationError."""
     with pytest.raises(ValidationError, match="Input should be a valid URL"):
         OgxConfiguration(url="not-a-valid-url")  # pyright: ignore[reportCallIssue]
 
 
-def test_llama_stack_configuration_invalid_scheme_rejected() -> None:
+def test_ogx_cfg_invalid_scheme_rejected() -> None:
     """Test that URLs without http/https scheme are rejected."""
     with pytest.raises(ValidationError, match="URL scheme should be 'http' or 'https'"):
         OgxConfiguration(url="ftp://localhost:8321")  # pyright: ignore[reportCallIssue]
 
 
-def test_llama_stack_configuration_wrong_max_retries_count(subtests: SubTests) -> None:
+def test_ogx_cfg_wrong_max_retries_count(subtests: SubTests) -> None:
     """Test that malformed URLs are rejected with a ValidationError."""
     with subtests.test(msg="Configuration with zero max_retries count"):
         with pytest.raises(ValidationError, match="Input should be greater than 0"):
             OgxConfiguration(
-                url="https://llama-stack.example.com:8321",
+                url="https://ogx.example.com:8321",
                 max_retries=0,
             )  # pyright: ignore[reportCallIssue]
     with subtests.test(msg="Configuration with negative max_retries count"):
         with pytest.raises(ValidationError, match="Input should be greater than 0"):
             OgxConfiguration(
-                url="https://llama-stack.example.com:8321",
+                url="https://ogx.example.com:8321",
                 max_retries=-1,
             )  # pyright: ignore[reportCallIssue]
 
 
-def test_llama_stack_configuration_wrong_retry_delay_value(subtests: SubTests) -> None:
+def test_ogx_cfg_wrong_retry_delay_value(subtests: SubTests) -> None:
     """Test that malformed URLs are rejected with a ValidationError."""
     with subtests.test(msg="Configuration with zero retry_delay value"):
         with pytest.raises(ValidationError, match="Input should be greater than 0"):
             OgxConfiguration(
-                url="https://llama-stack.example.com:8321",
+                url="https://ogx.example.com:8321",
                 retry_delay=0,
             )  # pyright: ignore[reportCallIssue]
     with subtests.test(msg="Configuration with negative retry_delay value"):
         with pytest.raises(ValidationError, match="Input should be greater than 0"):
             OgxConfiguration(
-                url="https://llama-stack.example.com:8321",
+                url="https://ogx.example.com:8321",
                 retry_delay=-1,
             )  # pyright: ignore[reportCallIssue]
 
@@ -214,7 +214,7 @@ def test_llama_stack_configuration_wrong_retry_delay_value(subtests: SubTests) -
 
 
 def test_library_mode_with_unified_config_no_path_is_valid() -> None:
-    """Library mode driven by llama_stack.config needs no library_client_config_path."""
+    """Library mode driven by ogx.config needs no library_client_config_path."""
     cfg = OgxConfiguration(
         use_as_library_client=True,
         config=UnifiedOgxConfig(),
@@ -236,7 +236,7 @@ def test_unified_config_accepts_byo_llm_baseline() -> None:
 
 
 def test_root_rejects_config_and_legacy_path_together() -> None:
-    """A llama_stack.config block and a legacy path in one file fail at load (R3)."""
+    """A ogx.config block and a legacy path in one file fail at load (R3)."""
     config_dict = _base_config_dict()
     config_dict["ogx"] = {
         "use_as_library_client": True,
@@ -327,7 +327,7 @@ def test_root_accepts_unified_library_config() -> None:
 def test_root_accepts_inference_providers_only_no_config_block() -> None:
     """Library mode driven by inference.providers alone is valid (UX: no config:{}).
 
-    The minimal unified library config needs no llama_stack.config block — a
+    The minimal unified library config needs no ogx.config block — a
     non-empty top-level inference.providers is a sufficient synthesis input.
     """
     config_dict = _base_config_dict()
@@ -492,7 +492,7 @@ def test_root_accepts_unified_marker_with_vector_store_providers_body() -> None:
 
 
 def test_root_accepts_unified_marker_with_config_block_body() -> None:
-    """'unified' agrees with a body whose only synthesis input is llama_stack.config."""
+    """'unified' agrees with a body whose only synthesis input is ogx.config."""
     config_dict = _clear_synthesis_inputs(_base_config_dict())
     config_dict["ogx"] = {
         "use_as_library_client": True,

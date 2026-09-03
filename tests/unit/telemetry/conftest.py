@@ -224,7 +224,7 @@ ALL_PII_VALUES = [
     PII_PROVIDER_API_KEY_ENV,
 ]
 
-SAMPLE_LLAMA_STACK_CONFIG: dict[str, Any] = {
+SAMPLE_OGX_CONFIG: dict[str, Any] = {
     "version": 2,
     "image_name": "starter",
     "container_image": None,
@@ -296,7 +296,7 @@ SAMPLE_LLAMA_STACK_CONFIG: dict[str, Any] = {
 }
 
 
-LLAMA_STACK_PII_VALUES = [
+OGX_PII_VALUES = [
     "sk-openai-secret-key",
     "/secret/path/kv_store.db",
     "/secret/path/sql_store.db",
@@ -794,7 +794,7 @@ def build_minimal_config() -> Configuration:
 
 @pytest.fixture(name="ogx_config_file")
 def ogx_config_file_fixture(tmp_path: Path) -> str:
-    """Write SAMPLE_LLAMA_STACK_CONFIG to a temp YAML file and return its path.
+    """Write SAMPLE_OGX_CONFIG to a temp YAML file and return its path.
 
     Parameters:
     ----------
@@ -805,5 +805,5 @@ def ogx_config_file_fixture(tmp_path: Path) -> str:
         str: Path to the temporary YAML file.
     """
     path = tmp_path / "ogx_config.yaml"
-    path.write_text(yaml.dump(SAMPLE_LLAMA_STACK_CONFIG))
+    path.write_text(yaml.dump(SAMPLE_OGX_CONFIG))
     return str(path)

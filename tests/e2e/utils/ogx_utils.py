@@ -5,7 +5,7 @@ instance during end-to-end tests: unregister/re-register shields (e.g. from the
 ``Given shields are disabled for this scenario`` step).
 
 Only applies when running OGX as a separate service (server mode).
-Requires E2E_LLAMA_STACK_URL or E2E_LLAMA_HOSTNAME and E2E_LLAMA_PORT.
+Requires E2E_OGX_STACK_URL or E2E_OGX_HOSTNAME and E2E_OGX_PORT.
 """
 
 import asyncio
@@ -22,16 +22,16 @@ from tests.e2e.utils.utils import is_prow_environment
 
 def _get_ogx_client() -> AsyncOgxClient:
     """Build an AsyncOgxClient from env (for e2e test use)."""
-    base_url = os.getenv("E2E_LLAMA_STACK_URL")
+    base_url = os.getenv("E2E_OGX_STACK_URL")
     if not base_url:
         if is_prow_environment():
-            host = os.getenv("E2E_LLAMA_HOSTNAME", "localhost")
+            host = os.getenv("E2E_OGX_HOSTNAME", "localhost")
         else:
             host = "localhost"
-        port = os.getenv("E2E_LLAMA_PORT", "8321")
+        port = os.getenv("E2E_OGX_PORT", "8321")
         base_url = f"http://{host}:{port}"
-    api_key = os.getenv("E2E_LLAMA_STACK_API_KEY", "xyzzy")
-    timeout = int(os.getenv("E2E_LLAMA_STACK_TIMEOUT", "60"))
+    api_key = os.getenv("E2E_OGX_STACK_API_KEY", "xyzzy")
+    timeout = int(os.getenv("E2E_OGX_STACK_TIMEOUT", "60"))
     return AsyncOgxClient(base_url=base_url, api_key=api_key, timeout=timeout)
 
 
@@ -106,10 +106,10 @@ def register_shield(
 ) -> None:
     """Re-register the shield via client.shields.register()."""
     if not provider_id:
-        provider_id = os.getenv("E2E_LLAMA_GUARD_PROVIDER_ID", "llama-guard")
+        provider_id = os.getenv("E2E_OGX_GUARD_PROVIDER_ID", "llama-guard")
     if not provider_shield_id:
         provider_shield_id = os.getenv(
-            "E2E_LLAMA_GUARD_PROVIDER_SHIELD_ID",
+            "E2E_OGX_GUARD_PROVIDER_SHIELD_ID",
             "openai/gpt-4o-mini",
         )
     asyncio.run(_register_shield_async(shield_id, provider_id, provider_shield_id))
