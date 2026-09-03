@@ -39,10 +39,23 @@ from tests.e2e.utils.prow_utils import (
     run_e2e_ops,
 )
 from tests.e2e.utils.utils import (
+    force_recreate_compose_service,
     is_prow_environment,
     remove_config_backup,
     restart_container,
     switch_config,
+    wait_for_container_health,
+    wait_for_lightspeed_stack_http_ready,
+)
+
+# OTEL exporter env vars set by the OpenTelemetry feature's steps. They are
+# reverted after the feature so later scenarios do not inherit OTEL export.
+_OTEL_FEATURE_TAG = "OTel"
+_OTEL_ENV_VARS = (
+    "OTEL_SDK_DISABLED",
+    "OTEL_EXPORTER_OTLP_ENDPOINT",
+    "OTEL_EXPORTER_OTLP_PROTOCOL",
+    "OTEL_SERVICE_NAME",
 )
 
 FALLBACK_MODEL = "gpt-4o-mini"
@@ -498,14 +511,42 @@ def _restore_config_after_feature_enabled() -> bool:
     }
 
 
+def _teardown_otel_export(context: Context) -> None:
+    """Revert the OTEL exporter configuration after the OpenTelemetry feature.
+
+    The OpenTelemetry feature sets ``OTEL_*`` env vars and force-recreates
+    ``lightspeed-stack`` so it exports telemetry. Those vars were originally
+    unset, so popping them restores the Compose defaults. The container is then
+    force-recreated (a plain ``docker restart`` would keep the OTEL-enabled
+    creation-time env), so later scenarios do not keep exporting to the mock
+    collector. No-op on Prow, where the feature is skipped and Compose is
+    unavailable.
+    """
+    if is_prow_environment():
+        return
+    for var in _OTEL_ENV_VARS:
+        os.environ.pop(var, None)
+    force_recreate_compose_service(
+        "lightspeed-stack", is_library_mode=context.is_library_mode
+    )
+    wait_for_container_health("lightspeed-stack")
+    wait_for_lightspeed_stack_http_ready()
+
+
 def after_feature(context: Context, feature: Feature) -> None:
     """Run after each feature file is exercised.
 
-    Perform feature-level teardown: restore bootstrap configuration when
+    Perform feature-level teardown: revert OTEL export configuration for the
+    OpenTelemetry feature; restore bootstrap configuration when
     ``E2E_RESTORE_CONFIG_AFTER_FEATURE=1``, otherwise keep the active config;
     when ``context.feedback_e2e_conversation_cleanup`` is set by feedback steps,
     delete tracked feedback test conversations.
     """
+    # Revert OTEL export before other teardown so a later docker restart keeps
+    # the OTEL-disabled, freshly-recreated container.
+    if _OTEL_FEATURE_TAG in feature.tags:
+        _teardown_otel_export(context)
+
     # Restore OGX FIRST (before any lightspeed-stack restart).
     # Read from module-level state — Behave clears custom context attributes
     # between scenarios, so context.ogx_was_running is unreliable here.

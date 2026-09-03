@@ -227,6 +227,54 @@ class TestResponsesRootSpanSetupOtel:
         assert_root_setup_attributes(root, input_text=INPUT_TEXT)
 
     @pytest.mark.asyncio
+    async def test_safety_identifier_recorded_raw_when_present(
+        self,
+        mocker: MockerFixture,
+        dummy_request: Request,
+        minimal_config: AppConfig,
+        otel: tuple[Any, InMemorySpanExporter],
+    ) -> None:
+        """safety_identifier is recorded verbatim (not anonymized) on the root span."""
+        tracer, exporter = otel
+        root = await run_responses_setup_smoke(
+            mocker,
+            dummy_request,
+            tracer,
+            minimal_config,
+            exporter,
+            stream=False,
+            input_text=INPUT_TEXT,
+            safety_identifier="e2e-otel-delivery-marker",
+        )
+        assert root.attributes is not None
+        assert (
+            root.attributes[SpanAttributes.SAFETY_IDENTIFIER]
+            == "e2e-otel-delivery-marker"
+        )
+
+    @pytest.mark.asyncio
+    async def test_safety_identifier_absent_when_not_provided(
+        self,
+        mocker: MockerFixture,
+        dummy_request: Request,
+        minimal_config: AppConfig,
+        otel: tuple[Any, InMemorySpanExporter],
+    ) -> None:
+        """No safety_identifier attribute is set when the request omits it."""
+        tracer, exporter = otel
+        root = await run_responses_setup_smoke(
+            mocker,
+            dummy_request,
+            tracer,
+            minimal_config,
+            exporter,
+            stream=False,
+            input_text=INPUT_TEXT,
+        )
+        assert root.attributes is not None
+        assert SpanAttributes.SAFETY_IDENTIFIER not in root.attributes
+
+    @pytest.mark.asyncio
     async def test_streaming_root_span_closed_on_setup_error(
         self,
         dummy_request: Request,
