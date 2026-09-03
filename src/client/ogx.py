@@ -159,7 +159,7 @@ class AsyncOgxClientHolder(metaclass=Singleton):
         """Enrich OGX config with BYOK RAG and OKP Solr settings."""
         try:
             with open(input_config_path, "r", encoding="utf-8") as f:
-                ls_config = yaml.safe_load(f)
+                ogx_config = yaml.safe_load(f)
         except (OSError, yaml.YAMLError) as e:
             logger.warning("Failed to read OGX config: %s", e)
             return input_config_path
@@ -167,26 +167,26 @@ class AsyncOgxClientHolder(metaclass=Singleton):
         config = configuration.configuration
 
         # Enrichment: BYOK RAG
-        enrich_byok_rag(ls_config, [s.model_dump() for s in config.rag.byok.stores])
+        enrich_byok_rag(ogx_config, [s.model_dump() for s in config.rag.byok.stores])
 
         # Enrichment: Solr - enabled when "okp" appears in either inline or tool list
         rag_config_for_solr = {
             "inline": config.rag.retrieval.inline.sources,
             "tool": config.rag.retrieval.tool.sources,
         }
-        enrich_solr(ls_config, rag_config_for_solr, config.rag.okp.model_dump())
+        enrich_solr(ogx_config, rag_config_for_solr, config.rag.okp.model_dump())
 
         # Enrichment: Azure Entra ID deferred auth
         entra_id_config = (
             config.azure_entra_id.model_dump() if config.azure_entra_id else None
         )
-        enrich_azure_entra_id_inference(ls_config, entra_id_config)
+        enrich_azure_entra_id_inference(ogx_config, entra_id_config)
 
         enriched_path = os.path.join(tempfile.gettempdir(), "ogx_enriched_config.yaml")
 
         try:
             with open(enriched_path, "w", encoding="utf-8") as f:
-                yaml.dump(ls_config, f, Dumper=YamlDumper, default_flow_style=False)
+                yaml.dump(ogx_config, f, Dumper=YamlDumper, default_flow_style=False)
             logger.info("Wrote enriched OGX config to %s", enriched_path)
             return enriched_path
         except OSError as e:

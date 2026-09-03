@@ -23,7 +23,7 @@ _active_lightspeed_stack_config_basename: dict[str, Optional[str]] = {"basename"
 
 # Behave clears user attributes on ``context`` between scenarios; store
 # OGX endpoint info at module level so ``after_feature`` can see it.
-_llama_stack_endpoint: dict[str, str] = {"hostname": "localhost", "port": "8321"}
+_ogx_endpoint: dict[str, str] = {"hostname": "localhost", "port": "8321"}
 
 
 def reset_active_lightspeed_stack_config_basename() -> None:
@@ -40,14 +40,14 @@ def get_active_lightspeed_stack_config_basename() -> Optional[str]:
     return _active_lightspeed_stack_config_basename["basename"]
 
 
-def get_llama_stack_hostname() -> str:
+def get_ogx_hostname() -> str:
     """Return the OGX hostname surviving per-scenario context clearing."""
-    return _llama_stack_endpoint["hostname"]
+    return _ogx_endpoint["hostname"]
 
 
-def get_llama_stack_port() -> str:
+def get_ogx_port() -> str:
     """Return the OGX port surviving per-scenario context clearing."""
-    return _llama_stack_endpoint["port"]
+    return _ogx_endpoint["port"]
 
 
 @given("The service is started locally")
@@ -65,12 +65,12 @@ def service_is_started_locally(context: Context) -> None:
     context.hostname = os.getenv("E2E_LSC_HOSTNAME", "localhost")
     context.port = os.getenv("E2E_LSC_PORT", "8080")
     if is_prow_environment():
-        context.hostname_llama = os.getenv("E2E_LLAMA_HOSTNAME", "localhost")
+        context.hostname_ogx = os.getenv("E2E_OGX_HOSTNAME", "localhost")
     else:
-        context.hostname_llama = "localhost"
-    context.port_llama = os.getenv("E2E_LLAMA_PORT", "8321")
-    _llama_stack_endpoint["hostname"] = context.hostname_llama
-    _llama_stack_endpoint["port"] = context.port_llama
+        context.hostname_ogx = "localhost"
+    context.port_ogx = os.getenv("E2E_OGX_PORT", "8321")
+    _ogx_endpoint["hostname"] = context.hostname_ogx
+    _ogx_endpoint["port"] = context.port_ogx
 
 
 @given('the Lightspeed stack configuration directory is "{directory}"')
@@ -120,7 +120,7 @@ def configure_service(context: Context, config_name: str) -> None:
     """
     config_name = config_name.strip()
     if _active_lightspeed_stack_config_basename["basename"] == config_name:
-        # MCP reset or llama disrupt: do not skip the next restart.
+        # MCP reset or OGX disrupt: do not skip the next restart.
         if getattr(context, "force_lightspeed_restart_after_mcp_config_reset", False):
             context.lightspeed_stack_skip_restart = False
             context.force_lightspeed_restart_after_mcp_config_reset = False
@@ -201,19 +201,19 @@ def restart_service(context: Context) -> None:
     restart_container("lightspeed-stack")
 
 
-@given("The service is restarted without restoring llama-stack")
-def restart_service_without_restoring_llama(context: Context) -> None:
-    """Restart LCS while leaving llama disrupted (degraded-mode startup e2e).
+@given("The service is restarted without restoring ogx")
+def restart_service_without_restoring_ogx(context: Context) -> None:
+    """Restart LCS while leaving OGX disrupted (degraded-mode startup e2e).
 
-    On Prow/Konflux, the default ``restart-lightspeed`` path restores llama when
+    On Prow/Konflux, the default ``restart-lightspeed`` path restores OGX when
     it is unhealthy so LCS can come up. Degraded-mode scenarios need the
-    opposite: LCS must boot with llama still down. Docker Compose already
+    opposite: LCS must boot with OGX still down. Docker Compose already
     restarts only the LCS container, so this matches local server-mode behavior.
     """
     if getattr(context, "lightspeed_stack_skip_restart", False):
         context.lightspeed_stack_skip_restart = False
         return
-    restart_lightspeed_stack_service(skip_llama_restore=True, wait_http=False)
+    restart_lightspeed_stack_service(skip_ogx_restore=True, wait_http=False)
 
 
 @given("The system is in default state")

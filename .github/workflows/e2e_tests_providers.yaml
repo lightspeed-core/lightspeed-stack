@@ -355,8 +355,8 @@ jobs:
           echo "=== Test failure logs ==="
           
           if [ "${{ matrix.mode }}" == "server" ]; then
-            echo "=== llama-stack logs ==="
-            docker compose logs llama-stack
+            echo "=== OGX logs ==="
+            docker compose logs ogx
             echo ""
             echo "=== lightspeed-stack logs ==="
             docker compose logs lightspeed-stack
