@@ -18,13 +18,13 @@ from behave.model import Feature, Scenario
 from behave.runner import Context
 
 from tests.e2e.features.steps.common import (
-    get_llama_stack_hostname,
-    get_llama_stack_port,
+    get_ogx_hostname,
+    get_ogx_port,
     reset_active_lightspeed_stack_config_basename,
 )
 from tests.e2e.features.steps.health import (
     get_ogx_was_running,
-    reset_llama_stack_disrupt_once_tracking,
+    reset_ogx_disrupt_once_tracking,
     reset_ogx_was_running,
 )
 from tests.e2e.features.steps.tls import (
@@ -159,10 +159,10 @@ def _ensure_prow_port_forward(context: Context) -> None:
     restart-port-forward to re-establish the tunnel before the scenario runs.
 
     Treat HTTP 503 like 200/401 here: it means the tunnel reached Lightspeed and the
-    app responded. ``ogx_disrupted`` leaves Llama stopped on purpose; readiness
+    app responded. ``ogx_disrupted`` leaves OGX stopped on purpose; readiness
     then returns 503. Previously we treated 503 as a dead tunnel and ran
-    ``restart-lightspeed``, which restores Llama via e2e-ops and breaks later scenarios
-    that skip disruption (once-per-feature) while expecting Llama to stay down.
+    ``restart-lightspeed``, which restores OGX via e2e-ops and breaks later scenarios
+    that skip disruption (once-per-feature) while expecting OGX to stay down.
     """
     host = os.getenv("E2E_LSC_HOSTNAME", "localhost")
     port = os.getenv("E2E_LSC_PORT", "8080")
@@ -187,7 +187,7 @@ def _ensure_prow_port_forward(context: Context) -> None:
 
     # Port-forward alone failed — the pod itself may be dead (e.g. OGX
     # was never restored after a disruption feature). Attempt a full restart,
-    # which also checks Llama health before recreating LCS.
+    # which also checks OGX health before recreating LCS.
     print("[before_scenario] Port-forward failed; attempting full pod restart...")
     try:
         result = run_e2e_ops("restart-lightspeed", timeout=200)
@@ -222,7 +222,7 @@ def before_scenario(context: Context, scenario: Scenario) -> None:
 
     # Skip scenarios that require separate OGX container in library mode
     if context.is_library_mode and "skip-in-library-mode" in scenario.effective_tags:
-        scenario.skip("Skipped in library mode (no separate llama-stack container)")
+        scenario.skip("Skipped in library mode (no separate OGX container)")
         return
 
     # Skip scenarios that rely on a non-default BYOK store. Only library mode
@@ -232,7 +232,7 @@ def before_scenario(context: Context, scenario: Scenario) -> None:
     if not context.is_library_mode and "skip-in-server-mode" in scenario.effective_tags:
         scenario.skip(
             "Skipped in server mode (feature-specific BYOK store is not loaded "
-            "into the external llama-stack)"
+            "into the external OGX service)"
         )
         return
 
@@ -255,8 +255,8 @@ def before_scenario(context: Context, scenario: Scenario) -> None:
     # Clear shield unregister state from previous scenarios (see ``shields_are_disabled_for_scenario``).
     for _attr in (
         "shields_disabled_for_scenario",
-        "llama_guard_provider_id",
-        "llama_guard_provider_shield_id",
+        "ogx_guard_provider_id",
+        "ogx_guard_provider_shield_id",
     ):
         if hasattr(context, _attr):
             delattr(context, _attr)
@@ -302,7 +302,7 @@ def after_scenario(context: Context, scenario: Scenario) -> None:
             - is_library_mode (bool): whether tests run in library mode.
             - ogx_was_running (bool, optional): whether OGX was
               running before the scenario.
-            - hostname_llama, port_llama (str/int, optional): host and port
+            - hostname_ogx, port_ogx (str/int, optional): host and port
               used for the OGX health check.
         scenario (Scenario): Behave scenario (unused; shield restore uses context flags).
     """
@@ -316,8 +316,8 @@ def after_scenario(context: Context, scenario: Scenario) -> None:
 
     # Re-register shield if ``Given shields are disabled for this scenario`` unregistered it.
     if getattr(context, "shields_disabled_for_scenario", False):
-        provider_id = getattr(context, "llama_guard_provider_id", None)
-        provider_shield_id = getattr(context, "llama_guard_provider_shield_id", None)
+        provider_id = getattr(context, "ogx_guard_provider_id", None)
+        provider_shield_id = getattr(context, "ogx_guard_provider_shield_id", None)
         if provider_id is not None and provider_shield_id is not None:
             try:
                 register_shield(
@@ -332,10 +332,10 @@ def after_scenario(context: Context, scenario: Scenario) -> None:
 
 def _print_ogx_diagnostics() -> None:
     """Print container state, health, and recent logs to diagnose why OGX did not recover."""
-    print("--- llama-stack diagnostics ---")
+    print("--- ogx diagnostics ---")
     for label, cmd in [
-        ("State", ["docker", "inspect", "--format={{.State}}", "llama-stack"]),
-        ("Health", ["docker", "inspect", "--format={{.State.Health}}", "llama-stack"]),
+        ("State", ["docker", "inspect", "--format={{.State}}", "ogx"]),
+        ("Health", ["docker", "inspect", "--format={{.State.Health}}", "ogx"]),
     ]:
         try:
             r = subprocess.run(
@@ -346,7 +346,7 @@ def _print_ogx_diagnostics() -> None:
             print(f"  {label}: (inspect timed out)")
     try:
         r = subprocess.run(
-            ["docker", "logs", "--tail", "40", "llama-stack"],
+            ["docker", "logs", "--tail", "40", "ogx"],
             capture_output=True,
             text=True,
             timeout=10,
@@ -361,10 +361,10 @@ def _print_ogx_diagnostics() -> None:
     print("--- end diagnostics ---")
 
 
-def _restore_llama_stack() -> None:
+def _restore_ogx_service() -> None:
     """Restore OGX connection after disruption."""
     if is_prow_environment():
-        # Recreate llama pod, then restart LCS so in-process clients reconnect (Llama IP/pod changed).
+        # Recreate OGX pod, then restart LCS so in-process clients reconnect (OGX IP/pod changed).
         try:
             restore_ogx_pod()
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
@@ -380,7 +380,7 @@ def _restore_llama_stack() -> None:
                     "✓ Prow: OGX restored and lightspeed-stack restarted "
                     "for clean reconnect"
                 )
-                reset_llama_stack_disrupt_once_tracking()
+                reset_ogx_disrupt_once_tracking()
                 return
             except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
                 last_lcs_err = e
@@ -398,9 +398,7 @@ def _restore_llama_stack() -> None:
 
     try:
         # Start the OGX container again
-        subprocess.run(
-            ["docker", "start", "llama-stack"], check=True, capture_output=True
-        )
+        subprocess.run(["docker", "start", "ogx"], check=True, capture_output=True)
 
         # Wait for the service to be healthy
         print("Restoring OGX connection...")
@@ -411,10 +409,10 @@ def _restore_llama_stack() -> None:
                     [
                         "docker",
                         "exec",
-                        "llama-stack",
+                        "ogx",
                         "curl",
                         "-sf",
-                        f"http://{get_llama_stack_hostname()}:{get_llama_stack_port()}/v1/health",
+                        f"http://{get_ogx_hostname()}:{get_ogx_port()}/v1/health",
                     ],
                     capture_output=True,
                     timeout=5,
@@ -422,7 +420,7 @@ def _restore_llama_stack() -> None:
                 )
                 if result.returncode == 0:
                     print("✓ OGX connection restored successfully")
-                    reset_llama_stack_disrupt_once_tracking()
+                    reset_ogx_disrupt_once_tracking()
                     break
             except subprocess.TimeoutExpired:
                 print(
@@ -468,8 +466,8 @@ def before_feature(context: Context, feature: Feature) -> None:
     context.feature_config = None
     context.scenario_lightspeed_override_active = False
     context.active_lightspeed_stack_config_basename = None
-    # One real Llama disruption per feature (module-level flag; survives context resets)
-    reset_llama_stack_disrupt_once_tracking()
+    # One real OGX disruption per feature (module-level flag; survives context resets)
+    reset_ogx_disrupt_once_tracking()
     if feature.filename and is_tls_feature_file(feature.filename):
         reset_tls_prow_state()
         prepare_tls_feature_entry_on_prow(feature.filename)
@@ -510,7 +508,7 @@ def after_feature(context: Context, feature: Feature) -> None:
     # Read from module-level state — Behave clears custom context attributes
     # between scenarios, so context.ogx_was_running is unreliable here.
     if get_ogx_was_running():
-        _restore_llama_stack()
+        _restore_ogx_service()
         reset_ogx_was_running()
 
     if getattr(context, "feedback_e2e_conversation_cleanup", False):
@@ -531,7 +529,7 @@ def after_feature(context: Context, feature: Feature) -> None:
             switch_config(backup_path)
             remove_config_backup(backup_path)
             if not context.is_library_mode:
-                restart_container("llama-stack")
+                restart_container("ogx")
             restart_container("lightspeed-stack")
             reset_active_lightspeed_stack_config_basename()
         else:

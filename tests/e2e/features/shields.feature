@@ -2,7 +2,7 @@ Feature: Shields endpoint tests
 
   Tests for the LCORE-owned GET /v1/shields catalog endpoint. These shields
   (question_validity, redaction) are configured directly in
-  lightspeed-stack.yaml; they are not Llama Stack / OGX Safety API resources.
+  lightspeed-stack.yaml; they are not OGX Safety API resources.
   See docs/user_doc/shields_guide.md for the full shield configuration and
   runtime-behavior reference.
 

@@ -4,9 +4,9 @@ BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 NAMESPACE="${NAMESPACE:-e2e-rhoai-dsc}"
 
 # Create OGX-ip-secret before deploying the pod (it references the secret as an env var)
-export E2E_LLAMA_HOSTNAME="llama-stack-service-svc.${NAMESPACE}.svc.cluster.local"
+export E2E_OGX_HOSTNAME="llama-stack-service-svc.${NAMESPACE}.svc.cluster.local"
 oc create secret generic llama-stack-ip-secret \
-    --from-literal=key="$E2E_LLAMA_HOSTNAME" \
+    --from-literal=key="$E2E_OGX_HOSTNAME" \
     -n "$NAMESPACE" 2>/dev/null || echo "Secret llama-stack-ip-secret exists"
 
 # Deploy OGX (substitute only LLAMA_STACK_IMAGE, leave other ${} intact)

@@ -34,9 +34,9 @@ from tests.e2e.proxy.interception_proxy import (
 from tests.e2e.proxy.tunnel_proxy import DEFAULT_PROXY_PORT
 from tests.e2e.utils.ogx_config_utils import (
     backup_ogx_config,
-    load_llama_config,
-    restore_llama_config_if_modified,
-    write_llama_config,
+    load_ogx_config,
+    restore_ogx_config_if_modified,
+    write_ogx_config,
 )
 from tests.e2e.utils.prow_utils import get_namespace, run_e2e_ops
 from tests.e2e.utils.utils import (
@@ -55,12 +55,12 @@ def _is_docker_mode() -> bool:
     if is_prow_environment():
         return False
     result = subprocess.run(
-        ["docker", "ps", "--filter", "name=llama-stack", "--format", "{{.Names}}"],
+        ["docker", "ps", "--filter", "name=ogx", "--format", "{{.Names}}"],
         capture_output=True,
         text=True,
         check=False,
     )
-    return "llama-stack" in result.stdout
+    return "ogx" in result.stdout
 
 
 def _host_special_dns_from_container(hostname: str) -> Optional[str]:
@@ -89,7 +89,7 @@ def _host_special_dns_from_container(hostname: str) -> Optional[str]:
         [
             "docker",
             "exec",
-            "llama-stack",
+            "ogx",
             "python3",
             "-c",
             probe,
@@ -188,11 +188,11 @@ def _fetch_cluster_interception_proxy_stats() -> dict[str, Any]:
     return stats
 
 
-_INTERCEPTION_CA_LLAMA_PATH = "/tmp/interception-proxy-ca.pem"
+_INTERCEPTION_CA_OGX_PATH = "/tmp/interception-proxy-ca.pem"
 
 
 def _sync_interception_proxy_ca_secret() -> None:
-    """Publish trustme CA to Secret ``e2e-interception-proxy-ca`` (mounted by llama pod)."""
+    """Publish trustme CA to Secret ``e2e-interception-proxy-ca`` (mounted by OGX pod)."""
     result = run_e2e_ops("sync-interception-proxy-ca-secret", timeout=90)
     print(result.stdout, end="")
     if result.returncode != 0:
@@ -298,7 +298,7 @@ def _stop_proxy(context: Context, attr: str, loop_attr: str) -> None:
         delattr(context, loop_attr)
 
 
-@given("The original Llama Stack config is restored if modified")
+@given("The original OGX config is restored if modified")
 def restore_if_modified(context: Context) -> None:
     """Restore original run.yaml if a previous scenario modified it.
 
@@ -309,30 +309,30 @@ def restore_if_modified(context: Context) -> None:
     # Stop any leftover proxy servers from previous scenario
     _stop_proxy(context, "tunnel_proxy", "proxy_loop")
     _stop_proxy(context, "interception_proxy", "interception_proxy_loop")
-    os.environ.pop("E2E_COPY_INTERCEPTION_CA_TO_LLAMA", None)
-    os.environ.pop("E2E_COPY_MOCK_TLS_CERTS_TO_LLAMA", None)
-    if hasattr(context, "needs_interception_ca_on_llama"):
-        delattr(context, "needs_interception_ca_on_llama")
+    os.environ.pop("E2E_COPY_INTERCEPTION_CA_TO_OGX", None)
+    os.environ.pop("E2E_COPY_MOCK_TLS_CERTS_TO_OGX", None)
+    if hasattr(context, "needs_interception_ca_on_ogx"):
+        delattr(context, "needs_interception_ca_on_ogx")
 
-    if restore_llama_config_if_modified():
+    if restore_ogx_config_if_modified():
         print("Restoring original OGX config from backup...")
 
 
 # --- Service Restart Steps ---
 
 
-@given("Llama Stack is restarted")
+@given("OGX is restarted")
 def restart_ogx(context: Context) -> None:
     """Restart the OGX container."""
     from tests.e2e.features.steps.tls import (
         is_tls_configuration_feature,
-        restart_llama_for_tls_feature,
+        restart_ogx_for_tls_feature,
     )
 
     if is_tls_configuration_feature(context):
-        restart_llama_for_tls_feature(context)
+        restart_ogx_for_tls_feature(context)
         return
-    restart_container("llama-stack")
+    restart_container("ogx")
 
 
 @given("Lightspeed Stack is restarted")
@@ -392,8 +392,8 @@ def start_tunnel_proxy(context: Context, port: int) -> None:
     time.sleep(1)
 
 
-@given("Llama Stack is configured to route inference through the tunnel proxy")
-def configure_llama_tunnel_proxy(context: Context) -> None:
+@given("OGX is configured to route inference through the tunnel proxy")
+def configure_ogx_tunnel_proxy(context: Context) -> None:
     """Modify run.yaml with proxy config pointing to the tunnel proxy."""
     backup_ogx_config()
     if is_prow_environment():
@@ -402,7 +402,7 @@ def configure_llama_tunnel_proxy(context: Context) -> None:
         proxy = context.tunnel_proxy
         proxy_port = proxy.port
     proxy_host = _get_proxy_host(context.is_docker_mode)
-    config = load_llama_config()
+    config = load_ogx_config()
     provider = _find_inference_provider(context, config)
 
     if "config" not in provider:
@@ -413,14 +413,14 @@ def configure_llama_tunnel_proxy(context: Context) -> None:
         }
     }
 
-    write_llama_config(config)
+    write_ogx_config(config)
 
 
-@given('Llama Stack is configured to route inference through proxy "{proxy_url}"')
-def configure_llama_unreachable_proxy(context: Context, proxy_url: str) -> None:
+@given('OGX is configured to route inference through proxy "{proxy_url}"')
+def configure_ogx_unreachable_proxy(context: Context, proxy_url: str) -> None:
     """Modify run.yaml with a proxy URL (may be unreachable)."""
     backup_ogx_config()
-    config = load_llama_config()
+    config = load_ogx_config()
     provider = _find_inference_provider(context, config)
 
     if "config" not in provider:
@@ -431,7 +431,7 @@ def configure_llama_unreachable_proxy(context: Context, proxy_url: str) -> None:
         }
     }
 
-    write_llama_config(config)
+    write_ogx_config(config)
 
 
 # --- Interception Proxy Steps ---
@@ -444,7 +444,7 @@ def start_interception_proxy(context: Context, port: int) -> None:
         cluster_port = _cluster_interception_proxy_port(port)
         context.interception_proxy = None
         context.cluster_interception_proxy_port = cluster_port
-        context.ca_cert_path_for_config = _INTERCEPTION_CA_LLAMA_PATH
+        context.ca_cert_path_for_config = _INTERCEPTION_CA_OGX_PATH
         _deploy_cluster_interception_proxy()
         print(
             f"Using in-cluster interception proxy at "
@@ -466,7 +466,7 @@ def start_interception_proxy(context: Context, port: int) -> None:
     if context.is_docker_mode:
         container_cert_path = "/tmp/interception-proxy-ca.pem"
         subprocess.run(
-            ["docker", "cp", str(ca_cert_path), f"llama-stack:{container_cert_path}"],
+            ["docker", "cp", str(ca_cert_path), f"ogx:{container_cert_path}"],
             check=True,
         )
         context.ca_cert_path_for_config = container_cert_path
@@ -499,15 +499,15 @@ def start_interception_proxy(context: Context, port: int) -> None:
 
 
 @given(
-    "Llama Stack is configured to route inference through "
+    "OGX is configured to route inference through "
     "the interception proxy with CA cert"
 )
-def configure_llama_interception_with_ca(context: Context) -> None:
+def configure_ogx_interception_with_ca(context: Context) -> None:
     """Modify run.yaml with interception proxy and CA cert config."""
     backup_ogx_config()
-    context.needs_interception_ca_on_llama = True
+    context.needs_interception_ca_on_ogx = True
     if is_prow_environment():
-        os.environ["E2E_COPY_INTERCEPTION_CA_TO_LLAMA"] = "1"
+        os.environ["E2E_COPY_INTERCEPTION_CA_TO_OGX"] = "1"
     if is_prow_environment():
         proxy_port = getattr(
             context, "cluster_interception_proxy_port", DEFAULT_INTERCEPTION_PROXY_PORT
@@ -517,7 +517,7 @@ def configure_llama_interception_with_ca(context: Context) -> None:
         proxy = context.interception_proxy
         proxy_port = proxy.port
         proxy_host = _get_proxy_host(context.is_docker_mode)
-    config = load_llama_config()
+    config = load_ogx_config()
     provider = _find_inference_provider(context, config)
 
     if "config" not in provider:
@@ -532,20 +532,20 @@ def configure_llama_interception_with_ca(context: Context) -> None:
         },
     }
 
-    write_llama_config(config)
+    write_ogx_config(config)
     if is_prow_environment():
         _sync_interception_proxy_ca_secret()
 
 
 @given(
-    "Llama Stack is configured to route inference through "
+    "OGX is configured to route inference through "
     "the interception proxy without CA cert"
 )
-def configure_llama_interception_no_ca(context: Context) -> None:
+def configure_ogx_interception_no_ca(context: Context) -> None:
     """Modify run.yaml with interception proxy but NO CA cert."""
     backup_ogx_config()
-    context.needs_interception_ca_on_llama = False
-    os.environ.pop("E2E_COPY_INTERCEPTION_CA_TO_LLAMA", None)
+    context.needs_interception_ca_on_ogx = False
+    os.environ.pop("E2E_COPY_INTERCEPTION_CA_TO_OGX", None)
     if is_prow_environment():
         proxy_port = getattr(
             context, "cluster_interception_proxy_port", DEFAULT_INTERCEPTION_PROXY_PORT
@@ -555,7 +555,7 @@ def configure_llama_interception_no_ca(context: Context) -> None:
         proxy = context.interception_proxy
         proxy_port = proxy.port
         proxy_host = _get_proxy_host(context.is_docker_mode)
-    config = load_llama_config()
+    config = load_ogx_config()
     provider = _find_inference_provider(context, config)
 
     if "config" not in provider:
@@ -566,17 +566,17 @@ def configure_llama_interception_no_ca(context: Context) -> None:
         },
     }
 
-    write_llama_config(config)
+    write_ogx_config(config)
 
 
 # --- TLS Steps ---
 
 
-@given('Llama Stack is configured with minimum TLS version "{version}"')
-def configure_llama_tls_version(context: Context, version: str) -> None:
+@given('OGX is configured with minimum TLS version "{version}"')
+def configure_ogx_tls_version(context: Context, version: str) -> None:
     """Modify run.yaml with TLS version config."""
     backup_ogx_config()
-    config = load_llama_config()
+    config = load_ogx_config()
     provider = _find_inference_provider(context, config)
 
     if "config" not in provider:
@@ -587,14 +587,14 @@ def configure_llama_tls_version(context: Context, version: str) -> None:
         }
     }
 
-    write_llama_config(config)
+    write_ogx_config(config)
 
 
-@given('Llama Stack is configured with ciphers "{ciphers}"')
-def configure_llama_ciphers(context: Context, ciphers: str) -> None:
+@given('OGX is configured with ciphers "{ciphers}"')
+def configure_ogx_ciphers(context: Context, ciphers: str) -> None:
     """Modify run.yaml with cipher suite config."""
     backup_ogx_config()
-    config = load_llama_config()
+    config = load_ogx_config()
     provider = _find_inference_provider(context, config)
 
     if "config" not in provider:
@@ -605,7 +605,7 @@ def configure_llama_ciphers(context: Context, ciphers: str) -> None:
         }
     }
 
-    write_llama_config(config)
+    write_ogx_config(config)
 
 
 # --- Proxy Verification Steps ---

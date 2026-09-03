@@ -6,12 +6,12 @@
 # configuration shape:
 #   - unified mode: the lightspeed config carries a synthesis input (a
 #     non-empty inference.providers or vector_store.providers, or a
-#     llama_stack.config / ogx.config block). The full run.yaml is synthesized
+#     ogx.config block (deprecated alias: llama_stack.config). The full run.yaml is synthesized
 #     from it — no external run.yaml mount is needed, and $OGX_CONFIG /
-#     $LLAMA_STACK_CONFIG is ignored. The shipped default baseline is read from
+#     $LLAMA_STACK_CONFIG (deprecated) is ignored. The shipped default baseline is read from
 #     /opt/app-root/data/default_run.yaml.
-#   - legacy mode: the mounted run.yaml ($OGX_CONFIG, falling back to
-#     $LLAMA_STACK_CONFIG) is enriched with lightspeed dynamic values
+#   - legacy mode: the mounted run.yaml ($OGX_CONFIG, falling back to the
+#     deprecated $LLAMA_STACK_CONFIG) is enriched with lightspeed dynamic values
 #     (BYOK RAG, Solr/OKP, Azure Entra ID).
 
 set -e

@@ -142,10 +142,10 @@ uv run behave tests/e2e/features/health.feature --tags=-skip-in-library-mode
 | `E2E_DEPLOYMENT_MODE`           | `server`    | `server` or `library`. Drives config paths and which scenarios run (e.g. `@skip-in-library-mode`).                                        |
 | `E2E_LSC_HOSTNAME`              | `localhost` | Host of the Lightspeed Core Stack API.                                                                                                    |
 | `E2E_LSC_PORT`                  | `8080`      | Port of the Lightspeed Core Stack API.                                                                                                    |
-| `E2E_LLAMA_HOSTNAME`            | `localhost` | Host of the OGX service (server mode).                                                                                            |
-| `E2E_LLAMA_PORT`                | `8321`      | Port of the OGX service.                                                                                                          |
-| `E2E_LLAMA_STACK_URL`           | —           | Full base URL for OGX (overrides host/port if set). Used by shield helpers.                                                       |
-| `E2E_LLAMA_STACK_API_KEY`       | `xyzzy`     | API key for OGX client (e.g. shield API).                                                                                         |
+| `E2E_OGX_HOSTNAME`            | `localhost` | Host of the OGX service (server mode). GitHub Actions repo variable: `E2E_LLAMA_HOSTNAME` (compose maps it here). |
+| `E2E_OGX_PORT`                | `8321`      | Port of the OGX service.                                                                                                          |
+| `E2E_OGX_STACK_URL`           | —           | Full base URL for OGX (overrides host/port if set). Used by shield helpers.                                                       |
+| `E2E_OGX_STACK_API_KEY`       | `xyzzy`     | API key for OGX client (e.g. shield API).                                                                                         |
 | `E2E_DEFAULT_MODEL_OVERRIDE`    | —           | Override default LLM model id (e.g. `gpt-4o-mini`).                                                                                       |
 | `E2E_DEFAULT_PROVIDER_OVERRIDE` | —           | Override default provider id (e.g. `openai`).                                                                                             |
 | `FAISS_VECTOR_STORE_ID`         | —           | Vector store id for FAISS-related scenarios.                                                                                              |

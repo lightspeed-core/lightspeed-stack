@@ -36,9 +36,9 @@ from telemetry.configuration_snapshot import (
 from tests.unit.telemetry.conftest import (
     ALL_PII_VALUES,
     BYOK_PORT,
-    LLAMA_STACK_PII_VALUES,
+    OGX_PII_VALUES,
     OKP_CHUNK_FILTER,
-    SAMPLE_LLAMA_STACK_CONFIG,
+    SAMPLE_OGX_CONFIG,
     build_fully_populated_config,
     build_minimal_config,
 )
@@ -383,20 +383,20 @@ class TestExtractStoreInfo:
 
     def test_inference_store(self) -> None:
         """Test inference store extraction."""
-        result = _extract_store_info(SAMPLE_LLAMA_STACK_CONFIG, "inference")
+        result = _extract_store_info(SAMPLE_OGX_CONFIG, "inference")
         assert result["type"] == "sql_sqlite"
         assert result["db_path"] == CONFIGURED
 
     def test_metadata_store_with_namespace(self) -> None:
         """Test metadata store extraction includes namespace."""
-        result = _extract_store_info(SAMPLE_LLAMA_STACK_CONFIG, "metadata")
+        result = _extract_store_info(SAMPLE_OGX_CONFIG, "metadata")
         assert result["type"] == "kv_sqlite"
         assert result["db_path"] == CONFIGURED
         assert result["namespace"] == "registry"
 
     def test_missing_store(self) -> None:
         """Test missing store returns not_configured."""
-        result = _extract_store_info(SAMPLE_LLAMA_STACK_CONFIG, "nonexistent")
+        result = _extract_store_info(SAMPLE_OGX_CONFIG, "nonexistent")
         assert result["type"] == NOT_CONFIGURED
         assert result["db_path"] == NOT_CONFIGURED
 
@@ -407,7 +407,7 @@ class TestExtractStoreInfo:
 
     def test_db_path_is_masked(self) -> None:
         """Test that db_path never leaks the actual path."""
-        result = _extract_store_info(SAMPLE_LLAMA_STACK_CONFIG, "inference")
+        result = _extract_store_info(SAMPLE_OGX_CONFIG, "inference")
         assert "/secret/path" not in str(result)
 
 
@@ -553,43 +553,43 @@ class TestBuildLightspeedStackSnapshot:
         snapshot = build_lightspeed_stack_snapshot(build_fully_populated_config())
         assert snapshot["service"]["root_path"] == CONFIGURED
 
-    def test_llama_stack_timeout_passthrough(self) -> None:
-        """Test llama_stack timeout passes through."""
+    def test_ogx_timeout_passthrough(self) -> None:
+        """Test ogx timeout passes through."""
         snapshot = build_lightspeed_stack_snapshot(build_fully_populated_config())
         assert snapshot["ogx"]["timeout"] == 180
 
-    def test_llama_stack_max_retries_passthrough(self) -> None:
-        """Test llama_stack max_retries passes through."""
+    def test_ogx_max_retries_passthrough(self) -> None:
+        """Test ogx max_retries passes through."""
         snapshot = build_lightspeed_stack_snapshot(build_fully_populated_config())
         assert snapshot["ogx"]["max_retries"] == 5
 
-    def test_llama_stack_retry_delay_passthrough(self) -> None:
-        """Test llama_stack retry_delay passes through."""
+    def test_ogx_retry_delay_passthrough(self) -> None:
+        """Test ogx retry_delay passes through."""
         snapshot = build_lightspeed_stack_snapshot(build_fully_populated_config())
         assert snapshot["ogx"]["retry_delay"] == 2
 
-    def test_llama_stack_allow_degraded_mode_passthrough(self) -> None:
-        """Test llama_stack allow_degraded_mode passes through."""
+    def test_ogx_allow_degraded_mode_passthrough(self) -> None:
+        """Test ogx allow_degraded_mode passes through."""
         snapshot = build_lightspeed_stack_snapshot(build_fully_populated_config())
         assert snapshot["ogx"]["allow_degraded_mode"] is True
 
-    def test_llama_stack_config_baseline_passthrough(self) -> None:
-        """Test llama_stack config baseline passes through."""
+    def test_ogx_config_baseline_passthrough(self) -> None:
+        """Test ogx config baseline passes through."""
         snapshot = build_lightspeed_stack_snapshot(build_fully_populated_config())
         assert snapshot["ogx"]["config"]["baseline"] == "default"
 
-    def test_llama_stack_config_profile_masked(self) -> None:
-        """Test llama_stack config profile is masked as sensitive."""
+    def test_ogx_config_profile_masked(self) -> None:
+        """Test ogx config profile is masked as sensitive."""
         snapshot = build_lightspeed_stack_snapshot(build_fully_populated_config())
         assert snapshot["ogx"]["config"]["profile"] == CONFIGURED
 
-    def test_llama_stack_config_native_override_masked(self) -> None:
-        """Test llama_stack config native_override is masked as sensitive."""
+    def test_ogx_config_native_override_masked(self) -> None:
+        """Test ogx config native_override is masked as sensitive."""
         snapshot = build_lightspeed_stack_snapshot(build_fully_populated_config())
         assert snapshot["ogx"]["config"]["native_override"] == CONFIGURED
 
-    def test_llama_stack_config_none(self) -> None:
-        """Test llama_stack config fields when config is None."""
+    def test_ogx_config_none(self) -> None:
+        """Test ogx config fields when config is None."""
         snapshot = build_lightspeed_stack_snapshot(build_minimal_config())
         assert snapshot["ogx"]["config"]["baseline"] is None
         assert snapshot["ogx"]["config"]["profile"] == NOT_CONFIGURED
@@ -1158,7 +1158,7 @@ class TestBuildConfigurationSnapshot:
 
     @pytest.mark.asyncio
     async def test_combines_both_sources(self) -> None:
-        """Test that snapshot contains both lightspeed_stack and llama_stack."""
+        """Test that snapshot contains both lightspeed_stack and ogx."""
         result = await build_configuration_snapshot(build_minimal_config(), None)
         assert "lightspeed_stack" in result
         assert "ogx" in result
@@ -1197,10 +1197,10 @@ class TestPiiLeakPrevention:
     async def test_no_pii_in_ogx_snapshot(self, ogx_config_file: str) -> None:
         """Verify no PII leaks in OGX snapshot JSON."""
         json_str = json.dumps(await build_ogx_snapshot(ogx_config_file))
-        for pii_value in LLAMA_STACK_PII_VALUES:
+        for pii_value in OGX_PII_VALUES:
             assert (
                 pii_value not in json_str
-            ), f"PII leaked in llama-stack snapshot: '{pii_value}'"
+            ), f"PII leaked in OGX snapshot: '{pii_value}'"
 
     @pytest.mark.asyncio
     async def test_no_pii_in_combined_snapshot(self, ogx_config_file: str) -> None:
@@ -1209,7 +1209,7 @@ class TestPiiLeakPrevention:
             build_fully_populated_config(), ogx_config_file
         )
         json_str = json.dumps(snapshot)
-        for pii_value in ALL_PII_VALUES + LLAMA_STACK_PII_VALUES:
+        for pii_value in ALL_PII_VALUES + OGX_PII_VALUES:
             assert (
                 pii_value not in json_str
             ), f"PII leaked in combined snapshot: '{pii_value}'"

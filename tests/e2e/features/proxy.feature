@@ -1,12 +1,12 @@
 @cfg_default @skip-in-library-mode @skip-in-prow
-Feature: Proxy and TLS networking tests for Llama Stack providers
+Feature: Proxy and TLS networking tests for OGX providers
 
-  Verify that the Lightspeed Stack works correctly when Llama Stack's
+  Verify that the Lightspeed Stack works correctly when OGX's
   remote inference providers are configured with proxy and TLS settings
   via the run.yaml NetworkConfig.
 
   Query bodies use shield_ids: [] because Llama Guard moderation can issue
-  separate provider calls inside Llama Stack that may not inherit the same
+  separate provider calls inside OGX that may not inherit the same
   proxy/TLS CA trust as the scenario's remote inference provider.
 
   Background:
@@ -16,7 +16,7 @@ Feature: Proxy and TLS networking tests for Llama Stack providers
       And the Lightspeed stack configuration directory is "tests/e2e/configuration"
       And The service uses the lightspeed-stack-default.yaml configuration
       And The service is restarted
-      And The original Llama Stack config is restored if modified
+      And The original OGX config is restored if modified
 
 
   # --- AC1: Tunnel proxy routing ---
@@ -24,8 +24,8 @@ Feature: Proxy and TLS networking tests for Llama Stack providers
   @TunnelProxy
   Scenario: LLM traffic is routed through a configured tunnel proxy
     Given A tunnel proxy is running on port 8888
-      And Llama Stack is configured to route inference through the tunnel proxy
-      And Llama Stack is restarted
+      And OGX is configured to route inference through the tunnel proxy
+      And OGX is restarted
       And Lightspeed Stack is restarted
      When I use "query" to ask question
     """
@@ -40,8 +40,8 @@ Feature: Proxy and TLS networking tests for Llama Stack providers
 
   @TunnelProxy
   Scenario: LLM query fails gracefully when proxy is unreachable
-    Given Llama Stack is configured to route inference through proxy "http://127.0.0.1:19999"
-      And Llama Stack is restarted
+    Given OGX is configured to route inference through proxy "http://127.0.0.1:19999"
+      And OGX is restarted
       And Lightspeed Stack is restarted
      When I use "query" to ask question
     """
@@ -56,8 +56,8 @@ Feature: Proxy and TLS networking tests for Llama Stack providers
   @InterceptionProxy @flaky
   Scenario: LLM traffic works through interception proxy with correct CA
     Given An interception proxy with trustme CA is running on port 8889
-      And Llama Stack is configured to route inference through the interception proxy with CA cert
-      And Llama Stack is restarted
+      And OGX is configured to route inference through the interception proxy with CA cert
+      And OGX is restarted
       And Lightspeed Stack is restarted
      When I use "query" to ask question
     """
@@ -69,8 +69,8 @@ Feature: Proxy and TLS networking tests for Llama Stack providers
   @InterceptionProxy
   Scenario: LLM query fails when interception proxy CA is not provided
     Given An interception proxy with trustme CA is running on port 8890
-      And Llama Stack is configured to route inference through the interception proxy without CA cert
-      And Llama Stack is restarted
+      And OGX is configured to route inference through the interception proxy without CA cert
+      And OGX is restarted
       And Lightspeed Stack is restarted
      When I use "query" to ask question
     """
@@ -84,8 +84,8 @@ Feature: Proxy and TLS networking tests for Llama Stack providers
 
   @TLSVersion @flaky
   Scenario: TLS minimum version TLSv1.2 is respected
-    Given Llama Stack is configured with minimum TLS version "TLSv1.2"
-      And Llama Stack is restarted
+    Given OGX is configured with minimum TLS version "TLSv1.2"
+      And OGX is restarted
       And Lightspeed Stack is restarted
      When I use "query" to ask question
     """
@@ -95,8 +95,8 @@ Feature: Proxy and TLS networking tests for Llama Stack providers
 
   @TLSVersion @flaky
   Scenario: TLS minimum version TLSv1.3 is respected
-    Given Llama Stack is configured with minimum TLS version "TLSv1.3"
-      And Llama Stack is restarted
+    Given OGX is configured with minimum TLS version "TLSv1.3"
+      And OGX is restarted
       And Lightspeed Stack is restarted
      When I use "query" to ask question
     """
@@ -106,8 +106,8 @@ Feature: Proxy and TLS networking tests for Llama Stack providers
 
   @TLSCipher @flaky
   Scenario: Custom cipher suite configuration is respected
-    Given Llama Stack is configured with ciphers "ECDHE+AESGCM:DHE+AESGCM"
-      And Llama Stack is restarted
+    Given OGX is configured with ciphers "ECDHE+AESGCM:DHE+AESGCM"
+      And OGX is restarted
       And Lightspeed Stack is restarted
      When I use "query" to ask question
     """

@@ -68,11 +68,11 @@ def test_loading_proper_configuration(configuration_filename: str) -> None:
     assert cors_config.allow_headers == ["foo_header", "bar_header", "baz_header"]
 
     # check 'ogx' section
-    ls_config = cfg.ogx_configuration
-    assert ls_config.use_as_library_client is False
-    assert str(ls_config.url) == "http://localhost:8321/"
-    assert ls_config.api_key is not None
-    assert ls_config.api_key.get_secret_value() == "xyzzy"
+    ogx_configuration = cfg.ogx_configuration
+    assert ogx_configuration.use_as_library_client is False
+    assert str(ogx_configuration.url) == "http://localhost:8321/"
+    assert ogx_configuration.api_key is not None
+    assert ogx_configuration.api_key.get_secret_value() == "xyzzy"
 
     # check 'user_data_collection' section
     udc_config = cfg.user_data_collection_configuration

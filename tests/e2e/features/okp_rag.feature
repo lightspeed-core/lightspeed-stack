@@ -38,7 +38,7 @@ Feature: OKP(Solr) RAG retrieval tests
 
   Scenario: Online mode streaming query with inline RAG returns referenced_documents
     Given The service uses the lightspeed-stack-okp-online.yaml configuration
-      And Llama Stack is restarted
+      And OGX is restarted
       And The service is restarted
     When I use "streaming_query" to ask question with authorization header
     """

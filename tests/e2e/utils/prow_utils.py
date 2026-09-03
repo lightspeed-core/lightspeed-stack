@@ -19,7 +19,8 @@ def get_namespace() -> str:
 # Mapping from container names (used in tests) to pod names (used in OpenShift)
 _POD_NAME_MAP = {
     "lightspeed-stack": "lightspeed-stack-service",
-    "llama-stack": "llama-stack-service",
+    "ogx": "llama-stack-service",
+    "llama-stack": "llama-stack-service",  # legacy alias
 }
 
 
@@ -86,14 +87,14 @@ def wait_for_pod_health(pod_name: str, max_attempts: int = 60) -> None:
         raise
 
 
-_LLAMA_RESTART_NAMES = frozenset({"llama-stack", "llama-stack-service"})
+_OGX_RESTART_NAMES = frozenset({"ogx", "llama-stack", "llama-stack-service"})
 _LIGHTSPEED_RESTART_NAMES = frozenset({"lightspeed-stack", "lightspeed-stack-service"})
 
 
 def restart_pod(container_name: str) -> None:
     """Restart OGX or Lightspeed pod in OpenShift/Prow (not Docker).
 
-    Maps ``container_name`` to the correct e2e-ops command: ``restart-llama-stack``
+    Maps ``container_name`` to the correct e2e-ops command: ``restart-ogx``
     vs ``restart-lightspeed``. Unknown names default to Lightspeed with a warning.
 
     For Lightspeed restarts, e2e-ops ensures OGX is running first. OGX pod logs
@@ -102,11 +103,11 @@ def restart_pod(container_name: str) -> None:
     CI failures with healthy pod logs are often **localhost port-forward** contention
     (pipeline forward vs hook restart), not application crashes—see e2e-ops.sh header.
     """
-    if container_name in _LLAMA_RESTART_NAMES:
-        op = "restart-llama-stack"
+    if container_name in _OGX_RESTART_NAMES:
+        op = "restart-ogx"
         # Subprocess cap must exceed e2e-ops internal waits (pod + in-pod health + port-forward).
         # Konflux TLS full recreate: ~6–12 min typical, 15+ min under load (user-reported 400s+).
-        if os.environ.get("E2E_COPY_MOCK_TLS_CERTS_TO_LLAMA") == "1":
+        if os.environ.get("E2E_COPY_MOCK_TLS_CERTS_TO_OGX") == "1":
             timeout = 1200
         elif os.environ.get("E2E_KONFLUX_E2E") == "1":
             timeout = 720
@@ -158,24 +159,24 @@ def restore_ogx_pod() -> None:
         timeout = 600
     else:
         timeout = 420
-    result = run_e2e_ops("restart-llama-stack", timeout=timeout)
+    result = run_e2e_ops("restart-ogx", timeout=timeout)
     print(result.stdout, end="")
     if result.returncode != 0:
         print(result.stderr, end="")
         raise subprocess.CalledProcessError(
-            result.returncode, "restart-llama-stack", result.stderr
+            result.returncode, "restart-ogx", result.stderr
         )
     print("✓ OGX pod restored successfully")
 
 
-def disrupt_llama_stack_pod() -> bool:
+def disrupt_ogx_pod() -> bool:
     """Disrupt OGX connection in Prow/OpenShift environment.
 
     Returns:
         True if the pod was running and has been disrupted, False otherwise.
     """
     try:
-        result = run_e2e_ops("disrupt-llama-stack", timeout=90)
+        result = run_e2e_ops("disrupt-ogx", timeout=90)
         print(result.stdout, end="")
 
         # Exit code 0 = disrupted (was running), exit code 2 = was not running

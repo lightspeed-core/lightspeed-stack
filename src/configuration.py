@@ -73,14 +73,14 @@ def replace_env_vars_preserving_native_override(
     ogx_section = config_dict.get("ogx")
     if ogx_section is None:
         ogx_section = config_dict.get("llama_stack")
-    ls_config = ogx_section.get("config") if isinstance(ogx_section, dict) else None
-    if not (isinstance(ls_config, dict) and "native_override" in ls_config):
+    ogx_config = ogx_section.get("config") if isinstance(ogx_section, dict) else None
+    if not (isinstance(ogx_config, dict) and "native_override" in ogx_config):
         return replace_env_vars(config_dict)
 
-    raw_override = ls_config["native_override"]
-    ls_config["native_override"] = {}  # keep secrets out of env resolution
+    raw_override = ogx_config["native_override"]
+    ogx_config["native_override"] = {}  # keep secrets out of env resolution
     resolved = replace_env_vars(config_dict)
-    ls_config["native_override"] = raw_override  # restore source dict if reused
+    ogx_config["native_override"] = raw_override  # restore source dict if reused
     resolved_ogx = (resolved.get("ogx") or resolved.get("llama_stack") or {}).get(
         "config"
     )

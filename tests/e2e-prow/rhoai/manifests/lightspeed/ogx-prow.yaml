@@ -126,7 +126,7 @@ spec:
             secretKeyRef:
               name: faiss-vector-store-secret
               key: id
-        - name: E2E_LLAMA_HOSTNAME
+        - name: E2E_OGX_HOSTNAME
           valueFrom:
             secretKeyRef:
               name: llama-stack-ip-secret
@@ -155,7 +155,7 @@ spec:
           ENRICHED_CONFIG="/opt/app-root/run.yaml"
           LIGHTSPEED_CONFIG="${LIGHTSPEED_CONFIG:-/opt/app-root/lightspeed-stack.yaml}"
           if [[ -f "$LIGHTSPEED_CONFIG" ]]; then
-            echo "Enriching llama-stack config..."
+            echo "Enriching OGX config..."
             ENRICHMENT_FAILED=0
             /opt/app-root/.venv/bin/python3 /opt/app-root/src/ogx_configuration.py \
               -c "$LIGHTSPEED_CONFIG" \

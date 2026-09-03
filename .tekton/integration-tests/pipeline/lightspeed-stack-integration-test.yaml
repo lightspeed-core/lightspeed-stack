@@ -15,7 +15,7 @@ spec:
       default: '{"components": [{"name":"lightspeed-stack-0-8", "containerImage": "quay.io/example/lightspeed-stack-0-8:latest"}]}'
       type: string
     - name: llama-stack-image
-      description: 'Llama Stack runs from source on UBI (init container clones repo and installs deps). Kept for logging/backwards compatibility.'
+      description: 'OGX runs from source on UBI (init container clones repo and installs deps). Parameter name kept for backwards compatibility.'
       default: 'run-from-source (UBI)'
       type: string
     - name: test-name
@@ -81,7 +81,7 @@ spec:
               - name: instanceType
                 value: "m5.large"
     - name: get-stack-images
-      description: Extract lightspeed-stack image and commit from SNAPSHOT (Llama Stack runs from source in-pod)
+      description: Extract lightspeed-stack image and commit from SNAPSHOT (OGX runs from source in-pod)
       runAfter:
         - provision-cluster
       params:

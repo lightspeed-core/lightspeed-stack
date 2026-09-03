@@ -155,7 +155,7 @@ class YamlDumper(yaml.Dumper):  # pylint: disable=too-many-ancestors
 
 
 def enrich_azure_entra_id_inference(
-    ls_config: dict[str, Any],
+    ogx_config: dict[str, Any],
     azure_entra_id: Optional[dict[str, Any]],
 ) -> None:
     """Enrich remote::azure inference provider for Entra ID authentication.
@@ -164,7 +164,7 @@ def enrich_azure_entra_id_inference(
     with model_validation=false to defer model validation to runtime.
 
     Parameters:
-        ls_config (dict[str, Any]): Mutable OGX configuration dictionary to update.
+        ogx_config (dict[str, Any]): Mutable OGX configuration dictionary to update.
         azure_entra_id (Optional[dict[str, Any]]): Lightspeed azure_entra_id block,
             or None.
 
@@ -174,7 +174,7 @@ def enrich_azure_entra_id_inference(
     if azure_entra_id is None:
         return
 
-    inference_providers = ls_config.get("providers", {}).get("inference", [])
+    inference_providers = ogx_config.get("providers", {}).get("inference", [])
 
     for provider in inference_providers:
         if provider.get("provider_type") != "remote::azure":
@@ -215,18 +215,18 @@ def _dedupe_vector_io_list(entries: list[Any]) -> list[dict[str, Any]]:
     return out
 
 
-def dedupe_providers_vector_io(ls_config: dict[str, Any]) -> None:
+def dedupe_providers_vector_io(ogx_config: dict[str, Any]) -> None:
     """Collapse ``providers.vector_io`` to one entry per ``provider_id``."""
-    if "providers" not in ls_config or "vector_io" not in ls_config["providers"]:
+    if "providers" not in ogx_config or "vector_io" not in ogx_config["providers"]:
         return
-    raw = ls_config["providers"]["vector_io"]
+    raw = ogx_config["providers"]["vector_io"]
     if not isinstance(raw, list):
         return
-    ls_config["providers"]["vector_io"] = _dedupe_vector_io_list(raw)
+    ogx_config["providers"]["vector_io"] = _dedupe_vector_io_list(raw)
 
 
 def construct_storage_backends_section(
-    ls_config: dict[str, Any], byok_rag: list[dict[str, Any]]
+    ogx_config: dict[str, Any], byok_rag: list[dict[str, Any]]
 ) -> dict[str, Any]:
     """Construct storage.backends section in OGX configuration file.
 
@@ -235,7 +235,7 @@ def construct_storage_backends_section(
 
     Parameters:
     ----------
-        ls_config (dict[str, Any]): Existing OGX configuration mapping.
+        ogx_config (dict[str, Any]): Existing OGX configuration mapping.
         byok_rag (list[dict[str, Any]]): List of BYOK RAG definitions.
 
     Returns:
@@ -245,8 +245,8 @@ def construct_storage_backends_section(
     output: dict[str, Any] = {}
 
     # preserve existing backends
-    if "storage" in ls_config and "backends" in ls_config["storage"]:
-        output = ls_config["storage"]["backends"].copy()
+    if "storage" in ogx_config and "backends" in ogx_config["storage"]:
+        output = ogx_config["storage"]["backends"].copy()
 
     # add new backends for each BYOK RAG (skip types that don't need one)
     added = 0
@@ -273,7 +273,7 @@ def construct_storage_backends_section(
 
 
 def construct_vector_stores_section(
-    ls_config: dict[str, Any], byok_rag: list[dict[str, Any]]
+    ogx_config: dict[str, Any], byok_rag: list[dict[str, Any]]
 ) -> list[dict[str, Any]]:
     """Construct registered_resources.vector_stores section in OGX config.
 
@@ -281,7 +281,7 @@ def construct_vector_stores_section(
 
     Parameters:
     ----------
-        ls_config (dict[str, Any]): Existing OGX configuration mapping
+        ogx_config (dict[str, Any]): Existing OGX configuration mapping
         used as the base; existing `registered_resources.vector_stores` entries
         are preserved if present.
         byok_rag (list[dict[str, Any]]): List of BYOK RAG definitions to be added to
@@ -299,9 +299,9 @@ def construct_vector_stores_section(
     output = []
 
     # fill-in existing vector_stores entries from registered_resources
-    if "registered_resources" in ls_config:
-        if "vector_stores" in ls_config["registered_resources"]:
-            output = ls_config["registered_resources"]["vector_stores"].copy()
+    if "registered_resources" in ogx_config:
+        if "vector_stores" in ogx_config["registered_resources"]:
+            output = ogx_config["registered_resources"]["vector_stores"].copy()
 
     # append new vector_stores entries, skipping duplicates
     # Resolve ${env.VAR} patterns so comparisons work when existing entries
@@ -342,7 +342,7 @@ def construct_vector_stores_section(
 
 
 def construct_models_section(
-    ls_config: dict[str, Any], byok_rag: list[dict[str, Any]]
+    ogx_config: dict[str, Any], byok_rag: list[dict[str, Any]]
 ) -> list[dict[str, Any]]:
     """Construct registered_resources.models section with embedding models.
 
@@ -350,7 +350,7 @@ def construct_models_section(
 
     Parameters:
     ----------
-        ls_config (dict[str, Any]): Existing OGX configuration mapping.
+        ogx_config (dict[str, Any]): Existing OGX configuration mapping.
         byok_rag (list[dict[str, Any]]): List of BYOK RAG definitions.
 
     Returns:
@@ -360,9 +360,9 @@ def construct_models_section(
     output: list[dict[str, Any]] = []
 
     # preserve existing models
-    if "registered_resources" in ls_config:
-        if "models" in ls_config["registered_resources"]:
-            output = ls_config["registered_resources"]["models"].copy()
+    if "registered_resources" in ogx_config:
+        if "models" in ogx_config["registered_resources"]:
+            output = ogx_config["registered_resources"]["models"].copy()
 
     # add embedding models for each BYOK RAG
     for brag in byok_rag:
@@ -448,7 +448,7 @@ def _build_vector_io_config(
 
 
 def construct_vector_io_providers_section(
-    ls_config: dict[str, Any], byok_rag: list[dict[str, Any]]
+    ogx_config: dict[str, Any], byok_rag: list[dict[str, Any]]
 ) -> list[dict[str, Any]]:
     """Construct providers/vector_io section in OGX configuration file.
 
@@ -458,7 +458,7 @@ def construct_vector_io_providers_section(
 
     Parameters:
     ----------
-        ls_config (dict[str, Any]): Existing OGX configuration
+        ogx_config (dict[str, Any]): Existing OGX configuration
         dictionary; if it contains providers.vector_io, those entries are used
         as the starting list.
         byok_rag (list[dict[str, Any]]): List of BYOK RAG specifications to convert
@@ -474,8 +474,8 @@ def construct_vector_io_providers_section(
     """
     output: list[dict[str, Any]] = []
 
-    if "providers" in ls_config and "vector_io" in ls_config["providers"]:
-        raw = ls_config["providers"]["vector_io"]
+    if "providers" in ogx_config and "vector_io" in ogx_config["providers"]:
+        raw = ogx_config["providers"]["vector_io"]
         if isinstance(raw, list):
             output = _dedupe_vector_io_list(raw)
         else:
@@ -515,44 +515,44 @@ def construct_vector_io_providers_section(
     return output
 
 
-def enrich_byok_rag(ls_config: dict[str, Any], byok_rag: list[dict[str, Any]]) -> None:
+def enrich_byok_rag(ogx_config: dict[str, Any], byok_rag: list[dict[str, Any]]) -> None:
     """Enrich OGX config with BYOK RAG settings.
 
     Args:
-        ls_config: OGX configuration dict (modified in place)
+        ogx_config: OGX configuration dict (modified in place)
         byok_rag: List of BYOK RAG configurations
     """
     if len(byok_rag) == 0:
         logger.info("BYOK RAG is not configured: skipping")
-        dedupe_providers_vector_io(ls_config)
+        dedupe_providers_vector_io(ogx_config)
         return
 
     logger.info("Enriching OGX config with BYOK RAG")
 
     # Add storage backends
-    if "storage" not in ls_config:
-        ls_config["storage"] = {}
-    ls_config["storage"]["backends"] = construct_storage_backends_section(
-        ls_config, byok_rag
+    if "storage" not in ogx_config:
+        ogx_config["storage"] = {}
+    ogx_config["storage"]["backends"] = construct_storage_backends_section(
+        ogx_config, byok_rag
     )
 
     # Add vector_io providers
-    if "providers" not in ls_config:
-        ls_config["providers"] = {}
-    ls_config["providers"]["vector_io"] = construct_vector_io_providers_section(
-        ls_config, byok_rag
+    if "providers" not in ogx_config:
+        ogx_config["providers"] = {}
+    ogx_config["providers"]["vector_io"] = construct_vector_io_providers_section(
+        ogx_config, byok_rag
     )
 
     # Add registered vector stores
-    if "registered_resources" not in ls_config:
-        ls_config["registered_resources"] = {}
-    ls_config["registered_resources"]["vector_stores"] = (
-        construct_vector_stores_section(ls_config, byok_rag)
+    if "registered_resources" not in ogx_config:
+        ogx_config["registered_resources"] = {}
+    ogx_config["registered_resources"]["vector_stores"] = (
+        construct_vector_stores_section(ogx_config, byok_rag)
     )
 
     # Add embedding models
-    ls_config["registered_resources"]["models"] = construct_models_section(
-        ls_config, byok_rag
+    ogx_config["registered_resources"]["models"] = construct_models_section(
+        ogx_config, byok_rag
     )
 
 
@@ -585,7 +585,7 @@ def _vector_store_provider_by_id(
 
 
 def _upsert_vsprov_embedding_model(
-    ls_config: dict[str, Any],
+    ogx_config: dict[str, Any],
     provider_id: str,
     embedding_model: str,
     embedding_dimension: int,
@@ -598,13 +598,13 @@ def _upsert_vsprov_embedding_model(
     ``model_id`` already exists.
 
     Parameters:
-        ls_config: OGX configuration modified in place.
+        ogx_config: OGX configuration modified in place.
         provider_id: Dynamic provider id used to name the model row.
         embedding_model: Configured embedding model path or id.
         embedding_dimension: Embedding vector dimensionality (required on
             validated ``vector_store.providers`` entries).
     """
-    models = ls_config.setdefault("registered_resources", {}).setdefault("models", [])
+    models = ogx_config.setdefault("registered_resources", {}).setdefault("models", [])
     model_id = f"vsprov_{provider_id}_embedding"
     provider_model_id = embedding_model.removeprefix("sentence-transformers/")
     entry = {
@@ -693,18 +693,18 @@ def _replace_or_append_vector_io(
 
 
 def _apply_vector_stores_defaults(
-    ls_config: dict[str, Any], designated: dict[str, Any]
+    ogx_config: dict[str, Any], designated: dict[str, Any]
 ) -> None:
     """Write vector_stores.default_* from the designated provider entry.
 
     Parameters:
-        ls_config: OGX configuration modified in place.
+        ogx_config: OGX configuration modified in place.
         designated: Provider entry selected by ``vector_store.default_provider``.
     """
-    vector_stores = ls_config.get("vector_stores")
+    vector_stores = ogx_config.get("vector_stores")
     if not isinstance(vector_stores, dict):
         vector_stores = {}
-        ls_config["vector_stores"] = vector_stores
+        ogx_config["vector_stores"] = vector_stores
     provider_id = str(designated["id"]).strip()
     vector_stores["default_provider_id"] = provider_id
     # Match _upsert_vsprov_embedding_model model_id; OGX validates
@@ -721,7 +721,7 @@ def _enrich_one_vector_store_provider(
     backends: dict[str, Any],
     vector_io: list[Any],
     existing_ids: set[str],
-    ls_config: dict[str, Any],
+    ogx_config: dict[str, Any],
 ) -> None:
     """Enrich LS config for a single ``vector_store.providers`` entry.
 
@@ -730,11 +730,11 @@ def _enrich_one_vector_store_provider(
         backends: ``storage.backends`` map (modified in place for faiss).
         vector_io: ``providers.vector_io`` list (modified in place).
         existing_ids: Known ``provider_id`` values already in ``vector_io``.
-        ls_config: Full OGX config (for embedding model registration).
+        ogx_config: Full OGX config (for embedding model registration).
     """
     provider_id = str(entry["id"]).strip()
     product_type = entry["type"]
-    ls_type = BACKEND_TO_PROVIDER_TYPE[product_type]
+    ogx_provider_type = BACKEND_TO_PROVIDER_TYPE[product_type]
     extra_fields, backend_name, backend_entry = _vsprov_fields_and_backend(
         product_type, provider_id, entry.get("config") or {}
     )
@@ -746,8 +746,10 @@ def _enrich_one_vector_store_provider(
         existing_ids,
         {
             "provider_id": provider_id,
-            "provider_type": ls_type,
-            "config": _build_vector_io_config(ls_type, backend_name, extra_fields),
+            "provider_type": ogx_provider_type,
+            "config": _build_vector_io_config(
+                ogx_provider_type, backend_name, extra_fields
+            ),
         },
     )
 
@@ -755,7 +757,7 @@ def _enrich_one_vector_store_provider(
     embedding_dimension = entry.get("embedding_dimension")
     if embedding_model and embedding_dimension is not None:
         _upsert_vsprov_embedding_model(
-            ls_config,
+            ogx_config,
             provider_id=provider_id,
             embedding_model=embedding_model,
             embedding_dimension=embedding_dimension,
@@ -763,7 +765,7 @@ def _enrich_one_vector_store_provider(
 
 
 def enrich_vector_store(
-    ls_config: dict[str, Any],
+    ogx_config: dict[str, Any],
     vector_store: Optional[dict[str, Any]] = None,
 ) -> None:
     """Enrich LS config with dynamic vector-store provider capacity.
@@ -775,7 +777,7 @@ def enrich_vector_store(
     ``registered_resources.vector_stores``.
 
     Parameters:
-        ls_config: OGX configuration dictionary (modified in place).
+        ogx_config: OGX configuration dictionary (modified in place).
         vector_store: High-level ``vector_store`` section
             (``default_provider`` + ``providers``) as a dict.
     """
@@ -783,16 +785,16 @@ def enrich_vector_store(
     providers = vector_store.get("providers") or []
     if not providers:
         logger.debug("vector_store.providers not configured: skipping")
-        dedupe_providers_vector_io(ls_config)
+        dedupe_providers_vector_io(ogx_config)
         return
 
-    backends = ls_config.setdefault("storage", {}).setdefault("backends", {})
-    providers_section = ls_config.setdefault("providers", {})
+    backends = ogx_config.setdefault("storage", {}).setdefault("backends", {})
+    providers_section = ogx_config.setdefault("providers", {})
     vector_io = providers_section.get("vector_io")
     if not isinstance(vector_io, list):
         vector_io = []
         providers_section["vector_io"] = vector_io
-    ls_config.setdefault("registered_resources", {}).setdefault("models", [])
+    ogx_config.setdefault("registered_resources", {}).setdefault("models", [])
 
     existing_ids = {
         str(entry.get("provider_id")).strip()
@@ -802,16 +804,16 @@ def enrich_vector_store(
 
     for entry in providers:
         _enrich_one_vector_store_provider(
-            entry, backends, vector_io, existing_ids, ls_config
+            entry, backends, vector_io, existing_ids, ogx_config
         )
 
     designated = _vector_store_provider_by_id(
         providers, vector_store.get("default_provider")
     )
     if designated is not None:
-        _apply_vector_stores_defaults(ls_config, designated)
+        _apply_vector_stores_defaults(ogx_config, designated)
 
-    dedupe_providers_vector_io(ls_config)
+    dedupe_providers_vector_io(ogx_config)
 
 
 # =============================================================================
@@ -820,14 +822,14 @@ def enrich_vector_store(
 
 
 def enrich_solr(  # pylint: disable=too-many-locals,too-many-statements
-    ls_config: dict[str, Any],
+    ogx_config: dict[str, Any],
     rag_config: dict[str, Any],
     okp_config: dict[str, Any],
 ) -> None:
     """Enrich OGX config with Solr settings.
 
     Parameters:
-        ls_config: OGX configuration dict (modified in place)
+        ogx_config: OGX configuration dict (modified in place)
         rag_config: RAG configuration dict. Used keys:
             - inline (list[str]): inline RAG IDs
             - tool (list[str]): tool RAG IDs
@@ -861,14 +863,14 @@ def enrich_solr(  # pylint: disable=too-many-locals,too-many-statements
     logger.info("Enriching OGX config with OKP")
 
     # Add vector_io provider for Solr
-    if "providers" not in ls_config:
-        ls_config["providers"] = {}
-    if "vector_io" not in ls_config["providers"]:
-        ls_config["providers"]["vector_io"] = []
+    if "providers" not in ogx_config:
+        ogx_config["providers"] = {}
+    if "vector_io" not in ogx_config["providers"]:
+        ogx_config["providers"]["vector_io"] = []
 
     # Add Solr provider if not already present
     existing_providers = [
-        p.get("provider_id") for p in ls_config["providers"]["vector_io"]
+        p.get("provider_id") for p in ogx_config["providers"]["vector_io"]
     ]
     if constants.SOLR_PROVIDER_ID not in existing_providers:
         collection_env = (
@@ -886,7 +888,7 @@ def enrich_solr(  # pylint: disable=too-many-locals,too-many-statements
         embedding_dim_env = (
             f"${{env.SOLR_EMBEDDING_DIM:={constants.SOLR_DEFAULT_EMBEDDING_DIMENSION}}}"
         )
-        ls_config["providers"]["vector_io"].append(
+        ogx_config["providers"]["vector_io"].append(
             {
                 "provider_id": constants.SOLR_PROVIDER_ID,
                 "provider_type": "remote::solr_vector_io",
@@ -919,18 +921,18 @@ def enrich_solr(  # pylint: disable=too-many-locals,too-many-statements
         logger.info("Added OKP provider to providers/vector_io")
 
     # Add vector store registration for Solr
-    if "registered_resources" not in ls_config:
-        ls_config["registered_resources"] = {}
-    if "vector_stores" not in ls_config["registered_resources"]:
-        ls_config["registered_resources"]["vector_stores"] = []
+    if "registered_resources" not in ogx_config:
+        ogx_config["registered_resources"] = {}
+    if "vector_stores" not in ogx_config["registered_resources"]:
+        ogx_config["registered_resources"]["vector_stores"] = []
 
     # Add Solr vector store if not already present
     existing_stores = [
         vs.get("vector_store_id")
-        for vs in ls_config["registered_resources"]["vector_stores"]
+        for vs in ogx_config["registered_resources"]["vector_stores"]
     ]
     if constants.SOLR_DEFAULT_VECTOR_STORE_ID not in existing_stores:
-        ls_config["registered_resources"]["vector_stores"].append(
+        ogx_config["registered_resources"]["vector_stores"].append(
             {
                 "vector_store_id": constants.SOLR_DEFAULT_VECTOR_STORE_ID,
                 "provider_id": constants.SOLR_PROVIDER_ID,
@@ -944,21 +946,21 @@ def enrich_solr(  # pylint: disable=too-many-locals,too-many-statements
         )
 
     # Add Solr embedding model to registered_resources.models if not already present
-    if "models" not in ls_config["registered_resources"]:
-        ls_config["registered_resources"]["models"] = []
+    if "models" not in ogx_config["registered_resources"]:
+        ogx_config["registered_resources"]["models"] = []
 
     # Strip sentence-transformers/ prefix from constant for provider_model_id
     provider_model_id = constants.SOLR_DEFAULT_EMBEDDING_MODEL
     provider_model_id = provider_model_id.removeprefix("sentence-transformers/")
 
     # Check if already registered
-    registered_models = ls_config["registered_resources"]["models"]
+    registered_models = ogx_config["registered_resources"]["models"]
     existing_model_ids = [m.get("provider_model_id") for m in registered_models]
     if provider_model_id not in existing_model_ids:
         # Build environment variable expression
         provider_model_env = f"${{env.SOLR_EMBEDDING_MODEL:={provider_model_id}}}"
 
-        ls_config["registered_resources"]["models"].append(
+        ogx_config["registered_resources"]["models"].append(
             {
                 "model_id": constants.SOLR_EMBEDDING_MODEL_ID,
                 "model_type": "embedding",
@@ -981,9 +983,9 @@ def enrich_solr(  # pylint: disable=too-many-locals,too-many-statements
         # LCORE uses "semantic"; OGX uses "vector"
         if ogx_mode == "semantic":
             ogx_mode = "vector"
-        if "vector_stores" not in ls_config:
-            ls_config["vector_stores"] = {}
-        chunk_params = ls_config["vector_stores"].setdefault(
+        if "vector_stores" not in ogx_config:
+            ogx_config["vector_stores"] = {}
+        chunk_params = ogx_config["vector_stores"].setdefault(
             "chunk_retrieval_params", {}
         )
         chunk_params["default_search_mode"] = ogx_mode
@@ -1059,17 +1061,17 @@ def _matchable_provider_id(provider_id: Any) -> Any:
     return provider_id
 
 
-def _strip_default_openai_inference(ls_config: dict[str, Any]) -> None:
+def _strip_default_openai_inference(ogx_config: dict[str, Any]) -> None:
     """Remove the OpenAI inference provider from the default baseline.
 
     Parameters:
-        ls_config: The Llama Stack configuration being synthesized (modified
+        ogx_config: The OGX configuration being synthesized (modified
             in place).
 
     Returns:
-        None: ``ls_config`` is modified in place.
+        None: ``ogx_config`` is modified in place.
     """
-    providers = ls_config.get("providers")
+    providers = ogx_config.get("providers")
     if not isinstance(providers, dict):
         return
     inference = providers.get("inference")
@@ -1086,7 +1088,7 @@ def _strip_default_openai_inference(ls_config: dict[str, Any]) -> None:
 
 
 def apply_high_level_inference(
-    ls_config: dict[str, Any], inference: dict[str, Any]
+    ogx_config: dict[str, Any], inference: dict[str, Any]
 ) -> None:
     """Expand high-level ``inference.providers`` into OGX provider entries.
 
@@ -1104,35 +1106,35 @@ def apply_high_level_inference(
     values (R6).
 
     Parameters:
-        ls_config: The OGX configuration being synthesized (modified in
+        ogx_config: The OGX configuration being synthesized (modified in
             place).
         inference: The root ``inference`` section as a dict; only its
             ``providers`` list is consumed here.
 
     Returns:
-        None: ``ls_config`` is modified in place.
+        None: ``ogx_config`` is modified in place.
     """
     providers = inference.get("providers") or []
     if not providers:
         return
 
-    providers_section = ls_config.setdefault("providers", {})
+    providers_section = ogx_config.setdefault("providers", {})
     inference_list = providers_section.setdefault("inference", [])
 
     for provider in providers:
         provider_type = provider["type"]
         emitted_id = provider.get("id") or provider_type.replace("_", "-")
-        ls_provider_type = PROVIDER_TYPE_MAP[provider_type]
+        ogx_provider_type = PROVIDER_TYPE_MAP[provider_type]
         entry: dict[str, Any] = {
             "provider_id": emitted_id,
-            "provider_type": ls_provider_type,
+            "provider_type": ogx_provider_type,
         }
 
         provider_config: dict[str, Any] = {}
         if provider.get("extra"):
             provider_config.update(provider["extra"])
         if provider.get("api_key_env"):
-            key_field = API_KEY_FIELD_MAP.get(ls_provider_type, "api_key")
+            key_field = API_KEY_FIELD_MAP.get(ogx_provider_type, "api_key")
             provider_config[key_field] = "${env." + provider["api_key_env"] + "}"
         if provider.get("allowed_models"):
             provider_config["allowed_models"] = provider["allowed_models"]
@@ -1162,8 +1164,8 @@ def apply_high_level_inference(
     )
 
 
-def ensure_mcp_tool_runtime(ls_config: dict[str, Any]) -> None:
-    """Ensure the default MCP tool_runtime provider exists in ``ls_config``.
+def ensure_mcp_tool_runtime(ogx_config: dict[str, Any]) -> None:
+    """Ensure the default MCP tool_runtime provider exists in ``ogx_config``.
 
     Adds ``tool_runtime`` to ``apis`` when missing, then appends the default
     ``model-context-protocol`` provider under ``providers.tool_runtime`` when
@@ -1171,17 +1173,17 @@ def ensure_mcp_tool_runtime(ls_config: dict[str, Any]) -> None:
     (including ``rag-runtime``) are left untouched.
 
     Parameters:
-        ls_config: The OGX configuration being synthesized (modified
+        ogx_config: The OGX configuration being synthesized (modified
             in place).
 
     Returns:
-        None: ``ls_config`` is modified in place.
+        None: ``ogx_config`` is modified in place.
     """
-    apis = ls_config.setdefault("apis", [])
+    apis = ogx_config.setdefault("apis", [])
     if "tool_runtime" not in apis:
         apis.append("tool_runtime")
 
-    providers_section = ls_config.setdefault("providers", {})
+    providers_section = ogx_config.setdefault("providers", {})
     tool_runtime = providers_section.setdefault("tool_runtime", [])
     for existing in tool_runtime:
         if (
@@ -1272,7 +1274,7 @@ def synthesize_configuration(  # pylint: disable=too-many-locals
             else load_default_baseline()
         )
 
-    ls_config: dict[str, Any] = copy.deepcopy(baseline)
+    ogx_config: dict[str, Any] = copy.deepcopy(baseline)
 
     # Profile and empty are unchanged. The shipped file either keeps OpenAI
     # (default/omitted, with a deprecation WARN) or drops it (byo-llm).
@@ -1283,7 +1285,7 @@ def synthesize_configuration(  # pylint: disable=too-many-locals
     # Engineering Support Agreement's one-minor deprecation phase applies.
     if loaded_shipped_baseline:
         if unified and unified.get("baseline") == "byo-llm":
-            _strip_default_openai_inference(ls_config)
+            _strip_default_openai_inference(ogx_config)
         else:
             logger.warning(
                 "DEPRECATED: the built-in OpenAI inference provider in "
@@ -1296,23 +1298,23 @@ def synthesize_configuration(  # pylint: disable=too-many-locals
             )
 
     # 3. Normalize duplicated vector_io providers in the baseline.
-    dedupe_providers_vector_io(ls_config)
+    dedupe_providers_vector_io(ogx_config)
 
     # 4. High-level inference providers (Decision S5 — a root-level section).
     inference = lcs_config.get("inference") or {}
     if inference.get("providers"):
-        apply_high_level_inference(ls_config, inference)
+        apply_high_level_inference(ogx_config, inference)
 
     # 5. Ensure MCP tool_runtime for default/profile baselines (skipped for
     #    baseline: empty so migrate round-trips stay lossless).
     if not baseline_was_empty:
-        ensure_mcp_tool_runtime(ls_config)
+        ensure_mcp_tool_runtime(ogx_config)
 
     # 6. Raw escape hatch, deep-merged with list replacement. It wins over the
     #    baseline and the high-level expansion (R5) but deliberately NOT over
     #    enrichment (step 7).
     if unified and unified.get("native_override"):
-        ls_config = deep_merge_list_replace(ls_config, unified["native_override"])
+        ogx_config = deep_merge_list_replace(ogx_config, unified["native_override"])
 
     # 7. Existing enrichment — same calls as legacy generate_configuration so
     #    unified output matches legacy output for equivalent inputs (R7).
@@ -1322,23 +1324,23 @@ def synthesize_configuration(  # pylint: disable=too-many-locals
     #    get the same treatment or list-shaped enrichment artifacts
     #    (vector_io providers, registered models, azure model_validation) are
     #    replaced wholesale by the lifted lists and silently lost.
-    enrich_azure_entra_id_inference(ls_config, lcs_config.get("azure_entra_id"))
+    enrich_azure_entra_id_inference(ogx_config, lcs_config.get("azure_entra_id"))
     rag_section = lcs_config.get("rag", {})
     byok_stores = rag_section.get("byok", {}).get("stores", [])
-    enrich_byok_rag(ls_config, byok_stores)
+    enrich_byok_rag(ogx_config, byok_stores)
     retrieval = rag_section.get("retrieval", {})
     rag_config_for_solr = {
         "inline": retrieval.get("inline", {}).get("sources", []),
         "tool": retrieval.get("tool", {}).get("sources", []),
     }
     okp_config = rag_section.get("okp", {})
-    enrich_solr(ls_config, rag_config_for_solr, okp_config)
-    enrich_vector_store(ls_config, lcs_config.get("vector_store"))
+    enrich_solr(ogx_config, rag_config_for_solr, okp_config)
+    enrich_vector_store(ogx_config, lcs_config.get("vector_store"))
 
     # 8. Dedupe again in case native_override or enrichment reintroduced dupes.
-    dedupe_providers_vector_io(ls_config)
+    dedupe_providers_vector_io(ogx_config)
 
-    return ls_config
+    return ogx_config
 
 
 def synthesize_to_file(
@@ -1364,7 +1366,7 @@ def synthesize_to_file(
     Returns:
         None.
     """
-    ls_config = synthesize_configuration(lcs_config, config_file_dir, default_baseline)
+    ogx_config = synthesize_configuration(lcs_config, config_file_dir, default_baseline)
 
     path = Path(output_file)
     if path.parent != Path(""):
@@ -1374,7 +1376,7 @@ def synthesize_to_file(
     # the write guarantees 0600 even when overwriting a pre-existing file.
     fd = os.open(str(path), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
     with os.fdopen(fd, "w", encoding="utf-8") as file:
-        yaml.dump(ls_config, file, Dumper=YamlDumper, default_flow_style=False)
+        yaml.dump(ogx_config, file, Dumper=YamlDumper, default_flow_style=False)
     os.chmod(str(path), 0o600)
 
     logger.info("Wrote synthesized OGX configuration to %s (mode 0600)", path)
@@ -1480,17 +1482,17 @@ def generate_configuration(
     logger.info("Reading OGX configuration from file %s", input_file)
 
     with open(input_file, "r", encoding="utf-8") as file:
-        ls_config = yaml.safe_load(file)
+        ogx_config = yaml.safe_load(file)
 
-    dedupe_providers_vector_io(ls_config)
+    dedupe_providers_vector_io(ogx_config)
 
     # Enrichment: Azure Entra ID deferred auth
-    enrich_azure_entra_id_inference(ls_config, config.get("azure_entra_id"))
+    enrich_azure_entra_id_inference(ogx_config, config.get("azure_entra_id"))
 
     # Enrichment: BYOK RAG
     rag_section = config.get("rag", {})
     byok_stores = rag_section.get("byok", {}).get("stores", [])
-    enrich_byok_rag(ls_config, byok_stores)
+    enrich_byok_rag(ogx_config, byok_stores)
 
     # Enrichment: Solr - enabled when "okp" appears in either inline or tool list
     retrieval = rag_section.get("retrieval", {})
@@ -1499,14 +1501,14 @@ def generate_configuration(
         "tool": retrieval.get("tool", {}).get("sources", []),
     }
     okp_config = rag_section.get("okp", {})
-    enrich_solr(ls_config, rag_config_for_solr, okp_config)
+    enrich_solr(ogx_config, rag_config_for_solr, okp_config)
 
-    dedupe_providers_vector_io(ls_config)
+    dedupe_providers_vector_io(ogx_config)
 
     logger.info("Writing OGX configuration into file %s", output_file)
 
     with open(output_file, "w", encoding="utf-8") as file:
-        yaml.dump(ls_config, file, Dumper=YamlDumper, default_flow_style=False)
+        yaml.dump(ogx_config, file, Dumper=YamlDumper, default_flow_style=False)
 
 
 # =============================================================================

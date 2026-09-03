@@ -28,7 +28,7 @@ Feature: Legacy two-file configuration during deprecation window
   @skip-in-library-mode
   Scenario: Legacy two-file configuration still boots and serves requests in server mode
     Given The service uses the lightspeed-stack.yaml configuration
-      And Llama Stack is restarted
+      And OGX is restarted
       And Lightspeed Stack is restarted
      When I access endpoint "readiness" using HTTP GET method
      Then The status code of the response is 200

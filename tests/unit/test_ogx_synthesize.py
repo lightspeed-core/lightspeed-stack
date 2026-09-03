@@ -42,9 +42,9 @@ OPENAI_CONDITIONAL_API_KEY = "${env.OPENAI_API_KEY:=}"
 # ---------------------------------------------------------------------------
 
 
-def _tool_runtime_ids(ls_config: dict[str, Any]) -> list[Optional[str]]:
+def _tool_runtime_ids(ogx_config: dict[str, Any]) -> list[Optional[str]]:
     """Return provider_id values from providers.tool_runtime."""
-    providers = ls_config.get("providers") or {}
+    providers = ogx_config.get("providers") or {}
     return [
         entry.get("provider_id")
         for entry in providers.get("tool_runtime") or []
@@ -52,19 +52,19 @@ def _tool_runtime_ids(ls_config: dict[str, Any]) -> list[Optional[str]]:
     ]
 
 
-def _inference_entries(ls_config: dict[str, Any]) -> list[dict[str, Any]]:
+def _inference_entries(ogx_config: dict[str, Any]) -> list[dict[str, Any]]:
     """Return inference provider dicts from a synthesized or baseline config."""
-    providers = ls_config.get("providers") or {}
+    providers = ogx_config.get("providers") or {}
     return [
         entry for entry in providers.get("inference") or [] if isinstance(entry, dict)
     ]
 
 
-def _openai_inference_entries(ls_config: dict[str, Any]) -> list[dict[str, Any]]:
+def _openai_inference_entries(ogx_config: dict[str, Any]) -> list[dict[str, Any]]:
     """Return remote::openai inference rows, including the conditional-id form."""
     return [
         entry
-        for entry in _inference_entries(ls_config)
+        for entry in _inference_entries(ogx_config)
         if entry.get("provider_type") == "remote::openai"
         or entry.get("provider_id") in ("openai", OPENAI_CONDITIONAL_PROVIDER_ID)
     ]
@@ -72,7 +72,7 @@ def _openai_inference_entries(ls_config: dict[str, Any]) -> list[dict[str, Any]]
 
 def test_ensure_mcp_tool_runtime_appends_and_preserves_rag() -> None:
     """MCP is appended; existing rag-runtime is untouched."""
-    ls_config: dict[str, Any] = {
+    ogx_config: dict[str, Any] = {
         "apis": ["tool_runtime"],
         "providers": {
             "tool_runtime": [
@@ -84,15 +84,15 @@ def test_ensure_mcp_tool_runtime_appends_and_preserves_rag() -> None:
             ]
         },
     }
-    ensure_mcp_tool_runtime(ls_config)
-    assert _tool_runtime_ids(ls_config) == [
+    ensure_mcp_tool_runtime(ogx_config)
+    assert _tool_runtime_ids(ogx_config) == [
         "rag-runtime",
         "model-context-protocol",
     ]
 
     found = False
     found_entry = {}
-    for entry in ls_config["providers"]["tool_runtime"]:
+    for entry in ogx_config["providers"]["tool_runtime"]:
         if (
             isinstance(entry, dict)
             and entry.get("provider_id") == "model-context-protocol"
@@ -112,20 +112,20 @@ def test_ensure_mcp_tool_runtime_idempotent() -> None:
         "provider_type": "remote::model-context-protocol",
         "config": {"keep": True},
     }
-    ls_config: dict[str, Any] = {
+    ogx_config: dict[str, Any] = {
         "apis": ["tool_runtime"],
         "providers": {"tool_runtime": [existing]},
     }
-    ensure_mcp_tool_runtime(ls_config)
-    assert ls_config["providers"]["tool_runtime"] == [existing]
+    ensure_mcp_tool_runtime(ogx_config)
+    assert ogx_config["providers"]["tool_runtime"] == [existing]
 
 
 def test_ensure_mcp_tool_runtime_adds_api_when_missing() -> None:
     """Thin baselines get tool_runtime in apis and the MCP provider."""
-    ls_config: dict[str, Any] = {}
-    ensure_mcp_tool_runtime(ls_config)
-    assert "tool_runtime" in ls_config["apis"]
-    assert _tool_runtime_ids(ls_config) == ["model-context-protocol"]
+    ogx_config: dict[str, Any] = {}
+    ensure_mcp_tool_runtime(ogx_config)
+    assert "tool_runtime" in ogx_config["apis"]
+    assert _tool_runtime_ids(ogx_config) == ["model-context-protocol"]
 
 
 # ---------------------------------------------------------------------------
@@ -267,7 +267,7 @@ def test_deep_merge_list_replace_does_not_mutate_inputs() -> None:
 
 def test_apply_high_level_inference_maps_type_and_emits_env_ref() -> None:
     """A remote provider maps to its provider_type with an ${env} api_key (R6)."""
-    ls_config: dict[str, Any] = {"providers": {"inference": []}}
+    ogx_config: dict[str, Any] = {"providers": {"inference": []}}
     inference = {
         "providers": [
             {
@@ -278,8 +278,8 @@ def test_apply_high_level_inference_maps_type_and_emits_env_ref() -> None:
             }
         ]
     }
-    apply_high_level_inference(ls_config, inference)
-    entry = ls_config["providers"]["inference"][0]
+    apply_high_level_inference(ogx_config, inference)
+    entry = ogx_config["providers"]["inference"][0]
     assert entry["provider_id"] == "openai"
     assert entry["provider_type"] == "remote::openai"
     assert entry["config"]["api_key"] == "${env.OPENAI_API_KEY}"
@@ -288,10 +288,10 @@ def test_apply_high_level_inference_maps_type_and_emits_env_ref() -> None:
 
 def test_apply_high_level_inference_hyphenates_provider_id() -> None:
     """sentence_transformers emits the hyphenated id the ecosystem expects."""
-    ls_config: dict[str, Any] = {"providers": {"inference": []}}
+    ogx_config: dict[str, Any] = {"providers": {"inference": []}}
     inference = {"providers": [{"type": "sentence_transformers"}]}
-    apply_high_level_inference(ls_config, inference)
-    entry = ls_config["providers"]["inference"][0]
+    apply_high_level_inference(ogx_config, inference)
+    entry = ogx_config["providers"]["inference"][0]
     assert entry["provider_id"] == "sentence-transformers"
     assert entry["provider_type"] == "inline::sentence-transformers"
     # no api_key / allowed_models -> no config block emitted
@@ -302,7 +302,7 @@ def test_apply_high_level_inference_replaces_existing_provider_id(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     """A high-level provider replaces a baseline entry with the same id."""
-    ls_config: dict[str, Any] = {
+    ogx_config: dict[str, Any] = {
         "providers": {
             "inference": [
                 {
@@ -316,17 +316,17 @@ def test_apply_high_level_inference_replaces_existing_provider_id(
     }
     inference = {"providers": [{"type": "openai", "api_key_env": "NEW_KEY"}]}
     with caplog.at_level("INFO", logger="lightspeed_stack.ogx_configuration"):
-        apply_high_level_inference(ls_config, inference)
-    ids = [p["provider_id"] for p in ls_config["providers"]["inference"]]
+        apply_high_level_inference(ogx_config, inference)
+    ids = [p["provider_id"] for p in ogx_config["providers"]["inference"]]
     assert ids == ["openai", "other"]  # replaced in place, not duplicated
-    openai = ls_config["providers"]["inference"][0]
+    openai = ogx_config["providers"]["inference"][0]
     assert openai["config"]["api_key"] == "${env.NEW_KEY}"
     assert "provider_id='openai'" in caplog.text
 
 
 def test_apply_high_level_inference_replaces_conditional_provider_id() -> None:
     """The baseline ${env.OPENAI_API_KEY:+openai} row matches id openai."""
-    ls_config: dict[str, Any] = {
+    ogx_config: dict[str, Any] = {
         "providers": {
             "inference": [
                 {
@@ -342,18 +342,18 @@ def test_apply_high_level_inference_replaces_conditional_provider_id() -> None:
         }
     }
     inference = {"providers": [{"type": "openai", "api_key_env": "OPENAI_API_KEY"}]}
-    apply_high_level_inference(ls_config, inference)
-    openai_entries = _openai_inference_entries(ls_config)
+    apply_high_level_inference(ogx_config, inference)
+    openai_entries = _openai_inference_entries(ogx_config)
     assert len(openai_entries) == 1
     assert openai_entries[0]["provider_id"] == "openai"
     assert openai_entries[0]["config"]["api_key"] == "${env.OPENAI_API_KEY}"
-    ids = [entry["provider_id"] for entry in _inference_entries(ls_config)]
+    ids = [entry["provider_id"] for entry in _inference_entries(ogx_config)]
     assert ids == ["openai", "sentence-transformers"]
 
 
 def test_apply_high_level_inference_uses_explicit_id() -> None:
     """An explicit id is emitted as provider_id instead of the type-derived id."""
-    ls_config: dict[str, Any] = {"providers": {"inference": []}}
+    ogx_config: dict[str, Any] = {"providers": {"inference": []}}
     inference = {
         "providers": [
             {
@@ -363,15 +363,15 @@ def test_apply_high_level_inference_uses_explicit_id() -> None:
             }
         ]
     }
-    apply_high_level_inference(ls_config, inference)
-    entry = ls_config["providers"]["inference"][0]
+    apply_high_level_inference(ogx_config, inference)
+    entry = ogx_config["providers"]["inference"][0]
     assert entry["provider_id"] == "vllm-prod"
     assert entry["provider_type"] == "remote::vllm"
 
 
 def test_apply_high_level_inference_same_type_distinct_ids() -> None:
     """Two providers of the same type with distinct ids both appear."""
-    ls_config: dict[str, Any] = {"providers": {"inference": []}}
+    ogx_config: dict[str, Any] = {"providers": {"inference": []}}
     inference = {
         "providers": [
             {
@@ -388,8 +388,8 @@ def test_apply_high_level_inference_same_type_distinct_ids() -> None:
             },
         ]
     }
-    apply_high_level_inference(ls_config, inference)
-    by_id = {e["provider_id"]: e for e in ls_config["providers"]["inference"]}
+    apply_high_level_inference(ogx_config, inference)
+    by_id = {e["provider_id"]: e for e in ogx_config["providers"]["inference"]}
     assert set(by_id) == {"vllm-prod", "vllm-staging"}
     assert all(e["provider_type"] == "remote::vllm" for e in by_id.values())
     assert by_id["vllm-prod"]["config"]["url"] == "http://prod:8000"
@@ -400,7 +400,7 @@ def test_apply_high_level_inference_duplicate_id_last_wins(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     """Duplicate id keeps the last entry and logs an info message."""
-    ls_config: dict[str, Any] = {"providers": {"inference": []}}
+    ogx_config: dict[str, Any] = {"providers": {"inference": []}}
     inference = {
         "providers": [
             {
@@ -416,8 +416,8 @@ def test_apply_high_level_inference_duplicate_id_last_wins(
         ]
     }
     with caplog.at_level("INFO", logger="lightspeed_stack.ogx_configuration"):
-        apply_high_level_inference(ls_config, inference)
-    entries = ls_config["providers"]["inference"]
+        apply_high_level_inference(ogx_config, inference)
+    entries = ogx_config["providers"]["inference"]
     assert len(entries) == 1
     assert entries[0]["provider_id"] == "vllm-shared"
     assert entries[0]["config"]["api_token"] == "${env.SECOND_KEY}"
@@ -426,14 +426,14 @@ def test_apply_high_level_inference_duplicate_id_last_wins(
 
 def test_apply_high_level_inference_merges_extra() -> None:
     """The extra mapping is merged verbatim into the provider config block."""
-    ls_config: dict[str, Any] = {"providers": {"inference": []}}
+    ogx_config: dict[str, Any] = {"providers": {"inference": []}}
     inference = {
         "providers": [
             {"type": "vllm_rhaiis", "extra": {"url": "http://x", "tls_verify": False}}
         ]
     }
-    apply_high_level_inference(ls_config, inference)
-    entry = ls_config["providers"]["inference"][0]
+    apply_high_level_inference(ogx_config, inference)
+    entry = ogx_config["providers"]["inference"][0]
     assert entry["provider_id"] == "vllm-rhaiis"
     assert entry["provider_type"] == "remote::vllm"
     assert entry["config"] == {"url": "http://x", "tls_verify": False}
@@ -441,16 +441,16 @@ def test_apply_high_level_inference_merges_extra() -> None:
 
 def test_apply_high_level_inference_emits_api_token_for_vllm() -> None:
     """vLLM providers emit api_token from api_key_env, not api_key."""
-    ls_config: dict[str, Any] = {"providers": {"inference": []}}
+    ogx_config: dict[str, Any] = {"providers": {"inference": []}}
     inference = {
         "providers": [
             {"type": "vllm", "api_key_env": "VLLM_API_KEY"},
             {"type": "vllm_rhaiis", "api_key_env": "VLLM_API_KEY"},
         ]
     }
-    apply_high_level_inference(ls_config, inference)
-    vllm = ls_config["providers"]["inference"][0]
-    vllm_rhaiis = ls_config["providers"]["inference"][1]
+    apply_high_level_inference(ogx_config, inference)
+    vllm = ogx_config["providers"]["inference"][0]
+    vllm_rhaiis = ogx_config["providers"]["inference"][1]
     assert vllm["provider_id"] == "vllm"
     assert vllm["provider_type"] == "remote::vllm"
     assert vllm["config"]["api_token"] == "${env.VLLM_API_KEY}"
@@ -462,14 +462,14 @@ def test_apply_high_level_inference_emits_api_token_for_vllm() -> None:
 
 def test_apply_high_level_inference_maps_ollama() -> None:
     """ollama maps to remote::ollama with extra config merged."""
-    ls_config: dict[str, Any] = {"providers": {"inference": []}}
+    ogx_config: dict[str, Any] = {"providers": {"inference": []}}
     inference = {
         "providers": [
             {"type": "ollama", "extra": {"base_url": "http://localhost:11434"}}
         ]
     }
-    apply_high_level_inference(ls_config, inference)
-    entry = ls_config["providers"]["inference"][0]
+    apply_high_level_inference(ogx_config, inference)
+    entry = ogx_config["providers"]["inference"][0]
     assert entry["provider_id"] == "ollama"
     assert entry["provider_type"] == "remote::ollama"
     assert entry["config"]["base_url"] == "http://localhost:11434"
@@ -477,7 +477,7 @@ def test_apply_high_level_inference_maps_ollama() -> None:
 
 def test_apply_high_level_inference_maps_vllm() -> None:
     """vllm maps to remote::vllm with extra config merged."""
-    ls_config: dict[str, Any] = {"providers": {"inference": []}}
+    ogx_config: dict[str, Any] = {"providers": {"inference": []}}
     inference = {
         "providers": [
             {
@@ -487,8 +487,8 @@ def test_apply_high_level_inference_maps_vllm() -> None:
             }
         ]
     }
-    apply_high_level_inference(ls_config, inference)
-    entry = ls_config["providers"]["inference"][0]
+    apply_high_level_inference(ogx_config, inference)
+    entry = ogx_config["providers"]["inference"][0]
     assert entry["provider_id"] == "vllm"
     assert entry["provider_type"] == "remote::vllm"
     assert entry["config"]["api_token"] == "${env.VLLM_API_KEY}"
@@ -497,7 +497,7 @@ def test_apply_high_level_inference_maps_vllm() -> None:
 
 def test_apply_high_level_inference_extra_cannot_override_api_key_env() -> None:
     """api_key_env always wins over a conflicting key in extra."""
-    ls_config: dict[str, Any] = {"providers": {"inference": []}}
+    ogx_config: dict[str, Any] = {"providers": {"inference": []}}
     inference = {
         "providers": [
             {
@@ -507,8 +507,8 @@ def test_apply_high_level_inference_extra_cannot_override_api_key_env() -> None:
             }
         ]
     }
-    apply_high_level_inference(ls_config, inference)
-    entry = ls_config["providers"]["inference"][0]
+    apply_high_level_inference(ogx_config, inference)
+    entry = ogx_config["providers"]["inference"][0]
     assert entry["config"]["api_token"] == "${env.VLLM_API_KEY}"
 
 
@@ -522,9 +522,9 @@ def test_unified_inference_provider_accepts_ollama_and_vllm() -> None:
 
 def test_apply_high_level_inference_empty_is_noop() -> None:
     """No providers -> the inference list is left as-is."""
-    ls_config: dict[str, Any] = {"providers": {"inference": [{"provider_id": "x"}]}}
-    apply_high_level_inference(ls_config, {"providers": []})
-    assert ls_config["providers"]["inference"] == [{"provider_id": "x"}]
+    ogx_config: dict[str, Any] = {"providers": {"inference": [{"provider_id": "x"}]}}
+    apply_high_level_inference(ogx_config, {"providers": []})
+    assert ogx_config["providers"]["inference"] == [{"provider_id": "x"}]
 
 
 def test_provider_type_map_covers_every_literal_value() -> None:
