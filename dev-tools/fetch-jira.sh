@@ -147,9 +147,22 @@ def extract_text(node, depth=0):
                     text = f'**{text}**'
                 elif m.get('type') == 'code':
                     text = f'\`{text}\`'
+                elif m.get('type') == 'link':
+                    # Keep the target: a link whose text differs from its
+                    # href (ticket keys, "here", PR titles) is otherwise lost.
+                    href = m.get('attrs', {}).get('href', '')
+                    if href and href != text:
+                        text = text + ' <' + href + '>'
             return [text]
+        if ntype == 'inlineCard':
+            # Smart links (pasted Jira/GitHub URLs) carry the URL only here.
+            return ['<' + node.get('attrs', {}).get('url', '') + '>']
+        if ntype == 'mention':
+            return [node.get('attrs', {}).get('text', '@?')]
         if ntype == 'hardBreak':
             return ['\n']
+        if ntype == 'rule':
+            return ['---']
         if ntype == 'listItem':
             child_text = []
             for c in node.get('content', []):
@@ -170,6 +183,22 @@ def extract_text(node, depth=0):
             for c in node.get('content', []):
                 child_text.extend(extract_text(c, depth))
             return ['\`\`\`\n' + ''.join(child_text) + '\n\`\`\`']
+        if ntype == 'blockquote':
+            child_text = []
+            for c in node.get('content', []):
+                child_text.extend(extract_text(c, depth))
+            return ['> ' + l for l in ''.join(child_text).strip().split('\n')]
+        if ntype == 'table':
+            rows = []
+            for row in node.get('content', []):
+                cells = []
+                for cell in row.get('content', []):
+                    cell_text = []
+                    for c in cell.get('content', []):
+                        cell_text.extend(extract_text(c, depth))
+                    cells.append(''.join(cell_text).strip())
+                rows.append(' | '.join(cells))
+            return rows
         for c in node.get('content', []):
             lines.extend(extract_text(c, depth))
         if ntype == 'paragraph' and lines:
