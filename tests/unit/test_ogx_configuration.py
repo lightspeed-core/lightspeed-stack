@@ -1006,6 +1006,30 @@ def test_enrich_solr_preserves_existing_vector_stores() -> None:
     )
 
 
+def test_enrich_solr_adds_external_providers_dir_when_missing() -> None:
+    """Test enrich_solr injects external_providers_dir for remote Solr resolution."""
+    ls_config: dict[str, Any] = {}
+    enrich_solr(ls_config, _OKP_RAG_CONFIG, {})
+
+    assert (
+        ls_config["external_providers_dir"]
+        == "${env.EXTERNAL_PROVIDERS_DIR:=/opt/app-root/providers.d}"
+    )
+
+
+def test_enrich_solr_preserves_existing_external_providers_dir() -> None:
+    """Test enrich_solr does not overwrite an existing external_providers_dir."""
+    ls_config: dict[str, Any] = {
+        "external_providers_dir": "${env.EXTERNAL_PROVIDERS_DIR:=~/.llama/providers.d}"
+    }
+    enrich_solr(ls_config, _OKP_RAG_CONFIG, {})
+
+    assert (
+        ls_config["external_providers_dir"]
+        == "${env.EXTERNAL_PROVIDERS_DIR:=~/.llama/providers.d}"
+    )
+
+
 # =============================================================================
 # Test enrich_vector_store
 # =============================================================================

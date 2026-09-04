@@ -209,16 +209,20 @@ def before_scenario(context: Context, scenario: Scenario) -> None:
     resetting per-scenario Lightspeed override tracking and skip-restart flags.
 
     Skips the scenario if it has the `skip` tag, if it has the `local` tag
-    while the test run is not in local mode, if it has `skip-in-library-mode`
-    when running in library mode, or if it has `skip-in-server-mode` when running
-    in server mode. Scenario-specific Lightspeed YAML is applied in the feature
-    files (``The service uses the ... configuration`` steps).
+    while the test run is not in local mode, if it has `skip-in-github` when
+    ``GITHUB_ACTIONS`` is set, if it has `skip-in-library-mode` when running
+    in library mode, or if it has `skip-in-server-mode` when running in server
+    mode. Scenario-specific Lightspeed YAML is applied in the feature files
+    (``The service uses the ... configuration`` steps).
     """
     if "skip" in scenario.effective_tags:
         scenario.skip("Marked with @skip")
         return
     if "local" in scenario.effective_tags and not context.local:
         scenario.skip("Marked with @local")
+        return
+    if os.getenv("GITHUB_ACTIONS") and "skip-in-github" in scenario.effective_tags:
+        scenario.skip("Skipped on GitHub Actions (Konflux/Prow only)")
         return
 
     # Skip scenarios that require separate OGX container in library mode
