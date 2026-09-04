@@ -1,0 +1,128 @@
+authentication:
+  module: noop
+inference:
+  default_model: gpt-4o-mini
+  default_provider: openai
+name: Lightspeed Core Service (LCS)
+ogx:
+  api_key: xyzzy
+  config:
+    baseline: empty
+    native_override:
+      apis:
+        - responses
+        - batches
+        - files
+        - inference
+        - tool_runtime
+        - conversations
+        - vector_io
+      distro_name: starter
+      providers:
+        batches:
+          - config:
+              sqlstore:
+                backend: sql_default
+                table_name: batches
+            provider_id: reference
+            provider_type: inline::reference
+        files:
+          - config:
+              metadata_store:
+                backend: sql_default
+                table_name: files_metadata
+              storage_dir: ~/.llama/storage/files
+            provider_id: meta-reference-files
+            provider_type: inline::localfs
+        inference:
+          - config:
+              allowed_models:
+                - ${env.E2E_OPENAI_MODEL:=gpt-4o-mini}
+              api_key: ${env.OPENAI_API_KEY}
+            provider_id: openai
+            provider_type: remote::openai
+          - config: {}
+            provider_id: sentence-transformers
+            provider_type: inline::sentence-transformers
+        responses:
+          - config:
+              persistence:
+                responses:
+                  backend: sql_default
+                  table_name: agents_responses
+            provider_id: builtin
+            provider_type: inline::builtin
+        tool_runtime:
+          - config: {}
+            provider_id: file-search
+            provider_type: inline::file-search
+          - config: {}
+            provider_id: model-context-protocol
+            provider_type: remote::model-context-protocol
+        vector_io:
+          - config:
+              persistence:
+                backend: kv_rag
+                namespace: vector_io::faiss
+            provider_id: faiss
+            provider_type: inline::faiss
+      registered_resources:
+        models:
+          - metadata:
+              embedding_dimension: 768
+            model_id: all-mpnet-base-v2
+            model_type: embedding
+            provider_id: sentence-transformers
+            provider_model_id: all-mpnet-base-v2
+        vector_stores: []
+      server:
+        port: 8321
+      storage:
+        backends:
+          kv_default:
+            db_path: ${env.KV_STORE_PATH:=~/.llama/storage/kv_store.db}
+            type: kv_sqlite
+          kv_rag:
+            db_path: ${env.KV_RAG_PATH:=~/.llama/storage/rag/kv_store.db}
+            type: kv_sqlite
+          sql_default:
+            db_path: ${env.SQL_STORE_PATH:=~/.llama/storage/sql_store.db}
+            type: sql_sqlite
+        stores:
+          connectors:
+            backend: sql_default
+            table_name: connectors
+          conversations:
+            backend: sql_default
+            table_name: openai_conversations
+          inference:
+            backend: sql_default
+            max_write_queue_size: 10000
+            num_writers: 4
+            table_name: inference_store
+          metadata:
+            backend: kv_default
+            namespace: registry
+          prompts:
+            backend: sql_default
+            table_name: prompts
+      vector_stores:
+        default_embedding_model:
+          model_id: all-mpnet-base-v2
+          provider_id: sentence-transformers
+        default_provider_id: faiss
+      version: 2
+  url: http://${env.E2E_LLAMA_HOSTNAME}:8321
+  use_as_library_client: false
+service:
+  access_log: true
+  auth_enabled: false
+  color_log: true
+  host: 0.0.0.0
+  port: 8080
+  workers: 1
+user_data_collection:
+  feedback_enabled: true
+  feedback_storage: /tmp/data/feedback
+  transcripts_enabled: true
+  transcripts_storage: /tmp/data/transcripts

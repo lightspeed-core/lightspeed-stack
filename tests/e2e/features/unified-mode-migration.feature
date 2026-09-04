@@ -8,24 +8,20 @@ Feature: Legacy to unified configuration migration
       And the Lightspeed stack configuration directory is "tests/e2e/configuration/unified-mode"
 
 
-  Scenario: migrate-config produces a unified configuration from a legacy pair
-     When lightspeed-stack --migrate-config is run for the legacy migration fixture pair
-     Then the file lightspeed-stack-unified-migrated.yaml contains native_override
-      And the file lightspeed-stack-unified-migrated.yaml does not contain library_client_config_path
-
-
-  Scenario: migrate then synthesize round-trips to the original run.yaml
-     When lightspeed-stack --migrate-config is run for the legacy migration fixture pair
-      And the active unified configuration is synthesized to run.yaml
-     Then the synthesized run.yaml parses to the same data as the legacy migration fixture run.yaml
-
+  # The --migrate-config CLI itself (output shape, owner-only mode, migrate-then-
+  # synthesize round trip) is covered by tests/integration/test_unified_mode_cli.py:
+  # e2e steps never run src/ CLIs (docs/testing/e2e_testing.md, "Choosing the
+  # Test Layer"). The scenarios below boot the committed
+  # lightspeed-stack-unified-migrated.yaml fixture — generated once from the
+  # legacy migration fixture pair (lightspeed-stack-legacy-for-migration.yaml +
+  # tests/e2e/configs/run-ci.yaml) and guarded against CLI drift by that same
+  # integration module. It inlines the openai run-ci.yaml, hence @openai-only.
 
   # --- library mode (@skip-in-server-mode) ---
 
-  @skip-in-server-mode
+  @skip-in-server-mode @openai-only
   Scenario: Migrated unified configuration boots and serves queries in library mode
-    Given lightspeed-stack --migrate-config is run for the legacy migration fixture pair
-      And The service uses the lightspeed-stack-unified-migrated.yaml configuration
+    Given The service uses the lightspeed-stack-unified-migrated.yaml configuration
       And The service is restarted
      When I access endpoint "readiness" using HTTP GET method
      Then The status code of the response is 200
@@ -38,10 +34,9 @@ Feature: Legacy to unified configuration migration
 
   # --- server mode (@skip-in-library-mode) ---
 
-  @skip-in-library-mode
+  @skip-in-library-mode @openai-only
   Scenario: Migrated unified configuration boots and serves queries in server mode
-    Given lightspeed-stack --migrate-config is run for the legacy migration fixture pair
-      And The service uses the lightspeed-stack-unified-migrated.yaml configuration
+    Given The service uses the lightspeed-stack-unified-migrated.yaml configuration
       And Llama Stack is restarted
       And Lightspeed Stack is restarted
      When I access endpoint "readiness" using HTTP GET method
