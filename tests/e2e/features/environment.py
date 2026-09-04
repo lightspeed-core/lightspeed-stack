@@ -34,6 +34,7 @@ from tests.e2e.features.steps.tls import (
 )
 from tests.e2e.utils.ogx_utils import register_shield
 from tests.e2e.utils.prow_utils import (
+    ensure_okp_solr_ready,
     restart_pod,
     restore_ogx_pod,
     run_e2e_ops,
@@ -271,8 +272,11 @@ def _dump_pod_logs_on_failure(
     pods: tuple[str, ...] = ("llama-stack-service", "lightspeed-stack-service")
     feature = getattr(context, "feature", None)
     feat_file = getattr(feature, "filename", "") or "" if feature else ""
+    feat_tags = getattr(feature, "tags", []) if feature else []
     if is_tls_feature_file(feat_file):
         pods = (*pods, "e2e-mock-tls-inference")
+    if "cfg_okp" in feat_tags:
+        pods = (*pods, "okp-solr-service")
     print(f"--- scenario failed: {scenario.name!r} — pod logs ---", flush=True)
     for pod in pods:
         try:
@@ -524,6 +528,18 @@ def _restore_llama_stack() -> None:
         _print_ogx_diagnostics()
 
 
+def _ensure_okp_solr_for_feature() -> None:
+    """Deploy OKP Solr for ``@cfg_okp`` features on Prow/Konflux.
+
+    Local Docker is a no-op; the feature Background asserts OKP is reachable.
+    """
+    if not is_prow_environment():
+        return
+    print("[okp_rag.feature] Prow/Konflux: ensuring OKP Solr is deployed...")
+    ensure_okp_solr_ready()
+    print("[okp_rag.feature] OKP Solr ready", flush=True)
+
+
 def before_feature(context: Context, feature: Feature) -> None:
     """Run before each feature file is exercised.
 
@@ -540,41 +556,22 @@ def before_feature(context: Context, feature: Feature) -> None:
     ``_E2E_FLAKY_MAX_ATTEMPTS`` and can be overridden with the
     ``E2E_FLAKY_MAX_ATTEMPTS`` environment variable.
 
-    Features tagged ``@library-mode-in-konflux`` run in library mode when
-    ``E2E_KONFLUX_E2E=1``, overriding the global deployment mode. This allows
-    expensive pod-restart tests (e.g. OKP RAG) to run faster on Konflux by
-    avoiding llama-stack recreation.
+    Features tagged ``@cfg_okp`` deploy OKP Solr on Prow/Konflux (idempotent)
+    via ``e2e-ops deploy-okp-solr`` before scenarios run. Local Docker is a
+    no-op; Background still asserts OKP is reachable.
     """
     setattr(feature, _E2E_FEATURE_PERF_START_ATTR, time.perf_counter())
     context.feature_config = None
     context.scenario_lightspeed_override_active = False
     context.active_lightspeed_stack_config_basename = None
 
-    # Override to library mode for specific features
-    context.original_deployment_mode = getattr(context, "deployment_mode", "server")
-    context.original_is_library_mode = getattr(context, "is_library_mode", False)
-
-    # Debug: Print feature name and tags for OKP RAG debugging
-    print(f"[before_feature] Feature: {feature.name}")
-    print(f"[before_feature] Feature tags: {feature.tags}")
-    print(f"[before_feature] Current deployment_mode: {context.deployment_mode}")
-
-    # Features tagged @library-mode-in-konflux always run in library mode
-    # (originally for Konflux performance, but beneficial everywhere)
-    if "library-mode-in-konflux" in feature.tags:
-        context.deployment_mode = "library"
-        context.is_library_mode = True
-        # Print to stdout so it appears in test logs
-        print(f"✓ Switching to library mode for feature: {feature.name}")
-        print("  Reason: Feature tagged @library-mode-in-konflux")
-        print("  Config directory will be: tests/e2e/configuration/library-mode/")
-    else:
-        print("[before_feature] NOT switching to library mode - tag not found")
     # One real Llama disruption per feature (module-level flag; survives context resets)
     reset_llama_stack_disrupt_once_tracking()
     if feature.filename and is_tls_feature_file(feature.filename):
         reset_tls_prow_state()
         prepare_tls_feature_entry_on_prow(feature.filename)
+    if "cfg_okp" in feature.tags:
+        _ensure_okp_solr_for_feature()
 
     try:
         max_flaky = int(os.getenv("E2E_FLAKY_MAX_ATTEMPTS", _E2E_FLAKY_MAX_ATTEMPTS))
@@ -607,17 +604,7 @@ def after_feature(context: Context, feature: Feature) -> None:
     ``E2E_RESTORE_CONFIG_AFTER_FEATURE=1``, otherwise keep the active config;
     when ``context.feedback_e2e_conversation_cleanup`` is set by feedback steps,
     delete tracked feedback test conversations.
-
-    Restores original deployment mode if it was overridden by
-    ``@library-mode-in-konflux`` tag.
     """
-    # Restore original deployment mode if it was overridden for this feature
-    if hasattr(context, "original_deployment_mode"):
-        context.deployment_mode = context.original_deployment_mode
-        context.is_library_mode = context.original_is_library_mode
-        delattr(context, "original_deployment_mode")
-        delattr(context, "original_is_library_mode")
-
     # Restore OGX FIRST (before any lightspeed-stack restart).
     # Read from module-level state — Behave clears custom context attributes
     # between scenarios, so context.ogx_was_running is unreliable here.

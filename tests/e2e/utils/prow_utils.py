@@ -349,6 +349,27 @@ def update_config_configmap(
             os.remove(temp_path)
 
 
+def ensure_okp_solr_ready() -> None:
+    """Deploy OKP Solr on Prow/Konflux if it is not already Ready.
+
+    Idempotent. First image pull can take ~10-15 minutes (7GB). Starts the
+    localhost:8081 port-forward after the pod is ready.
+
+    Raises:
+        subprocess.CalledProcessError: If deploy-okp-solr fails.
+        subprocess.TimeoutExpired: If the operation times out.
+    """
+    # 300 wait_for_pod attempts × 3s = 900s, plus oc apply and port-forward.
+    result = run_e2e_ops("deploy-okp-solr", timeout=1080)
+    print(result.stdout, end="")
+    if result.returncode != 0:
+        print(result.stderr, end="")
+        raise subprocess.CalledProcessError(
+            result.returncode, "deploy-okp-solr", result.stderr
+        )
+    print("✓ OKP Solr is ready")
+
+
 def disrupt_okp_solr_pod() -> bool:
     """Disrupt OKP Solr connection in Prow/OpenShift environment.
 
@@ -381,9 +402,7 @@ def restore_okp_solr_pod() -> None:
         subprocess.TimeoutExpired: If the operation times out.
     """
     # restore-okp-solr can spend 180 seconds in wait_for_pod, plus oc apply time.
-    # This caller also times out at 180 seconds. after_scenario catches that timeout
-    # and only logs a warning, so later scenarios can run while OKP remains unavailable.
-    # Use a timeout with margin, such as 240 seconds.
+    # Use a timeout with margin (240s) so we fail instead of hanging forever.
     result = run_e2e_ops("restore-okp-solr", timeout=240)
     print(result.stdout, end="")
     if result.returncode != 0:

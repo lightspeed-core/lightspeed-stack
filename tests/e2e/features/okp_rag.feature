@@ -1,8 +1,9 @@
-@cfg_okp @library-mode-in-konflux
+@cfg_okp
 Feature: OKP(Solr) RAG retrieval tests
-  # OKP tests run in library mode on Konflux to avoid expensive llama-stack pod restarts.
-  # Library mode: OGX re-initializes on lightspeed-stack restart, picking up OKP config changes.
-  # The @library-mode-in-konflux tag enables library mode for this feature when E2E_KONFLUX_E2E=1.
+  # Server-mode tests: OGX is a separate pod and re-enriches Solr/OKP from the
+  # Lightspeed ConfigMap on restart. Restart Llama Stack after each YAML change
+  # so the Solr provider picks up inline/tool/offline/online settings.
+  # On Prow/Konflux, before_feature deploys OKP Solr (7GB image) once.
 
   # Offline Knowledge Portal (OKP) provides a Solr-backed RAG source to LSC.
   # Tests verify that Lightspeed Stack can use OKP for both Inline RAG
@@ -20,6 +21,7 @@ Feature: OKP(Solr) RAG retrieval tests
 
   Scenario: Offline mode query with inline RAG returns rag_chunks and referenced_documents
     Given The service uses the lightspeed-stack-okp-offline.yaml configuration
+      And Llama Stack is restarted
       And The service is restarted
     When I use "query" to ask question with authorization header
     """
@@ -40,6 +42,7 @@ Feature: OKP(Solr) RAG retrieval tests
 
   Scenario: Online mode streaming query with inline RAG returns referenced_documents
     Given The service uses the lightspeed-stack-okp-online.yaml configuration
+      And Llama Stack is restarted
       And The service is restarted
     When I use "streaming_query" to ask question with authorization header
     """
@@ -59,6 +62,7 @@ Feature: OKP(Solr) RAG retrieval tests
 
   Scenario: Query with inline RAG with dynamic semantic filter returns rag_chunks and referenced_documents
     Given The service uses the lightspeed-stack-okp-offline.yaml configuration
+      And Llama Stack is restarted
       And The service is restarted
     When I use "query" to ask question with authorization header
     """
@@ -91,6 +95,7 @@ Feature: OKP(Solr) RAG retrieval tests
 
   Scenario: Offline query API with OKP tool RAG has rag_chunk and referenced_documents returned
     Given The service uses the lightspeed-stack-okp-tool-offline.yaml configuration
+      And Llama Stack is restarted
       And The service is restarted
     When I use "query" to ask question with authorization header
     """
@@ -119,6 +124,7 @@ Feature: OKP(Solr) RAG retrieval tests
 
   Scenario: Online responses API with OKP tool RAG has rag results returned
     Given The service uses the lightspeed-stack-okp-tool-online.yaml configuration
+      And Llama Stack is restarted
       And The service is restarted
     When I use "responses" to ask question with authorization header
     """
@@ -143,6 +149,7 @@ Feature: OKP(Solr) RAG retrieval tests
 
   Scenario: Query succeeds with empty rag_chunks when OKP server is unavailable
     Given The service uses the lightspeed-stack-okp-online.yaml configuration
+      And Llama Stack is restarted
       And The service is restarted
       And The OKP(Solr) server is stopped
     When I use "query" to ask question with authorization header
@@ -155,6 +162,7 @@ Feature: OKP(Solr) RAG retrieval tests
 
   Scenario: Streaming query succeeds with empty referenced_documents when OKP server is unavailable
     Given The service uses the lightspeed-stack-okp-online.yaml configuration
+      And Llama Stack is restarted
       And The service is restarted
       And The OKP(Solr) server is stopped
     When I use "streaming_query" to ask question with authorization header
@@ -167,8 +175,9 @@ Feature: OKP(Solr) RAG retrieval tests
 
   # ── OKP RAG Disabled (okp not in rag.retrieval.inline.sources) ─────
 
-  Scenario: Query returns no rag_chunks and no reference_documents when OKP OKP is disabled
+  Scenario: Query returns no rag_chunks and no reference_documents when OKP is disabled
     Given The service uses the lightspeed-stack-okp-negative.yaml configuration
+      And Llama Stack is restarted
       And The service is restarted
     When I use "query" to ask question with authorization header
     """
@@ -180,6 +189,7 @@ Feature: OKP(Solr) RAG retrieval tests
 
   Scenario: Streaming query returns no referenced_documents when OKP is disabled
     Given The service uses the lightspeed-stack-okp-negative.yaml configuration
+      And Llama Stack is restarted
       And The service is restarted
     When I use "streaming_query" to ask question with authorization header
     """

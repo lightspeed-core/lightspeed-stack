@@ -215,6 +215,10 @@ spec:
             secretKeyRef:
               name: llama-stack-ip-secret
               key: key
+        # In-cluster OKP Solr Service. Used when LCS YAML lists okp as a RAG source
+        # and OGX enriches run.yaml. Offline doc_url rewriting stays on LCS (localhost:8081 default).
+        - name: RH_SERVER_OKP
+          value: "http://okp-solr-service-svc:8080"
       command:
         - /bin/bash
         - -c

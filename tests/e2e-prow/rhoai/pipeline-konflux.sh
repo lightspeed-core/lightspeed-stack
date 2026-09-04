@@ -255,78 +255,10 @@ oc wait pod/mock-jwks pod/mock-mcp \
 }
 log "✅ Mock servers deployed"
 
-# Deploy OKP Solr server for RAG tests
-log "Deploying OKP Solr server..."
-oc apply -n "$NAMESPACE" -f "$PIPELINE_DIR/manifests/lightspeed/okp-solr.yaml"
-
-# Check if redhat-registry-pull-secret exists before waiting
-if oc get secret redhat-registry-pull-secret -n "$NAMESPACE" &>/dev/null; then
-    log "✅ redhat-registry-pull-secret exists"
-else
-    echo "❌ WARNING: redhat-registry-pull-secret NOT found - image pull will fail"
-    echo "Checking for pull secrets in namespace $NAMESPACE:"
-    oc get secrets -n "$NAMESPACE" --field-selector type=kubernetes.io/dockerconfigjson -o name 2>/dev/null || \
-        echo "No dockerconfigjson secrets found"
-fi
-
-# Wait for OKP Solr to be ready
-# Large image (7GB) requires extended timeout for first pull (10-15 min typical)
-log "Waiting for OKP Solr to be ready (900s timeout for 7GB image pull)..."
-log "Initial pod status:"
-oc get pod okp-solr-service -n "$NAMESPACE" || true
-
-if ! oc wait pod/okp-solr-service \
-    -n "$NAMESPACE" --for=condition=Ready --timeout=900s; then
-
-    echo "=========================================="
-    echo "⚠️  OKP Solr not ready - DETAILED DIAGNOSTICS"
-    echo "=========================================="
-
-    echo ""
-    echo "=== Pod Status ==="
-    oc get pod okp-solr-service -n "$NAMESPACE" -o wide || true
-
-    echo ""
-    echo "=== Container State ==="
-    oc get pod okp-solr-service -n "$NAMESPACE" \
-        -o jsonpath='{.status.containerStatuses[*].state}' | jq '.' || echo "No container status available"
-
-    echo ""
-    echo "=== Image Pull Status ==="
-    oc get pod okp-solr-service -n "$NAMESPACE" \
-        -o jsonpath='{.status.containerStatuses[*].image}' && echo "" || true
-    oc get pod okp-solr-service -n "$NAMESPACE" \
-        -o jsonpath='{.status.containerStatuses[*].imageID}' && echo "" || true
-
-    echo ""
-    echo "=== Pod Events (last 30) ==="
-    # Use server-side filtering with a limit to avoid unbounded list calls
-    oc get events -n "$NAMESPACE" --sort-by='.lastTimestamp' \
-        --field-selector involvedObject.name=okp-solr-service \
-        --limit=30 2>/dev/null || echo "No events found for okp-solr-service"
-
-    echo ""
-    echo "=== Full Pod Description ==="
-    oc describe pod okp-solr-service -n "$NAMESPACE" || true
-
-    echo ""
-    echo "=== Red Hat Registry Secret Status ==="
-    if oc get secret redhat-registry-pull-secret -n "$NAMESPACE" &>/dev/null; then
-        oc get secret redhat-registry-pull-secret -n "$NAMESPACE" -o yaml | grep -A 2 "type:"
-    else
-        echo "❌ redhat-registry-pull-secret NOT FOUND"
-    fi
-
-    echo ""
-    echo "=========================================="
-    echo "❌ OKP Solr failed to become ready within 900s"
-    echo "   (7GB image - check node network to registry.redhat.io)"
-    echo "=========================================="
-    exit 1
-fi
-
-log "✅ OKP Solr deployed"
-
+# OKP Solr is not part of cluster setup. okp_rag.feature (@cfg_okp) deploys it from
+# before_feature via e2e-ops deploy-okp-solr (7GB image, ~10-15 min first pull).
+# No other e2e feature depends on OKP.
+#
 # e2e-tunnel-proxy and e2e-interception-proxy are deployed from proxy.feature steps
 # (see tests/e2e/features/steps/proxy.py + e2e-ops deploy-e2e-*-proxy).
 
@@ -537,11 +469,8 @@ oc port-forward svc/llama-stack-service-svc 8321:8321 -n $NAMESPACE &
 PF_LLAMA_PID=$!
 echo "$PF_LLAMA_PID" >"$E2E_LLAMA_PORT_FORWARD_PID_FILE"
 
-# Start port-forward for OKP Solr (RAG tests)
-log "Starting port-forward for OKP Solr..."
-oc port-forward svc/okp-solr-service-svc 8081:8080 -n $NAMESPACE &
-PF_OKP_PID=$!
-echo "$PF_OKP_PID" >"$E2E_OKP_PORT_FORWARD_PID_FILE"
+# OKP Solr port-forward (localhost:8081) is started by e2e-ops deploy-okp-solr
+# when okp_rag.feature runs — do not start it here.
 
 # Wait for port-forward to be usable (app may not be listening immediately; port-forward can drop)
 log "Waiting for port-forward to lightspeed-stack to be ready..."
@@ -563,7 +492,6 @@ for i in $(seq 1 36); do
     kill $PF_LCS_PID 2>/dev/null || true
     kill $PF_JWKS_PID 2>/dev/null || true
     kill $PF_LLAMA_PID 2>/dev/null || true
-    kill $PF_OKP_PID 2>/dev/null || true
     exit 1
   fi
   # If port-forward process died, restart it (e.g. "connection refused" / "lost connection to pod")
@@ -590,7 +518,6 @@ for i in $(seq 1 36); do
     kill $PF_LCS_PID 2>/dev/null || true
     kill $PF_JWKS_PID 2>/dev/null || true
     kill $PF_LLAMA_PID 2>/dev/null || true
-    kill $PF_OKP_PID 2>/dev/null || true
     exit 1
   fi
   if ! kill -0 $PF_LLAMA_PID 2>/dev/null; then
@@ -602,30 +529,10 @@ for i in $(seq 1 36); do
   sleep 5
 done
 
-log "Waiting for OKP Solr port-forward (localhost:8081 /solr)..."
-for i in $(seq 1 24); do
-  if curl -sf --max-time 5 http://localhost:8081/solr > /dev/null 2>&1; then
-    log "✅ OKP Solr port-forward ready after $(( i * 5 ))s"
-    break
-  fi
-  if [ $i -eq 24 ]; then
-    echo "⚠️  Port-forward to OKP Solr never became healthy (2 min) - OKP RAG tests may fail" | tee /dev/stderr
-    # Don't exit - OKP is optional, other tests can still run
-  fi
-  if ! kill -0 $PF_OKP_PID 2>/dev/null; then
-    log "OKP port-forward died, restarting (attempt $i)..."
-    oc port-forward svc/okp-solr-service-svc 8081:8080 -n $NAMESPACE &
-    PF_OKP_PID=$!
-    echo "$PF_OKP_PID" >"$E2E_OKP_PORT_FORWARD_PID_FILE"
-  fi
-  sleep 5
-done
-
 export E2E_LSC_HOSTNAME="localhost"
 export E2E_JWKS_HOSTNAME="localhost"
 export E2E_LLAMA_HOSTNAME="localhost"
 export E2E_LLAMA_PORT="8321"
-export E2E_OKP_URL="http://localhost:8081"
 # Same pattern as tests/e2e-prow/rhoai/pipeline.sh and .github/workflows/e2e_tests_*.yaml:
 # Behave {MODEL}/{PROVIDER} use these when set; avoids wrong fallbacks if /v1/models
 # discovery in before_all is empty (matches run-ci.yaml openai + E2E_OPENAI_MODEL).
@@ -640,7 +547,6 @@ export E2E_DEFAULT_PROVIDER_OVERRIDE E2E_DEFAULT_MODEL_OVERRIDE
 log "LCS accessible at: http://$E2E_LSC_HOSTNAME:8080"
 log "Mock JWKS accessible at: http://$E2E_JWKS_HOSTNAME:8000"
 log "OGX (e2e client hooks) at: http://$E2E_LLAMA_HOSTNAME:$E2E_LLAMA_PORT"
-log "OKP Solr (RAG tests) at: $E2E_OKP_URL"
 
 #========================================
 # 7. RUN TESTS
@@ -686,11 +592,9 @@ fi
 kill $PF_LCS_PID 2>/dev/null || true
 kill $PF_JWKS_PID 2>/dev/null || true
 kill $PF_LLAMA_PID 2>/dev/null || true
-kill $PF_OKP_PID 2>/dev/null || true
 wait $PF_LCS_PID 2>/dev/null || true
 wait $PF_JWKS_PID 2>/dev/null || true
 wait $PF_LLAMA_PID 2>/dev/null || true
-wait $PF_OKP_PID 2>/dev/null || true
 set -e
 trap 'echo "❌ Pipeline failed at line $LINENO"; exit 1' ERR
 

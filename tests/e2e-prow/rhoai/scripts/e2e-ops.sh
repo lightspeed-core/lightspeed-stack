@@ -16,6 +16,9 @@
 # - restart-lightspeed ensures Llama is running before LCS recreate when needed.
 # - restart-both-services is available explicitly; restart-lightspeed / restart-llama-stack
 #   do not auto-trigger a full stack restart on failure.
+# - OKP Solr is not deployed in pipeline setup. Features tagged @cfg_okp call
+#   deploy-okp-solr from before_feature (7GB image, first pull ~10-15 min) and
+#   start the localhost:8081 port-forward there.
 #
 # Commands:
 #   restart-lightspeed              - Restart lightspeed-stack pod and port-forward
@@ -34,7 +37,7 @@
 #   delete-e2e-mock-tls-inference   - Remove mock TLS pod + Service (manual cleanup)
 #   restart-e2e-mock-tls-inference  - Delete then deploy mock TLS (manual / recovery)
 #   sync-mock-tls-certs-secret      - Copy mock /certs into Secret for OGX mount
-#   deploy-okp-solr                 - Deploy OKP Solr service
+#   deploy-okp-solr                 - Deploy OKP Solr (idempotent; @cfg_okp before_feature)
 #   delete-okp-solr                 - Delete OKP Solr pod
 #   disrupt-okp-solr                - Delete OKP Solr pod to disrupt connection
 #   restore-okp-solr                - Restore OKP Solr pod
@@ -1095,10 +1098,50 @@ cmd_disrupt_llama_stack() {
 }
 
 cmd_deploy_okp_solr() {
+    local pod_name="okp-solr-service"
+    # First pull of the ~7GB OKP image is typically 10-15 min. 300 attempts × 3s = 900s.
+    local wait_attempts=300
+    local ready
+
+    ready=$(oc get pod "$pod_name" -n "$NAMESPACE" -o jsonpath='{.status.containerStatuses[0].ready}' 2>/dev/null || echo "false")
+    if [[ "$ready" == "true" ]]; then
+        echo "✓ OKP Solr already ready — skipping deploy"
+        cmd_restart_okp_port_forward
+        return 0
+    fi
+
     echo "Deploying OKP Solr service in namespace $NAMESPACE..."
+    if oc get secret redhat-registry-pull-secret -n "$NAMESPACE" &>/dev/null; then
+        echo "✓ redhat-registry-pull-secret exists"
+    else
+        echo "WARNING: redhat-registry-pull-secret NOT found — image pull will fail"
+        oc get secrets -n "$NAMESPACE" --field-selector type=kubernetes.io/dockerconfigjson -o name 2>/dev/null || \
+            echo "No dockerconfigjson secrets found"
+    fi
+
     oc apply -n "$NAMESPACE" -f "$MANIFEST_DIR/okp-solr.yaml"
-    wait_for_pod "okp-solr-service" 60
+    echo "Waiting for OKP Solr to be ready (${wait_attempts} attempts, ~$((wait_attempts * 3))s for 7GB image pull)..."
+    if ! wait_for_pod "$pod_name" "$wait_attempts"; then
+        echo "=========================================="
+        echo "OKP Solr not ready — diagnostics"
+        echo "=========================================="
+        oc get pod "$pod_name" -n "$NAMESPACE" -o wide || true
+        oc get pod "$pod_name" -n "$NAMESPACE" \
+            -o jsonpath='{.status.containerStatuses[*].state}' && echo "" || true
+        oc get events -n "$NAMESPACE" --sort-by='.lastTimestamp' \
+            --field-selector involvedObject.name="$pod_name" \
+            --limit=30 2>/dev/null || echo "No events found for $pod_name"
+        oc describe pod "$pod_name" -n "$NAMESPACE" || true
+        if oc get secret redhat-registry-pull-secret -n "$NAMESPACE" &>/dev/null; then
+            echo "redhat-registry-pull-secret: present"
+        else
+            echo "redhat-registry-pull-secret: NOT FOUND"
+        fi
+        echo "OKP Solr failed to become ready (7GB image — check node network to registry.redhat.io)"
+        return 1
+    fi
     echo "✓ OKP Solr service deployed and ready"
+    cmd_restart_okp_port_forward
 }
 
 cmd_delete_okp_solr() {
@@ -1245,7 +1288,7 @@ case "$COMMAND" in
         echo "  deploy-e2e-interception-proxy      - Deploy in-cluster interception proxy pod"
         echo "  deploy-e2e-mock-tls-inference        - Deploy mock HTTPS inference (tls-*.feature)"
         echo "  delete-e2e-mock-tls-inference        - Remove mock TLS pod + Service"
-        echo "  deploy-okp-solr                      - Deploy OKP Solr service"
+        echo "  deploy-okp-solr                      - Deploy OKP Solr (idempotent; @cfg_okp before_feature)"
         echo "  delete-okp-solr                      - Delete OKP Solr pod"
         echo "  disrupt-okp-solr                     - Delete OKP Solr pod to disrupt connection"
         echo "  restore-okp-solr                     - Restore OKP Solr pod"

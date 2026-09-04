@@ -323,7 +323,16 @@ def restore_if_modified(context: Context) -> None:
 
 @given("Llama Stack is restarted")
 def restart_ogx(context: Context) -> None:
-    """Restart the OGX container."""
+    """Restart the OGX container.
+
+    No-ops when ``configure_service`` set ``lightspeed_stack_skip_restart``
+    (same Lightspeed YAML as the previous scenario). Does not clear that
+    flag — ``The service is restarted`` still consumes it.
+    """
+    if getattr(context, "lightspeed_stack_skip_restart", False):
+        print("Skipping Llama Stack restart (Lightspeed config unchanged)")
+        return
+
     from tests.e2e.features.steps.tls import (
         is_tls_configuration_feature,
         restart_llama_for_tls_feature,
