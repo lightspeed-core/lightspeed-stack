@@ -23,6 +23,8 @@ import pytest
 import yaml
 from pydantic import ValidationError
 
+import constants
+from client.ogx import AsyncOgxClientHolder
 from configuration import configuration
 from ogx_configuration import (
     CONDITIONAL_OPENAI_PROVIDER_ID,
@@ -522,3 +524,81 @@ def test_load_accepts_minimal_unified_config(tmp_path: Path) -> None:
     loaded = configuration.configuration
     assert loaded.ogx.config is None
     assert loaded.inference.providers[0].type == "openai"
+
+
+# ---------------------------------------------------------------------------
+# R6: emitted secrets stay environment references on disk
+# ---------------------------------------------------------------------------
+
+
+def test_synthesized_secrets_stay_env_references(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A provider's ``api_key_env`` lands on disk as ``${env.NAME}``, never resolved.
+
+    The synthesizer must emit the environment reference for OGX to resolve at
+    its own startup; the literal secret value must never be written (R6).
+    """
+    secret = "sk-resolved-secret-that-must-not-land-on-disk"
+    monkeypatch.setenv("OPENAI_API_KEY", secret)
+    lcs_dict = _base_config_dict()
+    lcs_dict["ogx"] = {"use_as_library_client": True}
+    lcs_dict["inference"] = {
+        "providers": [{"type": "openai", "api_key_env": "OPENAI_API_KEY"}]
+    }
+    _, out_path = _load_and_synthesize(tmp_path, lcs_dict)
+
+    text = out_path.read_text(encoding="utf-8")
+    assert "${env.OPENAI_API_KEY}" in text
+    assert secret not in text
+
+
+# ---------------------------------------------------------------------------
+# R11: explicit config_format_version must agree with the detected shape
+# ---------------------------------------------------------------------------
+
+
+def test_load_rejects_legacy_version_marker_on_unified_body(tmp_path: Path) -> None:
+    """``config_format_version: legacy`` on a unified-shaped body fails the real load."""
+    lcs_dict = _base_config_dict()
+    lcs_dict["ogx"] = {"use_as_library_client": True}
+    lcs_dict["inference"] = {
+        "providers": [{"type": "openai", "api_key_env": "OPENAI_API_KEY"}]
+    }
+    lcs_dict["config_format_version"] = "legacy"
+    cfg_path = _write_yaml(tmp_path / "lightspeed-stack.yaml", lcs_dict)
+    with pytest.raises(ValidationError, match="config_format_version"):
+        configuration.load_configuration(str(cfg_path))
+
+
+# ---------------------------------------------------------------------------
+# --synthesized-config-output: the override the workers honour
+# ---------------------------------------------------------------------------
+
+
+def test_synthesized_config_output_override(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The synthesized-config-output override redirects library-mode synthesis.
+
+    ``--synthesized-config-output`` reaches the uvicorn workers as
+    ``LIGHTSPEED_STACK_SYNTHESIZED_CONFIG_PATH``; the client holder must write
+    the synthesized run.yaml there and leave the default location untouched.
+    """
+    lcs_dict = _base_config_dict()
+    lcs_dict["ogx"] = {
+        "use_as_library_client": True,
+        "config": {"baseline": "empty", "native_override": {"version": 2}},
+    }
+    cfg_path = _write_yaml(tmp_path / "lightspeed-stack.yaml", lcs_dict)
+    custom_output = tmp_path / "custom-run.yaml"
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv(constants.CONFIG_PATH_ENV_VAR, str(cfg_path))
+    monkeypatch.setenv(constants.SYNTHESIZED_CONFIG_PATH_ENV_VAR, str(custom_output))
+
+    # pylint: disable-next=protected-access
+    written = AsyncOgxClientHolder()._synthesize_library_config()
+
+    assert Path(written) == custom_output
+    assert isinstance(yaml.safe_load(custom_output.read_text(encoding="utf-8")), dict)
+    assert not (tmp_path / constants.DEFAULT_SYNTHESIZED_CONFIG_PATH).exists()

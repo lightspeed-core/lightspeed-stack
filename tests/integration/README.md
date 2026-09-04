@@ -219,6 +219,9 @@ Integration tests should verify:
 3. **External mocks only** - Mock only external services (OGX, external APIs)
 4. **Error handling** - HTTP status codes, error messages
 5. **Data flow** - Database persistence, cache updates, etc.
+6. **CLI contracts** - Repo entrypoints (`src/lightspeed_stack.py --migrate-config`, `--dump-configuration`, `src/ogx_configuration.py`) run as subprocesses: exit codes, messages, written files and their modes
+
+Anything that needs a *deployed* stack — HTTP against a running service, container restarts, container logs — is an e2e concern instead. Conversely, e2e steps must never touch `src/`; see [Choosing the Test Layer](../../docs/testing/e2e_testing.md#choosing-the-test-layer-e2e-or-integration).
 
 ### What NOT to Test
 
