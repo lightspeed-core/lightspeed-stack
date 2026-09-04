@@ -1,6 +1,7 @@
 # @cfg_okp
 # OKP inline RAG — online mode.
 # Chunks use reference_url-based URLs (docs.redhat.com).
+# search_mode: keyword — the OKP image's httpd proxy times out hybrid-search
 name: Lightspeed Core Service (LCS)
 service:
   host: 0.0.0.0
@@ -38,4 +39,5 @@ rag:
     rhokp_url: ${env.RH_SERVER_OKP:=http://localhost:8081/solr}
     offline: false
     max_chunks: 3
+    search_mode: keyword
     chunk_filter_query: "product:openshift_container_platform AND product_version:4.21"
