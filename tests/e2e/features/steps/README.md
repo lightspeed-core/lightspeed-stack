@@ -20,6 +20,10 @@ Common steps for HTTP-related operations.
 
 Implementation of common test steps.
 
+## [conversation_compaction.py](conversation_compaction.py)
+
+Steps observing conversation compaction from outside: `context_status`, the stream's `compaction` event, and the history the Conversations API keeps.
+
 ## [feedback.py](feedback.py)
 
 Implementation of common test steps for the feedback API.
