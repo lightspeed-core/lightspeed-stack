@@ -492,19 +492,15 @@ def restart_container(container_name: str) -> None:
         reset_llama_stack_disrupt_once_tracking()
 
 
-def restart_lightspeed_stack_service(
-    *, wait_http: bool = False, skip_llama_restore: bool = False
-) -> None:
+def restart_lightspeed_stack_service(*, skip_llama_restore: bool = False) -> None:
     """Restart the lightspeed-stack container used by Behave steps.
 
-    Wraps ``restart_container("lightspeed-stack")`` and optionally polls the
-    host-mapped port so step modules share one LCS restart path.
+    Wraps ``restart_container("lightspeed-stack")`` so step modules share one
+    LCS restart path. That path already waits for Docker health and then for
+    HTTP on the host-mapped port, so callers need no wait of their own.
 
     Parameters:
     ----------
-        wait_http: When True, also call ``wait_for_lightspeed_stack_http_ready``
-            after Docker health. Default False — generic ``The service is
-            restarted`` relies on Docker health only; proxy/tls steps opt in.
         skip_llama_restore: When True on Prow/Konflux, tell e2e-ops not to
             bring llama back before recreating LCS (degraded-mode startup).
     """
@@ -513,8 +509,6 @@ def restart_lightspeed_stack_service(
         os.environ["E2E_SKIP_LLAMA_RESTORE_ON_LCS_RESTART"] = "1"
     try:
         restart_container("lightspeed-stack")
-        if wait_http:
-            wait_for_lightspeed_stack_http_ready()
     finally:
         if skip_llama_restore:
             if previous is None:

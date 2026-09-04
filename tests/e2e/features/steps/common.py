@@ -213,7 +213,7 @@ def restart_service_without_restoring_llama(context: Context) -> None:
     if getattr(context, "lightspeed_stack_skip_restart", False):
         context.lightspeed_stack_skip_restart = False
         return
-    restart_lightspeed_stack_service(skip_llama_restore=True, wait_http=False)
+    restart_lightspeed_stack_service(skip_llama_restore=True)
 
 
 @given("The system is in default state")
