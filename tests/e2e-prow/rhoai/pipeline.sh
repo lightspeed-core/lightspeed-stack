@@ -92,97 +92,6 @@ oc create secret docker-registry quay-lightspeed-pull-secret \
 # Link the secret to default service account for image pulls
 oc secrets link default quay-lightspeed-pull-secret --for=pull -n "$NAMESPACE" 2>/dev/null || echo "⚠️  Secret already linked to default SA"
 
-# Create Red Hat registry pull secret for OKP images
-# Option 1: Use mounted docker-registry secret (preferred - simpler)
-if [[ -f /var/run/redhat-registry-pull-secret/.dockerconfigjson ]]; then
-  echo "Creating Red Hat registry pull secret from mounted docker-registry secret..."
-
-  DOCKERCONFIG_BASE64=$(cat /var/run/redhat-registry-pull-secret/.dockerconfigjson | base64 -w0)
-
-  # Use PipelineRun metadata for ownerReference (provided by Tekton context)
-  # This ensures automatic cleanup when the PipelineRun completes
-  if [[ -n "${TEKTON_PIPELINERUN_NAME:-}" && -n "${TEKTON_PIPELINERUN_UID:-}" ]]; then
-    echo "Setting ownerReference to PipelineRun: $TEKTON_PIPELINERUN_NAME (UID: ${TEKTON_PIPELINERUN_UID:0:8}...)"
-
-    # Create secret with ownerReference using YAML (ensures automatic cleanup)
-    cat <<EOF | oc apply -f -
-apiVersion: v1
-kind: Secret
-metadata:
-  name: redhat-registry-pull-secret
-  namespace: $NAMESPACE
-  ownerReferences:
-  - apiVersion: tekton.dev/v1beta1
-    kind: PipelineRun
-    name: $TEKTON_PIPELINERUN_NAME
-    uid: $TEKTON_PIPELINERUN_UID
-    controller: false
-    blockOwnerDeletion: false
-type: kubernetes.io/dockerconfigjson
-data:
-  .dockerconfigjson: $DOCKERCONFIG_BASE64
-EOF
-    echo "✅ Red Hat registry pull secret created with ownerReference"
-
-    # Link to default service account
-    oc secrets link default redhat-registry-pull-secret --for=pull -n "$NAMESPACE" 2>/dev/null || echo "⚠️  Secret already linked to default SA"
-  else
-    # Fallback: create without ownerReference (requires manual cleanup)
-    echo "⚠️  TEKTON_PIPELINERUN_NAME/UID not set - creating secret without ownerReference"
-    echo "⚠️  Manual cleanup required after test completion"
-
-    cat <<EOF | oc apply -f -
-apiVersion: v1
-kind: Secret
-metadata:
-  name: redhat-registry-pull-secret
-  namespace: $NAMESPACE
-type: kubernetes.io/dockerconfigjson
-data:
-  .dockerconfigjson: $DOCKERCONFIG_BASE64
-EOF
-    echo "✅ Red Hat registry pull secret created (without ownerReference)"
-    oc secrets link default redhat-registry-pull-secret --for=pull -n "$NAMESPACE" 2>/dev/null || echo "⚠️  Secret already linked to default SA"
-  fi
-
-# Option 2: Fallback to environment variables (legacy Prow approach)
-elif [[ -n "${REDHAT_REGISTRY_USERNAME:-}" ]] && [[ -n "${REDHAT_REGISTRY_PASSWORD:-}" ]]; then
-  echo "Creating Red Hat registry pull secret from environment variables..."
-
-  # Use PipelineRun metadata for ownerReference (provided by Tekton context)
-  if [[ -n "${TEKTON_PIPELINERUN_NAME:-}" && -n "${TEKTON_PIPELINERUN_UID:-}" ]]; then
-    echo "Setting ownerReference to PipelineRun: $TEKTON_PIPELINERUN_NAME (UID: ${TEKTON_PIPELINERUN_UID:0:8}...)"
-
-    # Create secret with ownerReference (oc handles JSON encoding safely)
-    oc create secret docker-registry redhat-registry-pull-secret \
-      --docker-server=registry.redhat.io \
-      --docker-username="$REDHAT_REGISTRY_USERNAME" \
-      --docker-password="$REDHAT_REGISTRY_PASSWORD" \
-      -n "$NAMESPACE" \
-      --dry-run=client -o json | \
-    jq --arg name "$TEKTON_PIPELINERUN_NAME" --arg uid "$TEKTON_PIPELINERUN_UID" \
-      '.metadata.ownerReferences = [{"apiVersion":"tekton.dev/v1beta1","kind":"PipelineRun","name":$name,"uid":$uid,"controller":false,"blockOwnerDeletion":false}]' | \
-    oc apply -f -
-    echo "✅ Red Hat registry pull secret created with ownerReference"
-  else
-    # Fallback: create without ownerReference
-    echo "⚠️  TEKTON_PIPELINERUN_NAME/UID not set - creating secret without ownerReference"
-    echo "⚠️  Manual cleanup required after test completion"
-
-    oc create secret docker-registry redhat-registry-pull-secret \
-      --docker-server=registry.redhat.io \
-      --docker-username="$REDHAT_REGISTRY_USERNAME" \
-      --docker-password="$REDHAT_REGISTRY_PASSWORD" \
-      -n "$NAMESPACE" 2>/dev/null && echo "✅ Red Hat registry pull secret created" || echo "⚠️  Secret exists or creation failed"
-  fi
-
-  # Link to default service account
-  oc secrets link default redhat-registry-pull-secret --for=pull -n "$NAMESPACE" 2>/dev/null || echo "⚠️  Secret already linked to default SA"
-else
-  echo "⚠️  REDHAT_REGISTRY_USERNAME/PASSWORD not set - OKP image pull may fail"
-  echo "   (This is OK if not testing OKP features)"
-fi
-
 
 #========================================
 # 5. CONFIGMAPS
@@ -306,10 +215,6 @@ oc wait pod/mock-jwks pod/mock-mcp \
 }
 echo "✅ Mock servers deployed"
 
-# OKP Solr is not part of cluster setup. okp_rag.feature (@cfg_okp) deploys it from
-# before_feature via e2e-ops deploy-okp-solr (7GB image, ~10-15 min first pull).
-# No other e2e feature depends on OKP.
-
 #========================================
 # 8. BUILD OGX IMAGE
 #========================================
@@ -407,47 +312,32 @@ fi
 
 ./pipeline-services.sh
 
-echo "--> Waiting for both lightspeed-stack-service and llama-stack-service pods (up to 10 min)..."
-for i in $(seq 1 60); do
-  lcs_ready=$(oc get pod lightspeed-stack-service -n "$NAMESPACE" -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "False")
-  llama_ready=$(oc get pod llama-stack-service -n "$NAMESPACE" -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "False")
-
-  if [[ "$lcs_ready" == "True" ]] && [[ "$llama_ready" == "True" ]]; then
-    echo "✅ Both service pods are ready after $(( i * 10 ))s"
-    break
-  fi
-
-  if [ $((i % 6)) -eq 0 ]; then
-    lcs_status=$(oc get pod lightspeed-stack-service -n "$NAMESPACE" -o jsonpath='{.status.phase}' 2>/dev/null || echo "unknown")
-    llama_status=$(oc get pod llama-stack-service -n "$NAMESPACE" -o jsonpath='{.status.phase}' 2>/dev/null || echo "unknown")
-    echo "[$(( i * 10 ))s] lightspeed-stack: $lcs_status ($lcs_ready), llama-stack: $llama_status ($llama_ready)"
-  fi
-
-  if [ $i -eq 60 ]; then
-    echo ""
-    echo "❌ One or both service pods failed to become ready within 600s timeout"
-    echo ""
-    echo "DEBUG: Pod status:"
-    oc get pods -n "$NAMESPACE" -o wide || true
-    echo ""
-    echo "DEBUG: lightspeed-stack-service description:"
-    oc describe pod lightspeed-stack-service -n "$NAMESPACE" || true
-    echo ""
-    echo "DEBUG: llama-stack-service description:"
-    oc describe pod llama-stack-service -n "$NAMESPACE" || true
-    echo ""
-    echo "DEBUG: lightspeed-stack-service logs:"
-    oc logs lightspeed-stack-service -n "$NAMESPACE" --tail=100 || true
-    echo ""
-    echo "DEBUG: llama-stack-service logs:"
-    oc logs llama-stack-service -n "$NAMESPACE" --tail=100 || true
-    echo ""
-    echo "DEBUG: Recent events in namespace:"
-    oc get events -n "$NAMESPACE" --sort-by='.lastTimestamp' | tail -20 || true
-    exit 1
-  fi
-  sleep 10
-done
+echo "--> Final wait for both lightspeed-stack-service and llama-stack-service pods..."
+if ! oc wait pod/lightspeed-stack-service pod/llama-stack-service \
+    -n "$NAMESPACE" --for=condition=Ready --timeout=600s; then
+  echo ""
+  echo "❌ One or both service pods failed to become ready within timeout"
+  echo ""
+  echo "DEBUG: Pod status:"
+  oc get pods -n "$NAMESPACE" -o wide || true
+  echo ""
+  echo "DEBUG: lightspeed-stack-service description:"
+  oc describe pod lightspeed-stack-service -n "$NAMESPACE" || true
+  echo ""
+  echo "DEBUG: llama-stack-service description:"
+  oc describe pod llama-stack-service -n "$NAMESPACE" || true
+  echo ""
+  echo "DEBUG: lightspeed-stack-service logs:"
+  oc logs lightspeed-stack-service -n "$NAMESPACE" --tail=100 || true
+  echo ""
+  echo "DEBUG: llama-stack-service logs:"
+  oc logs llama-stack-service -n "$NAMESPACE" --tail=100 || true
+  echo ""
+  echo "DEBUG: Recent events in namespace:"
+  oc get events -n "$NAMESPACE" --sort-by='.lastTimestamp' | tail -20 || true
+  exit 1
+fi
+echo "✅ Both service pods are ready"
 
 oc get pods -n "$NAMESPACE"
 
@@ -468,11 +358,9 @@ oc describe pod llama-stack-service -n "$NAMESPACE" || true
 export E2E_LSC_PORT_FORWARD_PID_FILE="${E2E_LSC_PORT_FORWARD_PID_FILE:-/tmp/e2e-lightspeed-port-forward.pid}"
 export E2E_LLAMA_PORT_FORWARD_PID_FILE="${E2E_LLAMA_PORT_FORWARD_PID_FILE:-/tmp/e2e-llama-port-forward.pid}"
 export E2E_JWKS_PORT_FORWARD_PID_FILE="${E2E_JWKS_PORT_FORWARD_PID_FILE:-/tmp/e2e-jwks-port-forward.pid}"
-export E2E_OKP_PORT_FORWARD_PID_FILE="${E2E_OKP_PORT_FORWARD_PID_FILE:-/tmp/e2e-okp-port-forward.pid}"
 rm -f "$E2E_LSC_PORT_FORWARD_PID_FILE"
 rm -f "$E2E_LLAMA_PORT_FORWARD_PID_FILE"
 rm -f "$E2E_JWKS_PORT_FORWARD_PID_FILE"
-rm -f "$E2E_OKP_PORT_FORWARD_PID_FILE"
 
 oc label pod lightspeed-stack-service pod=lightspeed-stack-service -n $NAMESPACE
 
@@ -482,18 +370,16 @@ oc expose pod lightspeed-stack-service \
   --type=ClusterIP \
   -n $NAMESPACE
 
-# Kill any existing processes on ports 8080, 8000, 8321, and 8081 (lsof may be missing in minimal images)
-echo "Checking for existing processes on ports 8080, 8000, 8321, and 8081..."
+# Kill any existing processes on ports 8080, 8000, and 8321 (lsof may be missing in minimal images)
+echo "Checking for existing processes on ports 8080, 8000, and 8321..."
 if command -v lsof >/dev/null 2>&1; then
     lsof -ti:8080 | xargs kill -9 2>/dev/null || true
     lsof -ti:8000 | xargs kill -9 2>/dev/null || true
     lsof -ti:8321 | xargs kill -9 2>/dev/null || true
-    lsof -ti:8081 | xargs kill -9 2>/dev/null || true
 elif command -v fuser >/dev/null 2>&1; then
     fuser -k 8080/tcp 2>/dev/null || true
     fuser -k 8000/tcp 2>/dev/null || true
     fuser -k 8321/tcp 2>/dev/null || true
-    fuser -k 8081/tcp 2>/dev/null || true
 fi
 
 # Start port-forward for lightspeed-stack
@@ -514,9 +400,6 @@ echo "Starting port-forward for llama-stack..."
 oc port-forward svc/llama-stack-service-svc 8321:8321 -n $NAMESPACE &
 PF_LLAMA_PID=$!
 echo "$PF_LLAMA_PID" >"$E2E_LLAMA_PORT_FORWARD_PID_FILE"
-
-# OKP Solr port-forward (localhost:8081) is started by e2e-ops deploy-okp-solr
-# when okp_rag.feature runs — do not start it here.
 
 # Wait for port-forward to be usable (app may not be listening immediately; port-forward can drop)
 echo "Waiting for port-forward to lightspeed-stack to be ready..."
@@ -608,13 +491,7 @@ kill $PF_LLAMA_PID 2>/dev/null || true
 wait $PF_LCS_PID 2>/dev/null || true
 wait $PF_JWKS_PID 2>/dev/null || true
 wait $PF_LLAMA_PID 2>/dev/null || true
-if [[ -n "${E2E_OKP_PORT_FORWARD_PID_FILE:-}" && -f "$E2E_OKP_PORT_FORWARD_PID_FILE" ]]; then
-  read -r _okp_pf <"$E2E_OKP_PORT_FORWARD_PID_FILE" 2>/dev/null || true
-  if [[ "${_okp_pf:-}" =~ ^[0-9]+$ ]]; then
-    kill -9 "$_okp_pf" 2>/dev/null || true
-  fi
-fi
-rm -f "$E2E_LSC_PORT_FORWARD_PID_FILE" "$E2E_LLAMA_PORT_FORWARD_PID_FILE" "$E2E_JWKS_PORT_FORWARD_PID_FILE" "$E2E_OKP_PORT_FORWARD_PID_FILE"
+rm -f "$E2E_LSC_PORT_FORWARD_PID_FILE" "$E2E_LLAMA_PORT_FORWARD_PID_FILE" "$E2E_JWKS_PORT_FORWARD_PID_FILE"
 set -e
 trap 'echo "❌ Pipeline failed at line $LINENO"; exit 1' ERR
 

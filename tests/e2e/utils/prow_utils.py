@@ -352,7 +352,7 @@ def update_config_configmap(
 def assert_okp_reachable_from_ogx() -> None:
     """Fail unless the OGX pod can HTTP GET in-cluster OKP Solr.
 
-    This is the Konflux/Prow health check: runner localhost:8081 only proves
+    This is the Konflux health check: runner localhost:8081 only proves
     the e2e port-forward, not OGX → Solr.
 
     Raises:
@@ -369,7 +369,7 @@ def assert_okp_reachable_from_ogx() -> None:
 
 
 def ensure_okp_solr_ready() -> None:
-    """Deploy OKP Solr on Prow/Konflux if it is not already Ready.
+    """Deploy OKP Solr on Konflux if it is not already Ready.
 
     Idempotent. First image pull can take ~10-15 minutes (7GB). Starts the
     localhost:8081 port-forward after the pod is ready.

@@ -40,6 +40,7 @@ from tests.e2e.utils.prow_utils import (
     run_e2e_ops,
 )
 from tests.e2e.utils.utils import (
+    is_konflux_environment,
     is_prow_environment,
     remove_config_backup,
     restart_container,
@@ -209,7 +210,8 @@ def before_scenario(context: Context, scenario: Scenario) -> None:
     resetting per-scenario Lightspeed override tracking and skip-restart flags.
 
     Skips the scenario if it has the `skip` tag, if it has the `local` tag
-    while the test run is not in local mode, if it has `skip-in-github` when
+    while the test run is not in local mode, if it has `konflux-only` when
+    ``E2E_KONFLUX_E2E`` is not ``1``, if it has `skip-in-github` when
     ``GITHUB_ACTIONS`` is set, if it has `skip-in-library-mode` when running
     in library mode, or if it has `skip-in-server-mode` when running in server
     mode. Scenario-specific Lightspeed YAML is applied in the feature files
@@ -221,8 +223,11 @@ def before_scenario(context: Context, scenario: Scenario) -> None:
     if "local" in scenario.effective_tags and not context.local:
         scenario.skip("Marked with @local")
         return
+    if "konflux-only" in scenario.effective_tags and not is_konflux_environment():
+        scenario.skip("Skipped outside Konflux (requires E2E_KONFLUX_E2E=1)")
+        return
     if os.getenv("GITHUB_ACTIONS") and "skip-in-github" in scenario.effective_tags:
-        scenario.skip("Skipped on GitHub Actions (Konflux/Prow only)")
+        scenario.skip("Skipped on GitHub Actions (Konflux only)")
         return
 
     # Skip scenarios that require separate OGX container in library mode
@@ -533,13 +538,14 @@ def _restore_llama_stack() -> None:
 
 
 def _ensure_okp_solr_for_feature() -> None:
-    """Deploy OKP Solr for ``@cfg_okp`` features on Prow/Konflux.
+    """Deploy OKP Solr for ``@cfg_okp`` features on Konflux only.
 
-    Local Docker is a no-op; the feature Background asserts OKP is reachable.
+    Classic Prow and local Docker are no-ops. GitHub Actions / Prow skip the
+    feature via ``@konflux-only`` before scenarios run.
     """
-    if not is_prow_environment():
+    if not is_konflux_environment():
         return
-    print("[okp_rag.feature] Prow/Konflux: ensuring OKP Solr is deployed...")
+    print("[okp_rag.feature] Konflux: ensuring OKP Solr is deployed...")
     ensure_okp_solr_ready()
     print("[okp_rag.feature] OKP Solr ready", flush=True)
 
@@ -560,9 +566,9 @@ def before_feature(context: Context, feature: Feature) -> None:
     ``_E2E_FLAKY_MAX_ATTEMPTS`` and can be overridden with the
     ``E2E_FLAKY_MAX_ATTEMPTS`` environment variable.
 
-    Features tagged ``@cfg_okp`` deploy OKP Solr on Prow/Konflux (idempotent)
-    via ``e2e-ops deploy-okp-solr`` before scenarios run. Local Docker is a
-    no-op; Background still asserts OKP is reachable.
+    Features tagged ``@cfg_okp`` deploy OKP Solr on Konflux only (idempotent)
+    via ``e2e-ops deploy-okp-solr`` before scenarios run. Classic Prow and
+    local Docker are no-ops.
     """
     setattr(feature, _E2E_FEATURE_PERF_START_ATTR, time.perf_counter())
     context.feature_config = None

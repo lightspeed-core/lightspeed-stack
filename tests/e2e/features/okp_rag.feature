@@ -1,11 +1,11 @@
-@cfg_okp @skip-in-github
+@cfg_okp @konflux-only
 Feature: OKP(Solr) RAG retrieval tests
   # Server-mode tests: OGX is a separate pod and re-enriches Solr/OKP from the
   # Lightspeed ConfigMap on restart. Restart Llama Stack after each YAML change
   # so the Solr provider picks up inline/tool/offline/online settings.
-  # On Prow/Konflux, before_feature deploys OKP Solr (7GB image) once.
+  # Konflux only: before_feature deploys OKP Solr (7GB image) once.
   # Background "OKP is running" checks Solr from the OGX pod (not runner :8081).
-  # @skip-in-github: GitHub Actions has no OKP image/registry pull; Konflux only.
+  # @konflux-only: skipped on GitHub Actions, classic Prow, and local Docker.
 
   # Offline Knowledge Portal (OKP) provides a Solr-backed RAG source to LSC.
   # Tests verify that Lightspeed Stack can use OKP for both Inline RAG
