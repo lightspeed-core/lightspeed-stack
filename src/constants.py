@@ -20,7 +20,8 @@ SYNTHESIZED_CONFIG_PATH_ENV_VAR: Final[str] = "LIGHTSPEED_STACK_SYNTHESIZED_CONF
 
 # Default persistent path for the synthesized OGX run.yaml in unified
 # library mode. Overwritten on each boot and written with mode 0600 (R10).
-DEFAULT_SYNTHESIZED_CONFIG_PATH: Final[str] = "./.generated/run.yaml"
+# Uses /tmp to ensure write permissions in containerized environments.
+DEFAULT_SYNTHESIZED_CONFIG_PATH: Final[str] = "/tmp/.generated/run.yaml"
 
 UNABLE_TO_PROCESS_RESPONSE: Final[str] = "Unable to process this request"
 

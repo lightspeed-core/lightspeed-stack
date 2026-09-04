@@ -569,7 +569,7 @@ def before_feature(context: Context, feature: Feature) -> None:
         print("  Reason: Feature tagged @library-mode-in-konflux")
         print("  Config directory will be: tests/e2e/configuration/library-mode/")
     else:
-        print(f"[before_feature] NOT switching to library mode - tag not found")
+        print("[before_feature] NOT switching to library mode - tag not found")
     # One real Llama disruption per feature (module-level flag; survives context resets)
     reset_llama_stack_disrupt_once_tracking()
     if feature.filename and is_tls_feature_file(feature.filename):
