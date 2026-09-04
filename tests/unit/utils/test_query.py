@@ -9,8 +9,7 @@ from typing import Any
 import psycopg2
 import pytest
 from fastapi import HTTPException
-from ogx_client.types import ListModelsResponse, ModelListResponse
-from ogx_client.types.model import Model
+from ogx_client import ApiException
 from pydantic_ai.messages import ImageUrl
 from pytest_mock import MockerFixture
 from sqlalchemy.exc import SQLAlchemyError
@@ -51,29 +50,6 @@ def mock_config_fixture() -> AppConfig:
     cfg = AppConfig()
     cfg.init_from_dict(config_dict)
     return cfg
-
-
-@pytest.fixture(name="mock_models")
-def mock_models_fixture() -> ModelListResponse:
-    """Create an OpenAI-style OGX models list response."""
-    return ListModelsResponse.model_construct(
-        data=[
-            Model.model_construct(
-                id="provider1/model1",
-                created=0,
-                owned_by="test",
-                object="model",
-                custom_metadata={"model_type": "llm", "provider_id": "provider1"},
-            ),
-            Model.model_construct(
-                id="provider2/model2",
-                created=0,
-                owned_by="test",
-                object="model",
-                custom_metadata={"model_type": "llm", "provider_id": "provider2"},
-            ),
-        ]
-    )
 
 
 class TestStoreConversationIntoCache:
@@ -336,11 +312,10 @@ class TestHandleKnownApistatusErrors:
 
     def test_context_length_exceeded(self) -> None:
         """Test handling context length exceeded error."""
-        error = type(
-            "APIStatusError",
-            (),
-            {"status_code": 400, "message": "context_length_exceeded: prompt too long"},
-        )()
+        error = ApiException(
+            status=400,
+            reason="context_length_exceeded: prompt too long",
+        )
         result = handle_known_apistatus_errors(error, "model1")
         assert isinstance(result, PromptTooLongResponse)
         detail = result.model_dump()["detail"]
@@ -350,9 +325,7 @@ class TestHandleKnownApistatusErrors:
 
     def test_quota_exceeded(self) -> None:
         """Test handling quota exceeded error."""
-        error = type(
-            "APIStatusError", (), {"status_code": 429, "message": "Rate limit exceeded"}
-        )()
+        error = ApiException(status=429, reason="Rate limit exceeded")
         result = handle_known_apistatus_errors(error, "model1")
         assert isinstance(result, QuotaExceededResponse)
         detail = result.model_dump()["detail"]
@@ -375,11 +348,7 @@ class TestHandleKnownApistatusErrors:
 
     def test_generic_error(self) -> None:
         """Test handling generic error."""
-        error = type(
-            "APIStatusError",
-            (),
-            {"status_code": 500, "message": "Internal server error"},
-        )()
+        error = ApiException(status=500, reason="Internal server error")
         result = handle_known_apistatus_errors(error, "model1")
         assert isinstance(result, InternalServerErrorResponse)
         detail = result.model_dump()["detail"]

@@ -121,10 +121,11 @@ async def test_skips_event_when_not_configured(
     mocker: MockerFixture, splunk_config: Any
 ) -> None:
     """Test event is skipped when Splunk is not properly configured."""
-    if splunk_config == "disabled":
-        splunk_config = _make_config(mocker, enabled=False)
-    elif splunk_config == "incomplete":
-        splunk_config = _make_config(mocker, url=None, index=None)
+    match splunk_config:
+        case "disabled":
+            splunk_config = _make_config(mocker, enabled=False)
+        case "incomplete":
+            splunk_config = _make_config(mocker, url=None, index=None)
 
     mock_config = mocker.patch("observability.splunk.configuration")
     mock_config.splunk = splunk_config

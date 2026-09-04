@@ -4,7 +4,7 @@ import asyncio
 import re
 from typing import Optional
 
-from ogx_client import APIConnectionError, AsyncOgxClient
+from ogx_client import ApiException, AsyncOgxClient
 from semver import Version
 
 from constants import (
@@ -42,7 +42,7 @@ async def check_ogx_version(
         retry_delay: Delay in seconds between retry attempts.
 
     Raises:
-        APIConnectionError: If OGX is unreachable after all retries.
+        ApiException: If OGX is unreachable after all retries.
         InvalidOgxVersionException: If the detected version is outside
         the supported range or cannot be parsed.
     """
@@ -58,7 +58,7 @@ async def check_ogx_version(
                 MAXIMAL_SUPPORTED_OGX_VERSION,
             )
             return version_info.version
-        except APIConnectionError:
+        except ApiException:
             if attempt == max_retries - 1:
                 raise
             logger.warning(

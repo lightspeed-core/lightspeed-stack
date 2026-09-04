@@ -168,7 +168,7 @@ class TestSetSpanAttributes:
         assert len(spans) == 1
         assert spans[0].attributes[SpanAttributes.SESSION_ID] == "test-session-123"
 
-    def test_set_multiple_attributes(self, otel):
+    def test_set_multiple_attributes(self, otel: Generator[Any, Any, Any]) -> None:
         """Test setting multiple attributes on a span."""
         tracer, exporter = otel
         with tracer.start_as_current_span("test_span") as span:

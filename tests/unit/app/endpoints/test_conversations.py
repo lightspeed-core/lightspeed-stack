@@ -8,7 +8,7 @@ from typing import Any, Optional
 
 import pytest
 from fastapi import HTTPException, Request, status
-from ogx_client import APIConnectionError, APIStatusError, NotFoundError
+from ogx_client import ApiException, NotFoundError
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
     InMemorySpanExporter,
 )
@@ -517,7 +517,7 @@ class TestGetConversationEndpoint:
         assert INVALID_CONVERSATION_ID in cause
 
     @pytest.mark.asyncio
-    async def test_llama_stack_connection_error(
+    async def test_ogx_connection_error(
         self,
         mocker: MockerFixture,
         setup_configuration: AppConfig,
@@ -534,9 +534,7 @@ class TestGetConversationEndpoint:
         mock_database_session(mocker, query_result=[mock_conversation], db_turns=[])
 
         mock_client = mocker.AsyncMock()
-        mock_client.conversations.items.list.side_effect = APIConnectionError(
-            request=None  # type: ignore[arg-type]
-        )
+        mock_client.items.list.side_effect = ApiException(status=None)
         mock_client_holder = mocker.patch(
             "app.endpoints.conversations_v1.AsyncOgxClientHolder"
         )
@@ -558,7 +556,7 @@ class TestGetConversationEndpoint:
         assert response == "Unable to connect to OGX"
 
     @pytest.mark.asyncio
-    async def test_llama_stack_not_found_error(
+    async def test_ogx_not_found_error(
         self,
         mocker: MockerFixture,
         setup_configuration: AppConfig,
@@ -583,10 +581,8 @@ class TestGetConversationEndpoint:
         mock_database_session(mocker, db_turns=[])
 
         mock_client = mocker.AsyncMock()
-        mock_client.conversations.items.list.side_effect = NotFoundError(
-            message="Conversation not found",
-            response=mocker.Mock(request=None),
-            body=None,
+        mock_client.items.list.side_effect = NotFoundError(
+            status=404, reason="Conversation not found"
         )
         mock_client_holder = mocker.patch(
             "app.endpoints.conversations_v1.AsyncOgxClientHolder"
@@ -690,10 +686,8 @@ class TestGetConversationEndpoint:
         mock_item2.role = "assistant"
         mock_item2.content = "Hi there!"
         mock_items_response.data = [mock_item1, mock_item2]
-        mock_items_response.has_next_page.return_value = False
-        mock_client.conversations.items.list = mocker.AsyncMock(
-            return_value=mock_items_response
-        )
+        mock_items_response.has_more = False
+        mock_client.items.list = mocker.AsyncMock(return_value=mock_items_response)
 
         mock_client_holder = mocker.patch(
             "app.endpoints.conversations_v1.AsyncOgxClientHolder"
@@ -746,8 +740,8 @@ class TestGetConversationEndpoint:
                 type="message", role="assistant", content="I'm doing well, thanks!"
             ),
         ]
-        mock_items.has_next_page.return_value = False
-        mock_client.conversations.items.list = mocker.AsyncMock(return_value=mock_items)
+        mock_items.has_more = False
+        mock_client.items.list = mocker.AsyncMock(return_value=mock_items)
 
         mock_client_holder = mocker.patch(
             "app.endpoints.conversations_v1.AsyncOgxClientHolder"
@@ -822,10 +816,8 @@ class TestGetConversationEndpoint:
         mock_client = mocker.AsyncMock()
         mock_items_response = mocker.Mock()
         mock_items_response.data = []
-        mock_items_response.has_next_page.return_value = False
-        mock_client.conversations.items.list = mocker.AsyncMock(
-            return_value=mock_items_response
-        )
+        mock_items_response.has_more = False
+        mock_client.items.list = mocker.AsyncMock(return_value=mock_items_response)
         mock_client_holder = mocker.patch(
             "app.endpoints.conversations_v1.AsyncOgxClientHolder"
         )
@@ -852,9 +844,9 @@ class TestGetConversationEndpoint:
         dummy_request: Request,
         mock_conversation: MockType,
     ) -> None:
-        """Test when APIStatusError is raised during conversation retrieval.
+        """Test when ApiException is raised during conversation retrieval.
 
-        get_all_conversation_items maps APIStatusError to HTTP 500.
+        get_all_conversation_items maps ApiException to HTTP 500.
         """
         mock_authorization_resolvers(mocker)
         mocker.patch(
@@ -869,10 +861,8 @@ class TestGetConversationEndpoint:
         mock_database_session(mocker, db_turns=[])
 
         mock_client = mocker.AsyncMock()
-        mock_client.conversations.items.list.side_effect = APIStatusError(
-            message="Conversation not found",
-            response=mocker.Mock(status_code=404, request=None),
-            body=None,
+        mock_client.items.list.side_effect = ApiException(
+            status=404, reason="Conversation not found"
         )
         mock_client_holder = mocker.patch(
             "app.endpoints.conversations_v1.AsyncOgxClientHolder"
@@ -973,7 +963,8 @@ class TestGetConversationEndpoint:
             mocker.Mock(type="message", role="user", content="Hello"),
             mocker.Mock(type="message", role="assistant", content="Hi!"),
         ]
-        mock_client.conversations.items.list.return_value = mock_items_response
+        mock_items_response.has_more = False
+        mock_client.items.list.return_value = mock_items_response
         mock_client_holder = mocker.patch(
             "app.endpoints.conversations_v1.AsyncOgxClientHolder"
         )
@@ -1093,7 +1084,7 @@ class TestDeleteConversationEndpoint:
         assert INVALID_CONVERSATION_ID in cause
 
     @pytest.mark.asyncio
-    async def test_llama_stack_connection_error(
+    async def test_ogx_connection_error(
         self,
         mocker: MockerFixture,
         setup_configuration: AppConfig,
@@ -1113,9 +1104,7 @@ class TestDeleteConversationEndpoint:
         )
 
         mock_client = mocker.AsyncMock()
-        mock_client.conversations.delete.side_effect = APIConnectionError(
-            request=None  # type: ignore
-        )
+        mock_client.conversations.delete.side_effect = ApiException(status=None)
         mock_client_holder = mocker.patch(
             "app.endpoints.conversations_v1.AsyncOgxClientHolder"
         )
@@ -1135,7 +1124,7 @@ class TestDeleteConversationEndpoint:
         assert response == "Unable to connect to OGX"
 
     @pytest.mark.asyncio
-    async def test_llama_stack_not_found_error(
+    async def test_ogx_not_found_error(
         self,
         mocker: MockerFixture,
         setup_configuration: AppConfig,
@@ -1155,10 +1144,8 @@ class TestDeleteConversationEndpoint:
         )
 
         mock_client = mocker.AsyncMock()
-        mock_client.conversations.delete.side_effect = APIStatusError(
-            message="Conversation not found",
-            response=mocker.Mock(status_code=404, request=None),
-            body=None,
+        mock_client.conversations.delete.side_effect = ApiException(
+            status=404, reason="Conversation not found"
         )
         mock_client_holder = mocker.patch(
             "app.endpoints.conversations_v1.AsyncOgxClientHolder"
@@ -2016,7 +2003,7 @@ class TestUpdateConversationEndpoint:
         mock_session.commit.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_llama_stack_connection_error_in_update(
+    async def test_ogx_connection_error_in_update(
         self,
         mocker: MockerFixture,
         setup_configuration: AppConfig,
@@ -2035,11 +2022,9 @@ class TestUpdateConversationEndpoint:
             return_value=mock_conversation,
         )
 
-        # Mock AsyncOgxClientHolder to raise APIConnectionError
+        # Mock AsyncOgxClientHolder to raise ApiException
         mock_client = mocker.AsyncMock()
-        mock_client.conversations.update.side_effect = APIConnectionError(
-            request=None  # type: ignore
-        )
+        mock_client.conversations.update.side_effect = ApiException(status=None)
         mock_client_holder = mocker.patch(
             "app.endpoints.conversations_v1.AsyncOgxClientHolder"
         )
@@ -2062,7 +2047,7 @@ class TestUpdateConversationEndpoint:
         assert response == "Unable to connect to OGX"
 
     @pytest.mark.asyncio
-    async def test_llama_stack_not_found_error_in_update(
+    async def test_ogx_not_found_error_in_update(
         self,
         mocker: MockerFixture,
         setup_configuration: AppConfig,
@@ -2081,12 +2066,10 @@ class TestUpdateConversationEndpoint:
             return_value=mock_conversation,
         )
 
-        # Mock AsyncOgxClientHolder to raise APIStatusError
+        # Mock AsyncOgxClientHolder to raise ApiException
         mock_client = mocker.AsyncMock()
-        mock_client.conversations.update.side_effect = APIStatusError(
-            message="Conversation not found",
-            response=mocker.Mock(status_code=404, request=None),
-            body=None,
+        mock_client.conversations.update.side_effect = ApiException(
+            status=404, reason="Conversation not found"
         )
         mock_client_holder = mocker.patch(
             "app.endpoints.conversations_v1.AsyncOgxClientHolder"
@@ -2348,9 +2331,7 @@ class TestConversationsV1Otel:
         )
         mocker.patch(
             "app.endpoints.conversations_v1.AsyncOgxClientHolder"
-        ).return_value.get_client.side_effect = APIConnectionError(
-            request=mocker.Mock()
-        )
+        ).return_value.get_client.side_effect = ApiException(status=None)
 
         mock_database_session(mocker)
 

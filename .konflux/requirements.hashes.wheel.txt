@@ -196,6 +196,8 @@ mcp==1.28.1 \
     --hash=sha256:acb4f1d5be79d8a5db3a23b9371bfede6724a3ba3a20a66b0b52937d1eb49f04
 mdurl==0.1.2 \
     --hash=sha256:3b685cb48a3cde202b232cb167ea1d9c287724d240966f2f16d2f10732b78636
+models-dev==1.0.398 \
+    --hash=sha256:a1c8acd4ef8215bf38b22e445066b945d4dbe234127a0f266f5ac12b717ee167
 more-itertools==11.1.0 \
     --hash=sha256:c77430ea1c1d303f2fd19520f7065710bc918d3a53f80e36a2c5c8a86e5570b3
 mpmath==1.3.0 \
@@ -220,12 +222,6 @@ numpy==2.3.5 \
     --hash=sha256:a08c6c26c26d7530d09ac93bc177593958c2e3ce4a9b5750c14a80329cca157c
 oauthlib==3.3.1 \
     --hash=sha256:c6fbab4f1a77a539f01175e2ea74b9552806bd0a849c70e744fda4ab801031c0
-ogx==1.0.2+rhaiv.0 \
-    --hash=sha256:52c891af9dfb22f884d2dae150e5e94d04e492f452ec811bbc61ba84257de000
-ogx-api==1.0.2+rhaiv.0 \
-    --hash=sha256:265dff54f2367f4f366952e7a17abe06ceeef777a809259a5fba4715f4df4e90
-ogx-client==1.0.2 \
-    --hash=sha256:3ac249fb8365a4cb801815c95113fc6954a16193db5247d9b9f053398a80add9
 openai==2.45.0 \
     --hash=sha256:93cbc0461f69bbd1c81c513c69d120bfe014049f02676a3f5e940541899c3238
 opentelemetry-api==1.44.0 \
@@ -240,6 +236,8 @@ opentelemetry-exporter-otlp-proto-grpc==1.44.0 \
     --hash=sha256:ecc9ac901cd39ba52eb117d92b6359043923d9436b391ca5c23bc735b2c03621
 opentelemetry-exporter-otlp-proto-http==1.44.0 \
     --hash=sha256:dce126f45e8d4dd30767146e25c4680c1e1480fbc8f2534be565186af323db1d
+opentelemetry-exporter-prometheus==0.65b0 \
+    --hash=sha256:2d1ac4bcf0774fa79d05661cfa4c45a09f260359a5f596ffc70ecd4f919d81d3
 opentelemetry-instrumentation==0.65b0 \
     --hash=sha256:aee95b8aa59e85f76d224ff594102dc203cd90006e76c280e6256606d7206321
 opentelemetry-instrumentation-asgi==0.65b0 \

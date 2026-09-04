@@ -4,6 +4,7 @@ from typing import Any
 
 import pytest
 from fastapi import Request
+from ogx_client.models.open_ai_response_object import OpenAIResponseObject
 from pytest_mock import MockerFixture
 
 import constants
@@ -36,6 +37,7 @@ _RESPONSE_DUMP: dict[str, Any] = {
     "created_at": 1700000000,
     "status": "completed",
     "model": "test-provider/test-model",
+    "store": False,
     "output": [
         {
             "type": "message",
@@ -68,8 +70,8 @@ _RESPONSE_DUMP: dict[str, Any] = {
 def _build_responses_mock_client(mocker: MockerFixture) -> Any:
     """Build a mock client suitable for the /responses endpoint."""
     mock_client = _build_base_mock_client(mocker)
-    mock_client.responses.create.return_value.model_dump.return_value = (
-        _RESPONSE_DUMP.copy()
+    mock_client.responses.create = mocker.AsyncMock(
+        return_value=OpenAIResponseObject.from_dict(_RESPONSE_DUMP)
     )
     return mock_client
 
@@ -125,9 +127,7 @@ async def test_responses_byok_inline_rag_injects_context(  # pylint: disable=too
         return_value=_make_byok_vector_io_response(mocker)
     )
 
-    mock_vs_resp = mocker.MagicMock()
-    mock_vs_resp.data = []
-    mock_client.vector_stores.list.return_value = mock_vs_resp
+    mock_client.vector_stores.list.return_value = []
 
     responses_request = ResponsesRequest(input="What is OpenShift?", stream=False)
 
@@ -178,9 +178,7 @@ async def test_responses_byok_inline_rag_error_is_handled_gracefully(  # pylint:
         side_effect=Exception("Connection refused")
     )
 
-    mock_vs_resp = mocker.MagicMock()
-    mock_vs_resp.data = []
-    mock_client.vector_stores.list.return_value = mock_vs_resp
+    mock_client.vector_stores.list.return_value = []
 
     responses_request = ResponsesRequest(input="What is OpenShift?", stream=False)
 
@@ -235,9 +233,7 @@ async def test_responses_byok_tool_rag_returns_tool_calls(  # pylint: disable=to
 
     mock_vector_store = mocker.MagicMock()
     mock_vector_store.id = "vs-byok-knowledge"
-    mock_list_result = mocker.MagicMock()
-    mock_list_result.data = [mock_vector_store]
-    mock_client.vector_stores.list.return_value = mock_list_result
+    mock_client.vector_stores.list.return_value = [mock_vector_store]
 
     responses_request = ResponsesRequest(input="What is OpenShift?", stream=False)
 
@@ -312,9 +308,7 @@ async def test_responses_byok_combined_inline_and_tool_rag(  # pylint: disable=t
     # Tool RAG vector stores
     mock_vector_store = mocker.MagicMock()
     mock_vector_store.id = "vs-byok-knowledge"
-    mock_list_result = mocker.MagicMock()
-    mock_list_result.data = [mock_vector_store]
-    mock_client.vector_stores.list.return_value = mock_list_result
+    mock_client.vector_stores.list.return_value = [mock_vector_store]
 
     responses_request = ResponsesRequest(input="What is OpenShift?", stream=False)
 
@@ -390,9 +384,7 @@ async def test_responses_byok_inline_rag_only_configured_rag_id_is_queried(  # p
         return_value=_make_byok_vector_io_response(mocker)
     )
 
-    mock_vs_resp = mocker.MagicMock()
-    mock_vs_resp.data = []
-    mock_client.vector_stores.list.return_value = mock_vs_resp
+    mock_client.vector_stores.list.return_value = []
 
     responses_request = ResponsesRequest(input="What is OpenShift?", stream=False)
 
@@ -471,9 +463,7 @@ async def test_responses_byok_score_multiplier_shifts_chunk_priority(  # pylint:
 
     mock_client.vector_io.query = mocker.AsyncMock(side_effect=_side_effect)
 
-    mock_vs_resp = mocker.MagicMock()
-    mock_vs_resp.data = []
-    mock_client.vector_stores.list.return_value = mock_vs_resp
+    mock_client.vector_stores.list.return_value = []
 
     responses_request = ResponsesRequest(input="test query", stream=False)
 
@@ -542,9 +532,7 @@ async def test_responses_rag_content_limit_caps_retrieved_results(  # pylint: di
         return_value=_make_vector_io_response(mocker, chunks_data)
     )
 
-    mock_vs_resp = mocker.MagicMock()
-    mock_vs_resp.data = []
-    mock_client.vector_stores.list.return_value = mock_vs_resp
+    mock_client.vector_stores.list.return_value = []
 
     responses_request = ResponsesRequest(input="test query", stream=False)
 
@@ -626,9 +614,7 @@ async def test_responses_rag_content_limit_caps_across_multiple_sources(  # pyli
 
     mock_client.vector_io.query = mocker.AsyncMock(side_effect=_side_effect)
 
-    mock_vs_resp = mocker.MagicMock()
-    mock_vs_resp.data = []
-    mock_client.vector_stores.list.return_value = mock_vs_resp
+    mock_client.vector_stores.list.return_value = []
 
     responses_request = ResponsesRequest(input="test query", stream=False)
 
@@ -694,9 +680,7 @@ async def test_responses_rag_content_limit_caps_inline_rag(  # pylint: disable=t
         return_value=_make_vector_io_response(mocker, chunks_data)
     )
 
-    mock_vs_resp = mocker.MagicMock()
-    mock_vs_resp.data = []
-    mock_client.vector_stores.list.return_value = mock_vs_resp
+    mock_client.vector_stores.list.return_value = []
 
     responses_request = ResponsesRequest(input="test query", stream=False)
 

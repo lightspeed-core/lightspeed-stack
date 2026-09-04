@@ -8,7 +8,7 @@ methods. For HEAD HTTP method, just the HTTP response code is used.
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Response, status
-from ogx_client import APIConnectionError
+from ogx_client import ApiException
 from opentelemetry import trace
 
 from authentication import get_auth_dependency
@@ -80,7 +80,7 @@ async def get_providers_health_statuses() -> list[ProviderHealthStatus]:
             for provider in providers
         ]
 
-    except APIConnectionError as e:
+    except ApiException as e:
         logger.error("Failed to check providers health: %s", e)
         return [
             ProviderHealthStatus(

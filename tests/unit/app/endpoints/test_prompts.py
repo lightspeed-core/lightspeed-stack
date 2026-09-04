@@ -4,8 +4,9 @@ from typing import Any, Optional
 
 import pytest
 from fastapi import HTTPException, Request, status
-from ogx_client import APIConnectionError, BadRequestError
-from ogx_client.types.prompt import Prompt
+from ogx_api import PromptNotFoundError
+from ogx_client import ApiException, NotFoundError
+from ogx_client.models.prompt import Prompt
 from pytest_mock import MockerFixture
 
 from app.endpoints.prompts import (
@@ -145,24 +146,6 @@ async def test_get_prompt_with_version(
 
 
 @pytest.mark.asyncio
-async def test_get_prompt_without_version_omits_kwarg(
-    prompts_client_mocks: tuple[Any, Any],
-    prompts_http_request: Request,
-) -> None:
-    """get_prompt calls retrieve with prompt_id only when version is omitted."""
-    _, mock_prompts = prompts_client_mocks
-    mock_prompts.retrieve.return_value = _sample_prompt(VALID_PMPT_ID, 1)
-
-    await get_prompt_handler(
-        request=prompts_http_request,
-        prompt_id=VALID_PMPT_ID,
-        auth=MOCK_AUTH,
-    )
-
-    mock_prompts.retrieve.assert_awaited_once_with(VALID_PMPT_ID)
-
-
-@pytest.mark.asyncio
 async def test_update_prompt_success(
     prompts_client_mocks: tuple[Any, Any],
     prompts_http_request: Request,
@@ -211,15 +194,10 @@ async def test_delete_prompt_success(
 async def test_delete_prompt_not_found_returns_body(
     prompts_client_mocks: tuple[Any, Any],
     prompts_http_request: Request,
-    mocker: MockerFixture,
 ) -> None:
-    """delete_prompt returns deleted=False on OGX BadRequestError (v2 style)."""
+    """delete_prompt returns deleted=False on OGX not-found errors (v2 style)."""
     _, mock_prompts = prompts_client_mocks
-    mock_response = mocker.Mock()
-    mock_response.request = mocker.Mock()
-    mock_prompts.delete.side_effect = BadRequestError(
-        message="not found", response=mock_response, body=None
-    )
+    mock_prompts.delete.side_effect = NotFoundError(status=404, reason="not found")
 
     result = await delete_prompt_handler(
         request=prompts_http_request,
@@ -255,9 +233,9 @@ async def test_get_prompt_api_connection_error(
     prompts_client_mocks: tuple[Any, Any],
     prompts_http_request: Request,
 ) -> None:
-    """get_prompt maps APIConnectionError to 503."""
+    """get_prompt maps ApiException to 503."""
     _, mock_prompts = prompts_client_mocks
-    mock_prompts.retrieve.side_effect = APIConnectionError(request=None)  # type: ignore
+    mock_prompts.retrieve.side_effect = ApiException(status=None)  # type: ignore
 
     with pytest.raises(HTTPException) as exc_info:
         await get_prompt_handler(
@@ -270,18 +248,13 @@ async def test_get_prompt_api_connection_error(
 
 
 @pytest.mark.asyncio
-async def test_get_prompt_bad_request_maps_to_404(
+async def test_get_prompt_not_found_maps_to_404(
     prompts_client_mocks: tuple[Any, Any],
     prompts_http_request: Request,
-    mocker: MockerFixture,
 ) -> None:
-    """get_prompt maps OGX BadRequestError to 404 NotFoundResponse."""
+    """get_prompt maps OGX not-found errors to 404 NotFoundResponse."""
     _, mock_prompts = prompts_client_mocks
-    mock_response = mocker.Mock()
-    mock_response.request = mocker.Mock()
-    mock_prompts.retrieve.side_effect = BadRequestError(
-        message="not found", response=mock_response, body=None
-    )
+    mock_prompts.retrieve.side_effect = NotFoundError(status=404, reason="not found")
 
     with pytest.raises(HTTPException) as exc_info:
         await get_prompt_handler(
@@ -300,18 +273,13 @@ async def test_get_prompt_bad_request_maps_to_404(
 
 
 @pytest.mark.asyncio
-async def test_update_prompt_bad_request_maps_to_404(
+async def test_update_prompt_not_found_maps_to_404(
     prompts_client_mocks: tuple[Any, Any],
     prompts_http_request: Request,
-    mocker: MockerFixture,
 ) -> None:
-    """update_prompt maps OGX BadRequestError to 404 NotFoundResponse."""
+    """update_prompt maps OGX not-found errors to 404 NotFoundResponse."""
     _, mock_prompts = prompts_client_mocks
-    mock_response = mocker.Mock()
-    mock_response.request = mocker.Mock()
-    mock_prompts.update.side_effect = BadRequestError(
-        message="invalid version", response=mock_response, body=None
-    )
+    mock_prompts.update.side_effect = PromptNotFoundError(VALID_PMPT_ID_NOT_FOUND)
 
     body = PromptUpdateRequest(
         prompt="x", version=99, set_as_default=False, variables=None

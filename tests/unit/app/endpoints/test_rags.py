@@ -1,11 +1,12 @@
 """Unit tests for the /rags REST API endpoints."""
 
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
 import pytest
 from fastapi import HTTPException, Request, status
-from ogx_client import APIConnectionError, BadRequestError
+from ogx_client import ApiException, BadRequestError
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
     InMemorySpanExporter,
 )
@@ -48,7 +49,7 @@ async def test_rags_endpoint_connection_error(
     """Test that /rags endpoint raises HTTP 503 if OGX connection fails."""
     mocker.patch("app.endpoints.rags.configuration", minimal_config)
     mock_client = mocker.AsyncMock()
-    mock_client.vector_stores.list.side_effect = APIConnectionError(request=None)  # type: ignore
+    mock_client.vector_stores.list.side_effect = ApiException(status=None)  # type: ignore
     mocker.patch(
         "app.endpoints.rags.AsyncOgxClientHolder"
     ).return_value.get_client.return_value = mock_client
@@ -104,6 +105,14 @@ async def test_rags_endpoint_success(
                 RagInfo("vs_7b52a8cf-0fa3-489c-cafe-27e061d102f3"),
             ]
 
+        def __iter__(self) -> "Iterator[RagInfo]":
+            """Iterate over RAG entries."""
+            return iter(self.data)
+
+        def __len__(self) -> int:
+            """Return number of RAG entries."""
+            return len(self.data)
+
     mock_client = mocker.AsyncMock()
     mock_client.vector_stores.list.return_value = RagList()
     mocker.patch(
@@ -146,11 +155,7 @@ async def test_rag_info_endpoint_rag_not_found(
     mocker.patch("app.endpoints.rags.configuration", minimal_config)
     mock_client = mocker.AsyncMock()
     mock_client.vector_stores.retrieve = mocker.AsyncMock(
-        side_effect=BadRequestError(
-            message="RAG not found",
-            response=mocker.Mock(request=None),
-            body=None,
-        )
+        side_effect=BadRequestError(status=400, reason="RAG not found")
     )  # type: ignore
     mocker.patch(
         "app.endpoints.rags.AsyncOgxClientHolder"
@@ -177,9 +182,7 @@ async def test_rag_info_endpoint_connection_error(
     """Test that /rags/{rag_id} endpoint raises HTTP 503 if OGX connection fails."""
     mocker.patch("app.endpoints.rags.configuration", minimal_config)
     mock_client = mocker.AsyncMock()
-    mock_client.vector_stores.retrieve.side_effect = APIConnectionError(
-        request=None  # type: ignore
-    )
+    mock_client.vector_stores.retrieve.side_effect = ApiException(status=None)
     mocker.patch(
         "app.endpoints.rags.AsyncOgxClientHolder"
     ).return_value.get_client.return_value = mock_client
@@ -328,6 +331,14 @@ async def test_rags_endpoint_returns_rag_ids_from_config(
                 RagInfo("vs_unmapped"),  # not in config, passed through
             ]
 
+        def __iter__(self) -> "Iterator[RagInfo]":
+            """Iterate over RAG entries."""
+            return iter(self.data)
+
+        def __len__(self) -> int:
+            """Return number of RAG entries."""
+            return len(self.data)
+
     mock_client = mocker.AsyncMock()
     mock_client.vector_stores.list.return_value = RagList()
     mocker.patch(
@@ -429,6 +440,14 @@ class TestRagsEndpointOtel:
                 """Initialize with mock data."""
                 self.data = [RagInfo("vs_1"), RagInfo("vs_2")]
 
+            def __iter__(self) -> Iterator[Any]:
+                """Iterate over RAG entries (matches VectorStoreListResponse)."""
+                return iter(self.data)
+
+            def __len__(self) -> int:
+                """Return number of RAG entries."""
+                return len(self.data)
+
         mock_client = mocker.AsyncMock()
         mock_client.vector_stores.list.return_value = RagList()
         mocker.patch(
@@ -460,9 +479,7 @@ class TestRagsEndpointOtel:
         mocker.patch("app.endpoints.rags.configuration", minimal_config)
 
         mock_client = mocker.AsyncMock()
-        mock_client.vector_stores.list.side_effect = APIConnectionError(
-            request=None  # type: ignore
-        )
+        mock_client.vector_stores.list.side_effect = ApiException(status=None)
         mocker.patch(
             "app.endpoints.rags.AsyncOgxClientHolder"
         ).return_value.get_client.return_value = mock_client
@@ -537,11 +554,7 @@ class TestRagsEndpointOtel:
 
         mock_client = mocker.AsyncMock()
         mock_client.vector_stores.retrieve = mocker.AsyncMock(
-            side_effect=BadRequestError(
-                message="RAG not found",
-                response=mocker.Mock(request=None),
-                body=None,
-            )
+            side_effect=BadRequestError(status=400, reason="RAG not found")
         )  # type: ignore
         mocker.patch(
             "app.endpoints.rags.AsyncOgxClientHolder"

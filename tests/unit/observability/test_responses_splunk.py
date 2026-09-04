@@ -9,8 +9,7 @@ from fastapi import HTTPException
 from fastapi.responses import StreamingResponse
 from ogx_api import OpenAIResponseObject
 from ogx_api.openai_responses import OpenAIResponseMessage
-from ogx_client import APIConnectionError, AsyncOgxClient
-from ogx_client import APIStatusError as LLSApiStatusError
+from ogx_client import ApiException
 from openai._exceptions import APIStatusError as OpenAIAPIStatusError
 from pytest_mock import MockerFixture
 
@@ -26,6 +25,7 @@ from observability.formats.responses import ResponsesEventData
 from observability.responses_telemetry import queue_responses_splunk_event
 from observability.splunk import _fire_and_forget_tasks
 from tests.unit.app.endpoints.test_responses import build_api_params_and_context
+from tests.unit.conftest import mock_async_ogx_client
 
 MODULE = "app.endpoints.responses"
 TELEMETRY_MODULE = "observability.responses_telemetry"
@@ -230,7 +230,7 @@ class TestSplunkTelemetryHooks:
     ) -> None:
         """Blocked moderation fires responses_shield_blocked telemetry."""
         request = _request_with_model_and_conv("Bad input")
-        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
+        mock_client = mock_async_ogx_client(mocker)
 
         mock_moderation = mocker.Mock()
         mock_moderation.decision = "blocked"
@@ -242,7 +242,7 @@ class TestSplunkTelemetryHooks:
         mock_moderation.refusal_response = mock_refusal
 
         _patch_handle_non_streaming_common(mocker, minimal_config)
-        mock_client.conversations.items.create = mocker.AsyncMock()
+        mock_client.items.create = mocker.AsyncMock()
         mock_api_response = mocker.Mock()
         mock_api_response.output = [mock_refusal]
         mock_api_response.model_dump.return_value = {
@@ -294,18 +294,16 @@ class TestSplunkTelemetryHooks:
         "exc_factory",
         [
             pytest.param(
-                lambda m: APIConnectionError(request=m.Mock()),
-                id="APIConnectionError",
+                lambda m: ApiException(status=None),
+                id="ApiException-connection",
             ),
             pytest.param(
                 lambda m: RuntimeError("context_length exceeded"),
                 id="RuntimeError-context-length",
             ),
             pytest.param(
-                lambda m: LLSApiStatusError(
-                    message="API error", response=m.Mock(request=None), body=None
-                ),
-                id="LLSApiStatusError",
+                lambda m: ApiException(status=500, reason="API error"),
+                id="ApiException-status",
             ),
             pytest.param(
                 lambda m: OpenAIAPIStatusError(
@@ -324,7 +322,7 @@ class TestSplunkTelemetryHooks:
     ) -> None:
         """Each error branch fires responses_error telemetry with fire_and_forget."""
         request = _request_with_model_and_conv("Hello")
-        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
+        mock_client = mock_async_ogx_client(mocker)
         mock_moderation = mocker.Mock()
         mock_moderation.decision = "passed"
 
@@ -377,7 +375,7 @@ class TestSplunkTelemetryHooks:
     ) -> None:
         """Successful non-streaming response fires responses_completed with token counts."""
         request = _request_with_model_and_conv("Hello")
-        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
+        mock_client = mock_async_ogx_client(mocker)
         mock_moderation = mocker.Mock()
         mock_moderation.decision = "passed"
 
@@ -386,7 +384,7 @@ class TestSplunkTelemetryHooks:
         mock_api_response.usage = mocker.Mock(
             input_tokens=100, output_tokens=50, total_tokens=150
         )
-        mock_api_response.model_dump.return_value = {
+        serialized_response = {
             "id": "resp_1",
             "object": "response",
             "created_at": 0,
@@ -402,6 +400,7 @@ class TestSplunkTelemetryHooks:
             },
         }
         mock_client.responses.create = mocker.AsyncMock(return_value=mock_api_response)
+        mocker.patch(f"{MODULE}.dump_ogx_model", return_value=serialized_response)
 
         _patch_handle_non_streaming_common(mocker, minimal_config)
         mocker.patch(
@@ -469,7 +468,7 @@ class TestSplunkTelemetryHooks:
     ) -> None:
         """Blocked moderation in streaming fires responses_shield_blocked telemetry."""
         request = _request_with_model_and_conv("Bad", model="provider/model1")
-        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
+        mock_client = mock_async_ogx_client(mocker)
 
         mock_moderation = mocker.Mock()
         mock_moderation.decision = "blocked"
@@ -491,7 +490,7 @@ class TestSplunkTelemetryHooks:
             new=mocker.AsyncMock(return_value=None),
         )
         mocker.patch(f"{MODULE}.store_query_results")
-        mock_client.conversations.items.create = mocker.AsyncMock()
+        mock_client.items.create = mocker.AsyncMock()
 
         mock_queue = mocker.patch(f"{TELEMETRY_MODULE}.queue_responses_splunk_event")
 
@@ -524,18 +523,16 @@ class TestSplunkTelemetryHooks:
         "exc_factory",
         [
             pytest.param(
-                lambda m: APIConnectionError(request=m.Mock()),
-                id="APIConnectionError",
+                lambda m: ApiException(status=None),
+                id="ApiException-connection",
             ),
             pytest.param(
                 lambda m: RuntimeError("context_length exceeded"),
                 id="RuntimeError-context-length",
             ),
             pytest.param(
-                lambda m: LLSApiStatusError(
-                    message="API error", response=m.Mock(request=None), body=None
-                ),
-                id="LLSApiStatusError",
+                lambda m: ApiException(status=500, reason="API error"),
+                id="ApiException-status",
             ),
             pytest.param(
                 lambda m: OpenAIAPIStatusError(
@@ -554,7 +551,7 @@ class TestSplunkTelemetryHooks:
     ) -> None:
         """Each streaming error branch fires responses_error telemetry with fire_and_forget."""
         request = _request_with_model_and_conv("Hello")
-        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
+        mock_client = mock_async_ogx_client(mocker)
         mock_moderation = mocker.Mock()
         mock_moderation.decision = "passed"
 
@@ -607,7 +604,7 @@ class TestSplunkTelemetryHooks:
     ) -> None:
         """Successful streaming fires responses_completed after consuming the stream."""
         request = _request_with_model_and_conv("Hi", model="provider/model1")
-        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
+        mock_client = mock_async_ogx_client(mocker)
         mock_moderation = mocker.Mock()
         mock_moderation.decision = "passed"
 
@@ -619,7 +616,7 @@ class TestSplunkTelemetryHooks:
         mock_chunk.response.usage = mocker.Mock(
             input_tokens=100, output_tokens=50, total_tokens=150
         )
-        mock_chunk.model_dump.return_value = {
+        serialized_chunk = {
             "type": "response.completed",
             "response": {
                 "id": "r1",
@@ -632,6 +629,7 @@ class TestSplunkTelemetryHooks:
             yield mock_chunk
 
         mock_client.responses.create = mocker.AsyncMock(return_value=mock_stream())
+        mocker.patch(f"{MODULE}.dump_ogx_model", return_value=serialized_chunk)
 
         mocker.patch(f"{MODULE}.configuration", minimal_config)
         mocker.patch(f"{MODULE}.get_available_quotas", return_value={})
@@ -703,7 +701,7 @@ class TestSplunkTelemetryHooks:
     ) -> None:
         """When background_tasks is None, queue_responses_splunk_event is called but is a no-op."""
         request = _request_with_model_and_conv("Bad input")
-        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
+        mock_client = mock_async_ogx_client(mocker)
 
         mock_moderation = mocker.Mock()
         mock_moderation.decision = "blocked"
@@ -715,7 +713,7 @@ class TestSplunkTelemetryHooks:
         mock_moderation.refusal_response = mock_refusal
 
         _patch_handle_non_streaming_common(mocker, minimal_config)
-        mock_client.conversations.items.create = mocker.AsyncMock()
+        mock_client.items.create = mocker.AsyncMock()
         mock_api_response = mocker.Mock()
         mock_api_response.output = [mock_refusal]
         mock_api_response.model_dump.return_value = {

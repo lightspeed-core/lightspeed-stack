@@ -13,9 +13,7 @@ from typing import Any, Optional
 
 import pytest
 from fastapi import HTTPException, status
-from ogx_client import APIConnectionError, APIStatusError
-from ogx_client.types import ListModelsResponse
-from ogx_client.types.model import Model
+from ogx_client import ApiException
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
     InMemorySpanExporter,
 )
@@ -55,6 +53,7 @@ from models.config import (
     RedactionRule,
     RedactionShieldConfiguration,
 )
+from tests.unit.conftest import make_openai_model, make_openai_models_list_response
 from tests.unit.utils.auth_helpers import mock_authorization_resolvers
 from utils.rh_identity import get_rh_identity_context
 from utils.suid import check_suid
@@ -184,10 +183,10 @@ def mock_model_configured_fixture(mocker: MockerFixture) -> None:
 
 @pytest.fixture(name="mock_api_connection_error")
 def mock_api_connection_error_fixture(mocker: MockerFixture) -> None:
-    """Mock responses.create() to raise APIConnectionError."""
+    """Mock responses.create() to raise ApiException."""
     _setup_responses_mock(
         mocker,
-        mocker.AsyncMock(side_effect=APIConnectionError(request=mocker.Mock())),
+        mocker.AsyncMock(side_effect=ApiException(status=None)),
     )
 
 
@@ -202,16 +201,14 @@ def mock_generic_runtime_error_fixture(mocker: MockerFixture) -> None:
 
 @pytest.fixture(name="mock_api_status_error_with_private_text")
 def mock_api_status_error_with_private_text_fixture(mocker: MockerFixture) -> None:
-    """Mock responses.create() to raise APIStatusError with private text."""
+    """Mock responses.create() to raise ApiException with private text."""
     mock_response = mocker.Mock(request=None)
     mock_response.status_code = 500
     _setup_responses_mock(
         mocker,
         mocker.AsyncMock(
-            side_effect=APIStatusError(
-                message="Backend echoed PRIVATE prompt sk-backend-secret",
-                response=mock_response,
-                body=None,
+            side_effect=ApiException(
+                status=500, reason="Backend echoed PRIVATE prompt sk-backend-secret"
             )
         ),
     )
@@ -366,24 +363,22 @@ async def test_get_default_model_id_errors(
     """Test _get_default_model_id fallback failures raise 503 responses."""
     mocker.patch("app.endpoints.rlsapi_v1.configuration", minimal_config)
 
-    mock_embedding_model = Model.model_construct(
-        id="sentence-transformers/all-mpnet-base-v2",
-        created=0,
-        owned_by="test",
-        object="model",
-        custom_metadata={"model_type": "embedding"},
+    mock_embedding_model = make_openai_model(
+        model_id="sentence-transformers/all-mpnet-base-v2",
+        provider_id="sentence-transformers",
+        model_type="embedding",
     )
 
     mock_client = mocker.Mock()
     mock_client.models = mocker.Mock()
 
     if failure_mode == "no_llm_models":
-        mock_client.models.list = mocker.AsyncMock(
-            return_value=ListModelsResponse.model_construct(data=[mock_embedding_model])
+        mock_client.openai.list = mocker.AsyncMock(
+            return_value=make_openai_models_list_response(mock_embedding_model)
         )
     else:
-        mock_client.models.list = mocker.AsyncMock(
-            side_effect=APIConnectionError(request=mocker.Mock())
+        mock_client.openai.list = mocker.AsyncMock(
+            side_effect=ApiException(status=None)
         )
 
     mock_client_holder = mocker.Mock()
@@ -408,24 +403,22 @@ async def test_config_error_503_matches_llm_error_503_shape(
 ) -> None:
     """Test that auto-discovery 503s have the same shape as LLM error 503s.
 
-    Both _get_default_model_id() no-LLM auto-discovery errors and APIConnectionError
+    Both _get_default_model_id() no-LLM auto-discovery errors and ApiException
     handlers use ServiceUnavailableResponse, producing identical detail shapes
     with 'response' and 'cause' keys.
     """
     mocker.patch("app.endpoints.rlsapi_v1.configuration", minimal_config)
 
-    mock_embedding_model = Model.model_construct(
-        id="sentence-transformers/all-mpnet-base-v2",
-        created=0,
-        owned_by="test",
-        object="model",
-        custom_metadata={"model_type": "embedding"},
+    mock_embedding_model = make_openai_model(
+        model_id="sentence-transformers/all-mpnet-base-v2",
+        provider_id="sentence-transformers",
+        model_type="embedding",
     )
 
     mock_client = mocker.Mock()
     mock_client.models = mocker.Mock()
-    mock_client.models.list = mocker.AsyncMock(
-        return_value=ListModelsResponse.model_construct(data=[mock_embedding_model])
+    mock_client.openai.list = mocker.AsyncMock(
+        return_value=make_openai_models_list_response(mock_embedding_model)
     )
 
     mock_client_holder = mocker.Mock()
@@ -441,7 +434,6 @@ async def test_config_error_503_matches_llm_error_503_shape(
     # Build an LLM connection error 503 using the same response model
     llm_response = ServiceUnavailableResponse(
         backend_name="OGX",
-        cause="Unable to connect to the inference backend",
     )
     llm_detail = llm_response.model_dump()["detail"]
 
@@ -458,27 +450,23 @@ async def test_get_default_model_id_auto_discovery_success(
     """Test _get_default_model_id returns first discovered LLM model ID."""
     mocker.patch("app.endpoints.rlsapi_v1.configuration", minimal_config)
 
-    mock_llm_model = Model.model_construct(
-        id="openai/gpt-4o-mini",
-        created=0,
-        owned_by="test",
-        object="model",
-        custom_metadata={"model_type": "llm"},
+    mock_llm_model = make_openai_model(
+        model_id="openai/gpt-4o-mini",
+        provider_id="openai",
+        model_type="llm",
     )
 
-    mock_embedding_model = Model.model_construct(
-        id="sentence-transformers/all-mpnet-base-v2",
-        created=0,
-        owned_by="test",
-        object="model",
-        custom_metadata={"model_type": "embedding"},
+    mock_embedding_model = make_openai_model(
+        model_id="sentence-transformers/all-mpnet-base-v2",
+        provider_id="sentence-transformers",
+        model_type="embedding",
     )
 
     mock_client = mocker.Mock()
     mock_client.models = mocker.Mock()
-    mock_client.models.list = mocker.AsyncMock(
-        return_value=ListModelsResponse.model_construct(
-            data=[mock_embedding_model, mock_llm_model]
+    mock_client.openai.list = mocker.AsyncMock(
+        return_value=make_openai_models_list_response(
+            mock_embedding_model, mock_llm_model
         )
     )
 
@@ -783,7 +771,7 @@ async def test_infer_api_status_error_logs_class_without_private_text(
             )
 
     assert exc_info.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
-    assert "APIStatusError" in caplog.text
+    assert "ApiException" in caplog.text
     assert "sk-backend-secret" not in caplog.text
     assert "PRIVATE prompt" not in caplog.text
 

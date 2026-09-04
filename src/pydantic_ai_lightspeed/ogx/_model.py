@@ -20,7 +20,7 @@ from the include parameter, which OGX / OGX doesn't support.
 from __future__ import annotations as _annotations
 
 from collections import defaultdict
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
 from typing import Any, Final, Optional, cast
 
@@ -118,13 +118,22 @@ class _FilteredResponseStream:
     a closing ``}`` to complete the outer JSON object that pydantic_ai opens.
     """
 
-    def __init__(self, source: AsyncStream[responses.ResponseStreamEvent]) -> None:
+    def __init__(
+        self,
+        source: AsyncStream[responses.ResponseStreamEvent],
+        on_completed: Optional[Callable[[Any], None]] = None,
+    ) -> None:
         """Wrap an existing stream with reordering logic.
 
         Args:
             source: The raw OpenAI AsyncStream to reorder.
+            on_completed: Optional callback invoked with the final response
+                object when OGX emits ``response.completed``. Used to capture
+                the structured output items for compacted-mode persistence
+                (LCORE-3883).
         """
         self._source = source
+        self._on_completed = on_completed
         self._announced_item_ids: set[str] = set()
         self._buffered_deltas: dict[
             str, list[responses.ResponseFunctionCallArgumentsDeltaEvent]
@@ -143,6 +152,10 @@ class _FilteredResponseStream:
     ) -> AsyncIterator[responses.ResponseStreamEvent]:
         """Yield events, buffering early argument deltas until their item is announced."""
         async for event in self._source:
+            if self._on_completed is not None and isinstance(
+                event, responses.ResponseCompletedEvent
+            ):
+                self._on_completed(event.response)
             if isinstance(event, responses.ResponseOutputItemAddedEvent):
                 if (
                     isinstance(event.item, responses.ResponseFunctionToolCall)
@@ -244,6 +257,37 @@ class OgxResponsesModel(OpenAIResponsesModel):
     OGX doesn't support it.
     """
 
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        """Initialize the model and its per-request output-item capture.
+
+        Args:
+            *args: Positional arguments forwarded to ``OpenAIResponsesModel``.
+            **kwargs: Keyword arguments forwarded to ``OpenAIResponsesModel``.
+        """
+        super().__init__(*args, **kwargs)
+        self._last_output_items: list[Any] = []
+
+    @property
+    def last_output_items(self) -> list[Any]:
+        """Structured output items from the most recent Responses API call.
+
+        Captured verbatim from the OGX response so that compacted-mode turn
+        persistence stores exactly what OGX would have stored itself, rather
+        than a reconstruction mapped back from pydantic-ai messages
+        (LCORE-3883). Empty until a response completes.
+        """
+        return getattr(self, "_last_output_items", [])
+
+    def _capture_output_items(self, response: Any) -> None:
+        """Record the structured output items of a completed response.
+
+        Args:
+            response: The OGX Responses API object for the completed call.
+        """
+        items = getattr(response, "output", None)
+        if items:
+            self._last_output_items = list(items)
+
     async def _responses_create(
         self,
         messages: list[ModelMessage],
@@ -276,12 +320,14 @@ class OgxResponsesModel(OpenAIResponsesModel):
                 model_settings,
                 model_request_parameters,
             )
-        return await super()._responses_create(
+        response = await super()._responses_create(
             messages,
             False,
             model_settings,
             model_request_parameters,
         )
+        self._capture_output_items(response)
+        return response
 
     async def request(  # pylint: disable=unused-argument
         self,
@@ -406,7 +452,9 @@ class OgxResponsesModel(OpenAIResponsesModel):
             messages, True, model_settings_cast, model_request_parameters
         )
 
-        filtered_stream = _FilteredResponseStream(response)
+        filtered_stream = _FilteredResponseStream(
+            response, on_completed=self._capture_output_items
+        )
 
         async with response:
             peekable: PeekableAsyncStream[

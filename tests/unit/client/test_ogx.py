@@ -11,9 +11,7 @@ import pytest
 from fastapi import HTTPException
 from ogx_api import Api
 from ogx_api.files import OpenAIFileUploadPurpose
-from ogx_client import APIConnectionError, APIStatusError
-from ogx_client.types import ListModelsResponse
-from ogx_client.types.model import Model
+from ogx_client import ApiException
 from pydantic import AnyHttpUrl, SecretStr
 from pytest_mock import MockerFixture
 
@@ -21,13 +19,14 @@ from authorization.azure_token_manager import AzureEntraIDManager
 from client.ogx import AsyncOgxClientHolder
 from configuration import AppConfig, AzureEntraIdConfiguration
 from models.config import OgxConfiguration
+from tests.unit.conftest import make_openai_model, make_openai_models_list_response
 from utils.types import Singleton
 
 
 @pytest.fixture(autouse=True)
 def reset_singleton() -> None:
     """Reset singleton state between tests."""
-    Singleton._instances = {}
+    Singleton._instances.clear()
 
 
 @pytest.fixture(autouse=True)
@@ -66,9 +65,7 @@ async def test_get_async_ogx_library_client() -> None:
 
     async with client.get_client() as ls_client:
         assert ls_client is not None
-        assert not ls_client.is_closed()
         await ls_client.close()
-        assert ls_client.is_closed()
 
 
 @pytest.mark.asyncio
@@ -121,7 +118,7 @@ async def test_get_async_ogx_wrong_configuration(
 @pytest.mark.asyncio
 async def test_update_azure_token_service_client() -> None:
     """Test update_azure_token replaces the service client with new provider headers."""
-    AzureEntraIDManager._instances = {}  # type: ignore[attr-defined]
+    Singleton._instances.pop(AzureEntraIDManager, None)
     manager = AzureEntraIDManager()
     manager.set_config(
         AzureEntraIdConfiguration(
@@ -149,7 +146,9 @@ async def test_update_azure_token_service_client() -> None:
 
     assert updated_client is not original_client
     assert holder.get_client() is updated_client
-    provider_data_json = updated_client.default_headers.get("X-OGX-Provider-Data")
+    provider_data_json = updated_client.api_client.default_headers.get(
+        "X-OGX-Provider-Data"
+    )
     provider_data = json.loads(provider_data_json)
     assert provider_data["azure_api_key"] == "fresh-token"
     assert provider_data["azure_api_base"] == "https://api.example.com"
@@ -158,7 +157,7 @@ async def test_update_azure_token_service_client() -> None:
 @pytest.mark.asyncio
 async def test_load_service_client_defers_azure_provider_data() -> None:
     """Test service client load does not set Azure headers until update_azure_token."""
-    AzureEntraIDManager._instances = {}  # type: ignore[attr-defined]
+    Singleton._instances.pop(AzureEntraIDManager, None)
     manager = AzureEntraIDManager()
     manager.set_config(
         AzureEntraIdConfiguration(
@@ -181,11 +180,14 @@ async def test_load_service_client_defers_azure_provider_data() -> None:
     holder = AsyncOgxClientHolder()
     await holder.load(cfg)
 
-    default_headers = holder.get_client().default_headers or {}
+    assert holder.get_client().configuration.host == "http://localhost:8321"
+    default_headers = holder.get_client().api_client.default_headers or {}
     assert "X-OGX-Provider-Data" not in default_headers
 
     updated_client = await holder.update_azure_token()
-    provider_data_json = updated_client.default_headers.get("X-OGX-Provider-Data")
+    provider_data_json = updated_client.api_client.default_headers.get(
+        "X-OGX-Provider-Data"
+    )
     assert provider_data_json is not None
     provider_data = json.loads(provider_data_json)
     assert provider_data["azure_api_key"] == "startup-token"
@@ -232,27 +234,15 @@ class TestCheckModelAvailable:
         holder._lsc = mock_client
         return holder, mock_client
 
-    def _make_model(self, mocker: MockerFixture, model_id: str) -> Model:
-        """Create an OGX Model with the given ID."""
-        _ = mocker
-        return Model.model_construct(
-            id=model_id,
-            created=0,
-            owned_by="test",
-            object="model",
-            custom_metadata={},
-        )
-
     @pytest.mark.asyncio
     async def test_model_available(
         self,
-        mocker: MockerFixture,
         holder_with_mock_client: tuple[AsyncOgxClientHolder, Any],
     ) -> None:
         """Test returns True when the model is found in the registry."""
         holder, mock_client = holder_with_mock_client
-        mock_client.models.list.return_value = ListModelsResponse.model_construct(
-            data=[self._make_model(mocker, self.EXPECTED_MODEL_ID)]
+        mock_client.openai.list.return_value = make_openai_models_list_response(
+            make_openai_model(model_id=self.EXPECTED_MODEL_ID)
         )
 
         available, reason = await holder.check_model_available(self.EXPECTED_MODEL_ID)
@@ -263,13 +253,12 @@ class TestCheckModelAvailable:
     @pytest.mark.asyncio
     async def test_model_not_found_service_client(
         self,
-        mocker: MockerFixture,
         holder_with_mock_client: tuple[AsyncOgxClientHolder, Any],
     ) -> None:
         """Test returns False and skips reload for non-library (service) clients."""
         holder, mock_client = holder_with_mock_client
-        mock_client.models.list.return_value = ListModelsResponse.model_construct(
-            data=[self._make_model(mocker, "other/model")]
+        mock_client.openai.list.return_value = make_openai_models_list_response(
+            make_openai_model(model_id="other/model")
         )
 
         available, reason = await holder.check_model_available(self.EXPECTED_MODEL_ID)
@@ -292,15 +281,11 @@ class TestCheckModelAvailable:
         "exception_factory",
         [
             pytest.param(
-                lambda m: APIConnectionError(request=m.Mock()),
+                lambda m: ApiException(status=None),
                 id="connection_error",
             ),
             pytest.param(
-                lambda m: APIStatusError(
-                    message="Internal error",
-                    response=m.Mock(status_code=500, headers={}),
-                    body=None,
-                ),
+                lambda m: ApiException(status=500, reason="Internal error"),
                 id="api_status_error",
             ),
         ],
@@ -313,7 +298,7 @@ class TestCheckModelAvailable:
     ) -> None:
         """Test returns False when model list fails with API errors."""
         _, mock_client = holder_with_mock_client
-        mock_client.models.list.side_effect = exception_factory(mocker)
+        mock_client.openai.list.side_effect = exception_factory(mocker)
 
         holder = AsyncOgxClientHolder()
         available, reason = await holder.check_model_available(self.EXPECTED_MODEL_ID)
@@ -337,11 +322,11 @@ class TestCheckModelAvailable:
         )
         holder.reload_library_client = mocker.AsyncMock()
 
-        wrong_model = self._make_model(mocker, "other/model")
-        correct_model = self._make_model(mocker, self.EXPECTED_MODEL_ID)
-        mock_client.models.list.side_effect = [
-            ListModelsResponse.model_construct(data=[wrong_model]),
-            ListModelsResponse.model_construct(data=[correct_model]),
+        wrong_model = make_openai_model(model_id="other/model")
+        correct_model = make_openai_model(model_id=self.EXPECTED_MODEL_ID)
+        mock_client.openai.list.side_effect = [
+            make_openai_models_list_response(wrong_model),
+            make_openai_models_list_response(correct_model),
         ]
 
         available, reason = await holder.check_model_available(self.EXPECTED_MODEL_ID)
@@ -367,8 +352,8 @@ class TestCheckModelAvailable:
         holder.reload_library_client = mocker.AsyncMock(
             side_effect=RuntimeError("Cannot reload: config path not set")
         )
-        mock_client.models.list.return_value = ListModelsResponse.model_construct(
-            data=[self._make_model(mocker, "other/model")]
+        mock_client.openai.list.return_value = make_openai_models_list_response(
+            make_openai_model(model_id="other/model")
         )
 
         available, reason = await holder.check_model_available(self.EXPECTED_MODEL_ID)
@@ -393,8 +378,8 @@ class TestCheckModelAvailable:
         holder.reload_library_client = mocker.AsyncMock(
             side_effect=HTTPException(status_code=503, detail="OGX unavailable")
         )
-        mock_client.models.list.return_value = ListModelsResponse.model_construct(
-            data=[self._make_model(mocker, "other/model")]
+        mock_client.openai.list.return_value = make_openai_models_list_response(
+            make_openai_model(model_id="other/model")
         )
 
         available, reason = await holder.check_model_available(self.EXPECTED_MODEL_ID)

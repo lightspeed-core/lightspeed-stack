@@ -4,7 +4,7 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.params import Depends
-from ogx_client import APIConnectionError, BadRequestError
+from ogx_client import ApiException, BadRequestError
 from opentelemetry import trace
 
 from authentication import get_auth_dependency
@@ -97,23 +97,24 @@ async def rags_endpoint_handler(
             client = AsyncOgxClientHolder().get_client()
             # retrieve list of RAGs
             rags = await client.vector_stores.list()
-            logger.info("List of rags: %d", len(rags.data))
+            logger.info("List of rags: %d", len(rags))
 
             # Map OGX vector store IDs to user-facing rag_ids from config
             rag_id_mapping = configuration.rag_id_mapping
             rag_ids = [
-                configuration.resolve_index_name(rag.id, rag_id_mapping)
-                for rag in rags.data
+                configuration.resolve_index_name(rag.id, rag_id_mapping) for rag in rags
             ]
 
             span.set_attribute("rags.count", len(rag_ids))
             return RAGListResponse(rags=rag_ids)
 
         # connection to OGX server
-        except APIConnectionError as e:
-            logger.error("Unable to connect to OGX: %s", e)
-            response = ServiceUnavailableResponse(backend_name="OGX", cause=str(e))
-            raise HTTPException(**response.model_dump()) from e
+        except ApiException as e:
+            if not e.status:
+                logger.error("Unable to connect to OGX: %s", e)
+                response = ServiceUnavailableResponse(backend_name="OGX")
+                raise HTTPException(**response.model_dump()) from e
+            raise
 
 
 def _resolve_rag_id_to_vector_db_id(rag_id: str, byok_rags: list[RagStore]) -> str:
@@ -208,11 +209,13 @@ async def get_rag_endpoint_handler(
                 status=rag_info.status or "unknown",
                 usage_bytes=rag_info.usage_bytes or 0,
             )
-        except APIConnectionError as e:
-            logger.error("Unable to connect to OGX: %s", e)
-            response = ServiceUnavailableResponse(backend_name="OGX", cause=str(e))
-            raise HTTPException(**response.model_dump()) from e
         except BadRequestError as e:
             logger.error("RAG not found: %s", e)
             response = NotFoundResponse(resource="rag", resource_id=rag_id)
             raise HTTPException(**response.model_dump()) from e
+        except ApiException as e:
+            if not e.status:
+                logger.error("Unable to connect to OGX: %s", e)
+                response = ServiceUnavailableResponse(backend_name="OGX")
+                raise HTTPException(**response.model_dump()) from e
+            raise

@@ -1,7 +1,7 @@
 """Error mapping for agent inference failures to structured API error responses."""
 
 from fastapi import status
-from ogx_client import APIConnectionError, APIStatusError
+from ogx_client import ApiException
 from pydantic_ai.exceptions import (
     AgentRunError,
     ContentFilterError,
@@ -26,9 +26,7 @@ from utils.query import (
     is_resource_exhausted_error,
 )
 
-type AgentInferenceError = (
-    AgentRunError | APIStatusError | APIConnectionError | RuntimeError
-)
+type AgentInferenceError = AgentRunError | ApiException | RuntimeError
 
 logger = get_logger(__name__)
 
@@ -53,13 +51,12 @@ def map_agent_inference_error(
     match exc:
         case AgentRunError() as agent_exc:
             response = map_pydantic_agent_run_error(agent_exc, model_id)
-        case APIStatusError() as status_exc:
-            response = handle_known_apistatus_errors(status_exc, model_id)
-        case APIConnectionError() as connection_exc:
+        case ApiException() as connection_exc if not connection_exc.status:
             response = ServiceUnavailableResponse(
                 backend_name="OGX",
-                cause=str(connection_exc),
             )
+        case ApiException() as status_exc:
+            response = handle_known_apistatus_errors(status_exc, model_id)
         case RuntimeError() as runtime_exc if is_context_length_error(str(runtime_exc)):
             response = PromptTooLongResponse(model=model_id)
         case _:
@@ -118,10 +115,9 @@ def map_pydantic_agent_run_error(  # pylint: disable=too-many-return-statements
             return QuotaExceededResponse.model(model_id)
         case ModelHTTPError():
             return InternalServerErrorResponse.generic()
-        case ModelAPIError() as api_exc:
+        case ModelAPIError():
             return ServiceUnavailableResponse(
                 backend_name="OGX",
-                cause=str(api_exc),
             )
         case _:
             return InternalServerErrorResponse.query_failed(str(exc))

@@ -180,13 +180,14 @@ def disrupt_llama_stack_pod() -> bool:
         print(result.stdout, end="")
 
         # Exit code 0 = disrupted (was running), exit code 2 = was not running
-        if result.returncode == 0:
-            return True
-        elif result.returncode == 2:
-            return False
-        else:
-            print(result.stderr, end="")
-            return False
+        match result.returncode:
+            case 0:
+                return True
+            case 2:
+                return False
+            case _:
+                print(result.stderr, end="")
+                return False
 
     except subprocess.TimeoutExpired:
         print("Warning: Timeout while disrupting OGX connection")

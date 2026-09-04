@@ -7,7 +7,7 @@ from typing import Any, Optional
 import pytest
 from fastapi import HTTPException
 from ogx_api.openai_responses import OpenAIResponseMessage
-from ogx_client import APIConnectionError, APIStatusError
+from ogx_client import ApiException
 from pydantic_ai.messages import (
     FinishReason,
     ImageUrl,
@@ -500,15 +500,13 @@ class TestRetrieveAgentResponse:
     ) -> None:
         """Test an upstream connection failure logs a warning, not an error.
 
-        APIConnectionError maps to 503: the backend is down, which is not a
+        ApiException with no status maps to 503: the backend is down, which is not a
         service fault of ours, so it must not be logged at error level with a
         traceback — that noise would bury the genuine 500s this logging exists
         to surface (LCORE-3582).
         """
         mock_agent = mocker.AsyncMock()
-        mock_agent.run = mocker.AsyncMock(
-            side_effect=APIConnectionError(request=mocker.Mock())
-        )
+        mock_agent.run = mocker.AsyncMock(side_effect=ApiException(status=None))
         mocker.patch("utils.agents.query.build_agent", return_value=mock_agent)
 
         with caplog.at_level("WARNING"):
@@ -615,9 +613,7 @@ class TestRetrieveAgentResponse:
     ) -> None:
         """Test OGX connection errors are mapped to HTTPException."""
         mock_agent = mocker.AsyncMock()
-        mock_agent.run = mocker.AsyncMock(
-            side_effect=APIConnectionError(request=mocker.Mock())
-        )
+        mock_agent.run = mocker.AsyncMock(side_effect=ApiException(status=None))
         mocker.patch(
             "utils.agents.query.build_agent",
             return_value=mock_agent,
@@ -643,11 +639,7 @@ class TestRetrieveAgentResponse:
         """Test API status errors from the agent run are mapped to HTTPException."""
         mock_agent = mocker.AsyncMock()
         mock_agent.run = mocker.AsyncMock(
-            side_effect=APIStatusError(
-                message="quota exceeded",
-                response=mocker.Mock(),
-                body=None,
-            )
+            side_effect=ApiException(status=500, reason="quota exceeded")
         )
         mocker.patch(
             "utils.agents.query.build_agent",
@@ -672,3 +664,94 @@ class TestRetrieveAgentResponse:
             )
 
         assert exc_info.value.status_code == 429
+
+
+class TestQueryCompactedTurnPersistence:
+    """Compacted-mode turn persistence on /v1/query (LCORE-3883).
+
+    Asserts against the conversation items that actually land rather than the
+    arguments of a mocked helper, so a break in the write path is caught.
+    """
+
+    @staticmethod
+    def _client_capturing_writes(mocker: MockerFixture) -> tuple[Any, list[Any]]:
+        """Return a client whose conversation writes are recorded."""
+        stored: list[Any] = []
+
+        async def _create(
+            conversation_id: str, *, add_items_request: Any = None, **_: Any
+        ) -> None:
+            _ = conversation_id
+            stored.extend(getattr(add_items_request, "items", add_items_request) or [])
+
+        client = mocker.AsyncMock()
+        client.items.create = _create
+        return client, stored
+
+    @pytest.mark.asyncio
+    async def test_compacted_success_appends_turn_with_captured_output(
+        self,
+        mocker: MockerFixture,
+        make_agent_run_result: Callable[..., Any],
+        make_responses_params: Callable[..., ResponsesApiParams],
+        patch_recording_metrics: None,
+    ) -> None:
+        """A compacted turn is written back using the items OGX returned."""
+        explicit = [
+            OpenAIResponseMessage(role="user", content="Summary:\nS1"),
+            OpenAIResponseMessage(role="user", content="new question"),
+        ]
+        params = make_responses_params(input_text="ignored").model_copy(
+            update={"input": explicit, "omit_conversation": True}
+        )
+        mock_agent = mocker.AsyncMock()
+        mock_agent.run = mocker.AsyncMock(
+            return_value=make_agent_run_result(content="Answer")
+        )
+        # The model captured the genuine OGX output items for this call.
+        mock_agent.model.last_output_items = [
+            OpenAIResponseMessage(role="assistant", content="Answer")
+        ]
+        mocker.patch("utils.agents.query.build_agent", return_value=mock_agent)
+        client, stored = self._client_capturing_writes(mocker)
+
+        await retrieve_agent_response(
+            client=client,
+            responses_params=params,
+            moderation_result=ShieldModerationPassed(),
+            endpoint_path=ENDPOINT_PATH_QUERY,
+            original_input="new question",
+        )
+
+        texts = [str(item) for item in stored]
+        assert len(stored) == 2, f"expected user turn + output, got {texts}"
+        assert any("new question" in t for t in texts)
+        assert any("Answer" in t for t in texts)
+
+    @pytest.mark.asyncio
+    async def test_non_compacted_success_does_not_append_turn(
+        self,
+        mocker: MockerFixture,
+        make_agent_run_result: Callable[..., Any],
+        make_responses_params: Callable[..., ResponsesApiParams],
+        patch_recording_metrics: None,
+    ) -> None:
+        """Without compaction OGX persists the turn, so we must not duplicate it."""
+        mock_agent = mocker.AsyncMock()
+        mock_agent.run = mocker.AsyncMock(
+            return_value=make_agent_run_result(content="Answer")
+        )
+        mock_agent.model.last_output_items = [
+            OpenAIResponseMessage(role="assistant", content="Answer")
+        ]
+        mocker.patch("utils.agents.query.build_agent", return_value=mock_agent)
+        client, stored = self._client_capturing_writes(mocker)
+
+        await retrieve_agent_response(
+            client=client,
+            responses_params=make_responses_params(input_text="hi"),
+            moderation_result=ShieldModerationPassed(),
+            endpoint_path=ENDPOINT_PATH_QUERY,
+        )
+
+        assert stored == []

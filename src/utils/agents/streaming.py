@@ -11,7 +11,7 @@ from functools import singledispatch
 from typing import Any, Final, Optional
 
 from fastapi import HTTPException
-from ogx_client import APIConnectionError, APIStatusError
+from ogx_client import ApiException
 from opentelemetry import trace
 from pydantic_ai import Agent, AgentRunError, AgentRunResultEvent, ToolReturnPart
 from pydantic_ai.messages import (
@@ -63,6 +63,7 @@ from utils.agents.tool_processor import (
 from utils.conversation_compaction import (
     agent_prompt_text,
     reject_image_attachments_in_compacted_mode,
+    store_compacted_turn,
 )
 from utils.conversations import append_turn_items_to_conversation
 from utils.otel_tracing import (
@@ -72,7 +73,7 @@ from utils.otel_tracing import (
     anonymize_value,
     set_span_attributes,
 )
-from utils.pydantic_ai_helpers import build_agent
+from utils.pydantic_ai_helpers import build_agent, captured_output_items
 from utils.query import (
     build_multimodal_input,
     consume_query_tokens,
@@ -160,9 +161,50 @@ async def retrieve_agent_response_generator(
             ),
             turn_summary,
         )
-    except (AgentRunError, APIStatusError, APIConnectionError, RuntimeError) as exc:
+    except (AgentRunError, ApiException, RuntimeError) as exc:
         response = map_agent_inference_error(exc, responses_params.model)
         raise HTTPException(**response.model_dump()) from exc
+
+
+async def _persist_compacted_turn(
+    context: ResponseGeneratorContext,
+    responses_params: ResponsesApiParams,
+    turn_summary: TurnSummary,
+    original_input: Optional[ResponseInput],
+    persist_guard: list[bool],
+) -> None:
+    """Append a completed compacted turn to the conversation (LCORE-3883).
+
+    In compacted mode the ``conversation`` parameter is not sent, so OGX does
+    not store the turn and lightspeed-stack must append it itself, keeping the
+    recent-turn buffer and the audit history intact for the next request.
+
+    Parameters:
+        context: Streaming request context, providing the OGX client.
+        responses_params: Prepared Responses API parameters.
+        turn_summary: Completed turn, carrying the captured output items.
+        original_input: The user input before the explicit-input rewrite. When
+            ``None`` the request was not compacted and nothing is written.
+        persist_guard: Single-element flag shared with the interrupt path, so a
+            turn is persisted at most once.
+    """
+    if original_input is None or persist_guard[0]:
+        return
+    persist_guard[0] = True
+    try:
+        await store_compacted_turn(
+            context.client,
+            responses_params.conversation,
+            original_input,
+            turn_summary.output_items,
+        )
+    except Exception:  # pylint: disable=broad-except
+        # The client already has its answer, so the stream still succeeds; the
+        # cost of the failure is that the next request loses this turn.
+        logger.exception(
+            "Failed to append compacted turn to conversation for request %s",
+            context.request_id,
+        )
 
 
 async def generate_agent_response(  # pylint: disable=too-many-statements
@@ -224,7 +266,7 @@ async def generate_agent_response(  # pylint: disable=too-many-statements
 
         stream_completed = True
 
-    except (AgentRunError, APIStatusError, APIConnectionError, RuntimeError) as exc:
+    except (AgentRunError, ApiException, RuntimeError) as exc:
         error_response = map_agent_inference_error(exc, responses_params.model)
         yield serialize_event(
             ErrorStreamPayload.from_error_response(error_response),
@@ -263,6 +305,10 @@ async def generate_agent_response(  # pylint: disable=too-many-statements
         if root_span is not None:
             root_span.end()
         return
+
+    await _persist_compacted_turn(
+        context, responses_params, turn_summary, original_input, persist_guard
+    )
 
     should_generate_topic_summary = (
         context.query_request.conversation_id is None
@@ -404,6 +450,10 @@ async def agent_response_generator(
         async for event in stream:
             if payload := dispatch_stream_event(event, dispatch_state):
                 yield serialize_event(payload, media_type)
+
+    # Capture the structured output items OGX returned so compacted mode can
+    # persist the turn exactly as OGX would have (LCORE-3883).
+    turn_summary.output_items = captured_output_items(agent)
 
     if dispatch_state.run_result is None:
         logger.error("No final result received from agent run")

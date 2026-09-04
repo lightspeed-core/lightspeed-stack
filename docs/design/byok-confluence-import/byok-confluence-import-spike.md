@@ -573,7 +573,7 @@ removed before merge).
 
 lightspeed-stack: operators declare stores under `byok_rag:`
 (`src/models/config.py` `ByokRag`; faiss `db_path` or pgvector);
-`src/llama_stack_configuration.py` enriches them into OGX
+`src/ogx_configuration.py` enriches them into OGX
 `run.yaml` (`VECTOR_IO_TEMPLATES` supports `inline::faiss` and
 `remote::pgvector` only); retrieval fans out in
 `src/utils/vector_search.py`. All vector access is mediated by the

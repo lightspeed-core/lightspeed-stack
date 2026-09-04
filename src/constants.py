@@ -7,7 +7,7 @@ from typing import Final, Literal
 
 # Minimal and maximal supported OGX version
 MINIMAL_SUPPORTED_OGX_VERSION: Final[str] = "0.2.17"
-MAXIMAL_SUPPORTED_OGX_VERSION: Final[str] = "1.0.2"
+MAXIMAL_SUPPORTED_OGX_VERSION: Final[str] = "1.2.5"
 
 # Path to the lightspeed-stack.yaml, exported so uvicorn workers (separate
 # processes) can reload the configuration that the parent process selected.

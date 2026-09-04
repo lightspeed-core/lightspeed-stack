@@ -23,6 +23,7 @@ from models.common.responses.responses_conversation_context import (
     ResponsesConversationContext,
 )
 from models.common.turn_summary import ToolCallSummary, TurnSummary
+from tests.unit.conftest import attach_mock_ogx_api_clients
 from utils.otel_tracing import SpanAttributes, SpanEvents
 
 MODULE = "app.endpoints.responses"
@@ -124,7 +125,10 @@ def patch_responses_endpoint_setup(
         new=mocker.AsyncMock(return_value=None),
     )
 
+    # Instance attrs like responses/openai are set in AsyncOgxClient.__init__,
+    # so AsyncMock(spec=...) does not expose them — attach explicitly.
     mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
+    attach_mock_ogx_api_clients(mocker, mock_client)
     mock_vector_stores = mocker.Mock()
     mock_vector_stores.list = mocker.AsyncMock(return_value=mocker.Mock(data=[]))
     mock_client.vector_stores = mock_vector_stores
@@ -185,13 +189,7 @@ def configure_non_streaming_client(
     output_text: str = "The answer is 42",
 ) -> None:
     """Configure mock_client.responses.create for a non-streaming success response."""
-    mock_response = mocker.Mock()
-    mock_response.id = "resp_1"
-    mock_response.output = []
-    mock_response.usage = mocker.Mock(input_tokens=10, output_tokens=5, total_tokens=15)
-    mock_response.status = "completed"
-    mock_response.model = "provider1/model1"
-    mock_response.model_dump.return_value = {
+    serialized_response = {
         "id": "resp_1",
         "object": "response",
         "created_at": 0,
@@ -203,7 +201,15 @@ def configure_non_streaming_client(
         "output_text": output_text,
         "available_quotas": {},
     }
+    mock_response = mocker.Mock()
+    mock_response.id = "resp_1"
+    mock_response.output = []
+    mock_response.usage = mocker.Mock(input_tokens=10, output_tokens=5, total_tokens=15)
+    mock_response.status = "completed"
+    mock_response.model = "provider1/model1"
+    mock_response.model_dump.return_value = serialized_response
     mock_client.responses.create = mocker.AsyncMock(return_value=mock_response)
+    mocker.patch(f"{MODULE}.dump_ogx_model", return_value=serialized_response)
     mocker.patch(
         f"{MODULE}.extract_text_from_response_items",
         return_value=output_text,
@@ -233,6 +239,13 @@ def configure_streaming_client(mocker: MockerFixture, mock_client: Any) -> None:
         yield make_completed_stream_chunk(mocker)
 
     mock_client.responses.create = mocker.AsyncMock(return_value=mock_stream())
+    mocker.patch(
+        f"{MODULE}.dump_ogx_model",
+        return_value={
+            "type": "response.completed",
+            "response": {"id": "r1", "usage": {"input_tokens": 1}},
+        },
+    )
     mocker.patch(
         f"{MODULE}.extract_text_from_response_items",
         return_value="Hello",

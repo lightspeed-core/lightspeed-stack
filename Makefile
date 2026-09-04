@@ -151,7 +151,7 @@ clean-ogx: remove-ogx-container ## Remove container and image
 
 run-ogx-local: ## Start OGX with enriched config (for local service mode)
 	uv run src/ogx_configuration.py -c $(CONFIG) -i $(OGX_CONFIG) -o $(OGX_CONFIG) && \
-	uv run ogx stack run $(OGX_CONFIG)
+	uv run ogx stack run --insecure $(OGX_CONFIG)
 
 test-unit: ## Run the unit tests
 	@echo "Running unit tests..."

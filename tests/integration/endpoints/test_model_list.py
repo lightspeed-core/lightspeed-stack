@@ -6,15 +6,17 @@ from typing import Any
 import pytest
 from fastapi import Request
 from fastapi.exceptions import HTTPException
-from ogx_client import APIConnectionError
-from ogx_client.types import ListModelsResponse
-from ogx_client.types.model import Model
+from ogx_client import ApiException
 from pytest_mock import AsyncMockType, MockerFixture
 
 from app.endpoints.models import models_endpoint_handler
 from authentication.interface import AuthTuple
 from configuration import AppConfig
 from models.api.requests import ModelFilter
+from tests.integration.conftest import (
+    make_openai_model,
+    make_openai_models_list_response,
+)
 
 
 @pytest.fixture(name="mock_ogx_client")
@@ -40,29 +42,11 @@ def mock_ogx_client_fixture(
     mock_client = mocker.AsyncMock()
 
     # Mock models list (required for model selection)
-    mock_client.models.list.return_value = ListModelsResponse.model_construct(
-        data=[
-            Model.model_construct(
-                id="test-provider/test-model-1",
-                created=0,
-                owned_by="test",
-                object="model",
-                custom_metadata={
-                    "provider_id": "test-provider",
-                    "model_type": "llm",
-                },
-            ),
-            Model.model_construct(
-                id="test-provider/test-model-2",
-                created=0,
-                owned_by="test",
-                object="model",
-                custom_metadata={
-                    "provider_id": "test-provider",
-                    "model_type": "embedding",
-                },
-            ),
-        ]
+    mock_client.openai.list.return_value = make_openai_models_list_response(
+        make_openai_model(model_id="test-provider/test-model-1"),
+        make_openai_model(
+            model_id="test-provider/test-model-2", model_type="embedding"
+        ),
     )
 
     # Create a mock holder instance
@@ -94,7 +78,7 @@ def mock_ogx_client_failing_fixture(
 
     mock_client = mocker.AsyncMock()
 
-    mock_client.models.list.side_effect = APIConnectionError(request=mocker.Mock())
+    mock_client.openai.list.side_effect = ApiException(status=None)
 
     # Create a mock holder instance
     mock_holder_instance = mock_holder_class.return_value
@@ -203,14 +187,14 @@ async def test_models_list_on_api_connection_error(
     Parameters:
     ----------
         test_config: Test configuration
-        mock_ogx_client_failing: Mocked OGX client that raises APIConnectionError
+        mock_ogx_client_failing: Mocked OGX client that raises ApiException
         test_request: FastAPI request
         test_auth: noop authentication tuple
     """
     _ = test_config
     _ = mock_ogx_client_failing
 
-    # we should catch HTTPException, not APIConnectionError!
+    # we should catch HTTPException, not ApiException!
     with pytest.raises(HTTPException) as exc_info:
         await models_endpoint_handler(
             request=test_request,

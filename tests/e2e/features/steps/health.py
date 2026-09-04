@@ -40,6 +40,12 @@ def _force_lightspeed_restart_after_llama_disrupt(context: Context) -> None:
     context.lightspeed_stack_skip_restart = False
 
 
+def _force_lightspeed_restart_after_llama_disrupt(context: Context) -> None:
+    """Do not skip the next Lightspeed restart after Llama is disrupted."""
+    context.force_lightspeed_restart_after_mcp_config_reset = True
+    context.lightspeed_stack_skip_restart = False
+
+
 @given("The llama-stack connection is disrupted")
 def llama_stack_connection_broken(context: Context) -> None:
     """Break llama_stack connection by stopping the container.

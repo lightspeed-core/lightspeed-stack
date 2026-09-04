@@ -6,7 +6,7 @@ from typing import Any, cast
 
 import pytest
 from fastapi import HTTPException, Request
-from ogx_client import APIConnectionError
+from ogx_client import ApiException
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
     InMemorySpanExporter,
 )
@@ -175,7 +175,6 @@ class TestResponsesInferenceSpanOtel:
 
     def test_record_exception_adds_response_attrs(
         self,
-        mocker: MockerFixture,
         otel: tuple[Any, InMemorySpanExporter],
     ) -> None:
         """_record_inference_span_exception enriches mapped error attrs."""
@@ -185,10 +184,7 @@ class TestResponsesInferenceSpanOtel:
 
         _record_inference_span_exception(
             inference_span,
-            APIConnectionError(
-                message="connection failed",
-                request=mocker.Mock(),
-            ),
+            ApiException(status=None, reason="connection failed"),
             error_response,
         )
         inference_span.end()

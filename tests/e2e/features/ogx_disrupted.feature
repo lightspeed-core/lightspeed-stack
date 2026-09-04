@@ -27,7 +27,7 @@ Feature: Llama Stack connection disrupted
     Then The status code of the response is 503
     And The body of the response is the following
     """
-       {"detail": {"response": "Unable to connect to OGX", "cause": "Connection error."}}
+       {"detail": {"response": "Unable to connect to OGX", "cause": "Connection error while trying to reach backend service."}}
     """
 
 
@@ -68,7 +68,7 @@ Feature: Llama Stack connection disrupted
     Then The status code of the response is 503
     And The body of the response is the following
     """
-       {"detail": {"response": "Unable to connect to OGX", "cause": "Connection error."}}
+       {"detail": {"response": "Unable to connect to OGX", "cause": "Connection error while trying to reach backend service."}}
     """
 
 
@@ -83,7 +83,7 @@ Feature: Llama Stack connection disrupted
     Then The status code of the response is 503
     And The body of the response is the following
     """
-       {"detail": {"response": "Unable to connect to OGX", "cause": "Connection error."}}
+       {"detail": {"response": "Unable to connect to OGX", "cause": "Connection error while trying to reach backend service."}}
     """
 
 

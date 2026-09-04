@@ -33,7 +33,7 @@ from a2a.types import (
 )
 from a2a.utils import new_agent_text_message, new_task
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from ogx_client import APIConnectionError, APIStatusError
+from ogx_client import ApiException
 from opentelemetry import trace
 from pydantic_ai import AgentRunResultEvent
 from pydantic_ai.exceptions import AgentRunError
@@ -60,9 +60,14 @@ from configuration import configuration
 from constants import MEDIA_TYPE_EVENT_STREAM
 from log import get_logger
 from models.api.requests import QueryRequest
+from models.common.responses.responses_api_params import ResponsesApiParams
 from models.config import Action
 from utils.agents.error_handler import map_agent_inference_error
-from utils.conversation_compaction import apply_compaction_blocking
+from utils.conversation_compaction import (
+    CompactionResult,
+    apply_compaction_blocking,
+    store_compacted_turn,
+)
 from utils.mcp_headers import McpHeaders, mcp_headers_dependency
 from utils.otel_tracing import (
     SpanAttributes,
@@ -71,7 +76,7 @@ from utils.otel_tracing import (
     anonymize_value,
     set_span_attributes,
 )
-from utils.pydantic_ai_helpers import build_agent
+from utils.pydantic_ai_helpers import build_agent, captured_output_items
 from utils.query import extract_provider_and_model_from_model_id
 from utils.responses import prepare_responses_params
 from utils.suid import normalize_conversation_id
@@ -199,6 +204,46 @@ def _record_execution_span(
         output_text = run_result.response.text
         if output_text:
             span.set_attribute(SpanAttributes.OUTPUT, anonymize_value(output_text))
+
+
+async def _persist_compacted_a2a_turn(
+    client: Any,
+    responses_params: ResponsesApiParams,
+    compaction: CompactionResult,
+    agent: Any,
+    task_id: str,
+) -> None:
+    """Append a completed compacted A2A turn to the conversation (LCORE-3883).
+
+    In compacted mode the ``conversation`` parameter is not sent, so OGX does
+    not store the turn and lightspeed-stack must append it itself, keeping the
+    recent-turn buffer and audit history intact for the next turn in this A2A
+    context.
+
+    Parameters:
+        client: OGX client used to write the conversation items.
+        responses_params: Prepared Responses API parameters.
+        compaction: Outcome of applying compaction. Nothing is written unless
+            the request was served in compacted mode.
+        agent: The pydantic-ai agent whose model captured the output items.
+        task_id: A2A task identifier, used for error reporting.
+    """
+    if not compaction.compacted or compaction.original_input is None:
+        return
+    try:
+        await store_compacted_turn(
+            client,
+            responses_params.conversation,
+            compaction.original_input,
+            captured_output_items(agent),
+        )
+    except Exception:  # pylint: disable=broad-except
+        # The caller already has its answer; the cost of the failure is that the
+        # next turn in this context loses this one.
+        logger.exception(
+            "Failed to append compacted turn to conversation for A2A task %s",
+            task_id,
+        )
 
 
 class TaskResultAggregator:
@@ -449,8 +494,7 @@ class A2AAgentExecutor(AgentExecutor):
                 )
             except (
                 AgentRunError,
-                APIStatusError,
-                APIConnectionError,
+                ApiException,
                 RuntimeError,
             ) as e:
                 error_response = map_agent_inference_error(e, query_request.model or "")
@@ -514,8 +558,7 @@ class A2AAgentExecutor(AgentExecutor):
                     await event_queue.enqueue_event(a2a_event)
             except (
                 AgentRunError,
-                APIStatusError,
-                APIConnectionError,
+                ApiException,
                 RuntimeError,
             ) as e:
                 error_response = map_agent_inference_error(e, responses_params.model)
@@ -530,6 +573,10 @@ class A2AAgentExecutor(AgentExecutor):
                     final=True,
                 )
                 return
+
+            await _persist_compacted_a2a_turn(
+                client, responses_params, compaction, agent, task_id
+            )
 
             _record_execution_span(span, self._tool_call_names, self._run_result)
 

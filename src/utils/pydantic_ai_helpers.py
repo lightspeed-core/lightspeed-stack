@@ -12,6 +12,7 @@ from pydantic_ai.capabilities import AbstractCapability, AgentCapability
 from pydantic_ai_skills import SkillsCapability
 
 from configuration import AppConfig
+from log import get_logger
 from models.common.responses.responses_api_params import ResponsesApiParams
 from models.common.skills import SkillMetadata
 from models.common.tools import CatalogTool, CatalogToolParameter
@@ -212,6 +213,38 @@ def _agent_capabilities(
             )
         ]
     return capabilities or None
+
+
+logger = get_logger(__name__)
+
+
+def captured_output_items(agent: Any) -> list[Any]:
+    """Return the structured output items captured from the last OGX call.
+
+    In compacted mode the ``conversation`` parameter is not sent, so OGX does
+    not persist the turn and lightspeed-stack must append it itself. The items
+    are captured verbatim from the OGX response by
+    :class:`OgxResponsesModel`, so the stored turn matches what OGX would have
+    stored (LCORE-3883).
+
+    Parameters:
+        agent: The pydantic-ai agent whose model performed the call.
+
+    Returns:
+        The captured output items, or an empty list when the model did not
+        capture any (for example a non-OGX model in a test double).
+    """
+    model = getattr(agent, "model", None)
+    items = getattr(model, "last_output_items", None)
+    if not isinstance(items, list):
+        # Either the model captured nothing yet, or it is not an
+        # OgxResponsesModel (a test double, or a future backend). Persisting an
+        # empty output is preferable to raising on an otherwise good turn.
+        logger.debug(
+            "No captured output items available from model %s", type(model).__name__
+        )
+        return []
+    return list(items)
 
 
 def build_agent(

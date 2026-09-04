@@ -200,7 +200,7 @@ backend-specific synthesizer translates the canonical LCORE vocabulary to
 its target shape; we do not adopt either backend's surface verbatim.
 
 **Pydantic AI research findings** (full report:
-[`pydantic-ai-research.md`](https://github.com/lightspeed-core/lightspeed-stack/blob/42844d068b488cc7d72928068b5606a7941f8c15/docs/design/ogx-config-merge/poc-results/pydantic-ai-research.md),
+[`pydantic-ai-research.md`](https://github.com/lightspeed-core/lightspeed-stack/blob/42844d068b488cc7d72928068b5606a7941f8c15/docs/design/llama-stack-config-merge/poc-results/pydantic-ai-research.md),
 pass dated 2026-05-20 against `pydantic-ai 1.98.0`):
 
 - Pydantic AI's per-Agent `<provider>:<model>` string + `Provider(...)`
@@ -442,7 +442,7 @@ configuration model. (Full design: the spec doc.)
   - Add the unified-vs-legacy `@model_validator` to the **root**
     `Configuration` model (it spans top-level `inference.providers` and
     `llama_stack.*`).
-- New functions in `src/llama_stack_configuration.py`:
+- New functions in `src/ogx_configuration.py`:
   `synthesize_configuration`, `deep_merge_list_replace`,
   `apply_high_level_inference`, `load_default_baseline`, `synthesize_to_file`.
 - A shipped default baseline at `src/data/default_run.yaml`.
@@ -468,7 +468,7 @@ Read the "Architecture" and "Implementation Suggestions" sections of
 docs/design/ogx-config-merge/ogx-config-merge.md.
 Key files to create or modify:
   src/models/config.py  (new classes; modify LlamaStackConfiguration)
-  src/llama_stack_configuration.py  (synthesize_configuration + helpers)
+  src/ogx_configuration.py  (synthesize_configuration + helpers)
   src/data/default_run.yaml  (new)
   src/client.py  (library-mode wiring)
 To verify: run a unified-mode config end-to-end via `uv run lightspeed-stack -c <config>` and confirm /v1/query succeeds.
@@ -486,7 +486,7 @@ that produces a unified single-file config from an existing
 
 **Scope**:
 
-- `migrate_config_dumb()` function in `src/llama_stack_configuration.py`.
+- `migrate_config_dumb()` function in `src/ogx_configuration.py`.
 - `--migrate-config`, `--run-yaml`, `--migrate-output` flags in
   `src/lightspeed_stack.py`.
 - Round-trip test: migrate → synthesize → byte-identical to original
@@ -504,7 +504,7 @@ that produces a unified single-file config from an existing
 
 ```text
 Read "Migration / backwards compatibility" and "Appendix A — Worked example: legacy → unified migration" in docs/design/ogx-config-merge/ogx-config-merge.md.
-Key files: src/lightspeed_stack.py, src/llama_stack_configuration.py,
+Key files: src/lightspeed_stack.py, src/ogx_configuration.py,
 tests/unit/test_llama_stack_synthesize.py.
 To verify: migrate the repo's root run.yaml + lightspeed-stack.yaml, then
 start LCORE with the output; confirm /v1/query works.
@@ -521,7 +521,7 @@ the synthesizer script and default baseline.
 
 **Scope**:
 
-- Update `scripts/llama-stack-entrypoint.sh` — the existing script already
+- Update `scripts/ogx-entrypoint.sh` — the existing script already
   defers to the Python CLI for auto-detection; document that behavior.
 - Update `test.containerfile` to copy `src/data/` into the LS container so
   `load_default_baseline()` resolves.
@@ -540,7 +540,7 @@ the synthesizer script and default baseline.
 
 ```text
 Read "Architecture" (the Overview diagram and "Trigger mechanism" cover server mode) in docs/design/ogx-config-merge/ogx-config-merge.md.
-Key files: scripts/llama-stack-entrypoint.sh, test.containerfile,
+Key files: scripts/ogx-entrypoint.sh, test.containerfile,
 docker-compose.yaml, .tekton/*.yaml.
 To verify: docker compose up with the unified config; curl LCORE /v1/query.
 ```
@@ -884,13 +884,13 @@ removed from the tree after merge (PoC validation results aren't kept on
 `main`); the links below are permalinks to the files at the merge commit,
 where they remain in history:
 
-- [`lightspeed-stack-unified-library.yaml`](https://github.com/lightspeed-core/lightspeed-stack/blob/42844d068b488cc7d72928068b5606a7941f8c15/docs/design/ogx-config-merge/poc-results/lightspeed-stack-unified-library.yaml)
+- [`lightspeed-stack-unified-library.yaml`](https://github.com/lightspeed-core/lightspeed-stack/blob/42844d068b488cc7d72928068b5606a7941f8c15/docs/design/llama-stack-config-merge/poc-results/lightspeed-stack-unified-library.yaml)
   — the unified-mode config used.
-- [`library-mode/synthesized-run.yaml`](https://github.com/lightspeed-core/lightspeed-stack/blob/42844d068b488cc7d72928068b5606a7941f8c15/docs/design/ogx-config-merge/poc-results/library-mode/synthesized-run.yaml)
+- [`library-mode/synthesized-run.yaml`](https://github.com/lightspeed-core/lightspeed-stack/blob/42844d068b488cc7d72928068b5606a7941f8c15/docs/design/llama-stack-config-merge/poc-results/library-mode/synthesized-run.yaml)
   — what LCORE produced (3.7 KB).
-- [`library-mode/query-response.json`](https://github.com/lightspeed-core/lightspeed-stack/blob/42844d068b488cc7d72928068b5606a7941f8c15/docs/design/ogx-config-merge/poc-results/library-mode/query-response.json)
+- [`library-mode/query-response.json`](https://github.com/lightspeed-core/lightspeed-stack/blob/42844d068b488cc7d72928068b5606a7941f8c15/docs/design/llama-stack-config-merge/poc-results/library-mode/query-response.json)
   — a real `/v1/query` round-trip.
-- [`library-mode/README.md`](https://github.com/lightspeed-core/lightspeed-stack/blob/42844d068b488cc7d72928068b5606a7941f8c15/docs/design/ogx-config-merge/poc-results/library-mode/README.md)
+- [`library-mode/README.md`](https://github.com/lightspeed-core/lightspeed-stack/blob/42844d068b488cc7d72928068b5606a7941f8c15/docs/design/llama-stack-config-merge/poc-results/library-mode/README.md)
   — walkthrough.
 
 Summary of validation:
@@ -943,7 +943,7 @@ Summary of validation:
   query. The implementation JIRAs' e2e coverage must exercise a real
   Llama Guard model (e.g. `meta-llama/Llama-Guard-3-8B`) end-to-end.
   Caught by CodeRabbit on the PoC artifact at
-  [`synthesized-run.yaml` L110](https://github.com/lightspeed-core/lightspeed-stack/blob/42844d068b488cc7d72928068b5606a7941f8c15/docs/design/ogx-config-merge/poc-results/library-mode/synthesized-run.yaml#L110).
+  [`synthesized-run.yaml` L110](https://github.com/lightspeed-core/lightspeed-stack/blob/42844d068b488cc7d72928068b5606a7941f8c15/docs/design/llama-stack-config-merge/poc-results/library-mode/synthesized-run.yaml#L110).
 
 ---
 
@@ -962,13 +962,13 @@ Two files:
   (inference, safety, tool_runtime, vector_io, agents, ...), `storage`,
   `registered_resources`, `vector_stores`, `safety`.
 
-**Existing enrichment** (`src/llama_stack_configuration.py`):
+**Existing enrichment** (`src/ogx_configuration.py`):
 
 - LCORE already enriches an input `run.yaml` with dynamic values from
   `lightspeed-stack.yaml`: Azure Entra ID tokens (side-effect to `.env`),
   BYOK RAG entries, Solr/OKP provider/store/model registration. Output is
   an enriched `run.yaml`.
-- Called in two places: `scripts/llama-stack-entrypoint.sh` at LS container
+- Called in two places: `scripts/ogx-entrypoint.sh` at LS container
   boot (server mode) and `src/client.py:_enrich_library_config()` (library
   mode).
 - LCORE-779 made this automatic; LCORE-518 (closed spike) proved (re)generation
@@ -1152,14 +1152,14 @@ Relative to `upstream/main`:
 | File | Purpose |
 |---|---|
 | `src/models/config.py` | New classes: `UnifiedInferenceProvider`, `UnifiedInferenceSection`, `UnifiedLlamaStackConfig`; modified `LlamaStackConfiguration` (adds `config` field + mutual-exclusion validator). _PoC layout; the implementation follows Decision S5 — `inference.providers` on the top-level `InferenceConfiguration`, validator on the root `Configuration` model, no `UnifiedInferenceSection` (see the schema JIRA)._ |
-| `src/llama_stack_configuration.py` | New: `synthesize_configuration`, `deep_merge_list_replace`, `apply_high_level_inference`, `load_default_baseline`, `synthesize_to_file`, `migrate_config_dumb`. CLI `main()` auto-detects unified vs legacy. |
+| `src/ogx_configuration.py` | New: `synthesize_configuration`, `deep_merge_list_replace`, `apply_high_level_inference`, `load_default_baseline`, `synthesize_to_file`, `migrate_config_dumb`. CLI `main()` auto-detects unified vs legacy. |
 | `src/data/default_run.yaml` | Built-in default baseline (copied from repo root `run.yaml` for the PoC — implementation JIRA should slim it down; see PoC surprise about `EXTERNAL_PROVIDERS_DIR`) |
 | `src/client.py` | Library-mode path picks synthesis for unified configs, enrichment for legacy |
 | `src/lightspeed_stack.py` | `--migrate-config`, `--run-yaml`, `--migrate-output` flags |
-| `scripts/llama-stack-entrypoint.sh` | Comment updated — script itself needs no change (Python CLI auto-detects) |
+| `scripts/ogx-entrypoint.sh` | Comment updated — script itself needs no change (Python CLI auto-detects) |
 | `test.containerfile` | Copies `src/data/` into the LS container |
 | `tests/unit/test_llama_stack_synthesize.py` | 22 new tests: merge semantics, high-level inference, synthesize pipeline, migration round-trip |
-| `tests/unit/models/config/test_llama_stack_configuration.py` | 3 new tests: unified/legacy mutual exclusion |
+| `tests/unit/models/config/test_ogx_configuration.py` | 3 new tests: unified/legacy mutual exclusion |
 | `tests/unit/models/config/test_dump_configuration.py` | 5 expected-dict updates (new `config: None` field appears in dumps) |
 | `tests/unit/test_client.py` | Error-message regex updated |
 | `docs/design/ogx-config-merge/` | Spike doc, spec doc, PoC evidence, proposed JIRAs |
@@ -1175,7 +1175,7 @@ adjust it for your environment before running.)
 # 0. Fetch the PoC config from the merge commit (removed from the tree post-merge)
 mkdir -p /tmp/lcore-836-poc
 curl -sSL -o /tmp/lcore-836-poc/lightspeed-stack-unified-library.yaml \
-  https://raw.githubusercontent.com/lightspeed-core/lightspeed-stack/42844d068b488cc7d72928068b5606a7941f8c15/docs/design/ogx-config-merge/poc-results/lightspeed-stack-unified-library.yaml
+  https://raw.githubusercontent.com/lightspeed-core/lightspeed-stack/42844d068b488cc7d72928068b5606a7941f8c15/docs/design/llama-stack-config-merge/poc-results/lightspeed-stack-unified-library.yaml
 
 # 1. Start LCORE in library mode with the unified config
 export OPENAI_API_KEY=<your-key>

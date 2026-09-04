@@ -10,7 +10,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.routing import iter_route_contexts
-from ogx_client import APIConnectionError, AsyncOgxClient
+from ogx_client import ApiException, AsyncOgxClient
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 import version
@@ -25,6 +25,7 @@ from log import get_logger
 from metrics import recording
 from metrics.utils import setup_model_metrics
 from models.api.responses.error import InternalServerErrorResponse
+from observability.profiling import initialize_pyroscope
 from observability.sentry import initialize_sentry
 from utils.degraded_mode import DegradedModeTracker
 from utils.ogx_version import check_ogx_version
@@ -82,6 +83,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     configuration.load_configuration(os.environ["LIGHTSPEED_STACK_CONFIG_PATH"])
 
     initialize_sentry()
+    initialize_pyroscope()
 
     ogx_config = configuration.configuration.ogx
     await AsyncOgxClientHolder().load(ogx_config)
@@ -100,7 +102,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         else:
             logger.debug("OGX version: %s", ogx_version)
             degraded_tracker.set_healthy()
-    except APIConnectionError as e:
+    except ApiException as e:
         # if degraded mode is allowed, simply ignore the exception
         ogx_url = ogx_config.url
         logger.error(
@@ -127,7 +129,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     if not degraded_tracker.is_degraded():
         try:
             await setup_model_metrics()
-        except APIConnectionError as e:
+        except ApiException as e:
             logger.warning("Failed to set up model metrics: %s", e, exc_info=True)
 
     logger.info("App startup complete")

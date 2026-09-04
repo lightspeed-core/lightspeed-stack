@@ -6,9 +6,7 @@ from typing import Optional
 
 import psycopg2
 from fastapi import HTTPException
-from ogx_client import (
-    APIStatusError as LLSApiStatusError,
-)
+from ogx_client import ApiException
 from openai._exceptions import APIStatusError as OpenAIAPIStatusError
 from pydantic_ai.messages import ImageUrl, UserContent
 from sqlalchemy import func
@@ -557,7 +555,7 @@ def is_resource_exhausted_error(error_message: str) -> bool:
 
 
 def handle_known_apistatus_errors(
-    error: LLSApiStatusError | OpenAIAPIStatusError, model_id: str
+    error: ApiException | OpenAIAPIStatusError, model_id: str
 ) -> AbstractErrorResponse:
     """Handle known API status errors from both OGX and OpenAI.
 
@@ -571,7 +569,8 @@ def handle_known_apistatus_errors(
     error_message = getattr(error, "message", str(error))
     if is_context_length_error(error_message):
         return PromptTooLongResponse(model=model_id)
-    if error.status_code == 429:
+    status = error.status if isinstance(error, ApiException) else error.status_code
+    if status == 429:
         return QuotaExceededResponse.model(model_id)
     if is_resource_exhausted_error(error_message):
         logger.warning(

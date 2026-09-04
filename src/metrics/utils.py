@@ -19,7 +19,7 @@ async def setup_model_metrics() -> None:
     logger.info("Setting up model metrics")
     check_configuration_loaded(configuration)
     model_list = parse_model_list_response(
-        await AsyncOgxClientHolder().get_client().models.list()
+        await AsyncOgxClientHolder().get_client().openai.list()
     )
 
     models = [model for model in model_list if model.model_type == "llm"]

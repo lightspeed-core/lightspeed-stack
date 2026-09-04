@@ -449,7 +449,7 @@
             "title": "Service configuration"
           },
           "ogx": {
-            "$ref": "`#/components/schemas/`LlamaStackConfiguration",
+            "$ref": "`#/components/schemas/`OgxConfiguration",
             "description": "This section contains OGX configuration. Lightspeed Core Stack service can call OGX in library mode or in server mode.",
             "title": "OGX configuration"
           },
@@ -1037,9 +1037,9 @@
         "title": "JwtRoleRule",
         "type": "object"
       },
-      "LlamaStackConfiguration": {
+      "OgxConfiguration": {
         "additionalProperties": false,
-        "description": "OGX configuration.\n\nOGX is a comprehensive system that provides a uniform set of tools\nfor building, scaling, and deploying generative AI applications, enabling\ndevelopers to create, integrate, and orchestrate multiple AI services and\ncapabilities into an adaptable setup.\n\nUseful resources:\n\n  - [OGX](https://ogx-ai.github.io/)\n  - [Python OGX client](https://github.com/ogx-ai/ogx-client-python)\n  - [Build AI Applications with OGX](https://ogx-ai.github.io/)",
+        "description": "OGX configuration.\n\nOGX is a comprehensive system that provides a uniform set of tools\nfor building, scaling, and deploying generative AI applications, enabling\ndevelopers to create, integrate, and orchestrate multiple AI services and\ncapabilities into an adaptable setup.\n\nUseful resources:\n\n  - [OGX](https://ogx-ai.github.io/)\n  - [Python OGX client](https://github.com/ogx-ai/ogx-client-python)\n  - [Build AI Applications with OGX](https://ogx-ai.github.io/docs/building_applications)",
         "properties": {
           "url": {
             "type": "string",
@@ -1100,7 +1100,7 @@
           "config": {
             "anyOf": [
               {
-                "$ref": "`#/components/schemas/`UnifiedLlamaStackConfig"
+                "$ref": "`#/components/schemas/`UnifiedOgxConfig"
               },
               {
                 "type": "null"
@@ -1111,7 +1111,7 @@
             "title": "Unified OGX configuration"
           }
         },
-        "title": "LlamaStackConfiguration",
+        "title": "OgxConfiguration",
         "type": "object"
       },
       "ModelContextProtocolServer": {
@@ -2247,7 +2247,7 @@
         "title": "UnifiedInferenceProvider",
         "type": "object"
       },
-      "UnifiedLlamaStackConfig": {
+      "UnifiedOgxConfig": {
         "additionalProperties": false,
         "description": "Backend-specific knobs for unified-mode OGX synthesis.\n\nPer Decision S5 of the design spike, backend-agnostic high-level sections\n(inference, ...) live at the configuration root, not here. This block holds\nonly the Llama-Stack-specific synthesis controls: which baseline to start\nfrom, an optional profile file, and a raw native_override escape hatch.\n\nAttributes:\n    baseline: Synthesis starting point. \"default\" begins from LCORE's\n        built-in baseline (src/data/default_run.yaml); \"empty\" begins from\n        an empty dict (used by the migration tool for an exact round-trip).\n        Ignored when `profile` is set.\n    profile: Optional path to a user-authored run.yaml-shaped file used as\n        the synthesis baseline. Relative paths resolve against the directory\n        of the loaded lightspeed-stack.yaml.\n    native_override: Raw OGX schema deep-merged last (maps merge\n        recursively, lists and scalars replace). The escape hatch for\n        anything the high-level sections do not express.",
         "properties": {
@@ -2276,7 +2276,7 @@
             "type": "object"
           }
         },
-        "title": "UnifiedLlamaStackConfig",
+        "title": "UnifiedOgxConfig",
         "type": "object"
       },
       "UserDataCollection": {

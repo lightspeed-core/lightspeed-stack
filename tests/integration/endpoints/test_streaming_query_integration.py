@@ -7,8 +7,6 @@ import pytest
 from fastapi import HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 from fastapi.testclient import TestClient
-from ogx_client.types import ListModelsResponse
-from ogx_client.types.model import Model
 from pytest_mock import AsyncMockType, MockerFixture
 
 from app.endpoints.streaming_query import streaming_query_endpoint_handler
@@ -16,6 +14,10 @@ from authentication.interface import AuthTuple
 from configuration import AppConfig
 from models.api.requests import QueryRequest
 from models.common.query import Attachment
+from tests.integration.conftest import (
+    make_openai_model,
+    make_openai_models_list_response,
+)
 
 
 @pytest.fixture(name="mock_streaming_ogx_client")
@@ -35,24 +37,11 @@ def mock_ogx_streaming_fixture(
     )
     mock_client = mocker.AsyncMock()
 
-    mock_client.models.list.return_value = ListModelsResponse.model_construct(
-        data=[
-            Model.model_construct(
-                id="test-provider/test-model",
-                created=0,
-                owned_by="test",
-                object="model",
-                custom_metadata={
-                    "provider_id": "test-provider",
-                    "model_type": "llm",
-                },
-            )
-        ]
+    mock_client.openai.list.return_value = make_openai_models_list_response(
+        make_openai_model()
     )
 
-    mock_vector_stores_response = mocker.MagicMock()
-    mock_vector_stores_response.data = []
-    mock_client.vector_stores.list.return_value = mock_vector_stores_response
+    mock_client.vector_stores.list.return_value = []
 
     mock_conversation = mocker.MagicMock()
     mock_conversation.id = "conv_" + "a" * 48
@@ -60,7 +49,7 @@ def mock_ogx_streaming_fixture(
 
     mock_client.shields.list.return_value = []
 
-    mock_client.conversations.items.create = mocker.AsyncMock()
+    mock_client.items.create = mocker.AsyncMock()
 
     mock_vector_io_response = mocker.MagicMock()
     mock_vector_io_response.chunks = []

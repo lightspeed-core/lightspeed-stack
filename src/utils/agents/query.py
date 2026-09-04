@@ -6,7 +6,7 @@ from enum import Enum
 from typing import Optional
 
 from fastapi import HTTPException
-from ogx_client import APIConnectionError, APIStatusError, AsyncOgxClient
+from ogx_client import ApiException, AsyncOgxClient
 from opentelemetry import trace
 from pydantic_ai.exceptions import (
     AgentRunError,
@@ -39,6 +39,7 @@ from utils.agents.tool_processor import (
 from utils.conversation_compaction import (
     agent_prompt_text,
     reject_image_attachments_in_compacted_mode,
+    store_compacted_turn,
 )
 from utils.conversations import append_turn_items_to_conversation
 from utils.otel_tracing import (
@@ -47,7 +48,7 @@ from utils.otel_tracing import (
     add_span_event,
     set_span_attributes,
 )
-from utils.pydantic_ai_helpers import build_agent
+from utils.pydantic_ai_helpers import build_agent, captured_output_items
 from utils.query import (
     build_multimodal_input,
     extract_provider_and_model_from_model_id,
@@ -57,10 +58,6 @@ from utils.token_counter import TokenCounter
 
 logger = get_logger(__name__)
 tracer = trace.get_tracer(__name__)
-
-type AgentInferenceError = (
-    AgentRunError | APIStatusError | APIConnectionError | RuntimeError
-)
 
 
 class AgentFinishReason(str, Enum):
@@ -241,7 +238,7 @@ async def retrieve_agent_response(
     responses_params: ResponsesApiParams,
     moderation_result: ShieldModerationResult,
     endpoint_path: str,
-    _original_input: Optional[ResponseInput] = None,
+    original_input: Optional[ResponseInput] = None,
     no_tools: bool = False,
     image_attachments: Optional[list[Attachment]] = None,
     shield_ids: Optional[list[str]] = None,
@@ -253,7 +250,9 @@ async def retrieve_agent_response(
         responses_params: Prepared Responses API parameters.
         moderation_result: Shield moderation outcome for the turn.
         endpoint_path: Endpoint path used for metric labeling.
-        _original_input: Original user input before the explicit-input rewrite.
+        original_input: Original user input before the explicit-input rewrite.
+            Set only in compacted mode; when set, the completed turn is
+            appended to the conversation explicitly (LCORE-3883).
         no_tools: Whether to skip tool processing.
         image_attachments: Image attachments for multimodal prompt construction.
         shield_ids: Optional list of shield names to run for this turn, mirroring
@@ -315,12 +314,7 @@ async def retrieve_agent_response(
             else:
                 prompt = agent_prompt_text(responses_params)
             run_result = await agent.run(prompt)
-        except (
-            AgentRunError,
-            APIStatusError,
-            APIConnectionError,
-            RuntimeError,
-        ) as exc:
+        except (AgentRunError, ApiException, RuntimeError) as exc:
             response = map_agent_inference_error(exc, responses_params.model)
             raise HTTPException(**response.model_dump()) from exc
 
@@ -343,8 +337,22 @@ async def retrieve_agent_response(
             vector_store_ids=vector_store_ids,
             rag_id_mapping=rag_id_mapping,
         )
+        # Capture the structured output items OGX returned so compacted mode can
+        # persist the turn exactly as OGX would have (LCORE-3883).
+        turn_summary.output_items = captured_output_items(agent)
 
         # Emit inference completed event after successful summary build
         add_span_event(span, SpanEvents.LLM_INFERENCE_COMPLETED)
+
+        # In compacted mode the conversation parameter was not sent, so OGX did
+        # not persist this turn. Append it ourselves to keep the recent-turn
+        # buffer and the audit history intact for the next request (LCORE-3883).
+        if original_input is not None:
+            await store_compacted_turn(
+                client,
+                responses_params.conversation,
+                original_input,
+                turn_summary.output_items,
+            )
 
         return turn_summary

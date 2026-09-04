@@ -119,11 +119,11 @@ async def run_shield_moderation_v2(
 
             try:
                 shield_result = await shield.run(input_text)
-            # APIConnectionError and APIStatusError from OGX should not be raised
-            # from model_request, because they will be caught inside AsyncOpenAI
-            # and transferred into openai's APIConnectionError. The openai's
-            # exceptions will further transferred into ModelHTTPError or
-            # ModelAPIError by _map_api_errors in OpenAIResponseModel.
+            # ApiException from OGX should not be raised from model_request,
+            # because they will be caught inside AsyncOpenAI and transferred into
+            # openai's APIStatusError. The openai's exceptions will further be
+            # transferred into ModelHTTPError or ModelAPIError by _map_api_errors
+            # in OpenAIResponseModel.
             except (AgentRunError, RuntimeError) as exc:
                 model_id = getattr(
                     shield_config.config, "model_id", "unknown-shield-model"
@@ -174,7 +174,7 @@ async def run_shield_moderation(
 
     Parameters:
     ----------
-        client: The Llama Stack client.
+        client: The OGX client.
         input_text: The text to moderate.
         endpoint_path: The API endpoint path for metric labeling.
         shield_ids: Optional list of shield IDs to use. If None, uses all shields.

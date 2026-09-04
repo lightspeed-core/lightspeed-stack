@@ -11,7 +11,7 @@ from typing import Any, Optional
 import pytest
 from fastapi import HTTPException
 from ogx_api.openai_responses import OpenAIResponseMessage
-from ogx_client import APIStatusError
+from ogx_client import ApiException
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
     InMemorySpanExporter,
 )
@@ -804,11 +804,7 @@ class TestGenerateAgentResponse:
                 TokenStreamPayload.create(chunk_id=0, token="partial"),
                 MEDIA_TYPE_JSON,
             )
-            raise APIStatusError(
-                message="quota exceeded",
-                response=mocker.Mock(),
-                body=None,
-            )
+            raise ApiException(status=500, reason="quota exceeded")
 
         mock_error = mocker.Mock()
         mock_error.status_code = 429
@@ -1653,3 +1649,196 @@ def _mock_run_stream(
             return None
 
     return _RunStreamCtx()
+
+
+class TestCompactedTurnPersistence:
+    """Compacted-mode turn persistence (LCORE-3883).
+
+    In compacted mode the ``conversation`` parameter is not sent, so OGX does
+    not store the turn and lightspeed-stack must append it explicitly. These
+    tests assert against the conversation items that actually land, not against
+    the arguments of a mocked helper.
+    """
+
+    @staticmethod
+    def _capture_conversation_writes(context: Any) -> list[Any]:
+        """Wire a stateful fake onto the client and return the captured items."""
+        stored: list[Any] = []
+
+        async def _create(
+            conversation_id: str, *, add_items_request: Any = None, **_: Any
+        ) -> None:
+            _ = conversation_id
+            stored.extend(getattr(add_items_request, "items", add_items_request) or [])
+
+        context.client.items.create = _create
+        return stored
+
+    @staticmethod
+    def _patch_finalizers(mocker: MockerFixture) -> None:
+        """Stub the post-stream finalization the persistence test does not exercise."""
+        mocker.patch("utils.agents.streaming.consume_query_tokens")
+        mocker.patch(
+            "utils.agents.streaming.get_available_quotas", return_value={"daily": 1}
+        )
+        mocker.patch(
+            "utils.agents.streaming.maybe_get_topic_summary",
+            new=mocker.AsyncMock(return_value=None),
+        )
+        mocker.patch("utils.agents.streaming.store_query_results")
+        mock_config = mocker.Mock()
+        mock_config.quota_limiters = []
+        mocker.patch("utils.agents.streaming.configuration", mock_config)
+
+    @pytest.mark.asyncio
+    async def test_compacted_success_appends_turn_to_conversation(
+        self,
+        mocker: MockerFixture,
+        make_generator_context: Callable[..., ResponseGeneratorContext],
+        responses_params: ResponsesApiParams,
+    ) -> None:
+        """A completed compacted stream writes the user turn and the LLM output."""
+        context = make_generator_context()
+        stored = self._capture_conversation_writes(context)
+        self._patch_finalizers(mocker)
+
+        turn_summary = TurnSummary()
+        turn_summary.token_usage = TokenCounter(input_tokens=1, output_tokens=1)
+        turn_summary.output_items = [
+            OpenAIResponseMessage(role="assistant", content="The answer.")
+        ]
+
+        async def inner() -> AsyncIterator[str]:
+            yield serialize_event(
+                TokenStreamPayload.create(chunk_id=0, token="The answer."),
+                MEDIA_TYPE_JSON,
+            )
+
+        events = [
+            event
+            async for event in generate_agent_response(
+                inner(),
+                context,
+                responses_params,
+                turn_summary,
+                [],
+                original_input="the original question",
+            )
+        ]
+
+        assert _sse_event_types(events) == ["start", "token", "end"]
+        texts = [str(item) for item in stored]
+        assert len(stored) == 2, f"expected user turn + output, got {texts}"
+        assert any("the original question" in t for t in texts)
+        assert any("The answer." in t for t in texts)
+
+    @pytest.mark.asyncio
+    async def test_non_compacted_success_does_not_append_turn(
+        self,
+        mocker: MockerFixture,
+        make_generator_context: Callable[..., ResponseGeneratorContext],
+        responses_params: ResponsesApiParams,
+    ) -> None:
+        """Without compaction OGX stores the turn, so we must not duplicate it."""
+        context = make_generator_context()
+        stored = self._capture_conversation_writes(context)
+        self._patch_finalizers(mocker)
+
+        turn_summary = TurnSummary()
+        turn_summary.token_usage = TokenCounter(input_tokens=1, output_tokens=1)
+
+        async def inner() -> AsyncIterator[str]:
+            yield serialize_event(
+                TokenStreamPayload.create(chunk_id=0, token="Hi"), MEDIA_TYPE_JSON
+            )
+
+        _ = [
+            event
+            async for event in generate_agent_response(
+                inner(), context, responses_params, turn_summary, []
+            )
+        ]
+
+        assert stored == []
+
+    @pytest.mark.asyncio
+    async def test_interrupt_guard_prevents_double_persistence(
+        self,
+        mocker: MockerFixture,
+        make_generator_context: Callable[..., ResponseGeneratorContext],
+        responses_params: ResponsesApiParams,
+    ) -> None:
+        """An interrupt that already persisted the turn blocks the success path."""
+        context = make_generator_context()
+        stored = self._capture_conversation_writes(context)
+        self._patch_finalizers(mocker)
+        # Simulate the interrupt path having already persisted this turn.
+        mocker.patch(
+            "utils.agents.streaming.register_interrupt_callback", return_value=[True]
+        )
+
+        turn_summary = TurnSummary()
+        turn_summary.token_usage = TokenCounter(input_tokens=1, output_tokens=1)
+        turn_summary.output_items = [
+            OpenAIResponseMessage(role="assistant", content="The answer.")
+        ]
+
+        async def inner() -> AsyncIterator[str]:
+            yield serialize_event(
+                TokenStreamPayload.create(chunk_id=0, token="x"), MEDIA_TYPE_JSON
+            )
+
+        _ = [
+            event
+            async for event in generate_agent_response(
+                inner(),
+                context,
+                responses_params,
+                turn_summary,
+                [],
+                original_input="the original question",
+            )
+        ]
+
+        assert stored == []
+
+    @pytest.mark.asyncio
+    async def test_persistence_failure_does_not_fail_the_stream(
+        self,
+        mocker: MockerFixture,
+        make_generator_context: Callable[..., ResponseGeneratorContext],
+        responses_params: ResponsesApiParams,
+    ) -> None:
+        """The client keeps its answer even when the conversation write fails."""
+        context = make_generator_context()
+        self._patch_finalizers(mocker)
+
+        async def _boom(_conversation_id: str, **_: Any) -> None:
+            raise RuntimeError("conversation store unavailable")
+
+        context.client.items.create = _boom
+
+        turn_summary = TurnSummary()
+        turn_summary.token_usage = TokenCounter(input_tokens=1, output_tokens=1)
+        turn_summary.output_items = [
+            OpenAIResponseMessage(role="assistant", content="A")
+        ]
+
+        async def inner() -> AsyncIterator[str]:
+            yield serialize_event(
+                TokenStreamPayload.create(chunk_id=0, token="A"), MEDIA_TYPE_JSON
+            )
+
+        events = [
+            event
+            async for event in generate_agent_response(
+                inner(),
+                context,
+                responses_params,
+                turn_summary,
+                [],
+                original_input="q",
+            )
+        ]
+
+        assert _sse_event_types(events) == ["start", "token", "end"]

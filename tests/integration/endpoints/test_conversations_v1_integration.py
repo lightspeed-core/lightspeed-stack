@@ -8,7 +8,7 @@ from datetime import UTC, datetime
 
 import pytest
 from fastapi import HTTPException, Request, status
-from ogx_client import APIConnectionError, APIStatusError
+from ogx_client import ApiException
 from pytest_mock import AsyncMockType, MockerFixture
 from sqlalchemy.orm import Session
 
@@ -268,7 +268,7 @@ ERROR_HANDLING_TEST_CASES = [
             "endpoint": "get",
             "error_type": "connection",
             "expected_status": 503,
-            "mock_path": "conversations.items.list",
+            "mock_path": "items.list",
         },
         id="get_handles_connection_error",
     ),
@@ -277,7 +277,7 @@ ERROR_HANDLING_TEST_CASES = [
             "endpoint": "get",
             "error_type": "api_status",
             "expected_status": 500,
-            "mock_path": "conversations.items.list",
+            "mock_path": "items.list",
         },
         id="get_handles_api_status_error",
     ),
@@ -320,7 +320,6 @@ async def test_conversation_error_handling(  # pylint: disable=too-many-locals
     non_admin_test_request: Request,
     test_auth: AuthTuple,
     patch_db_session: Session,
-    mocker: MockerFixture,
 ) -> None:
     """Data-driven test for conversation endpoint error handling.
 
@@ -336,7 +335,6 @@ async def test_conversation_error_handling(  # pylint: disable=too-many-locals
         non_admin_test_request: FastAPI request with standard user permissions
         test_auth: noop authentication tuple
         patch_db_session: Test database session
-        mocker: pytest-mock fixture
     """
     _ = test_config
 
@@ -365,13 +363,9 @@ async def test_conversation_error_handling(  # pylint: disable=too-many-locals
         mock_method = getattr(mock_method, attr)
 
     if error_type == "connection":
-        mock_method.side_effect = APIConnectionError(request=mocker.Mock())
+        mock_method.side_effect = ApiException(status=None)
     elif error_type == "api_status":
-        mock_method.side_effect = APIStatusError(
-            message="Server error",
-            response=mocker.Mock(status_code=500),
-            body=None,
-        )
+        mock_method.side_effect = ApiException(status=500, reason="Server error")
 
     # Call the appropriate endpoint and expect error
     with pytest.raises(HTTPException) as exc_info:
@@ -453,8 +447,8 @@ async def test_get_conversation_returns_chat_history(
     # Mock OGX response
     mock_items = mocker.Mock()
     mock_items.data = [mock_user_message, mock_assistant_message]
-    mock_items.has_next_page.return_value = False
-    mock_ogx_client.conversations.items.list = mocker.AsyncMock(return_value=mock_items)
+    mock_items.has_more = False
+    mock_ogx_client.items.list = mocker.AsyncMock(return_value=mock_items)
 
     response = await get_conversation_endpoint_handler(
         request=non_admin_test_request,
@@ -543,8 +537,8 @@ async def test_get_conversation_with_turns_metadata(
     # Mock paginator response
     mock_items = mocker.Mock()
     mock_items.data = [mock_user_message, mock_assistant_message]
-    mock_items.has_next_page.return_value = False
-    mock_ogx_client.conversations.items.list = mocker.AsyncMock(return_value=mock_items)
+    mock_items.has_more = False
+    mock_ogx_client.items.list = mocker.AsyncMock(return_value=mock_items)
 
     response = await get_conversation_endpoint_handler(
         request=non_admin_test_request,
@@ -654,7 +648,6 @@ async def test_delete_conversation_handles_not_found_in_ogx(
     non_admin_test_request: Request,
     test_auth: AuthTuple,
     patch_db_session: Session,
-    mocker: MockerFixture,
 ) -> None:
     """Test that delete conversation handles not found in OGX gracefully.
 
@@ -669,7 +662,6 @@ async def test_delete_conversation_handles_not_found_in_ogx(
         non_admin_test_request: FastAPI request with standard user permissions
         test_auth: noop authentication tuple
         patch_db_session: Test database session
-        mocker: pytest-mock fixture
     """
     _ = test_config
 
@@ -688,10 +680,8 @@ async def test_delete_conversation_handles_not_found_in_ogx(
     patch_db_session.commit()
 
     # Configure mock to raise not found error
-    mock_ogx_client.conversations.delete.side_effect = APIStatusError(
-        message="Not found",
-        response=mocker.Mock(status_code=404),
-        body=None,
+    mock_ogx_client.conversations.delete.side_effect = ApiException(
+        status=404, reason="Not found"
     )
 
     response = await delete_conversation_endpoint_handler(

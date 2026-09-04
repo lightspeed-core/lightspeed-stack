@@ -50,9 +50,7 @@ from ogx_api.openai_responses import (
 from ogx_api.openai_responses import (
     OpenAIResponseOutputMessageWebSearchToolCall as WebSearchCall,
 )
-from ogx_client import APIConnectionError, APIStatusError, AsyncOgxClient
-from ogx_client.types import ListModelsResponse
-from ogx_client.types.model import Model
+from ogx_client import ApiException
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
     InMemorySpanExporter,
 )
@@ -68,6 +66,11 @@ from models.config import (
     InferenceConfiguration,
     ModelContextProtocolServer,
     RagStore,
+)
+from tests.unit.conftest import (
+    make_openai_model,
+    make_openai_models_list_response,
+    mock_async_ogx_client,
 )
 from utils.otel_tracing import SpanAttributes, SpanEvents
 from utils.query import normalize_vertex_ai_model_id
@@ -935,7 +938,7 @@ class TestGetTopicSummary:
     @pytest.mark.asyncio
     async def test_get_topic_summary_success(self, mocker: MockerFixture) -> None:
         """Test successful topic summary generation."""
-        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
+        mock_client = mock_async_ogx_client(mocker)
         mock_output_item = make_output_item(
             item_type="message", role="assistant", content="Topic Summary"
         )
@@ -957,7 +960,7 @@ class TestGetTopicSummary:
         self, mocker: MockerFixture
     ) -> None:
         """Test topic summary with empty response."""
-        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
+        mock_client = mock_async_ogx_client(mocker)
         mock_response = mocker.Mock()
         mock_response.output = []
         mock_client.responses.create = mocker.AsyncMock(return_value=mock_response)
@@ -975,11 +978,9 @@ class TestGetTopicSummary:
         self, mocker: MockerFixture
     ) -> None:
         """Test topic summary raises HTTPException on connection error."""
-        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
+        mock_client = mock_async_ogx_client(mocker)
         mock_client.responses.create = mocker.AsyncMock(
-            side_effect=APIConnectionError(
-                message="Connection failed", request=mocker.Mock()
-            )
+            side_effect=ApiException(status=None, reason="Connection failed")
         )
 
         mocker.patch(
@@ -994,11 +995,9 @@ class TestGetTopicSummary:
     @pytest.mark.asyncio
     async def test_get_topic_summary_api_error(self, mocker: MockerFixture) -> None:
         """Test topic summary raises HTTPException on API error."""
-        mock_client = mocker.AsyncMock(spec=AsyncOgxClient)
-        # Create a mock exception that will be caught by except APIStatusError
-        mock_error = APIStatusError(
-            message="API error", response=mocker.Mock(request=None), body=None
-        )
+        mock_client = mock_async_ogx_client(mocker)
+        # Create a mock exception that will be caught by except ApiException
+        mock_error = ApiException(status=500, reason="API error")
         mock_client.responses.create = mocker.AsyncMock(side_effect=mock_error)
 
         mocker.patch(
@@ -1955,21 +1954,14 @@ class TestPrepareResponsesParams:
         self, mocker: MockerFixture
     ) -> None:
         """Test prepare_responses_params with existing conversation ID."""
-        mock_client = mocker.AsyncMock()
-        mock_client.models.list = mocker.AsyncMock(
-            return_value=ListModelsResponse.model_construct(
-                data=[
-                    Model.model_construct(
-                        id="provider1/model1",
-                        created=0,
-                        owned_by="test",
-                        object="model",
-                        custom_metadata={
-                            "model_type": "llm",
-                            "provider_id": "provider1",
-                        },
-                    )
-                ]
+        mock_client = mock_async_ogx_client(mocker)
+        mock_client.openai.list = mocker.AsyncMock(
+            return_value=make_openai_models_list_response(
+                make_openai_model(
+                    model_id="provider1/model1",
+                    provider_id="provider1",
+                    model_type="llm",
+                )
             )
         )
 
@@ -1999,21 +1991,14 @@ class TestPrepareResponsesParams:
         self, mocker: MockerFixture
     ) -> None:
         """Test prepare_responses_params creates new conversation when ID not provided."""
-        mock_client = mocker.AsyncMock()
-        mock_client.models.list = mocker.AsyncMock(
-            return_value=ListModelsResponse.model_construct(
-                data=[
-                    Model.model_construct(
-                        id="provider1/model1",
-                        created=0,
-                        owned_by="test",
-                        object="model",
-                        custom_metadata={
-                            "model_type": "llm",
-                            "provider_id": "provider1",
-                        },
-                    )
-                ]
+        mock_client = mock_async_ogx_client(mocker)
+        mock_client.openai.list = mocker.AsyncMock(
+            return_value=make_openai_models_list_response(
+                make_openai_model(
+                    model_id="provider1/model1",
+                    provider_id="provider1",
+                    model_type="llm",
+                )
             )
         )
 
@@ -2043,11 +2028,9 @@ class TestPrepareResponsesParams:
         self, mocker: MockerFixture
     ) -> None:
         """Test prepare_responses_params raises HTTPException on connection error when fetching models."""
-        mock_client = mocker.AsyncMock()
-        mock_client.models.list = mocker.AsyncMock(
-            side_effect=APIConnectionError(
-                message="Connection failed", request=mocker.Mock()
-            )
+        mock_client = mock_async_ogx_client(mocker)
+        mock_client.openai.list = mocker.AsyncMock(
+            side_effect=ApiException(status=None, reason="Connection failed")
         )
 
         query_request = QueryRequest(query="test")  # pyright: ignore[reportCallIssue]
@@ -2064,27 +2047,18 @@ class TestPrepareResponsesParams:
         self, mocker: MockerFixture
     ) -> None:
         """Test prepare_responses_params raises HTTPException on connection error when creating conversation."""
-        mock_client = mocker.AsyncMock()
-        mock_client.models.list = mocker.AsyncMock(
-            return_value=ListModelsResponse.model_construct(
-                data=[
-                    Model.model_construct(
-                        id="provider1/model1",
-                        created=0,
-                        owned_by="test",
-                        object="model",
-                        custom_metadata={
-                            "model_type": "llm",
-                            "provider_id": "provider1",
-                        },
-                    )
-                ]
+        mock_client = mock_async_ogx_client(mocker)
+        mock_client.openai.list = mocker.AsyncMock(
+            return_value=make_openai_models_list_response(
+                make_openai_model(
+                    model_id="provider1/model1",
+                    provider_id="provider1",
+                    model_type="llm",
+                )
             )
         )
         mock_client.conversations.create = mocker.AsyncMock(
-            side_effect=APIConnectionError(
-                message="Connection failed", request=mocker.Mock()
-            )
+            side_effect=ApiException(status=None, reason="Connection failed")
         )
 
         query_request = QueryRequest(query="test")  # pyright: ignore[reportCallIssue]
@@ -2105,11 +2079,9 @@ class TestPrepareResponsesParams:
         self, mocker: MockerFixture
     ) -> None:
         """Test prepare_responses_params raises HTTPException on API status error when fetching models."""
-        mock_client = mocker.AsyncMock()
-        mock_client.models.list = mocker.AsyncMock(
-            side_effect=APIStatusError(
-                message="API error", response=mocker.Mock(request=None), body=None
-            )
+        mock_client = mock_async_ogx_client(mocker)
+        mock_client.openai.list = mocker.AsyncMock(
+            side_effect=ApiException(status=500, reason="API error")
         )
 
         query_request = QueryRequest(query="test")  # pyright: ignore[reportCallIssue]
@@ -2126,21 +2098,14 @@ class TestPrepareResponsesParams:
         self, mocker: MockerFixture
     ) -> None:
         """Test that extra_headers with X-OGX-Provider-Data is set when MCP tools have headers."""
-        mock_client = mocker.AsyncMock()
-        mock_client.models.list = mocker.AsyncMock(
-            return_value=ListModelsResponse.model_construct(
-                data=[
-                    Model.model_construct(
-                        id="provider1/model1",
-                        created=0,
-                        owned_by="test",
-                        object="model",
-                        custom_metadata={
-                            "model_type": "llm",
-                            "provider_id": "provider1",
-                        },
-                    )
-                ]
+        mock_client = mock_async_ogx_client(mocker)
+        mock_client.openai.list = mocker.AsyncMock(
+            return_value=make_openai_models_list_response(
+                make_openai_model(
+                    model_id="provider1/model1",
+                    provider_id="provider1",
+                    model_type="llm",
+                )
             )
         )
 
@@ -2200,21 +2165,14 @@ class TestPrepareResponsesParams:
         self, mocker: MockerFixture
     ) -> None:
         """Test that extra_headers is None when no MCP tools have headers."""
-        mock_client = mocker.AsyncMock()
-        mock_client.models.list = mocker.AsyncMock(
-            return_value=ListModelsResponse.model_construct(
-                data=[
-                    Model.model_construct(
-                        id="provider1/model1",
-                        created=0,
-                        owned_by="test",
-                        object="model",
-                        custom_metadata={
-                            "model_type": "llm",
-                            "provider_id": "provider1",
-                        },
-                    )
-                ]
+        mock_client = mock_async_ogx_client(mocker)
+        mock_client.openai.list = mocker.AsyncMock(
+            return_value=make_openai_models_list_response(
+                make_openai_model(
+                    model_id="provider1/model1",
+                    provider_id="provider1",
+                    model_type="llm",
+                )
             )
         )
 
@@ -2245,27 +2203,18 @@ class TestPrepareResponsesParams:
         self, mocker: MockerFixture
     ) -> None:
         """Test prepare_responses_params raises HTTPException on API status error when creating conversation."""
-        mock_client = mocker.AsyncMock()
-        mock_client.models.list = mocker.AsyncMock(
-            return_value=ListModelsResponse.model_construct(
-                data=[
-                    Model.model_construct(
-                        id="provider1/model1",
-                        created=0,
-                        owned_by="test",
-                        object="model",
-                        custom_metadata={
-                            "model_type": "llm",
-                            "provider_id": "provider1",
-                        },
-                    )
-                ]
+        mock_client = mock_async_ogx_client(mocker)
+        mock_client.openai.list = mocker.AsyncMock(
+            return_value=make_openai_models_list_response(
+                make_openai_model(
+                    model_id="provider1/model1",
+                    provider_id="provider1",
+                    model_type="llm",
+                )
             )
         )
         mock_client.conversations.create = mocker.AsyncMock(
-            side_effect=APIStatusError(
-                message="API error", response=mocker.Mock(request=None), body=None
-            )
+            side_effect=ApiException(status=500, reason="API error")
         )
 
         query_request = QueryRequest(query="test")  # pyright: ignore[reportCallIssue]
@@ -2286,7 +2235,7 @@ class TestPrepareResponsesParams:
         self, mocker: MockerFixture
     ) -> None:
         """Test that image attachments are excluded from text input."""
-        mock_client = mocker.AsyncMock()
+        mock_client = mock_async_ogx_client(mocker)
         mock_conversation = mocker.Mock()
         mock_conversation.id = "new_conv_id"
         mock_client.conversations.create = mocker.AsyncMock(

@@ -3,9 +3,8 @@
 from typing import Annotated, Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from ogx_client import APIConnectionError, BadRequestError
-from ogx_client import APIStatusError as LLSApiStatusError
-from openai._exceptions import APIStatusError as OpenAIAPIStatusError
+from ogx_api import PromptNotFoundError, PromptVersionNotFoundError
+from ogx_client import ApiException, NotFoundError
 
 from authentication import get_auth_dependency
 from authentication.interface import AuthTuple
@@ -30,6 +29,7 @@ from models.api.responses.successful import (
 )
 from models.config import Action
 from utils.endpoints import check_configuration_loaded
+from utils.ogx_serialization import dump_ogx_model
 from utils.query import handle_known_apistatus_errors
 from utils.suid import check_suid_prompt
 
@@ -138,12 +138,13 @@ async def create_prompt_handler(
         client = AsyncOgxClientHolder().get_client()
         payload = body.model_dump(exclude_none=True)
         created = await client.prompts.create(**payload)
-        return PromptResourceResponse.model_validate(created.model_dump())
-    except APIConnectionError as e:
-        logger.error("Unable to connect to OGX: %s", e)
-        response = ServiceUnavailableResponse(backend_name="OGX", cause=str(e))
-        raise HTTPException(**response.model_dump()) from e
-    except (LLSApiStatusError, OpenAIAPIStatusError) as e:
+        return PromptResourceResponse.model_validate(dump_ogx_model(created))
+    except ApiException as e:
+        if not e.status:
+            logger.error("Unable to connect to OGX: %s", e)
+            response = ServiceUnavailableResponse(backend_name="OGX")
+            raise HTTPException(**response.model_dump()) from e
+
         logger.error("API status error while creating prompt: %s", e)
         error_response = handle_known_apistatus_errors(e, "ogx")
         raise HTTPException(**error_response.model_dump()) from e
@@ -186,13 +187,14 @@ async def list_prompts_handler(
     try:
         client = AsyncOgxClientHolder().get_client()
         items = await client.prompts.list()
-        data = [PromptResourceResponse.model_validate(p.model_dump()) for p in items]
+        data = [PromptResourceResponse.model_validate(dump_ogx_model(p)) for p in items]
         return PromptsListResponse(data=data)
-    except APIConnectionError as e:
-        logger.error("Unable to connect to OGX: %s", e)
-        response = ServiceUnavailableResponse(backend_name="OGX", cause=str(e))
-        raise HTTPException(**response.model_dump()) from e
-    except (LLSApiStatusError, OpenAIAPIStatusError) as e:
+    except ApiException as e:
+        if not e.status:
+            logger.error("Unable to connect to OGX: %s", e)
+            response = ServiceUnavailableResponse(backend_name="OGX")
+            raise HTTPException(**response.model_dump()) from e
+
         logger.error("API status error while listing prompts: %s", e)
         error_response = handle_known_apistatus_errors(e, "ogx")
         raise HTTPException(**error_response.model_dump()) from e
@@ -245,20 +247,18 @@ async def get_prompt_handler(
 
     try:
         client = AsyncOgxClientHolder().get_client()
-        if version is not None:
-            retrieved = await client.prompts.retrieve(prompt_id, version=version)
-        else:
-            retrieved = await client.prompts.retrieve(prompt_id)
-        return PromptResourceResponse.model_validate(retrieved.model_dump())
-    except APIConnectionError as e:
-        logger.error("Unable to connect to OGX: %s", e)
-        response = ServiceUnavailableResponse(backend_name="OGX", cause=str(e))
-        raise HTTPException(**response.model_dump()) from e
-    except (BadRequestError, ValueError) as e:
+        retrieved = await client.prompts.retrieve(prompt_id, version=version)
+        return PromptResourceResponse.model_validate(dump_ogx_model(retrieved))
+    except (NotFoundError, PromptNotFoundError, PromptVersionNotFoundError) as e:
         logger.error("Prompt not found: %s", e)
         response = NotFoundResponse(resource="prompt", resource_id=prompt_id)
         raise HTTPException(**response.model_dump()) from e
-    except (LLSApiStatusError, OpenAIAPIStatusError) as e:
+    except ApiException as e:
+        if not e.status:
+            logger.error("Unable to connect to OGX: %s", e)
+            response = ServiceUnavailableResponse(backend_name="OGX")
+            raise HTTPException(**response.model_dump()) from e
+
         logger.error("API status error while retrieving prompt: %s", e)
         error_response = handle_known_apistatus_errors(e, "ogx")
         raise HTTPException(**error_response.model_dump()) from e
@@ -318,16 +318,17 @@ async def update_prompt_handler(
         client = AsyncOgxClientHolder().get_client()
         payload = body.model_dump(exclude_none=True, exclude_unset=True)
         updated = await client.prompts.update(prompt_id, **payload)
-        return PromptResourceResponse.model_validate(updated.model_dump())
-    except APIConnectionError as e:
-        logger.error("Unable to connect to OGX: %s", e)
-        response = ServiceUnavailableResponse(backend_name="OGX", cause=str(e))
-        raise HTTPException(**response.model_dump()) from e
-    except (BadRequestError, ValueError) as e:
+        return PromptResourceResponse.model_validate(dump_ogx_model(updated))
+    except (NotFoundError, PromptNotFoundError) as e:
         logger.error("Prompt update failed: %s", e)
         response = NotFoundResponse(resource="prompt", resource_id=prompt_id)
         raise HTTPException(**response.model_dump()) from e
-    except (LLSApiStatusError, OpenAIAPIStatusError) as e:
+    except ApiException as e:
+        if not e.status:
+            logger.error("Unable to connect to OGX: %s", e)
+            response = ServiceUnavailableResponse(backend_name="OGX")
+            raise HTTPException(**response.model_dump()) from e
+
         logger.error("API status error while updating prompt: %s", e)
         error_response = handle_known_apistatus_errors(e, "ogx")
         raise HTTPException(**error_response.model_dump()) from e
@@ -384,14 +385,15 @@ async def delete_prompt_handler(
         client = AsyncOgxClientHolder().get_client()
         await client.prompts.delete(prompt_id)
         return PromptDeleteResponse(deleted=True, prompt_id=prompt_id)
-    except APIConnectionError as e:
-        logger.error("Unable to connect to OGX: %s", e)
-        response = ServiceUnavailableResponse(backend_name="OGX", cause=str(e))
-        raise HTTPException(**response.model_dump()) from e
-    except (BadRequestError, ValueError) as e:
+    except (NotFoundError, PromptNotFoundError) as e:
         logger.error("Prompt delete failed: %s", e)
         return PromptDeleteResponse(deleted=False, prompt_id=prompt_id)
-    except (LLSApiStatusError, OpenAIAPIStatusError) as e:
+    except ApiException as e:
+        if not e.status:
+            logger.error("Unable to connect to OGX: %s", e)
+            response = ServiceUnavailableResponse(backend_name="OGX")
+            raise HTTPException(**response.model_dump()) from e
+
         logger.error("API status error while deleting prompt: %s", e)
         error_response = handle_known_apistatus_errors(e, "ogx")
         raise HTTPException(**error_response.model_dump()) from e

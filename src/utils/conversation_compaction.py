@@ -50,7 +50,6 @@ from typing import Any, Optional, cast
 from fastapi import HTTPException
 from ogx_api.openai_responses import OpenAIResponseMessage
 from ogx_client import AsyncOgxClient
-from ogx_client.types.conversations.item_create_params import Item
 
 from cache.cache import Cache
 from cache.cache_error import CacheError
@@ -69,6 +68,7 @@ from utils.compaction import (
 )
 from utils.conversations import (
     append_turn_items_to_conversation,
+    build_add_items_request,
     get_all_conversation_items,
 )
 from utils.token_estimator import (
@@ -363,16 +363,17 @@ async def _write_summary_marker(
     summary_text: str,
 ) -> None:
     """Write the summary into the conversation as a recognizable marker message."""
-    marker_item: dict[str, Any] = {
-        "type": "message",
-        "role": "user",
-        "content": [
-            {"type": "input_text", "text": f"{MARKER_SENTINEL} {summary_text}"}
-        ],
-    }
-    await client.conversations.items.create(
+    await client.items.create(
         conversation_id,
-        items=cast(list[Item], [marker_item]),
+        add_items_request=build_add_items_request(
+            [
+                {
+                    "type": "message",
+                    "role": "user",
+                    "content": f"{MARKER_SENTINEL} {summary_text}",
+                }
+            ]
+        ),
     )
 
 

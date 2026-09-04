@@ -7,8 +7,7 @@ from typing import Any
 
 import pytest
 from fastapi import Request
-from ogx_client.types import ListModelsResponse, VersionInfo
-from ogx_client.types.model import Model
+from ogx_client.models.version_info import VersionInfo
 from pytest_mock import AsyncMockType, MockerFixture
 
 import constants
@@ -21,6 +20,8 @@ from tests.integration.conftest import (
     create_agent_run_result,
     create_file_search_agent_run_result,
     create_mock_llm_response,
+    make_openai_model,
+    make_openai_models_list_response,
 )
 
 # ---------------------------------------------------------------------------
@@ -99,19 +100,8 @@ def _build_base_mock_client(mocker: MockerFixture) -> Any:
     mock_client = mocker.AsyncMock()
 
     # Model list
-    mock_client.models.list.return_value = ListModelsResponse.model_construct(
-        data=[
-            Model.model_construct(
-                id="test-provider/test-model",
-                created=0,
-                owned_by="test",
-                object="model",
-                custom_metadata={
-                    "provider_id": "test-provider",
-                    "model_type": "llm",
-                },
-            )
-        ]
+    mock_client.openai.list.return_value = make_openai_models_list_response(
+        make_openai_model()
     )
 
     # Shields (empty)
@@ -167,9 +157,7 @@ def mock_byok_client_fixture(
     )
 
     # No tool-based vector stores
-    mock_vector_stores_response = mocker.MagicMock()
-    mock_vector_stores_response.data = []
-    mock_client.vector_stores.list.return_value = mock_vector_stores_response
+    mock_client.vector_stores.list.return_value = []
 
     mock_holder_class.return_value.get_client.return_value = mock_client
     yield mock_client
@@ -197,9 +185,7 @@ def mock_byok_tool_rag_client_fixture(
     # Tool-based vector stores available
     mock_vector_store = mocker.MagicMock()
     mock_vector_store.id = "vs-byok-knowledge"
-    mock_list_result = mocker.MagicMock()
-    mock_list_result.data = [mock_vector_store]
-    mock_client.vector_stores.list.return_value = mock_list_result
+    mock_client.vector_stores.list.return_value = [mock_vector_store]
 
     tool_run_result = create_file_search_agent_run_result(
         mocker,
@@ -444,9 +430,7 @@ async def test_query_byok_inline_rag_with_request_vector_store_ids(
         return_value=_make_byok_vector_io_response(mocker)
     )
 
-    mock_vs_resp = mocker.MagicMock()
-    mock_vs_resp.data = []
-    mock_client.vector_stores.list.return_value = mock_vs_resp
+    mock_client.vector_stores.list.return_value = []
 
     mock_holder_class.return_value.get_client.return_value = mock_client
 
@@ -517,9 +501,7 @@ async def test_query_byok_request_vector_store_ids_filters_configured_stores(
         return_value=_make_byok_vector_io_response(mocker)
     )
 
-    mock_vs_resp = mocker.MagicMock()
-    mock_vs_resp.data = []
-    mock_client.vector_stores.list.return_value = mock_vs_resp
+    mock_client.vector_stores.list.return_value = []
 
     mock_holder_class.return_value.get_client.return_value = mock_client
 
@@ -784,9 +766,7 @@ async def test_query_byok_combined_inline_and_tool_rag(  # pylint: disable=too-m
     # Tool RAG vector stores
     mock_vector_store = mocker.MagicMock()
     mock_vector_store.id = "vs-byok-knowledge"
-    mock_list_result = mocker.MagicMock()
-    mock_list_result.data = [mock_vector_store]
-    mock_client.vector_stores.list.return_value = mock_list_result
+    mock_client.vector_stores.list.return_value = [mock_vector_store]
 
     # Agent run includes file_search tool RAG result
     combined_run_result = create_file_search_agent_run_result(
@@ -889,9 +869,7 @@ async def test_query_byok_inline_rag_only_configured_rag_id_is_queried(
         return_value=_make_byok_vector_io_response(mocker)
     )
 
-    mock_vs_resp = mocker.MagicMock()
-    mock_vs_resp.data = []
-    mock_client.vector_stores.list.return_value = mock_vs_resp
+    mock_client.vector_stores.list.return_value = []
 
     mock_holder_class.return_value.get_client.return_value = mock_client
 
@@ -994,9 +972,7 @@ async def test_query_byok_score_multiplier_shifts_chunk_priority(  # pylint: dis
 
     mock_client.vector_io.query = mocker.AsyncMock(side_effect=_side_effect)
 
-    mock_vs_resp = mocker.MagicMock()
-    mock_vs_resp.data = []
-    mock_client.vector_stores.list.return_value = mock_vs_resp
+    mock_client.vector_stores.list.return_value = []
 
     mock_holder_class.return_value.get_client.return_value = mock_client
 
@@ -1084,9 +1060,7 @@ async def test_query_rag_content_limit_caps_retrieved_results(  # pylint: disabl
         return_value=_make_vector_io_response(mocker, chunks_data)
     )
 
-    mock_vs_resp = mocker.MagicMock()
-    mock_vs_resp.data = []
-    mock_client.vector_stores.list.return_value = mock_vs_resp
+    mock_client.vector_stores.list.return_value = []
 
     mock_holder_class.return_value.get_client.return_value = mock_client
 
@@ -1191,9 +1165,7 @@ async def test_query_rag_content_limit_caps_across_multiple_sources(  # pylint: 
 
     mock_client.vector_io.query = mocker.AsyncMock(side_effect=_side_effect)
 
-    mock_vs_resp = mocker.MagicMock()
-    mock_vs_resp.data = []
-    mock_client.vector_stores.list.return_value = mock_vs_resp
+    mock_client.vector_stores.list.return_value = []
 
     mock_holder_class.return_value.get_client.return_value = mock_client
 
@@ -1284,9 +1256,7 @@ async def test_query_rag_content_limit_caps_inline_rag(  # pylint: disable=too-m
         return_value=_make_vector_io_response(mocker, chunks_data)
     )
 
-    mock_vs_resp = mocker.MagicMock()
-    mock_vs_resp.data = []
-    mock_client.vector_stores.list.return_value = mock_vs_resp
+    mock_client.vector_stores.list.return_value = []
 
     mock_holder_class.return_value.get_client.return_value = mock_client
 

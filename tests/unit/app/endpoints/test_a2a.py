@@ -6,7 +6,6 @@
 
 from typing import Any
 
-import httpx
 import pytest
 from a2a.server.agent_execution import RequestContext
 from a2a.server.events import EventQueue
@@ -22,8 +21,8 @@ from a2a.types import (
 )
 from a2a.utils import new_agent_text_message
 from fastapi import HTTPException, Request
-from ogx_client import APIConnectionError
-from ogx_client.types import ListModelsResponse
+from ogx_client import ApiException
+from ogx_client.models.list_models_response import ListModelsResponse
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
     InMemorySpanExporter,
 )
@@ -54,6 +53,7 @@ from app.endpoints.a2a import (
 )
 from configuration import AppConfig
 from models.config import Action
+from tests.unit.conftest import make_openai_model, make_openai_models_list_response
 
 # User ID must be proper UUID
 MOCK_AUTH = (
@@ -690,7 +690,7 @@ class TestA2AAgentExecutor:
         mocker: MockerFixture,
         setup_configuration: AppConfig,  # pylint: disable=unused-argument
     ) -> None:
-        """Test _process_task_streaming handles APIConnectionError from models.list()."""
+        """Test _process_task_streaming handles ApiException from openai.list()."""
         executor = A2AAgentExecutor(auth_token="test-token")
 
         # Mock the context with valid input
@@ -720,19 +720,16 @@ class TestA2AAgentExecutor:
             "app.endpoints.a2a._get_context_store", return_value=mock_context_store
         )
 
-        # Mock the client to raise APIConnectionError on models.list()
+        # Mock the client to raise ApiException on openai.list()
         mock_client = mocker.AsyncMock()
-        # Create a mock httpx.Request for APIConnectionError
-        mock_request = httpx.Request("GET", "http://test-ogx/models")
-        mock_client.models.list.side_effect = APIConnectionError(
-            message="Connection refused: unable to reach OGX",
-            request=mock_request,
+        mock_client.openai.list.side_effect = ApiException(
+            status=None, reason="Connection refused: unable to reach OGX"
         )
         mocker.patch(
             "app.endpoints.a2a.AsyncOgxClientHolder"
         ).return_value.get_client.return_value = mock_client
 
-        # prepare_responses_params raises HTTPException when APIConnectionError occurs
+        # prepare_responses_params raises HTTPException when ApiException occurs
         with pytest.raises(HTTPException) as exc_info:
             await executor._process_task_streaming(
                 context, task_updater, context.task_id, context.context_id
@@ -748,7 +745,7 @@ class TestA2AAgentExecutor:
         mocker: MockerFixture,
         setup_configuration: AppConfig,  # pylint: disable=unused-argument
     ) -> None:
-        """Test _process_task_streaming handles APIConnectionError during agent run."""
+        """Test _process_task_streaming handles ApiException during agent run."""
         executor = A2AAgentExecutor(auth_token="test-token")
 
         # Mock the context with valid input
@@ -780,9 +777,10 @@ class TestA2AAgentExecutor:
 
         # Mock the client
         mock_client = mocker.AsyncMock()
-        mock_models = [mocker.MagicMock()]
-        mock_client.models.list = mocker.AsyncMock(
-            return_value=ListModelsResponse.model_construct(data=mock_models)
+        mock_client.openai.list = mocker.AsyncMock(
+            return_value=make_openai_models_list_response(
+                make_openai_model(model_id="test-model")
+            )
         )
         mocker.patch(
             "app.endpoints.a2a.AsyncOgxClientHolder"
@@ -809,13 +807,11 @@ class TestA2AAgentExecutor:
         )
 
         # Mock build_agent to return an agent whose run_stream_events raises
-        mock_request = httpx.Request("POST", "http://test-ogx/responses")
         mock_agent = mocker.MagicMock()
         mock_stream_ctx = mocker.AsyncMock()
         mock_stream_ctx.__aenter__ = mocker.AsyncMock(
-            side_effect=APIConnectionError(
-                message="Connection timeout during streaming",
-                request=mock_request,
+            side_effect=ApiException(
+                status=None, reason="Connection timeout during streaming"
             )
         )
         mock_agent.run_stream_events.return_value = mock_stream_ctx
@@ -867,8 +863,8 @@ class TestA2AAgentExecutor:
         )
 
         mock_client = mocker.AsyncMock()
-        mock_client.models.list = mocker.AsyncMock(
-            return_value=ListModelsResponse.model_construct(data=[mocker.MagicMock()])
+        mock_client.openai.list = mocker.AsyncMock(
+            return_value=make_openai_models_list_response(mocker.MagicMock())
         )
         mocker.patch(
             "app.endpoints.a2a.AsyncOgxClientHolder"
@@ -944,8 +940,8 @@ class TestA2AAgentExecutor:
         )
 
         mock_client = mocker.AsyncMock()
-        mock_client.models.list = mocker.AsyncMock(
-            return_value=ListModelsResponse.model_construct(data=[mocker.MagicMock()])
+        mock_client.openai.list = mocker.AsyncMock(
+            return_value=make_openai_models_list_response(mocker.MagicMock())
         )
         mocker.patch(
             "app.endpoints.a2a.AsyncOgxClientHolder"

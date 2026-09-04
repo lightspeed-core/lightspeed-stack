@@ -681,6 +681,32 @@ class TestQuestionValidityRun:
         mocker.patch(f"{_MODULE}.OgxResponsesModel.from_ogx_client")
 
     @pytest.mark.asyncio
+    async def test_run_applies_model_prompt_template(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test that run() applies model_prompt template before model_request."""
+        mock_model_request = mocker.patch(
+            f"{_MODULE}.model_request",
+            return_value=ModelResponse(
+                parts=[TextPart(content=SUBJECT_ALLOWED)],
+                usage=RequestUsage(),
+            ),
+        )
+
+        custom_prompt = "Classify: $message (reply $allowed or $rejected)"
+        config = QuestionValidityConfig(
+            model_id="test",
+            model_prompt=custom_prompt,
+        )
+        qv = QuestionValidity(config=config)
+        await qv.run("How do I create a pod?")
+
+        messages = mock_model_request.call_args.kwargs["messages"]
+        prompt_str = str(messages[0])
+        assert "Classify: How do I create a pod?" in prompt_str
+        assert "reply ALLOWED or REJECTED" in prompt_str
+
+    @pytest.mark.asyncio
     async def test_allowed_returns_passed(self, mocker: MockerFixture) -> None:
         """Test that an allowed response returns ShieldModerationPassed."""
         mock_response = ModelResponse(

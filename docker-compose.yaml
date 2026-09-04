@@ -23,10 +23,12 @@ services:
       - ./src/data:/opt/app-root/data:ro,z
       - ${GCP_KEYS_PATH:-./tmp/.gcp-keys-dummy}:/opt/app-root/.gcp-keys:ro
       - ./lightspeed-stack.yaml:/opt/app-root/lightspeed-stack.yaml:ro,z
+      # Writable OGX storage (rag/ work copy is re-seeded by entrypoint each start)
       - llama-storage:/opt/app-root/src/.llama/storage
-      - ./tests/e2e/rag:/opt/app-root/src/.llama/storage/rag:z
+      # Read-only e2e FAISS fixtures — never mount these as the live KV_RAG_PATH
+      - ./tests/e2e/rag:/opt/app-root/src/.llama/storage/.e2e-rag-seed:ro,z
       - mock-tls-certs:/certs:ro
-      - ${HF_CACHE_PATH:-./tmp/.hf-cache}:/opt/app-root/src/.cache/huggingface
+      - ${HF_CACHE_PATH:-./tmp/.hf-cache}:/opt/app-root/src/.cache/huggingface:z
     environment:
       - BRAVE_SEARCH_API_KEY=${BRAVE_SEARCH_API_KEY:-}
       - TAVILY_SEARCH_API_KEY=${TAVILY_SEARCH_API_KEY:-}
@@ -64,6 +66,10 @@ services:
       - FAISS_VECTOR_STORE_ID=${FAISS_VECTOR_STORE_ID:-}
       # Disable OGX ~/.llama → ~/.ogx migration (bind-mount under ~/.llama/storage/rag).
       - OGX_CONFIG_DIR=/opt/app-root/src/.ogx
+      # Live RAG DBs under /tmp (writable for UID 1001); seeded from .e2e-rag-seed
+      - RAG_SEED_DIR=/opt/app-root/src/.llama/storage/.e2e-rag-seed
+      - KV_RAG_PATH=/tmp/e2e-rag-work/kv_store.db
+      - PDF_KV_RAG_PATH=/tmp/e2e-rag-work/pdf_kv_store.db
       # Prevent HuggingFace Hub update checks (HTTP 429 rate-limiting in CI from parallel jobs).
       - HF_HUB_OFFLINE=1
       # OKP/Solr RAG

@@ -6,7 +6,6 @@ from typing import Optional
 
 import httpx
 from ogx.core.library_client import AsyncOGXAsLibraryClient
-from ogx.core.request_headers import parse_request_provider_data
 from ogx_client import AsyncOgxClient
 from openai import AsyncOpenAI
 from pydantic_ai import ModelProfile
@@ -14,6 +13,7 @@ from pydantic_ai.models import create_async_http_client
 from pydantic_ai.profiles.openai import openai_model_profile
 from pydantic_ai.providers import Provider
 
+from client.ogx import read_provider_data
 from pydantic_ai_lightspeed.ogx._transport import (
     OgxLibraryTransport,
     wrap_http_client_with_provider_data,
@@ -72,14 +72,8 @@ class OgxProvider(Provider[AsyncOpenAI]):
         api_key = client.api_key or "not-needed"
         base = str(client.base_url).rstrip("/")
         base_url = base if base.endswith("/v1") else f"{base}/v1"
-        raw_headers = client.default_headers
-        default_headers = {
-            str(key): str(value)
-            for key, value in raw_headers.items()
-            if isinstance(value, str)
-        }
-        provider_data = parse_request_provider_data(default_headers)
-        http_client = client._client  # pylint: disable=protected-access
+        provider_data = read_provider_data(client)
+        http_client = client.api_client.async_client
         http_client = wrap_http_client_with_provider_data(http_client, provider_data)
         return OgxProvider(
             base_url=base_url,

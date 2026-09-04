@@ -3,7 +3,7 @@
 |                    |                                                                                  |
 |--------------------|----------------------------------------------------------------------------------|
 | **Date**           | 2026-04-23                                                                       |
-| **Component**      | Lightspeed Core Stack (src/models/config.py, src/llama_stack_configuration.py, src/client.py, src/lightspeed_stack.py, scripts/llama-stack-entrypoint.sh) |
+| **Component**      | Lightspeed Core Stack (src/models/config.py, src/ogx_configuration.py, src/client.py, src/lightspeed_stack.py, scripts/ogx-entrypoint.sh) |
 | **Authors**        | Maxim Svistunov                                                                   |
 | **Feature**        | [LCORE-836](https://redhat.atlassian.net/browse/LCORE-836)                       |
 | **Spike**          | [ogx-config-merge-spike.md](ogx-config-merge-spike.md)           |
@@ -202,7 +202,7 @@ and passes the path to the library client.
 
 At OGX container startup (server mode): the container's
 entrypoint script invokes
-`python3 /opt/app-root/llama_stack_configuration.py -c <lightspeed-stack.yaml>
+`python3 /opt/app-root/ogx_configuration.py -c <lightspeed-stack.yaml>
 -o /opt/app-root/run.yaml`. The Python CLI auto-detects unified vs legacy
 by the same synthesis-input check; in unified mode it synthesizes and
 writes the output; in legacy mode it performs in-place enrichment as
@@ -342,7 +342,7 @@ class Configuration(ConfigurationBase):
 ### API changes
 
 None at the REST API surface. Internal API additions in
-`src/llama_stack_configuration.py`:
+`src/ogx_configuration.py`:
 
 - `synthesize_configuration(lcs_config, config_file_dir, default_baseline)
   -> dict` — the synthesis pipeline.
@@ -450,11 +450,11 @@ not have had a full release with a working migration path. Releases:
 | File | What to do |
 |---|---|
 | `src/models/config.py` | Add `UnifiedInferenceProvider`. Extend the existing `InferenceConfiguration` with `providers: list[UnifiedInferenceProvider]`. Add `UnifiedLlamaStackConfig` (`baseline`/`profile`/`native_override`) and a `config` field on `LlamaStackConfiguration`. Put the unified-vs-legacy `model_validator` on the **root** `Configuration` model (spans `inference.providers` + `llama_stack.*`). |
-| `src/llama_stack_configuration.py` | Add `synthesize_configuration`, `deep_merge_list_replace`, `apply_high_level_inference`, `load_default_baseline`, `synthesize_to_file`, `migrate_config_dumb`, `PROVIDER_TYPE_MAP`, `DEFAULT_BASELINE_RESOURCE`. Update `main()` to auto-detect unified vs legacy. |
+| `src/ogx_configuration.py` | Add `synthesize_configuration`, `deep_merge_list_replace`, `apply_high_level_inference`, `load_default_baseline`, `synthesize_to_file`, `migrate_config_dumb`, `PROVIDER_TYPE_MAP`, `DEFAULT_BASELINE_RESOURCE`. Update `main()` to auto-detect unified vs legacy. |
 | `src/data/default_run.yaml` | New file — a thinner baseline than today's repo-root `run.yaml`. Notably do **not** reference `${env.EXTERNAL_PROVIDERS_DIR}` without a default (see "Findings discovered during PoC" in the spike doc). OpenAI is conditional on `OPENAI_API_KEY` (`${env.OPENAI_API_KEY:+openai}` / `${env.OPENAI_API_KEY:=}`). |
 | `src/client.py` | In `_load_library_client`: branch on `config.config` presence. Add `_synthesize_library_config()` that calls the synthesizer and writes to the deterministic path (R10). Keep `_enrich_library_config` for legacy. |
 | `src/lightspeed_stack.py` | Add `--migrate-config`, `--run-yaml`, `--migrate-output`, `--synthesized-config-output` flags. Add an early-exit branch in `main()` that dispatches to `migrate_config_dumb` when `--migrate-config` is set. Clean up stale docstring. |
-| `scripts/llama-stack-entrypoint.sh` | No functional change — the Python CLI already auto-detects. Update the comment to document both modes. |
+| `scripts/ogx-entrypoint.sh` | No functional change — the Python CLI already auto-detects. Update the comment to document both modes. |
 | `test.containerfile` | Copy `src/data/` into `/opt/app-root/data/` so `load_default_baseline()` resolves inside the LS container. |
 | `docker-compose.yaml` | Provide a unified-mode variant (either a new compose file or env-var-switched mount list). Legacy compose continues to work. |
 
@@ -519,7 +519,7 @@ reference.
 
 - Framework: pytest + pytest-mock. Unit tests live in
   `tests/unit/test_llama_stack_synthesize.py` (synthesizer + migration)
-  and `tests/unit/models/config/test_llama_stack_configuration.py`
+  and `tests/unit/models/config/test_ogx_configuration.py`
   (schema validation).
 - Merge semantics: parametric tests over scalar / map / list /
   type-mismatch / precedence cases.
