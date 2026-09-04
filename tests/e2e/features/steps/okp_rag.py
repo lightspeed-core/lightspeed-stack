@@ -9,6 +9,8 @@ import requests
 from behave import given, then  # pyright: ignore[reportAttributeAccessIssue]
 from behave.runner import Context
 
+from tests.e2e.utils.utils import is_prow_environment
+
 # ── Constants ──
 
 # OKP/Solr Docker container name
@@ -307,7 +309,17 @@ def _find_okp_container() -> str | None:
 
 @given("OKP(Solr) server is running")
 def okp_server_is_running(context: Context) -> None:
-    """Verify that the OKP(Solr) server is reachable."""
+    """Verify Solr is reachable the way OGX will call it.
+
+    On Prow/Konflux, GET Solr from inside the OGX pod (in-cluster Service).
+    Locally, GET the host-mapped OKP URL.
+    """
+    if is_prow_environment():
+        from tests.e2e.utils.prow_utils import assert_okp_reachable_from_ogx
+
+        assert_okp_reachable_from_ogx()
+        return
+
     url = OKP_DEFAULT_URL
     try:
         resp = requests.get(url, timeout=10)

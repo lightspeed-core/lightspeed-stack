@@ -18,7 +18,8 @@
 #   do not auto-trigger a full stack restart on failure.
 # - OKP Solr is not deployed in pipeline setup. Features tagged @cfg_okp call
 #   deploy-okp-solr from before_feature (7GB image, first pull ~10-15 min) and
-#   start the localhost:8081 port-forward there.
+#   start the localhost:8081 port-forward there. Background "OKP is running"
+#   then GETs Solr from inside the OGX pod (in-cluster Service), not runner :8081.
 #
 # Commands:
 #   restart-lightspeed              - Restart lightspeed-stack pod and port-forward
@@ -37,6 +38,7 @@
 #   delete-e2e-mock-tls-inference   - Remove mock TLS pod + Service (manual cleanup)
 #   restart-e2e-mock-tls-inference  - Delete then deploy mock TLS (manual / recovery)
 #   sync-mock-tls-certs-secret      - Copy mock /certs into Secret for OGX mount
+#   check-okp-solr-from-llama       - GET Solr /solr/ from inside the OGX pod
 #   deploy-okp-solr                 - Deploy OKP Solr (idempotent; @cfg_okp before_feature)
 #   delete-okp-solr                 - Delete OKP Solr pod
 #   disrupt-okp-solr                - Delete OKP Solr pod to disrupt connection
@@ -1097,6 +1099,28 @@ cmd_disrupt_llama_stack() {
     fi
 }
 
+# Prove OGX can reach Solr in-cluster. Runner localhost:8081 only tests port-forward.
+cmd_check_okp_solr_from_llama() {
+    local pod="llama-stack-service"
+    local ctr="llama-stack-container"
+    local url="http://okp-solr-service-svc:8080/solr/"
+
+    echo "Checking OKP Solr from OGX pod at ${url}..."
+    if oc exec -n "$NAMESPACE" "$pod" -c "$ctr" -- \
+        curl -sf --max-time 10 -o /dev/null "$url" 2>/dev/null; then
+        echo "✓ OGX pod can reach OKP Solr"
+        return 0
+    fi
+    if oc exec -n "$NAMESPACE" "$pod" -c "$ctr" -- \
+        /opt/app-root/.venv/bin/python -c \
+        'import urllib.request; urllib.request.urlopen("http://okp-solr-service-svc:8080/solr/", timeout=10).read()'; then
+        echo "✓ OGX pod can reach OKP Solr"
+        return 0
+    fi
+    echo "ERROR: OGX pod cannot reach OKP Solr at $url"
+    return 1
+}
+
 cmd_deploy_okp_solr() {
     local pod_name="okp-solr-service"
     # First pull of the ~7GB OKP image is typically 10-15 min. 300 attempts × 3s = 900s.
@@ -1254,6 +1278,9 @@ case "$COMMAND" in
     dump-pod-logs)
         cmd_dump_pod_logs "$@"
         ;;
+    check-okp-solr-from-llama)
+        cmd_check_okp_solr_from_llama
+        ;;
     deploy-okp-solr)
         cmd_deploy_okp_solr
         ;;
@@ -1288,6 +1315,7 @@ case "$COMMAND" in
         echo "  deploy-e2e-interception-proxy      - Deploy in-cluster interception proxy pod"
         echo "  deploy-e2e-mock-tls-inference        - Deploy mock HTTPS inference (tls-*.feature)"
         echo "  delete-e2e-mock-tls-inference        - Remove mock TLS pod + Service"
+        echo "  check-okp-solr-from-llama            - GET Solr /solr/ from inside the OGX pod"
         echo "  deploy-okp-solr                      - Deploy OKP Solr (idempotent; @cfg_okp before_feature)"
         echo "  delete-okp-solr                      - Delete OKP Solr pod"
         echo "  disrupt-okp-solr                     - Delete OKP Solr pod to disrupt connection"
