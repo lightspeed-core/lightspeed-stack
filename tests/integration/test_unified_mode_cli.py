@@ -158,13 +158,14 @@ def test_committed_migrated_fixture_matches_cli_output(
     ``tests/e2e/configuration/unified-mode/<mode>/lightspeed-stack-unified-migrated.yaml``
     instead of generating it in a step (e2e steps never run ``src/`` CLIs).
     This guard fails the moment ``--migrate-config`` output drifts from the
-    committed file. To refresh the fixture, run from the repo root::
+    committed file. To refresh the fixture, run from the repo root with
+    ``DIR=tests/e2e/configuration/unified-mode/<mode>``::
 
         uv run python src/lightspeed_stack.py --migrate-config \\
             --run-yaml tests/e2e/configs/run-ci.yaml \\
-            -c tests/e2e/configuration/unified-mode/<mode>/lightspeed-stack-legacy-for-migration.yaml \\
-            --migrate-output tests/e2e/configuration/unified-mode/<mode>/lightspeed-stack-unified-migrated.yaml
-        chmod 644 tests/e2e/configuration/unified-mode/<mode>/lightspeed-stack-unified-migrated.yaml
+            -c $DIR/lightspeed-stack-legacy-for-migration.yaml \\
+            --migrate-output $DIR/lightspeed-stack-unified-migrated.yaml
+        chmod 644 $DIR/lightspeed-stack-unified-migrated.yaml
     """
     output = tmp_path / "migrated.yaml"
     _migrate(_E2E_FIXTURES / mode / _LEGACY_PAIR_FIXTURE, _E2E_RUN_YAML, output)
