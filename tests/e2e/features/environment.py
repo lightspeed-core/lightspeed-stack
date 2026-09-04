@@ -554,6 +554,11 @@ def before_feature(context: Context, feature: Feature) -> None:
     context.original_deployment_mode = getattr(context, "deployment_mode", "server")
     context.original_is_library_mode = getattr(context, "is_library_mode", False)
 
+    # Debug: Print feature name and tags for OKP RAG debugging
+    print(f"[before_feature] Feature: {feature.name}")
+    print(f"[before_feature] Feature tags: {feature.tags}")
+    print(f"[before_feature] Current deployment_mode: {context.deployment_mode}")
+
     # Features tagged @library-mode-in-konflux always run in library mode
     # (originally for Konflux performance, but beneficial everywhere)
     if "library-mode-in-konflux" in feature.tags:
@@ -561,8 +566,10 @@ def before_feature(context: Context, feature: Feature) -> None:
         context.is_library_mode = True
         # Print to stdout so it appears in test logs
         print(f"✓ Switching to library mode for feature: {feature.name}")
-        print(f"  Reason: Feature tagged @library-mode-in-konflux")
-        print(f"  Config directory will be: tests/e2e/configuration/library-mode/")
+        print("  Reason: Feature tagged @library-mode-in-konflux")
+        print("  Config directory will be: tests/e2e/configuration/library-mode/")
+    else:
+        print(f"[before_feature] NOT switching to library mode - tag not found")
     # One real Llama disruption per feature (module-level flag; survives context resets)
     reset_llama_stack_disrupt_once_tracking()
     if feature.filename and is_tls_feature_file(feature.filename):
@@ -663,5 +670,6 @@ def after_feature(context: Context, feature: Feature) -> None:
 
 # Behave captures hook stdout by default; output is only shown in some failure paths.
 # Disable capture so feature timing and failure diagnostics appear in the main CI log.
+before_feature.capture = False  # type: ignore[attr-defined]
 after_feature.capture = False  # type: ignore[attr-defined]
 after_scenario.capture = False  # type: ignore[attr-defined]
