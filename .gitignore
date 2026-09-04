@@ -203,5 +203,3 @@ local-run.yaml
 # Per-developer feature design overrides (see docs/contributing/feature-design.config)
 .feature-design.config.local
 
-# Generated at e2e test time by the unified-mode --migrate-config step
-tests/e2e/configuration/unified-mode/**/lightspeed-stack-unified-migrated.yaml
