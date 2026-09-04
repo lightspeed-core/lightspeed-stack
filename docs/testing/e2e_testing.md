@@ -15,8 +15,9 @@ This guide describes how to run, extend, and understand the Lightspeed Core Stac
 7. [Configuration Files](#configuration-files)
 8. [Feature Files and Steps](#feature-files-and-steps)
 9. [Gherkin Keywords in Feature Files](#gherkin-keywords-in-feature-files)
-10. [Writing New Scenarios](#writing-new-scenarios)
-11. [Troubleshooting](#troubleshooting)
+10. [Choosing the Test Layer: E2E or Integration?](#choosing-the-test-layer-e2e-or-integration)
+11. [Writing New Scenarios](#writing-new-scenarios)
+12. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -336,9 +337,50 @@ Here, **Given** sets state, **When** performs the HTTP call, **Then** and **And*
 
 ---
 
+## Choosing the Test Layer: E2E or Integration?
+
+Before writing a scenario, decide whether it belongs here at all. The suite has
+three layers, and the boundary between the top two is strict:
+
+| Layer | Location | Talks to | May touch `src/`? |
+|---|---|---|---|
+| Unit | `tests/unit/` | one function or class, everything else mocked | yes |
+| Integration | `tests/integration/` (pytest) | real configuration loading, real database, real pipelines in-process; external services (OGX, LLM providers) mocked; repo CLIs as subprocesses | yes |
+| E2E | `tests/e2e/` (behave) | a deployed stack, through its public surfaces only: the HTTP API, container lifecycle and logs, configuration files the harness applies | **never** |
+
+The rule for e2e: **a step definition must not import from, invoke, or shell out
+to anything under `src/`.** The moment it does, the scenario stops proving what a
+deployed stack does and starts proving what a checked-out source tree does — that
+is an integration test, and it belongs in `tests/integration/` as pytest, where it
+runs in seconds without Docker.
+
+A quick test: *could this scenario run unchanged against a container image, with
+no source checkout on the machine?* If yes, it is e2e. If it needs
+`src/lightspeed_stack.py`, `src/ogx_configuration.py`, a Python import from the
+service, or a subprocess of a repo entrypoint, it is integration.
+
+Typical consequences:
+
+- Configuration **validation**, **migration** (`--migrate-config`) and run.yaml
+  **synthesis** are integration concerns: they exercise CLIs and the config
+  pipeline, not a running service. See `tests/integration/test_unified_synthesis.py`
+  and `tests/integration/test_unified_mode_cli.py`.
+- **Boot** scenarios (apply a config, restart, hit `readiness` and `query`) and
+  **log-evidence** scenarios (`docker logs <container>`) are e2e: they observe the
+  deployed stack from outside.
+- If a scenario needs a generated artifact as its starting point (for example a
+  migrated configuration), commit the artifact as a fixture and add an
+  integration test that guards it against drift, rather than generating it inside
+  the e2e step.
+
+The integration side of this boundary is described in
+[tests/integration/README.md](../../tests/integration/README.md#what-to-test).
+
+---
+
 ## Writing New Scenarios
 
-1. **Choose or add a feature file** under `tests/e2e/features/` and use existing steps where possible. If you add a new file, **add it to `tests/e2e/test_list.txt`** so the suite runs it. 
+1. **Confirm the scenario is e2e at all** — see [Choosing the Test Layer](#choosing-the-test-layer-e2e-or-integration). Then **choose or add a feature file** under `tests/e2e/features/` and use existing steps where possible. If you add a new file, **add it to `tests/e2e/test_list.txt`** so the suite runs it. 
 2. **Use tags** for mode-dependent or config-dependent behavior (`@skip-in-library-mode`, `@Authorized`, etc.). **Adding a tag that switches configuration** (e.g. a new feature-level or scenario-level config) usually means you must also add or change a **Lightspeed Stack config** file under `configuration/server-mode/` or `library-mode/` and wire the tag in `environment.py` (e.g. in `before_feature` / `after_feature` or `before_scenario` / `after_scenario`) so the config is applied and the container restarted when the tag is active.
 3. **Use placeholders** `{MODEL}` and `{PROVIDER}` in request bodies so the same scenario works with different backends.
 4. **Add step definitions** in the appropriate `features/steps/*.py` if you need new steps; reuse `context` for host, port, auth, and responses.
