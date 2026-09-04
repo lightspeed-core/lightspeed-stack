@@ -110,6 +110,115 @@ oc create secret docker-registry quay-lightspeed-pull-secret \
 # Link the secret to default service account for image pulls
 oc secrets link default quay-lightspeed-pull-secret --for=pull -n "$NAMESPACE" 2>/dev/null || echo "⚠️  Secret already linked to default SA"
 
+# Create Red Hat registry pull secret for OKP images
+# Option 1: Use mounted docker-registry secret (preferred - simpler)
+if [[ -f /var/run/redhat-registry-pull-secret/.dockerconfigjson ]]; then
+  log "Creating Red Hat registry pull secret from mounted docker-registry secret..."
+
+  DOCKERCONFIG_BASE64=$(cat /var/run/redhat-registry-pull-secret/.dockerconfigjson | base64 -w0)
+
+  # Use PipelineRun metadata for ownerReference (provided by Tekton context)
+  # This ensures automatic cleanup when the PipelineRun completes
+  if [[ -n "${TEKTON_PIPELINERUN_NAME:-}" && -n "${TEKTON_PIPELINERUN_UID:-}" ]]; then
+    log "Setting ownerReference to PipelineRun: $TEKTON_PIPELINERUN_NAME (UID: ${TEKTON_PIPELINERUN_UID:0:8}...)"
+
+    # Create secret with ownerReference using YAML (ensures automatic cleanup)
+    cat <<EOF | oc apply -f -
+apiVersion: v1
+kind: Secret
+metadata:
+  name: redhat-registry-pull-secret
+  namespace: $NAMESPACE
+  ownerReferences:
+  - apiVersion: tekton.dev/v1beta1
+    kind: PipelineRun
+    name: $TEKTON_PIPELINERUN_NAME
+    uid: $TEKTON_PIPELINERUN_UID
+    controller: false
+    blockOwnerDeletion: false
+type: kubernetes.io/dockerconfigjson
+data:
+  .dockerconfigjson: $DOCKERCONFIG_BASE64
+EOF
+    log "✅ Red Hat registry pull secret created with ownerReference"
+
+    # Link to default service account
+    oc secrets link default redhat-registry-pull-secret --for=pull -n "$NAMESPACE" 2>/dev/null || echo "⚠️  Secret already linked to default SA"
+  else
+    # Fallback: create without ownerReference (requires manual cleanup)
+    log "⚠️  TEKTON_PIPELINERUN_NAME/UID not set - creating secret without ownerReference"
+    log "⚠️  Manual cleanup required after test completion"
+
+    cat <<EOF | oc apply -f -
+apiVersion: v1
+kind: Secret
+metadata:
+  name: redhat-registry-pull-secret
+  namespace: $NAMESPACE
+type: kubernetes.io/dockerconfigjson
+data:
+  .dockerconfigjson: $DOCKERCONFIG_BASE64
+EOF
+    log "✅ Red Hat registry pull secret created (without ownerReference)"
+    oc secrets link default redhat-registry-pull-secret --for=pull -n "$NAMESPACE" 2>/dev/null || echo "⚠️  Secret already linked to default SA"
+  fi
+
+# Option 2: Fallback to username/password mounted separately (legacy approach)
+elif [[ -d /var/run/redhat-registry-username ]] && [[ -d /var/run/redhat-registry-password ]]; then
+  log "Creating Red Hat registry pull secret from username/password..."
+  REDHAT_USERNAME=""
+  REDHAT_PASSWORD=""
+
+  # Read username
+  shopt -s nullglob
+  for _f in /var/run/redhat-registry-username/*; do
+    [[ -f "$_f" ]] && REDHAT_USERNAME="$(cat "$_f")" && break
+  done
+
+  # Read password
+  for _f in /var/run/redhat-registry-password/*; do
+    [[ -f "$_f" ]] && REDHAT_PASSWORD="$(cat "$_f")" && break
+  done
+  shopt -u nullglob
+
+  if [[ -n "$REDHAT_USERNAME" ]] && [[ -n "$REDHAT_PASSWORD" ]]; then
+    # Use PipelineRun metadata for ownerReference (provided by Tekton context)
+    if [[ -n "${TEKTON_PIPELINERUN_NAME:-}" && -n "${TEKTON_PIPELINERUN_UID:-}" ]]; then
+      log "Setting ownerReference to PipelineRun: $TEKTON_PIPELINERUN_NAME (UID: ${TEKTON_PIPELINERUN_UID:0:8}...)"
+
+      # Create secret with ownerReference (oc handles JSON encoding safely)
+      oc create secret docker-registry redhat-registry-pull-secret \
+        --docker-server=registry.redhat.io \
+        --docker-username="$REDHAT_USERNAME" \
+        --docker-password="$REDHAT_PASSWORD" \
+        -n "$NAMESPACE" \
+        --dry-run=client -o json | \
+      jq --arg name "$TEKTON_PIPELINERUN_NAME" --arg uid "$TEKTON_PIPELINERUN_UID" \
+        '.metadata.ownerReferences = [{"apiVersion":"tekton.dev/v1beta1","kind":"PipelineRun","name":$name,"uid":$uid,"controller":false,"blockOwnerDeletion":false}]' | \
+      oc apply -f -
+      log "✅ Red Hat registry pull secret created with ownerReference"
+    else
+      # Fallback: create without ownerReference
+      log "⚠️  TEKTON_PIPELINERUN_NAME/UID not set - creating secret without ownerReference"
+      log "⚠️  Manual cleanup required after test completion"
+
+      oc create secret docker-registry redhat-registry-pull-secret \
+        --docker-server=registry.redhat.io \
+        --docker-username="$REDHAT_USERNAME" \
+        --docker-password="$REDHAT_PASSWORD" \
+        -n "$NAMESPACE" 2>/dev/null && log "✅ Red Hat registry pull secret created" || log "⚠️  Secret exists or creation failed"
+    fi
+
+    # Link to default service account
+    oc secrets link default redhat-registry-pull-secret --for=pull -n "$NAMESPACE" 2>/dev/null || echo "⚠️  Secret already linked to default SA"
+  else
+    log "⚠️  Red Hat registry credentials not found in /var/run - OKP image pull may fail"
+  fi
+else
+  log "⚠️  Red Hat registry credential mounts not found - OKP image pull may fail"
+  log "   (This is OK if not testing OKP features)"
+fi
+
 
 #========================================
 # 4. DEPLOY MOCK SERVERS (JWKS & MCP)
@@ -146,6 +255,10 @@ oc wait pod/mock-jwks pod/mock-mcp \
 }
 log "✅ Mock servers deployed"
 
+# OKP Solr is not part of cluster setup. okp_rag.feature (@cfg_okp) deploys it from
+# before_feature via e2e-ops deploy-okp-solr (7GB image, ~10-15 min first pull).
+# No other e2e feature depends on OKP.
+#
 # e2e-tunnel-proxy and e2e-interception-proxy are deployed from proxy.feature steps
 # (see tests/e2e/features/steps/proxy.py + e2e-ops deploy-e2e-*-proxy).
 
@@ -269,14 +382,29 @@ e2e_echo_pod_logs() {
   done < <(oc logs llama-stack-service -n "$NAMESPACE" --tail="$n" 2>&1) || true
 }
 
-progress "Waiting for lightspeed-stack and llama-stack pods"
-if ! oc wait pod/lightspeed-stack-service pod/llama-stack-service \
-    -n "$NAMESPACE" --for=condition=Ready --timeout=600s; then
-  progress "❌ One or both service pods failed to become ready within timeout"
-  e2e_echo_pod_logs 200
-  exit 1
-fi
-log "✅ Both service pods are ready"
+progress "Waiting for lightspeed-stack and llama-stack pods (up to 10 min)"
+for i in $(seq 1 60); do
+  lcs_ready=$(oc get pod lightspeed-stack-service -n "$NAMESPACE" -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "False")
+  llama_ready=$(oc get pod llama-stack-service -n "$NAMESPACE" -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "False")
+
+  if [[ "$lcs_ready" == "True" ]] && [[ "$llama_ready" == "True" ]]; then
+    log "✅ Both service pods are ready after $(( i * 10 ))s"
+    break
+  fi
+
+  if [ $((i % 6)) -eq 0 ]; then
+    lcs_status=$(oc get pod lightspeed-stack-service -n "$NAMESPACE" -o jsonpath='{.status.phase}' 2>/dev/null || echo "unknown")
+    llama_status=$(oc get pod llama-stack-service -n "$NAMESPACE" -o jsonpath='{.status.phase}' 2>/dev/null || echo "unknown")
+    progress "[$(( i * 10 ))s] lightspeed-stack: $lcs_status ($lcs_ready), llama-stack: $llama_status ($llama_ready)"
+  fi
+
+  if [ $i -eq 60 ]; then
+    progress "❌ One or both service pods failed to become ready within 600s timeout"
+    e2e_echo_pod_logs 200
+    exit 1
+  fi
+  sleep 10
+done
 
 if [ "$QUIET" = "1" ]; then
   e2e_echo_pod_logs 80
@@ -297,8 +425,10 @@ fi
 # Debug hook/port churn: export E2E_OPS_VERBOSE=1 before running pipeline.sh
 export E2E_LSC_PORT_FORWARD_PID_FILE="${E2E_LSC_PORT_FORWARD_PID_FILE:-/tmp/e2e-lightspeed-port-forward.pid}"
 export E2E_LLAMA_PORT_FORWARD_PID_FILE="${E2E_LLAMA_PORT_FORWARD_PID_FILE:-/tmp/e2e-llama-port-forward.pid}"
+export E2E_OKP_PORT_FORWARD_PID_FILE="${E2E_OKP_PORT_FORWARD_PID_FILE:-/tmp/e2e-okp-port-forward.pid}"
 rm -f "$E2E_LSC_PORT_FORWARD_PID_FILE"
 rm -f "$E2E_LLAMA_PORT_FORWARD_PID_FILE"
+rm -f "$E2E_OKP_PORT_FORWARD_PID_FILE"
 
 oc label pod lightspeed-stack-service pod=lightspeed-stack-service -n $NAMESPACE
 
@@ -319,7 +449,7 @@ kill_listeners_on_ports() {
     fi
   done
 }
-kill_listeners_on_ports 8080 8000 8321
+kill_listeners_on_ports 8080 8000 8321 8081
 
 # Start port-forward for lightspeed-stack
 progress "Starting port-forward, then E2E tests"
@@ -338,6 +468,9 @@ log "Starting port-forward for llama-stack (MCP / ogx_client hooks)..."
 oc port-forward svc/llama-stack-service-svc 8321:8321 -n $NAMESPACE &
 PF_LLAMA_PID=$!
 echo "$PF_LLAMA_PID" >"$E2E_LLAMA_PORT_FORWARD_PID_FILE"
+
+# OKP Solr port-forward (localhost:8081) is started by e2e-ops deploy-okp-solr
+# when okp_rag.feature runs — do not start it here.
 
 # Wait for port-forward to be usable (app may not be listening immediately; port-forward can drop)
 log "Waiting for port-forward to lightspeed-stack to be ready..."
@@ -447,6 +580,13 @@ if [[ -n "${E2E_LLAMA_PORT_FORWARD_PID_FILE:-}" && -f "$E2E_LLAMA_PORT_FORWARD_P
     kill -9 "$_ll_pf" 2>/dev/null || true
   fi
   rm -f "$E2E_LLAMA_PORT_FORWARD_PID_FILE"
+fi
+if [[ -n "${E2E_OKP_PORT_FORWARD_PID_FILE:-}" && -f "$E2E_OKP_PORT_FORWARD_PID_FILE" ]]; then
+  read -r _okp_pf <"$E2E_OKP_PORT_FORWARD_PID_FILE" 2>/dev/null || true
+  if [[ "${_okp_pf:-}" =~ ^[0-9]+$ ]]; then
+    kill -9 "$_okp_pf" 2>/dev/null || true
+  fi
+  rm -f "$E2E_OKP_PORT_FORWARD_PID_FILE"
 fi
 
 kill $PF_LCS_PID 2>/dev/null || true

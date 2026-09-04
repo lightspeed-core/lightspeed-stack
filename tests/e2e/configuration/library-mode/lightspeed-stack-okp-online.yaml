@@ -1,0 +1,43 @@
+# @cfg_okp
+# OKP inline RAG — online mode.
+# Chunks use reference_url-based URLs (docs.redhat.com).
+# search_mode: keyword — the OKP image's httpd proxy times out hybrid-search
+name: Lightspeed Core Service (LCS)
+service:
+  host: 0.0.0.0
+  port: 8080
+  auth_enabled: false
+  workers: 1
+  color_log: true
+  access_log: true
+llama_stack:
+  use_as_library_client: true
+  config:
+      baseline: default
+    # profile: run.yaml  # Commented out to allow auto-generation with OKP enrichment
+user_data_collection:
+  feedback_enabled: true
+  feedback_storage: "/tmp/data/feedback"
+  transcripts_enabled: true
+  transcripts_storage: "/tmp/data/transcripts"
+conversation_cache:
+  type: "sqlite"
+  sqlite:
+    db_path: "/tmp/data/conversation-cache.db"
+authentication:
+  module: "noop"
+inference:
+  default_provider: openai
+  default_model: gpt-4o-mini
+rag:
+  retrieval:
+    inline:
+      sources:
+        - okp
+      max_chunks: 3
+  okp:
+    rhokp_url: ${env.RH_SERVER_OKP:=http://localhost:8081/solr}
+    offline: false
+    max_chunks: 3
+    search_mode: keyword
+    chunk_filter_query: "product:openshift_container_platform AND product_version:4.21"

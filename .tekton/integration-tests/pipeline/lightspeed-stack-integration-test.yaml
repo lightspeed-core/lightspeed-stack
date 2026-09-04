@@ -212,6 +212,10 @@ spec:
           - name: quay-aipcc-password
             secret:
               secretName: quay-aipcc-password
+          # Red Hat registry pull secret (docker-registry type) - will be copied to test namespace
+          - name: redhat-registry-pull-secret-source
+            secret:
+              secretName: redhat-registry-io-pull-secret
           - name: credentials
             emptyDir: {}
         steps:
@@ -251,6 +255,9 @@ spec:
                 mountPath: /var/run/quay-aipcc-name
               - name: quay-aipcc-password
                 mountPath: /var/run/quay-aipcc-password
+              # Red Hat registry pull secret (docker-registry type)
+              - name: redhat-registry-pull-secret-source
+                mountPath: /var/run/redhat-registry-pull-secret
               - name: credentials
                 mountPath: /credentials
             env:
@@ -274,6 +281,11 @@ spec:
                 value: "true"
               - name: OTEL_ANONYMIZATION_SECRET
                 value: "lightspeed-stack-otel-anonymization-dev-default"
+              # PipelineRun metadata for ownerReference in secret creation
+              - name: TEKTON_PIPELINERUN_NAME
+                value: "$(context.pipelineRun.name)"
+              - name: TEKTON_PIPELINERUN_UID
+                value: "$(context.pipelineRun.uid)"
             image: registry.access.redhat.com/ubi9/ubi-minimal
             script: |
               set +e

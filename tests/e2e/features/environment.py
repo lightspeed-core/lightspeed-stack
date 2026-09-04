@@ -34,11 +34,13 @@ from tests.e2e.features.steps.tls import (
 )
 from tests.e2e.utils.ogx_utils import register_shield
 from tests.e2e.utils.prow_utils import (
+    ensure_okp_solr_ready,
     restart_pod,
     restore_ogx_pod,
     run_e2e_ops,
 )
 from tests.e2e.utils.utils import (
+    is_konflux_environment,
     is_prow_environment,
     remove_config_backup,
     restart_container,
@@ -208,16 +210,24 @@ def before_scenario(context: Context, scenario: Scenario) -> None:
     resetting per-scenario Lightspeed override tracking and skip-restart flags.
 
     Skips the scenario if it has the `skip` tag, if it has the `local` tag
-    while the test run is not in local mode, if it has `skip-in-library-mode`
-    when running in library mode, or if it has `skip-in-server-mode` when running
-    in server mode. Scenario-specific Lightspeed YAML is applied in the feature
-    files (``The service uses the ... configuration`` steps).
+    while the test run is not in local mode, if it has `konflux-only` when
+    ``E2E_KONFLUX_E2E`` is not ``1``, if it has `skip-in-github` when
+    ``GITHUB_ACTIONS`` is set, if it has `skip-in-library-mode` when running
+    in library mode, or if it has `skip-in-server-mode` when running in server
+    mode. Scenario-specific Lightspeed YAML is applied in the feature files
+    (``The service uses the ... configuration`` steps).
     """
     if "skip" in scenario.effective_tags:
         scenario.skip("Marked with @skip")
         return
     if "local" in scenario.effective_tags and not context.local:
         scenario.skip("Marked with @local")
+        return
+    if "konflux-only" in scenario.effective_tags and not is_konflux_environment():
+        scenario.skip("Skipped outside Konflux (requires E2E_KONFLUX_E2E=1)")
+        return
+    if os.getenv("GITHUB_ACTIONS") and "skip-in-github" in scenario.effective_tags:
+        scenario.skip("Skipped on GitHub Actions (Konflux only)")
         return
 
     # Skip scenarios that require separate OGX container in library mode
@@ -271,8 +281,11 @@ def _dump_pod_logs_on_failure(
     pods: tuple[str, ...] = ("llama-stack-service", "lightspeed-stack-service")
     feature = getattr(context, "feature", None)
     feat_file = getattr(feature, "filename", "") or "" if feature else ""
+    feat_tags = getattr(feature, "tags", []) if feature else []
     if is_tls_feature_file(feat_file):
         pods = (*pods, "e2e-mock-tls-inference")
+    if "cfg_okp" in feat_tags:
+        pods = (*pods, "okp-solr-service")
     print(f"--- scenario failed: {scenario.name!r} — pod logs ---", flush=True)
     for pod in pods:
         try:
@@ -304,6 +317,8 @@ def after_scenario(context: Context, scenario: Scenario) -> None:
               running before the scenario.
             - hostname_llama, port_llama (str/int, optional): host and port
               used for the OGX health check.
+            - okp_was_running (bool, optional): whether OKP server was running
+              before it was stopped by the scenario.
         scenario (Scenario): Behave scenario (unused; shield restore uses context flags).
     """
     if is_prow_environment():
@@ -328,6 +343,80 @@ def after_scenario(context: Context, scenario: Scenario) -> None:
                 print("Re-registered shield llama-guard")
             except (TypeError, ValueError, RuntimeError, KeyboardInterrupt) as e:
                 print(f"Warning: Could not re-register shield: {e}")
+
+    # Restart OKP server if it was stopped during the scenario
+    if getattr(context, "okp_was_running", False):
+        if is_prow_environment():
+            # Prow/OpenShift: restore pod and raise on failure
+            from tests.e2e.utils.prow_utils import restore_okp_solr_pod
+
+            restore_okp_solr_pod()
+        else:
+            # Docker mode: recreate or restart container
+            from tests.e2e.features.steps.okp_rag import (
+                OKP_DEFAULT_URL,
+                OKP_IMAGE_NAME,
+            )
+
+            container_name = getattr(context, "okp_container_name", None)
+            if container_name:
+                # Check if container still exists (may be auto-removed if started with --rm)
+                check_result = subprocess.run(
+                    ["docker", "inspect", "-f", "{{.State.Running}}", container_name],
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+
+                if check_result.returncode != 0:
+                    # Container was removed (likely started with --rm flag) - recreate it
+                    print(
+                        f"OKP container '{container_name}' was removed, recreating from {OKP_IMAGE_NAME}..."
+                    )
+                    subprocess.run(
+                        [
+                            "docker",
+                            "run",
+                            "--rm",
+                            "-d",
+                            "-p",
+                            "8081:8080",
+                            OKP_IMAGE_NAME,
+                        ],
+                        capture_output=True,
+                        text=True,
+                        check=True,
+                    )
+                else:
+                    # Container exists - just start it
+                    subprocess.run(
+                        ["docker", "start", container_name],
+                        capture_output=True,
+                        text=True,
+                        check=True,
+                    )
+
+                # Wait for the server to be ready
+                max_attempts = 30
+                okp_ready = False
+                for attempt in range(max_attempts):
+                    try:
+                        resp = requests.get(OKP_DEFAULT_URL, timeout=5)
+                        if resp.status_code < 500:
+                            print("✓ OKP server restarted successfully")
+                            okp_ready = True
+                            break
+                        # HTTP 5xx: delay and retry
+                        if attempt < max_attempts - 1:
+                            time.sleep(1)
+                    except (requests.ConnectionError, requests.Timeout):
+                        if attempt < max_attempts - 1:
+                            time.sleep(1)
+
+                if not okp_ready:
+                    raise RuntimeError(
+                        f"OKP server failed to become ready after {max_attempts} attempts"
+                    )
 
 
 def _print_ogx_diagnostics() -> None:
@@ -448,6 +537,19 @@ def _restore_llama_stack() -> None:
         _print_ogx_diagnostics()
 
 
+def _ensure_okp_solr_for_feature() -> None:
+    """Deploy OKP Solr for ``@cfg_okp`` features on Konflux only.
+
+    Classic Prow and local Docker are no-ops. GitHub Actions / Prow skip the
+    feature via ``@konflux-only`` before scenarios run.
+    """
+    if not is_konflux_environment():
+        return
+    print("[okp_rag.feature] Konflux: ensuring OKP Solr is deployed...")
+    ensure_okp_solr_ready()
+    print("[okp_rag.feature] OKP Solr ready", flush=True)
+
+
 def before_feature(context: Context, feature: Feature) -> None:
     """Run before each feature file is exercised.
 
@@ -463,16 +565,23 @@ def before_feature(context: Context, feature: Feature) -> None:
     ``max_attempts`` times before accepting failure. The cap defaults to
     ``_E2E_FLAKY_MAX_ATTEMPTS`` and can be overridden with the
     ``E2E_FLAKY_MAX_ATTEMPTS`` environment variable.
+
+    Features tagged ``@cfg_okp`` deploy OKP Solr on Konflux only (idempotent)
+    via ``e2e-ops deploy-okp-solr`` before scenarios run. Classic Prow and
+    local Docker are no-ops.
     """
     setattr(feature, _E2E_FEATURE_PERF_START_ATTR, time.perf_counter())
     context.feature_config = None
     context.scenario_lightspeed_override_active = False
     context.active_lightspeed_stack_config_basename = None
+
     # One real Llama disruption per feature (module-level flag; survives context resets)
     reset_llama_stack_disrupt_once_tracking()
     if feature.filename and is_tls_feature_file(feature.filename):
         reset_tls_prow_state()
         prepare_tls_feature_entry_on_prow(feature.filename)
+    if "cfg_okp" in feature.tags:
+        _ensure_okp_solr_for_feature()
 
     try:
         max_flaky = int(os.getenv("E2E_FLAKY_MAX_ATTEMPTS", _E2E_FLAKY_MAX_ATTEMPTS))
@@ -558,5 +667,6 @@ def after_feature(context: Context, feature: Feature) -> None:
 
 # Behave captures hook stdout by default; output is only shown in some failure paths.
 # Disable capture so feature timing and failure diagnostics appear in the main CI log.
+before_feature.capture = False  # type: ignore[attr-defined]
 after_feature.capture = False  # type: ignore[attr-defined]
 after_scenario.capture = False  # type: ignore[attr-defined]

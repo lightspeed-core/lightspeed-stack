@@ -1,0 +1,62 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: okp-solr-service
+  labels:
+    app: okp-solr
+spec:
+  securityContext:
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
+  imagePullSecrets:
+    - name: redhat-registry-pull-secret
+  containers:
+    - name: okp-solr
+      image: registry.redhat.io/offline-knowledge-portal/rhokp-rhel9:latest
+      imagePullPolicy: IfNotPresent
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: ["ALL"]
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      ports:
+        - containerPort: 8080
+          name: http
+      readinessProbe:
+        httpGet:
+          path: /solr
+          port: 8080
+        initialDelaySeconds: 30
+        periodSeconds: 10
+        timeoutSeconds: 5
+        failureThreshold: 3
+      livenessProbe:
+        httpGet:
+          path: /solr
+          port: 8080
+        initialDelaySeconds: 60
+        periodSeconds: 30
+        timeoutSeconds: 5
+        failureThreshold: 3
+      resources:
+        requests:
+          memory: "512Mi"
+          cpu: "250m"
+        limits:
+          memory: "2Gi"
+          cpu: "1000m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: okp-solr-service-svc
+spec:
+  selector:
+    app: okp-solr
+  ports:
+    - port: 8080
+      targetPort: 8080
+      name: http

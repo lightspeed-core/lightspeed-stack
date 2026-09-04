@@ -84,7 +84,9 @@ spec:
       workingDir: /opt/app-root
       env:
         - name: PYTHONPATH
-          value: "/opt/app-root/src"
+          value: "/opt/app-root:/opt/app-root/src"
+        - name: EXTERNAL_PROVIDERS_DIR
+          value: "/opt/app-root/providers.d"
         - name: HOME
           value: "/opt/app-root/src"
         # Prevent OGX from shutil.move(~/.llama → ~/.ogx) which would steal the fixture.

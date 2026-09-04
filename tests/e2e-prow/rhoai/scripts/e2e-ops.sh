@@ -16,6 +16,10 @@
 # - restart-lightspeed ensures Llama is running before LCS recreate when needed.
 # - restart-both-services is available explicitly; restart-lightspeed / restart-llama-stack
 #   do not auto-trigger a full stack restart on failure.
+# - OKP Solr is not deployed in pipeline setup. Features tagged @cfg_okp call
+#   deploy-okp-solr from before_feature (7GB image, first pull ~10-15 min) and
+#   start the localhost:8081 port-forward there. Background "OKP is running"
+#   then GETs Solr from inside the OGX pod (in-cluster Service), not runner :8081.
 #
 # Commands:
 #   restart-lightspeed              - Restart lightspeed-stack pod and port-forward
@@ -23,6 +27,7 @@
 #   restart-both-services           - Full OGX then lightspeed-stack restart (explicit only)
 #   restart-port-forward            - Re-establish port-forward for lightspeed
 #   restart-llama-port-forward      - Re-establish port-forward for OGX (8321)
+#   restart-okp-port-forward        - Re-establish port-forward for OKP Solr (8081)
 #   wait-for-pod <name> [attempts]  - Wait for a pod to be ready
 #   update-configmap <name> <file>  - Update ConfigMap from file
 #   get-configmap-content <name>    - Get ConfigMap content (outputs to stdout)
@@ -33,6 +38,11 @@
 #   delete-e2e-mock-tls-inference   - Remove mock TLS pod + Service (manual cleanup)
 #   restart-e2e-mock-tls-inference  - Delete then deploy mock TLS (manual / recovery)
 #   sync-mock-tls-certs-secret      - Copy mock /certs into Secret for OGX mount
+#   check-okp-solr-from-llama       - GET Solr /solr/ from inside the OGX pod
+#   deploy-okp-solr                 - Deploy OKP Solr (idempotent; @cfg_okp before_feature)
+#   delete-okp-solr                 - Delete OKP Solr pod
+#   disrupt-okp-solr                - Delete OKP Solr pod to disrupt connection
+#   restore-okp-solr                - Restore OKP Solr pod
 
 set -e
 
@@ -43,6 +53,7 @@ MANIFEST_DIR="$SCRIPT_DIR/../manifests/lightspeed"
 E2E_LSC_PORT_FORWARD_PID_FILE="${E2E_LSC_PORT_FORWARD_PID_FILE:-/tmp/e2e-lightspeed-port-forward.pid}"
 E2E_LLAMA_PORT_FORWARD_PID_FILE="${E2E_LLAMA_PORT_FORWARD_PID_FILE:-/tmp/e2e-llama-port-forward.pid}"
 E2E_JWKS_PORT_FORWARD_PID_FILE="${E2E_JWKS_PORT_FORWARD_PID_FILE:-/tmp/e2e-jwks-port-forward.pid}"
+E2E_OKP_PORT_FORWARD_PID_FILE="${E2E_OKP_PORT_FORWARD_PID_FILE:-/tmp/e2e-okp-port-forward.pid}"
 
 # ============================================================================
 # Helper functions
@@ -203,6 +214,24 @@ kill_stale_jwks_forward() {
     fi
     pkill -9 -f "port-forward.*mock-jwks.*${port}:${port}" 2>/dev/null || true
     pkill -9 -f "oc port-forward svc/mock-jwks ${port}:${port}" 2>/dev/null || true
+    free_local_tcp_port "$port"
+    sleep 1
+    free_local_tcp_port "$port"
+}
+
+# Kill anything likely to hold the OKP Solr local forward (localhost:8081).
+kill_stale_okp_forward() {
+    local port="${1:-8081}"
+    local saved_pf
+    if [[ -f "$E2E_OKP_PORT_FORWARD_PID_FILE" ]]; then
+        read -r saved_pf <"$E2E_OKP_PORT_FORWARD_PID_FILE" 2>/dev/null || true
+        if [[ "$saved_pf" =~ ^[0-9]+$ ]]; then
+            kill -9 "$saved_pf" 2>/dev/null || true
+        fi
+    fi
+    pkill -9 -f "port-forward.*okp-solr-service-svc.*8081:8080" 2>/dev/null || true
+    pkill -9 -f "oc port-forward svc/okp-solr-service-svc 8081:8080" 2>/dev/null || true
+    pkill -9 -f "port-forward pod/okp-solr-service.*8081:8080" 2>/dev/null || true
     free_local_tcp_port "$port"
     sleep 1
     free_local_tcp_port "$port"
@@ -554,6 +583,26 @@ verify_llama_local_forward() {
     return 1
 }
 
+verify_okp_connectivity() {
+    local max_attempts="${1:-15}"
+    local local_port="${2:-8081}"
+    local http_code=""
+    local attempt
+
+    for ((attempt=1; attempt<=max_attempts; attempt++)); do
+        http_code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 "http://localhost:${local_port}/solr" 2>/dev/null) || http_code="000"
+        # OKP Solr returns various 200-399 codes for /solr endpoint
+        if [[ "$http_code" =~ ^[23][0-9][0-9]$ ]]; then
+            return 0
+        fi
+        if [[ $attempt -lt $max_attempts ]]; then
+            sleep 2
+        fi
+    done
+    echo "OKP Solr localhost:${local_port} connectivity check failed (HTTP: ${http_code:-unknown})"
+    return 1
+}
+
 cmd_restart_llama_port_forward() {
     local local_port="${LOCAL_LLAMA_PORT:-8321}"
     local remote_port="${REMOTE_LLAMA_PORT:-8321}"
@@ -673,6 +722,67 @@ cmd_restart_jwks_port_forward() {
     done
 
     echo "Failed to establish mock-jwks port-forward on :$local_port"
+    return 1
+}
+
+cmd_restart_okp_port_forward() {
+    local local_port="${LOCAL_OKP_PORT:-8081}"
+    local remote_port="${REMOTE_OKP_PORT:-8080}"
+    local max_attempts=6
+    local pf_pid
+    local pf_resource
+    local okp_pf_log="/tmp/port-forward-okp.log"
+
+    echo "Re-establishing OKP Solr port-forward on $local_port:$remote_port..."
+
+    for ((attempt=1; attempt<=max_attempts; attempt++)); do
+        kill_stale_okp_forward "$local_port"
+        sleep 3
+
+        if [[ $attempt -le 2 ]]; then
+            pf_resource="svc/okp-solr-service-svc"
+        else
+            pf_resource="pod/okp-solr-service"
+        fi
+        echo "OKP port-forward attempt $attempt/$max_attempts -> $pf_resource"
+
+        : >"$okp_pf_log"
+        nohup oc port-forward "$pf_resource" "$local_port:$remote_port" -n "$NAMESPACE" \
+            </dev/null >"$okp_pf_log" 2>&1 &
+        pf_pid=$!
+        disown "$pf_pid" 2>/dev/null || true
+        sleep 3
+
+        if ! kill -0 "$pf_pid" 2>/dev/null; then
+            echo "OKP port-forward process exited immediately:"
+            if [[ -s "$okp_pf_log" ]]; then
+                tail -25 "$okp_pf_log" 2>/dev/null | sed 's/^/[e2e-ops] /' || true
+            fi
+            kill_stale_okp_forward "$local_port"
+            sleep 2
+            continue
+        fi
+        sleep 4
+
+        if verify_okp_connectivity 12 "$local_port"; then
+            echo "$pf_pid" >"$E2E_OKP_PORT_FORWARD_PID_FILE"
+            echo "✓ OKP Solr port-forward established (PID: $pf_pid)"
+            return 0
+        fi
+
+        if [[ $attempt -lt $max_attempts ]]; then
+            echo "OKP forward attempt $attempt failed (connectivity check failed), retrying..."
+            kill -9 "$pf_pid" 2>/dev/null || true
+            kill_stale_okp_forward "$local_port"
+            sleep 3
+        fi
+    done
+
+    echo "Failed to establish OKP Solr port-forward after $max_attempts attempts"
+    if [[ -s "$okp_pf_log" ]]; then
+        echo "Port-forward log (tail 30):"
+        tail -30 "$okp_pf_log" 2>/dev/null | sed 's/^/[e2e-ops] /' || true
+    fi
     return 1
 }
 
@@ -989,6 +1099,111 @@ cmd_disrupt_llama_stack() {
     fi
 }
 
+# Prove OGX can reach Solr in-cluster. Runner localhost:8081 only tests port-forward.
+cmd_check_okp_solr_from_llama() {
+    local pod="llama-stack-service"
+    local ctr="llama-stack-container"
+    local url="http://okp-solr-service-svc:8080/solr/"
+
+    echo "Checking OKP Solr from OGX pod at ${url}..."
+    if oc exec -n "$NAMESPACE" "$pod" -c "$ctr" -- \
+        curl -sf --max-time 10 -o /dev/null "$url" 2>/dev/null; then
+        echo "✓ OGX pod can reach OKP Solr"
+        return 0
+    fi
+    if oc exec -n "$NAMESPACE" "$pod" -c "$ctr" -- \
+        /opt/app-root/.venv/bin/python -c \
+        'import urllib.request; urllib.request.urlopen("http://okp-solr-service-svc:8080/solr/", timeout=10).read()'; then
+        echo "✓ OGX pod can reach OKP Solr"
+        return 0
+    fi
+    echo "ERROR: OGX pod cannot reach OKP Solr at $url"
+    return 1
+}
+
+cmd_deploy_okp_solr() {
+    local pod_name="okp-solr-service"
+    # First pull of the ~7GB OKP image is typically 10-15 min. 300 attempts × 3s = 900s.
+    local wait_attempts=300
+    local ready
+
+    ready=$(oc get pod "$pod_name" -n "$NAMESPACE" -o jsonpath='{.status.containerStatuses[0].ready}' 2>/dev/null || echo "false")
+    if [[ "$ready" == "true" ]]; then
+        echo "✓ OKP Solr already ready — skipping deploy"
+        cmd_restart_okp_port_forward
+        return 0
+    fi
+
+    echo "Deploying OKP Solr service in namespace $NAMESPACE..."
+    if oc get secret redhat-registry-pull-secret -n "$NAMESPACE" &>/dev/null; then
+        echo "✓ redhat-registry-pull-secret exists"
+    else
+        echo "WARNING: redhat-registry-pull-secret NOT found — image pull will fail"
+        oc get secrets -n "$NAMESPACE" --field-selector type=kubernetes.io/dockerconfigjson -o name 2>/dev/null || \
+            echo "No dockerconfigjson secrets found"
+    fi
+
+    oc apply -n "$NAMESPACE" -f "$MANIFEST_DIR/okp-solr.yaml"
+    echo "Waiting for OKP Solr to be ready (${wait_attempts} attempts, ~$((wait_attempts * 3))s for 7GB image pull)..."
+    if ! wait_for_pod "$pod_name" "$wait_attempts"; then
+        echo "=========================================="
+        echo "OKP Solr not ready — diagnostics"
+        echo "=========================================="
+        oc get pod "$pod_name" -n "$NAMESPACE" -o wide || true
+        oc get pod "$pod_name" -n "$NAMESPACE" \
+            -o jsonpath='{.status.containerStatuses[*].state}' && echo "" || true
+        oc get events -n "$NAMESPACE" --sort-by='.lastTimestamp' \
+            --field-selector involvedObject.name="$pod_name" \
+            --limit=30 2>/dev/null || echo "No events found for $pod_name"
+        oc describe pod "$pod_name" -n "$NAMESPACE" || true
+        if oc get secret redhat-registry-pull-secret -n "$NAMESPACE" &>/dev/null; then
+            echo "redhat-registry-pull-secret: present"
+        else
+            echo "redhat-registry-pull-secret: NOT FOUND"
+        fi
+        echo "OKP Solr failed to become ready (7GB image — check node network to registry.redhat.io)"
+        return 1
+    fi
+    echo "✓ OKP Solr service deployed and ready"
+    cmd_restart_okp_port_forward
+}
+
+cmd_delete_okp_solr() {
+    echo "Deleting OKP Solr pod from namespace $NAMESPACE..."
+    timeout 60 oc delete pod okp-solr-service -n "$NAMESPACE" --ignore-not-found=true --wait=true 2>/dev/null || {
+        oc delete pod okp-solr-service -n "$NAMESPACE" --ignore-not-found=true --force --grace-period=0 2>/dev/null || true
+        sleep 2
+    }
+    echo "✓ OKP Solr pod deleted"
+}
+
+cmd_disrupt_okp_solr() {
+    local pod_name="okp-solr-service"
+
+    local phase
+    phase=$(oc get pod "$pod_name" -n "$NAMESPACE" -o jsonpath='{.status.phase}' 2>/dev/null || echo "NotFound")
+
+    if [[ "$phase" == "Running" ]]; then
+        oc delete pod "$pod_name" -n "$NAMESPACE" --wait=true
+        sleep 2
+        echo "OKP Solr connection disrupted successfully (pod deleted)"
+        exit 0
+    else
+        echo "OKP Solr pod was not running (phase: $phase)"
+        exit 2
+    fi
+}
+
+cmd_restore_okp_solr() {
+    echo "Restoring OKP Solr service in namespace $NAMESPACE..."
+    oc apply -n "$NAMESPACE" -f "$MANIFEST_DIR/okp-solr.yaml"
+    wait_for_pod "okp-solr-service" 60
+    echo "✓ OKP Solr pod restored and ready"
+
+    # Restart port-forward since pod was replaced
+    cmd_restart_okp_port_forward
+}
+
 # ============================================================================
 # Main command dispatcher
 # ============================================================================
@@ -1011,6 +1226,9 @@ case "$COMMAND" in
         ;;
     restart-jwks-port-forward)
         cmd_restart_jwks_port_forward
+        ;;
+    restart-okp-port-forward)
+        cmd_restart_okp_port_forward
         ;;
     restart-port-forward)
         cmd_restart_port_forward
@@ -1060,6 +1278,21 @@ case "$COMMAND" in
     dump-pod-logs)
         cmd_dump_pod_logs "$@"
         ;;
+    check-okp-solr-from-llama)
+        cmd_check_okp_solr_from_llama
+        ;;
+    deploy-okp-solr)
+        cmd_deploy_okp_solr
+        ;;
+    delete-okp-solr)
+        cmd_delete_okp_solr
+        ;;
+    disrupt-okp-solr)
+        cmd_disrupt_okp_solr
+        ;;
+    restore-okp-solr)
+        cmd_restore_okp_solr
+        ;;
     *)
         echo "Usage: $0 <command> [args...]"
         echo ""
@@ -1068,6 +1301,7 @@ case "$COMMAND" in
         echo "  restart-llama-stack             - Restart/restore llama-stack pod"
         echo "  restart-both-services           - Full llama-stack + lightspeed-stack restart (explicit)"
         echo "  restart-llama-port-forward      - Re-establish port-forward for OGX (8321)"
+        echo "  restart-okp-port-forward        - Re-establish port-forward for OKP Solr (8081)"
         echo "  restart-port-forward            - Re-establish port-forward for lightspeed"
         echo "  wait-for-pod <name> [attempts]  - Wait for a pod to be ready"
         echo "  update-configmap <name> <file>  - Update ConfigMap from file"
@@ -1081,6 +1315,11 @@ case "$COMMAND" in
         echo "  deploy-e2e-interception-proxy      - Deploy in-cluster interception proxy pod"
         echo "  deploy-e2e-mock-tls-inference        - Deploy mock HTTPS inference (tls-*.feature)"
         echo "  delete-e2e-mock-tls-inference        - Remove mock TLS pod + Service"
+        echo "  check-okp-solr-from-llama            - GET Solr /solr/ from inside the OGX pod"
+        echo "  deploy-okp-solr                      - Deploy OKP Solr (idempotent; @cfg_okp before_feature)"
+        echo "  delete-okp-solr                      - Delete OKP Solr pod"
+        echo "  disrupt-okp-solr                     - Delete OKP Solr pod to disrupt connection"
+        echo "  restore-okp-solr                     - Restore OKP Solr pod"
         echo "  restart-e2e-mock-tls-inference       - Delete then deploy mock TLS (recovery)"
         echo "  sync-mock-tls-certs-secret           - Publish mock TLS /certs to Secret"
         echo "  dump-pod-logs <pod> [tail-lines]   - Print init + container logs"

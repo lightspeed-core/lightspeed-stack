@@ -819,7 +819,7 @@ def enrich_vector_store(
 # =============================================================================
 
 
-def enrich_solr(  # pylint: disable=too-many-locals,too-many-statements
+def enrich_solr(  # pylint: disable=too-many-locals,too-many-statements,too-many-branches
     ls_config: dict[str, Any],
     rag_config: dict[str, Any],
     okp_config: dict[str, Any],
@@ -859,6 +859,15 @@ def enrich_solr(  # pylint: disable=too-many-locals,too-many-statements
     solr_url = urljoin(base_url, "/solr")
 
     logger.info("Enriching OGX config with OKP")
+
+    # run-ci.yaml comments this out; Solr is a remote provider and needs providers.d.
+    if "external_providers_dir" not in ls_config:
+        ls_config["external_providers_dir"] = (
+            "${env.EXTERNAL_PROVIDERS_DIR:=/opt/app-root/providers.d}"
+        )
+        logger.info(
+            "Added external_providers_dir to OGX config for remote provider resolution"
+        )
 
     # Add vector_io provider for Solr
     if "providers" not in ls_config:
