@@ -1,7 +1,4 @@
-# @skip until LCORE-2230 lands the step definitions; Konflux runs the whole
-# test list and would fail on the undefined steps. @cfg_compaction is not in
-# any GitHub CI shard yet, LCORE-2230 adds it.
-@cfg_compaction @skip
+@cfg_compaction
 Feature: Conversation compaction
 
   Once the estimated input crosses the configured share of the model's
@@ -20,6 +17,7 @@ Feature: Conversation compaction
 
   Scenario: the third query crosses the threshold, older turns are summarized, recall and history survive
     Given The service uses the lightspeed-stack-compaction.yaml configuration
+      And the active model has a registered context window
       And The service is restarted
      When I use "query" to ask question
      """
@@ -54,6 +52,7 @@ Feature: Conversation compaction
 
   Scenario: the native stream announces compaction on the query that crosses the threshold
     Given The service uses the lightspeed-stack-compaction.yaml configuration
+      And the active model has a registered context window
       And The service is restarted
      When I use "streaming_query" to ask question
      """
@@ -82,6 +81,7 @@ Feature: Conversation compaction
 
   Scenario: compaction stays off when disabled, even past the threshold
     Given The service uses the lightspeed-stack-compaction-disabled.yaml configuration
+      And the active model has a registered context window
       And The service is restarted
      When I use "query" to ask question
      """
