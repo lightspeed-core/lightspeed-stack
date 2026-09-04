@@ -261,7 +261,7 @@ def construct_storage_backends_section(
         backend_name = f"byok_{rag_id}_storage"
         output[backend_name] = {
             "type": "kv_sqlite",
-            "db_path": brag.get("db_path", f".llama/{rag_id}.db"),
+            "db_path": brag.get("db_path", f"/tmp/.llama/{rag_id}.db"),
         }
         added += 1
     logger.info(

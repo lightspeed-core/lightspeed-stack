@@ -16,9 +16,10 @@
 # legacy PyPDF fallback. Operators extend it via high-level sections or
 # `native_override` (e.g. swap pypdf for inline::docling).
 #
-# NOTE: `external_providers_dir` carries a default (`:=~/.llama/providers.d`)
+# NOTE: `external_providers_dir` carries a default (`:=/tmp/.llama/providers.d`)
 # so the baseline resolves even when EXTERNAL_PROVIDERS_DIR is unset — see the
 # PoC finding in docs/design/ogx-config-merge/ogx-config-merge-spike.md.
+# Uses /tmp to ensure write permissions in containerized environments.
 version: 2
 
 apis:
@@ -31,7 +32,7 @@ apis:
 - vector_io
 
 distro_name: starter
-external_providers_dir: ${env.EXTERNAL_PROVIDERS_DIR:=~/.llama/providers.d}
+external_providers_dir: ${env.EXTERNAL_PROVIDERS_DIR:=/tmp/.llama/providers.d}
 
 providers:
   inference:
@@ -47,7 +48,7 @@ providers:
       metadata_store:
         table_name: files_metadata
         backend: sql_default
-      storage_dir: ${env.SQLITE_STORE_DIR:=~/.llama/storage/files}
+      storage_dir: ${env.SQLITE_STORE_DIR:=/tmp/.llama/storage/files}
     provider_id: meta-reference-files
     provider_type: inline::localfs
   # required for /v1/vector-stores to work with files properly
@@ -84,10 +85,10 @@ storage:
   backends:
     kv_default:
       type: kv_sqlite
-      db_path: ${env.KV_STORE_PATH:=~/.llama/storage/rag/kv_store.db}
+      db_path: ${env.KV_STORE_PATH:=/tmp/.llama/storage/rag/kv_store.db}
     sql_default:
       type: sql_sqlite
-      db_path: ${env.SQL_STORE_PATH:=~/.llama/storage/sql_store.db}
+      db_path: ${env.SQL_STORE_PATH:=/tmp/.llama/storage/sql_store.db}
   stores:
     metadata:
       namespace: registry
