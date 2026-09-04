@@ -214,6 +214,8 @@ Attributes:
 | buffer_turns     | integer | Number of recent turns to keep verbatim.                                                                    |
 | buffer_max_ratio | number  | Maximum fraction of context window the buffer zone can occupy, regardless of buffer_turns.                  |
 
+For a comprehensive explanation of the feature, see the [Conversation Compaction Guide](conversation_compaction.md).
+
 
 ## Configuration
 
