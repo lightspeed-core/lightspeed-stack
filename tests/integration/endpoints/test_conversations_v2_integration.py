@@ -175,30 +175,31 @@ async def test_conversation_cache_unavailable_error_handling(
     test_config.conversation_cache_configuration.type = None
 
     with pytest.raises(HTTPException) as exc_info:
-        if endpoint == "list":
-            await get_conversations_list_endpoint_handler(
-                request=non_admin_test_request,
-                auth=test_auth,
-            )
-        elif endpoint == "get":
-            await get_conversation_endpoint_handler(
-                request=non_admin_test_request,
-                conversation_id=conversation_id,
-                auth=test_auth,
-            )
-        elif endpoint == "delete":
-            await delete_conversation_endpoint_handler(
-                request=non_admin_test_request,
-                conversation_id=conversation_id,
-                auth=test_auth,
-            )
-        elif endpoint == "update":
-            update_request = ConversationUpdateRequest(topic_summary="New topic")
-            await update_conversation_endpoint_handler(
-                conversation_id=conversation_id,
-                update_request=update_request,
-                auth=test_auth,
-            )
+        match endpoint:
+            case "list":
+                await get_conversations_list_endpoint_handler(
+                    request=non_admin_test_request,
+                    auth=test_auth,
+                )
+            case "get":
+                await get_conversation_endpoint_handler(
+                    request=non_admin_test_request,
+                    conversation_id=conversation_id,
+                    auth=test_auth,
+                )
+            case "delete":
+                await delete_conversation_endpoint_handler(
+                    request=non_admin_test_request,
+                    conversation_id=conversation_id,
+                    auth=test_auth,
+                )
+            case "update":
+                update_request = ConversationUpdateRequest(topic_summary="New topic")
+                await update_conversation_endpoint_handler(
+                    conversation_id=conversation_id,
+                    update_request=update_request,
+                    auth=test_auth,
+                )
 
     # Verify error details (all should return 500)
     assert exc_info.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
