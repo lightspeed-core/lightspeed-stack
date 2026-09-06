@@ -73,44 +73,45 @@ class Handler(BaseHTTPRequestHandler):
             req_id = 1
             method = ""
 
-        if method == "initialize":
-            self._json_response(
-                {
-                    "jsonrpc": "2.0",
-                    "id": req_id,
-                    "result": {
-                        "protocolVersion": "2024-11-05",
-                        "capabilities": {"tools": {}},
-                        "serverInfo": {"name": "mock-mcp-e2e", "version": "1.0.0"},
-                    },
-                }
-            )
-        elif method == "tools/list":
-            self._json_response(
-                {
-                    "jsonrpc": "2.0",
-                    "id": req_id,
-                    "result": {
-                        "tools": [
-                            {
-                                "name": "mock_tool_e2e",
-                                "description": "Mock tool for E2E",
-                                "inputSchema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "message": {
-                                            "type": "string",
-                                            "description": "Test message",
-                                        }
+        match method:
+            case "initialize":
+                self._json_response(
+                    {
+                        "jsonrpc": "2.0",
+                        "id": req_id,
+                        "result": {
+                            "protocolVersion": "2024-11-05",
+                            "capabilities": {"tools": {}},
+                            "serverInfo": {"name": "mock-mcp-e2e", "version": "1.0.0"},
+                        },
+                    }
+                )
+            case "tools/list":
+                self._json_response(
+                    {
+                        "jsonrpc": "2.0",
+                        "id": req_id,
+                        "result": {
+                            "tools": [
+                                {
+                                    "name": "mock_tool_e2e",
+                                    "description": "Mock tool for E2E",
+                                    "inputSchema": {
+                                        "type": "object",
+                                        "properties": {
+                                            "message": {
+                                                "type": "string",
+                                                "description": "Test message",
+                                            }
+                                        },
                                     },
-                                },
-                            }
-                        ],
-                    },
-                }
-            )
-        else:
-            self._json_response({"jsonrpc": "2.0", "id": req_id, "result": {}})
+                                }
+                            ],
+                        },
+                    }
+                )
+            case _:
+                self._json_response({"jsonrpc": "2.0", "id": req_id, "result": {}})
 
     def log_message(self, format: str, *args: Any) -> None:
         """Suppress request logging for minimal output."""
