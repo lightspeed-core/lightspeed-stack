@@ -13,10 +13,10 @@ import logging
 import os
 import re
 import subprocess
+import sys
 import time
 import tomllib
 import urllib.request
-import sys
 from collections import deque
 from collections.abc import Sequence
 from html.parser import HTMLParser
