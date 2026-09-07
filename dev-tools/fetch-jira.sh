@@ -133,6 +133,13 @@ if parent_key:
 print()
 
 
+# Jira appends its own '#icft=KEY' tracking fragment to internal smart
+# links and issue mentions. It is never part of the target and only adds
+# noise to the rendered line, so drop it from every URL we print.
+def clean_url(url):
+    return url.split('#icft=')[0] if '#icft=' in url else url
+
+
 # ADF (Atlassian Document Format) → markdown-ish text extractor.
 # Hoisted to top-level so both description and comments can use it.
 def extract_text(node, depth=0):
@@ -156,6 +163,7 @@ def extract_text(node, depth=0):
             # span or bold run, whatever order the marks arrived in, and
             # compared against the raw text so an autolinked bare URL that
             # also carries a mark is still recognised as its own target.
+            href = clean_url(href)
             if href and href != node.get('text', ''):
                 text = text + ' <' + href + '>'
             return [text]
@@ -165,6 +173,7 @@ def extract_text(node, depth=0):
             attrs = node.get('attrs', {})
             data = attrs.get('data')
             url = attrs.get('url') or (data.get('url', '') if isinstance(data, dict) else '')
+            url = clean_url(url)
             return ['<' + url + '>'] if url else []
         if ntype == 'mention':
             return [node.get('attrs', {}).get('text', '@?')]
@@ -172,6 +181,20 @@ def extract_text(node, depth=0):
             return ['\n']
         if ntype == 'rule':
             return ['---']
+        if ntype == 'paragraph':
+            # A paragraph's children are inline runs — text, smart links,
+            # mentions. The generic block walk below puts every child on its
+            # own line, which chops any sentence containing a link into
+            # fragments, so join them into one flowing line instead and let
+            # an explicit hardBreak be the only thing that splits it.
+            joined = ''.join(
+                piece
+                for c in node.get('content', [])
+                for piece in extract_text(c, depth)
+            )
+            if not joined.strip():
+                return []
+            return joined.split('\n') + ['']
         if ntype == 'listItem':
             child_text = []
             for c in node.get('content', []):
@@ -206,17 +229,29 @@ def extract_text(node, depth=0):
             rows = []
             for row in node.get('content', []):
                 cells = []
+                header = False
                 for cell in row.get('content', []):
+                    if cell.get('type') == 'tableHeader':
+                        header = True
                     cell_text = []
                     for c in cell.get('content', []):
                         cell_text.extend(extract_text(c, depth))
-                    cells.append(''.join(cell_text).strip())
+                    # Collapse to a single line: a cell holding two
+                    # paragraphs would otherwise inject a newline into the
+                    # middle of the row and break the whole table. Join on a
+                    # newline first so the paragraph boundary survives as the
+                    # space that separates them.
+                    cells.append(' '.join('\n'.join(cell_text).split()))
+                if not cells:
+                    continue
                 rows.append(' | '.join(cells))
-            return rows
+                # Emit the markdown rule under a header row so the result is
+                # a real table rather than pipe-separated lines.
+                if header and len(rows) == 1:
+                    rows.append(' | '.join(['---'] * len(cells)))
+            return rows + [''] if rows else []
         for c in node.get('content', []):
             lines.extend(extract_text(c, depth))
-        if ntype == 'paragraph' and lines:
-            lines.append('')
     return lines
 
 
