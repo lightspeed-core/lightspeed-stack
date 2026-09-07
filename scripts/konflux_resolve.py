@@ -890,7 +890,7 @@ def write_hashed_requirements(
 
         # RHOAI packages store hashes per platform
         if "platforms" in info:
-            for _arch, (_, sha) in info["platforms"].items():
+            for (_, sha) in info["platforms"].values():
                 if sha:
                     hashes.add(sha)
 
