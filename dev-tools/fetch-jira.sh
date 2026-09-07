@@ -97,10 +97,14 @@ fetch_ticket() {
     esac
     FETCHED_KEYS="$FETCHED_KEYS$key "
 
+    # The '|| data=' guard matters: under 'set -e' an unguarded assignment
+    # from a failing curl aborts the whole script, so a single unreachable
+    # ticket would kill a multi-ticket or recursive run instead of falling
+    # through to the 'Error fetching' branch below and carrying on.
     local data
     data=$(curl -sS --connect-timeout 10 --max-time 30 \
         -u "$JIRA_EMAIL:$JIRA_TOKEN" \
-        "$JIRA_INSTANCE/rest/api/3/issue/$key?fields=summary,status,issuetype,description,issuelinks,subtasks,parent" 2>/dev/null)
+        "$JIRA_INSTANCE/rest/api/3/issue/$key?fields=summary,status,issuetype,description,issuelinks,subtasks,parent" 2>/dev/null) || data=''
 
     # Optional: fetch comments (only if --comments was passed). Empty
     # JSON object signals "no comments fetched" to the Python printer.
@@ -361,19 +365,26 @@ try:
         print(issue['key'])
 except Exception:
     pass
-" 2>/dev/null | tr '\n' ' ')
+" 2>/dev/null | tr '\n' ' ') || jql_kids=''
 
         local rk
         for rk in $related_keys $jql_kids; do
             [ -z "$rk" ] && continue
             echo
-            fetch_ticket "$rk" "${indent}  " $((depth - 1))
+            # A relation we cannot fetch is reported by fetch_ticket and
+            # then tolerated: it must not abandon the rest of the recursion.
+            fetch_ticket "$rk" "${indent}  " $((depth - 1)) || true
         done
     fi
 }
 
+# Every requested ticket is attempted even when an earlier one fails, so
+# one unreachable key does not hide the rest of the output; the script
+# still exits non-zero if any of them failed.
+EXIT_STATUS=0
+
 # Fetch main ticket (with depth recursion if requested)
-fetch_ticket "$TICKET" "" "$LINKED_DEPTH"
+fetch_ticket "$TICKET" "" "$LINKED_DEPTH" || EXIT_STATUS=1
 
 # At depth 0, also list JQL parent= children as a flat summary (legacy
 # behavior — useful as a quick "what's underneath" overview without
@@ -395,7 +406,7 @@ try:
         print(f'{key} ({itype}) [{status}]: {summary}')
 except Exception:
     pass
-" 2>/dev/null)
+" 2>/dev/null) || CHILD_KEYS=''
 
     if [ -n "$CHILD_KEYS" ]; then
         echo "Child issues:"
@@ -414,5 +425,7 @@ for extra in "$@"; do
     fi
     echo "────────────────────────────────────────────────────────"
     echo ""
-    fetch_ticket "$extra" "" "$LINKED_DEPTH"
+    fetch_ticket "$extra" "" "$LINKED_DEPTH" || EXIT_STATUS=1
 done
+
+exit "$EXIT_STATUS"
