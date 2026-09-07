@@ -153,9 +153,12 @@ def extract_text(node, depth=0):
             if href and href != node.get('text', ''):
                 text = text + ' <' + href + '>'
             return [text]
-        if ntype == 'inlineCard':
+        if ntype in ('inlineCard', 'blockCard', 'embedCard'):
             # Smart links (pasted Jira/GitHub URLs) carry the URL only here,
             # either directly or inside the resolved JSON-LD 'data' blob.
+            # blockCard and embedCard are the block forms Jira produces when
+            # a URL is pasted on a line of its own, which is how most
+            # tickets reference a PR or another ticket.
             attrs = node.get('attrs', {})
             data = attrs.get('data')
             url = attrs.get('url') or (data.get('url', '') if isinstance(data, dict) else '')
@@ -255,10 +258,32 @@ def extract_text(node, depth=0):
                 child_text.extend(extract_text(c, depth))
             return ['#' * level + ' ' + ''.join(child_text).strip()]
         if ntype == 'codeBlock':
+            language = node.get('attrs', {}).get('language', '') or ''
             child_text = []
             for c in node.get('content', []):
                 child_text.extend(extract_text(c, depth))
-            return ['```\n' + ''.join(child_text) + '\n```']
+            return ['```' + language + '\n' + ''.join(child_text) + '\n```']
+        if ntype in ('expand', 'nestedExpand'):
+            # The title is usually the only summary of what the collapsed
+            # block holds, and collapsing is exactly what an author does
+            # with long logs and stack traces.
+            title = node.get('attrs', {}).get('title', '')
+            child_text = []
+            for c in node.get('content', []):
+                child_text.extend(extract_text(c, depth))
+            body = '\n'.join(child_text).strip('\n')
+            head = ['**' + title + '**'] if title else []
+            return head + (body.split('\n') if body else []) + ['']
+        if ntype == 'decisionList':
+            for c in node.get('content', []):
+                lines.extend(extract_text(c, depth + 1))
+            return lines
+        if ntype == 'decisionItem':
+            child_text = []
+            for c in node.get('content', []):
+                child_text.extend(extract_text(c, depth))
+            body = ' '.join('\n'.join(child_text).split())
+            return ['  ' * depth + '- [decision] ' + body] if body else []
         if ntype == 'panel':
             # Jira panels carry their severity in the attrs, not the text,
             # so an info note and a warning read the same without this.
@@ -360,7 +385,13 @@ if subtasks:
 # comments_data is the empty {} sentinel.)
 comments = comments_data.get('comments', []) if isinstance(comments_data, dict) else []
 if comments:
-    print(f'{indent}Comments ({len(comments)}):')
+    # The endpoint caps a page at 100 comments. Saying so beats letting a
+    # reader believe a truncated thread is the whole discussion.
+    total = comments_data.get('total', len(comments))
+    if isinstance(total, int) and total > len(comments):
+        print(f'{indent}Comments ({len(comments)} of {total}; rest not fetched):')
+    else:
+        print(f'{indent}Comments ({len(comments)}):')
     for c in comments:
         author = c.get('author', {}).get('displayName') or c.get('author', {}).get('emailAddress') or 'unknown'
         created = c.get('created', '')[:10]  # YYYY-MM-DD
@@ -422,6 +453,10 @@ try:
         status = issue['fields']['status']['name']
         itype = issue['fields']['issuetype']['name']
         print(f'{key} ({itype}) [{status}]: {summary}')
+    # maxResults caps this request; a parent with more children would
+    # otherwise show a short list indistinguishable from a complete one.
+    if data.get('isLast') is False or data.get('nextPageToken'):
+        print('(more children exist than were fetched)')
 except Exception:
     pass
 PYEOF_CHILD_KEYS_PY
