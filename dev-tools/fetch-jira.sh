@@ -86,37 +86,15 @@ fi
 # leading and trailing spaces so substring matching works cleanly).
 FETCHED_KEYS=" "
 
-fetch_ticket() {
-    local key="$1"
-    local indent="${2:-}"
-    local depth="${3:-0}"
+# The Python programs below are held in quoted heredocs rather than
+# passed inline to 'python3 -c'. An inline program sits inside a
+# double-quoted shell word, which makes every quote, dollar sign and
+# backtick in it shell syntax first and Python second. That is what broke
+# this file with an SC2140 warning, and it stays a hazard for anyone
+# editing the extractor. A <<'EOF' heredoc is passed through verbatim, so
+# the Python can be written exactly as Python.
 
-    # Cycle / dup protection
-    case "$FETCHED_KEYS" in
-        *" $key "*) return 0 ;;
-    esac
-    FETCHED_KEYS="$FETCHED_KEYS$key "
-
-    # The '|| data=' guard matters: under 'set -e' an unguarded assignment
-    # from a failing curl aborts the whole script, so a single unreachable
-    # ticket would kill a multi-ticket or recursive run instead of falling
-    # through to the 'Error fetching' branch below and carrying on.
-    local data
-    data=$(curl -sS --connect-timeout 10 --max-time 30 \
-        -u "$JIRA_EMAIL:$JIRA_TOKEN" \
-        "$JIRA_INSTANCE/rest/api/3/issue/$key?fields=summary,status,issuetype,description,issuelinks,subtasks,parent" 2>/dev/null) || data=''
-
-    # Optional: fetch comments (only if --comments was passed). Empty
-    # JSON object signals "no comments fetched" to the Python printer.
-    local comments_data='{}'
-    if [ "$FETCH_COMMENTS" -eq 1 ]; then
-        comments_data=$(curl -sS --connect-timeout 10 --max-time 30 \
-            -u "$JIRA_EMAIL:$JIRA_TOKEN" \
-            "$JIRA_INSTANCE/rest/api/3/issue/$key/comment" 2>/dev/null) || comments_data='{}'
-    fi
-
-    if echo "$data" | python3 -c "import sys,json; json.load(sys.stdin)['key']" >/dev/null 2>&1; then
-        python3 -c "
+PRINT_TICKET_PY=$(cat <<'PYEOF_PRINT_TICKET_PY'
 import json, sys, textwrap
 
 data = json.loads(sys.argv[1])
@@ -158,7 +136,7 @@ def extract_text(node, depth=0):
                 if m.get('type') == 'strong':
                     text = f'**{text}**'
                 elif m.get('type') == 'code':
-                    text = f'\`{text}\`'
+                    text = f'`{text}`'
                 elif m.get('type') == 'link':
                     href = m.get('attrs', {}).get('href', '')
             # Keep the target: a link whose text differs from its href
@@ -218,7 +196,7 @@ def extract_text(node, depth=0):
             child_text = []
             for c in node.get('content', []):
                 child_text.extend(extract_text(c, depth))
-            return ['\`\`\`\n' + ''.join(child_text) + '\n\`\`\`']
+            return ['```\n' + ''.join(child_text) + '\n```']
         if ntype == 'blockquote':
             child_text = []
             for c in node.get('content', []):
@@ -323,18 +301,10 @@ if comments:
         for line in text.split('\n'):
             print(f'{indent}    {line}')
         print()
-" "$data" "$indent" "$comments_data"
-    else
-        echo "${indent}Error fetching $key"
-        echo "$data" | head -3
-        return 1
-    fi
+PYEOF_PRINT_TICKET_PY
+)
 
-    # Recurse into related tickets if depth > 0
-    if [ "$depth" -gt 0 ]; then
-        # Extract subtask + linked-issue keys from already-fetched data
-        local related_keys
-        related_keys=$(echo "$data" | python3 -c "
+RELATED_KEYS_PY=$(cat <<'PYEOF_RELATED_KEYS_PY'
 import json, sys
 try:
     d = json.load(sys.stdin)
@@ -350,14 +320,10 @@ try:
     print(' '.join(out))
 except Exception:
     pass
-" 2>/dev/null)
+PYEOF_RELATED_KEYS_PY
+)
 
-        # Also fetch JQL parent= children
-        local jql_kids
-        jql_kids=$(curl -sS --connect-timeout 10 --max-time 30 \
-            -u "$JIRA_EMAIL:$JIRA_TOKEN" \
-            "$JIRA_INSTANCE/rest/api/3/search/jql?jql=parent%3D${key}&fields=key&maxResults=20" 2>/dev/null | \
-            python3 -c "
+JQL_KIDS_PY=$(cat <<'PYEOF_JQL_KIDS_PY'
 import json, sys
 try:
     d = json.load(sys.stdin)
@@ -365,7 +331,73 @@ try:
         print(issue['key'])
 except Exception:
     pass
-" 2>/dev/null | tr '\n' ' ') || jql_kids=''
+PYEOF_JQL_KIDS_PY
+)
+
+CHILD_KEYS_PY=$(cat <<'PYEOF_CHILD_KEYS_PY'
+import json, sys
+try:
+    data = json.load(sys.stdin)
+    for issue in data.get('issues', []):
+        key = issue['key']
+        summary = issue['fields']['summary']
+        status = issue['fields']['status']['name']
+        itype = issue['fields']['issuetype']['name']
+        print(f'{key} ({itype}) [{status}]: {summary}')
+except Exception:
+    pass
+PYEOF_CHILD_KEYS_PY
+)
+
+fetch_ticket() {
+    local key="$1"
+    local indent="${2:-}"
+    local depth="${3:-0}"
+
+    # Cycle / dup protection
+    case "$FETCHED_KEYS" in
+        *" $key "*) return 0 ;;
+    esac
+    FETCHED_KEYS="$FETCHED_KEYS$key "
+
+    # The '|| data=' guard matters: under 'set -e' an unguarded assignment
+    # from a failing curl aborts the whole script, so a single unreachable
+    # ticket would kill a multi-ticket or recursive run instead of falling
+    # through to the 'Error fetching' branch below and carrying on.
+    local data
+    data=$(curl -sS --connect-timeout 10 --max-time 30 \
+        -u "$JIRA_EMAIL:$JIRA_TOKEN" \
+        "$JIRA_INSTANCE/rest/api/3/issue/$key?fields=summary,status,issuetype,description,issuelinks,subtasks,parent" 2>/dev/null) || data=''
+
+    # Optional: fetch comments (only if --comments was passed). Empty
+    # JSON object signals "no comments fetched" to the Python printer.
+    local comments_data='{}'
+    if [ "$FETCH_COMMENTS" -eq 1 ]; then
+        comments_data=$(curl -sS --connect-timeout 10 --max-time 30 \
+            -u "$JIRA_EMAIL:$JIRA_TOKEN" \
+            "$JIRA_INSTANCE/rest/api/3/issue/$key/comment" 2>/dev/null) || comments_data='{}'
+    fi
+
+    if echo "$data" | python3 -c "import sys,json; json.load(sys.stdin)['key']" >/dev/null 2>&1; then
+        python3 -c "$PRINT_TICKET_PY" "$data" "$indent" "$comments_data"
+    else
+        echo "${indent}Error fetching $key"
+        echo "$data" | head -3
+        return 1
+    fi
+
+    # Recurse into related tickets if depth > 0
+    if [ "$depth" -gt 0 ]; then
+        # Extract subtask + linked-issue keys from already-fetched data
+        local related_keys
+        related_keys=$(echo "$data" | python3 -c "$RELATED_KEYS_PY" 2>/dev/null)
+
+        # Also fetch JQL parent= children
+        local jql_kids
+        jql_kids=$(curl -sS --connect-timeout 10 --max-time 30 \
+            -u "$JIRA_EMAIL:$JIRA_TOKEN" \
+            "$JIRA_INSTANCE/rest/api/3/search/jql?jql=parent%3D${key}&fields=key&maxResults=20" 2>/dev/null | \
+            python3 -c "$JQL_KIDS_PY" 2>/dev/null | tr '\n' ' ') || jql_kids=''
 
         local rk
         for rk in $related_keys $jql_kids; do
@@ -394,19 +426,7 @@ if [ "$LINKED_DEPTH" -eq 0 ]; then
     CHILD_KEYS=$(curl -sS --connect-timeout 10 --max-time 30 \
         -u "$JIRA_EMAIL:$JIRA_TOKEN" \
         "$JIRA_INSTANCE/rest/api/3/search/jql?jql=parent%3D${TICKET}&fields=key,summary,status,issuetype&maxResults=20" 2>/dev/null | \
-        python3 -c "
-import json, sys
-try:
-    data = json.load(sys.stdin)
-    for issue in data.get('issues', []):
-        key = issue['key']
-        summary = issue['fields']['summary']
-        status = issue['fields']['status']['name']
-        itype = issue['fields']['issuetype']['name']
-        print(f'{key} ({itype}) [{status}]: {summary}')
-except Exception:
-    pass
-" 2>/dev/null) || CHILD_KEYS=''
+        python3 -c "$CHILD_KEYS_PY" 2>/dev/null) || CHILD_KEYS=''
 
     if [ -n "$CHILD_KEYS" ]; then
         echo "Child issues:"
