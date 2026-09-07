@@ -95,7 +95,7 @@ FETCHED_KEYS=" "
 # the Python can be written exactly as Python.
 
 PRINT_TICKET_PY=$(cat <<'PYEOF_PRINT_TICKET_PY'
-import json, sys, textwrap
+import datetime, json, sys, textwrap
 
 data = json.loads(sys.argv[1])
 indent = sys.argv[2]
@@ -137,6 +137,10 @@ def extract_text(node, depth=0):
                     text = f'**{text}**'
                 elif m.get('type') == 'code':
                     text = f'`{text}`'
+                elif m.get('type') == 'em':
+                    text = f'_{text}_'
+                elif m.get('type') == 'strike':
+                    text = f'~~{text}~~'
                 elif m.get('type') == 'link':
                     href = m.get('attrs', {}).get('href', '')
             # Keep the target: a link whose text differs from its href
@@ -159,6 +163,36 @@ def extract_text(node, depth=0):
             return ['<' + url + '>'] if url else []
         if ntype == 'mention':
             return [node.get('attrs', {}).get('text', '@?')]
+        if ntype == 'emoji':
+            attrs = node.get('attrs', {})
+            return [attrs.get('text') or attrs.get('shortName') or '']
+        if ntype == 'status':
+            # A status lozenge carries meaning no other node repeats, so a
+            # ticket saying a step is DONE reads as empty without this.
+            label = node.get('attrs', {}).get('text', '')
+            return ['[' + label + ']'] if label else []
+        if ntype == 'date':
+            timestamp = node.get('attrs', {}).get('timestamp', '')
+            if not timestamp:
+                return []
+            try:
+                moment = datetime.datetime.fromtimestamp(
+                    int(timestamp) / 1000, datetime.timezone.utc
+                )
+                return [moment.strftime('%Y-%m-%d')]
+            except (ValueError, TypeError, OverflowError, OSError):
+                return [str(timestamp)]
+        if ntype in ('media', 'mediaInline'):
+            # Attachments have no text of their own; name them so a ticket
+            # that argues from a screenshot does not read as if it argued
+            # from nothing.
+            attrs = node.get('attrs', {})
+            name = attrs.get('alt') or attrs.get('id') or ''
+            return ['[attachment: ' + name + ']'] if name else ['[attachment]']
+        if ntype in ('mediaSingle', 'mediaGroup'):
+            for c in node.get('content', []):
+                lines.extend(extract_text(c, depth))
+            return lines
         if ntype == 'hardBreak':
             return ['\n']
         if ntype == 'rule':
@@ -181,11 +215,39 @@ def extract_text(node, depth=0):
             child_text = []
             for c in node.get('content', []):
                 child_text.extend(extract_text(c, depth))
-            return ['  ' * depth + '- ' + ''.join(child_text).strip()]
+            # Join on a newline before collapsing so an item holding two
+            # paragraphs keeps a space between them instead of running the
+            # last word of one into the first word of the next. The marker
+            # is added by the enclosing list, which is the only place that
+            # knows whether the item needs a bullet or a number.
+            return [' '.join('\n'.join(child_text).split())]
         if ntype in ('bulletList', 'orderedList'):
+            ordered = ntype == 'orderedList'
+            first = node.get('attrs', {}).get('order', 1) if ordered else 1
+            try:
+                first = int(first)
+            except (ValueError, TypeError):
+                first = 1
+            for number, c in enumerate(node.get('content', []), start=first):
+                for item in extract_text(c, depth + 1):
+                    if not item:
+                        continue
+                    marker = f'{number}. ' if ordered else '- '
+                    lines.append('  ' * (depth + 1) + marker + item)
+            return lines
+        if ntype == 'taskList':
             for c in node.get('content', []):
                 lines.extend(extract_text(c, depth + 1))
             return lines
+        if ntype == 'taskItem':
+            # Without the box a done item and an open one render identically.
+            child_text = []
+            for c in node.get('content', []):
+                child_text.extend(extract_text(c, depth))
+            body = ' '.join('\n'.join(child_text).split())
+            state = node.get('attrs', {}).get('state', 'TODO')
+            box = '[x]' if state == 'DONE' else '[ ]'
+            return ['  ' * depth + '- ' + box + ' ' + body] if body else []
         if ntype == 'heading':
             level = node.get('attrs', {}).get('level', 1)
             child_text = []
@@ -197,6 +259,19 @@ def extract_text(node, depth=0):
             for c in node.get('content', []):
                 child_text.extend(extract_text(c, depth))
             return ['```\n' + ''.join(child_text) + '\n```']
+        if ntype == 'panel':
+            # Jira panels carry their severity in the attrs, not the text,
+            # so an info note and a warning read the same without this.
+            panel_type = node.get('attrs', {}).get('panelType', 'info')
+            child_text = []
+            for c in node.get('content', []):
+                child_text.extend(extract_text(c, depth))
+            body = '\n'.join(child_text).strip()
+            if not body:
+                return []
+            body_lines = body.split('\n')
+            head = '**[' + panel_type.upper() + ']** ' + body_lines[0]
+            return [head] + body_lines[1:] + ['']
         if ntype == 'blockquote':
             child_text = []
             for c in node.get('content', []):
@@ -241,7 +316,10 @@ def extract_text(node, depth=0):
 desc = fields.get('description')
 if desc and isinstance(desc, dict):
     text_lines = extract_text(desc)
-    desc_text = '\n'.join(text_lines).strip()
+    # Strip newlines only: a plain strip() would also eat the indent of the
+    # first line, so a description opening with a list lost its leading
+    # bullet indent while every later item kept it.
+    desc_text = '\n'.join(text_lines).strip('\n')
     if desc_text:
         for line in desc_text.split('\n'):
             print(f'{indent}{line}')
@@ -291,7 +369,7 @@ if comments:
         if isinstance(body, dict):
             # Reuse the same ADF extractor used for descriptions.
             text_lines = extract_text(body)
-            text = '\n'.join(text_lines).strip()
+            text = '\n'.join(text_lines).strip('\n')
             if not text:
                 text = '(comment body in ADF format; no text extracted)'
         elif isinstance(body, str):
