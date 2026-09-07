@@ -142,21 +142,30 @@ def extract_text(node, depth=0):
         if ntype == 'text':
             text = node.get('text', '')
             marks = node.get('marks', [])
+            href = ''
             for m in marks:
                 if m.get('type') == 'strong':
                     text = f'**{text}**'
                 elif m.get('type') == 'code':
                     text = f'\`{text}\`'
                 elif m.get('type') == 'link':
-                    # Keep the target: a link whose text differs from its
-                    # href (ticket keys, 'here', PR titles) is otherwise lost.
                     href = m.get('attrs', {}).get('href', '')
-                    if href and href != text:
-                        text = text + ' <' + href + '>'
+            # Keep the target: a link whose text differs from its href
+            # (ticket keys, 'here', PR titles) is otherwise lost. Appended
+            # after the other marks so the URL never lands inside a code
+            # span or bold run, whatever order the marks arrived in, and
+            # compared against the raw text so an autolinked bare URL that
+            # also carries a mark is still recognised as its own target.
+            if href and href != node.get('text', ''):
+                text = text + ' <' + href + '>'
             return [text]
         if ntype == 'inlineCard':
-            # Smart links (pasted Jira/GitHub URLs) carry the URL only here.
-            return ['<' + node.get('attrs', {}).get('url', '') + '>']
+            # Smart links (pasted Jira/GitHub URLs) carry the URL only here,
+            # either directly or inside the resolved JSON-LD 'data' blob.
+            attrs = node.get('attrs', {})
+            data = attrs.get('data')
+            url = attrs.get('url') or (data.get('url', '') if isinstance(data, dict) else '')
+            return ['<' + url + '>'] if url else []
         if ntype == 'mention':
             return [node.get('attrs', {}).get('text', '@?')]
         if ntype == 'hardBreak':
@@ -187,7 +196,12 @@ def extract_text(node, depth=0):
             child_text = []
             for c in node.get('content', []):
                 child_text.extend(extract_text(c, depth))
-            return ['> ' + l for l in ''.join(child_text).strip().split('\n')]
+            # Children already come back one line each; joining on '' would
+            # run every paragraph of the quote together into a single line.
+            quoted = '\n'.join(child_text).strip()
+            if not quoted:
+                return []
+            return ['> ' + ln if ln else '>' for ln in quoted.split('\n')]
         if ntype == 'table':
             rows = []
             for row in node.get('content', []):
