@@ -149,7 +149,7 @@ def extract_text(node, depth=0):
                     text = f'\`{text}\`'
                 elif m.get('type') == 'link':
                     # Keep the target: a link whose text differs from its
-                    # href (ticket keys, "here", PR titles) is otherwise lost.
+                    # href (ticket keys, 'here', PR titles) is otherwise lost.
                     href = m.get('attrs', {}).get('href', '')
                     if href and href != text:
                         text = text + ' <' + href + '>'
