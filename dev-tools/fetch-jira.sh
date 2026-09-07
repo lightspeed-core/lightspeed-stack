@@ -122,6 +122,10 @@ def clean_url(url):
     return url.split('#icft=')[0] if '#icft=' in url else url
 
 
+# List kinds that may appear nested inside a listItem.
+NESTED_LIST_TYPES = ('bulletList', 'orderedList', 'taskList')
+
+
 # ADF (Atlassian Document Format) → markdown-ish text extractor.
 # Hoisted to top-level so both description and comments can use it.
 def extract_text(node, depth=0):
@@ -136,7 +140,18 @@ def extract_text(node, depth=0):
                 if m.get('type') == 'strong':
                     text = f'**{text}**'
                 elif m.get('type') == 'code':
-                    text = f'`{text}`'
+                    # A code run may itself contain backticks, which would
+                    # end the span early. Fence it with one more backtick
+                    # than its longest internal run, padding when the text
+                    # starts or ends with one.
+                    longest = 0
+                    run = 0
+                    for char in text:
+                        run = run + 1 if char == '`' else 0
+                        longest = max(longest, run)
+                    fence = '`' * (longest + 1)
+                    pad = ' ' if text.startswith('`') or text.endswith('`') else ''
+                    text = fence + pad + text + pad + fence
                 elif m.get('type') == 'em':
                     text = f'_{text}_'
                 elif m.get('type') == 'strike':
@@ -215,15 +230,22 @@ def extract_text(node, depth=0):
                 return []
             return joined.split('\n') + ['']
         if ntype == 'listItem':
-            child_text = []
+            own_text = []
+            nested = []
             for c in node.get('content', []):
-                child_text.extend(extract_text(c, depth))
+                if isinstance(c, dict) and c.get('type') in NESTED_LIST_TYPES:
+                    # A nested list has already indented its own lines; folding
+                    # it into the parent's text would flatten the whole tree
+                    # onto one line.
+                    nested.extend(extract_text(c, depth))
+                else:
+                    own_text.extend(extract_text(c, depth))
             # Join on a newline before collapsing so an item holding two
             # paragraphs keeps a space between them instead of running the
             # last word of one into the first word of the next. The marker
             # is added by the enclosing list, which is the only place that
             # knows whether the item needs a bullet or a number.
-            return [' '.join('\n'.join(child_text).split())]
+            return [' '.join('\n'.join(own_text).split())] + nested
         if ntype in ('bulletList', 'orderedList'):
             ordered = ntype == 'orderedList'
             first = node.get('attrs', {}).get('order', 1) if ordered else 1
@@ -232,11 +254,14 @@ def extract_text(node, depth=0):
             except (ValueError, TypeError):
                 first = 1
             for number, c in enumerate(node.get('content', []), start=first):
-                for item in extract_text(c, depth + 1):
-                    if not item:
-                        continue
-                    marker = f'{number}. ' if ordered else '- '
-                    lines.append('  ' * (depth + 1) + marker + item)
+                item_lines = [item for item in extract_text(c, depth + 1) if item]
+                if not item_lines:
+                    continue
+                marker = f'{number}. ' if ordered else '- '
+                lines.append('  ' * (depth + 1) + marker + item_lines[0])
+                # Anything after the first line is a nested list that brought
+                # its own marker and indentation.
+                lines.extend(item_lines[1:])
             return lines
         if ntype == 'taskList':
             for c in node.get('content', []):
@@ -323,7 +348,11 @@ def extract_text(node, depth=0):
                     # middle of the row and break the whole table. Join on a
                     # newline first so the paragraph boundary survives as the
                     # space that separates them.
-                    cells.append(' '.join('\n'.join(cell_text).split()))
+                    cell = ' '.join('\n'.join(cell_text).split())
+                    # An unescaped pipe in the text would open a new column
+                    # and shift every cell after it.
+                    cell = cell.replace('\\', '\\\\').replace('|', '\\|')
+                    cells.append(cell)
                 if not cells:
                     continue
                 rows.append(' | '.join(cells))
@@ -413,6 +442,65 @@ if comments:
 PYEOF_PRINT_TICKET_PY
 )
 
+# Prints the next startAt offset for a comment page, or nothing when the
+# thread is exhausted.
+COMMENT_NEXT_PY=$(cat <<'PYEOF_COMMENT_NEXT_PY'
+import json, sys
+try:
+    page = json.load(open(sys.argv[1]))
+    start = int(page.get('startAt', 0))
+    got = len(page.get('comments', []))
+    total = int(page.get('total', 0))
+    if got and start + got < total:
+        print(start + got)
+except Exception:
+    pass
+PYEOF_COMMENT_NEXT_PY
+)
+
+# Merges numbered comment pages back into one response-shaped document.
+MERGE_COMMENTS_PY=$(cat <<'PYEOF_MERGE_COMMENTS_PY'
+import json, os, sys
+directory = sys.argv[1]
+names = sorted(os.listdir(directory), key=lambda f: int(f.split('.')[0]))
+comments = []
+total = 0
+for name in names:
+    page = json.load(open(os.path.join(directory, name)))
+    comments.extend(page.get('comments', []))
+    total = max(total, int(page.get('total', 0)))
+print(json.dumps({'comments': comments, 'total': max(total, len(comments))}))
+PYEOF_MERGE_COMMENTS_PY
+)
+
+# Prints the search cursor for the next page, or nothing when it is the last.
+SEARCH_NEXT_PY=$(cat <<'PYEOF_SEARCH_NEXT_PY'
+import json, sys
+try:
+    page = json.load(open(sys.argv[1]))
+    token = page.get('nextPageToken')
+    if token and page.get('isLast') is not True:
+        print(token)
+except Exception:
+    pass
+PYEOF_SEARCH_NEXT_PY
+)
+
+# Merges numbered search pages into one issues list.
+MERGE_ISSUES_PY=$(cat <<'PYEOF_MERGE_ISSUES_PY'
+import json, os, sys
+directory = sys.argv[1]
+names = sorted(os.listdir(directory), key=lambda f: int(f.split('.')[0]))
+issues = []
+last = True
+for name in names:
+    page = json.load(open(os.path.join(directory, name)))
+    issues.extend(page.get('issues', []))
+    last = page.get('isLast') is not False and not page.get('nextPageToken')
+print(json.dumps({'issues': issues, 'isLast': last}))
+PYEOF_MERGE_ISSUES_PY
+)
+
 RELATED_KEYS_PY=$(cat <<'PYEOF_RELATED_KEYS_PY'
 import json, sys
 try:
@@ -462,6 +550,65 @@ except Exception:
 PYEOF_CHILD_KEYS_PY
 )
 
+# Jira serves list endpoints one page at a time. Pages are collected as files
+# under a scratch directory and merged, so a long comment thread or a parent
+# with many children is returned whole rather than silently cut off at the
+# first page. PAGE_LIMIT is a stop so a malformed cursor cannot spin forever.
+PAGE_LIMIT=50
+PAGE_DIR=$(mktemp -d)
+trap 'rm -rf "$PAGE_DIR"' EXIT
+
+fetch_all_comments() {
+    local key="$1"
+    local dir="$PAGE_DIR/comments"
+    rm -rf "$dir"
+    mkdir -p "$dir"
+    local start=0
+    local page_no=0
+    while [ "$page_no" -lt "$PAGE_LIMIT" ]; do
+        curl -sS --connect-timeout 10 --max-time 30 \
+            -u "$JIRA_EMAIL:$JIRA_TOKEN" \
+            "$JIRA_INSTANCE/rest/api/3/issue/$key/comment?startAt=$start&maxResults=100" \
+            -o "$dir/$page_no.json" 2>/dev/null || return 1
+        start=$(python3 -c "$COMMENT_NEXT_PY" "$dir/$page_no.json" 2>/dev/null) || return 1
+        page_no=$((page_no + 1))
+        if [ -z "$start" ]; then
+            break
+        fi
+    done
+    python3 -c "$MERGE_COMMENTS_PY" "$dir" 2>/dev/null || return 1
+}
+
+fetch_all_children() {
+    local parent="$1"
+    local fields="$2"
+    local dir="$PAGE_DIR/children"
+    rm -rf "$dir"
+    mkdir -p "$dir"
+    local token=''
+    local page_no=0
+    local url
+    while [ "$page_no" -lt "$PAGE_LIMIT" ]; do
+        url="$JIRA_INSTANCE/rest/api/3/search/jql?jql=parent%3D${parent}&fields=${fields}&maxResults=100"
+        if [ -n "$token" ]; then
+            url="$url&nextPageToken=$token"
+        fi
+        curl -sS --connect-timeout 10 --max-time 30 \
+            -u "$JIRA_EMAIL:$JIRA_TOKEN" "$url" -o "$dir/$page_no.json" 2>/dev/null || return 1
+        token=$(python3 -c "$SEARCH_NEXT_PY" "$dir/$page_no.json" 2>/dev/null) || return 1
+        page_no=$((page_no + 1))
+        if [ -z "$token" ]; then
+            break
+        fi
+    done
+    python3 -c "$MERGE_ISSUES_PY" "$dir" 2>/dev/null || return 1
+}
+
+# Every requested ticket is attempted even when an earlier one fails, so one
+# unreachable key does not hide the rest of the output; the script still exits
+# non-zero if any of them failed, including a failure deep in the recursion.
+EXIT_STATUS=0
+
 fetch_ticket() {
     local key="$1"
     local indent="${2:-}"
@@ -486,9 +633,7 @@ fetch_ticket() {
     # JSON object signals "no comments fetched" to the Python printer.
     local comments_data='{}'
     if [ "$FETCH_COMMENTS" -eq 1 ]; then
-        comments_data=$(curl -sS --connect-timeout 10 --max-time 30 \
-            -u "$JIRA_EMAIL:$JIRA_TOKEN" \
-            "$JIRA_INSTANCE/rest/api/3/issue/$key/comment" 2>/dev/null) || comments_data='{}'
+        comments_data=$(fetch_all_comments "$key") || comments_data='{}'
     fi
 
     if echo "$data" | python3 -c "import sys,json; json.load(sys.stdin)['key']" >/dev/null 2>&1; then
@@ -507,26 +652,21 @@ fetch_ticket() {
 
         # Also fetch JQL parent= children
         local jql_kids
-        jql_kids=$(curl -sS --connect-timeout 10 --max-time 30 \
-            -u "$JIRA_EMAIL:$JIRA_TOKEN" \
-            "$JIRA_INSTANCE/rest/api/3/search/jql?jql=parent%3D${key}&fields=key&maxResults=20" 2>/dev/null | \
+        jql_kids=$(fetch_all_children "$key" "key" 2>/dev/null | \
             python3 -c "$JQL_KIDS_PY" 2>/dev/null | tr '\n' ' ') || jql_kids=''
 
         local rk
         for rk in $related_keys $jql_kids; do
             [ -z "$rk" ] && continue
             echo
-            # A relation we cannot fetch is reported by fetch_ticket and
-            # then tolerated: it must not abandon the rest of the recursion.
-            fetch_ticket "$rk" "${indent}  " $((depth - 1)) || true
+            # A relation we cannot fetch must not abandon the rest of the
+            # recursion, but it is still a failure: record it rather than
+            # swallowing it, or the run reports success having printed an
+            # error.
+            fetch_ticket "$rk" "${indent}  " $((depth - 1)) || EXIT_STATUS=1
         done
     fi
 }
-
-# Every requested ticket is attempted even when an earlier one fails, so
-# one unreachable key does not hide the rest of the output; the script
-# still exits non-zero if any of them failed.
-EXIT_STATUS=0
 
 # Fetch main ticket (with depth recursion if requested)
 fetch_ticket "$TICKET" "" "$LINKED_DEPTH" || EXIT_STATUS=1
@@ -536,9 +676,7 @@ fetch_ticket "$TICKET" "" "$LINKED_DEPTH" || EXIT_STATUS=1
 # fetching each one). At depth > 0, the recursive fetch_ticket already
 # pulled them in, so skip this listing to avoid duplication.
 if [ "$LINKED_DEPTH" -eq 0 ]; then
-    CHILD_KEYS=$(curl -sS --connect-timeout 10 --max-time 30 \
-        -u "$JIRA_EMAIL:$JIRA_TOKEN" \
-        "$JIRA_INSTANCE/rest/api/3/search/jql?jql=parent%3D${TICKET}&fields=key,summary,status,issuetype&maxResults=20" 2>/dev/null | \
+    CHILD_KEYS=$(fetch_all_children "$TICKET" "key,summary,status,issuetype" 2>/dev/null | \
         python3 -c "$CHILD_KEYS_PY" 2>/dev/null) || CHILD_KEYS=''
 
     if [ -n "$CHILD_KEYS" ]; then
