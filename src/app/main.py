@@ -222,6 +222,7 @@ class RestApiMetricsMiddleware:  # pylint: disable=too-few-public-methods
 
         # Ignore paths that are not part of the app routes.
         if path not in app_routes_paths:
+            logger.debug("Ignoring path: %s", path)
             await self.app(scope, receive, send)
             return
 
@@ -299,6 +300,11 @@ app_routes_paths = [
     if hasattr(rc.original_route, "path")
     and rc.original_route.path  # pyright: ignore[reportAttributeAccessIssue]
 ]
+
+logger.debug("Route paths:")
+for app_routes_path in app_routes_paths:
+    logger.debug(app_routes_path)
+
 
 # Register pure ASGI middlewares.  Middleware execution order is the reverse of
 # registration order: GlobalExceptionMiddleware (registered first) is innermost,
