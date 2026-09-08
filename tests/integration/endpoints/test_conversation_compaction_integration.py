@@ -236,9 +236,9 @@ def _setup_fold_mocks(
     token count, when a third summary is added by compaction, exceeds the
     compaction threshold — triggering ``_maybe_persist_fold``.
 
-    Each existing summary has ``token_count=8`` (total 16). The new summary
-    from ``summarize_chunk`` adds ``token_count=6`` (total 22), which exceeds
-    ``context_window(200) * threshold_ratio(0.1) = 20``.
+    Each existing summary has ``token_count=1`` (total 2). The new summary
+    from ``summarize_chunk`` adds ``token_count=1000`` (total 1002), which
+    exceeds ``context_window(200) * threshold_ratio(0.1) = 20``.
 
     Args:
         mocker: pytest-mock fixture.
@@ -2987,7 +2987,7 @@ class TestStreamingQueryConversationCompaction:
         assert event_types[1] == "compaction"
 
         remaining_types = set(event_types[2:])
-        assert remaining_types.issubset({"token", "turn_complete", "end", "error"})
+        assert remaining_types.issubset({"token", "turn_complete", "end"})
 
     @pytest.mark.asyncio
     async def test_streaming_no_compaction_no_start_event_duplication(
