@@ -180,10 +180,10 @@ def validate_json(message: Any, schema: Any) -> None:
         )
 
     except jsonschema.ValidationError as e:
-        assert False, "The message doesn't fit the expected schema:" + str(e)
+        raise AssertionError("The message doesn't fit the expected schema:" + str(e))
 
     except jsonschema.SchemaError as e:
-        assert False, "The provided schema is faulty:" + str(e)
+        raise AssertionError("The provided schema is faulty:" + str(e))
 
 
 def wait_for_container_health(
