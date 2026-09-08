@@ -3142,8 +3142,146 @@ class RedactionShieldConfiguration(ConfigurationBase):
     )
 
 
+class RiskDefinition(ConfigurationBase):
+    """
+    Definition for a custom risk category.
+
+    Custom risks allow applications to add use-case-specific safety checks
+    beyond the standard harm, jailbreak, leetspeak, amnesia, and
+    history_politics checks.
+    Example:
+        liability_risk = RiskDefinition(
+            name="liability",
+            description="Content requesting legal, medical, or financial advice",
+            threshold=0.55,
+            points=["input"],
+        )
+        pii_risk = RiskDefinition(
+            name="pii_request",
+            description="User is asking the AI to reveal personal information",
+            threshold=0.50,
+            points=["input", "tool"],
+        )
+    Note:
+        To enable think mode (detailed reasoning) for a risk, add the risk name
+        to the `thinking_enabled` list in `ModerationConfig`. Do not set
+        `enable_thinking` directly - it is managed internally.
+    """
+
+    name: str = Field(
+        ...,
+        title="Risk name",
+        description="Unique identifier for this risk (e.g., 'liability', 'competitor_mention')",
+    )
+    description: str = Field(
+        ...,
+        title="Rist description",
+        description="Risk definition text passed to Granite Guardian as custom_criteria",
+    )
+    threshold: float = Field(
+        default=0.65,
+        ge=0.0,
+        le=1.0,
+        title="Risk threshold",
+        description="Score threshold for flagging (lower = more sensitive)",
+    )
+    enabled: bool = Field(
+        default=True, title="Risk enabled", description="Whether to run this check"
+    )
+    enable_thinking: bool = Field(
+        default=False,
+        title="Risk enable thinking",
+        description=(
+            "Internal field - set via ModerationConfig.thinking_enabled list, "
+            "not directly. When True, Granite Guardian provides detailed "
+            "reasoning before scoring."
+        ),
+    )
+    points: list[Literal["input", "output", "tool"]] = Field(
+        ...,
+        min_length=1,
+        title="Guardrail points",
+        description=(
+            "Where this risk is evaluated: `input` (user message), "
+            "`output` (model response), or `tool` (tool/MCP content)."
+        ),
+    )
+    violation_message: str = Field(
+        ...,
+        title="Violation message",
+        description="Message to be displayed when this risk is violated",
+    )
+
+
+class GraniteGuardianConfig(ConfigurationBase):
+    """Configuration for the Granite Guardian moderation guardrail."""
+
+    url: str = Field(
+        ..., title="Base URL", description="The model_id to use for the guard"
+    )
+
+    api_key: Optional[SecretStr] = Field(
+        None, title="Granite Guardian API key", description="API key for the inference"
+    )
+
+    max_retries: PositiveInt = Field(
+        2, ge=0, le=5, title="Max retries", description="Maximun number of retires"
+    )
+
+    timeout: PositiveInt = Field(
+        30, ge=5, le=300, title="Timeout", description="Request timeout in seconds"
+    )
+
+    verify_ssl: bool | str = Field(
+        True,
+        title="Verify SSL",
+        description=(
+            "SSL certificate verification. Can be:\n"
+            "  - True: Verify using system CA bundle (default, recommended)\n"
+            "  - False: Disable verification (insecure, for dev only)\n"
+            "  - str: Path to custom CA bundle file (for internal PKI)"
+        ),
+    )
+
+    risks: list[RiskDefinition] = Field(
+        ...,
+        title="Defined risks",
+        description="Risks to be considered while applying this guradrail",
+    )
+
+
+class GraniteGuardianShieldConfiguration(ConfigurationBase):
+    """Configuration for a named Granite Guardian guardrail shield.
+
+    Attributes:
+        name: Unique, user-facing name identifying this shield instance.
+        provider_id: Discriminator identifying this as a granite-guardian shield.
+        config: Granite-guardian-specific configuration.
+    """
+
+    name: str = Field(
+        ...,
+        title="Shield name",
+        description="Unique, user-facing name identifying this shield instance.",
+    )
+
+    provider_id: Literal["granite_guardian"] = Field(
+        ...,
+        title="Shield provider id",
+        description="Discriminator identifying this as a granite-guardian shield.",
+    )
+
+    config: GraniteGuardianConfig = Field(
+        ...,
+        title="Shield configuration",
+        description="Granite-guardian-specific configuration for this shield",
+    )
+
+
 ShieldConfiguration = Annotated[
-    QuestionValidityShieldConfiguration | RedactionShieldConfiguration,
+    QuestionValidityShieldConfiguration
+    | RedactionShieldConfiguration
+    | GraniteGuardianShieldConfiguration,
     Field(discriminator="provider_id"),
 ]
 """Configuration for a single named guardrail shield (question validity or redaction).
