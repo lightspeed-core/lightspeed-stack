@@ -44,10 +44,6 @@ Unit tests for utils/input_sanitization.py.
 
 Unit tests for utils/json_schema_updater module.
 
-## [test_ogx_version.py](test_ogx_version.py)
-
-Unit tests for utility function to check OGX version.
-
 ## [test_markdown_repair.py](test_markdown_repair.py)
 
 Unit tests for markdown repair utilities.
@@ -67,6 +63,14 @@ Unit tests for MCP tool discovery utilities.
 ## [test_model_list.py](test_model_list.py)
 
 Unit tests for utils/model_list.py helpers.
+
+## [test_ogx_serialization.py](test_ogx_serialization.py)
+
+Unit tests for ogx_client serialization helpers.
+
+## [test_ogx_version.py](test_ogx_version.py)
+
+Unit tests for utility function to check OGX version.
 
 ## [test_otel_tracing.py](test_otel_tracing.py)
 

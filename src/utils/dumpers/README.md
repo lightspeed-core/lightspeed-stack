@@ -8,3 +8,7 @@ Function to dump the configuration schema into OpenAPI-compatible format.
 
 Function to dump the schema of all data models into OpenAPI-compatible format.
 
+## [openapi_schema_dumper.py](openapi_schema_dumper.py)
+
+Utility function to dump schema with list of models into OpenAPI-compatible JSON format.
+

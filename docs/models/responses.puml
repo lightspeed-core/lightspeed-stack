@@ -98,9 +98,9 @@ class "ForbiddenResponse" as src.models.api.responses.error.forbidden.ForbiddenR
   saved_prompt(action: str, resource_id: str, user_id: str) -> Self
 }
 class "InfoResponse" as src.models.api.responses.successful.probes.InfoResponse {
-  ogx_version : Optional[str]
   model_config : dict
   name : Optional[str]
+  ogx_version : Optional[str]
   service_version : Optional[str]
 }
 class "InternalServerErrorResponse" as src.models.api.responses.error.internal.InternalServerErrorResponse {
@@ -347,7 +347,7 @@ class "VectorStoreFileDeleteResponse" as src.models.api.responses.successful.vec
   resource_name : ClassVar[str]
 }
 class "VectorStoreFileResponse" as src.models.api.responses.successful.vector_stores.VectorStoreFileResponse {
-  attributes : Optional[dict[str, str | float | bool]]
+  attributes : Optional[Mapping[str, Any]]
   id : Optional[str]
   last_error : Optional[str]
   model_config : dict

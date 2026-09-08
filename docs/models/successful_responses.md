@@ -696,6 +696,43 @@ Attributes:
 | object | string | Object type |
 
 
+## GraniteGuardianConfig
+
+
+Configuration for the Granite Guardian moderation guardrail.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| url | string | The model_id to use for the guard |
+| api_key | string | API key for the inference |
+| max_retries | integer | Maximun number of retires |
+| timeout | integer | Request timeout in seconds |
+| verify_ssl |  | SSL certificate verification. Can be:
+  - True: Verify using system CA bundle (default, recommended)
+  - False: Disable verification (insecure, for dev only)
+  - str: Path to custom CA bundle file (for internal PKI) |
+| risks | array | Risks to be considered while applying this guradrail |
+
+
+## GraniteGuardianShieldConfiguration
+
+
+Configuration for a named Granite Guardian guardrail shield.
+
+Attributes:
+    name: Unique, user-facing name identifying this shield instance.
+    provider_id: Discriminator identifying this as a granite-guardian shield.
+    config: Granite-guardian-specific configuration.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| name | string | Unique, user-facing name identifying this shield instance. |
+| provider_id | string | Discriminator identifying this as a granite-guardian shield. |
+| config |  | Granite-guardian-specific configuration for this shield |
+
+
 ## HealthStatus
 
 
@@ -1051,7 +1088,7 @@ Useful resources:
 
   - [OGX](https://ogx-ai.github.io/)
   - [Python OGX client](https://github.com/ogx-ai/ogx-client-python)
-  - [Build AI Applications with OGX](https://ogx-ai.github.io/)
+  - [Build AI Applications with OGX](https://ogx-ai.github.io/docs/building_applications)
 
 
 | Field | Type | Description |
@@ -1385,14 +1422,13 @@ Function tool configuration for OpenAI response inputs.
 
 Web search tool configuration for OpenAI response inputs.
 
-:param type: Web search tool type variant to use
-:param search_context_size: (Optional) Size of search context, must be "low", "medium", or "high"
-
 
 | Field | Type | Description |
 |-------|------|-------------|
 | type |  |  |
 | search_context_size | string |  |
+| filters |  |  |
+| user_location |  |  |
 
 
 ## OpenAIResponseMCPApprovalRequest
@@ -1595,16 +1631,13 @@ A summary of reasoning output from the model.
 
 Web search tool call output message for OpenAI responses.
 
-:param id: Unique identifier for this tool call
-:param status: Current status of the web search operation
-:param type: Tool call type identifier, always "web_search_call"
-
 
 | Field | Type | Description |
 |-------|------|-------------|
 | id | string |  |
 | status | string |  |
 | type | string |  |
+| action |  |  |
 
 
 ## OpenAIResponsePrompt
@@ -1639,6 +1672,7 @@ Controls how much reasoning the model performs before generating a response.
 | Field | Type | Description |
 |-------|------|-------------|
 | effort | string |  |
+| generate_summary | string | Deprecated: use 'summary' instead. |
 | summary | string | Summary mode for reasoning output. One of 'auto', 'concise', or 'detailed'. |
 
 
@@ -2362,6 +2396,44 @@ Configuration for a single retrieval strategy (inline or tool).
 | reranker |  | Neural reranking of RAG chunks using cross-encoder. Only applicable to inline retrieval. |
 
 
+## RiskDefinition
+
+
+Definition for a custom risk category.
+
+Custom risks allow applications to add use-case-specific safety checks
+beyond the standard harm, jailbreak, leetspeak, amnesia, and
+history_politics checks.
+Example:
+    liability_risk = RiskDefinition(
+        name="liability",
+        description="Content requesting legal, medical, or financial advice",
+        threshold=0.55,
+        points=["input"],
+    )
+    pii_risk = RiskDefinition(
+        name="pii_request",
+        description="User is asking the AI to reveal personal information",
+        threshold=0.50,
+        points=["input", "tool"],
+    )
+Note:
+    To enable think mode (detailed reasoning) for a risk, add the risk name
+    to the `thinking_enabled` list in `ModerationConfig`. Do not set
+    `enable_thinking` directly - it is managed internally.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| name | string | Unique identifier for this risk (e.g., 'liability', 'competitor_mention') |
+| description | string | Risk definition text passed to Granite Guardian as custom_criteria |
+| threshold | number | Score threshold for flagging (lower = more sensitive) |
+| enabled | boolean | Whether to run this check |
+| enable_thinking | boolean | Internal field - set via ModerationConfig.thinking_enabled list, not directly. When True, Granite Guardian provides detailed reasoning before scoring. |
+| points | array | Where this risk is evaluated: `input` (user message), `output` (model response), or `tool` (tool/MCP content). |
+| violation_message | string | Message to be displayed when this risk is violated |
+
+
 ## RlsapiV1Configuration
 
 
@@ -2566,8 +2638,9 @@ Examples:
     Keys can be "vector", "keyword", "neural". Values should sum to 1.0.
     Used when combining algorithm-based reranking with neural reranking.
     Example: {"vector": 0.3, "keyword": 0.3, "neural": 0.4}
-:param model: (Optional) Model identifier for neural reranker (e.g., "transformers/Qwen/Qwen3-Reranker-0.6B").
-    Required when ranker="neural" or when weights contains "neural".
+:param model: (Optional) Model identifier for neural reranker
+    (e.g., "sentence-transformers/Qwen/Qwen3-Reranker-0.6B"). Required when ranker="neural" or when
+    weights contains "neural".
 
 
 | Field | Type | Description |
@@ -3040,3 +3113,80 @@ Attributes:
 |-------|------|-------------|
 | data | array | List of vector stores |
 | object | string | Object type |
+
+
+## WebSearchActionFind
+
+
+Web search action: searches for a pattern within a loaded page.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| type | string |  |
+| url | string |  |
+| pattern | string |  |
+
+
+## WebSearchActionOpenPage
+
+
+Web search action: opens a specific URL from search results.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| type | string |  |
+| url | string |  |
+
+
+## WebSearchActionSearch
+
+
+Web search action: performs a search query.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| type | string |  |
+| query | string |  |
+| queries | array |  |
+| sources | array |  |
+
+
+## WebSearchFilters
+
+
+Domain filters for web search results.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| allowed_domains | array |  |
+
+
+## WebSearchSource
+
+
+A source URL returned by a web search action.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| type | string |  |
+| url | string |  |
+
+
+## WebSearchUserLocation
+
+
+Approximate user location to refine web search results.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| type | string |  |
+| city | string |  |
+| country | string |  |
+| region | string |  |
+| timezone | string |  |
