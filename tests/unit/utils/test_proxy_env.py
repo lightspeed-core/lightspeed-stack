@@ -42,7 +42,7 @@ class TestIsUnsupportedNoProxyEntry:
         assert is_unsupported_no_proxy_entry(entry) is False
 
 
-class TestSanitizeNoProxyValue:
+class TestSanitizeNoProxyValue:  # pylint: disable=too-few-public-methods
     """Tests for sanitize_no_proxy_value."""
 
     def test_removes_only_ipv6_cidr_entries(self) -> None:
