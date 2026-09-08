@@ -623,16 +623,13 @@ A summary of reasoning output from the model.
 
 Web search tool call output message for OpenAI responses.
 
-:param id: Unique identifier for this tool call
-:param status: Current status of the web search operation
-:param type: Tool call type identifier, always "web_search_call"
-
 
 | Field | Type | Description |
 |-------|------|-------------|
 | id | string |  |
 | status | string |  |
 | type | string |  |
+| action |  |  |
 
 
 ## OpenAITokenLogProb
@@ -906,3 +903,54 @@ Summary of a turn in OGX.
 | output_items | array | Structured response output items, captured for compacted-mode turn persistence (LCORE-1572). Empty on the non-compacted path. |
 | partial_tokens | array | Accumulated text deltas during streaming, used to reconstruct partial content on interruption. |
 | next_chunk_id | integer | Next monotonic SSE chunk index, kept in sync with the inner generator so the interrupt handler can emit a sequentially valid id. |
+
+
+## WebSearchActionFind
+
+
+Web search action: searches for a pattern within a loaded page.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| type | string |  |
+| url | string |  |
+| pattern | string |  |
+
+
+## WebSearchActionOpenPage
+
+
+Web search action: opens a specific URL from search results.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| type | string |  |
+| url | string |  |
+
+
+## WebSearchActionSearch
+
+
+Web search action: performs a search query.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| type | string |  |
+| query | string |  |
+| queries | array |  |
+| sources | array |  |
+
+
+## WebSearchSource
+
+
+A source URL returned by a web search action.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| type | string |  |
+| url | string |  |

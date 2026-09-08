@@ -507,14 +507,13 @@ Function tool configuration for OpenAI response inputs.
 
 Web search tool configuration for OpenAI response inputs.
 
-:param type: Web search tool type variant to use
-:param search_context_size: (Optional) Size of search context, must be "low", "medium", or "high"
-
 
 | Field | Type | Description |
 |-------|------|-------------|
 | type |  |  |
 | search_context_size | string |  |
+| filters |  |  |
+| user_location |  |  |
 
 
 ## OpenAIResponseMCPApprovalRequest
@@ -732,16 +731,13 @@ A summary of reasoning output from the model.
 
 Web search tool call output message for OpenAI responses.
 
-:param id: Unique identifier for this tool call
-:param status: Current status of the web search operation
-:param type: Tool call type identifier, always "web_search_call"
-
 
 | Field | Type | Description |
 |-------|------|-------------|
 | id | string |  |
 | status | string |  |
 | type | string |  |
+| action |  |  |
 
 
 ## OpenAIResponsePrompt
@@ -776,6 +772,7 @@ Controls how much reasoning the model performs before generating a response.
 | Field | Type | Description |
 |-------|------|-------------|
 | effort | string |  |
+| generate_summary | string | Deprecated: use 'summary' instead. |
 | summary | string | Summary mode for reasoning output. One of 'auto', 'concise', or 'detailed'. |
 
 
@@ -1174,8 +1171,9 @@ Examples:
     Keys can be "vector", "keyword", "neural". Values should sum to 1.0.
     Used when combining algorithm-based reranking with neural reranking.
     Example: {"vector": 0.3, "keyword": 0.3, "neural": 0.4}
-:param model: (Optional) Model identifier for neural reranker (e.g., "transformers/Qwen/Qwen3-Reranker-0.6B").
-    Required when ranker="neural" or when weights contains "neural".
+:param model: (Optional) Model identifier for neural reranker
+    (e.g., "sentence-transformers/Qwen/Qwen3-Reranker-0.6B"). Required when ranker="neural" or when
+    weights contains "neural".
 
 
 | Field | Type | Description |
@@ -1279,3 +1277,80 @@ Attributes:
 | name | string | New name for the vector store |
 | expires_at | integer | Unix timestamp when the vector store should expire |
 | metadata | object | Metadata dictionary for storing session information |
+
+
+## WebSearchActionFind
+
+
+Web search action: searches for a pattern within a loaded page.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| type | string |  |
+| url | string |  |
+| pattern | string |  |
+
+
+## WebSearchActionOpenPage
+
+
+Web search action: opens a specific URL from search results.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| type | string |  |
+| url | string |  |
+
+
+## WebSearchActionSearch
+
+
+Web search action: performs a search query.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| type | string |  |
+| query | string |  |
+| queries | array |  |
+| sources | array |  |
+
+
+## WebSearchFilters
+
+
+Domain filters for web search results.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| allowed_domains | array |  |
+
+
+## WebSearchSource
+
+
+A source URL returned by a web search action.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| type | string |  |
+| url | string |  |
+
+
+## WebSearchUserLocation
+
+
+Approximate user location to refine web search results.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| type | string |  |
+| city | string |  |
+| country | string |  |
+| region | string |  |
+| timezone | string |  |

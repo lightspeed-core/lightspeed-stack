@@ -48,10 +48,6 @@ Input sanitization to detect and block obfuscated prompt injection attempts.
 
 Function to transform a JSON Schema-like dictionary into an OpenAPI-compatible schema.
 
-## [ogx_version.py](ogx_version.py)
-
-Check if the OGX version is supported by the LCS.
-
 ## [markdown_repair.py](markdown_repair.py)
 
 Utilities for repairing truncated markdown content.
@@ -76,9 +72,13 @@ Utilities for discovering tools from remote MCP servers without OGX.
 
 Helpers for normalizing OGX ``models.list()`` union responses.
 
-## [openapi_schema_dumper.py](openapi_schema_dumper.py)
+## [ogx_serialization.py](ogx_serialization.py)
 
-Utility function to dump schema with list of models into OpenAPI-compatible JSON format.
+Serialization helpers for ``ogx_client`` models.
+
+## [ogx_version.py](ogx_version.py)
+
+Check if the OGX version is supported by the LCS.
 
 ## [otel_tracing.py](otel_tracing.py)
 

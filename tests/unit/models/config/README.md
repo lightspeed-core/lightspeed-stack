@@ -56,10 +56,6 @@ Unit tests for InferenceConfiguration model.
 
 Unit tests for JwtRoleRule model.
 
-## [test_ogx_configuration.py](test_ogx_configuration.py)
-
-Unit tests for OgxConfiguration model.
-
 ## [test_model_context_protocol_server.py](test_model_context_protocol_server.py)
 
 Unit tests for ModelContextProtocolServer model.
@@ -67,6 +63,10 @@ Unit tests for ModelContextProtocolServer model.
 ## [test_observability_configuration.py](test_observability_configuration.py)
 
 Unit tests for ObservabilityConfiguration model.
+
+## [test_ogx_configuration.py](test_ogx_configuration.py)
+
+Unit tests for OgxConfiguration model.
 
 ## [test_postgresql_database_configuration.py](test_postgresql_database_configuration.py)
 

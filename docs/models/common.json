@@ -1326,7 +1326,7 @@
                 "type": "object"
             },
             "OpenAIResponseOutputMessageWebSearchToolCall": {
-                "description": "Web search tool call output message for OpenAI responses.\n\n:param id: Unique identifier for this tool call\n:param status: Current status of the web search operation\n:param type: Tool call type identifier, always \"web_search_call\"",
+                "description": "Web search tool call output message for OpenAI responses.",
                 "properties": {
                     "id": {
                         "title": "Id",
@@ -1341,6 +1341,24 @@
                         "default": "web_search_call",
                         "title": "Type",
                         "type": "string"
+                    },
+                    "action": {
+                        "anyOf": [
+                            {
+                                "$ref": "`#/components/schemas/`WebSearchActionSearch"
+                            },
+                            {
+                                "$ref": "`#/components/schemas/`WebSearchActionOpenPage"
+                            },
+                            {
+                                "$ref": "`#/components/schemas/`WebSearchActionFind"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "default": null,
+                        "title": "Action"
                     }
                 },
                 "required": [
@@ -2019,6 +2037,102 @@
                     }
                 },
                 "title": "TurnSummary",
+                "type": "object"
+            },
+            "WebSearchActionFind": {
+                "description": "Web search action: searches for a pattern within a loaded page.",
+                "properties": {
+                    "type": {
+                        "const": "find_in_page",
+                        "default": "find_in_page",
+                        "title": "Type",
+                        "type": "string"
+                    },
+                    "url": {
+                        "title": "Url",
+                        "type": "string"
+                    },
+                    "pattern": {
+                        "title": "Pattern",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "url",
+                    "pattern"
+                ],
+                "title": "WebSearchActionFind",
+                "type": "object"
+            },
+            "WebSearchActionOpenPage": {
+                "description": "Web search action: opens a specific URL from search results.",
+                "properties": {
+                    "type": {
+                        "const": "open_page",
+                        "default": "open_page",
+                        "title": "Type",
+                        "type": "string"
+                    },
+                    "url": {
+                        "type": "string",
+                        "nullable": true,
+                        "default": null,
+                        "title": "Url"
+                    }
+                },
+                "title": "WebSearchActionOpenPage",
+                "type": "object"
+            },
+            "WebSearchActionSearch": {
+                "description": "Web search action: performs a search query.",
+                "properties": {
+                    "type": {
+                        "const": "search",
+                        "default": "search",
+                        "title": "Type",
+                        "type": "string"
+                    },
+                    "query": {
+                        "title": "Query",
+                        "type": "string"
+                    },
+                    "queries": {
+                        "type": "array",
+                        "nullable": true,
+                        "default": null,
+                        "title": "Queries"
+                    },
+                    "sources": {
+                        "type": "array",
+                        "nullable": true,
+                        "default": null,
+                        "title": "Sources"
+                    }
+                },
+                "required": [
+                    "query"
+                ],
+                "title": "WebSearchActionSearch",
+                "type": "object"
+            },
+            "WebSearchSource": {
+                "description": "A source URL returned by a web search action.",
+                "properties": {
+                    "type": {
+                        "const": "url",
+                        "default": "url",
+                        "title": "Type",
+                        "type": "string"
+                    },
+                    "url": {
+                        "title": "Url",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "url"
+                ],
+                "title": "WebSearchSource",
                 "type": "object"
             }
         }

@@ -863,6 +863,7 @@
                         "items": {
                             "discriminator": {
                                 "mapping": {
+                                    "granite_guardian": "`#/components/schemas/`GraniteGuardianShieldConfiguration",
                                     "question_validity": "`#/components/schemas/`QuestionValidityShieldConfiguration",
                                     "redaction": "`#/components/schemas/`RedactionShieldConfiguration"
                                 },
@@ -874,6 +875,9 @@
                                 },
                                 {
                                     "$ref": "`#/components/schemas/`RedactionShieldConfiguration"
+                                },
+                                {
+                                    "$ref": "`#/components/schemas/`GraniteGuardianShieldConfiguration"
                                 }
                             ]
                         },
@@ -1769,6 +1773,96 @@
                 "title": "FileResponse",
                 "type": "object"
             },
+            "GraniteGuardianConfig": {
+                "additionalProperties": false,
+                "description": "Configuration for the Granite Guardian moderation guardrail.",
+                "properties": {
+                    "url": {
+                        "description": "The model_id to use for the guard",
+                        "title": "Base URL",
+                        "type": "string"
+                    },
+                    "api_key": {
+                        "type": "string",
+                        "nullable": true,
+                        "default": null,
+                        "description": "API key for the inference",
+                        "title": "Granite Guardian API key"
+                    },
+                    "max_retries": {
+                        "default": 2,
+                        "description": "Maximun number of retires",
+                        "minimum": 0,
+                        "maximum": 5,
+                        "title": "Max retries",
+                        "type": "integer"
+                    },
+                    "timeout": {
+                        "default": 30,
+                        "description": "Request timeout in seconds",
+                        "minimum": 5,
+                        "maximum": 300,
+                        "title": "Timeout",
+                        "type": "integer"
+                    },
+                    "verify_ssl": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "string"
+                            }
+                        ],
+                        "default": true,
+                        "description": "SSL certificate verification. Can be:\n  - True: Verify using system CA bundle (default, recommended)\n  - False: Disable verification (insecure, for dev only)\n  - str: Path to custom CA bundle file (for internal PKI)",
+                        "title": "Verify SSL"
+                    },
+                    "risks": {
+                        "description": "Risks to be considered while applying this guradrail",
+                        "items": {
+                            "$ref": "`#/components/schemas/`RiskDefinition"
+                        },
+                        "title": "Defined risks",
+                        "type": "array"
+                    }
+                },
+                "required": [
+                    "url",
+                    "risks"
+                ],
+                "title": "GraniteGuardianConfig",
+                "type": "object"
+            },
+            "GraniteGuardianShieldConfiguration": {
+                "additionalProperties": false,
+                "description": "Configuration for a named Granite Guardian guardrail shield.\n\nAttributes:\n    name: Unique, user-facing name identifying this shield instance.\n    provider_id: Discriminator identifying this as a granite-guardian shield.\n    config: Granite-guardian-specific configuration.",
+                "properties": {
+                    "name": {
+                        "description": "Unique, user-facing name identifying this shield instance.",
+                        "title": "Shield name",
+                        "type": "string"
+                    },
+                    "provider_id": {
+                        "const": "granite_guardian",
+                        "description": "Discriminator identifying this as a granite-guardian shield.",
+                        "title": "Shield provider id",
+                        "type": "string"
+                    },
+                    "config": {
+                        "$ref": "`#/components/schemas/`GraniteGuardianConfig",
+                        "description": "Granite-guardian-specific configuration for this shield",
+                        "title": "Shield configuration"
+                    }
+                },
+                "required": [
+                    "name",
+                    "provider_id",
+                    "config"
+                ],
+                "title": "GraniteGuardianShieldConfiguration",
+                "type": "object"
+            },
             "HealthStatus": {
                 "description": "Health status enum for provider and service health checks.\n\nThis enum serves two purposes:\n\n1. Provider-level health (returned by OGX providers):\n   - OK: Provider is healthy and operational\n   - ERROR: Provider is unhealthy or failed health check\n   - NOT_IMPLEMENTED: Provider does not implement health checks\n   - UNKNOWN: Fallback when provider status cannot be determined\n\n2. Service-level health (overall LCORE status):\n   - HEALTHY: All systems operational, LLS connected, all providers healthy\n   - DEGRADED: Service running with reduced functionality (e.g., LLS unavailable)\n   - UNHEALTHY: Service connected but one or more providers are unhealthy",
                 "enum": [
@@ -2433,7 +2527,7 @@
             },
             "OgxConfiguration": {
                 "additionalProperties": false,
-                "description": "OGX configuration.\n\nOGX is a comprehensive system that provides a uniform set of tools\nfor building, scaling, and deploying generative AI applications, enabling\ndevelopers to create, integrate, and orchestrate multiple AI services and\ncapabilities into an adaptable setup.\n\nUseful resources:\n\n  - [OGX](https://ogx-ai.github.io/)\n  - [Python OGX client](https://github.com/ogx-ai/ogx-client-python)\n  - [Build AI Applications with OGX](https://ogx-ai.github.io/)",
+                "description": "OGX configuration.\n\nOGX is a comprehensive system that provides a uniform set of tools\nfor building, scaling, and deploying generative AI applications, enabling\ndevelopers to create, integrate, and orchestrate multiple AI services and\ncapabilities into an adaptable setup.\n\nUseful resources:\n\n  - [OGX](https://ogx-ai.github.io/)\n  - [Python OGX client](https://github.com/ogx-ai/ogx-client-python)\n  - [Build AI Applications with OGX](https://ogx-ai.github.io/docs/building_applications)",
                 "properties": {
                     "url": {
                         "type": "string",
@@ -3057,7 +3151,7 @@
                 "type": "object"
             },
             "OpenAIResponseInputToolWebSearch": {
-                "description": "Web search tool configuration for OpenAI response inputs.\n\n:param type: Web search tool type variant to use\n:param search_context_size: (Optional) Size of search context, must be \"low\", \"medium\", or \"high\"",
+                "description": "Web search tool configuration for OpenAI response inputs.",
                 "properties": {
                     "type": {
                         "anyOf": [
@@ -3084,8 +3178,30 @@
                     "search_context_size": {
                         "type": "string",
                         "nullable": true,
-                        "default": "medium",
+                        "default": null,
                         "title": "Search Context Size"
+                    },
+                    "filters": {
+                        "anyOf": [
+                            {
+                                "$ref": "`#/components/schemas/`WebSearchFilters"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "default": null
+                    },
+                    "user_location": {
+                        "anyOf": [
+                            {
+                                "$ref": "`#/components/schemas/`WebSearchUserLocation"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "default": null
                     }
                 },
                 "title": "OpenAIResponseInputToolWebSearch",
@@ -3569,7 +3685,7 @@
                 "type": "object"
             },
             "OpenAIResponseOutputMessageWebSearchToolCall": {
-                "description": "Web search tool call output message for OpenAI responses.\n\n:param id: Unique identifier for this tool call\n:param status: Current status of the web search operation\n:param type: Tool call type identifier, always \"web_search_call\"",
+                "description": "Web search tool call output message for OpenAI responses.",
                 "properties": {
                     "id": {
                         "title": "Id",
@@ -3584,6 +3700,24 @@
                         "default": "web_search_call",
                         "title": "Type",
                         "type": "string"
+                    },
+                    "action": {
+                        "anyOf": [
+                            {
+                                "$ref": "`#/components/schemas/`WebSearchActionSearch"
+                            },
+                            {
+                                "$ref": "`#/components/schemas/`WebSearchActionOpenPage"
+                            },
+                            {
+                                "$ref": "`#/components/schemas/`WebSearchActionFind"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "default": null,
+                        "title": "Action"
                     }
                 },
                 "required": [
@@ -3628,6 +3762,14 @@
                         "default": null,
                         "title": "Effort"
                     },
+                    "generate_summary": {
+                        "type": "string",
+                        "nullable": true,
+                        "default": null,
+                        "deprecated": true,
+                        "description": "Deprecated: use 'summary' instead.",
+                        "title": "Generate Summary"
+                    },
                     "summary": {
                         "type": "string",
                         "nullable": true,
@@ -3656,7 +3798,7 @@
                     "verbosity": {
                         "type": "string",
                         "nullable": true,
-                        "default": null,
+                        "default": "medium",
                         "title": "Verbosity"
                     }
                 },
@@ -5576,6 +5718,69 @@
                 "title": "RetrievalStrategyConfiguration",
                 "type": "object"
             },
+            "RiskDefinition": {
+                "additionalProperties": false,
+                "description": "Definition for a custom risk category.\n\nCustom risks allow applications to add use-case-specific safety checks\nbeyond the standard harm, jailbreak, leetspeak, amnesia, and\nhistory_politics checks.\nExample:\n    liability_risk = RiskDefinition(\n        name=\"liability\",\n        description=\"Content requesting legal, medical, or financial advice\",\n        threshold=0.55,\n        points=[\"input\"],\n    )\n    pii_risk = RiskDefinition(\n        name=\"pii_request\",\n        description=\"User is asking the AI to reveal personal information\",\n        threshold=0.50,\n        points=[\"input\", \"tool\"],\n    )\nNote:\n    To enable think mode (detailed reasoning) for a risk, add the risk name\n    to the `thinking_enabled` list in `ModerationConfig`. Do not set\n    `enable_thinking` directly - it is managed internally.",
+                "properties": {
+                    "name": {
+                        "description": "Unique identifier for this risk (e.g., 'liability', 'competitor_mention')",
+                        "title": "Risk name",
+                        "type": "string"
+                    },
+                    "description": {
+                        "description": "Risk definition text passed to Granite Guardian as custom_criteria",
+                        "title": "Rist description",
+                        "type": "string"
+                    },
+                    "threshold": {
+                        "default": 0.65,
+                        "description": "Score threshold for flagging (lower = more sensitive)",
+                        "maximum": 1.0,
+                        "minimum": 0.0,
+                        "title": "Risk threshold",
+                        "type": "number"
+                    },
+                    "enabled": {
+                        "default": true,
+                        "description": "Whether to run this check",
+                        "title": "Risk enabled",
+                        "type": "boolean"
+                    },
+                    "enable_thinking": {
+                        "default": false,
+                        "description": "Internal field - set via ModerationConfig.thinking_enabled list, not directly. When True, Granite Guardian provides detailed reasoning before scoring.",
+                        "title": "Risk enable thinking",
+                        "type": "boolean"
+                    },
+                    "points": {
+                        "description": "Where this risk is evaluated: `input` (user message), `output` (model response), or `tool` (tool/MCP content).",
+                        "items": {
+                            "enum": [
+                                "input",
+                                "output",
+                                "tool"
+                            ],
+                            "type": "string"
+                        },
+                        "minItems": 1,
+                        "title": "Guardrail points",
+                        "type": "array"
+                    },
+                    "violation_message": {
+                        "description": "Message to be displayed when this risk is violated",
+                        "title": "Violation message",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "name",
+                    "description",
+                    "points",
+                    "violation_message"
+                ],
+                "title": "RiskDefinition",
+                "type": "object"
+            },
             "RlsapiV1Configuration": {
                 "additionalProperties": false,
                 "description": "Configuration for the rlsapi v1 /infer endpoint.\n\nSettings specific to the RHEL Lightspeed Command Line Assistant (CLA)\nstateless inference endpoint. Kept separate from shared configuration\nsections so that CLA-specific options do not affect other endpoints.",
@@ -5931,7 +6136,7 @@
                 "type": "object"
             },
             "SearchRankingOptions": {
-                "description": "Options for ranking and filtering search results.\n\nThis class configures how search results are ranked and filtered. You can use algorithm-based\nrerankers (weighted, RRF) or neural rerankers. Defaults from VectorStoresConfig are\nused when parameters are not provided.\n\nExamples:\n    # Weighted ranker with custom alpha\n    SearchRankingOptions(ranker=\"weighted\", alpha=0.7)\n\n    # RRF ranker with custom impact factor\n    SearchRankingOptions(ranker=\"rrf\", impact_factor=50.0)\n\n    # Use config defaults (just specify ranker type)\n    SearchRankingOptions(ranker=\"weighted\")  # Uses alpha from VectorStoresConfig\n\n    # Score threshold filtering\n    SearchRankingOptions(ranker=\"weighted\", score_threshold=0.5)\n\n:param ranker: (Optional) Name of the ranking algorithm to use. Supported values:\n    - \"weighted\": Weighted combination of vector and keyword scores\n    - \"rrf\": Reciprocal Rank Fusion algorithm\n    - \"neural\": Neural reranking model (requires model parameter)\n    Note: For OpenAI API compatibility, any string value is accepted, but only the above values are supported.\n:param score_threshold: (Optional) Minimum relevance score threshold for results. Default: 0.0\n:param alpha: (Optional) Weight factor for weighted ranker (0-1).\n    - 0.0 = keyword only\n    - 0.5 = equal weight (default)\n    - 1.0 = vector only\n    Only used when ranker=\"weighted\" and weights is not provided.\n    Falls back to VectorStoresConfig.chunk_retrieval_params.weighted_search_alpha if not provided.\n:param impact_factor: (Optional) Impact factor (k) for RRF algorithm.\n    Lower values emphasize higher-ranked results. Default: 60.0 (optimal from research).\n    Only used when ranker=\"rrf\".\n    Falls back to VectorStoresConfig.chunk_retrieval_params.rrf_impact_factor if not provided.\n:param weights: (Optional) Dictionary of weights for combining different signal types.\n    Keys can be \"vector\", \"keyword\", \"neural\". Values should sum to 1.0.\n    Used when combining algorithm-based reranking with neural reranking.\n    Example: {\"vector\": 0.3, \"keyword\": 0.3, \"neural\": 0.4}\n:param model: (Optional) Model identifier for neural reranker (e.g., \"transformers/Qwen/Qwen3-Reranker-0.6B\").\n    Required when ranker=\"neural\" or when weights contains \"neural\".",
+                "description": "Options for ranking and filtering search results.\n\nThis class configures how search results are ranked and filtered. You can use algorithm-based\nrerankers (weighted, RRF) or neural rerankers. Defaults from VectorStoresConfig are\nused when parameters are not provided.\n\nExamples:\n    # Weighted ranker with custom alpha\n    SearchRankingOptions(ranker=\"weighted\", alpha=0.7)\n\n    # RRF ranker with custom impact factor\n    SearchRankingOptions(ranker=\"rrf\", impact_factor=50.0)\n\n    # Use config defaults (just specify ranker type)\n    SearchRankingOptions(ranker=\"weighted\")  # Uses alpha from VectorStoresConfig\n\n    # Score threshold filtering\n    SearchRankingOptions(ranker=\"weighted\", score_threshold=0.5)\n\n:param ranker: (Optional) Name of the ranking algorithm to use. Supported values:\n    - \"weighted\": Weighted combination of vector and keyword scores\n    - \"rrf\": Reciprocal Rank Fusion algorithm\n    - \"neural\": Neural reranking model (requires model parameter)\n    Note: For OpenAI API compatibility, any string value is accepted, but only the above values are supported.\n:param score_threshold: (Optional) Minimum relevance score threshold for results. Default: 0.0\n:param alpha: (Optional) Weight factor for weighted ranker (0-1).\n    - 0.0 = keyword only\n    - 0.5 = equal weight (default)\n    - 1.0 = vector only\n    Only used when ranker=\"weighted\" and weights is not provided.\n    Falls back to VectorStoresConfig.chunk_retrieval_params.weighted_search_alpha if not provided.\n:param impact_factor: (Optional) Impact factor (k) for RRF algorithm.\n    Lower values emphasize higher-ranked results. Default: 60.0 (optimal from research).\n    Only used when ranker=\"rrf\".\n    Falls back to VectorStoresConfig.chunk_retrieval_params.rrf_impact_factor if not provided.\n:param weights: (Optional) Dictionary of weights for combining different signal types.\n    Keys can be \"vector\", \"keyword\", \"neural\". Values should sum to 1.0.\n    Used when combining algorithm-based reranking with neural reranking.\n    Example: {\"vector\": 0.3, \"keyword\": 0.3, \"neural\": 0.4}\n:param model: (Optional) Model identifier for neural reranker\n    (e.g., \"sentence-transformers/Qwen/Qwen3-Reranker-0.6B\"). Required when ranker=\"neural\" or when\n    weights contains \"neural\".",
                 "properties": {
                     "ranker": {
                         "type": "string",
@@ -7008,6 +7213,152 @@
                     }
                 },
                 "title": "VectorStoresListResponse",
+                "type": "object"
+            },
+            "WebSearchActionFind": {
+                "description": "Web search action: searches for a pattern within a loaded page.",
+                "properties": {
+                    "type": {
+                        "const": "find_in_page",
+                        "default": "find_in_page",
+                        "title": "Type",
+                        "type": "string"
+                    },
+                    "url": {
+                        "title": "Url",
+                        "type": "string"
+                    },
+                    "pattern": {
+                        "title": "Pattern",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "url",
+                    "pattern"
+                ],
+                "title": "WebSearchActionFind",
+                "type": "object"
+            },
+            "WebSearchActionOpenPage": {
+                "description": "Web search action: opens a specific URL from search results.",
+                "properties": {
+                    "type": {
+                        "const": "open_page",
+                        "default": "open_page",
+                        "title": "Type",
+                        "type": "string"
+                    },
+                    "url": {
+                        "type": "string",
+                        "nullable": true,
+                        "default": null,
+                        "title": "Url"
+                    }
+                },
+                "title": "WebSearchActionOpenPage",
+                "type": "object"
+            },
+            "WebSearchActionSearch": {
+                "description": "Web search action: performs a search query.",
+                "properties": {
+                    "type": {
+                        "const": "search",
+                        "default": "search",
+                        "title": "Type",
+                        "type": "string"
+                    },
+                    "query": {
+                        "title": "Query",
+                        "type": "string"
+                    },
+                    "queries": {
+                        "type": "array",
+                        "nullable": true,
+                        "default": null,
+                        "title": "Queries"
+                    },
+                    "sources": {
+                        "type": "array",
+                        "nullable": true,
+                        "default": null,
+                        "title": "Sources"
+                    }
+                },
+                "required": [
+                    "query"
+                ],
+                "title": "WebSearchActionSearch",
+                "type": "object"
+            },
+            "WebSearchFilters": {
+                "description": "Domain filters for web search results.",
+                "properties": {
+                    "allowed_domains": {
+                        "type": "array",
+                        "nullable": true,
+                        "default": null,
+                        "title": "Allowed Domains"
+                    }
+                },
+                "title": "WebSearchFilters",
+                "type": "object"
+            },
+            "WebSearchSource": {
+                "description": "A source URL returned by a web search action.",
+                "properties": {
+                    "type": {
+                        "const": "url",
+                        "default": "url",
+                        "title": "Type",
+                        "type": "string"
+                    },
+                    "url": {
+                        "title": "Url",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "url"
+                ],
+                "title": "WebSearchSource",
+                "type": "object"
+            },
+            "WebSearchUserLocation": {
+                "description": "Approximate user location to refine web search results.",
+                "properties": {
+                    "type": {
+                        "const": "approximate",
+                        "default": "approximate",
+                        "title": "Type",
+                        "type": "string"
+                    },
+                    "city": {
+                        "type": "string",
+                        "nullable": true,
+                        "default": null,
+                        "title": "City"
+                    },
+                    "country": {
+                        "type": "string",
+                        "nullable": true,
+                        "default": null,
+                        "title": "Country"
+                    },
+                    "region": {
+                        "type": "string",
+                        "nullable": true,
+                        "default": null,
+                        "title": "Region"
+                    },
+                    "timezone": {
+                        "type": "string",
+                        "nullable": true,
+                        "default": null,
+                        "title": "Timezone"
+                    }
+                },
+                "title": "WebSearchUserLocation",
                 "type": "object"
             }
         }
