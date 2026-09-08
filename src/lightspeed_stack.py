@@ -15,6 +15,7 @@ from log import create_log_handler, get_logger, resolve_log_level
 from runners.quota_scheduler import start_quota_scheduler
 from runners.uvicorn import start_uvicorn
 from utils import schema_dumper
+from utils.proxy_env import sanitize_no_proxy_env
 
 # Resolve log level and handler from centralized logging utilities
 log_level = resolve_log_level()
@@ -114,6 +115,7 @@ def main() -> None:
                     (exits with status 1).
     """
     logger.info("Lightspeed Core Stack startup")
+    sanitize_no_proxy_env()
     parser = create_argument_parser()
     args = parser.parse_args()
 
