@@ -35,7 +35,7 @@ def check_status_code(context: Context, status: int) -> None:
             error_body = context.response.json()
         except JSONDecodeError:
             error_body = context.response.text
-        assert False, (
+        raise AssertionError(
             f"Status code is {context.response.status_code}, expected {status}. "
             f"Response: {error_body}"
         )
@@ -52,7 +52,7 @@ def check_status_code_one_of(context: Context, first: int, second: int) -> None:
             error_body = context.response.json()
         except JSONDecodeError:
             error_body = context.response.text
-        assert False, (
+        raise AssertionError(
             f"Status code is {actual}, expected one of {sorted(allowed)}. "
             f"Response: {error_body}"
         )
