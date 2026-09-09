@@ -168,7 +168,7 @@ def _legacy_enriched(tmp_path: Path, enrichment: dict[str, Any]) -> dict[str, An
 
 def _base_config_dict() -> dict[str, Any]:
     """Load the base lightspeed-stack.yaml fixture as a fresh dict."""
-    with open(_BASE_CONFIG_PATH, "r", encoding="utf-8") as file:
+    with open(_BASE_CONFIG_PATH, encoding="utf-8") as file:
         return copy.deepcopy(yaml.safe_load(file))
 
 

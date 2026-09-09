@@ -10030,7 +10030,7 @@ def test_dump_models(tmpdir: Path) -> None:
     filename = tmpdir / "foo.json"
     dump_models(str(filename))
 
-    with open(filename, "r", encoding="utf-8") as fin:
+    with open(filename, encoding="utf-8") as fin:
         # schema should be stored in JSON format
         content = load(fin)
         assert content is not None
@@ -10279,7 +10279,7 @@ def test_dump_models(tmpdir: Path) -> None:
 
 def check_json_file_content(filename: Path, expected_schemas: list[str]) -> None:
     """Check the content of provided JSON file with OpenAPI-compatible schema."""
-    with open(filename, "r", encoding="utf-8") as fin:
+    with open(filename, encoding="utf-8") as fin:
         # schema should be stored in JSON format
         content = load(fin)
         assert content is not None
