@@ -1010,7 +1010,7 @@ def load_default_baseline() -> dict[str, Any]:
         OSError: If the shipped baseline file cannot be read.
         yaml.YAMLError: If the baseline file is not valid YAML.
     """
-    with open(DEFAULT_BASELINE_RESOURCE, "r", encoding="utf-8") as file:
+    with open(DEFAULT_BASELINE_RESOURCE, encoding="utf-8") as file:
         return yaml.safe_load(file)
 
 
@@ -1257,7 +1257,7 @@ def synthesize_configuration(  # pylint: disable=too-many-locals
     if unified and unified.get("profile"):
         profile_path = _resolve_profile_path(unified["profile"], config_file_dir)
         logger.info("Loading synthesis baseline from profile %s", profile_path)
-        with open(profile_path, "r", encoding="utf-8") as file:
+        with open(profile_path, encoding="utf-8") as file:
             baseline = yaml.safe_load(file) or {}
     elif unified and unified.get("baseline") == "empty":
         logger.info("Synthesizing from an empty baseline")
@@ -1421,9 +1421,9 @@ def migrate_config_dumb(
         ValueError: If either input file does not parse to a mapping (e.g. an
             empty or comment-only file).
     """
-    with open(run_yaml_path, "r", encoding="utf-8") as file:
+    with open(run_yaml_path, encoding="utf-8") as file:
         run_yaml = yaml.safe_load(file)
-    with open(lightspeed_yaml_path, "r", encoding="utf-8") as file:
+    with open(lightspeed_yaml_path, encoding="utf-8") as file:
         lcs_config = yaml.safe_load(file)
 
     # An empty or comment-only YAML file parses to None; fail with a clear
@@ -1479,7 +1479,7 @@ def generate_configuration(
     """
     logger.info("Reading OGX configuration from file %s", input_file)
 
-    with open(input_file, "r", encoding="utf-8") as file:
+    with open(input_file, encoding="utf-8") as file:
         ls_config = yaml.safe_load(file)
 
     dedupe_providers_vector_io(ls_config)
@@ -1575,7 +1575,7 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    with open(args.config, "r", encoding="utf-8") as f:
+    with open(args.config, encoding="utf-8") as f:
         config = yaml.safe_load(f)
 
     if has_synthesis_input(config):

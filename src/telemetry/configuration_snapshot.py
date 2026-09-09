@@ -721,7 +721,7 @@ def _read_yaml_file(config_path: str) -> Any:
         The parsed YAML content, or None on failure.
     """
     try:
-        with open(config_path, "r", encoding="utf-8") as f:
+        with open(config_path, encoding="utf-8") as f:
             return yaml.safe_load(f)
     except (OSError, yaml.YAMLError) as e:
         logger.warning("Failed to read OGX config for snapshot: %s", e)
