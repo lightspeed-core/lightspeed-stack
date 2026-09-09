@@ -1742,7 +1742,7 @@ class Customization(ConfigurationBase):
             checks.file_check(self.agent_card_path, "agent card")
 
             try:
-                with open(self.agent_card_path, "r", encoding="utf-8") as f:
+                with open(self.agent_card_path, encoding="utf-8") as f:
                     self.agent_card_config = yaml.safe_load(f)
             except yaml.YAMLError as e:
                 raise ValueError(

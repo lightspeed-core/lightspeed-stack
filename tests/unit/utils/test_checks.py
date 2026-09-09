@@ -15,7 +15,7 @@ from utils import checks
 def input_file_fixture(tmp_path: Path) -> str:
     """Create file manually using the tmp_path fixture."""
     filename = os.path.join(tmp_path, "mydoc.csv")
-    with open(filename, "wt", encoding="utf-8") as fout:
+    with open(filename, "w", encoding="utf-8") as fout:
         fout.write("some content!")
     return filename
 

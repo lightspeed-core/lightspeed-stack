@@ -132,7 +132,7 @@ class AsyncOgxClientHolder(metaclass=Singleton):
                 "is not set"
             )
 
-        with open(config_file, "r", encoding="utf-8") as f:
+        with open(config_file, encoding="utf-8") as f:
             lcs_config = yaml.safe_load(f)
 
         output_path = os.environ.get(
@@ -158,7 +158,7 @@ class AsyncOgxClientHolder(metaclass=Singleton):
     def _enrich_library_config(self, input_config_path: str) -> str:
         """Enrich OGX config with BYOK RAG and OKP Solr settings."""
         try:
-            with open(input_config_path, "r", encoding="utf-8") as f:
+            with open(input_config_path, encoding="utf-8") as f:
                 ls_config = yaml.safe_load(f)
         except (OSError, yaml.YAMLError) as e:
             logger.warning("Failed to read OGX config: %s", e)
