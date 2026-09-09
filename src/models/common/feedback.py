@@ -1,9 +1,9 @@
 """Predefined feedback categories for AI response quality signals."""
 
-from enum import Enum
+from enum import StrEnum
 
 
-class FeedbackCategory(str, Enum):
+class FeedbackCategory(StrEnum):
     """Enum representing predefined feedback categories for AI responses.
 
     These categories help provide structured feedback about AI inference quality
