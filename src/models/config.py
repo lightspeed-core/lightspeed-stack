@@ -1274,7 +1274,7 @@ class JwtRoleRule(ConfigurationBase):
         return None
 
 
-class Action(str, Enum):
+class Action(StrEnum):
     """Available actions in the system.
 
     Note: this is not a real model, just an enumeration of all action names.
