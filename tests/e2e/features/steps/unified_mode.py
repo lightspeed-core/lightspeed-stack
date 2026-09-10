@@ -58,24 +58,29 @@ def container_logs_show_synthesis(context: Context) -> None:
     container's current ``StartedAt``, i.e. the restart the scenario just
     performed under the unified fixture.
 
-    Every accepted pattern must carry a path. The entrypoint echoes "(mode
-    auto-detected)" *before* generation runs and unconditionally, so matching
-    it would let the scenario pass on a failed synthesis — the opposite of
-    what R10 asks. "Using generated config: <path>" is echoed only on
-    success; it is the same line for the legacy-enrichment branch, so in
-    server mode the step additionally requires that the fallback line
-    "Using original config:" did not appear on this boot. The applied fixture
-    is unified, so a successful generation on this boot is a synthesis.
+    The pattern must carry a path and must be unique to synthesis. The
+    entrypoint's own lines cannot provide that: it echoes "(mode
+    auto-detected)" before generation runs and unconditionally, and it echoes
+    "Using generated config: <path>" identically for the synthesis and the
+    legacy-enrichment branch (scripts/ogx-entrypoint.sh). Matching either
+    would let the scenario pass when the unified fixture never reached the
+    container and the entrypoint enriched a run.yaml instead — which is the
+    one thing this scenario exists to rule out. The fallback line "Using
+    original config:" does not discriminate either; it is printed only when
+    generation *failed*, so it is absent from a successful enrichment too.
+
+    So both modes match a line that only the synthesis path writes:
+    src/client/ogx.py in library mode, src/ogx_configuration.py in server
+    mode. The latter reaches the container log only because main() configures
+    logging — as a bare script nothing installs a root handler and
+    logging.lastResort drops everything below WARNING.
     """
     if context.is_library_mode:
         container = "lightspeed-stack"
         pattern = r"Using synthesized OGX config at \S+"
     else:
         container = "llama-stack"
-        pattern = (
-            r"Wrote synthesized OGX configuration to \S+"
-            r"|Using generated config:\s*\S+"
-        )
+        pattern = r"Wrote synthesized OGX configuration to \S+"
 
     started_at = _container_started_at(container)
     result = subprocess.run(
@@ -89,12 +94,14 @@ def container_logs_show_synthesis(context: Context) -> None:
         result.returncode == 0
     ), f"docker logs {container} failed: {result.stderr[-500:]}"
     logs = result.stdout + result.stderr
-    assert re.search(pattern, logs), (
-        f"{container} logs since {started_at} carry no synthesis-path evidence "
-        f"(pattern {pattern!r} not found)"
-    )
+    # Checked before the pattern assert: when the entrypoint genuinely fell
+    # back, the pattern is absent too, and this is the message that says why.
     if not context.is_library_mode:
         assert "Using original config:" not in logs, (
             f"{container} fell back to the original run.yaml on this boot; "
             "the unified fixture was not synthesized"
         )
+    assert re.search(pattern, logs), (
+        f"{container} logs since {started_at} carry no synthesis-path evidence "
+        f"(pattern {pattern!r} not found)"
+    )
