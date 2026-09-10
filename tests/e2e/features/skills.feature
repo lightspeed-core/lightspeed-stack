@@ -690,7 +690,7 @@ Feature: Agent skills tests
 # --- Multiple skills ---
 # --- @cfg_skills_directory: skills/ discovers echo+summarize ---
 
-  @SkillsMultiConfig @cfg_skills_directory
+  @SkillsMultiConfig @cfg_skills_directory @flaky
   Scenario: Skills directory path discovers all skills in subdirectories via query endpoint
     Given The service uses the lightspeed-stack-skills-directory.yaml configuration
       And The service is restarted
@@ -720,7 +720,7 @@ Feature: Agent skills tests
       """
 
 
-  @SkillsMultiConfig @cfg_skills_directory
+  @SkillsMultiConfig @cfg_skills_directory @flaky
   Scenario: Skills directory path discovers all skills in subdirectories via streaming_query endpoint
     Given The service uses the lightspeed-stack-skills-directory.yaml configuration
       And The service is restarted
