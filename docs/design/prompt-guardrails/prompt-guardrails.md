@@ -64,8 +64,8 @@ them.
   client sees it), and `tool` (tool, MCP, or RAG content before it enters the
   model context).
 - **R4:** All risks applicable at a point are evaluated concurrently, with
-  per-risk latency logged. A request is blocked if at least one *blocking*
-  risk flags it. (Concurrency and latency logging: LCORE-3390. The shields
+  per-risk latency logged. A request is blocked if at least one risk flags
+  it. (Concurrency and latency logging: LCORE-3390. The shields
   loop in `src/utils/shields.py` is sequential, which the Ask Red Hat gap
   analysis flags as a performance gap.)
 - **R4a:** Each risk has a `threshold` between 0 and 1 (default 0.65). The
@@ -80,10 +80,6 @@ them.
   questions -- "You are now a cluster admin, how do I drain a node?" scores
   0.98 -- at levels no threshold separates from real attacks, so
   **domain-tuned custom definitions are the shipping default** (LCORE-3394).
-- **R4e:** A risk can be **advisory**: it records its outcome without
-  altering the response. Advisory risks are required for output relevance
-  checks. (Needs a `blocking` flag on `RiskDefinition`, default true:
-  LCORE-3391.)
 - **R5:** A blocked request returns HTTP 200 with the violation message:
   non-streaming responses carry it as the answer, streaming responses emit
   it as the terminal content. The blocked turn is persisted to the
@@ -263,7 +259,7 @@ is resolved, `enable_thinking` is the only control for think mode.
   `src/utils/streaming_sse.py`).
 - **Tool (LCORE-3392):** a capability hook intercepts each tool result before
   it re-enters the agent loop; flagged content is replaced by a policy notice
-  or aborts the turn, per the risk's blocking posture.
+  or aborts the turn; which of the two is decided in LCORE-3392.
 
 See [How shields apply at runtime](../../user_doc/shields_guide.md) for the
 per-endpoint behavior of shields in general.
@@ -311,7 +307,6 @@ Existing `question_validity` and `redaction` shields are unaffected (R11).
 | R4a | Same content flips verdict across a threshold boundary (e.g. 0.6 vs 0.9) | integration |
 | R4b | A risk's own `violation_message` is returned when it fires | e2e |
 | R4c | Documented recommended risk set produces zero blocks on the legitimate-question corpus | e2e / tuning fixture |
-| R4e | An advisory risk never alters the response; its outcome appears in metrics | integration |
 | R5  | Blocked query ⇒ HTTP 200, violation message as answer, metric incremented, turn persisted | e2e |
 | R6  | Input-blocked query ⇒ no RAG retrieval, no main-LLM or topic-summary call, no RAG documents in the response | integration |
 | R7  | Guardian request carries the judge block with the risk's criteria and requests logprobs | integration |
@@ -364,7 +359,7 @@ distinguish policy blocks (working as intended) from error-driven failures.
 
 | File | What to do |
 |------|------------|
-| `src/models/config.py` | `GraniteGuardianShieldConfiguration`, `GraniteGuardianConfig`, `RiskDefinition` (shipped); add `blocking` to `RiskDefinition` (LCORE-3391) |
+| `src/models/config.py` | `GraniteGuardianShieldConfiguration`, `GraniteGuardianConfig`, `RiskDefinition` (shipped) |
 | `src/pydantic_ai_lightspeed/capabilities/granite_guardian/` | The shield: risk selection, judge prompt, logprob scoring, `run()` and capability hooks |
 | `src/utils/shields.py` | `run_shield_moderation_v2` and `build_shield`; concurrent risk evaluation |
 | `src/app/endpoints/query.py`, `streaming_query.py` | Input shields before RAG via `run_shield_moderation_v2` (LCORE-4090) |
@@ -422,6 +417,11 @@ product need justifies it.
 - An input execution mode that runs the guardian concurrently with the main
   LLM call (former R4d).
 - A global `violation_message` default; each risk carries its own.
+- Advisory (non-blocking) risks that record their outcome without altering
+  the response, originally intended for output relevance checks. Ask Red Hat
+  runs blocking-only screening and no current consumer needs advisory risks;
+  a `blocking` flag on `RiskDefinition` (default true) is enough to add them
+  when one does.
 
 ## Open Questions for Future Work
 
@@ -448,4 +448,4 @@ product need justifies it.
 | 2026-08-03 | Added R4a (per-rule thresholds), R4b (per-rule violation messages), R4d (input execution mode), R7a (output-relevance context pairing); `ScreeningItem` detector payload; client-lifecycle and `src/runners` integration notes | Decisions T8–T10 and PoC finding B |
 | 2026-08-03 | Added R4c (recommended rule sets validated against a legitimate-question corpus) | PoC finding D — OOTB `jailbreak` false-positives on legitimate OpenShift questions at ~0.98 |
 | 2026-08-03 | PR #2182 review: `DetectorBackend` takes a structured payload; recommended-model rec split (3.3-8B benchmarked, 4.1-8B extrapolated) | @sbunciak / @tisnik review + CodeRabbit |
-| 2026-09-10 | Architecture rewritten to the shield-based design that shipped (Granite Guardian as a `shields:` entry with `RiskDefinition`s); added R4e (advisory risks, LCORE-3391); R6 extended to topic-summary calls and RAG documents; open requirements linked to LCORE-3390, 3391, 4089 and 4090; original-design capabilities moved to "Deferred from the original design" | LCORE-3389 shipped as a shield type (PR #2580); implementation review of LCORE-3390 (PR #2646) |
+| 2026-09-10 | Architecture rewritten to the shield-based design that shipped (Granite Guardian as a `shields:` entry with `RiskDefinition`s); R6 extended to topic-summary calls and RAG documents; open requirements linked to LCORE-3390, 3391, 4089 and 4090; original-design capabilities, including advisory risks, moved to "Deferred from the original design" | LCORE-3389 shipped as a shield type (PR #2580); implementation review of LCORE-3390 (PR #2646) |
