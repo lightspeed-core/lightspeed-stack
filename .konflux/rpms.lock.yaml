@@ -4,13 +4,6 @@ lockfileVendor: redhat
 arches:
 - arch: aarch64
   packages:
-  - url: https://cdn.redhat.com/content/dist/layered/rhel9/aarch64/rhelai/3.4/os/Packages/t/thrift-0.15.0-6.el9ai.aarch64.rpm
-    repoid: rhelai-3.4-for-rhel-9-aarch64-rpms
-    size: 1446795
-    checksum: sha256:3daa6deb9e8ac711cb61c63a87c250ac5fe744a368408dddc540a7ddfb19675e
-    name: thrift
-    evr: 1:0.15.0-6.el9ai
-    sourcerpm: thrift-0.15.0-6.el9ai.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.6/aarch64/appstream/os/Packages/c/cargo-1.84.1-1.el9.aarch64.rpm
     repoid: rhel-9-for-aarch64-appstream-eus-rpms__9_DOT_6
     size: 7744425
@@ -53,6 +46,27 @@ arches:
     name: patch
     evr: 2.7.6-16.el9
     sourcerpm: patch-2.7.6-16.el9.src.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.6/aarch64/appstream/os/Packages/p/python3.12-3.12.9-1.el9_6.10.aarch64.rpm
+    repoid: rhel-9-for-aarch64-appstream-eus-rpms__9_DOT_6
+    size: 24814
+    checksum: sha256:81933f0eaaba82933b392e7cb292f82f3beecd768a37a6e977691b772cfb8f55
+    name: python3.12
+    evr: 3.12.9-1.el9_6.10
+    sourcerpm: python3.12-3.12.9-1.el9_6.10.src.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.6/aarch64/appstream/os/Packages/p/python3.12-devel-3.12.9-1.el9_6.10.aarch64.rpm
+    repoid: rhel-9-for-aarch64-appstream-eus-rpms__9_DOT_6
+    size: 329833
+    checksum: sha256:f83c16b56bef3be511c1c53786a36d37a426fb68ca00c7b9abf115c48bffa28b
+    name: python3.12-devel
+    evr: 3.12.9-1.el9_6.10
+    sourcerpm: python3.12-3.12.9-1.el9_6.10.src.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.6/aarch64/appstream/os/Packages/p/python3.12-libs-3.12.9-1.el9_6.10.aarch64.rpm
+    repoid: rhel-9-for-aarch64-appstream-eus-rpms__9_DOT_6
+    size: 10127956
+    checksum: sha256:c2a458c9f0181fd3fd59ffa884c1db3e8552e03d475daa74df603b8879a59ca1
+    name: python3.12-libs
+    evr: 3.12.9-1.el9_6.10
+    sourcerpm: python3.12-3.12.9-1.el9_6.10.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.6/aarch64/appstream/os/Packages/r/rust-1.84.1-1.el9.aarch64.rpm
     repoid: rhel-9-for-aarch64-appstream-eus-rpms__9_DOT_6
     size: 26093725
@@ -74,6 +88,13 @@ arches:
     name: ed
     evr: 1.14.2-12.el9
     sourcerpm: ed-1.14.2-12.el9.src.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.6/aarch64/baseos/os/Packages/g/glib2-2.68.4-16.el9_6.7.aarch64.rpm
+    repoid: rhel-9-for-aarch64-baseos-eus-rpms__9_DOT_6
+    size: 2737308
+    checksum: sha256:e655edc02dffbdfbad94e8b040c6558f3d2839b95572b0bc618794a3581234f2
+    name: glib2
+    evr: 2.68.4-16.el9_6.7
+    sourcerpm: glib2-2.68.4-16.el9_6.7.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.6/aarch64/baseos/os/Packages/i/info-6.7-15.el9.aarch64.rpm
     repoid: rhel-9-for-aarch64-baseos-eus-rpms__9_DOT_6
     size: 230301
@@ -81,24 +102,10 @@ arches:
     name: info
     evr: 6.7-15.el9
     sourcerpm: texinfo-6.7-15.el9.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.6/aarch64/baseos/os/Packages/l/libgcrypt-1.10.0-11.el9_6.1.aarch64.rpm
-    repoid: rhel-9-for-aarch64-baseos-eus-rpms__9_DOT_6
-    size: 463379
-    checksum: sha256:ca4492eea2902aa597ddc8f9859f5312f2d4e9beafe94b188c014df6f8bbc91f
-    name: libgcrypt
-    evr: 1.10.0-11.el9_6.1
-    sourcerpm: libgcrypt-1.10.0-11.el9_6.1.src.rpm
   source: []
   module_metadata: []
 - arch: x86_64
   packages:
-  - url: https://cdn.redhat.com/content/dist/layered/rhel9/x86_64/rhelai/3.4/os/Packages/t/thrift-0.15.0-6.el9ai.x86_64.rpm
-    repoid: rhelai-3.4-for-rhel-9-x86_64-rpms
-    size: 1657357
-    checksum: sha256:f4731d852b67a8b5b90f3f703ef6c29b2107e0686b5fda20095a929dc9d044ac
-    name: thrift
-    evr: 1:0.15.0-6.el9ai
-    sourcerpm: thrift-0.15.0-6.el9ai.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.6/x86_64/appstream/os/Packages/c/cargo-1.84.1-1.el9.x86_64.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms__9_DOT_6
     size: 8292467
@@ -141,6 +148,27 @@ arches:
     name: patch
     evr: 2.7.6-16.el9
     sourcerpm: patch-2.7.6-16.el9.src.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.6/x86_64/appstream/os/Packages/p/python3.12-3.12.9-1.el9_6.10.x86_64.rpm
+    repoid: rhel-9-for-x86_64-appstream-eus-rpms__9_DOT_6
+    size: 24860
+    checksum: sha256:717e81d092766fbf2c23143ed348977210d3d50a13f8ce56a3245befe647a097
+    name: python3.12
+    evr: 3.12.9-1.el9_6.10
+    sourcerpm: python3.12-3.12.9-1.el9_6.10.src.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.6/x86_64/appstream/os/Packages/p/python3.12-devel-3.12.9-1.el9_6.10.x86_64.rpm
+    repoid: rhel-9-for-x86_64-appstream-eus-rpms__9_DOT_6
+    size: 329875
+    checksum: sha256:f4a7d42d699968ca6b7db84528ed8f0675600371435bb0e02954d37b507b4432
+    name: python3.12-devel
+    evr: 3.12.9-1.el9_6.10
+    sourcerpm: python3.12-3.12.9-1.el9_6.10.src.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.6/x86_64/appstream/os/Packages/p/python3.12-libs-3.12.9-1.el9_6.10.x86_64.rpm
+    repoid: rhel-9-for-x86_64-appstream-eus-rpms__9_DOT_6
+    size: 10191311
+    checksum: sha256:45406330f01eab401dbaa03856c7e75fd8b45a62f84cd90e48c75fd4c14c0de9
+    name: python3.12-libs
+    evr: 3.12.9-1.el9_6.10
+    sourcerpm: python3.12-3.12.9-1.el9_6.10.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.6/x86_64/appstream/os/Packages/r/rust-1.84.1-1.el9.x86_64.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms__9_DOT_6
     size: 28050444
@@ -162,6 +190,13 @@ arches:
     name: ed
     evr: 1.14.2-12.el9
     sourcerpm: ed-1.14.2-12.el9.src.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.6/x86_64/baseos/os/Packages/g/glib2-2.68.4-16.el9_6.7.x86_64.rpm
+    repoid: rhel-9-for-x86_64-baseos-eus-rpms__9_DOT_6
+    size: 2768702
+    checksum: sha256:f41a32d651144e8fd5764fd694c2eb4262927eb5d63c8f1e8947975530f5c912
+    name: glib2
+    evr: 2.68.4-16.el9_6.7
+    sourcerpm: glib2-2.68.4-16.el9_6.7.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.6/x86_64/baseos/os/Packages/i/info-6.7-15.el9.x86_64.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms__9_DOT_6
     size: 233806
@@ -169,12 +204,5 @@ arches:
     name: info
     evr: 6.7-15.el9
     sourcerpm: texinfo-6.7-15.el9.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.6/x86_64/baseos/os/Packages/l/libgcrypt-1.10.0-11.el9_6.1.x86_64.rpm
-    repoid: rhel-9-for-x86_64-baseos-eus-rpms__9_DOT_6
-    size: 517430
-    checksum: sha256:57bb13f2d7b44dafd7ecd20924a5be434223c567ddf5322c8c2d89c800df6d0e
-    name: libgcrypt
-    evr: 1.10.0-11.el9_6.1
-    sourcerpm: libgcrypt-1.10.0-11.el9_6.1.src.rpm
   source: []
   module_metadata: []

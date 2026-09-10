@@ -7,11 +7,12 @@ packages:
     cmake,
     cargo,
   ]
-
 upgradePackages:
   [
-    libgcrypt,
-    thrift,
+    python3.12,
+    python3.12-libs,
+    python3.12-devel,
+    glib2
   ]
 contentOrigin:
   repofiles: ["./redhat.repo"]
