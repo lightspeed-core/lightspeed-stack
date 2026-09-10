@@ -4,7 +4,7 @@
 
 import os
 import re
-from enum import Enum
+from enum import Enum, StrEnum
 from functools import cached_property
 from pathlib import Path
 from re import Pattern
@@ -1140,7 +1140,7 @@ class UserDataCollection(ConfigurationBase):
         return self
 
 
-class JsonPathOperator(str, Enum):
+class JsonPathOperator(StrEnum):
     """Supported operators for JSONPath evaluation.
 
     Note: this is not a real model, just an enumeration of all supported JSONPath operators.
