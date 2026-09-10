@@ -59,9 +59,9 @@ chevron==0.14.0 \
     --hash=sha256:4cbb3abb3803127a24947e075384f21bde2e00d43b8b8026f4ba9af7f866a423
 click==8.4.2 \
     --hash=sha256:368d4af9976de9fc5efc4d8a26c64d23c187c21a2eba9336254832d466dd6198
-cryptography==49.0.0 \
-    --hash=sha256:272f6cf35bd11146fb7182ed94b7123b9547174e944a0ec41fb547d1ad363982 \
-    --hash=sha256:44e7dda87cce4e64a4eada2469ade616471772ee8203d7331967ef7ba2fee2bd
+cryptography==50.0.1 \
+    --hash=sha256:3e29639a33400721f710beeba7741e275bdb4c5bc53107c9dfef240d251c0590 \
+    --hash=sha256:8ae962f84e7f36290feca5f8ba7bfc01fea9cd9a48f446bca52ef115657cca3d
 datasets==5.0.0 \
     --hash=sha256:0fbc08ef020b03a22d91ad38b3b22091a1e18c1335f2963d357ea540bfb032e7
 defusedxml==0.7.1 \
