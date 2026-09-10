@@ -545,7 +545,15 @@ def after_feature(context: Context, feature: Feature) -> None:
             remove_config_backup(backup_path)
             if not context.is_library_mode:
                 restart_container("ogx")
-            restart_container("lightspeed-stack")
+            # restart_container hard-fails for lightspeed-stack when the
+            # service does not accept HTTP in time. That is right inside a
+            # scenario, but this runs in after_feature: an exception here is a
+            # hook error that takes down the whole run rather than failing one
+            # scenario. Warn and let the next feature's own restart surface it.
+            try:
+                restart_container("lightspeed-stack")
+            except AssertionError as exc:
+                print(f"⚠ after_feature restore: lightspeed-stack not ready ({exc})")
             reset_active_lightspeed_stack_config_basename()
         else:
             remove_config_backup(backup_path)

@@ -519,6 +519,11 @@ def restart_container(container_name: str) -> None:
     Raises:
         subprocess.CalledProcessError: if the `docker restart` command fails.
         subprocess.TimeoutExpired: if the `docker restart` command times out.
+        AssertionError: for ``lightspeed-stack``, if the service does not
+            accept HTTP within ``wait_for_lightspeed_stack_http_ready``'s
+            budget. Docker health itself stays a soft failure; the HTTP wait
+            does not, so callers that must not fail (teardown hooks) have to
+            guard the call.
     """
     if is_prow_environment():
         restart_pod(container_name)
@@ -605,8 +610,11 @@ def wait_for_lightspeed_stack_http_ready(
 
     Bounded by a single monotonic deadline covering both the requests and the
     sleeps, and each request is additionally capped at the time remaining, so
-    the total wait cannot exceed ``timeout_s``. An attempt-counted loop cannot
-    give that guarantee: with a per-request timeout the worst case is
+    the wait stays within ``timeout_s`` plus at most one request timeout —
+    ``requests`` applies its scalar ``timeout`` to the connect and the read
+    phase separately, so an attempt started just under the deadline can
+    overrun by that much. An attempt-counted loop cannot give even that
+    guarantee: with a per-request timeout the worst case is
     ``attempts * request_timeout + (attempts - 1) * delay``, which for the
     previous defaults was 518.5s while the failure message reported 120s.
 
@@ -628,10 +636,10 @@ def wait_for_lightspeed_stack_http_ready(
     deadline = started + timeout_s
     attempt = 0
     while True:
-        attempt += 1
         remaining = deadline - time.monotonic()
         if remaining <= 0:
             break
+        attempt += 1
         try:
             response = requests.get(url, timeout=min(request_timeout_s, remaining))
             if response.status_code in (200, 401):
