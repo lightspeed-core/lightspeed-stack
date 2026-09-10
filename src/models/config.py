@@ -4,7 +4,7 @@
 
 import os
 import re
-from enum import Enum, StrEnum
+from enum import StrEnum
 from functools import cached_property
 from pathlib import Path
 from re import Pattern
