@@ -17,7 +17,7 @@ Feature: Unified mode configuration synthesis
 
   # --- library mode (@skip-in-server-mode) ---
 
-  @skip-in-server-mode
+  @skip-in-server-mode @openai-only
   Scenario: Synthesized run.yaml path is logged at startup in library mode
     Given The service uses the lightspeed-stack-unified-providers.yaml configuration
       And The service is restarted
@@ -26,7 +26,7 @@ Feature: Unified mode configuration synthesis
 
   # --- server mode (@skip-in-library-mode) ---
 
-  @skip-in-library-mode
+  @skip-in-library-mode @openai-only
   Scenario: Synthesized run.yaml path is logged at startup in server mode
     Given The service uses the lightspeed-stack-unified-providers.yaml configuration
       And OGX is restarted
