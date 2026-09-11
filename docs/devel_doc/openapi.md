@@ -6098,7 +6098,7 @@ Global service configuration.
 |-------|------|-------------|
 | name | string | Name of the service. That value will be used in REST API endpoints. |
 | service |  | This section contains Lightspeed Core Stack service configuration. |
-| llama_stack |  | This section contains OGX configuration. Lightspeed Core Stack service can call OGX in library mode or in server mode. |
+| ogx |  | This section contains OGX configuration. Lightspeed Core Stack service can call OGX in library mode or in server mode. |
 | user_data_collection |  | This section contains configuration for subsystem that collects user data(transcription history and feedbacks). |
 | database |  | Configuration for database to store conversation IDs and other runtime data |
 | mcp_servers | array | MCP (Model Context Protocol) servers provide tools and capabilities to the AI agents. These are configured in this section. Only MCP servers defined in the lightspeed-stack.yaml configuration are available to the agents. Tools configured in the OGX run.yaml are not accessible to lightspeed-core agents. |

@@ -12,7 +12,7 @@ ogx:
   use_as_library_client: false
   # Alternative for "as library use"
   # use_as_library_client: true
-  # library_client_config_path: <path-to-llama-stack-run.yaml-file>
+  # library_client_config_path: <path-to-ogx-run.yaml-file>
   url: http://localhost:8321
   api_key: xyzzy
 user_data_collection:

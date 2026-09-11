@@ -4,7 +4,7 @@
 # the synthesis baseline instead of LCORE's built-in default. Reference it from
 # lightspeed-stack.yaml:
 #
-#   llama_stack:
+#   ogx:
 #     use_as_library_client: true
 #     config:
 #       profile: examples/profiles/openai-remote.yaml

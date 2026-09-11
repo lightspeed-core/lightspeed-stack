@@ -163,4 +163,4 @@ splunk:
 
 ## Extending to Other Endpoints
 
-See [src/observability/README.md](../src/observability/README.md) for developer documentation on adding Splunk telemetry to additional endpoints.
+See [src/observability/README.md](../../src/observability/README.md) for developer documentation on adding Splunk telemetry to additional endpoints.

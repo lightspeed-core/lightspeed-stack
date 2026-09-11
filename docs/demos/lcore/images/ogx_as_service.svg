@@ -126,12 +126,12 @@
                   <div xmlns="http://www.w3.org/1999/xhtml" style="display: flex; align-items: unsafe center; justify-content: unsafe center; width: 128px; height: 1px; padding-top: 190px; margin-left: 349px;">
                     <div style="box-sizing: border-box; font-size: 0; text-align: center; color: #000000; ">
                       <div style="display: inline-block; font-size: 12px; font-family: Helvetica; color: light-dark(#000000, #ffffff); line-height: 1.2; pointer-events: all; white-space: normal; word-wrap: normal; ">
-                        <div>Llama Stack service</div>
+                        <div>OGX service</div>
                       </div>
                     </div>
                   </div>
                 </foreignObject>
-                <text x="413" y="194" fill="light-dark(#000000, #ffffff)" font-family="Helvetica" font-size="12px" text-anchor="middle">Llama Stack service</text>
+                <text x="413" y="194" fill="light-dark(#000000, #ffffff)" font-family="Helvetica" font-size="12px" text-anchor="middle">OGX service</text>
               </switch>
             </g>
           </g>

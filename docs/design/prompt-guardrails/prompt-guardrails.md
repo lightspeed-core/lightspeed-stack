@@ -165,7 +165,7 @@ see Open Questions.)
 guardrails:
   detectors:
     - name: guardian
-      type: granite_guardian          # granite_guardian | openai_moderations | llama_stack_shields
+      type: granite_guardian          # granite_guardian | openai_moderations | ogx_shields
       url: http://vllm.example:8000/v1
       model: ibm-granite/granite-guardian-3.3-8b
       api_key_path: /run/secrets/guardian-key   # optional
@@ -234,7 +234,7 @@ call detection the same way (R7a depends on it). Backends:
 - **openai_moderations** — POST `/v1/moderations`; a rule maps to flagged
   categories (all, or a configured subset). Covers OGX 1.x
   `moderation_endpoint` services, TrustyAI gateways, and OpenAI itself.
-- **llama_stack_shields** — transitional bridge delegating to the existing
+- **ogx_shields** — transitional bridge delegating to the existing
   `client.moderations.create` OGX shields path, easing config-level migration
   (spike Decision S5).
 
@@ -298,7 +298,7 @@ metric label; `allow` logs a warning and proceeds. Config errors
 
 No `guardrails:` section ⇒ byte-identical behavior to today (R11). The
 OGX shields path is untouched; its deprecation is deferred to the
-OGX 1.x migration (LCORE-1099). The `llama_stack_shields` backend lets
+OGX 1.x migration (LCORE-1099). The `ogx_shields` backend lets
 deployments move their config to the new schema before OGX migrates.
 
 ## Acceptance test surface

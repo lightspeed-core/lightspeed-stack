@@ -789,5 +789,5 @@ The protocol version is included in the agent card response and indicates which 
 ## References
 
 - [A2A Protocol Specification](https://github.com/google/A2A)
-- [OGX Documentation](https://llama-stack.readthedocs.io/)
+- [OGX Documentation](https://ogx-ai.github.io/)
 - [FastAPI Documentation](https://fastapi.tiangolo.com/)

@@ -24,7 +24,9 @@ It is possible to run Lightspeed Core Stack service with OGX "embedded" as a Pyt
 1. Add and install all required dependencies
     ```bash
     uv add \
-    "llama-stack==0.2.22" \
+    "ogx==1.2.5" \
+    "ogx-api==1.2.5" \
+    "ogx-client==1.2.5" \
     "fastapi>=0.115.12" \
     "opentelemetry-sdk>=1.34.0" \
     "opentelemetry-exporter-otlp>=1.34.0" \

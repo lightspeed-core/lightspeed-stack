@@ -53,7 +53,7 @@ ship, and thresholds are not the remedy (`06`). Measured on the 2B model;
   `guardrails:` config section (keeps the throwaway out of `Configuration`
   / OpenAPI).
 - One detector backend (`granite_guardian`); no `openai_moderations` /
-  `llama_stack_shields` backends.
+  `ogx_shields` backends.
 - Output check is non-streaming only; no streaming checkpoints
   (Decision T4).
 - tool_content is a post-hoc check on collected tool results, not the

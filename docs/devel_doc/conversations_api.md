@@ -166,9 +166,16 @@ Conversations are stored in **two databases**:
 - `openai_conversations`: Stores conversation metadata
 - `conversation_items`: Stores individual messages/turns in conversations
 
-**Configuration (in OGX `run.yaml` / library client config):**
+**Configuration (in OGX `run.yaml` / library client config; see `examples/run.yaml`):**
 ```yaml
+apis:
+- conversations
+# ...
 storage:
+  backends:
+    sql_default:
+      type: sql_sqlite
+      db_path: ${env.SQL_STORE_PATH:=~/.llama/storage/sql_store.db}
   stores:
     conversations:
       table_name: openai_conversations
@@ -509,6 +516,6 @@ Calling `/v3/conversations/{conversation_id}` returns empty `chat_history`.
 ## References
 
 - [OpenAI Responses API Documentation](https://platform.openai.com/docs/api-reference/responses)
-- [OGX Documentation](https://github.com/meta-llama/llama-stack)
+- [OGX Documentation](https://github.com/ogx-ai/ogx)
 - [LCS Configuration Guide](./config.md)
 - [LCS Getting Started Guide](./getting_started.md)

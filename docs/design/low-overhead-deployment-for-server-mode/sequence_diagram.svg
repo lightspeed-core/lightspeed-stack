@@ -42,17 +42,17 @@
     <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="77" x="496.5" y="900.2764">Lightspeed</text>
     <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="84" x="493" y="916.5732">core service</text>
     <rect fill="#E2E2F0" height="46.5938" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="95" x="594" y="33.7031"/>
-    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="81" x="601" y="53.6982">Llama Stack</text>
-    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="46" x="618.5" y="69.9951">runner</text>
+    <text fill="#000000" font-family="sans-serif" font-size="14" text-anchor="middle" x="641.5" y="53.6982">OGX</text>
+    <text fill="#000000" font-family="sans-serif" font-size="14" text-anchor="middle" x="641.5" y="69.9951">runner</text>
     <rect fill="#E2E2F0" height="46.5938" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="95" x="594" y="880.2813"/>
-    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="81" x="601" y="900.2764">Llama Stack</text>
-    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="46" x="618.5" y="916.5732">runner</text>
+    <text fill="#000000" font-family="sans-serif" font-size="14" text-anchor="middle" x="641.5" y="900.2764">OGX</text>
+    <text fill="#000000" font-family="sans-serif" font-size="14" text-anchor="middle" x="641.5" y="916.5732">runner</text>
     <rect fill="#E2E2F0" height="46.5938" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="95" x="700" y="33.7031"/>
-    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="81" x="707" y="53.6982">Llama Stack</text>
-    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="49" x="723" y="69.9951">service</text>
+    <text fill="#000000" font-family="sans-serif" font-size="14" text-anchor="middle" x="747.5" y="53.6982">OGX</text>
+    <text fill="#000000" font-family="sans-serif" font-size="14" text-anchor="middle" x="747.5" y="69.9951">service</text>
     <rect fill="#E2E2F0" height="46.5938" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="95" x="700" y="880.2813"/>
-    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="81" x="707" y="900.2764">Llama Stack</text>
-    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="49" x="723" y="916.5732">service</text>
+    <text fill="#000000" font-family="sans-serif" font-size="14" text-anchor="middle" x="747.5" y="900.2764">OGX</text>
+    <text fill="#000000" font-family="sans-serif" font-size="14" text-anchor="middle" x="747.5" y="916.5732">service</text>
     <path d="M10,98.2969 L74,98.2969 L74,105.4297 L64,115.4297 L10,115.4297 L10,98.2969 " fill="#EEEEEE" style="stroke:#000000;stroke-width:1.5;"/>
     <rect fill="none" height="501.7891" style="stroke:#000000;stroke-width:1.5;" width="795" x="10" y="98.2969"/>
     <text fill="#000000" font-family="sans-serif" font-size="13" font-weight="bold" lengthAdjust="spacing" textLength="19" x="25" y="111.3638">alt</text>
@@ -76,14 +76,13 @@
     <line style="stroke:#181818;stroke-width:1.0;" x1="421" x2="411" y1="314.7578" y2="318.7578"/>
     <line style="stroke:#181818;stroke-width:1.0;" x1="196.5" x2="422" y1="314.7578" y2="314.7578"/>
     <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="60" x="203.5" y="264.2935">Generate</text>
-    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="39" x="203.5" y="279.4263">Llama</text>
-    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="36" x="203.5" y="294.5591">Stack</text>
-    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="83" x="203.5" y="309.6919">configuration</text>
+    <text fill="#000000" font-family="sans-serif" font-size="13" x="203.5" y="279.4263">OGX</text>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="83" x="203.5" y="294.5591">configuration</text>
     <line style="stroke:#181818;stroke-width:1.0;" x1="639.5" x2="629.5" y1="359.0234" y2="355.0234"/>
     <line style="stroke:#181818;stroke-width:1.0;" x1="639.5" x2="629.5" y1="359.0234" y2="363.0234"/>
     <line style="stroke:#181818;stroke-width:1.0;" x1="196.5" x2="640.5" y1="359.0234" y2="359.0234"/>
     <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="32" x="203.5" y="338.8247">Start</text>
-    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="79" x="203.5" y="353.9575">Llama Stack</text>
+    <text fill="#000000" font-family="sans-serif" font-size="13" x="203.5" y="353.9575">OGX</text>
     <line style="stroke:#181818;stroke-width:1.0;" x1="745.5" x2="735.5" y1="388.1563" y2="384.1563"/>
     <line style="stroke:#181818;stroke-width:1.0;" x1="745.5" x2="735.5" y1="388.1563" y2="392.1563"/>
     <line style="stroke:#181818;stroke-width:1.0;" x1="641.5" x2="746.5" y1="388.1563" y2="388.1563"/>
@@ -127,7 +126,7 @@
     <line style="stroke:#181818;stroke-width:1.0;" x1="639.5" x2="629.5" y1="681.4844" y2="677.4844"/>
     <line style="stroke:#181818;stroke-width:1.0;" x1="639.5" x2="629.5" y1="681.4844" y2="685.4844"/>
     <line style="stroke:#181818;stroke-width:1.0;" x1="196.5" x2="640.5" y1="681.4844" y2="681.4844"/>
-    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="113" x="203.5" y="676.4185">Stop Llama Stack</text>
+    <text fill="#000000" font-family="sans-serif" font-size="13" x="203.5" y="676.4185">Stop OGX</text>
     <line style="stroke:#181818;stroke-width:1.0;" x1="745.5" x2="735.5" y1="710.6172" y2="706.6172"/>
     <line style="stroke:#181818;stroke-width:1.0;" x1="745.5" x2="735.5" y1="710.6172" y2="714.6172"/>
     <line style="stroke:#181818;stroke-width:1.0;" x1="641.5" x2="746.5" y1="710.6172" y2="710.6172"/>

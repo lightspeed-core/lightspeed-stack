@@ -18,7 +18,7 @@
 #       # - type: vllm
 #       #   id: vllm-staging
 #       #   api_key_env: VLLM_STAGING_KEY
-#   llama_stack:
+#   ogx:
 #     use_as_library_client: true
 #     config:
 #       profile: examples/profiles/inline-faiss.yaml
