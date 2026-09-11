@@ -63,11 +63,11 @@ them.
   prompt before the LLM call), `output` (the generated answer before the
   client sees it), and `tool` (tool, MCP, or RAG content before it enters the
   model context).
-- **R4:** All risks applicable at a point are evaluated concurrently, with
-  per-risk latency logged. A request is blocked if at least one risk flags
-  it. (Concurrency and latency logging: LCORE-3390. The shields
-  loop in `src/utils/shields.py` is sequential, which the Ask Red Hat gap
-  analysis flags as a performance gap.)
+- **R4:** Risks applicable at a point are evaluated concurrently, in batches
+  of `batch_size` (default 3) so that guardian endpoints with rate limits are
+  not overloaded, and per-risk latency is logged. A request is blocked if at
+  least one risk flags it; once a batch contains a flagged risk, the remaining
+  batches are skipped.
 - **R4a:** Each risk has a `threshold` between 0 and 1 (default 0.65). The
   verdict is decided by Granite Guardian's confidence score, derived from the
   logprobs of its verdict token, which reproduces Ask Red Hat's per-risk
@@ -102,7 +102,8 @@ them.
   (LCORE-3391).
 - **R9:** Guardian errors (unreachable endpoint, timeout, unparseable
   verdict) fail closed: the request is not served.
-- **R10:** Per-risk outcomes and latencies are logged and exposed as metrics
+- **R10:** Per-risk outcomes and latencies are logged and exposed as metrics.
+  Per-risk latency is currently logged only; metrics are not yet exposed
   (LCORE-3390 for input, LCORE-3391 for output).
 - **R11:** The other shields (`question_validity`, `redaction`) continue to
   work unchanged, and may be configured alongside `granite_guardian`.
@@ -177,10 +178,12 @@ shields:
     provider_id: granite_guardian
     config:
       url: https://guardian.example:8000/v1
+      model: ibm-granite/granite-guardian-4.1-8b   # default; the prompt uses the 4.1 format
       api_key: ${env.GUARDIAN_API_KEY}   # optional; requires an https URL
       timeout: 30                        # seconds, 5-300
       max_retries: 2                     # 0-5
       verify_ssl: true                   # true | false | path to CA bundle; must not be false when api_key is set
+      batch_size: 3                      # risks checked in parallel per batch, 1-10
       risks:
         - name: roleplay-jailbreak
           description: >-
@@ -205,8 +208,9 @@ Models, all extending `ConfigurationBase` (`extra="forbid"`), in
   "granite_guardian"`, `config`. One member of the `ShieldConfiguration`
   discriminated union on `provider_id`, alongside question validity and
   redaction.
-- `GraniteGuardianConfig`: `url`, `api_key` (secret, optional), `timeout`,
-  `max_retries`, `verify_ssl`, `risks`.
+- `GraniteGuardianConfig`: `url`, `model` (default
+  `ibm-granite/granite-guardian-4.1-8b`), `api_key` (secret, optional),
+  `timeout`, `max_retries`, `verify_ssl`, `batch_size` (default 3), `risks`.
 - `RiskDefinition`: `name`, `description`, `threshold` (default 0.65),
   `enabled` (default true), `enable_thinking` (default false), `points`
   (non-empty subset of `input`, `output`, `tool`), `violation_message`.
@@ -228,16 +232,21 @@ is resolved, `enable_thinking` is the only control for think mode.
   verdict token, and computes `p_risky = p(yes) / (p(yes) + p(no))`. The risk
   is flagged when `p_risky >= threshold`. A response without logprobs or
   without a parseable verdict raises an error, which is handled per R9.
-- **Model:** the implementation targets `ibm-granite/granite-guardian-4.1-8b`
-  and does not currently expose the model name as configuration (see Open
+- **Model:** `model` sets the model name sent to the inference server
+  (default `ibm-granite/granite-guardian-4.1-8b`), for example to match an
+  Ollama tag. The judge prompt is built for the Granite Guardian 4.1 format,
+  so other Guardian versions need a version-specific prompt (see Open
   Questions).
-- **Client lifecycle:** the shield should hold **one long-lived HTTP client**
-  for the life of the process, not one per request. Constructing a client
-  per check creates a fresh connection pool each time -- leaking connections
-  if it is never closed, and forfeiting connection reuse even when it is --
-  on a path that runs on every request. The first implementation constructs
-  the client each time the shield is built, which happens per request; this
-  is tracked in the LCORE-3390 review.
+- **Concurrency:** the enabled risks for a point are checked in parallel
+  batches of `batch_size`; once a batch contains a flagged risk, the remaining
+  batches are skipped. Batching bounds the load on guardian endpoints that
+  rate-limit, such as internal model gateways.
+- **Client lifecycle:** the shield holds **one long-lived HTTP client** for
+  the life of the process, not one per request. Constructing a client per
+  check creates a fresh connection pool each time -- leaking connections if
+  it is never closed, and forfeiting connection reuse even when it is -- on a
+  path that runs on every request. The implementation caches the model and
+  its client per configuration, so the client is created once and reused.
 
 ### Request lifecycle integration
 
@@ -303,7 +312,7 @@ Existing `question_validity` and `redaction` shields are unaffected (R11).
 | R1  | No `granite_guardian` shield ⇒ responses and latency unchanged | e2e |
 | R2  | A custom risk definition blocks its target phrasing and passes a benign one | e2e |
 | R3  | A risk with `points: [output]` never fires on input, and vice versa | integration |
-| R4  | Two input risks ⇒ both guardian calls observed concurrently; per-risk latency logged | integration |
+| R4  | Risks at one point ⇒ guardian calls run concurrently up to `batch_size`; later batches skipped after a flag; per-risk latency logged | integration |
 | R4a | Same content flips verdict across a threshold boundary (e.g. 0.6 vs 0.9) | integration |
 | R4b | A risk's own `violation_message` is returned when it fires | e2e |
 | R4c | Documented recommended risk set produces zero blocks on the legitimate-question corpus | e2e / tuning fixture |
@@ -320,9 +329,10 @@ Existing `question_validity` and `redaction` shields are unaffected (R11).
 ### Latency and Cost
 
 Each risk adds one guardian inference on its point's critical path. With
-concurrent evaluation (R4) the cost per point is roughly the slowest single
-check (Guardian 8B on GPU: high tens to low hundreds of ms); evaluated
-sequentially it grows linearly with the number of risks. The `tool` point
+batched concurrent evaluation (R4) the cost per point is roughly the slowest
+check in each batch, summed over the number of batches (Guardian 8B on GPU:
+high tens to low hundreds of ms per check); a larger `batch_size` lowers
+latency at the cost of more simultaneous load on the guardian endpoint. The `tool` point
 multiplies by the number of tool calls; deployers control exposure through
 point bindings, and per-risk latency (R10) makes the cost observable.
 Guardian token usage is not counted against user quota or reported token
@@ -360,8 +370,8 @@ distinguish policy blocks (working as intended) from error-driven failures.
 | File | What to do |
 |------|------------|
 | `src/models/config.py` | `GraniteGuardianShieldConfiguration`, `GraniteGuardianConfig`, `RiskDefinition` (shipped) |
-| `src/pydantic_ai_lightspeed/capabilities/granite_guardian/` | The shield: risk selection, judge prompt, logprob scoring, `run()` and capability hooks |
-| `src/utils/shields.py` | `run_shield_moderation_v2` and `build_shield`; concurrent risk evaluation |
+| `src/pydantic_ai_lightspeed/capabilities/granite_guardian/` | The shield: risk selection, judge prompt, logprob scoring, batched risk checks, cached client, `run()` and capability hooks |
+| `src/utils/shields.py` | `run_shield_moderation_v2` and `build_shield` |
 | `src/app/endpoints/query.py`, `streaming_query.py` | Input shields before RAG via `run_shield_moderation_v2` (LCORE-4090) |
 | `src/utils/pydantic_ai_helpers.py` | Capabilities attached to agents; keep the tool point here, move input out (LCORE-4090) |
 | `src/utils/agents/streaming.py`, `src/utils/streaming_sse.py` | Output checkpoints in the SSE generators (LCORE-3391) |
@@ -391,8 +401,9 @@ Follow the project's configuration conventions (see
 - e2e needs a guardian stand-in the CI environment can run: either the mock
   as a service or a small real model where resources allow; decide in the
   step-definitions ticket (LCORE-3388) against CI constraints.
-- Concurrency: assert that risks at one point are evaluated in parallel, not
-  in sequence, by capturing call timestamps in the mock.
+- Concurrency: assert that risks at one point run in parallel within a batch
+  and that later batches are skipped after a flag, by capturing call
+  timestamps in the mock.
 - Failure posture: pin the fail-closed behavior on both the
   `run_shield_moderation_v2` path and the in-agent path.
 
@@ -425,10 +436,9 @@ product need justifies it.
 
 ## Open Questions for Future Work
 
-- **Model selection:** the shield targets `granite-guardian-4.1-8b` and its
-  4.1 judge prompt. The spike benchmarked 3.3-8B (spike Decision S3), which
-  uses a different prompt format; supporting it, or serving 4.1 under a
-  different model name, needs a `model` setting and possibly a
+- **Other Guardian versions:** `model` accepts any model name, but the judge
+  prompt is built for the 4.1 format. The spike benchmarked 3.3-8B (spike
+  Decision S3), which uses a different prompt format; supporting it needs a
   version-specific prompt.
 - **Guardian token usage:** whether guardian calls should count against user
   quota or be tracked as service overhead. Compaction's summarization calls
@@ -449,3 +459,4 @@ product need justifies it.
 | 2026-08-03 | Added R4c (recommended rule sets validated against a legitimate-question corpus) | PoC finding D — OOTB `jailbreak` false-positives on legitimate OpenShift questions at ~0.98 |
 | 2026-08-03 | PR #2182 review: `DetectorBackend` takes a structured payload; recommended-model rec split (3.3-8B benchmarked, 4.1-8B extrapolated) | @sbunciak / @tisnik review + CodeRabbit |
 | 2026-09-10 | Architecture rewritten to the shield-based design that shipped (Granite Guardian as a `shields:` entry with `RiskDefinition`s); R6 extended to topic-summary calls and RAG documents; open requirements linked to LCORE-3390, 3391, 4089 and 4090; original-design capabilities, including advisory risks, moved to "Deferred from the original design" | LCORE-3389 shipped as a shield type (PR #2580); implementation review of LCORE-3390 (PR #2646) |
+| 2026-09-11 | Aligned with the LCORE-3390 implementation (PR #2646): configurable `model`, risks checked in parallel batches (`batch_size`), one cached client per configuration, per-risk latency logged | Implementation review of LCORE-3390 |
