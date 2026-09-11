@@ -1,6 +1,6 @@
 """Configuration loader."""
 
-from typing import Any, Optional
+from typing import Any, Optional, Self
 
 import yaml
 
@@ -98,7 +98,7 @@ class AppConfig:  # pylint: disable=too-many-public-methods
 
     _instance = None
 
-    def __new__(cls, *args: Any, **kwargs: Any) -> "AppConfig":
+    def __new__(cls, *args: Any, **kwargs: Any) -> Self:
         """Create a new instance of the class."""
         if not isinstance(cls._instance, cls):
             cls._instance = super().__new__(cls, *args, **kwargs)
