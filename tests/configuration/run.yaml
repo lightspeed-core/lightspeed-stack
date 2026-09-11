@@ -1,5 +1,5 @@
 version: '2'
-distro_name: minimal-viable-llama-stack-configuration
+distro_name: minimal-viable-ogx-configuration
 
 apis:
   - responses

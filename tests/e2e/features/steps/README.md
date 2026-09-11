@@ -64,10 +64,6 @@ Behave steps for POST /v1/responses (LCORE Responses API) multi-turn tests.
 
 rlsapi v1 endpoint test steps.
 
-## [shields.py](shields.py)
-
-Behave steps for temporarily disabling OGX shields in e2e (server mode).
-
 ## [tls.py](tls.py)
 
 Step definitions for TLS configuration e2e tests.

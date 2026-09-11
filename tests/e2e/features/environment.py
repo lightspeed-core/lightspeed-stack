@@ -32,7 +32,6 @@ from tests.e2e.features.steps.tls import (
     prepare_tls_feature_entry_on_prow,
     reset_tls_prow_state,
 )
-from tests.e2e.utils.ogx_utils import register_shield
 from tests.e2e.utils.prow_utils import (
     restart_pod,
     restore_ogx_pod,
@@ -252,15 +251,6 @@ def before_scenario(context: Context, scenario: Scenario) -> None:
     # Reset force-restart from a prior disrupt/MCP reset scenario.
     context.force_lightspeed_restart_after_mcp_config_reset = False
 
-    # Clear shield unregister state from previous scenarios (see ``shields_are_disabled_for_scenario``).
-    for _attr in (
-        "shields_disabled_for_scenario",
-        "ogx_guard_provider_id",
-        "ogx_guard_provider_shield_id",
-    ):
-        if hasattr(context, _attr):
-            delattr(context, _attr)
-
 
 def _dump_pod_logs_on_failure(
     context: Context, scenario: Scenario, namespace: str
@@ -268,6 +258,7 @@ def _dump_pod_logs_on_failure(
     """Dump container logs when a scenario fails in Prow."""
     if scenario.status != "failed":
         return
+    # Pod names match tests/e2e-prow manifests (legacy llama-stack-service id).
     pods: tuple[str, ...] = ("llama-stack-service", "lightspeed-stack-service")
     feature = getattr(context, "feature", None)
     feat_file = getattr(feature, "filename", "") or "" if feature else ""
@@ -287,7 +278,7 @@ def _dump_pod_logs_on_failure(
 def after_scenario(context: Context, scenario: Scenario) -> None:
     """Run after each scenario is run.
 
-    Perform per-scenario teardown: failure logs (Prow) and shield re-register.
+    Perform per-scenario teardown: failure logs (Prow).
 
     If ``configure_service`` applied a non-baseline YAML during the scenario
     (``context.scenario_lightspeed_override_active``), clears that flag only;
@@ -304,7 +295,7 @@ def after_scenario(context: Context, scenario: Scenario) -> None:
               running before the scenario.
             - hostname_ogx, port_ogx (str/int, optional): host and port
               used for the OGX health check.
-        scenario (Scenario): Behave scenario (unused; shield restore uses context flags).
+        scenario (Scenario): Behave scenario used for failure log dumps in Prow.
     """
     if is_prow_environment():
         _dump_pod_logs_on_failure(
@@ -313,21 +304,6 @@ def after_scenario(context: Context, scenario: Scenario) -> None:
 
     if getattr(context, "scenario_lightspeed_override_active", False):
         context.scenario_lightspeed_override_active = False
-
-    # Re-register shield if ``Given shields are disabled for this scenario`` unregistered it.
-    if getattr(context, "shields_disabled_for_scenario", False):
-        provider_id = getattr(context, "ogx_guard_provider_id", None)
-        provider_shield_id = getattr(context, "ogx_guard_provider_shield_id", None)
-        if provider_id is not None and provider_shield_id is not None:
-            try:
-                register_shield(
-                    "llama-guard",
-                    provider_id=provider_id,
-                    provider_shield_id=provider_shield_id,
-                )
-                print("Re-registered shield llama-guard")
-            except (TypeError, ValueError, RuntimeError, KeyboardInterrupt) as e:
-                print(f"Warning: Could not re-register shield: {e}")
 
 
 def _print_ogx_diagnostics() -> None:

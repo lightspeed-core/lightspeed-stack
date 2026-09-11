@@ -5,9 +5,9 @@ Feature: Proxy and TLS networking tests for OGX providers
   remote inference providers are configured with proxy and TLS settings
   via the run.yaml NetworkConfig.
 
-  Query bodies use shield_ids: [] because Llama Guard moderation can issue
-  separate provider calls inside OGX that may not inherit the same
-  proxy/TLS CA trust as the scenario's remote inference provider.
+  Query bodies use shield_ids: [] so LCORE-owned shields (e.g. pii-redaction in
+  the default config) do not run; scenarios then exercise only the remote
+  inference provider's proxy/TLS path.
 
   Background:
     Given The service is started locally

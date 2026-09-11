@@ -106,7 +106,7 @@ def restart_pod(container_name: str) -> None:
     if container_name in _OGX_RESTART_NAMES:
         op = "restart-ogx"
         # Subprocess cap must exceed e2e-ops internal waits (pod + in-pod health + port-forward).
-        # Konflux TLS full recreate: ~6–12 min typical, 15+ min under load (user-reported 400s+).
+        # Konflux TLS full recreate: ~6-12 min typical, 15+ min under load (user-reported 400s+).
         if os.environ.get("E2E_COPY_MOCK_TLS_CERTS_TO_OGX") == "1":
             timeout = 1200
         elif os.environ.get("E2E_KONFLUX_E2E") == "1":
@@ -115,7 +115,7 @@ def restart_pod(container_name: str) -> None:
             timeout = 420
     elif container_name in _LIGHTSPEED_RESTART_NAMES:
         op = "restart-lightspeed"
-        # Konflux LCS: TCP readiness + Llama handshake; full recreate can exceed 10 min under load.
+        # Konflux LCS: TCP readiness + OGX handshake; full recreate can exceed 10 min under load.
         timeout = 1200 if os.environ.get("E2E_KONFLUX_E2E") == "1" else 320
     else:
         print(

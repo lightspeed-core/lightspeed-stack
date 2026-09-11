@@ -35,7 +35,7 @@ from ogx_configuration import (
 
 # A complete, valid lightspeed-stack.yaml used as the base for configs that
 # are loaded through the real AppConfig.load_configuration pipeline;
-# individual tests override its llama_stack / inference sections.
+# individual tests override its ogx / inference sections.
 _BASE_CONFIG_PATH = "tests/configuration/lightspeed-stack.yaml"
 
 # A representative operator-authored legacy run.yaml. It deliberately carries
@@ -471,7 +471,7 @@ def test_migrate_then_synthesize_preserves_enrichment_parity(
 def test_load_rejects_config_block_and_legacy_path_together(
     tmp_path: Path,
 ) -> None:
-    """A llama_stack.config block plus a legacy path fails the real load (R3)."""
+    """An ogx.config block plus a legacy path fails the real load (R3)."""
     lcs_dict = _base_config_dict()
     lcs_dict["ogx"] = {
         "use_as_library_client": True,
