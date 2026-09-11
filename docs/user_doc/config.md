@@ -1043,7 +1043,7 @@ Backend-specific knobs for unified-mode OGX synthesis.
 
 Per Decision S5 of the design spike, backend-agnostic high-level sections
 (inference, ...) live at the configuration root, not here. This block holds
-only the Llama-Stack-specific synthesis controls: which baseline to start
+only the OGX-specific synthesis controls: which baseline to start
 from, an optional profile file, and a raw native_override escape hatch.
 
 During synthesis from the default baseline or a profile, LCORE ensures the

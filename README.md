@@ -206,7 +206,7 @@ To quickly get hands on LCS, we can run it using the default configurations prov
    ```
 4. access LCS web UI at [http://localhost:8080/](http://localhost:8080/)
 
-**Note**: `make run` uses containerized OGX (service mode). For details on container lifecycle management, customization, and troubleshooting, see the [Container Orchestration Guide](docs/devel_doc/container_orchestration.md). To run llama-stack manually instead, see the [OGX as separate server](#ogx-as-separate-server) section below.
+**Note**: `make run` uses containerized OGX (service mode). For details on container lifecycle management, customization, and troubleshooting, see the [Container Orchestration Guide](docs/devel_doc/container_orchestration.md). To run OGX manually instead, see the [OGX as separate server](#ogx-as-separate-server) section below.
 
 ## Container Runtime Requirements
 
@@ -337,7 +337,7 @@ Kotlin, which "wraps" the REST API stack in a suitable way, which is easier for
 many applications.
 
 
-![Integration with OGX](docs/core2llama-stack_interface.png)
+![Integration with OGX](docs/devel_doc/core2ogx_interface.png)
 
 
 
@@ -354,7 +354,7 @@ service:
   workers: 1
   color_log: true
   access_log: true
-llama_stack:
+ogx:
   use_as_library_client: false
   url: http://localhost:8321
 user_data_collection:
@@ -366,7 +366,7 @@ user_data_collection:
 
 ### Degraded mode
 
-Lightspeed core is able to continue operating in a _degraded but safe_ mode if the LLS service is not started or fails to start. When degraded, the `/health` endpoint report the LLS status and any relevant impacts so operators and automation can detect and respond.
+Lightspeed core is able to continue operating in a _degraded but safe_ mode if the OGX service is not started or fails to start. When degraded, the `/health` endpoint report the OGX status and any relevant impacts so operators and automation can detect and respond.
 
 Degraded mode need to be enabled in `lightspeed-stack.yaml` configuration file:
 
@@ -620,12 +620,12 @@ To run OGX in separate process, you need to have all dependencies installed. The
 
 ```toml
 [project]
-name = "llama-stack-runner"
+name = "ogx-runner"
 version = "0.1.0"
 description = "OGX runner"
 authors = []
 dependencies = [
-    "llama-stack==0.2.22",
+    "ogx==1.2.5",
     "fastapi>=0.115.12",
     "opentelemetry-sdk>=1.34.0",
     "opentelemetry-exporter-otlp>=1.34.0",
@@ -659,7 +659,7 @@ To run OGX perform these two commands:
 ```
 export OPENAI_API_KEY="sk-{YOUR-KEY}"
 
-uv run llama stack run run.yaml
+uv run ogx stack run run.yaml
 ```
 
 ### Check connection to OGX
@@ -683,14 +683,14 @@ service:
   workers: 1
   color_log: true
   access_log: true
-llama_stack:
+ogx:
   use_as_library_client: true
   # Unified mode (recommended): LCORE synthesizes the OGX run.yaml.
   # Point profile at a run.yaml-shaped file you author, or omit the config
   # block and drive everything from the top-level inference.providers
   # section over the built-in default baseline.
   config:
-    profile: <path-to-llama-stack-run.yaml-file>
+    profile: <path-to-ogx-run.yaml-file>
 user_data_collection:
   feedback_enabled: true
   feedback_storage: "/tmp/data/feedback"
@@ -706,7 +706,7 @@ user_data_collection:
 
 ## OGX version check
 
-During Lightspeed Core Stack service startup, the OGX version is retrieved. The version is tested against two constants `MINIMAL_SUPPORTED_LLAMA_STACK_VERSION` and `MAXIMAL_SUPPORTED_LLAMA_STACK_VERSION` which are defined in `src/constants.py`. If the actual OGX version is outside the range defined by these two constants, the service won't start and administrator will be informed about this problem.
+During Lightspeed Core Stack service startup, the OGX version is retrieved. The version is tested against two constants `MINIMAL_SUPPORTED_OGX_VERSION` and `MAXIMAL_SUPPORTED_OGX_VERSION` which are defined in `src/constants.py`. If the actual OGX version is outside the range defined by these two constants, the service won't start and administrator will be informed about this problem.
 
 
 
@@ -888,7 +888,7 @@ options:
                         path where the synthesized OGX run.yaml is written in unified library mode (overwritten each boot,
                         mode 0600; default: ./.generated/run.yaml)
   --migrate-config      migrate a legacy two-file config to a unified single file and exit. Lifts the run.yaml given by --run-yaml
-                        into the llama_stack.config.native_override of the -c lightspeed-stack.yaml and writes the result to
+                        into the ogx.config.native_override of the -c lightspeed-stack.yaml and writes the result to
                         --migrate-output. Replace literal secrets with ${env.VAR} references before or after migrating.
   --run-yaml RUN_YAML   path to the legacy OGX run.yaml to migrate (used with --migrate-config)
   --migrate-output MIGRATE_OUTPUT
@@ -918,15 +918,15 @@ Usage: make <OPTIONS> ... <TARGETS>
 
 Available targets are:
 
-run-stack                         Run lightspeed-stack directly, without building dependent service/s
+run-ogx                         Run lightspeed-stack directly, without building dependent service/s
 run                               Run the service locally with dependent services
-build-llama-stack-image           Build OGX container image
-stop-llama-stack-container        Gracefully stop OGX container
-remove-llama-stack-container      Remove OGX container (saves logs first)
-start-llama-stack-container       Start OGX container
-wait-for-llama-stack-health       Wait for OGX container to be healthy
-clean-llama-stack                 Remove container and image
-run-llama-stack                   Start OGX with enriched config (for local service mode)
+build-ogx-image           Build OGX container image
+stop-ogx-container        Gracefully stop OGX container
+remove-ogx-container      Remove OGX container (saves logs first)
+start-ogx-container       Start OGX container
+wait-for-ogx-health       Wait for OGX container to be healthy
+clean-ogx                 Remove container and image
+run-ogx-local                   Start OGX with enriched config (for local service mode)
 test-unit                         Run the unit tests
 test-integration                  Run integration tests tests
 test-e2e                          Run end to end tests for the service
@@ -1018,9 +1018,9 @@ When using OGX as a separate service, the existing `docker-compose.yaml` provide
 
 **Configuration** (`lightspeed-stack.yaml`):
 ```yaml
-llama_stack:
+ogx:
   use_as_library_client: false
-  url: http://llama-stack:8321  # container name from docker-compose.yaml
+  url: http://ogx:8321  # service name from docker-compose.yaml
   api_key: xyzzy
 ```
 
@@ -1057,7 +1057,7 @@ When embedding OGX directly in the container, use the existing `deploy/lightspee
 
 **Configuration** (`lightspeed-stack.yaml`):
 ```yaml
-llama_stack:
+ogx:
   use_as_library_client: true
   # Unified mode: the mounted run.yaml is the synthesis profile. (The
   # legacy library_client_config_path equivalent is deprecated, removed

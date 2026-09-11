@@ -179,10 +179,10 @@ class "JwtRoleRule" as src.models.config.JwtRoleRule {
   check_regex_pattern() -> Self
   check_roles() -> Self
 }
-class "LlamaStackConfiguration" as src.models.config.LlamaStackConfiguration {
+class "OgxConfiguration" as src.models.config.OgxConfiguration {
   allow_degraded_mode : Optional[bool]
   api_key : Optional[SecretStr]
-  config : Optional['UnifiedLlamaStackConfig']
+  config : Optional['UnifiedOgxConfig']
   library_client_config_path : Optional[str]
   max_retries
   retry_delay
@@ -307,7 +307,7 @@ class "UnifiedInferenceProvider" as src.models.config.UnifiedInferenceProvider {
   id : str | None
   type : Literal['openai', 'ollama', 'vllm', 'sentence_transformers', 'azure', 'vertexai', 'watsonx', 'vllm_rhaiis', 'vllm_rhel_ai']
 }
-class "UnifiedLlamaStackConfig" as src.models.config.UnifiedLlamaStackConfig {
+class "UnifiedOgxConfig" as src.models.config.UnifiedOgxConfig {
   baseline : Literal['default', 'empty']
   native_override : dict[str, object]
   profile : Optional[str]
@@ -339,7 +339,7 @@ src.models.config.InferenceConfiguration --|> src.models.config.ConfigurationBas
 src.models.config.JwkConfiguration --|> src.models.config.ConfigurationBase
 src.models.config.JwtConfiguration --|> src.models.config.ConfigurationBase
 src.models.config.JwtRoleRule --|> src.models.config.ConfigurationBase
-src.models.config.LlamaStackConfiguration --|> src.models.config.ConfigurationBase
+src.models.config.OgxConfiguration --|> src.models.config.ConfigurationBase
 src.models.config.ModelContextProtocolServer --|> src.models.config.ConfigurationBase
 src.models.config.OkpConfiguration --|> src.models.config.ConfigurationBase
 src.models.config.PostgreSQLDatabaseConfiguration --|> src.models.config.ConfigurationBase
@@ -358,7 +358,7 @@ src.models.config.TLSConfiguration --|> src.models.config.ConfigurationBase
 src.models.config.TrustedProxyConfiguration --|> src.models.config.ConfigurationBase
 src.models.config.TrustedProxyServiceAccount --|> src.models.config.ConfigurationBase
 src.models.config.UnifiedInferenceProvider --|> src.models.config.ConfigurationBase
-src.models.config.UnifiedLlamaStackConfig --|> src.models.config.ConfigurationBase
+src.models.config.UnifiedOgxConfig --|> src.models.config.ConfigurationBase
 src.models.config.UserDataCollection --|> src.models.config.ConfigurationBase
 src.models.config.A2AStateConfiguration --* src.models.config.Configuration : a2a_state
 src.models.config.ApprovalsConfiguration --* src.models.config.Configuration : approvals
@@ -371,7 +371,7 @@ src.models.config.DatabaseConfiguration --* src.models.config.Configuration : da
 src.models.config.InferenceConfiguration --* src.models.config.Configuration : inference
 src.models.config.JsonPathOperator --* src.models.config.JwtRoleRule : operator
 src.models.config.JwtConfiguration --* src.models.config.JwkConfiguration : jwt_configuration
-src.models.config.LlamaStackConfiguration --* src.models.config.Configuration : ogx
+src.models.config.OgxConfiguration --* src.models.config.Configuration : ogx
 src.models.config.OkpConfiguration --* src.models.config.Configuration : okp
 src.models.config.QuotaHandlersConfiguration --* src.models.config.Configuration : quota_handlers
 src.models.config.QuotaSchedulerConfiguration --* src.models.config.QuotaHandlersConfiguration : scheduler

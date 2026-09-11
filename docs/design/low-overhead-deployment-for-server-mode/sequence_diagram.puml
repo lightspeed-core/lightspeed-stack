@@ -11,8 +11,8 @@ alt Startup
 admin ->> runner: Start
 runner ->> cfg_1: Read\nglobal\nconfiguration
 cfg_1 ->> runner: Global\nconfiguration
-runner ->> cfg_2: Generate\nLlama\nStack\nconfiguration
-runner ->> ls_runner: Start\nLlama Stack
+runner ->> cfg_2: Generate\nOGX\nconfiguration
+runner ->> ls_runner: Start\nOGX
 ls_runner ->> ls_service: Startup
 ls_service ->> ls_runner: Status + PID
 ls_runner ->> runner: Status + PID

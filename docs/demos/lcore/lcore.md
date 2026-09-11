@@ -22,7 +22,7 @@ ptisnovs@redhat.com
 
 ## OGX
 
-![LCORE](images/llama_stack_logo.png)
+![OGX](images/ogx_arch.png)
 
 ---
 
@@ -38,7 +38,7 @@ ptisnovs@redhat.com
 
 ---
 
-![LS1](images/llama_stack.png)
+![OGX architecture](images/ogx_arch.svg)
 
 ---
 
@@ -135,10 +135,6 @@ ptisnovs@redhat.com
 
 ---
 
-![LS-providers](images/llama_stack_providers.svg)
-
----
-
 ### Communication with OGX
 
 * CLI
@@ -161,19 +157,19 @@ ptisnovs@redhat.com
 
 ### OGX as a library
 
-![LS1](images/llama_stack_as_library.svg)
+![LS1](images/ogx_as_library.svg)
 
 ---
 
 ### OGX as a service
 
-![LS1](images/llama_stack_as_service.svg)
+![LS1](images/ogx_as_service.svg)
 
 ---
 
 ### Run inside container
 
-![LS1](images/llama_stack_in_container.svg)
+![LS1](images/ogx_in_container.svg)
 
 ---
 
@@ -185,7 +181,7 @@ Python ecosystem
 
 ```
 pdm init
-pdm add llama-stack fastapi opentelemetry-sdk \
+pdm add ogx ogx-api ogx-client fastapi opentelemetry-sdk \
 opentelemetry-exporter-otlp opentelemetry-instrumentation \
 aiosqlite litellm uvicorn blobfile
 ```
@@ -196,13 +192,13 @@ aiosqlite litellm uvicorn blobfile
 
 ```toml
 [project]
-name = "llama-stack-demo"
+name = "ogx-demo"
 version = "0.1.0"
 description = "Default template for PDM package"
 authors = []
 dependencies = [
-    "llama-stack==0.2.20",
-    "llama-stack-client==0.2.20",
+    "ogx==1.2.5",
+    "ogx-client==1.2.5",
     "opentelemetry-sdk>=1.34.0",
     "opentelemetry-exporter-otlp>=1.34.0",
     "opentelemetry-instrumentation>=0.55b0",
@@ -224,7 +220,7 @@ distribution = false
 ### Starting OGX
 
 ```bash
-uv run llama stack run
+uv run ogx stack run
 ```
 
 ---
@@ -232,7 +228,7 @@ uv run llama stack run
 ### List of OGX API
 
 ```bash
-uv run llama stack list-apis
+uv run ogx stack list-apis
 ```
 
 ---
@@ -290,7 +286,7 @@ uv run llama stack list-apis
 ### List of providers
 
 ```bash
-uv run llama stack list-providers
+uv run ogx stack list-providers
 ```
 
 ---
@@ -343,7 +339,7 @@ uv run llama stack list-providers
 
 ---
 
-![LS1](images/llama_stack_arch.svg)
+![LS1](images/ogx_arch.svg)
 
 ---
 

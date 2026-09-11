@@ -325,8 +325,8 @@ Reference existing docs in docs/ for style.
 
 No PoC was built for this spike. The core mechanisms are already validated:
 
-1. **OGX approval types exist**: `MCPApprovalRequest` and
-   `MCPApprovalResponse` are defined in `llama_stack_api.openai_responses`
+1. **OGX approval types exist**: `OpenAIResponseMCPApprovalRequest` and
+   `OpenAIResponseMCPApprovalResponse` are defined in `ogx_api.openai_responses`
 2. **LCS already parses approval events**: `build_tool_call_summary()` in
    [responses.py:1067-1094](../../../src/utils/responses.py#L1067-L1094) handles
    both `mcp_approval_request` and `mcp_approval_response` types
@@ -369,7 +369,7 @@ async def get_mcp_tools(...) -> list[InputToolMCP]:
 
 ### OGX Support
 
-From `llama_stack_api.openai_responses`:
+From `ogx_api.openai_responses`:
 
 ```python
 class ApprovalFilter(BaseModel):

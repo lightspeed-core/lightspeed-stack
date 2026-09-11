@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" style="background: #ffffff; background-color: light-dark(#ffffff, var(--ge-dark-color, #121212)); color-scheme: light dark;" version="1.1" width="374px" height="253px" viewBox="-0.5 -0.5 374 253">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" style="background: #ffffff; background-color: light-dark(#ffffff, var(--ge-dark-color, #121212)); color-scheme: light dark;" version="1.1" width="489px" height="232px" viewBox="-0.5 -0.5 489 232">
   <defs/>
   <rect fill="#ffffff" style="fill: light-dark(#ffffff, var(--ge-dark-color, #121212));" width="100%" height="100%" x="0" y="0"/>
   <g>
     <g data-cell-id="0">
       <g data-cell-id="1">
-        <g data-cell-id="PvHflD8QeOrc2K3OCy4e-4">
+        <g data-cell-id="CC_f6YxTBWbReIc-fjwR-1">
           <g>
             <rect x="254" y="10" width="84" height="78" fill="#dae8fc" style="fill: light-dark(rgb(218, 232, 252), rgb(29, 41, 59)); stroke: light-dark(rgb(108, 142, 191), rgb(92, 121, 163));" stroke="#6c8ebf" pointer-events="all"/>
           </g>
@@ -25,7 +25,7 @@
             </g>
           </g>
         </g>
-        <g data-cell-id="PvHflD8QeOrc2K3OCy4e-5">
+        <g data-cell-id="CC_f6YxTBWbReIc-fjwR-2">
           <g>
             <path d="M 111 10 L 189 10 L 189 88 L 111 88 Z" fill="#8c4fff" style="fill: light-dark(rgb(140, 79, 255), rgb(177, 125, 255));" stroke="none" pointer-events="all"/>
             <path d="M 143.39 66.43 L 146.66 66.43 L 146.66 64.19 L 143.39 64.19 Z M 148.89 66.43 L 152.23 66.43 L 152.23 64.19 L 148.89 64.19 Z M 135.53 20.78 L 121.05 27.97 L 121.05 72.62 L 135.53 77.52 Z M 137.75 34.99 L 137.75 64.19 L 141.09 64.19 L 141.09 66.43 L 137.75 66.43 L 137.75 79.08 C 137.75 79.44 137.58 79.78 137.29 79.99 C 137.1 80.13 136.87 80.2 136.64 80.2 C 136.52 80.2 136.4 80.18 136.29 80.14 L 119.59 74.5 C 119.13 74.34 118.83 73.91 118.83 73.43 L 118.83 27.27 C 118.83 26.84 119.07 26.45 119.45 26.26 L 136.15 17.97 C 136.49 17.8 136.9 17.82 137.23 18.03 C 137.55 18.23 137.75 18.59 137.75 18.98 L 137.75 32.75 L 141.09 32.75 L 141.09 34.99 Z M 154.45 66.43 L 157.79 66.43 L 157.79 64.19 L 154.45 64.19 Z M 154.53 34.99 L 157.79 34.99 L 157.79 32.75 L 154.53 32.75 Z M 148.96 34.99 L 152.23 34.99 L 152.23 32.75 L 148.96 32.75 Z M 143.39 34.99 L 146.66 34.99 L 146.66 32.75 L 143.39 32.75 Z M 178.95 27.97 L 164.47 20.78 L 164.47 77.52 L 178.95 72.62 Z M 181.17 73.43 C 181.17 73.91 180.87 74.34 180.41 74.5 L 163.71 80.14 C 163.6 80.18 163.48 80.2 163.36 80.2 C 163.13 80.2 162.9 80.13 162.71 79.99 C 162.42 79.78 162.25 79.44 162.25 79.08 L 162.25 66.43 L 160.09 66.43 L 160.09 64.19 L 162.25 64.19 L 162.25 34.99 L 160.09 34.99 L 160.09 32.75 L 162.25 32.75 L 162.25 18.98 C 162.25 18.59 162.45 18.23 162.77 18.03 C 163.1 17.82 163.51 17.8 163.85 17.97 L 180.55 26.26 C 180.93 26.45 181.17 26.84 181.17 27.27 Z M 153.27 42.13 L 151.19 41.33 L 145.62 55.92 L 147.7 56.73 Z M 160.81 49.26 C 161.24 48.82 161.24 48.11 160.81 47.67 L 156.35 43.18 L 154.78 44.77 L 158.45 48.47 L 154.78 52.16 L 156.35 53.75 Z M 143.65 53.75 L 139.19 49.26 C 138.76 48.82 138.76 48.11 139.19 47.67 L 143.65 43.18 L 145.22 44.77 L 141.55 48.47 L 145.22 52.16 Z" fill="#ffffff" style="fill: light-dark(rgb(255, 255, 255), rgb(18, 18, 18));" stroke="none" pointer-events="all"/>
@@ -45,7 +45,7 @@
             </g>
           </g>
         </g>
-        <g data-cell-id="PvHflD8QeOrc2K3OCy4e-14">
+        <g data-cell-id="CC_f6YxTBWbReIc-fjwR-3">
           <g>
             <path d="M 251 160 L 251 124 L 296 124 L 296 94.37" fill="none" stroke="#000000" style="stroke: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));" stroke-miterlimit="10" pointer-events="stroke"/>
             <path d="M 296 89.12 L 299.5 96.12 L 296 94.37 L 292.5 96.12 Z" fill="#000000" style="fill: light-dark(rgb(0, 0, 0), rgb(255, 255, 255)); stroke: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));" stroke="#000000" stroke-miterlimit="10" pointer-events="all"/>
@@ -65,7 +65,31 @@
             </g>
           </g>
         </g>
-        <g data-cell-id="PvHflD8QeOrc2K3OCy4e-6">
+        <g data-cell-id="CC_f6YxTBWbReIc-fjwR-9">
+          <g>
+            <path d="M 287.37 190 L 341.63 190" fill="none" stroke="#000000" style="stroke: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));" stroke-miterlimit="10" pointer-events="stroke"/>
+            <path d="M 282.12 190 L 289.12 186.5 L 287.37 190 L 289.12 193.5 Z" fill="#000000" style="fill: light-dark(rgb(0, 0, 0), rgb(255, 255, 255)); stroke: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));" stroke="#000000" stroke-miterlimit="10" pointer-events="all"/>
+            <path d="M 346.88 190 L 339.88 193.5 L 341.63 190 L 339.88 186.5 Z" fill="#000000" style="fill: light-dark(rgb(0, 0, 0), rgb(255, 255, 255)); stroke: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));" stroke="#000000" stroke-miterlimit="10" pointer-events="all"/>
+          </g>
+          <g>
+            <g>
+              <switch>
+                <foreignObject style="overflow: visible; text-align: left;" pointer-events="none" width="100%" height="100%" requiredFeatures="http://www.w3.org/TR/SVG11/feature#Extensibility">
+                  <div xmlns="http://www.w3.org/1999/xhtml" style="display: flex; align-items: unsafe center; justify-content: unsafe center; width: 1px; height: 1px; padding-top: 190px; margin-left: 315px;">
+                    <div style="box-sizing: border-box; font-size: 0; text-align: center; color: #000000; background-color: #ffffff; ">
+                      <div style="display: inline-block; font-size: 11px; font-family: Helvetica; color: light-dark(#000000, #ffffff); line-height: 1.2; pointer-events: all; background-color: light-dark(#ffffff, var(--ge-dark-color, #121212)); white-space: nowrap; ">
+                        <div>port</div>
+                        <div>8321</div>
+                      </div>
+                    </div>
+                  </div>
+                </foreignObject>
+                <text x="315" y="193" fill="light-dark(#000000, #ffffff)" font-family="Helvetica" font-size="11px" text-anchor="middle">port...</text>
+              </switch>
+            </g>
+          </g>
+        </g>
+        <g data-cell-id="CC_f6YxTBWbReIc-fjwR-4">
           <g>
             <rect x="161" y="160" width="120" height="60" fill="#d5e8d4" style="fill: light-dark(rgb(213, 232, 212), rgb(31, 47, 30)); stroke: light-dark(rgb(130, 179, 102), rgb(68, 110, 44));" stroke="#82b366" stroke-width="3" pointer-events="all"/>
           </g>
@@ -84,41 +108,41 @@
             </g>
           </g>
         </g>
-        <g data-cell-id="PvHflD8QeOrc2K3OCy4e-7">
+        <g data-cell-id="CC_f6YxTBWbReIc-fjwR-5">
           <g>
             <path d="M 191 153.63 L 191 124 L 150 124 L 150 94.37" fill="none" stroke="#000000" style="stroke: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));" stroke-miterlimit="10" pointer-events="stroke"/>
             <path d="M 191 158.88 L 187.5 151.88 L 191 153.63 L 194.5 151.88 Z" fill="#000000" style="fill: light-dark(rgb(0, 0, 0), rgb(255, 255, 255)); stroke: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));" stroke="#000000" stroke-miterlimit="10" pointer-events="all"/>
             <path d="M 150 89.12 L 153.5 96.12 L 150 94.37 L 146.5 96.12 Z" fill="#000000" style="fill: light-dark(rgb(0, 0, 0), rgb(255, 255, 255)); stroke: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));" stroke="#000000" stroke-miterlimit="10" pointer-events="all"/>
           </g>
         </g>
-        <g data-cell-id="PvHflD8QeOrc2K3OCy4e-20">
+        <g data-cell-id="CC_f6YxTBWbReIc-fjwR-6">
           <g>
-            <rect x="243" y="192" width="120" height="50" fill="#f8cecc" style="fill: light-dark(rgb(248, 206, 204), rgb(81, 45, 43)); stroke: light-dark(rgb(184, 84, 80), rgb(215, 129, 126));" stroke="#b85450" pointer-events="all"/>
+            <rect x="348" y="160" width="130" height="60" fill="#f8cecc" style="fill: light-dark(rgb(248, 206, 204), rgb(81, 45, 43)); stroke: light-dark(rgb(184, 84, 80), rgb(215, 129, 126));" stroke="#b85450" stroke-width="2" pointer-events="all"/>
           </g>
           <g>
             <g>
               <switch>
                 <foreignObject style="overflow: visible; text-align: left;" pointer-events="none" width="100%" height="100%" requiredFeatures="http://www.w3.org/TR/SVG11/feature#Extensibility">
-                  <div xmlns="http://www.w3.org/1999/xhtml" style="display: flex; align-items: unsafe center; justify-content: unsafe center; width: 118px; height: 1px; padding-top: 217px; margin-left: 244px;">
+                  <div xmlns="http://www.w3.org/1999/xhtml" style="display: flex; align-items: unsafe center; justify-content: unsafe center; width: 128px; height: 1px; padding-top: 190px; margin-left: 349px;">
                     <div style="box-sizing: border-box; font-size: 0; text-align: center; color: #000000; ">
                       <div style="display: inline-block; font-size: 12px; font-family: Helvetica; color: light-dark(#000000, #ffffff); line-height: 1.2; pointer-events: all; white-space: normal; word-wrap: normal; ">
-                        <div>llama-stack as library (direct Python dependency)</div>
+                        <div>OGX as separate server</div>
                       </div>
                     </div>
                   </div>
                 </foreignObject>
-                <text x="303" y="221" fill="light-dark(#000000, #ffffff)" font-family="Helvetica" font-size="12px" text-anchor="middle">llama-stack as libra...</text>
+                <text x="413" y="194" fill="light-dark(#000000, #ffffff)" font-family="Helvetica" font-size="12px" text-anchor="middle">OGX as separate server</text>
               </switch>
             </g>
           </g>
         </g>
-        <g data-cell-id="PvHflD8QeOrc2K3OCy4e-25">
+        <g data-cell-id="CC_f6YxTBWbReIc-fjwR-7">
           <g>
             <path d="M 111 190 L 154.63 190" fill="none" stroke="#000000" style="stroke: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));" stroke-miterlimit="10" pointer-events="stroke"/>
             <path d="M 159.88 190 L 152.88 193.5 L 154.63 190 L 152.88 186.5 Z" fill="#000000" style="fill: light-dark(rgb(0, 0, 0), rgb(255, 255, 255)); stroke: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));" stroke="#000000" stroke-miterlimit="10" pointer-events="all"/>
           </g>
         </g>
-        <g data-cell-id="PvHflD8QeOrc2K3OCy4e-24">
+        <g data-cell-id="CC_f6YxTBWbReIc-fjwR-8">
           <g>
             <path d="M 106 160 C 108.76 160 111 162.24 111 165 L 111 212.5 Q 86 199 61 212.5 Q 36 226 11 212.5 L 11 167.5 L 11 165 C 11 162.24 13.24 160 16 160 Z" fill="#fff2cc" style="fill: light-dark(rgb(255, 242, 204), rgb(40, 29, 0)); stroke: light-dark(rgb(214, 182, 86), rgb(109, 81, 0));" stroke="#d6b656" stroke-width="2" stroke-miterlimit="10" pointer-events="all"/>
           </g>

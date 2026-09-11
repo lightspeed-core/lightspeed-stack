@@ -114,7 +114,7 @@ These are baked into `PDFReader.__init__`. **No CLI flags expose them in v1.** I
 PDFs go through the same chunking path as HTML and Markdown. Two predicates in `document_processor.py` need to learn `"pdf"`:
 
 - The `Settings.node_parser = MarkdownNodeParser()` branch in `_BaseDB.__init__`.
-- The same branch in `_LlamaStackDB.__init__` (currently a separate copy of the predicate).
+- The same branch in `_LlamaStackDB.__init__` (rag-content class name; currently a separate copy of the predicate).
 
 To prevent these two tuples from drifting, extract a single module-level constant and use it from both call sites:
 

@@ -106,14 +106,14 @@ inference:
       model_validation: false  # added automatically by Lightspeed enrichment
 ```
 
-**How it works:** OGX defers Azure authentication to inference time. Lightspeed acquires Entra ID tokens at runtime and passes them via the `X-LlamaStack-Provider-Data` header (`azure_api_key`, `azure_api_base`).
+**How it works:** OGX defers Azure authentication to inference time. Lightspeed acquires Entra ID tokens at runtime and passes them via the `X-OGX-Provider-Data` header (`azure_api_key`, `azure_api_base`).
 
 #### Access Token Lifecycle and Management
 
 **Lightspeed startup (library and service mode):**
 1. Lightspeed reads your Entra ID configuration
 2. Does not acquire or cache access tokens at startup—authentication is deferred until request time
-3. Initializes the OGX client without Azure credentials; credentials are supplied later via `X-LlamaStack-Provider-Data` when an Azure model is used
+3. Initializes the OGX client without Azure credentials; credentials are supplied later via `X-OGX-Provider-Data` when an Azure model is used
 
 **OGX service startup (container mode):**
 1. Config enrichment sets `model_validation: false` on the Azure provider
@@ -123,12 +123,12 @@ inference:
 **During inference requests:**
 1. Before each request, Lightspeed checks if the token has expired
 2. If expired, a new token is automatically acquired and cached in memory
-3. The token is passed via `X-LlamaStack-Provider-Data` (library and service mode)
+3. The token is passed via `X-OGX-Provider-Data` (library and service mode)
 
 **Token security:**
 - Access tokens are wrapped in `SecretStr` to prevent accidental logging
 - Tokens are cached in `AzureEntraIDManager` singleton class
-- Inference uses `X-LlamaStack-Provider-Data` headers
+- Inference uses `X-OGX-Provider-Data` headers
 - Each Uvicorn worker maintains its own token lifecycle independently
 
 **Token validity:**
@@ -157,15 +157,15 @@ make run CONFIG=examples/lightspeed-stack-azure-entraid-lib.yaml
 
 ```bash
 # Terminal 1: Start OGX service with Azure Entra ID config
-make run-llama-stack CONFIG=examples/lightspeed-stack-azure-entraid-service.yaml LLAMA_STACK_CONFIG=examples/azure-run.yaml
+make run-ogx-local CONFIG=examples/lightspeed-stack-azure-entraid-service.yaml OGX_CONFIG=examples/azure-run.yaml
 
 # Terminal 2: Start Lightspeed (after OGX is ready)
 make run CONFIG=examples/lightspeed-stack-azure-entraid-service.yaml
 ```
 
-**Note:** The `make run-llama-stack` command accepts two variables:
+**Note:** The `make run-ogx-local` command accepts two variables:
 - `CONFIG` - Lightspeed configuration file (default: `lightspeed-stack.yaml`)
-- `LLAMA_STACK_CONFIG` - OGX configuration file to enrich and run (default: `run.yaml`)
+- `OGX_CONFIG` - OGX configuration file to enrich and run (default: `run.yaml`)
 
 ---
 
@@ -288,7 +288,7 @@ Shields are owned by LCORE (configured under `shields:` block), not as OGX `prov
 
     Run the following command to find out required dependencies for the desired provider (or check the tables above):
     ```bash
-    uv run llama stack list-providers
+    uv run ogx stack list-providers
     ```
     Edit your `pyproject.toml` and add the required pip packages for the provider into `ogxlibdev` section:
    ```toml
@@ -370,7 +370,7 @@ Shields are owned by LCORE (configured under `shields:` block), not as OGX `prov
 
     If you are running OGX as a standalone service, restart it with:
     ```bash
-    uv run llama stack run run.yaml
+    uv run ogx stack run run.yaml
     ```
     If you are running it within Lightspeed Core, use:
     ```bash

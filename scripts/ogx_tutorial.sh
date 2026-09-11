@@ -3,7 +3,7 @@
 # OGX Tutorial - Interactive Guide 
 # This tutorial demonstrates key features of the OGX server
 
-LLAMA_STACK_URL="http://localhost:8321"
+OGX_URL="http://localhost:8321"
 
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
@@ -26,7 +26,7 @@ print_section() {
 print_header() {
     echo ""
     echo "🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀"
-    echo " WELCOME TO THE QUICK LLAMA STACK TUTORIAL "
+    echo " WELCOME TO THE QUICK OGX TUTORIAL "
     echo "🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀"
     echo ""
 }
@@ -77,15 +77,15 @@ fi
 print_header
 
 if [ "$INTERACTIVE" = true ]; then
-    echo "This tutorial will guide you through the Llama Stack API step by step."
+    echo "This tutorial will guide you through the OGX API step by step."
     echo "You'll explore models, tools, shields, and see example API calls."
     wait_for_user
 fi
 
 # Section 0: What is OGX?
-print_section "What is Llama Stack?"
+print_section "What is OGX?"
 cat << 'EOF'
-Llama Stack serves as the AI INTEGRATION LAYER - it's the middleware that abstracts
+OGX serves as the AI INTEGRATION LAYER - it's the middleware that abstracts
 away the complexity of working with different LLM providers and provides a unified
 API for AI operations.
 
@@ -113,13 +113,13 @@ KEY FEATURES:
    • Allows runtime switching between different LLM providers (OpenAI, Azure, etc.)
 
 DEPLOYMENT MODES:
-   1. Service Mode: Llama Stack runs as a separate service
-   2. Library Mode: Llama Stack embedded directly in the app
+   1. Service Mode: OGX runs as a separate service
+   2. Library Mode: OGX embedded directly in the app
 
 BOTTOM LINE:
-Think of Llama Stack as a UNIVERSAL ADAPTER for AI operations. Instead of coding
-directly against OpenAI's API, Azure's API, etc., Lightspeed Stack uses Llama
-Stack's unified interface. This makes it easy to switch providers, add new
+Think of OGX as a UNIVERSAL ADAPTER for AI operations. Instead of coding
+directly against OpenAI's API, Azure's API, etc., Lightspeed Stack uses OGX's
+unified interface. This makes it easy to switch providers, add new
 capabilities (like agents or RAG), and maintain consistent behavior across
 different LLM backends.
 
@@ -128,26 +128,26 @@ wait_for_user
 
 # Section 1: Health Check
 print_section "1. Health Check"
-echo "Let's verify the Llama Stack server is running..."
-run_command "curl -s ${LLAMA_STACK_URL}/v1/health | ${JQ_CMD}"
+echo "Let's verify the OGX server is running..."
+run_command "curl -s ${OGX_URL}/v1/health | ${JQ_CMD}"
 wait_for_user
 
 # Section 2: Version
 print_section "2. Server Version"
-echo "Checking Llama Stack version..."
-run_command "curl -s ${LLAMA_STACK_URL}/v1/version | ${JQ_CMD}"
+echo "Checking OGX version..."
+run_command "curl -s ${OGX_URL}/v1/version | ${JQ_CMD}"
 wait_for_user
 
 # Section 3: Models
 print_section "3. Available Models"
-echo "Llama Stack supports multiple models from different providers."
+echo "OGX supports multiple models from different providers."
 echo "Let's see what models are available..."
 
-run_command "curl -s ${LLAMA_STACK_URL}/v1/models | ${JQ_CMD}"
+run_command "curl -s ${OGX_URL}/v1/models | ${JQ_CMD}"
 
 echo ""
 echo "Let me analyze the models for you..."
-MODELS_JSON=$(curl -s ${LLAMA_STACK_URL}/v1/models)
+MODELS_JSON=$(curl -s ${OGX_URL}/v1/models)
 
 if command -v jq &> /dev/null; then
 
@@ -175,25 +175,25 @@ wait_for_user
 print_section "4. Safety Shields"
 echo "Shields provide content filtering and safety mechanisms."
 echo "Let's see what shields are configured..."
-run_command "curl -s ${LLAMA_STACK_URL}/v1/shields | ${JQ_CMD}"
+run_command "curl -s ${OGX_URL}/v1/shields | ${JQ_CMD}"
 wait_for_user
 
 # Section 5: Tool Groups
 print_section "5. Tool Groups"
-echo "Llama Stack supports tool groups that organize related tools."
+echo "OGX supports tool groups that organize related tools."
 echo "Let's explore available tool groups..."
-run_command "curl -s ${LLAMA_STACK_URL}/v1/toolgroups | ${JQ_CMD}"
+run_command "curl -s ${OGX_URL}/v1/toolgroups | ${JQ_CMD}"
 wait_for_user
 
 # Section 6: Tools
 print_section "6. Available Tools"
 echo "Tools allow agents to perform specific actions."
 echo "Let's see what tools are available..."
-run_command "curl -s ${LLAMA_STACK_URL}/v1/tools | ${JQ_CMD}"
+run_command "curl -s ${OGX_URL}/v1/tools | ${JQ_CMD}"
 
 echo ""
 echo "Let me show you the tool details..."
-TOOLS_JSON=$(curl -s ${LLAMA_STACK_URL}/v1/tools)
+TOOLS_JSON=$(curl -s ${OGX_URL}/v1/tools)
 
 if command -v jq &> /dev/null; then
     echo ""
@@ -219,7 +219,7 @@ curl -X POST http://localhost:8321/v1/inference/chat-completion \
     "messages": [
       {
         "role": "user",
-        "content": "Explain Llama Stack in one sentence."
+        "content": "Explain OGX in one sentence."
       }
     ],
     "stream": false
@@ -235,7 +235,7 @@ curl -X POST http://localhost:8321/v1/inference/embeddings \
   -H 'Content-Type: application/json' \
   -d '{
     "model_id": "openai/text-embedding-3-small",
-    "contents": ["Llama Stack is awesome!"]
+    "contents": ["OGX is awesome!"]
   }' | jq .
 EOF
 
@@ -268,12 +268,12 @@ EOF
 wait_for_user
 
 # Section 9: Integration
-print_section "9. How Lightspeed Stack Uses Llama Stack"
+print_section "9. How Lightspeed Stack Uses OGX"
 cat << 'EOF'
-Lightspeed Stack integrates with Llama Stack to provide:
+Lightspeed Stack integrates with OGX to provide:
 
 1. 🤖 Multi-Provider LLM Support
-   - Llama Stack abstracts different providers (OpenAI, Azure, etc.)
+   - OGX abstracts different providers (OpenAI, Azure, etc.)
    - Lightspeed Stack uses this to support multiple models seamlessly
 
 2. 🛡️  Safety & Content Filtering
@@ -289,33 +289,33 @@ Lightspeed Stack integrates with Llama Stack to provide:
    - Simplifies AI integration in the Lightspeed Stack codebase
 
 Key Integration Points in Lightspeed Stack:
-- src/client.py: Llama Stack client wrapper
-- src/app/endpoints/: API endpoints using Llama Stack
-- src/configuration.py: Configuration for Llama Stack connection
+- src/client.py: OGX client wrapper
+- src/app/endpoints/: API endpoints using OGX
+- src/configuration.py: Configuration for OGX connection
 EOF
 wait_for_user
 
 # Section 10: Try It Now
 print_section "10. Try It Yourself!"
 echo "Let's make a real API call to see all available routes!"
-run_command "curl -s ${LLAMA_STACK_URL}/v1/inspect/routes | ${JQ_CMD}"
+run_command "curl -s ${OGX_URL}/v1/inspect/routes | ${JQ_CMD}"
 wait_for_user
 
 # Conclusion
 print_section "🎉 Tutorial Complete!"
 cat << 'EOF'
 You've learned about:
-✅ Llama Stack server capabilities
+✅ OGX server capabilities
 ✅ Available models (LLMs and embeddings)
 ✅ Safety shields for content filtering
 ✅ Tools and tool groups
 ✅ How to make API calls
-✅ How Lightspeed Stack integrates with Llama Stack
+✅ How Lightspeed Stack integrates with OGX
 
 Next Steps:
 1. Explore the OpenAPI docs: http://localhost:8321/docs
 2. Try the example commands above
-3. Look at how Lightspeed Stack uses Llama Stack in src/client.py
+3. Look at how Lightspeed Stack uses OGX in src/client.py
 4. Experiment with different models and tools
 
 Resources:

@@ -352,7 +352,7 @@ Use the same pattern as `conversations_v1.py:240-246`:
 
 ``` python
 items_response = await client.conversations.items.list(
-    conversation_id=llama_stack_conv_id,
+    conversation_id=ogx_conv_id,
     after=None,
     include=None,
     limit=None,
