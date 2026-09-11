@@ -12,7 +12,9 @@ upgradePackages:
     python3.12,
     python3.12-libs,
     python3.12-devel,
-    glib2
+    glib2,
+    openssh,
+    openssh-clients,
   ]
 contentOrigin:
   repofiles: ["./redhat.repo"]
