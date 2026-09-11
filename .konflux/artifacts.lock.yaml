@@ -3,6 +3,6 @@ metadata:
   version: "1.0"
 
 artifacts:
-  - download_url: https://github.com/lightspeed-core/lightspeed-providers/archive/8cd1b3d3bdd841ea99d31b334ae00a275581661c.zip
-    checksum: sha256:6e660a30babcd1c00eef1686b251f9368410e03e08a7c0d4a680db00693ac448
+  - download_url: https://github.com/lightspeed-core/lightspeed-providers/archive/faf6a89a3ad7856e2e7a934324f31d146108acdb.zip
+    checksum: sha256:c5ef9158146de2193daa16b1c3a0b338b20d136b6d3bb69da32ad592ad626f36
     filename: lightspeed-providers.zip

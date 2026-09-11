@@ -21,6 +21,7 @@ _POD_NAME_MAP = {
     "lightspeed-stack": "lightspeed-stack-service",
     "ogx": "llama-stack-service",
     "llama-stack": "llama-stack-service",  # legacy alias
+    "okp-solr": "okp-solr-service",
 }
 
 
@@ -347,3 +348,85 @@ def update_config_configmap(
     finally:
         if temp_path and os.path.exists(temp_path):
             os.remove(temp_path)
+
+
+def assert_okp_reachable_from_ogx() -> None:
+    """Fail unless the OGX pod can HTTP GET in-cluster OKP Solr.
+
+    This is the Konflux health check: Solr is reached in-cluster from the
+    OGX pod. Behave does not port-forward Solr to the runner.
+
+    Raises:
+        subprocess.CalledProcessError: If the in-cluster GET fails.
+        subprocess.TimeoutExpired: If the operation times out.
+    """
+    result = run_e2e_ops("check-okp-solr-from-llama", timeout=60)
+    print(result.stdout, end="")
+    if result.returncode != 0:
+        print(result.stderr, end="")
+        raise subprocess.CalledProcessError(
+            result.returncode, "check-okp-solr-from-llama", result.stderr
+        )
+
+
+def ensure_okp_solr_ready() -> None:
+    """Deploy OKP Solr on Konflux if it is not already Ready.
+
+    Idempotent. First image pull can take ~10-15 minutes (7GB).
+
+    Raises:
+        subprocess.CalledProcessError: If deploy-okp-solr fails.
+        subprocess.TimeoutExpired: If the operation times out.
+    """
+    # 300 wait_for_pod attempts × 3s = 900s, plus oc apply. 1080s leaves margin.
+    result = run_e2e_ops("deploy-okp-solr", timeout=1080)
+    print(result.stdout, end="")
+    if result.returncode != 0:
+        print(result.stderr, end="")
+        raise subprocess.CalledProcessError(
+            result.returncode, "deploy-okp-solr", result.stderr
+        )
+    print("✓ OKP Solr is ready")
+
+
+def disrupt_okp_solr_pod() -> bool:
+    """Disrupt OKP Solr in the Konflux test namespace.
+
+    Returns:
+        True if the pod was running and has been disrupted, False otherwise.
+    """
+    try:
+        result = run_e2e_ops("disrupt-okp-solr", timeout=60)
+        print(result.stdout, end="")
+
+        # Exit code 0 = disrupted (was running), exit code 2 = was not running
+        if result.returncode == 0:
+            return True
+        elif result.returncode == 2:
+            return False
+        else:
+            print(result.stderr, end="")
+            return False
+
+    except subprocess.TimeoutExpired:
+        print("Warning: Timeout while disrupting OKP Solr connection")
+        return False
+
+
+def restore_okp_solr_pod() -> None:
+    """Restore the OKP Solr pod in the Konflux test namespace.
+
+    Raises:
+        subprocess.CalledProcessError: If oc/e2e-ops restore fails.
+        subprocess.TimeoutExpired: If the operation times out.
+    """
+    # restore-okp-solr can spend 180 seconds in wait_for_pod, plus oc apply time.
+    # Use a timeout with margin (240s) so we fail instead of hanging forever.
+    result = run_e2e_ops("restore-okp-solr", timeout=240)
+    print(result.stdout, end="")
+    if result.returncode != 0:
+        print(result.stderr, end="")
+        raise subprocess.CalledProcessError(
+            result.returncode, "restore-okp-solr", result.stderr
+        )
+    print("✓ OKP Solr pod restored successfully")
