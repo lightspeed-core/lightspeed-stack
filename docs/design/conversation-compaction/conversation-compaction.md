@@ -177,7 +177,7 @@ When triggered, split conversation into:
 - **Summary zone**: Oldest turns that will be summarized.
 - **Buffer zone**: Most recent turns kept verbatim.
 
-Buffer zone uses a degrading guard: start with N turns (default 4), estimate their token count. If they exceed the available budget (context window minus summary minus new query), reduce to N-1 turns and re-estimate. Continue degrading (4→3→2→1→0) until the buffer fits. This handles pathological cases where a few large turns (e.g., with tool results) consume most of the context.
+Buffer zone uses a degrading guard: start with N turns (default 4), estimate their token count. If they exceed the available budget (`context_window * buffer_max_ratio`), reduce to N-1 turns and re-estimate. Continue degrading (4→3→2→1→0) until the buffer fits. The token estimate only counts message text — non-message items (tool calls, tool results) are not included — so the guard may underestimate turns that carry large tool-result payloads.
 
 ## Additive summarization
 

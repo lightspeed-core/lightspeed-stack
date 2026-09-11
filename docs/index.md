@@ -34,6 +34,8 @@ product questions using backend LLM services, agents, and RAG databases.
 
 [OKP guide](https://lightspeed-core.github.io/lightspeed-stack/user_doc/okp_guide.html)
 
+[Conversation compaction](https://lightspeed-core.github.io/lightspeed-stack/user_doc/conversation_compaction.html)
+
 [Authentication and Authorization](https://lightspeed-core.github.io/lightspeed-stack/user_doc/auth.html)
 
 [User data collection](https://lightspeed-core.github.io/lightspeed-stack/user_doc/user_data_collection.html)

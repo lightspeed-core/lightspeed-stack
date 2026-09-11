@@ -111,9 +111,9 @@ def partition_conversation(
 
     The shrink continues all the way down to zero — at which point all
     items are placed in the old chunk and the recent chunk is empty.
-    This handles the pathological case described in the spec (a few
-    very large tool-result turns that would themselves overflow the
-    context window even after summarizing everything else).
+    The token estimate only counts message text — non-message items
+    (tool calls, tool results) are not included — so the guard may
+    underestimate turns that carry large tool-result payloads.
 
     Non-message items (function calls, tool results) are kept attached
     to whichever chunk their bracketing messages land in. The split
@@ -124,7 +124,7 @@ def partition_conversation(
         items: Ordered list of conversation items, oldest first.
         available_budget_tokens: How many tokens the buffer chunk is
             allowed to consume. The compaction runtime computes this
-            as ``context_window - summary_token_budget - new_query_tokens``.
+            as ``context_window * buffer_max_ratio``.
         buffer_turns: Initial buffer size in turn pairs. The degrading
             guard reduces this until the buffer fits.
         encoding_name: Tiktoken encoding name passed through to the
