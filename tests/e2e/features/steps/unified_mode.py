@@ -10,7 +10,7 @@ outside and never import from or execute anything under ``src/``. See
 ``docs/testing/e2e_testing.md``, "Choosing the Test Layer".
 
 The log step is mode-aware: in server mode the synthesis evidence is emitted by
-the llama-stack container (entrypoint + config CLI), not the lightspeed-stack
+the ogx container (entrypoint + config CLI), not the lightspeed-stack
 container the Gherkin names; the scenario's intent (R10: the synthesized path
 is logged at startup) is asserted against the container that actually
 synthesizes.
@@ -46,7 +46,7 @@ def container_logs_show_synthesis(context: Context) -> None:
 
     Library mode: the lightspeed-stack container itself synthesizes in-process
     and logs "Using synthesized OGX config at <path>". Server mode: synthesis
-    happens in the llama-stack container (entrypoint + config CLI), which
+    happens in the ogx container (entrypoint + config CLI), which
     echoes the generated-config path — the Gherkin names lightspeed-stack, but
     the scenario's intent (R10: the path is logged at startup) can only be
     observed on the synthesizing container. Deviation agreed in planning (Q2).
@@ -79,7 +79,7 @@ def container_logs_show_synthesis(context: Context) -> None:
         container = "lightspeed-stack"
         pattern = r"Using synthesized OGX config at \S+"
     else:
-        container = "llama-stack"
+        container = "ogx"
         pattern = r"Wrote synthesized OGX configuration to \S+"
 
     started_at = _container_started_at(container)
