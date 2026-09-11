@@ -1,4 +1,4 @@
-@cfg_unified @skip
+@cfg_unified @skip-in-prow
 Feature: Unified mode configuration synthesis
 
   Background:
@@ -7,42 +7,17 @@ Feature: Unified mode configuration synthesis
       And the Lightspeed stack configuration directory is "tests/e2e/configuration/unified-mode"
 
 
-  Scenario: native_override replaces an overlapping scalar key
-    Given The service uses the lightspeed-stack-unified-native-override-scalar.yaml configuration
-     When the active unified configuration is synthesized to run.yaml
-     Then the synthesized run.yaml contains the native_override scalar value for safety.excluded_categories
-
-
-  Scenario: native_override replaces an overlapping list key wholesale
-    Given The service uses the lightspeed-stack-unified-native-override-list.yaml configuration
-     When the active unified configuration is synthesized to run.yaml
-     Then the synthesized run.yaml contains exactly the native_override list for apis
-
-
-  Scenario: LCORE-emitted secrets remain as environment references on disk
-    Given The service uses the lightspeed-stack-unified-providers.yaml configuration
-     When the active unified configuration is synthesized to run.yaml
-     Then the synthesized run.yaml contains ${env.OPENAI_API_KEY}
-      And the synthesized run.yaml does not contain the resolved OPENAI_API_KEY value
-
-
-  Scenario: Synthesized run.yaml is written with owner-only permissions
-    Given The service uses the lightspeed-stack-unified-providers.yaml configuration
-     When the active unified configuration is synthesized to run.yaml
-     Then the synthesized run.yaml file permissions are 0600
-
-
-  Scenario: synthesized-config-output overrides the default synthesis location
-    Given The service uses the lightspeed-stack-unified-providers.yaml configuration
-      And lightspeed-stack is started with --synthesized-config-output set to a custom path
-     When the active unified configuration is synthesized to run.yaml
-     Then the synthesized run.yaml is written to the custom output path
-      And the default synthesized run.yaml path does not exist
-
+  # Synthesis semantics — native_override replacement (R5), secrets kept as
+  # environment references (R6), owner-only output mode (R10) and the
+  # --synthesized-config-output override — are covered in-process by
+  # tests/integration/test_unified_synthesis.py: e2e steps never run src/ CLIs
+  # (docs/testing/e2e_testing.md, "Choosing the Test Layer"). What remains here
+  # is the one thing only a deployed stack can show: the synthesized path is
+  # logged at startup (R10).
 
   # --- library mode (@skip-in-server-mode) ---
 
-  @skip-in-server-mode
+  @skip-in-server-mode @openai-only
   Scenario: Synthesized run.yaml path is logged at startup in library mode
     Given The service uses the lightspeed-stack-unified-providers.yaml configuration
       And The service is restarted
@@ -51,7 +26,7 @@ Feature: Unified mode configuration synthesis
 
   # --- server mode (@skip-in-library-mode) ---
 
-  @skip-in-library-mode
+  @skip-in-library-mode @openai-only
   Scenario: Synthesized run.yaml path is logged at startup in server mode
     Given The service uses the lightspeed-stack-unified-providers.yaml configuration
       And OGX is restarted

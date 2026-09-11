@@ -242,6 +242,21 @@ def before_scenario(context: Context, scenario: Scenario) -> None:
         scenario.skip("Skipped in Prow (requires Docker Compose services)")
         return
 
+    # Skip openai-specific scenarios on non-openai provider matrices: the
+    # providers workflow runs the full test list with E2E_DEFAULT_PROVIDER_OVERRIDE
+    # set (azure/watsonx/...), and fixtures that hardcode an openai provider
+    # (e.g. the unified-mode inference.providers fixture) cannot serve queries
+    # for those models.
+    provider_override = os.getenv("E2E_DEFAULT_PROVIDER_OVERRIDE", "")
+    if "openai-only" in scenario.effective_tags and provider_override not in (
+        "",
+        "openai",
+    ):
+        scenario.skip(
+            f"Skipped on provider matrix '{provider_override}' (openai-only fixture)"
+        )
+        return
+
     # In Prow, verify the lightspeed port-forward is alive before each scenario.
     # Port-forwards can silently die between scenarios (e.g. pod restart, TCP reset).
     if is_prow_environment():
@@ -530,7 +545,15 @@ def after_feature(context: Context, feature: Feature) -> None:
             remove_config_backup(backup_path)
             if not context.is_library_mode:
                 restart_container("ogx")
-            restart_container("lightspeed-stack")
+            # restart_container hard-fails for lightspeed-stack when the
+            # service does not accept HTTP in time. That is right inside a
+            # scenario, but this runs in after_feature: an exception here is a
+            # hook error that takes down the whole run rather than failing one
+            # scenario. Warn and let the next feature's own restart surface it.
+            try:
+                restart_container("lightspeed-stack")
+            except AssertionError as exc:
+                print(f"⚠ after_feature restore: lightspeed-stack not ready ({exc})")
             reset_active_lightspeed_stack_config_basename()
         else:
             remove_config_backup(backup_path)

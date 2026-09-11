@@ -42,7 +42,6 @@ from tests.e2e.utils.prow_utils import get_namespace, run_e2e_ops
 from tests.e2e.utils.utils import (
     is_prow_environment,
     restart_container,
-    wait_for_lightspeed_stack_http_ready,
 )
 
 _CLUSTER_INTERCEPTION_PROXY_PORTS = frozenset(
@@ -339,7 +338,6 @@ def restart_ogx(context: Context) -> None:
 def restart_lightspeed_stack(context: Context) -> None:
     """Restart the Lightspeed Stack container."""
     restart_container("lightspeed-stack")
-    wait_for_lightspeed_stack_http_ready()
 
 
 # --- Tunnel Proxy Steps ---
