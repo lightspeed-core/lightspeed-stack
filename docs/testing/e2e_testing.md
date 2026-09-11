@@ -9,14 +9,15 @@ This guide describes how to run, extend, and understand the Lightspeed Core Stac
 1. [Overview](#overview)
 2. [Directory Layout](#directory-layout)
 3. [How to Run E2E Tests](#how-to-run-e2e-tests)
-4. [Environment Variables](#environment-variables)
-5. [Deployment Modes: Server vs Library](#deployment-modes-server-vs-library)
-6. [Tags and Hooks](#tags-and-hooks)
-7. [Configuration Files](#configuration-files)
-8. [Feature Files and Steps](#feature-files-and-steps)
-9. [Gherkin Keywords in Feature Files](#gherkin-keywords-in-feature-files)
-10. [Writing New Scenarios](#writing-new-scenarios)
-11. [Troubleshooting](#troubleshooting)
+4. [Running OKP RAG tests locally](#running-okp-rag-tests-locally)
+5. [Environment Variables](#environment-variables)
+6. [Deployment Modes: Server vs Library](#deployment-modes-server-vs-library)
+7. [Tags and Hooks](#tags-and-hooks)
+8. [Configuration Files](#configuration-files)
+9. [Feature Files and Steps](#feature-files-and-steps)
+10. [Gherkin Keywords in Feature Files](#gherkin-keywords-in-feature-files)
+11. [Writing New Scenarios](#writing-new-scenarios)
+12. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -135,6 +136,73 @@ uv run behave tests/e2e/features/health.feature --tags=-skip-in-library-mode
 
 ---
 
+## Running OKP RAG tests locally
+
+`okp_rag.feature` is `@konflux-only`. CI deploys OKP as a pod; `make test-e2e` skips the feature. Do not set `E2E_KONFLUX_E2E=1` locally (that path is Kubernetes). On a laptop, start OKP in Docker, enrich and run OGX and LCS as host processes, then run **one scenario that matches the YAML you started**.
+
+Needs `registry.redhat.io` login, `OPENAI_API_KEY`, `uv sync --locked --group ogxlibdev`, and `../lightspeed-providers`.
+
+### Prerequisite: OKP in Docker
+
+```bash
+docker login registry.redhat.io
+docker run --rm -d -p 8081:8080 registry.redhat.io/offline-knowledge-portal/rhokp-rhel9:latest
+```
+
+Wait until Solr answers (not only the portal page):
+
+```bash
+curl -sS -m 15 -o /dev/null -w "%{http_code}\n" \
+  'http://localhost:8081/solr/portal-rag/select?q=*:*&rows=0'
+```
+
+### 1. Create the enriched run file
+
+Use the same Lightspeed YAML the scenario will load (`-c`). Example: offline inline RAG.
+
+```bash
+export PYTHONPATH="$(cd ../lightspeed-providers && pwd)${PYTHONPATH:+:$PYTHONPATH}"
+export EXTERNAL_PROVIDERS_DIR="$(cd ../lightspeed-providers && pwd)/resources/external_providers"
+export RH_SERVER_OKP=http://localhost:8081/solr
+
+uv run python src/ogx_configuration.py \
+  -c tests/e2e/configuration/server-mode/lightspeed-stack-okp-offline.yaml \
+  -i run.yaml \
+  -o run_enriched.yaml
+```
+
+### 2. Start OGX
+
+```bash
+export PYTHONPATH="$(cd ../lightspeed-providers && pwd)${PYTHONPATH:+:$PYTHONPATH}"
+export EXTERNAL_PROVIDERS_DIR="$(cd ../lightspeed-providers && pwd)/resources/external_providers"
+
+uv run ogx stack run run_enriched.yaml --port 8321
+```
+
+### 3. Start LCS
+
+Same `CONFIG` as `-c` in step 1. `make run-ogx` starts LCS only (`CONFIG=`, not `make -c`).
+
+```bash
+export RH_SERVER_OKP=http://localhost:8081/solr
+export E2E_LLAMA_HOSTNAME=localhost
+LIGHTSPEED_STACK_LOG_LEVEL=DEBUG make run-ogx \
+  CONFIG=tests/e2e/configuration/server-mode/lightspeed-stack-okp-offline.yaml
+```
+
+### 4. Run the matching Behave scenario
+
+`okp_rag.feature:24` is the offline inline scenario (`lightspeed-stack-okp-offline.yaml`). Comment `@konflux-only` on the Feature, `OKP(Solr) server is running` in Background, and `Llama Stack is restarted` / `The service is restarted` on that scenario (OGX and LCS are already up). Do not commit those comments.
+
+```bash
+uv run behave tests/e2e/features/okp_rag.feature:24
+```
+
+For another YAML (`lightspeed-stack-okp-online.yaml`, tool RAG, and so on), repeat steps 1–3 with that file, then run the scenario line that uses it. Product setup: [OKP guide](../user_doc/okp_guide.md).
+
+---
+
 ## Environment Variables
 
 | Variable                        | Default     | Description                                                                                                                               |
@@ -150,6 +218,8 @@ uv run behave tests/e2e/features/health.feature --tags=-skip-in-library-mode
 | `E2E_DEFAULT_PROVIDER_OVERRIDE` | —           | Override default provider id (e.g. `openai`).                                                                                             |
 | `FAISS_VECTOR_STORE_ID`         | —           | Vector store id for FAISS-related scenarios.                                                                                              |
 | `RUNNING_PROW`                  | —           | Set in Prow/OpenShift; enables Prow config paths and pod/container ops.                                                                   |
+| `E2E_KONFLUX_E2E`               | —           | `1` in Konflux only. Unskips `@konflux-only` and deploys OKP as a pod.                                                                     |
+| `RH_SERVER_OKP`                 | —           | OKP/Solr URL (local default `http://localhost:8081/solr`).                                                                                |
 | `OPENAI_API_KEY`                | —           | **Required.** Used by the app and OGX for LLM calls (e.g. OpenAI). The E2E tests and the stack will not run correctly without it. |
 
 
@@ -175,6 +245,8 @@ All tag behaviour is implemented in **`features/environment.py`**: the hooks (`b
 | Tag                             | Effect                                                                                                                                                  |
 |---------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `@skip`                         | Scenario is skipped (reason: "Marked with @skip"). Use for broken or WIP scenarios.                                                                     |
+| `@konflux-only`                 | Skipped unless `E2E_KONFLUX_E2E=1`. Used by `okp_rag.feature`.                                                                           |
+| `@cfg_okp`                      | OKP Solr RAG. Konflux deploys OKP in `before_feature`. Local: [Running OKP RAG tests locally](#running-okp-rag-tests-locally).            |
 | `@skip-in-library-mode`         | Scenario is skipped when `E2E_DEPLOYMENT_MODE=library`. Used for tests that require a separate OGX (e.g. connection disruption).                |
 | `@local`                        | Skipped unless running in "local" mode (context flag).                                                                                                  |
 | `@InvalidFeedbackStorageConfig` | Before scenario: switch to invalid-feedback-storage config and restart container. After: restore feature config and restart.                            |
@@ -245,6 +317,7 @@ The feature files below are run in the order given in `tests/e2e/test_list.txt`:
 | `rest_api.feature`               | REST API: OpenAPI endpoint.                                                                                                             |
 | `mcp.feature`                    | MCP (Model Context Protocol): tools, query, streaming_query with MCP auth (required, token, invalid token).                             |
 | `models.feature`                 | Models endpoint: list models, filter, empty result; error when OGX unreachable.                                                 |
+| `okp_rag.feature`                | OKP Solr RAG (`@konflux-only`). Local: [Running OKP RAG tests locally](#running-okp-rag-tests-locally).                                  |
 
 
 If you add a new feature file, add it to **`tests/e2e/test_list.txt`** so it is included when you run the full E2E suite (e.g. `make test-e2e`). The order in that file is the run order.
@@ -354,6 +427,6 @@ Here, **Given** sets state, **When** performs the HTTP call, **Then** and **And*
 - **Readonly database (SQLite) in OGX**: If the RAG KV DB is on a bind-mounted path that becomes read-only (e.g. after restart), move it to a named volume (e.g. via `KV_RAG_PATH` in docker-compose) so writes succeed.
 - **ChunkedEncodingError on streaming_query**: The step for streaming_query uses `stream=True` and consumes the stream; if you add new streaming steps, avoid reading the full response with `response.content` and use the same stream-reading pattern so a server close after an error event does not raise.
 - **Event loop is closed (httpx/AsyncClient)**: In E2E, any code that creates an `AsyncOgxClient` (e.g. for shields) must close it (e.g. `await client.close()`) in a `finally` block before the event loop is torn down (e.g. before `asyncio.run()` returns).
-- **Scenarios skipped**: Check tags (`@skip`, `@skip-in-library-mode`, `@local`) and `E2E_DEPLOYMENT_MODE`; ensure the scenario is not excluded by `--tags=-skip` (or the opposite if you intend to run only skipped scenarios for debugging).
+- **Scenarios skipped**: Check tags (`@skip`, `@skip-in-library-mode`, `@local`, `@konflux-only`) and `E2E_DEPLOYMENT_MODE`; ensure the scenario is not excluded by `--tags=-skip` (or the opposite if you intend to run only skipped scenarios for debugging).
 
 For more on test structure and commands, see the main project guide (`CLAUDE.md`) and `tests/e2e/features/steps/README.md`.

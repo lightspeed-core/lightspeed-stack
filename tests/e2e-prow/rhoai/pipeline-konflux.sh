@@ -110,6 +110,51 @@ oc create secret docker-registry quay-lightspeed-pull-secret \
 # Link the secret to default service account for image pulls
 oc secrets link default quay-lightspeed-pull-secret --for=pull -n "$NAMESPACE" 2>/dev/null || echo "⚠️  Secret already linked to default SA"
 
+# Create Red Hat registry pull secret for OKP images in the ephemeral test
+# namespace. Do not set ownerReferences to the Konflux PipelineRun: that object
+# lives on a different cluster, and the ephemeral GC would treat the Secret as
+# orphaned. Namespace teardown deletes the Secret with everything else.
+if [[ -f /var/run/redhat-registry-pull-secret/.dockerconfigjson ]]; then
+  log "Creating Red Hat registry pull secret from mounted docker-registry secret..."
+  oc create secret generic redhat-registry-pull-secret \
+    --from-file=.dockerconfigjson=/var/run/redhat-registry-pull-secret/.dockerconfigjson \
+    --type=kubernetes.io/dockerconfigjson \
+    -n "$NAMESPACE" \
+    --dry-run=client -o yaml | oc apply -f -
+  log "✅ Red Hat registry pull secret created"
+  oc secrets link default redhat-registry-pull-secret --for=pull -n "$NAMESPACE" 2>/dev/null || echo "⚠️  Secret already linked to default SA"
+
+elif [[ -d /var/run/redhat-registry-username ]] && [[ -d /var/run/redhat-registry-password ]]; then
+  log "Creating Red Hat registry pull secret from username/password..."
+  REDHAT_USERNAME=""
+  REDHAT_PASSWORD=""
+
+  shopt -s nullglob
+  for _f in /var/run/redhat-registry-username/*; do
+    [[ -f "$_f" ]] && REDHAT_USERNAME="$(cat "$_f")" && break
+  done
+  for _f in /var/run/redhat-registry-password/*; do
+    [[ -f "$_f" ]] && REDHAT_PASSWORD="$(cat "$_f")" && break
+  done
+  shopt -u nullglob
+
+  if [[ -n "$REDHAT_USERNAME" ]] && [[ -n "$REDHAT_PASSWORD" ]]; then
+    oc create secret docker-registry redhat-registry-pull-secret \
+      --docker-server=registry.redhat.io \
+      --docker-username="$REDHAT_USERNAME" \
+      --docker-password="$REDHAT_PASSWORD" \
+      -n "$NAMESPACE" \
+      --dry-run=client -o yaml | oc apply -f -
+    log "✅ Red Hat registry pull secret created"
+    oc secrets link default redhat-registry-pull-secret --for=pull -n "$NAMESPACE" 2>/dev/null || echo "⚠️  Secret already linked to default SA"
+  else
+    log "⚠️  Red Hat registry credentials not found in /var/run - OKP image pull may fail"
+  fi
+else
+  log "⚠️  Red Hat registry credential mounts not found - OKP image pull may fail"
+  log "   (This is OK if not testing OKP features)"
+fi
+
 
 #========================================
 # 4. DEPLOY MOCK SERVERS (JWKS & MCP)
@@ -146,6 +191,10 @@ oc wait pod/mock-jwks pod/mock-mcp \
 }
 log "✅ Mock servers deployed"
 
+# OKP Solr is not part of cluster setup. okp_rag.feature (@cfg_okp) deploys it from
+# before_feature via e2e-ops deploy-okp-solr (7GB image, ~10-15 min first pull).
+# No other e2e feature depends on OKP.
+#
 # e2e-tunnel-proxy and e2e-interception-proxy are deployed from proxy.feature steps
 # (see tests/e2e/features/steps/proxy.py + e2e-ops deploy-e2e-*-proxy).
 
@@ -269,14 +318,29 @@ e2e_echo_pod_logs() {
   done < <(oc logs llama-stack-service -n "$NAMESPACE" --tail="$n" 2>&1) || true
 }
 
-progress "Waiting for lightspeed-stack and llama-stack pods"
-if ! oc wait pod/lightspeed-stack-service pod/llama-stack-service \
-    -n "$NAMESPACE" --for=condition=Ready --timeout=600s; then
-  progress "❌ One or both service pods failed to become ready within timeout"
-  e2e_echo_pod_logs 200
-  exit 1
-fi
-log "✅ Both service pods are ready"
+progress "Waiting for lightspeed-stack and llama-stack pods (up to 10 min)"
+for i in $(seq 1 60); do
+  lcs_ready=$(oc get pod lightspeed-stack-service -n "$NAMESPACE" -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "False")
+  llama_ready=$(oc get pod llama-stack-service -n "$NAMESPACE" -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "False")
+
+  if [[ "$lcs_ready" == "True" ]] && [[ "$llama_ready" == "True" ]]; then
+    log "✅ Both service pods are ready after $(( i * 10 ))s"
+    break
+  fi
+
+  if [ $((i % 6)) -eq 0 ]; then
+    lcs_status=$(oc get pod lightspeed-stack-service -n "$NAMESPACE" -o jsonpath='{.status.phase}' 2>/dev/null || echo "unknown")
+    llama_status=$(oc get pod llama-stack-service -n "$NAMESPACE" -o jsonpath='{.status.phase}' 2>/dev/null || echo "unknown")
+    progress "[$(( i * 10 ))s] lightspeed-stack: $lcs_status ($lcs_ready), llama-stack: $llama_status ($llama_ready)"
+  fi
+
+  if [ $i -eq 60 ]; then
+    progress "❌ One or both service pods failed to become ready within 600s timeout"
+    e2e_echo_pod_logs 200
+    exit 1
+  fi
+  sleep 10
+done
 
 if [ "$QUIET" = "1" ]; then
   e2e_echo_pod_logs 80

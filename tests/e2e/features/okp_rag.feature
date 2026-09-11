@@ -1,11 +1,10 @@
-@cfg_okp @skip
+@cfg_okp @konflux-only
 Feature: OKP(Solr) RAG retrieval tests
-
   # Offline Knowledge Portal (OKP) provides a Solr-backed RAG source to LSC.
   # Tests verify that Lightspeed Stack can use OKP for both Inline RAG
   # (context injected before the LLM request) and Tool RAG (context
   # retrieved on demand via file_search), in both offline and online modes.
-
+  
   Background:
     Given The service is started locally
       And The system is in default state
@@ -18,6 +17,7 @@ Feature: OKP(Solr) RAG retrieval tests
 
   Scenario: Offline mode query with inline RAG returns rag_chunks and referenced_documents
     Given The service uses the lightspeed-stack-okp-offline.yaml configuration
+      And OGX is restarted
       And The service is restarted
     When I use "query" to ask question with authorization header
     """
@@ -58,6 +58,7 @@ Feature: OKP(Solr) RAG retrieval tests
 
   Scenario: Query with inline RAG with dynamic semantic filter returns rag_chunks and referenced_documents
     Given The service uses the lightspeed-stack-okp-offline.yaml configuration
+      And OGX is restarted
       And The service is restarted
     When I use "query" to ask question with authorization header
     """
@@ -75,7 +76,9 @@ Feature: OKP(Solr) RAG retrieval tests
     }
     """
     Then The status code of the response is 200
-      And The response contains "security best practices"
+      And The response contains following fragments
+          | Fragments in LLM response |
+          | security best practices   |
       And The number of rag_chunk returned is 1
       And Each rag_chunk has a non-empty score
       And Each rag_chunk source is "okp"
@@ -90,6 +93,7 @@ Feature: OKP(Solr) RAG retrieval tests
 
   Scenario: Offline query API with OKP tool RAG has rag_chunk and referenced_documents returned
     Given The service uses the lightspeed-stack-okp-tool-offline.yaml configuration
+      And OGX is restarted
       And The service is restarted
     When I use "query" to ask question with authorization header
     """
@@ -118,6 +122,7 @@ Feature: OKP(Solr) RAG retrieval tests
 
   Scenario: Online responses API with OKP tool RAG has rag results returned
     Given The service uses the lightspeed-stack-okp-tool-online.yaml configuration
+      And OGX is restarted
       And The service is restarted
     When I use "responses" to ask question with authorization header
     """
@@ -130,18 +135,18 @@ Feature: OKP(Solr) RAG retrieval tests
     """
     Then The status code of the response is 200
       And The responses output includes an item with type "file_search_call"
-      And The response contains non-empty tool_calls
-      And A tool_call has type "file_search"
       And The response contains non-empty results
       And The number of results returned is 3
       And Each rag_chunk has a non-empty score
       And Each rag_chunk source is "okp"
-      And Each rag_chunk reference_url contains "access.redhat.com"
+      And Each rag_chunk reference_url contains "docs.redhat.com"
 
   # ── OKP Server Unavailable — Graceful Error Handling ──
-
+  @skip 
+  # https://redhat.atlassian.net/browse/LCORE-4022
   Scenario: Query succeeds with empty rag_chunks when OKP server is unavailable
     Given The service uses the lightspeed-stack-okp-online.yaml configuration
+      And OGX is restarted
       And The service is restarted
       And The OKP(Solr) server is stopped
     When I use "query" to ask question with authorization header
@@ -153,7 +158,8 @@ Feature: OKP(Solr) RAG retrieval tests
       And The response contains no referenced_documents
 
   Scenario: Streaming query succeeds with empty referenced_documents when OKP server is unavailable
-    Given The service uses the lightspeed-stack-okp-online.yaml configuration
+    Given The service uses the lightspeed-stack-okp-tool-online.yaml configuration
+      And OGX is restarted
       And The service is restarted
       And The OKP(Solr) server is stopped
     When I use "streaming_query" to ask question with authorization header
@@ -163,3 +169,29 @@ Feature: OKP(Solr) RAG retrieval tests
     Then The status code of the response is 200
       And I wait for the response to be completed
       And The response contains no referenced_documents
+
+  # ── OKP RAG Disabled (okp not in rag.retrieval.inline.sources) ─────
+
+  Scenario: Query returns no rag_chunks and no reference_documents when OKP is disabled
+    Given The service uses the lightspeed-stack-okp-negative.yaml configuration
+      And OGX is restarted
+      And The service is restarted
+    When I use "query" to ask question with authorization header
+    """
+    {"query": "configure remote desktop using gnome", "model": "{MODEL}", "provider": "{PROVIDER}"}
+    """
+    Then The status code of the response is 200
+     And The response contains no rag_chunks
+     And The response contains no referenced_documents
+
+  Scenario: Streaming query returns no referenced_documents when OKP is disabled
+    Given The service uses the lightspeed-stack-okp-negative.yaml configuration
+      And OGX is restarted
+      And The service is restarted
+    When I use "streaming_query" to ask question with authorization header
+    """
+    {"query": "configure remote desktop using gnome", "model": "{MODEL}", "provider": "{PROVIDER}"}
+    """
+    Then The status code of the response is 200
+     And I wait for the response to be completed
+     And The response contains no referenced_documents

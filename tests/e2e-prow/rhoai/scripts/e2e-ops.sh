@@ -16,6 +16,10 @@
 # - restart-lightspeed ensures Llama is running before LCS recreate when needed.
 # - restart-both-services is available explicitly; restart-lightspeed / restart-ogx
 #   do not auto-trigger a full stack restart on failure.
+# - OKP Solr is not deployed in pipeline setup. Features tagged @cfg_okp call
+#   deploy-okp-solr from before_feature (7GB image, first pull ~10-15 min).
+#   Background "OKP is running" GETs Solr from inside the OGX pod (in-cluster
+#   Service). Behave does not port-forward Solr to the runner.
 #
 # Commands:
 #   restart-lightspeed              - Restart lightspeed-stack pod and port-forward
@@ -33,6 +37,11 @@
 #   delete-e2e-mock-tls-inference   - Remove mock TLS pod + Service (manual cleanup)
 #   restart-e2e-mock-tls-inference  - Delete then deploy mock TLS (manual / recovery)
 #   sync-mock-tls-certs-secret      - Copy mock /certs into Secret for OGX mount
+#   check-okp-solr-from-llama       - GET Solr /solr/ from inside the OGX pod
+#   deploy-okp-solr                 - Deploy OKP Solr (idempotent; @cfg_okp before_feature)
+#   delete-okp-solr                 - Delete OKP Solr pod
+#   disrupt-okp-solr                - Delete OKP Solr pod to disrupt connection
+#   restore-okp-solr                - Restore OKP Solr pod
 
 set -e
 
@@ -989,6 +998,106 @@ cmd_disrupt_ogx() {
     fi
 }
 
+# Prove OGX can reach Solr in-cluster (the path used by retrieval).
+cmd_check_okp_solr_from_llama() {
+    local pod="llama-stack-service"
+    local ctr="llama-stack-container"
+    local url="http://okp-solr-service-svc:8080/solr/"
+
+    echo "Checking OKP Solr from OGX pod at ${url}..."
+    if oc exec -n "$NAMESPACE" "$pod" -c "$ctr" -- \
+        curl -sf --max-time 10 -o /dev/null "$url" 2>/dev/null; then
+        echo "✓ OGX pod can reach OKP Solr"
+        return 0
+    fi
+    if oc exec -n "$NAMESPACE" "$pod" -c "$ctr" -- \
+        /opt/app-root/.venv/bin/python -c \
+        'import urllib.request; urllib.request.urlopen("http://okp-solr-service-svc:8080/solr/", timeout=10).read()'; then
+        echo "✓ OGX pod can reach OKP Solr"
+        return 0
+    fi
+    echo "ERROR: OGX pod cannot reach OKP Solr at $url"
+    return 1
+}
+
+cmd_deploy_okp_solr() {
+    local pod_name="okp-solr-service"
+    # First pull of the ~7GB OKP image is typically 10-15 min. 300 attempts × 3s = 900s.
+    local wait_attempts=300
+    local ready
+
+    ready=$(oc get pod "$pod_name" -n "$NAMESPACE" -o jsonpath='{.status.containerStatuses[0].ready}' 2>/dev/null || echo "false")
+    if [[ "$ready" == "true" ]]; then
+        echo "✓ OKP Solr already ready — skipping deploy"
+        return 0
+    fi
+
+    echo "Deploying OKP Solr service in namespace $NAMESPACE..."
+    if oc get secret redhat-registry-pull-secret -n "$NAMESPACE" &>/dev/null; then
+        echo "✓ redhat-registry-pull-secret exists"
+    else
+        echo "WARNING: redhat-registry-pull-secret NOT found — image pull will fail"
+        oc get secrets -n "$NAMESPACE" --field-selector type=kubernetes.io/dockerconfigjson -o name 2>/dev/null || \
+            echo "No dockerconfigjson secrets found"
+    fi
+
+    oc apply -n "$NAMESPACE" -f "$MANIFEST_DIR/okp-solr.yaml"
+    echo "Waiting for OKP Solr to be ready (${wait_attempts} attempts, ~$((wait_attempts * 3))s for 7GB image pull)..."
+    if ! wait_for_pod "$pod_name" "$wait_attempts"; then
+        echo "=========================================="
+        echo "OKP Solr not ready — diagnostics"
+        echo "=========================================="
+        oc get pod "$pod_name" -n "$NAMESPACE" -o wide || true
+        oc get pod "$pod_name" -n "$NAMESPACE" \
+            -o jsonpath='{.status.containerStatuses[*].state}' && echo "" || true
+        oc get events -n "$NAMESPACE" --sort-by='.lastTimestamp' \
+            --field-selector involvedObject.name="$pod_name" \
+            --limit=30 2>/dev/null || echo "No events found for $pod_name"
+        oc describe pod "$pod_name" -n "$NAMESPACE" || true
+        if oc get secret redhat-registry-pull-secret -n "$NAMESPACE" &>/dev/null; then
+            echo "redhat-registry-pull-secret: present"
+        else
+            echo "redhat-registry-pull-secret: NOT FOUND"
+        fi
+        echo "OKP Solr failed to become ready (7GB image — check node network to registry.redhat.io)"
+        return 1
+    fi
+    echo "✓ OKP Solr service deployed and ready"
+}
+
+cmd_delete_okp_solr() {
+    echo "Deleting OKP Solr pod from namespace $NAMESPACE..."
+    timeout 60 oc delete pod okp-solr-service -n "$NAMESPACE" --ignore-not-found=true --wait=true 2>/dev/null || {
+        oc delete pod okp-solr-service -n "$NAMESPACE" --ignore-not-found=true --force --grace-period=0 2>/dev/null || true
+        sleep 2
+    }
+    echo "✓ OKP Solr pod deleted"
+}
+
+cmd_disrupt_okp_solr() {
+    local pod_name="okp-solr-service"
+
+    local phase
+    phase=$(oc get pod "$pod_name" -n "$NAMESPACE" -o jsonpath='{.status.phase}' 2>/dev/null || echo "NotFound")
+
+    if [[ "$phase" == "Running" ]]; then
+        oc delete pod "$pod_name" -n "$NAMESPACE" --wait=true
+        sleep 2
+        echo "OKP Solr connection disrupted successfully (pod deleted)"
+        exit 0
+    else
+        echo "OKP Solr pod was not running (phase: $phase)"
+        exit 2
+    fi
+}
+
+cmd_restore_okp_solr() {
+    echo "Restoring OKP Solr service in namespace $NAMESPACE..."
+    oc apply -n "$NAMESPACE" -f "$MANIFEST_DIR/okp-solr.yaml"
+    wait_for_pod "okp-solr-service" 60
+    echo "✓ OKP Solr pod restored and ready"
+}
+
 # ============================================================================
 # Main command dispatcher
 # ============================================================================
@@ -1060,6 +1169,21 @@ case "$COMMAND" in
     dump-pod-logs)
         cmd_dump_pod_logs "$@"
         ;;
+    check-okp-solr-from-llama)
+        cmd_check_okp_solr_from_llama
+        ;;
+    deploy-okp-solr)
+        cmd_deploy_okp_solr
+        ;;
+    delete-okp-solr)
+        cmd_delete_okp_solr
+        ;;
+    disrupt-okp-solr)
+        cmd_disrupt_okp_solr
+        ;;
+    restore-okp-solr)
+        cmd_restore_okp_solr
+        ;;
     *)
         echo "Usage: $0 <command> [args...]"
         echo ""
@@ -1081,6 +1205,11 @@ case "$COMMAND" in
         echo "  deploy-e2e-interception-proxy      - Deploy in-cluster interception proxy pod"
         echo "  deploy-e2e-mock-tls-inference        - Deploy mock HTTPS inference (tls-*.feature)"
         echo "  delete-e2e-mock-tls-inference        - Remove mock TLS pod + Service"
+        echo "  check-okp-solr-from-llama            - GET Solr /solr/ from inside the OGX pod"
+        echo "  deploy-okp-solr                      - Deploy OKP Solr (idempotent; @cfg_okp before_feature)"
+        echo "  delete-okp-solr                      - Delete OKP Solr pod"
+        echo "  disrupt-okp-solr                     - Delete OKP Solr pod to disrupt connection"
+        echo "  restore-okp-solr                     - Restore OKP Solr pod"
         echo "  restart-e2e-mock-tls-inference       - Delete then deploy mock TLS (recovery)"
         echo "  sync-mock-tls-certs-secret           - Publish mock TLS /certs to Secret"
         echo "  dump-pod-logs <pod> [tail-lines]   - Print init + container logs"
