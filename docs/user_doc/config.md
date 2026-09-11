@@ -248,7 +248,7 @@ Global service configuration.
 | rag                    |        | Unified RAG configuration: BYOK stores, OKP provider, and retrieval strategies (inline and tool-based).                                                                                                                                                                                                                                                                                             |
 | skills                 |        | Agent skills configuration. Specifies paths to skill directories.                                                                                                                                                                                                                                                                                                                                   |
 | saved_prompts          |        | Configuration for saved prompts feature limits including maximum prompts per user, display name length, and content length.                                                                                                                                                                                                                                                                         |
-| shields                | array  | List of pydantic-ai-lightspeed agent guardrail shields (question validity and PII redaction). Each entry has a unique 'name', a 'provider_id' ('question_validity' or 'redaction'), and a type-specific 'config'.                                                                                                                                                                                   |
+| shields                | array  | List of LCS guardrail shields (question validity, PII redaction, and Granite Guardian). Each entry has a unique 'name', a 'provider_id' ('question_validity', 'redaction', or 'granite_guardian'), and a type-specific 'config'. See [shields_guide.md](shields_guide.md). |
 
 
 ## ConversationHistoryConfiguration
@@ -358,6 +358,37 @@ Inference configuration.
 | providers        | array   | Unified-mode synthesis input (Decision S5): a high-level, backend-agnostic list of inference providers the synthesizer expands into OGX provider entries. Lives at the configuration root so it survives a future backend change. A non-empty list signals unified mode. Empty (the default) leaves legacy/remote modes unaffected. The sibling default_model / default_provider keep their query-time routing meaning and are independent of this list. |
 | max_infer_iters  | integer | Server-side default for the maximum number of inference iterations a model can perform in a single request. Prevents small models from looping indefinitely on tool calls. Per-request values take precedence over this default. Set to None to disable the limit.                                                                                                                                                                                               |
 | max_tool_calls   | integer | Server-side default for the maximum number of tool calls allowed in a single response. Prevents small models from exhausting the context window with repeated tool calls. Per-request values take precedence over this default. Set to None to disable the limit.                                                                                                                                                                                                |
+
+
+## GraniteGuardianConfig
+
+
+Configuration for the Granite Guardian moderation guardrail.
+
+
+| Field       | Type    | Description |
+|-------------|---------|-------------|
+| url         | string  | Base URL of the OpenAI-compatible Granite Guardian API. |
+| model_id    | string  | Model name sent to the inference server (default `ibm-granite/granite-guardian-4.1-8b`); override when the server registers the model under a different name. |
+| api_key     | string  | API key for the inference endpoint (optional). |
+| max_retries | integer | Maximum number of retries for transient errors (0–5, default 2). |
+| timeout     | integer | Request timeout in seconds (5–300, default 30). |
+| verify_ssl  | boolean or string | TLS verification: `true`, `false`, or path to a CA bundle (default `true`). |
+| batch_size  | integer | Number of risk checks to run in parallel per batch (1–10, default 3). |
+| risks       | array   | List of [RiskDefinition](#riskdefinition) entries to evaluate. |
+
+
+## GraniteGuardianShieldConfiguration
+
+
+Configuration for a named Granite Guardian guardrail shield.
+
+
+| Field       | Type   | Description |
+|-------------|--------|-------------|
+| name        | string | Unique, user-facing name identifying this shield instance. |
+| provider_id | string | Must be `granite_guardian`. |
+| config      |        | [GraniteGuardianConfig](#graniteguardianconfig) for this shield. |
 
 
 ## JsonPathOperator
@@ -790,6 +821,23 @@ Attributes:
 | name        | string | Unique, user-facing name identifying this shield instance. |
 | provider_id | string | Discriminator identifying this as a redaction shield.      |
 | config      |        | Redaction-specific configuration for this shield.          |
+
+
+## RiskDefinition
+
+
+Definition for a custom risk category evaluated by Granite Guardian.
+
+
+| Field             | Type    | Description |
+|-------------------|---------|-------------|
+| name              | string  | Unique identifier for this risk (for example `roleplay-jailbreak`). |
+| description       | string  | Risk definition text passed to Granite Guardian as `custom_criteria`. |
+| threshold         | number  | Score threshold for flagging, 0.0–1.0 (default 0.65; lower = more sensitive). |
+| enabled           | boolean | Whether to run this check (default `true`). |
+| enable_thinking   | boolean | Internal — set via `ModerationConfig.thinking_enabled`, not directly. |
+| points            | array   | Where to evaluate: `input`, `output`, and/or `tool` (at least one). |
+| violation_message | string  | Message returned when this risk is violated. |
 
 
 ## RerankerConfiguration
