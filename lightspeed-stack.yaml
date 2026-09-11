@@ -7,11 +7,11 @@ service:
   workers: 1
   color_log: true
   access_log: true
-# llama_stack configuration
+# ogx configuration
 # When using 'make run', a container is ALWAYS launched at http://localhost:8321 (hardcoded in Makefile).
-# This llama_stack section controls where lightspeed-core connects to OGX.
-# To use a different port: override with 'make run LLAMA_STACK_PORT=<port>' and update the url below,
-# or run ogx manually and don't use 'make run'.
+# This ogx section controls where lightspeed-core connects to OGX.
+# To use a different port: override with 'make run OGX_PORT=<port>' and update the url below,
+# or run OGX manually and don't use 'make run'.
 ogx:
   use_as_library_client: false
   url: http://localhost:8321

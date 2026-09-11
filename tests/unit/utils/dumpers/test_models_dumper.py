@@ -6756,7 +6756,7 @@ def test_dump_models(tmpdir: Path) -> None:
                             "type": "string"
                         },
                         "conversation": {
-                            "description": "The conversation ID in llama-stack format",
+                            "description": "The conversation ID in OGX format",
                             "title": "Conversation",
                             "type": "string"
                         },
@@ -9035,7 +9035,7 @@ def test_dump_models(tmpdir: Path) -> None:
                     "type": "object"
                 },
                 "TurnSummary": {
-                    "description": "Summary of a turn in llama stack.",
+                    "description": "Summary of a turn in OGX.",
                     "properties": {
                         "id": {
                             "default": "",

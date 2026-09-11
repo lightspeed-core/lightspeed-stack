@@ -13,7 +13,7 @@ Feature: Unified mode configuration validation
      Then the validation error contains --migrate-config
 
 
-  Scenario: llama_stack.config together with library_client_config_path fails at load
+  Scenario: ogx.config together with library_client_config_path fails at load
     Given The service uses the lightspeed-stack-invalid-config-and-legacy.yaml configuration
      When configuration validation is attempted for the active configuration
      Then the validation error contains --migrate-config

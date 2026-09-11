@@ -1,7 +1,7 @@
 @skip-in-library-mode @Authorized
-Feature: Llama Stack connection disrupted
+Feature: OGX connection disrupted
 
-  End-to-end scenarios that stop the Llama Stack container (or simulate disconnect) and
+  End-to-end scenarios that stop the OGX container (or simulate disconnect) and
   assert degraded responses (503, readiness, etc.). Config order matches test_list.txt:
   default stack, then noop-token (query/conversations/…), then rbac (rlsapi errors).
   Skipped in library mode.
@@ -18,11 +18,11 @@ Feature: Llama Stack connection disrupted
 # --- @cfg_default ---
 
   @cfg_default
-  Scenario: Check if models endpoint reports error when llama-stack is unreachable
+  Scenario: Check if models endpoint reports error when ogx is unreachable
     Given The service uses the lightspeed-stack-default.yaml configuration
       And The service is restarted
     Given The system is in default state
-    And The llama-stack connection is disrupted
+    And The ogx connection is disrupted
     When I access REST API endpoint "models" using HTTP GET method
     Then The status code of the response is 503
     And The body of the response is the following
@@ -32,11 +32,11 @@ Feature: Llama Stack connection disrupted
 
 
   @cfg_default
-  Scenario: Check if service report proper readiness state when llama stack is not available
+  Scenario: Check if service report proper readiness state when OGX is not available
     Given The service uses the lightspeed-stack-default.yaml configuration
       And The service is restarted
     Given The system is in default state
-    And The llama-stack connection is disrupted
+    And The ogx connection is disrupted
     When I access endpoint "readiness" using HTTP GET method
     Then The status code of the response is 503
     And The body of the response, ignoring the "providers" field, is the following
@@ -46,11 +46,11 @@ Feature: Llama Stack connection disrupted
 
 
   @cfg_default
-  Scenario: Check if service report proper liveness state even when llama stack is not available
+  Scenario: Check if service report proper liveness state even when OGX is not available
     Given The service uses the lightspeed-stack-default.yaml configuration
       And The service is restarted
     Given The system is in default state
-    And The llama-stack connection is disrupted
+    And The ogx connection is disrupted
     When I access endpoint "liveness" using HTTP GET method
     Then The status code of the response is 200
     And The body of the response is the following
@@ -60,10 +60,10 @@ Feature: Llama Stack connection disrupted
 
 
   @cfg_default
-  Scenario: Check if info endpoint reports error when llama-stack connection is not working
+  Scenario: Check if info endpoint reports error when ogx connection is not working
     Given The service uses the lightspeed-stack-default.yaml configuration
       And The service is restarted
-    And The llama-stack connection is disrupted
+    And The ogx connection is disrupted
     When I access REST API endpoint "info" using HTTP GET method
     Then The status code of the response is 503
     And The body of the response is the following
@@ -75,10 +75,10 @@ Feature: Llama Stack connection disrupted
 # --- @cfg_default (noop auth; tools list needs no bearer) ---
 
   @cfg_default
-  Scenario: Check if tools endpoint reports error when llama-stack is unreachable
+  Scenario: Check if tools endpoint reports error when ogx is unreachable
     Given The service uses the lightspeed-stack-default.yaml configuration
       And The service is restarted
-    And The llama-stack connection is disrupted
+    And The ogx connection is disrupted
     When I access REST API endpoint "tools" using HTTP GET method
     Then The status code of the response is 503
     And The body of the response is the following
@@ -90,12 +90,12 @@ Feature: Llama Stack connection disrupted
   # --- lightspeed-stack-authorized.yaml (aligned with query, responses, conversations, …) ---
 
   @cfg_authorized
-  Scenario: Check if LLM responds for query request with error for inability to connect to llama-stack
-    Given Llama Stack is restarted
+  Scenario: Check if LLM responds for query request with error for inability to connect to ogx
+    Given OGX is restarted
     And The service uses the lightspeed-stack-authorized.yaml configuration
       And The service is restarted
     And I set the Authorization header to Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva
-    And The llama-stack connection is disrupted
+    And The ogx connection is disrupted
     When I use "query" to ask question with authorization header
     """
     {"query": "Say hello"}
@@ -105,11 +105,11 @@ Feature: Llama Stack connection disrupted
 
 
   @cfg_authorized
-  Scenario: Responses returns error when unable to connect to llama-stack
+  Scenario: Responses returns error when unable to connect to ogx
     Given The service uses the lightspeed-stack-authorized.yaml configuration
       And The service is restarted
     Given The system is in default state
-    And The llama-stack connection is disrupted
+    And The ogx connection is disrupted
     And I set the Authorization header to Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva
     When I use "responses" to ask question with authorization header
     """
@@ -120,11 +120,11 @@ Feature: Llama Stack connection disrupted
 
 
   @cfg_authorized
-  Scenario: Streaming responses returns error when unable to connect to llama-stack
+  Scenario: Streaming responses returns error when unable to connect to ogx
     Given The service uses the lightspeed-stack-authorized.yaml configuration
       And The service is restarted
     And I set the Authorization header to Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva
-    And The llama-stack connection is disrupted
+    And The ogx connection is disrupted
     When I use "responses" to ask question with authorization header
     """
     {"input": "Say hello", "model": "{PROVIDER}/{MODEL}", "stream": true}
@@ -134,33 +134,33 @@ Feature: Llama Stack connection disrupted
 
 
   @cfg_authorized
-  Scenario: Check if rags endpoint fails when llama-stack is unavailable
+  Scenario: Check if rags endpoint fails when ogx is unavailable
     Given The service uses the lightspeed-stack-authorized.yaml configuration
       And The service is restarted
     And I set the Authorization header to Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva
-    And The llama-stack connection is disrupted
+    And The ogx connection is disrupted
     When I access REST API endpoint rags using HTTP GET method
     Then The status code of the response is 503
     And The body of the response contains Unable to connect to OGX
 
 
   @cfg_authorized
-  Scenario: Check if prompts list endpoint fails when llama-stack is unavailable
+  Scenario: Check if prompts list endpoint fails when ogx is unavailable
     Given The service uses the lightspeed-stack-authorized.yaml configuration
       And The service is restarted
     And I set the Authorization header to Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva
-    And The llama-stack connection is disrupted
+    And The ogx connection is disrupted
     When I access REST API endpoint "prompts" using HTTP GET method
     Then The status code of the response is 503
     And The body of the response contains Unable to connect to OGX
 
 
   @cfg_authorized
-  Scenario: Check if prompts create endpoint fails when llama-stack is unavailable
+  Scenario: Check if prompts create endpoint fails when ogx is unavailable
     Given The service uses the lightspeed-stack-authorized.yaml configuration
       And The service is restarted
     And I set the Authorization header to Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva
-    And The llama-stack connection is disrupted
+    And The ogx connection is disrupted
     When I access REST API endpoint "prompts" using HTTP POST method
     """
     {"prompt": "Summarize: {{text}}", "variables": ["text"]}
@@ -170,22 +170,22 @@ Feature: Llama Stack connection disrupted
 
 
   @cfg_authorized
-  Scenario: Check if prompts get by id endpoint fails when llama-stack is unavailable
+  Scenario: Check if prompts get by id endpoint fails when ogx is unavailable
     Given The service uses the lightspeed-stack-authorized.yaml configuration
       And The service is restarted
     And I set the Authorization header to Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva
-    And The llama-stack connection is disrupted
+    And The ogx connection is disrupted
     When I access REST API endpoint "prompts/pmpt_5c76d7f7c633ef97477adeb2f642150d8d08e8a6526e9909" using HTTP GET method
     Then The status code of the response is 503
     And The body of the response contains Unable to connect to OGX
 
 
   @cfg_authorized
-  Scenario: Check if prompts update endpoint fails when llama-stack is unavailable
+  Scenario: Check if prompts update endpoint fails when ogx is unavailable
     Given The service uses the lightspeed-stack-authorized.yaml configuration
       And The service is restarted
     And I set the Authorization header to Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva
-    And The llama-stack connection is disrupted
+    And The ogx connection is disrupted
     When I access REST API endpoint "prompts/pmpt_5c76d7f7c633ef97477adeb2f642150d8d08e8a6526e9909" using HTTP PUT method
     """
     {"prompt": "Summarize in bullets: {{text}}", "version": 1, "set_as_default": true, "variables": ["text"]}
@@ -195,19 +195,19 @@ Feature: Llama Stack connection disrupted
 
 
   @cfg_authorized
-  Scenario: Check if prompts delete endpoint fails when llama-stack is unavailable
+  Scenario: Check if prompts delete endpoint fails when ogx is unavailable
     Given The service uses the lightspeed-stack-authorized.yaml configuration
       And The service is restarted
     And I set the Authorization header to Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva
-    And The llama-stack connection is disrupted
+    And The ogx connection is disrupted
     When I access REST API endpoint "prompts/pmpt_5c76d7f7c633ef97477adeb2f642150d8d08e8a6526e9909" using HTTP DELETE method
     Then The status code of the response is 503
     And The body of the response contains Unable to connect to OGX
 
 
   @cfg_authorized
-  Scenario: Check if conversations/{conversation_id} GET endpoint fails when llama-stack is unavailable
-    Given Llama Stack is restarted
+  Scenario: Check if conversations/{conversation_id} GET endpoint fails when ogx is unavailable
+    Given OGX is restarted
     And The service uses the lightspeed-stack-authorized.yaml configuration
       And The service is restarted
     And I set the Authorization header to Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva
@@ -217,15 +217,15 @@ Feature: Llama Stack connection disrupted
     """
     And The status code of the response is 200
     And I store conversation details
-    And The llama-stack connection is disrupted
+    And The ogx connection is disrupted
     When I use REST API conversation endpoint with conversation_id from above using HTTP GET method
     Then The status code of the response is 503
     And The body of the response contains Unable to connect to OGX
 
 
   @cfg_authorized
-  Scenario: Check if conversations/{conversation_id} DELETE endpoint fails when llama-stack is unavailable
-    Given Llama Stack is restarted
+  Scenario: Check if conversations/{conversation_id} DELETE endpoint fails when ogx is unavailable
+    Given OGX is restarted
     And The service uses the lightspeed-stack-authorized.yaml configuration
       And The service is restarted
     And I set the Authorization header to Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva
@@ -235,15 +235,15 @@ Feature: Llama Stack connection disrupted
     """
     And The status code of the response is 200
     And I store conversation details
-    And The llama-stack connection is disrupted
+    And The ogx connection is disrupted
     When I use REST API conversation endpoint with conversation_id from above using HTTP DELETE method
     Then The status code of the response is 503
     And The body of the response contains Unable to connect to OGX
 
 
   @cfg_authorized
-  Scenario: Check conversations/{conversation_id} works when llama-stack is down
-    Given Llama Stack is restarted
+  Scenario: Check conversations/{conversation_id} works when ogx is down
+    Given OGX is restarted
     And The service uses the lightspeed-stack-authorized.yaml configuration
       And The service is restarted
     And I set the Authorization header to Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva
@@ -254,7 +254,7 @@ Feature: Llama Stack connection disrupted
     """
     And The status code of the response is 200
     And I store conversation details
-    And The llama-stack connection is disrupted
+    And The ogx connection is disrupted
     And REST API service prefix is /v2
     When I access REST API endpoint "conversations" using HTTP GET method
     Then The status code of the response is 200
@@ -268,8 +268,8 @@ Feature: Llama Stack connection disrupted
 # --- still @cfg_authorized (noop-with-token; not RBAC) ---
 
   @cfg_authorized
-  Scenario: V2 conversations DELETE endpoint works even when llama-stack is down
-    Given Llama Stack is restarted
+  Scenario: V2 conversations DELETE endpoint works even when ogx is down
+    Given OGX is restarted
     And The service uses the lightspeed-stack-authorized.yaml configuration
       And The service is restarted
     And I set the Authorization header to Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva
@@ -280,7 +280,7 @@ Feature: Llama Stack connection disrupted
     """
     And The status code of the response is 200
     And I store conversation details
-    And The llama-stack connection is disrupted
+    And The ogx connection is disrupted
     And REST API service prefix is /v2
     When I use REST API conversation endpoint with conversation_id from above using HTTP DELETE method
     Then The status code of the response is 200
@@ -297,12 +297,12 @@ Feature: Llama Stack connection disrupted
   # --- lightspeed-stack-rbac.yaml (aligned with rbac.feature / rlsapi_v1_errors.feature) ---
 
   @RBAC @cfg_rbac
-  Scenario: Returns 503 when llama-stack connection is broken
-    Given Llama Stack is restarted
+  Scenario: Returns 503 when ogx connection is broken
+    Given OGX is restarted
     And The service uses the lightspeed-stack-rbac.yaml configuration
       And The service is restarted
     And I authenticate as "user" user
-    And The llama-stack connection is disrupted
+    And The ogx connection is disrupted
     When I use "infer" to ask question with authorization header
     """
     {"question": "How do I list files?"}

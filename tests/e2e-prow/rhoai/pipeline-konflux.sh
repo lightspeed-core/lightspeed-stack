@@ -296,9 +296,9 @@ fi
 # So behave/e2e-ops can kill this listener before rebinding 8080 (restart-lightspeed hooks).
 # Debug hook/port churn: export E2E_OPS_VERBOSE=1 before running pipeline.sh
 export E2E_LSC_PORT_FORWARD_PID_FILE="${E2E_LSC_PORT_FORWARD_PID_FILE:-/tmp/e2e-lightspeed-port-forward.pid}"
-export E2E_LLAMA_PORT_FORWARD_PID_FILE="${E2E_LLAMA_PORT_FORWARD_PID_FILE:-/tmp/e2e-llama-port-forward.pid}"
+export E2E_OGX_PORT_FORWARD_PID_FILE="${E2E_OGX_PORT_FORWARD_PID_FILE:-/tmp/e2e-ogx-port-forward.pid}"
 rm -f "$E2E_LSC_PORT_FORWARD_PID_FILE"
-rm -f "$E2E_LLAMA_PORT_FORWARD_PID_FILE"
+rm -f "$E2E_OGX_PORT_FORWARD_PID_FILE"
 
 oc label pod lightspeed-stack-service pod=lightspeed-stack-service -n $NAMESPACE
 
@@ -336,8 +336,8 @@ PF_JWKS_PID=$!
 # OGX directly — mirror LCS and forward llama-stack-service-svc to localhost:8321.
 log "Starting port-forward for llama-stack (MCP / ogx_client hooks)..."
 oc port-forward svc/llama-stack-service-svc 8321:8321 -n $NAMESPACE &
-PF_LLAMA_PID=$!
-echo "$PF_LLAMA_PID" >"$E2E_LLAMA_PORT_FORWARD_PID_FILE"
+PF_OGX_PID=$!
+echo "$PF_OGX_PID" >"$E2E_OGX_PORT_FORWARD_PID_FILE"
 
 # Wait for port-forward to be usable (app may not be listening immediately; port-forward can drop)
 log "Waiting for port-forward to lightspeed-stack to be ready..."
@@ -358,7 +358,7 @@ for i in $(seq 1 36); do
     done < <(oc get events -n "$NAMESPACE" --sort-by='.lastTimestamp' 2>&1 | tail -40) || true
     kill $PF_LCS_PID 2>/dev/null || true
     kill $PF_JWKS_PID 2>/dev/null || true
-    kill $PF_LLAMA_PID 2>/dev/null || true
+    kill $PF_OGX_PID 2>/dev/null || true
     exit 1
   fi
   # If port-forward process died, restart it (e.g. "connection refused" / "lost connection to pod")
@@ -384,22 +384,22 @@ for i in $(seq 1 36); do
     e2e_echo_pod_logs 250
     kill $PF_LCS_PID 2>/dev/null || true
     kill $PF_JWKS_PID 2>/dev/null || true
-    kill $PF_LLAMA_PID 2>/dev/null || true
+    kill $PF_OGX_PID 2>/dev/null || true
     exit 1
   fi
-  if ! kill -0 $PF_LLAMA_PID 2>/dev/null; then
+  if ! kill -0 $PF_OGX_PID 2>/dev/null; then
     log "Llama port-forward died, restarting (attempt $i)..."
     oc port-forward svc/llama-stack-service-svc 8321:8321 -n $NAMESPACE &
-    PF_LLAMA_PID=$!
-    echo "$PF_LLAMA_PID" >"$E2E_LLAMA_PORT_FORWARD_PID_FILE"
+    PF_OGX_PID=$!
+    echo "$PF_OGX_PID" >"$E2E_OGX_PORT_FORWARD_PID_FILE"
   fi
   sleep 5
 done
 
 export E2E_LSC_HOSTNAME="localhost"
 export E2E_JWKS_HOSTNAME="localhost"
-export E2E_LLAMA_HOSTNAME="localhost"
-export E2E_LLAMA_PORT="8321"
+export E2E_OGX_HOSTNAME="localhost"
+export E2E_OGX_PORT="8321"
 # Same pattern as tests/e2e-prow/rhoai/pipeline.sh and .github/workflows/e2e_tests_*.yaml:
 # Behave {MODEL}/{PROVIDER} use these when set; avoids wrong fallbacks if /v1/models
 # discovery in before_all is empty (matches run-ci.yaml openai + E2E_OPENAI_MODEL).
@@ -413,7 +413,7 @@ fi
 export E2E_DEFAULT_PROVIDER_OVERRIDE E2E_DEFAULT_MODEL_OVERRIDE
 log "LCS accessible at: http://$E2E_LSC_HOSTNAME:8080"
 log "Mock JWKS accessible at: http://$E2E_JWKS_HOSTNAME:8000"
-log "OGX (e2e client hooks) at: http://$E2E_LLAMA_HOSTNAME:$E2E_LLAMA_PORT"
+log "OGX (e2e client hooks) at: http://$E2E_OGX_HOSTNAME:$E2E_OGX_PORT"
 
 #========================================
 # 7. RUN TESTS
@@ -441,20 +441,20 @@ if [[ -n "${E2E_LSC_PORT_FORWARD_PID_FILE:-}" && -f "$E2E_LSC_PORT_FORWARD_PID_F
   fi
   rm -f "$E2E_LSC_PORT_FORWARD_PID_FILE"
 fi
-if [[ -n "${E2E_LLAMA_PORT_FORWARD_PID_FILE:-}" && -f "$E2E_LLAMA_PORT_FORWARD_PID_FILE" ]]; then
-  read -r _ll_pf <"$E2E_LLAMA_PORT_FORWARD_PID_FILE" 2>/dev/null || true
+if [[ -n "${E2E_OGX_PORT_FORWARD_PID_FILE:-}" && -f "$E2E_OGX_PORT_FORWARD_PID_FILE" ]]; then
+  read -r _ll_pf <"$E2E_OGX_PORT_FORWARD_PID_FILE" 2>/dev/null || true
   if [[ "${_ll_pf:-}" =~ ^[0-9]+$ ]]; then
     kill -9 "$_ll_pf" 2>/dev/null || true
   fi
-  rm -f "$E2E_LLAMA_PORT_FORWARD_PID_FILE"
+  rm -f "$E2E_OGX_PORT_FORWARD_PID_FILE"
 fi
 
 kill $PF_LCS_PID 2>/dev/null || true
 kill $PF_JWKS_PID 2>/dev/null || true
-kill $PF_LLAMA_PID 2>/dev/null || true
+kill $PF_OGX_PID 2>/dev/null || true
 wait $PF_LCS_PID 2>/dev/null || true
 wait $PF_JWKS_PID 2>/dev/null || true
-wait $PF_LLAMA_PID 2>/dev/null || true
+wait $PF_OGX_PID 2>/dev/null || true
 set -e
 trap 'echo "❌ Pipeline failed at line $LINENO"; exit 1' ERR
 

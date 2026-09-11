@@ -115,9 +115,9 @@ When a user makes a query **without** providing a `conversation_id`:
 ```python
 # No conversation_id provided - create a new conversation first
 conversation = await client.conversations.create(metadata={})
-llama_stack_conv_id = conversation.id
+ogx_conv_id = conversation.id
 # Store the normalized version
-conversation_id = normalize_conversation_id(llama_stack_conv_id)
+conversation_id = normalize_conversation_id(ogx_conv_id)
 
 # Use the conversation in responses.create()
 response = await client.responses.create(
@@ -125,7 +125,7 @@ response = await client.responses.create(
     model=model_id,
     instructions=system_prompt,
     store=True,
-    conversation=llama_stack_conv_id,  # Use OGX format
+    conversation=ogx_conv_id,  # Use OGX format
     # ... other parameters
 )
 ```
@@ -151,7 +151,7 @@ ogx_conv_id = to_ogx_conversation_id(conversation_id)
 response = await client.responses.create(
     input=input_text,
     model=model_id,
-    conversation=llama_stack_conv_id,  # Existing conversation
+    conversation=ogx_conv_id,  # Existing conversation
     # ... other parameters
 )
 ```
@@ -166,7 +166,7 @@ Conversations are stored in **two databases**:
 - `openai_conversations`: Stores conversation metadata
 - `conversation_items`: Stores individual messages/turns in conversations
 
-**Configuration (in `config/llama_stack_client_config.yaml`):**
+**Configuration (in OGX `run.yaml` / library client config):**
 ```yaml
 storage:
   stores:

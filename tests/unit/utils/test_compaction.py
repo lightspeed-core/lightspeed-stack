@@ -74,11 +74,11 @@ def _make_history(num_pairs: int, words_per_message: int = 1) -> list[Any]:
 class TestIsMessageItem:
     """Tests for is_message_item."""
 
-    def test_llama_stack_message(self) -> None:
+    def test_ogx_message(self) -> None:
         """OGX message item is recognised."""
         assert is_message_item(_MessageItem("user", "hi")) is True
 
-    def test_llama_stack_tool_call(self) -> None:
+    def test_ogx_tool_call(self) -> None:
         """Tool-call item is not a message."""
         assert is_message_item(_ToolCallItem()) is False
 

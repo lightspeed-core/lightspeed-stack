@@ -168,7 +168,7 @@ def test_main_does_not_warn_in_unified_mode(
     monkeypatch: pytest.MonkeyPatch,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    """A unified-mode config (llama_stack.config) emits no deprecation WARN."""
+    """A unified-mode config (ogx.config) emits no deprecation WARN."""
     config_yaml = COMMON_CONFIG_SECTIONS + """
 ogx:
   use_as_library_client: true

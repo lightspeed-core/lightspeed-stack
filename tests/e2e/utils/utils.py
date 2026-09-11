@@ -268,7 +268,7 @@ def wait_for_ogx_ready(
     -------
         True if healthy; False if the wait soft-failed.
     """
-    return wait_for_container_health("llama-stack", max_attempts=max_attempts)
+    return wait_for_container_health("ogx", max_attempts=max_attempts)
 
 
 def validate_json_partially(actual: Any, expected: Any) -> None:
@@ -450,12 +450,12 @@ def restart_container(container_name: str) -> None:
     """
     if is_prow_environment():
         restart_pod(container_name)
-        if container_name == "llama-stack":
+        if container_name == "ogx":
             from tests.e2e.features.steps.health import (
-                reset_llama_stack_disrupt_once_tracking,
+                reset_ogx_disrupt_once_tracking,
             )
 
-            reset_llama_stack_disrupt_once_tracking()
+            reset_ogx_disrupt_once_tracking()
         return
 
     try:
@@ -476,16 +476,16 @@ def restart_container(container_name: str) -> None:
     # that restart the container don't time out.
     wait_for_container_health(container_name)
 
-    if container_name == "llama-stack":
+    if container_name == "ogx":
         from tests.e2e.features.steps.health import (
-            reset_llama_stack_disrupt_once_tracking,
+            reset_ogx_disrupt_once_tracking,
         )
 
-        reset_llama_stack_disrupt_once_tracking()
+        reset_ogx_disrupt_once_tracking()
 
 
 def restart_lightspeed_stack_service(
-    *, wait_http: bool = False, skip_llama_restore: bool = False
+    *, wait_http: bool = False, skip_ogx_restore: bool = False
 ) -> None:
     """Restart the lightspeed-stack container used by Behave steps.
 
@@ -497,22 +497,22 @@ def restart_lightspeed_stack_service(
         wait_http: When True, also call ``wait_for_lightspeed_stack_http_ready``
             after Docker health. Default False — generic ``The service is
             restarted`` relies on Docker health only; proxy/tls steps opt in.
-        skip_llama_restore: When True on Prow/Konflux, tell e2e-ops not to
+        skip_ogx_restore: When True on Prow/Konflux, tell e2e-ops not to
             bring llama back before recreating LCS (degraded-mode startup).
     """
-    previous = os.environ.get("E2E_SKIP_LLAMA_RESTORE_ON_LCS_RESTART")
-    if skip_llama_restore:
-        os.environ["E2E_SKIP_LLAMA_RESTORE_ON_LCS_RESTART"] = "1"
+    previous = os.environ.get("E2E_SKIP_OGX_RESTORE_ON_LCS_RESTART")
+    if skip_ogx_restore:
+        os.environ["E2E_SKIP_OGX_RESTORE_ON_LCS_RESTART"] = "1"
     try:
         restart_container("lightspeed-stack")
         if wait_http:
             wait_for_lightspeed_stack_http_ready()
     finally:
-        if skip_llama_restore:
+        if skip_ogx_restore:
             if previous is None:
-                os.environ.pop("E2E_SKIP_LLAMA_RESTORE_ON_LCS_RESTART", None)
+                os.environ.pop("E2E_SKIP_OGX_RESTORE_ON_LCS_RESTART", None)
             else:
-                os.environ["E2E_SKIP_LLAMA_RESTORE_ON_LCS_RESTART"] = previous
+                os.environ["E2E_SKIP_OGX_RESTORE_ON_LCS_RESTART"] = previous
 
 
 def wait_for_lightspeed_stack_http_ready(
