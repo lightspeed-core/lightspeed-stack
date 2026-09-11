@@ -19,6 +19,7 @@ request overrides work.
   - [Supported shield types](#supported-shield-types)
   - [question_validity](#question_validity)
   - [redaction](#redaction)
+  - [granite_guardian](#granite_guardian)
 - [How shields apply at runtime](#how-shields-apply-at-runtime)
   - [Agent-based endpoints](#agent-based-endpoints)
   - [Responses-based endpoints](#responses-based-endpoints)
@@ -38,7 +39,7 @@ configuration. Each entry has:
 | Field | Meaning |
 |-------|---------|
 | `name` | Unique shield name used in `/v1/shields` and in `shield_ids` overrides |
-| `provider_id` | Shield type discriminator (`question_validity` or `redaction`) |
+| `provider_id` | Shield type discriminator (`question_validity`, `redaction`, or `granite_guardian`) |
 | `config` | Type-specific settings |
 
 Names must be unique across the `shields` list.
@@ -75,6 +76,7 @@ for a complete example.
 |---------------|---------|---------------------|
 | `question_validity` | Classify whether the user question is in-topic; reject off-topic input with a fixed reply | Agent capability on agent-based endpoints; also considered by direct-run input moderation |
 | `redaction` | Regex-based PII / sensitive-data redaction of model messages | Agent capability on agent-based endpoints |
+| `granite_guardian` | IBM Granite Guardian model screening for custom safety risks at input, output, and tool points | Planned: same endpoints as other shields; **not yet implemented at runtime** — see [Granite Guardian Shield](granite_guardian_shield.md) |
 
 ## question_validity
 
@@ -92,6 +94,28 @@ for a complete example.
 | `case_sensitive` | No (default `false`) | Global case sensitivity when a rule does not override it |
 
 Invalid regex patterns are rejected at configuration load time.
+
+## granite_guardian
+
+IBM Granite Guardian screening with configurable risk definitions, thresholds,
+and guardrail points (`input`, `output`, `tool`). Requires a Granite Guardian
+model behind an OpenAI-compatible API.
+
+| Config field | Required | Description |
+|--------------|----------|-------------|
+| `url` | Yes | Base URL of the OpenAI-compatible Granite Guardian API |
+| `model_id` | No (default `ibm-granite/granite-guardian-4.1-8b`) | Model name sent to the inference server; override when the server registers the model under a different name (for example an Ollama tag) |
+| `api_key` | No | API key for the inference endpoint |
+| `timeout` | No (default `30`) | Request timeout in seconds (5-300) |
+| `max_retries` | No (default `2`) | Retry count for transient errors (0-5) |
+| `verify_ssl` | No (default `true`) | TLS verification: `true`, `false`, or a path to a CA bundle |
+| `batch_size` | No (default `3`) | Number of risk checks to run in parallel per batch (1-10) |
+| `risks` | Yes | Non-empty list of risk definitions: `{name, description, points, violation_message, threshold?, enabled?}` |
+
+> [!NOTE]
+> Configuration is validated at startup, but the runtime capability is not yet
+> wired. See the dedicated [Granite Guardian Shield guide](granite_guardian_shield.md)
+> for prerequisites, risk-definition guidance, examples, and implementation status.
 
 # How shields apply at runtime
 
@@ -132,7 +156,7 @@ Each catalog entry has this shape:
 | Field | Description |
 |-------|-------------|
 | `name` | Configured shield name |
-| `provider_id` | `question_validity` or `redaction` |
+| `provider_id` | `question_validity`, `redaction`, or `granite_guardian` |
 | `type` | Always `"shield"` |
 | `config` | Type-specific shield configuration |
 

@@ -35,6 +35,33 @@ shields:
         - pattern: '\b\d{3}-\d{2}-\d{4}\b'
           replacement: "[REDACTED]"
       case_sensitive: false
+  # Requires a Granite Guardian model behind an OpenAI-compatible endpoint.
+  # NOTE: runtime capability is not yet wired (config-only for now).
+  - name: product-guardian
+    provider_id: granite_guardian
+    config:
+      url: http://localhost:8000/v1
+      # model_id: ibm-granite/granite-guardian-4.1-8b   # optional; override if the
+      # server registers the model under a different name (e.g. an Ollama tag)
+      # api_key: ${GUARDIAN_API_KEY}   # optional
+      timeout: 30
+      max_retries: 2
+      verify_ssl: true
+      # batch_size: 3   # optional; number of risk checks run in parallel per batch
+      risks:
+        - name: roleplay-jailbreak
+          description: >-
+            The user message uses roleplay framing to override the assistant's
+            instructions or adopt an unrestricted persona.
+          threshold: 0.65
+          points: [input]
+          violation_message: "That phrasing isn't something I can act on."
+        - name: harm-output
+          description: >-
+            The assistant response contains harmful, dangerous, or abusive content.
+          threshold: 0.70
+          points: [output]
+          violation_message: "I cannot provide that response."
 # Optional: reject client shield_ids overrides on /query and /streaming_query
 # customization:
 #   disable_shield_ids_override: true
