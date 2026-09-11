@@ -271,10 +271,72 @@ def wait_for_ogx_ready(
     return wait_for_container_health("ogx", max_attempts=max_attempts)
 
 
+def _parsed_json_container(value: Any) -> Optional[Any]:
+    """Return ``value`` parsed as a JSON object or array, or None.
+
+    Only objects and arrays qualify. A bare string such as ``"1e3"`` is plain
+    text here, not a document whose formatting may be normalised.
+
+    Parameters:
+    ----------
+        value: Candidate value, only strings are considered.
+
+    Returns:
+    -------
+        The parsed ``dict`` or ``list``, or None when ``value`` is not a string
+        holding a JSON object or array.
+    """
+    if not isinstance(value, str):
+        return None
+    try:
+        parsed = json.loads(value)
+    except ValueError:
+        return None
+    return parsed if isinstance(parsed, (dict, list)) else None
+
+
+def _json_values_equal(left: Any, right: Any) -> bool:
+    """Return True when two parsed JSON values are equal, including their types.
+
+    Plain ``==`` is not enough: Python treats ``True == 1``, ``False == 0``
+    and ``1 == 1.0`` as equal, so ``{"enabled": true}`` would match
+    ``{"enabled": 1}``. Object key order is ignored; array order is not.
+
+    Parameters:
+    ----------
+        left: First parsed JSON value.
+        right: Second parsed JSON value.
+
+    Returns:
+    -------
+        True when both values have the same JSON types and contents.
+    """
+    if type(left) is not type(right):
+        return False
+    if isinstance(left, dict):
+        return left.keys() == right.keys() and all(
+            _json_values_equal(left[key], right[key]) for key in left
+        )
+    if isinstance(left, list):
+        return len(left) == len(right) and all(
+            _json_values_equal(item_left, item_right)
+            for item_left, item_right in zip(left, right)
+        )
+    return left == right
+
+
 def validate_json_partially(actual: Any, expected: Any) -> None:
     """Recursively validate that `actual` JSON contains all keys and values specified in `expected`.
 
     Extra elements/keys are ignored. Raises AssertionError if validation fails.
+
+    Values that are strings holding a serialized JSON object or array are
+    compared by parsed content rather than byte for byte, so a producer that
+    emits its keys in a different order still matches. The comparison stays
+    exact — same keys, same values, same JSON types, and array element order
+    still significant — because relaxing it to the partial semantics used
+    elsewhere would silently weaken every existing assertion over an embedded
+    JSON document.
 
     Returns:
         None
@@ -303,6 +365,16 @@ def validate_json_partially(actual: Any, expected: Any) -> None:
             ), f"No matching element found in list for schema item {schema_item}, got {actual}"
 
     else:
+        if actual != expected:
+            parsed_actual = _parsed_json_container(actual)
+            parsed_expected = _parsed_json_container(expected)
+            if parsed_actual is not None and parsed_expected is not None:
+                assert _json_values_equal(parsed_actual, parsed_expected), (
+                    f"JSON-in-string mismatch: expected {parsed_expected}, "
+                    f"got {parsed_actual}"
+                )
+                return
+
         assert actual == expected, f"Value mismatch: expected {expected}, got {actual}"
 
 
