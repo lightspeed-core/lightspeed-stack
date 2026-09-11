@@ -24,6 +24,7 @@ class SpanAttributes(StrEnum):
 
     SESSION_ID = "session.id"
     USER_ID = "user.id"  # anonymized
+    SAFETY_IDENTIFIER = "request.safety_identifier"  # caller-supplied identifier
     INPUT = "request.input"  # anonymized
     OUTPUT = "response.output"  # anonymized
     RESPONSE_ERROR = "response.error"

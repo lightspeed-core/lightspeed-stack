@@ -1,4 +1,4 @@
-@cfg_authorized @OTel @skip
+@cfg_authorized @OTel @skip-in-prow
 Feature: OpenTelemetry observability tests
 
   Background:
@@ -25,5 +25,4 @@ Feature: OpenTelemetry observability tests
       }
       """
     Then The status code of the response is 200
-     And The service exported an OpenTelemetry event containing e2e-otel-delivery-marker
      And The OpenTelemetry service received data containing e2e-otel-delivery-marker

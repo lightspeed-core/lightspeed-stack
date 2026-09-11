@@ -515,6 +515,64 @@ def restart_lightspeed_stack_service(
                 os.environ["E2E_SKIP_LLAMA_RESTORE_ON_LCS_RESTART"] = previous
 
 
+def compose_file_for_mode(is_library_mode: bool) -> str:
+    """Return the absolute Compose file path for the active deployment mode.
+
+    Parameters:
+        is_library_mode: True when the run uses the in-process (library) OGX.
+
+    Returns:
+        Absolute path to ``docker-compose-library.yaml`` in library mode,
+        otherwise ``docker-compose.yaml``.
+    """
+    name = "docker-compose-library.yaml" if is_library_mode else "docker-compose.yaml"
+    return absolute_repo_path(name)
+
+
+def force_recreate_compose_service(
+    service: str, *, is_library_mode: bool, timeout: int = 300
+) -> None:
+    """Force-recreate a single Compose service so it picks up current env vars.
+
+    Runs ``docker compose -f <file> up -d --force-recreate --no-deps <service>``
+    from the repo root. Needed when a container must be rebuilt with environment
+    variables that are only read at container-creation time (e.g. the OTEL
+    exporter configuration), which a plain ``docker restart`` would not apply.
+
+    Parameters:
+        service: Compose service name to recreate (e.g. ``lightspeed-stack``).
+        is_library_mode: Selects the Compose file (see ``compose_file_for_mode``).
+        timeout: Seconds to allow the compose command to run.
+
+    Raises:
+        AssertionError: If the compose command exits with a non-zero status.
+    """
+    cmd = [
+        "docker",
+        "compose",
+        "-f",
+        compose_file_for_mode(is_library_mode),
+        "up",
+        "-d",
+        "--force-recreate",
+        "--no-deps",
+        service,
+    ]
+    result = subprocess.run(
+        cmd,
+        cwd=absolute_repo_path("."),
+        capture_output=True,
+        text=True,
+        timeout=timeout,
+        check=False,
+    )
+    if result.stdout:
+        print(result.stdout, end="")
+    if result.returncode != 0:
+        print(result.stderr, end="")
+        raise AssertionError(f"`{' '.join(cmd)}` failed with code {result.returncode}")
+
+
 def wait_for_lightspeed_stack_http_ready(
     max_attempts: int = 80,
     delay_s: float = 1.5,
