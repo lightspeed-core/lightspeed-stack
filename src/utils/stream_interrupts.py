@@ -4,7 +4,7 @@ import asyncio
 import datetime
 from collections.abc import Callable, Coroutine
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from threading import Lock
 from typing import Any, Optional, cast
 
@@ -53,7 +53,7 @@ class ActiveStream:
     conversation_id: Optional[str] = None
 
 
-class CancelStreamResult(str, Enum):
+class CancelStreamResult(StrEnum):
     """Outcomes when attempting to cancel a stream."""
 
     CANCELLED = "cancelled"
