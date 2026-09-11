@@ -23,6 +23,7 @@ from pydantic import (
     PositiveInt,
     PrivateAttr,
     SecretStr,
+    StrictBool,
     field_validator,
     model_validator,
 )
@@ -33,6 +34,8 @@ from log import get_logger
 from utils import checks
 from utils.mcp_auth_headers import resolve_authorization_headers
 from utils.types import CompiledPatterns
+
+type GuardrailPoint = Literal["input", "output", "tool"]
 
 logger = get_logger(__name__)
 
@@ -2422,8 +2425,7 @@ class VectorStoreConfiguration(ConfigurationBase):
 
         if self.default_provider is None:
             raise ValueError(
-                "vector_store.default_provider is required when providers "
-                "is non-empty"
+                "vector_store.default_provider is required when providers is non-empty"
             )
 
         ids = [provider.id for provider in self.providers]
@@ -3197,7 +3199,7 @@ class RiskDefinition(ConfigurationBase):
             "reasoning before scoring."
         ),
     )
-    points: list[Literal["input", "output", "tool"]] = Field(
+    points: list[GuardrailPoint] = Field(
         ...,
         min_length=1,
         title="Guardrail points",
@@ -3217,7 +3219,19 @@ class GraniteGuardianConfig(ConfigurationBase):
     """Configuration for the Granite Guardian moderation guardrail."""
 
     url: str = Field(
-        ..., title="Base URL", description="The model_id to use for the guard"
+        ...,
+        title="Base URL",
+        description="Base URL of the OpenAI-compatible inference endpoint.",
+    )
+
+    model_id: str = Field(
+        "ibm-granite/granite-guardian-4.1-8b",
+        title="Model name",
+        description=(
+            "Model name sent to the inference server. Override when the "
+            "server registers the model under a different name (e.g. an "
+            "Ollama tag). The prompt template is built for the 4.1 format."
+        ),
     )
 
     api_key: Optional[SecretStr] = Field(
@@ -3240,6 +3254,16 @@ class GraniteGuardianConfig(ConfigurationBase):
             "  - True: Verify using system CA bundle (default, recommended)\n"
             "  - False: Disable verification (insecure, for dev only)\n"
             "  - str: Path to custom CA bundle file (for internal PKI)"
+        ),
+    )
+
+    parallel: StrictBool | Annotated[int, Field(ge=1, le=10)] = Field(
+        default=3,
+        title="Parallel execution",
+        description=(
+            "True to run all risk checks in parallel, "
+            "False to run sequentially, "
+            "or an integer 1-10 for explicit batch size."
         ),
     )
 
