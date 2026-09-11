@@ -276,6 +276,9 @@ def validate_json_partially(actual: Any, expected: Any) -> None:
 
     Extra elements/keys are ignored. Raises AssertionError if validation fails.
 
+    JSON object/array strings are parsed before comparison so key order does
+    not fail the match.
+
     Returns:
         None
 
@@ -303,6 +306,12 @@ def validate_json_partially(actual: Any, expected: Any) -> None:
             ), f"No matching element found in list for schema item {schema_item}, got {actual}"
 
     else:
+        if isinstance(expected, str) and isinstance(actual, str):
+            try:
+                validate_json_partially(json.loads(actual), json.loads(expected))
+                return
+            except json.JSONDecodeError:
+                pass
         assert actual == expected, f"Value mismatch: expected {expected}, got {actual}"
 
 
