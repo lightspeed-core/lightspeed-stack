@@ -180,7 +180,7 @@ shields:
       api_key: ${env.GUARDIAN_API_KEY}   # optional; requires an https URL
       timeout: 30                        # seconds, 5-300
       max_retries: 2                     # 0-5
-      verify_ssl: true                   # true | false | path to CA bundle
+      verify_ssl: true                   # true | false | path to CA bundle; must not be false when api_key is set
       risks:
         - name: roleplay-jailbreak
           description: >-
@@ -346,7 +346,7 @@ events are page-worthy.
 - Configuration drift (for example an unknown point name) ⇒ startup
   validation error.
 
-### Runbook / oncall implications
+### Runbook / on-call implications
 
 New alert: guardian error rate (fail-closed requests). Recovery: restore the
 guardian endpoint, or remove or disable the affected risks (`enabled:
