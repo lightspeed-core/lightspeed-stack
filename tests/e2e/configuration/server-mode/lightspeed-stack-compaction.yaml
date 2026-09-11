@@ -9,7 +9,7 @@ service:
 ogx:
   # Server mode - connects to separate OGX service
   use_as_library_client: false
-  url: http://${env.E2E_LLAMA_HOSTNAME}:8321
+  url: http://${env.E2E_OGX_HOSTNAME}:8321
   api_key: xyzzy
 user_data_collection:
   feedback_enabled: true
@@ -21,12 +21,19 @@ authentication:
 inference:
   default_provider: openai
   default_model: gpt-4o-mini
-  # Compaction e2e (LCORE-1673): a deliberately small window for the CI
-  # model so a three-turn conversation crosses the trigger threshold.
-  # The real model window is far larger; this only drives the local
-  # estimate, never the provider.
+  # Compaction e2e (LCORE-1673): a deliberately small window for every
+  # model the e2e workflows run against, so the third query of the
+  # compaction scenarios crosses the trigger threshold. The real windows
+  # are far larger; this only drives the local estimate, never the provider.
+  # The vLLM-backed runs (rhaiis, rhelai) take the model id from an env
+  # var, and context_windows keys are not env-substituted, so they are
+  # not listed and skip the token-based trigger.
   context_windows:
     openai/gpt-4o-mini: 2000
+    azure/gpt-4o-mini: 2000
+    google-vertex/publishers/google/models/gemini-2.5-flash: 2000
+    watsonx/meta-llama/llama-3-3-70b-instruct: 2000
+    aws-bedrock/deepseek.v3-v1:0: 2000
 rag:
   byok:
     stores:
@@ -41,14 +48,6 @@ rag:
     tool:
       sources:
         - e2e-test-docs
-
-shields:
-  - name: pii-redaction
-    provider_id: redaction
-    config:
-      rules:
-        - pattern: '\d+'
-          replacement: '[NUM]'
 
 # Compaction on with a low threshold: 10% of the 2000-token window,
 # above a 100-token floor, keeping one recent turn verbatim.

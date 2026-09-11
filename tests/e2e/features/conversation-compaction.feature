@@ -1,16 +1,15 @@
-@cfg_compaction
+# @skip until LCORE-2230 lands the step definitions; Konflux runs the whole
+# test list and would fail on the undefined steps. @cfg_compaction is not in
+# any GitHub CI shard yet, LCORE-2230 adds it.
+@cfg_compaction @skip
 Feature: Conversation compaction
 
-  When a conversation's estimated input approaches the model's context
-  window, older turns are summarized before the request reaches the LLM
-  (docs/design/conversation-compaction/conversation-compaction.md). These
-  scenarios observe compaction from outside only: the context_status field
-  on responses (R7), the compaction event on the native stream (R12), the
-  full history the Conversations API keeps serving (R6), and the assistant's
-  recall of what was said before the summary. The trigger is driven by the
-  admin configuration (R1, R9): the compaction fixtures register a small
-  context window for the openai model and a low threshold ratio, so a
-  three-turn conversation crosses it.
+  Once the estimated input crosses the configured share of the model's
+  context window, older turns are summarized before the request reaches
+  the model. The compaction fixtures register a 2000-token window with a
+  10% threshold and keep one recent turn verbatim, so a long third query
+  is what crosses it: turn one ends up in the summary, turn two stays in
+  the verbatim buffer, and the third query asks for a fact from each.
 
   Background:
     Given The service is started locally
@@ -19,122 +18,61 @@ Feature: Conversation compaction
       And the Lightspeed stack configuration directory is "tests/e2e/configuration"
 
 
-  Scenario: context_status reports full while compaction never triggers
-    Given The service uses the lightspeed-stack.yaml configuration
+  Scenario: the third query crosses the threshold, older turns are summarized, recall and history survive
+    Given The service uses the lightspeed-stack-compaction.yaml configuration
       And The service is restarted
      When I use "query" to ask question
      """
-     {"query": "Say hello", "model": "{MODEL}", "provider": "{PROVIDER}"}
+     {"query": "My OpenShift cluster is named aurora-prod-7. Remember that name and reply with OK only.", "model": "{MODEL}", "provider": "{PROVIDER}"}
      """
      Then The status code of the response is 200
       And The response context_status is "full"
-
-
-  @openai-only
-  Scenario: context_status reports summarized once the conversation crosses the threshold
-    Given The service uses the lightspeed-stack-compaction.yaml configuration
-      And The service is restarted
-     When I use "query" to ask question
-     """
-     {"query": "My OpenShift cluster is named aurora-prod-7. Remember that name.", "model": "{MODEL}", "provider": "{PROVIDER}"}
-     """
-     Then The status code of the response is 200
       And I store conversation details
      When I use "query" to ask question with same conversation_id
      """
-     {"query": "Explain what a pod is in about five sentences.", "model": "{MODEL}", "provider": "{PROVIDER}"}
+     {"query": "My application namespace is called blue-lagoon. Remember that name too and reply with OK only.", "model": "{MODEL}", "provider": "{PROVIDER}"}
      """
      Then The status code of the response is 200
+      And The response context_status is "full"
      When I use "query" to ask question with same conversation_id
      """
-     {"query": "Explain what a deployment is in about five sentences.", "model": "{MODEL}", "provider": "{PROVIDER}"}
-     """
-     Then The status code of the response is 200
-      And The response context_status is "summarized"
-
-
-  @openai-only
-  Scenario: the assistant still recalls what was said before the summary
-    Given The service uses the lightspeed-stack-compaction.yaml configuration
-      And The service is restarted
-     When I use "query" to ask question
-     """
-     {"query": "My OpenShift cluster is named aurora-prod-7. Remember that name.", "model": "{MODEL}", "provider": "{PROVIDER}"}
-     """
-     Then The status code of the response is 200
-      And I store conversation details
-     When I use "query" to ask question with same conversation_id
-     """
-     {"query": "Explain what a pod is in about five sentences.", "model": "{MODEL}", "provider": "{PROVIDER}"}
-     """
-     Then The status code of the response is 200
-     When I use "query" to ask question with same conversation_id
-     """
-     {"query": "Explain what a deployment is in about five sentences.", "model": "{MODEL}", "provider": "{PROVIDER}"}
-     """
-     Then The status code of the response is 200
-      And The response context_status is "summarized"
-     When I use "query" to ask question with same conversation_id
-     """
-     {"query": "What is the name of my cluster? Reply with the name only.", "model": "{MODEL}", "provider": "{PROVIDER}"}
+     {"query": "Some background on my environment first, no need to comment on it. The cluster runs on bare metal in two racks with three control plane nodes and nine worker nodes, all on the same subnet behind a pair of hardware load balancers. Storage is provided by an external Ceph cluster exposed through the CSI driver, with three storage classes for block, file and object access. Ingress is handled by the default router with two replicas pinned to the infra nodes, and TLS certificates are issued by an internal certificate authority and rotated every ninety days. Monitoring uses the built-in Prometheus stack with a remote write to a central Thanos instance, and alerts are routed to an on-call rotation through a webhook receiver. The image registry is the internal one, backed by an object storage bucket, and images are mirrored from an upstream registry once a day by a scheduled job. Upgrades follow the stable channel, one minor version at a time, and are rehearsed on a staging cluster of the same shape a week before production. Backups of etcd are taken hourly and copied off-site nightly. Now the question: what is the name of my cluster and what is the name of my application namespace? Reply with the two names only, separated by a comma.", "model": "{MODEL}", "provider": "{PROVIDER}"}
      """
      Then The status code of the response is 200
       And The response context_status is "summarized"
       And The response contains following fragments
           | Fragments in LLM response |
           | aurora-prod-7             |
-
-
-  @openai-only
-  Scenario: the full conversation history stays available after compaction
-    Given The service uses the lightspeed-stack-compaction.yaml configuration
-      And The service is restarted
-     When I use "query" to ask question
-     """
-     {"query": "My OpenShift cluster is named aurora-prod-7. Remember that name.", "model": "{MODEL}", "provider": "{PROVIDER}"}
-     """
-     Then The status code of the response is 200
-      And I store conversation details
-     When I use "query" to ask question with same conversation_id
-     """
-     {"query": "Explain what a pod is in about five sentences.", "model": "{MODEL}", "provider": "{PROVIDER}"}
-     """
-     Then The status code of the response is 200
-     When I use "query" to ask question with same conversation_id
-     """
-     {"query": "Explain what a deployment is in about five sentences.", "model": "{MODEL}", "provider": "{PROVIDER}"}
-     """
-     Then The status code of the response is 200
-      And The response context_status is "summarized"
+          | blue-lagoon               |
      When I use REST API conversation endpoint with conversation_id from above using HTTP GET method
      Then The status code of the response is 200
       And The conversation history includes the following user queries
-          | User query                                                        |
-          | My OpenShift cluster is named aurora-prod-7. Remember that name.  |
-          | Explain what a pod is in about five sentences.                   |
-          | Explain what a deployment is in about five sentences.            |
+          | User query                                                                                    |
+          | My OpenShift cluster is named aurora-prod-7. Remember that name and reply with OK only.       |
+          | My application namespace is called blue-lagoon. Remember that name too and reply with OK only. |
 
 
-  @openai-only
-  Scenario: the native stream announces compaction and reports context_status
+  Scenario: the native stream announces compaction on the query that crosses the threshold
     Given The service uses the lightspeed-stack-compaction.yaml configuration
       And The service is restarted
      When I use "streaming_query" to ask question
      """
-     {"query": "My OpenShift cluster is named aurora-prod-7. Remember that name.", "model": "{MODEL}", "provider": "{PROVIDER}"}
+     {"query": "My OpenShift cluster is named aurora-prod-7. Remember that name and reply with OK only.", "model": "{MODEL}", "provider": "{PROVIDER}"}
      """
      Then The status code of the response is 200
       And I wait for the response to be completed
+      And The streamed response end event has context_status "full"
       And I store conversation details
      When I use "streaming_query" to ask question with same conversation_id
      """
-     {"query": "Explain what a pod is in about five sentences.", "model": "{MODEL}", "provider": "{PROVIDER}"}
+     {"query": "My application namespace is called blue-lagoon. Remember that name too and reply with OK only.", "model": "{MODEL}", "provider": "{PROVIDER}"}
      """
      Then The status code of the response is 200
       And I wait for the response to be completed
+      And The streamed response end event has context_status "full"
      When I use "streaming_query" to ask question with same conversation_id
      """
-     {"query": "Explain what a deployment is in about five sentences.", "model": "{MODEL}", "provider": "{PROVIDER}"}
+     {"query": "Some background on my environment first, no need to comment on it. The cluster runs on bare metal in two racks with three control plane nodes and nine worker nodes, all on the same subnet behind a pair of hardware load balancers. Storage is provided by an external Ceph cluster exposed through the CSI driver, with three storage classes for block, file and object access. Ingress is handled by the default router with two replicas pinned to the infra nodes, and TLS certificates are issued by an internal certificate authority and rotated every ninety days. Monitoring uses the built-in Prometheus stack with a remote write to a central Thanos instance, and alerts are routed to an on-call rotation through a webhook receiver. The image registry is the internal one, backed by an object storage bucket, and images are mirrored from an upstream registry once a day by a scheduled job. Upgrades follow the stable channel, one minor version at a time, and are rehearsed on a staging cluster of the same shape a week before production. Backups of etcd are taken hourly and copied off-site nightly. Now the question: what is the name of my cluster and what is the name of my application namespace? Reply with the two names only, separated by a comma.", "model": "{MODEL}", "provider": "{PROVIDER}"}
      """
      Then The status code of the response is 200
       And I wait for the response to be completed
@@ -142,24 +80,23 @@ Feature: Conversation compaction
       And The streamed response end event has context_status "summarized"
 
 
-  @openai-only
   Scenario: compaction stays off when disabled, even past the threshold
     Given The service uses the lightspeed-stack-compaction-disabled.yaml configuration
       And The service is restarted
      When I use "query" to ask question
      """
-     {"query": "My OpenShift cluster is named aurora-prod-7. Remember that name.", "model": "{MODEL}", "provider": "{PROVIDER}"}
+     {"query": "My OpenShift cluster is named aurora-prod-7. Remember that name and reply with OK only.", "model": "{MODEL}", "provider": "{PROVIDER}"}
      """
      Then The status code of the response is 200
       And I store conversation details
      When I use "query" to ask question with same conversation_id
      """
-     {"query": "Explain what a pod is in about five sentences.", "model": "{MODEL}", "provider": "{PROVIDER}"}
+     {"query": "My application namespace is called blue-lagoon. Remember that name too and reply with OK only.", "model": "{MODEL}", "provider": "{PROVIDER}"}
      """
      Then The status code of the response is 200
      When I use "query" to ask question with same conversation_id
      """
-     {"query": "Explain what a deployment is in about five sentences.", "model": "{MODEL}", "provider": "{PROVIDER}"}
+     {"query": "Some background on my environment first, no need to comment on it. The cluster runs on bare metal in two racks with three control plane nodes and nine worker nodes, all on the same subnet behind a pair of hardware load balancers. Storage is provided by an external Ceph cluster exposed through the CSI driver, with three storage classes for block, file and object access. Ingress is handled by the default router with two replicas pinned to the infra nodes, and TLS certificates are issued by an internal certificate authority and rotated every ninety days. Monitoring uses the built-in Prometheus stack with a remote write to a central Thanos instance, and alerts are routed to an on-call rotation through a webhook receiver. The image registry is the internal one, backed by an object storage bucket, and images are mirrored from an upstream registry once a day by a scheduled job. Upgrades follow the stable channel, one minor version at a time, and are rehearsed on a staging cluster of the same shape a week before production. Backups of etcd are taken hourly and copied off-site nightly. Now the question: what is the name of my cluster and what is the name of my application namespace? Reply with the two names only, separated by a comma.", "model": "{MODEL}", "provider": "{PROVIDER}"}
      """
      Then The status code of the response is 200
       And The response context_status is "full"
