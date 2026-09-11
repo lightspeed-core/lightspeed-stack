@@ -544,8 +544,11 @@ def set_streaming_query_agent_run(
 
 
 OTEL_INSTRUMENTED_MODULES = (
+    "app.endpoints.authorized",
+    "app.endpoints.feedback",
     "app.endpoints.query",
     "app.endpoints.responses",
+    "utils.agents.query",
     "utils.quota_utils",
     "utils.responses",
     "utils.shields",
