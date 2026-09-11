@@ -566,6 +566,11 @@ def _(
     )
     state.chunk_id += 1
     state.turn_summary.next_chunk_id = state.chunk_id
+
+    # Fix the missing refusal message issue in conversation/v2
+    if not state.turn_summary.partial_tokens:
+        state.turn_summary.llm_response = final_text
+
     return payload
 
 
