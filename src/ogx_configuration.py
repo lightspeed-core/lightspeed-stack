@@ -863,8 +863,8 @@ def enrich_solr(  # pylint: disable=too-many-locals,too-many-statements,too-many
     logger.info("Enriching OGX config with OKP")
 
     # run-ci.yaml comments this out; Solr is a remote provider and needs providers.d.
-    if "external_providers_dir" not in ls_config:
-        ls_config["external_providers_dir"] = (
+    if "external_providers_dir" not in ogx_config:
+        ogx_config["external_providers_dir"] = (
             "${env.EXTERNAL_PROVIDERS_DIR:=/opt/app-root/providers.d}"
         )
         logger.info(
