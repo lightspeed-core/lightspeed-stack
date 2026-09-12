@@ -5,56 +5,87 @@ on:
   push:
   pull_request_target:
     types: [opened, synchronize, reopened, labeled]
+    branches:
+      - main
+      - release/0.6
+      - release/0.7
 
 jobs:
   # Own job so repository secrets are never sent to a runner unless this passes.
   authorize:
     uses: ./.github/workflows/e2e_authorize.yaml
 
-  e2e_tests:
+  select_matrix:
     needs: authorize
+    if: needs.authorize.outputs.authorized == 'true'
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.pick.outputs.matrix }}
+    steps:
+      - id: pick
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          python3 <<'PY'
+          import json
+          import os
+
+          event = os.environ["EVENT_NAME"]
+          target = os.environ["BASE_REF"] if event == "pull_request_target" else os.environ["REF_NAME"]
+
+          cfg_shards = [
+              {"name": "default", "tags": "not @skip and @cfg_default"},
+              {"name": "authorized", "tags": "not @skip and @cfg_authorized"},
+              {"name": "mcp", "tags": "not @skip and (@cfg_mcp or @cfg_mcp_invalid or @cfg_mcp_api_auth)"},
+              {"name": "rbac", "tags": "not @skip and @cfg_rbac"},
+              {"name": "skills", "tags": "not @skip and (@cfg_skills or @cfg_skills_directory)"},
+              {"name": "shields", "tags": "not @skip and @cfg_shields"},
+              {"name": "other", "tags": "not @skip and (@cfg_rh_identity or @cfg_negative or @cfg_byok_pdf or @cfg_degraded or @cfg_unified)"},
+              {"name": "tls", "tags": "not @skip and @cfg_tls"},
+          ]
+
+          if target == "release/0.6":
+              shards = [
+                  {"name": f"group {i}", "tags": f"not @skip and @e2e_group_{i}"}
+                  for i in (1, 2, 3)
+              ]
+              skip_library_tls = False
+          elif target in ("main", "release/0.7"):
+              shards = cfg_shards
+              skip_library_tls = True
+          else:
+              raise SystemExit(f"No E2E matrix for target branch {target!r}")
+
+          include = []
+          for mode in ("server", "library"):
+              for shard in shards:
+                  if skip_library_tls and mode == "library" and shard["name"] == "tls":
+                      continue
+                  include.append({"mode": mode, "environment": "ci", "shard": shard})
+
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as handle:
+              handle.write(f"matrix={json.dumps({'include': include}, separators=(',', ':'))}\n")
+          PY
+
+  e2e_tests:
+    needs: [authorize, select_matrix]
     if: needs.authorize.outputs.authorized == 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      matrix:
-        mode: ["server", "library"]
-        environment: ["ci"]
-        # Config-aligned shards (@cfg_*). Packed small groups keep job count reasonable
-        # while avoiding mixed-config restarts inside large suites.
-        shard:
-          - name: default
-            tags: "not @skip and @cfg_default"
-          - name: authorized
-            tags: "not @skip and @cfg_authorized"
-          - name: mcp
-            tags: "not @skip and (@cfg_mcp or @cfg_mcp_invalid or @cfg_mcp_api_auth)"
-          - name: rbac
-            tags: "not @skip and @cfg_rbac"
-          - name: skills
-            tags: "not @skip and (@cfg_skills or @cfg_skills_directory)"
-          - name: shields
-            tags: "not @skip and @cfg_shields"
-          - name: other
-            tags: "not @skip and (@cfg_rh_identity or @cfg_negative or @cfg_byok_pdf or @cfg_degraded or @cfg_unified)"
-          # Server-only; listed in shard (not matrix.include) so it expands with
-          # mode=server before any library jobs. include would append after library.
-          - name: tls
-            tags: "not @skip and @cfg_tls"
-        exclude:
-          - mode: library
-            shard:
-              name: tls
-              tags: "not @skip and @cfg_tls"
+      matrix: ${{ fromJSON(needs.select_matrix.outputs.matrix) }}
 
     name: "E2E: ${{ matrix.mode }} / ${{ matrix.environment }} / ${{ matrix.shard.name }}"
-    
+
     env:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       E2E_OPENAI_MODEL: ${{ vars.E2E_OPENAI_MODEL }}
       E2E_DEPLOYMENT_MODE: ${{ matrix.mode }}
       FAISS_VECTOR_STORE_ID: ${{ vars.FAISS_VECTOR_STORE_ID }}
       E2E_OGX_HOSTNAME: ogx
+      E2E_LLAMA_HOSTNAME: ${{ vars.E2E_LLAMA_HOSTNAME || 'llama-stack' }}
 
     steps:
       - uses: actions/checkout@v7
@@ -153,7 +184,7 @@ jobs:
           echo "Models: $(grep -c "model_id:" run.yaml)"
           echo ""
           echo "=== lightspeed-stack.yaml ==="
-          grep -A 3 "ogx:" lightspeed-stack.yaml
+          grep -A 3 -E '^(ogx|llama_stack):' lightspeed-stack.yaml
 
       - name: Cache HuggingFace embedding model
         uses: actions/cache@v4
@@ -168,6 +199,14 @@ jobs:
           pip install -q sentence-transformers
           python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('sentence-transformers/all-mpnet-base-v2')"
           echo "HF_CACHE_PATH=/tmp/hf-cache" >> $GITHUB_ENV
+
+      - name: Docker Login for quay access
+        if: matrix.mode == 'server' && github.event.pull_request.base.ref == 'release/0.6'
+        env:
+          QUAY_ROBOT_USERNAME: ${{ secrets.QUAY_DOWNSTREAM_USERNAME }}
+          QUAY_ROBOT_TOKEN: ${{ secrets.QUAY_DOWNSTREAM_TOKEN }}
+        run: |
+          echo $QUAY_ROBOT_TOKEN | docker login quay.io -u=$QUAY_ROBOT_USERNAME --password-stdin
 
       - name: Create dummy GCP keys directory
         if: matrix.environment != 'vertexai'
@@ -288,8 +327,9 @@ jobs:
           echo "=== Test failure logs ==="
           
           if [ "${{ matrix.mode }}" == "server" ]; then
-            echo "=== OGX logs ==="
-            docker compose logs ogx
+            SERVICE=$(docker compose config --services | grep -E '^(ogx|llama-stack)$' | head -1)
+            echo "=== ${SERVICE} logs ==="
+            docker compose logs "$SERVICE"
             echo ""
             echo "=== lightspeed-stack logs ==="
             docker compose logs lightspeed-stack
