@@ -79,6 +79,35 @@ def test_example(mock_ogx_client: Any) -> None:
     mock_ogx_client.responses.create.return_value = custom_response
 ```
 
+#### `mock_conversation_store` (function-scoped)
+Wires an `InMemoryConversationStore` into the mock OGX client, replacing both `conversations.items.list/create` and `items.list/create` with stateful fakes. Conversation items persist across calls within a single test, so `get_all_conversation_items` and `_write_summary_marker` work without extra patching.
+
+Pre-populate a conversation with `await store.create(conv_id, items=[...])` and inspect stored items via `store.store[conv_id]`.
+
+Requires `mock_ogx_client`.
+
+```python
+async def test_example(
+    mock_ogx_client: Any,
+    mock_conversation_store: InMemoryConversationStore,
+) -> None:
+    # Seed conversation items
+    await mock_conversation_store.create(
+        conversation_id="conv_abc123...",
+        items=[OpenAIResponseMessage(role="user", content="hello")],
+    )
+
+    # After endpoint call, verify stored items
+    stored = mock_conversation_store.store["conv_abc123..."]
+    assert len(stored) == 3
+```
+
+`InMemoryConversationStore` is also importable directly for type hints or custom setups:
+
+```python
+from tests.integration.conftest import InMemoryConversationStore
+```
+
 ## Helper Functions
 
 Helper functions in `conftest.py` make it easier to create common test objects:
