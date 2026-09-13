@@ -294,12 +294,7 @@ class GlobalExceptionMiddleware:  # pylint: disable=too-few-public-methods
 logger.info("Including routers")
 routers.include_routers(app)
 
-app_routes_paths = [
-    rc.original_route.path  # pyright: ignore[reportAttributeAccessIssue]
-    for rc in iter_route_contexts(app.routes)
-    if hasattr(rc.original_route, "path")
-    and rc.original_route.path  # pyright: ignore[reportAttributeAccessIssue]
-]
+app_routes_paths = [rc.path for rc in iter_route_contexts(app.routes) if rc.path]
 
 logger.debug("Route paths:")
 for app_routes_path in app_routes_paths:

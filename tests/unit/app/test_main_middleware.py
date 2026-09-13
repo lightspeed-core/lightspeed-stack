@@ -303,3 +303,50 @@ def test_app_routes_paths_contains_application_routes() -> None:
     assert "/liveness" in app_routes_paths
     assert "/readiness" in app_routes_paths
     assert len(app_routes_paths) > 4
+
+
+def test_app_routes_paths_contains_versioned_routes() -> None:
+    """app_routes_paths must include full mount-prefixed paths like /v1/infer.
+
+    iter_route_contexts() exposes two path attributes per route:
+    - rc.original_route.path  — path relative to the sub-router (e.g. /infer)
+    - rc.path                 — effective path with the mount prefix (e.g. /v1/infer)
+
+    Using rc.original_route.path silently omits the /v1 mount prefix, so the
+    middleware path check never matches requests that arrive as /v1/infer and
+    ls_rest_api_calls_total is never recorded for versioned endpoints.
+    """
+    assert "/v1/infer" in app_routes_paths
+
+
+@pytest.mark.asyncio
+async def test_rest_api_metrics_records_when_proxy_strips_prefix(
+    mocker: MockerFixture,
+) -> None:
+    """Metrics must be recorded when the proxy already stripped root_path.
+
+    When nginx (or any proxy) strips the root_path prefix before forwarding,
+    lightspeed-stack receives /v1/infer directly — not /api/lightspeed/v1/infer.
+    The middleware must match /v1/infer against app_routes_paths without any
+    prefix stripping, and still record the metric.
+    """
+    mocker.patch("app.main.app_routes_paths", ["/v1/infer"])
+    mocker.patch.object(fastapi_app, "root_path", "/api/lightspeed")
+    mock_measure_duration = mocker.patch(
+        "app.main.recording.measure_response_duration", return_value=nullcontext()
+    )
+    mock_record_call = mocker.patch("app.main.recording.record_rest_api_call")
+
+    async def ok_app(_scope: Scope, _receive: Receive, send: Send) -> None:
+        await send({"type": "http.response.start", "status": 200, "headers": []})
+        await send({"type": "http.response.body", "body": b"ok"})
+
+    middleware = RestApiMetricsMiddleware(ok_app)
+    collector = _ResponseCollector()
+
+    # Proxy stripped /api/lightspeed; lightspeed-stack receives /v1/infer directly.
+    await middleware(_make_scope("/v1/infer"), _noop_receive, collector)
+
+    assert collector.status_code == 200
+    mock_measure_duration.assert_called_once_with("/v1/infer")
+    mock_record_call.assert_called_once_with("/v1/infer", 200)
