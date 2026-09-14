@@ -14764,14 +14764,6 @@
                 "title": "GraniteGuardianShieldConfiguration",
                 "description": "Configuration for a named Granite Guardian guardrail shield.\n\nAttributes:\n    name: Unique, user-facing name identifying this shield instance.\n    provider_id: Discriminator identifying this as a granite-guardian shield.\n    config: Granite-guardian-specific configuration."
             },
-            "GuardrailPoint": {
-                "type": "string",
-                "enum": [
-                    "input",
-                    "output",
-                    "tool"
-                ]
-            },
             "HTTPAuthSecurityScheme": {
                 "properties": {
                     "bearerFormat": {
@@ -20953,7 +20945,12 @@
                     },
                     "points": {
                         "items": {
-                            "$ref": "#/components/schemas/GuardrailPoint"
+                            "type": "string",
+                            "enum": [
+                                "input",
+                                "output",
+                                "tool"
+                            ]
                         },
                         "type": "array",
                         "minItems": 1,
