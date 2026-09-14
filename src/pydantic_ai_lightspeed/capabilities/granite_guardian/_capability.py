@@ -2,7 +2,7 @@
 
 import asyncio
 from dataclasses import dataclass, field
-from typing import ClassVar, Optional
+from typing import ClassVar, Literal, Optional
 from uuid import uuid4
 
 import httpx
@@ -30,7 +30,7 @@ from models.common.moderation import (
     ShieldModerationPassed,
     ShieldModerationResult,
 )
-from models.config import GraniteGuardianConfig, GuardrailPoint, RiskDefinition
+from models.config import GraniteGuardianConfig, RiskDefinition
 from pydantic_ai_lightspeed.capabilities.base import AbstractSafetyCapability
 from pydantic_ai_lightspeed.capabilities.granite_guardian.utils import (
     build_guardian_block,
@@ -130,7 +130,7 @@ async def _run_risk_check(
 
 
 def _filter_guardrails(
-    risks: list[RiskDefinition], point: GuardrailPoint
+    risks: list[RiskDefinition], point: Literal["input", "output", "tool"]
 ) -> list[Guardrail]:
     """Filter risk definitions to guardrail tuples for a given guardrail point.
 
@@ -186,11 +186,15 @@ class GraniteGuardian(AbstractSafetyCapability):
     """
 
     config: GraniteGuardianConfig
-    run_moderation_guardrail_point: GuardrailPoint = "input"
+    run_moderation_guardrail_point: Literal["input", "output", "tool"] = "input"
     _model: Model = field(init=False)
-    # Only one Granite Guardian shield should be configured; multiple entries are
-    # unsupported. A dict is used defensively so that a misconfiguration with two
-    # distinct configs does not cause one to silently overwrite the other's model.
+    # GraniteGuardian is re-instantiated on every request (see build_agent),
+    # but its config objects are created once at startup and live for the
+    # process's lifetime. This cache lets repeated instantiations for the
+    # same shield reuse one HTTP client/connection pool instead of leaking a
+    # new one per request. Keyed by id(config) since GraniteGuardianConfig is
+    # unhashable; distinct config objects (even with identical values) are
+    # intentionally cached separately.
     _model_cache: ClassVar[dict[int, Model]] = {}
 
     def __post_init__(self) -> None:
@@ -204,14 +208,6 @@ class GraniteGuardian(AbstractSafetyCapability):
             verify=self.config.verify_ssl,
             timeout=self.config.timeout,
         )
-
-        # When we attach the API key to the request, we need to make sure we encrypt the
-        # request by communicating through https
-        base_url = httpx.URL(self.config.url)
-        if self.config.api_key is not None and base_url.scheme != "https":
-            raise ValueError(
-                "Granite Guardian endpoints with an API key must use HTTPS"
-            )
 
         openai_client = AsyncOpenAI(
             base_url=self.config.url,

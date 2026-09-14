@@ -1,7 +1,7 @@
 """Utility helpers for shield override validation and moderation."""
 
 import uuid
-from typing import Optional
+from typing import Literal, Optional
 
 from fastapi import HTTPException
 from ogx_client import AsyncOgxClient
@@ -23,7 +23,6 @@ from models.common.moderation import (
 )
 from models.config import (
     GraniteGuardianConfig,
-    GuardrailPoint,
     QuestionValidityConfig,
     RedactionConfig,
     ShieldConfiguration,
@@ -86,7 +85,7 @@ async def run_shield_moderation_v2(
     input_text: str,
     shield_configs: list[ShieldConfiguration],
     selected_shield_ids: Optional[list[str]] = None,
-    guardrail_point: GuardrailPoint = "input",
+    guardrail_point: Literal["input", "output", "tool"] = "input",
 ) -> ShieldModerationResult:
     """Run v2 shield moderation on input text.
 
@@ -156,7 +155,7 @@ async def run_shield_moderation_v2(
 
 def build_shield(
     shield_config: ShieldConfiguration,
-    guardrail_point: GuardrailPoint = "input",
+    guardrail_point: Literal["input", "output", "tool"] = "input",
 ) -> AbstractSafetyCapability:
     """Build a safety capability instance from a shield configuration.
 

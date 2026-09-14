@@ -35,8 +35,6 @@ from utils import checks
 from utils.mcp_auth_headers import resolve_authorization_headers
 from utils.types import CompiledPatterns
 
-type GuardrailPoint = Literal["input", "output", "tool"]
-
 logger = get_logger(__name__)
 
 
@@ -3199,7 +3197,7 @@ class RiskDefinition(ConfigurationBase):
             "reasoning before scoring."
         ),
     )
-    points: list[GuardrailPoint] = Field(
+    points: list[Literal["input", "output", "tool"]] = Field(
         ...,
         min_length=1,
         title="Guardrail points",
@@ -3272,6 +3270,26 @@ class GraniteGuardianConfig(ConfigurationBase):
         title="Defined risks",
         description="Risks to be considered while applying this guradrail",
     )
+
+    @model_validator(mode="after")
+    def validate_api_key_requires_https(self) -> Self:
+        """Require HTTPS when an API key is configured.
+
+        Prevents the API key from being sent to the inference endpoint over
+        an unencrypted connection.
+
+        Raises:
+            ValueError: If ``api_key`` is set but ``url``'s scheme isn't https.
+
+        Returns:
+            The validated configuration instance.
+        """
+        # pylint: disable=no-member
+        if self.api_key is not None and not self.url.startswith("https://"):
+            raise ValueError(
+                "Granite Guardian endpoints with an API key must use HTTPS"
+            )
+        return self
 
 
 class GraniteGuardianShieldConfiguration(ConfigurationBase):

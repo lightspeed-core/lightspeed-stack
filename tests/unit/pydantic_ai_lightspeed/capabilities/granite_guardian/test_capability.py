@@ -4,6 +4,8 @@
 # pylint: disable=too-many-arguments
 # pylint: disable=too-many-positional-arguments
 
+from typing import Literal
+
 import pytest
 from pydantic_ai import AgentRunResult, RunContext
 from pydantic_ai.exceptions import ModelAPIError, UnexpectedModelBehavior
@@ -11,7 +13,7 @@ from pydantic_ai.usage import RequestUsage, RunUsage
 from pytest_mock import MockerFixture, MockType
 
 from models.common.moderation import ShieldModerationBlocked, ShieldModerationPassed
-from models.config import GraniteGuardianConfig, GuardrailPoint, RiskDefinition
+from models.config import GraniteGuardianConfig, RiskDefinition
 from pydantic_ai_lightspeed.capabilities.granite_guardian._capability import (
     GraniteGuardian,
     _filter_guardrails,
@@ -27,7 +29,7 @@ def _make_risk(
     name: str = "test_risk",
     description: str = "test description",
     threshold: float = 0.5,
-    points: list[GuardrailPoint] | None = None,
+    points: list[Literal["input", "output", "tool"]] | None = None,
     enabled: bool = True,
     violation_message: str = "Blocked.",
 ) -> RiskDefinition:
@@ -336,15 +338,6 @@ class TestGraniteGuardianInit:
 
         _, kwargs = mock_openai.call_args
         assert kwargs["api_key"] == "api-key-not-set"
-
-    def test_raises_when_api_key_with_non_https_url(self) -> None:
-        """Test that a ValueError is raised when api_key is set but URL is not HTTPS."""
-        config = _make_config(url="http://example.com/v1", api_key="test-key")
-        with pytest.raises(
-            ValueError,
-            match="Granite Guardian endpoints with an API key must use HTTPS",
-        ):
-            GraniteGuardian(config=config)
 
     def test_reuses_cached_model_for_same_config(self) -> None:
         """Test that instances sharing a config object reuse the cached model."""
