@@ -16,6 +16,7 @@ import yaml
 from behave import given, then  # pyright: ignore
 from behave.runner import Context
 
+from tests.e2e.features.steps.common import get_active_lightspeed_stack_config_basename
 from tests.e2e.utils.utils import absolute_repo_path, is_prow_environment
 
 
@@ -24,11 +25,19 @@ def _active_fixture_path(context: Context) -> str:
 
     Mirrors the lookup in ``common.configure_service``: the configuration
     directory from the Background, the deployment-mode subdirectory when it
-    exists, and the basename recorded on the context. The repo-root
-    ``lightspeed-stack.yaml`` copy is not used because on Prow the config is
-    pushed into a ConfigMap and that file is never written.
+    exists, and the active basename. The basename is read from the module
+    state in ``common``, not from the context: behave drops attributes a step
+    sets once the scenario ends, and ``configure_service`` returns early
+    without setting them again when a scenario asks for the YAML that is
+    already active. The repo-root ``lightspeed-stack.yaml`` copy is not used
+    because on Prow the config is pushed into a ConfigMap and that file is
+    never written.
     """
-    config_name = context.active_lightspeed_stack_config_basename
+    config_name = get_active_lightspeed_stack_config_basename()
+    assert config_name is not None, (
+        "no lightspeed-stack configuration applied yet; "
+        "run 'The service uses the ... configuration' first"
+    )
     mode_dir = "library-mode" if context.is_library_mode else "server-mode"
     raw_base = getattr(context, "lightspeed_stack_config_directory", None)
     base = str(raw_base).strip().rstrip("/") if raw_base else "tests/e2e/configuration"
