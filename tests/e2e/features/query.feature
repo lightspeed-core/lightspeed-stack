@@ -169,3 +169,4 @@ Scenario: Check if LLM responds for query request with error for missing query
     When I use "query" to ask question with too-long query and authorization header
     Then The status code of the response is 413
     And The body of the response contains Prompt is too long
+    
