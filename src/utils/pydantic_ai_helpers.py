@@ -24,6 +24,9 @@ from models.config import (
     SkillsConfiguration,
 )
 from pydantic_ai_lightspeed.capabilities import QuestionValidity
+from pydantic_ai_lightspeed.capabilities.granite_guardian import (
+    GraniteGuardian,
+)
 from pydantic_ai_lightspeed.capabilities.redaction import PiiRedactionCapability
 from pydantic_ai_lightspeed.ogx import OgxResponsesModel
 from utils.shields import get_shields_for_request
@@ -177,7 +180,7 @@ def _shield_capability(shield: ShieldConfiguration) -> AgentCapability[object]:
         case RedactionConfig():
             return PiiRedactionCapability(config=shield.config)
         case GraniteGuardianConfig():
-            raise NotImplementedError("Granite Guardian capability not implemented")
+            return GraniteGuardian(config=shield.config)
         case _:
             raise ValueError(
                 f"Unsupported shield config type for shield '{shield.name}': "

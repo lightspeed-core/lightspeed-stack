@@ -1,7 +1,7 @@
 """Utility helpers for shield override validation and moderation."""
 
 import uuid
-from typing import Optional
+from typing import Literal, Optional
 
 from fastapi import HTTPException
 from ogx_client import AsyncOgxClient
@@ -28,6 +28,9 @@ from models.config import (
     ShieldConfiguration,
 )
 from pydantic_ai_lightspeed.capabilities.base import AbstractSafetyCapability
+from pydantic_ai_lightspeed.capabilities.granite_guardian import (
+    GraniteGuardian,
+)
 from pydantic_ai_lightspeed.capabilities.question_validity._capability import (
     QuestionValidity,
 )
@@ -82,6 +85,7 @@ async def run_shield_moderation_v2(
     input_text: str,
     shield_configs: list[ShieldConfiguration],
     selected_shield_ids: Optional[list[str]] = None,
+    guardrail_point: Literal["input", "output", "tool"] = "input",
 ) -> ShieldModerationResult:
     """Run v2 shield moderation on input text.
 
@@ -120,7 +124,7 @@ async def run_shield_moderation_v2(
         )
 
         for shield_config in selected_shield_configs:
-            shield = build_shield(shield_config)
+            shield = build_shield(shield_config, guardrail_point)
 
             try:
                 shield_result = await shield.run(input_text)
@@ -149,7 +153,10 @@ async def run_shield_moderation_v2(
         return ShieldModerationPassed()
 
 
-def build_shield(shield_config: ShieldConfiguration) -> AbstractSafetyCapability:
+def build_shield(
+    shield_config: ShieldConfiguration,
+    guardrail_point: Literal["input", "output", "tool"] = "input",
+) -> AbstractSafetyCapability:
     """Build a safety capability instance from a shield configuration.
 
     Parameters:
@@ -164,7 +171,7 @@ def build_shield(shield_config: ShieldConfiguration) -> AbstractSafetyCapability
         case RedactionConfig():
             return PiiRedactionCapability(shield_config.config)
         case GraniteGuardianConfig():
-            raise NotImplementedError("Granite Guardian capability not implemented")
+            return GraniteGuardian(shield_config.config, guardrail_point)
         case _:
             raise ValueError(
                 f"Unsupported shield config type for shield '{shield_config.name}': "

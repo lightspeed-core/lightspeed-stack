@@ -14649,7 +14649,13 @@
                     "url": {
                         "type": "string",
                         "title": "Base URL",
-                        "description": "The model_id to use for the guard"
+                        "description": "Base URL of the OpenAI-compatible inference endpoint."
+                    },
+                    "model_id": {
+                        "type": "string",
+                        "title": "Model name",
+                        "description": "Model name sent to the inference server. Override when the server registers the model under a different name (e.g. an Ollama tag). The prompt template is built for the 4.1 format.",
+                        "default": "ibm-granite/granite-guardian-4.1-8b"
                     },
                     "api_key": {
                         "anyOf": [
@@ -14695,6 +14701,21 @@
                         "title": "Verify SSL",
                         "description": "SSL certificate verification. Can be:\n  - True: Verify using system CA bundle (default, recommended)\n  - False: Disable verification (insecure, for dev only)\n  - str: Path to custom CA bundle file (for internal PKI)",
                         "default": true
+                    },
+                    "parallel": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "integer",
+                                "maximum": 10.0,
+                                "minimum": 1.0
+                            }
+                        ],
+                        "title": "Parallel execution",
+                        "description": "True to run all risk checks in parallel, False to run sequentially, or an integer 1-10 for explicit batch size.",
+                        "default": 3
                     },
                     "risks": {
                         "items": {
