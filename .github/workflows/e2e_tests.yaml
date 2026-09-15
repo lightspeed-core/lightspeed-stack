@@ -36,7 +36,7 @@ jobs:
           - name: shields
             tags: "not @skip and @cfg_shields"
           - name: other
-            tags: "not @skip and (@cfg_rh_identity or @cfg_negative or @cfg_byok_pdf or @cfg_degraded or @cfg_unified)"
+            tags: "not @skip and (@cfg_rh_identity or @cfg_negative or @cfg_byok_pdf or @cfg_degraded or @cfg_unified or @cfg_compaction)"
           # Server-only; listed in shard (not matrix.include) so it expands with
           # mode=server before any library jobs. include would append after library.
           - name: tls
