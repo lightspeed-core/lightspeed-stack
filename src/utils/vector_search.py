@@ -17,11 +17,12 @@ from opentelemetry import trace
 from pydantic import AnyUrl, ValidationError
 
 import constants
-from configuration import configuration
+from configuration import configuration, okp_rag_mcp_enabled
 from log import get_logger
 from models.common.query import SolrVectorSearchRequest
 from models.common.responses.types import ResponseInput
 from models.common.turn_summary import RAGChunk, RAGContext, ReferencedDocument
+from pydantic_ai_lightspeed.retrieval.okp_mcp import OkpMcpRetriever
 from utils.otel_tracing import (
     SpanAttributes,
     SpanEvents,
@@ -646,6 +647,32 @@ async def _fetch_okp_rag(  # pylint: disable=too-many-locals
     return rag_chunks, referenced_documents
 
 
+async def _fetch_okp_rag_mcp(
+    query: str,
+) -> tuple[list[RAGChunk], list[ReferencedDocument]]:
+    """Fetch chunks and documents from the OKP MCP transport.
+
+    The MCP counterpart of :func:`_fetch_okp_rag`. Unlike the Solr path it does
+    not need the OGX ``client`` or a ``SolrVectorSearchRequest``: the RHOKP MCP
+    server encapsulates embeddings and querying. Selected at the
+    :func:`build_rag_context` fork when :func:`okp_rag_mcp_enabled` is True.
+
+    Parameters:
+        query: The user's query.
+
+    Returns:
+        Tuple containing:
+        - rag_chunks: RAG chunks from the OKP MCP server.
+        - referenced_documents: Documents referenced in the MCP results.
+    """
+    if not configuration.okp_inline_enabled:
+        logger.info("OKP is disabled for inline RAG, skipping OKP MCP search")
+        return [], []
+
+    retriever = OkpMcpRetriever.from_configuration()
+    return await retriever.fetch(query)
+
+
 async def build_rag_context(  # pylint: disable=too-many-locals,too-many-branches
     client: AsyncOgxClient,
     moderation_decision: str,  # pylint: disable=unused-argument
@@ -679,12 +706,18 @@ async def build_rag_context(  # pylint: disable=too-many-locals,too-many-branche
 
         top_k = configuration.rag.retrieval.inline.max_chunks
 
-        # Fetch from each source using per-source limits for the reranking pool
+        # Fetch from each source using per-source limits for the reranking pool.
+        # The OKP source has two interchangeable transports: the OGX/Solr
+        # vector_io path (default) and the RHOKP MCP path. Both return the same
+        # (chunks, documents) contract so the merge/rerank pipeline is unchanged.
         byok_chunks_task = _fetch_byok_rag(client, query, vector_store_ids)
-        solr_chunks_task = _fetch_okp_rag(client, query, solr)
+        if okp_rag_mcp_enabled():
+            okp_chunks_task = _fetch_okp_rag_mcp(query)
+        else:
+            okp_chunks_task = _fetch_okp_rag(client, query, solr)
 
         (byok_chunks, byok_documents), (solr_chunks, solr_documents) = (
-            await asyncio.gather(byok_chunks_task, solr_chunks_task)
+            await asyncio.gather(byok_chunks_task, okp_chunks_task)
         )
 
         # Merge chunks

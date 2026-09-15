@@ -10,6 +10,7 @@ import constants
 from models.config import (
     ByokConfiguration,
     OkpConfiguration,
+    OkpMcpConfiguration,
     RagConfiguration,
     RagStore,
     RetrievalConfiguration,
@@ -235,6 +236,68 @@ class TestOkpConfiguration:
         """Test that OkpConfiguration rejects unknown fields."""
         with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
             OkpConfiguration(unknown_field="value")  # type: ignore[call-arg]
+
+    def test_mcp_default_is_disabled(self) -> None:
+        """Test that the MCP transport is off by default."""
+        config = OkpConfiguration()
+        assert isinstance(config.mcp, OkpMcpConfiguration)
+        assert config.mcp.enabled is False
+
+    def test_mcp_can_be_enabled(self) -> None:
+        """Test that the MCP transport can be enabled via nested config."""
+        config = OkpConfiguration(mcp=OkpMcpConfiguration(enabled=True))
+        assert config.mcp.enabled is True
+
+
+class TestOkpMcpConfiguration:
+    """Tests for OkpMcpConfiguration model."""
+
+    def test_default_values(self) -> None:
+        """Test that OkpMcpConfiguration has correct default values."""
+        config = OkpMcpConfiguration()
+        assert config.enabled is False
+        assert config.url is None
+        assert config.tool_name == constants.OKP_MCP_DEFAULT_TOOL_NAME
+        assert config.max_chunks == constants.DEFAULT_OKP_RAG_MAX_CHUNKS
+        assert config.timeout is None
+        assert config.product is None
+        assert config.product_version is None
+        assert not config.authorization_headers
+        assert not config.resolved_authorization_headers
+
+    def test_custom_values(self) -> None:
+        """Test that OkpMcpConfiguration accepts custom values."""
+        config = OkpMcpConfiguration(
+            enabled=True,
+            url="http://okp:8080/mcp",  # type: ignore[arg-type]
+            tool_name="hybrid_search",
+            max_chunks=10,
+            timeout=15,
+            product="openshift_container_platform",
+            product_version="4.20",
+        )
+        assert config.enabled is True
+        assert str(config.url) == "http://okp:8080/mcp"
+        assert config.tool_name == "hybrid_search"
+        assert config.max_chunks == 10
+        assert config.timeout == 15
+        assert config.product == "openshift_container_platform"
+        assert config.product_version == "4.20"
+
+    def test_max_chunks_must_be_positive(self) -> None:
+        """Test that max_chunks rejects non-positive values."""
+        with pytest.raises(ValidationError):
+            OkpMcpConfiguration(max_chunks=0)
+
+    def test_timeout_must_be_positive(self) -> None:
+        """Test that timeout rejects non-positive values."""
+        with pytest.raises(ValidationError):
+            OkpMcpConfiguration(timeout=0)
+
+    def test_no_unknown_fields_allowed(self) -> None:
+        """Test that OkpMcpConfiguration rejects unknown fields."""
+        with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
+            OkpMcpConfiguration(unknown_field="value")  # type: ignore[call-arg]
 
 
 class TestOldFormatRejected:
