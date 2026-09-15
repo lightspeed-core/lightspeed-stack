@@ -4,6 +4,69 @@ lockfileVendor: redhat
 arches:
 - arch: aarch64
   packages:
+  - url: https://cdn.redhat.com/content/dist/layered/rhel9/aarch64/rhelai/3.5/os/Packages/f/ffmpeg-free-rhai-6.1.6-9.el9ai.aarch64.rpm
+    repoid: rhelai-3.5-for-rhel-9-aarch64-rpms
+    size: 1515025
+    checksum: sha256:c6bfee462ad3b3f5b4fd19cf96367d549ea7bfeea0ab4ffe634dd497ba5847ba
+    name: ffmpeg-free-rhai
+    evr: 6.1.6-9.el9ai
+    sourcerpm: ffmpeg-6.1.6-9.el9ai.src.rpm
+  - url: https://cdn.redhat.com/content/dist/layered/rhel9/aarch64/rhelai/3.5/os/Packages/l/libavcodec-free-rhai-6.1.6-9.el9ai.aarch64.rpm
+    repoid: rhelai-3.5-for-rhel-9-aarch64-rpms
+    size: 4031909
+    checksum: sha256:9ca273eea853bd5c0781add66b1620978468ce9e54a288e972bb668b4d6d7360
+    name: libavcodec-free-rhai
+    evr: 6.1.6-9.el9ai
+    sourcerpm: ffmpeg-6.1.6-9.el9ai.src.rpm
+  - url: https://cdn.redhat.com/content/dist/layered/rhel9/aarch64/rhelai/3.5/os/Packages/l/libavdevice-free-rhai-6.1.6-9.el9ai.aarch64.rpm
+    repoid: rhelai-3.5-for-rhel-9-aarch64-rpms
+    size: 75640
+    checksum: sha256:4f32d0216ddc8e6f83732aece446b0e618f0bcd358f85c86fb9d5e8b760c3da7
+    name: libavdevice-free-rhai
+    evr: 6.1.6-9.el9ai
+    sourcerpm: ffmpeg-6.1.6-9.el9ai.src.rpm
+  - url: https://cdn.redhat.com/content/dist/layered/rhel9/aarch64/rhelai/3.5/os/Packages/l/libavfilter-free-rhai-6.1.6-9.el9ai.aarch64.rpm
+    repoid: rhelai-3.5-for-rhel-9-aarch64-rpms
+    size: 1446844
+    checksum: sha256:795dd36bacac138d1efb3f1a41e8cb6e9f13843a856fd9f6ef6fe6e9c0b4bf9b
+    name: libavfilter-free-rhai
+    evr: 6.1.6-9.el9ai
+    sourcerpm: ffmpeg-6.1.6-9.el9ai.src.rpm
+  - url: https://cdn.redhat.com/content/dist/layered/rhel9/aarch64/rhelai/3.5/os/Packages/l/libavformat-free-rhai-6.1.6-9.el9ai.aarch64.rpm
+    repoid: rhelai-3.5-for-rhel-9-aarch64-rpms
+    size: 1136615
+    checksum: sha256:c17182dfc59bda4af4bda6da1efcd13c860c11af50523910e708fd5debfa177c
+    name: libavformat-free-rhai
+    evr: 6.1.6-9.el9ai
+    sourcerpm: ffmpeg-6.1.6-9.el9ai.src.rpm
+  - url: https://cdn.redhat.com/content/dist/layered/rhel9/aarch64/rhelai/3.5/os/Packages/l/libavutil-free-rhai-6.1.6-9.el9ai.aarch64.rpm
+    repoid: rhelai-3.5-for-rhel-9-aarch64-rpms
+    size: 345879
+    checksum: sha256:00d27c22f8aed4753ef047771597c7f263030e06549d445e22a9206abd1f3664
+    name: libavutil-free-rhai
+    evr: 6.1.6-9.el9ai
+    sourcerpm: ffmpeg-6.1.6-9.el9ai.src.rpm
+  - url: https://cdn.redhat.com/content/dist/layered/rhel9/aarch64/rhelai/3.5/os/Packages/l/libpostproc-free-rhai-6.1.6-9.el9ai.aarch64.rpm
+    repoid: rhelai-3.5-for-rhel-9-aarch64-rpms
+    size: 39547
+    checksum: sha256:8b1a8cc49a38014789179fb39eb3bbe81ae74b58da2d078f2d8581461222f03e
+    name: libpostproc-free-rhai
+    evr: 6.1.6-9.el9ai
+    sourcerpm: ffmpeg-6.1.6-9.el9ai.src.rpm
+  - url: https://cdn.redhat.com/content/dist/layered/rhel9/aarch64/rhelai/3.5/os/Packages/l/libswresample-free-rhai-6.1.6-9.el9ai.aarch64.rpm
+    repoid: rhelai-3.5-for-rhel-9-aarch64-rpms
+    size: 60307
+    checksum: sha256:bb0259b949e925f3eed54e75cde70e76e0992938ee24c82cf1bae0b85a461a00
+    name: libswresample-free-rhai
+    evr: 6.1.6-9.el9ai
+    sourcerpm: ffmpeg-6.1.6-9.el9ai.src.rpm
+  - url: https://cdn.redhat.com/content/dist/layered/rhel9/aarch64/rhelai/3.5/os/Packages/l/libswscale-free-rhai-6.1.6-9.el9ai.aarch64.rpm
+    repoid: rhelai-3.5-for-rhel-9-aarch64-rpms
+    size: 162587
+    checksum: sha256:bd4e3882c78fffd4ffac7d99bdcea42d7eebd337a6da75223580eeb828ac55be
+    name: libswscale-free-rhai
+    evr: 6.1.6-9.el9ai
+    sourcerpm: ffmpeg-6.1.6-9.el9ai.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.6/aarch64/appstream/os/Packages/c/cargo-1.84.1-1.el9.aarch64.rpm
     repoid: rhel-9-for-aarch64-appstream-eus-rpms__9_DOT_6
     size: 7744425
@@ -60,6 +123,13 @@ arches:
     name: rust-std-static
     evr: 1.84.1-1.el9
     sourcerpm: rust-1.84.1-1.el9.src.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.6/aarch64/baseos/os/Packages/a/acl-2.4.0-0.el9_6.1.aarch64.rpm
+    repoid: rhel-9-for-aarch64-baseos-eus-rpms__9_DOT_6
+    size: 77159
+    checksum: sha256:3b88acdb403b28e3d9b72010d6794d2306a3a92295e264f9ca6447883886ac8b
+    name: acl
+    evr: 2.4.0-0.el9_6.1
+    sourcerpm: acl-2.4.0-0.el9_6.1.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.6/aarch64/baseos/os/Packages/e/ed-1.14.2-12.el9.aarch64.rpm
     repoid: rhel-9-for-aarch64-baseos-eus-rpms__9_DOT_6
     size: 78931
@@ -74,10 +144,80 @@ arches:
     name: info
     evr: 6.7-15.el9
     sourcerpm: texinfo-6.7-15.el9.src.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.6/aarch64/baseos/os/Packages/l/libacl-2.4.0-0.el9_6.1.aarch64.rpm
+    repoid: rhel-9-for-aarch64-baseos-eus-rpms__9_DOT_6
+    size: 24904
+    checksum: sha256:44a0d95be843d5b5104a6182e13de076c3ed83321977aee6f69148a1d5fb2780
+    name: libacl
+    evr: 2.4.0-0.el9_6.1
+    sourcerpm: acl-2.4.0-0.el9_6.1.src.rpm
   source: []
   module_metadata: []
 - arch: x86_64
   packages:
+  - url: https://cdn.redhat.com/content/dist/layered/rhel9/x86_64/rhelai/3.5/os/Packages/f/ffmpeg-free-rhai-6.1.6-9.el9ai.x86_64.rpm
+    repoid: rhelai-3.5-for-rhel-9-x86_64-rpms
+    size: 1518752
+    checksum: sha256:cd24a91037cbbdc29277a574666fc5e49dcfd582afd63f6f6fe0099ea1470c36
+    name: ffmpeg-free-rhai
+    evr: 6.1.6-9.el9ai
+    sourcerpm: ffmpeg-6.1.6-9.el9ai.src.rpm
+  - url: https://cdn.redhat.com/content/dist/layered/rhel9/x86_64/rhelai/3.5/os/Packages/l/libavcodec-free-rhai-6.1.6-9.el9ai.x86_64.rpm
+    repoid: rhelai-3.5-for-rhel-9-x86_64-rpms
+    size: 4213330
+    checksum: sha256:7786b455d74f44cc89b7a8017da2d606e3cbfa7f07b64ad575527e583bdbd178
+    name: libavcodec-free-rhai
+    evr: 6.1.6-9.el9ai
+    sourcerpm: ffmpeg-6.1.6-9.el9ai.src.rpm
+  - url: https://cdn.redhat.com/content/dist/layered/rhel9/x86_64/rhelai/3.5/os/Packages/l/libavdevice-free-rhai-6.1.6-9.el9ai.x86_64.rpm
+    repoid: rhelai-3.5-for-rhel-9-x86_64-rpms
+    size: 76627
+    checksum: sha256:620c454f720454d13e881966d770e598554b9db1f9e5daeed03a4c87aaf20e98
+    name: libavdevice-free-rhai
+    evr: 6.1.6-9.el9ai
+    sourcerpm: ffmpeg-6.1.6-9.el9ai.src.rpm
+  - url: https://cdn.redhat.com/content/dist/layered/rhel9/x86_64/rhelai/3.5/os/Packages/l/libavfilter-free-rhai-6.1.6-9.el9ai.x86_64.rpm
+    repoid: rhelai-3.5-for-rhel-9-x86_64-rpms
+    size: 1531710
+    checksum: sha256:32c1f98752cf9e40d18a6171ab68f7a3f9a5c435ae44e1beb6450ce1af183e9c
+    name: libavfilter-free-rhai
+    evr: 6.1.6-9.el9ai
+    sourcerpm: ffmpeg-6.1.6-9.el9ai.src.rpm
+  - url: https://cdn.redhat.com/content/dist/layered/rhel9/x86_64/rhelai/3.5/os/Packages/l/libavformat-free-rhai-6.1.6-9.el9ai.x86_64.rpm
+    repoid: rhelai-3.5-for-rhel-9-x86_64-rpms
+    size: 1122106
+    checksum: sha256:aee63758df3f99f5962a5ba61ca07c6c9b5d1ccde4677dd6ddc4c999599cd921
+    name: libavformat-free-rhai
+    evr: 6.1.6-9.el9ai
+    sourcerpm: ffmpeg-6.1.6-9.el9ai.src.rpm
+  - url: https://cdn.redhat.com/content/dist/layered/rhel9/x86_64/rhelai/3.5/os/Packages/l/libavutil-free-rhai-6.1.6-9.el9ai.x86_64.rpm
+    repoid: rhelai-3.5-for-rhel-9-x86_64-rpms
+    size: 351489
+    checksum: sha256:3338518a95b0931f570cadea63983faaee1a053e382c6fe7b09cd6e5c629275d
+    name: libavutil-free-rhai
+    evr: 6.1.6-9.el9ai
+    sourcerpm: ffmpeg-6.1.6-9.el9ai.src.rpm
+  - url: https://cdn.redhat.com/content/dist/layered/rhel9/x86_64/rhelai/3.5/os/Packages/l/libpostproc-free-rhai-6.1.6-9.el9ai.x86_64.rpm
+    repoid: rhelai-3.5-for-rhel-9-x86_64-rpms
+    size: 46878
+    checksum: sha256:31356012fb0d14be447a9357e4bb9be23de095072bdd5654d70efe2643fe1d11
+    name: libpostproc-free-rhai
+    evr: 6.1.6-9.el9ai
+    sourcerpm: ffmpeg-6.1.6-9.el9ai.src.rpm
+  - url: https://cdn.redhat.com/content/dist/layered/rhel9/x86_64/rhelai/3.5/os/Packages/l/libswresample-free-rhai-6.1.6-9.el9ai.x86_64.rpm
+    repoid: rhelai-3.5-for-rhel-9-x86_64-rpms
+    size: 66438
+    checksum: sha256:6252004c850c7741fb49e18c5eb86896192051caa6623c96051ac30c6e0c0a70
+    name: libswresample-free-rhai
+    evr: 6.1.6-9.el9ai
+    sourcerpm: ffmpeg-6.1.6-9.el9ai.src.rpm
+  - url: https://cdn.redhat.com/content/dist/layered/rhel9/x86_64/rhelai/3.5/os/Packages/l/libswscale-free-rhai-6.1.6-9.el9ai.x86_64.rpm
+    repoid: rhelai-3.5-for-rhel-9-x86_64-rpms
+    size: 188983
+    checksum: sha256:f114a579b7cdc4458baecc516ca93f4abf64a66fa21eda0f186d5ef9799a8640
+    name: libswscale-free-rhai
+    evr: 6.1.6-9.el9ai
+    sourcerpm: ffmpeg-6.1.6-9.el9ai.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.6/x86_64/appstream/os/Packages/c/cargo-1.84.1-1.el9.x86_64.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms__9_DOT_6
     size: 8292467
@@ -134,6 +274,13 @@ arches:
     name: rust-std-static
     evr: 1.84.1-1.el9
     sourcerpm: rust-1.84.1-1.el9.src.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.6/x86_64/baseos/os/Packages/a/acl-2.4.0-0.el9_6.1.x86_64.rpm
+    repoid: rhel-9-for-x86_64-baseos-eus-rpms__9_DOT_6
+    size: 77918
+    checksum: sha256:7922ff8b02bdd4f0771e3036c3d293939bc2d182505772d7fccfb28a650fedc6
+    name: acl
+    evr: 2.4.0-0.el9_6.1
+    sourcerpm: acl-2.4.0-0.el9_6.1.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.6/x86_64/baseos/os/Packages/e/ed-1.14.2-12.el9.x86_64.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms__9_DOT_6
     size: 79993
@@ -148,5 +295,12 @@ arches:
     name: info
     evr: 6.7-15.el9
     sourcerpm: texinfo-6.7-15.el9.src.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.6/x86_64/baseos/os/Packages/l/libacl-2.4.0-0.el9_6.1.x86_64.rpm
+    repoid: rhel-9-for-x86_64-baseos-eus-rpms__9_DOT_6
+    size: 25027
+    checksum: sha256:3fefd0c83d5b54dab6f88bd85fd00493983fc26656c5e1f62f5ea56ce1711388
+    name: libacl
+    evr: 2.4.0-0.el9_6.1
+    sourcerpm: acl-2.4.0-0.el9_6.1.src.rpm
   source: []
   module_metadata: []
