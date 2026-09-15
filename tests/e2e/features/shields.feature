@@ -13,6 +13,7 @@ Feature: Shields endpoint tests
       And the Lightspeed stack configuration directory is "tests/e2e/configuration"
 
   @cfg_shields
+  # will update the response to includes granite_guardian during implementation ticket (LCORE-3388)
   Scenario: Shields endpoint returns every configured shield type
     Given The service uses the lightspeed-stack-shields.yaml configuration
       And The service is restarted

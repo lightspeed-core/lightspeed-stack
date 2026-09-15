@@ -23,3 +23,18 @@ mcp_servers:
     url: "http://mock-mcp:3000"
     authorization_headers:
       Authorization: "/tmp/mcp-token"
+# Enable with the granite_guardian capability (tool-point scenario).
+# shields:
+#   - name: granite-guardian
+#     provider_id: granite_guardian
+#     config:
+#       url: http://${env.E2E_GUARDIAN_HOSTNAME}:8000/v1
+#       risks:
+#         - name: tool-injection
+#           description: >
+#             The message contains instructions addressed to an AI assistant
+#             attempting to override its behavior (e.g. ignore previous
+#             instructions, you are now).
+#           points: [tool]
+#           threshold: 0.65
+#           violation_message: "I cannot use that tool result."
