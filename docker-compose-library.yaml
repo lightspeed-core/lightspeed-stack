@@ -11,6 +11,8 @@ services:
     depends_on:
       mock-mcp:
         condition: service_healthy
+      mock-otel:
+        condition: service_healthy
     networks:
       - lightspeednet
     volumes:
@@ -67,12 +69,15 @@ services:
       - PDF_KV_RAG_PATH=/tmp/e2e-rag-work/pdf_kv_store.db
       # Prevent HuggingFace Hub update checks (HTTP 429 rate-limiting in CI from parallel jobs).
       - HF_HUB_OFFLINE=1
-      # OpenTelemetry configuration (tracing disabled by default)
-      - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT:-}
-      - OTEL_EXPORTER_OTLP_PROTOCOL=${OTEL_EXPORTER_OTLP_PROTOCOL:-}
-      - OTEL_SERVICE_NAME=${OTEL_SERVICE_NAME:-}
+      # OpenTelemetry configuration. Export is enabled by default and points at
+      # the mock OTLP/HTTP collector so the OpenTelemetry delivery E2E test works
+      # without per-scenario reconfiguration. Override any OTEL_* var (or set
+      # OTEL_SDK_DISABLED=true) to change or disable export.
+      - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT:-http://mock-otel:4318}
+      - OTEL_EXPORTER_OTLP_PROTOCOL=${OTEL_EXPORTER_OTLP_PROTOCOL:-http/protobuf}
+      - OTEL_SERVICE_NAME=${OTEL_SERVICE_NAME:-lightspeed-stack-e2e}
       - OTEL_ANONYMIZATION_SECRET=${OTEL_ANONYMIZATION_SECRET:-lightspeed-stack-otel-anonymization-dev-default}
-      - OTEL_SDK_DISABLED=${OTEL_SDK_DISABLED:-true}
+      - OTEL_SDK_DISABLED=${OTEL_SDK_DISABLED:-false}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/liveness"]
       interval: 10s   # how often to run the check
@@ -108,6 +113,26 @@ services:
       - lightspeednet
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:3000/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+      start_period: 2s
+
+  # Mock OTLP/HTTP collector for OpenTelemetry E2E tests.
+  # lightspeed-stack exports to it by default (see OTEL_* above) and waits for it
+  # to be healthy, so telemetry is delivered from startup. The port is bound to
+  # loopback only so it is not exposed beyond the host running the tests.
+  mock-otel:
+    build:
+      context: ./tests/e2e/mock_otel_collector
+      dockerfile: Dockerfile
+    container_name: mock-otel
+    ports:
+      - "127.0.0.1:4318:4318"
+    networks:
+      - lightspeednet
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:4318/health')"]
       interval: 5s
       timeout: 3s
       retries: 3
