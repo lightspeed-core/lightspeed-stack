@@ -29,6 +29,7 @@ from utils.vector_search import (
     _extract_solr_document_metadata,
     _fetch_byok_rag,
     _fetch_okp_rag,
+    _fetch_okp_rag_mcp,
     _format_rag_context,
     _get_okp_base_url,
     _get_solr_vector_store_ids,
@@ -1814,3 +1815,122 @@ class TestBuildRagContextOtel:
         completed_attrs = completed.attributes
         assert completed_attrs is not None
         assert completed_attrs["rag.chunks.count"] == 1
+
+
+class TestFetchOkpRagMcp:
+    """Tests for the _fetch_okp_rag_mcp OKP MCP transport helper."""
+
+    @pytest.mark.asyncio
+    async def test_returns_empty_when_okp_inline_disabled(
+        self, mocker: MockerFixture
+    ) -> None:
+        """When OKP is not an inline source, no MCP call is made."""
+        config_mock = mocker.Mock(spec=AppConfig)
+        config_mock.okp_inline_enabled = False
+        mocker.patch("utils.vector_search.configuration", config_mock)
+        retriever_cls = mocker.patch("utils.vector_search.OkpMcpRetriever")
+
+        chunks, documents = await _fetch_okp_rag_mcp("test query")
+
+        assert chunks == []
+        assert documents == []
+        retriever_cls.from_configuration.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_delegates_to_retriever_when_enabled(
+        self, mocker: MockerFixture
+    ) -> None:
+        """When OKP inline is enabled, the retriever fetches for the query."""
+        config_mock = mocker.Mock(spec=AppConfig)
+        config_mock.okp_inline_enabled = True
+        mocker.patch("utils.vector_search.configuration", config_mock)
+
+        expected = (
+            [RAGChunk(content="c", source=constants.OKP_RAG_ID, score=1.0)],
+            [ReferencedDocument(doc_title="t", source=constants.OKP_RAG_ID)],
+        )
+        retriever = mocker.Mock()
+        retriever.fetch = mocker.AsyncMock(return_value=expected)
+        retriever_cls = mocker.patch("utils.vector_search.OkpMcpRetriever")
+        retriever_cls.from_configuration.return_value = retriever
+
+        result = await _fetch_okp_rag_mcp("test query")
+
+        assert result == expected
+        retriever.fetch.assert_awaited_once_with("test query")
+
+
+class TestBuildRagContextOkpTransportFork:
+    """Tests for the OKP Solr/MCP transport fork in build_rag_context."""
+
+    @pytest.mark.asyncio
+    async def test_uses_mcp_transport_when_enabled(self, mocker: MockerFixture) -> None:
+        """When MCP is enabled, the MCP path is used and Solr path is skipped."""
+        config_mock = mocker.Mock(spec=AppConfig)
+        config_mock.rag.retrieval.inline.sources = [constants.OKP_RAG_ID]
+        config_mock.rag.byok.stores = []
+        config_mock.rag.retrieval.inline.max_chunks = (
+            constants.DEFAULT_INLINE_RAG_MAX_CHUNKS
+        )
+        config_mock.rag.byok.max_chunks = constants.DEFAULT_BYOK_RAG_MAX_CHUNKS
+        config_mock.reranker = None
+        mocker.patch("utils.vector_search.configuration", config_mock)
+        mocker.patch("utils.vector_search.okp_rag_mcp_enabled", return_value=True)
+
+        mcp_fetch = mocker.patch(
+            "utils.vector_search._fetch_okp_rag_mcp",
+            mocker.AsyncMock(
+                return_value=(
+                    [RAGChunk(content="mcp", source=constants.OKP_RAG_ID, score=1.0)],
+                    [],
+                )
+            ),
+        )
+        solr_fetch = mocker.patch(
+            "utils.vector_search._fetch_okp_rag",
+            mocker.AsyncMock(return_value=([], [])),
+        )
+
+        client_mock = mocker.AsyncMock()
+        context = await build_rag_context(client_mock, "passed", "test query", None)
+
+        mcp_fetch.assert_awaited_once()
+        solr_fetch.assert_not_called()
+        assert any(c.content == "mcp" for c in context.rag_chunks)
+
+    @pytest.mark.asyncio
+    async def test_uses_solr_transport_when_disabled(
+        self, mocker: MockerFixture
+    ) -> None:
+        """When MCP is disabled, the Solr path is used and MCP path is skipped."""
+        config_mock = mocker.Mock(spec=AppConfig)
+        config_mock.rag.retrieval.inline.sources = [constants.OKP_RAG_ID]
+        config_mock.rag.byok.stores = []
+        config_mock.rag.retrieval.inline.max_chunks = (
+            constants.DEFAULT_INLINE_RAG_MAX_CHUNKS
+        )
+        config_mock.rag.byok.max_chunks = constants.DEFAULT_BYOK_RAG_MAX_CHUNKS
+        config_mock.reranker = None
+        mocker.patch("utils.vector_search.configuration", config_mock)
+        mocker.patch("utils.vector_search.okp_rag_mcp_enabled", return_value=False)
+
+        mcp_fetch = mocker.patch(
+            "utils.vector_search._fetch_okp_rag_mcp",
+            mocker.AsyncMock(return_value=([], [])),
+        )
+        solr_fetch = mocker.patch(
+            "utils.vector_search._fetch_okp_rag",
+            mocker.AsyncMock(
+                return_value=(
+                    [RAGChunk(content="solr", source=constants.OKP_RAG_ID, score=1.0)],
+                    [],
+                )
+            ),
+        )
+
+        client_mock = mocker.AsyncMock()
+        context = await build_rag_context(client_mock, "passed", "test query", None)
+
+        solr_fetch.assert_awaited_once()
+        mcp_fetch.assert_not_called()
+        assert any(c.content == "solr" for c in context.rag_chunks)

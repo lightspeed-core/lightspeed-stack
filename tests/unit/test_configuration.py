@@ -9,15 +9,22 @@ from typing import Any
 import pytest
 from pydantic import ValidationError
 
+import configuration as configuration_module
 import constants
 from cache.in_memory_cache import InMemoryCache
 from cache.sqlite_cache import SQLiteCache
 from configuration import (
     AppConfig,
     LogicError,
+    okp_rag_mcp_enabled,
     replace_env_vars_preserving_native_override,
 )
-from models.config import CustomProfile, ModelContextProtocolServer
+from models.config import (
+    CustomProfile,
+    ModelContextProtocolServer,
+    OkpConfiguration,
+    OkpMcpConfiguration,
+)
 from utils.checks import InvalidConfigurationError
 
 
@@ -4251,3 +4258,40 @@ def test_replace_env_vars_without_native_override_resolves_all(
     config_dict = {"inference": {"default_model": "${env.LCORE_TEST_MODEL}"}}
     resolved = replace_env_vars_preserving_native_override(config_dict)
     assert resolved["inference"]["default_model"] == "gpt-4o-mini"
+
+
+def test_okp_rag_mcp_enabled_model_default_false() -> None:
+    """A default OkpConfiguration reports the MCP transport as disabled."""
+    assert okp_rag_mcp_enabled(OkpConfiguration()) is False
+
+
+def test_okp_rag_mcp_enabled_model_true() -> None:
+    """An OkpConfiguration with mcp.enabled=True reports the MCP transport on."""
+    okp = OkpConfiguration(mcp=OkpMcpConfiguration(enabled=True))
+    assert okp_rag_mcp_enabled(okp) is True
+
+
+def test_okp_rag_mcp_enabled_mapping_true() -> None:
+    """A raw mapping with mcp.enabled=True is honoured (pre-singleton path)."""
+    assert okp_rag_mcp_enabled({"mcp": {"enabled": True}}) is True
+
+
+def test_okp_rag_mcp_enabled_mapping_false_variants() -> None:
+    """Mappings without an enabled MCP transport report disabled."""
+    assert okp_rag_mcp_enabled({}) is False
+    assert okp_rag_mcp_enabled({"mcp": {}}) is False
+    assert okp_rag_mcp_enabled({"mcp": None}) is False
+    assert okp_rag_mcp_enabled({"mcp": {"enabled": False}}) is False
+
+
+def test_okp_rag_mcp_enabled_uses_singleton_when_none(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """With no argument, the loaded global configuration is inspected."""
+    okp = OkpConfiguration(mcp=OkpMcpConfiguration(enabled=True))
+    monkeypatch.setattr(
+        type(configuration_module.configuration),
+        "okp",
+        property(lambda self: okp),
+    )
+    assert okp_rag_mcp_enabled() is True

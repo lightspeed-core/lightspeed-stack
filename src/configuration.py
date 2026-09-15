@@ -1,5 +1,6 @@
 """Configuration loader."""
 
+from collections.abc import Mapping
 from typing import Any, Optional, Self
 
 import yaml
@@ -643,6 +644,22 @@ class AppConfig:  # pylint: disable=too-many-public-methods
             raise LogicError("logic error: configuration is not loaded")
         return constants.OKP_RAG_ID in self._configuration.rag.retrieval.inline.sources
 
+    @property
+    def okp_inline_enabled(self) -> bool:
+        """Return whether OKP is included in the inline RAG list.
+
+        Transport-agnostic alias of :attr:`inline_solr_enabled`: it is True when
+        ``"okp"`` appears in ``rag.retrieval.inline.sources`` regardless of
+        whether the Solr or MCP transport is selected.
+
+        Returns:
+            bool: True if 'okp' appears in rag.inline, False otherwise.
+
+        Raises:
+            LogicError: If the configuration has not been loaded.
+        """
+        return self.inline_solr_enabled
+
     def resolve_index_name(
         self, vector_store_id: str, rag_id_mapping: Optional[dict[str, str]] = None
     ) -> str:
@@ -665,3 +682,36 @@ class AppConfig:  # pylint: disable=too-many-public-methods
 
 
 configuration: AppConfig = AppConfig()
+
+
+def okp_rag_mcp_enabled(
+    okp: OkpConfiguration | Mapping[str, Any] | None = None,
+) -> bool:
+    """Return whether the OKP-over-MCP RAG transport is enabled.
+
+    When enabled, OKP RAG context is fetched from the RHOKP MCP server instead
+    of the OGX/Solr ``vector_io`` provider. The Solr transport remains the
+    default and is used whenever this returns False. The ``"okp"`` source id in
+    ``rag.retrieval.inline.sources`` still activates OKP either way; this only
+    selects the transport.
+
+    The body is intentionally a simple configuration lookup for now. It may
+    later be changed to auto-detect MCP capability by probing the connected
+    RHOKP instance, without changing this call site.
+
+    Parameters:
+        okp: OKP configuration to inspect. Accepts a validated
+            ``OkpConfiguration`` model, or the raw ``rag.okp`` mapping (used
+            during config synthesis, before the configuration singleton is
+            loaded). When None, the loaded global configuration is used.
+
+    Returns:
+        bool: True if the OKP MCP transport is enabled, False otherwise
+        (including when OKP MCP is unconfigured).
+    """
+    if okp is None:
+        okp = configuration.okp
+    if isinstance(okp, Mapping):
+        mcp = okp.get("mcp") or {}
+        return bool(mcp.get("enabled", False))
+    return okp.mcp.enabled

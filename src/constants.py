@@ -270,6 +270,18 @@ DEFAULT_SCORE_MULTIPLIER: Final[float] = 1.0
 # Special RAG ID that activates the OKP provider when listed in rag.inline or rag.tool
 OKP_RAG_ID: Final[str] = "okp"
 
+# OKP-over-MCP RAG constants
+# When rag.okp.mcp.enabled is True, OKP RAG context is fetched from the RHOKP MCP
+# server (which encapsulates embeddings + Solr querying server-side) instead of
+# the OGX/Solr vector_io provider. The "okp" source id still activates OKP; only
+# the transport changes.
+# Default RHOKP MCP endpoint (streamable HTTP) when okp.mcp.url is unset.
+RH_SERVER_OKP_MCP_DEFAULT_URL: Final[str] = "http://localhost:8080/mcp"
+# Default MCP tool name used for OKP hybrid search.
+OKP_MCP_DEFAULT_TOOL_NAME: Final[str] = "search"
+# Maximum rows the RHOKP MCP search tool accepts (server clamps to 1..=20).
+OKP_MCP_MAX_ROWS: Final[int] = 20
+
 # OpenTelemetry anonymization configuration
 # Environment variable for HMAC secret used to anonymize sensitive trace data
 OTEL_ANONYMIZATION_SECRET_ENV_VAR: Final[str] = "OTEL_ANONYMIZATION_SECRET"

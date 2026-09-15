@@ -24,6 +24,7 @@ from ogx_configuration import (
     dedupe_providers_vector_io,
     enrich_azure_entra_id_inference,
     enrich_byok_rag,
+    enrich_okp_mcp,
     enrich_solr,
     enrich_vector_store,
     generate_configuration,
@@ -822,6 +823,28 @@ def test_generate_configuration_with_pgvector(tmp_path: Path) -> None:
 
 
 _OKP_RAG_CONFIG = {"inline": ["okp"]}
+
+
+def test_enrich_okp_mcp_injects_nothing_when_enabled() -> None:
+    """enrich_okp_mcp never modifies the OGX config (MCP connects directly)."""
+    ogx_config: dict[str, Any] = {}
+    enrich_okp_mcp(ogx_config, _OKP_RAG_CONFIG, {})
+    assert not ogx_config
+
+
+def test_enrich_okp_mcp_injects_nothing_when_disabled() -> None:
+    """enrich_okp_mcp is a no-op even when OKP is not an enabled source."""
+    ogx_config: dict[str, Any] = {}
+    enrich_okp_mcp(ogx_config, {"inline": [], "tool": []}, {})
+    assert not ogx_config
+
+
+def test_enrich_okp_mcp_registers_no_solr_vector_io() -> None:
+    """The MCP transport must not register the Solr vector_io provider."""
+    ogx_config: dict[str, Any] = {"providers": {"vector_io": []}}
+    enrich_okp_mcp(ogx_config, _OKP_RAG_CONFIG, {})
+    provider_ids = [p["provider_id"] for p in ogx_config["providers"]["vector_io"]]
+    assert "okp_solr" not in provider_ids
 
 
 def test_enrich_solr_skips_when_not_enabled() -> None:
