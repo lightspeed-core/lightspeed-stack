@@ -9,9 +9,8 @@ packages:
   ]
 upgradePackages:
   [
-    libxslt,
-    libarchive,
-    python3-urllib3,
+    acl,
+    ffmpeg-free-rhai,
   ]
 contentOrigin:
   repofiles: ["./redhat.repo"]
