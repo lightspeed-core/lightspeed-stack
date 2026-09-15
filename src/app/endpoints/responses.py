@@ -1249,8 +1249,6 @@ async def response_generator(
             latest_response_object.output,
         )
 
-    yield "data: [DONE]\n\n"
-
 
 async def generate_response(
     generator: AsyncIterator[str],
@@ -1301,6 +1299,8 @@ async def generate_response(
             turn_summary.llm_response,
         )
         _finalize_responses_root_span(root_span, turn_summary)
+        # Persist conversation state before clients can close the stream.
+        yield "data: [DONE]\n\n"
     finally:
         root_span.end()
 
