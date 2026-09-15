@@ -485,7 +485,10 @@ class TestGetMCPTools:
         mocker.patch("utils.responses.configuration", mock_config)
         tools_k8s = await get_mcp_tools(token="user-k8s-token")
         assert len(tools_k8s) == 1
-        assert tools_k8s[0].authorization == "Bearer user-k8s-token"
+        # The Bearer scheme is stripped here since OGX adds its own "Bearer "
+        # prefix before forwarding the token to the MCP server; passing the
+        # scheme through would result in a duplicated "Bearer Bearer <token>".
+        assert tools_k8s[0].authorization == "user-k8s-token"
 
     @pytest.mark.asyncio
     async def test_get_mcp_tools_with_mcp_headers(self, mocker: MockerFixture) -> None:
@@ -623,7 +626,7 @@ class TestGetMCPTools:
 
         tools = await get_mcp_tools(token="k8s-token", mcp_headers=mcp_headers)
         assert len(tools) == 1
-        assert tools[0].authorization == "Bearer k8s-token"
+        assert tools[0].authorization == "k8s-token"
         assert tools[0].headers == {
             "X-API-Key": "secret-api-key",
             "X-Custom": "client-custom-value",
@@ -707,6 +710,40 @@ class TestGetMCPTools:
             "x-rh-identity": "encoded-identity",
             "x-request-id": "req-456",
         }
+
+    @pytest.mark.asyncio
+    async def test_get_mcp_tools_propagated_authorization_strips_bearer_scheme(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Regression test for a duplicated 'Bearer Bearer <token>' MCP header.
+
+        When an MCP server allowlists the incoming ``Authorization`` header
+        via ``headers: [Authorization]`` (no ``authorization_headers``
+        config), the propagated value already includes the ``Bearer``
+        scheme. Since OGX's MCP ``authorization`` field expects a raw token
+        and adds its own ``Bearer `` prefix, the scheme must be stripped
+        before it is assigned to that field, or the downstream MCP server
+        receives ``Authorization: Bearer Bearer <token>``.
+        """
+        servers = [
+            ModelContextProtocolServer(
+                name="subscription-watch",
+                url="http://subscription-watch:8080",
+                headers=["Authorization"],
+                provider_id="provider",
+            ),
+        ]
+        mock_config = mocker.Mock()
+        mock_config.mcp_servers = servers
+        mocker.patch("utils.responses.configuration", mock_config)
+
+        request_headers = {"Authorization": "Bearer user-jwt-token"}
+        tools = await get_mcp_tools(
+            token=None, mcp_headers=None, request_headers=request_headers
+        )
+        assert len(tools) == 1
+        assert tools[0].authorization == "user-jwt-token"
+        assert tools[0].headers is None
 
     @pytest.mark.asyncio
     async def test_get_mcp_tools_propagated_headers_do_not_overwrite_auth_headers(
@@ -815,7 +852,7 @@ class TestGetMCPTools:
             token=None, mcp_headers=mcp_hdrs, request_headers=request_headers
         )
         assert len(tools) == 1
-        assert tools[0].authorization == "Bearer client-token"
+        assert tools[0].authorization == "client-token"
         assert tools[0].headers == {"x-rh-identity": "identity-value"}
 
     @pytest.mark.asyncio
@@ -933,6 +970,48 @@ class TestInputToolMCPTypeDiscriminator:
         assert len(out) == 1
         dumped = out[0].model_dump(exclude_unset=True)
         assert dumped.get("type") == "mcp"
+
+    def test_apply_mcp_headers_strips_bearer_from_propagated_authorization(
+        self, mocker: MockerFixture
+    ) -> None:
+        """apply_mcp_headers_to_explicit_tools must strip the Bearer scheme.
+
+        Same regression as ``test_get_mcp_tools_propagated_authorization_strips_bearer_scheme``
+        but for the explicit-tools path: a propagated ``Authorization`` header
+        must not retain its ``Bearer`` scheme when assigned to OGX's
+        ``authorization`` field, or the MCP server receives a duplicated
+        ``Bearer Bearer <token>`` header.
+        """
+        from utils.responses import (  # pylint: disable=import-outside-toplevel
+            apply_mcp_headers_to_explicit_tools,
+        )
+
+        servers = [
+            ModelContextProtocolServer(
+                name="subscription-watch",
+                url="http://subscription-watch:8080",
+                headers=["Authorization"],
+                provider_id="mcp",
+            ),
+        ]
+        mock_config = mocker.Mock()
+        mock_config.mcp_servers = servers
+        mocker.patch("utils.responses.configuration", mock_config)
+
+        explicit = InputToolMCP(
+            server_label="subscription-watch",
+            server_url="http://subscription-watch:8080",
+        )
+
+        out = apply_mcp_headers_to_explicit_tools(
+            [explicit],
+            token=None,
+            mcp_headers=None,
+            request_headers={"Authorization": "Bearer user-jwt-token"},
+        )
+
+        assert len(out) == 1
+        assert out[0].authorization == "user-jwt-token"
 
 
 class TestGetTopicSummary:

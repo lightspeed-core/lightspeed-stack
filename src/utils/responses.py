@@ -118,6 +118,7 @@ from utils.mcp.mcp_headers import (
     McpHeaders,
     build_mcp_headers,
     find_unresolved_auth_headers,
+    strip_bearer_prefix,
 )
 from utils.model_list import parse_model_list_response
 from utils.otel_tracing import (
@@ -781,6 +782,13 @@ async def get_mcp_tools(
             continue
 
         authorization = headers.pop("Authorization", None)
+        if authorization is not None:
+            # OGX's "authorization" field expects a raw token/credential and
+            # prepends its own "Bearer " scheme downstream; strip any scheme
+            # already present (e.g. from Kubernetes auth or a propagated
+            # request header) to avoid a duplicated "Bearer Bearer <token>"
+            # header at the MCP server.
+            authorization = strip_bearer_prefix(authorization)
 
         require_approval = (
             mcp_server.require_approval
@@ -860,6 +868,10 @@ def apply_mcp_headers_to_explicit_tools(
             continue
 
         authorization = headers.pop("Authorization", None)
+        if authorization is not None:
+            # See the equivalent comment in get_mcp_tools: OGX prepends its
+            # own "Bearer " scheme, so strip any scheme already present here.
+            authorization = strip_bearer_prefix(authorization)
         out.append(
             mcp_tool.model_copy(
                 update={

@@ -129,6 +129,50 @@ def extract_propagated_headers(
     return propagated
 
 
+def strip_bearer_prefix(value: str) -> str:
+    """Strip a leading ``Bearer`` scheme from an Authorization header value.
+
+    OGX's MCP tool ``authorization`` field expects a raw token/credential and
+    unconditionally prepends its own ``Bearer `` prefix before forwarding the
+    request to the downstream MCP server. Values built by this module (e.g.
+    the resolved Kubernetes token, or an ``Authorization`` header propagated
+    verbatim from the incoming request) already include the ``Bearer`` scheme
+    since that's the correct on-the-wire header representation. Passing such
+    a value straight through to OGX's ``authorization`` field would result in
+    a duplicated ``Bearer Bearer <token>`` header at the downstream MCP
+    server, so callers that populate that field must strip the scheme first.
+
+    Args:
+        value: The raw Authorization header value, with or without a
+            ``Bearer`` scheme.
+
+    Returns:
+        The value with a leading ``Bearer`` scheme (exact casing) and its
+        separating whitespace removed. Values without the scheme, including
+        those with a differently-cased scheme (e.g. ``bearer``), are
+        returned unchanged.
+    """
+    return value.removeprefix("Bearer ")
+
+
+def ensure_bearer_prefix(value: str) -> str:
+    """Ensure an Authorization header value carries the ``Bearer`` scheme.
+
+    Idempotent counterpart to :func:`strip_bearer_prefix`: a value that
+    already has the exact ``Bearer`` scheme is not double-prefixed, while a
+    raw token (or a value with a differently-cased scheme, e.g. ``bearer``,
+    which is treated as a raw token) gets the ``Bearer`` scheme added.
+
+    Args:
+        value: A raw token, or a value that may already start with the
+            exact ``Bearer`` scheme.
+
+    Returns:
+        The value guaranteed to start with a single ``Bearer `` prefix.
+    """
+    return f"Bearer {strip_bearer_prefix(value)}"
+
+
 def find_unresolved_auth_headers(
     configured: Mapping[str, str],
     resolved: Mapping[str, str],

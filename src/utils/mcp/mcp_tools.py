@@ -11,6 +11,7 @@ from mcp.client.streamable_http import streamable_http_client
 
 from log import get_logger
 from models.common.tools import ListedMcpTool
+from utils.mcp.mcp_headers import ensure_bearer_prefix
 
 logger = get_logger(__name__)
 
@@ -106,12 +107,8 @@ def _prepare_mcp_request_headers(headers: dict[str, str]) -> dict[str, str]:
     """
     prepared = dict(headers)
     for header_name, value in list(prepared.items()):
-        if (
-            header_name.lower() == "authorization"
-            and value
-            and not value.startswith("Bearer ")
-        ):
-            prepared[header_name] = f"Bearer {value}"
+        if header_name.lower() == "authorization" and value:
+            prepared[header_name] = ensure_bearer_prefix(value)
     return prepared
 
 

@@ -15,7 +15,7 @@ import constants
 from configuration import AppConfig
 from log import get_logger
 from models.api.responses.error import UnauthorizedResponse
-from utils.mcp.mcp_headers import McpHeaders, build_mcp_headers
+from utils.mcp.mcp_headers import McpHeaders, build_mcp_headers, ensure_bearer_prefix
 
 logger = get_logger(__name__)
 
@@ -57,14 +57,9 @@ async def check_mcp_auth(
     for mcp_server in configuration.mcp_servers:
         headers = complete_headers.get(mcp_server.name, {})
         auth_header = headers.get("Authorization")
-        if auth_header is not None:
-            authorization = (
-                auth_header
-                if auth_header.startswith("Bearer ")
-                else f"Bearer {auth_header}"
-            )
-        else:
-            authorization = None
+        authorization = (
+            ensure_bearer_prefix(auth_header) if auth_header is not None else None
+        )
 
         if (
             authorization
