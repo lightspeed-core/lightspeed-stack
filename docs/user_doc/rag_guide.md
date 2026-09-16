@@ -395,6 +395,31 @@ Example:
 }
 ```
 
+The `solr` field and its `fq`/structured filters are Solr-specific. For a
+backend-neutral, forward-compatible product/version filter that works across
+**both** OKP transports (the RHOKP MCP server and the legacy Solr path), use the
+request field **`okp`** instead. It carries a list of product selections, each
+scoping its own exact-match versions (no wildcards), so an invalid
+product/version pairing is not representable. A query-time `okp` filter overrides
+the launch-time `rag.okp.mcp.product`/`product_version` configuration.
+
+```json
+{
+  "query": "How do I configure routes?",
+  "okp": {
+    "products": [
+      { "product": "openshift_container_platform", "versions": ["4.16", "4.17"] }
+    ]
+  }
+}
+```
+
+Multiple products are OR'd; a product with no `versions` matches regardless of
+version. On the MCP transport each (product, version) pair becomes one search and
+the results are merged, deduplicated, and capped at `rag.okp.max_chunks`. Prefer
+`okp` over `solr` for product/version filtering; `solr` remains for Solr-specific
+needs during the OGX/Solr transition.
+
 **Prerequisites:**
 
 - The OKP server must be running and accessible at the URL given in `rag.okp.rhokp_url` (or `${env.RH_SERVER_OKP}`).
