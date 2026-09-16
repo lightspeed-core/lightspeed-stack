@@ -117,7 +117,10 @@ COPY --from=builder /app-root/LICENSE /licenses/
 USER root
 
 # Additional tools for derived images
-RUN ${RUNTIME_DNF_COMMAND} install -y --nodocs --setopt=keepcache=0 --setopt=tsflags=nodocs jq patch
+# Note: --allowerasing is only supported by dnf, not microdnf (used by the
+# *-minimal base images), so it is only appended when RUNTIME_DNF_COMMAND=dnf.
+RUN ${RUNTIME_DNF_COMMAND} install -y --nodocs --setopt=keepcache=0 --setopt=tsflags=nodocs jq patch && \
+    ${RUNTIME_DNF_COMMAND} update -y --nodocs --setopt=keepcache=0 --setopt=tsflags=nodocs
 
 # Create OGX directories for library mode
 RUN mkdir -p /opt/app-root/src/.llama/storage /opt/app-root/src/.llama/providers.d && \
