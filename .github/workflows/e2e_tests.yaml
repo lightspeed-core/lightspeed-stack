@@ -52,11 +52,9 @@ jobs:
                   for i in (1, 2, 3)
               ]
               skip_library_tls = False
-          elif target in ("main", "release/0.7"):
+          else:
               shards = cfg_shards
               skip_library_tls = True
-          else:
-              raise SystemExit(f"No E2E matrix for target branch {target!r}")
 
           include = []
           for mode in ("server", "library"):
