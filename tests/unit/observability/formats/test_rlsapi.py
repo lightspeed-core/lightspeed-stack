@@ -65,7 +65,7 @@ def test_builds_event_with_token_counts(mocker: MockerFixture) -> None:
         org_id="org1",
         system_id="sys1",
         request_id="req_1",
-        cla_version="CLA/1.0",
+        cla_version=f"CLA/{__version__}",
         system_os="RHEL",
         system_version="9.4",
         system_arch="x86_64",

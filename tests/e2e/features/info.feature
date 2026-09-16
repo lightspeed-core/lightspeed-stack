@@ -21,7 +21,6 @@ Feature: Info tests
       And The body of the response has proper name Lightspeed Core Service (LCS) and version 0.7.0rc3
       And The body of the response has ogx version 1.2.5
 
-
   Scenario: Check if tools endpoint is working
      When I access REST API endpoint "tools" using HTTP GET method
      Then The status code of the response is 200

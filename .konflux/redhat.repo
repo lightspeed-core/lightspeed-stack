@@ -11,6 +11,7 @@ metadata_expire = 86400
 enabled_metadata = 0
 sslclientkey = $SSL_CLIENT_KEY
 sslclientcert = $SSL_CLIENT_CERT
+excludepkgs=*.i686
 
 [rhel-9-for-$basearch-appstream-eus-rpms__9_DOT_6]
 name = Red Hat Enterprise Linux 9 for $basearch - AppStream - Extended Update Support (RPMs)
@@ -25,6 +26,7 @@ metadata_expire = 86400
 enabled_metadata = 0
 sslclientkey = $SSL_CLIENT_KEY
 sslclientcert = $SSL_CLIENT_CERT
+excludepkgs=*.i686
 
 [rhel-9-for-$basearch-baseos-eus-rpms__9_DOT_6]
 name = Red Hat Enterprise Linux 9 for $basearch - BaseOS - Extended Update Support (RPMs)

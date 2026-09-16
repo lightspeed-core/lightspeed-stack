@@ -2670,6 +2670,8 @@ class ByokConfiguration(ConfigurationBase):
 class OkpConfiguration(ConfigurationBase):
     """OKP (Offline Knowledge Portal) provider configuration.
 
+    Deprecated: The Solr vector provider used by OKP RAG is deprecated.
+
     Controls provider-specific behaviour for the OKP vector store.
     Only relevant when ``"okp"`` is listed in ``rag.retrieval.inline.sources``
     or ``rag.retrieval.tool.sources``.
@@ -2730,7 +2732,8 @@ class RagConfiguration(ConfigurationBase):
     okp: OkpConfiguration = Field(
         default_factory=OkpConfiguration,
         title="OKP configuration",
-        description=f"OKP provider settings. Only used when '{constants.OKP_RAG_ID}' "
+        description=f"Deprecated: The Solr vector provider used by OKP RAG is deprecated. "
+        f"OKP provider settings. Only used when '{constants.OKP_RAG_ID}' "
         "is listed in retrieval.inline.sources or retrieval.tool.sources.",
     )
 

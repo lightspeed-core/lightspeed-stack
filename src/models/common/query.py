@@ -137,6 +137,8 @@ class Attachment(BaseModel):
 class SolrVectorSearchRequest(BaseModel):
     """LCORE Solr inline RAG options for vector_io.query (mode and provider filters).
 
+    Deprecated: The Solr vector provider used by OKP RAG is deprecated.
+
     Attributes:
         mode: Solr vector_io search mode. When omitted, the configured OKP default is used.
         filters: Solr provider filter payload passed through as params['solr'].
