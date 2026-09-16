@@ -57,10 +57,10 @@ async def test_call_okp_search_forwards_headers_and_timeout(
 
 
 @pytest.mark.asyncio
-async def test_call_okp_search_omits_product_filters_when_none(
+async def test_call_okp_search_omits_products_when_none(
     mocker: MockerFixture,
 ) -> None:
-    """Product filters are absent from the tool args when not supplied."""
+    """The products filter is absent from the tool args when not supplied."""
     toolset = mocker.Mock()
     toolset.direct_call_tool = mocker.AsyncMock(return_value={})
     mocker.patch.object(_client, "MCPToolset", return_value=toolset)
@@ -75,31 +75,47 @@ async def test_call_okp_search_omits_product_filters_when_none(
 
 
 @pytest.mark.asyncio
-async def test_call_okp_search_forwards_product_filters(
+async def test_call_okp_search_omits_products_when_empty(
     mocker: MockerFixture,
 ) -> None:
-    """Product and product_version are added to the tool args when supplied."""
+    """An empty products list is treated as no filter and omitted."""
     toolset = mocker.Mock()
     toolset.direct_call_tool = mocker.AsyncMock(return_value={})
     mocker.patch.object(_client, "MCPToolset", return_value=toolset)
 
     await _client.call_okp_search(
+        url="http://okp/mcp", tool_name="search", query="q", rows=5, products=[]
+    )
+
+    toolset.direct_call_tool.assert_awaited_once_with(
+        "search", {"query": "q", "rows": 5}
+    )
+
+
+@pytest.mark.asyncio
+async def test_call_okp_search_forwards_structured_products(
+    mocker: MockerFixture,
+) -> None:
+    """A structured products filter is forwarded verbatim in the tool args."""
+    toolset = mocker.Mock()
+    toolset.direct_call_tool = mocker.AsyncMock(return_value={})
+    mocker.patch.object(_client, "MCPToolset", return_value=toolset)
+
+    products = [
+        {"product": "openshift_container_platform", "versions": ["4.19", "4.20"]},
+        {"product": "rhel"},
+    ]
+    await _client.call_okp_search(
         url="http://okp/mcp",
         tool_name="search",
         query="q",
         rows=5,
-        product="openshift_container_platform",
-        product_version="4.20",
+        products=products,
     )
 
     toolset.direct_call_tool.assert_awaited_once_with(
         "search",
-        {
-            "query": "q",
-            "rows": 5,
-            "product": "openshift_container_platform",
-            "product_version": "4.20",
-        },
+        {"query": "q", "rows": 5, "products": products},
     )
 
 
