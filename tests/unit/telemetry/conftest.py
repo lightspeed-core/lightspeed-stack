@@ -241,8 +241,8 @@ SAMPLE_OGX_CONFIG: dict[str, Any] = {
         ],
         "safety": [
             {
-                "provider_id": "llama-guard",
-                "provider_type": "inline::llama-guard",
+                "provider_id": "content-filter",
+                "provider_type": "inline::content-filter",
                 "config": {},
             },
         ],
@@ -264,7 +264,7 @@ SAMPLE_OGX_CONFIG: dict[str, Any] = {
             },
         ],
         "shields": [
-            {"shield_id": "llama-guard", "provider_id": "llama-guard"},
+            {"shield_id": "content-filter", "provider_id": "content-filter"},
         ],
         "vector_stores": [],
     },

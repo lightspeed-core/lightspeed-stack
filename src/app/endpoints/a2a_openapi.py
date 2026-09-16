@@ -1,11 +1,12 @@
 """OpenAPI-only metadata for A2A JSON-RPC routes."""
 
-from typing import Any, Final
+from typing import Final
 
 from constants import MEDIA_TYPE_EVENT_STREAM, MEDIA_TYPE_JSON
+from utils.types import Responses
 
 # 200 may be buffered JSON-RPC (application/json) or SSE (text/event-stream).
-a2a_jsonrpc_responses: Final[dict[int | str, dict[str, Any]]] = {
+a2a_jsonrpc_responses: Final[Responses] = {
     200: {
         "description": "Successful response",
         "content": {

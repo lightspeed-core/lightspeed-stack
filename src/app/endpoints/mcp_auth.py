@@ -1,6 +1,6 @@
 """Handler for REST API calls related to MCP server authentication."""
 
-from typing import Annotated, Any
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request
 from opentelemetry import trace
@@ -23,13 +23,14 @@ from models.common import MCPServerAuthInfo
 from models.config import Action
 from utils.endpoints import check_configuration_loaded
 from utils.otel_tracing import SpanAttributes, set_span_attributes
+from utils.types import Responses
 
 logger = get_logger(__name__)
 tracer = trace.get_tracer(__name__)
 router = APIRouter(prefix="/mcp-auth", tags=["mcp-auth"])
 
 
-mcp_auth_responses: dict[int | str, dict[str, Any]] = {
+mcp_auth_responses: Responses = {
     200: MCPClientAuthOptionsResponse.openapi_response(),
     401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),

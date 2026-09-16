@@ -99,7 +99,7 @@ backends. Ship three backends: `granite_guardian` (chat-template invocation,
 custom risks), `openai_moderations` (any OpenAI-compatible `/v1/moderations`
 endpoint — this also covers OGX 1.x's `moderation_endpoint` services and
 TrustyAI gateways, making D a *deployment choice*, not an architecture), and
-`llama_stack_shields` (transitional bridge wrapping today's behavior).
+`ogx_shields` (transitional bridge wrapping today's behavior).
 The existing input-moderation path keeps working unchanged during the
 transition (see [S5](#decision-s5-fate-of-the-existing-shields-moderation-path)).
 
@@ -250,7 +250,7 @@ with `shield_ids` request-override semantics documented in
 | B — Replace immediately | Migrate the input path onto the new layer in this epic; remove the shields code. |
 
 **Recommendation**: **A** — additive now, deprecation decision deferred to
-the LCORE-1099 work. The `llama_stack_shields` detector backend gives
+the LCORE-1099 work. The `ogx_shields` detector backend gives
 deployments a config-level migration path in the meantime. No behavior
 change for existing deployments.
 
@@ -307,12 +307,12 @@ _No answer needed — this will be implemented as recommended unless you object.
 
 | Option | Description |
 |--------|-------------|
-| A — Protocol + per-type adapters | `DetectorBackend` protocol (`async check(content, rule) -> DetectionResult`); adapters: `granite_guardian`, `openai_moderations`, `llama_stack_shields`. |
+| A — Protocol + per-type adapters | `DetectorBackend` protocol (`async check(content, rule) -> DetectionResult`); adapters: `granite_guardian`, `openai_moderations`, `ogx_shields`. |
 | B — Single Guardian-only implementation | Simpler; closes the door on OGX 1.x moderation endpoints and TrustyAI gateways. |
 
 **Recommendation**: **A**. Guardian invocation is OpenAI chat-completions
 with the risk selected via the guardian chat template (system slot);
-`openai_moderations` maps categories to rules; `llama_stack_shields` wraps
+`openai_moderations` maps categories to rules; `ogx_shields` wraps
 the existing `run_shield_moderation` behavior.
 
 **Confidence**: 85%
@@ -812,7 +812,7 @@ runner executing a point's rules in parallel, and a hook in
 - Activation via `LCS_GUARDRAILS_POC_CONFIG` env var, not the `guardrails:`
   config section (avoids touching `Configuration`/OpenAPI in a throwaway).
 - Single detector (Granite Guardian via OpenAI-compatible endpoint); no
-  `openai_moderations` / `llama_stack_shields` backends.
+  `openai_moderations` / `ogx_shields` backends.
 - Tool-content check is post-hoc on collected tool results (Decision T5
   option B), not the gating capability hook (option A).
 - Output check is non-streaming `/v1/query` only; no streaming checkpoints.

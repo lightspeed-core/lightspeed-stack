@@ -1791,7 +1791,7 @@
                     },
                     "max_retries": {
                         "default": 2,
-                        "description": "Maximun number of retires",
+                        "description": "Maximun number of retries",
                         "minimum": 0,
                         "maximum": 5,
                         "title": "Max retries",
@@ -1819,7 +1819,7 @@
                         "title": "Verify SSL"
                     },
                     "risks": {
-                        "description": "Risks to be considered while applying this guradrail",
+                        "description": "Risks to be considered while applying this guardrail",
                         "items": {
                             "$ref": "`#/components/schemas/`RiskDefinition"
                         },

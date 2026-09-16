@@ -5,7 +5,7 @@ requests. Note that these endpoints can be accessed using GET or HEAD HTTP
 methods. For HEAD HTTP method, just the HTTP response code is used.
 """
 
-from typing import Annotated, Any
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, Response, status
 from ogx_client import ApiException
@@ -33,13 +33,14 @@ from models.common import (
 )
 from models.config import Action
 from utils.degraded_mode import DegradedModeTracker
+from utils.types import Responses
 
 logger = get_logger(__name__)
 tracer = trace.get_tracer(__name__)
 router = APIRouter(tags=["health"])
 
 
-get_readiness_responses: dict[int | str, dict[str, Any]] = {
+get_readiness_responses: Responses = {
     200: ReadinessResponse.openapi_response(),
     401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
@@ -48,7 +49,7 @@ get_readiness_responses: dict[int | str, dict[str, Any]] = {
     ),
 }
 
-get_liveness_responses: dict[int | str, dict[str, Any]] = {
+get_liveness_responses: Responses = {
     200: LivenessResponse.openapi_response(),
     401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),

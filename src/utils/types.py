@@ -1,9 +1,11 @@
 """Common types for the project."""
 
 from re import Pattern
-from typing import TypeVar, cast
+from typing import Any, TypeVar, cast
 
 type SingletonInstances = dict[type, object]
+
+type Responses = dict[int | str, dict[str, Any]]
 
 CompiledPatterns = list[tuple[Pattern[str], str]]
 

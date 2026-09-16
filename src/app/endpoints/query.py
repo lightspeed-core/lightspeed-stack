@@ -1,7 +1,7 @@
 """Handler for REST API call to provide answer to query using Response API."""
 
 import datetime
-from typing import Annotated, Any
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request
 from opentelemetry import trace
@@ -37,8 +37,8 @@ from utils.endpoints import (
     check_configuration_loaded,
     validate_and_retrieve_conversation,
 )
-from utils.mcp_headers import McpHeaders, mcp_headers_dependency
-from utils.mcp_oauth_probe import check_mcp_auth
+from utils.mcp.mcp_headers import McpHeaders, mcp_headers_dependency
+from utils.mcp.mcp_oauth_probe import check_mcp_auth
 from utils.otel_tracing import (
     SpanAttributes,
     SpanEvents,
@@ -61,13 +61,14 @@ from utils.responses import (
 )
 from utils.shields import run_shield_moderation, validate_shield_ids_override
 from utils.suid import normalize_conversation_id
+from utils.types import Responses
 from utils.vector_search import build_rag_context
 
 logger = get_logger(__name__)
 tracer = trace.get_tracer(__name__)
 router = APIRouter(tags=["query"])
 
-query_response: dict[int | str, dict[str, Any]] = {
+query_response: Responses = {
     200: QueryResponse.openapi_response(),
     401: UnauthorizedResponse.openapi_response(
         examples=UNAUTHORIZED_OPENAPI_EXAMPLES_WITH_MCP_OAUTH

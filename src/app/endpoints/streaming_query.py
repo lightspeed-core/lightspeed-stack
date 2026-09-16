@@ -3,7 +3,7 @@
 import asyncio
 import datetime
 from collections.abc import AsyncIterator
-from typing import Annotated, Any, Optional
+from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
@@ -60,8 +60,8 @@ from utils.endpoints import (
     check_configuration_loaded,
     validate_and_retrieve_conversation,
 )
-from utils.mcp_headers import McpHeaders, mcp_headers_dependency
-from utils.mcp_oauth_probe import check_mcp_auth
+from utils.mcp.mcp_headers import McpHeaders, mcp_headers_dependency
+from utils.mcp.mcp_oauth_probe import check_mcp_auth
 from utils.otel_tracing import (
     SpanAttributes,
     SpanEvents,
@@ -94,6 +94,7 @@ from utils.streaming_sse import (
     stream_start_event,
 )
 from utils.suid import get_suid, normalize_conversation_id
+from utils.types import Responses
 from utils.vector_search import build_rag_context
 
 logger = get_logger(__name__)
@@ -103,7 +104,7 @@ router = APIRouter(tags=["streaming_query"])
 # Tracks background topic summary tasks for graceful shutdown.
 _background_topic_summary_tasks: list[asyncio.Task[None]] = []
 
-streaming_query_responses: dict[int | str, dict[str, Any]] = {
+streaming_query_responses: Responses = {
     200: StreamingQueryResponse.openapi_response(),
     401: UnauthorizedResponse.openapi_response(
         examples=UNAUTHORIZED_OPENAPI_EXAMPLES_WITH_MCP_OAUTH

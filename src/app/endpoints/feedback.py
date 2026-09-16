@@ -38,6 +38,7 @@ from utils.otel_tracing import (
     set_span_attributes,
 )
 from utils.suid import get_suid
+from utils.types import Responses
 
 logger = get_logger(__name__)
 tracer = trace.get_tracer(__name__)
@@ -45,7 +46,7 @@ router = APIRouter(prefix="/feedback", tags=["feedback"])
 feedback_status_lock = threading.Lock()
 
 
-feedback_post_response: dict[int | str, dict[str, Any]] = {
+feedback_post_response: Responses = {
     200: FeedbackResponse.openapi_response(),
     401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
     403: ForbiddenResponse.openapi_response(examples=["endpoint", "feedback"]),
@@ -56,7 +57,7 @@ feedback_post_response: dict[int | str, dict[str, Any]] = {
     503: ServiceUnavailableResponse.openapi_response(examples=["kubernetes api"]),
 }
 
-feedback_put_response: dict[int | str, dict[str, Any]] = {
+feedback_put_response: Responses = {
     200: FeedbackStatusUpdateResponse.openapi_response(),
     401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
@@ -64,7 +65,7 @@ feedback_put_response: dict[int | str, dict[str, Any]] = {
     503: ServiceUnavailableResponse.openapi_response(examples=["kubernetes api"]),
 }
 
-feedback_get_response: dict[int | str, dict[str, Any]] = {
+feedback_get_response: Responses = {
     200: StatusResponse.openapi_response(),
 }
 

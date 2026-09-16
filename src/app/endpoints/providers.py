@@ -29,13 +29,14 @@ from models.api.responses.successful import (
 from models.config import Action
 from utils.endpoints import check_configuration_loaded
 from utils.ogx_serialization import dump_ogx_model
+from utils.types import Responses
 
 logger = get_logger(__name__)
 tracer = trace.get_tracer(__name__)
 router = APIRouter(tags=["providers"])
 
 
-providers_list_responses: dict[int | str, dict[str, Any]] = {
+providers_list_responses: Responses = {
     200: ProvidersListResponse.openapi_response(),
     401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
@@ -45,7 +46,7 @@ providers_list_responses: dict[int | str, dict[str, Any]] = {
     ),
 }
 
-provider_get_responses: dict[int | str, dict[str, Any]] = {
+provider_get_responses: Responses = {
     200: ProviderResponse.openapi_response(),
     401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),

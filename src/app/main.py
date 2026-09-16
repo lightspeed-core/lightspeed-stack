@@ -67,7 +67,13 @@ _OPENAPI_TAGS: Final[list[dict[str, str]]] = [
     {"name": "streaming_query", "description": "Streaming query (SSE)."},
     {"name": "streaming_query_interrupt", "description": "Streaming interrupt."},
     {"name": "tools", "description": "Tools."},
-    {"name": "vector-stores", "description": "Vector stores and files."},
+    {
+        "name": "vector-stores",
+        "description": (
+            "Vector stores and files (OGX proxy). Deprecated: will be removed in "
+            "the next LCS release."
+        ),
+    },
 ]
 
 

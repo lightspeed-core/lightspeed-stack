@@ -1,6 +1,6 @@
 """Handler for REST API call to provide info."""
 
-from typing import Annotated, Any
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from ogx_client import ApiException
@@ -21,6 +21,7 @@ from models.api.responses.error import (
 from models.api.responses.successful import InfoResponse
 from models.config import Action
 from utils.otel_tracing import set_span_attributes
+from utils.types import Responses
 from version import __version__
 
 logger = get_logger(__name__)
@@ -28,7 +29,7 @@ tracer = trace.get_tracer(__name__)
 router = APIRouter(tags=["info"])
 
 
-get_info_responses: dict[int | str, dict[str, Any]] = {
+get_info_responses: Responses = {
     200: InfoResponse.openapi_response(),
     401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),

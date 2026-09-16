@@ -706,13 +706,13 @@ Configuration for the Granite Guardian moderation guardrail.
 |-------|------|-------------|
 | url | string | The model_id to use for the guard |
 | api_key | string | API key for the inference |
-| max_retries | integer | Maximun number of retires |
+| max_retries | integer | Maximun number of retries |
 | timeout | integer | Request timeout in seconds |
 | verify_ssl |  | SSL certificate verification. Can be:
   - True: Verify using system CA bundle (default, recommended)
   - False: Disable verification (insecure, for dev only)
   - str: Path to custom CA bundle file (for internal PKI) |
-| risks | array | Risks to be considered while applying this guradrail |
+| risks | array | Risks to be considered while applying this guardrail |
 
 
 ## GraniteGuardianShieldConfiguration

@@ -52,22 +52,6 @@ Function to transform a JSON Schema-like dictionary into an OpenAPI-compatible s
 
 Utilities for repairing truncated markdown content.
 
-## [mcp_auth_headers.py](mcp_auth_headers.py)
-
-Utilities for resolving MCP server authorization headers.
-
-## [mcp_headers.py](mcp_headers.py)
-
-MCP headers handling.
-
-## [mcp_oauth_probe.py](mcp_oauth_probe.py)
-
-Probe MCP servers for OAuth and raise 401 with WWW-Authenticate when required.
-
-## [mcp_tools.py](mcp_tools.py)
-
-Utilities for discovering tools from remote MCP servers without OGX.
-
 ## [model_list.py](model_list.py)
 
 Helpers for normalizing OGX ``models.list()`` union responses.
@@ -143,10 +127,6 @@ Pre-LLM-call token estimation.
 ## [tool_formatter.py](tool_formatter.py)
 
 Utility functions for formatting and parsing MCP tool descriptions.
-
-## [transcripts.py](transcripts.py)
-
-Transcript handling.
 
 ## [types.py](types.py)
 

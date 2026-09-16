@@ -1,6 +1,6 @@
 """Endpoint for interrupting in-progress streaming query requests."""
 
-from typing import Annotated, Any
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
 from opentelemetry import trace
@@ -25,11 +25,12 @@ from utils.stream_interrupts import (
     StreamInterruptRegistry,
     get_stream_interrupt_registry,
 )
+from utils.types import Responses
 
 router = APIRouter(tags=["streaming_query_interrupt"])
 tracer = trace.get_tracer(__name__)
 
-stream_interrupt_responses: dict[int | str, dict[str, Any]] = {
+stream_interrupt_responses: Responses = {
     200: StreamingInterruptResponse.openapi_response(),
     401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),

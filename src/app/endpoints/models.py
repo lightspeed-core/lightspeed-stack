@@ -1,6 +1,6 @@
 """Handler for REST API call to list available models."""
 
-from typing import Annotated, Any
+from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.params import Depends
@@ -25,13 +25,14 @@ from models.api.responses.successful import ModelsResponse
 from models.config import Action
 from utils.endpoints import check_configuration_loaded
 from utils.model_list import parse_model_list_response
+from utils.types import Responses
 
 logger = get_logger(__name__)
 tracer = trace.get_tracer(__name__)
 router = APIRouter(tags=["models"])
 
 
-models_responses: dict[int | str, dict[str, Any]] = {
+models_responses: Responses = {
     200: ModelsResponse.openapi_response(),
     401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),

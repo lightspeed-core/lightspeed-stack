@@ -9,6 +9,11 @@ This split increases the chance of misconfiguration, makes downstream
 deployment templates larger, and forces every Lightspeed team to understand
 OGX's internal schema. LCORE-836 asks for a single source of truth.
 
+**Naming note:** Early drafts and the PoC used `llama_stack` /
+`ogx.config`. The shipped implementation uses `ogx` /
+`ogx.config`; `llama_stack` remains accepted as a deprecated YAML-section
+alias (`accept_llama_stack_section_alias` in `src/models/config.py`).
+
 **The recommendation**: A layered approach — Option C (high-level keys +
 `native_override` escape hatch) as the base structure, with Option D
 (profiles) enabled as an optional layer on top. See
@@ -16,7 +21,7 @@ OGX's internal schema. LCORE-836 asks for a single source of truth.
 option and [Design alternatives considered](#design-alternatives-considered)
 for the scoring.
 
-- **High-level keys** in `lightspeed-stack.yaml` under a new `llama_stack.config`
+- **High-level keys** in `lightspeed-stack.yaml` under a new `ogx.config`
   section (inference, later storage/safety/...). Most downstream teams write
   only these.
 - **`native_override`** escape hatch under the same section — raw OGX
@@ -27,15 +32,15 @@ for the scoring.
   beyond one or two reference examples under `examples/profiles/`.
 - **`baseline: default | empty`** selects whether the synthesis starts from
   LCORE's built-in baseline or a blank slate.
-- **Legacy mode preserved**: existing `llama_stack.library_client_config_path`
+- **Legacy mode preserved**: existing `ogx.library_client_config_path`
   works unchanged through a deprecation window. Mutual exclusion with the new
-  `llama_stack.config` block is enforced at load time.
+  `ogx.config` block is enforced at load time.
 - **Migration tool**: `lightspeed-stack --migrate-config` produces a unified
   single-file config from an existing (`run.yaml` + `lightspeed-stack.yaml`)
   pair, lossless round-trip.
 
 **PoC validation**: A library-mode PoC proves the mechanism end-to-end.
-A unified `lightspeed-stack.yaml` containing only `llama_stack.config`
+A unified `lightspeed-stack.yaml` containing only `ogx.config`
 (no external `run.yaml`) successfully drives LCORE:
 liveness/readiness green, `/v1/query` returns a real model response,
 `native_override` demonstrably takes effect. Full unit-test suite passes
@@ -49,10 +54,10 @@ library-mode PoC and unit tests.
 
 ## Design options A–E
 
-- **A (Embedded native)** — `llama_stack.config` is the raw OGX
+- **A (Embedded native)** — `ogx.config` is the raw OGX
   schema, verbatim. Same surface area downstream teams see today, just
   moved into one file. No abstraction win.
-- **B (High-level only)** — `llama_stack.config` exposes only LCORE-defined
+- **B (High-level only)** — `ogx.config` exposes only LCORE-defined
   high-level keys (e.g. `inference.providers`). Best UX when every operator
   intent maps cleanly; painful at the edges where the high-level schema
   doesn't yet cover a need (no escape hatch).
@@ -60,7 +65,7 @@ library-mode PoC and unit tests.
   a raw-LS `native_override` block deep-merged last as an escape hatch.
   Combines B's UX with A's flexibility. **Recommended (Decision S1).**
 - **D (Profiles)** — a user-authored YAML file pointed to by
-  `llama_stack.config.profile: <path>`, used as the synthesis baseline
+  `ogx.config.profile: <path>`, used as the synthesis baseline
   instead of LCORE's built-in default. A composable *layer* on top of
   A/B/C, not a standalone shape. LCORE ships the mechanism; downstream
   teams (or operators) author the YAML.
@@ -83,7 +88,7 @@ for the scoring.
 
 | Option | Standalone shape |
 |---|---|
-| A (Embedded native) | `llama_stack.config` is raw LS schema, verbatim |
+| A (Embedded native) | `ogx.config` is raw LS schema, verbatim |
 | B (High-level only) | LCORE-defined high-level keys; no escape hatch |
 | **C (B + `native_override`)** | High-level keys + raw-LS escape hatch |
 | E (Kustomize-style patches) | Default baseline + JSON-Patch-like overlays |
@@ -140,24 +145,24 @@ above pulled in, this spike's JIRAs grow accordingly.
 
 **Context**: S1 places the unified config's high-level keys
 (`inference.providers` today; later `rag.providers`, etc.) inside the
-LS-specific subtree at `llama_stack.config.inference`. LCORE will migrate
+OGX-specific subtree at `ogx.config.inference`. LCORE will migrate
 from OGX to Pydantic AI over time. Under S1's layout, that
 transition would force every downstream team to relearn the config schema —
-the `llama_stack` subtree name becomes a lie, and high-level keys would
+the nested backend subtree would become misleading, and high-level keys would
 have to move.
 
 **Recommendation**: lift the backend-agnostic keys to the top level of
-`lightspeed-stack.yaml` now. Leave LS-specific knobs under
-`llama_stack.config`. Extends S1; does not replace it (Option C + optional
+`lightspeed-stack.yaml` now. Leave OGX-specific knobs under
+`ogx.config`. Extends S1; does not replace it (Option C + optional
 D recommendation stands).
 
 | Today (per S1) | Proposed |
 |---|---|
-| `llama_stack.config.inference.providers: …` | `inference.providers: …` |
-| `llama_stack.config.native_override: …` | unchanged — LS-specific |
-| `llama_stack.config.profile: …` | unchanged — LS-specific (points at LS run.yaml shape) |
-| `llama_stack.config.baseline: …` | unchanged — LS-specific |
-| Future RAG / safety / vector_io / shield high-level keys | stay under `llama_stack.config` — Pydantic AI has no equivalent abstraction (see "Pydantic AI research findings" below) |
+| `ogx.config.inference.providers: …` | `inference.providers: …` |
+| `ogx.config.native_override: …` | unchanged — OGX-specific |
+| `ogx.config.profile: …` | unchanged — OGX-specific (points at OGX run.yaml shape) |
+| `ogx.config.baseline: …` | unchanged — OGX-specific |
+| Future RAG / safety / vector_io / shield high-level keys | stay under `ogx.config` — Pydantic AI has no equivalent abstraction (see "Pydantic AI research findings" below) |
 
 The synthesizer reads `inference.providers` from the top level and emits LS
 provider entries exactly as today — only the input node moves. When the
@@ -173,22 +178,22 @@ for query-time routing). Rather than add a competing top-level key, S5
 **extends that existing section** with a `providers:` list. So
 `inference.providers` is the high-level synthesis input, while
 `inference.default_model` / `default_provider` keep their current
-meaning. (The PoC had this list under `llama_stack.config.inference`;
+meaning. (The PoC had this list under `ogx.config.inference`;
 this decision is what moves it.)
 
 **Mode-detection knock-on.** Because the `inference:` section always
 exists (it carries defaults), unified mode is signalled by
 `inference.providers` being **non-empty** — or by the presence of
-`llama_stack.config` — not by the section merely existing. This expands
-Decision T1's shape rule from "`llama_stack.config` present" to "any
+`ogx.config` — not by the section merely existing. This expands
+Decision T1's shape rule from "`ogx.config` present" to "any
 *synthesis input* present"; see the spec doc's "Mode detection" table.
 
-**Scope discipline — what stays under `llama_stack.config`**: anything
+**Scope discipline — what stays under `ogx.config`**: anything
 whose vocabulary is genuinely LS-specific and unlikely to translate across
 backends. Today that's `native_override`, `profile`, `baseline`. The
 research pass (see below) confirms that RAG, safety/shields, vector
 storage, and the `apis` / `registered_resources` / `storage` blocks should
-also stay under `llama_stack.config` whenever they ship as high-level keys
+also stay under `ogx.config` whenever they ship as high-level keys
 — Pydantic AI has **no equivalent built-in abstraction** for any of these.
 
 **On the `inference.providers[].type` vocabulary**: keep LCORE's existing
@@ -212,7 +217,7 @@ pass dated 2026-05-20 against `pydantic-ai 1.98.0`):
   OpenAI SDK for embeddings; there is no `pydantic_ai.vector_store`
   module and no public roadmap signal one is coming in the next 6–12
   months. **Do not preemptively abstract `rag.*`** — keep any future
-  high-level RAG keys under `llama_stack.config`. Researcher confidence
+  high-level RAG keys under `ogx.config`. Researcher confidence
   it would survive a cutover today: ~25%.
 - Pydantic AI ships **no built-in safety / shield abstraction**.
   `pydantic-ai` Issue #1197 ("Guardrails") is open with no merge
@@ -220,7 +225,7 @@ pass dated 2026-05-20 against `pydantic-ai 1.98.0`):
   (`pydantic-ai-shields`, `pydantic-ai-guardrails`) exist but have
   incompatible vocabularies with each other and with Llama Guard. **Do
   not preemptively abstract `safety.*`** — keep any future high-level
-  safety keys under `llama_stack.config`. Researcher confidence on
+  safety keys under `ogx.config`. Researcher confidence on
   survival: ~20%.
 - MCP endpoints are the one tool-runtime concept worth abstracting
   later (~60% confidence): both backends support MCP natively and the
@@ -239,7 +244,7 @@ the inherent risk that the per-Agent model the researcher described
 forces LCORE's synthesizer to do more work than expected. Both manageable.
 
 **Implementation impact**: if adopted, this changes the scope of the
-existing **Unified `llama_stack.config` schema + synthesizer** JIRA — it
+existing **Unified `ogx.config` schema + synthesizer** JIRA — it
 ships the top-level shape from day one. No new JIRA is needed.
 
 ---
@@ -255,7 +260,7 @@ How does LCORE tell unified-mode configs from legacy-mode configs?
 
 | Option | Works by |
 |---|---|
-| Shape only | Presence of `llama_stack.config` → unified; else legacy |
+| Shape only | Presence of `ogx.config` → unified; else legacy |
 | Version field only | Explicit `config_format_version: 2` required |
 | **Both (soft-coupled)** | Shape decides; version field optional but must agree when present |
 
@@ -266,13 +271,13 @@ version field today. Confidence: 75%.
 **S5 knock-on**: since Decision S5 lifts the high-level `inference`
 section to the top level, the detected "shape" is the presence of any
 *synthesis input* — top-level `inference.providers` (non-empty) **or**
-`llama_stack.config` — not just `llama_stack.config`. The soft-coupled
+`ogx.config` — not just `ogx.config`. The soft-coupled
 version-field stance is unchanged. See the spec doc's "Mode detection"
 table for the full combination matrix.
 
 ### Decision T2: Override precedence (inside Option C)
 
-When `llama_stack.config.native_override` overlaps with a high-level key,
+When `ogx.config.native_override` overlaps with a high-level key,
 what semantics?
 
 | Strategy | Example: `safety: {excluded_categories: [a, b]}` vs override `{excluded_categories: [c]}` |
@@ -308,7 +313,7 @@ Where the synthesized `run.yaml` goes at runtime:
 
 | Option | Path |
 |---|---|
-| Temp file | `$TMPDIR/llama_stack_synthesized_config.yaml` |
+| Temp file | `./.generated/run.yaml (`DEFAULT_SYNTHESIZED_CONFIG_PATH`)` |
 | **Persistent known path** | Local: `./.generated/run.yaml` or `~/.local/state/lightspeed-stack/run.yaml`; Container: `/app-root/.generated/run.yaml`. Overwrite on each boot. |
 
 **Recommendation**: **persistent known path, overwrite on boot**. Debuggable,
@@ -360,7 +365,7 @@ caller pick the synthesis starting point.
   that `native_override` is the only thing the synthesizer sees.
 
 **Recommendation**: **accept this field, with `default` as the default value**.
-That preserves the zero-config "fresh user authors `llama_stack.config` and
+That preserves the zero-config "fresh user authors `ogx.config` and
 gets a working LS baseline" UX; the migration tool sets `baseline: empty`
 explicitly so the migrate-then-synthesize loop above matches the original
 `run.yaml`. Alternatives (`inherit_defaults: bool`, `starting_point: ...`)
@@ -399,7 +404,7 @@ server-mode wiring, and the legacy deprecation warning.
 **Goals**:
 
 - A unified `lightspeed-stack.yaml` (a top-level `inference.providers`
-  section and/or a `llama_stack.config` block) drives LCORE in both
+  section and/or a `ogx.config` block) drives LCORE in both
   library and server modes.
 - A lossless dumb-mode migration tool converts the legacy two-file pair.
 - Legacy mode keeps working with a startup deprecation WARN through the
@@ -408,7 +413,7 @@ server-mode wiring, and the legacy deprecation warning.
 **Scope**:
 
 - In: `UnifiedInferenceProvider` + `InferenceConfiguration.providers`,
-  `UnifiedLlamaStackConfig`, the synthesizer, `--migrate-config`, the LS
+  `UnifiedOgxConfig`, the synthesizer, `--migrate-config`, the LS
   container entrypoint + deployment artifacts, the deprecation WARN.
 - Out: smart migration factoring; high-level sections beyond `inference`
   (`rag` / `safety` stay backend-specific for now); LS process
@@ -417,13 +422,13 @@ server-mode wiring, and the legacy deprecation warning.
 
 <!-- type: Task -->
 <!-- key: LCORE-2336 -->
-#### LCORE-2336: Unified `llama_stack.config` schema + synthesizer
+#### LCORE-2336: Unified `ogx.config` schema + synthesizer
 
 **Description**: Implement the unified-mode config schema and the
 synthesizer that produces a full OGX `run.yaml` from it. The
 high-level `providers` list lives on the existing top-level
 `InferenceConfiguration` (`inference.providers`) — backend-agnostic, so
-it survives a future backend change — and `UnifiedLlamaStackConfig`
+it survives a future backend change — and `UnifiedOgxConfig`
 holds only the backend-specific knobs (`baseline` / `profile` /
 `native_override`). Wire library mode to the synthesizer. Preserve
 legacy mode through mutual-exclusion validation on the root
@@ -437,21 +442,21 @@ configuration model. (Full design: the spec doc.)
     `providers: list[UnifiedInferenceProvider]` (default empty) — this is
     the high-level synthesis input; `default_model` / `default_provider`
     keep their current query-routing meaning.
-  - Add `UnifiedLlamaStackConfig` (`baseline` / `profile` /
-    `native_override`) and a `config` field on `LlamaStackConfiguration`.
+  - Add `UnifiedOgxConfig` (`baseline` / `profile` /
+    `native_override`) and a `config` field on `OgxConfiguration`.
   - Add the unified-vs-legacy `@model_validator` to the **root**
     `Configuration` model (it spans top-level `inference.providers` and
-    `llama_stack.*`).
+    `ogx.*`).
 - New functions in `src/ogx_configuration.py`:
   `synthesize_configuration`, `deep_merge_list_replace`,
   `apply_high_level_inference`, `load_default_baseline`, `synthesize_to_file`.
 - A shipped default baseline at `src/data/default_run.yaml`.
-- Library-mode wiring in `src/client.py`: detect unified vs legacy
+- Library-mode wiring in `src/client/ogx.py`: detect unified vs legacy
   (synthesis input present vs `library_client_config_path`), write
   synthesized file, pass path to library client.
 - Cross-field validation: reject a synthesis input (`inference.providers`
   non-empty, or `config`) set together with `library_client_config_path`.
-- Legacy behavior (`llama_stack.library_client_config_path` path) unchanged.
+- Legacy behavior (`ogx.library_client_config_path` path) unchanged.
 
 **Acceptance criteria**:
 
@@ -467,10 +472,10 @@ configuration model. (Full design: the spec doc.)
 Read the "Architecture" and "Implementation Suggestions" sections of
 docs/design/ogx-config-merge/ogx-config-merge.md.
 Key files to create or modify:
-  src/models/config.py  (new classes; modify LlamaStackConfiguration)
+  src/models/config.py  (new classes; modify OgxConfiguration)
   src/ogx_configuration.py  (synthesize_configuration + helpers)
   src/data/default_run.yaml  (new)
-  src/client.py  (library-mode wiring)
+  src/client/ogx.py  (library-mode wiring)
 To verify: run a unified-mode config end-to-end via `uv run lightspeed-stack -c <config>` and confirm /v1/query succeeds.
 ```
 
@@ -481,7 +486,7 @@ To verify: run a unified-mode config end-to-end via `uv run lightspeed-stack -c 
 **Description**: Implement `--migrate-config` on the `lightspeed-stack` CLI
 that produces a unified single-file config from an existing
 (`run.yaml` + `lightspeed-stack.yaml`) pair. Dumb mode places the entire
-`run.yaml` body under `llama_stack.config.native_override` with
+`run.yaml` body under `ogx.config.native_override` with
 `baseline: empty`, removes `library_client_config_path`.
 
 **Scope**:
@@ -505,7 +510,7 @@ that produces a unified single-file config from an existing
 ```text
 Read "Migration / backwards compatibility" and "Appendix A — Worked example: legacy → unified migration" in docs/design/ogx-config-merge/ogx-config-merge.md.
 Key files: src/lightspeed_stack.py, src/ogx_configuration.py,
-tests/unit/test_llama_stack_synthesize.py.
+tests/unit/test_ogx_synthesize.py.
 To verify: migrate the repo's root run.yaml + lightspeed-stack.yaml, then
 start LCORE with the output; confirm /v1/query works.
 ```
@@ -555,8 +560,8 @@ to the migration doc. Legacy mode continues to fully function.
 
 **Scope**:
 
-- Warning emission point: on load in `LlamaStackConfiguration`
-  `check_llama_stack_model` validator, or at LCORE startup.
+- Warning emission point: on load in `OgxConfiguration`
+  `check_ogx_model` validator, or at LCORE startup.
 - Log line format includes a stable URL fragment to the migration doc.
 
 **Acceptance criteria**:
@@ -822,7 +827,7 @@ To verify: rendered docs present the unified mode first; legacy mode is visibly 
 files — one remote-provider (OpenAI) and one inline-provider (sentence-
 transformers + FAISS) — purely as reference material. Document how operators
 write and reference their own profiles via
-`llama_stack.config.profile: <path>`.
+`ogx.config.profile: <path>`.
 
 **Scope**:
 
@@ -955,8 +960,8 @@ Two files:
 
 - **`lightspeed-stack.yaml`** — LCORE settings: service host/port, auth,
   conversation cache, user data collection, MCP servers, authentication,
-  authorization, quota, etc. Also contains `llama_stack:` with
-  connection-to-LS settings (URL/api_key or library-client mode with a path
+  authorization, quota, etc. Also contains `ogx:` with
+  connection-to-OGX settings (URL/api_key or library-client mode with a path
   to an external `run.yaml`).
 - **`run.yaml`** — OGX operational config: `apis`, `providers`
   (inference, safety, tool_runtime, vector_io, agents, ...), `storage`,
@@ -969,7 +974,7 @@ Two files:
   BYOK RAG entries, Solr/OKP provider/store/model registration. Output is
   an enriched `run.yaml`.
 - Called in two places: `scripts/ogx-entrypoint.sh` at LS container
-  boot (server mode) and `src/client.py:_enrich_library_config()` (library
+  boot (server mode) and `src/client/ogx.py:_enrich_library_config()` (library
   mode).
 - LCORE-779 made this automatic; LCORE-518 (closed spike) proved (re)generation
   feasibility. Both are the groundwork the current spike builds on.
@@ -1107,7 +1112,7 @@ initializes, serves. One process.
 **Server mode**: OGX runs as a separate process (container). LCORE
 connects to it over HTTP. Under unified mode, the LS container's entrypoint
 reads the mounted `lightspeed-stack.yaml`, the Python CLI auto-detects
-unified mode, synthesizes `run.yaml`, then `exec llama stack run` with it.
+unified mode, synthesizes `run.yaml`, then `exec ogx stack run` with it.
 LCORE container reads the same `lightspeed-stack.yaml`, ignores the
 `config` sub-block (server mode — only connection fields matter), connects.
 Two processes. LCORE does **not** start, monitor, or supervise the LS
@@ -1130,8 +1135,8 @@ Detection rule at load time:
 
 | `lightspeed-stack.yaml` shape | Interpretation |
 |---|---|
-| `llama_stack.library_client_config_path` set, no `llama_stack.config` | **Legacy** — today's behavior |
-| `llama_stack.config.*` present | **Unified** — new path |
+| `ogx.library_client_config_path` set, no `ogx.config` | **Legacy** — today's behavior |
+| `ogx.config.*` present | **Unified** — new path |
 | Both present | Error at load time — clear message |
 | Neither (remote URL only, no config) | Existing remote mode — unchanged |
 
@@ -1151,14 +1156,14 @@ Relative to `upstream/main`:
 
 | File | Purpose |
 |---|---|
-| `src/models/config.py` | New classes: `UnifiedInferenceProvider`, `UnifiedInferenceSection`, `UnifiedLlamaStackConfig`; modified `LlamaStackConfiguration` (adds `config` field + mutual-exclusion validator). _PoC layout; the implementation follows Decision S5 — `inference.providers` on the top-level `InferenceConfiguration`, validator on the root `Configuration` model, no `UnifiedInferenceSection` (see the schema JIRA)._ |
+| `src/models/config.py` | New classes: `UnifiedInferenceProvider`, `UnifiedInferenceSection`, `UnifiedOgxConfig`; modified `OgxConfiguration` (adds `config` field + mutual-exclusion validator). _PoC layout; the implementation follows Decision S5 — `inference.providers` on the top-level `InferenceConfiguration`, validator on the root `Configuration` model, no `UnifiedInferenceSection` (see the schema JIRA)._ |
 | `src/ogx_configuration.py` | New: `synthesize_configuration`, `deep_merge_list_replace`, `apply_high_level_inference`, `load_default_baseline`, `synthesize_to_file`, `migrate_config_dumb`. CLI `main()` auto-detects unified vs legacy. |
 | `src/data/default_run.yaml` | Built-in default baseline (copied from repo root `run.yaml` for the PoC — implementation JIRA should slim it down; see PoC surprise about `EXTERNAL_PROVIDERS_DIR`) |
-| `src/client.py` | Library-mode path picks synthesis for unified configs, enrichment for legacy |
+| `src/client/ogx.py` | Library-mode path picks synthesis for unified configs, enrichment for legacy |
 | `src/lightspeed_stack.py` | `--migrate-config`, `--run-yaml`, `--migrate-output` flags |
 | `scripts/ogx-entrypoint.sh` | Comment updated — script itself needs no change (Python CLI auto-detects) |
 | `test.containerfile` | Copies `src/data/` into the LS container |
-| `tests/unit/test_llama_stack_synthesize.py` | 22 new tests: merge semantics, high-level inference, synthesize pipeline, migration round-trip |
+| `tests/unit/test_ogx_synthesize.py` | 22 new tests: merge semantics, high-level inference, synthesize pipeline, migration round-trip |
 | `tests/unit/models/config/test_ogx_configuration.py` | 3 new tests: unified/legacy mutual exclusion |
 | `tests/unit/models/config/test_dump_configuration.py` | 5 expected-dict updates (new `config: None` field appears in dumps) |
 | `tests/unit/test_client.py` | Error-message regex updated |
@@ -1191,5 +1196,5 @@ curl -s -X POST http://localhost:8080/v1/query \
   -d '{"query": "Name three primary colors. One sentence."}'
 
 # 3. Inspect what was synthesized
-cat /tmp/llama_stack_synthesized_config.yaml
+cat ./.generated/run.yaml
 ```

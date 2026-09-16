@@ -44,7 +44,7 @@ unchanged pages).
 - **R4:** Every chunk in the built store carries the source page's title
   and canonical Confluence URL, so answers can cite the page.
 - **R5:** A single command performs fetch → build → artifact
-  (`llamastack-faiss` file by default; optional OCI image via the existing
+  (`llamastack-faiss` rag-content artifact name; optional OCI image via the existing
   `--output-image`).
 - **R6:** Incremental refresh: a re-run against unchanged spaces performs
   no page-body fetches and no re-embeddings; changed pages are re-imported;

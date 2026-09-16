@@ -629,9 +629,9 @@ endpoints.</td>
           <td>Optional explicit marker of the configuration format. When set, it
 must agree with the shape detected from the configuration body:
 &#x2018;unified&#x2019; requires a synthesis input (a non-empty inference.providers, a
-non-empty vector_store.providers, or a ogx.config block),
-&#x2018;legacy&#x2019; requires no synthesis input. Reserved as the lever for a future
-breaking change of the unified schema (R11).</td>
+non-empty vector_store.providers, or an ogx.config block), &#x2018;legacy&#x2019;
+requires no synthesis input. Reserved as the lever for a future breaking
+change of the unified schema (R11).</td>
         </tr>
         <tr class="odd">
           <td>service</td>
@@ -642,9 +642,8 @@ configuration.</td>
         <tr class="even">
           <td>ogx</td>
           <td/>
-          <td>This section contains OGX configuration. Lightspeed Core
-Stack service can call OGX in library mode or in server
-mode.</td>
+          <td>This section contains OGX configuration. Lightspeed Core Stack
+service can call OGX in library mode or in server mode.</td>
         </tr>
         <tr class="odd">
           <td>user_data_collection</td>
@@ -664,8 +663,8 @@ runtime data</td>
           <td>MCP (Model Context Protocol) servers provide tools and capabilities
 to the AI agents. These are configured in this section. Only MCP servers
 defined in the lightspeed-stack.yaml configuration are available to the
-agents. Tools configured in the OGX run.yaml are not accessible
-to lightspeed-core agents.</td>
+agents. Tools configured in the OGX run.yaml are not accessible to
+lightspeed-core agents.</td>
         </tr>
         <tr class="even">
           <td>authentication</td>
@@ -945,8 +944,8 @@ stored.</td>
         <tr class="odd">
           <td>id</td>
           <td>string</td>
-          <td>OGX vector_io provider_id. Surrounding whitespace is
-stripped before validation and emission.</td>
+          <td>OGX vector_io provider_id. Surrounding whitespace is stripped before
+validation and emission.</td>
         </tr>
         <tr class="even">
           <td>embedding_model</td>
@@ -986,6 +985,87 @@ provider.</td>
           <td>path</td>
           <td>string</td>
           <td>On-disk FAISS/SQLite path for this provider.</td>
+        </tr>
+      </tbody>
+    </table>
+    <h2 id="graniteguardianconfig">GraniteGuardianConfig</h2>
+    <p>Configuration for the Granite Guardian moderation guardrail.</p>
+    <table>
+      <thead>
+        <tr class="header">
+          <th>Field</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="odd">
+          <td>url</td>
+          <td>string</td>
+          <td>The model_id to use for the guard</td>
+        </tr>
+        <tr class="even">
+          <td>api_key</td>
+          <td>string</td>
+          <td>API key for the inference</td>
+        </tr>
+        <tr class="odd">
+          <td>max_retries</td>
+          <td>integer</td>
+          <td>Maximun number of retries</td>
+        </tr>
+        <tr class="even">
+          <td>timeout</td>
+          <td>integer</td>
+          <td>Request timeout in seconds</td>
+        </tr>
+        <tr class="odd">
+          <td>verify_ssl</td>
+          <td/>
+          <td>SSL certificate verification. Can be:</td>
+        </tr>
+      </tbody>
+    </table>
+    <ul>
+      <li>True: Verify using system CA bundle (default, recommended)</li>
+      <li>False: Disable verification (insecure, for dev only)</li>
+      <li>str: Path to custom CA bundle file (for internal PKI) | | risks |
+array | Risks to be considered while applying this guardrail |</li>
+    </ul>
+    <h2 id="graniteguardianshieldconfiguration">GraniteGuardianShieldConfiguration</h2>
+    <p>Configuration for a named Granite Guardian guardrail shield.</p>
+    <p>Attributes: name: Unique, user-facing name identifying this shield
+instance. provider_id: Discriminator identifying this as a
+granite-guardian shield. config: Granite-guardian-specific
+configuration.</p>
+    <table>
+      <colgroup>
+        <col style="width: 26%"/>
+        <col style="width: 23%"/>
+        <col style="width: 50%"/>
+      </colgroup>
+      <thead>
+        <tr class="header">
+          <th>Field</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="odd">
+          <td>name</td>
+          <td>string</td>
+          <td>Unique, user-facing name identifying this shield instance.</td>
+        </tr>
+        <tr class="even">
+          <td>provider_id</td>
+          <td>string</td>
+          <td>Discriminator identifying this as a granite-guardian shield.</td>
+        </tr>
+        <tr class="odd">
+          <td>config</td>
+          <td/>
+          <td>Granite-guardian-specific configuration for this shield</td>
         </tr>
       </tbody>
     </table>
@@ -1220,116 +1300,13 @@ Web Tokens</a>
         </tr>
       </tbody>
     </table>
-    <h2 id="ogxconfiguration">OgxConfiguration</h2>
-    <p>OGX configuration.</p>
-    <p>OGX is a comprehensive system that provides a uniform set of
-tools for building, scaling, and deploying generative AI applications,
-enabling developers to create, integrate, and orchestrate multiple AI
-services and capabilities into an adaptable setup.</p>
-    <p>Useful resources:</p>
-    <ul>
-      <li>
-        <a href="https://ogx-ai.github.io/">OGX</a>
-      </li>
-      <li>
-        <a href="https://github.com/ogx-ai/ogx-client-python">Python
-OGX client</a>
-      </li>
-      <li>
-        <a href="https://ogx-ai.github.io/docs/building_applications">Build AI Applications with
-OGX</a>
-      </li>
-    </ul>
-    <table>
-      <colgroup>
-        <col style="width: 26%"/>
-        <col style="width: 23%"/>
-        <col style="width: 50%"/>
-      </colgroup>
-      <thead>
-        <tr class="header">
-          <th>Field</th>
-          <th>Type</th>
-          <th>Description</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr class="odd">
-          <td>url</td>
-          <td>string</td>
-          <td>URL to OGX service; used when library mode is disabled. Must
-be a valid HTTP or HTTPS URL.</td>
-        </tr>
-        <tr class="even">
-          <td>api_key</td>
-          <td>string</td>
-          <td>API key to access OGX service</td>
-        </tr>
-        <tr class="odd">
-          <td>use_as_library_client</td>
-          <td>boolean</td>
-          <td>When set to true OGX will be used in library mode, not in
-server mode (default)</td>
-        </tr>
-        <tr class="even">
-          <td>library_client_config_path</td>
-          <td>string</td>
-          <td>Path to configuration file used when OGX is run in library
-mode. DEPRECATED legacy two-file setup: logs a startup warning since 0.6
-and is removed in 0.8 &#x2014; use unified mode instead (the config block
-below, and/or the root-level inference.providers section); migrate with
-lightspeed-stack &#x2013;migrate-config.</td>
-        </tr>
-        <tr class="odd">
-          <td>timeout</td>
-          <td>integer</td>
-          <td>Timeout in seconds for requests to OGX service. Default is
-180 seconds (3 minutes) to accommodate long-running RAG queries.</td>
-        </tr>
-        <tr class="even">
-          <td>max_retries</td>
-          <td>integer</td>
-          <td>Maximum number of connection attempts before giving up. Used on
-startup to connect to OGX and retrieve its version. Connection
-attempts are retried with a fixed delay to handle the case where Llama
-Stack is still starting up (e.g., when running as a sidecar in the same
-pod).</td>
-        </tr>
-        <tr class="odd">
-          <td>retry_delay</td>
-          <td>integer</td>
-          <td>Delay in seconds between retry attempts. Used on startup to connect
-to OGX and retrieve its version. Connection attempts are retried
-with a fixed delay to handle the case where OGX is still
-starting up (e.g., when running as a sidecar in the same pod).</td>
-        </tr>
-        <tr class="even">
-          <td>allow_degraded_mode</td>
-          <td>boolean</td>
-          <td>If enabled, Lightspeed Core can be started even when OGX is
-not accessible (valid for server mode only)</td>
-        </tr>
-        <tr class="odd">
-          <td>config</td>
-          <td/>
-          <td>Backend-specific knobs for unified mode, where LCORE synthesizes the
-OGX run.yaml instead of reading an external file. Holds the
-baseline selector, an optional profile path, and a raw native_override
-escape hatch. Backend-agnostic high-level sections
-(e.g.&#xA0;inference.providers) live at the configuration root, not here.
-Mutually exclusive with library_client_config_path; that cross-field
-check lives on the root Configuration model. When set in library mode,
-library_client_config_path is not required.</td>
-        </tr>
-      </tbody>
-    </table>
     <h2 id="modelcontextprotocolserver">ModelContextProtocolServer</h2>
     <p>Model context protocol server configuration.</p>
     <p>MCP (Model Context Protocol) servers provide tools and capabilities
 to the AI agents. These are configured by this structure. Only MCP
 servers defined in the lightspeed-stack.yaml configuration are available
-to the agents. Tools configured in the OGX run.yaml are not
-accessible to lightspeed-core agents.</p>
+to the agents. Tools configured in the OGX run.yaml are not accessible
+to lightspeed-core agents.</p>
     <p>Useful resources:</p>
     <ul>
       <li>
@@ -1407,8 +1384,8 @@ ApprovalFilter for granular control.</td>
           <td>timeout</td>
           <td>integer</td>
           <td>Timeout in seconds for requests to the MCP server. If not specified,
-the default timeout from OGX will be used. Note: This field is
-reserved for future use when OGX adds timeout support.</td>
+the default timeout from OGX will be used. Note: This field is reserved
+for future use when OGX adds timeout support.</td>
         </tr>
       </tbody>
     </table>
@@ -1437,6 +1414,108 @@ secrets redacted.</p>
           <td>object</td>
           <td>Active OpenTelemetry configuration from OTEL_* environment
 variables</td>
+        </tr>
+      </tbody>
+    </table>
+    <h2 id="ogxconfiguration">OgxConfiguration</h2>
+    <p>OGX configuration.</p>
+    <p>OGX is a comprehensive system that provides a uniform set of tools
+for building, scaling, and deploying generative AI applications,
+enabling developers to create, integrate, and orchestrate multiple AI
+services and capabilities into an adaptable setup.</p>
+    <p>Useful resources:</p>
+    <ul>
+      <li>
+        <a href="https://ogx-ai.github.io/">OGX</a>
+      </li>
+      <li>
+        <a href="https://github.com/ogx-ai/ogx-client-python">Python OGX
+client</a>
+      </li>
+      <li>
+        <a href="https://ogx-ai.github.io/docs/building_applications">Build
+AI Applications with OGX</a>
+      </li>
+    </ul>
+    <table>
+      <colgroup>
+        <col style="width: 26%"/>
+        <col style="width: 23%"/>
+        <col style="width: 50%"/>
+      </colgroup>
+      <thead>
+        <tr class="header">
+          <th>Field</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="odd">
+          <td>url</td>
+          <td>string</td>
+          <td>URL to OGX service; used when library mode is disabled. Must be a
+valid HTTP or HTTPS URL.</td>
+        </tr>
+        <tr class="even">
+          <td>api_key</td>
+          <td>string</td>
+          <td>API key to access OGX service</td>
+        </tr>
+        <tr class="odd">
+          <td>use_as_library_client</td>
+          <td>boolean</td>
+          <td>When set to true OGX will be used in library mode, not in server
+mode (default)</td>
+        </tr>
+        <tr class="even">
+          <td>library_client_config_path</td>
+          <td>string</td>
+          <td>Path to configuration file used when OGX is run in library mode.
+DEPRECATED legacy two-file setup: logs a startup warning since 0.6 and
+is removed in 0.8 &#x2014; use unified mode instead (the config block below,
+and/or the root-level inference.providers section); migrate with
+lightspeed-stack &#x2013;migrate-config.</td>
+        </tr>
+        <tr class="odd">
+          <td>timeout</td>
+          <td>integer</td>
+          <td>Timeout in seconds for requests to OGX service. Default is 180
+seconds (3 minutes) to accommodate long-running RAG queries.</td>
+        </tr>
+        <tr class="even">
+          <td>max_retries</td>
+          <td>integer</td>
+          <td>Maximum number of connection attempts before giving up. Used on
+startup to connect to OGX and retrieve its version. Connection attempts
+are retried with a fixed delay to handle the case where OGX is still
+starting up (e.g., when running as a sidecar in the same pod).</td>
+        </tr>
+        <tr class="odd">
+          <td>retry_delay</td>
+          <td>integer</td>
+          <td>Delay in seconds between retry attempts. Used on startup to connect
+to OGX and retrieve its version. Connection attempts are retried with a
+fixed delay to handle the case where OGX is still starting up (e.g.,
+when running as a sidecar in the same pod).</td>
+        </tr>
+        <tr class="even">
+          <td>allow_degraded_mode</td>
+          <td>boolean</td>
+          <td>If enabled, Lightspeed Core can be started even when OGX is not
+accessible (valid for server mode only)</td>
+        </tr>
+        <tr class="odd">
+          <td>config</td>
+          <td/>
+          <td>Backend-specific knobs for unified mode, where LCORE synthesizes the
+OGX run.yaml instead of reading an external file. Holds the baseline
+selector, an optional profile path, and a raw native_override escape
+hatch. Backend-agnostic high-level sections (e.g.&#xA0;inference.providers)
+live at the configuration root, not here. Mutually exclusive with
+library_client_config_path; that cross-field check lives on the root
+Configuration model. When set in library mode,
+library_client_config_path is not required.</td>
         </tr>
       </tbody>
     </table>
@@ -1514,8 +1593,8 @@ the global default (&#x2018;hybrid&#x2019;).</td>
         <tr class="odd">
           <td>id</td>
           <td>string</td>
-          <td>OGX vector_io provider_id. Surrounding whitespace is
-stripped before validation and emission.</td>
+          <td>OGX vector_io provider_id. Surrounding whitespace is stripped before
+validation and emission.</td>
         </tr>
         <tr class="even">
           <td>embedding_model</td>
@@ -2237,6 +2316,76 @@ to inline retrieval.</td>
         </tr>
       </tbody>
     </table>
+    <h2 id="riskdefinition">RiskDefinition</h2>
+    <p>Definition for a custom risk category.</p>
+    <p>Custom risks allow applications to add use-case-specific safety
+checks beyond the standard harm, jailbreak, leetspeak, amnesia, and
+history_politics checks. Example: liability_risk = RiskDefinition(
+name=&#x201C;liability&#x201D;, description=&#x201C;Content requesting legal, medical, or
+financial advice&#x201D;, threshold=0.55, points=[&#x201C;input&#x201D;], ) pii_risk =
+RiskDefinition( name=&#x201C;pii_request&#x201D;, description=&#x201C;User is asking the AI
+to reveal personal information&#x201D;, threshold=0.50, points=[&#x201C;input&#x201D;,
+&#x201C;tool&#x201D;], ) Note: To enable think mode (detailed reasoning) for a risk,
+add the risk name to the <code>thinking_enabled</code> list in
+<code>ModerationConfig</code>. Do not set <code>enable_thinking</code>
+directly - it is managed internally.</p>
+    <table>
+      <colgroup>
+        <col style="width: 26%"/>
+        <col style="width: 23%"/>
+        <col style="width: 50%"/>
+      </colgroup>
+      <thead>
+        <tr class="header">
+          <th>Field</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="odd">
+          <td>name</td>
+          <td>string</td>
+          <td>Unique identifier for this risk (e.g., &#x2018;liability&#x2019;,
+&#x2018;competitor_mention&#x2019;)</td>
+        </tr>
+        <tr class="even">
+          <td>description</td>
+          <td>string</td>
+          <td>Risk definition text passed to Granite Guardian as
+custom_criteria</td>
+        </tr>
+        <tr class="odd">
+          <td>threshold</td>
+          <td>number</td>
+          <td>Score threshold for flagging (lower = more sensitive)</td>
+        </tr>
+        <tr class="even">
+          <td>enabled</td>
+          <td>boolean</td>
+          <td>Whether to run this check</td>
+        </tr>
+        <tr class="odd">
+          <td>enable_thinking</td>
+          <td>boolean</td>
+          <td>Internal field - set via ModerationConfig.thinking_enabled list, not
+directly. When True, Granite Guardian provides detailed reasoning before
+scoring.</td>
+        </tr>
+        <tr class="even">
+          <td>points</td>
+          <td>array</td>
+          <td>Where this risk is evaluated: <code>input</code> (user message),
+<code>output</code> (model response), or <code>tool</code> (tool/MCP
+content).</td>
+        </tr>
+        <tr class="odd">
+          <td>violation_message</td>
+          <td>string</td>
+          <td>Message to be displayed when this risk is violated</td>
+        </tr>
+      </tbody>
+    </table>
     <h2 id="rlsapiv1configuration">RlsapiV1Configuration</h2>
     <p>Configuration for the rlsapi v1 /infer endpoint.</p>
     <p>Settings specific to the RHEL Lightspeed Command Line Assistant (CLA)
@@ -2384,26 +2533,55 @@ support.</td>
           <td>Number of Uvicorn worker processes to start</td>
         </tr>
         <tr class="even">
+          <td>max_concurrent_file_uploads</td>
+          <td>integer</td>
+          <td>Maximum number of file uploads (POST /v1/files) processed
+concurrently per worker. Each in-flight upload can hold up to the
+configured maximum file size in memory, so this bounds worst-case memory
+usage from concurrent uploads. Additional uploads are rejected with 429
+until a slot frees up.</td>
+        </tr>
+        <tr class="odd">
+          <td>max_concurrent_vector_store_attaches</td>
+          <td>integer</td>
+          <td>Maximum number of vector store file attachments (POST
+/v1/vector-stores/{id}/files) processed concurrently per worker. Each
+in-flight attachment re-reads and chunks the source file, so this bounds
+worst-case memory usage independently of max_concurrent_file_uploads.
+Additional attachments are rejected with 429 until a slot frees up.</td>
+        </tr>
+        <tr class="even">
+          <td>delete_file_after_vector_store_attach</td>
+          <td>boolean</td>
+          <td>When true, deletes a file (POST /v1/files) once it has been
+successfully attached to a vector store, since the vector store keeps
+its own chunked/embedded copy of the content. Defaults to false to match
+the OpenAI Files API, where a file remains reusable across multiple
+vector stores until the caller explicitly deletes it - enabling this
+makes attached files single-use: re-attaching the same file_id to
+another vector store will fail once it has been deleted.</td>
+        </tr>
+        <tr class="odd">
           <td>color_log</td>
           <td>boolean</td>
           <td>Enables colorized logging</td>
         </tr>
-        <tr class="odd">
+        <tr class="even">
           <td>access_log</td>
           <td>boolean</td>
           <td>Enables logging of all access information</td>
         </tr>
-        <tr class="even">
+        <tr class="odd">
           <td>tls_config</td>
           <td/>
           <td>Transport Layer Security configuration for HTTPS support</td>
         </tr>
-        <tr class="odd">
+        <tr class="even">
           <td>root_path</td>
           <td>string</td>
           <td>ASGI root path for serving behind a reverse proxy on a subpath</td>
         </tr>
-        <tr class="even">
+        <tr class="odd">
           <td>cors</td>
           <td/>
           <td>Cross-Origin Resource Sharing configuration for cross-domain
@@ -2621,26 +2799,25 @@ null (no restriction).</td>
     <h2 id="unifiedinferenceprovider">UnifiedInferenceProvider</h2>
     <p>A high-level inference provider entry for unified-mode synthesis.</p>
     <p>Operators describe inference providers at this high level
-(backend-agnostic vocabulary) instead of authoring raw OGX
-provider blocks. The synthesizer
-(<code>apply_high_level_inference</code>) expands each entry into a
-OGX <code>providers.inference</code> entry, mapping
-<code>type</code> to a <code>provider_type</code> and emitting
+(backend-agnostic vocabulary) instead of authoring raw OGX provider
+blocks. The synthesizer (<code>apply_high_level_inference</code>)
+expands each entry into an OGX <code>providers.inference</code> entry,
+mapping <code>type</code> to a <code>provider_type</code> and emitting
 <code>${env.&lt;VAR&gt;}</code> references for secrets (never literal
 values).</p>
     <p>Attributes: type: Canonical provider identifier. Vendor-neutral so it
 survives a future backend change; each backend-specific synthesizer maps
 it to its own provider vocabulary. id: Optional identifier emitted as
-the OGX provider_id. When omitted, synthesized as type with
-underscores hyphenated. If set, must be non-empty after stripping
-whitespace and may contain only lowercase letters, digits, underscores,
-and hyphens. api_key_env: Name of the environment variable holding the
-provider API key. Emitted verbatim as <code>${env.&lt;name&gt;}</code>
-so the secret never lands on disk resolved. allowed_models: Optional
-allow-list of model identifiers passed through to the synthesized
-provider config. extra: Additional provider-config keys merged verbatim
-into the synthesized provider&#x2019;s <code>config</code> block &#x2014; an escape
-hatch for provider-specific knobs not modeled here.</p>
+the OGX provider_id. When omitted, synthesized as type with underscores
+hyphenated. If set, must be non-empty after stripping whitespace and may
+contain only lowercase letters, digits, underscores, and hyphens.
+api_key_env: Name of the environment variable holding the provider API
+key. Emitted verbatim as <code>${env.&lt;name&gt;}</code> so the secret
+never lands on disk resolved. allowed_models: Optional allow-list of
+model identifiers passed through to the synthesized provider config.
+extra: Additional provider-config keys merged verbatim into the
+synthesized provider&#x2019;s <code>config</code> block &#x2014; an escape hatch for
+provider-specific knobs not modeled here.</p>
     <table>
       <colgroup>
         <col style="width: 26%"/>
@@ -2658,15 +2835,15 @@ hatch for provider-specific knobs not modeled here.</p>
         <tr class="odd">
           <td>type</td>
           <td>string</td>
-          <td>Canonical, backend-agnostic provider identifier mapped to a Llama
-Stack provider_type by the synthesizer.</td>
+          <td>Canonical, backend-agnostic provider identifier mapped to an OGX
+provider_type by the synthesizer.</td>
         </tr>
         <tr class="even">
           <td>id</td>
           <td>string</td>
-          <td>Optional identifier emitted as the OGX provider_id. When
-omitted, synthesized as type with underscores hyphenated. If set, must
-be non-empty after stripping whitespace and may contain only lowercase
+          <td>Optional identifier emitted as the OGX provider_id. When omitted,
+synthesized as type with underscores hyphenated. If set, must be
+non-empty after stripping whitespace and may contain only lowercase
 letters, digits, underscores, and hyphens.</td>
         </tr>
         <tr class="odd">
@@ -2693,19 +2870,20 @@ provider&#x2019;s config block.</td>
     <p>Backend-specific knobs for unified-mode OGX synthesis.</p>
     <p>Per Decision S5 of the design spike, backend-agnostic high-level
 sections (inference, &#x2026;) live at the configuration root, not here. This
-block holds only the Llama-Stack-specific synthesis controls: which
-baseline to start from, an optional profile file, and a raw
-native_override escape hatch.</p>
+block holds only the OGX-specific synthesis controls: which baseline to
+start from, an optional profile file, and a raw native_override escape
+hatch.</p>
     <p>Attributes: baseline: Synthesis starting point. &#x201C;default&#x201D; begins from
-LCORE&#x2019;s built-in baseline (src/data/default_run.yaml); &#x201C;empty&#x201D; begins
-from an empty dict (used by the migration tool for an exact round-trip).
-Ignored when <code>profile</code> is set. profile: Optional path to a
-user-authored run.yaml-shaped file used as the synthesis baseline.
-Relative paths resolve against the directory of the loaded
-lightspeed-stack.yaml. native_override: Raw OGX schema
-deep-merged last (maps merge recursively, lists and scalars replace).
-The escape hatch for anything the high-level sections do not
-express.</p>
+LCORE&#x2019;s built-in baseline (src/data/default_run.yaml) including the
+conditional OpenAI inference provider. &#x201C;byo-llm&#x201D; begins from the same
+file with that OpenAI row removed. &#x201C;empty&#x201D; begins from an empty dict
+(used by the migration tool for an exact round-trip). Ignored when
+<code>profile</code> is set. profile: Optional path to a user-authored
+run.yaml-shaped file used as the synthesis baseline. Relative paths
+resolve against the directory of the loaded lightspeed-stack.yaml.
+native_override: Raw OGX schema deep-merged last (maps merge
+recursively, lists and scalars replace). The escape hatch for anything
+the high-level sections do not express.</p>
     <table>
       <colgroup>
         <col style="width: 26%"/>
@@ -2723,8 +2901,10 @@ express.</p>
         <tr class="odd">
           <td>baseline</td>
           <td>string</td>
-          <td>Synthesis starting point: &#x2018;default&#x2019; uses LCORE&#x2019;s built-in baseline,
-&#x2018;empty&#x2019; starts from {}. Ignored when &#x2018;profile&#x2019; is set.</td>
+          <td>Synthesis starting point: &#x2018;default&#x2019; uses LCORE&#x2019;s built-in baseline
+including the conditional OpenAI provider, &#x2018;byo-llm&#x2019; uses the same
+baseline without that OpenAI row, &#x2018;empty&#x2019; starts from {}. Ignored when
+&#x2018;profile&#x2019; is set.</td>
         </tr>
         <tr class="even">
           <td>profile</td>
@@ -2735,8 +2915,8 @@ against the directory of the loaded lightspeed-stack.yaml.</td>
         <tr class="odd">
           <td>native_override</td>
           <td>object</td>
-          <td>Raw OGX schema deep-merged last (maps merge recursively;
-lists and scalars replace).</td>
+          <td>Raw OGX schema deep-merged last (maps merge recursively; lists and
+scalars replace).</td>
         </tr>
       </tbody>
     </table>
@@ -2788,8 +2968,8 @@ further processing.</td>
 sibling <code>default_provider</code> pointer, rather than a per-entry
 default flag.</p>
     <p>Attributes: default_provider: Provider id used for
-vector_stores.default_* in the synthesized OGX config. Required
-when providers is non-empty; must match one of providers[].id. Must be
+vector_stores.default_* in the synthesized OGX config. Required when
+providers is non-empty; must match one of providers[].id. Must be
 omitted when providers is empty. providers: Dynamic vector-store
 provider capacity for runtime POST /v1/vector-stores creates. Not the
 same as rag.byok.stores (static registered corpora).</p>
@@ -2810,9 +2990,9 @@ same as rag.byok.stores (static registered corpora).</p>
         <tr class="odd">
           <td>default_provider</td>
           <td>string</td>
-          <td>Provider id used for vector_stores.default_* in the synthesized
-OGX config. Required when providers is non-empty; must match one
-of providers[].id.</td>
+          <td>Provider id used for vector_stores.default_* in the synthesized OGX
+config. Required when providers is non-empty; must match one of
+providers[].id.</td>
         </tr>
         <tr class="even">
           <td>providers</td>

@@ -32,7 +32,6 @@ from tests.e2e.features.steps.tls import (
     prepare_tls_feature_entry_on_prow,
     reset_tls_prow_state,
 )
-from tests.e2e.utils.ogx_utils import register_shield
 from tests.e2e.utils.prow_utils import (
     ensure_okp_solr_ready,
     restart_pod,
@@ -248,6 +247,21 @@ def before_scenario(context: Context, scenario: Scenario) -> None:
         scenario.skip("Skipped in Prow (requires Docker Compose services)")
         return
 
+    # Skip openai-specific scenarios on non-openai provider matrices: the
+    # providers workflow runs the full test list with E2E_DEFAULT_PROVIDER_OVERRIDE
+    # set (azure/watsonx/...), and fixtures that hardcode an openai provider
+    # (e.g. the unified-mode inference.providers fixture) cannot serve queries
+    # for those models.
+    provider_override = os.getenv("E2E_DEFAULT_PROVIDER_OVERRIDE", "")
+    if "openai-only" in scenario.effective_tags and provider_override not in (
+        "",
+        "openai",
+    ):
+        scenario.skip(
+            f"Skipped on provider matrix '{provider_override}' (openai-only fixture)"
+        )
+        return
+
     # In Prow, verify the lightspeed port-forward is alive before each scenario.
     # Port-forwards can silently die between scenarios (e.g. pod restart, TCP reset).
     if is_prow_environment():
@@ -258,15 +272,6 @@ def before_scenario(context: Context, scenario: Scenario) -> None:
     # Reset force-restart from a prior disrupt/MCP reset scenario.
     context.force_lightspeed_restart_after_mcp_config_reset = False
 
-    # Clear shield unregister state from previous scenarios (see ``shields_are_disabled_for_scenario``).
-    for _attr in (
-        "shields_disabled_for_scenario",
-        "ogx_guard_provider_id",
-        "ogx_guard_provider_shield_id",
-    ):
-        if hasattr(context, _attr):
-            delattr(context, _attr)
-
 
 def _dump_pod_logs_on_failure(
     context: Context, scenario: Scenario, namespace: str
@@ -274,6 +279,7 @@ def _dump_pod_logs_on_failure(
     """Dump container logs when a scenario fails in Prow."""
     if scenario.status != "failed":
         return
+    # Pod names match tests/e2e-prow manifests (legacy llama-stack-service id).
     pods: tuple[str, ...] = ("llama-stack-service", "lightspeed-stack-service")
     feature = getattr(context, "feature", None)
     feat_file = getattr(feature, "filename", "") or "" if feature else ""
@@ -296,7 +302,7 @@ def _dump_pod_logs_on_failure(
 def after_scenario(context: Context, scenario: Scenario) -> None:
     """Run after each scenario is run.
 
-    Perform per-scenario teardown: failure logs (Prow) and shield re-register.
+    Perform per-scenario teardown: failure logs (Prow).
 
     If ``configure_service`` applied a non-baseline YAML during the scenario
     (``context.scenario_lightspeed_override_active``), clears that flag only;
@@ -315,7 +321,7 @@ def after_scenario(context: Context, scenario: Scenario) -> None:
               used for the OGX health check.
             - okp_was_running (bool, optional): whether OKP server was running
               before it was stopped by the scenario.
-        scenario (Scenario): Behave scenario (unused; shield restore uses context flags).
+        scenario (Scenario): Behave scenario used for failure log dumps in Prow.
     """
     if is_prow_environment():
         _dump_pod_logs_on_failure(
@@ -324,21 +330,6 @@ def after_scenario(context: Context, scenario: Scenario) -> None:
 
     if getattr(context, "scenario_lightspeed_override_active", False):
         context.scenario_lightspeed_override_active = False
-
-    # Re-register shield if ``Given shields are disabled for this scenario`` unregistered it.
-    if getattr(context, "shields_disabled_for_scenario", False):
-        provider_id = getattr(context, "ogx_guard_provider_id", None)
-        provider_shield_id = getattr(context, "ogx_guard_provider_shield_id", None)
-        if provider_id is not None and provider_shield_id is not None:
-            try:
-                register_shield(
-                    "llama-guard",
-                    provider_id=provider_id,
-                    provider_shield_id=provider_shield_id,
-                )
-                print("Re-registered shield llama-guard")
-            except (TypeError, ValueError, RuntimeError, KeyboardInterrupt) as e:
-                print(f"Warning: Could not re-register shield: {e}")
 
     # Restore OKP Solr if it was stopped during the scenario (Konflux only).
     if getattr(context, "okp_was_running", False) and is_konflux_environment():
@@ -566,7 +557,15 @@ def after_feature(context: Context, feature: Feature) -> None:
             remove_config_backup(backup_path)
             if not context.is_library_mode:
                 restart_container("ogx")
-            restart_container("lightspeed-stack")
+            # restart_container hard-fails for lightspeed-stack when the
+            # service does not accept HTTP in time. That is right inside a
+            # scenario, but this runs in after_feature: an exception here is a
+            # hook error that takes down the whole run rather than failing one
+            # scenario. Warn and let the next feature's own restart surface it.
+            try:
+                restart_container("lightspeed-stack")
+            except AssertionError as exc:
+                print(f"⚠ after_feature restore: lightspeed-stack not ready ({exc})")
             reset_active_lightspeed_stack_config_basename()
         else:
             remove_config_backup(backup_path)

@@ -1,4 +1,4 @@
-@cfg_unified @skip
+@cfg_unified @skip-in-prow
 Feature: Legacy two-file configuration during deprecation window
 
   Background:
@@ -12,7 +12,10 @@ Feature: Legacy two-file configuration during deprecation window
 
   @skip-in-server-mode
   Scenario: Legacy two-file configuration still boots and serves requests in library mode
-    Given The service uses the lightspeed-stack.yaml configuration
+    # lightspeed-stack-legacy.yaml (not the standard baseline): LCORE-2342
+    # migrated the library-mode baseline to unified mode, so only a dedicated
+    # legacy-shaped fixture still exercises the deprecated two-file path (R2).
+    Given The service uses the lightspeed-stack-legacy.yaml configuration
       And The service is restarted
      When I access endpoint "readiness" using HTTP GET method
      Then The status code of the response is 200

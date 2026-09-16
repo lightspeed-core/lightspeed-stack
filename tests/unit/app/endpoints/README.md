@@ -72,6 +72,10 @@ Unit tests for the /providers REST API endpoints.
 
 Unit tests for the /query (v2) REST API endpoint using Responses API.
 
+## [test_query_otel.py](test_query_otel.py)
+
+OpenTelemetry unit tests for the /query REST API endpoint.
+
 ## [test_rags.py](test_rags.py)
 
 Unit tests for the /rags REST API endpoints.

@@ -7,7 +7,7 @@
 | **Authors**        | Lightspeed Core Team                      |
 | **Feature**        | [LCORE-268](https://redhat.atlassian.net/browse/LCORE-268) |
 | **Spike**          | [LCORE-1589](https://redhat.atlassian.net/browse/LCORE-1589) |
-| **Links**          | [MCP Spec](https://modelcontextprotocol.io), [OGX](https://github.com/meta-llama/llama-stack) |
+| **Links**          | [MCP Spec](https://modelcontextprotocol.io), [OGX](https://github.com/ogx-ai/ogx) |
 
 ## What
 
@@ -527,10 +527,10 @@ async def get_mcp_tools(...) -> list[InputToolMCP]:
         require_approval = mcp_server.require_approval
         if isinstance(require_approval, ApprovalFilter):
             # Convert to OGX's ApprovalFilter format
-            require_approval = LlamaStackApprovalFilter(
+            require_approval = ApprovalFilter(
                 always=require_approval.always or None,
                 never=require_approval.never or None,
-            )
+            )  # ogx_api.openai_responses.ApprovalFilter
 
         tools.append(
             InputToolMCP(
@@ -596,7 +596,7 @@ Example config files go in `examples/`.
 
 ## Appendix A: OGX Types Reference
 
-From `llama_stack_api.openai_responses`:
+From `ogx_api.openai_responses`:
 
 ```python
 class ApprovalFilter(BaseModel):

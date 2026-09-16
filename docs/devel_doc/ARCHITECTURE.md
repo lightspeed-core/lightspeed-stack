@@ -137,7 +137,7 @@ LCore requires two main configuration files:
 2. **OGX Configuration** (`run.yaml`):
    - Required for both library and server modes
    - Defines LLM providers, models, RAG stores, shields
-   - See [OGX documentation](https://llama-stack.readthedocs.io/) for details
+   - See [OGX documentation](https://ogx-ai.github.io/) for details
 
 **Configuration Validation:**
 - Pydantic models validate configuration structure at startup

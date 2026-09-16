@@ -98,7 +98,6 @@ def _restart_lightspeed_after_ogx_tls(context: Context) -> None:
     """
     from tests.e2e.utils.utils import (
         restart_container,
-        wait_for_lightspeed_stack_http_ready,
     )
 
     scenario = getattr(getattr(context, "scenario", None), "name", "") or "?"
@@ -111,7 +110,6 @@ def _restart_lightspeed_after_ogx_tls(context: Context) -> None:
         flush=True,
     )
     restart_container("lightspeed-stack")
-    wait_for_lightspeed_stack_http_ready()
 
 
 def restart_ogx_for_tls_feature(context: Context) -> None:

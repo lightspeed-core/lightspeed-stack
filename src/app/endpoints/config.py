@@ -1,6 +1,6 @@
 """Handler for REST API call to retrieve service configuration."""
 
-from typing import Annotated, Any
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request
 from opentelemetry import trace
@@ -20,13 +20,14 @@ from models.api.responses.error import (
 from models.api.responses.successful import ConfigurationResponse
 from models.config import Action
 from utils.endpoints import check_configuration_loaded
+from utils.types import Responses
 
 logger = get_logger(__name__)
 tracer = trace.get_tracer(__name__)
 router = APIRouter(tags=["config"])
 
 
-get_config_responses: dict[int | str, dict[str, Any]] = {
+get_config_responses: Responses = {
     200: ConfigurationResponse.openapi_response(),
     401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),

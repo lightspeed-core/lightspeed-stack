@@ -207,7 +207,7 @@ Override any of these variables when running `make`:
 ```bash
 make run OGX_PORT=9321
 ```
-*Note: Also update `llama_stack.url` in `lightspeed-stack.yaml` to `http://localhost:9321`*
+*Note: Also update `ogx.url` in `lightspeed-stack.yaml` to `http://localhost:9321`*
 
 **Use custom config files:**
 ```bash
@@ -216,7 +216,7 @@ make run CONFIG=my-config.yaml OGX_CONFIG=my-run.yaml
 
 **Use custom container name:**
 ```bash
-make run OGX_CONTAINER_NAME=my-llama-stack
+make run OGX_CONTAINER_NAME=my-ogx
 ```
 
 **Force Docker instead of Podman:**
@@ -245,7 +245,7 @@ This file configures the Lightspeed Core Stack service.
 
 **OGX connection settings:**
 ```yaml
-llama_stack:
+ogx:
   use_as_library_client: false
   url: http://localhost:8321
   # api_key: custom-key  # Optional authentication
@@ -497,7 +497,7 @@ Error: cannot listen on the TCP port: listen tcp4 0.0.0.0:8321: bind: address al
    
    Don't forget to update `lightspeed-stack.yaml`:
    ```yaml
-   llama_stack:
+   ogx:
      url: http://localhost:9321
    ```
 
@@ -579,7 +579,7 @@ curl -fsSL https://get.docker.com | sh
 1. **Check OGX URL in config:**
    ```yaml
    # lightspeed-stack.yaml
-   llama_stack:
+   ogx:
      url: http://localhost:8321  # Must match OGX_PORT
    ```
 
@@ -734,52 +734,52 @@ If you need more control than the Makefile provides, you can manage the containe
 
 #### Build the Image
 ```bash
-podman build -f deploy/ogx/test.containerfile -t my-llama-stack:custom .
+podman build -f deploy/ogx/test.containerfile -t my-ogx:custom .
 ```
 
 #### Run the Container
 ```bash
 podman run -d \
-  --name my-llama-stack \
+  --name my-ogx \
   -p 9000:8321 \
   -v $(pwd)/run.yaml:/opt/app-root/run.yaml:z \
   -v $(pwd)/lightspeed-stack.yaml:/opt/app-root/lightspeed-stack.yaml:ro,z \
   -e OPENAI_API_KEY \
-  my-llama-stack:custom
+  my-ogx:custom
 ```
 
 #### Monitor the Container
 ```bash
 # Follow logs
-podman logs -f my-llama-stack
+podman logs -f my-ogx
 
 # Check health
-podman inspect --format='{{.State.Health.Status}}' my-llama-stack
+podman inspect --format='{{.State.Health.Status}}' my-ogx
 
 # Execute commands inside container
-podman exec my-llama-stack curl http://localhost:8321/v1/health
+podman exec my-ogx curl http://localhost:8321/v1/health
 
 # View container stats (CPU, memory)
-podman stats my-llama-stack
+podman stats my-ogx
 ```
 
 #### Stop and Remove
 ```bash
 # Stop gracefully
-podman stop -t 10 my-llama-stack
+podman stop -t 10 my-ogx
 
 # Remove container
-podman rm my-llama-stack
+podman rm my-ogx
 
 # Remove image
-podman rmi my-llama-stack:custom
+podman rmi my-ogx:custom
 ```
 
 #### Connect LCORE to Manual Container
 
 Update `lightspeed-stack.yaml`:
 ```yaml
-llama_stack:
+ogx:
   use_as_library_client: false
   url: http://localhost:9000  # Use your custom port
 ```

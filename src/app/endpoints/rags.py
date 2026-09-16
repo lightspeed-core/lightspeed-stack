@@ -1,6 +1,6 @@
 """Handler for REST API calls to list and retrieve available RAGs."""
 
-from typing import Annotated, Any
+from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.params import Depends
@@ -27,13 +27,14 @@ from models.api.responses.successful import (
 )
 from models.config import Action, RagStore
 from utils.endpoints import check_configuration_loaded
+from utils.types import Responses
 
 logger = get_logger(__name__)
 tracer = trace.get_tracer(__name__)
 router = APIRouter(tags=["rags"])
 
 
-rags_responses: dict[int | str, dict[str, Any]] = {
+rags_responses: Responses = {
     200: RAGListResponse.openapi_response(),
     401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
@@ -43,7 +44,7 @@ rags_responses: dict[int | str, dict[str, Any]] = {
     ),
 }
 
-rag_responses: dict[int | str, dict[str, Any]] = {
+rag_responses: Responses = {
     200: RAGInfoResponse.openapi_response(),
     401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),

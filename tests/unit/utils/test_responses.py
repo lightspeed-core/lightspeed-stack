@@ -12,6 +12,7 @@ from fastapi import HTTPException
 from ogx_api.openai_responses import (
     AllowedToolsFilter,
     OpenAIResponseInputToolChoiceAllowedTools,
+    OpenAIResponseReasoning,
 )
 from ogx_api.openai_responses import ApprovalFilter as OgxApprovalFilter
 from ogx_api.openai_responses import (
@@ -78,6 +79,7 @@ from utils.responses import (
     _build_chunk_attributes,
     _build_okp_doc_url,
     _merge_tools,
+    apply_reasoning_for_resolved_tools,
     build_mcp_tool_call_from_arguments_done,
     build_tool_call_summary,
     build_tool_result_from_mcp_output_item_done,
@@ -92,6 +94,7 @@ from utils.responses import (
     get_topic_summary,
     is_server_deployed_output,
     maybe_get_topic_summary,
+    model_reasoning_enabled_by_default,
     parse_arguments_string,
     parse_referenced_documents,
     prepare_responses_params,
@@ -482,7 +485,10 @@ class TestGetMCPTools:
         mocker.patch("utils.responses.configuration", mock_config)
         tools_k8s = await get_mcp_tools(token="user-k8s-token")
         assert len(tools_k8s) == 1
-        assert tools_k8s[0].authorization == "Bearer user-k8s-token"
+        # The Bearer scheme is stripped here since OGX adds its own "Bearer "
+        # prefix before forwarding the token to the MCP server; passing the
+        # scheme through would result in a duplicated "Bearer Bearer <token>".
+        assert tools_k8s[0].authorization == "user-k8s-token"
 
     @pytest.mark.asyncio
     async def test_get_mcp_tools_with_mcp_headers(self, mocker: MockerFixture) -> None:
@@ -620,7 +626,7 @@ class TestGetMCPTools:
 
         tools = await get_mcp_tools(token="k8s-token", mcp_headers=mcp_headers)
         assert len(tools) == 1
-        assert tools[0].authorization == "Bearer k8s-token"
+        assert tools[0].authorization == "k8s-token"
         assert tools[0].headers == {
             "X-API-Key": "secret-api-key",
             "X-Custom": "client-custom-value",
@@ -704,6 +710,40 @@ class TestGetMCPTools:
             "x-rh-identity": "encoded-identity",
             "x-request-id": "req-456",
         }
+
+    @pytest.mark.asyncio
+    async def test_get_mcp_tools_propagated_authorization_strips_bearer_scheme(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Regression test for a duplicated 'Bearer Bearer <token>' MCP header.
+
+        When an MCP server allowlists the incoming ``Authorization`` header
+        via ``headers: [Authorization]`` (no ``authorization_headers``
+        config), the propagated value already includes the ``Bearer``
+        scheme. Since OGX's MCP ``authorization`` field expects a raw token
+        and adds its own ``Bearer `` prefix, the scheme must be stripped
+        before it is assigned to that field, or the downstream MCP server
+        receives ``Authorization: Bearer Bearer <token>``.
+        """
+        servers = [
+            ModelContextProtocolServer(
+                name="subscription-watch",
+                url="http://subscription-watch:8080",
+                headers=["Authorization"],
+                provider_id="provider",
+            ),
+        ]
+        mock_config = mocker.Mock()
+        mock_config.mcp_servers = servers
+        mocker.patch("utils.responses.configuration", mock_config)
+
+        request_headers = {"Authorization": "Bearer user-jwt-token"}
+        tools = await get_mcp_tools(
+            token=None, mcp_headers=None, request_headers=request_headers
+        )
+        assert len(tools) == 1
+        assert tools[0].authorization == "user-jwt-token"
+        assert tools[0].headers is None
 
     @pytest.mark.asyncio
     async def test_get_mcp_tools_propagated_headers_do_not_overwrite_auth_headers(
@@ -812,7 +852,7 @@ class TestGetMCPTools:
             token=None, mcp_headers=mcp_hdrs, request_headers=request_headers
         )
         assert len(tools) == 1
-        assert tools[0].authorization == "Bearer client-token"
+        assert tools[0].authorization == "client-token"
         assert tools[0].headers == {"x-rh-identity": "identity-value"}
 
     @pytest.mark.asyncio
@@ -930,6 +970,48 @@ class TestInputToolMCPTypeDiscriminator:
         assert len(out) == 1
         dumped = out[0].model_dump(exclude_unset=True)
         assert dumped.get("type") == "mcp"
+
+    def test_apply_mcp_headers_strips_bearer_from_propagated_authorization(
+        self, mocker: MockerFixture
+    ) -> None:
+        """apply_mcp_headers_to_explicit_tools must strip the Bearer scheme.
+
+        Same regression as ``test_get_mcp_tools_propagated_authorization_strips_bearer_scheme``
+        but for the explicit-tools path: a propagated ``Authorization`` header
+        must not retain its ``Bearer`` scheme when assigned to OGX's
+        ``authorization`` field, or the MCP server receives a duplicated
+        ``Bearer Bearer <token>`` header.
+        """
+        from utils.responses import (  # pylint: disable=import-outside-toplevel
+            apply_mcp_headers_to_explicit_tools,
+        )
+
+        servers = [
+            ModelContextProtocolServer(
+                name="subscription-watch",
+                url="http://subscription-watch:8080",
+                headers=["Authorization"],
+                provider_id="mcp",
+            ),
+        ]
+        mock_config = mocker.Mock()
+        mock_config.mcp_servers = servers
+        mocker.patch("utils.responses.configuration", mock_config)
+
+        explicit = InputToolMCP(
+            server_label="subscription-watch",
+            server_url="http://subscription-watch:8080",
+        )
+
+        out = apply_mcp_headers_to_explicit_tools(
+            [explicit],
+            token=None,
+            mcp_headers=None,
+            request_headers={"Authorization": "Bearer user-jwt-token"},
+        )
+
+        assert len(out) == 1
+        assert out[0].authorization == "user-jwt-token"
 
 
 class TestGetTopicSummary:
@@ -1091,6 +1173,108 @@ class TestMaybeGetTopicSummaryOtel:
         assert not [
             s for s in exporter.get_finished_spans() if s.name == "topic.summary"
         ]
+
+
+class TestModelReasoningEnabledByDefault:
+    """Tests for model_reasoning_enabled_by_default."""
+
+    def test_gpt_5_6_default_on(self) -> None:
+        """gpt-5.6 reasons by default when reasoning is omitted."""
+        assert model_reasoning_enabled_by_default("openai/gpt-5.6-terra") is True
+
+    def test_o_series_default_on(self) -> None:
+        """o-series models reason by default."""
+        assert model_reasoning_enabled_by_default("openai/o3-mini") is True
+
+    def test_gpt_5_4_opt_in(self) -> None:
+        """gpt-5.4 defaults to reasoning off."""
+        assert model_reasoning_enabled_by_default("openai/gpt-5.4") is False
+
+    def test_gpt_5_chat_no_reasoning(self) -> None:
+        """gpt-5-chat does not use reasoning."""
+        assert model_reasoning_enabled_by_default("openai/gpt-5-chat-latest") is False
+
+    def test_gpt_4o_mini(self) -> None:
+        """gpt-4o-mini does not use reasoning."""
+        assert model_reasoning_enabled_by_default("openai/gpt-4o-mini") is False
+
+
+class TestApplyReasoningForResolvedTools:
+    """Tests for apply_reasoning_for_resolved_tools."""
+
+    _DEFAULT_ON_MODEL = "openai/gpt-5.6-terra"
+    _OPT_IN_MODEL = "openai/gpt-5.4"
+    _NON_REASONING_MODEL = "openai/gpt-4o-mini"
+
+    @staticmethod
+    def _sample_tools() -> list[InputTool]:
+        return cast(
+            list[InputTool],
+            [InputToolFunction(name="lookup", parameters={"type": "object"})],
+        )
+
+    def test_preserves_reasoning_when_no_tools(self) -> None:
+        """Keep caller reasoning when the resolved request has no tools."""
+        reasoning = OpenAIResponseReasoning(effort="high")
+        assert (
+            apply_reasoning_for_resolved_tools(reasoning, None, self._DEFAULT_ON_MODEL)
+            == reasoning
+        )
+
+    def test_preserves_none_reasoning_when_no_tools(self) -> None:
+        """Leave reasoning unset when no tools are resolved."""
+        assert (
+            apply_reasoning_for_resolved_tools(None, None, self._DEFAULT_ON_MODEL)
+            is None
+        )
+
+    def test_skips_reasoning_for_non_reasoning_model_with_tools(self) -> None:
+        """Do not inject reasoning for models that do not use it."""
+        assert (
+            apply_reasoning_for_resolved_tools(
+                None, self._sample_tools(), self._NON_REASONING_MODEL
+            )
+            is None
+        )
+
+    def test_skips_reasoning_for_opt_in_model_with_tools(self) -> None:
+        """Do not inject reasoning for opt-in models that default to off."""
+        assert (
+            apply_reasoning_for_resolved_tools(
+                None, self._sample_tools(), self._OPT_IN_MODEL
+            )
+            is None
+        )
+
+    def test_sets_none_effort_when_tools_present_and_reasoning_missing(self) -> None:
+        """Default to explicit effort none when tools are present."""
+        result = apply_reasoning_for_resolved_tools(
+            None, self._sample_tools(), self._DEFAULT_ON_MODEL
+        )
+        assert result is not None
+        assert result.effort == "none"
+
+    def test_forces_none_effort_when_tools_present_and_reasoning_requested(
+        self,
+    ) -> None:
+        """Override non-none reasoning effort when tools are present."""
+        reasoning = OpenAIResponseReasoning(effort="medium")
+        result = apply_reasoning_for_resolved_tools(
+            reasoning, self._sample_tools(), self._DEFAULT_ON_MODEL
+        )
+        assert result is not None
+        assert result.effort == "none"
+
+    def test_keeps_none_effort_when_tools_present(self) -> None:
+        """Preserve other reasoning fields when forcing effort to none."""
+        reasoning = OpenAIResponseReasoning(effort="none", summary="concise")
+        result = apply_reasoning_for_resolved_tools(
+            reasoning, self._sample_tools(), self._DEFAULT_ON_MODEL
+        )
+        assert result is not None
+        assert result is not reasoning
+        assert result.effort == "none"
+        assert result.summary == "concise"
 
 
 class TestResolveToolChoice:

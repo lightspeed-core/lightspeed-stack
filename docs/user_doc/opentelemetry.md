@@ -84,7 +84,7 @@ The `otel` object is one section inside the full `configuration` payload returne
   "configuration": {
     "name": "lightspeed-stack",
     "service": { "..." },
-    "llama_stack": { "..." },
+    "ogx": { "..." },
     "authentication": { "..." },
     "authorization": { "..." },
     "inference": { "..." },

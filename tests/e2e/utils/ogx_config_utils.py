@@ -27,14 +27,14 @@ def clear_ogx_config_backup() -> None:
 
 
 def reset_ogx_run_config_to_pipeline_default() -> None:
-    """Reset llama-stack-config run.yaml to Konflux/Prow pipeline seed (run-ci.yaml)."""
+    """Reset OGX run.yaml ConfigMap to Konflux/Prow pipeline seed (run-ci.yaml)."""
     if not is_prow_environment():
         return
     run_ci = Path(__file__).resolve().parents[1] / "configs" / "run-ci.yaml"
     if not run_ci.is_file():
         print(f"WARN: pipeline run.yaml seed not found at {run_ci}", flush=True)
         return
-    print(f"Resetting llama-stack-config from {run_ci.name}...", flush=True)
+    print(f"Resetting OGX run config from {run_ci.name}...", flush=True)
     update_ogx_run_configmap(str(run_ci))
 
 

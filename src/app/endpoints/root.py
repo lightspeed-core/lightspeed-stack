@@ -1,6 +1,6 @@
 """Handler for the / endpoint."""
 
-from typing import Annotated, Any
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
@@ -17,6 +17,7 @@ from models.api.responses.error import (
     UnauthorizedResponse,
 )
 from models.config import Action
+from utils.types import Responses
 
 logger = get_logger(__name__)
 tracer = trace.get_tracer(__name__)
@@ -783,7 +784,7 @@ Rz1JGaaTn29/SlPX2oA//9k=">
 """
 
 
-root_responses: dict[int | str, dict[str, Any]] = {
+root_responses: Responses = {
     401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
     503: ServiceUnavailableResponse.openapi_response(examples=["kubernetes api"]),

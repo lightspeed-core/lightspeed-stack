@@ -321,12 +321,10 @@ class PiiRedactionCapability(AbstractSafetyCapability):
             A new ModelResponse with redacted text parts, or the
             original if no redaction occurred.
         """
-        new_response = _redact_response(
+        return _redact_response(
             response,
             self.config.compiled_patterns,
         )
-
-        return new_response
 
     async def run(self, input_text: str) -> ShieldModerationResult:
         """Run PII redaction on input text and return a moderation result."""
