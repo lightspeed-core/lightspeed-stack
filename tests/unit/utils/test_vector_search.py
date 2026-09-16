@@ -99,7 +99,7 @@ class TestBuildQueryParams:
         """Test default parameters when no solr filters provided."""
         params = _build_query_params()
 
-        assert params["k"] == constants.SOLR_VECTOR_SEARCH_DEFAULT_K
+        assert params["max_chunks"] == constants.SOLR_VECTOR_SEARCH_DEFAULT_K
         assert (
             params["score_threshold"]
             == constants.SOLR_VECTOR_SEARCH_DEFAULT_SCORE_THRESHOLD
@@ -119,7 +119,7 @@ class TestBuildQueryParams:
         params = _build_query_params(solr=solr)
 
         assert params["solr"] == {"fq": ["platform:openshift"]}
-        assert params["k"] == constants.SOLR_VECTOR_SEARCH_DEFAULT_K
+        assert params["max_chunks"] == constants.SOLR_VECTOR_SEARCH_DEFAULT_K
         assert "filters" not in params
 
     def test_with_structured_metadata_filters(self) -> None:
@@ -142,7 +142,7 @@ class TestBuildQueryParams:
         assert params["filters"]["type"] == "eq"
         assert params["filters"]["key"] == "platform"
         assert params["filters"]["value"] == "openshift"
-        assert params["k"] == constants.SOLR_VECTOR_SEARCH_DEFAULT_K
+        assert params["max_chunks"] == constants.SOLR_VECTOR_SEARCH_DEFAULT_K
         # No remaining solr params
         assert "solr" not in params
 
@@ -167,7 +167,7 @@ class TestBuildQueryParams:
         assert params["filters"]["key"] == "version"
         # Other params remain under solr key
         assert params["solr"] == {"custom_param": "value"}
-        assert params["k"] == constants.SOLR_VECTOR_SEARCH_DEFAULT_K
+        assert params["max_chunks"] == constants.SOLR_VECTOR_SEARCH_DEFAULT_K
 
     def test_with_compound_filter(self) -> None:
         """Test parameters with compound AND filter."""
@@ -1034,8 +1034,12 @@ class TestFetchSolrRag:
 
         client_mock.vector_io.query.assert_called_once()
         call_kwargs = client_mock.vector_io.query.call_args.kwargs
+        assert (
+            call_kwargs["params"]["max_chunks"] == constants.DEFAULT_OKP_RAG_MAX_CHUNKS
+        )
         assert call_kwargs["params"]["mode"] == "semantic"
         assert call_kwargs["params"]["solr"] == {"fq": ["x:y"]}
+        assert "k" not in call_kwargs["params"]
 
 
 class TestBuildRagContext:

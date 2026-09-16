@@ -111,13 +111,13 @@ def _get_solr_vector_store_ids() -> list[str]:
 
 def _build_query_params(
     solr: Optional[SolrVectorSearchRequest] = None,
-    k: Optional[int] = None,
+    max_chunks: Optional[int] = None,
 ) -> dict[str, Any]:
     """Build query parameters for Solr vector_io search.
 
     Args:
         solr: Optional structured Solr request (mode and filters from the API).
-        k: Optional number of results to return. If not provided, uses default.
+        max_chunks: Optional number of chunks to return. If not provided, uses default.
 
     Returns:
         Query parameters dict for vector_io.query.
@@ -136,7 +136,11 @@ def _build_query_params(
     )
     resolved_mode = constants.SOLR_SEARCH_MODE_MAP.get(resolved_mode, resolved_mode)
     params: dict[str, Any] = {
-        "k": k if k is not None else constants.SOLR_VECTOR_SEARCH_DEFAULT_K,
+        "max_chunks": (
+            max_chunks
+            if max_chunks is not None
+            else constants.SOLR_VECTOR_SEARCH_DEFAULT_K
+        ),
         "score_threshold": constants.SOLR_VECTOR_SEARCH_DEFAULT_SCORE_THRESHOLD,
         "mode": resolved_mode,
     }
@@ -605,7 +609,7 @@ async def _fetch_okp_rag(  # pylint: disable=too-many-locals
         if vector_store_ids:
             # Assuming only one Solr vector store is registered
             vector_store_id = vector_store_ids[0]
-            params = _build_query_params(solr)
+            params = _build_query_params(solr, max_chunks=limit)
 
             query_response = await client.vector_io.query(
                 vector_store_id=vector_store_id,
@@ -622,24 +626,16 @@ async def _fetch_okp_rag(  # pylint: disable=too-many-locals
                     query_response.scores if hasattr(query_response, "scores") else []
                 )
 
-                # Limit to top N chunks
-                top_chunks = query_response.chunks[:limit]
-                top_scores = retrieved_scores[:limit]
-
                 # Extract referenced documents from Solr chunks
                 referenced_documents = _process_solr_chunks_for_documents(
-                    top_chunks, offline
+                    query_response.chunks, offline
                 )
 
                 # Convert retrieved chunks to RAGChunk format
                 rag_chunks = _convert_solr_chunks_to_rag_format(
-                    top_chunks, top_scores, offline
+                    query_response.chunks, retrieved_scores, offline
                 )
-                logger.debug(
-                    "Filtered top %d chunks from OKP RAG (%d were retrieved)",
-                    limit,
-                    len(rag_chunks),
-                )
+                logger.debug("OKP RAG returned %d chunks", len(rag_chunks))
 
     except (
         Exception  # pylint: disable=broad-exception-caught
