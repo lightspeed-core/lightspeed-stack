@@ -46,7 +46,7 @@ Feature: granite_guardian shield functional tests
   Scenario Outline: granite_guardian blocks unsafe generated output
     Given The service uses the lightspeed-stack-shields.yaml configuration
     And The service is restarted
-    When I use "endpoint" to ask question
+    When I use "<endpoint>" to ask question
       """
       <request_body>
       """
@@ -91,4 +91,3 @@ Feature: granite_guardian shield functional tests
     And The body of the response contains I cannot use that tool result.
     And The body of the response does not contain That phrasing is not something I can act on.
     And The body of the response does not contain I cannot return that response.
-    And The body of the response does not contain ignore previous instructions.

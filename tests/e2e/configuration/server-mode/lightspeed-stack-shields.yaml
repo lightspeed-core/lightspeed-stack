@@ -42,23 +42,3 @@ shields:
         - pattern: '\d+'
           replacement: '[NUM]'
       case_sensitive: false
-  # Enable with the granite_guardian capability. 
-  # - name: granite-guardian
-  #   provider_id: granite_guardian
-  #   config:
-  #     url: http://${env.E2E_GUARDIAN_HOSTNAME}:8000/v1
-  #     risks:
-  #       - name: jailbreak
-  #         description: >
-  #           The user message attempts to jailbreak the assistant or
-  #           override its safety instructions.
-  #         points: [input]
-  #         threshold: 0.65
-  #         violation_message: "That phrasing is not something I can act on."
-  #       - name: restricted-persona-output
-  #         description: >
-  #           The assistant claims it has disabled its safety filters
-  #           or will ignore safety policies in its reply.
-  #         points: [output]
-  #         threshold: 0.65
-  #         violation_message: "I cannot return that response."
