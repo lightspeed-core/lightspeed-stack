@@ -10,6 +10,7 @@ contract.
 
 from __future__ import annotations
 
+import asyncio
 import traceback
 from typing import Any, Optional
 from urllib.parse import urljoin
@@ -19,6 +20,7 @@ from pydantic import AnyUrl, ValidationError
 import constants
 from configuration import configuration
 from log import get_logger
+from models.common.query import OkpFilter
 from models.common.turn_summary import RAGChunk, ReferencedDocument
 from pydantic_ai_lightspeed.retrieval.okp_mcp._client import call_okp_search
 
@@ -105,53 +107,138 @@ class OkpMcpRetriever:  # pylint: disable=too-many-instance-attributes
             product_version=mcp.product_version,
         )
 
+    def _resolve_search_combos(
+        self, okp: Optional[OkpFilter]
+    ) -> list[tuple[Optional[str], Optional[str]]]:
+        """Resolve the (product, product_version) pairs to search.
+
+        The RHOKP MCP ``search`` tool takes a scalar product/version, so a
+        multi-product/multi-version query-time filter expands into one search
+        per (product, version) pair. A query-time filter fully overrides the
+        launch-time config defaults; when absent, the configured defaults (which
+        may both be None) are used.
+
+        Parameters:
+            okp: Optional query-time OKP filter.
+
+        Returns:
+            A non-empty list of ``(product, product_version)`` pairs. Either
+            element may be None (meaning "unfiltered on that facet").
+        """
+        if okp is not None and okp.products:
+            combos: list[tuple[Optional[str], Optional[str]]] = []
+            for entry in okp.products:
+                if entry.versions:
+                    combos.extend((entry.product, v) for v in entry.versions)
+                else:
+                    combos.append((entry.product, None))
+            return combos
+        return [(self.product, self.product_version)]
+
     async def fetch(
-        self, query: str
+        self, query: str, okp: Optional[OkpFilter] = None
     ) -> tuple[list[RAGChunk], list[ReferencedDocument]]:
         """Fetch chunks and referenced documents from the RHOKP MCP server.
 
-        Any transport or tool error is caught and logged; on failure an empty
-        result is returned so RAG retrieval degrades gracefully rather than
-        failing the request.
+        When ``okp`` selects multiple products/versions, one search is issued per
+        (product, version) pair and the results are merged, deduplicated, sorted
+        by score, and capped at ``max_chunks``. Any transport or tool error on an
+        individual search is caught and logged; the remaining searches still
+        contribute, so RAG retrieval degrades gracefully rather than failing the
+        request.
 
         Parameters:
             query: The raw user query string.
+            okp: Optional query-time OKP filter overriding the configured
+                product/version defaults.
 
         Returns:
             A tuple of ``(rag_chunks, referenced_documents)``. Both lists are
-            empty when the server returns no usable documents or the call fails.
+            empty when the server returns no usable documents or every call
+            fails.
         """
         rows = min(self.max_chunks, constants.OKP_MCP_MAX_ROWS)
-        try:
-            result = await call_okp_search(
-                url=self.url,
-                tool_name=self.tool_name,
-                query=query,
-                rows=rows,
-                headers=self.headers,
-                timeout=self.timeout,
-                product=self.product,
-                product_version=self.product_version,
-            )
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            logger.warning("Failed to query OKP MCP server for chunks: %s", e)
-            logger.debug("OKP MCP query error details: %s", traceback.format_exc())
-            return [], []
+        combos = self._resolve_search_combos(okp)
+        results = await asyncio.gather(
+            *(
+                call_okp_search(
+                    url=self.url,
+                    tool_name=self.tool_name,
+                    query=query,
+                    rows=rows,
+                    headers=self.headers,
+                    timeout=self.timeout,
+                    product=product,
+                    product_version=product_version,
+                )
+                for product, product_version in combos
+            ),
+            return_exceptions=True,
+        )
 
-        docs = self._extract_docs(result)
+        docs: list[dict[str, Any]] = []
+        for combo, result in zip(combos, results, strict=True):
+            if isinstance(result, BaseException):
+                logger.warning(
+                    "Failed to query OKP MCP server for chunks (product=%r, "
+                    "product_version=%r): %s",
+                    combo[0],
+                    combo[1],
+                    result,
+                )
+                logger.debug(
+                    "OKP MCP query error details: %s",
+                    "".join(traceback.format_exception(result)),
+                )
+                continue
+            docs.extend(self._extract_docs(result))
+
         if not docs:
             logger.debug("OKP MCP returned no documents for query")
             return [], []
 
-        docs = docs[: self.max_chunks]
+        docs = self._merge_docs(docs)[: self.max_chunks]
         rag_chunks = self._to_rag_chunks(docs)
         referenced_documents = self._to_referenced_documents(docs)
         logger.debug(
-            "OKP MCP retrieval: %d chunks, %d documents",
+            "OKP MCP retrieval: %d chunks, %d documents (from %d search(es))",
             len(rag_chunks),
             len(referenced_documents),
+            len(combos),
         )
         return rag_chunks, referenced_documents
+
+    @staticmethod
+    def _merge_docs(docs: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """Merge documents from one or more searches into a ranked, unique list.
+
+        Sorts by descending score (missing scores rank last) and deduplicates
+        exact repeats — the same chunk of the same document returned by
+        overlapping searches — while preserving distinct chunks of one document.
+
+        Parameters:
+            docs: Concatenated document mappings from all issued searches.
+
+        Returns:
+            Documents sorted by descending score with exact duplicates removed.
+        """
+        docs_sorted = sorted(
+            docs,
+            key=lambda doc: (
+                doc.get("score") if isinstance(doc.get("score"), (int, float))
+                else float("-inf")
+            ),
+            reverse=True,
+        )
+        seen: set[tuple[Any, Any]] = set()
+        merged: list[dict[str, Any]] = []
+        for doc in docs_sorted:
+            key = (doc.get("doc_id"), doc.get("chunk"))
+            if key in seen:
+                continue
+            seen.add(key)
+            merged.append(doc)
+        return merged
 
     @staticmethod
     def _extract_docs(result: dict[str, Any]) -> list[dict[str, Any]]:

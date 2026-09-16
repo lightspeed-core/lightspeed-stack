@@ -18,7 +18,7 @@ from ogx_api.openai_responses import (
 from pydantic import BaseModel, field_validator, model_validator
 
 from constants import RESPONSES_REQUEST_MAX_SIZE
-from models.common.query import SolrVectorSearchRequest
+from models.common.query import OkpFilter, SolrVectorSearchRequest
 from models.common.responses.types import IncludeParameter, InputTool, ResponseInput
 from utils import suid
 
@@ -60,6 +60,7 @@ class ResponsesRequest(BaseModel):
         shield_ids: LCORE-specific list of configured shield names to apply.
             If None, all configured shields are used.
         solr: Optional Solr inline RAG options (mode, filters) or legacy filter-only dict.
+        okp: Optional transport-neutral OKP RAG filter (product selections with versions).
     """
 
     input: ResponseInput
@@ -86,6 +87,7 @@ class ResponsesRequest(BaseModel):
     generate_topic_summary: Optional[bool] = True
     shield_ids: Optional[list[str]] = None
     solr: Optional[SolrVectorSearchRequest] = None
+    okp: Optional[OkpFilter] = None
 
     model_config = {
         "extra": "forbid",

@@ -134,6 +134,70 @@ class Attachment(BaseModel):
     }
 
 
+class OkpProductFilter(BaseModel):
+    """A single product selection, with its versions scoped to that product.
+
+    Versions live under their product so an invalid cross-pairing (e.g. a
+    version that belongs to a different product) is structurally
+    unrepresentable. All values are matched exactly (no wildcards).
+
+    Attributes:
+        product: Exact product identifier to filter on (e.g.
+            ``openshift_container_platform``).
+        versions: Exact versions of this product to include. When None or empty,
+            the product matches regardless of version.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    product: str = Field(
+        description="Exact product identifier (exact match, no wildcards).",
+        examples=["openshift_container_platform", "rhel"],
+    )
+    versions: Optional[list[str]] = Field(
+        None,
+        description=(
+            "Exact versions of this product to include (exact match, no "
+            "wildcards). When omitted, the product matches regardless of "
+            "version."
+        ),
+        examples=[["4.16", "4.17"], ["9", "10"]],
+    )
+
+
+class OkpFilter(BaseModel):
+    """Transport-neutral, query-time OKP RAG filter.
+
+    A domain-oriented product/version filter for the OKP RAG source,
+    deliberately decoupled from any backend filter vocabulary: it uses neither
+    Solr's ``fq`` nor the OGX/llama-stack ``{type, key, value}`` grammar. Each
+    OKP transport translates it into its own backend form (the RHOKP MCP
+    ``search`` tool args, or an OGX structured filter for the legacy Solr path),
+    so the public interface is unaffected when OGX/Solr is retired.
+
+    Attributes:
+        products: Product selections to include, OR'd together. Each entry binds
+            its versions to its product. An empty list applies no filter.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    products: list[OkpProductFilter] = Field(
+        default_factory=list,
+        description=(
+            "Product selections to include, OR'd together; each entry scopes "
+            "its versions to its product."
+        ),
+        examples=[
+            [{"product": "openshift_container_platform", "versions": ["4.16", "4.17"]}],
+            [
+                {"product": "openshift_container_platform", "versions": ["4.16"]},
+                {"product": "rhel", "versions": ["9", "10"]},
+            ],
+        ],
+    )
+
+
 class SolrVectorSearchRequest(BaseModel):
     """LCORE Solr inline RAG options for vector_io.query (mode and provider filters).
 
