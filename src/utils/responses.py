@@ -436,6 +436,9 @@ async def prepare_responses_params(  # pylint: disable=too-many-arguments,too-ma
     # Normalize Vertex AI model IDs to work around OGX 0.6.x bug
     normalized_model = normalize_vertex_ai_model_id(model)
 
+    # Known LLS bug: https://redhat.atlassian.net/browse/LCORE-1583
+    reasoning = apply_reasoning_for_resolved_tools(None, tools, normalized_model)
+
     return ResponsesApiParams(
         input=input_text,
         model=normalized_model,
@@ -447,6 +450,7 @@ async def prepare_responses_params(  # pylint: disable=too-many-arguments,too-ma
         extra_headers=extra_headers,
         max_infer_iters=configuration.inference.max_infer_iters,
         max_tool_calls=configuration.inference.max_tool_calls,
+        reasoning=reasoning,
     )
 
 
