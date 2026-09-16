@@ -859,7 +859,7 @@ async def shield_violation_generator(
         api_params: ResponsesApiParams
         context: ResponsesContext
     Yields:
-        SSE-formatted strings for streaming events, ending with [DONE]
+        SSE-formatted strings for streaming events
     """
     normalized_conv_id = normalize_conversation_id(api_params.conversation)
     available_quotas = get_available_quotas(
@@ -934,8 +934,6 @@ async def shield_violation_generator(
     }
     data_json = json.dumps(completed_event)
     yield f"event: response.completed\ndata: {data_json}\n\n"
-
-    yield "data: [DONE]\n\n"
 
 
 def _sanitize_response_dict(
