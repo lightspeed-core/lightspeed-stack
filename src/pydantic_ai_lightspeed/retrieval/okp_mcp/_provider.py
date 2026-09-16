@@ -222,14 +222,11 @@ class OkpMcpRetriever:  # pylint: disable=too-many-instance-attributes
         Returns:
             Documents sorted by descending score with exact duplicates removed.
         """
-        docs_sorted = sorted(
-            docs,
-            key=lambda doc: (
-                doc.get("score") if isinstance(doc.get("score"), (int, float))
-                else float("-inf")
-            ),
-            reverse=True,
-        )
+        def _score(doc: dict[str, Any]) -> float:
+            value = doc.get("score")
+            return float(value) if isinstance(value, (int, float)) else float("-inf")
+
+        docs_sorted = sorted(docs, key=_score, reverse=True)
         seen: set[tuple[Any, Any]] = set()
         merged: list[dict[str, Any]] = []
         for doc in docs_sorted:

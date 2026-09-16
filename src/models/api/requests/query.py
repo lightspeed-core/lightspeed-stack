@@ -5,7 +5,7 @@ from typing import Optional, Self
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from constants import MEDIA_TYPE_JSON, MEDIA_TYPE_TEXT
-from models.common.query import Attachment, SolrVectorSearchRequest
+from models.common.query import Attachment, OkpFilter, SolrVectorSearchRequest
 from utils import suid
 
 

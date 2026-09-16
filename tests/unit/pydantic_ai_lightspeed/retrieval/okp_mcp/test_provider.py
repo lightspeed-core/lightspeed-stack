@@ -7,6 +7,7 @@ from pydantic import AnyUrl
 from pytest_mock import MockerFixture
 
 import constants
+from models.common.query import OkpFilter
 from pydantic_ai_lightspeed.retrieval.okp_mcp import _provider
 from pydantic_ai_lightspeed.retrieval.okp_mcp._provider import OkpMcpRetriever
 
@@ -213,6 +214,117 @@ async def test_fetch_defaults_product_filters_to_none(mocker: MockerFixture) -> 
 
     assert call.await_args.kwargs["product"] is None
     assert call.await_args.kwargs["product_version"] is None
+
+
+@pytest.mark.asyncio
+async def test_fetch_fans_out_over_products_and_versions(
+    mocker: MockerFixture,
+) -> None:
+    """A multi-version query-time filter issues one search per (product, version)."""
+    call = mocker.AsyncMock(return_value={"response": {"docs": []}})
+    mocker.patch.object(_provider, "call_okp_search", call)
+
+    okp = OkpFilter.model_validate(
+        {
+            "products": [
+                {
+                    "product": "openshift_container_platform",
+                    "versions": ["4.16", "4.17"],
+                },
+                {"product": "rhel"},
+            ]
+        }
+    )
+    await _retriever().fetch("q", okp=okp)
+
+    combos = {
+        (c.kwargs["product"], c.kwargs["product_version"]) for c in call.await_args_list
+    }
+    assert combos == {
+        ("openshift_container_platform", "4.16"),
+        ("openshift_container_platform", "4.17"),
+        ("rhel", None),
+    }
+
+
+@pytest.mark.asyncio
+async def test_fetch_okp_overrides_config_filters(mocker: MockerFixture) -> None:
+    """A query-time filter fully overrides the configured product/version."""
+    call = mocker.AsyncMock(return_value={"response": {"docs": []}})
+    mocker.patch.object(_provider, "call_okp_search", call)
+
+    retriever = OkpMcpRetriever(
+        url="http://okp:8080/mcp",
+        tool_name="search",
+        max_chunks=5,
+        offline=False,
+        doc_base_url="http://okp:8081",
+        product="configured_product",
+        product_version="1.0",
+    )
+    okp = OkpFilter.model_validate({"products": [{"product": "rhel"}]})
+    await retriever.fetch("q", okp=okp)
+
+    assert call.await_count == 1
+    assert call.await_args.kwargs["product"] == "rhel"
+    assert call.await_args.kwargs["product_version"] is None
+
+
+@pytest.mark.asyncio
+async def test_fetch_merges_and_dedups_across_calls(mocker: MockerFixture) -> None:
+    """Docs from multiple searches are merged, sorted by score, and deduplicated."""
+
+    async def _search(**kwargs: Any) -> dict[str, Any]:
+        if kwargs["product_version"] == "4.16":
+            return {
+                "response": {
+                    "docs": [
+                        {"chunk": "shared", "doc_id": "d", "score": 60.0},
+                        {"chunk": "low", "doc_id": "e", "score": 10.0},
+                    ]
+                }
+            }
+        return {
+            "response": {
+                "docs": [
+                    {"chunk": "shared", "doc_id": "d", "score": 60.0},
+                    {"chunk": "high", "doc_id": "f", "score": 90.0},
+                ]
+            }
+        }
+
+    mocker.patch.object(
+        _provider, "call_okp_search", mocker.AsyncMock(side_effect=_search)
+    )
+
+    okp = OkpFilter.model_validate(
+        {"products": [{"product": "ocp", "versions": ["4.16", "4.17"]}]}
+    )
+    chunks, _ = await _retriever(max_chunks=5).fetch("q", okp=okp)
+
+    # "shared" appears in both searches but is deduplicated; results are score-sorted.
+    assert [c.content for c in chunks] == ["high", "shared", "low"]
+
+
+@pytest.mark.asyncio
+async def test_fetch_degrades_on_partial_failure(mocker: MockerFixture) -> None:
+    """A failing search is skipped while the others still contribute."""
+
+    async def _search(**kwargs: Any) -> dict[str, Any]:
+        if kwargs["product_version"] == "4.16":
+            raise RuntimeError("boom")
+        return {"response": {"docs": [{"chunk": "ok", "doc_id": "g", "score": 5.0}]}}
+
+    mocker.patch.object(
+        _provider, "call_okp_search", mocker.AsyncMock(side_effect=_search)
+    )
+
+    okp = OkpFilter.model_validate(
+        {"products": [{"product": "ocp", "versions": ["4.16", "4.17"]}]}
+    )
+    chunks, _ = await _retriever().fetch("q", okp=okp)
+
+    assert [c.content for c in chunks] == ["ok"]
 
 
 def test_from_configuration_uses_defaults(mocker: MockerFixture) -> None:

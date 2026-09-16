@@ -688,6 +688,7 @@ async def handle_responses_with_tracing(  # pylint: disable=too-many-locals
         input_text,
         vector_store_ids,
         original_request.solr,
+        original_request.okp,
     )
     if moderation_result.decision == "passed":
         updated_request.input = append_inline_rag_context_to_responses_input(

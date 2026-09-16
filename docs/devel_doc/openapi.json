@@ -16260,6 +16260,48 @@
                 "title": "OkpConfiguration",
                 "description": "OKP (Offline Knowledge Portal) provider configuration.\n\nControls provider-specific behaviour for the OKP vector store.\nOnly relevant when ``\"okp\"`` is listed in ``rag.retrieval.inline.sources``\nor ``rag.retrieval.tool.sources``."
             },
+            "OkpFilter": {
+                "properties": {
+                    "products": {
+                        "items": {
+                            "$ref": "#/components/schemas/OkpProductFilter"
+                        },
+                        "type": "array",
+                        "title": "Products",
+                        "description": "Product selections to include, OR'd together; each entry scopes its versions to its product.",
+                        "examples": [
+                            [
+                                {
+                                    "product": "openshift_container_platform",
+                                    "versions": [
+                                        "4.16",
+                                        "4.17"
+                                    ]
+                                }
+                            ],
+                            [
+                                {
+                                    "product": "openshift_container_platform",
+                                    "versions": [
+                                        "4.16"
+                                    ]
+                                },
+                                {
+                                    "product": "rhel",
+                                    "versions": [
+                                        "9",
+                                        "10"
+                                    ]
+                                }
+                            ]
+                        ]
+                    }
+                },
+                "additionalProperties": false,
+                "type": "object",
+                "title": "OkpFilter",
+                "description": "Transport-neutral, query-time OKP RAG filter.\n\nA domain-oriented product/version filter for the OKP RAG source,\ndeliberately decoupled from any backend filter vocabulary: it uses neither\nSolr's ``fq`` nor the OGX/llama-stack ``{type, key, value}`` grammar. Each\nOKP transport translates it into its own backend form (the RHOKP MCP\n``search`` tool args, or an OGX structured filter for the legacy Solr path),\nso the public interface is unaffected when OGX/Solr is retired.\n\nAttributes:\n    products: Product selections to include, OR'd together. Each entry binds\n        its versions to its product. An empty list applies no filter."
+            },
             "OkpMcpConfiguration": {
                 "properties": {
                     "enabled": {
@@ -16345,6 +16387,51 @@
                 "type": "object",
                 "title": "OkpMcpConfiguration",
                 "description": "OKP-over-MCP transport configuration.\n\nWhen ``enabled`` is True, OKP RAG context is fetched from the RHOKP MCP\nserver (which encapsulates embeddings and Solr querying server-side) instead\nof the OGX/Solr ``vector_io`` provider. OKP is still activated by listing\n``\"okp\"`` in ``rag.retrieval.inline.sources``; only the transport changes.\nThe Solr transport remains the default and is used whenever ``enabled`` is\nFalse.\n\nThis flag is the initial mechanism behind\n:func:`configuration.okp_rag_mcp_enabled`. It may later be replaced by\nauto-detection of MCP capability in the connected RHOKP instance.\n\nAttributes:\n    enabled: Whether the OKP MCP transport is enabled.\n    url: RHOKP MCP endpoint (streamable HTTP). Defaults to the constant\n        when unset.\n    tool_name: Name of the MCP search tool to call.\n    max_chunks: Maximum number of chunks to request from the MCP server.\n    product: Optional product to restrict search results to, passed as a\n        structured filter to the MCP search tool.\n    product_version: Optional product version to restrict search results to,\n        passed as a structured filter to the MCP search tool.\n    timeout: Optional per-request timeout in seconds for MCP calls.\n    authorization_headers: Static authorization headers sent to the MCP\n        server, resolved from secret files at startup."
+            },
+            "OkpProductFilter": {
+                "properties": {
+                    "product": {
+                        "type": "string",
+                        "title": "Product",
+                        "description": "Exact product identifier (exact match, no wildcards).",
+                        "examples": [
+                            "openshift_container_platform",
+                            "rhel"
+                        ]
+                    },
+                    "versions": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Versions",
+                        "description": "Exact versions of this product to include (exact match, no wildcards). When omitted, the product matches regardless of version.",
+                        "examples": [
+                            [
+                                "4.16",
+                                "4.17"
+                            ],
+                            [
+                                "9",
+                                "10"
+                            ]
+                        ]
+                    }
+                },
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                    "product"
+                ],
+                "title": "OkpProductFilter",
+                "description": "A single product selection, with its versions scoped to that product.\n\nVersions live under their product so an invalid cross-pairing (e.g. a\nversion that belongs to a different product) is structurally\nunrepresentable. All values are matched exactly (no wildcards).\n\nAttributes:\n    product: Exact product identifier to filter on (e.g.\n        ``openshift_container_platform``).\n    versions: Exact versions of this product to include. When None or empty,\n        the product matches regardless of version."
             },
             "OpenAIResponseAnnotationCitation": {
                 "properties": {
@@ -19044,6 +19131,30 @@
                                 }
                             }
                         ]
+                    },
+                    "okp": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/OkpFilter"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Transport-neutral OKP RAG filter: exact-match product selections (each with its own versions) applied by whichever OKP transport is active (RHOKP MCP or the legacy Solr path).",
+                        "examples": [
+                            {
+                                "products": [
+                                    {
+                                        "product": "openshift_container_platform",
+                                        "versions": [
+                                            "4.16",
+                                            "4.17"
+                                        ]
+                                    }
+                                ]
+                            }
+                        ]
                     }
                 },
                 "additionalProperties": false,
@@ -19052,7 +19163,7 @@
                     "query"
                 ],
                 "title": "QueryRequest",
-                "description": "Model representing a request for the LLM (Language Model).\n\nAttributes:\n    query: The query string.\n    conversation_id: The optional conversation ID (UUID).\n    provider: The optional provider.\n    model: The optional model.\n    system_prompt: The optional system prompt.\n    attachments: The optional attachments.\n    no_tools: Whether to bypass all tools and MCP servers (default: False).\n    generate_topic_summary: Whether to generate topic summary for new conversations.\n    media_type: The optional media type for response format (application/json or text/plain).\n    vector_store_ids: The optional list of specific vector store IDs to query for RAG.\n    shield_ids: The optional list of configured shield names to apply.\n    solr: Optional Solr inline RAG options (mode, filters) or legacy filter-only dict.",
+                "description": "Model representing a request for the LLM (Language Model).\n\nAttributes:\n    query: The query string.\n    conversation_id: The optional conversation ID (UUID).\n    provider: The optional provider.\n    model: The optional model.\n    system_prompt: The optional system prompt.\n    attachments: The optional attachments.\n    no_tools: Whether to bypass all tools and MCP servers (default: False).\n    generate_topic_summary: Whether to generate topic summary for new conversations.\n    media_type: The optional media type for response format (application/json or text/plain).\n    vector_store_ids: The optional list of specific vector store IDs to query for RAG.\n    shield_ids: The optional list of configured shield names to apply.\n    solr: Optional Solr inline RAG options (mode, filters) or legacy filter-only dict.\n    okp: Optional transport-neutral OKP RAG filter (product, product_version).",
                 "examples": [
                     {
                         "attachments": [
@@ -20489,6 +20600,16 @@
                                 "type": "null"
                             }
                         ]
+                    },
+                    "okp": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/OkpFilter"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
                     }
                 },
                 "additionalProperties": false,
@@ -20497,7 +20618,7 @@
                     "input"
                 ],
                 "title": "ResponsesRequest",
-                "description": "Model representing a request for the Responses API following LCORE specification.\n\nAttributes:\n    input: Input text or structured input items containing the query.\n    model: Model identifier in format \"provider/model\". Auto-selected if not provided.\n    conversation: Conversation ID linking to an existing conversation. Accepts both\n        OpenAI and LCORE formats. Mutually exclusive with previous_response_id.\n    include: Explicitly specify output item types that are excluded by default but\n        should be included in the response.\n    instructions: System instructions or guidelines provided to the model (acts as\n        the system prompt).\n    max_infer_iters: Maximum number of inference iterations the model can perform.\n    max_output_tokens: Maximum number of tokens allowed in the response.\n    max_tool_calls: Maximum number of tool calls allowed in a single response.\n    metadata: Custom metadata dictionary with key-value pairs for tracking or logging.\n    parallel_tool_calls: Whether the model can make multiple tool calls in parallel.\n    previous_response_id: Identifier of the previous response in a multi-turn\n        conversation. Mutually exclusive with conversation.\n    prompt: Prompt object containing a template with variables for dynamic\n        substitution.\n    reasoning: Reasoning configuration for the response.\n    safety_identifier: Safety identifier for the response.\n    store: Whether to store the response in conversation history. Defaults to True.\n    stream: Whether to stream the response as it is generated. Defaults to False.\n    temperature: Sampling temperature controlling randomness (typically 0.0\u20132.0).\n    text: Text response configuration specifying output format constraints (JSON\n        schema, JSON object, or plain text).\n    tool_choice: Tool selection strategy (\"auto\", \"required\", \"none\", or specific\n        tool configuration).\n    tools: List of tools available to the model (file search, web search, function\n        calls, MCP tools). Defaults to all tools available to the model.\n    generate_topic_summary: LCORE-specific flag indicating whether to generate a\n        topic summary for new conversations. Defaults to True.\n    shield_ids: LCORE-specific list of configured shield names to apply.\n        If None, all configured shields are used.\n    solr: Optional Solr inline RAG options (mode, filters) or legacy filter-only dict.",
+                "description": "Model representing a request for the Responses API following LCORE specification.\n\nAttributes:\n    input: Input text or structured input items containing the query.\n    model: Model identifier in format \"provider/model\". Auto-selected if not provided.\n    conversation: Conversation ID linking to an existing conversation. Accepts both\n        OpenAI and LCORE formats. Mutually exclusive with previous_response_id.\n    include: Explicitly specify output item types that are excluded by default but\n        should be included in the response.\n    instructions: System instructions or guidelines provided to the model (acts as\n        the system prompt).\n    max_infer_iters: Maximum number of inference iterations the model can perform.\n    max_output_tokens: Maximum number of tokens allowed in the response.\n    max_tool_calls: Maximum number of tool calls allowed in a single response.\n    metadata: Custom metadata dictionary with key-value pairs for tracking or logging.\n    parallel_tool_calls: Whether the model can make multiple tool calls in parallel.\n    previous_response_id: Identifier of the previous response in a multi-turn\n        conversation. Mutually exclusive with conversation.\n    prompt: Prompt object containing a template with variables for dynamic\n        substitution.\n    reasoning: Reasoning configuration for the response.\n    safety_identifier: Safety identifier for the response.\n    store: Whether to store the response in conversation history. Defaults to True.\n    stream: Whether to stream the response as it is generated. Defaults to False.\n    temperature: Sampling temperature controlling randomness (typically 0.0\u20132.0).\n    text: Text response configuration specifying output format constraints (JSON\n        schema, JSON object, or plain text).\n    tool_choice: Tool selection strategy (\"auto\", \"required\", \"none\", or specific\n        tool configuration).\n    tools: List of tools available to the model (file search, web search, function\n        calls, MCP tools). Defaults to all tools available to the model.\n    generate_topic_summary: LCORE-specific flag indicating whether to generate a\n        topic summary for new conversations. Defaults to True.\n    shield_ids: LCORE-specific list of configured shield names to apply.\n        If None, all configured shields are used.\n    solr: Optional Solr inline RAG options (mode, filters) or legacy filter-only dict.\n    okp: Optional transport-neutral OKP RAG filter (product selections with versions).",
                 "examples": [
                     {
                         "generate_topic_summary": true,
