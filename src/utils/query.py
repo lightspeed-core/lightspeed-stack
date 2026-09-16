@@ -31,14 +31,14 @@ from models.common.query import Attachment
 from models.common.turn_summary import TurnSummary
 from models.config import Action
 from models.database.conversations import UserConversation, UserTurn
-from utils.quota_utils import consume_tokens
-from utils.suid import is_moderation_id, normalize_conversation_id
-from utils.token_counter import TokenCounter
-from utils.transcripts import (
+from transcripts.transcripts import (
     create_transcript,
     create_transcript_metadata,
     store_transcript,
 )
+from utils.quota_utils import consume_tokens
+from utils.suid import is_moderation_id, normalize_conversation_id
+from utils.token_counter import TokenCounter
 
 logger = get_logger(__name__)
 

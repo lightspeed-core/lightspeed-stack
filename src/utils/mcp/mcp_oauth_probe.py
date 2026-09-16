@@ -15,7 +15,7 @@ import constants
 from configuration import AppConfig
 from log import get_logger
 from models.api.responses.error import UnauthorizedResponse
-from utils.mcp_headers import McpHeaders, build_mcp_headers
+from utils.mcp.mcp_headers import McpHeaders, build_mcp_headers
 
 logger = get_logger(__name__)
 

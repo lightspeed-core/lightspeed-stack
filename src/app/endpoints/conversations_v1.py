@@ -52,12 +52,13 @@ from utils.suid import (
     normalize_conversation_id,
     to_ogx_conversation_id,
 )
+from utils.types import Responses
 
 logger = get_logger(__name__)
 tracer = trace.get_tracer(__name__)
 router = APIRouter(tags=["conversations_v1"])
 
-conversation_get_responses: dict[int | str, dict[str, Any]] = {
+conversation_get_responses: Responses = {
     200: ConversationResponse.openapi_response(),
     400: BadRequestResponse.openapi_response(examples=["conversation_id"]),
     401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
@@ -71,7 +72,7 @@ conversation_get_responses: dict[int | str, dict[str, Any]] = {
     ),
 }
 
-conversation_delete_responses: dict[int | str, dict[str, Any]] = {
+conversation_delete_responses: Responses = {
     200: ConversationDeleteResponse.openapi_response(),
     400: BadRequestResponse.openapi_response(examples=["conversation_id"]),
     401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
@@ -86,7 +87,7 @@ conversation_delete_responses: dict[int | str, dict[str, Any]] = {
     ),
 }
 
-conversations_list_responses: dict[int | str, dict[str, Any]] = {
+conversations_list_responses: Responses = {
     200: ConversationsListResponse.openapi_response(),
     401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
@@ -98,7 +99,7 @@ conversations_list_responses: dict[int | str, dict[str, Any]] = {
     ),
 }
 
-conversation_update_responses: dict[int | str, dict[str, Any]] = {
+conversation_update_responses: Responses = {
     200: ConversationUpdateResponse.openapi_response(),
     400: BadRequestResponse.openapi_response(examples=["conversation_id"]),
     401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),

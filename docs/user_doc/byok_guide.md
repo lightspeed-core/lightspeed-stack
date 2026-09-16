@@ -327,7 +327,7 @@ Both modes can be enabled simultaneously. Choose based on your latency and contr
 
 > [!TIP]
 > A ready-to-use example combining BYOK and OKP is available at
-> [`examples/lightspeed-stack-byok-okp-rag.yaml`](../examples/lightspeed-stack-byok-okp-rag.yaml).
+> [`examples/lightspeed-stack-byok-okp-rag.yaml`](../../examples/lightspeed-stack-byok-okp-rag.yaml).
 
 ---
 
@@ -463,7 +463,7 @@ rag:
 
 > [!TIP]
 > A complete working example combining BYOK and OKP is available at
-> [`examples/lightspeed-stack-byok-okp-rag.yaml`](../examples/lightspeed-stack-byok-okp-rag.yaml).
+> [`examples/lightspeed-stack-byok-okp-rag.yaml`](../../examples/lightspeed-stack-byok-okp-rag.yaml).
 
 ---
 

@@ -9,7 +9,10 @@ from urllib.parse import urljoin
 
 from fastapi import HTTPException
 from ogx_api import OpenAIResponseObject
-from ogx_api.openai_responses import ApprovalFilter
+from ogx_api.openai_responses import (
+    ApprovalFilter,
+    OpenAIResponseReasoning,
+)
 from ogx_api.openai_responses import (
     OpenAIResponseContentPartRefusal as ContentPartRefusal,
 )
@@ -81,6 +84,7 @@ from ogx_api.openai_responses import (
 )
 from ogx_client import ApiException, AsyncOgxClient
 from opentelemetry import trace
+from pydantic_ai.profiles.openai import openai_model_profile
 
 import constants
 from configuration import configuration
@@ -110,7 +114,7 @@ from models.common.turn_summary import (
 )
 from models.config import RagStore
 from models.database.conversations import UserConversation
-from utils.mcp_headers import (
+from utils.mcp.mcp_headers import (
     McpHeaders,
     build_mcp_headers,
     find_unresolved_auth_headers,
@@ -1824,6 +1828,53 @@ async def _resolve_server_tools(
         mcp_headers=mcp_headers,
         request_headers=request_headers,
     )
+
+
+def model_reasoning_enabled_by_default(model_id: str) -> bool:
+    """Return whether the model applies non-``none`` reasoning when omitted.
+
+    Uses pydantic-ai's OpenAI model profile table (prefix-matched, live-verified).
+    Only these models need an explicit ``reasoning.effort: none`` when tools are
+    present on the OGX chat-completions path — e.g. gpt-5.6-terra, not gpt-4o-mini
+    or opt-in gpt-5.4.
+    """
+    _, model_name = extract_provider_and_model_from_model_id(model_id)
+    profile = openai_model_profile(model_name)
+    return bool(profile.get("openai_reasoning_enabled_by_default", False))
+
+
+def apply_reasoning_for_resolved_tools(
+    reasoning: Optional[OpenAIResponseReasoning],
+    tools: Optional[list[InputTool]],
+    model_id: str,
+) -> Optional[OpenAIResponseReasoning]:
+    """Set reasoning effort to ``none`` when resolved tools are present.
+
+    Only applied when the model reasons by default if ``reasoning`` is omitted
+    (OpenAI gpt-5.6, gpt-5, o-series, etc.). Opt-in and non-reasoning models are
+    left unchanged.
+
+    Args:
+        reasoning: Optional reasoning configuration to modify.
+        tools: Optional list of tools that have been resolved.
+        model_id: Resolved model identifier in ``provider/model`` form.
+
+    Returns:
+        Modified reasoning configuration with effort set to "none" if tools
+        are present on a default-on reasoning model, or the original reasoning
+        otherwise.
+    """
+    if not tools or not model_reasoning_enabled_by_default(model_id):
+        return reasoning
+
+    base = reasoning or OpenAIResponseReasoning()
+    if base.effort is not None and base.effort != "none":
+        logger.warning(
+            "reasoning effort '%s' is not supported with tools in LCORE; "
+            "using effort='none'",
+            base.effort,
+        )
+    return base.model_copy(update={"effort": "none"})
 
 
 async def resolve_tool_choice(

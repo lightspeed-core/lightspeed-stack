@@ -1,4 +1,4 @@
-"""Unit tests for functions defined in utils.transcripts module."""
+"""Unit tests for functions defined in transcripts module."""
 
 import hashlib
 
@@ -7,7 +7,7 @@ from pytest_mock import MockerFixture
 from configuration import AppConfig
 from models.api.requests import QueryRequest
 from models.common.turn_summary import ToolCallSummary, ToolResultSummary, TurnSummary
-from utils.transcripts import (
+from transcripts.transcripts import (
     construct_transcripts_path,
     create_transcript,
     create_transcript_metadata,
@@ -39,7 +39,7 @@ def test_construct_transcripts_path(mocker: MockerFixture) -> None:
     cfg = AppConfig()
     cfg.init_from_dict(config_dict)
     # Update configuration for this test
-    mocker.patch("utils.transcripts.configuration", cfg)
+    mocker.patch("transcripts.transcripts.configuration", cfg)
 
     user_id = "user123"
     conversation_id = "123e4567-e89b-12d3-a456-426614174000"
@@ -59,12 +59,12 @@ def test_store_transcript(  # pylint: disable=too-many-locals
     """Test the store_transcript function."""
     mocker.patch("builtins.open", mocker.mock_open())
     mocker.patch(
-        "utils.transcripts.construct_transcripts_path",
+        "transcripts.transcripts.construct_transcripts_path",
         return_value=mocker.MagicMock(),
     )
 
     # Mock the JSON to assert the data is stored correctly
-    mock_json = mocker.patch("utils.transcripts.json")
+    mock_json = mocker.patch("transcripts.transcripts.json")
 
     # Mock parameters
     user_id = "user123"

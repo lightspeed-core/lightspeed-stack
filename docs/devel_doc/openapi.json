@@ -3844,7 +3844,8 @@
                             }
                         }
                     }
-                }
+                },
+                "deprecated": true
             },
             "post": {
                 "tags": [
@@ -4063,7 +4064,8 @@
                             }
                         }
                     }
-                }
+                },
+                "deprecated": true
             }
         },
         "/v1/vector-stores/{vector_store_id}": {
@@ -4074,6 +4076,7 @@
                 "summary": "Get Vector Store",
                 "description": "Retrieve a vector store by ID.\n\nParameters:\n    request: The incoming HTTP request.\n    vector_store_id: ID of the vector store to retrieve.\n    auth: Authentication tuple from the auth dependency.\n\nReturns:\n    VectorStoreResponse: The vector store object.\n\nRaises:\n    HTTPException:\n        - 401: Authentication failed\n        - 403: Authorization failed\n        - 404: Vector store not found\n        - 500: Lightspeed Stack configuration not loaded\n        - 503: Unable to connect to OGX",
                 "operationId": "get_vector_store_v1_vector_stores__vector_store_id__get",
+                "deprecated": true,
                 "parameters": [
                     {
                         "name": "vector_store_id",
@@ -4294,6 +4297,7 @@
                 "summary": "Update Vector Store",
                 "description": "Update a vector store.\n\nParameters:\n    request: The incoming HTTP request.\n    vector_store_id: ID of the vector store to update.\n    auth: Authentication tuple from the auth dependency.\n    body: Vector store update parameters.\n\nReturns:\n    VectorStoreResponse: The updated vector store object.\n\nRaises:\n    HTTPException:\n        - 401: Authentication failed\n        - 403: Authorization failed\n        - 404: Vector store not found\n        - 500: Lightspeed Stack configuration not loaded\n        - 503: Unable to connect to OGX",
                 "operationId": "update_vector_store_v1_vector_stores__vector_store_id__put",
+                "deprecated": true,
                 "parameters": [
                     {
                         "name": "vector_store_id",
@@ -4524,6 +4528,7 @@
                 "summary": "Delete Vector Store",
                 "description": "Delete a vector store.\n\nParameters:\n    request: The incoming HTTP request.\n    vector_store_id: ID of the vector store to delete.\n    auth: Authentication tuple from the auth dependency.\n\nRaises:\n    HTTPException:\n        - 401: Authentication failed\n        - 403: Authorization failed\n        - 500: Lightspeed Stack configuration not loaded\n        - 503: Unable to connect to OGX\n\nReturns:\n    VectorStoreDeleteResponse: Delete outcome for the requested vector store.",
                 "operationId": "delete_vector_store_v1_vector_stores__vector_store_id__delete",
+                "deprecated": true,
                 "parameters": [
                     {
                         "name": "vector_store_id",
@@ -4958,7 +4963,8 @@
                             }
                         }
                     }
-                }
+                },
+                "deprecated": true
             }
         },
         "/v1/vector-stores/{vector_store_id}/files": {
@@ -4969,6 +4975,7 @@
                 "summary": "Add File To Vector Store",
                 "description": "Add a file to a vector store.\n\nParameters:\n    request: The incoming HTTP request.\n    vector_store_id: ID of the vector store.\n    auth: Authentication tuple from the auth dependency.\n    body: File addition parameters.\n\nReturns:\n    VectorStoreFileResponse: The vector store file object.\n\nRaises:\n    HTTPException:\n        - 401: Authentication failed\n        - 403: Authorization failed\n        - 404: Vector store or file not found\n        - 429: Too many concurrent vector store file attachments\n        - 500: Lightspeed Stack configuration not loaded\n        - 503: Unable to connect to OGX",
                 "operationId": "add_file_to_vector_store_v1_vector_stores__vector_store_id__files_post",
+                "deprecated": true,
                 "parameters": [
                     {
                         "name": "vector_store_id",
@@ -5214,6 +5221,7 @@
                 "summary": "List Vector Store Files",
                 "description": "List files in a vector store.\n\nParameters:\n    request: The incoming HTTP request.\n    vector_store_id: ID of the vector store.\n    auth: Authentication tuple from the auth dependency.\n\nReturns:\n    VectorStoreFilesListResponse: List of files in the vector store.\n\nRaises:\n    HTTPException:\n        - 401: Authentication failed\n        - 403: Authorization failed\n        - 404: Vector store not found\n        - 500: Lightspeed Stack configuration not loaded\n        - 503: Unable to connect to OGX",
                 "operationId": "list_vector_store_files_v1_vector_stores__vector_store_id__files_get",
+                "deprecated": true,
                 "parameters": [
                     {
                         "name": "vector_store_id",
@@ -5441,6 +5449,7 @@
                 "summary": "Get Vector Store File",
                 "description": "Retrieve a file from a vector store.\n\nParameters:\n    request: The incoming HTTP request.\n    vector_store_id: ID of the vector store.\n    file_id: ID of the file.\n    auth: Authentication tuple from the auth dependency.\n\nReturns:\n    VectorStoreFileResponse: The vector store file object.\n\nRaises:\n    HTTPException:\n        - 401: Authentication failed\n        - 403: Authorization failed\n        - 404: File not found in vector store\n        - 500: Lightspeed Stack configuration not loaded\n        - 503: Unable to connect to OGX",
                 "operationId": "get_vector_store_file_v1_vector_stores__vector_store_id__files__file_id__get",
+                "deprecated": true,
                 "parameters": [
                     {
                         "name": "vector_store_id",
@@ -5685,6 +5694,7 @@
                 "summary": "Delete Vector Store File",
                 "description": "Delete a file from a vector store.\n\nParameters:\n    request: The incoming HTTP request.\n    vector_store_id: ID of the vector store.\n    file_id: ID of the file to delete.\n    auth: Authentication tuple from the auth dependency.\n\nRaises:\n    HTTPException:\n        - 401: Authentication failed\n        - 403: Authorization failed\n        - 500: Lightspeed Stack configuration not loaded\n        - 503: Unable to connect to OGX\n\nReturns:\n    VectorStoreFileDeleteResponse: Delete outcome for the requested file.",
                 "operationId": "delete_vector_store_file_v1_vector_stores__vector_store_id__files__file_id__delete",
+                "deprecated": true,
                 "parameters": [
                     {
                         "name": "vector_store_id",
@@ -14661,7 +14671,7 @@
                         "minimum": 0.0,
                         "exclusiveMinimum": 0.0,
                         "title": "Max retries",
-                        "description": "Maximun number of retires",
+                        "description": "Maximun number of retries",
                         "default": 2
                     },
                     "timeout": {
@@ -14692,7 +14702,7 @@
                         },
                         "type": "array",
                         "title": "Defined risks",
-                        "description": "Risks to be considered while applying this guradrail"
+                        "description": "Risks to be considered while applying this guardrail"
                     }
                 },
                 "additionalProperties": false,
@@ -23771,7 +23781,7 @@
         },
         {
             "name": "vector-stores",
-            "description": "Vector stores and files."
+            "description": "Vector stores and files (OGX proxy). Deprecated: will be removed in the next LCS release."
         }
     ]
 }

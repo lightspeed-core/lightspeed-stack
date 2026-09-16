@@ -1,0 +1,47 @@
+name: Lightspeed Core Service (LCS)
+service:
+  host: 0.0.0.0
+  port: 8080
+  auth_enabled: false
+  workers: 1
+  color_log: true
+  access_log: true
+llama_stack:
+  # Legacy two-file shape (R2 deprecation window): external run.yaml consumed
+  # via library_client_config_path; no unified synthesis input. Kept as a
+  # dedicated fixture because the standard library-mode baseline migrated to
+  # unified mode in LCORE-2342, which silently removed legacy boot coverage.
+  use_as_library_client: true
+  library_client_config_path: run.yaml
+user_data_collection:
+  feedback_enabled: true
+  feedback_storage: "/tmp/data/feedback"
+  transcripts_enabled: true
+  transcripts_storage: "/tmp/data/transcripts"
+authentication:
+  module: "noop"
+inference:
+  default_provider: openai
+  default_model: gpt-4o-mini
+rag:
+  byok:
+    stores:
+      - rag_id: e2e-test-docs
+        backend: faiss
+        embedding_model: sentence-transformers/all-mpnet-base-v2
+        embedding_dimension: 768
+        vector_db_id: ${env.FAISS_VECTOR_STORE_ID}
+        db_path: ${env.KV_RAG_PATH:=~/.llama/storage/rag/kv_store.db}
+        score_multiplier: 1.0
+  retrieval:
+    tool:
+      sources:
+        - e2e-test-docs
+
+shields:
+  - name: pii-redaction
+    provider_id: redaction
+    config:
+      rules:
+        - pattern: '\d+'
+          replacement: '[NUM]'

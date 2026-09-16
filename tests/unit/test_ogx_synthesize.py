@@ -223,9 +223,9 @@ def test_default_baseline_resolves_when_openai_api_key_set(
         ({"a": 1}, {"a": 2}, {"a": 2}),
         # maps merge recursively, untouched keys preserved
         (
-            {"safety": {"default_shield_id": "llama-guard", "x": 1}},
+            {"safety": {"default_shield_id": "content-filter", "x": 1}},
             {"safety": {"x": 2}},
-            {"safety": {"default_shield_id": "llama-guard", "x": 2}},
+            {"safety": {"default_shield_id": "content-filter", "x": 2}},
         ),
         # lists replace wholesale (no append)
         (
@@ -1002,7 +1002,7 @@ _LEGACY_RUN_YAML: dict[str, Any] = {
             },
         ],
     },
-    "safety": {"default_shield_id": "llama-guard", "excluded_categories": []},
+    "safety": {"default_shield_id": "content-filter", "excluded_categories": []},
 }
 
 

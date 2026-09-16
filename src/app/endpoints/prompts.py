@@ -1,6 +1,6 @@
 """Handler for REST API calls to manage OGX stored prompt templates."""
 
-from typing import Annotated, Any, Optional
+from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from ogx_api import PromptNotFoundError, PromptVersionNotFoundError
@@ -32,13 +32,14 @@ from utils.endpoints import check_configuration_loaded
 from utils.ogx_serialization import dump_ogx_model
 from utils.query import handle_known_apistatus_errors
 from utils.suid import check_suid_prompt
+from utils.types import Responses
 
 logger = get_logger(__name__)
 router = APIRouter(tags=["prompts"])
 
 
 # Response schemas for OpenAPI documentation
-prompt_create_responses: dict[int | str, dict[str, Any]] = {
+prompt_create_responses: Responses = {
     200: PromptResourceResponse.openapi_response(),
     401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
     403: ForbiddenResponse.openapi_response(examples=["endpoint", "prompt manage"]),
@@ -48,7 +49,7 @@ prompt_create_responses: dict[int | str, dict[str, Any]] = {
     ),
 }
 
-prompt_list_responses: dict[int | str, dict[str, Any]] = {
+prompt_list_responses: Responses = {
     200: PromptsListResponse.openapi_response(),
     401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
     403: ForbiddenResponse.openapi_response(examples=["endpoint", "prompt read"]),
@@ -58,7 +59,7 @@ prompt_list_responses: dict[int | str, dict[str, Any]] = {
     ),
 }
 
-prompt_get_responses: dict[int | str, dict[str, Any]] = {
+prompt_get_responses: Responses = {
     200: PromptResourceResponse.openapi_response(),
     400: BadRequestResponse.openapi_response(examples=["prompt_id"]),
     401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
@@ -70,7 +71,7 @@ prompt_get_responses: dict[int | str, dict[str, Any]] = {
     ),
 }
 
-prompt_update_responses: dict[int | str, dict[str, Any]] = {
+prompt_update_responses: Responses = {
     200: PromptResourceResponse.openapi_response(),
     400: BadRequestResponse.openapi_response(examples=["prompt_id"]),
     401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
@@ -82,7 +83,7 @@ prompt_update_responses: dict[int | str, dict[str, Any]] = {
     ),
 }
 
-prompt_delete_responses: dict[int | str, dict[str, Any]] = {
+prompt_delete_responses: Responses = {
     200: PromptDeleteResponse.openapi_response(),
     400: BadRequestResponse.openapi_response(examples=["prompt_id"]),
     401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),

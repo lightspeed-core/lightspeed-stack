@@ -8,8 +8,8 @@ from pytest_mock import MockerFixture
 
 import constants
 from models.config import ModelContextProtocolServer
-from utils import mcp_headers
-from utils.mcp_headers import (
+from utils.mcp import mcp_headers
+from utils.mcp.mcp_headers import (
     build_server_headers,
     extract_propagated_headers,
     find_unresolved_auth_headers,

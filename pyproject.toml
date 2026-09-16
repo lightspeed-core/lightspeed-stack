@@ -18,7 +18,7 @@ keywords = [
     "LLM",
     "RAG"
 ]
-requires-python = ">=3.12,<3.14"
+requires-python = ">=3.12,<3.15"
 readme = "README.md"
 license = {file = "LICENSE"}
 dependencies = [
@@ -152,6 +152,8 @@ dev = [
     "pytest-benchmark>=5.2.3",
     "pyroscope-io>=0.8.7",
     "memray>=1.13.0",
+    "pygal>=3.1.3",
+    "pygaljs>=1.0.2",
 ]
 ogxlibdev = [
     # To check OGX API provider dependecies:
@@ -249,7 +251,7 @@ line-length = 88
 extend-exclude = ["tests/profiles/syntax_error.py"]
 
 [tool.ruff.lint]
-extend-select = ["TID251", "UP006", "UP007", "UP008", "UP010", "UP012", "UP017", "UP024", "UP035", "UP040", "UP041", "RUF100", "B009", "B010", "DTZ005", "D202", "I001", "PLR1733", "RUF022", "PLW1510", "TC004", "PIE790", "PERF402", "FURB129", "RET501"]
+extend-select = ["TID251", "UP006", "UP007", "UP008", "UP010", "UP012", "UP017", "UP024", "UP035", "UP040", "UP041", "RUF100", "B009", "B010", "B011", "DTZ005", "D202", "I001", "PLR1733", "RUF022", "PLW1510", "TC004", "PIE790", "PERF402", "FURB129", "RET501"]
 ignore = ["UP047", "UP045", "BLE", "S", "C", "RUF", "SIM", "B017", "TRY004", "TRY201", "TRY203", "TRY401", "B008", "EXE001", "G201", "ISC004", "LOG014", "PYI034", "PYI064"]
 
 [tool.ruff.lint.flake8-tidy-imports.banned-api]

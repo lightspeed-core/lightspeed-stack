@@ -12,6 +12,7 @@ from fastapi import HTTPException
 from ogx_api.openai_responses import (
     AllowedToolsFilter,
     OpenAIResponseInputToolChoiceAllowedTools,
+    OpenAIResponseReasoning,
 )
 from ogx_api.openai_responses import ApprovalFilter as OgxApprovalFilter
 from ogx_api.openai_responses import (
@@ -78,6 +79,7 @@ from utils.responses import (
     _build_chunk_attributes,
     _build_okp_doc_url,
     _merge_tools,
+    apply_reasoning_for_resolved_tools,
     build_mcp_tool_call_from_arguments_done,
     build_tool_call_summary,
     build_tool_result_from_mcp_output_item_done,
@@ -92,6 +94,7 @@ from utils.responses import (
     get_topic_summary,
     is_server_deployed_output,
     maybe_get_topic_summary,
+    model_reasoning_enabled_by_default,
     parse_arguments_string,
     parse_referenced_documents,
     prepare_responses_params,
@@ -1091,6 +1094,108 @@ class TestMaybeGetTopicSummaryOtel:
         assert not [
             s for s in exporter.get_finished_spans() if s.name == "topic.summary"
         ]
+
+
+class TestModelReasoningEnabledByDefault:
+    """Tests for model_reasoning_enabled_by_default."""
+
+    def test_gpt_5_6_default_on(self) -> None:
+        """gpt-5.6 reasons by default when reasoning is omitted."""
+        assert model_reasoning_enabled_by_default("openai/gpt-5.6-terra") is True
+
+    def test_o_series_default_on(self) -> None:
+        """o-series models reason by default."""
+        assert model_reasoning_enabled_by_default("openai/o3-mini") is True
+
+    def test_gpt_5_4_opt_in(self) -> None:
+        """gpt-5.4 defaults to reasoning off."""
+        assert model_reasoning_enabled_by_default("openai/gpt-5.4") is False
+
+    def test_gpt_5_chat_no_reasoning(self) -> None:
+        """gpt-5-chat does not use reasoning."""
+        assert model_reasoning_enabled_by_default("openai/gpt-5-chat-latest") is False
+
+    def test_gpt_4o_mini(self) -> None:
+        """gpt-4o-mini does not use reasoning."""
+        assert model_reasoning_enabled_by_default("openai/gpt-4o-mini") is False
+
+
+class TestApplyReasoningForResolvedTools:
+    """Tests for apply_reasoning_for_resolved_tools."""
+
+    _DEFAULT_ON_MODEL = "openai/gpt-5.6-terra"
+    _OPT_IN_MODEL = "openai/gpt-5.4"
+    _NON_REASONING_MODEL = "openai/gpt-4o-mini"
+
+    @staticmethod
+    def _sample_tools() -> list[InputTool]:
+        return cast(
+            list[InputTool],
+            [InputToolFunction(name="lookup", parameters={"type": "object"})],
+        )
+
+    def test_preserves_reasoning_when_no_tools(self) -> None:
+        """Keep caller reasoning when the resolved request has no tools."""
+        reasoning = OpenAIResponseReasoning(effort="high")
+        assert (
+            apply_reasoning_for_resolved_tools(reasoning, None, self._DEFAULT_ON_MODEL)
+            == reasoning
+        )
+
+    def test_preserves_none_reasoning_when_no_tools(self) -> None:
+        """Leave reasoning unset when no tools are resolved."""
+        assert (
+            apply_reasoning_for_resolved_tools(None, None, self._DEFAULT_ON_MODEL)
+            is None
+        )
+
+    def test_skips_reasoning_for_non_reasoning_model_with_tools(self) -> None:
+        """Do not inject reasoning for models that do not use it."""
+        assert (
+            apply_reasoning_for_resolved_tools(
+                None, self._sample_tools(), self._NON_REASONING_MODEL
+            )
+            is None
+        )
+
+    def test_skips_reasoning_for_opt_in_model_with_tools(self) -> None:
+        """Do not inject reasoning for opt-in models that default to off."""
+        assert (
+            apply_reasoning_for_resolved_tools(
+                None, self._sample_tools(), self._OPT_IN_MODEL
+            )
+            is None
+        )
+
+    def test_sets_none_effort_when_tools_present_and_reasoning_missing(self) -> None:
+        """Default to explicit effort none when tools are present."""
+        result = apply_reasoning_for_resolved_tools(
+            None, self._sample_tools(), self._DEFAULT_ON_MODEL
+        )
+        assert result is not None
+        assert result.effort == "none"
+
+    def test_forces_none_effort_when_tools_present_and_reasoning_requested(
+        self,
+    ) -> None:
+        """Override non-none reasoning effort when tools are present."""
+        reasoning = OpenAIResponseReasoning(effort="medium")
+        result = apply_reasoning_for_resolved_tools(
+            reasoning, self._sample_tools(), self._DEFAULT_ON_MODEL
+        )
+        assert result is not None
+        assert result.effort == "none"
+
+    def test_keeps_none_effort_when_tools_present(self) -> None:
+        """Preserve other reasoning fields when forcing effort to none."""
+        reasoning = OpenAIResponseReasoning(effort="none", summary="concise")
+        result = apply_reasoning_for_resolved_tools(
+            reasoning, self._sample_tools(), self._DEFAULT_ON_MODEL
+        )
+        assert result is not None
+        assert result is not reasoning
+        assert result.effort == "none"
+        assert result.summary == "concise"
 
 
 class TestResolveToolChoice:

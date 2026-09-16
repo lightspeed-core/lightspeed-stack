@@ -40,7 +40,6 @@ features/tls-tlsv13.feature
 features/degraded_mode_startup.feature
 features/unified-mode-boot.feature
 features/unified-mode-legacy.feature
-features/unified-mode-validation.feature
 features/unified-mode-migration.feature
 features/unified-mode-synthesis.feature
 features/okp_rag.feature

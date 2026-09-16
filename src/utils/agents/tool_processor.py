@@ -29,7 +29,11 @@ from models.common.turn_summary import (
     ToolInfoSummary,
     ToolResultSummary,
 )
-from utils.responses import _build_okp_doc_url, resolve_source_for_result
+from utils.responses import (
+    _build_okp_doc_url,
+    parse_arguments_string,
+    resolve_source_for_result,
+)
 
 logger = get_logger(__name__)
 
@@ -95,10 +99,13 @@ def summarize_native_tool_call(
                 )
 
             # MCP call
+            tool_args = args.get("tool_args") or {}
+            if isinstance(tool_args, str):
+                tool_args = parse_arguments_string(tool_args)
             return ToolCallSummary(
                 id=call_id,
                 name=args.get("tool_name") or "",
-                args=args.get("tool_args", {}),
+                args=tool_args,
                 type="mcp_call",
             )
         case _:

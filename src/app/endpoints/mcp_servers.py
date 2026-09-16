@@ -1,6 +1,6 @@
 """Handler for REST API calls to dynamically manage MCP servers."""
 
-from typing import Annotated, Any
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from opentelemetry import trace
@@ -27,13 +27,14 @@ from models.common import MCPServerInfo
 from models.config import Action, ModelContextProtocolServer
 from utils.endpoints import check_configuration_loaded
 from utils.otel_tracing import SpanAttributes, set_span_attributes
+from utils.types import Responses
 
 logger = get_logger(__name__)
 tracer = trace.get_tracer(__name__)
 router = APIRouter(tags=["mcp-servers"])
 
 
-register_responses: dict[int | str, dict[str, Any]] = {
+register_responses: Responses = {
     201: MCPServerRegistrationResponse.openapi_response(),
     401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
@@ -107,7 +108,7 @@ async def register_mcp_server_handler(
         )
 
 
-list_responses: dict[int | str, dict[str, Any]] = {
+list_responses: Responses = {
     200: MCPServerListResponse.openapi_response(),
     401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
@@ -161,7 +162,7 @@ async def list_mcp_servers_handler(
         return MCPServerListResponse(servers=servers)
 
 
-delete_responses: dict[int | str, dict[str, Any]] = {
+delete_responses: Responses = {
     200: MCPServerDeleteResponse.openapi_response(),
     401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
     403: ForbiddenResponse.openapi_response(examples=["endpoint", "mcp server static"]),

@@ -71,8 +71,8 @@ from utils.endpoints import (
     check_configuration_loaded,
     resolve_response_context,
 )
-from utils.mcp_headers import mcp_headers_dependency
-from utils.mcp_oauth_probe import check_mcp_auth
+from utils.mcp.mcp_headers import mcp_headers_dependency
+from utils.mcp.mcp_oauth_probe import check_mcp_auth
 from utils.ogx_serialization import dump_ogx_model
 from utils.otel_tracing import (
     SpanAttributes,
@@ -93,6 +93,7 @@ from utils.query import (
 )
 from utils.quota_utils import check_tokens_available, get_available_quotas
 from utils.responses import (
+    apply_reasoning_for_resolved_tools,
     build_tool_call_summary,
     build_turn_summary,
     check_model_configured,
@@ -116,6 +117,7 @@ from utils.suid import (
     normalize_conversation_id,
 )
 from utils.tool_formatter import translate_vector_store_ids_to_user_facing
+from utils.types import Responses
 from utils.vector_search import (
     append_inline_rag_context_to_responses_input,
     build_rag_context,
@@ -266,7 +268,7 @@ def _get_user_agent(request: Request) -> Optional[str]:
     return sanitized or None
 
 
-responses_response: dict[int | str, dict[str, Any]] = {
+responses_response: Responses = {
     200: ResponsesResponse.openapi_response(),
     401: UnauthorizedResponse.openapi_response(
         examples=UNAUTHORIZED_OPENAPI_EXAMPLES_WITH_MCP_OAUTH
@@ -561,11 +563,6 @@ async def handle_responses_with_tracing(  # pylint: disable=too-many-locals
     updated_request = responses_request.model_copy(deep=True)
     _ = responses_request
 
-    # Known LLS bug: https://redhat.atlassian.net/browse/LCORE-1583
-    if original_request.reasoning is not None:
-        logger.warning("reasoning is not yet supported in LCORE and will be ignored")
-        updated_request.reasoning = None
-
     check_configuration_loaded(configuration)
     started_at = datetime.now(UTC)
     rh_identity_context = get_rh_identity_context(request)
@@ -666,6 +663,12 @@ async def handle_responses_with_tracing(  # pylint: disable=too-many-locals
         token,
         mcp_headers,
         request.headers,
+    )
+    # Known LLS bug: https://redhat.atlassian.net/browse/LCORE-1583
+    updated_request.reasoning = apply_reasoning_for_resolved_tools(
+        original_request.reasoning,
+        updated_request.tools,
+        updated_request.model,
     )
 
     # Extract vector store IDs for Inline RAG context from the original request
@@ -810,9 +813,7 @@ async def handle_streaming_response(
         )
         try:
             response = await context.client.responses.create(
-                **api_params.model_dump(
-                    exclude_none=True, exclude={"safety_identifier"}
-                )
+                **api_params.model_dump(exclude_none=True)
             )
             generator = response_generator(
                 stream=cast(AsyncIterator[OpenAIResponseObjectStream], response),
@@ -1135,9 +1136,6 @@ async def response_generator(
                 chunk_dict["response"]["conversation"] = normalize_conversation_id(
                     api_params.conversation
                 )
-                chunk_dict["response"][
-                    "safety_identifier"
-                ] = api_params.safety_identifier
                 _sanitize_response_dict(
                     chunk_dict["response"],
                     configured_mcp_labels,
@@ -1348,9 +1346,7 @@ async def handle_non_streaming_response(
             api_response = cast(
                 OpenAIResponseObject,
                 await context.client.responses.create(
-                    **api_params.model_dump(
-                        exclude_none=True, exclude={"safety_identifier"}
-                    )
+                    **api_params.model_dump(exclude_none=True)
                 ),
             )
             _record_response_inference_result(
@@ -1457,14 +1453,12 @@ async def handle_non_streaming_response(
             tools,
             configuration.rag_id_mapping,
         )
-    response = ResponsesResponse.model_validate(
+    return ResponsesResponse.model_validate(
         {
             **response_dict,
-            "safety_identifier": api_params.safety_identifier,
             "available_quotas": available_quotas,
             "conversation": normalize_conversation_id(api_params.conversation),
             "completed_at": int(completed_at.timestamp()),
             "output_text": output_text,
         }
     )
-    return response

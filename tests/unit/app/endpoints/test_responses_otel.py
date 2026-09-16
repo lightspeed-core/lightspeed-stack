@@ -25,11 +25,15 @@ from models.api.responses.error import ServiceUnavailableResponse
 from models.config import Action
 from tests.unit.app.endpoints.responses_otel_helpers import (
     MOCK_AUTH,
+    MODEL,
     MODULE,
+    OTEL_CONV_ID,
+    ROOT_SPAN_NAME,
     assert_root_setup_attributes,
     find_span,
     make_turn_summary_with_tools,
     make_turn_summary_without_tools,
+    patch_handler_success_mocks,
     patch_responses_endpoint_setup,
     patch_responses_otel_tracers,
     run_responses_setup_smoke,
@@ -252,3 +256,47 @@ class TestResponsesRootSpanSetupOtel:
             )
 
         find_span(exporter.get_finished_spans(), "responses.handle_request")
+
+    @pytest.mark.asyncio
+    async def test_llm_failure_keeps_validation_without_response_event(
+        self,
+        dummy_request: Request,
+        minimal_config: AppConfig,
+        mocker: MockerFixture,
+        otel: tuple[Any, InMemorySpanExporter],
+    ) -> None:
+        """A failing LLM call keeps validation.completed but drops llm.response.completed.
+
+        ``validation.completed`` fires before the model is called; the
+        LLM-response event only fires once the turn is finalized. Forcing
+        ``responses.create`` to raise aborts the request after validation, so the
+        root span is exported with the validation event but without the
+        LLM-response event, and tracing does not crash on the error path.
+        """
+        tracer, exporter = otel
+        patch_responses_otel_tracers(mocker, tracer, minimal_config)
+        mock_client = patch_responses_endpoint_setup(mocker, minimal_config)
+        patch_handler_success_mocks(mocker)
+        mock_client.responses.create = mocker.AsyncMock(
+            side_effect=ApiException(status=None, reason="connection failed")
+        )
+
+        with pytest.raises(HTTPException):
+            await responses_endpoint_handler(
+                request=dummy_request,
+                responses_request=ResponsesRequest(
+                    input=INPUT_TEXT,
+                    model=MODEL,
+                    stream=False,
+                    store=False,
+                    conversation=OTEL_CONV_ID,
+                    generate_topic_summary=False,
+                ),
+                auth=MOCK_AUTH,
+                mcp_headers={},
+            )
+
+        root = find_span(exporter.get_finished_spans(), ROOT_SPAN_NAME)
+        event_names = [event.name for event in root.events]
+        assert SpanEvents.VALIDATION_COMPLETED in event_names
+        assert SpanEvents.LLM_RESPONSE_COMPLETED not in event_names

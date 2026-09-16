@@ -1,6 +1,6 @@
 """Handler for REST API call to list available tools from MCP servers."""
 
-from typing import Annotated, Any
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request
 from opentelemetry import trace
@@ -23,23 +23,24 @@ from models.common.tools import CatalogTool
 from models.config import Action, ModelContextProtocolServer
 from utils.builtin_tools import get_file_search_tools
 from utils.endpoints import check_configuration_loaded
-from utils.mcp_headers import (
+from utils.mcp.mcp_headers import (
     McpHeaders,
     build_mcp_headers,
     find_unresolved_auth_headers,
     mcp_headers_dependency,
 )
-from utils.mcp_oauth_probe import check_mcp_auth
-from utils.mcp_tools import list_mcp_tools
+from utils.mcp.mcp_oauth_probe import check_mcp_auth
+from utils.mcp.mcp_tools import list_mcp_tools
 from utils.pydantic_ai_helpers import get_agent_capability_tools
 from utils.tool_formatter import build_catalog_tool
+from utils.types import Responses
 
 logger = get_logger(__name__)
 tracer = trace.get_tracer(__name__)
 router = APIRouter(tags=["tools"])
 
 
-tools_responses: dict[int | str, dict[str, Any]] = {
+tools_responses: Responses = {
     200: ToolsResponse.openapi_response(),
     401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),

@@ -30,7 +30,7 @@ from ogx.core.stack import replace_env_vars
 from pydantic import SecretStr
 
 import constants
-from log import get_logger
+from log import get_logger, setup_logging
 
 logger = get_logger(__name__)
 
@@ -1550,6 +1550,10 @@ def main() -> None:
     run.yaml needs to exist; otherwise the legacy path enriches the
     ``--input`` run.yaml in place. Server-mode container entrypoints rely on
     this dispatch to serve both modes with a single invocation.
+
+    Configures logging first so the INFO lines this module emits reach the
+    container log: run as a bare script there is no handler on the root
+    logger, and ``logging.lastResort`` would drop everything below WARNING.
     """
     parser = ArgumentParser(
         description="Generate the OGX run configuration from a "
@@ -1576,6 +1580,15 @@ def main() -> None:
         help="Output generated config (default: run_.yaml)",
     )
     args = parser.parse_args()
+
+    # Configure logging before doing any work. This module runs as a bare
+    # script from the container entrypoint (scripts/ogx-entrypoint.sh), so
+    # nothing has installed a handler on the root logger; Python's lastResort
+    # then emits WARNING and above only, and every INFO line this module
+    # writes -- including which config shape was detected and where the
+    # synthesized run.yaml was written -- is silently dropped. AsyncOgxClient
+    # already does this for the in-process path, for the same reason.
+    setup_logging()
 
     with open(args.config, encoding="utf-8") as f:
         config = yaml.safe_load(f)

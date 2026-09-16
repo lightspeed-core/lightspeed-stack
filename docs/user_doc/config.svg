@@ -186,7 +186,7 @@
       <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="60.4378" x="2692.61" y="864.9372">database</text>
       <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="198.6872" x="2692.61" y="884.0051">deployment_environment : str</text>
       <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="61.9217" x="2692.61" y="903.073">inference</text>
-      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="76.0477" x="2692.61" y="922.1409">ogx</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" x="2692.61" y="922.1409">ogx</text>
       <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="311.6108" x="2692.61" y="941.2089">mcp_servers : list[ModelContextProtocolServer]</text>
       <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="66.0658" x="2692.61" y="960.2768">name : str</text>
       <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="24.5559" x="2692.61" y="979.3447">okp</text>
@@ -348,16 +348,16 @@
       <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="188.5932" x="6387.87" y="1025.4814">check_regex_pattern() -&gt; Self</text>
       <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="128.3515" x="6387.87" y="1044.5493">check_roles() -&gt; Self</text>
     </g>
-    <!--class src.models.config.LlamaStackConfiguration-->
-    <g id="elem_src.models.config.LlamaStackConfiguration">
-      <rect codeLine="180" fill="#F1F1F1" height="238.6792" id="src.models.config.LlamaStackConfiguration" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="301.1969" x="3587.57" y="277.01"/>
+    <!--class src.models.config.OgxConfiguration-->
+    <g id="elem_src.models.config.OgxConfiguration">
+      <rect codeLine="180" fill="#F1F1F1" height="238.6792" id="src.models.config.OgxConfiguration" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="301.1969" x="3587.57" y="277.01"/>
       <ellipse cx="3651.1088" cy="293.01" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
       <path d="M3651.2181,288.5413 Q3650.2963,288.5413 3649.5619,288.8538 Q3648.8431,289.1663 3648.3431,289.76 Q3647.8431,290.3381 3647.5619,291.2131 Q3647.2963,292.0881 3647.2963,293.1819 Q3647.2963,294.6194 3647.7338,295.6663 Q3648.1869,296.7131 3649.0306,297.26 Q3649.89,297.8069 3651.2025,297.8069 Q3651.9838,297.8069 3652.6713,297.6819 Q3653.3744,297.5413 3654.3744,297.2288 L3654.3744,299.1038 Q3653.515,299.4319 3652.7494,299.5569 Q3651.9994,299.6819 3650.9838,299.6819 Q3649.0619,299.6819 3647.7494,298.885 Q3646.4525,298.0725 3645.7963,296.6038 Q3645.14,295.1194 3645.14,293.1506 Q3645.14,291.7288 3645.5306,290.5569 Q3645.9369,289.3694 3646.7181,288.4944 Q3647.4994,287.6194 3648.64,287.1506 Q3649.7806,286.6663 3651.2494,286.6663 Q3652.2025,286.6663 3653.0931,286.8694 Q3653.9994,287.0569 3654.9369,287.5256 L3654.1088,289.3069 Q3653.3275,288.9319 3652.6713,288.7444 Q3652.015,288.5413 3651.2181,288.5413 Z " fill="#000000"/>
-      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="165.6194" x="3671.6088" y="298.442">LlamaStackConfiguration</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="165.6194" x="3671.6088" y="298.442">OgxConfiguration</text>
       <line style="stroke:#181818;stroke-width:0.5;" x1="3588.57" x2="3887.7669" y1="309.01" y2="309.01"/>
       <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="255.121" x="3593.57" y="327.9759">allow_degraded_mode : Optional[bool]</text>
       <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="185.4013" x="3593.57" y="347.0439">api_key : Optional[SecretStr]</text>
-      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="289.1969" x="3593.57" y="366.1118">config : Optional['UnifiedLlamaStackConfig']</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="289.1969" x="3593.57" y="366.1118">config : Optional['UnifiedOgxConfig']</text>
       <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="262.219" x="3593.57" y="385.1797">library_client_config_path : Optional[str]</text>
       <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="77.2937" x="3593.57" y="404.2476">max_retries</text>
       <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="72.9817" x="3593.57" y="423.3155">retry_delay</text>
@@ -608,12 +608,12 @@
       <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="667.5597" x="7386.39" y="988.8797">type : Literal['openai', 'sentence_transformers', 'azure', 'vertexai', 'watsonx', 'vllm_rhaiis', 'vllm_rhel_ai']</text>
       <line style="stroke:#181818;stroke-width:0.5;" x1="7381.39" x2="8058.9497" y1="996.9817" y2="996.9817"/>
     </g>
-    <!--class src.models.config.UnifiedLlamaStackConfig-->
-    <g id="elem_src.models.config.UnifiedLlamaStackConfig">
-      <rect codeLine="307" fill="#F1F1F1" height="105.2038" id="src.models.config.UnifiedLlamaStackConfig" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="236.5032" x="8094.92" y="890.25"/>
+    <!--class src.models.config.UnifiedOgxConfig-->
+    <g id="elem_src.models.config.UnifiedOgxConfig">
+      <rect codeLine="307" fill="#F1F1F1" height="105.2038" id="src.models.config.UnifiedOgxConfig" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="236.5032" x="8094.92" y="890.25"/>
       <ellipse cx="8127.7075" cy="906.25" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
       <path d="M8127.8169,901.7813 Q8126.895,901.7813 8126.1606,902.0938 Q8125.4419,902.4063 8124.9419,903 Q8124.4419,903.5781 8124.1606,904.4531 Q8123.895,905.3281 8123.895,906.4219 Q8123.895,907.8594 8124.3325,908.9063 Q8124.7856,909.9531 8125.6294,910.5 Q8126.4888,911.0469 8127.8013,911.0469 Q8128.5825,911.0469 8129.27,910.9219 Q8129.9731,910.7813 8130.9731,910.4688 L8130.9731,912.3438 Q8130.1138,912.6719 8129.3481,912.7969 Q8128.5981,912.9219 8127.5825,912.9219 Q8125.6606,912.9219 8124.3481,912.125 Q8123.0513,911.3125 8122.395,909.8438 Q8121.7388,908.3594 8121.7388,906.3906 Q8121.7388,904.9688 8122.1294,903.7969 Q8122.5356,902.6094 8123.3169,901.7344 Q8124.0981,900.8594 8125.2388,900.3906 Q8126.3794,899.9063 8127.8481,899.9063 Q8128.8013,899.9063 8129.6919,900.1094 Q8130.5981,900.2969 8131.5356,900.7656 L8130.7075,902.5469 Q8129.9263,902.1719 8129.27,901.9844 Q8128.6138,901.7813 8127.8169,901.7813 Z " fill="#000000"/>
-      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="164.9754" x="8145.6603" y="911.682">UnifiedLlamaStackConfig</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="164.9754" x="8145.6603" y="911.682">UnifiedOgxConfig</text>
       <line style="stroke:#181818;stroke-width:0.5;" x1="8095.92" x2="8330.4232" y1="922.25" y2="922.25"/>
       <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="224.5032" x="8100.92" y="941.2159">baseline : Literal['default', 'empty']</text>
       <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="211.0912" x="8100.92" y="960.2839">native_override : dict[str, object]</text>
@@ -734,9 +734,9 @@
       <path codeLine="338" d="M6468.41,1052.84 C6453.99,1118.98 6424.49,1198.96 6364.17,1243.33 C6211.96,1355.29 6128.89,1265.19 5940.17,1274.33 C4934.57,1323.05 3728.2696,1334.1272 3411.7596,1336.2872 " fill="none" id="src.models.config.JwtRoleRule-to-src.models.config.ConfigurationBase" style="stroke:#181818;stroke-width:1.0;"/>
       <polygon fill="none" points="3393.76,1336.41,3411.8005,1342.287,3411.7186,1330.2873,3393.76,1336.41" style="stroke:#181818;stroke-width:1.0;"/>
     </g>
-    <!--link src.models.config.LlamaStackConfiguration to src.models.config.ConfigurationBase-->
-    <g id="link_src.models.config.LlamaStackConfiguration_src.models.config.ConfigurationBase">
-      <path codeLine="339" d="M3636.62,516.11 C3616.26,534.27 3593.8,551.04 3570.17,563.36 C3455.52,623.15 3361.79,534.71 3290.17,642.36 C3212.37,759.28 3262.68,1136.61 3290.17,1274.33 C3292.15,1284.25 3288.7968,1277.9488 3292.6868,1287.2688 " fill="none" id="src.models.config.LlamaStackConfiguration-to-src.models.config.ConfigurationBase" style="stroke:#181818;stroke-width:1.0;"/>
+    <!--link src.models.config.OgxConfiguration to src.models.config.ConfigurationBase-->
+    <g id="link_src.models.config.OgxConfiguration_src.models.config.ConfigurationBase">
+      <path codeLine="339" d="M3636.62,516.11 C3616.26,534.27 3593.8,551.04 3570.17,563.36 C3455.52,623.15 3361.79,534.71 3290.17,642.36 C3212.37,759.28 3262.68,1136.61 3290.17,1274.33 C3292.15,1284.25 3288.7968,1277.9488 3292.6868,1287.2688 " fill="none" id="src.models.config.OgxConfiguration-to-src.models.config.ConfigurationBase" style="stroke:#181818;stroke-width:1.0;"/>
       <polygon fill="none" points="3299.62,1303.88,3298.2239,1284.9578,3287.1497,1289.5799,3299.62,1303.88" style="stroke:#181818;stroke-width:1.0;"/>
     </g>
     <!--link src.models.config.ModelContextProtocolServer to src.models.config.ConfigurationBase-->
@@ -829,9 +829,9 @@
       <path codeLine="357" d="M7669.8,1005.17 C7606.53,1077.1 7490.59,1192.92 7362.17,1243.33 C7113.2,1341.07 7028.47,1265.01 6761.17,1274.33 C5413.07,1321.32 3784.9196,1333.9357 3411.8096,1336.3057 " fill="none" id="src.models.config.UnifiedInferenceProvider-to-src.models.config.ConfigurationBase" style="stroke:#181818;stroke-width:1.0;"/>
       <polygon fill="none" points="3393.81,1336.42,3411.8477,1342.3055,3411.7715,1330.3058,3393.81,1336.42" style="stroke:#181818;stroke-width:1.0;"/>
     </g>
-    <!--link src.models.config.UnifiedLlamaStackConfig to src.models.config.ConfigurationBase-->
-    <g id="link_src.models.config.UnifiedLlamaStackConfig_src.models.config.ConfigurationBase">
-      <path codeLine="358" d="M8206.39,995.87 C8194.2,1065.73 8161.45,1187.54 8077.17,1243.33 C7846.2,1396.21 7108.08,1268.42 6831.17,1274.33 C5453.26,1303.73 3789.2979,1329.6449 3411.7879,1335.4149 " fill="none" id="src.models.config.UnifiedLlamaStackConfig-to-src.models.config.ConfigurationBase" style="stroke:#181818;stroke-width:1.0;"/>
+    <!--link src.models.config.UnifiedOgxConfig to src.models.config.ConfigurationBase-->
+    <g id="link_src.models.config.UnifiedOgxConfig_src.models.config.ConfigurationBase">
+      <path codeLine="358" d="M8206.39,995.87 C8194.2,1065.73 8161.45,1187.54 8077.17,1243.33 C7846.2,1396.21 7108.08,1268.42 6831.17,1274.33 C5453.26,1303.73 3789.2979,1329.6449 3411.7879,1335.4149 " fill="none" id="src.models.config.UnifiedOgxConfig-to-src.models.config.ConfigurationBase" style="stroke:#181818;stroke-width:1.0;"/>
       <polygon fill="none" points="3393.79,1335.69,3411.8796,1341.4142,3411.6962,1329.4156,3393.79,1335.69" style="stroke:#181818;stroke-width:1.0;"/>
     </g>
     <!--link src.models.config.UserDataCollection to src.models.config.ConfigurationBase-->
@@ -905,11 +905,11 @@
       <polygon fill="#181818" points="5802.95,899.63,5807.1996,893.8041,5803.4564,887.6407,5799.2067,893.4666,5802.95,899.63" style="stroke:#181818;stroke-width:1.0;"/>
       <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="106.6391" x="5816.4" y="608.257">jwt_configuration</text>
     </g>
-    <!--link src.models.config.LlamaStackConfiguration to src.models.config.Configuration-->
-    <g id="link_src.models.config.LlamaStackConfiguration_src.models.config.Configuration">
-      <path codeLine="371" d="M3640.57,515.94 C3619.37,534.85 3595.6,551.92 3570.17,563.36 C3478.16,604.76 3205.3,544.26 3117.17,593.36 C3092.97,606.84 3079.3514,615.6339 3058.6914,634.7339 " fill="none" id="src.models.config.LlamaStackConfiguration-to-src.models.config.Configuration" style="stroke:#181818;stroke-width:1.0;"/>
+    <!--link src.models.config.OgxConfiguration to src.models.config.Configuration-->
+    <g id="link_src.models.config.OgxConfiguration_src.models.config.Configuration">
+      <path codeLine="371" d="M3640.57,515.94 C3619.37,534.85 3595.6,551.92 3570.17,563.36 C3478.16,604.76 3205.3,544.26 3117.17,593.36 C3092.97,606.84 3079.3514,615.6339 3058.6914,634.7339 " fill="none" id="src.models.config.OgxConfiguration-to-src.models.config.Configuration" style="stroke:#181818;stroke-width:1.0;"/>
       <polygon fill="#181818" points="3049.88,642.88,3057.0011,641.7441,3058.6914,634.7339,3051.5703,635.8698,3049.88,642.88" style="stroke:#181818;stroke-width:1.0;"/>
-      <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="70.616" x="3118.17" y="608.257">ogx</text>
+      <text fill="#000000" font-family="sans-serif" font-size="13" x="3118.17" y="608.257">ogx</text>
     </g>
     <!--link src.models.config.OkpConfiguration to src.models.config.Configuration-->
     <g id="link_src.models.config.OkpConfiguration_src.models.config.Configuration">
