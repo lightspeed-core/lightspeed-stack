@@ -3,6 +3,9 @@
 This document explains how to deploy the Offline Knowledge Portal (OKP) as a
 RAG source and configure Lightspeed Stack and OGX to use it. You will:
 
+> [!WARNING]
+> **Deprecated:** The Solr vector provider used by OKP RAG is deprecated.
+
 * Deploy and verify the OKP Solr service
 * Configure Lightspeed Stack for OKP (inline or tool RAG)
 * Install dependencies and launch Lightspeed Stack

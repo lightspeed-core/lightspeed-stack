@@ -298,6 +298,9 @@ The Makefile passes these environment variables to the OGX container:
 
 #### OKP/Solr RAG Configuration
 
+> [!WARNING]
+> **Deprecated:** The Solr vector provider used by OKP RAG is deprecated.
+
 **For OKP (Offline Knowledge Portal) RAG:**
 - `RH_SERVER_OKP`: OKP server URL (e.g., `http://localhost:8081`)
 - `SOLR_URL`: Solr server URL

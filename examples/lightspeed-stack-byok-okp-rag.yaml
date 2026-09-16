@@ -52,6 +52,7 @@ rag:
         db_path: /tmp/kb.faiss
         score_multiplier: 1.2    # Weight for this vector store's results (Inline RAG only)
 
+  # DEPRECATED: The Solr vector provider used by OKP RAG is deprecated.
   # OKP provider settings (only used when 'okp' is listed in retrieval sources)
   okp:
     offline: true                # true = use parent_id for source URLs, false = use reference_url
