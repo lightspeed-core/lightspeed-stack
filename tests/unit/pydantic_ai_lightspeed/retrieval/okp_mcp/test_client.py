@@ -117,3 +117,65 @@ async def test_call_okp_search_non_mapping_result_returns_empty(
     )
 
     assert result == {}
+
+
+@pytest.mark.asyncio
+async def test_probe_okp_mcp_true_when_tool_advertised(
+    mocker: MockerFixture,
+) -> None:
+    """The probe returns True when the endpoint advertises the search tool."""
+    tool = mocker.Mock()
+    tool.name = "search"
+    toolset = mocker.Mock()
+    toolset.list_tools = mocker.AsyncMock(return_value=[tool])
+    mocker.patch.object(_client, "MCPToolset", return_value=toolset)
+
+    assert await _client.probe_okp_mcp("http://okp/mcp", "search") is True
+
+
+@pytest.mark.asyncio
+async def test_probe_okp_mcp_false_when_tool_absent(
+    mocker: MockerFixture,
+) -> None:
+    """The probe returns False when the search tool is not advertised."""
+    tool = mocker.Mock()
+    tool.name = "other"
+    toolset = mocker.Mock()
+    toolset.list_tools = mocker.AsyncMock(return_value=[tool])
+    mocker.patch.object(_client, "MCPToolset", return_value=toolset)
+
+    assert await _client.probe_okp_mcp("http://okp/mcp", "search") is False
+
+
+@pytest.mark.asyncio
+async def test_probe_okp_mcp_false_on_transport_error(
+    mocker: MockerFixture,
+) -> None:
+    """The probe never raises: a transport error degrades to False."""
+    toolset = mocker.Mock()
+    toolset.list_tools = mocker.AsyncMock(side_effect=RuntimeError("no route"))
+    mocker.patch.object(_client, "MCPToolset", return_value=toolset)
+
+    assert await _client.probe_okp_mcp("http://okp/mcp", "search") is False
+
+
+@pytest.mark.asyncio
+async def test_probe_okp_mcp_forwards_headers_and_timeout(
+    mocker: MockerFixture,
+) -> None:
+    """Headers and timeout are forwarded to the toolset when provided."""
+    toolset = mocker.Mock()
+    toolset.list_tools = mocker.AsyncMock(return_value=[])
+    toolset_cls = mocker.patch.object(_client, "MCPToolset", return_value=toolset)
+
+    await _client.probe_okp_mcp(
+        "http://okp/mcp",
+        "search",
+        headers={"Authorization": "Bearer t"},
+        timeout=5.0,
+    )
+
+    _, kwargs = toolset_cls.call_args
+    assert kwargs["headers"] == {"Authorization": "Bearer t"}
+    assert kwargs["init_timeout"] == 5.0
+    assert kwargs["read_timeout"] == 5.0

@@ -271,16 +271,21 @@ DEFAULT_SCORE_MULTIPLIER: Final[float] = 1.0
 OKP_RAG_ID: Final[str] = "okp"
 
 # OKP-over-MCP RAG constants
-# When rag.okp.mcp.enabled is True, OKP RAG context is fetched from the RHOKP MCP
-# server (which encapsulates embeddings + Solr querying server-side) instead of
-# the OGX/Solr vector_io provider. The "okp" source id still activates OKP; only
-# the transport changes.
-# Default RHOKP MCP endpoint (streamable HTTP) when okp.mcp.url is unset.
-RH_SERVER_OKP_MCP_DEFAULT_URL: Final[str] = "http://localhost:8080/mcp"
+# The OKP RAG source has two interchangeable transports. At launch the Solr
+# vector_io provider is always assumed; at query time the RHOKP MCP endpoint
+# (always served at the "/mcp" path of rag.okp.rhokp_url) is probed once and
+# preferred when available, falling back to Solr otherwise. The "okp" source id
+# activates OKP either way; only the transport changes.
 # Default MCP tool name used for OKP hybrid search.
 OKP_MCP_DEFAULT_TOOL_NAME: Final[str] = "search"
 # Maximum rows the RHOKP MCP search tool accepts (server clamps to 1..=20).
 OKP_MCP_MAX_ROWS: Final[int] = 20
+# Timeout (seconds) for the RHOKP MCP capability probe at query time.
+OKP_MCP_PROBE_TIMEOUT_SECONDS: Final[float] = 5.0
+# How long a probe result is trusted before re-probing. Bounds probe cost when
+# RHOKP is not MCP-capable, while still adopting an upgraded RHOKP without a
+# restart ("fail forward").
+OKP_MCP_PROBE_TTL_SECONDS: Final[float] = 60.0
 
 # OpenTelemetry anonymization configuration
 # Environment variable for HMAC secret used to anonymize sensitive trace data

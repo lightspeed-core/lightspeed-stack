@@ -1,3 +1,4 @@
+# pylint: disable=too-many-lines
 """Vector search utilities for query endpoints.
 
 This module contains common functionality for performing vector searches
@@ -17,12 +18,17 @@ from opentelemetry import trace
 from pydantic import AnyUrl, ValidationError
 
 import constants
-from configuration import configuration, okp_rag_mcp_enabled
+from configuration import (
+    configuration,
+    mark_okp_mcp_unavailable,
+    okp_mcp_available,
+)
 from log import get_logger
 from models.common.query import OkpFilter, SolrVectorSearchRequest
 from models.common.responses.types import ResponseInput
 from models.common.turn_summary import RAGChunk, RAGContext, ReferencedDocument
 from pydantic_ai_lightspeed.retrieval.okp_mcp import OkpMcpRetriever
+from pydantic_ai_lightspeed.retrieval.okp_mcp._client import OkpMcpUnavailableError
 from utils.otel_tracing import (
     SpanAttributes,
     SpanEvents,
@@ -716,18 +722,21 @@ async def _fetch_okp_rag_mcp(
 
     The MCP counterpart of :func:`_fetch_okp_rag`. Unlike the Solr path it does
     not need the OGX ``client`` or a ``SolrVectorSearchRequest``: the RHOKP MCP
-    server encapsulates embeddings and querying. Selected at the
-    :func:`build_rag_context` fork when :func:`okp_rag_mcp_enabled` is True.
+    server encapsulates embeddings and querying. Invoked by :func:`_fetch_okp`
+    when the RHOKP endpoint has probed as MCP-capable.
 
     Parameters:
         query: The user's query.
-        okp: Transport-neutral OKP filter from the API (optional). When set, it
-            overrides the launch-time product/version configuration.
+        okp: Transport-neutral OKP filter from the API (optional).
 
     Returns:
         Tuple containing:
         - rag_chunks: RAG chunks from the OKP MCP server.
         - referenced_documents: Documents referenced in the MCP results.
+
+    Raises:
+        OkpMcpUnavailableError: When every MCP search failed, so the caller can
+            fall back to the Solr transport.
     """
     if not configuration.okp_inline_enabled:
         logger.info("OKP is disabled for inline RAG, skipping OKP MCP search")
@@ -735,6 +744,44 @@ async def _fetch_okp_rag_mcp(
 
     retriever = OkpMcpRetriever.from_configuration()
     return await retriever.fetch(query, okp=okp)
+
+
+async def _fetch_okp(
+    client: AsyncOgxClient,
+    query: str,
+    solr: Optional[SolrVectorSearchRequest] = None,
+    okp: Optional[OkpFilter] = None,
+) -> tuple[list[RAGChunk], list[ReferencedDocument]]:
+    """Fetch OKP RAG context, preferring the MCP transport with Solr fallback.
+
+    At launch the Solr ``vector_io`` provider is always wired; at query time the
+    RHOKP MCP transport is attempted whenever the endpoint has probed as
+    MCP-capable (see :func:`configuration.okp_mcp_available`, which re-probes
+    periodically so an upgraded RHOKP is adopted without restarting). If MCP is
+    not available, or a believed-available endpoint hard-fails for this request,
+    the Solr transport serves it instead. Both honour the same query-time
+    ``okp`` filter and return the same ``(chunks, documents)`` contract.
+
+    Parameters:
+        client: OGX client used by the Solr transport.
+        query: The user's query.
+        solr: Structured Solr inline RAG request from the API (optional).
+        okp: Transport-neutral OKP filter from the API (optional).
+
+    Returns:
+        Tuple of ``(rag_chunks, referenced_documents)`` from whichever transport
+        served the request.
+    """
+    if await okp_mcp_available():
+        try:
+            return await _fetch_okp_rag_mcp(query, okp)
+        except OkpMcpUnavailableError:
+            logger.warning(
+                "OKP MCP transport failed for this request; "
+                "falling back to the Solr transport"
+            )
+            mark_okp_mcp_unavailable()
+    return await _fetch_okp_rag(client, query, solr, okp)
 
 
 async def build_rag_context(  # pylint: disable=too-many-locals,too-many-branches,too-many-arguments,too-many-positional-arguments
@@ -774,14 +821,13 @@ async def build_rag_context(  # pylint: disable=too-many-locals,too-many-branche
         top_k = configuration.rag.retrieval.inline.max_chunks
 
         # Fetch from each source using per-source limits for the reranking pool.
-        # The OKP source has two interchangeable transports: the OGX/Solr
-        # vector_io path (default) and the RHOKP MCP path. Both return the same
-        # (chunks, documents) contract so the merge/rerank pipeline is unchanged.
+        # The OKP source has two interchangeable transports selected at query
+        # time by _fetch_okp: the RHOKP MCP path (preferred when available) and
+        # the OGX/Solr vector_io path (always-wired fallback). Both return the
+        # same (chunks, documents) contract so the merge/rerank pipeline is
+        # unchanged.
         byok_chunks_task = _fetch_byok_rag(client, query, vector_store_ids)
-        if okp_rag_mcp_enabled():
-            okp_chunks_task = _fetch_okp_rag_mcp(query, okp)
-        else:
-            okp_chunks_task = _fetch_okp_rag(client, query, solr, okp)
+        okp_chunks_task = _fetch_okp(client, query, solr, okp)
 
         (byok_chunks, byok_documents), (solr_chunks, solr_documents) = (
             await asyncio.gather(byok_chunks_task, okp_chunks_task)

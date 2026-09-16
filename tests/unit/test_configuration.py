@@ -5,9 +5,11 @@
 from collections.abc import Generator
 from pathlib import Path
 from typing import Any
+from urllib.parse import urljoin
 
 import pytest
 from pydantic import ValidationError
+from pytest_mock import MockerFixture
 
 import configuration as configuration_module
 import constants
@@ -16,14 +18,16 @@ from cache.sqlite_cache import SQLiteCache
 from configuration import (
     AppConfig,
     LogicError,
-    okp_rag_mcp_enabled,
+    mark_okp_mcp_unavailable,
+    okp_mcp_available,
+    okp_mcp_endpoint_url,
     replace_env_vars_preserving_native_override,
+    reset_okp_mcp_probe,
 )
 from models.config import (
     CustomProfile,
     ModelContextProtocolServer,
     OkpConfiguration,
-    OkpMcpConfiguration,
 )
 from utils.checks import InvalidConfigurationError
 
@@ -4260,38 +4264,101 @@ def test_replace_env_vars_without_native_override_resolves_all(
     assert resolved["inference"]["default_model"] == "gpt-4o-mini"
 
 
-def test_okp_rag_mcp_enabled_model_default_false() -> None:
-    """A default OkpConfiguration reports the MCP transport as disabled."""
-    assert okp_rag_mcp_enabled(OkpConfiguration()) is False
+@pytest.fixture(name="_reset_okp_probe")
+def _reset_okp_probe_fixture() -> Generator:
+    """Reset the cached OKP MCP probe result around each transport test."""
+    reset_okp_mcp_probe()
+    yield
+    reset_okp_mcp_probe()
 
 
-def test_okp_rag_mcp_enabled_model_true() -> None:
-    """An OkpConfiguration with mcp.enabled=True reports the MCP transport on."""
-    okp = OkpConfiguration(mcp=OkpMcpConfiguration(enabled=True))
-    assert okp_rag_mcp_enabled(okp) is True
-
-
-def test_okp_rag_mcp_enabled_mapping_true() -> None:
-    """A raw mapping with mcp.enabled=True is honoured (pre-singleton path)."""
-    assert okp_rag_mcp_enabled({"mcp": {"enabled": True}}) is True
-
-
-def test_okp_rag_mcp_enabled_mapping_false_variants() -> None:
-    """Mappings without an enabled MCP transport report disabled."""
-    assert okp_rag_mcp_enabled({}) is False
-    assert okp_rag_mcp_enabled({"mcp": {}}) is False
-    assert okp_rag_mcp_enabled({"mcp": None}) is False
-    assert okp_rag_mcp_enabled({"mcp": {"enabled": False}}) is False
-
-
-def test_okp_rag_mcp_enabled_uses_singleton_when_none(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """With no argument, the loaded global configuration is inspected."""
-    okp = OkpConfiguration(mcp=OkpMcpConfiguration(enabled=True))
+def _patch_okp(monkeypatch: pytest.MonkeyPatch, okp: OkpConfiguration) -> None:
+    """Point the configuration singleton's ``okp`` property at ``okp``."""
     monkeypatch.setattr(
         type(configuration_module.configuration),
         "okp",
         property(lambda self: okp),
     )
-    assert okp_rag_mcp_enabled() is True
+
+
+def test_okp_mcp_endpoint_url_derived_from_rhokp_url(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The MCP endpoint is the ``/mcp`` path of the configured rhokp_url."""
+    _patch_okp(monkeypatch, OkpConfiguration(rhokp_url="http://rhokp.example:8081"))
+    assert okp_mcp_endpoint_url() == "http://rhokp.example:8081/mcp"
+
+
+def test_okp_mcp_endpoint_url_defaults_when_unset(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """When rhokp_url is unset, the constant default base is used."""
+    _patch_okp(monkeypatch, OkpConfiguration())
+    assert okp_mcp_endpoint_url() == urljoin(
+        constants.RH_SERVER_OKP_DEFAULT_URL, "/mcp"
+    )
+
+
+@pytest.mark.asyncio
+async def test_okp_mcp_available_true_when_probe_succeeds(
+    monkeypatch: pytest.MonkeyPatch, mocker: MockerFixture, _reset_okp_probe: None
+) -> None:
+    """A successful probe reports MCP available and is cached (probed once)."""
+    _patch_okp(monkeypatch, OkpConfiguration(rhokp_url="http://rhokp.example:8081"))
+    probe = mocker.AsyncMock(return_value=True)
+    monkeypatch.setattr(
+        "pydantic_ai_lightspeed.retrieval.okp_mcp._client.probe_okp_mcp", probe
+    )
+
+    assert await okp_mcp_available() is True
+    assert await okp_mcp_available() is True  # cached
+    probe.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_okp_mcp_available_false_when_probe_fails(
+    monkeypatch: pytest.MonkeyPatch, mocker: MockerFixture, _reset_okp_probe: None
+) -> None:
+    """A failing probe reports MCP unavailable (Solr transport used)."""
+    _patch_okp(monkeypatch, OkpConfiguration(rhokp_url="http://rhokp.example:8081"))
+    monkeypatch.setattr(
+        "pydantic_ai_lightspeed.retrieval.okp_mcp._client.probe_okp_mcp",
+        mocker.AsyncMock(return_value=False),
+    )
+
+    assert await okp_mcp_available() is False
+
+
+@pytest.mark.asyncio
+async def test_okp_mcp_reprobes_after_ttl(
+    monkeypatch: pytest.MonkeyPatch, mocker: MockerFixture, _reset_okp_probe: None
+) -> None:
+    """After the TTL elapses the endpoint is re-probed (fail forward)."""
+    _patch_okp(monkeypatch, OkpConfiguration(rhokp_url="http://rhokp.example:8081"))
+    probe = mocker.AsyncMock(side_effect=[False, True])
+    monkeypatch.setattr(
+        "pydantic_ai_lightspeed.retrieval.okp_mcp._client.probe_okp_mcp", probe
+    )
+    now = 0.0
+    monkeypatch.setattr(configuration_module.time, "monotonic", lambda: now)
+
+    assert await okp_mcp_available() is False  # first probe
+    now = constants.OKP_MCP_PROBE_TTL_SECONDS + 1.0
+    assert await okp_mcp_available() is True  # re-probed past TTL
+    assert probe.await_count == 2
+
+
+@pytest.mark.asyncio
+async def test_mark_okp_mcp_unavailable_forces_solr(
+    monkeypatch: pytest.MonkeyPatch, mocker: MockerFixture, _reset_okp_probe: None
+) -> None:
+    """Marking unavailable pins Solr within the TTL without re-probing."""
+    _patch_okp(monkeypatch, OkpConfiguration(rhokp_url="http://rhokp.example:8081"))
+    probe = mocker.AsyncMock(return_value=True)
+    monkeypatch.setattr(
+        "pydantic_ai_lightspeed.retrieval.okp_mcp._client.probe_okp_mcp", probe
+    )
+
+    mark_okp_mcp_unavailable()
+    assert await okp_mcp_available() is False
+    probe.assert_not_awaited()

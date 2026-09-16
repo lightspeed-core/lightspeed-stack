@@ -30,7 +30,6 @@ from ogx.core.stack import replace_env_vars
 from pydantic import SecretStr
 
 import constants
-from configuration import okp_rag_mcp_enabled
 from log import get_logger, setup_logging
 
 logger = get_logger(__name__)
@@ -996,42 +995,6 @@ def enrich_solr(  # pylint: disable=too-many-locals,too-many-statements
         )
 
 
-def enrich_okp_mcp(
-    ogx_config: dict[str, Any],  # pylint: disable=unused-argument
-    rag_config: dict[str, Any],
-    okp_config: dict[str, Any],  # pylint: disable=unused-argument
-) -> None:
-    """Enrich OGX config for the OKP-over-MCP transport.
-
-    This is the MCP-transport counterpart of :func:`enrich_solr`. When OKP RAG
-    is served over the RHOKP MCP server, the MCP retriever connects to it
-    directly at request time; there is no client-side embedding model, no
-    ``vector_io`` provider, and no Solr vector store to register. So, unlike
-    :func:`enrich_solr`, this deliberately injects nothing into the OGX
-    ``run.yaml`` — it only logs, so the two transports stay symmetric at the
-    enrichment fork.
-
-    Parameters:
-        ogx_config: OGX configuration dict (intentionally not modified).
-        rag_config: RAG configuration dict. Used keys: ``inline`` (list[str]),
-            ``tool`` (list[str]).
-        okp_config: OKP configuration dict (unused; kept for signature symmetry
-            with :func:`enrich_solr`).
-    """
-    inline_ids = rag_config.get("inline") or []
-    tool_ids = rag_config.get("tool") or []
-    okp_enabled = constants.OKP_RAG_ID in inline_ids or constants.OKP_RAG_ID in tool_ids
-
-    if not okp_enabled:
-        logger.info("OKP is not enabled: skipping")
-        return
-
-    logger.info(
-        "OKP MCP transport enabled: skipping Solr vector_io enrichment "
-        "(the MCP retriever connects to the RHOKP MCP server directly)"
-    )
-
-
 # =============================================================================
 # Synthesis: unified-mode run.yaml generation (LCORE-2336)
 # =============================================================================
@@ -1371,10 +1334,10 @@ def synthesize_configuration(  # pylint: disable=too-many-locals
         "tool": retrieval.get("tool", {}).get("sources", []),
     }
     okp_config = rag_section.get("okp", {})
-    if okp_rag_mcp_enabled(okp_config):
-        enrich_okp_mcp(ogx_config, rag_config_for_solr, okp_config)
-    else:
-        enrich_solr(ogx_config, rag_config_for_solr, okp_config)
+    # The Solr vector_io provider is always wired at launch. The RHOKP MCP
+    # transport is selected at query time (utils.vector_search._fetch_okp) and
+    # falls back to this Solr provider, so it must always be present.
+    enrich_solr(ogx_config, rag_config_for_solr, okp_config)
     enrich_vector_store(ogx_config, lcs_config.get("vector_store"))
 
     # 8. Dedupe again in case native_override or enrichment reintroduced dupes.
@@ -1541,10 +1504,9 @@ def generate_configuration(
         "tool": retrieval.get("tool", {}).get("sources", []),
     }
     okp_config = rag_section.get("okp", {})
-    if okp_rag_mcp_enabled(okp_config):
-        enrich_okp_mcp(ogx_config, rag_config_for_solr, okp_config)
-    else:
-        enrich_solr(ogx_config, rag_config_for_solr, okp_config)
+    # Solr is always wired; the MCP transport is chosen at query time with Solr
+    # as the fallback (see synthesize()).
+    enrich_solr(ogx_config, rag_config_for_solr, okp_config)
 
     dedupe_providers_vector_io(ogx_config)
 

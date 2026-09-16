@@ -18,6 +18,14 @@ from log import get_logger
 logger = get_logger(__name__)
 
 
+class OkpMcpUnavailableError(RuntimeError):
+    """Raised when every RHOKP MCP search attempt fails for a single request.
+
+    Signals :func:`utils.vector_search.build_rag_context` that the MCP transport
+    is unusable for this request and it should fall back to the Solr transport.
+    """
+
+
 async def call_okp_search(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     url: str,
     tool_name: str,
@@ -83,3 +91,56 @@ async def call_okp_search(  # pylint: disable=too-many-arguments,too-many-positi
         type(result).__name__,
     )
     return {}
+
+
+async def probe_okp_mcp(
+    url: str,
+    tool_name: str,
+    headers: Optional[dict[str, str]] = None,
+    timeout: Optional[float] = None,
+) -> bool:
+    """Probe an RHOKP endpoint for OKP-over-MCP capability.
+
+    Opens a short-lived streamable-HTTP MCP session against ``url`` and lists
+    the advertised tools, checking that the OKP search tool is present. Called at
+    query time (TTL-cached by :func:`configuration.okp_mcp_available`) to
+    auto-select the OKP RAG transport (MCP vs. the legacy Solr ``vector_io``
+    path) without an explicit configuration flag.
+
+    Parameters:
+        url: Candidate RHOKP MCP endpoint (streamable HTTP), e.g.
+            ``http://host:8080/mcp``.
+        tool_name: Name of the search tool the RHOKP MCP server must advertise
+            for the endpoint to count as MCP-capable.
+        headers: Optional static request headers (e.g. authorization).
+        timeout: Optional timeout in seconds for the initialization and read.
+
+    Returns:
+        True when the endpoint speaks MCP and advertises ``tool_name``; False on
+        any transport, protocol, or timeout error, or when the tool is absent.
+        Never raises: probe failures degrade to the Solr transport.
+    """
+    toolset_kwargs: dict[str, Any] = {}
+    if headers:
+        toolset_kwargs["headers"] = headers
+    if timeout is not None:
+        toolset_kwargs["init_timeout"] = timeout
+        toolset_kwargs["read_timeout"] = timeout
+
+    try:
+        toolset = MCPToolset(url, **toolset_kwargs)
+        tools = await toolset.list_tools()
+    except Exception as exc:  # pylint: disable=broad-exception-caught
+        logger.info(
+            "OKP MCP probe of %r failed (%s); using the Solr transport", url, exc
+        )
+        return False
+
+    available = any(getattr(tool, "name", None) == tool_name for tool in tools)
+    logger.info(
+        "OKP MCP probe of %r: tool %r %s",
+        url,
+        tool_name,
+        "available" if available else "not advertised",
+    )
+    return available

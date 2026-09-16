@@ -1,5 +1,9 @@
 """Unit tests for QueryRequest model."""
 
+# pylint: disable=no-member
+# Pydantic Optional model fields confuse pylint's attribute inference after
+# a narrowing ``assert ... is not None``.
+
 import pytest
 from pydantic import ValidationError
 

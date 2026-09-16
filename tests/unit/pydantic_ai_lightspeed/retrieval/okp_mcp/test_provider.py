@@ -1,6 +1,7 @@
 """Unit tests for the OKP MCP retriever."""
 
 from typing import Any
+from urllib.parse import urljoin
 
 import pytest
 from pydantic import AnyUrl
@@ -9,6 +10,7 @@ from pytest_mock import MockerFixture
 import constants
 from models.common.query import OkpFilter
 from pydantic_ai_lightspeed.retrieval.okp_mcp import _provider
+from pydantic_ai_lightspeed.retrieval.okp_mcp._client import OkpMcpUnavailableError
 from pydantic_ai_lightspeed.retrieval.okp_mcp._provider import OkpMcpRetriever
 
 SAMPLE_RESULT: dict[str, Any] = {
@@ -145,18 +147,16 @@ async def test_fetch_dedups_documents(mocker: MockerFixture) -> None:
 
 
 @pytest.mark.asyncio
-async def test_fetch_returns_empty_on_error(mocker: MockerFixture) -> None:
-    """A transport/tool error degrades to an empty result."""
+async def test_fetch_raises_when_every_search_fails(mocker: MockerFixture) -> None:
+    """When all searches fail, OkpMcpUnavailableError signals Solr fallback."""
     mocker.patch.object(
         _provider,
         "call_okp_search",
         mocker.AsyncMock(side_effect=RuntimeError("boom")),
     )
 
-    chunks, documents = await _retriever().fetch("q")
-
-    assert chunks == []
-    assert documents == []
+    with pytest.raises(OkpMcpUnavailableError):
+        await _retriever().fetch("q")
 
 
 @pytest.mark.asyncio
@@ -181,27 +181,6 @@ async def test_fetch_handles_malformed_payload(
 
     assert chunks == []
     assert documents == []
-
-
-@pytest.mark.asyncio
-async def test_fetch_forwards_product_filters(mocker: MockerFixture) -> None:
-    """Configured product filters are forwarded to the search tool call."""
-    call = mocker.AsyncMock(return_value={"response": {"docs": []}})
-    mocker.patch.object(_provider, "call_okp_search", call)
-
-    retriever = OkpMcpRetriever(
-        url="http://okp:8080/mcp",
-        tool_name="search",
-        max_chunks=5,
-        offline=False,
-        doc_base_url="http://okp:8081",
-        product="openshift_container_platform",
-        product_version="4.20",
-    )
-    await retriever.fetch("q")
-
-    assert call.await_args.kwargs["product"] == "openshift_container_platform"
-    assert call.await_args.kwargs["product_version"] == "4.20"
 
 
 @pytest.mark.asyncio
@@ -248,22 +227,13 @@ async def test_fetch_fans_out_over_products_and_versions(
 
 
 @pytest.mark.asyncio
-async def test_fetch_okp_overrides_config_filters(mocker: MockerFixture) -> None:
-    """A query-time filter fully overrides the configured product/version."""
+async def test_fetch_okp_filter_selects_products(mocker: MockerFixture) -> None:
+    """A query-time filter drives the searched product/version."""
     call = mocker.AsyncMock(return_value={"response": {"docs": []}})
     mocker.patch.object(_provider, "call_okp_search", call)
 
-    retriever = OkpMcpRetriever(
-        url="http://okp:8080/mcp",
-        tool_name="search",
-        max_chunks=5,
-        offline=False,
-        doc_base_url="http://okp:8081",
-        product="configured_product",
-        product_version="1.0",
-    )
     okp = OkpFilter.model_validate({"products": [{"product": "rhel"}]})
-    await retriever.fetch("q", okp=okp)
+    await _retriever().fetch("q", okp=okp)
 
     assert call.await_count == 1
     assert call.await_args.kwargs["product"] == "rhel"
@@ -328,49 +298,47 @@ async def test_fetch_degrades_on_partial_failure(mocker: MockerFixture) -> None:
 
 
 def test_from_configuration_uses_defaults(mocker: MockerFixture) -> None:
-    """from_configuration falls back to constant defaults when URLs are unset."""
+    """from_configuration falls back to constant defaults when rhokp_url is unset."""
     okp = mocker.Mock()
     okp.rhokp_url = None
     okp.offline = True
-    okp.mcp.url = None
-    okp.mcp.tool_name = "search"
-    okp.mcp.max_chunks = 7
-    okp.mcp.timeout = None
-    okp.mcp.resolved_authorization_headers = {}
-    okp.mcp.product = None
-    okp.mcp.product_version = None
+    okp.max_chunks = 7
     config_mock = mocker.Mock()
     config_mock.okp = okp
     mocker.patch.object(_provider, "configuration", config_mock)
+    mocker.patch.object(
+        _provider,
+        "okp_mcp_endpoint_url",
+        return_value=urljoin(constants.RH_SERVER_OKP_DEFAULT_URL, "/mcp"),
+    )
 
     retriever = OkpMcpRetriever.from_configuration()
 
-    assert retriever.url == constants.RH_SERVER_OKP_MCP_DEFAULT_URL
+    assert retriever.url == urljoin(constants.RH_SERVER_OKP_DEFAULT_URL, "/mcp")
     assert retriever.doc_base_url == constants.RH_SERVER_OKP_DEFAULT_URL
+    assert retriever.tool_name == constants.OKP_MCP_DEFAULT_TOOL_NAME
     assert retriever.max_chunks == 7
+    assert retriever.offline is True
     assert retriever.headers is None
     assert retriever.timeout is None
-    assert retriever.product is None
-    assert retriever.product_version is None
 
 
-def test_from_configuration_reads_product_filters(mocker: MockerFixture) -> None:
-    """from_configuration threads configured product filters into the retriever."""
+def test_from_configuration_derives_endpoint_from_rhokp_url(
+    mocker: MockerFixture,
+) -> None:
+    """from_configuration derives the endpoint and doc base URL from rhokp_url."""
     okp = mocker.Mock()
-    okp.rhokp_url = None
-    okp.offline = True
-    okp.mcp.url = None
-    okp.mcp.tool_name = "search"
-    okp.mcp.max_chunks = 5
-    okp.mcp.timeout = None
-    okp.mcp.resolved_authorization_headers = {}
-    okp.mcp.product = "openshift_container_platform"
-    okp.mcp.product_version = "4.20"
+    okp.rhokp_url = "http://rhokp:9000"
+    okp.offline = False
+    okp.max_chunks = 5
     config_mock = mocker.Mock()
     config_mock.okp = okp
     mocker.patch.object(_provider, "configuration", config_mock)
+    mocker.patch.object(
+        _provider, "okp_mcp_endpoint_url", return_value="http://rhokp:9000/mcp"
+    )
 
     retriever = OkpMcpRetriever.from_configuration()
 
-    assert retriever.product == "openshift_container_platform"
-    assert retriever.product_version == "4.20"
+    assert retriever.url == "http://rhokp:9000/mcp"
+    assert retriever.doc_base_url == "http://rhokp:9000"

@@ -2667,120 +2667,6 @@ class ByokConfiguration(ConfigurationBase):
         return self
 
 
-class OkpMcpConfiguration(ConfigurationBase):
-    """OKP-over-MCP transport configuration.
-
-    When ``enabled`` is True, OKP RAG context is fetched from the RHOKP MCP
-    server (which encapsulates embeddings and Solr querying server-side) instead
-    of the OGX/Solr ``vector_io`` provider. OKP is still activated by listing
-    ``"okp"`` in ``rag.retrieval.inline.sources``; only the transport changes.
-    The Solr transport remains the default and is used whenever ``enabled`` is
-    False.
-
-    This flag is the initial mechanism behind
-    :func:`configuration.okp_rag_mcp_enabled`. It may later be replaced by
-    auto-detection of MCP capability in the connected RHOKP instance.
-
-    Attributes:
-        enabled: Whether the OKP MCP transport is enabled.
-        url: RHOKP MCP endpoint (streamable HTTP). Defaults to the constant
-            when unset.
-        tool_name: Name of the MCP search tool to call.
-        max_chunks: Maximum number of chunks to request from the MCP server.
-        product: Optional product to restrict search results to, passed as a
-            structured filter to the MCP search tool.
-        product_version: Optional product version to restrict search results to,
-            passed as a structured filter to the MCP search tool.
-        timeout: Optional per-request timeout in seconds for MCP calls.
-        authorization_headers: Static authorization headers sent to the MCP
-            server, resolved from secret files at startup.
-    """
-
-    enabled: bool = Field(
-        default=False,
-        title="OKP MCP enabled",
-        description="When True, fetch OKP RAG context from the RHOKP MCP server "
-        "instead of the OGX/Solr vector_io provider. The 'okp' source id still "
-        "activates OKP; only the transport changes.",
-    )
-
-    url: Optional[AnyHttpUrl] = Field(
-        default=None,
-        title="RHOKP MCP URL",
-        description="RHOKP MCP endpoint (streamable HTTP). "
-        "Set to `${env.RH_SERVER_OKP_MCP}` in YAML to use the environment "
-        "variable. When unset, the default from constants is used.",
-    )
-
-    tool_name: str = Field(
-        default=constants.OKP_MCP_DEFAULT_TOOL_NAME,
-        title="OKP MCP search tool name",
-        description="Name of the MCP tool to call for OKP hybrid search.",
-    )
-
-    max_chunks: PositiveInt = Field(
-        default=constants.DEFAULT_OKP_RAG_MAX_CHUNKS,
-        title="Max OKP MCP chunks",
-        description="Maximum number of chunks fetched from the OKP MCP server "
-        f"(clamped server-side to 1..{constants.OKP_MCP_MAX_ROWS}).",
-    )
-
-    product: Optional[str] = Field(
-        default=None,
-        title="OKP MCP product filter",
-        description="Optional product to restrict OKP MCP search results to "
-        "(e.g. 'openshift_container_platform'). Passed as a structured filter to "
-        "the MCP search tool, which matches it exactly against the document "
-        "product field. This is the MCP-transport analogue of the Solr "
-        "transport's chunk_filter_query product filtering.",
-    )
-
-    product_version: Optional[str] = Field(
-        default=None,
-        title="OKP MCP product version filter",
-        description="Optional product version to restrict OKP MCP search results "
-        "to (e.g. '4.20'). Passed as a structured filter to the MCP search tool, "
-        "which matches it exactly against the document product_version field.",
-    )
-
-    timeout: Optional[PositiveInt] = Field(
-        default=None,
-        title="OKP MCP request timeout",
-        description="Per-request timeout in seconds for OKP MCP calls. "
-        "When unset, the MCP client default is used.",
-    )
-
-    authorization_headers: dict[str, str] = Field(
-        default_factory=dict,
-        title="Authorization headers",
-        description="Static authorization headers sent to the RHOKP MCP server. "
-        "Values may reference secret files, resolved at startup.",
-    )
-
-    _resolved_authorization_headers: dict[str, str] = PrivateAttr(default_factory=dict)
-
-    @property
-    def resolved_authorization_headers(self) -> dict[str, str]:
-        """Return authorization headers resolved from secret files at startup."""
-        return self._resolved_authorization_headers
-
-    @model_validator(mode="after")
-    def resolve_auth_headers(self) -> Self:
-        """Resolve authorization headers by reading referenced secret files.
-
-        Populates ``resolved_authorization_headers`` from
-        ``authorization_headers`` so callers never read secrets at request time.
-
-        Returns:
-            Self: The model instance with resolved authorization headers set.
-        """
-        if self.authorization_headers:
-            self._resolved_authorization_headers = resolve_authorization_headers(
-                self.authorization_headers
-            )
-        return self
-
-
 class OkpConfiguration(ConfigurationBase):
     """OKP (Offline Knowledge Portal) provider configuration.
 
@@ -2825,13 +2711,6 @@ class OkpConfiguration(ConfigurationBase):
         default=constants.DEFAULT_OKP_RAG_MAX_CHUNKS,
         title="Max OKP chunks",
         description="Maximum number of chunks fetched from OKP.",
-    )
-
-    mcp: OkpMcpConfiguration = Field(
-        default_factory=OkpMcpConfiguration,
-        title="OKP MCP transport",
-        description="OKP-over-MCP transport settings. When enabled, OKP RAG is "
-        "fetched from the RHOKP MCP server instead of the Solr vector_io provider.",
     )
 
 

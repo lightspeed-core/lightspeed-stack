@@ -18,11 +18,14 @@ from urllib.parse import urljoin
 from pydantic import AnyUrl, ValidationError
 
 import constants
-from configuration import configuration
+from configuration import configuration, okp_mcp_endpoint_url
 from log import get_logger
 from models.common.query import OkpFilter
 from models.common.turn_summary import RAGChunk, ReferencedDocument
-from pydantic_ai_lightspeed.retrieval.okp_mcp._client import call_okp_search
+from pydantic_ai_lightspeed.retrieval.okp_mcp._client import (
+    OkpMcpUnavailableError,
+    call_okp_search,
+)
 
 logger = get_logger(__name__)
 
@@ -39,9 +42,6 @@ class OkpMcpRetriever:  # pylint: disable=too-many-instance-attributes
         doc_base_url: Base URL used to build offline document URLs.
         headers: Optional static request headers (e.g. authorization).
         timeout: Optional per-request timeout in seconds.
-        product: Optional product filter passed to the MCP search tool.
-        product_version: Optional product-version filter passed to the MCP
-            search tool.
     """
 
     def __init__(  # pylint: disable=too-many-arguments,too-many-positional-arguments
@@ -53,8 +53,6 @@ class OkpMcpRetriever:  # pylint: disable=too-many-instance-attributes
         doc_base_url: str,
         headers: Optional[dict[str, str]] = None,
         timeout: Optional[float] = None,
-        product: Optional[str] = None,
-        product_version: Optional[str] = None,
     ) -> None:
         """Initialize the retriever with an explicit configuration.
 
@@ -68,43 +66,32 @@ class OkpMcpRetriever:  # pylint: disable=too-many-instance-attributes
         self.doc_base_url = doc_base_url
         self.headers = headers
         self.timeout = timeout
-        self.product = product
-        self.product_version = product_version
 
     @classmethod
     def from_configuration(cls) -> OkpMcpRetriever:
         """Build a retriever from the loaded global configuration.
 
-        Reads ``rag.okp`` and ``rag.okp.mcp``. Falls back to the constant
-        defaults for the MCP URL and the document base URL when unset.
+        Reads ``rag.okp``. The MCP endpoint is derived from ``rhokp_url`` (the
+        RHOKP MCP server is always served at its ``/mcp`` path); the document
+        base URL falls back to the constant default when ``rhokp_url`` is unset.
+        Product/version filtering is query-time only, so no launch-time filter
+        defaults are read.
 
         Returns:
             OkpMcpRetriever: Configured retriever instance.
         """
         okp = configuration.okp
-        mcp = okp.mcp
-        url = (
-            str(mcp.url)
-            if mcp.url is not None
-            else constants.RH_SERVER_OKP_MCP_DEFAULT_URL
-        )
         doc_base_url = (
             str(okp.rhokp_url)
             if okp.rhokp_url is not None
             else constants.RH_SERVER_OKP_DEFAULT_URL
         )
-        headers = mcp.resolved_authorization_headers or None
-        timeout = float(mcp.timeout) if mcp.timeout is not None else None
         return cls(
-            url=url,
-            tool_name=mcp.tool_name,
-            max_chunks=mcp.max_chunks,
+            url=okp_mcp_endpoint_url(),
+            tool_name=constants.OKP_MCP_DEFAULT_TOOL_NAME,
+            max_chunks=okp.max_chunks,
             offline=okp.offline,
             doc_base_url=doc_base_url,
-            headers=headers,
-            timeout=timeout,
-            product=mcp.product,
-            product_version=mcp.product_version,
         )
 
     def _resolve_search_combos(
@@ -114,9 +101,8 @@ class OkpMcpRetriever:  # pylint: disable=too-many-instance-attributes
 
         The RHOKP MCP ``search`` tool takes a scalar product/version, so a
         multi-product/multi-version query-time filter expands into one search
-        per (product, version) pair. A query-time filter fully overrides the
-        launch-time config defaults; when absent, the configured defaults (which
-        may both be None) are used.
+        per (product, version) pair. When no query-time filter is supplied, a
+        single unfiltered search is issued.
 
         Parameters:
             okp: Optional query-time OKP filter.
@@ -133,7 +119,7 @@ class OkpMcpRetriever:  # pylint: disable=too-many-instance-attributes
                 else:
                     combos.append((entry.product, None))
             return combos
-        return [(self.product, self.product_version)]
+        return [(None, None)]
 
     async def fetch(
         self, query: str, okp: Optional[OkpFilter] = None
@@ -142,20 +128,25 @@ class OkpMcpRetriever:  # pylint: disable=too-many-instance-attributes
 
         When ``okp`` selects multiple products/versions, one search is issued per
         (product, version) pair and the results are merged, deduplicated, sorted
-        by score, and capped at ``max_chunks``. Any transport or tool error on an
-        individual search is caught and logged; the remaining searches still
-        contribute, so RAG retrieval degrades gracefully rather than failing the
-        request.
+        by score, and capped at ``max_chunks``. A transport or tool error on an
+        individual search (when at least one other search succeeds) is caught and
+        logged so retrieval degrades gracefully. When *every* search fails, the
+        MCP endpoint is treated as unusable for this request and
+        :class:`~pydantic_ai_lightspeed.retrieval.okp_mcp._client.OkpMcpUnavailableError`
+        is raised so the caller can fall back to the Solr transport.
 
         Parameters:
             query: The raw user query string.
-            okp: Optional query-time OKP filter overriding the configured
-                product/version defaults.
+            okp: Optional query-time OKP filter selecting products/versions.
 
         Returns:
             A tuple of ``(rag_chunks, referenced_documents)``. Both lists are
-            empty when the server returns no usable documents or every call
-            fails.
+            empty when the server returns no usable documents (a legitimate
+            zero-result search, distinct from a transport failure).
+
+        Raises:
+            OkpMcpUnavailableError: When every issued search failed, signalling
+                that the caller should fall back to the Solr transport.
         """
         rows = min(self.max_chunks, constants.OKP_MCP_MAX_ROWS)
         combos = self._resolve_search_combos(okp)
@@ -177,8 +168,10 @@ class OkpMcpRetriever:  # pylint: disable=too-many-instance-attributes
         )
 
         docs: list[dict[str, Any]] = []
+        failures = 0
         for combo, result in zip(combos, results, strict=True):
             if isinstance(result, BaseException):
+                failures += 1
                 logger.warning(
                     "Failed to query OKP MCP server for chunks (product=%r, "
                     "product_version=%r): %s",
@@ -192,6 +185,15 @@ class OkpMcpRetriever:  # pylint: disable=too-many-instance-attributes
                 )
                 continue
             docs.extend(self._extract_docs(result))
+
+        if failures == len(combos):
+            # Every search failed: treat the MCP endpoint as unusable for this
+            # request so the caller can fall back to the Solr transport, rather
+            # than silently returning an empty result that looks like a
+            # legitimate zero-result search.
+            raise OkpMcpUnavailableError(
+                f"all {failures} OKP MCP search(es) failed for the query"
+            )
 
         if not docs:
             logger.debug("OKP MCP returned no documents for query")
@@ -222,6 +224,7 @@ class OkpMcpRetriever:  # pylint: disable=too-many-instance-attributes
         Returns:
             Documents sorted by descending score with exact duplicates removed.
         """
+
         def _score(doc: dict[str, Any]) -> float:
             value = doc.get("score")
             return float(value) if isinstance(value, (int, float)) else float("-inf")
