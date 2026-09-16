@@ -11,8 +11,10 @@ from models.config import ModelContextProtocolServer
 from utils.mcp import mcp_headers
 from utils.mcp.mcp_headers import (
     build_server_headers,
+    ensure_bearer_prefix,
     extract_propagated_headers,
     find_unresolved_auth_headers,
+    strip_bearer_prefix,
 )
 
 
@@ -333,6 +335,49 @@ class TestFindUnresolvedAuthHeaders:
         configured = {"Authorization": "kubernetes", "X-Api-Key": "/path"}
         result = find_unresolved_auth_headers(configured, {})
         assert sorted(result) == ["Authorization", "X-Api-Key"]
+
+
+class TestStripBearerPrefix:
+    """Test cases for strip_bearer_prefix function."""
+
+    def test_strips_bearer_prefix(self) -> None:
+        """Test that a leading 'Bearer ' scheme is removed."""
+        assert strip_bearer_prefix("Bearer abc123") == "abc123"
+
+    def test_does_not_strip_differently_cased_prefix(self) -> None:
+        """Test that only the exact 'Bearer ' scheme is matched, not other casings."""
+        assert strip_bearer_prefix("bearer abc123") == "bearer abc123"
+        assert strip_bearer_prefix("BEARER abc123") == "BEARER abc123"
+        assert strip_bearer_prefix("BeArEr abc123") == "BeArEr abc123"
+
+    def test_value_without_prefix_is_unchanged(self) -> None:
+        """Test that a raw token without a scheme is returned as-is."""
+        assert strip_bearer_prefix("abc123") == "abc123"
+
+    def test_empty_string_is_unchanged(self) -> None:
+        """Test that an empty string is returned unchanged."""
+        assert not strip_bearer_prefix("")
+
+    def test_only_strips_leading_prefix(self) -> None:
+        """Test that only the first 'Bearer ' scheme is stripped, not repeated ones."""
+        assert strip_bearer_prefix("Bearer Bearer abc123") == "Bearer abc123"
+
+
+class TestEnsureBearerPrefix:
+    """Test cases for ensure_bearer_prefix function."""
+
+    def test_adds_bearer_prefix_to_raw_token(self) -> None:
+        """Test that a raw token gets the 'Bearer ' scheme added."""
+        assert ensure_bearer_prefix("abc123") == "Bearer abc123"
+
+    def test_does_not_double_prefix_already_scoped_value(self) -> None:
+        """Test that a value already carrying 'Bearer ' is left unchanged."""
+        assert ensure_bearer_prefix("Bearer abc123") == "Bearer abc123"
+
+    def test_double_prefixes_differently_cased_scheme(self) -> None:
+        """Test that a differently-cased scheme is treated as a raw token and prefixed."""
+        assert ensure_bearer_prefix("bearer abc123") == "Bearer bearer abc123"
+        assert ensure_bearer_prefix("BEARER abc123") == "Bearer BEARER abc123"
 
 
 class TestBuildServerHeaders:
