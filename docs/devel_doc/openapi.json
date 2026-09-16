@@ -16140,7 +16140,7 @@
                 "additionalProperties": false,
                 "type": "object",
                 "title": "OkpConfiguration",
-                "description": "OKP (Offline Knowledge Portal) provider configuration.\n\nControls provider-specific behaviour for the OKP vector store.\nOnly relevant when ``\"okp\"`` is listed in ``rag.retrieval.inline.sources``\nor ``rag.retrieval.tool.sources``."
+                "description": "OKP (Offline Knowledge Portal) provider configuration.\n\nDeprecated: The Solr vector provider used by OKP RAG is deprecated.\n\nControls provider-specific behaviour for the OKP vector store.\nOnly relevant when ``\"okp\"`` is listed in ``rag.retrieval.inline.sources``\nor ``rag.retrieval.tool.sources``."
             },
             "OpenAIResponseAnnotationCitation": {
                 "properties": {
@@ -19534,7 +19534,7 @@
                     "okp": {
                         "$ref": "#/components/schemas/OkpConfiguration",
                         "title": "OKP configuration",
-                        "description": "OKP provider settings. Only used when 'okp' is listed in retrieval.inline.sources or retrieval.tool.sources."
+                        "description": "Deprecated: The Solr vector provider used by OKP RAG is deprecated. OKP provider settings. Only used when 'okp' is listed in retrieval.inline.sources or retrieval.tool.sources."
                     },
                     "retrieval": {
                         "$ref": "#/components/schemas/RetrievalConfiguration",
@@ -21864,7 +21864,7 @@
                 "additionalProperties": false,
                 "type": "object",
                 "title": "SolrVectorSearchRequest",
-                "description": "LCORE Solr inline RAG options for vector_io.query (mode and provider filters).\n\nAttributes:\n    mode: Solr vector_io search mode. When omitted, the configured OKP default is used.\n    filters: Solr provider filter payload passed through as params['solr'].\n\nLegacy clients may send a plain JSON object with filter keys only;\nthat object is accepted as filters with mode unset (server default applies)."
+                "description": "LCORE Solr inline RAG options for vector_io.query (mode and provider filters).\n\nDeprecated: The Solr vector provider used by OKP RAG is deprecated.\n\nAttributes:\n    mode: Solr vector_io search mode. When omitted, the configured OKP default is used.\n    filters: Solr provider filter payload passed through as params['solr'].\n\nLegacy clients may send a plain JSON object with filter keys only;\nthat object is accepted as filters with mode unset (server default applies)."
             },
             "SplunkConfiguration": {
                 "properties": {

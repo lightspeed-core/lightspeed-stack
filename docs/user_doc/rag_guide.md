@@ -31,6 +31,9 @@ This document explains how to configure and customize your RAG pipeline. You wil
 
 Lightspeed Core Stack (LCS) supports two complementary RAG strategies:
 
+> [!WARNING]
+> **Deprecated:** The Solr vector provider used by OKP RAG is deprecated.
+
 - **Inline RAG**: context is fetched from BYOK vector stores and/or OKP and injected before the LLM request. No tool calls are required.
 - **Tool RAG**: the LLM can call the `file_search` tool during generation to retrieve context on demand from BYOK vector stores and/or OKP.
 
@@ -530,4 +533,3 @@ When `vector_store` is configured, `default_provider` overwrites
 `vector_stores.default_provider_id` and `default_embedding_model`
 during unified synthesis. Annotation settings are not managed by that enricher
 — keep them in the OGX baseline/profile or `native_override`.
-
