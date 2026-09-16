@@ -147,8 +147,8 @@ async def test_fetch_dedups_documents(mocker: MockerFixture) -> None:
 
 
 @pytest.mark.asyncio
-async def test_fetch_raises_when_every_search_fails(mocker: MockerFixture) -> None:
-    """When all searches fail, OkpMcpUnavailableError signals Solr fallback."""
+async def test_fetch_raises_when_search_fails(mocker: MockerFixture) -> None:
+    """When the search fails, OkpMcpUnavailableError signals Solr fallback."""
     mocker.patch.object(
         _provider,
         "call_okp_search",
@@ -184,22 +184,22 @@ async def test_fetch_handles_malformed_payload(
 
 
 @pytest.mark.asyncio
-async def test_fetch_defaults_product_filters_to_none(mocker: MockerFixture) -> None:
-    """Without configured filters, None is forwarded (client then omits them)."""
+async def test_fetch_defaults_products_to_none(mocker: MockerFixture) -> None:
+    """Without a configured filter, None is forwarded (client then omits it)."""
     call = mocker.AsyncMock(return_value={"response": {"docs": []}})
     mocker.patch.object(_provider, "call_okp_search", call)
 
     await _retriever().fetch("q")
 
-    assert call.await_args.kwargs["product"] is None
-    assert call.await_args.kwargs["product_version"] is None
+    assert call.await_count == 1
+    assert call.await_args.kwargs["products"] is None
 
 
 @pytest.mark.asyncio
-async def test_fetch_fans_out_over_products_and_versions(
+async def test_fetch_passes_structured_products_in_one_call(
     mocker: MockerFixture,
 ) -> None:
-    """A multi-version query-time filter issues one search per (product, version)."""
+    """A multi-version query-time filter is sent as one structured search call."""
     call = mocker.AsyncMock(return_value={"response": {"docs": []}})
     mocker.patch.object(_provider, "call_okp_search", call)
 
@@ -216,19 +216,19 @@ async def test_fetch_fans_out_over_products_and_versions(
     )
     await _retriever().fetch("q", okp=okp)
 
-    combos = {
-        (c.kwargs["product"], c.kwargs["product_version"]) for c in call.await_args_list
-    }
-    assert combos == {
-        ("openshift_container_platform", "4.16"),
-        ("openshift_container_platform", "4.17"),
-        ("rhel", None),
-    }
+    assert call.await_count == 1
+    assert call.await_args.kwargs["products"] == [
+        {
+            "product": "openshift_container_platform",
+            "versions": ["4.16", "4.17"],
+        },
+        {"product": "rhel"},
+    ]
 
 
 @pytest.mark.asyncio
 async def test_fetch_okp_filter_selects_products(mocker: MockerFixture) -> None:
-    """A query-time filter drives the searched product/version."""
+    """A query-time filter drives the structured products argument."""
     call = mocker.AsyncMock(return_value={"response": {"docs": []}})
     mocker.patch.object(_provider, "call_okp_search", call)
 
@@ -236,65 +236,30 @@ async def test_fetch_okp_filter_selects_products(mocker: MockerFixture) -> None:
     await _retriever().fetch("q", okp=okp)
 
     assert call.await_count == 1
-    assert call.await_args.kwargs["product"] == "rhel"
-    assert call.await_args.kwargs["product_version"] is None
+    assert call.await_args.kwargs["products"] == [{"product": "rhel"}]
 
 
 @pytest.mark.asyncio
-async def test_fetch_merges_and_dedups_across_calls(mocker: MockerFixture) -> None:
-    """Docs from multiple searches are merged, sorted by score, and deduplicated."""
-
-    async def _search(**kwargs: Any) -> dict[str, Any]:
-        if kwargs["product_version"] == "4.16":
-            return {
-                "response": {
-                    "docs": [
-                        {"chunk": "shared", "doc_id": "d", "score": 60.0},
-                        {"chunk": "low", "doc_id": "e", "score": 10.0},
-                    ]
-                }
-            }
-        return {
-            "response": {
-                "docs": [
-                    {"chunk": "shared", "doc_id": "d", "score": 60.0},
-                    {"chunk": "high", "doc_id": "f", "score": 90.0},
-                ]
-            }
+async def test_fetch_merges_and_dedups_response_docs(mocker: MockerFixture) -> None:
+    """Docs in a single response are sorted by score and deduplicated."""
+    result = {
+        "response": {
+            "docs": [
+                {"chunk": "low", "doc_id": "e", "score": 10.0},
+                {"chunk": "shared", "doc_id": "d", "score": 60.0},
+                {"chunk": "high", "doc_id": "f", "score": 90.0},
+                {"chunk": "shared", "doc_id": "d", "score": 60.0},
+            ]
         }
-
+    }
     mocker.patch.object(
-        _provider, "call_okp_search", mocker.AsyncMock(side_effect=_search)
+        _provider, "call_okp_search", mocker.AsyncMock(return_value=result)
     )
 
-    okp = OkpFilter.model_validate(
-        {"products": [{"product": "ocp", "versions": ["4.16", "4.17"]}]}
-    )
-    chunks, _ = await _retriever(max_chunks=5).fetch("q", okp=okp)
+    chunks, _ = await _retriever(max_chunks=5).fetch("q")
 
-    # "shared" appears in both searches but is deduplicated; results are score-sorted.
+    # The duplicate "shared" chunk is removed; results are score-sorted.
     assert [c.content for c in chunks] == ["high", "shared", "low"]
-
-
-@pytest.mark.asyncio
-async def test_fetch_degrades_on_partial_failure(mocker: MockerFixture) -> None:
-    """A failing search is skipped while the others still contribute."""
-
-    async def _search(**kwargs: Any) -> dict[str, Any]:
-        if kwargs["product_version"] == "4.16":
-            raise RuntimeError("boom")
-        return {"response": {"docs": [{"chunk": "ok", "doc_id": "g", "score": 5.0}]}}
-
-    mocker.patch.object(
-        _provider, "call_okp_search", mocker.AsyncMock(side_effect=_search)
-    )
-
-    okp = OkpFilter.model_validate(
-        {"products": [{"product": "ocp", "versions": ["4.16", "4.17"]}]}
-    )
-    chunks, _ = await _retriever().fetch("q", okp=okp)
-
-    assert [c.content for c in chunks] == ["ok"]
 
 
 def test_from_configuration_uses_defaults(mocker: MockerFixture) -> None:

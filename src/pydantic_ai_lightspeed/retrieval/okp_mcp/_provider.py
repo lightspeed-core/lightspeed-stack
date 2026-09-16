@@ -10,7 +10,6 @@ contract.
 
 from __future__ import annotations
 
-import asyncio
 import traceback
 from typing import Any, Optional
 from urllib.parse import urljoin
@@ -94,44 +93,49 @@ class OkpMcpRetriever:  # pylint: disable=too-many-instance-attributes
             doc_base_url=doc_base_url,
         )
 
-    def _resolve_search_combos(
-        self, okp: Optional[OkpFilter]
-    ) -> list[tuple[Optional[str], Optional[str]]]:
-        """Resolve the (product, product_version) pairs to search.
+    @staticmethod
+    def _okp_products_arg(
+        okp: Optional[OkpFilter],
+    ) -> Optional[list[dict[str, Any]]]:
+        """Build the MCP ``products`` filter argument from a query-time filter.
 
-        The RHOKP MCP ``search`` tool takes a scalar product/version, so a
-        multi-product/multi-version query-time filter expands into one search
-        per (product, version) pair. When no query-time filter is supplied, a
-        single unfiltered search is issued.
+        Translates the transport-neutral
+        :class:`~models.common.query.OkpFilter` into the RHOKP MCP ``search``
+        tool's structured ``products`` argument: a list of
+        ``{"product": ..., "versions": [...]}`` entries (products OR-combined;
+        versions within a product OR-combined). The ``versions`` key is omitted
+        for a product carrying no version restriction. The RHOKP MCP server
+        turns this structure into the Solr ``fq`` clause, so no per-(product,
+        version) fan-out is needed on this side.
 
         Parameters:
             okp: Optional query-time OKP filter.
 
         Returns:
-            A non-empty list of ``(product, product_version)`` pairs. Either
-            element may be None (meaning "unfiltered on that facet").
+            The structured products list, or None when no filter is supplied
+            (the search then spans all products).
         """
-        if okp is not None and okp.products:
-            combos: list[tuple[Optional[str], Optional[str]]] = []
-            for entry in okp.products:
-                if entry.versions:
-                    combos.extend((entry.product, v) for v in entry.versions)
-                else:
-                    combos.append((entry.product, None))
-            return combos
-        return [(None, None)]
+        if okp is None or not okp.products:
+            return None
+        products: list[dict[str, Any]] = []
+        for entry in okp.products:
+            item: dict[str, Any] = {"product": entry.product}
+            if entry.versions:
+                item["versions"] = list(entry.versions)
+            products.append(item)
+        return products
 
     async def fetch(
         self, query: str, okp: Optional[OkpFilter] = None
     ) -> tuple[list[RAGChunk], list[ReferencedDocument]]:
         """Fetch chunks and referenced documents from the RHOKP MCP server.
 
-        When ``okp`` selects multiple products/versions, one search is issued per
-        (product, version) pair and the results are merged, deduplicated, sorted
-        by score, and capped at ``max_chunks``. A transport or tool error on an
-        individual search (when at least one other search succeeds) is caught and
-        logged so retrieval degrades gracefully. When *every* search fails, the
-        MCP endpoint is treated as unusable for this request and
+        Issues a single MCP ``search`` call, passing ``okp`` as the tool's
+        structured ``products`` filter; the RHOKP MCP server builds the
+        query-side (Solr ``fq``) filter itself, so a multi-product/multi-version
+        selection needs no fan-out. Returned documents are deduplicated, sorted
+        by score, and capped at ``max_chunks``. A transport or tool error causes
+        the MCP endpoint to be treated as unusable for this request:
         :class:`~pydantic_ai_lightspeed.retrieval.okp_mcp._client.OkpMcpUnavailableError`
         is raised so the caller can fall back to the Solr transport.
 
@@ -145,56 +149,33 @@ class OkpMcpRetriever:  # pylint: disable=too-many-instance-attributes
             zero-result search, distinct from a transport failure).
 
         Raises:
-            OkpMcpUnavailableError: When every issued search failed, signalling
-                that the caller should fall back to the Solr transport.
+            OkpMcpUnavailableError: When the search failed, signalling that the
+                caller should fall back to the Solr transport.
         """
         rows = min(self.max_chunks, constants.OKP_MCP_MAX_ROWS)
-        combos = self._resolve_search_combos(okp)
-        results = await asyncio.gather(
-            *(
-                call_okp_search(
-                    url=self.url,
-                    tool_name=self.tool_name,
-                    query=query,
-                    rows=rows,
-                    headers=self.headers,
-                    timeout=self.timeout,
-                    product=product,
-                    product_version=product_version,
-                )
-                for product, product_version in combos
-            ),
-            return_exceptions=True,
-        )
-
-        docs: list[dict[str, Any]] = []
-        failures = 0
-        for combo, result in zip(combos, results, strict=True):
-            if isinstance(result, BaseException):
-                failures += 1
-                logger.warning(
-                    "Failed to query OKP MCP server for chunks (product=%r, "
-                    "product_version=%r): %s",
-                    combo[0],
-                    combo[1],
-                    result,
-                )
-                logger.debug(
-                    "OKP MCP query error details: %s",
-                    "".join(traceback.format_exception(result)),
-                )
-                continue
-            docs.extend(self._extract_docs(result))
-
-        if failures == len(combos):
-            # Every search failed: treat the MCP endpoint as unusable for this
-            # request so the caller can fall back to the Solr transport, rather
-            # than silently returning an empty result that looks like a
-            # legitimate zero-result search.
-            raise OkpMcpUnavailableError(
-                f"all {failures} OKP MCP search(es) failed for the query"
+        products = self._okp_products_arg(okp)
+        try:
+            result = await call_okp_search(
+                url=self.url,
+                tool_name=self.tool_name,
+                query=query,
+                rows=rows,
+                headers=self.headers,
+                timeout=self.timeout,
+                products=products,
             )
+        except Exception as exc:  # pylint: disable=broad-exception-caught
+            # Treat the MCP endpoint as unusable for this request so the caller
+            # can fall back to the Solr transport, rather than silently returning
+            # an empty result that looks like a legitimate zero-result search.
+            logger.warning("Failed to query OKP MCP server for chunks: %s", exc)
+            logger.debug(
+                "OKP MCP query error details: %s",
+                "".join(traceback.format_exception(exc)),
+            )
+            raise OkpMcpUnavailableError("OKP MCP search failed for the query") from exc
 
+        docs = self._extract_docs(result)
         if not docs:
             logger.debug("OKP MCP returned no documents for query")
             return [], []
@@ -203,10 +184,9 @@ class OkpMcpRetriever:  # pylint: disable=too-many-instance-attributes
         rag_chunks = self._to_rag_chunks(docs)
         referenced_documents = self._to_referenced_documents(docs)
         logger.debug(
-            "OKP MCP retrieval: %d chunks, %d documents (from %d search(es))",
+            "OKP MCP retrieval: %d chunks, %d documents",
             len(rag_chunks),
             len(referenced_documents),
-            len(combos),
         )
         return rag_chunks, referenced_documents
 

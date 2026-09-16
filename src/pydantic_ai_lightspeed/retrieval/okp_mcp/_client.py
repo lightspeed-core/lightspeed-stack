@@ -33,16 +33,20 @@ async def call_okp_search(  # pylint: disable=too-many-arguments,too-many-positi
     rows: int,
     headers: Optional[dict[str, str]] = None,
     timeout: Optional[float] = None,
-    product: Optional[str] = None,
-    product_version: Optional[str] = None,
+    products: Optional[list[dict[str, Any]]] = None,
 ) -> dict[str, Any]:
     """Call the RHOKP MCP search tool and return its structured result.
 
     Opens a short-lived streamable-HTTP MCP session, invokes ``tool_name`` with
-    ``{"query": query, "rows": rows}`` (plus ``product``/``product_version``
+    ``{"query": query, "rows": rows}`` (plus a structured ``products`` filter
     when supplied), and returns the tool's structured content. The session is
     opened and closed by
     :meth:`~pydantic_ai.mcp.MCPToolset.direct_call_tool`.
+
+    The RHOKP MCP ``search`` tool accepts a structured, Solr-``fq``-analogous
+    product filter and builds the query-side filter itself, so a
+    multi-product/multi-version selection is expressed in a single tool call
+    rather than fanned out into one call per (product, version) pair.
 
     Parameters:
         url: RHOKP MCP endpoint (streamable HTTP), e.g. ``http://host:8080/mcp``.
@@ -51,10 +55,11 @@ async def call_okp_search(  # pylint: disable=too-many-arguments,too-many-positi
         rows: Maximum number of results to request (server clamps to 1..20).
         headers: Optional static request headers (e.g. authorization).
         timeout: Optional per-request timeout in seconds for init and read.
-        product: Optional product filter passed to the MCP search tool; omitted
-            from the tool args when None.
-        product_version: Optional product-version filter passed to the MCP
-            search tool; omitted from the tool args when None.
+        products: Optional structured product filter, a list of
+            ``{"product": str, "versions": [str, ...]}`` entries (products
+            OR-combined; versions within a product OR-combined). Omitted from the
+            tool args when None or empty, in which case the search spans all
+            products.
 
     Returns:
         The tool's structured content as a dict, e.g.
@@ -74,10 +79,8 @@ async def call_okp_search(  # pylint: disable=too-many-arguments,too-many-positi
         toolset_kwargs["read_timeout"] = timeout
 
     tool_args: dict[str, Any] = {"query": query, "rows": rows}
-    if product is not None:
-        tool_args["product"] = product
-    if product_version is not None:
-        tool_args["product_version"] = product_version
+    if products:
+        tool_args["products"] = products
 
     toolset = MCPToolset(url, **toolset_kwargs)
     result = await toolset.direct_call_tool(tool_name, tool_args)
