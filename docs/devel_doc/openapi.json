@@ -16248,11 +16248,6 @@
                         "title": "Max OKP chunks",
                         "description": "Maximum number of chunks fetched from OKP.",
                         "default": 5
-                    },
-                    "mcp": {
-                        "$ref": "#/components/schemas/OkpMcpConfiguration",
-                        "title": "OKP MCP transport",
-                        "description": "OKP-over-MCP transport settings. When enabled, OKP RAG is fetched from the RHOKP MCP server instead of the Solr vector_io provider."
                     }
                 },
                 "additionalProperties": false,
@@ -16301,92 +16296,6 @@
                 "type": "object",
                 "title": "OkpFilter",
                 "description": "Transport-neutral, query-time OKP RAG filter.\n\nA domain-oriented product/version filter for the OKP RAG source,\ndeliberately decoupled from any backend filter vocabulary: it uses neither\nSolr's ``fq`` nor the OGX/llama-stack ``{type, key, value}`` grammar. Each\nOKP transport translates it into its own backend form (the RHOKP MCP\n``search`` tool args, or an OGX structured filter for the legacy Solr path),\nso the public interface is unaffected when OGX/Solr is retired.\n\nAttributes:\n    products: Product selections to include, OR'd together. Each entry binds\n        its versions to its product. An empty list applies no filter."
-            },
-            "OkpMcpConfiguration": {
-                "properties": {
-                    "enabled": {
-                        "type": "boolean",
-                        "title": "OKP MCP enabled",
-                        "description": "When True, fetch OKP RAG context from the RHOKP MCP server instead of the OGX/Solr vector_io provider. The 'okp' source id still activates OKP; only the transport changes.",
-                        "default": false
-                    },
-                    "url": {
-                        "anyOf": [
-                            {
-                                "type": "string",
-                                "minLength": 1,
-                                "format": "uri"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "RHOKP MCP URL",
-                        "description": "RHOKP MCP endpoint (streamable HTTP). Set to `${env.RH_SERVER_OKP_MCP}` in YAML to use the environment variable. When unset, the default from constants is used."
-                    },
-                    "tool_name": {
-                        "type": "string",
-                        "title": "OKP MCP search tool name",
-                        "description": "Name of the MCP tool to call for OKP hybrid search.",
-                        "default": "search"
-                    },
-                    "max_chunks": {
-                        "type": "integer",
-                        "exclusiveMinimum": 0.0,
-                        "title": "Max OKP MCP chunks",
-                        "description": "Maximum number of chunks fetched from the OKP MCP server (clamped server-side to 1..20).",
-                        "default": 5
-                    },
-                    "product": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "OKP MCP product filter",
-                        "description": "Optional product to restrict OKP MCP search results to (e.g. 'openshift_container_platform'). Passed as a structured filter to the MCP search tool, which matches it exactly against the document product field. This is the MCP-transport analogue of the Solr transport's chunk_filter_query product filtering."
-                    },
-                    "product_version": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "OKP MCP product version filter",
-                        "description": "Optional product version to restrict OKP MCP search results to (e.g. '4.20'). Passed as a structured filter to the MCP search tool, which matches it exactly against the document product_version field."
-                    },
-                    "timeout": {
-                        "anyOf": [
-                            {
-                                "type": "integer",
-                                "exclusiveMinimum": 0.0
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "OKP MCP request timeout",
-                        "description": "Per-request timeout in seconds for OKP MCP calls. When unset, the MCP client default is used."
-                    },
-                    "authorization_headers": {
-                        "additionalProperties": {
-                            "type": "string"
-                        },
-                        "type": "object",
-                        "title": "Authorization headers",
-                        "description": "Static authorization headers sent to the RHOKP MCP server. Values may reference secret files, resolved at startup."
-                    }
-                },
-                "additionalProperties": false,
-                "type": "object",
-                "title": "OkpMcpConfiguration",
-                "description": "OKP-over-MCP transport configuration.\n\nWhen ``enabled`` is True, OKP RAG context is fetched from the RHOKP MCP\nserver (which encapsulates embeddings and Solr querying server-side) instead\nof the OGX/Solr ``vector_io`` provider. OKP is still activated by listing\n``\"okp\"`` in ``rag.retrieval.inline.sources``; only the transport changes.\nThe Solr transport remains the default and is used whenever ``enabled`` is\nFalse.\n\nThis flag is the initial mechanism behind\n:func:`configuration.okp_rag_mcp_enabled`. It may later be replaced by\nauto-detection of MCP capability in the connected RHOKP instance.\n\nAttributes:\n    enabled: Whether the OKP MCP transport is enabled.\n    url: RHOKP MCP endpoint (streamable HTTP). Defaults to the constant\n        when unset.\n    tool_name: Name of the MCP search tool to call.\n    max_chunks: Maximum number of chunks to request from the MCP server.\n    product: Optional product to restrict search results to, passed as a\n        structured filter to the MCP search tool.\n    product_version: Optional product version to restrict search results to,\n        passed as a structured filter to the MCP search tool.\n    timeout: Optional per-request timeout in seconds for MCP calls.\n    authorization_headers: Static authorization headers sent to the MCP\n        server, resolved from secret files at startup."
             },
             "OkpProductFilter": {
                 "properties": {

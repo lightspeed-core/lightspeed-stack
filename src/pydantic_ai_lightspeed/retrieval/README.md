@@ -14,9 +14,12 @@ response/transcript shape.
 ## Relationship to the Solr OKP path
 
 The Solr OKP retriever (`utils/vector_search.py:_fetch_okp_rag`) and the MCP
-retriever are two transports for the same `"okp"` RAG source. The active
-transport is selected by `configuration.okp_rag_mcp_enabled()`; the Solr path
-remains the default. Both return
+retriever are two transports for the same `"okp"` RAG source, selected per
+request by `utils/vector_search.py:_fetch_okp`. The Solr `vector_io` provider is
+always wired at launch; at query time the RHOKP MCP transport is preferred
+whenever `configuration.okp_mcp_available()` is True (the endpoint, always at
+`rhokp_url/mcp`, is probed and cached with a TTL so an upgraded RHOKP is adopted
+without restart), and the Solr path serves as the fallback. Both return
 `tuple[list[RAGChunk], list[ReferencedDocument]]` and plug into the same
 `build_rag_context` merge/rerank/format pipeline (Option A in the design doc).
 </content>

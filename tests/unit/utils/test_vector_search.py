@@ -15,6 +15,7 @@ import constants
 from configuration import AppConfig
 from models.common.query import OkpFilter, SolrVectorSearchRequest
 from models.common.turn_summary import RAGChunk, ReferencedDocument
+from pydantic_ai_lightspeed.retrieval.okp_mcp._client import OkpMcpUnavailableError
 from utils.otel_tracing import SpanAttributes, SpanEvents
 from utils.reranker import (
     _get_cross_encoder,
@@ -28,6 +29,7 @@ from utils.vector_search import (
     _extract_byok_rag_chunks,
     _extract_solr_document_metadata,
     _fetch_byok_rag,
+    _fetch_okp,
     _fetch_okp_rag,
     _fetch_okp_rag_mcp,
     _format_rag_context,
@@ -38,6 +40,20 @@ from utils.vector_search import (
     _query_store_for_byok_rag,
     build_rag_context,
 )
+
+
+@pytest.fixture(autouse=True)
+def _force_okp_mcp_unavailable(mocker: MockerFixture) -> None:
+    """Force the OKP MCP probe off so unit tests never make a live probe call.
+
+    ``_fetch_okp`` probes the RHOKP endpoint at query time; without this the
+    Solr-transport tests would hit the network and be non-deterministic. Tests
+    exercising the MCP transport re-patch ``okp_mcp_available`` after this runs.
+    """
+    mocker.patch(
+        "utils.vector_search.okp_mcp_available",
+        new=mocker.AsyncMock(return_value=False),
+    )
 
 
 def _vector_io_query_stub_like_backend(
@@ -1968,23 +1984,18 @@ class TestFetchOkpRagMcp:
         retriever.fetch.assert_awaited_once_with("test query", okp=None)
 
 
-class TestBuildRagContextOkpTransportFork:
-    """Tests for the OKP Solr/MCP transport fork in build_rag_context."""
+class TestFetchOkpTransportSelection:
+    """Tests for the OKP MCP/Solr transport selection in _fetch_okp."""
 
     @pytest.mark.asyncio
-    async def test_uses_mcp_transport_when_enabled(self, mocker: MockerFixture) -> None:
-        """When MCP is enabled, the MCP path is used and Solr path is skipped."""
-        config_mock = mocker.Mock(spec=AppConfig)
-        config_mock.rag.retrieval.inline.sources = [constants.OKP_RAG_ID]
-        config_mock.rag.byok.stores = []
-        config_mock.rag.retrieval.inline.max_chunks = (
-            constants.DEFAULT_INLINE_RAG_MAX_CHUNKS
+    async def test_uses_mcp_transport_when_available(
+        self, mocker: MockerFixture
+    ) -> None:
+        """When MCP has probed available, the MCP path is used and Solr skipped."""
+        mocker.patch(
+            "utils.vector_search.okp_mcp_available",
+            new=mocker.AsyncMock(return_value=True),
         )
-        config_mock.rag.byok.max_chunks = constants.DEFAULT_BYOK_RAG_MAX_CHUNKS
-        config_mock.reranker = None
-        mocker.patch("utils.vector_search.configuration", config_mock)
-        mocker.patch("utils.vector_search.okp_rag_mcp_enabled", return_value=True)
-
         mcp_fetch = mocker.patch(
             "utils.vector_search._fetch_okp_rag_mcp",
             mocker.AsyncMock(
@@ -2000,28 +2011,21 @@ class TestBuildRagContextOkpTransportFork:
         )
 
         client_mock = mocker.AsyncMock()
-        context = await build_rag_context(client_mock, "passed", "test query", None)
+        chunks, _ = await _fetch_okp(client_mock, "test query")
 
         mcp_fetch.assert_awaited_once()
         solr_fetch.assert_not_called()
-        assert any(c.content == "mcp" for c in context.rag_chunks)
+        assert any(c.content == "mcp" for c in chunks)
 
     @pytest.mark.asyncio
-    async def test_uses_solr_transport_when_disabled(
+    async def test_uses_solr_transport_when_unavailable(
         self, mocker: MockerFixture
     ) -> None:
-        """When MCP is disabled, the Solr path is used and MCP path is skipped."""
-        config_mock = mocker.Mock(spec=AppConfig)
-        config_mock.rag.retrieval.inline.sources = [constants.OKP_RAG_ID]
-        config_mock.rag.byok.stores = []
-        config_mock.rag.retrieval.inline.max_chunks = (
-            constants.DEFAULT_INLINE_RAG_MAX_CHUNKS
+        """When MCP is unavailable, the Solr path is used and MCP path is skipped."""
+        mocker.patch(
+            "utils.vector_search.okp_mcp_available",
+            new=mocker.AsyncMock(return_value=False),
         )
-        config_mock.rag.byok.max_chunks = constants.DEFAULT_BYOK_RAG_MAX_CHUNKS
-        config_mock.reranker = None
-        mocker.patch("utils.vector_search.configuration", config_mock)
-        mocker.patch("utils.vector_search.okp_rag_mcp_enabled", return_value=False)
-
         mcp_fetch = mocker.patch(
             "utils.vector_search._fetch_okp_rag_mcp",
             mocker.AsyncMock(return_value=([], [])),
@@ -2037,28 +2041,52 @@ class TestBuildRagContextOkpTransportFork:
         )
 
         client_mock = mocker.AsyncMock()
-        context = await build_rag_context(client_mock, "passed", "test query", None)
+        chunks, _ = await _fetch_okp(client_mock, "test query")
 
         solr_fetch.assert_awaited_once()
         mcp_fetch.assert_not_called()
-        assert any(c.content == "solr" for c in context.rag_chunks)
+        assert any(c.content == "solr" for c in chunks)
 
     @pytest.mark.asyncio
-    async def test_forwards_okp_filter_to_active_transport(
+    async def test_falls_back_to_solr_when_mcp_hard_fails(
         self, mocker: MockerFixture
     ) -> None:
-        """The request-level okp filter is forwarded to the selected transport."""
-        config_mock = mocker.Mock(spec=AppConfig)
-        config_mock.rag.retrieval.inline.sources = [constants.OKP_RAG_ID]
-        config_mock.rag.byok.stores = []
-        config_mock.rag.retrieval.inline.max_chunks = (
-            constants.DEFAULT_INLINE_RAG_MAX_CHUNKS
+        """A believed-available endpoint that hard-fails falls forward to Solr."""
+        mocker.patch(
+            "utils.vector_search.okp_mcp_available",
+            new=mocker.AsyncMock(return_value=True),
         )
-        config_mock.rag.byok.max_chunks = constants.DEFAULT_BYOK_RAG_MAX_CHUNKS
-        config_mock.reranker = None
-        mocker.patch("utils.vector_search.configuration", config_mock)
-        mocker.patch("utils.vector_search.okp_rag_mcp_enabled", return_value=True)
+        mocker.patch(
+            "utils.vector_search._fetch_okp_rag_mcp",
+            mocker.AsyncMock(side_effect=OkpMcpUnavailableError("boom")),
+        )
+        mark = mocker.patch("utils.vector_search.mark_okp_mcp_unavailable")
+        solr_fetch = mocker.patch(
+            "utils.vector_search._fetch_okp_rag",
+            mocker.AsyncMock(
+                return_value=(
+                    [RAGChunk(content="solr", source=constants.OKP_RAG_ID, score=1.0)],
+                    [],
+                )
+            ),
+        )
 
+        client_mock = mocker.AsyncMock()
+        chunks, _ = await _fetch_okp(client_mock, "test query")
+
+        mark.assert_called_once()
+        solr_fetch.assert_awaited_once()
+        assert any(c.content == "solr" for c in chunks)
+
+    @pytest.mark.asyncio
+    async def test_forwards_okp_filter_to_mcp_transport(
+        self, mocker: MockerFixture
+    ) -> None:
+        """The request-level okp filter is forwarded to the MCP transport."""
+        mocker.patch(
+            "utils.vector_search.okp_mcp_available",
+            new=mocker.AsyncMock(return_value=True),
+        )
         mcp_fetch = mocker.patch(
             "utils.vector_search._fetch_okp_rag_mcp",
             mocker.AsyncMock(return_value=([], [])),
@@ -2066,6 +2094,27 @@ class TestBuildRagContextOkpTransportFork:
 
         okp = OkpFilter.model_validate({"products": [{"product": "rhel"}]})
         client_mock = mocker.AsyncMock()
-        await build_rag_context(client_mock, "passed", "q", None, None, okp)
+        await _fetch_okp(client_mock, "q", okp=okp)
 
         mcp_fetch.assert_awaited_once_with("q", okp)
+
+    @pytest.mark.asyncio
+    async def test_forwards_okp_filter_to_solr_transport(
+        self, mocker: MockerFixture
+    ) -> None:
+        """The request-level okp filter is forwarded to the Solr transport."""
+        mocker.patch(
+            "utils.vector_search.okp_mcp_available",
+            new=mocker.AsyncMock(return_value=False),
+        )
+        solr_fetch = mocker.patch(
+            "utils.vector_search._fetch_okp_rag",
+            mocker.AsyncMock(return_value=([], [])),
+        )
+
+        okp = OkpFilter.model_validate({"products": [{"product": "rhel"}]})
+        client_mock = mocker.AsyncMock()
+        solr = mocker.Mock()
+        await _fetch_okp(client_mock, "q", solr=solr, okp=okp)
+
+        solr_fetch.assert_awaited_once_with(client_mock, "q", solr, okp)

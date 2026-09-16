@@ -31,3 +31,16 @@ conversation_cache:
 authentication:
   module: "noop"
 
+# RAG configuration: activate the OKP source. Transport is auto-selected per
+# request: the RHOKP MCP server (rhokp_url/mcp) when it probes available, else
+# the Solr vector_io fallback. No MCP-specific config: the endpoint derives from
+# rhokp_url, which is the same field the pre-MCP config used.
+rag:
+  retrieval:
+    inline:
+      sources:
+        - okp
+  okp:
+    rhokp_url: http://localhost:8081
+    offline: false
+

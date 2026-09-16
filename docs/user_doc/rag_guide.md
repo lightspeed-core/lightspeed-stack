@@ -400,8 +400,8 @@ backend-neutral, forward-compatible product/version filter that works across
 **both** OKP transports (the RHOKP MCP server and the legacy Solr path), use the
 request field **`okp`** instead. It carries a list of product selections, each
 scoping its own exact-match versions (no wildcards), so an invalid
-product/version pairing is not representable. A query-time `okp` filter overrides
-the launch-time `rag.okp.mcp.product`/`product_version` configuration.
+product/version pairing is not representable. Product/version filtering is
+query-time only; there is no launch-time product/version configuration.
 
 ```json
 {

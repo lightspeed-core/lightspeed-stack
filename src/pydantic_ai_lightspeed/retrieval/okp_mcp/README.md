@@ -22,29 +22,32 @@ MCP server does that work.
 
 ## RHOKP MCP `search` tool contract
 
-- Input: `{"query": str, "rows": int}` (`rows` clamped server-side to 1..20).
+- Input: `{"query": str, "rows": int}` (`rows` clamped server-side to 1..20),
+  plus optional `product` / `product_version` scalars driven by the query-time
+  `okp` request filter.
 - Output: `{"response": {"numFound": int, "docs": [SolrDoc]}}` where each
   `SolrDoc` may carry `chunk` (text), `score`, `title`, `doc_id`,
   `online_source_url`, `source_path`, `product`, `product_version`.
 
 ## Configuration
 
-Enabled via `rag.okp.mcp` (see `models.config.OkpMcpConfiguration`):
+There is no MCP-specific configuration block. The config is the same as the
+pre-MCP OKP config; the MCP endpoint is always derived from `rhokp_url` (the
+RHOKP MCP server is always served at its `/mcp` path):
 
 ```yaml
 rag:
   okp:
-    rhokp_url: ${env.RH_SERVER_OKP}      # base URL for offline document links
+    rhokp_url: ${env.RH_SERVER_OKP}      # base URL; MCP endpoint = rhokp_url/mcp
     offline: true
-    mcp:
-      enabled: true
-      url: ${env.RH_SERVER_OKP_MCP}      # defaults to http://localhost:8080/mcp
-      tool_name: search
-      max_chunks: 5
   retrieval:
     inline:
-      sources: ["okp"]                    # "okp" still activates OKP
+      sources: ["okp"]                    # "okp" activates OKP
 ```
 
-When `mcp.enabled` is false, the Solr `vector_io` transport is used instead.
+Transport selection is automatic and per-request. The Solr `vector_io`
+transport is always wired at launch; at query time the MCP transport is
+preferred whenever `configuration.okp_mcp_available()` is True (the endpoint is
+probed and TTL-cached so an upgraded RHOKP is adopted without a restart), and
+the Solr path serves as the fallback when MCP is unavailable or hard-fails.
 </content>
