@@ -32,11 +32,8 @@ def _reset_app_config_between_tests() -> Generator:
     AppConfig()._quota_limiters to an empty list, ignoring any exceptions, then
     yields control to the test and repeats the cleanup after the test.
     """
-    try:
-        AppConfig()._configuration = None  # type: ignore[attr-defined]
-        AppConfig()._quota_limiters = []  # type: ignore[attr-defined]
-    except Exception:
-        pass
+    AppConfig()._configuration = None  # type: ignore[attr-defined]
+    AppConfig()._quota_limiters = []  # type: ignore[attr-defined]
     yield
     # ensure clean state after each test
     try:
