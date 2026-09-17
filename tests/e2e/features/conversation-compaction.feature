@@ -10,6 +10,12 @@ Feature: Conversation compaction
   10% threshold and keep one recent turn verbatim, so a long third query
   is what crosses it: turn one ends up in the summary, turn two stays in
   the verbatim buffer, and the third query asks for a fact from each.
+  A fourth query states one more fact without summarizing anything (only
+  one turn follows the summary), and the fifth summarizes the long third
+  turn into a second summary. It asks for the datacenter name, which only
+  the first summary holds (the third query asks for the other two names,
+  so its answer never repeats it), so the second summary must not replace
+  the first.
 
   Background:
     Given The service is started locally
@@ -18,12 +24,12 @@ Feature: Conversation compaction
       And the Lightspeed stack configuration directory is "tests/e2e/configuration"
 
 
-  Scenario: the third query crosses the threshold, older turns are summarized, recall and history survive
+  Scenario: the third query crosses the threshold, a second summary keeps the first, recall and history survive
     Given The service uses the lightspeed-stack-compaction.yaml configuration
       And The service is restarted
      When I use "query" to ask question
      """
-     {"query": "My OpenShift cluster is named aurora-prod-7. Remember that name and reply with OK only.", "model": "{MODEL}", "provider": "{PROVIDER}"}
+     {"query": "My OpenShift cluster is named aurora-prod-7 and it runs in the datacenter called north-quarry. Remember both names and reply with OK only.", "model": "{MODEL}", "provider": "{PROVIDER}"}
      """
      Then The status code of the response is 200
       And The response context_status is "full"
@@ -44,12 +50,28 @@ Feature: Conversation compaction
           | Fragments in LLM response |
           | aurora-prod-7             |
           | blue-lagoon               |
+     When I use "query" to ask question with same conversation_id
+     """
+     {"query": "My database is called green-harbor. Remember that name too and reply with OK only.", "model": "{MODEL}", "provider": "{PROVIDER}"}
+     """
+     Then The status code of the response is 200
+      And The response context_status is "summarized"
+     When I use "query" to ask question with same conversation_id
+     """
+     {"query": "What is the name of my datacenter and what is the name of my database? Reply with the two names only, separated by a comma.", "model": "{MODEL}", "provider": "{PROVIDER}"}
+     """
+     Then The status code of the response is 200
+      And The response context_status is "summarized"
+      And The response contains following fragments
+          | Fragments in LLM response |
+          | north-quarry              |
+          | green-harbor              |
      When I use REST API conversation endpoint with conversation_id from above using HTTP GET method
      Then The status code of the response is 200
       And The conversation history includes the following user queries
-          | User query                                                                                    |
-          | My OpenShift cluster is named aurora-prod-7. Remember that name and reply with OK only.       |
-          | My application namespace is called blue-lagoon. Remember that name too and reply with OK only. |
+          | User query                                                                                                                                 |
+          | My OpenShift cluster is named aurora-prod-7 and it runs in the datacenter called north-quarry. Remember both names and reply with OK only. |
+          | My application namespace is called blue-lagoon. Remember that name too and reply with OK only.                                             |
 
 
   Scenario: the native stream announces compaction on the query that crosses the threshold
