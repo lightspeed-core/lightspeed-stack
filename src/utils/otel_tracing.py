@@ -23,9 +23,9 @@ class SpanAttributes(StrEnum):
     """OpenTelemetry span attribute keys for LCS instrumentation."""
 
     SESSION_ID = "session.id"
-    USER_ID = "user.id"  # anonymized
-    INPUT = "request.input"  # anonymized
-    OUTPUT = "response.output"  # anonymized
+    USER_ID = "user.id"  # anonymized (identity field)
+    INPUT = "request.input"  # raw content
+    OUTPUT = "response.output"  # raw content
     RESPONSE_ERROR = "response.error"
     RESPONSE_CAUSE = "response.cause"
     REQUEST_ATTACHMENTS_COUNT = "request.attachments.count"
@@ -48,7 +48,9 @@ class SpanAttributes(StrEnum):
     FEEDBACK_OPERATION = "feedback.operation"
     FEEDBACK_CONVERSATION = "feedback.conversation"
     FEEDBACK_RATING = "feedback.rating"
-    FEEDBACK_COMMENT = "feedback.comment"  # anonymized
+    FEEDBACK_COMMENT = (
+        "feedback.comment"  # raw content (anonymization handled downstream)
+    )
     FEEDBACK_CATEGORIES = "feedback.categories"
     FEEDBACK_STATUS_CODE = "feedback.status.code"
     FEEDBACK_STORAGE_OUTCOME = "feedback.storage.outcome"

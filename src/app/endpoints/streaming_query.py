@@ -206,7 +206,7 @@ async def _handle_streaming_query_with_tracing(  # pylint: disable=too-many-loca
         root_span,
         {
             SpanAttributes.USER_ID: anonymize_value(user_id),
-            SpanAttributes.INPUT: anonymize_value(query_request.query),
+            SpanAttributes.INPUT: query_request.query,
             SpanAttributes.REQUEST_ATTACHMENTS_COUNT: (
                 len(query_request.attachments) if query_request.attachments else 0
             ),

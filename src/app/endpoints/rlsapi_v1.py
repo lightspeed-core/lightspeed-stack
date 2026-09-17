@@ -52,7 +52,6 @@ from utils.otel_tracing import (
     SpanAttributes,
     SpanEvents,
     add_span_event,
-    anonymize_value,
     set_span_attributes,
 )
 from utils.query import (
@@ -689,9 +688,7 @@ async def infer_endpoint(  # pylint: disable=R0914,R0915
         endpoint_path = ENDPOINT_PATH_INFER
         request_id = get_suid()
 
-        span.set_attribute(
-            SpanAttributes.INPUT, anonymize_value(infer_request.question)
-        )
+        span.set_attribute(SpanAttributes.INPUT, infer_request.question)
 
         logger.info("Processing rlsapi v1 /infer request %s", request_id)
 
@@ -799,7 +796,7 @@ async def infer_endpoint(  # pylint: disable=R0914,R0915
                 {
                     SpanAttributes.LLM_USAGE_INPUT_TOKENS: token_usage.input_tokens,
                     SpanAttributes.LLM_USAGE_OUTPUT_TOKENS: token_usage.output_tokens,
-                    SpanAttributes.OUTPUT: anonymize_value(response_text),
+                    SpanAttributes.OUTPUT: response_text,
                 },
             )
 

@@ -725,7 +725,7 @@ class TestStreamingQueryOtelInstrumentation:
         assert root.attributes[SpanAttributes.USER_ID] == (
             "[anon:00000001-0001-0001-0001-000000000001]"
         )
-        assert root.attributes[SpanAttributes.INPUT] == "[anon:What is Kubernetes?]"
+        assert root.attributes[SpanAttributes.INPUT] == "What is Kubernetes?"
         assert root.attributes[SpanAttributes.REQUEST_ATTACHMENTS_COUNT] == 0
 
     @pytest.mark.asyncio

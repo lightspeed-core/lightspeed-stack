@@ -1581,7 +1581,7 @@ class TestA2AOtelSpans:
         attrs = dict(span.attributes or {})
 
         assert attrs["a2a.rpc.method"] == "message/send"
-        assert attrs["a2a.request.id"].startswith("[hash:")
+        assert attrs["a2a.request.id"] == "req-1"
         assert "user.id" in attrs
 
         event_names = [e.name for e in span.events]
@@ -1649,7 +1649,7 @@ class TestA2AOtelSpans:
         attrs = dict(span.attributes or {})
 
         assert attrs["a2a.rpc.method"] == "message/stream"
-        assert attrs["a2a.request.id"].startswith("[hash:")
+        assert attrs["a2a.request.id"] == "req-2"
 
         event_names = [e.name for e in span.events]
         assert "a2a.dispatch.start" in event_names

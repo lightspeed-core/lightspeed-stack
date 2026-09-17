@@ -161,7 +161,7 @@ async def _handle_query_with_tracing(
         root_span,
         {
             SpanAttributes.USER_ID: anonymize_value(user_id),
-            SpanAttributes.INPUT: anonymize_value(query_request.query),
+            SpanAttributes.INPUT: query_request.query,
             SpanAttributes.REQUEST_ATTACHMENTS_COUNT: (
                 len(query_request.attachments) if query_request.attachments else 0
             ),
@@ -342,7 +342,7 @@ async def _handle_query_with_tracing(
             SpanAttributes.SESSION_ID: conversation_id,
             SpanAttributes.LLM_USAGE_INPUT_TOKENS: turn_summary.token_usage.input_tokens,
             SpanAttributes.LLM_USAGE_OUTPUT_TOKENS: turn_summary.token_usage.output_tokens,
-            SpanAttributes.OUTPUT: anonymize_value(turn_summary.llm_response),
+            SpanAttributes.OUTPUT: turn_summary.llm_response,
         },
     )
 
