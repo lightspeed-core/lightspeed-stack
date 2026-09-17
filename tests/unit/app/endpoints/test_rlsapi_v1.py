@@ -1826,8 +1826,8 @@ class TestInferEndpointOtel:
         assert attrs["shield.result"] == "passed"
         assert "request.input" in attrs
         assert "response.output" in attrs
-        assert str(attrs["request.input"]).startswith("[hash:")
-        assert str(attrs["response.output"]).startswith("[hash:")
+        assert attrs["request.input"] == "How do I list files?"
+        assert attrs["response.output"] == "This is a test LLM response."
 
     @pytest.mark.asyncio
     async def test_infer_span_events(

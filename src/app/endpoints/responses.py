@@ -189,7 +189,7 @@ def _finalize_responses_root_span(
             SpanAttributes.LLM_USAGE_OUTPUT_TOKENS: (
                 turn_summary.token_usage.output_tokens
             ),
-            SpanAttributes.OUTPUT: anonymize_value(turn_summary.llm_response),
+            SpanAttributes.OUTPUT: turn_summary.llm_response,
         },
     )
     add_span_event(root_span, SpanEvents.LLM_RESPONSE_COMPLETED)
@@ -577,7 +577,7 @@ async def handle_responses_with_tracing(  # pylint: disable=too-many-locals
 
     span_attributes: dict[str, Any] = {
         SpanAttributes.USER_ID: anonymize_value(user_id),
-        SpanAttributes.INPUT: anonymize_value(input_text),
+        SpanAttributes.INPUT: input_text,
         SpanAttributes.REQUEST_ATTACHMENTS_COUNT: attachments_count,
     }
     # safety_identifier is a caller-supplied, non-PII identifier, so it is

@@ -614,11 +614,12 @@ class TestFeedbackOtelSpans:
         assert attrs["feedback.rating"] == -1
         assert attrs["feedback.categories"] == "incorrect,incomplete"
         assert attrs["feedback.status.code"] == status.HTTP_200_OK
-        # Free-text fields are anonymized.
+        # The user id is anonymized; free-text content is recorded raw
+        # (anonymization is handled downstream at ingestion).
         assert str(attrs["user.id"]).startswith("[hash:")
-        assert str(attrs["request.input"]).startswith("[hash:")
-        assert str(attrs["response.output"]).startswith("[hash:")
-        assert str(attrs["feedback.comment"]).startswith("[hash:")
+        assert attrs["request.input"] == VALID_BASE["user_question"]
+        assert attrs["response.output"] == VALID_BASE["llm_response"]
+        assert attrs["feedback.comment"] == "The answer was too vague."
 
         storage_attrs = dict(storage.attributes or {})
         assert storage_attrs["feedback.storage.outcome"] == "success"

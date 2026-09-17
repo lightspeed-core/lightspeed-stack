@@ -70,7 +70,6 @@ from utils.otel_tracing import (
     SpanAttributes,
     SpanEvents,
     add_span_event,
-    anonymize_value,
     set_span_attributes,
 )
 from utils.pydantic_ai_helpers import build_agent, captured_output_items
@@ -400,7 +399,7 @@ async def generate_agent_response(  # pylint: disable=too-many-statements
                 SpanAttributes.LLM_USAGE_OUTPUT_TOKENS: (
                     turn_summary.token_usage.output_tokens
                 ),
-                SpanAttributes.OUTPUT: anonymize_value(turn_summary.llm_response),
+                SpanAttributes.OUTPUT: turn_summary.llm_response,
             },
         )
         add_span_event(root_span, SpanEvents.LLM_RESPONSE_COMPLETED)

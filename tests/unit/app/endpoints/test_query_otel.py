@@ -120,7 +120,8 @@ async def test_query_root_span_attributes_and_events(
 
     The mocked success path validates the request, persists the turn, and
     completes the LLM response, so the validation/turn-persisted/LLM-response
-    events are all recorded, and the anonymized user/input attributes are set.
+    events are all recorded, the user id is anonymized, and the raw
+    input/output content is set.
     """
     tracer, exporter = otel
     mocker.patch(f"{MODULE}.configuration", minimal_config)
@@ -142,9 +143,12 @@ async def test_query_root_span_attributes_and_events(
     root = next(s for s in exporter.get_finished_spans() if s.name == QUERY_SPAN_NAME)
     attrs = dict(root.attributes or {})
     assert attrs[SpanAttributes.USER_ID] == f"[anon:{MOCK_AUTH[0]}]"
-    assert attrs[SpanAttributes.INPUT] == f"[anon:{QUERY_TEXT}]"
+    assert attrs[SpanAttributes.INPUT] == QUERY_TEXT
     assert attrs[SpanAttributes.REQUEST_ATTACHMENTS_COUNT] == 0
-    assert SpanAttributes.OUTPUT in attrs
+    assert (
+        attrs[SpanAttributes.OUTPUT]
+        == "Kubernetes is a container orchestration platform"
+    )
     assert SpanAttributes.SESSION_ID in attrs
 
     event_names = {event.name for event in root.events}
@@ -197,7 +201,7 @@ async def test_query_quota_exceeded_records_attributes_without_events(
     root = next(s for s in exporter.get_finished_spans() if s.name == QUERY_SPAN_NAME)
     attrs = dict(root.attributes or {})
     assert attrs[SpanAttributes.USER_ID] == f"[anon:{MOCK_AUTH[0]}]"
-    assert attrs[SpanAttributes.INPUT] == f"[anon:{QUERY_TEXT}]"
+    assert attrs[SpanAttributes.INPUT] == QUERY_TEXT
     assert attrs[SpanAttributes.REQUEST_ATTACHMENTS_COUNT] == 0
 
     event_names = {event.name for event in root.events}

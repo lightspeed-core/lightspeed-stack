@@ -84,7 +84,6 @@ class TestFinalizeResponsesRootSpanOtel:  # pylint: disable=too-few-public-metho
     )
     def test_finalize_tool_attrs_and_events(
         self,
-        mocker: MockerFixture,
         otel: tuple[Any, InMemorySpanExporter],
         tool_names: list[str],
         expect_tool_event: bool,
@@ -97,11 +96,6 @@ class TestFinalizeResponsesRootSpanOtel:  # pylint: disable=too-few-public-metho
             if tool_names
             else make_turn_summary_without_tools()
         )
-        mocker.patch(
-            f"{MODULE}.anonymize_value",
-            side_effect=lambda value: f"[anon:{value}]",
-        )
-
         _finalize_responses_root_span(root_span, turn_summary)
         root_span.end()
 
@@ -116,7 +110,7 @@ class TestFinalizeResponsesRootSpanOtel:  # pylint: disable=too-few-public-metho
         )
         assert span.attributes[SpanAttributes.LLM_USAGE_INPUT_TOKENS] == 10
         assert span.attributes[SpanAttributes.LLM_USAGE_OUTPUT_TOKENS] == 5
-        assert span.attributes[SpanAttributes.OUTPUT] == "[anon:The answer is 42]"
+        assert span.attributes[SpanAttributes.OUTPUT] == "The answer is 42"
 
         event_names = [event.name for event in span.events]
         assert SpanEvents.LLM_RESPONSE_COMPLETED in event_names

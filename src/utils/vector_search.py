@@ -28,7 +28,6 @@ from utils.otel_tracing import (
     SpanAttributes,
     SpanEvents,
     add_span_event,
-    anonymize_value,
     set_span_attributes,
 )
 from utils.reranker import apply_byok_rerank_boost, rerank_chunks_with_cross_encoder
@@ -673,7 +672,7 @@ async def build_rag_context(  # pylint: disable=too-many-locals,too-many-branche
     """
     with tracer.start_as_current_span("rag.retrieve") as span:
         # Set RAG input attribute
-        span.set_attribute(SpanAttributes.RAG_INPUT, anonymize_value(query))
+        span.set_attribute(SpanAttributes.RAG_INPUT, query)
 
         if moderation_decision == "blocked":
             span.set_attribute(SpanAttributes.RAG_SOURCES_COUNT, 0)
