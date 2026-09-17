@@ -362,8 +362,8 @@ distribution-archives:	## Generate distribution archives to be uploaded into Pyt
 upload-distribution-archives:	## Upload distribution archives into Python registry
 	uv run python -m twine upload --repository ${PYTHON_REGISTRY} dist/*
 
-konflux-requirements:	## Generate hermetic requirements.*.txt file for Konflux build
-	./scripts/konflux_requirements.sh
+konflux-requirements:	## Generate .konflux/requirements.*.txt files for Konflux hermetic build
+	scripts/konflux_resolve.py --profile cpu
 
 konflux-rpm-lock:	## Generate rpm.lock.yaml file for Konflux build
 	./scripts/generate-rpm-lock.sh
