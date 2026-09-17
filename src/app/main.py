@@ -67,7 +67,13 @@ _OPENAPI_TAGS: Final[list[dict[str, str]]] = [
     {"name": "streaming_query", "description": "Streaming query (SSE)."},
     {"name": "streaming_query_interrupt", "description": "Streaming interrupt."},
     {"name": "tools", "description": "Tools."},
-    {"name": "vector-stores", "description": "Vector stores and files."},
+    {
+        "name": "vector-stores",
+        "description": (
+            "Vector stores and files (OGX proxy). Deprecated: will be removed in "
+            "the next LCS release."
+        ),
+    },
 ]
 
 
@@ -222,6 +228,7 @@ class RestApiMetricsMiddleware:  # pylint: disable=too-few-public-methods
 
         # Ignore paths that are not part of the app routes.
         if path not in app_routes_paths:
+            logger.debug("Ignoring path: %s", path)
             await self.app(scope, receive, send)
             return
 
@@ -293,12 +300,12 @@ class GlobalExceptionMiddleware:  # pylint: disable=too-few-public-methods
 logger.info("Including routers")
 routers.include_routers(app)
 
-app_routes_paths = [
-    rc.original_route.path  # pyright: ignore[reportAttributeAccessIssue]
-    for rc in iter_route_contexts(app.routes)
-    if hasattr(rc.original_route, "path")
-    and rc.original_route.path  # pyright: ignore[reportAttributeAccessIssue]
-]
+app_routes_paths = [rc.path for rc in iter_route_contexts(app.routes) if rc.path]
+
+logger.debug("Route paths:")
+for app_routes_path in app_routes_paths:
+    logger.debug(app_routes_path)
+
 
 # Register pure ASGI middlewares.  Middleware execution order is the reverse of
 # registration order: GlobalExceptionMiddleware (registered first) is innermost,

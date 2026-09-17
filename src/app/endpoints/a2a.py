@@ -68,7 +68,7 @@ from utils.conversation_compaction import (
     apply_compaction_blocking,
     store_compacted_turn,
 )
-from utils.mcp_headers import McpHeaders, mcp_headers_dependency
+from utils.mcp.mcp_headers import McpHeaders, mcp_headers_dependency
 from utils.otel_tracing import (
     SpanAttributes,
     SpanEvents,

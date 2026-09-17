@@ -23,7 +23,7 @@ from utils import endpoints
 def input_file_fixture(tmp_path: Path) -> str:
     """Create file manually using the tmp_path fixture."""
     filename = os.path.join(tmp_path, "prompt.txt")
-    with open(filename, "wt", encoding="utf-8") as fout:
+    with open(filename, "w", encoding="utf-8") as fout:
         fout.write("this is prompt!")
     return filename
 

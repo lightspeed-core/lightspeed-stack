@@ -73,6 +73,7 @@ from utils.responses import (
 from utils.rh_identity import AUTH_DISABLED, get_rh_identity_context
 from utils.shields import run_shield_moderation_v2
 from utils.suid import get_suid
+from utils.types import Responses
 
 logger = get_logger(__name__)
 tracer = trace.get_tracer(__name__)
@@ -94,7 +95,7 @@ _INFER_HANDLED_EXCEPTIONS = (
 )
 
 
-infer_responses: dict[int | str, dict[str, Any]] = {
+infer_responses: Responses = {
     200: RlsapiV1InferResponse.openapi_response(),
     401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),

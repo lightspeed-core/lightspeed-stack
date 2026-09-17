@@ -168,7 +168,7 @@ class TestSetSpanAttributes:
         assert len(spans) == 1
         assert spans[0].attributes[SpanAttributes.SESSION_ID] == "test-session-123"
 
-    def test_set_multiple_attributes(self, otel):
+    def test_set_multiple_attributes(self, otel: Generator[Any, Any, Any]) -> None:
         """Test setting multiple attributes on a span."""
         tracer, exporter = otel
         with tracer.start_as_current_span("test_span") as span:
@@ -190,7 +190,7 @@ class TestSetSpanAttributes:
         assert attrs[SpanAttributes.LLM_USAGE_INPUT_TOKENS] == 100
         assert attrs[SpanAttributes.LLM_USAGE_OUTPUT_TOKENS] == 50
 
-    def test_set_attributes_with_list(self, otel):
+    def test_set_attributes_with_list(self, otel: Generator[Any, Any, Any]) -> None:
         """Test setting attributes with list values."""
         tracer, exporter = otel
         with tracer.start_as_current_span("test_span") as span:
@@ -215,7 +215,7 @@ class TestSetSpanAttributes:
         )
         assert attrs[SpanAttributes.TOOL_CALLS_NAMES] == ("search", "calculator")
 
-    def test_set_empty_attributes(self, otel):
+    def test_set_empty_attributes(self, otel: Generator[Any, Any, Any]) -> None:
         """Test setting empty attributes dict."""
         tracer, exporter = otel
         with tracer.start_as_current_span("test_span") as span:

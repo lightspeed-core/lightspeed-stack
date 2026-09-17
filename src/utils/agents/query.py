@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 from typing import Optional
 
 from fastapi import HTTPException
@@ -60,7 +60,7 @@ logger = get_logger(__name__)
 tracer = trace.get_tracer(__name__)
 
 
-class AgentFinishReason(str, Enum):
+class AgentFinishReason(StrEnum):
     """Finish reason for a completed agent model response."""
 
     CONTENT_FILTER = "content_filter"

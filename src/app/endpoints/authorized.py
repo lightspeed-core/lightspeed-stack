@@ -1,6 +1,6 @@
 """Handler for REST API call to authorized endpoint."""
 
-from typing import Annotated, Any
+from typing import Annotated
 
 from fastapi import APIRouter, Depends
 from opentelemetry import trace
@@ -16,12 +16,13 @@ from models.api.responses.error import (
 )
 from models.api.responses.successful import AuthorizedResponse
 from utils.otel_tracing import SpanAttributes, anonymize_value, set_span_attributes
+from utils.types import Responses
 
 logger = get_logger(__name__)
 tracer = trace.get_tracer(__name__)
 router = APIRouter(tags=["authorized"])
 
-authorized_responses: dict[int | str, dict[str, Any]] = {
+authorized_responses: Responses = {
     200: AuthorizedResponse.openapi_response(),
     401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),

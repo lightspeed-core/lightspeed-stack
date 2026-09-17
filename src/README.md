@@ -16,13 +16,13 @@ Constants used in business logic.
 
 Entry point to the Lightspeed Core Stack REST API service.
 
-## [ogx_configuration.py](ogx_configuration.py)
-
-OGX configuration enrichment and synthesis.
-
 ## [log.py](log.py)
 
 Log utilities.
+
+## [ogx_configuration.py](ogx_configuration.py)
+
+OGX configuration enrichment and synthesis.
 
 ## [version.py](version.py)
 

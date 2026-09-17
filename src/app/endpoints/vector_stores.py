@@ -1,13 +1,23 @@
-"""Handler for REST API calls to manage vector stores and files."""
+"""Handler for REST API calls to manage vector stores and files.
+
+These routes proxy OGX vector-store and file APIs. They are deprecated and will
+be removed in the next LCS release when OGX is dropped from the stack. Use BYOK
+RAG configuration instead (see docs/user_doc/byok_guide.md).
+"""
+
+VECTOR_STORES_DEPRECATED_REASON: str = (
+    "OGX proxy API; deprecated and scheduled for removal in the next LCS release."
+)
 
 import asyncio
 import os
 from functools import lru_cache
-from typing import Annotated, Any, Optional
+from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
 from ogx_client import ApiException, BadRequestError
 from openai._exceptions import APIStatusError as OpenAIAPIStatusError
+from typing_extensions import deprecated
 
 from authentication import get_auth_dependency
 from authentication.interface import AuthTuple
@@ -43,9 +53,13 @@ from models.api.responses.successful import (
 from models.config import Action
 from utils.endpoints import check_configuration_loaded
 from utils.query import handle_known_apistatus_errors
+from utils.types import Responses
 
 logger = get_logger(__name__)
-router = APIRouter(tags=["vector-stores"])
+router = APIRouter(
+    tags=["vector-stores"],
+    deprecated=True,
+)
 
 # Each upload/attach holds up to DEFAULT_MAX_FILE_UPLOAD_SIZE bytes in memory,
 # so unbounded concurrency multiplies memory usage linearly - these semaphores
@@ -70,7 +84,7 @@ def _get_vector_store_attach_semaphore() -> asyncio.Semaphore:
 
 
 # Response schemas for OpenAPI documentation
-vector_stores_list_responses: dict[int | str, dict[str, Any]] = {
+vector_stores_list_responses: Responses = {
     200: VectorStoresListResponse.openapi_response(),
     401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
@@ -80,7 +94,7 @@ vector_stores_list_responses: dict[int | str, dict[str, Any]] = {
     ),
 }
 
-vector_store_responses: dict[int | str, dict[str, Any]] = {
+vector_store_responses: Responses = {
     200: VectorStoreResponse.openapi_response(),
     401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
@@ -91,7 +105,7 @@ vector_store_responses: dict[int | str, dict[str, Any]] = {
     ),
 }
 
-file_responses: dict[int | str, dict[str, Any]] = {
+file_responses: Responses = {
     200: FileResponse.openapi_response(),
     413: FileTooLargeResponse.openapi_response(),
     401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
@@ -103,7 +117,7 @@ file_responses: dict[int | str, dict[str, Any]] = {
     ),
 }
 
-vector_store_file_responses: dict[int | str, dict[str, Any]] = {
+vector_store_file_responses: Responses = {
     200: VectorStoreFileResponse.openapi_response(),
     401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
@@ -117,7 +131,7 @@ vector_store_file_responses: dict[int | str, dict[str, Any]] = {
     ),
 }
 
-vector_store_files_list_responses: dict[int | str, dict[str, Any]] = {
+vector_store_files_list_responses: Responses = {
     200: VectorStoreFilesListResponse.openapi_response(),
     401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
@@ -128,7 +142,7 @@ vector_store_files_list_responses: dict[int | str, dict[str, Any]] = {
     ),
 }
 
-vector_store_delete_responses: dict[int | str, dict[str, Any]] = {
+vector_store_delete_responses: Responses = {
     200: VectorStoreDeleteResponse.openapi_response(),
     401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
@@ -138,7 +152,7 @@ vector_store_delete_responses: dict[int | str, dict[str, Any]] = {
     ),
 }
 
-vector_store_file_delete_responses: dict[int | str, dict[str, Any]] = {
+vector_store_file_delete_responses: Responses = {
     200: VectorStoreFileDeleteResponse.openapi_response(),
     401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
@@ -151,6 +165,7 @@ vector_store_file_delete_responses: dict[int | str, dict[str, Any]] = {
 
 @router.post("/vector-stores", responses=vector_store_responses)
 @authorize(Action.MANAGE_VECTOR_STORES)
+@deprecated(VECTOR_STORES_DEPRECATED_REASON)
 async def create_vector_store(
     request: Request,
     auth: Annotated[AuthTuple, Depends(get_auth_dependency())],
@@ -229,6 +244,7 @@ async def create_vector_store(
 
 @router.get("/vector-stores", responses=vector_stores_list_responses)
 @authorize(Action.READ_VECTOR_STORES)
+@deprecated(VECTOR_STORES_DEPRECATED_REASON)
 async def list_vector_stores(
     request: Request,
     auth: Annotated[AuthTuple, Depends(get_auth_dependency())],
@@ -290,6 +306,7 @@ async def list_vector_stores(
 
 @router.get("/vector-stores/{vector_store_id}", responses=vector_store_responses)
 @authorize(Action.READ_VECTOR_STORES)
+@deprecated(VECTOR_STORES_DEPRECATED_REASON)
 async def get_vector_store(
     request: Request,
     vector_store_id: str,
@@ -355,6 +372,7 @@ async def get_vector_store(
 
 @router.put("/vector-stores/{vector_store_id}", responses=vector_store_responses)
 @authorize(Action.MANAGE_VECTOR_STORES)
+@deprecated(VECTOR_STORES_DEPRECATED_REASON)
 async def update_vector_store(
     request: Request,
     vector_store_id: str,
@@ -427,6 +445,7 @@ async def update_vector_store(
     responses=vector_store_delete_responses,
 )
 @authorize(Action.MANAGE_VECTOR_STORES)
+@deprecated(VECTOR_STORES_DEPRECATED_REASON)
 async def delete_vector_store(
     request: Request,
     vector_store_id: str,
@@ -478,6 +497,7 @@ async def delete_vector_store(
 
 @router.post("/files", responses=file_responses)
 @authorize(Action.MANAGE_FILES)
+@deprecated(VECTOR_STORES_DEPRECATED_REASON)
 async def create_file(  # pylint: disable=too-many-branches,too-many-statements
     request: Request,
     auth: Annotated[AuthTuple, Depends(get_auth_dependency())],
@@ -618,6 +638,7 @@ async def create_file(  # pylint: disable=too-many-branches,too-many-statements
     "/vector-stores/{vector_store_id}/files", responses=vector_store_file_responses
 )
 @authorize(Action.MANAGE_VECTOR_STORES)
+@deprecated(VECTOR_STORES_DEPRECATED_REASON)
 async def add_file_to_vector_store(  # pylint: disable=too-many-locals,too-many-statements,too-many-branches
     request: Request,
     vector_store_id: str,
@@ -774,6 +795,7 @@ async def add_file_to_vector_store(  # pylint: disable=too-many-locals,too-many-
     responses=vector_store_files_list_responses,
 )
 @authorize(Action.READ_VECTOR_STORES)
+@deprecated(VECTOR_STORES_DEPRECATED_REASON)
 async def list_vector_store_files(
     request: Request,
     vector_store_id: str,
@@ -844,6 +866,7 @@ async def list_vector_store_files(
     responses=vector_store_file_responses,
 )
 @authorize(Action.READ_VECTOR_STORES)
+@deprecated(VECTOR_STORES_DEPRECATED_REASON)
 async def get_vector_store_file(
     request: Request,
     vector_store_id: str,
@@ -915,6 +938,7 @@ async def get_vector_store_file(
     responses=vector_store_file_delete_responses,
 )
 @authorize(Action.MANAGE_VECTOR_STORES)
+@deprecated(VECTOR_STORES_DEPRECATED_REASON)
 async def delete_vector_store_file(
     request: Request,
     vector_store_id: str,

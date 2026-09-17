@@ -132,6 +132,7 @@ As specified in Definition of Done, new changes need to be covered by tests.
 Integration tests are based on the [Pytest framework](https://docs.pytest.org/en/) and code coverage is measured by the plugin [pytest-cov](https://github.com/pytest-dev/pytest-cov). For mocking and patching, the [unittest framework](https://docs.python.org/3/library/unittest.html) is used.
 
 * Defined in [tests/integration](https://github.com/lightspeed-core/lightspeed-stack/tree/main/tests/integration)
+* **Integration or e2e?** Integration tests may touch `src/` (in-process pipelines, repo CLIs as subprocesses); e2e tests never do. See [Choosing the Test Layer](e2e_testing.md#choosing-the-test-layer-e2e-or-integration).
 
 
 

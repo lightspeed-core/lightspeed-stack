@@ -2887,7 +2887,7 @@ def test_dump_models(tmpdir: Path) -> None:
                 },
                 "OgxConfiguration": {
                     "additionalProperties": false,
-                    "description": "OGX configuration.\n\nOGX is a comprehensive system that provides a uniform set of tools\nfor building, scaling, and deploying generative AI applications, enabling\ndevelopers to create, integrate, and orchestrate multiple AI services and\ncapabilities into an adaptable setup.\n\nUseful resources:\n\n  - [OGX](https://ogx-ai.github.io/)\n  - [Python OGX client](https://github.com/ogx-ai/ogx-client-python)\n  - [Build AI Applications with OGX](https://ogx-ai.github.io/)",
+                    "description": "OGX configuration.\n\nOGX is a comprehensive system that provides a uniform set of tools\nfor building, scaling, and deploying generative AI applications, enabling\ndevelopers to create, integrate, and orchestrate multiple AI services and\ncapabilities into an adaptable setup.\n\nUseful resources:\n\n  - [OGX](https://ogx-ai.github.io/)\n  - [Python OGX client](https://github.com/ogx-ai/ogx-client-python)\n  - [Build AI Applications with OGX](https://ogx-ai.github.io/docs/building_applications)",
                     "properties": {
                         "url": {
                             "type": "string",
@@ -6756,7 +6756,7 @@ def test_dump_models(tmpdir: Path) -> None:
                             "type": "string"
                         },
                         "conversation": {
-                            "description": "The conversation ID in llama-stack format",
+                            "description": "The conversation ID in OGX format",
                             "title": "Conversation",
                             "type": "string"
                         },
@@ -9035,7 +9035,7 @@ def test_dump_models(tmpdir: Path) -> None:
                     "type": "object"
                 },
                 "TurnSummary": {
-                    "description": "Summary of a turn in llama stack.",
+                    "description": "Summary of a turn in OGX.",
                     "properties": {
                         "id": {
                             "default": "",
@@ -10030,7 +10030,7 @@ def test_dump_models(tmpdir: Path) -> None:
     filename = tmpdir / "foo.json"
     dump_models(str(filename))
 
-    with open(filename, "r", encoding="utf-8") as fin:
+    with open(filename, encoding="utf-8") as fin:
         # schema should be stored in JSON format
         content = load(fin)
         assert content is not None
@@ -10279,7 +10279,7 @@ def test_dump_models(tmpdir: Path) -> None:
 
 def check_json_file_content(filename: Path, expected_schemas: list[str]) -> None:
     """Check the content of provided JSON file with OpenAPI-compatible schema."""
-    with open(filename, "r", encoding="utf-8") as fin:
+    with open(filename, encoding="utf-8") as fin:
         # schema should be stored in JSON format
         content = load(fin)
         assert content is not None

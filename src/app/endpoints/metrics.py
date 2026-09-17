@@ -1,6 +1,6 @@
 """Handler for REST API call to provide metrics."""
 
-from typing import Annotated, Any
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import PlainTextResponse
@@ -21,12 +21,13 @@ from models.api.responses.error import (
     UnauthorizedResponse,
 )
 from models.config import Action
+from utils.types import Responses
 
 tracer = trace.get_tracer(__name__)
 router = APIRouter(tags=["metrics"])
 
 
-metrics_get_responses: dict[int | str, dict[str, Any]] = {
+metrics_get_responses: Responses = {
     401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
     500: InternalServerErrorResponse.openapi_response(examples=["configuration"]),

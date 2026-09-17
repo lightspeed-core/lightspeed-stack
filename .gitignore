@@ -183,7 +183,7 @@ dev/
 # VSCode
 .vscode/
 
-# Llama related - when running the stack as lib client
+# OGX related - when running the stack as lib client
 .llama
 
 # Database files
@@ -195,7 +195,7 @@ requirements.*.backup
 # Local run files
 local-run.yaml
 
-# Synthesized Llama Stack run.yaml written by unified library mode (LCORE-2336)
+# Synthesized OGX run.yaml written by unified library mode (LCORE-2336)
 .generated/
 
 # Sisyphus planning files

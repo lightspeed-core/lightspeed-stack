@@ -52,9 +52,7 @@ for filename in files:
     if filename.endswith(".feature"):
         # feature file header
         print(f"## [`{filename}`]({FEATURES_URL_PREFIX}/{filename})\n")
-        with open(
-            os.path.join(FEATURE_DIRECTORY, filename), "r", encoding="utf-8"
-        ) as fin:
+        with open(os.path.join(FEATURE_DIRECTORY, filename), encoding="utf-8") as fin:
             for line in fin:
                 line = line.strip()
                 # process all scenarios and scenario outlines

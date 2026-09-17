@@ -1,12 +1,12 @@
 """Health-related shared models for readiness and diagnostics."""
 
-from enum import Enum
+from enum import StrEnum
 from typing import Optional
 
 from pydantic import BaseModel, Field
 
 
-class HealthStatus(str, Enum):
+class HealthStatus(StrEnum):
     """Health status enum for provider and service health checks.
 
     This enum serves two purposes:

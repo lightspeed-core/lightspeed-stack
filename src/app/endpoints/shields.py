@@ -1,6 +1,6 @@
 """Handler for REST API call to list available shields."""
 
-from typing import Annotated, Any
+from typing import Annotated
 
 from fastapi import APIRouter, Request
 from fastapi.params import Depends
@@ -21,13 +21,14 @@ from models.api.responses.successful import ShieldsResponse
 from models.common.shields import CatalogShield
 from models.config import Action
 from utils.endpoints import check_configuration_loaded
+from utils.types import Responses
 
 logger = get_logger(__name__)
 tracer = trace.get_tracer(__name__)
 router = APIRouter(tags=["shields"])
 
 
-shields_responses: dict[int | str, dict[str, Any]] = {
+shields_responses: Responses = {
     200: ShieldsResponse.openapi_response(),
     401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),

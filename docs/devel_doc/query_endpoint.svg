@@ -23,10 +23,10 @@
     <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="31.3039" x="628.0694" y="26.9659">Auth</text>
     <rect fill="#E2E2F0" height="33.0679" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="45.3039" x="621.0694" y="972.1304"/>
     <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="31.3039" x="628.0694" y="994.0963">Auth</text>
-    <rect fill="#E2E2F0" height="33.0679" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="133.4895" x="676.3733" y="5"/>
-    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="119.4895" x="683.3733" y="26.9659">Llama Stack Client</text>
-    <rect fill="#E2E2F0" height="33.0679" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="133.4895" x="676.3733" y="972.1304"/>
-    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="119.4895" x="683.3733" y="994.0963">Llama Stack Client</text>
+    <rect fill="#E2E2F0" height="33.0679" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="88.4895" x="698.8733" y="5"/>
+    <text fill="#000000" font-family="sans-serif" font-size="14" text-anchor="middle" x="743.1181" y="26.9659">OGX Client</text>
+    <rect fill="#E2E2F0" height="33.0679" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="88.4895" x="698.8733" y="972.1304"/>
+    <text fill="#000000" font-family="sans-serif" font-size="14" text-anchor="middle" x="743.1181" y="994.0963">OGX Client</text>
     <rect fill="#E2E2F0" height="33.0679" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="53.9698" x="819.8629" y="5"/>
     <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="39.9698" x="826.8629" y="26.9659">Cache</text>
     <rect fill="#E2E2F0" height="33.0679" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="53.9698" x="819.8629" y="972.1304"/>

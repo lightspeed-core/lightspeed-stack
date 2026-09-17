@@ -4,6 +4,10 @@
 
 Observability module for telemetry and event collection.
 
+## [profiling.py](profiling.py)
+
+Pyroscope CPU profiling initialization for Lightspeed Core Stack.
+
 ## [responses_telemetry.py](responses_telemetry.py)
 
 Splunk telemetry helpers for the Responses API endpoint.

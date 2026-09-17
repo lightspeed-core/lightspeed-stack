@@ -44,29 +44,21 @@ Unit tests for utils/input_sanitization.py.
 
 Unit tests for utils/json_schema_updater module.
 
-## [test_ogx_version.py](test_ogx_version.py)
-
-Unit tests for utility function to check OGX version.
-
 ## [test_markdown_repair.py](test_markdown_repair.py)
 
 Unit tests for markdown repair utilities.
 
-## [test_mcp_auth_headers.py](test_mcp_auth_headers.py)
-
-Unit tests for MCP authorization headers utilities.
-
-## [test_mcp_headers.py](test_mcp_headers.py)
-
-Unit tests for MCP headers utility functions.
-
-## [test_mcp_tools.py](test_mcp_tools.py)
-
-Unit tests for MCP tool discovery utilities.
-
 ## [test_model_list.py](test_model_list.py)
 
 Unit tests for utils/model_list.py helpers.
+
+## [test_ogx_serialization.py](test_ogx_serialization.py)
+
+Unit tests for ogx_client serialization helpers.
+
+## [test_ogx_version.py](test_ogx_version.py)
+
+Unit tests for utility function to check OGX version.
 
 ## [test_otel_tracing.py](test_otel_tracing.py)
 
@@ -119,10 +111,6 @@ Unit tests for utils/token_estimator.
 ## [test_tool_formatter.py](test_tool_formatter.py)
 
 Unit tests for tool_formatter utilities.
-
-## [test_transcripts.py](test_transcripts.py)
-
-Unit tests for functions defined in utils.transcripts module.
 
 ## [test_types.py](test_types.py)
 

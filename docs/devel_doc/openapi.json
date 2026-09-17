@@ -13,7 +13,7 @@
             "name": "Apache 2.0",
             "url": "https://www.apache.org/licenses/LICENSE-2.0.html"
         },
-        "version": "0.7.0rc2"
+        "version": "0.7.0rc3"
     },
     "servers": [
         {
@@ -3844,7 +3844,8 @@
                             }
                         }
                     }
-                }
+                },
+                "deprecated": true
             },
             "post": {
                 "tags": [
@@ -4063,7 +4064,8 @@
                             }
                         }
                     }
-                }
+                },
+                "deprecated": true
             }
         },
         "/v1/vector-stores/{vector_store_id}": {
@@ -4074,6 +4076,7 @@
                 "summary": "Get Vector Store",
                 "description": "Retrieve a vector store by ID.\n\nParameters:\n    request: The incoming HTTP request.\n    vector_store_id: ID of the vector store to retrieve.\n    auth: Authentication tuple from the auth dependency.\n\nReturns:\n    VectorStoreResponse: The vector store object.\n\nRaises:\n    HTTPException:\n        - 401: Authentication failed\n        - 403: Authorization failed\n        - 404: Vector store not found\n        - 500: Lightspeed Stack configuration not loaded\n        - 503: Unable to connect to OGX",
                 "operationId": "get_vector_store_v1_vector_stores__vector_store_id__get",
+                "deprecated": true,
                 "parameters": [
                     {
                         "name": "vector_store_id",
@@ -4294,6 +4297,7 @@
                 "summary": "Update Vector Store",
                 "description": "Update a vector store.\n\nParameters:\n    request: The incoming HTTP request.\n    vector_store_id: ID of the vector store to update.\n    auth: Authentication tuple from the auth dependency.\n    body: Vector store update parameters.\n\nReturns:\n    VectorStoreResponse: The updated vector store object.\n\nRaises:\n    HTTPException:\n        - 401: Authentication failed\n        - 403: Authorization failed\n        - 404: Vector store not found\n        - 500: Lightspeed Stack configuration not loaded\n        - 503: Unable to connect to OGX",
                 "operationId": "update_vector_store_v1_vector_stores__vector_store_id__put",
+                "deprecated": true,
                 "parameters": [
                     {
                         "name": "vector_store_id",
@@ -4524,6 +4528,7 @@
                 "summary": "Delete Vector Store",
                 "description": "Delete a vector store.\n\nParameters:\n    request: The incoming HTTP request.\n    vector_store_id: ID of the vector store to delete.\n    auth: Authentication tuple from the auth dependency.\n\nRaises:\n    HTTPException:\n        - 401: Authentication failed\n        - 403: Authorization failed\n        - 500: Lightspeed Stack configuration not loaded\n        - 503: Unable to connect to OGX\n\nReturns:\n    VectorStoreDeleteResponse: Delete outcome for the requested vector store.",
                 "operationId": "delete_vector_store_v1_vector_stores__vector_store_id__delete",
+                "deprecated": true,
                 "parameters": [
                     {
                         "name": "vector_store_id",
@@ -4958,7 +4963,8 @@
                             }
                         }
                     }
-                }
+                },
+                "deprecated": true
             }
         },
         "/v1/vector-stores/{vector_store_id}/files": {
@@ -4969,6 +4975,7 @@
                 "summary": "Add File To Vector Store",
                 "description": "Add a file to a vector store.\n\nParameters:\n    request: The incoming HTTP request.\n    vector_store_id: ID of the vector store.\n    auth: Authentication tuple from the auth dependency.\n    body: File addition parameters.\n\nReturns:\n    VectorStoreFileResponse: The vector store file object.\n\nRaises:\n    HTTPException:\n        - 401: Authentication failed\n        - 403: Authorization failed\n        - 404: Vector store or file not found\n        - 429: Too many concurrent vector store file attachments\n        - 500: Lightspeed Stack configuration not loaded\n        - 503: Unable to connect to OGX",
                 "operationId": "add_file_to_vector_store_v1_vector_stores__vector_store_id__files_post",
+                "deprecated": true,
                 "parameters": [
                     {
                         "name": "vector_store_id",
@@ -5214,6 +5221,7 @@
                 "summary": "List Vector Store Files",
                 "description": "List files in a vector store.\n\nParameters:\n    request: The incoming HTTP request.\n    vector_store_id: ID of the vector store.\n    auth: Authentication tuple from the auth dependency.\n\nReturns:\n    VectorStoreFilesListResponse: List of files in the vector store.\n\nRaises:\n    HTTPException:\n        - 401: Authentication failed\n        - 403: Authorization failed\n        - 404: Vector store not found\n        - 500: Lightspeed Stack configuration not loaded\n        - 503: Unable to connect to OGX",
                 "operationId": "list_vector_store_files_v1_vector_stores__vector_store_id__files_get",
+                "deprecated": true,
                 "parameters": [
                     {
                         "name": "vector_store_id",
@@ -5441,6 +5449,7 @@
                 "summary": "Get Vector Store File",
                 "description": "Retrieve a file from a vector store.\n\nParameters:\n    request: The incoming HTTP request.\n    vector_store_id: ID of the vector store.\n    file_id: ID of the file.\n    auth: Authentication tuple from the auth dependency.\n\nReturns:\n    VectorStoreFileResponse: The vector store file object.\n\nRaises:\n    HTTPException:\n        - 401: Authentication failed\n        - 403: Authorization failed\n        - 404: File not found in vector store\n        - 500: Lightspeed Stack configuration not loaded\n        - 503: Unable to connect to OGX",
                 "operationId": "get_vector_store_file_v1_vector_stores__vector_store_id__files__file_id__get",
+                "deprecated": true,
                 "parameters": [
                     {
                         "name": "vector_store_id",
@@ -5685,6 +5694,7 @@
                 "summary": "Delete Vector Store File",
                 "description": "Delete a file from a vector store.\n\nParameters:\n    request: The incoming HTTP request.\n    vector_store_id: ID of the vector store.\n    file_id: ID of the file to delete.\n    auth: Authentication tuple from the auth dependency.\n\nRaises:\n    HTTPException:\n        - 401: Authentication failed\n        - 403: Authorization failed\n        - 500: Lightspeed Stack configuration not loaded\n        - 503: Unable to connect to OGX\n\nReturns:\n    VectorStoreFileDeleteResponse: Delete outcome for the requested file.",
                 "operationId": "delete_vector_store_file_v1_vector_stores__vector_store_id__files__file_id__delete",
+                "deprecated": true,
                 "parameters": [
                     {
                         "name": "vector_store_id",
@@ -13295,11 +13305,15 @@
                                 },
                                 {
                                     "$ref": "#/components/schemas/RedactionShieldConfiguration"
+                                },
+                                {
+                                    "$ref": "#/components/schemas/GraniteGuardianShieldConfiguration"
                                 }
                             ],
                             "discriminator": {
                                 "propertyName": "provider_id",
                                 "mapping": {
+                                    "granite_guardian": "#/components/schemas/GraniteGuardianShieldConfiguration",
                                     "question_validity": "#/components/schemas/QuestionValidityShieldConfiguration",
                                     "redaction": "#/components/schemas/RedactionShieldConfiguration"
                                 }
@@ -14629,6 +14643,105 @@
                         "label": "mcp server static"
                     }
                 ]
+            },
+            "GraniteGuardianConfig": {
+                "properties": {
+                    "url": {
+                        "type": "string",
+                        "title": "Base URL",
+                        "description": "The model_id to use for the guard"
+                    },
+                    "api_key": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "password",
+                                "writeOnly": true
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Granite Guardian API key",
+                        "description": "API key for the inference"
+                    },
+                    "max_retries": {
+                        "type": "integer",
+                        "maximum": 5.0,
+                        "minimum": 0.0,
+                        "exclusiveMinimum": 0.0,
+                        "title": "Max retries",
+                        "description": "Maximun number of retries",
+                        "default": 2
+                    },
+                    "timeout": {
+                        "type": "integer",
+                        "maximum": 300.0,
+                        "minimum": 5.0,
+                        "exclusiveMinimum": 0.0,
+                        "title": "Timeout",
+                        "description": "Request timeout in seconds",
+                        "default": 30
+                    },
+                    "verify_ssl": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "string"
+                            }
+                        ],
+                        "title": "Verify SSL",
+                        "description": "SSL certificate verification. Can be:\n  - True: Verify using system CA bundle (default, recommended)\n  - False: Disable verification (insecure, for dev only)\n  - str: Path to custom CA bundle file (for internal PKI)",
+                        "default": true
+                    },
+                    "risks": {
+                        "items": {
+                            "$ref": "#/components/schemas/RiskDefinition"
+                        },
+                        "type": "array",
+                        "title": "Defined risks",
+                        "description": "Risks to be considered while applying this guardrail"
+                    }
+                },
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                    "url",
+                    "risks"
+                ],
+                "title": "GraniteGuardianConfig",
+                "description": "Configuration for the Granite Guardian moderation guardrail."
+            },
+            "GraniteGuardianShieldConfiguration": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Shield name",
+                        "description": "Unique, user-facing name identifying this shield instance."
+                    },
+                    "provider_id": {
+                        "type": "string",
+                        "const": "granite_guardian",
+                        "title": "Shield provider id",
+                        "description": "Discriminator identifying this as a granite-guardian shield."
+                    },
+                    "config": {
+                        "$ref": "#/components/schemas/GraniteGuardianConfig",
+                        "title": "Shield configuration",
+                        "description": "Granite-guardian-specific configuration for this shield"
+                    }
+                },
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                    "name",
+                    "provider_id",
+                    "config"
+                ],
+                "title": "GraniteGuardianShieldConfiguration",
+                "description": "Configuration for a named Granite Guardian guardrail shield.\n\nAttributes:\n    name: Unique, user-facing name identifying this shield instance.\n    provider_id: Discriminator identifying this as a granite-guardian shield.\n    config: Granite-guardian-specific configuration."
             },
             "HTTPAuthSecurityScheme": {
                 "properties": {
@@ -16076,7 +16189,7 @@
                 "additionalProperties": false,
                 "type": "object",
                 "title": "OgxConfiguration",
-                "description": "OGX configuration.\n\nOGX is a comprehensive system that provides a uniform set of tools\nfor building, scaling, and deploying generative AI applications, enabling\ndevelopers to create, integrate, and orchestrate multiple AI services and\ncapabilities into an adaptable setup.\n\nUseful resources:\n\n  - [OGX](https://ogx-ai.github.io/)\n  - [Python OGX client](https://github.com/ogx-ai/ogx-client-python)\n  - [Build AI Applications with OGX](https://ogx-ai.github.io/)"
+                "description": "OGX configuration.\n\nOGX is a comprehensive system that provides a uniform set of tools\nfor building, scaling, and deploying generative AI applications, enabling\ndevelopers to create, integrate, and orchestrate multiple AI services and\ncapabilities into an adaptable setup.\n\nUseful resources:\n\n  - [OGX](https://ogx-ai.github.io/)\n  - [Python OGX client](https://github.com/ogx-ai/ogx-client-python)\n  - [Build AI Applications with OGX](https://ogx-ai.github.io/docs/building_applications)"
             },
             "OkpConfiguration": {
                 "properties": {
@@ -20777,6 +20890,69 @@
                 "title": "RetrievalStrategyConfiguration",
                 "description": "Configuration for a single retrieval strategy (inline or tool)."
             },
+            "RiskDefinition": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Risk name",
+                        "description": "Unique identifier for this risk (e.g., 'liability', 'competitor_mention')"
+                    },
+                    "description": {
+                        "type": "string",
+                        "title": "Rist description",
+                        "description": "Risk definition text passed to Granite Guardian as custom_criteria"
+                    },
+                    "threshold": {
+                        "type": "number",
+                        "maximum": 1.0,
+                        "minimum": 0.0,
+                        "title": "Risk threshold",
+                        "description": "Score threshold for flagging (lower = more sensitive)",
+                        "default": 0.65
+                    },
+                    "enabled": {
+                        "type": "boolean",
+                        "title": "Risk enabled",
+                        "description": "Whether to run this check",
+                        "default": true
+                    },
+                    "enable_thinking": {
+                        "type": "boolean",
+                        "title": "Risk enable thinking",
+                        "description": "Internal field - set via ModerationConfig.thinking_enabled list, not directly. When True, Granite Guardian provides detailed reasoning before scoring.",
+                        "default": false
+                    },
+                    "points": {
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "input",
+                                "output",
+                                "tool"
+                            ]
+                        },
+                        "type": "array",
+                        "minItems": 1,
+                        "title": "Guardrail points",
+                        "description": "Where this risk is evaluated: `input` (user message), `output` (model response), or `tool` (tool/MCP content)."
+                    },
+                    "violation_message": {
+                        "type": "string",
+                        "title": "Violation message",
+                        "description": "Message to be displayed when this risk is violated"
+                    }
+                },
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                    "name",
+                    "description",
+                    "points",
+                    "violation_message"
+                ],
+                "title": "RiskDefinition",
+                "description": "Definition for a custom risk category.\n\nCustom risks allow applications to add use-case-specific safety checks\nbeyond the standard harm, jailbreak, leetspeak, amnesia, and\nhistory_politics checks.\nExample:\n    liability_risk = RiskDefinition(\n        name=\"liability\",\n        description=\"Content requesting legal, medical, or financial advice\",\n        threshold=0.55,\n        points=[\"input\"],\n    )\n    pii_risk = RiskDefinition(\n        name=\"pii_request\",\n        description=\"User is asking the AI to reveal personal information\",\n        threshold=0.50,\n        points=[\"input\", \"tool\"],\n    )\nNote:\n    To enable think mode (detailed reasoning) for a risk, add the risk name\n    to the `thinking_enabled` list in `ModerationConfig`. Do not set\n    `enable_thinking` directly - it is managed internally."
+            },
             "RlsapiV1Attachment": {
                 "properties": {
                     "contents": {
@@ -23605,7 +23781,7 @@
         },
         {
             "name": "vector-stores",
-            "description": "Vector stores and files."
+            "description": "Vector stores and files (OGX proxy). Deprecated: will be removed in the next LCS release."
         }
     ]
 }

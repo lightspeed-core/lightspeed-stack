@@ -115,11 +115,11 @@ class TestEstimateTokens:
 class TestIsMessage:
     """Tests for the is_message_item duck-type check."""
 
-    def test_llama_stack_message_item(self) -> None:
+    def test_ogx_message_item(self) -> None:
         """An OGX-shaped object with type == 'message' is a message."""
         assert is_message_item(_MessageItem("user", "hi")) is True
 
-    def test_llama_stack_tool_call_item(self) -> None:
+    def test_ogx_tool_call_item(self) -> None:
         """A tool-call-shaped object is not a message."""
         assert is_message_item(_ToolCallItem()) is False
 
@@ -137,7 +137,7 @@ class TestIsMessage:
 class TestExtractMessageText:
     """Tests for the extract_message_text duck-type extractor."""
 
-    def test_llama_stack_string_content(self) -> None:
+    def test_ogx_string_content(self) -> None:
         """Plain string content is returned as-is."""
         assert extract_message_text(_MessageItem("user", "hello")) == "hello"
 

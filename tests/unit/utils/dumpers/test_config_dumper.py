@@ -47,7 +47,7 @@ def test_dump_schema(tmpdir: Path) -> None:
     filename = tmpdir / "foo.json"
     dump_schema(str(filename))
 
-    with open(filename, "r", encoding="utf-8") as fin:
+    with open(filename, encoding="utf-8") as fin:
         # schema should be stored in JSON format
         content = load(fin)
         assert content is not None

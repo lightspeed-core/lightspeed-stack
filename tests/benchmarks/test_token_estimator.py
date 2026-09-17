@@ -435,3 +435,59 @@ def test_javascript_source_10000_lines(benchmark: BenchmarkFixture) -> None:
         None
     """
     benchmark_file_tokenization(benchmark, "js_10000_lines.js")
+
+
+def test_go_source_10_lines(benchmark: BenchmarkFixture) -> None:
+    """Test tokenizing Go source code containing just 10 lines.
+
+    Parameters:
+    ----------
+        benchmark (BenchmarkFixture): pytest-benchmark fixture.
+
+    Returns:
+    -------
+        None
+    """
+    benchmark_file_tokenization(benchmark, "go_10_lines.go")
+
+
+def test_go_source_100_lines(benchmark: BenchmarkFixture) -> None:
+    """Test tokenizing Go source code containing just 100 lines.
+
+    Parameters:
+    ----------
+        benchmark (BenchmarkFixture): pytest-benchmark fixture.
+
+    Returns:
+    -------
+        None
+    """
+    benchmark_file_tokenization(benchmark, "go_100_lines.go")
+
+
+def test_go_source_1000_lines(benchmark: BenchmarkFixture) -> None:
+    """Test tokenizing Go source code containing just 1000 lines.
+
+    Parameters:
+    ----------
+        benchmark (BenchmarkFixture): pytest-benchmark fixture.
+
+    Returns:
+    -------
+        None
+    """
+    benchmark_file_tokenization(benchmark, "go_1000_lines.go")
+
+
+def test_go_source_10000_lines(benchmark: BenchmarkFixture) -> None:
+    """Test tokenizing Go source code containing just 10000 lines.
+
+    Parameters:
+    ----------
+        benchmark (BenchmarkFixture): pytest-benchmark fixture.
+
+    Returns:
+    -------
+        None
+    """
+    benchmark_file_tokenization(benchmark, "go_10000_lines.go")

@@ -150,6 +150,25 @@ class TestSummarizeNativeToolCall:
         assert summary.args == {"arg": 1}
         assert summary.type == "mcp_call"
 
+    def test_mcp_call_with_json_string_tool_args(self) -> None:
+        """Test MCP tool call parses OpenAI-style JSON string tool_args."""
+        part = NativeToolCallPart(
+            tool_name=f"{MCPServerTool.kind}:srv",
+            args={
+                "action": "call",
+                "tool_name": "get_subscriptions",
+                "tool_args": '{\n  "limit": 20\n}',
+            },
+            tool_call_id="mcp-call-json",
+        )
+
+        summary = summarize_native_tool_call(part)
+
+        assert summary is not None
+        assert summary.name == "get_subscriptions"
+        assert summary.args == {"limit": 20}
+        assert summary.type == "mcp_call"
+
     def test_unknown_tool_returns_none(self, mocker: MockerFixture) -> None:
         """Test unknown native tool logs warning and returns None."""
         mock_warning = mocker.patch("utils.agents.tool_processor.logger.warning")

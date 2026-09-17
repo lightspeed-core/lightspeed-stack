@@ -10,10 +10,11 @@ This directory contains configuration files used for end-to-end testing of Light
 ## Library mode uses unified configs (LCORE-2342)
 
 The library-mode configurations use the unified single-file format: instead of
-the legacy `llama_stack.library_client_config_path`, they carry
+the legacy `ogx.library_client_config_path` (the deprecated `llama_stack` YAML
+section alias is still accepted), they carry
 
 ```yaml
-llama_stack:
+ogx:
   use_as_library_client: true
   config:
     profile: run.yaml

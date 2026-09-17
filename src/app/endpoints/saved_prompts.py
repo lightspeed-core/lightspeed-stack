@@ -1,6 +1,6 @@
 """Handler for REST API calls to manage saved prompts."""
 
-from typing import Annotated, Any
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.concurrency import run_in_threadpool
@@ -43,12 +43,13 @@ from utils.saved_prompts import (
     validate_saved_prompt_name,
 )
 from utils.suid import check_suid
+from utils.types import Responses
 
 logger = get_logger(__name__)
 router = APIRouter(tags=["saved-prompts"])
 
 
-get_saved_prompts_config_responses: dict[int | str, dict[str, Any]] = {
+get_saved_prompts_config_responses: Responses = {
     200: SavedPromptsConfigResponse.openapi_response(),
     401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
@@ -56,7 +57,7 @@ get_saved_prompts_config_responses: dict[int | str, dict[str, Any]] = {
     503: ServiceUnavailableResponse.openapi_response(examples=["kubernetes api"]),
 }
 
-list_saved_prompts_responses: dict[int | str, dict[str, Any]] = {
+list_saved_prompts_responses: Responses = {
     200: SavedPromptsListResponse.openapi_response(),
     401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
@@ -65,7 +66,7 @@ list_saved_prompts_responses: dict[int | str, dict[str, Any]] = {
     ),
 }
 
-create_saved_prompts_responses: dict[int | str, dict[str, Any]] = {
+create_saved_prompts_responses: Responses = {
     201: SavedPromptResponse.openapi_response(),
     401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
@@ -78,7 +79,7 @@ create_saved_prompts_responses: dict[int | str, dict[str, Any]] = {
     ),
 }
 
-delete_saved_prompts_responses: dict[int | str, dict[str, Any]] = {
+delete_saved_prompts_responses: Responses = {
     200: SavedPromptDeleteResponse.openapi_response(),
     400: BadRequestResponse.openapi_response(examples=["saved_prompt_id"]),
     401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),

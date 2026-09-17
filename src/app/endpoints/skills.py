@@ -1,6 +1,6 @@
 """Handler for REST API call to list loaded agent skills."""
 
-from typing import Annotated, Any
+from typing import Annotated
 
 from fastapi import APIRouter, Request
 from fastapi.concurrency import run_in_threadpool
@@ -21,12 +21,13 @@ from models.api.responses.successful import SkillsResponse
 from models.config import Action
 from utils.endpoints import check_configuration_loaded
 from utils.pydantic_ai_helpers import get_skills_metadata
+from utils.types import Responses
 
 logger = get_logger(__name__)
 router = APIRouter(tags=["skills"])
 
 
-skills_responses: dict[int | str, dict[str, Any]] = {
+skills_responses: Responses = {
     200: SkillsResponse.openapi_response(),
     401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),

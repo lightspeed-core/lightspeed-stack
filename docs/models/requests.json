@@ -1052,7 +1052,7 @@
                 "type": "object"
             },
             "OpenAIResponseInputToolWebSearch": {
-                "description": "Web search tool configuration for OpenAI response inputs.\n\n:param type: Web search tool type variant to use\n:param search_context_size: (Optional) Size of search context, must be \"low\", \"medium\", or \"high\"",
+                "description": "Web search tool configuration for OpenAI response inputs.",
                 "properties": {
                     "type": {
                         "anyOf": [
@@ -1079,8 +1079,30 @@
                     "search_context_size": {
                         "type": "string",
                         "nullable": true,
-                        "default": "medium",
+                        "default": null,
                         "title": "Search Context Size"
+                    },
+                    "filters": {
+                        "anyOf": [
+                            {
+                                "$ref": "`#/components/schemas/`WebSearchFilters"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "default": null
+                    },
+                    "user_location": {
+                        "anyOf": [
+                            {
+                                "$ref": "`#/components/schemas/`WebSearchUserLocation"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "default": null
                     }
                 },
                 "title": "OpenAIResponseInputToolWebSearch",
@@ -1601,7 +1623,7 @@
                 "type": "object"
             },
             "OpenAIResponseOutputMessageWebSearchToolCall": {
-                "description": "Web search tool call output message for OpenAI responses.\n\n:param id: Unique identifier for this tool call\n:param status: Current status of the web search operation\n:param type: Tool call type identifier, always \"web_search_call\"",
+                "description": "Web search tool call output message for OpenAI responses.",
                 "properties": {
                     "id": {
                         "title": "Id",
@@ -1616,6 +1638,24 @@
                         "default": "web_search_call",
                         "title": "Type",
                         "type": "string"
+                    },
+                    "action": {
+                        "anyOf": [
+                            {
+                                "$ref": "`#/components/schemas/`WebSearchActionSearch"
+                            },
+                            {
+                                "$ref": "`#/components/schemas/`WebSearchActionOpenPage"
+                            },
+                            {
+                                "$ref": "`#/components/schemas/`WebSearchActionFind"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "default": null,
+                        "title": "Action"
                     }
                 },
                 "required": [
@@ -1660,6 +1700,14 @@
                         "default": null,
                         "title": "Effort"
                     },
+                    "generate_summary": {
+                        "type": "string",
+                        "nullable": true,
+                        "default": null,
+                        "deprecated": true,
+                        "description": "Deprecated: use 'summary' instead.",
+                        "title": "Generate Summary"
+                    },
                     "summary": {
                         "type": "string",
                         "nullable": true,
@@ -1688,7 +1736,7 @@
                     "verbosity": {
                         "type": "string",
                         "nullable": true,
-                        "default": null,
+                        "default": "medium",
                         "title": "Verbosity"
                     }
                 },
@@ -2610,7 +2658,7 @@
                 "type": "object"
             },
             "SearchRankingOptions": {
-                "description": "Options for ranking and filtering search results.\n\nThis class configures how search results are ranked and filtered. You can use algorithm-based\nrerankers (weighted, RRF) or neural rerankers. Defaults from VectorStoresConfig are\nused when parameters are not provided.\n\nExamples:\n    # Weighted ranker with custom alpha\n    SearchRankingOptions(ranker=\"weighted\", alpha=0.7)\n\n    # RRF ranker with custom impact factor\n    SearchRankingOptions(ranker=\"rrf\", impact_factor=50.0)\n\n    # Use config defaults (just specify ranker type)\n    SearchRankingOptions(ranker=\"weighted\")  # Uses alpha from VectorStoresConfig\n\n    # Score threshold filtering\n    SearchRankingOptions(ranker=\"weighted\", score_threshold=0.5)\n\n:param ranker: (Optional) Name of the ranking algorithm to use. Supported values:\n    - \"weighted\": Weighted combination of vector and keyword scores\n    - \"rrf\": Reciprocal Rank Fusion algorithm\n    - \"neural\": Neural reranking model (requires model parameter)\n    Note: For OpenAI API compatibility, any string value is accepted, but only the above values are supported.\n:param score_threshold: (Optional) Minimum relevance score threshold for results. Default: 0.0\n:param alpha: (Optional) Weight factor for weighted ranker (0-1).\n    - 0.0 = keyword only\n    - 0.5 = equal weight (default)\n    - 1.0 = vector only\n    Only used when ranker=\"weighted\" and weights is not provided.\n    Falls back to VectorStoresConfig.chunk_retrieval_params.weighted_search_alpha if not provided.\n:param impact_factor: (Optional) Impact factor (k) for RRF algorithm.\n    Lower values emphasize higher-ranked results. Default: 60.0 (optimal from research).\n    Only used when ranker=\"rrf\".\n    Falls back to VectorStoresConfig.chunk_retrieval_params.rrf_impact_factor if not provided.\n:param weights: (Optional) Dictionary of weights for combining different signal types.\n    Keys can be \"vector\", \"keyword\", \"neural\". Values should sum to 1.0.\n    Used when combining algorithm-based reranking with neural reranking.\n    Example: {\"vector\": 0.3, \"keyword\": 0.3, \"neural\": 0.4}\n:param model: (Optional) Model identifier for neural reranker (e.g., \"transformers/Qwen/Qwen3-Reranker-0.6B\").\n    Required when ranker=\"neural\" or when weights contains \"neural\".",
+                "description": "Options for ranking and filtering search results.\n\nThis class configures how search results are ranked and filtered. You can use algorithm-based\nrerankers (weighted, RRF) or neural rerankers. Defaults from VectorStoresConfig are\nused when parameters are not provided.\n\nExamples:\n    # Weighted ranker with custom alpha\n    SearchRankingOptions(ranker=\"weighted\", alpha=0.7)\n\n    # RRF ranker with custom impact factor\n    SearchRankingOptions(ranker=\"rrf\", impact_factor=50.0)\n\n    # Use config defaults (just specify ranker type)\n    SearchRankingOptions(ranker=\"weighted\")  # Uses alpha from VectorStoresConfig\n\n    # Score threshold filtering\n    SearchRankingOptions(ranker=\"weighted\", score_threshold=0.5)\n\n:param ranker: (Optional) Name of the ranking algorithm to use. Supported values:\n    - \"weighted\": Weighted combination of vector and keyword scores\n    - \"rrf\": Reciprocal Rank Fusion algorithm\n    - \"neural\": Neural reranking model (requires model parameter)\n    Note: For OpenAI API compatibility, any string value is accepted, but only the above values are supported.\n:param score_threshold: (Optional) Minimum relevance score threshold for results. Default: 0.0\n:param alpha: (Optional) Weight factor for weighted ranker (0-1).\n    - 0.0 = keyword only\n    - 0.5 = equal weight (default)\n    - 1.0 = vector only\n    Only used when ranker=\"weighted\" and weights is not provided.\n    Falls back to VectorStoresConfig.chunk_retrieval_params.weighted_search_alpha if not provided.\n:param impact_factor: (Optional) Impact factor (k) for RRF algorithm.\n    Lower values emphasize higher-ranked results. Default: 60.0 (optimal from research).\n    Only used when ranker=\"rrf\".\n    Falls back to VectorStoresConfig.chunk_retrieval_params.rrf_impact_factor if not provided.\n:param weights: (Optional) Dictionary of weights for combining different signal types.\n    Keys can be \"vector\", \"keyword\", \"neural\". Values should sum to 1.0.\n    Used when combining algorithm-based reranking with neural reranking.\n    Example: {\"vector\": 0.3, \"keyword\": 0.3, \"neural\": 0.4}\n:param model: (Optional) Model identifier for neural reranker\n    (e.g., \"sentence-transformers/Qwen/Qwen3-Reranker-0.6B\"). Required when ranker=\"neural\" or when\n    weights contains \"neural\".",
                 "properties": {
                     "ranker": {
                         "type": "string",
@@ -2939,6 +2987,152 @@
                     }
                 },
                 "title": "VectorStoreUpdateRequest",
+                "type": "object"
+            },
+            "WebSearchActionFind": {
+                "description": "Web search action: searches for a pattern within a loaded page.",
+                "properties": {
+                    "type": {
+                        "const": "find_in_page",
+                        "default": "find_in_page",
+                        "title": "Type",
+                        "type": "string"
+                    },
+                    "url": {
+                        "title": "Url",
+                        "type": "string"
+                    },
+                    "pattern": {
+                        "title": "Pattern",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "url",
+                    "pattern"
+                ],
+                "title": "WebSearchActionFind",
+                "type": "object"
+            },
+            "WebSearchActionOpenPage": {
+                "description": "Web search action: opens a specific URL from search results.",
+                "properties": {
+                    "type": {
+                        "const": "open_page",
+                        "default": "open_page",
+                        "title": "Type",
+                        "type": "string"
+                    },
+                    "url": {
+                        "type": "string",
+                        "nullable": true,
+                        "default": null,
+                        "title": "Url"
+                    }
+                },
+                "title": "WebSearchActionOpenPage",
+                "type": "object"
+            },
+            "WebSearchActionSearch": {
+                "description": "Web search action: performs a search query.",
+                "properties": {
+                    "type": {
+                        "const": "search",
+                        "default": "search",
+                        "title": "Type",
+                        "type": "string"
+                    },
+                    "query": {
+                        "title": "Query",
+                        "type": "string"
+                    },
+                    "queries": {
+                        "type": "array",
+                        "nullable": true,
+                        "default": null,
+                        "title": "Queries"
+                    },
+                    "sources": {
+                        "type": "array",
+                        "nullable": true,
+                        "default": null,
+                        "title": "Sources"
+                    }
+                },
+                "required": [
+                    "query"
+                ],
+                "title": "WebSearchActionSearch",
+                "type": "object"
+            },
+            "WebSearchFilters": {
+                "description": "Domain filters for web search results.",
+                "properties": {
+                    "allowed_domains": {
+                        "type": "array",
+                        "nullable": true,
+                        "default": null,
+                        "title": "Allowed Domains"
+                    }
+                },
+                "title": "WebSearchFilters",
+                "type": "object"
+            },
+            "WebSearchSource": {
+                "description": "A source URL returned by a web search action.",
+                "properties": {
+                    "type": {
+                        "const": "url",
+                        "default": "url",
+                        "title": "Type",
+                        "type": "string"
+                    },
+                    "url": {
+                        "title": "Url",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "url"
+                ],
+                "title": "WebSearchSource",
+                "type": "object"
+            },
+            "WebSearchUserLocation": {
+                "description": "Approximate user location to refine web search results.",
+                "properties": {
+                    "type": {
+                        "const": "approximate",
+                        "default": "approximate",
+                        "title": "Type",
+                        "type": "string"
+                    },
+                    "city": {
+                        "type": "string",
+                        "nullable": true,
+                        "default": null,
+                        "title": "City"
+                    },
+                    "country": {
+                        "type": "string",
+                        "nullable": true,
+                        "default": null,
+                        "title": "Country"
+                    },
+                    "region": {
+                        "type": "string",
+                        "nullable": true,
+                        "default": null,
+                        "title": "Region"
+                    },
+                    "timezone": {
+                        "type": "string",
+                        "nullable": true,
+                        "default": null,
+                        "title": "Timezone"
+                    }
+                },
+                "title": "WebSearchUserLocation",
                 "type": "object"
             }
         }

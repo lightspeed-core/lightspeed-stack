@@ -90,11 +90,18 @@ ways it can drive the underlying OGX:
    optional [profile](#profiles) you author, the high-level
    `inference.providers` section, and a raw `native_override` escape hatch.
    All examples in this guide show unified mode first.
-2. **Legacy two-file mode (deprecated).** `llama_stack.library_client_config_path`
+2. **Legacy two-file mode (deprecated).** `ogx.library_client_config_path`
+   (the deprecated `llama_stack` YAML-section alias is still accepted)
    points at an external, hand-maintained `run.yaml`. This path is deprecated:
    since release 0.6 it logs a startup warning, and it is **removed in
    release 0.7**. See
    [Migrating from the legacy two-file configuration](#migrating-from-the-legacy-two-file-configuration).
+
+> [!NOTE]
+> The deprecated `llama_stack` YAML key remains accepted with a startup
+> warning; use `ogx:` for new configuration. See
+> [Migrating from the legacy two-file configuration](#migrating-from-the-legacy-two-file-configuration)
+> and [v0.7.0 migration notes](../migrations/v0.7.0.md).
 
 The two modes are mutually exclusive in one file — configuration loading
 fails if a unified synthesis input and `library_client_config_path` are both
@@ -112,7 +119,7 @@ The OGX framework can be run as a standalone server and accessed via its the RES
 
 When this mode is selected, OGX is used as a regular Python library. This means that the library must be installed in the system Python environment, a user-level environment, or a virtual environment. All calls to OGX are performed via standard function or method calls:
 
-![OGX as library](./llama_stack_as_library.svg)
+![OGX as library](./ogx_as_library.svg)
 
 > [!NOTE]
 > Even when OGX is used as a library, it still requires a `run.yaml`
@@ -150,14 +157,14 @@ for `baseline: empty` (use `native_override` there if you need MCP).
 Keep secrets out of the file: write `${env.MY_KEY}` environment references,
 which OGX resolves at startup.
 
-**Referencing a profile.** Point `llama_stack.config.profile` at the file:
+**Referencing a profile.** Point `ogx.config.profile` at the file:
 
 ```yaml
 name: Lightspeed Core Service (LCS)
 service:
   host: 0.0.0.0
   port: 8080
-llama_stack:
+ogx:
   use_as_library_client: true
   config:
     profile: ./profiles/openai-remote.yaml
@@ -179,7 +186,7 @@ synthesizer evolves.
 
 When this mode is selected, OGX is started as a separate REST API service. All communication with OGX is performed via REST API calls, which means that OGX can run on a separate machine if needed.
 
-![OGX as service](./llama_stack_as_service.svg)
+![OGX as service](./ogx_as_service.svg)
 
 > [!NOTE]
 > The REST API schema and semantics can change at any time, especially before version 1.0.0 is released. By using *Lightspeed Core Service*, developers, users, and customers stay isolated from these incompatibilities.
@@ -227,7 +234,7 @@ llama_stack:
    ```yaml
    # lightspeed-stack-unified.yaml
    name: LCS
-   llama_stack:
+   ogx:
      use_as_library_client: true
      config:
        baseline: empty
@@ -289,17 +296,17 @@ The easiest option is to run OGX in a separate process. This means that there wi
 
 1. Create a new directory outside of the lightspeed-stack project directory
     ```bash
-    mkdir /tmp/llama-stack-server
+    mkdir /tmp/ogx-server
     ```
-1. Copy the project file named `pyproject.llamastack.toml` into the new directory, renaming it to `pyproject.toml':
+1. Copy the project file named `pyproject.ogx.toml` into the new directory, renaming it to `pyproject.toml`:
     ```bash
-    cp examples/pyproject.llamastack.toml /tmp/llama-stack-server/pyproject.toml
+    cp examples/pyproject.ogx.toml /tmp/ogx-server/pyproject.toml
     ```
 
 1. Run the following command to install all OGX dependencies in a new venv located in your new directory:
 
     ```bash
-    cd /tmp/llama-stack-server
+    cd /tmp/ogx-server
     uv sync
     ```
 
@@ -338,7 +345,7 @@ The easiest option is to run OGX in a separate process. This means that there wi
 
 1. In the next step, we need to verify that it is possible to run a tool called `ogx`. It was installed into a Python virtual environment and therefore we have to run it via `uv run` command:
     ```bash
-     uv run llama
+     uv run ogx
     ```
 1. If the installation was successful, the following messages should be displayed on the terminal:
     ```
@@ -359,7 +366,7 @@ The easiest option is to run OGX in a separate process. This means that there wi
     ```
 1. If we try to run the OGX without configuring it, only the exception information is displayed (which is not very user-friendly):
     ```bash
-    uv run llama stack run
+    uv run ogx stack run
     ```
     Output:
     ```
@@ -368,13 +375,13 @@ The easiest option is to run OGX in a separate process. This means that there wi
       File "/tmp/ramdisk/ogx-runner/.venv/bin/ogx", line 10, in <module>
         sys.exit(main())
                  ^^^^^^
-      File "/tmp/ramdisk/llama-stack-runner/.venv/lib64/python3.12/site-packages/llama_stack/cli/llama.py", line 53, in main
+      File "/tmp/ramdisk/ogx-runner/.venv/lib64/python3.12/site-packages/llama_stack/cli/llama.py", line 53, in main
         parser.run(args)
-      File "/tmp/ramdisk/llama-stack-runner/.venv/lib64/python3.12/site-packages/llama_stack/cli/llama.py", line 47, in run
+      File "/tmp/ramdisk/ogx-runner/.venv/lib64/python3.12/site-packages/llama_stack/cli/llama.py", line 47, in run
         args.func(args)
-      File "/tmp/ramdisk/llama-stack-runner/.venv/lib64/python3.12/site-packages/llama_stack/cli/stack/run.py", line 164, in _run_stack_run_cmd
+      File "/tmp/ramdisk/ogx-runner/.venv/lib64/python3.12/site-packages/llama_stack/cli/stack/run.py", line 164, in _run_stack_run_cmd
         server_main(server_args)
-      File "/tmp/ramdisk/llama-stack-runner/.venv/lib64/python3.12/site-packages/llama_stack/distribution/server/server.py", line 414, in main
+      File "/tmp/ramdisk/ogx-runner/.venv/lib64/python3.12/site-packages/llama_stack/distribution/server/server.py", line 414, in main
         elif args.template:
              ^^^^^^^^^^^^^
     AttributeError: 'Namespace' object has no attribute 'template'
@@ -387,7 +394,7 @@ The easiest option is to run OGX in a separate process. This means that there wi
 OGX needs to be configured properly. For using the default runnable OGX a file named `run.yaml` needs to be created.  Copy the example `examples/run.yaml` from the lightspeed-stack project directory into your OGX directory.
 
 ```bash
-cp examples/run.yaml /tmp/llama-stack-server
+cp examples/run.yaml /tmp/ogx-server
 ```
 
 
@@ -399,7 +406,7 @@ cp examples/run.yaml /tmp/llama-stack-server
     ```
 1. Run the following command:
     ```bash
-    uv run llama stack run run.yaml
+    uv run ogx stack run run.yaml
     ```
 1. Check the output on terminal, it should look like:
     ```
@@ -648,7 +655,7 @@ cp examples/lightspeed-stack-lls-library.yaml lightspeed-stack.yaml
 
 The example is a unified-mode configuration: the `run.yaml` you created above
 is consumed as the synthesis [profile](#profiles) via
-`llama_stack.config.profile` — there is no deprecated
+`ogx.config.profile` — there is no deprecated
 `library_client_config_path` in it.
 
 
@@ -831,12 +838,12 @@ a4982f43195537b9eb1cec510fe6655f245d6d4b7236a4759808115d5d719972
 1. Create project file named `pyproject.toml` in this directory. This file should have the following content:
     ```toml
     [project]
-    name = "llama-stack-demo"
+    name = "ogx-demo"
     version = "0.1.0"
     description = "Default template for PDM package"
     authors = []
     dependencies = [
-        "llama-stack==0.2.22",
+        "ogx==1.2.5",
         "fastapi>=0.115.12",
         "opentelemetry-sdk>=1.34.0",
         "opentelemetry-exporter-otlp>=1.34.0",
@@ -903,7 +910,7 @@ a4982f43195537b9eb1cec510fe6655f245d6d4b7236a4759808115d5d719972
 
 1. In the next step, we need to verify that it is possible to run a tool called `ogx`. It was installed into a Python virtual environment and therefore we have to run it via `uv run` command:
     ```bash
-     uv run llama
+     uv run ogx
     ```
 1. If the installation was successful, the following messages should be displayed on the terminal:
     ```text
@@ -924,7 +931,7 @@ a4982f43195537b9eb1cec510fe6655f245d6d4b7236a4759808115d5d719972
     ```
 1. If we try to run the OGX without configuring it, only the exception information is displayed (which is not very user-friendly):
     ```bash
-    uv run llama stack run
+    uv run ogx stack run
     ```
     Output:
     ```
@@ -933,13 +940,13 @@ a4982f43195537b9eb1cec510fe6655f245d6d4b7236a4759808115d5d719972
       File "/tmp/ramdisk/ogx-runner/.venv/bin/ogx", line 10, in <module>
         sys.exit(main())
                  ^^^^^^
-      File "/tmp/ramdisk/llama-stack-runner/.venv/lib64/python3.12/site-packages/llama_stack/cli/llama.py", line 53, in main
+      File "/tmp/ramdisk/ogx-runner/.venv/lib64/python3.12/site-packages/llama_stack/cli/llama.py", line 53, in main
         parser.run(args)
-      File "/tmp/ramdisk/llama-stack-runner/.venv/lib64/python3.12/site-packages/llama_stack/cli/llama.py", line 47, in run
+      File "/tmp/ramdisk/ogx-runner/.venv/lib64/python3.12/site-packages/llama_stack/cli/llama.py", line 47, in run
         args.func(args)
-      File "/tmp/ramdisk/llama-stack-runner/.venv/lib64/python3.12/site-packages/llama_stack/cli/stack/run.py", line 164, in _run_stack_run_cmd
+      File "/tmp/ramdisk/ogx-runner/.venv/lib64/python3.12/site-packages/llama_stack/cli/stack/run.py", line 164, in _run_stack_run_cmd
         server_main(server_args)
-      File "/tmp/ramdisk/llama-stack-runner/.venv/lib64/python3.12/site-packages/llama_stack/distribution/server/server.py", line 414, in main
+      File "/tmp/ramdisk/ogx-runner/.venv/lib64/python3.12/site-packages/llama_stack/distribution/server/server.py", line 414, in main
         elif args.template:
              ^^^^^^^^^^^^^
     AttributeError: 'Namespace' object has no attribute 'template'
@@ -949,7 +956,7 @@ a4982f43195537b9eb1cec510fe6655f245d6d4b7236a4759808115d5d719972
 
 #### OGX configuration
 
-OGX needs to be configured properly. For using the default runnable OGX a file named `run.yaml` needs to be created. Use the example configuration from [examples/run.yaml](../examples/run.yaml).
+OGX needs to be configured properly. For using the default runnable OGX a file named `run.yaml` needs to be created. Use the example configuration from [examples/run.yaml](../../examples/run.yaml).
 
 
 
@@ -961,7 +968,7 @@ OGX needs to be configured properly. For using the default runnable OGX a file n
     ```
 1. Run the following command:
     ```bash
-    uv run llama stack run run.yaml
+    uv run ogx stack run run.yaml
     ```
 1. Check the output on terminal, it should look like:
     ```text
@@ -1126,7 +1133,7 @@ service:
   workers: 1
   color_log: true
   access_log: true
-llama_stack:
+ogx:
   use_as_library_client: false
   url: http://localhost:8321
   api_key: xyzzy
@@ -1173,7 +1180,7 @@ export OPENAI_API_KEY="sk-foo-bar-baz-my-key"
 
 #### OGX configuration
 
-Create a file named `run.yaml`. Use the example configuration from [examples/run.yaml](../examples/run.yaml).
+Create a file named `run.yaml`. Use the example configuration from [examples/run.yaml](../../examples/run.yaml).
 
 ### LCS configuration
 
@@ -1190,7 +1197,7 @@ service:
   workers: 1
   color_log: true
   access_log: true
-llama_stack:
+ogx:
   use_as_library_client: true
   config:
     profile: ./run.yaml

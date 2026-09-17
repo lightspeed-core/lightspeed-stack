@@ -48,37 +48,21 @@ Input sanitization to detect and block obfuscated prompt injection attempts.
 
 Function to transform a JSON Schema-like dictionary into an OpenAPI-compatible schema.
 
-## [ogx_version.py](ogx_version.py)
-
-Check if the OGX version is supported by the LCS.
-
 ## [markdown_repair.py](markdown_repair.py)
 
 Utilities for repairing truncated markdown content.
-
-## [mcp_auth_headers.py](mcp_auth_headers.py)
-
-Utilities for resolving MCP server authorization headers.
-
-## [mcp_headers.py](mcp_headers.py)
-
-MCP headers handling.
-
-## [mcp_oauth_probe.py](mcp_oauth_probe.py)
-
-Probe MCP servers for OAuth and raise 401 with WWW-Authenticate when required.
-
-## [mcp_tools.py](mcp_tools.py)
-
-Utilities for discovering tools from remote MCP servers without OGX.
 
 ## [model_list.py](model_list.py)
 
 Helpers for normalizing OGX ``models.list()`` union responses.
 
-## [openapi_schema_dumper.py](openapi_schema_dumper.py)
+## [ogx_serialization.py](ogx_serialization.py)
 
-Utility function to dump schema with list of models into OpenAPI-compatible JSON format.
+Serialization helpers for ``ogx_client`` models.
+
+## [ogx_version.py](ogx_version.py)
+
+Check if the OGX version is supported by the LCS.
 
 ## [otel_tracing.py](otel_tracing.py)
 
@@ -143,10 +127,6 @@ Pre-LLM-call token estimation.
 ## [tool_formatter.py](tool_formatter.py)
 
 Utility functions for formatting and parsing MCP tool descriptions.
-
-## [transcripts.py](transcripts.py)
-
-Transcript handling.
 
 ## [types.py](types.py)
 

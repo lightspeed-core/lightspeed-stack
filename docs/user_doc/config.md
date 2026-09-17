@@ -221,34 +221,34 @@ Attributes:
 Global service configuration.
 
 
-| Field                  | Type   | Description                                                                                                                                                                                                                                                                                                                                                                                         |
-|------------------------|--------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| name                   | string | Name of the service. That value will be used in REST API endpoints.                                                                                                                                                                                                                                                                                                                                 |
-| config_format_version  | string | Optional explicit marker of the configuration format. When set, it must agree with the shape detected from the configuration body: 'unified' requires a synthesis input (a non-empty inference.providers, a non-empty vector_store.providers, or a ogx.config block), 'legacy' requires no synthesis input. Reserved as the lever for a future breaking change of the unified schema (R11). |
-| service                |        | This section contains Lightspeed Core Stack service configuration.                                                                                                                                                                                                                                                                                                                                  |
-| ogx                    |        | This section contains OGX configuration. Lightspeed Core Stack service can call OGX in library mode or in server mode.                                                                                                                                                                                                                                                              |
-| user_data_collection   |        | This section contains configuration for subsystem that collects user data(transcription history and feedbacks).                                                                                                                                                                                                                                                                                     |
-| database               |        | Configuration for database to store conversation IDs and other runtime data                                                                                                                                                                                                                                                                                                                         |
-| mcp_servers            | array  | MCP (Model Context Protocol) servers provide tools and capabilities to the AI agents. These are configured in this section. Only MCP servers defined in the lightspeed-stack.yaml configuration are available to the agents. Tools configured in the OGX run.yaml are not accessible to lightspeed-core agents.                                                                             |
-| authentication         |        | Authentication configuration                                                                                                                                                                                                                                                                                                                                                                        |
-| authorization          |        | Lightspeed Core Stack implements a modular authentication and authorization system with multiple authentication methods. Authorization is configurable through role-based access control. Authentication is handled through selectable modules configured via the module field in the authentication configuration.                                                                                 |
-| customization          |        | It is possible to customize Lightspeed Core Stack via this section. System prompt can be customized and also different parts of the service can be replaced by custom Python modules.                                                                                                                                                                                                               |
-| inference              |        | One LLM provider and one its model might be selected as default ones. When no provider+model pair is specified in REST API calls (query endpoints), the default provider and model are used.                                                                                                                                                                                                        |
-| conversation_cache     |        |                                                                                                                                                                                                                                                                                                                                                                                                     |
-| compaction             |        | Controls when conversation history is summarized to keep the model's input below the context window limit. Disabled by default — when disabled, requests that exceed the window continue to surface as HTTP 413.                                                                                                                                                                                    |
-| approvals              |        | Settings for human-in-the-loop approval of MCP tool invocations                                                                                                                                                                                                                                                                                                                                     |
-| vector_store           |        | Dynamic vector-store provider capacity for runtime POST /v1/vector-stores creates. Not the same as rag.byok.stores (static registered corpora). When providers is non-empty, default_provider is required and must match one of providers[].id. Applied in unified synthesis only.                                                                                                                  |
-| a2a_state              |        | Configuration for A2A protocol persistent state storage.                                                                                                                                                                                                                                                                                                                                            |
-| quota_handlers         |        | Quota handlers configuration                                                                                                                                                                                                                                                                                                                                                                        |
-| azure_entra_id         |        |                                                                                                                                                                                                                                                                                                                                                                                                     |
-| rlsapi_v1              |        | Configuration for the rlsapi v1 /infer endpoint used by the RHEL Lightspeed Command Line Assistant (CLA).                                                                                                                                                                                                                                                                                           |
-| splunk                 |        | Splunk HEC configuration for sending telemetry events.                                                                                                                                                                                                                                                                                                                                              |
-| observability          |        | OpenTelemetry and observability configuration collected from OTEL_* environment variables.                                                                                                                                                                                                                                                                                                          |
-| deployment_environment | string | Deployment environment name (e.g., 'development', 'staging', 'production'). Used in telemetry events.                                                                                                                                                                                                                                                                                               |
-| rag                    |        | Unified RAG configuration: BYOK stores, OKP provider, and retrieval strategies (inline and tool-based).                                                                                                                                                                                                                                                                                             |
-| skills                 |        | Agent skills configuration. Specifies paths to skill directories.                                                                                                                                                                                                                                                                                                                                   |
-| saved_prompts          |        | Configuration for saved prompts feature limits including maximum prompts per user, display name length, and content length.                                                                                                                                                                                                                                                                         |
-| shields                | array  | List of pydantic-ai-lightspeed agent guardrail shields (question validity and PII redaction). Each entry has a unique 'name', a 'provider_id' ('question_validity' or 'redaction'), and a type-specific 'config'.                                                                                                                                                                                   |
+| Field                  | Type   | Description                                                                                                                                                                                                                                                                                                                                                                                  |
+|------------------------|--------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| name                   | string | Name of the service. That value will be used in REST API endpoints.                                                                                                                                                                                                                                                                                                                          |
+| config_format_version  | string | Optional explicit marker of the configuration format. When set, it must agree with the shape detected from the configuration body: 'unified' requires a synthesis input (a non-empty inference.providers, a non-empty vector_store.providers, or an ogx.config block), 'legacy' requires no synthesis input. Reserved as the lever for a future breaking change of the unified schema (R11). |
+| service                |        | This section contains Lightspeed Core Stack service configuration.                                                                                                                                                                                                                                                                                                                           |
+| ogx                    |        | This section contains OGX configuration. Lightspeed Core Stack service can call OGX in library mode or in server mode.                                                                                                                                                                                                                                                                       |
+| user_data_collection   |        | This section contains configuration for subsystem that collects user data(transcription history and feedbacks).                                                                                                                                                                                                                                                                              |
+| database               |        | Configuration for database to store conversation IDs and other runtime data                                                                                                                                                                                                                                                                                                                  |
+| mcp_servers            | array  | MCP (Model Context Protocol) servers provide tools and capabilities to the AI agents. These are configured in this section. Only MCP servers defined in the lightspeed-stack.yaml configuration are available to the agents. Tools configured in the OGX run.yaml are not accessible to lightspeed-core agents.                                                                              |
+| authentication         |        | Authentication configuration                                                                                                                                                                                                                                                                                                                                                                 |
+| authorization          |        | Lightspeed Core Stack implements a modular authentication and authorization system with multiple authentication methods. Authorization is configurable through role-based access control. Authentication is handled through selectable modules configured via the module field in the authentication configuration.                                                                          |
+| customization          |        | It is possible to customize Lightspeed Core Stack via this section. System prompt can be customized and also different parts of the service can be replaced by custom Python modules.                                                                                                                                                                                                        |
+| inference              |        | One LLM provider and one its model might be selected as default ones. When no provider+model pair is specified in REST API calls (query endpoints), the default provider and model are used.                                                                                                                                                                                                 |
+| conversation_cache     |        |                                                                                                                                                                                                                                                                                                                                                                                              |
+| compaction             |        | Controls when conversation history is summarized to keep the model's input below the context window limit. Disabled by default — when disabled, requests that exceed the window continue to surface as HTTP 413.                                                                                                                                                                             |
+| approvals              |        | Settings for human-in-the-loop approval of MCP tool invocations                                                                                                                                                                                                                                                                                                                              |
+| vector_store           |        | Dynamic vector-store provider capacity for runtime POST /v1/vector-stores creates. Not the same as rag.byok.stores (static registered corpora). When providers is non-empty, default_provider is required and must match one of providers[].id. Applied in unified synthesis only.                                                                                                           |
+| a2a_state              |        | Configuration for A2A protocol persistent state storage.                                                                                                                                                                                                                                                                                                                                     |
+| quota_handlers         |        | Quota handlers configuration                                                                                                                                                                                                                                                                                                                                                                 |
+| azure_entra_id         |        |                                                                                                                                                                                                                                                                                                                                                                                              |
+| rlsapi_v1              |        | Configuration for the rlsapi v1 /infer endpoint used by the RHEL Lightspeed Command Line Assistant (CLA).                                                                                                                                                                                                                                                                                    |
+| splunk                 |        | Splunk HEC configuration for sending telemetry events.                                                                                                                                                                                                                                                                                                                                       |
+| observability          |        | OpenTelemetry and observability configuration collected from OTEL_* environment variables.                                                                                                                                                                                                                                                                                                   |
+| deployment_environment | string | Deployment environment name (e.g., 'development', 'staging', 'production'). Used in telemetry events.                                                                                                                                                                                                                                                                                        |
+| rag                    |        | Unified RAG configuration: BYOK stores, OKP provider, and retrieval strategies (inline and tool-based).                                                                                                                                                                                                                                                                                      |
+| skills                 |        | Agent skills configuration. Specifies paths to skill directories.                                                                                                                                                                                                                                                                                                                            |
+| saved_prompts          |        | Configuration for saved prompts feature limits including maximum prompts per user, display name length, and content length.                                                                                                                                                                                                                                                                  |
+| shields                | array  | List of pydantic-ai-lightspeed agent guardrail shields (question validity and PII redaction). Each entry has a unique 'name', a 'provider_id' ('question_validity' or 'redaction'), and a type-specific 'config'.                                                                                                                                                                            |
 
 
 ## ConversationHistoryConfiguration
@@ -313,13 +313,13 @@ Database configuration.
 Dynamic FAISS vector-store provider (runtime create capacity).
 
 
-| Field               | Type    | Description                                                                                           |
-|---------------------|---------|-------------------------------------------------------------------------------------------------------|
+| Field               | Type    | Description                                                                                   |
+|---------------------|---------|-----------------------------------------------------------------------------------------------|
 | id                  | string  | OGX vector_io provider_id. Surrounding whitespace is stripped before validation and emission. |
-| embedding_model     | string  | Embedding model identification used for stores created against this provider.                         |
-| embedding_dimension | integer | Dimensionality of embedding vectors for this provider.                                                |
-| type                | string  | Product type for this dynamic vector-store provider.                                                  |
-| config              |         | FAISS storage settings for this provider.                                                             |
+| embedding_model     | string  | Embedding model identification used for stores created against this provider.                 |
+| embedding_dimension | integer | Dimensionality of embedding vectors for this provider.                                        |
+| type                | string  | Product type for this dynamic vector-store provider.                                          |
+| config              |         | FAISS storage settings for this provider.                                                     |
 
 
 ## FaissVectorStoreProviderConfig
@@ -331,6 +331,40 @@ Storage config for a FAISS dynamic vector-store provider.
 | Field | Type   | Description                                  |
 |-------|--------|----------------------------------------------|
 | path  | string | On-disk FAISS/SQLite path for this provider. |
+
+
+## GraniteGuardianConfig
+
+
+Configuration for the Granite Guardian moderation guardrail.
+
+
+| Field       | Type    | Description                                          |
+|-------------|---------|------------------------------------------------------|
+| url         | string  | The model_id to use for the guard                    |
+| api_key     | string  | API key for the inference                            |
+| max_retries | integer | Maximun number of retries                            |
+| timeout     | integer | Request timeout in seconds                           |
+| verify_ssl  |         | SSL certificate verification                         |
+| risks       | array   | Risks to be considered while applying this guardrail |
+
+
+## GraniteGuardianShieldConfiguration
+
+
+Configuration for a named Granite Guardian guardrail shield.
+
+Attributes:
+    name: Unique, user-facing name identifying this shield instance.
+    provider_id: Discriminator identifying this as a granite-guardian shield.
+    config: Granite-guardian-specific configuration.
+
+
+| Field       | Type   | Description                                                  |
+|-------------|--------|--------------------------------------------------------------|
+| name        | string | Unique, user-facing name identifying this shield instance.   |
+| provider_id | string | Discriminator identifying this as a granite-guardian shield. |
+| config      |        | Granite-guardian-specific configuration for this shield      |
 
 
 ## InMemoryCacheConfig
@@ -350,14 +384,14 @@ In-memory cache configuration.
 Inference configuration.
 
 
-| Field            | Type    | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-|------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| default_model    | string  | Identification of default model used when no other model is specified.                                                                                                                                                                                                                                                                                                                                                                                           |
-| default_provider | string  | Identification of default provider used when no other model is specified.                                                                                                                                                                                                                                                                                                                                                                                        |
-| context_windows  | object  | Map of fully-qualified model identifier (e.g., "openai/gpt-4o-mini") to context window size in tokens. Used by the conversation compaction trigger to decide when older turns must be summarized before the input exceeds the window. Models absent from this map have no registered window — callers fall back to their own default or skip the token-based trigger.                                                                                            |
+| Field            | Type    | Description                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+|------------------|---------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| default_model    | string  | Identification of default model used when no other model is specified.                                                                                                                                                                                                                                                                                                                                                                                   |
+| default_provider | string  | Identification of default provider used when no other model is specified.                                                                                                                                                                                                                                                                                                                                                                                |
+| context_windows  | object  | Map of fully-qualified model identifier (e.g., "openai/gpt-4o-mini") to context window size in tokens. Used by the conversation compaction trigger to decide when older turns must be summarized before the input exceeds the window. Models absent from this map have no registered window — callers fall back to their own default or skip the token-based trigger.                                                                                    |
 | providers        | array   | Unified-mode synthesis input (Decision S5): a high-level, backend-agnostic list of inference providers the synthesizer expands into OGX provider entries. Lives at the configuration root so it survives a future backend change. A non-empty list signals unified mode. Empty (the default) leaves legacy/remote modes unaffected. The sibling default_model / default_provider keep their query-time routing meaning and are independent of this list. |
-| max_infer_iters  | integer | Server-side default for the maximum number of inference iterations a model can perform in a single request. Prevents small models from looping indefinitely on tool calls. Per-request values take precedence over this default. Set to None to disable the limit.                                                                                                                                                                                               |
-| max_tool_calls   | integer | Server-side default for the maximum number of tool calls allowed in a single response. Prevents small models from exhausting the context window with repeated tool calls. Per-request values take precedence over this default. Set to None to disable the limit.                                                                                                                                                                                                |
+| max_infer_iters  | integer | Server-side default for the maximum number of inference iterations a model can perform in a single request. Prevents small models from looping indefinitely on tool calls. Per-request values take precedence over this default. Set to None to disable the limit.                                                                                                                                                                                       |
+| max_tool_calls   | integer | Server-side default for the maximum number of tool calls allowed in a single response. Prevents small models from exhausting the context window with repeated tool calls. Per-request values take precedence over this default. Set to None to disable the limit.                                                                                                                                                                                        |
 
 
 ## JsonPathOperator
@@ -432,36 +466,6 @@ Rule for extracting roles from JWT claims.
 | roles    | array   | Roles to be assigned if the rule matches                |
 
 
-## LlamaStackConfiguration
-
-
-OGX configuration.
-
-OGX is a comprehensive system that provides a uniform set of tools
-for building, scaling, and deploying generative AI applications, enabling
-developers to create, integrate, and orchestrate multiple AI services and
-capabilities into an adaptable setup.
-
-Useful resources:
-
-  - [OGX](https://ogx-ai.github.io/)
-  - [Python OGX client](https://github.com/ogx-ai/ogx-client-python)
-  - [Build AI Applications with OGX](https://ogx-ai.github.io/)
-
-
-| Field                      | Type    | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-|----------------------------|---------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| url                        | string  | URL to OGX service; used when library mode is disabled. Must be a valid HTTP or HTTPS URL.                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| api_key                    | string  | API key to access OGX service                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| use_as_library_client      | boolean | When set to true OGX will be used in library mode, not in server mode (default)                                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| library_client_config_path | string  | Path to configuration file used when OGX is run in library mode. DEPRECATED legacy two-file setup: logs a startup warning since 0.6 and is removed in 0.8 — use unified mode instead (the config block below, and/or the root-level inference.providers section); migrate with lightspeed-stack --migrate-config.                                                                                                                                                                                                       |
-| timeout                    | integer | Timeout in seconds for requests to OGX service. Default is 180 seconds (3 minutes) to accommodate long-running RAG queries.                                                                                                                                                                                                                                                                                                                                                                                             |
-| max_retries                | integer | Maximum number of connection attempts before giving up. Used on startup to connect to OGX and retrieve its version. Connection attempts are retried with a fixed delay to handle the case where OGX is still starting up (e.g., when running as a sidecar in the same pod).                                                                                                                                                                                                                                     |
-| retry_delay                | integer | Delay in seconds between retry attempts. Used on startup to connect to OGX and retrieve its version. Connection attempts are retried with a fixed delay to handle the case where OGX is still starting up (e.g., when running as a sidecar in the same pod).                                                                                                                                                                                                                                                    |
-| allow_degraded_mode        | boolean | If enabled, Lightspeed Core can be started even when OGX is not accessible (valid for server mode only)                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| config                     |         | Backend-specific knobs for unified mode, where LCORE synthesizes the OGX run.yaml instead of reading an external file. Holds the baseline selector, an optional profile path, and a raw native_override escape hatch. Backend-agnostic high-level sections (e.g. inference.providers) live at the configuration root, not here. Mutually exclusive with library_client_config_path; that cross-field check lives on the root Configuration model. When set in library mode, library_client_config_path is not required. |
-
-
 ## ModelContextProtocolServer
 
 
@@ -488,7 +492,7 @@ Useful resources:
 | authorization_headers | object  | Headers to send to the MCP server. The map contains the header name and the path to a file containing the header value (secret). There are 3 special cases: 1. Usage of the kubernetes token in the header. To specify this use a string 'kubernetes' instead of the file path. 2. Usage of the client-provided token in the header. To specify this use a string 'client' instead of the file path. 3. Usage of the oauth token in the header. To specify this use a string 'oauth' instead of the file path. |
 | headers               | array   | List of HTTP header names to automatically forward from the incoming request to this MCP server. Headers listed here are extracted from the original client request and included when calling the MCP server. This is useful when infrastructure components (e.g. API gateways) inject headers that MCP servers need, such as x-rh-identity in HCC. Header matching is case-insensitive. These headers are additive with authorization_headers and MCP-HEADERS.                                                |
 | require_approval      |         | When to require human approval for tool invocations. 'always' requires approval for all tools, 'never' auto-approves, or use ApprovalFilter for granular control.                                                                                                                                                                                                                                                                                                                                              |
-| timeout               | integer | Timeout in seconds for requests to the MCP server. If not specified, the default timeout from OGX will be used. Note: This field is reserved for future use when OGX adds timeout support.                                                                                                                                                                                                                                                                                                     |
+| timeout               | integer | Timeout in seconds for requests to the MCP server. If not specified, the default timeout from OGX will be used. Note: This field is reserved for future use when OGX adds timeout support.                                                                                                                                                                                                                                                                                                                     |
 
 
 ## ObservabilityConfiguration
@@ -506,6 +510,36 @@ Attributes:
 | Field | Type   | Description                                                          |
 |-------|--------|----------------------------------------------------------------------|
 | otel  | object | Active OpenTelemetry configuration from OTEL_* environment variables |
+
+
+## OgxConfiguration
+
+
+OGX configuration.
+
+OGX is a comprehensive system that provides a uniform set of tools
+for building, scaling, and deploying generative AI applications, enabling
+developers to create, integrate, and orchestrate multiple AI services and
+capabilities into an adaptable setup.
+
+Useful resources:
+
+  - [OGX](https://ogx-ai.github.io/)
+  - [Python OGX client](https://github.com/ogx-ai/ogx-client-python)
+  - [Build AI Applications with OGX](https://ogx-ai.github.io/docs/building_applications)
+
+
+| Field                      | Type    | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+|----------------------------|---------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| url                        | string  | URL to OGX service; used when library mode is disabled. Must be a valid HTTP or HTTPS URL.                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| api_key                    | string  | API key to access OGX service                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| use_as_library_client      | boolean | When set to true OGX will be used in library mode, not in server mode (default)                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| library_client_config_path | string  | Path to configuration file used when OGX is run in library mode. DEPRECATED legacy two-file setup: logs a startup warning since 0.6 and is removed in 0.8 — use unified mode instead (the config block below, and/or the root-level inference.providers section); migrate with lightspeed-stack --migrate-config.                                                                                                                                                                                                       |
+| timeout                    | integer | Timeout in seconds for requests to OGX service. Default is 180 seconds (3 minutes) to accommodate long-running RAG queries.                                                                                                                                                                                                                                                                                                                                                                                             |
+| max_retries                | integer | Maximum number of connection attempts before giving up. Used on startup to connect to OGX and retrieve its version. Connection attempts are retried with a fixed delay to handle the case where OGX is still starting up (e.g., when running as a sidecar in the same pod).                                                                                                                                                                                                                                             |
+| retry_delay                | integer | Delay in seconds between retry attempts. Used on startup to connect to OGX and retrieve its version. Connection attempts are retried with a fixed delay to handle the case where OGX is still starting up (e.g., when running as a sidecar in the same pod).                                                                                                                                                                                                                                                            |
+| allow_degraded_mode        | boolean | If enabled, Lightspeed Core can be started even when OGX is not accessible (valid for server mode only)                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| config                     |         | Backend-specific knobs for unified mode, where LCORE synthesizes the OGX run.yaml instead of reading an external file. Holds the baseline selector, an optional profile path, and a raw native_override escape hatch. Backend-agnostic high-level sections (e.g. inference.providers) live at the configuration root, not here. Mutually exclusive with library_client_config_path; that cross-field check lives on the root Configuration model. When set in library mode, library_client_config_path is not required. |
 
 
 ## OkpConfiguration
@@ -533,13 +567,13 @@ or ``rag.retrieval.tool.sources``.
 Dynamic pgvector vector-store provider (runtime create capacity).
 
 
-| Field               | Type    | Description                                                                                           |
-|---------------------|---------|-------------------------------------------------------------------------------------------------------|
+| Field               | Type    | Description                                                                                   |
+|---------------------|---------|-----------------------------------------------------------------------------------------------|
 | id                  | string  | OGX vector_io provider_id. Surrounding whitespace is stripped before validation and emission. |
-| embedding_model     | string  | Embedding model identification used for stores created against this provider.                         |
-| embedding_dimension | integer | Dimensionality of embedding vectors for this provider.                                                |
-| type                | string  | Product type for this dynamic vector-store provider.                                                  |
-| config              |         | pgvector connection settings for this provider.                                                       |
+| embedding_model     | string  | Embedding model identification used for stores created against this provider.                 |
+| embedding_dimension | integer | Dimensionality of embedding vectors for this provider.                                        |
+| type                | string  | Product type for this dynamic vector-store provider.                                          |
+| config              |         | pgvector connection settings for this provider.                                               |
 
 
 ## PgvectorVectorStoreProviderConfig
@@ -725,7 +759,7 @@ BYOK (Bring Your Own Knowledge) RAG store configuration.
 | embedding_dimension    | integer | Dimensionality of embedding vectors.                                                                                                                                                           |
 | vector_db_id           | string  | Vector database identification.                                                                                                                                                                |
 | db_path                | string  | Path to RAG database. Required for faiss backend.                                                                                                                                              |
-| score_multiplier       | number  | Multiplier applied to relevance scores from this vector store. Used to weight results when querying multiple knowledge sources. Values > 1 boost this store's results; values < 1 reduce them. |
+| score_multiplier       | number  | Multiplier applied to relevance scores from this vector store. Used to weight results when querying multiple knowledge sources. Values > 1 boost this store's results; values &lt; 1 reduce them. |
 | relevance_cutoff_score | number  | Minimum raw similarity score to consider a result relevant. Results with a similarity score below this threshold are not returned.                                                             |
 | host                   | string  | PostgreSQL host for pgvector backend. Defaults to ${env.POSTGRES_HOST} when backend is pgvector.                                                                                               |
 | port                   |         | PostgreSQL port for pgvector backend. Defaults to ${env.POSTGRES_PORT} when backend is pgvector.                                                                                               |
@@ -829,6 +863,44 @@ Configuration for a single retrieval strategy (inline or tool).
 | reranker   |         | Neural reranking of RAG chunks using cross-encoder. Only applicable to inline retrieval. |
 
 
+## RiskDefinition
+
+
+Definition for a custom risk category.
+
+Custom risks allow applications to add use-case-specific safety checks
+beyond the standard harm, jailbreak, leetspeak, amnesia, and
+history_politics checks.
+Example:
+    liability_risk = RiskDefinition(
+        name="liability",
+        description="Content requesting legal, medical, or financial advice",
+        threshold=0.55,
+        points=["input"],
+    )
+    pii_risk = RiskDefinition(
+        name="pii_request",
+        description="User is asking the AI to reveal personal information",
+        threshold=0.50,
+        points=["input", "tool"],
+    )
+Note:
+    To enable think mode (detailed reasoning) for a risk, add the risk name
+    to the `thinking_enabled` list in `ModerationConfig`. Do not set
+    `enable_thinking` directly - it is managed internally.
+
+
+| Field             | Type    | Description                                                                                                                                            |
+|-------------------|---------|--------------------------------------------------------------------------------------------------------------------------------------------------------|
+| name              | string  | Unique identifier for this risk (e.g., 'liability', 'competitor_mention')                                                                              |
+| description       | string  | Risk definition text passed to Granite Guardian as custom_criteria                                                                                     |
+| threshold         | number  | Score threshold for flagging (lower = more sensitive)                                                                                                  |
+| enabled           | boolean | Whether to run this check                                                                                                                              |
+| enable_thinking   | boolean | Internal field - set via ModerationConfig.thinking_enabled list, not directly. When True, Granite Guardian provides detailed reasoning before scoring. |
+| points            | array   | Where this risk is evaluated: `input` (user message), `output` (model response), or `tool` (tool/MCP content).                                         |
+| violation_message | string  | Message to be displayed when this risk is violated                                                                                                     |
+
+
 ## RlsapiV1Configuration
 
 
@@ -889,18 +961,21 @@ and specify the number of Uvicorn workers. When more workers are specified,
 the service can handle requests concurrently.
 
 
-| Field        | Type    | Description                                                            |
-|--------------|---------|------------------------------------------------------------------------|
-| host         | string  | Service hostname                                                       |
-| port         | integer | Service port                                                           |
-| base_url     | string  | Externally reachable base URL for the service; needed for A2A support. |
-| auth_enabled | boolean | Enables the authentication subsystem                                   |
-| workers      | integer | Number of Uvicorn worker processes to start                            |
-| color_log    | boolean | Enables colorized logging                                              |
-| access_log   | boolean | Enables logging of all access information                              |
-| tls_config   |         | Transport Layer Security configuration for HTTPS support               |
-| root_path    | string  | ASGI root path for serving behind a reverse proxy on a subpath         |
-| cors         |         | Cross-Origin Resource Sharing configuration for cross-domain requests  |
+| Field                                 | Type    | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+|---------------------------------------|---------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| host                                  | string  | Service hostname                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| port                                  | integer | Service port                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| base_url                              | string  | Externally reachable base URL for the service; needed for A2A support.                                                                                                                                                                                                                                                                                                                                                                                                         |
+| auth_enabled                          | boolean | Enables the authentication subsystem                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| workers                               | integer | Number of Uvicorn worker processes to start                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| max_concurrent_file_uploads           | integer | Maximum number of file uploads (POST /v1/files) processed concurrently per worker. Each in-flight upload can hold up to the configured maximum file size in memory, so this bounds worst-case memory usage from concurrent uploads. Additional uploads are rejected with 429 until a slot frees up.                                                                                                                                                                            |
+| max_concurrent_vector_store_attaches  | integer | Maximum number of vector store file attachments (POST /v1/vector-stores/{id}/files) processed concurrently per worker. Each in-flight attachment re-reads and chunks the source file, so this bounds worst-case memory usage independently of max_concurrent_file_uploads. Additional attachments are rejected with 429 until a slot frees up.                                                                                                                                 |
+| delete_file_after_vector_store_attach | boolean | When true, deletes a file (POST /v1/files) once it has been successfully attached to a vector store, since the vector store keeps its own chunked/embedded copy of the content. Defaults to false to match the OpenAI Files API, where a file remains reusable across multiple vector stores until the caller explicitly deletes it - enabling this makes attached files single-use: re-attaching the same file_id to another vector store will fail once it has been deleted. |
+| color_log                             | boolean | Enables colorized logging                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| access_log                            | boolean | Enables logging of all access information                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| tls_config                            |         | Transport Layer Security configuration for HTTPS support                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| root_path                             | string  | ASGI root path for serving behind a reverse proxy on a subpath                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| cors                                  |         | Cross-Origin Resource Sharing configuration for cross-domain requests                                                                                                                                                                                                                                                                                                                                                                                                          |
 
 
 ## SkillsConfiguration
@@ -1027,31 +1102,24 @@ Attributes:
         provider-specific knobs not modeled here.
 
 
-| Field          | Type   | Description                                                                                                                                                                                                                                               |
-|----------------|--------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| type           | string | Canonical, backend-agnostic provider identifier mapped to a OGX provider_type by the synthesizer.                                                                                                                                                 |
+| Field          | Type   | Description                                                                                                                                                                                                                                       |
+|----------------|--------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| type           | string | Canonical, backend-agnostic provider identifier mapped to an OGX provider_type by the synthesizer.                                                                                                                                                |
 | id             | string | Optional identifier emitted as the OGX provider_id. When omitted, synthesized as type with underscores hyphenated. If set, must be non-empty after stripping whitespace and may contain only lowercase letters, digits, underscores, and hyphens. |
-| api_key_env    | string | Name of the environment variable holding the provider API key. Emitted as a ${env.<name>} reference so the secret is never written to disk in resolved form.                                                                                              |
-| allowed_models | array  | Optional allow-list of model identifiers for this provider.                                                                                                                                                                                               |
-| extra          | object | Additional provider-config keys merged verbatim into the synthesized provider's config block.                                                                                                                                                             |
+| api_key_env    | string | Name of the environment variable holding the provider API key. Emitted as a ${env.<name>} reference so the secret is never written to disk in resolved form.                                                                                      |
+| allowed_models | array  | Optional allow-list of model identifiers for this provider.                                                                                                                                                                                       |
+| extra          | object | Additional provider-config keys merged verbatim into the synthesized provider's config block.                                                                                                                                                     |
 
 
-## UnifiedLlamaStackConfig
+## UnifiedOgxConfig
 
 
 Backend-specific knobs for unified-mode OGX synthesis.
 
 Per Decision S5 of the design spike, backend-agnostic high-level sections
 (inference, ...) live at the configuration root, not here. This block holds
-only the Llama-Stack-specific synthesis controls: which baseline to start
+only the OGX-specific synthesis controls: which baseline to start
 from, an optional profile file, and a raw native_override escape hatch.
-
-During synthesis from the default baseline or a profile, LCORE ensures the
-OGX MCP tool_runtime provider (`provider_id: model-context-protocol`,
-`provider_type: remote::model-context-protocol`) is present so static
-`mcp_servers` and dynamic MCP registration work. That ensure is skipped when
-`baseline: empty` (migration / blank-slate); supply MCP via `native_override`
-in that case.
 
 Attributes:
     baseline: Synthesis starting point. "default" begins from LCORE's
@@ -1068,11 +1136,11 @@ Attributes:
         anything the high-level sections do not express.
 
 
-| Field           | Type   | Description                                                                                                                |
-|-----------------|--------|----------------------------------------------------------------------------------------------------------------------------|
+| Field           | Type   | Description                                                                                                                                                                                                                    |
+|-----------------|--------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | baseline        | string | Synthesis starting point: 'default' uses LCORE's built-in baseline including the conditional OpenAI provider, 'byo-llm' uses the same baseline without that OpenAI row, 'empty' starts from {}. Ignored when 'profile' is set. |
-| profile         | string | Path to a run.yaml-shaped baseline file. Relative paths resolve against the directory of the loaded lightspeed-stack.yaml. |
-| native_override | object | Raw OGX schema deep-merged last (maps merge recursively; lists and scalars replace).                               |
+| profile         | string | Path to a run.yaml-shaped baseline file. Relative paths resolve against the directory of the loaded lightspeed-stack.yaml.                                                                                                     |
+| native_override | object | Raw OGX schema deep-merged last (maps merge recursively; lists and scalars replace).                                                                                                                                           |
 
 
 ## UserDataCollection
@@ -1107,7 +1175,7 @@ Attributes:
         registered corpora).
 
 
-| Field            | Type   | Description                                                                                                                                                 |
-|------------------|--------|-------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Field            | Type   | Description                                                                                                                                         |
+|------------------|--------|-----------------------------------------------------------------------------------------------------------------------------------------------------|
 | default_provider | string | Provider id used for vector_stores.default_* in the synthesized OGX config. Required when providers is non-empty; must match one of providers[].id. |
-| providers        | array  | Dynamic vector-store provider capacity for runtime POST /v1/vector-stores creates. Not the same as rag.byok.stores (static registered corpora).             |
+| providers        | array  | Dynamic vector-store provider capacity for runtime POST /v1/vector-stores creates. Not the same as rag.byok.stores (static registered corpora).     |

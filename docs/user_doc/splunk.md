@@ -85,7 +85,7 @@ Events follow the rlsapi telemetry format for consistency with existing analytic
     "system_id": "abc-def-123",
     "total_llm_tokens": 0,
     "request_id": "req_xyz789",
-    "cla_version": "CLA/0.7.0rc2",
+    "cla_version": "CLA/0.7.0rc3",
     "system_os": "RHEL",
     "system_version": "9.3",
     "system_arch": "x86_64"
@@ -163,4 +163,4 @@ splunk:
 
 ## Extending to Other Endpoints
 
-See [src/observability/README.md](../src/observability/README.md) for developer documentation on adding Splunk telemetry to additional endpoints.
+See [src/observability/README.md](../../src/observability/README.md) for developer documentation on adding Splunk telemetry to additional endpoints.

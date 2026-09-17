@@ -43,7 +43,7 @@ spec:
         seccompProfile:
           type: RuntimeDefault
       env:
-        - name: E2E_LLAMA_HOSTNAME
+        - name: E2E_OGX_HOSTNAME
           valueFrom:
             secretKeyRef:
               name: llama-stack-ip-secret

@@ -110,7 +110,7 @@ def test_dump_configuration_minimal_cfg(tmp_path: Path) -> None:
     dump_file = tmp_path / "test.json"
     cfg.dump(dump_file)
 
-    with open(dump_file, "r", encoding="utf-8") as fin:
+    with open(dump_file, encoding="utf-8") as fin:
         content = json.load(fin)
         # content should be loaded
         assert content is not None
@@ -336,7 +336,7 @@ def test_dump_configuration_valid_values(tmp_path: Path) -> None:
     dump_file = tmp_path / "test.json"
     cfg.dump(dump_file)
 
-    with open(dump_file, "r", encoding="utf-8") as fin:
+    with open(dump_file, encoding="utf-8") as fin:
         content = json.load(fin)
         # content should be loaded
         assert content is not None
@@ -552,7 +552,7 @@ def test_dump_configuration_with_one_mcp_server(tmp_path: Path) -> None:
     dump_file = tmp_path / "test.json"
     cfg.dump(dump_file)
 
-    with open(dump_file, "r", encoding="utf-8") as fin:
+    with open(dump_file, encoding="utf-8") as fin:
         content = json.load(fin)
         assert content is not None
         assert "mcp_servers" in content
@@ -604,7 +604,7 @@ def test_dump_configuration_with_more_mcp_servers(tmp_path: Path) -> None:
     dump_file = tmp_path / "test.json"
     cfg.dump(dump_file)
 
-    with open(dump_file, "r", encoding="utf-8") as fin:
+    with open(dump_file, encoding="utf-8") as fin:
         content = json.load(fin)
         assert content is not None
         assert "mcp_servers" in content
@@ -715,7 +715,7 @@ def test_dump_configuration_with_quota_limiters(tmp_path: Path) -> None:
     dump_file = tmp_path / "test.json"
     cfg.dump(dump_file)
 
-    with open(dump_file, "r", encoding="utf-8") as fin:
+    with open(dump_file, encoding="utf-8") as fin:
         content = json.load(fin)
         # content should be loaded
         assert content is not None
@@ -995,7 +995,7 @@ def test_dump_configuration_with_quota_limiters_different_values(
     dump_file = tmp_path / "test.json"
     cfg.dump(dump_file)
 
-    with open(dump_file, "r", encoding="utf-8") as fin:
+    with open(dump_file, encoding="utf-8") as fin:
         content = json.load(fin)
         # content should be loaded
         assert content is not None
@@ -1230,7 +1230,7 @@ def test_dump_configuration_with_vector_store(tmp_path: Path) -> None:
     dump_file = tmp_path / "test.json"
     cfg.dump(dump_file)
 
-    with open(dump_file, "r", encoding="utf-8") as fin:
+    with open(dump_file, encoding="utf-8") as fin:
         content = json.load(fin)
 
     assert content["vector_store"] == {
@@ -1310,7 +1310,7 @@ def test_dump_configuration_byok(tmp_path: Path) -> None:
     dump_file = tmp_path / "test.json"
     cfg.dump(dump_file)
 
-    with open(dump_file, "r", encoding="utf-8") as fin:
+    with open(dump_file, encoding="utf-8") as fin:
         content = json.load(fin)
         # content should be loaded
         assert content is not None
@@ -1566,7 +1566,7 @@ def test_dump_configuration_pg_namespace(tmp_path: Path) -> None:
     dump_file = tmp_path / "test.json"
     cfg.dump(dump_file)
 
-    with open(dump_file, "r", encoding="utf-8") as fin:
+    with open(dump_file, encoding="utf-8") as fin:
         content = json.load(fin)
         # content should be loaded
         assert content is not None
@@ -1807,7 +1807,7 @@ def test_dump_configuration_with_one_skill(tmp_path: Path) -> None:
     dump_file = tmp_path / "test.json"
     cfg.dump(dump_file)
 
-    with open(dump_file, "r", encoding="utf-8") as fin:
+    with open(dump_file, encoding="utf-8") as fin:
         content = json.load(fin)
         # content should be loaded
         assert content is not None
@@ -1884,7 +1884,7 @@ def test_dump_configuration_with_skills(tmp_path: Path) -> None:
     dump_file = tmp_path / "test.json"
     cfg.dump(dump_file)
 
-    with open(dump_file, "r", encoding="utf-8") as fin:
+    with open(dump_file, encoding="utf-8") as fin:
         content = json.load(fin)
         # content should be loaded
         assert content is not None
@@ -1962,7 +1962,7 @@ def test_dump_configuration_allow_degraded_mode(tmp_path: Path) -> None:
     dump_file = tmp_path / "test.json"
     cfg.dump(dump_file)
 
-    with open(dump_file, "r", encoding="utf-8") as fin:
+    with open(dump_file, encoding="utf-8") as fin:
         content = json.load(fin)
         # content should be loaded
         assert content is not None
@@ -2206,7 +2206,7 @@ def test_dump_configuration_max_retries_settings(tmp_path: Path) -> None:
     dump_file = tmp_path / "test.json"
     cfg.dump(dump_file)
 
-    with open(dump_file, "r", encoding="utf-8") as fin:
+    with open(dump_file, encoding="utf-8") as fin:
         content = json.load(fin)
         # content should be loaded
         assert content is not None
@@ -2450,7 +2450,7 @@ def test_dump_configuration_retry_count_settings(tmp_path: Path) -> None:
     dump_file = tmp_path / "test.json"
     cfg.dump(dump_file)
 
-    with open(dump_file, "r", encoding="utf-8") as fin:
+    with open(dump_file, encoding="utf-8") as fin:
         content = json.load(fin)
         # content should be loaded
         assert content is not None
@@ -2700,7 +2700,7 @@ def test_dump_configuration_specific_compaction_values(tmp_path: Path) -> None:
     dump_file = tmp_path / "test.json"
     cfg.dump(dump_file)
 
-    with open(dump_file, "r", encoding="utf-8") as fin:
+    with open(dump_file, encoding="utf-8") as fin:
         content = json.load(fin)
         # content should be loaded
         assert content is not None

@@ -32,10 +32,10 @@ def create_argument_parser() -> ArgumentParser:
                       error_responses,common,agents,common_responses}
                       dump schemas for selected models group into OpenAPI-compatible file and quit
     - -c / --config: path to the configuration file (default "lightspeed-stack.yaml")
-    - -g / --generate-ogx-configuration: generate an OGX
-                                                 configuration from the service configuration
-    - -i / --input-config-file: OGX input configuration filename (default "run.yaml")
-    - -o / --output-config-file: OGX output configuration filename (default "run_.yaml")
+    - --synthesized-config-output: path for synthesized OGX run.yaml in unified library mode
+    - --migrate-config: migrate legacy two-file config to unified single file and exit
+    - --run-yaml: legacy OGX run.yaml path (with --migrate-config)
+    - --migrate-output: unified config output path (with --migrate-config)
 
     Returns:
         Configured ArgumentParser for parsing the service CLI options.
@@ -154,8 +154,7 @@ def main() -> None:
       the quota scheduler, and starts the Uvicorn web service.
 
     Raises:
-        SystemExit: when configuration dumping or OGX generation fails
-                    (exits with status 1).
+        SystemExit: when configuration dumping or migration fails (exits with status 1).
     """
     logger.info("Lightspeed Core Stack startup")
     parser = create_argument_parser()

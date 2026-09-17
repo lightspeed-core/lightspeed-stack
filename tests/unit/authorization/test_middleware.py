@@ -315,12 +315,13 @@ class TestPerformAuthorizationCheck:
         kwargs = {"auth": dummy_auth_tuple}
         args = []
 
-        if request_location == "kwargs":
-            kwargs["request"] = mock_request
-        elif request_location == "args":
-            args = [
-                mock_request,
-            ]
+        match request_location:
+            case "kwargs":
+                kwargs["request"] = mock_request
+            case "args":
+                args = [
+                    mock_request,
+                ]
 
         await _perform_authorization_check(Action.QUERY, args, kwargs)
 

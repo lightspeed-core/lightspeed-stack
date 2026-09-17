@@ -180,10 +180,10 @@ def validate_json(message: Any, schema: Any) -> None:
         )
 
     except jsonschema.ValidationError as e:
-        assert False, "The message doesn't fit the expected schema:" + str(e)
+        raise AssertionError("The message doesn't fit the expected schema:" + str(e))
 
     except jsonschema.SchemaError as e:
-        assert False, "The provided schema is faulty:" + str(e)
+        raise AssertionError("The provided schema is faulty:" + str(e))
 
 
 def wait_for_container_health(
@@ -268,13 +268,75 @@ def wait_for_ogx_ready(
     -------
         True if healthy; False if the wait soft-failed.
     """
-    return wait_for_container_health("llama-stack", max_attempts=max_attempts)
+    return wait_for_container_health("ogx", max_attempts=max_attempts)
+
+
+def _parsed_json_container(value: Any) -> Optional[Any]:
+    """Return ``value`` parsed as a JSON object or array, or None.
+
+    Only objects and arrays qualify. A bare string such as ``"1e3"`` is plain
+    text here, not a document whose formatting may be normalised.
+
+    Parameters:
+    ----------
+        value: Candidate value, only strings are considered.
+
+    Returns:
+    -------
+        The parsed ``dict`` or ``list``, or None when ``value`` is not a string
+        holding a JSON object or array.
+    """
+    if not isinstance(value, str):
+        return None
+    try:
+        parsed = json.loads(value)
+    except ValueError:
+        return None
+    return parsed if isinstance(parsed, (dict, list)) else None
+
+
+def _json_values_equal(left: Any, right: Any) -> bool:
+    """Return True when two parsed JSON values are equal, including their types.
+
+    Plain ``==`` is not enough: Python treats ``True == 1``, ``False == 0``
+    and ``1 == 1.0`` as equal, so ``{"enabled": true}`` would match
+    ``{"enabled": 1}``. Object key order is ignored; array order is not.
+
+    Parameters:
+    ----------
+        left: First parsed JSON value.
+        right: Second parsed JSON value.
+
+    Returns:
+    -------
+        True when both values have the same JSON types and contents.
+    """
+    if type(left) is not type(right):
+        return False
+    if isinstance(left, dict):
+        return left.keys() == right.keys() and all(
+            _json_values_equal(left[key], right[key]) for key in left
+        )
+    if isinstance(left, list):
+        return len(left) == len(right) and all(
+            _json_values_equal(item_left, item_right)
+            for item_left, item_right in zip(left, right)
+        )
+    return left == right
 
 
 def validate_json_partially(actual: Any, expected: Any) -> None:
     """Recursively validate that `actual` JSON contains all keys and values specified in `expected`.
 
     Extra elements/keys are ignored. Raises AssertionError if validation fails.
+
+    Values that are strings holding a serialized JSON object or array are
+    compared by parsed content rather than byte for byte, so a producer that
+    emits its keys in a different order still matches. The comparison stays
+    exact — same keys, same values, same JSON types, and array element order
+    still significant — because relaxing it to the partial semantics used
+    elsewhere would silently weaken every existing assertion over an embedded
+    JSON document.
 
     Returns:
         None
@@ -303,6 +365,16 @@ def validate_json_partially(actual: Any, expected: Any) -> None:
             ), f"No matching element found in list for schema item {schema_item}, got {actual}"
 
     else:
+        if actual != expected:
+            parsed_actual = _parsed_json_container(actual)
+            parsed_expected = _parsed_json_container(expected)
+            if parsed_actual is not None and parsed_expected is not None:
+                assert _json_values_equal(parsed_actual, parsed_expected), (
+                    f"JSON-in-string mismatch: expected {parsed_expected}, "
+                    f"got {parsed_actual}"
+                )
+                return
+
         assert actual == expected, f"Value mismatch: expected {expected}, got {actual}"
 
 
@@ -447,15 +519,20 @@ def restart_container(container_name: str) -> None:
     Raises:
         subprocess.CalledProcessError: if the `docker restart` command fails.
         subprocess.TimeoutExpired: if the `docker restart` command times out.
+        AssertionError: for ``lightspeed-stack``, if the service does not
+            accept HTTP within ``wait_for_lightspeed_stack_http_ready``'s
+            budget. Docker health itself stays a soft failure; the HTTP wait
+            does not, so callers that must not fail (teardown hooks) have to
+            guard the call.
     """
     if is_prow_environment():
         restart_pod(container_name)
-        if container_name == "llama-stack":
+        if container_name == "ogx":
             from tests.e2e.features.steps.health import (
-                reset_llama_stack_disrupt_once_tracking,
+                reset_ogx_disrupt_once_tracking,
             )
 
-            reset_llama_stack_disrupt_once_tracking()
+            reset_ogx_disrupt_once_tracking()
         return
 
     try:
@@ -476,48 +553,51 @@ def restart_container(container_name: str) -> None:
     # that restart the container don't time out.
     wait_for_container_health(container_name)
 
-    if container_name == "llama-stack":
+    # Docker health can report healthy before uvicorn binds the published
+    # port (the documented race wait_for_lightspeed_stack_http_ready exists
+    # for). Unified-mode first boots are the slowest restarts in the suite
+    # and hit that window reliably, so close it here for every restart
+    # rather than only in the proxy steps.
+    if container_name == "lightspeed-stack":
+        wait_for_lightspeed_stack_http_ready()
+
+    if container_name == "ogx":
         from tests.e2e.features.steps.health import (
-            reset_llama_stack_disrupt_once_tracking,
+            reset_ogx_disrupt_once_tracking,
         )
 
-        reset_llama_stack_disrupt_once_tracking()
+        reset_ogx_disrupt_once_tracking()
 
 
-def restart_lightspeed_stack_service(
-    *, wait_http: bool = False, skip_llama_restore: bool = False
-) -> None:
+def restart_lightspeed_stack_service(*, skip_ogx_restore: bool = False) -> None:
     """Restart the lightspeed-stack container used by Behave steps.
 
-    Wraps ``restart_container("lightspeed-stack")`` and optionally polls the
-    host-mapped port so step modules share one LCS restart path.
+    Wraps ``restart_container("lightspeed-stack")`` so step modules share one
+    LCS restart path. That path already waits for Docker health and then for
+    HTTP on the host-mapped port, so callers need no wait of their own.
 
     Parameters:
     ----------
-        wait_http: When True, also call ``wait_for_lightspeed_stack_http_ready``
-            after Docker health. Default False — generic ``The service is
-            restarted`` relies on Docker health only; proxy/tls steps opt in.
-        skip_llama_restore: When True on Prow/Konflux, tell e2e-ops not to
+        skip_ogx_restore: When True on Prow/Konflux, tell e2e-ops not to
             bring llama back before recreating LCS (degraded-mode startup).
     """
-    previous = os.environ.get("E2E_SKIP_LLAMA_RESTORE_ON_LCS_RESTART")
-    if skip_llama_restore:
-        os.environ["E2E_SKIP_LLAMA_RESTORE_ON_LCS_RESTART"] = "1"
+    previous = os.environ.get("E2E_SKIP_OGX_RESTORE_ON_LCS_RESTART")
+    if skip_ogx_restore:
+        os.environ["E2E_SKIP_OGX_RESTORE_ON_LCS_RESTART"] = "1"
     try:
         restart_container("lightspeed-stack")
-        if wait_http:
-            wait_for_lightspeed_stack_http_ready()
     finally:
-        if skip_llama_restore:
+        if skip_ogx_restore:
             if previous is None:
-                os.environ.pop("E2E_SKIP_LLAMA_RESTORE_ON_LCS_RESTART", None)
+                os.environ.pop("E2E_SKIP_OGX_RESTORE_ON_LCS_RESTART", None)
             else:
-                os.environ["E2E_SKIP_LLAMA_RESTORE_ON_LCS_RESTART"] = previous
+                os.environ["E2E_SKIP_OGX_RESTORE_ON_LCS_RESTART"] = previous
 
 
 def wait_for_lightspeed_stack_http_ready(
-    max_attempts: int = 80,
+    timeout_s: float = 120.0,
     delay_s: float = 1.5,
+    request_timeout_s: float = 5.0,
 ) -> None:
     """Block until Lightspeed Stack accepts HTTP on the host-mapped port.
 
@@ -528,10 +608,21 @@ def wait_for_lightspeed_stack_http_ready(
     Treats HTTP 200 and 401 as success: the process is listening. Auth-enabled
     configs (e.g. RBAC jwk-token) return 401 on probes without a Bearer token.
 
+    Bounded by a single monotonic deadline covering both the requests and the
+    sleeps, and each request is additionally capped at the time remaining, so
+    the wait stays within ``timeout_s`` plus at most one request timeout —
+    ``requests`` applies its scalar ``timeout`` to the connect and the read
+    phase separately, so an attempt started just under the deadline can
+    overrun by that much. An attempt-counted loop cannot give even that
+    guarantee: with a per-request timeout the worst case is
+    ``attempts * request_timeout + (attempts - 1) * delay``, which for the
+    previous defaults was 518.5s while the failure message reported 120s.
+
     Parameters:
     ----------
-        max_attempts: Maximum GET attempts.
+        timeout_s: Total wall-clock budget for becoming reachable.
         delay_s: Sleep between attempts.
+        request_timeout_s: Per-request timeout, clamped to the time remaining.
     Raises:
     ------
         AssertionError: If ``/liveness`` does not return an accepted status in time.
@@ -541,26 +632,35 @@ def wait_for_lightspeed_stack_http_ready(
     host = os.getenv("E2E_LSC_HOSTNAME", "localhost")
     port = os.getenv("E2E_LSC_PORT", "8080")
     url = f"http://{host}:{port}/liveness"
-    for attempt in range(max_attempts):
+    started = time.monotonic()
+    deadline = started + timeout_s
+    attempt = 0
+    while True:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            break
+        attempt += 1
         try:
-            response = requests.get(url, timeout=5)
+            response = requests.get(url, timeout=min(request_timeout_s, remaining))
             if response.status_code in (200, 401):
                 return
             detail = response.text[:200].replace("\n", " ")
             print(
-                f"⏱ HTTP wait LSC {attempt + 1}/{max_attempts} "
+                f"⏱ HTTP wait LSC attempt {attempt} "
                 f"({url} -> {response.status_code}: {detail})..."
             )
         except requests.RequestException as exc:
             print(
-                f"⏱ HTTP wait LSC {attempt + 1}/{max_attempts} "
+                f"⏱ HTTP wait LSC attempt {attempt} "
                 f"({url} -> {exc.__class__.__name__}: {exc})..."
             )
-        if attempt < max_attempts - 1:
-            time.sleep(delay_s)
+        if time.monotonic() + delay_s >= deadline:
+            break
+        time.sleep(delay_s)
+    elapsed = time.monotonic() - started
     raise AssertionError(
         f"Lightspeed Stack did not become reachable at {url!r} "
-        f"after {max_attempts} attempts (~{max_attempts * delay_s:.0f}s)"
+        f"after {attempt} attempts / {elapsed:.0f}s (budget {timeout_s:.0f}s)"
     )
 
 
