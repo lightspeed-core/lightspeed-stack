@@ -1,9 +1,14 @@
 """Unit tests for QueryRequest model."""
 
+# pylint: disable=no-member
+# Pydantic Optional model fields confuse pylint's attribute inference after
+# a narrowing ``assert ... is not None``.
+
 import pytest
+from pydantic import ValidationError
 
 from models.api.requests import QueryRequest
-from models.common.query import Attachment, SolrVectorSearchRequest
+from models.common.query import Attachment, OkpFilter, SolrVectorSearchRequest
 
 
 class TestQueryRequest:
@@ -147,3 +152,50 @@ class TestQueryRequest:
         solr_request = SolrVectorSearchRequest.model_validate(qr.solr)
         assert solr_request.mode == "hybrid"
         assert solr_request.filters == {"fq": ["x:y"]}
+
+    def test_okp_filter_parsed(self) -> None:
+        """The transport-neutral ``okp`` filter is parsed into typed objects."""
+        qr = QueryRequest(
+            query="q",
+            okp={
+                "products": [
+                    {
+                        "product": "openshift_container_platform",
+                        "versions": ["4.16", "4.17"],
+                    }
+                ]
+            },
+        )  # pyright: ignore[reportCallIssue]
+        assert qr.okp is not None
+        assert qr.okp.products[0].product == "openshift_container_platform"
+        assert qr.okp.products[0].versions == ["4.16", "4.17"]
+
+    def test_okp_defaults_to_none(self) -> None:
+        """The ``okp`` field is optional and defaults to None."""
+        qr = QueryRequest(query="q")
+        assert qr.okp is None
+
+
+class TestOkpFilter:
+    """Tests for the OkpFilter / OkpProductFilter request models."""
+
+    def test_product_is_required(self) -> None:
+        """A product selection without a product identifier is rejected."""
+        with pytest.raises(ValidationError):
+            OkpFilter.model_validate({"products": [{"versions": ["4.16"]}]})
+
+    def test_versions_optional(self) -> None:
+        """Versions may be omitted, matching the product regardless of version."""
+        okp = OkpFilter.model_validate(
+            {"products": [{"product": "openshift_container_platform"}]}
+        )
+        assert okp.products[0].versions is None
+
+    def test_products_defaults_to_empty_list(self) -> None:
+        """An OkpFilter with no products is an empty (no-op) filter."""
+        assert OkpFilter().products == []
+
+    def test_unknown_fields_rejected(self) -> None:
+        """Unknown fields are rejected on both nested models."""
+        with pytest.raises(ValidationError):
+            OkpFilter.model_validate({"products": [{"product": "p", "bogus": 1}]})

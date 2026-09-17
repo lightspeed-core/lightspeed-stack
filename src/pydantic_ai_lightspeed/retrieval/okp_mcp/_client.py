@@ -1,0 +1,149 @@
+"""Thin MCP client wrapper for OKP RAG retrieval.
+
+Wraps pydantic-ai's :class:`~pydantic_ai.mcp.MCPToolset` (FastMCP-backed,
+streamable HTTP) to perform a single, programmatic search-tool call against the
+RHOKP MCP server. No agent or LLM is involved: this is a pre-run retriever, so
+the tool is invoked directly rather than exposed to a model.
+"""
+
+from __future__ import annotations
+
+from collections.abc import Mapping
+from typing import Any, Optional
+
+from pydantic_ai.mcp import MCPToolset
+
+from log import get_logger
+
+logger = get_logger(__name__)
+
+
+class OkpMcpUnavailableError(RuntimeError):
+    """Raised when every RHOKP MCP search attempt fails for a single request.
+
+    Signals :func:`utils.vector_search.build_rag_context` that the MCP transport
+    is unusable for this request and it should fall back to the Solr transport.
+    """
+
+
+async def call_okp_search(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+    url: str,
+    tool_name: str,
+    query: str,
+    rows: int,
+    headers: Optional[dict[str, str]] = None,
+    timeout: Optional[float] = None,
+    products: Optional[list[dict[str, Any]]] = None,
+) -> dict[str, Any]:
+    """Call the RHOKP MCP search tool and return its structured result.
+
+    Opens a short-lived streamable-HTTP MCP session, invokes ``tool_name`` with
+    ``{"query": query, "rows": rows}`` (plus a structured ``products`` filter
+    when supplied), and returns the tool's structured content. The session is
+    opened and closed by
+    :meth:`~pydantic_ai.mcp.MCPToolset.direct_call_tool`.
+
+    The RHOKP MCP ``search`` tool accepts a structured, Solr-``fq``-analogous
+    product filter and builds the query-side filter itself, so a
+    multi-product/multi-version selection is expressed in a single tool call
+    rather than fanned out into one call per (product, version) pair.
+
+    Parameters:
+        url: RHOKP MCP endpoint (streamable HTTP), e.g. ``http://host:8080/mcp``.
+        tool_name: Name of the MCP search tool to call (e.g. ``search``).
+        query: Raw user query string.
+        rows: Maximum number of results to request (server clamps to 1..20).
+        headers: Optional static request headers (e.g. authorization).
+        timeout: Optional per-request timeout in seconds for init and read.
+        products: Optional structured product filter, a list of
+            ``{"product": str, "versions": [str, ...]}`` entries (products
+            OR-combined; versions within a product OR-combined). Omitted from the
+            tool args when None or empty, in which case the search spans all
+            products.
+
+    Returns:
+        The tool's structured content as a dict, e.g.
+        ``{"response": {"docs": [...], "numFound": N}}``. Returns an empty dict
+        when the server returns non-mapping content (nothing usable to map).
+
+    Raises:
+        Exception: Propagates transport- and tool-level errors from the MCP
+            client (``tool_error_behavior="error"``). Callers are expected to
+            handle failures and degrade gracefully.
+    """
+    toolset_kwargs: dict[str, Any] = {"tool_error_behavior": "error"}
+    if headers:
+        toolset_kwargs["headers"] = headers
+    if timeout is not None:
+        toolset_kwargs["init_timeout"] = timeout
+        toolset_kwargs["read_timeout"] = timeout
+
+    tool_args: dict[str, Any] = {"query": query, "rows": rows}
+    if products:
+        tool_args["products"] = products
+
+    toolset = MCPToolset(url, **toolset_kwargs)
+    result = await toolset.direct_call_tool(tool_name, tool_args)
+
+    if isinstance(result, Mapping):
+        return dict(result)
+
+    logger.warning(
+        "OKP MCP tool %r returned non-mapping result of type %s; ignoring",
+        tool_name,
+        type(result).__name__,
+    )
+    return {}
+
+
+async def probe_okp_mcp(
+    url: str,
+    tool_name: str,
+    headers: Optional[dict[str, str]] = None,
+    timeout: Optional[float] = None,
+) -> bool:
+    """Probe an RHOKP endpoint for OKP-over-MCP capability.
+
+    Opens a short-lived streamable-HTTP MCP session against ``url`` and lists
+    the advertised tools, checking that the OKP search tool is present. Called at
+    query time (TTL-cached by :func:`configuration.okp_mcp_available`) to
+    auto-select the OKP RAG transport (MCP vs. the legacy Solr ``vector_io``
+    path) without an explicit configuration flag.
+
+    Parameters:
+        url: Candidate RHOKP MCP endpoint (streamable HTTP), e.g.
+            ``http://host:8080/mcp``.
+        tool_name: Name of the search tool the RHOKP MCP server must advertise
+            for the endpoint to count as MCP-capable.
+        headers: Optional static request headers (e.g. authorization).
+        timeout: Optional timeout in seconds for the initialization and read.
+
+    Returns:
+        True when the endpoint speaks MCP and advertises ``tool_name``; False on
+        any transport, protocol, or timeout error, or when the tool is absent.
+        Never raises: probe failures degrade to the Solr transport.
+    """
+    toolset_kwargs: dict[str, Any] = {}
+    if headers:
+        toolset_kwargs["headers"] = headers
+    if timeout is not None:
+        toolset_kwargs["init_timeout"] = timeout
+        toolset_kwargs["read_timeout"] = timeout
+
+    try:
+        toolset = MCPToolset(url, **toolset_kwargs)
+        tools = await toolset.list_tools()
+    except Exception as exc:  # pylint: disable=broad-exception-caught
+        logger.info(
+            "OKP MCP probe of %r failed (%s); using the Solr transport", url, exc
+        )
+        return False
+
+    available = any(getattr(tool, "name", None) == tool_name for tool in tools)
+    logger.info(
+        "OKP MCP probe of %r: tool %r %s",
+        url,
+        tool_name,
+        "available" if available else "not advertised",
+    )
+    return available

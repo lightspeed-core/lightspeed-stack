@@ -456,6 +456,7 @@ class A2AAgentExecutor(AgentExecutor):
                 ),
                 shield_ids=None,
                 solr=None,
+                okp=None,
             )
 
             # Get LLM client and select model

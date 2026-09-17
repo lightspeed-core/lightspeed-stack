@@ -13,8 +13,9 @@ from pytest_mock import MockerFixture
 
 import constants
 from configuration import AppConfig
-from models.common.query import SolrVectorSearchRequest
+from models.common.query import OkpFilter, SolrVectorSearchRequest
 from models.common.turn_summary import RAGChunk, ReferencedDocument
+from pydantic_ai_lightspeed.retrieval.okp_mcp._client import OkpMcpUnavailableError
 from utils.otel_tracing import SpanAttributes, SpanEvents
 from utils.reranker import (
     _get_cross_encoder,
@@ -28,14 +29,31 @@ from utils.vector_search import (
     _extract_byok_rag_chunks,
     _extract_solr_document_metadata,
     _fetch_byok_rag,
+    _fetch_okp,
     _fetch_okp_rag,
+    _fetch_okp_rag_mcp,
     _format_rag_context,
     _get_okp_base_url,
     _get_solr_vector_store_ids,
     _is_solr_enabled,
+    _okp_filter_to_structured,
     _query_store_for_byok_rag,
     build_rag_context,
 )
+
+
+@pytest.fixture(autouse=True)
+def _force_okp_mcp_unavailable(mocker: MockerFixture) -> None:
+    """Force the OKP MCP probe off so unit tests never make a live probe call.
+
+    ``_fetch_okp`` probes the RHOKP endpoint at query time; without this the
+    Solr-transport tests would hit the network and be non-deterministic. Tests
+    exercising the MCP transport re-patch ``okp_mcp_available`` after this runs.
+    """
+    mocker.patch(
+        "utils.vector_search.okp_mcp_available",
+        new=mocker.AsyncMock(return_value=False),
+    )
 
 
 def _vector_io_query_stub_like_backend(
@@ -281,6 +299,109 @@ class TestBuildQueryParams:
         params = _build_query_params(solr=solr)
 
         assert params["mode"] == "keyword"
+
+
+class TestOkpFilterToStructured:
+    """Tests for _okp_filter_to_structured translation."""
+
+    def test_none_returns_none(self) -> None:
+        """A None filter yields no structured filter."""
+        assert _okp_filter_to_structured(None) is None
+
+    def test_empty_products_returns_none(self) -> None:
+        """An empty product list yields no structured filter."""
+        assert _okp_filter_to_structured(OkpFilter(products=[])) is None
+
+    def test_single_product_no_versions(self) -> None:
+        """A single product without versions becomes a bare eq clause."""
+        okp = OkpFilter.model_validate(
+            {"products": [{"product": "openshift_container_platform"}]}
+        )
+        result = _okp_filter_to_structured(okp)
+        assert result == {
+            "type": "eq",
+            "key": "product",
+            "value": "openshift_container_platform",
+        }
+
+    def test_single_product_with_versions(self) -> None:
+        """Versions become an AND of product eq and version in."""
+        okp = OkpFilter.model_validate(
+            {
+                "products": [
+                    {
+                        "product": "openshift_container_platform",
+                        "versions": ["4.16", "4.17"],
+                    }
+                ]
+            }
+        )
+        result = _okp_filter_to_structured(okp)
+        assert result == {
+            "type": "and",
+            "filters": [
+                {
+                    "type": "eq",
+                    "key": "product",
+                    "value": "openshift_container_platform",
+                },
+                {"type": "in", "key": "product_version", "value": ["4.16", "4.17"]},
+            ],
+        }
+
+    def test_multiple_products_are_ored(self) -> None:
+        """Multiple product selections are OR-combined."""
+        okp = OkpFilter.model_validate(
+            {
+                "products": [
+                    {"product": "openshift_container_platform", "versions": ["4.16"]},
+                    {"product": "rhel"},
+                ]
+            }
+        )
+        result = _okp_filter_to_structured(okp)
+        assert result is not None
+        assert result["type"] == "or"
+        assert len(result["filters"]) == 2
+        assert result["filters"][1] == {"type": "eq", "key": "product", "value": "rhel"}
+
+
+class TestBuildQueryParamsOkp:
+    """Tests for _build_query_params OKP filter handling."""
+
+    def test_okp_only_sets_filters(self) -> None:
+        """An OKP filter alone populates params['filters']."""
+        okp = OkpFilter.model_validate(
+            {"products": [{"product": "openshift_container_platform"}]}
+        )
+        params = _build_query_params(okp=okp)
+
+        assert params["filters"] == {
+            "type": "eq",
+            "key": "product",
+            "value": "openshift_container_platform",
+        }
+
+    def test_okp_and_structured_solr_are_anded(self) -> None:
+        """OKP filter is AND-combined with an existing structured solr filter."""
+        solr = SolrVectorSearchRequest.model_validate(
+            {"filters": {"filters": {"type": "eq", "key": "lang", "value": "en"}}}
+        )
+        okp = OkpFilter.model_validate(
+            {"products": [{"product": "openshift_container_platform"}]}
+        )
+        params = _build_query_params(solr=solr, okp=okp)
+
+        assert params["filters"]["type"] == "and"
+        assert params["filters"]["filters"] == [
+            {"type": "eq", "key": "lang", "value": "en"},
+            {"type": "eq", "key": "product", "value": "openshift_container_platform"},
+        ]
+
+    def test_no_okp_leaves_filters_absent(self) -> None:
+        """Without an OKP filter (or solr filters), no filters key is set."""
+        params = _build_query_params()
+        assert "filters" not in params
 
 
 class TestExtractByokRagChunks:
@@ -1814,3 +1935,182 @@ class TestBuildRagContextOtel:
         completed_attrs = completed.attributes
         assert completed_attrs is not None
         assert completed_attrs["rag.chunks.count"] == 1
+
+
+class TestFetchOkpRagMcp:
+    """Tests for the _fetch_okp_rag_mcp OKP MCP transport helper."""
+
+    @pytest.mark.asyncio
+    async def test_returns_empty_when_okp_inline_disabled(
+        self, mocker: MockerFixture
+    ) -> None:
+        """When OKP is not an inline source, no MCP call is made."""
+        config_mock = mocker.Mock(spec=AppConfig)
+        config_mock.okp_inline_enabled = False
+        mocker.patch("utils.vector_search.configuration", config_mock)
+        retriever_cls = mocker.patch("utils.vector_search.OkpMcpRetriever")
+
+        chunks, documents = await _fetch_okp_rag_mcp("test query")
+
+        assert chunks == []
+        assert documents == []
+        retriever_cls.from_configuration.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_delegates_to_retriever_when_enabled(
+        self, mocker: MockerFixture
+    ) -> None:
+        """When OKP inline is enabled, the retriever fetches for the query."""
+        config_mock = mocker.Mock(spec=AppConfig)
+        config_mock.okp_inline_enabled = True
+        mocker.patch("utils.vector_search.configuration", config_mock)
+
+        expected = (
+            [RAGChunk(content="c", source=constants.OKP_RAG_ID, score=1.0)],
+            [ReferencedDocument(doc_title="t", source=constants.OKP_RAG_ID)],
+        )
+        retriever = mocker.Mock()
+        retriever.fetch = mocker.AsyncMock(return_value=expected)
+        retriever_cls = mocker.patch("utils.vector_search.OkpMcpRetriever")
+        retriever_cls.from_configuration.return_value = retriever
+
+        result = await _fetch_okp_rag_mcp("test query")
+
+        assert result == expected
+        retriever.fetch.assert_awaited_once_with("test query", okp=None)
+
+
+class TestFetchOkpTransportSelection:
+    """Tests for the OKP MCP/Solr transport selection in _fetch_okp."""
+
+    @pytest.mark.asyncio
+    async def test_uses_mcp_transport_when_available(
+        self, mocker: MockerFixture
+    ) -> None:
+        """When MCP has probed available, the MCP path is used and Solr skipped."""
+        mocker.patch(
+            "utils.vector_search.okp_mcp_available",
+            new=mocker.AsyncMock(return_value=True),
+        )
+        mcp_fetch = mocker.patch(
+            "utils.vector_search._fetch_okp_rag_mcp",
+            mocker.AsyncMock(
+                return_value=(
+                    [RAGChunk(content="mcp", source=constants.OKP_RAG_ID, score=1.0)],
+                    [],
+                )
+            ),
+        )
+        solr_fetch = mocker.patch(
+            "utils.vector_search._fetch_okp_rag",
+            mocker.AsyncMock(return_value=([], [])),
+        )
+
+        client_mock = mocker.AsyncMock()
+        chunks, _ = await _fetch_okp(client_mock, "test query")
+
+        mcp_fetch.assert_awaited_once()
+        solr_fetch.assert_not_called()
+        assert any(c.content == "mcp" for c in chunks)
+
+    @pytest.mark.asyncio
+    async def test_uses_solr_transport_when_unavailable(
+        self, mocker: MockerFixture
+    ) -> None:
+        """When MCP is unavailable, the Solr path is used and MCP path is skipped."""
+        mocker.patch(
+            "utils.vector_search.okp_mcp_available",
+            new=mocker.AsyncMock(return_value=False),
+        )
+        mcp_fetch = mocker.patch(
+            "utils.vector_search._fetch_okp_rag_mcp",
+            mocker.AsyncMock(return_value=([], [])),
+        )
+        solr_fetch = mocker.patch(
+            "utils.vector_search._fetch_okp_rag",
+            mocker.AsyncMock(
+                return_value=(
+                    [RAGChunk(content="solr", source=constants.OKP_RAG_ID, score=1.0)],
+                    [],
+                )
+            ),
+        )
+
+        client_mock = mocker.AsyncMock()
+        chunks, _ = await _fetch_okp(client_mock, "test query")
+
+        solr_fetch.assert_awaited_once()
+        mcp_fetch.assert_not_called()
+        assert any(c.content == "solr" for c in chunks)
+
+    @pytest.mark.asyncio
+    async def test_falls_back_to_solr_when_mcp_hard_fails(
+        self, mocker: MockerFixture
+    ) -> None:
+        """A believed-available endpoint that hard-fails falls forward to Solr."""
+        mocker.patch(
+            "utils.vector_search.okp_mcp_available",
+            new=mocker.AsyncMock(return_value=True),
+        )
+        mocker.patch(
+            "utils.vector_search._fetch_okp_rag_mcp",
+            mocker.AsyncMock(side_effect=OkpMcpUnavailableError("boom")),
+        )
+        mark = mocker.patch("utils.vector_search.mark_okp_mcp_unavailable")
+        solr_fetch = mocker.patch(
+            "utils.vector_search._fetch_okp_rag",
+            mocker.AsyncMock(
+                return_value=(
+                    [RAGChunk(content="solr", source=constants.OKP_RAG_ID, score=1.0)],
+                    [],
+                )
+            ),
+        )
+
+        client_mock = mocker.AsyncMock()
+        chunks, _ = await _fetch_okp(client_mock, "test query")
+
+        mark.assert_called_once()
+        solr_fetch.assert_awaited_once()
+        assert any(c.content == "solr" for c in chunks)
+
+    @pytest.mark.asyncio
+    async def test_forwards_okp_filter_to_mcp_transport(
+        self, mocker: MockerFixture
+    ) -> None:
+        """The request-level okp filter is forwarded to the MCP transport."""
+        mocker.patch(
+            "utils.vector_search.okp_mcp_available",
+            new=mocker.AsyncMock(return_value=True),
+        )
+        mcp_fetch = mocker.patch(
+            "utils.vector_search._fetch_okp_rag_mcp",
+            mocker.AsyncMock(return_value=([], [])),
+        )
+
+        okp = OkpFilter.model_validate({"products": [{"product": "rhel"}]})
+        client_mock = mocker.AsyncMock()
+        await _fetch_okp(client_mock, "q", okp=okp)
+
+        mcp_fetch.assert_awaited_once_with("q", okp)
+
+    @pytest.mark.asyncio
+    async def test_forwards_okp_filter_to_solr_transport(
+        self, mocker: MockerFixture
+    ) -> None:
+        """The request-level okp filter is forwarded to the Solr transport."""
+        mocker.patch(
+            "utils.vector_search.okp_mcp_available",
+            new=mocker.AsyncMock(return_value=False),
+        )
+        solr_fetch = mocker.patch(
+            "utils.vector_search._fetch_okp_rag",
+            mocker.AsyncMock(return_value=([], [])),
+        )
+
+        okp = OkpFilter.model_validate({"products": [{"product": "rhel"}]})
+        client_mock = mocker.AsyncMock()
+        solr = mocker.Mock()
+        await _fetch_okp(client_mock, "q", solr=solr, okp=okp)
+
+        solr_fetch.assert_awaited_once_with(client_mock, "q", solr, okp)

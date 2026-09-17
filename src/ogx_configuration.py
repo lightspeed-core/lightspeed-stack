@@ -1334,6 +1334,9 @@ def synthesize_configuration(  # pylint: disable=too-many-locals
         "tool": retrieval.get("tool", {}).get("sources", []),
     }
     okp_config = rag_section.get("okp", {})
+    # The Solr vector_io provider is always wired at launch. The RHOKP MCP
+    # transport is selected at query time (utils.vector_search._fetch_okp) and
+    # falls back to this Solr provider, so it must always be present.
     enrich_solr(ogx_config, rag_config_for_solr, okp_config)
     enrich_vector_store(ogx_config, lcs_config.get("vector_store"))
 
@@ -1501,6 +1504,8 @@ def generate_configuration(
         "tool": retrieval.get("tool", {}).get("sources", []),
     }
     okp_config = rag_section.get("okp", {})
+    # Solr is always wired; the MCP transport is chosen at query time with Solr
+    # as the fallback (see synthesize()).
     enrich_solr(ogx_config, rag_config_for_solr, okp_config)
 
     dedupe_providers_vector_io(ogx_config)
