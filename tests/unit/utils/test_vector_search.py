@@ -1701,10 +1701,6 @@ class TestBuildRagContextOtel:
         """Blocked moderation skips retrieval and does not emit completed event."""
         tracer, exporter = otel
         mocker.patch("utils.vector_search.tracer", tracer)
-        mocker.patch(
-            "utils.vector_search.anonymize_value",
-            side_effect=lambda value: f"[anon:{value}]",
-        )
         self._patch_rag_config(mocker)
         client = mocker.AsyncMock()
 
@@ -1716,7 +1712,7 @@ class TestBuildRagContextOtel:
             if span.name == "rag.retrieve"
         )
         assert span.attributes is not None
-        assert span.attributes[SpanAttributes.RAG_INPUT] == "[anon:test query]"
+        assert span.attributes[SpanAttributes.RAG_INPUT] == "test query"
         assert span.attributes[SpanAttributes.RAG_SOURCES_COUNT] == 0
         event_names = [event.name for event in span.events]
         assert SpanEvents.RAG_RETRIEVAL_COMPLETED not in event_names
@@ -1730,10 +1726,6 @@ class TestBuildRagContextOtel:
         """Passed moderation with no chunks emits retrieval completed with count 0."""
         tracer, exporter = otel
         mocker.patch("utils.vector_search.tracer", tracer)
-        mocker.patch(
-            "utils.vector_search.anonymize_value",
-            side_effect=lambda value: f"[anon:{value}]",
-        )
         self._patch_rag_config(mocker)
         mocker.patch(
             "utils.vector_search._fetch_byok_rag",
@@ -1772,10 +1764,6 @@ class TestBuildRagContextOtel:
         """Passed moderation with chunks sets source attrs and chunk count event."""
         tracer, exporter = otel
         mocker.patch("utils.vector_search.tracer", tracer)
-        mocker.patch(
-            "utils.vector_search.anonymize_value",
-            side_effect=lambda value: f"[anon:{value}]",
-        )
         self._patch_rag_config(mocker)
         chunk = RAGChunk(
             content="chunk text",
