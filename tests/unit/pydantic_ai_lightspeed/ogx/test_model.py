@@ -6,7 +6,10 @@ from collections.abc import AsyncIterator
 from typing import Any
 
 import pytest
-from ogx_api.openai_responses import OpenAIResponseMessage
+from ogx_api.openai_responses import (
+    OpenAIResponseMessage,
+    OpenAIResponseReasoning,
+)
 from openai.types import responses
 from pydantic_ai import ModelMessage, UnexpectedModelBehavior
 from pydantic_ai.messages import ModelResponse
@@ -154,6 +157,15 @@ class TestModelSettingsFromResponsesParams:
         params = _make_params(input=items, omit_conversation=False)
         settings = _model_settings_from_responses_params(params)
         assert "input" not in settings.get("extra_body", {})
+
+    def test_reasoning_on_params_lands_in_extra_body(self) -> None:
+        """Test reasoning prepared upstream is forwarded via extra_body."""
+        params = _make_params(
+            model="openai/gpt-5.6-terra",
+            reasoning=OpenAIResponseReasoning(effort="none"),
+        )
+        settings = _model_settings_from_responses_params(params)
+        assert settings["extra_body"]["reasoning"] == {"effort": "none"}
 
 
 class TestPrepareCompactedInput:

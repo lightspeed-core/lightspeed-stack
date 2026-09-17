@@ -2383,6 +2383,89 @@ class TestPrepareResponsesParams:
         assert dumped.get("extra_headers") is None
 
     @pytest.mark.asyncio
+    async def test_prepare_responses_params_sets_reasoning_none_for_default_on_model_with_tools(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test query params force reasoning effort none when tools are present."""
+        mock_client = mock_async_ogx_client(mocker)
+        mock_client.openai.list = mocker.AsyncMock(
+            return_value=make_openai_models_list_response(
+                make_openai_model(
+                    model_id="openai/gpt-5.6-terra",
+                    provider_id="openai",
+                    model_type="llm",
+                )
+            )
+        )
+
+        mock_conversation = mocker.Mock()
+        mock_conversation.id = "new_conv_id"
+        mock_client.conversations.create = mocker.AsyncMock(
+            return_value=mock_conversation
+        )
+
+        query_request = QueryRequest(query="test")  # pyright: ignore[reportCallIssue]
+        tools = cast(
+            list[InputTool],
+            [InputToolFileSearch(vector_store_ids=["vs-1"])],
+        )
+
+        mock_config = mocker.Mock()
+        mock_config.inference = InferenceConfiguration()
+        mocker.patch("utils.responses.configuration", mock_config)
+        mocker.patch("utils.responses.get_system_prompt", return_value="System prompt")
+        mocker.patch("utils.responses.prepare_tools", return_value=tools)
+        mocker.patch("utils.responses.prepare_input", return_value="test")
+
+        result = await prepare_responses_params(
+            mock_client, query_request, None, "token"
+        )
+
+        assert result.reasoning is not None
+        assert result.reasoning.effort == "none"
+
+    @pytest.mark.asyncio
+    async def test_prepare_responses_params_omits_reasoning_for_non_reasoning_model(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test query params do not inject reasoning for non-reasoning models."""
+        mock_client = mock_async_ogx_client(mocker)
+        mock_client.openai.list = mocker.AsyncMock(
+            return_value=make_openai_models_list_response(
+                make_openai_model(
+                    model_id="openai/gpt-4o-mini",
+                    provider_id="openai",
+                    model_type="llm",
+                )
+            )
+        )
+
+        mock_conversation = mocker.Mock()
+        mock_conversation.id = "new_conv_id"
+        mock_client.conversations.create = mocker.AsyncMock(
+            return_value=mock_conversation
+        )
+
+        query_request = QueryRequest(query="test")  # pyright: ignore[reportCallIssue]
+        tools = cast(
+            list[InputTool],
+            [InputToolFileSearch(vector_store_ids=["vs-1"])],
+        )
+
+        mock_config = mocker.Mock()
+        mock_config.inference = InferenceConfiguration()
+        mocker.patch("utils.responses.configuration", mock_config)
+        mocker.patch("utils.responses.get_system_prompt", return_value="System prompt")
+        mocker.patch("utils.responses.prepare_tools", return_value=tools)
+        mocker.patch("utils.responses.prepare_input", return_value="test")
+
+        result = await prepare_responses_params(
+            mock_client, query_request, None, "token"
+        )
+
+        assert result.reasoning is None
+
+    @pytest.mark.asyncio
     async def test_prepare_responses_params_api_status_error_on_conversation(
         self, mocker: MockerFixture
     ) -> None:
