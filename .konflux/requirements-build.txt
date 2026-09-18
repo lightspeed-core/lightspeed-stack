@@ -6,46 +6,31 @@
 #
 calver==2025.10.20
     # via trove-classifiers
-dunamai==1.26.1
-    # via uv-dynamic-versioning
-flit-core==3.12.0
+flit-core==4.1.0
     # via
-    #   jinja2
     #   packaging
     #   pathspec
-hatchling==1.30.1
+hatch-vcs==0.5.0
+    # via pydantic-ai-skills
+hatchling==1.32.3
     # via
-    #   a2a-sdk
+    #   hatch-vcs
+    #   mistralai
     #   opentelemetry-distro
-    #   pydantic-ai
     #   pydantic-ai-skills
-    #   pydantic-ai-slim
-    #   pydantic-evals
-    #   pydantic-graph
-    #   pythainlp
-    #   uv-dynamic-versioning
 pathspec==1.1.1
     # via hatchling
+pdm-backend==2.4.9
+    # via fastapi
 pluggy==1.6.0
     # via hatchling
 poetry-core==2.4.1
-    # via
-    #   dunamai
-    #   tomlkit
-setuptools-scm==10.2.0
-    # via pluggy
-tomlkit==0.15.0
-    # via uv-dynamic-versioning
+    # via tomlkit
+tomlkit==0.15.1
+    # via hatchling
 trove-classifiers==2026.6.1.19
     # via hatchling
-uv-dynamic-versioning==0.14.0
-    # via
-    #   a2a-sdk
-    #   pydantic-ai
-    #   pydantic-ai-slim
-    #   pydantic-evals
-    #   pydantic-graph
-vcs-versioning==2.2.2
+vcs-versioning==2.4.1
     # via setuptools-scm
 
 # The following packages are considered to be unsafe in a requirements file:
