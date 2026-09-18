@@ -23,6 +23,7 @@ from pydantic import (
     PositiveInt,
     PrivateAttr,
     SecretStr,
+    StrictBool,
     field_validator,
     model_validator,
 )
@@ -2422,8 +2423,7 @@ class VectorStoreConfiguration(ConfigurationBase):
 
         if self.default_provider is None:
             raise ValueError(
-                "vector_store.default_provider is required when providers "
-                "is non-empty"
+                "vector_store.default_provider is required when providers is non-empty"
             )
 
         ids = [provider.id for provider in self.providers]
@@ -3217,7 +3217,19 @@ class GraniteGuardianConfig(ConfigurationBase):
     """Configuration for the Granite Guardian moderation guardrail."""
 
     url: str = Field(
-        ..., title="Base URL", description="The model_id to use for the guard"
+        ...,
+        title="Base URL",
+        description="Base URL of the OpenAI-compatible inference endpoint.",
+    )
+
+    model_id: str = Field(
+        "ibm-granite/granite-guardian-4.1-8b",
+        title="Model name",
+        description=(
+            "Model name sent to the inference server. Override when the "
+            "server registers the model under a different name (e.g. an "
+            "Ollama tag). The prompt template is built for the 4.1 format."
+        ),
     )
 
     api_key: Optional[SecretStr] = Field(
@@ -3243,11 +3255,41 @@ class GraniteGuardianConfig(ConfigurationBase):
         ),
     )
 
+    parallel: StrictBool | Annotated[int, Field(ge=1, le=10)] = Field(
+        default=3,
+        title="Parallel execution",
+        description=(
+            "True to run all risk checks in parallel, "
+            "False to run sequentially, "
+            "or an integer 1-10 for explicit batch size."
+        ),
+    )
+
     risks: list[RiskDefinition] = Field(
         ...,
         title="Defined risks",
         description="Risks to be considered while applying this guardrail",
     )
+
+    @model_validator(mode="after")
+    def validate_api_key_requires_https(self) -> Self:
+        """Require HTTPS when an API key is configured.
+
+        Prevents the API key from being sent to the inference endpoint over
+        an unencrypted connection.
+
+        Raises:
+            ValueError: If ``api_key`` is set but ``url``'s scheme isn't https.
+
+        Returns:
+            The validated configuration instance.
+        """
+        # pylint: disable=no-member
+        if self.api_key is not None and not self.url.startswith("https://"):
+            raise ValueError(
+                "Granite Guardian endpoints with an API key must use HTTPS"
+            )
+        return self
 
 
 class GraniteGuardianShieldConfiguration(ConfigurationBase):
