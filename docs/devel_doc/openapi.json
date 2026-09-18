@@ -8490,7 +8490,8 @@
                             }
                         }
                     }
-                }
+                },
+                "deprecated": true
             }
         },
         "/v1/conversations/{conversation_id}": {
@@ -8501,6 +8502,7 @@
                 "summary": "Conversation Get Endpoint Handler V1",
                 "description": "Handle request to retrieve a conversation identified by ID using Conversations API.\n\nRetrieve a conversation's chat history by its ID using the OGX\nConversations API. This endpoint fetches the conversation items from\nthe backend, simplifies them to essential chat history, and returns\nthem in a structured response. Raises HTTP 400 for invalid IDs, 404\nif not found, 503 if the backend is unavailable, and 500 for\nunexpected errors.\n\nArgs:\n    request: The FastAPI request object\n    conversation_id: Unique identifier of the conversation to retrieve\n    auth: Authentication tuple from dependency\n\nReturns:\n    ConversationResponse: Structured response containing the conversation\n    ID and simplified chat history",
                 "operationId": "get_conversation_endpoint_handler_v1_conversations__conversation_id__get",
+                "deprecated": true,
                 "parameters": [
                     {
                         "name": "conversation_id",
@@ -8765,6 +8767,7 @@
                 "summary": "Conversation Delete Endpoint Handler V1",
                 "description": "Handle request to delete a conversation by ID using Conversations API.\n\nValidates the conversation ID format and attempts to delete the\nconversation from the OGX backend using the Conversations API.\nRaises HTTP errors for invalid IDs, not found conversations, connection\nissues, or unexpected failures.\n\nArgs:\n    request: The FastAPI request object\n    conversation_id: Unique identifier of the conversation to delete\n    auth: Authentication tuple from dependency\n\nReturns:\n    ConversationDeleteResponse: Response indicating the result of the deletion operation",
                 "operationId": "delete_conversation_endpoint_handler_v1_conversations__conversation_id__delete",
+                "deprecated": true,
                 "parameters": [
                     {
                         "name": "conversation_id",
@@ -9002,6 +9005,7 @@
                 "summary": "Conversation Update Endpoint Handler V1",
                 "description": "Handle request to update a conversation metadata using Conversations API.\n\nUpdates the conversation metadata (including topic summary) in both the\nOGX backend using the Conversations API and the local database.\n\nArgs:\n    request: The FastAPI request object\n    conversation_id: Unique identifier of the conversation to update\n    update_request: Request containing the topic summary to update\n    auth: Authentication tuple from dependency\n\nReturns:\n    ConversationUpdateResponse: Response indicating the result of the update operation",
                 "operationId": "update_conversation_endpoint_handler_v1_conversations__conversation_id__put",
+                "deprecated": true,
                 "parameters": [
                     {
                         "name": "conversation_id",
@@ -23693,7 +23697,7 @@
         },
         {
             "name": "conversations_v1",
-            "description": "Conversations API v1."
+            "description": "Conversations API v1 (OGX-backed). Deprecated: use /v2/conversations; scheduled for removal when OGX is dropped."
         },
         {
             "name": "conversations_v2",
