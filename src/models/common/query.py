@@ -152,7 +152,7 @@ class OkpProductFilter(BaseModel):
 
     product: str = Field(
         description="Exact product identifier (exact match, no wildcards).",
-        examples=["openshift_container_platform", "rhel"],
+        examples=["openshift_container_platform", "red_hat_enterprise_linux"],
     )
     versions: Optional[list[str]] = Field(
         None,
@@ -192,7 +192,7 @@ class OkpFilter(BaseModel):
             [{"product": "openshift_container_platform", "versions": ["4.16", "4.17"]}],
             [
                 {"product": "openshift_container_platform", "versions": ["4.16"]},
-                {"product": "rhel", "versions": ["9", "10"]},
+                {"product": "red_hat_enterprise_linux", "versions": ["9", "10"]},
             ],
         ],
     )

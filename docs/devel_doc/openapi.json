@@ -16282,7 +16282,7 @@
                                     ]
                                 },
                                 {
-                                    "product": "rhel",
+                                    "product": "red_hat_enterprise_linux",
                                     "versions": [
                                         "9",
                                         "10"
@@ -16305,7 +16305,7 @@
                         "description": "Exact product identifier (exact match, no wildcards).",
                         "examples": [
                             "openshift_container_platform",
-                            "rhel"
+                            "red_hat_enterprise_linux"
                         ]
                     },
                     "versions": {
