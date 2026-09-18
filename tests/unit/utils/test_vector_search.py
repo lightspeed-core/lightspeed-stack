@@ -355,7 +355,7 @@ class TestOkpFilterToStructured:
             {
                 "products": [
                     {"product": "openshift_container_platform", "versions": ["4.16"]},
-                    {"product": "rhel"},
+                    {"product": "red_hat_enterprise_linux"},
                 ]
             }
         )
@@ -363,7 +363,11 @@ class TestOkpFilterToStructured:
         assert result is not None
         assert result["type"] == "or"
         assert len(result["filters"]) == 2
-        assert result["filters"][1] == {"type": "eq", "key": "product", "value": "rhel"}
+        assert result["filters"][1] == {
+            "type": "eq",
+            "key": "product",
+            "value": "red_hat_enterprise_linux",
+        }
 
 
 class TestBuildQueryParamsOkp:
@@ -2088,7 +2092,9 @@ class TestFetchOkpTransportSelection:
             mocker.AsyncMock(return_value=([], [])),
         )
 
-        okp = OkpFilter.model_validate({"products": [{"product": "rhel"}]})
+        okp = OkpFilter.model_validate(
+            {"products": [{"product": "red_hat_enterprise_linux"}]}
+        )
         client_mock = mocker.AsyncMock()
         await _fetch_okp(client_mock, "q", okp=okp)
 
@@ -2108,7 +2114,9 @@ class TestFetchOkpTransportSelection:
             mocker.AsyncMock(return_value=([], [])),
         )
 
-        okp = OkpFilter.model_validate({"products": [{"product": "rhel"}]})
+        okp = OkpFilter.model_validate(
+            {"products": [{"product": "red_hat_enterprise_linux"}]}
+        )
         client_mock = mocker.AsyncMock()
         solr = mocker.Mock()
         await _fetch_okp(client_mock, "q", solr=solr, okp=okp)

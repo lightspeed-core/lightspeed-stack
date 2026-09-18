@@ -22,7 +22,7 @@ SAMPLE_RESULT: dict[str, Any] = {
                 "score": 74.0,
                 "title": "Title A",
                 "doc_id": "doc-a",
-                "product": ["rhel"],
+                "product": ["red_hat_enterprise_linux"],
                 "product_version": "9",
                 "online_source_url": "https://docs.redhat.com/a",
                 "source_path": "/en/a",
@@ -65,7 +65,7 @@ async def test_fetch_maps_online_urls(mocker: MockerFixture) -> None:
     assert chunks[0].score == 74.0
     assert chunks[0].attributes["doc_url"] == "https://docs.redhat.com/a"
     assert chunks[0].attributes["document_id"] == "doc-a"
-    assert chunks[0].attributes["product"] == ["rhel"]
+    assert chunks[0].attributes["product"] == ["red_hat_enterprise_linux"]
 
     assert [str(d.doc_url) for d in documents] == [
         "https://docs.redhat.com/a",
@@ -210,7 +210,7 @@ async def test_fetch_passes_structured_products_in_one_call(
                     "product": "openshift_container_platform",
                     "versions": ["4.16", "4.17"],
                 },
-                {"product": "rhel"},
+                {"product": "red_hat_enterprise_linux"},
             ]
         }
     )
@@ -222,7 +222,7 @@ async def test_fetch_passes_structured_products_in_one_call(
             "product": "openshift_container_platform",
             "versions": ["4.16", "4.17"],
         },
-        {"product": "rhel"},
+        {"product": "red_hat_enterprise_linux"},
     ]
 
 
@@ -232,11 +232,15 @@ async def test_fetch_okp_filter_selects_products(mocker: MockerFixture) -> None:
     call = mocker.AsyncMock(return_value={"response": {"docs": []}})
     mocker.patch.object(_provider, "call_okp_search", call)
 
-    okp = OkpFilter.model_validate({"products": [{"product": "rhel"}]})
+    okp = OkpFilter.model_validate(
+        {"products": [{"product": "red_hat_enterprise_linux"}]}
+    )
     await _retriever().fetch("q", okp=okp)
 
     assert call.await_count == 1
-    assert call.await_args.kwargs["products"] == [{"product": "rhel"}]
+    assert call.await_args.kwargs["products"] == [
+        {"product": "red_hat_enterprise_linux"}
+    ]
 
 
 @pytest.mark.asyncio

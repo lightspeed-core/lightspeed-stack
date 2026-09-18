@@ -103,7 +103,7 @@ async def test_call_okp_search_forwards_structured_products(
 
     products = [
         {"product": "openshift_container_platform", "versions": ["4.19", "4.20"]},
-        {"product": "rhel"},
+        {"product": "red_hat_enterprise_linux"},
     ]
     await _client.call_okp_search(
         url="http://okp/mcp",
