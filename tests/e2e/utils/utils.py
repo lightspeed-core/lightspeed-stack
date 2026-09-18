@@ -56,8 +56,21 @@ def absolute_repo_path(repo_relative: str) -> str:
 
 
 def is_prow_environment() -> bool:
-    """Check if running in Prow/OpenShift environment."""
+    """Check if running in Prow/OpenShift environment.
+
+    True for both classic Prow (``pipeline.sh``) and Konflux
+    (``pipeline-konflux.sh``), which also sets ``RUNNING_PROW``.
+    """
     return os.getenv("RUNNING_PROW") is not None
+
+
+def is_konflux_environment() -> bool:
+    """Check if running in the Konflux integration E2E pipeline.
+
+    Konflux sets ``E2E_KONFLUX_E2E=1`` in ``pipeline-konflux.sh``. Classic Prow
+    does not. Use this to gate tests that must not run on Prow (e.g. OKP RAG).
+    """
+    return os.getenv("E2E_KONFLUX_E2E") == "1"
 
 
 # Transient connection resets (e.g. errno 104) after container restarts in CI/Docker.
@@ -380,6 +393,17 @@ def validate_json_partially(actual: Any, expected: Any) -> None:
 
 RESPONSES_SSE_TERMINAL_EVENT_TYPES = frozenset(
     {"response.completed", "response.incomplete", "response.failed"}
+)
+
+# Responses API ``output`` item types that indicate tool listing or invocation.
+RESPONSE_TOOL_OUTPUT_ITEM_TYPES = frozenset(
+    {
+        "file_search_call",
+        "function_call",
+        "mcp_call",
+        "mcp_list_tools",
+        "web_search_call",
+    }
 )
 
 
