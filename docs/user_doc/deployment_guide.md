@@ -199,7 +199,7 @@ Three migration paths, per deployment:
 
 | Path | Effort | Result |
 |---|---|---|
-| Do nothing | none | Legacy keeps working until removal in 0.7 (with a startup deprecation warning) |
+| Do nothing | none | Legacy keeps working until removal in 0.8 (with a startup deprecation warning) |
 | Lift-and-shift | seconds — `--migrate-config` | Single file, byte-equivalent OGX behavior |
 | Re-express | hours+ | Single file; high-level sections and/or a profile replace the lifted `run.yaml` |
 
