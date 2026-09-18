@@ -62,8 +62,8 @@ click==8.4.2 \
 cryptography==50.0.1 \
     --hash=sha256:3e29639a33400721f710beeba7741e275bdb4c5bc53107c9dfef240d251c0590 \
     --hash=sha256:8ae962f84e7f36290feca5f8ba7bfc01fea9cd9a48f446bca52ef115657cca3d
-datasets==5.0.0 \
-    --hash=sha256:0fbc08ef020b03a22d91ad38b3b22091a1e18c1335f2963d357ea540bfb032e7
+datasets==5.0.1 \
+    --hash=sha256:05b604c9cecc05eb7f24ddaa88b13c65674be4e0eaa0db26a3b745b7535be415
 defusedxml==0.7.1 \
     --hash=sha256:884a1483dffbab373933eb9604e1ebb2a6d5e794b1c467e83ddd453a9d48b1c6
 dill==0.4.1 \
@@ -103,8 +103,8 @@ fire==0.7.1 \
 frozenlist==1.8.0 \
     --hash=sha256:0e702e35f72baf35d3c6d8b34e664a4b90bb7bd2090e585c4419bd77a9e0eb37 \
     --hash=sha256:824190e162bc775e7f6ded9bde5897738987c51548677c213d1ff728b10efe5b
-fsspec==2026.4.0 \
-    --hash=sha256:ef0c6ca507776eab560612d5785f243e2e3f6cfe42468aacdce3609353366b5b
+fsspec==2026.6.0 \
+    --hash=sha256:9a76dd86f01d5e2034c8192684e131d070de32d4d9d76843821351819e6ee2ef
 google-api-core==2.32.0 \
     --hash=sha256:3e21a1d0f5bb3cc135e11f816a83f22bc77f6fecb32d8bc0474e1cecfd923e3d
 google-auth==2.55.2 \
@@ -259,8 +259,8 @@ packaging==26.2 \
 pandas==3.0.3 \
     --hash=sha256:4292e3fdd886ca994ed67f1af0fcdf1d62d9f1160de1955c44a00266562dab3a \
     --hash=sha256:8e459d7d06df1364b9b6d42d433cf5cb4687a890be579c6864491ff01cce6340
-peft==0.19.1 \
-    --hash=sha256:f535ba967638601280a0d00480242ff013e14b5f9d8596a2c3ffa353ae5f159d
+peft==0.20.0 \
+    --hash=sha256:d54a098b5ca82fde171e7b9c388aa273e81e2bdbe4ce29e3f5aaf950ea308d3d
 platformdirs==4.10.0 \
     --hash=sha256:54179fa31b3140c3727a0e602144c413b8cd1e0f85c09e82c4e36000a64f5a8f
 polyleven==0.11.0 \
@@ -286,8 +286,6 @@ psycopg2-binary==2.9.12 \
     --hash=sha256:ecd0facc7874728ca28babc3d9c96c73510492a4c524e414ce27b32846d9bcb5
 py-key-value-aio==0.4.5 \
     --hash=sha256:9a7d2708e89c3262fca6fe38d01239d481846aa30121a0520e449994e7e9a910
-pyaml==26.7.0 \
-    --hash=sha256:667a4b440272f1376fae57023a213a583a707d29bc4127d354ecc3668adefd7a
 pyarrow==25.0.0 \
     --hash=sha256:b7cc7bfc4f74e1b44f9699468c26df0925f75cbef99346ac35efac8c13cb71b5 \
     --hash=sha256:dc55a12747b836dfd27b2055e343c6b00d9f726dec25ad097bbe536140b9bc1f
