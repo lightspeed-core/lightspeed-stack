@@ -1515,7 +1515,7 @@ Update these files when you:
 make konflux-requirements
 ```
 
-This compiles Python dependencies from `pyproject.toml` using `uv`, splits packages by their source index (PyPI vs Red Hat's internal registry), and generates hermetic requirements files with pinned versions and hashes for Konflux builds.
+This compiles Python dependencies from `pyproject.toml` using a fork of `uv` that supports a "prefer-index" package version resolution policy, splits packages by their source index (PyPI vs Red Hat's internal registry), and generates hermetic requirements files with pinned versions and hashes for Konflux builds.
 
 **Files produced:**
 - `.konflux/requirements.hashes.source.txt` – PyPI packages with hashes

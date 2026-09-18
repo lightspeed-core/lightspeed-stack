@@ -575,14 +575,18 @@ async def handle_responses_with_tracing(  # pylint: disable=too-many-locals
     )
     attachments_count = _count_request_attachments(original_request.input)
 
-    set_span_attributes(
-        root_span,
-        {
-            SpanAttributes.USER_ID: anonymize_value(user_id),
-            SpanAttributes.INPUT: anonymize_value(input_text),
-            SpanAttributes.REQUEST_ATTACHMENTS_COUNT: attachments_count,
-        },
-    )
+    span_attributes: dict[str, Any] = {
+        SpanAttributes.USER_ID: anonymize_value(user_id),
+        SpanAttributes.INPUT: anonymize_value(input_text),
+        SpanAttributes.REQUEST_ATTACHMENTS_COUNT: attachments_count,
+    }
+    # safety_identifier is a caller-supplied, non-PII identifier, so it is
+    # recorded verbatim (not anonymized) when present.
+    if original_request.safety_identifier is not None:
+        span_attributes[SpanAttributes.SAFETY_IDENTIFIER] = (
+            original_request.safety_identifier
+        )
+    set_span_attributes(root_span, span_attributes)
 
     await check_mcp_auth(configuration, mcp_headers, token, request.headers)
 
@@ -859,7 +863,7 @@ async def shield_violation_generator(
         api_params: ResponsesApiParams
         context: ResponsesContext
     Yields:
-        SSE-formatted strings for streaming events, ending with [DONE]
+        SSE-formatted strings for streaming events
     """
     normalized_conv_id = normalize_conversation_id(api_params.conversation)
     available_quotas = get_available_quotas(
@@ -934,8 +938,6 @@ async def shield_violation_generator(
     }
     data_json = json.dumps(completed_event)
     yield f"event: response.completed\ndata: {data_json}\n\n"
-
-    yield "data: [DONE]\n\n"
 
 
 def _sanitize_response_dict(
@@ -1249,8 +1251,6 @@ async def response_generator(
             latest_response_object.output,
         )
 
-    yield "data: [DONE]\n\n"
-
 
 async def generate_response(
     generator: AsyncIterator[str],
@@ -1301,6 +1301,8 @@ async def generate_response(
             turn_summary.llm_response,
         )
         _finalize_responses_root_span(root_span, turn_summary)
+        # Persist conversation state before clients can close the stream.
+        yield "data: [DONE]\n\n"
     finally:
         root_span.end()
 

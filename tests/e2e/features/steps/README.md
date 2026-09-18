@@ -72,3 +72,7 @@ Step definitions for TLS configuration e2e tests.
 
 Step definitions for token counter validation.
 
+## [unified_mode.py](unified_mode.py)
+
+Step definitions for the unified-mode e2e features (LCORE-2343).
+
