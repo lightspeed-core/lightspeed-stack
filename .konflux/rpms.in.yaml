@@ -9,12 +9,8 @@ packages:
   ]
 upgradePackages:
   [
-    python3.12,
-    python3.12-libs,
-    python3.12-devel,
-    glib2,
-    openssh,
-    openssh-clients,
+    acl,
+    ffmpeg-free-rhai,
   ]
 contentOrigin:
   repofiles: ["./redhat.repo"]
