@@ -265,7 +265,7 @@ def _run_server(httpd: ThreadingHTTPServer, label: str) -> None:
     print(f"{label} listening")
     try:
         httpd.serve_forever()
-    except Exception as exc:  # pylint: disable=broad-except
+    except Exception as exc:  # pylint: disable=broad-except  # noqa: BLE001 RUF100
         print(f"{label} error: {exc}")
 
 
