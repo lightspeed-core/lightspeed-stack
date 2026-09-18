@@ -9,8 +9,8 @@ import sentry_sdk  # pyright: ignore[reportMissingImports]
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.routing import iter_route_contexts
 from llama_stack_client import APIConnectionError, AsyncLlamaStackClient
-from starlette.routing import Mount, Route, WebSocketRoute
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 import version
@@ -210,7 +210,7 @@ class RestApiMetricsMiddleware:  # pylint: disable=too-few-public-methods
         # requests with the full prefixed path (/api/lightspeed/v1/infer) but
         # app_routes_paths contains only application-level paths (/v1/infer).
         # Strip the prefix so the path check and metric labels match the routes.
-        root_path = scope.get("root_path", "")
+        root_path: str = app.root_path
         path: str = scope["path"]
         if root_path and path.startswith(root_path + "/"):
             path = path[len(root_path) :]
@@ -290,9 +290,10 @@ logger.info("Including routers")
 routers.include_routers(app)
 
 app_routes_paths = [
-    route.path
-    for route in app.routes
-    if isinstance(route, (Mount, Route, WebSocketRoute))
+    rc.original_route.path  # pyright: ignore[reportAttributeAccessIssue]
+    for rc in iter_route_contexts(app.routes)
+    if hasattr(rc.original_route, "path")
+    and rc.original_route.path  # pyright: ignore[reportAttributeAccessIssue]
 ]
 
 # Register pure ASGI middlewares.  Middleware execution order is the reverse of
