@@ -142,8 +142,7 @@ Feature: OKP(Solr) RAG retrieval tests
       And Each rag_chunk reference_url contains "docs.redhat.com"
 
   # ── OKP Server Unavailable — Graceful Error Handling ──
-  @skip 
-  # https://redhat.atlassian.net/browse/LCORE-4022
+
   Scenario: Query succeeds with empty rag_chunks when OKP server is unavailable
     Given The service uses the lightspeed-stack-okp-online.yaml configuration
       And OGX is restarted
