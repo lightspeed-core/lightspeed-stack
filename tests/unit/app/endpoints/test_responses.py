@@ -1228,7 +1228,7 @@ class TestHandleStreamingResponse:
         assert "event: response.output_item.added" in body
         assert "event: response.output_item.done" in body
         assert "event: response.completed" in body
-        assert "[DONE]" in body
+        assert body.count("data: [DONE]") == 1
         mock_client.responses.create.assert_not_called()
 
     @pytest.mark.asyncio

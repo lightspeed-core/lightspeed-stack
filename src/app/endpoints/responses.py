@@ -863,7 +863,7 @@ async def shield_violation_generator(
         api_params: ResponsesApiParams
         context: ResponsesContext
     Yields:
-        SSE-formatted strings for streaming events, ending with [DONE]
+        SSE-formatted strings for streaming events
     """
     normalized_conv_id = normalize_conversation_id(api_params.conversation)
     available_quotas = get_available_quotas(
@@ -938,8 +938,6 @@ async def shield_violation_generator(
     }
     data_json = json.dumps(completed_event)
     yield f"event: response.completed\ndata: {data_json}\n\n"
-
-    yield "data: [DONE]\n\n"
 
 
 def _sanitize_response_dict(
@@ -1253,8 +1251,6 @@ async def response_generator(
             latest_response_object.output,
         )
 
-    yield "data: [DONE]\n\n"
-
 
 async def generate_response(
     generator: AsyncIterator[str],
@@ -1305,6 +1301,8 @@ async def generate_response(
             turn_summary.llm_response,
         )
         _finalize_responses_root_span(root_span, turn_summary)
+        # Persist conversation state before clients can close the stream.
+        yield "data: [DONE]\n\n"
     finally:
         root_span.end()
 
