@@ -50,7 +50,9 @@ async def _get_cross_encoder(model_name: str) -> Any:
             model = await asyncio.to_thread(CrossEncoder, model_name)
             _cross_encoder_models[model_name] = model
             logger.info("Loaded cross-encoder for RAG reranking: %s", model_name)
-        except Exception as e:  # pylint: disable=broad-exception-caught
+        except (
+            Exception  # pylint: disable=broad-exception-caught  # noqa: BLE001 RUF100
+        ) as e:
             logger.warning(
                 "Could not load cross-encoder for reranking (%s): %s", model_name, e
             )
