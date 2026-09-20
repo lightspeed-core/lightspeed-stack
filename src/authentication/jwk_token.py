@@ -150,7 +150,7 @@ def _should_skip_auth(request: Request) -> bool:
         "/liveness",
     ):
         return True
-    if auth_config.skip_for_metrics and request.url.path in ("/metrics",):
+    if auth_config.skip_for_metrics and request.url.path == "/metrics":
         return True
     return False
 

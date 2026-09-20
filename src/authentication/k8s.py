@@ -443,7 +443,7 @@ class K8SAuthDependency(AuthInterface):  # pylint: disable=too-few-public-method
                     return NO_AUTH_TUPLE
             # Skip auth for metrics endpoint when configured
             if configuration.authentication_configuration.skip_for_metrics:
-                if request.url.path in ("/metrics",):
+                if request.url.path == "/metrics":
                     return NO_AUTH_TUPLE
 
         token = extract_user_token(request.headers)
