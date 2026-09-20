@@ -170,7 +170,9 @@ async def rerank_chunks_with_cross_encoder(
             for score, chunk in top_indexed
         ]
 
-    except Exception as e:  # pylint: disable=broad-exception-caught
+    except (
+        Exception  # pylint: disable=broad-exception-caught  # noqa: BLE001 RUF100
+    ) as e:
         logger.warning(
             "Cross-encoder reranking failed, falling back to original scoring: %s", e
         )
