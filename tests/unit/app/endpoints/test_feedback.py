@@ -410,7 +410,9 @@ def test_update_feedback_status_concurrent(mocker: MockerFixture) -> None:
         try:
             barrier.wait()
             results[index] = asyncio.run(update_feedback_status(req, auth=auth))
-        except Exception as exc:  # pylint: disable=broad-exception-caught
+        except (
+            Exception  # pylint: disable=broad-exception-caught  # noqa: BLE001 RUF100
+        ) as exc:
             errors[index] = exc
 
     threads = [threading.Thread(target=worker, args=args) for args in thread_args]
