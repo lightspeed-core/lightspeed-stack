@@ -40,6 +40,10 @@ LLM query and response steps.
 
 Steps for /models endpoint.
 
+## [opentelemetry.py](opentelemetry.py)
+
+Step definitions for the OpenTelemetry telemetry-delivery E2E scenario.
+
 ## [place_holder.py](place_holder.py)
 
 Implementation of placeholder test steps.

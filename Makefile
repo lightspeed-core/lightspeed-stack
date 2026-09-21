@@ -18,6 +18,9 @@ OGX_IMAGE ?= lightspeed-ogx:local
 OGX_PORT ?= 8321
 CONTAINER_RUNTIME ?= $(shell command -v podman 2>/dev/null || command -v docker 2>/dev/null)
 
+# Doc tools configuration
+UML_GENERATOR = uv run pyreverse
+
 .PHONY: run \
 	run-ogx \
 	build-ogx-image \
@@ -256,19 +259,19 @@ docs/models/common_responses.json:	$(wildcard src/models/common/responses/*)	## 
 	mv common_responses.json $@
 
 docs/models/requests.puml:	$(wildcard src/models/api/requests/*)	## Generate PlantUML class diagram for requests data models
-	uv run pyreverse src/models/api/requests/ --output puml --output-directory=docs/models/
+	${UML_GENERATOR} src/models/api/requests/ --output puml --output-directory=docs/models/
 	mv docs/models/classes.puml docs/models/requests.puml
 
 docs/models/responses.puml:	$(wildcard src/models/api/responses/error/* src/models/api/responses/successful/*)	## Generate PlantUML class diagram for responses data models
-	uv run pyreverse src/models/api/responses/ --output puml --output-directory=docs/models/
+	${UML_GENERATOR} src/models/api/responses/ --output puml --output-directory=docs/models/
 	mv docs/models/classes.puml docs/models/responses.puml
 
 docs/models/common.puml:	$(wildcard src/models/common/* src/models/common/agents/* src/models/common/responses/* )	## Generate PlantUML class diagram for common data models
-	uv run pyreverse src/models/common/ --output puml --output-directory=docs/models/
+	${UML_GENERATOR} src/models/common/ --output puml --output-directory=docs/models/
 	mv docs/models/classes.puml docs/models/common.puml
 
 docs/models/database.puml:	$(wildcard src/models/database/*)	## Generate PlantUML class diagram for database data models
-	uv run pyreverse src/models/database/ --output puml --output-directory=docs/models/
+	${UML_GENERATOR} src/models/database/ --output puml --output-directory=docs/models/
 	mv docs/models/classes.puml docs/models/database.puml
 
 docs/models/requests.svg:	docs/models/requests.puml	## Generate an SVG with requests data models
@@ -300,7 +303,7 @@ docs/models/database.svg:	docs/models/database.puml	## Generate a SVG with datab
 	popd
 
 docs/config.puml:	src/models/config.py ## Generate PlantUML class diagram for configuration
-	uv run pyreverse $< --output puml --output-directory=docs/
+	${UML_GENERATOR} $< --output puml --output-directory=docs/
 	mv docs/classes.puml docs/config.puml
 
 # Omit --theme rose on the CLI: it fails with some plantuml.jar builds on pyreverse output.
