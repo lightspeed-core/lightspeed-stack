@@ -1,5 +1,7 @@
 """Process and record pydantic-ai tool parts during agent stream dispatch."""
 
+# pylint: disable=unused-import
+
 from __future__ import annotations
 
 import json
@@ -394,7 +396,7 @@ def summarize_web_search_result(
     Returns:
         Tool result summary in LCS turn-summary format.
     """
-    content = cast(dict[str, Any], part.content)
+    content = cast("dict[str, Any]", part.content)
     status = str(content.pop("status"))
     return ToolResultSummary(
         id=part.tool_call_id,
@@ -418,7 +420,7 @@ def summarize_mcp_list_tools_result(
     Returns:
         Tool result summary in LCS turn-summary format.
     """
-    content = cast(dict[str, Any], part.content)
+    content = cast("dict[str, Any]", part.content)
     call_id = part.tool_call_id
     label = part.tool_name.removeprefix(f"{MCPServerTool.kind}:")
 
@@ -457,7 +459,7 @@ def summarize_mcp_call_result(
     Returns:
         Tool result summary in LCS turn-summary format.
     """
-    content = cast(dict[str, Any], part.content)
+    content = cast("dict[str, Any]", part.content)
     call_id = part.tool_call_id
 
     if error := content.get("error"):
@@ -494,7 +496,7 @@ def summarize_mcp_tool_result(
     Returns:
         Tool result summary in LCS turn-summary format.
     """
-    content = cast(dict[str, Any], part.content)
+    content = cast("dict[str, Any]", part.content)
     if "tools" in content:
         return summarize_mcp_list_tools_result(part, tool_round)
     return summarize_mcp_call_result(part, tool_round)
@@ -519,7 +521,7 @@ def summarize_file_search_result(
     Returns:
         Tool result summary, RAG chunks, and referenced documents for this return.
     """
-    content = cast(dict[str, Any], part.content)
+    content = cast("dict[str, Any]", part.content)
     tool_result = ToolResultSummary(
         id=part.tool_call_id,
         status=str(content.pop("status")),

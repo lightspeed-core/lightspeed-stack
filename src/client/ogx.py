@@ -248,7 +248,7 @@ class AsyncOgxClientHolder(metaclass=Singleton):
                 "calling the Files provider directly for filename: %s",
                 filename,
             )
-            library_client = cast(AsyncOGXAsLibraryClient, client)
+            library_client = cast("AsyncOGXAsLibraryClient", client)
             if library_client.impls is None:
                 raise RuntimeError("OGX library client is not initialized")
             file.filename = filename

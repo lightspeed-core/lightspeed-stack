@@ -1,6 +1,7 @@
 """Utility functions for processing Responses API output."""
 
 # pylint: disable=too-many-lines
+# pylint: disable=unused-import
 
 import json
 from collections.abc import Mapping, Sequence
@@ -197,7 +198,7 @@ async def get_topic_summary(  # pylint: disable=too-many-nested-blocks
         normalized_model = normalize_vertex_ai_model_id(model_id)
 
         response = cast(
-            ResponseObject,
+            "ResponseObject",
             await client.responses.create(
                 input=question,
                 model=normalized_model,
@@ -646,7 +647,7 @@ def filter_tools_by_allowed_entries(
             filtered.append(tool)
             continue
 
-        mcp_tool = cast(InputToolMCP, tool)
+        mcp_tool = cast("InputToolMCP", tool)
         server = mcp_tool.server_label
 
         narrowed_names = mcp_names_by_server.get(server)
@@ -852,7 +853,7 @@ def apply_mcp_headers_to_explicit_tools(
             out.append(tool)
             continue
 
-        mcp_tool = cast(InputToolMCP, tool)
+        mcp_tool = cast("InputToolMCP", tool)
         mcp_server = servers_by_name.get(mcp_tool.server_label)
         if mcp_server is None:
             out.append(tool)
@@ -948,7 +949,7 @@ def parse_referenced_documents(  # pylint: disable=too-many-locals
         item_type = output_item.type
 
         if item_type == "file_search_call":
-            item = cast(FileSearchCall, output_item)
+            item = cast("FileSearchCall", output_item)
             results = item.results or []
             for result in results:
                 attributes = result.attributes
@@ -1010,7 +1011,7 @@ def parse_rag_chunks(
         if output_item.type == "file_search_call":
             rag_chunks.extend(
                 extract_rag_chunks_from_file_search_item(
-                    cast(FileSearchCall, output_item),
+                    cast("FileSearchCall", output_item),
                     vector_store_ids,
                     rag_id_mapping,
                 )
@@ -1075,7 +1076,7 @@ def build_tool_call_summary(  # pylint: disable=too-many-return-statements,too-m
     item_type = getattr(output_item, "type", None)
 
     if item_type == "function_call":
-        item = cast(FunctionCall, output_item)
+        item = cast("FunctionCall", output_item)
         return (
             ToolCallSummary(
                 id=item.call_id,
@@ -1087,7 +1088,7 @@ def build_tool_call_summary(  # pylint: disable=too-many-return-statements,too-m
         )
 
     if item_type == "file_search_call":
-        file_search_item = cast(FileSearchCall, output_item)
+        file_search_item = cast("FileSearchCall", output_item)
         response_payload: Optional[dict[str, Any]] = None
         if file_search_item.results is not None:
             response_payload = {
@@ -1108,7 +1109,7 @@ def build_tool_call_summary(  # pylint: disable=too-many-return-statements,too-m
 
     # Incomplete OpenAI Responses API definition in LLS: action attribute not supported yet
     if item_type == "web_search_call":
-        web_search_item = cast(WebSearchCall, output_item)
+        web_search_item = cast("WebSearchCall", output_item)
         return (
             ToolCallSummary(
                 id=web_search_item.id,
@@ -1126,7 +1127,7 @@ def build_tool_call_summary(  # pylint: disable=too-many-return-statements,too-m
         )
 
     if item_type == "mcp_call":
-        mcp_call_item = cast(MCPCall, output_item)
+        mcp_call_item = cast("MCPCall", output_item)
         args = parse_arguments_string(mcp_call_item.arguments)
         if mcp_call_item.server_label:
             args["server_label"] = mcp_call_item.server_label
@@ -1146,7 +1147,7 @@ def build_tool_call_summary(  # pylint: disable=too-many-return-statements,too-m
         )
 
     if item_type == "mcp_list_tools":
-        mcp_list_tools_item = cast(MCPListTools, output_item)
+        mcp_list_tools_item = cast("MCPListTools", output_item)
         tools_info = [
             {
                 "name": tool.name,
@@ -1176,7 +1177,7 @@ def build_tool_call_summary(  # pylint: disable=too-many-return-statements,too-m
         )
 
     if item_type == "mcp_approval_request":
-        approval_request_item = cast(MCPApprovalRequest, output_item)
+        approval_request_item = cast("MCPApprovalRequest", output_item)
         args = parse_arguments_string(approval_request_item.arguments)
         return (
             ToolCallSummary(
@@ -1189,7 +1190,7 @@ def build_tool_call_summary(  # pylint: disable=too-many-return-statements,too-m
         )
 
     if item_type == "mcp_approval_response":
-        approval_response_item = cast(MCPApprovalResponse, output_item)
+        approval_response_item = cast("MCPApprovalResponse", output_item)
         content_dict = {}
         if approval_response_item.reason:
             content_dict["reason"] = approval_response_item.reason
@@ -1614,7 +1615,7 @@ def extract_text_from_response_item(response_item: ResponseItem) -> str:
     if response_item.type != "message":
         return ""
 
-    message_item = cast(ResponseMessage, response_item)
+    message_item = cast("ResponseMessage", response_item)
     return _extract_text_from_content(message_item.content)
 
 
@@ -1639,15 +1640,15 @@ def _extract_text_from_content(
         part_type = getattr(part, "type", None)
         match part_type:
             case "input_text":
-                input_text_part = cast(InputTextPart, part)
+                input_text_part = cast("InputTextPart", part)
                 if input_text_part.text:
                     text_fragments.append(input_text_part.text.strip())
             case "output_text":
-                output_text_part = cast(OutputTextPart, part)
+                output_text_part = cast("OutputTextPart", part)
                 if output_text_part.text:
                     text_fragments.append(output_text_part.text.strip())
             case "refusal":
-                refusal_part = cast(ContentPartRefusal, part)
+                refusal_part = cast("ContentPartRefusal", part)
                 if refusal_part.refusal:
                     text_fragments.append(refusal_part.refusal.strip())
 
@@ -1724,13 +1725,13 @@ def extract_attachments_text(response_input: ResponseInput) -> str:
     for item in response_input:
         if item.type != "message":
             continue
-        message = cast(ResponseMessage, item)
+        message = cast("ResponseMessage", item)
         content = message.content
         if isinstance(content, str):
             continue
         for part in content:
             if part.type == "input_file":
-                file_part = cast(InputFilePart, part)
+                file_part = cast("InputFilePart", part)
                 if file_part.file_data:
                     file_data_parts.append(file_part.file_data)
     return "\n\n".join(file_data_parts)
