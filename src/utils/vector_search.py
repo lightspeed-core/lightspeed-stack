@@ -4,6 +4,8 @@ This module contains common functionality for performing vector searches
 and processing RAG chunks that is shared between query_v2.py and streaming_query_v2.py.
 """
 
+# pylint: disable=unused-import
+
 import asyncio
 import traceback
 from typing import Any, Optional, cast
@@ -874,7 +876,7 @@ def append_inline_rag_context_to_responses_input(
     for item in input_value:
         if item.type != "message" or item.role != "user":
             continue
-        message = cast(ResponseMessage, item)
+        message = cast("ResponseMessage", item)
         content = message.content
         if isinstance(content, str):
             message.content = content + "\n\n" + inline_rag_context_text

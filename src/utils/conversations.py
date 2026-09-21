@@ -1,5 +1,7 @@
 """Utilities for conversations."""
 
+# pylint: disable=unused-import
+
 import json
 from collections.abc import Sequence
 from datetime import UTC, datetime
@@ -151,7 +153,7 @@ def _function_call_output_to_str(output: FunctionCallOutputContent) -> str:
     fragments: list[str] = []
     for part in output:
         if getattr(part, "type", None) == "input_text":
-            text_part = cast(InputTextContent, part)
+            text_part = cast("InputTextContent", part)
             fragments.append(text_part.text)
         else:
             fragments.append(part.model_dump_json(exclude_none=True))
@@ -169,7 +171,7 @@ def _parse_message_item(item: ConversationMessage) -> Message:
     """
     return Message(
         content=_extract_text_from_content(item.content),
-        type=cast(Literal["user", "assistant", "system", "developer"], item.role),
+        type=cast("Literal['user', 'assistant', 'system', 'developer']", item.role),
         referenced_documents=None,
     )
 
@@ -189,7 +191,7 @@ def _build_tool_call_summary_from_item(  # pylint: disable=too-many-return-state
     item_type = getattr(item, "type", None)
 
     if item_type == "function_call":
-        function_call_item = cast(FunctionCall, item)
+        function_call_item = cast("FunctionCall", item)
         return (
             ToolCallSummary(
                 id=function_call_item.call_id,
@@ -201,7 +203,7 @@ def _build_tool_call_summary_from_item(  # pylint: disable=too-many-return-state
         )
 
     if item_type == "file_search_call":
-        file_search_item = cast(FileSearchCall, item)
+        file_search_item = cast("FileSearchCall", item)
         response_payload: Optional[dict[str, Any]] = None
         if file_search_item.results is not None:
             response_payload = {
@@ -224,7 +226,7 @@ def _build_tool_call_summary_from_item(  # pylint: disable=too-many-return-state
         )
 
     if item_type == "web_search_call":
-        web_search_item = cast(WebSearchCall, item)
+        web_search_item = cast("WebSearchCall", item)
         return (
             ToolCallSummary(
                 id=web_search_item.id,
@@ -242,7 +244,7 @@ def _build_tool_call_summary_from_item(  # pylint: disable=too-many-return-state
         )
 
     if item_type == "mcp_call":
-        mcp_call_item = cast(MCPCall, item)
+        mcp_call_item = cast("MCPCall", item)
         args = parse_arguments_string(mcp_call_item.arguments)
         if mcp_call_item.server_label:
             args["server_label"] = mcp_call_item.server_label
@@ -265,7 +267,7 @@ def _build_tool_call_summary_from_item(  # pylint: disable=too-many-return-state
         )
 
     if item_type == "mcp_list_tools":
-        mcp_list_tools_item = cast(MCPListTools, item)
+        mcp_list_tools_item = cast("MCPListTools", item)
         tools_info = [
             {
                 "name": tool.name,
@@ -295,7 +297,7 @@ def _build_tool_call_summary_from_item(  # pylint: disable=too-many-return-state
         )
 
     if item_type == "mcp_approval_request":
-        approval_request_item = cast(MCPApprovalRequest, item)
+        approval_request_item = cast("MCPApprovalRequest", item)
         args = parse_arguments_string(approval_request_item.arguments)
         return (
             ToolCallSummary(
@@ -308,7 +310,7 @@ def _build_tool_call_summary_from_item(  # pylint: disable=too-many-return-state
         )
 
     if item_type == "mcp_approval_response":
-        approval_response_item = cast(MCPApprovalResponse, item)
+        approval_response_item = cast("MCPApprovalResponse", item)
         content_dict = {}
         if approval_response_item.reason:
             content_dict["reason"] = approval_response_item.reason
@@ -324,14 +326,14 @@ def _build_tool_call_summary_from_item(  # pylint: disable=too-many-return-state
         )
 
     if item_type == "function_call_output":
-        function_output = cast(FunctionCallOutput, item)
+        function_output = cast("FunctionCallOutput", item)
         return (
             None,
             ToolResultSummary(
                 id=function_output.call_id,
                 status=function_output.status or "success",
                 content=_function_call_output_to_str(
-                    cast(FunctionCallOutputContent, function_output.output)
+                    cast("FunctionCallOutputContent", function_output.output)
                 ),
                 type="function_call_output",
                 round=1,
@@ -417,7 +419,7 @@ def _group_items_into_turns(
 
         # User message marks the beginning of a new turn
         if item_type == "message":
-            message_item = cast(ConversationMessage, item)
+            message_item = cast("ConversationMessage", item)
             if message_item.role == "user":
                 # If we have accumulated items, finish the previous turn
                 if current_turn_items:
@@ -459,7 +461,7 @@ def _process_turn_items(
         item_type = getattr(item, "type", None)
 
         if item_type == "message":
-            message_item = cast(ConversationMessage, item)
+            message_item = cast("ConversationMessage", item)
             message = _parse_message_item(message_item)
             messages.append(message)
         else:

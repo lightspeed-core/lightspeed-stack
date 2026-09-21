@@ -285,7 +285,7 @@ async def test_rlsapi_v1_infer_connection_error_returns_503(
     assert exc_info.value.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
     assert isinstance(exc_info.value.detail, dict)
     assert "response" in exc_info.value.detail
-    detail = cast(dict[str, str], exc_info.value.detail)
+    detail = cast("dict[str, str]", exc_info.value.detail)
     assert "OGX" in detail["response"]
 
 

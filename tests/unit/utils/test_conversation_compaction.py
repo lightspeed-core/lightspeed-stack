@@ -23,7 +23,7 @@ CONV = "conv_abc123"
 
 def _msg(role: str, text: str) -> OpenAIResponseMessage:
     """Build a typed OGX message item for tests."""
-    return OpenAIResponseMessage(role=cast(Any, role), content=text)
+    return OpenAIResponseMessage(role=cast("Any", role), content=text)
 
 
 def _marker(text: str) -> OpenAIResponseMessage:
@@ -620,7 +620,7 @@ def test_estimate_response_input_tokens_counts_list_form() -> None:
     big = "incident detail " * 50
     string_tokens = cc._estimate_response_input_tokens(big, cc.DEFAULT_ENCODING_NAME)
     list_tokens = cc._estimate_response_input_tokens(
-        cast(Any, [_msg("user", big)]), cc.DEFAULT_ENCODING_NAME
+        cast("Any", [_msg("user", big)]), cc.DEFAULT_ENCODING_NAME
     )
     assert string_tokens > 10
     assert list_tokens > 10

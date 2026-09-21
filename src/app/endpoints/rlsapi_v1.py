@@ -296,7 +296,7 @@ async def _call_llm(
         stream=False,
         store=False,
     )
-    return cast(OpenAIResponseObject, response)
+    return cast("OpenAIResponseObject", response)
 
 
 def _queue_splunk_event(  # pylint: disable=too-many-arguments,too-many-positional-arguments
@@ -787,7 +787,7 @@ async def infer_endpoint(  # pylint: disable=R0914,R0915
             response = await _call_llm(
                 moderated_input,
                 instructions,
-                tools=cast(list[Any], mcp_tools),
+                tools=cast("list[Any]", mcp_tools),
                 model_id=model_id,
             )
             response_text = extract_text_from_response_items(response.output)

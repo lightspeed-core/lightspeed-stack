@@ -1,4 +1,4 @@
-# pylint: disable=too-many-locals,too-many-branches,too-many-nested-blocks,too-many-arguments,too-many-positional-arguments,too-many-lines,too-many-statements
+# pylint: disable=too-many-locals,too-many-branches,too-many-nested-blocks,too-many-arguments,too-many-positional-arguments,too-many-lines,too-many-statements,unused-import
 
 """Handler for REST API call to provide answer using Responses API (LCORE specification)."""
 
@@ -145,7 +145,7 @@ def _count_request_attachments(response_input: ResponseInput) -> int:
     for item in response_input:
         if item.type != "message":
             continue
-        message = cast(ResponseMessage, item)
+        message = cast("ResponseMessage", item)
         content = message.content
         if isinstance(content, str):
             continue
@@ -379,7 +379,7 @@ async def _persist_blocked_response_turn(
         context: Request-scoped Responses API context with moderation details.
     """
     if api_params.store:
-        moderation_result = cast(ShieldModerationBlocked, context.moderation_result)
+        moderation_result = cast("ShieldModerationBlocked", context.moderation_result)
         # In compacted mode the conversation parameter was dropped and
         # api_params.input is the explicit-input rewrite, so persist the turn
         # against the original user input instead (LCORE-1572).
@@ -820,7 +820,7 @@ async def handle_streaming_response(
                 **api_params.model_dump(exclude_none=True)
             )
             generator = response_generator(
-                stream=cast(AsyncIterator[OpenAIResponseObjectStream], response),
+                stream=cast("AsyncIterator[OpenAIResponseObjectStream]", response),
                 original_request=original_request,
                 api_params=api_params,
                 context=context,
@@ -869,7 +869,7 @@ async def shield_violation_generator(
     available_quotas = get_available_quotas(
         quota_limiters=configuration.quota_limiters, user_id=context.auth[0]
     )
-    moderation_result = cast(ShieldModerationBlocked, context.moderation_result)
+    moderation_result = cast("ShieldModerationBlocked", context.moderation_result)
 
     # 1. Send response.created event with status "in_progress" and empty output
     created_response_object = ResponsesResponse.model_construct(
@@ -1016,7 +1016,7 @@ def _should_filter_mcp_chunk(
         True if the chunk should be filtered out from the client stream.
     """
     if chunk.type == "response.output_item.added":
-        item_added_chunk = cast(OutputItemAddedChunk, chunk)
+        item_added_chunk = cast("OutputItemAddedChunk", chunk)
         item = item_added_chunk.item
         item_type = getattr(item, "type", None)
         if item_type in ("mcp_call", "mcp_list_tools", "mcp_approval_request"):
@@ -1035,7 +1035,7 @@ def _should_filter_mcp_chunk(
             return True
 
     if chunk.type == "response.output_item.done":
-        item_done_chunk = cast(OutputItemDoneChunk, chunk)
+        item_done_chunk = cast("OutputItemDoneChunk", chunk)
         item = item_done_chunk.item
         item_type = getattr(item, "type", None)
         if item_type in ("mcp_call", "mcp_list_tools", "mcp_approval_request"):
@@ -1163,7 +1163,7 @@ async def response_generator(
                 "response.failed",
             ):
                 latest_response_object = cast(
-                    OpenAIResponseObject, cast(Any, chunk).response
+                    "OpenAIResponseObject", cast("Any", chunk).response
                 )
 
                 # Record inference duration metric at the terminal-event
@@ -1346,7 +1346,7 @@ async def handle_non_streaming_response(
         )
         try:
             api_response = cast(
-                OpenAIResponseObject,
+                "OpenAIResponseObject",
                 await context.client.responses.create(
                     **api_params.model_dump(exclude_none=True)
                 ),

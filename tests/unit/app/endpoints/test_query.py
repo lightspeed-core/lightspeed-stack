@@ -227,7 +227,7 @@ class TestQueryEndpointHandler:
         )
 
         compaction_result = CompactionResult(
-            cast(ResponsesApiParams, mock_responses_params),
+            cast("ResponsesApiParams", mock_responses_params),
             compacted=compacted,
         )
         mocker.patch(

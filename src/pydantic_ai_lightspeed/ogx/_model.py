@@ -102,7 +102,7 @@ def _model_settings_from_responses_params(
         settings_dict["openai_previous_response_id"] = (
             responses_params.previous_response_id
         )
-    return cast(OpenAIResponsesModelSettings, settings_dict)
+    return cast("OpenAIResponsesModelSettings", settings_dict)
 
 
 class _FilteredResponseStream:
@@ -389,7 +389,7 @@ class OgxResponsesModel(OpenAIResponsesModel):
 
         new_settings = dict(model_settings)
         new_settings.pop("openai_previous_response_id", None)
-        return trimmed_messages, cast(ModelSettings, new_settings)
+        return trimmed_messages, cast("ModelSettings", new_settings)
 
     def _prepare_compacted_input(
         self,
@@ -417,7 +417,7 @@ class OgxResponsesModel(OpenAIResponsesModel):
         new_extra_body.pop("input")
         new_settings = dict(model_settings)
         new_settings["extra_body"] = new_extra_body
-        return cast(ModelSettings, new_settings)
+        return cast("ModelSettings", new_settings)
 
     @asynccontextmanager
     async def request_stream(  # pylint: disable=unused-argument
@@ -447,7 +447,7 @@ class OgxResponsesModel(OpenAIResponsesModel):
         )
         model_settings = self._prepare_compacted_input(messages, model_settings)
 
-        model_settings_cast = cast(OpenAIResponsesModelSettings, model_settings or {})
+        model_settings_cast = cast("OpenAIResponsesModelSettings", model_settings or {})
         response = await self._responses_create(
             messages, True, model_settings_cast, model_request_parameters
         )

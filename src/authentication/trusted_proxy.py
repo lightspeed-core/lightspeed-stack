@@ -1,5 +1,7 @@
 """Trusted-proxy authentication module for requests forwarded by a K8s proxy."""
 
+# pylint: disable=unused-import
+
 from typing import cast
 
 import kubernetes.client
@@ -79,14 +81,14 @@ class TrustedProxyAuthDependency(
             )
             raise HTTPException(**response.model_dump())
 
-        user = cast(kubernetes.client.V1UserInfo, user_info.user)
+        user = cast("kubernetes.client.V1UserInfo", user_info.user)
         if not user or not hasattr(user, "username"):
             response = UnauthorizedResponse(
                 cause="Invalid service account token: missing user information"
             )
             raise HTTPException(**response.model_dump())
 
-        sa_username = cast(str, user.username)
+        sa_username = cast("str", user.username)
         if not sa_username:
             response = UnauthorizedResponse(
                 cause="Invalid service account token: missing username"
