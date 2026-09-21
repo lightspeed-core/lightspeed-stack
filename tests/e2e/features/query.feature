@@ -170,4 +170,3 @@ Scenario: Check if LLM responds for query request with error for missing query
     Then The status code of the response is 413
     And The body of the response contains Prompt is too long
     
-
