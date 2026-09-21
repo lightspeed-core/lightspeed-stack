@@ -84,7 +84,7 @@ async def test_missing_authorization_header() -> None:
         await dependency(request)
 
     assert exc_info.value.status_code == 401
-    detail = cast(dict[str, str], exc_info.value.detail)
+    detail = cast("dict[str, str]", exc_info.value.detail)
     assert detail["cause"] == "Missing Authorization header"
 
 
@@ -111,7 +111,7 @@ async def test_invalid_token(mocker: MockerFixture) -> None:
         await dependency(request)
 
     assert exc_info.value.status_code == 401
-    detail = cast(dict[str, str], exc_info.value.detail)
+    detail = cast("dict[str, str]", exc_info.value.detail)
     assert detail["cause"] == "Invalid or expired proxy service account token"
 
 
@@ -141,7 +141,7 @@ async def test_token_review_missing_user_info(mocker: MockerFixture) -> None:
         await dependency(request)
 
     assert exc_info.value.status_code == 401
-    detail = cast(dict[str, str], exc_info.value.detail)
+    detail = cast("dict[str, str]", exc_info.value.detail)
     assert detail["cause"] == "Invalid service account token: missing user information"
 
 
@@ -168,7 +168,7 @@ async def test_token_review_missing_username(mocker: MockerFixture) -> None:
         await dependency(request)
 
     assert exc_info.value.status_code == 401
-    detail = cast(dict[str, str], exc_info.value.detail)
+    detail = cast("dict[str, str]", exc_info.value.detail)
     assert detail["cause"] == "Invalid service account token: missing username"
 
 
@@ -257,7 +257,7 @@ async def test_whitespace_only_user_header(mocker: MockerFixture) -> None:
         await dependency(request)
 
     assert exc_info.value.status_code == 401
-    detail = cast(dict[str, str], exc_info.value.detail)
+    detail = cast("dict[str, str]", exc_info.value.detail)
     assert detail["cause"] == "Missing required header 'X-Forwarded-User'"
 
 
@@ -283,7 +283,7 @@ async def test_missing_user_header(mocker: MockerFixture) -> None:
         await dependency(request)
 
     assert exc_info.value.status_code == 401
-    detail = cast(dict[str, str], exc_info.value.detail)
+    detail = cast("dict[str, str]", exc_info.value.detail)
     assert detail["cause"] == "Missing required header 'X-Forwarded-User'"
 
 

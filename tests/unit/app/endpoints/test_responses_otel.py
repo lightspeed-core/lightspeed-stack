@@ -1,4 +1,4 @@
-# pylint: disable=redefined-outer-name
+# pylint: disable=redefined-outer-name, unused-import
 """OpenTelemetry unit tests for the /responses REST API endpoint."""
 
 from collections.abc import Sequence
@@ -109,7 +109,9 @@ class TestFinalizeResponsesRootSpanOtel:  # pylint: disable=too-few-public-metho
         assert span.attributes is not None
         assert span.attributes[SpanAttributes.TOOL_CALLS_COUNT] == len(tool_names)
         assert (
-            list(cast(Sequence[str], span.attributes[SpanAttributes.TOOL_CALLS_NAMES]))
+            list(
+                cast("Sequence[str]", span.attributes[SpanAttributes.TOOL_CALLS_NAMES])
+            )
             == tool_names
         )
         assert span.attributes[SpanAttributes.LLM_USAGE_INPUT_TOKENS] == 10
