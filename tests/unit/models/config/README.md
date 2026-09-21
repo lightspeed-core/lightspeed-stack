@@ -44,6 +44,10 @@ Unit tests for DatabaseConfiguration model.
 
 Unit tests checking ability to dump configuration.
 
+## [test_granite_guardian_configuration.py](test_granite_guardian_configuration.py)
+
+Unit tests for GraniteGuardianConfig model.
+
 ## [test_in_memory_cache_configuration.py](test_in_memory_cache_configuration.py)
 
 Unit tests for InMemoryCache model.

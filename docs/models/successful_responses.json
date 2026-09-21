@@ -1778,8 +1778,14 @@
                 "description": "Configuration for the Granite Guardian moderation guardrail.",
                 "properties": {
                     "url": {
-                        "description": "The model_id to use for the guard",
+                        "description": "Base URL of the OpenAI-compatible inference endpoint.",
                         "title": "Base URL",
+                        "type": "string"
+                    },
+                    "model_id": {
+                        "default": "ibm-granite/granite-guardian-4.1-8b",
+                        "description": "Model name sent to the inference server. Override when the server registers the model under a different name (e.g. an Ollama tag). The prompt template is built for the 4.1 format.",
+                        "title": "Model name",
                         "type": "string"
                     },
                     "api_key": {
@@ -1817,6 +1823,21 @@
                         "default": true,
                         "description": "SSL certificate verification. Can be:\n  - True: Verify using system CA bundle (default, recommended)\n  - False: Disable verification (insecure, for dev only)\n  - str: Path to custom CA bundle file (for internal PKI)",
                         "title": "Verify SSL"
+                    },
+                    "parallel": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "maximum": 10,
+                                "minimum": 1,
+                                "type": "integer"
+                            }
+                        ],
+                        "default": 3,
+                        "description": "True to run all risk checks in parallel, False to run sequentially, or an integer 1-10 for explicit batch size.",
+                        "title": "Parallel execution"
                     },
                     "risks": {
                         "description": "Risks to be considered while applying this guardrail",
