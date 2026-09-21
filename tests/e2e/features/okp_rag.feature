@@ -172,7 +172,7 @@ Feature: OKP(Solr) RAG retrieval tests
   # ── OKP RAG Disabled (okp not in rag.retrieval.inline.sources) ─────
 
   Scenario: Query returns no rag_chunks and no reference_documents when OKP is disabled
-    Given The service uses the lightspeed-stack-okp-negative.yaml configuration
+    Given The service uses the lightspeed-stack-shields-empty.yaml configuration
       And OGX is restarted
       And The service is restarted
     When I use "query" to ask question with authorization header
@@ -184,7 +184,7 @@ Feature: OKP(Solr) RAG retrieval tests
      And The response contains no referenced_documents
 
   Scenario: Streaming query returns no referenced_documents when OKP is disabled
-    Given The service uses the lightspeed-stack-okp-negative.yaml configuration
+    Given The service uses the lightspeed-stack-shields-empty.yaml configuration
       And OGX is restarted
       And The service is restarted
     When I use "streaming_query" to ask question with authorization header

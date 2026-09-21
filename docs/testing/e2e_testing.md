@@ -194,7 +194,7 @@ LIGHTSPEED_STACK_LOG_LEVEL=DEBUG make run-ogx \
 
 ### 4. Run the matching Behave scenario
 
-`okp_rag.feature:24` is the offline inline scenario (`lightspeed-stack-okp-offline.yaml`). Comment `@konflux-only` on the Feature, `OKP(Solr) server is running` in Background, and `Llama Stack is restarted` / `The service is restarted` on that scenario (OGX and LCS are already up). Do not commit those comments.
+`okp_rag.feature:24` is the offline inline scenario (`lightspeed-stack-okp-offline.yaml`). Comment `@konflux-only` on the Feature, `OKP(Solr) server is running` in Background, and `OGX is restarted` / `The service is restarted` on that scenario (OGX and LCS are already up). Do not commit those comments.
 
 ```bash
 uv run behave tests/e2e/features/okp_rag.feature:24
