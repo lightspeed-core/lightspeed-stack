@@ -1226,7 +1226,7 @@ async def _handle_a2a_jsonrpc(  # pylint: disable=too-many-locals,too-many-state
         return Response(
             content=b"".join(response_body),
             status_code=status_code,
-            headers=dict((k.decode(), v.decode()) for k, v in headers),
+            headers={k.decode(): v.decode() for k, v in headers},
         )
 
 
