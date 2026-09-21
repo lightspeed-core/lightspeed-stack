@@ -25,9 +25,11 @@ spec:
       ports:
         - containerPort: 8080
           name: http
+      # Probe the portal-rag select API (what RAG uses). /solr and /solr/ are
+      # the Solr Admin UI; current OKP/Mimir images return HTTP 404 there.
       readinessProbe:
         httpGet:
-          path: /solr
+          path: "/solr/portal-rag/select?q=*:*&rows=0"
           port: 8080
         initialDelaySeconds: 30
         periodSeconds: 10
@@ -35,7 +37,7 @@ spec:
         failureThreshold: 3
       livenessProbe:
         httpGet:
-          path: /solr
+          path: "/solr/portal-rag/select?q=*:*&rows=0"
           port: 8080
         initialDelaySeconds: 60
         periodSeconds: 30
