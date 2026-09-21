@@ -704,7 +704,8 @@ Configuration for the Granite Guardian moderation guardrail.
 
 | Field | Type | Description |
 |-------|------|-------------|
-| url | string | The model_id to use for the guard |
+| url | string | Base URL of the OpenAI-compatible inference endpoint. |
+| model_id | string | Model name sent to the inference server. Override when the server registers the model under a different name (e.g. an Ollama tag). The prompt template is built for the 4.1 format. |
 | api_key | string | API key for the inference |
 | max_retries | integer | Maximun number of retries |
 | timeout | integer | Request timeout in seconds |
@@ -712,6 +713,7 @@ Configuration for the Granite Guardian moderation guardrail.
   - True: Verify using system CA bundle (default, recommended)
   - False: Disable verification (insecure, for dev only)
   - str: Path to custom CA bundle file (for internal PKI) |
+| parallel |  | True to run all risk checks in parallel, False to run sequentially, or an integer 1-10 for explicit batch size. |
 | risks | array | Risks to be considered while applying this guardrail |
 
 
