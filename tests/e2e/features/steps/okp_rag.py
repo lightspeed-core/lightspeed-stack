@@ -5,10 +5,7 @@ from typing import Any
 from behave import given, then  # pyright: ignore[reportAttributeAccessIssue]
 from behave.runner import Context
 
-from tests.e2e.utils.utils import (
-    RESPONSE_TOOL_OUTPUT_ITEM_TYPES,
-    is_konflux_environment,
-)
+from tests.e2e.utils.utils import is_konflux_environment
 
 # ── Response Body Extraction ──
 
@@ -57,16 +54,8 @@ def _get_referenced_documents(context: Context) -> list[dict[str, Any]]:
 
 
 def _get_tool_calls(context: Context) -> list[dict[str, Any]]:
-    """Extract tool calls from query response or output items from Responses API."""
-    body = _get_response_body(context)
-    if "tool_calls" in body:
-        return body["tool_calls"]
-    # Responses API: extract tool-type items from output
-    return [
-        item
-        for item in body.get("output", [])
-        if item.get("type") in RESPONSE_TOOL_OUTPUT_ITEM_TYPES
-    ]
+    """Extract tool_calls from a query API response body."""
+    return _get_response_body(context).get("tool_calls") or []
 
 
 # ── Generic Field Accessors ──
@@ -375,13 +364,6 @@ def check_referenced_document_id(context: Context) -> None:
 
 
 # ── Then Steps: tool_calls Assertions ──
-
-
-@then("The response contains non-empty tool_calls")
-def check_tool_calls_present(context: Context) -> None:
-    """Assert the response contains at least one tool call."""
-    tool_calls = _get_tool_calls(context)
-    _assert_not_empty(tool_calls, "tool_calls")
 
 
 @then('A tool_call has name "{name}"')

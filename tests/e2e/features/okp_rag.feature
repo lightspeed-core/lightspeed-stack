@@ -105,7 +105,6 @@ Feature: OKP(Solr) RAG retrieval tests
     }
     """
     Then The status code of the response is 200
-      And The response contains non-empty tool_calls
       And A tool_call has name "file_search"
       And The response contains non-empty rag_chunks
       And The number of rag_chunk returned is 2

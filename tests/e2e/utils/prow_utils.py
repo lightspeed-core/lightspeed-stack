@@ -398,17 +398,19 @@ def disrupt_okp_solr_pod() -> bool:
     try:
         result = run_e2e_ops("disrupt-okp-solr", timeout=60)
         print(result.stdout, end="")
+        print(f"disrupt-okp-solr exit code: {result.returncode}")
 
         # Exit code 0 = disrupted (was running), exit code 2 = was not running
         if result.returncode == 0:
             return True
-        elif result.returncode == 2:
+        if result.returncode == 2:
             return False
-        else:
-            print(result.stderr, end="")
-            return False
+        print(result.stderr, end="")
+        return False
 
-    except subprocess.TimeoutExpired:
+    except subprocess.TimeoutExpired as exc:
+        print(exc.stdout or "", end="")
+        print(exc.stderr or "", end="")
         print("Warning: Timeout while disrupting OKP Solr connection")
         return False
 
