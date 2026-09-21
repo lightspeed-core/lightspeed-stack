@@ -912,7 +912,7 @@ def write_hashed_requirements(
         hash_lines = [f"    --hash=sha256:{h}" for h in sorted_hashes]
         lines.append(" \\\n".join(hash_lines) + "\n")
 
-    with open(output_path, "w") as f:
+    with open(output_path, "w", encoding="utf-8") as f:
         f.writelines(lines)
 
 
@@ -923,14 +923,14 @@ def write_hashed_requirements(
 
 def patch_tekton_packages(yaml_path: str, package_names: list[str]) -> None:
     """Replace the ``"packages": "..."`` value in a Tekton pipeline YAML."""
-    with open(yaml_path) as f:
+    with open(yaml_path, encoding="utf-8") as f:
         content = f.read()
 
     sorted_names = sorted(package_names)
     replacement = f'"packages": "{",".join(sorted_names)}"'
     content = re.sub(r'"packages":\s*"[^"]*"', replacement, content)
 
-    with open(yaml_path, "w") as f:
+    with open(yaml_path, "w", encoding="utf-8") as f:
         f.write(content)
 
 
@@ -970,7 +970,7 @@ def load_wheel_only(path: str) -> set[str]:
     Skips blank lines and ``#`` comments.  Returns normalized names.
     """
     names: set[str] = set()
-    with open(path) as f:
+    with open(path, encoding="utf-8") as f:
         for line in f:
             line = line.strip()
             if not line or line.startswith("#"):
@@ -1155,7 +1155,7 @@ def _strip_rhoai_duplicates_from_build_deps(
     to prevent hermeto from fetching PyPI wheels for them, which would cause
     EC policy violations (binary=true on PyPI-sourced packages).
     """
-    with open(build_file) as f:
+    with open(build_file, encoding="utf-8") as f:
         lines = f.readlines()
 
     output: list[str] = []
@@ -1170,7 +1170,7 @@ def _strip_rhoai_duplicates_from_build_deps(
         if not skip:
             output.append(line)
 
-    with open(build_file, "w") as f:
+    with open(build_file, "w", encoding="utf-8") as f:
         f.writelines(output)
 
 
@@ -1273,7 +1273,7 @@ def main() -> None:
     if sdist_names:
         tmp_sdist_file = os.path.join(KONFLUX_DIR, f"_tmp_sdist_list{suffix}.txt")
         try:
-            with open(tmp_sdist_file, "w") as f:
+            with open(tmp_sdist_file, "w", encoding="utf-8") as f:
                 for name in sorted(sdist_names):
                     info = buckets["pypi_sdist"][name]
                     f.write(f"{name}=={info['version']}\n")
@@ -1304,7 +1304,7 @@ def main() -> None:
             build_output, rhoai_names | bootstrap_names
         )
     else:
-        with open(build_output, "w") as f:
+        with open(build_output, "w", encoding="utf-8") as f:
             f.write("# No sdist packages — no build dependencies needed.\n")
 
     # Step 9: Patch Tekton pipelines
