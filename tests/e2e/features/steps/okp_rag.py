@@ -28,7 +28,7 @@ def _get_file_search_results(context: Context) -> list[dict[str, Any]]:
     """
     body = _get_response_body(context)
     results: list[dict[str, Any]] = []
-    for item in body.get("output", []):
+    for item in body.get("output") or []:
         if item.get("type") == "file_search_call":
             results.extend(item.get("results") or [])
     return results
@@ -42,7 +42,7 @@ def _get_rag_chunks(context: Context) -> list[dict[str, Any]]:
     ``output``, so this falls through to ``_get_file_search_results``.
     """
     body = _get_response_body(context)
-    if "rag_chunks" in body:
+    if body.get("rag_chunks") is not None:
         return body["rag_chunks"]
     return _get_file_search_results(context)
 
@@ -50,12 +50,15 @@ def _get_rag_chunks(context: Context) -> list[dict[str, Any]]:
 def _get_referenced_documents(context: Context) -> list[dict[str, Any]]:
     """Extract referenced_documents from response body."""
     body = _get_response_body(context)
-    return body.get("referenced_documents", [])
+    return body.get("referenced_documents") or []
 
 
 def _get_tool_calls(context: Context) -> list[dict[str, Any]]:
     """Extract tool_calls from a query API response body."""
-    return _get_response_body(context).get("tool_calls") or []
+    body = _get_response_body(context)
+    if body.get("tool_calls") is not None:
+        return body["tool_calls"]
+    return []
 
 
 # ── Generic Field Accessors ──
@@ -401,7 +404,7 @@ def check_results_count(context: Context, count: int) -> None:
 def check_no_rag_chunks(context: Context) -> None:
     """Assert the response has no rag_chunks (empty or absent)."""
     body = _get_response_body(context)
-    chunks = body.get("rag_chunks", [])
+    chunks = body.get("rag_chunks") or []
     _assert_empty(chunks, "rag_chunks")
 
 
@@ -409,5 +412,5 @@ def check_no_rag_chunks(context: Context) -> None:
 def check_no_referenced_documents(context: Context) -> None:
     """Assert the response has no referenced_documents (empty or absent)."""
     body = _get_response_body(context)
-    docs = body.get("referenced_documents", [])
+    docs = body.get("referenced_documents") or []
     _assert_empty(docs, "referenced_documents")
