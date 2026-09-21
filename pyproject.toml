@@ -23,7 +23,7 @@ readme = "README.md"
 license = {file = "LICENSE"}
 dependencies = [
     # Used for HTTP service base
-    "fastapi>=0.115.12",
+    "fastapi>=0.138.0",
     "uvicorn>=0.34.3",
     # Used by authentication/k8s integration
     "kubernetes>=30.1.0",
@@ -82,6 +82,9 @@ dependencies = [
     # Used for Pydantic AI
     "pydantic-ai>=1.99.0",
     "pydantic-ai-skills>=0.11.0",
+    # Required to build source distributions in the Konflux hermetic build.
+    # Versions 10 and later require packaging>=26.2, incompatible with xai-sdk.
+    "setuptools-scm<10",
 ]
 
 
