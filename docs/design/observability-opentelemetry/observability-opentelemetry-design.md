@@ -374,6 +374,183 @@ No **required** change to JSON requests/responses. The `/config` response gains 
 - Which `OTEL_*` variables are included in the `/config` scrape?
 
 
+## Addendum: Raw eval content on core spans and PII redaction strategy
+
+|                          |                                                                                   |
+|--------------------------|-----------------------------------------------------------------------------------|
+| **Date**                 | 2026-09-22                                                                        |
+| **Authors**              | Anik Bhattacharjee                                                                |
+| **Feature / Initiative** | [UIESTRAT-229: Enable collection & upload of Observability OTel data stripped of PII/sensitive data](https://redhat.atlassian.net/browse/UIESTRAT-229)                      |
+
+This addendum records a deliberate change to the original "metadata only" data-handling
+stance for a **narrow, named set of spans**, the follow-on span-enrichment work it implies,
+and the PII-handling strategy that must accompany it. It supersedes the relevant parts of
+**R7** and the "Safe observability by design" bullet (§Why) **for the three core inference
+spans only** (`/v1/query`, `/v1/streaming_query`, `/v1/responses`). All other spans continue
+to follow the original metadata-only rule.
+
+### A1. What changed and why
+
+The original design captured **structured metadata only** — IDs, counts, lengths, coarse
+results — and explicitly avoided raw prompts and retrieved content (R7; §Why bullet 4;
+§Failure handling → "Metadata only... No raw prompts or retrieved content"). Content-bearing
+fields that were emitted at all (`request.input`, `response.output`, `feedback.comment`, …)
+were passed through `anonymize_value()` — an HMAC-SHA-256 digest (first 64 bits) plus a length
+tag, e.g. `[hash:ab12…:long:len=412]`.
+
+[LCORE-3755](https://redhat.atlassian.net/browse/LCORE-3755) introduces a conflicting,
+legitimate requirement: an ML engineer building a **RAGAS / DeepEval** evaluation harness needs
+the **raw, un-hashed** input/response pairs — plus RAG chunk and tool-use detail — from the
+core inference spans in order to compute metrics such as faithfulness, context precision/recall,
+and tool-call correctness. A hash carries none of that signal: you cannot score a digest.
+
+This addendum therefore:
+
+1. **Removes `anonymize_value()` from content fields** on the covered endpoints (input, output,
+   RAG input, feedback comment, and the A2A request id), while **keeping** it for pure identity
+   fields (`user.id`). `safety_identifier` continues to be recorded verbatim — it is OpenAI's
+   documented opaque, non-PII caller identifier.
+2. Establishes the **richer eval attributes** LCORE-3755 asks for as planned follow-on work
+   (§A3).
+3. Establishes a **replacement PII strategy** — detect-and-redact via the [shared Presidio library](https://docs.google.com/document/d/1BNBIDUz-lLmUjT9N9cEMqgaQv9EqfLKwZrA8gtbtlY8/edit?tab=t.0#heading=h.9qfphopokr7u) being currently used by some lightspeed teams (eg Ask RedHat) 
+### A2. LCORE-3755 gap analysis and remaining work
+
+[PR#2731](https://github.com/lightspeed-core/lightspeed-stack/pull/2731) satisfies the raw request/response criteria. The remaining
+criteria are net-new instrumentation, tracked as follow-on work under LCORE-3755.
+
+| # | LCORE-3755 acceptance criterion | Status | Notes |
+|---|---|---|---|
+| 1 | `conversation_id` on all 3 core spans | Present | emitted today as `session.id` — confirm naming vs. `conversation_id` |
+| 2 | `request` raw / un-hashed on all 3 | **Done (PR#2731)** | `request.input` now raw |
+| 3 | `response` raw / un-hashed on all 3 | **Done (slice 1)** | `response.output` now raw (incl. streaming path) |
+| 10 | `input_tokens` / `output_tokens` on all 3 | Present | already set on query, streaming, responses |
+| 7 | `model` name on all 3 | Partial | present on responses + non-streaming query; **missing on the streaming root span** |
+| 8 | `inference_time` / `latency` on all 3 | Partial | only implicit **span duration** today; decide whether an explicit attribute is required |
+| 11 | Shield **decision + reason** on all 3 | Partial | `shield.result` = `passed`/`blocked` on the child `shield.moderate` span; **no reason**, not on the root spans |
+| 4 | `rag_chunks` full list (content, source, score, attributes), inline + tool-based | **Net-new** | today only `rag.sources.count` + `rag.sources` = **doc URLs**; no content/score/attributes; nothing for `file_search_call` chunks |
+| 5 | `tool_calls` full detail (id, name, args) | **Net-new** | today only `tool.calls.count` / `tool.calls.names` |
+| 6 | `tool_results` full detail (id, status, content, round) | **Net-new (emission only)** | `id`/`status`/`content`/`round` already exist on `ToolResultSummary`; only the span emission is missing |
+| 12 | `round` on tool results, both paths | **Net-new (emission only)** | already a field on `ToolResultSummary`; net-new is emitting it (and keeping the streaming vs non-streaming paths in agreement) |
+| 13 | Unit tests for each of the above | **Net-new** | |
+
+**Design considerations for the net-new work:**
+
+#### This is additive raw content. 
+
+Every net-new field above (chunk content, tool args, tool results) is *additional* PII surface beyond 
+input/output — it depends on §A4 being in place.
+
+#### Attribute encoding for structured values
+
+OpenTelemetry allows an attribute value to be only a primitive (`str`, `bool`, `int`, `float`)
+or a **homogeneous** sequence of primitives — no maps, no lists of objects. And `span.set_attribute()` 
+does **not** raise on a bad type: the SDK logs a warning once and **silently drops the attribute**. 
+So handing it a list of chunk objects yields a span with no data and no error, unnoticed until the 
+eval harness comes up empty.
+
+That rules out setting the structured fields (`rag_chunks`, `tool_calls`, `tool_results`) as native attributes.
+
+**Approach — scalars native, collections as one JSON string each.** We will start with the most
+straightforward encoding that fits the above mentioned constraint: emit the scalar fields as native attributes,
+and serialize each collection to a single JSON-string attribute (`json.dumps` of the list).
+
+| Field | Encoding | Type |
+|---|---|---|
+| `llm.latency_ms` | native attribute | `float` (unit encoded in the key) |
+| `shield.reason` | native attribute | `str` |
+| `llm.model.id` (streaming gap) | native attribute | `str` |
+| `rag.chunks` | one JSON-string attribute (`json.dumps` of the chunk list) | `str` |
+| `tool.calls` | one JSON-string attribute (`json.dumps` of the call list) | `str` |
+| `tool.results` | one JSON-string attribute (`json.dumps` of the result list) | `str` |
+
+Notes for the implementer:
+
+- **This is the encoding the eval backend reads.** Langfuse ingests span *attributes* (the
+  observation path) but not generic span *events* — it maps only a specific set of GenAI event
+  names (see [langfuse#11536](https://github.com/langfuse/langfuse/issues/11536)). So a per-item
+  `add_event` approach would silently not show up for eval; JSON-string attributes are the safe fit.
+- **`json.dumps` needs `allow_nan=False` / `default=str`** so a `NaN`/`Infinity` score can't emit
+  invalid JSON.
+- **Redact before serializing.** The §A4 redaction pass runs on the plain leaf strings
+  (`content`/`args`/`source`) *before* `json.dumps` — never parse-redact-reserialize a finished
+  JSON blob.
+
+The one trade-off is that a JSON blob can't be field-filtered/aggregated by the backend. If that's
+ever needed, a field can be promoted to its own native scalar attribute later; this doesn't need to
+be solved up front.
+
+
+### A4. PII redaction strategy
+
+**The problem.** Once spans carry raw text (prompts, responses, RAG chunks, tool I/O), that text
+can contain PII. So it must be scrubbed of PII before the span leaves LCORE — before OTLP export
+to a hosted backend such as LangFuse, and before any cross-org sharing. (This is a portfolio-wide
+obligation from Red Hat's AI Assessment (AIA/PIA) process, not specific to LCORE.) We do this by
+**detecting and redacting PII**.
+
+**The redactor we want.** A shared, production-proven redactor already exists:
+`data-anonymizer` (used by Ask Red Hat / IFD-1767, Case Summarization, and KCS Drafting). It is
+Presidio-based and detects email, hostname, IP (v4/v6), location, organization, person, phone,
+and URL. Reusing it — rather than each team writing its own — is the goal.
+
+**The catch — where it lives.** `data-anonymizer` is on Red Hat's **internal GitLab**
+(`gitlab.cee.redhat.com/uxe-data-ai-solutions/data-anonymizer`); it is not on PyPI. LCORE is
+built on **GitHub**, and a GitHub build/CI can't install a package from internal GitLab without
+internal credentials in the pipeline. So we **cannot simply add it to `pyproject.toml`.**
+
+**The proposal.** Don't hard-wire any one redactor into LCORE. Define a small **redaction slot**
+— one interface, e.g. `redact(text) -> text` — that the telemetry path calls without knowing which
+redactor is behind it. Then:
+
+- **GitHub build (default):** the slot is filled with public Presidio from PyPI. This gives the
+  GitHub build a working, dependency-only telemetry redactor with no internal access required.
+- **Red Hat's internal build/deployment:** a downstream build of LCORE wires in the downstream
+  `data-anonymizer` via an adapter, added at the stage where internal GitLab *is* reachable.
+
+Net: LCORE always has a working telemetry redactor and still builds on GitHub, while Red Hat's
+deployment gets the shared portfolio library.
+
+
+**Where redaction runs: redact at emission, through one helper.** Content will be redacted
+as it is put on the span, not after. All content fields will go on spans through a **single
+centralized helper** — e.g. `set_content_attribute(span, key, text)` — that runs each value
+through the redaction slot (§A4) before calling `set_attribute`. For the JSON-string collections
+(§A2), the helper redacts each leaf string (`content`/`args`/`source`) **before** `json.dumps`, so
+the serialized attribute never contains raw PII. Properties of this approach:
+
+- **The span never holds raw PII.** R12 ("redact before content leaves the process") is satisfied
+  by construction — there is no in-memory window where a raw value sits on a span or in the export
+  queue.
+- **One code path to audit.** Because content can only reach a span through the helper, there is a
+  single place to review and test; individual emission sites cannot forget to redact (there is no
+  raw path to `set_attribute` for content keys). A review/lint rule reinforces "content goes
+  through the helper."
+- **Fail-closed.** If the redactor raises, the helper **omits** the field rather than emitting raw
+  text — consistent with R9 (a tracing failure must never leak or break the request).
+- **Cost.** Redaction runs on the request path (synchronous), not in the export background thread.
+  This is minor — a text pass over already-generated output, dwarfed by the LLM call — and only
+  incurred when raw-content capture is enabled (R11 is opt-in/scoped). The helper is the single
+  place to make it async/best-effort if it ever becomes a bottleneck.
+
+
+### A5. Requirements addendum
+
+- **R11 — Raw eval content (scoped).** For `/v1/query`, `/v1/streaming_query`, and
+  `/v1/responses`, spans shall emit raw, un-hashed request, response, RAG chunk, and tool-use
+  detail sufficient for RAGAS / DeepEval evaluation. This scopes an exception to R7 for these
+  spans only.
+- **R12 — PII redaction before export.** Raw content emitted under R11 shall pass through PII
+  detection/redaction before leaving the process (OTLP export or cross-org sharing).
+- **R13 — Pluggable telemetry redaction, shared standard downstream.** LCORE shall expose a
+  pluggable redaction interface for span content, with a default implementation (public Presidio
+  from PyPI) that resolves in the GitHub build (no internal access). Red Hat's downstream build
+  shall wire in the GitLab-hosted `data-anonymizer` via an adapter; the GitHub build shall **not**
+  hard-depend on the internal package. This is separate from the existing `PiiRedactionCapability`
+  shield, which is unaffected.
+- **R14 — Identity vs. content.** Cryptographic pseudonymization (`anonymize_value()`) is
+  retained only for identity fields (`user.id`); it shall not be used on content fields.
+
+
 ## Appendix A: Jira epics and related tracking
 
 **Epics**
