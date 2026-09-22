@@ -262,7 +262,7 @@ def assert_root_setup_attributes(
     assert root.name == ROOT_SPAN_NAME
     assert root.attributes is not None
     assert root.attributes[SpanAttributes.USER_ID] == f"[anon:{MOCK_AUTH[0]}]"
-    assert root.attributes[SpanAttributes.INPUT] == f"[anon:{input_text}]"
+    assert root.attributes[SpanAttributes.INPUT] == input_text
     assert (
         root.attributes[SpanAttributes.REQUEST_ATTACHMENTS_COUNT] == attachments_count
     )
