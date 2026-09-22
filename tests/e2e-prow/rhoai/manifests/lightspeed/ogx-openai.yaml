@@ -43,10 +43,17 @@ spec:
           # Fast-path: PVC already has a valid venv from a previous pod creation in this pipeline run.
           # TLS scenarios delete+recreate this pod up to 16 times; skipping the expensive install
           # reduces per-restart time from ~6-15 min to ~30-90 s (just RAG seed refresh + chown).
-          # Check if cached revision matches requested revision
+          # Cache key is stack revision + providers SHA so a providers pin bump
+          # cannot reuse a PVC that still has the old Solr zip (LCORE-4022).
+          # Default matches deploy/lightspeed-stack/Containerfile ARG LIGHTSPEED_PROVIDERS_COMMIT
+          PROVIDERS_COMMIT="${PROVIDERS_COMMIT:-c095177e7d6d58a4009556251bbbca96ebf3dcb4}"
           CACHED_REVISION=""
+          CACHED_PROVIDERS=""
           if [[ -f /opt/app-root/.cached-revision ]]; then
             CACHED_REVISION=$(cat /opt/app-root/.cached-revision)
+          fi
+          if [[ -f /opt/app-root/.cached-providers ]]; then
+            CACHED_PROVIDERS=$(cat /opt/app-root/.cached-providers)
           fi
           REPO_REVISION="${REPO_REVISION:-main}"
 
@@ -57,8 +64,9 @@ spec:
               && [[ -f /opt/app-root/src/ogx_configuration.py ]] \
               && [[ -d /opt/app-root/lightspeed_stack_providers ]] \
               && [[ -d /opt/app-root/providers.d ]] \
-              && [[ "$CACHED_REVISION" == "$REPO_REVISION" ]]; then
-            echo "PVC cache hit: app-root already provisioned at $REPO_REVISION — skipping full install"
+              && [[ "$CACHED_REVISION" == "$REPO_REVISION" ]] \
+              && [[ "$CACHED_PROVIDERS" == "$PROVIDERS_COMMIT" ]]; then
+            echo "PVC cache hit: app-root already provisioned at $REPO_REVISION providers=$PROVIDERS_COMMIT — skipping full install"
             mkdir -p /opt/app-root/.e2e-rag-seed /opt/app-root/.e2e-rag-work /opt/app-root/src/.ogx /opt/app-root/src/.llama/storage/files
             if [[ -f /rag-seed/kv_store.db.gz ]]; then
               gzip -dc /rag-seed/kv_store.db.gz > /opt/app-root/.e2e-rag-seed/kv_store.db
@@ -92,8 +100,6 @@ spec:
           rm -rf /opt/app-root/repo
           sed -i 's|/opt/app-root/repo/.venv|/opt/app-root/.venv|g' /opt/app-root/.venv/bin/* 2>/dev/null || true
           # Download lightspeed-providers (external provider code + specs) — matches Containerfile
-          # Default matches deploy/lightspeed-stack/Containerfile ARG LIGHTSPEED_PROVIDERS_COMMIT
-          PROVIDERS_COMMIT="${PROVIDERS_COMMIT:-faf6a89a3ad7856e2e7a934324f31d146108acdb}"
           ZIP_PATH="/tmp/lightspeed-providers.zip"
           EXTRACT_DIR="/tmp/providers"
           curl -fL --retry 2 --retry-delay 5 "https://github.com/lightspeed-core/lightspeed-providers/archive/${PROVIDERS_COMMIT}.zip" -o "${ZIP_PATH}"
@@ -119,8 +125,9 @@ spec:
           cp -f /opt/app-root/.e2e-rag-seed/kv_store.db /opt/app-root/.e2e-rag-work/kv_store.db
           cp -f /opt/app-root/scripts/ogx-entrypoint.sh /opt/app-root/enrich-entrypoint.sh
           cp -f /opt/app-root/src/ogx_configuration.py /opt/app-root/ogx_configuration.py
-          # Save the provisioned revision for cache validation
+          # Save the provisioned revision + providers SHA for cache validation
           echo "${REPO_REVISION:-main}" > /opt/app-root/.cached-revision
+          echo "${PROVIDERS_COMMIT}" > /opt/app-root/.cached-providers
           chmod 755 /opt/app-root/enrich-entrypoint.sh
           chmod -R 775 /opt/app-root && chown -R 1001:0 /opt/app-root
       volumeMounts:
