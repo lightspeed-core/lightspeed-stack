@@ -1,8 +1,8 @@
 # pylint: disable=redefined-outer-name, unused-import
 """OpenTelemetry unit tests for the /responses REST API endpoint."""
 
-from collections.abc import Sequence
-from typing import Any, cast
+import json
+from typing import Any
 
 import pytest
 from fastapi import HTTPException, Request
@@ -88,7 +88,7 @@ class TestFinalizeResponsesRootSpanOtel:  # pylint: disable=too-few-public-metho
         tool_names: list[str],
         expect_tool_event: bool,
     ) -> None:
-        """Tool count/names are always set; tool event only when tools ran."""
+        """Full tool_calls/tool_results objects; tool event only when tools ran."""
         tracer, exporter = otel
         root_span = tracer.start_span("responses.handle_request")
         turn_summary = (
@@ -96,21 +96,29 @@ class TestFinalizeResponsesRootSpanOtel:  # pylint: disable=too-few-public-metho
             if tool_names
             else make_turn_summary_without_tools()
         )
-        _finalize_responses_root_span(root_span, turn_summary)
+        _finalize_responses_root_span(
+            root_span,
+            turn_summary,
+            "provider1/model1",
+            1.5,
+        )
         root_span.end()
 
         span = find_span(exporter.get_finished_spans(), "responses.handle_request")
         assert span.attributes is not None
-        assert span.attributes[SpanAttributes.TOOL_CALLS_COUNT] == len(tool_names)
-        assert (
-            list(
-                cast("Sequence[str]", span.attributes[SpanAttributes.TOOL_CALLS_NAMES])
-            )
-            == tool_names
-        )
         assert span.attributes[SpanAttributes.LLM_USAGE_INPUT_TOKENS] == 10
         assert span.attributes[SpanAttributes.LLM_USAGE_OUTPUT_TOKENS] == 5
         assert span.attributes[SpanAttributes.OUTPUT] == "The answer is 42"
+        assert span.attributes[SpanAttributes.LLM_MODEL_ID] == "model1"
+        assert span.attributes[SpanAttributes.INFERENCE_TIME] == 1.5
+        assert SpanAttributes.RAG_CHUNKS in span.attributes
+        assert SpanAttributes.TOOL_CALLS in span.attributes
+        assert SpanAttributes.TOOL_RESULTS in span.attributes
+        assert SpanAttributes.TOOL_CALLS_COUNT not in span.attributes
+        assert SpanAttributes.TOOL_CALLS_NAMES not in span.attributes
+        tool_calls = json.loads(span.attributes[SpanAttributes.TOOL_CALLS])
+        assert len(tool_calls) == len(tool_names)
+        assert [call["name"] for call in tool_calls] == tool_names
 
         event_names = [event.name for event in span.events]
         assert SpanEvents.LLM_RESPONSE_COMPLETED in event_names

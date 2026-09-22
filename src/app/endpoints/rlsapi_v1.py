@@ -43,6 +43,7 @@ from models.api.responses.successful.rlsapi import (
     RlsapiV1InferData,
     RlsapiV1InferResponse,
 )
+from models.common import TurnSummary
 from models.config import Action, RedactionConfig
 from observability import InferenceEventData, build_inference_event, send_splunk_event
 from pydantic_ai_lightspeed.capabilities.redaction.core import redact_text
@@ -53,6 +54,7 @@ from utils.otel_tracing import (
     SpanEvents,
     add_span_event,
     set_span_attributes,
+    turn_summary_attributes,
 )
 from utils.query import (
     consume_query_tokens,
@@ -538,7 +540,7 @@ def _build_infer_response(
     response: Optional[OpenAIResponseObject],
     model_id: str,
     endpoint_path: str,
-) -> RlsapiV1InferResponse:
+) -> tuple[RlsapiV1InferResponse, TurnSummary]:
     """Build the final inference response, with optional verbose metadata.
 
     When ``response`` is provided, verbose metadata (tool calls, RAG chunks,
@@ -553,7 +555,7 @@ def _build_infer_response(
         model_id: The model identifier used for inference.
 
     Returns:
-        The assembled RlsapiV1InferResponse.
+        Tuple of the assembled ``RlsapiV1InferResponse`` and its ``TurnSummary``.
     """
     if response is not None:
         turn_summary = build_turn_summary(
@@ -563,30 +565,36 @@ def _build_infer_response(
             vector_store_ids=None,
             rag_id_mapping=None,
         )
-        return RlsapiV1InferResponse(
+        return (
+            RlsapiV1InferResponse(
+                data=RlsapiV1InferData(
+                    text=response_text,
+                    request_id=request_id,
+                    tool_calls=turn_summary.tool_calls,
+                    tool_results=turn_summary.tool_results,
+                    rag_chunks=turn_summary.rag_chunks,
+                    referenced_documents=turn_summary.referenced_documents,
+                    input_tokens=turn_summary.token_usage.input_tokens,
+                    output_tokens=turn_summary.token_usage.output_tokens,
+                )
+            ),
+            turn_summary,
+        )
+
+    return (
+        RlsapiV1InferResponse(
             data=RlsapiV1InferData(
                 text=response_text,
                 request_id=request_id,
-                tool_calls=turn_summary.tool_calls,
-                tool_results=turn_summary.tool_results,
-                rag_chunks=turn_summary.rag_chunks,
-                referenced_documents=turn_summary.referenced_documents,
-                input_tokens=turn_summary.token_usage.input_tokens,
-                output_tokens=turn_summary.token_usage.output_tokens,
+                tool_calls=None,
+                tool_results=None,
+                rag_chunks=None,
+                referenced_documents=None,
+                input_tokens=None,
+                output_tokens=None,
             )
-        )
-
-    return RlsapiV1InferResponse(
-        data=RlsapiV1InferData(
-            text=response_text,
-            request_id=request_id,
-            tool_calls=None,
-            tool_results=None,
-            rag_chunks=None,
-            referenced_documents=None,
-            input_tokens=None,
-            output_tokens=None,
-        )
+        ),
+        TurnSummary(),
     )
 
 
@@ -735,7 +743,7 @@ async def infer_endpoint(  # pylint: disable=R0914,R0915
 
         if blocked_response is not None:
             span.set_attribute(SpanAttributes.SHIELD_RESULT, "blocked")
-            add_span_event(span, SpanEvents.SHIELD_REJECTED)
+            span.set_attribute(SpanAttributes.SHIELD_REASON, blocked_response.data.text)
             return blocked_response
 
         span.set_attribute(SpanAttributes.SHIELD_RESULT, "passed")
@@ -745,7 +753,7 @@ async def infer_endpoint(  # pylint: disable=R0914,R0915
         set_span_attributes(
             span,
             {
-                SpanAttributes.LLM_MODEL_ID: model_id,
+                SpanAttributes.LLM_MODEL_ID: model,
                 SpanAttributes.LLM_PROVIDER_ID: provider,
             },
         )
@@ -791,16 +799,8 @@ async def infer_endpoint(  # pylint: disable=R0914,R0915
             token_usage = extract_token_usage(response.usage, model_id, endpoint_path)
             add_span_event(span, SpanEvents.LLM_INFERENCE_COMPLETED)
 
-            set_span_attributes(
-                span,
-                {
-                    SpanAttributes.LLM_USAGE_INPUT_TOKENS: token_usage.input_tokens,
-                    SpanAttributes.LLM_USAGE_OUTPUT_TOKENS: token_usage.output_tokens,
-                    SpanAttributes.OUTPUT: response_text,
-                },
-            )
-
             inference_time = time.monotonic() - start_time
+
             recording.record_llm_inference_duration(
                 provider, model, endpoint_path, "success", inference_time
             )
@@ -877,10 +877,21 @@ async def infer_endpoint(  # pylint: disable=R0914,R0915
             inference_time,
         )
 
-        return _build_infer_response(
+        infer_response, turn_summary = _build_infer_response(
             response_text,
             request_id,
             response if verbose_enabled else None,
             model_id,
             endpoint_path,
         )
+        set_span_attributes(
+            span,
+            turn_summary_attributes(
+                turn_summary,
+                model,
+                provider,
+                inference_time,
+                False,
+            ),
+        )
+        return infer_response

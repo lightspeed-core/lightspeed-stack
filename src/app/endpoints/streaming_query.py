@@ -199,7 +199,7 @@ async def _handle_streaming_query_with_tracing(  # pylint: disable=too-many-loca
     check_configuration_loaded(configuration)
 
     user_id, _user_name, _skip_userid_check, token = auth
-    started_at = datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+    started_at = datetime.datetime.now(datetime.UTC)
 
     # Set initial span attributes
     set_span_attributes(

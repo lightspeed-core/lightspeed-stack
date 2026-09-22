@@ -4,6 +4,7 @@
 
 import asyncio
 import base64
+import datetime
 import json
 from collections.abc import AsyncIterator, Callable
 from typing import Any, Optional
@@ -151,7 +152,7 @@ def make_generator_context_fixture(
         context.user_id = user_id
         context.skip_userid_check = False
         context.model_id = "provider1/model1"
-        context.started_at = "2024-01-01T00:00:00Z"
+        context.started_at = datetime.datetime(2024, 1, 1, tzinfo=datetime.UTC)
         context.client = mocker.AsyncMock()
         context.moderation_result = moderation_result or ShieldModerationPassed()
         context.inline_rag_context = RAGContext()
@@ -936,6 +937,13 @@ class TestGenerateAgentResponseOtel:
         assert span.attributes[SpanAttributes.LLM_USAGE_INPUT_TOKENS] == 10
         assert span.attributes[SpanAttributes.LLM_USAGE_OUTPUT_TOKENS] == 5
         assert span.attributes[SpanAttributes.OUTPUT] == "The answer is 42"
+        assert span.attributes[SpanAttributes.LLM_MODEL_ID] == "model1"
+        assert span.attributes[SpanAttributes.LLM_PROVIDER_ID] == "provider1"
+        assert SpanAttributes.INFERENCE_TIME in span.attributes
+        assert span.attributes[SpanAttributes.COMPACTED] is False
+        assert SpanAttributes.RAG_CHUNKS in span.attributes
+        assert SpanAttributes.TOOL_CALLS in span.attributes
+        assert SpanAttributes.TOOL_RESULTS in span.attributes
         event_names = [e.name for e in span.events]
         assert SpanEvents.TURN_PERSISTED in event_names
         assert SpanEvents.LLM_RESPONSE_COMPLETED in event_names
@@ -997,11 +1005,10 @@ class TestGenerateAgentResponseOtel:
         assert len(spans) == 1
         span = spans[0]
         assert span.attributes is not None
-        assert span.attributes[SpanAttributes.TOOL_CALLS_COUNT] == 2
-        assert span.attributes[SpanAttributes.TOOL_CALLS_NAMES] == (
-            "web_search",
-            "file_search",
-        )
+        assert SpanAttributes.TOOL_CALLS_COUNT not in span.attributes
+        assert SpanAttributes.TOOL_CALLS_NAMES not in span.attributes
+        tool_calls = json.loads(span.attributes[SpanAttributes.TOOL_CALLS])
+        assert [call["name"] for call in tool_calls] == ["web_search", "file_search"]
         event_names = [e.name for e in span.events]
         assert SpanEvents.TOOL_EXECUTION_COMPLETED in event_names
         tool_event = next(

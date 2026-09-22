@@ -1284,6 +1284,8 @@ class TestA2AOtelSpans:
 
         compaction_result = mocker.Mock()
         compaction_result.params = mock_responses_params
+        compaction_result.compacted = False
+        compaction_result.original_input = None
         mocker.patch(
             "app.endpoints.a2a.apply_compaction_blocking",
             new=mocker.AsyncMock(return_value=compaction_result),
@@ -1320,12 +1322,14 @@ class TestA2AOtelSpans:
         attrs = dict(span.attributes or {})
 
         assert attrs["session.id"] == "ctx-456"
-        assert attrs["llm.model.id"] == "watsonx/granite-3.1"
+        assert attrs["llm.model.id"] == "granite-3.1"
         assert attrs["llm.provider.id"] == "watsonx"
         assert attrs["llm.usage.input_tokens"] == 42
         assert attrs["llm.usage.output_tokens"] == 18
         assert "request.input" in attrs
         assert "response.output" in attrs
+        assert attrs["compacted"] is False
+        assert "inference_time" in attrs
 
     @pytest.mark.asyncio
     async def test_execute_span_tool_calls(  # pylint: disable=too-many-locals,too-many-statements

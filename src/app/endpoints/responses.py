@@ -81,6 +81,7 @@ from utils.otel_tracing import (
     anonymize_value,
     record_exception,
     set_span_attributes,
+    turn_summary_attributes,
 )
 from utils.prompts import get_system_prompt
 from utils.query import (
@@ -158,39 +159,37 @@ def _count_request_attachments(response_input: ResponseInput) -> int:
 def _finalize_responses_root_span(
     root_span: trace.Span,
     turn_summary: TurnSummary,
+    model: str,
+    inference_time: float,
+    compacted: bool = False,
 ) -> None:
     """Set final root-span attributes and completion events for /responses.
 
     Args:
         root_span: OpenTelemetry root span for the request.
         turn_summary: Completed turn summary with tokens, tools, and output.
+        model: Composite model identifier in ``provider/model`` format.
+        inference_time: Request processing duration in seconds.
+        compacted: Whether the turn used compacted conversation context.
     """
-    tool_names = [tc.name for tc in turn_summary.tool_calls]
-    set_span_attributes(
-        root_span,
-        {
-            SpanAttributes.TOOL_CALLS_COUNT: len(tool_names),
-            SpanAttributes.TOOL_CALLS_NAMES: tool_names,
-        },
-    )
-    if tool_names:
+    if turn_summary.tool_calls:
+        tool_names = [tc.name for tc in turn_summary.tool_calls]
         add_span_event(
             root_span,
             SpanEvents.TOOL_EXECUTION_COMPLETED,
             {"tool.calls": ", ".join(tool_names)},
         )
 
+    provider_id, bare_model_id = extract_provider_and_model_from_model_id(model)
     set_span_attributes(
         root_span,
-        {
-            SpanAttributes.LLM_USAGE_INPUT_TOKENS: (
-                turn_summary.token_usage.input_tokens
-            ),
-            SpanAttributes.LLM_USAGE_OUTPUT_TOKENS: (
-                turn_summary.token_usage.output_tokens
-            ),
-            SpanAttributes.OUTPUT: turn_summary.llm_response,
-        },
+        turn_summary_attributes(
+            turn_summary,
+            bare_model_id,
+            provider_id,
+            inference_time,
+            compacted,
+        ),
     )
     add_span_event(root_span, SpanEvents.LLM_RESPONSE_COMPLETED)
 
@@ -575,7 +574,7 @@ async def handle_responses_with_tracing(  # pylint: disable=too-many-locals
     )
     attachments_count = _count_request_attachments(original_request.input)
 
-    span_attributes: dict[str, Any] = {
+    span_attributes: dict[SpanAttributes, Any] = {
         SpanAttributes.USER_ID: anonymize_value(user_id),
         SpanAttributes.INPUT: input_text,
         SpanAttributes.REQUEST_ATTACHMENTS_COUNT: attachments_count,
@@ -1300,7 +1299,13 @@ async def generate_response(
             completed_at,
             turn_summary.llm_response,
         )
-        _finalize_responses_root_span(root_span, turn_summary)
+        _finalize_responses_root_span(
+            root_span,
+            turn_summary,
+            api_params.model,
+            (completed_at - context.started_at).total_seconds(),
+            context.compacted_original_input is not None,
+        )
         # Persist conversation state before clients can close the stream.
         yield "data: [DONE]\n\n"
     finally:
@@ -1437,7 +1442,13 @@ async def handle_non_streaming_response(
         completed_at,
         output_text,
     )
-    _finalize_responses_root_span(root_span, turn_summary)
+    _finalize_responses_root_span(
+        root_span,
+        turn_summary,
+        api_params.model,
+        (completed_at - context.started_at).total_seconds(),
+        context.compacted_original_input is not None,
+    )
     configured_mcp_labels = {s.name for s in configuration.mcp_servers}
     response_dict = (
         api_response.model_dump(exclude_none=True)

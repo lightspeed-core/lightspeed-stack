@@ -1,6 +1,7 @@
 """Unit tests for stream interrupt registry and persistence utilities."""
 
 import asyncio
+from datetime import UTC, datetime
 
 import pytest
 from pytest_mock import MockerFixture
@@ -34,7 +35,7 @@ async def test_persist_interrupted_turn_compacted_uses_original_input(
     context.request_id = "req-1"
     context.user_id = "user_1"
     context.conversation_id = conv
-    context.started_at = "2024-01-01T00:00:00Z"
+    context.started_at = datetime(2024, 1, 1, tzinfo=UTC)
     context.skip_userid_check = False
     context.query_request = QueryRequest(
         query="hi", conversation_id=conv
@@ -83,7 +84,7 @@ async def test_persist_interrupted_turn_schedules_background_topic_summary(
     context.request_id = "req-1"
     context.user_id = "user_1"
     context.conversation_id = "conv_new"
-    context.started_at = "2024-01-01T00:00:00Z"
+    context.started_at = datetime(2024, 1, 1, tzinfo=UTC)
     context.skip_userid_check = False
     context.query_request = QueryRequest(
         query="hello",

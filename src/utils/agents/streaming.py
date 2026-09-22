@@ -71,11 +71,13 @@ from utils.otel_tracing import (
     SpanEvents,
     add_span_event,
     set_span_attributes,
+    turn_summary_attributes,
 )
 from utils.pydantic_ai_helpers import build_agent, captured_output_items
 from utils.query import (
     build_multimodal_input,
     consume_query_tokens,
+    extract_provider_and_model_from_model_id,
     store_query_results,
 )
 from utils.quota_utils import get_available_quotas
@@ -358,14 +360,15 @@ async def generate_agent_response(  # pylint: disable=too-many-statements
     )
     yield serialize_event(end_payload, media_type)
 
-    completed_at = datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+    completed_at_dt = datetime.datetime.now(datetime.UTC)
+    completed_at = completed_at_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
     logger.info("Storing query results")
     store_query_results(
         user_id=context.user_id,
         conversation_id=context.conversation_id,
         model=responses_params.model,
         completed_at=completed_at,
-        started_at=context.started_at,
+        started_at=context.started_at.strftime("%Y-%m-%dT%H:%M:%SZ"),
         summary=turn_summary,
         query=context.query_request.query,
         skip_userid_check=context.skip_userid_check,
@@ -377,29 +380,25 @@ async def generate_agent_response(  # pylint: disable=too-many-statements
         add_span_event(root_span, SpanEvents.TURN_PERSISTED)
         if turn_summary.tool_calls:
             tool_names = [tc.name for tc in turn_summary.tool_calls]
-            set_span_attributes(
-                root_span,
-                {
-                    SpanAttributes.TOOL_CALLS_COUNT: len(tool_names),
-                    SpanAttributes.TOOL_CALLS_NAMES: tool_names,
-                },
-            )
             add_span_event(
                 root_span,
                 SpanEvents.TOOL_EXECUTION_COMPLETED,
                 {"tool.calls": ", ".join(tool_names)},
             )
+        provider_id, bare_model_id = extract_provider_and_model_from_model_id(
+            responses_params.model
+        )
         set_span_attributes(
             root_span,
             {
                 SpanAttributes.SESSION_ID: context.conversation_id,
-                SpanAttributes.LLM_USAGE_INPUT_TOKENS: (
-                    turn_summary.token_usage.input_tokens
+                **turn_summary_attributes(
+                    turn_summary,
+                    bare_model_id,
+                    provider_id,
+                    (completed_at_dt - context.started_at).total_seconds(),
+                    context_status == "summarized",
                 ),
-                SpanAttributes.LLM_USAGE_OUTPUT_TOKENS: (
-                    turn_summary.token_usage.output_tokens
-                ),
-                SpanAttributes.OUTPUT: turn_summary.llm_response,
             },
         )
         add_span_event(root_span, SpanEvents.LLM_RESPONSE_COMPLETED)

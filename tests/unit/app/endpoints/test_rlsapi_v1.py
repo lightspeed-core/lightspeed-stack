@@ -1801,8 +1801,11 @@ class TestInferEndpointOtel:
         """Test successful /infer emits span with all expected attributes."""
         tracer, exporter = otel
         mocker.patch("app.endpoints.rlsapi_v1.tracer", tracer)
+        _setup_config_mock(mocker, mock_configuration, verbose_enabled=True)
 
-        infer_request = RlsapiV1InferRequest(question="How do I list files?")
+        infer_request = RlsapiV1InferRequest(
+            question="How do I list files?", include_metadata=True
+        )
         mock_request = mock_request_factory()
 
         await infer_endpoint(
@@ -1818,12 +1821,19 @@ class TestInferEndpointOtel:
         assert span.name == "rlsapi_v1.infer"
         attrs = span.attributes
         assert attrs is not None
-        assert attrs["llm.model.id"] == "openai/gpt-4-turbo"
+        assert attrs["llm.model.id"] == "gpt-4-turbo"
         assert attrs["llm.provider.id"] == "openai"
         assert attrs["llm.usage.input_tokens"] == 10
         assert attrs["llm.usage.output_tokens"] == 5
         assert attrs["rls.template.ok"] is True
         assert attrs["shield.result"] == "passed"
+        assert attrs["inference_time"] is not None
+        assert attrs["compacted"] is False
+        assert attrs["rag_chunks"] == "[]"
+        assert attrs["tool_calls"] == "[]"
+        assert attrs["tool_results"] == "[]"
+        assert "tool.calls.count" not in attrs
+        assert "tool.calls.names" not in attrs
         assert "request.input" in attrs
         assert "response.output" in attrs
         assert attrs["request.input"] == "How do I list files?"
@@ -1872,7 +1882,7 @@ class TestInferEndpointOtel:
         mock_background_tasks: Any,
         otel: tuple[Any, InMemorySpanExporter],
     ) -> None:
-        """Test shield-blocked /infer emits shield.rejected event and shield.result=blocked."""
+        """Test shield-blocked /infer sets shield.result and shield.reason."""
         tracer, exporter = otel
         mocker.patch("app.endpoints.rlsapi_v1.tracer", tracer)
         mocker.patch(
@@ -1899,8 +1909,7 @@ class TestInferEndpointOtel:
         span = spans[0]
         assert span.attributes is not None
         assert span.attributes["shield.result"] == "blocked"
-        event_names = [e.name for e in span.events]
-        assert "shield.rejected" in event_names
+        assert span.attributes["shield.reason"] == "This question is not allowed"
 
     @pytest.mark.asyncio
     async def test_infer_span_pii_detected(

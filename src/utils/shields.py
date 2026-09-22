@@ -39,7 +39,12 @@ from pydantic_ai_lightspeed.capabilities.redaction._capability import (
 )
 from utils.agents.error_handler import map_agent_inference_error
 from utils.input_sanitization import sanitize_input
-from utils.otel_tracing import SpanAttributes, SpanEvents, add_span_event
+from utils.otel_tracing import (
+    SpanEvents,
+    add_span_event,
+    set_span_attributes,
+    shield_span_attributes,
+)
 
 logger = get_logger(__name__)
 tracer = trace.get_tracer(__name__)
@@ -106,17 +111,13 @@ async def run_shield_moderation_v2(
         normalized_text, rejection_reason = sanitize_input(input_text)
         if rejection_reason:
             logger.warning("Input blocked by sanitization: %s", rejection_reason)
-            span.set_attribute(SpanAttributes.SHIELD_RESULT, "blocked")
-            add_span_event(
-                span,
-                SpanEvents.SHIELD_REJECTED,
-                {"shield.reason": "input_sanitization"},
-            )
-            return ShieldModerationBlocked(
+            blocked = ShieldModerationBlocked(
                 decision="blocked",
                 message=OBFUSCATION_REJECTION_MESSAGE,
                 moderation_id=str(uuid.uuid4()),
             )
+            set_span_attributes(span, shield_span_attributes(blocked))
+            return blocked
         input_text = normalized_text
 
         selected_shield_configs = get_shields_for_request(
@@ -141,15 +142,11 @@ async def run_shield_moderation_v2(
                 raise HTTPException(**response.model_dump()) from exc
 
             if shield_result.decision == "blocked":
-                span.set_attribute(SpanAttributes.SHIELD_RESULT, "blocked")
-                add_span_event(
-                    span,
-                    SpanEvents.SHIELD_REJECTED,
-                    {"shield.name": shield_config.name},
-                )
+                set_span_attributes(span, shield_span_attributes(shield_result))
+                add_span_event(span, SpanEvents.SHIELD_REJECTED)
                 return shield_result
 
-        span.set_attribute(SpanAttributes.SHIELD_RESULT, "passed")
+        set_span_attributes(span, shield_span_attributes(ShieldModerationPassed()))
         return ShieldModerationPassed()
 
 
@@ -210,7 +207,7 @@ async def run_shield_moderation(
     with tracer.start_as_current_span("shield.moderate") as span:
         # Currently stubbed to always pass until LCS-owned input shields are wired.
         result = ShieldModerationPassed()
-        span.set_attribute(SpanAttributes.SHIELD_RESULT, "passed")
+        set_span_attributes(span, shield_span_attributes(result))
         return result
 
 

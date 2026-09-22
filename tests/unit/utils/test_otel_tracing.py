@@ -1,5 +1,6 @@
 """Unit tests for utils/otel_tracing.py functions."""
 
+import json
 import re
 from collections.abc import Generator
 from typing import Any
@@ -11,6 +12,13 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
     InMemorySpanExporter,
 )
 
+from models.common.moderation import ShieldModerationBlocked, ShieldModerationPassed
+from models.common.turn_summary import (
+    RAGChunk,
+    ToolCallSummary,
+    ToolResultSummary,
+    TurnSummary,
+)
 from utils.otel_tracing import (
     SpanAttributes,
     SpanEvents,
@@ -18,7 +26,10 @@ from utils.otel_tracing import (
     anonymize_value,
     record_exception,
     set_span_attributes,
+    shield_span_attributes,
+    turn_summary_attributes,
 )
+from utils.token_counter import TokenCounter
 
 
 @pytest.fixture(name="otel")
@@ -223,6 +234,56 @@ class TestSetSpanAttributes:
 
         spans = exporter.get_finished_spans()
         assert len(spans) == 1
+
+
+class TestEvalSpanAttributes:
+    """Tests for eval-oriented span attribute helpers."""
+
+    def test_shield_span_attributes(self) -> None:
+        """Helper emits shield decision and reason when blocked."""
+        passed = shield_span_attributes(ShieldModerationPassed())
+        assert passed[SpanAttributes.SHIELD_RESULT] == "passed"
+        assert SpanAttributes.SHIELD_REASON not in passed
+
+        blocked = shield_span_attributes(
+            ShieldModerationBlocked(message="blocked by policy", moderation_id="m1")
+        )
+        assert blocked[SpanAttributes.SHIELD_RESULT] == "blocked"
+        assert blocked[SpanAttributes.SHIELD_REASON] == "blocked by policy"
+
+    def test_turn_summary_attributes(self) -> None:
+        """Helper serializes turn-summary fields without tool name/count attrs."""
+        summary = TurnSummary(
+            llm_response="hello",
+            rag_chunks=[
+                RAGChunk(
+                    content="chunk",
+                    source="docs",
+                    score=0.9,
+                    attributes={"title": "t"},
+                )
+            ],
+            tool_calls=[
+                ToolCallSummary(id="c1", name="search", args={"q": "x"}),
+            ],
+            tool_results=[
+                ToolResultSummary(id="c1", status="success", content="ok", round=1),
+            ],
+            token_usage=TokenCounter(input_tokens=3, output_tokens=2),
+        )
+        attrs = turn_summary_attributes(summary, "gpt", "openai", 1.25, True)
+        assert attrs[SpanAttributes.LLM_MODEL_ID] == "gpt"
+        assert attrs[SpanAttributes.LLM_PROVIDER_ID] == "openai"
+        assert attrs[SpanAttributes.INFERENCE_TIME] == 1.25
+        assert attrs[SpanAttributes.COMPACTED] is True
+        assert attrs[SpanAttributes.OUTPUT] == "hello"
+        assert attrs[SpanAttributes.LLM_USAGE_INPUT_TOKENS] == 3
+        assert attrs[SpanAttributes.LLM_USAGE_OUTPUT_TOKENS] == 2
+        assert SpanAttributes.TOOL_CALLS_COUNT not in attrs
+        assert SpanAttributes.TOOL_CALLS_NAMES not in attrs
+        assert json.loads(attrs[SpanAttributes.RAG_CHUNKS])[0]["content"] == "chunk"
+        assert json.loads(attrs[SpanAttributes.TOOL_CALLS])[0]["args"] == {"q": "x"}
+        assert json.loads(attrs[SpanAttributes.TOOL_RESULTS])[0]["round"] == 1
 
 
 class TestAddSpanEvent:

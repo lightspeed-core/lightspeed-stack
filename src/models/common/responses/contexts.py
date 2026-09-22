@@ -85,7 +85,7 @@ class ResponseGeneratorContext:  # pylint: disable=too-many-instance-attributes
         skip_userid_check: Whether to skip user ID validation
         model_id: The model identifier
         query_request: The query request object
-        started_at: Timestamp when the request started (ISO 8601 format)
+        started_at: UTC timestamp when the request started
         client: The OGX client for API interactions
         moderation_result: The moderation result
         inline_rag_context: Inline RAG context
@@ -104,7 +104,7 @@ class ResponseGeneratorContext:  # pylint: disable=too-many-instance-attributes
 
     # Request & Timing
     query_request: QueryRequest
-    started_at: str
+    started_at: datetime
 
     # Dependencies & State
     client: AsyncOgxClient

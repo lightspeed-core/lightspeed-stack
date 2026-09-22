@@ -311,7 +311,7 @@ async def persist_interrupted_turn(
             conversation_id=context.conversation_id,
             model=responses_params.model,
             completed_at=completed_at,
-            started_at=context.started_at,
+            started_at=context.started_at.strftime("%Y-%m-%dT%H:%M:%SZ"),
             summary=turn_summary,
             query=context.query_request.query,
             skip_userid_check=context.skip_userid_check,

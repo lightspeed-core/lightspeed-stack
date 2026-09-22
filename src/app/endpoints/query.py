@@ -45,9 +45,11 @@ from utils.otel_tracing import (
     add_span_event,
     anonymize_value,
     set_span_attributes,
+    turn_summary_attributes,
 )
 from utils.query import (
     consume_query_tokens,
+    extract_provider_and_model_from_model_id,
     prepare_input,
     store_query_results,
     validate_attachments_metadata,
@@ -153,7 +155,8 @@ async def _handle_query_with_tracing(
     """
     check_configuration_loaded(configuration)
 
-    started_at = datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+    started_at_dt = datetime.datetime.now(datetime.UTC)
+    started_at = started_at_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
     user_id, _, _skip_userid_check, token = auth
 
     # Set initial span attributes
@@ -314,7 +317,8 @@ async def _handle_query_with_tracing(
         quota_limiters=configuration.quota_limiters, user_id=user_id
     )
 
-    completed_at = datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+    completed_at_dt = datetime.datetime.now(datetime.UTC)
+    completed_at = completed_at_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
     conversation_id = normalize_conversation_id(responses_params.conversation)
 
     logger.info("Storing query results")
@@ -336,13 +340,20 @@ async def _handle_query_with_tracing(
     logger.info("Building final response")
 
     # Set final span attributes
+    provider_id, bare_model_id = extract_provider_and_model_from_model_id(
+        responses_params.model
+    )
     set_span_attributes(
         root_span,
         {
             SpanAttributes.SESSION_ID: conversation_id,
-            SpanAttributes.LLM_USAGE_INPUT_TOKENS: turn_summary.token_usage.input_tokens,
-            SpanAttributes.LLM_USAGE_OUTPUT_TOKENS: turn_summary.token_usage.output_tokens,
-            SpanAttributes.OUTPUT: turn_summary.llm_response,
+            **turn_summary_attributes(
+                turn_summary,
+                bare_model_id,
+                provider_id,
+                (completed_at_dt - started_at_dt).total_seconds(),
+                compaction.compacted,
+            ),
         },
     )
 

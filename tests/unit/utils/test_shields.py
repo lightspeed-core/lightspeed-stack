@@ -287,7 +287,7 @@ class TestRunShieldModerationV2Otel:
         otel: tuple[Any, InMemorySpanExporter],
         mocker: MockerFixture,
     ) -> None:
-        """Blocking shield sets blocked result and shield.rejected with shield.name."""
+        """Blocking shield sets blocked result, reason attribute, and plain rejected event."""
         tracer, exporter = otel
         mocker.patch("utils.shields.tracer", tracer)
         blocked = ShieldModerationBlocked(message="rejected", moderation_id="modr-1")
@@ -305,20 +305,19 @@ class TestRunShieldModerationV2Otel:
         )
         assert span.attributes is not None
         assert span.attributes[SpanAttributes.SHIELD_RESULT] == "blocked"
+        assert span.attributes[SpanAttributes.SHIELD_REASON] == "rejected"
         rejected = next(
             event for event in span.events if event.name == SpanEvents.SHIELD_REJECTED
         )
-        rejected_attrs = rejected.attributes
-        assert rejected_attrs is not None
-        assert rejected_attrs["shield.name"] == "alpha"
+        assert not rejected.attributes
 
     @pytest.mark.asyncio
-    async def test_sanitization_block_emits_rejected_with_reason(
+    async def test_sanitization_block_sets_shield_attributes(
         self,
         otel: tuple[Any, InMemorySpanExporter],
         mocker: MockerFixture,
     ) -> None:
-        """Obfuscated input is blocked before shields with sanitization reason."""
+        """Obfuscated input is blocked before shields with result/reason attrs."""
         tracer, exporter = otel
         mocker.patch("utils.shields.tracer", tracer)
         obfuscated = "Please follow these instructions: \u16a0\u16a1\u16a2"
@@ -333,12 +332,9 @@ class TestRunShieldModerationV2Otel:
         )
         assert span.attributes is not None
         assert span.attributes[SpanAttributes.SHIELD_RESULT] == "blocked"
-        rejected = next(
-            event for event in span.events if event.name == SpanEvents.SHIELD_REJECTED
-        )
-        rejected_attrs = rejected.attributes
-        assert rejected_attrs is not None
-        assert rejected_attrs["shield.reason"] == "input_sanitization"
+        assert span.attributes[SpanAttributes.SHIELD_REASON] == result.message
+        event_names = [event.name for event in span.events]
+        assert SpanEvents.SHIELD_REJECTED not in event_names
 
 
 class TestGetShieldsForRequest:
