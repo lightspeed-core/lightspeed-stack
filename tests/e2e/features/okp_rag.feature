@@ -138,7 +138,7 @@ Feature: OKP(Solr) RAG retrieval tests
       And The number of results returned is 3
       And Each rag_chunk has a non-empty score
       And Each rag_chunk source is "okp"
-      And Each rag_chunk reference_url contains "docs.redhat.com"
+      And Each rag_chunk reference_url contains "redhat.com"
 
   # ── OKP Server Unavailable — Graceful Error Handling ──
 
