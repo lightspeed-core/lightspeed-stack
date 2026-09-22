@@ -374,6 +374,92 @@ No **required** change to JSON requests/responses. The `/config` response gains 
 - Which `OTEL_*` variables are included in the `/config` scrape?
 
 
+## Addendum: PII redaction strategy
+
+|                          |                                                                                   |
+|--------------------------|-----------------------------------------------------------------------------------|
+| **Date**                 | 2026-09-22                                                                        |
+| **Authors**              | Anik Bhattacharjee                                                                |
+| **Feature / Initiative** | [UIESTRAT-229: Enable collection & upload of Observability OTel data stripped of PII/sensitive data](https://redhat.atlassian.net/browse/UIESTRAT-229)                      |
+
+The three core inference spans (`/v1/query`, `/v1/streaming_query`, `/v1/responses`) carry
+raw, un-hashed request/response content for evaluation, relaxing the original metadata-only rule
+(**R7**; §Why "Safe observability by design"). Raw content
+can contain PII, so it must be detected and redacted before it leaves LCORE. **This addendum
+defines that redaction strategy.** 
+
+### The problem
+
+Once spans carry raw text (prompts, responses, RAG chunks, tool I/O), that text
+can contain PII. So it must be scrubbed of PII before the span leaves LCORE — before OTLP export
+to a hosted backend such as LangFuse, and before any cross-org sharing. (This is a portfolio-wide
+obligation from Red Hat's AI Assessment (AIA/PIA) process, not specific to LCORE.) We do this by
+**detecting and redacting PII**.
+
+### The redactor we want
+
+A shared, production-proven redactor already exists:
+`data-anonymizer` (used by Ask Red Hat et all). It is
+Presidio-based and detects email, hostname, IP (v4/v6), location, organization, person, phone,
+and URL. Reusing it — rather than each team writing its own — is the goal. See the
+[shared Presidio library strategy doc](https://docs.google.com/document/d/1BNBIDUz-lLmUjT9N9cEMqgaQv9EqfLKwZrA8gtbtlY8/edit?tab=t.0#heading=h.9qfphopokr7u).
+
+### The catch — where it lives
+
+`data-anonymizer` is on Red Hat's **internal GitLab**
+(`gitlab.cee.redhat.com/uxe-data-ai-solutions/data-anonymizer`); it is not on PyPI. LCORE is
+built on **GitHub**, and a GitHub build/CI can't install a package from internal GitLab without
+internal credentials in the pipeline. So we **cannot simply add it to `pyproject.toml`.**
+
+### The proposal — a pluggable redaction slot
+
+Don't hard-wire any one redactor into LCORE. Define a small **redaction slot**
+— one interface, e.g. `redact(text) -> text` — that the telemetry path calls without knowing which
+redactor is behind it. Then:
+
+- **GitHub build (default):** the slot is filled with public Presidio from PyPI. This gives the
+  GitHub build a working, dependency-only telemetry redactor with no internal access required.
+- **Red Hat's internal build/deployment:** a downstream build of LCORE wires in the downstream
+  `data-anonymizer` via an adapter, added at the stage where internal GitLab *is* reachable.
+
+Net: LCORE always has a working telemetry redactor and still builds on GitHub, while Red Hat's
+deployment gets the shared portfolio library.
+
+### Where redaction runs — redact at emission, through one helper
+
+Content will be redacted as it is put on the span, not after. All content fields will go on spans
+through a **single centralized helper** — e.g. `set_content_attribute(span, key, text)` — that runs
+each value through the redaction slot (above) before calling `set_attribute`. For any content
+serialized as a JSON string (e.g. RAG chunks or tool I/O), the helper redacts each leaf string
+(`content`/`args`/`source`) **before** `json.dumps`, so the serialized attribute never contains raw
+PII. Properties of this approach:
+
+- **The span never holds raw PII.** R11 ("redact before content leaves the process") is satisfied
+  by construction — there is no in-memory window where a raw value sits on a span or in the export
+  queue.
+- **One code path to audit.** Because content can only reach a span through the helper, there is a
+  single place to review and test; individual emission sites cannot forget to redact (there is no
+  raw path to `set_attribute` for content keys). A review/lint rule reinforces "content goes
+  through the helper."
+- **Fail-closed.** If the redactor raises, the helper **omits** the field rather than emitting raw
+  text — consistent with R9 (a tracing failure must never leak or break the request).
+- **Cost.** Redaction runs on the request path (synchronous), not in the export background thread.
+  This is minor — a text pass over already-generated output, dwarfed by the LLM call — and only
+  incurred when raw-content capture is enabled (scoped to the three core spans). The helper is the
+  single place to make it async/best-effort if it ever becomes a bottleneck.
+
+### Requirements addendum
+
+- **R11 — PII redaction before export.** Raw content on the three core inference spans shall pass
+  through PII detection/redaction before leaving the process (OTLP export or cross-org sharing).
+- **R12 — Pluggable telemetry redaction, shared standard downstream.** LCORE shall expose a
+  pluggable redaction interface for span content, with a default implementation (public Presidio
+  from PyPI) that resolves in the GitHub build (no internal access). Red Hat's downstream build
+  shall wire in the GitLab-hosted `data-anonymizer` via an adapter; the GitHub build shall **not**
+  hard-depend on the internal package. This is separate from the existing `PiiRedactionCapability`
+  shield, which is unaffected.
+
+
 ## Appendix A: Jira epics and related tracking
 
 **Epics**
