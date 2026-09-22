@@ -8,12 +8,9 @@ and processing RAG chunks that is shared between query_v2.py and streaming_query
 
 import asyncio
 import traceback
-from typing import Any, Optional, cast
+from typing import TYPE_CHECKING, Any, Optional, cast
 from urllib.parse import urljoin
 
-from ogx_api.openai_responses import (
-    OpenAIResponseMessage as ResponseMessage,
-)
 from ogx_client import AsyncOgxClient
 from opentelemetry import trace
 from pydantic import AnyUrl, ValidationError
@@ -33,6 +30,11 @@ from utils.otel_tracing import (
 )
 from utils.reranker import apply_byok_rerank_boost, rerank_chunks_with_cross_encoder
 from utils.responses import resolve_vector_store_ids
+
+if TYPE_CHECKING:
+    from ogx_api.openai_responses import (
+        OpenAIResponseMessage as ResponseMessage,
+    )
 
 logger = get_logger(__name__)
 tracer = trace.get_tracer(__name__)
