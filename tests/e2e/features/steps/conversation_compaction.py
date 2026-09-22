@@ -70,15 +70,18 @@ def _first_index(events: list[dict[str, Any]], name: str) -> Optional[int]:
 
 @given("the active model has a registered context window")
 def require_context_window_for_active_model(context: Context) -> None:
-    """Skip the scenario when the active model has no ``context_windows`` entry.
+    """Fail the scenario when the active model has no ``context_windows`` entry.
 
     The compaction trigger only runs for models listed under
-    ``inference.context_windows`` in the active lightspeed-stack.yaml. The
-    fixtures list every fixed provider/model pair the e2e workflows use, but
-    the vLLM-backed runs (rhaiis, rhelai) take their model id from an env var
-    and mapping keys are not env-substituted, so those runs have no entry and
-    ``context_status`` can never become ``summarized``. Rather than fail there,
-    the scenario is skipped, the same way shield scenarios skip in library mode.
+    ``inference.context_windows`` in the active lightspeed-stack.yaml, so a
+    missing entry means the scenario could never reach ``summarized``. That is
+    a configuration problem worth reporting, not a reason to pass quietly: the
+    fixtures list every provider/model pair the e2e workflows run against.
+
+    The one environment where no entry can exist is the vLLM matrix, whose
+    model id comes from an env var while mapping keys are not env-substituted.
+    Those runs skip the whole feature on its ``@skip-on-vllm`` tag
+    (``environment.before_scenario``) and never reach this step.
 
     Reads the fixture source file, never anything under ``src/``. The
     provider/model pair comes from the context, which already reflects the
@@ -89,11 +92,10 @@ def require_context_window_for_active_model(context: Context) -> None:
         config = yaml.safe_load(config_file) or {}
     windows = (config.get("inference") or {}).get("context_windows") or {}
     model_key = f"{context.default_provider}/{context.default_model}"
-    if model_key not in windows:
-        context.scenario.skip(
-            f"no context window registered for {model_key} in {fixture_path}; "
-            f"compaction cannot trigger (registered: {sorted(windows)})"
-        )
+    assert model_key in windows, (
+        f"no context window registered for {model_key} in {fixture_path}; "
+        f"compaction cannot trigger (registered: {sorted(windows)})"
+    )
 
 
 @then('The response context_status is "{status}"')

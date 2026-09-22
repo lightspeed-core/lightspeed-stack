@@ -1,4 +1,7 @@
-@cfg_compaction
+# @skip-on-vllm: the vLLM matrices take the model id from an env var, and
+# inference.context_windows keys are not env-substituted, so those runs
+# cannot register the small window these scenarios need.
+@cfg_compaction @skip-on-vllm
 Feature: Conversation compaction
 
   Once the estimated input crosses the configured share of the model's

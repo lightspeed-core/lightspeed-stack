@@ -256,6 +256,19 @@ def before_scenario(context: Context, scenario: Scenario) -> None:
         )
         return
 
+    # Skip scenarios that need a per-model entry in a fixture's
+    # inference.context_windows on the vLLM matrices (rhaiis, rhelai): those
+    # take the model id from an env var and mapping keys are not
+    # env-substituted, so no entry can exist for them. Every other matrix has
+    # a fixed provider/model pair the fixtures list, and a missing entry there
+    # is a configuration error the scenario reports instead of skipping.
+    if "skip-on-vllm" in scenario.effective_tags and provider_override == "vllm":
+        scenario.skip(
+            "Skipped on the vLLM provider matrix (model id comes from an env "
+            "var, so it cannot have an inference.context_windows entry)"
+        )
+        return
+
     # In Prow, verify the lightspeed port-forward is alive before each scenario.
     # Port-forwards can silently die between scenarios (e.g. pod restart, TCP reset).
     if is_prow_environment():
