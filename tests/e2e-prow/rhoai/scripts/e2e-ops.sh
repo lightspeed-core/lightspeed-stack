@@ -37,7 +37,7 @@
 #   delete-e2e-mock-tls-inference   - Remove mock TLS pod + Service (manual cleanup)
 #   restart-e2e-mock-tls-inference  - Delete then deploy mock TLS (manual / recovery)
 #   sync-mock-tls-certs-secret      - Copy mock /certs into Secret for OGX mount
-#   check-okp-solr-from-llama       - GET Solr /solr/ from inside the OGX pod
+#   check-okp-solr-from-llama       - GET Solr portal-rag select from inside the OGX pod
 #   deploy-okp-solr                 - Deploy OKP Solr (idempotent; @cfg_okp before_feature)
 #   delete-okp-solr                 - Delete OKP Solr pod
 #   disrupt-okp-solr                - Delete OKP Solr pod to disrupt connection
@@ -998,11 +998,12 @@ cmd_disrupt_ogx() {
     fi
 }
 
-# Prove OGX can reach Solr in-cluster (the path used by retrieval).
+# Prove OGX can reach Solr in-cluster (same path as okp-solr.yaml probes).
+# /solr and /solr/ are the Solr Admin UI; current OKP/Mimir images return HTTP 404 there.
 cmd_check_okp_solr_from_llama() {
     local pod="llama-stack-service"
     local ctr="llama-stack-container"
-    local url="http://okp-solr-service-svc:8080/solr/"
+    local url="http://okp-solr-service-svc:8080/solr/portal-rag/select?q=*:*&rows=0"
 
     echo "Checking OKP Solr from OGX pod at ${url}..."
     if oc exec -n "$NAMESPACE" "$pod" -c "$ctr" -- \
@@ -1012,7 +1013,7 @@ cmd_check_okp_solr_from_llama() {
     fi
     if oc exec -n "$NAMESPACE" "$pod" -c "$ctr" -- \
         /opt/app-root/.venv/bin/python -c \
-        'import urllib.request; urllib.request.urlopen("http://okp-solr-service-svc:8080/solr/", timeout=10).read()'; then
+        "import urllib.request; urllib.request.urlopen('${url}', timeout=10).read()"; then
         echo "✓ OGX pod can reach OKP Solr"
         return 0
     fi
@@ -1205,7 +1206,7 @@ case "$COMMAND" in
         echo "  deploy-e2e-interception-proxy      - Deploy in-cluster interception proxy pod"
         echo "  deploy-e2e-mock-tls-inference        - Deploy mock HTTPS inference (tls-*.feature)"
         echo "  delete-e2e-mock-tls-inference        - Remove mock TLS pod + Service"
-        echo "  check-okp-solr-from-llama            - GET Solr /solr/ from inside the OGX pod"
+        echo "  check-okp-solr-from-llama            - GET Solr portal-rag select from inside the OGX pod"
         echo "  deploy-okp-solr                      - Deploy OKP Solr (idempotent; @cfg_okp before_feature)"
         echo "  delete-okp-solr                      - Delete OKP Solr pod"
         echo "  disrupt-okp-solr                     - Delete OKP Solr pod to disrupt connection"
