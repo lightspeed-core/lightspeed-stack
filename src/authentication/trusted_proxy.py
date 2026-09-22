@@ -2,9 +2,8 @@
 
 # pylint: disable=unused-import
 
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
-import kubernetes.client
 from fastapi import HTTPException, Request
 
 from authentication.interface import NO_AUTH_TUPLE, AuthInterface, AuthTuple
@@ -15,6 +14,9 @@ from constants import DEFAULT_VIRTUAL_PATH, NO_USER_TOKEN
 from log import get_logger
 from models.api.responses.error import ForbiddenResponse, UnauthorizedResponse
 from models.config import TrustedProxyConfiguration
+
+if TYPE_CHECKING:
+    import kubernetes.client
 
 logger = get_logger(__name__)
 
