@@ -5,7 +5,7 @@ from typing import Optional, Self
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from constants import MEDIA_TYPE_JSON, MEDIA_TYPE_TEXT
-from models.common.query import Attachment, SolrVectorSearchRequest
+from models.common.query import Attachment, OkpFilter, SolrVectorSearchRequest
 from utils import suid
 
 
@@ -25,6 +25,7 @@ class QueryRequest(BaseModel):
         vector_store_ids: The optional list of specific vector store IDs to query for RAG.
         shield_ids: The optional list of configured shield names to apply.
         solr: Optional Solr inline RAG options (mode, filters) or legacy filter-only dict.
+        okp: Optional transport-neutral OKP RAG filter (product, product_version).
     """
 
     query: str = Field(
@@ -119,6 +120,25 @@ class QueryRequest(BaseModel):
         examples=[
             {"mode": "hybrid", "filters": {"fq": ["product:*openshift*"]}},
             {"filters": {"fq": ["product:*openshift*", "product_version:*4.16*"]}},
+        ],
+    )
+
+    okp: Optional[OkpFilter] = Field(
+        None,
+        description=(
+            "Transport-neutral OKP RAG filter: exact-match product selections "
+            "(each with its own versions) applied by whichever OKP transport is "
+            "active (RHOKP MCP or the legacy Solr path)."
+        ),
+        examples=[
+            {
+                "products": [
+                    {
+                        "product": "openshift_container_platform",
+                        "versions": ["4.16", "4.17"],
+                    }
+                ]
+            },
         ],
     )
 

@@ -29,6 +29,10 @@ ENV PATH="/opt/app-root/.venv/bin:$PATH" \
 # Set HOME directory so OGX uses /opt/app-root/src/.llama
 ENV HOME="/opt/app-root/src"
 
+# Point OGX at the external provider specs copied with the source tree above
+# (e.g. remote::solr_vector_io for OKP RAG). Mirrors the production Containerfile.
+ENV EXTERNAL_PROVIDERS_DIR="/opt/app-root/providers/resources/external_providers"
+
 # Create python3 symlink for compatibility
 RUN ln -sf /usr/bin/python3.12 /usr/bin/python3
 

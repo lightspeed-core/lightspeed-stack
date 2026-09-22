@@ -220,6 +220,7 @@ async def _handle_query_with_tracing(
         query_request.query,
         query_request.vector_store_ids,
         query_request.solr,
+        query_request.okp,
     )
 
     # Prepare API request parameters

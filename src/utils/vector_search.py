@@ -1,3 +1,4 @@
+# pylint: disable=too-many-lines
 """Vector search utilities for query endpoints.
 
 This module contains common functionality for performing vector searches
@@ -19,11 +20,17 @@ from opentelemetry import trace
 from pydantic import AnyUrl, ValidationError
 
 import constants
-from configuration import configuration
+from configuration import (
+    configuration,
+    mark_okp_mcp_unavailable,
+    okp_mcp_available,
+)
 from log import get_logger
-from models.common.query import SolrVectorSearchRequest
+from models.common.query import OkpFilter, SolrVectorSearchRequest
 from models.common.responses.types import ResponseInput
 from models.common.turn_summary import RAGChunk, RAGContext, ReferencedDocument
+from pydantic_ai_lightspeed.retrieval.okp_mcp import OkpMcpRetriever
+from pydantic_ai_lightspeed.retrieval.okp_mcp._client import OkpMcpUnavailableError
 from utils.otel_tracing import (
     SpanAttributes,
     SpanEvents,
@@ -110,15 +117,60 @@ def _get_solr_vector_store_ids() -> list[str]:
     return vector_store_ids
 
 
+def _okp_filter_to_structured(okp: Optional[OkpFilter]) -> Optional[dict[str, Any]]:
+    """Translate a transport-neutral OKP filter into an OGX structured filter.
+
+    Each product selection becomes an exact ``product`` match, AND-combined with
+    an ``in`` over its versions when versions are given; the selections are then
+    OR-combined. This is the legacy Solr-path translation and is deleted with the
+    OGX/Solr transport; the public :class:`OkpFilter` interface is unaffected.
+
+    Parameters:
+        okp: Optional query-time OKP filter.
+
+    Returns:
+        An OGX ``{type, key, value}`` filter dict, or None when ``okp`` is None
+        or selects no products.
+    """
+    if okp is None or not okp.products:
+        return None
+
+    product_filters: list[dict[str, Any]] = []
+    for entry in okp.products:
+        product_clause: dict[str, Any] = {
+            "type": "eq",
+            "key": "product",
+            "value": entry.product,
+        }
+        if entry.versions:
+            version_clause: dict[str, Any] = {
+                "type": "in",
+                "key": "product_version",
+                "value": list(entry.versions),
+            }
+            product_filters.append(
+                {"type": "and", "filters": [product_clause, version_clause]}
+            )
+        else:
+            product_filters.append(product_clause)
+
+    if len(product_filters) == 1:
+        return product_filters[0]
+    return {"type": "or", "filters": product_filters}
+
+
 def _build_query_params(
     solr: Optional[SolrVectorSearchRequest] = None,
     max_chunks: Optional[int] = None,
+    okp: Optional[OkpFilter] = None,
 ) -> dict[str, Any]:
     """Build query parameters for Solr vector_io search.
 
     Args:
         solr: Optional structured Solr request (mode and filters from the API).
         max_chunks: Optional number of chunks to return. If not provided, uses default.
+        okp: Optional transport-neutral OKP filter, translated to an OGX
+            structured filter and AND-combined with any structured Solr filter.
 
     Returns:
         Query parameters dict for vector_io.query.
@@ -168,6 +220,15 @@ def _build_query_params(
             logger.debug("Legacy solr.filters format: %s", params["solr"])
     else:
         logger.debug("No solr filters provided")
+
+    okp_filter = _okp_filter_to_structured(okp)
+    if okp_filter is not None:
+        existing = params.get("filters")
+        if existing is not None:
+            params["filters"] = {"type": "and", "filters": [existing, okp_filter]}
+        else:
+            params["filters"] = okp_filter
+        logger.debug("Applied OKP structured filter: %s", params["filters"])
 
     logger.debug("Final params being sent to vector_io.query: %s", params)
     return params
@@ -580,6 +641,7 @@ async def _fetch_okp_rag(  # pylint: disable=too-many-locals
     client: AsyncOgxClient,
     query: str,
     solr: Optional[SolrVectorSearchRequest] = None,
+    okp: Optional[OkpFilter] = None,
 ) -> tuple[list[RAGChunk], list[ReferencedDocument]]:
     """Fetch chunks and documents from Solr RAG source.
 
@@ -587,6 +649,8 @@ async def _fetch_okp_rag(  # pylint: disable=too-many-locals
         client: The AsyncOgxClient to use for the request
         query: The user's query
         solr: Structured Solr inline RAG request from the API (optional).
+        okp: Transport-neutral OKP filter from the API (optional), translated to
+            an OGX structured filter for the Solr query.
 
     Returns:
         Tuple containing:
@@ -610,7 +674,7 @@ async def _fetch_okp_rag(  # pylint: disable=too-many-locals
         if vector_store_ids:
             # Assuming only one Solr vector store is registered
             vector_store_id = vector_store_ids[0]
-            params = _build_query_params(solr, max_chunks=limit)
+            params = _build_query_params(solr, max_chunks=limit, okp=okp)
 
             query_response = await client.vector_io.query(
                 vector_store_id=vector_store_id,
@@ -647,12 +711,83 @@ async def _fetch_okp_rag(  # pylint: disable=too-many-locals
     return rag_chunks, referenced_documents
 
 
-async def build_rag_context(  # pylint: disable=too-many-locals,too-many-branches
+async def _fetch_okp_rag_mcp(
+    query: str,
+    okp: Optional[OkpFilter] = None,
+) -> tuple[list[RAGChunk], list[ReferencedDocument]]:
+    """Fetch chunks and documents from the OKP MCP transport.
+
+    The MCP counterpart of :func:`_fetch_okp_rag`. Unlike the Solr path it does
+    not need the OGX ``client`` or a ``SolrVectorSearchRequest``: the RHOKP MCP
+    server encapsulates embeddings and querying. Invoked by :func:`_fetch_okp`
+    when the RHOKP endpoint has probed as MCP-capable.
+
+    Parameters:
+        query: The user's query.
+        okp: Transport-neutral OKP filter from the API (optional).
+
+    Returns:
+        Tuple containing:
+        - rag_chunks: RAG chunks from the OKP MCP server.
+        - referenced_documents: Documents referenced in the MCP results.
+
+    Raises:
+        OkpMcpUnavailableError: When every MCP search failed, so the caller can
+            fall back to the Solr transport.
+    """
+    if not configuration.okp_inline_enabled:
+        logger.info("OKP is disabled for inline RAG, skipping OKP MCP search")
+        return [], []
+
+    retriever = OkpMcpRetriever.from_configuration()
+    return await retriever.fetch(query, okp=okp)
+
+
+async def _fetch_okp(
+    client: AsyncOgxClient,
+    query: str,
+    solr: Optional[SolrVectorSearchRequest] = None,
+    okp: Optional[OkpFilter] = None,
+) -> tuple[list[RAGChunk], list[ReferencedDocument]]:
+    """Fetch OKP RAG context, preferring the MCP transport with Solr fallback.
+
+    At launch the Solr ``vector_io`` provider is always wired; at query time the
+    RHOKP MCP transport is attempted whenever the endpoint has probed as
+    MCP-capable (see :func:`configuration.okp_mcp_available`, which re-probes
+    periodically so an upgraded RHOKP is adopted without restarting). If MCP is
+    not available, or a believed-available endpoint hard-fails for this request,
+    the Solr transport serves it instead. Both honour the same query-time
+    ``okp`` filter and return the same ``(chunks, documents)`` contract.
+
+    Parameters:
+        client: OGX client used by the Solr transport.
+        query: The user's query.
+        solr: Structured Solr inline RAG request from the API (optional).
+        okp: Transport-neutral OKP filter from the API (optional).
+
+    Returns:
+        Tuple of ``(rag_chunks, referenced_documents)`` from whichever transport
+        served the request.
+    """
+    if await okp_mcp_available():
+        try:
+            return await _fetch_okp_rag_mcp(query, okp)
+        except OkpMcpUnavailableError:
+            logger.warning(
+                "OKP MCP transport failed for this request; "
+                "falling back to the Solr transport"
+            )
+            mark_okp_mcp_unavailable()
+    return await _fetch_okp_rag(client, query, solr, okp)
+
+
+async def build_rag_context(  # pylint: disable=too-many-locals,too-many-branches,too-many-arguments,too-many-positional-arguments
     client: AsyncOgxClient,
     moderation_decision: str,  # pylint: disable=unused-argument
     query: str,
     vector_store_ids: Optional[list[str]],
     solr: Optional[SolrVectorSearchRequest] = None,
+    okp: Optional[OkpFilter] = None,
 ) -> RAGContext:
     """Build RAG context by fetching and merging chunks from all enabled sources.
 
@@ -666,6 +801,8 @@ async def build_rag_context(  # pylint: disable=too-many-locals,too-many-branche
         query: The user's query
         vector_store_ids: The vector store IDs to query
         solr: Structured Solr inline RAG request from the API (optional).
+        okp: Transport-neutral OKP filter from the API (optional), applied by
+            whichever OKP transport is active (RHOKP MCP or the legacy Solr path).
 
     Returns:
         RAGContext containing formatted context text and referenced documents
@@ -680,12 +817,17 @@ async def build_rag_context(  # pylint: disable=too-many-locals,too-many-branche
 
         top_k = configuration.rag.retrieval.inline.max_chunks
 
-        # Fetch from each source using per-source limits for the reranking pool
+        # Fetch from each source using per-source limits for the reranking pool.
+        # The OKP source has two interchangeable transports selected at query
+        # time by _fetch_okp: the RHOKP MCP path (preferred when available) and
+        # the OGX/Solr vector_io path (always-wired fallback). Both return the
+        # same (chunks, documents) contract so the merge/rerank pipeline is
+        # unchanged.
         byok_chunks_task = _fetch_byok_rag(client, query, vector_store_ids)
-        solr_chunks_task = _fetch_okp_rag(client, query, solr)
+        okp_chunks_task = _fetch_okp(client, query, solr, okp)
 
         (byok_chunks, byok_documents), (solr_chunks, solr_documents) = (
-            await asyncio.gather(byok_chunks_task, solr_chunks_task)
+            await asyncio.gather(byok_chunks_task, okp_chunks_task)
         )
 
         # Merge chunks

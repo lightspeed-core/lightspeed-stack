@@ -1,6 +1,9 @@
 """Configuration loader."""
 
+import asyncio
+import time
 from typing import Any, Optional, Self
+from urllib.parse import urljoin
 
 import yaml
 
@@ -643,6 +646,22 @@ class AppConfig:  # pylint: disable=too-many-public-methods
             raise LogicError("logic error: configuration is not loaded")
         return constants.OKP_RAG_ID in self._configuration.rag.retrieval.inline.sources
 
+    @property
+    def okp_inline_enabled(self) -> bool:
+        """Return whether OKP is included in the inline RAG list.
+
+        Transport-agnostic alias of :attr:`inline_solr_enabled`: it is True when
+        ``"okp"`` appears in ``rag.retrieval.inline.sources`` regardless of
+        whether the Solr or MCP transport is selected.
+
+        Returns:
+            bool: True if 'okp' appears in rag.inline, False otherwise.
+
+        Raises:
+            LogicError: If the configuration has not been loaded.
+        """
+        return self.inline_solr_enabled
+
     def resolve_index_name(
         self, vector_store_id: str, rag_id_mapping: Optional[dict[str, str]] = None
     ) -> str:
@@ -665,3 +684,109 @@ class AppConfig:  # pylint: disable=too-many-public-methods
 
 
 configuration: AppConfig = AppConfig()
+
+
+def okp_mcp_endpoint_url() -> str:
+    """Return the RHOKP MCP endpoint URL derived from ``rag.okp.rhokp_url``.
+
+    The RHOKP MCP server is always served at the ``/mcp`` path of the RHOKP
+    base URL, so the endpoint is derived rather than configured separately. When
+    ``rhokp_url`` is unset, the constant default base URL is used.
+
+    Returns:
+        str: The absolute MCP endpoint URL (``<rhokp base>/mcp``).
+    """
+    okp = configuration.okp
+    base = (
+        str(okp.rhokp_url)
+        if okp.rhokp_url is not None
+        else constants.RH_SERVER_OKP_DEFAULT_URL
+    )
+    return urljoin(base, "/mcp")
+
+
+# Cached OKP transport-capability probe result (per process), with the
+# monotonic time it was taken. The result is trusted for
+# ``OKP_MCP_PROBE_TTL_SECONDS``; after that it is re-probed so a RHOKP instance
+# upgraded (or downgraded) while LCORE runs is picked up without a restart.
+#   None  -> not yet probed
+#   True  -> RHOKP advertises the MCP search tool; use the MCP transport
+#   False -> RHOKP is not MCP-capable (or was unreachable); use the Solr transport
+_okp_mcp_available: Optional[bool] = None  # pylint: disable=invalid-name
+_okp_mcp_probed_at: float = 0.0  # pylint: disable=invalid-name
+_okp_mcp_probe_lock = asyncio.Lock()
+
+
+def _okp_mcp_probe_fresh(now: float) -> bool:
+    """Return whether the cached probe result is still within its TTL.
+
+    Parameters:
+        now: Current monotonic timestamp.
+
+    Returns:
+        bool: True if a probe result exists and has not yet expired, False if
+        there is no cached result or the TTL has elapsed (a re-probe is due).
+    """
+    return (
+        _okp_mcp_available is not None
+        and (now - _okp_mcp_probed_at) < constants.OKP_MCP_PROBE_TTL_SECONDS
+    )
+
+
+async def okp_mcp_available() -> bool:
+    """Return whether the OKP-over-MCP RAG transport should be used.
+
+    At launch time the Solr transport is always assumed (the OGX ``vector_io``
+    provider is wired unconditionally). At query time this probes the RHOKP
+    ``/mcp`` endpoint and caches the result for ``OKP_MCP_PROBE_TTL_SECONDS`` so
+    that a RHOKP instance which is MCP-incapable or was down does not incur a
+    probe timeout on every request, while still being re-probed periodically so
+    an upgraded RHOKP is adopted without restarting LCORE. The Solr transport is
+    used whenever this returns False, including when the probe fails.
+
+    Returns:
+        bool: True if the RHOKP MCP endpoint advertises the search tool, False
+        otherwise (not MCP-capable, unreachable, or recently marked unavailable
+        by :func:`mark_okp_mcp_unavailable` and still within the TTL).
+    """
+    global _okp_mcp_available, _okp_mcp_probed_at  # pylint: disable=global-statement
+    if _okp_mcp_probe_fresh(time.monotonic()):
+        return bool(_okp_mcp_available)
+    async with _okp_mcp_probe_lock:
+        if _okp_mcp_probe_fresh(time.monotonic()):
+            return bool(_okp_mcp_available)
+        # Imported lazily to avoid a circular import at module load time.
+        from pydantic_ai_lightspeed.retrieval.okp_mcp._client import (  # pylint: disable=import-outside-toplevel
+            probe_okp_mcp,
+        )
+
+        _okp_mcp_available = await probe_okp_mcp(
+            okp_mcp_endpoint_url(),
+            tool_name=constants.OKP_MCP_DEFAULT_TOOL_NAME,
+            timeout=constants.OKP_MCP_PROBE_TIMEOUT_SECONDS,
+        )
+        _okp_mcp_probed_at = time.monotonic()
+        return _okp_mcp_available
+
+
+def mark_okp_mcp_unavailable() -> None:
+    """Fall back to Solr after a hard MCP failure at query time.
+
+    Marks the transport unavailable and stamps the current time, so subsequent
+    requests use Solr without re-attempting MCP until the TTL elapses, at which
+    point :func:`okp_mcp_available` re-probes and can fail forward to MCP again.
+    """
+    global _okp_mcp_available, _okp_mcp_probed_at  # pylint: disable=global-statement
+    _okp_mcp_available = False
+    _okp_mcp_probed_at = time.monotonic()
+
+
+def reset_okp_mcp_probe() -> None:
+    """Reset the cached MCP-capability probe result.
+
+    Intended for tests and for reloading configuration; the next call to
+    :func:`okp_mcp_available` re-probes the RHOKP endpoint.
+    """
+    global _okp_mcp_available, _okp_mcp_probed_at  # pylint: disable=global-statement
+    _okp_mcp_available = None
+    _okp_mcp_probed_at = 0.0

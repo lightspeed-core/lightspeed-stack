@@ -270,6 +270,23 @@ DEFAULT_SCORE_MULTIPLIER: Final[float] = 1.0
 # Special RAG ID that activates the OKP provider when listed in rag.inline or rag.tool
 OKP_RAG_ID: Final[str] = "okp"
 
+# OKP-over-MCP RAG constants
+# The OKP RAG source has two interchangeable transports. At launch the Solr
+# vector_io provider is always assumed; at query time the RHOKP MCP endpoint
+# (always served at the "/mcp" path of rag.okp.rhokp_url) is probed once and
+# preferred when available, falling back to Solr otherwise. The "okp" source id
+# activates OKP either way; only the transport changes.
+# Default MCP tool name used for OKP hybrid search.
+OKP_MCP_DEFAULT_TOOL_NAME: Final[str] = "search"
+# Maximum rows the RHOKP MCP search tool accepts (server clamps to 1..=20).
+OKP_MCP_MAX_ROWS: Final[int] = 20
+# Timeout (seconds) for the RHOKP MCP capability probe at query time.
+OKP_MCP_PROBE_TIMEOUT_SECONDS: Final[float] = 5.0
+# How long a probe result is trusted before re-probing. Bounds probe cost when
+# RHOKP is not MCP-capable, while still adopting an upgraded RHOKP without a
+# restart ("fail forward").
+OKP_MCP_PROBE_TTL_SECONDS: Final[float] = 60.0
+
 # OpenTelemetry anonymization configuration
 # Environment variable for HMAC secret used to anonymize sensitive trace data
 OTEL_ANONYMIZATION_SECRET_ENV_VAR: Final[str] = "OTEL_ANONYMIZATION_SECRET"

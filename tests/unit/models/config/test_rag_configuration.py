@@ -236,6 +236,21 @@ class TestOkpConfiguration:
         with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
             OkpConfiguration(unknown_field="value")  # type: ignore[call-arg]
 
+    def test_rhokp_url_defaults_to_none(self) -> None:
+        """Test that rhokp_url is unset by default (endpoint derives a default)."""
+        config = OkpConfiguration()
+        assert config.rhokp_url is None
+
+    def test_rhokp_url_accepts_pre_mcp_value(self) -> None:
+        """The pre-MCP rhokp_url field keeps working unchanged (no mcp block)."""
+        config = OkpConfiguration(rhokp_url="http://rhokp:8081")  # type: ignore[arg-type]
+        assert str(config.rhokp_url).rstrip("/") == "http://rhokp:8081"
+
+    def test_no_mcp_field(self) -> None:
+        """The removed nested mcp block is rejected as an unknown field."""
+        with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
+            OkpConfiguration(mcp={"enabled": True})  # type: ignore[call-arg]
+
 
 class TestOldFormatRejected:
     """Tests that old-style RAG config fields are rejected."""
