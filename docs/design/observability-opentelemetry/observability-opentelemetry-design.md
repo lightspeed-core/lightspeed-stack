@@ -374,12 +374,154 @@ No **required** change to JSON requests/responses. The `/config` response gains 
 - Which `OTEL_*` variables are included in the `/config` scrape?
 
 
+## Addendum: PII redaction strategy
+
+|                          |                                                                                   |
+|--------------------------|-----------------------------------------------------------------------------------|
+| **Date**                 | 2026-09-22                                                                        |
+| **Authors**              | Anik Bhattacharjee                                                                |
+| **Feature / Initiative** | [UIESTRAT-229: Enable collection & upload of Observability OTel data stripped of PII/sensitive data](https://redhat.atlassian.net/browse/UIESTRAT-229)                      |
+
+The three core inference spans (`/v1/query`, `/v1/streaming_query`, `/v1/responses`) carry
+raw, un-hashed request/response content for evaluation, relaxing the original metadata-only rule
+(**R7**; §Why "Safe observability by design"). This addendum covers how that content is
+redacted of PII.
+
+### The problem
+
+Raw span text (prompts, responses, RAG chunks, tool I/O) can contain PII, so it must be scrubbed
+before the span leaves LCORE — before OTLP export to a hosted backend such as LangFuse, and before
+any cross-org sharing. This is a portfolio-wide obligation from Red Hat's AI Assessment process, 
+not specific to LCORE.
+
+### The approach — Presidio from PyPI
+
+Use the upstream [Presidio](https://github.com/microsoft/presidio) library directly. Add
+[`presidio-analyzer`](https://pypi.org/project/presidio-analyzer/) and
+[`presidio-anonymizer`](https://pypi.org/project/presidio-anonymizer/)
+(both on PyPI) to `pyproject.toml`, and wrap them in a small `redact(text) -> str` helper that
+detects and replaces email, hostname, IP (v4/v6), location, organization, person, phone, and URL.
+No new runtime service: the pieces are two libraries plus one helper, applied wherever content is
+set on a span (more details in next section). 
+It is not free of build and footprint cost, though — the [spaCy](https://spacy.io/) model
+has to be packaged into the hermetic Konflux build and adds image size and pod memory (see § Deploying the
+spaCy model).
+
+### Deploying the spaCy model
+
+`presidio-analyzer` pulls in the [spaCy](https://spacy.io/) library but not a model. The
+named-entity recognition (NER) runs against a separate [model artifact](https://spacy.io/models/en)
+(`en_core_web_lg` by Presidio's default, ~560 MB; `en_core_web_md` ~40 MB; `en_core_web_sm` ~12 MB)
+that spaCy loads by name at runtime via
+[`spacy.load(...)`](https://spacy.io/api/top-level#spacy.load). Without the model in the image,
+`AnalyzerEngine()` fails to construct.
+
+Getting the model into the image will require some work, because the production image is a
+Konflux **hermetic build** (`deploy/lightspeed-stack/Containerfile`): in LCORE's existing setup, when
+[cachi2](https://github.com/containerbuildsystem/cachi2) is active it sets
+`PIP_NO_INDEX=true` and installs only prefetched, hash-pinned wheels from `--find-links`, against
+`.konflux/requirements.hashes.*.txt`. There is no network at build time, which rules out the usual
+[`python -m spacy download en_core_web_lg`](https://spacy.io/usage/models#download) (it fetches from
+[GitHub](https://github.com/explosion/spacy-models) at build time) and rules out
+downloading at container startup (breaks air-gapped runtime, adds cold-start latency).
+
+The hermetic-compatible path is to pin the model wheel as an explicit dependency so cachi2
+prefetches and hash-locks it like any other package:
+
+```
+en_core_web_lg @ https://github.com/explosion/spacy-models/releases/download/en_core_web_lg-3.8.0/en_core_web_lg-3.8.0-py3-none-any.whl
+```
+
+The model version must match the resolved spaCy version, so they need to be pinned together.
+
+At runtime, loading the model costs a few hundred MB of RSS, so the `AnalyzerEngine` and
+`AnonymizerEngine` are constructed once (module-level singleton or lazy init) and reused across
+requests — `redact()` never rebuilds them per call.
+
+The `sm`/`md`/`lg` choice is the accuracy-vs-footprint knob, and it moves three things at once: image
+size, pod memory, and NER recall on names, organizations, and locations. `lg` gives the best recall
+at the largest cost; `sm` is small but weaker.
+
+### Alternatives considered
+
+- **Reuse the existing regex redaction engine** ([`redact_text`](../../../src/pydantic_ai_lightspeed/capabilities/redaction/core.py#L24) + the configurable [`RedactionConfig`](../../../src/models/config.py#L2912)
+  rules, already in the repo) at span emission. This is the engine under the `PiiRedactionCapability`
+  shield, not the shield itself — the shield is used to redact PII during a2a live message flow. Only the 
+  "text in, redacted text out" engine would be used from here. No new dependency and no model
+  download, deterministic, and fast. However, regex handles structured PII well (email, IP, phone are
+  easy to express) but cannot reliably detect free-text entities like names, organizations, and
+  locations, so recall on those depends on hand-written patterns and is weak.
+
+  Comparatively, the existing data-anonymizer based on Presidio is already [compliance approved and in production](https://docs.google.com/document/d/1BNBIDUz-lLmUjT9N9cEMqgaQv9EqfLKwZrA8gtbtlY8/edit?tab=t.0).  
+
+- **Managed cloud PII services** (AWS Comprehend, Google Cloud DLP, Azure AI Language). Ruled out:
+  each sends span content to an external service on every request, which reintroduces the
+  PII-leaves-the-process problem this work exists to close, adds a network hop, and adds a cloud
+  dependency the LCORE binary can't assume.
+
+Presidio wins on two counts: good name/org/location recall without building an NER pipeline by
+hand, and alignment with the shared `data-anonymizer` library (also Presidio-based; see § Future),
+so the later swap stays a drop-in rather than an engine change. The one cost is the spaCy model
+download. If that model turns out to block image size or air-gapped builds, the regex-extend option
+above is the fallback.
+
+### Where redaction runs — redact at emission, through one helper
+
+Content is redacted at the point it's set on the span. All content fields will go on spans
+through a **single centralized helper** — e.g. `set_content_attribute(span, key, text)` — that runs
+each value through the Presidio `redact()` helper before calling `set_attribute`. For any content
+serialized as a JSON string (e.g. RAG chunks or tool I/O), the helper redacts each leaf string
+(`content`/`args`/`source`) before `json.dumps`, so the serialized attribute never contains raw
+PII. Properties of this approach:
+
+- **The span never holds raw PII.** R11 ("redact before content leaves the process") is satisfied
+  by construction — there is no in-memory window where a raw value sits on a span or in the export
+  queue.
+- **One code path to audit.** Because content can only reach a span through the helper, there is a
+  single place to review and test; individual emission sites cannot forget to redact (there is no
+  raw path to `set_attribute` for content keys). A review/lint rule reinforces "content goes
+  through the helper."
+- **Fail-closed.** If the redactor raises, the helper omits the field rather than emitting raw
+  text — consistent with R9 (a tracing failure must never leak or break the request).
+- **Cost.** Redaction runs on the request path (synchronous), not in the export background thread.
+  This is minor. It's a text pass over already-generated output, dwarfed by the LLM call, and only
+  incurred when raw-content capture is enabled (scoped to the three core spans). The helper is the
+  single place to make it async/best-effort if it ever becomes a bottleneck.
+
+### Future: adopting the shared `data-anonymizer` library
+
+A shared, Presidio-based redactor already exists: `data-anonymizer` (used by Ask Red Hat et al.;
+see the [shared Presidio library strategy doc](https://docs.google.com/document/d/1BNBIDUz-lLmUjT9N9cEMqgaQv9EqfLKwZrA8gtbtlY8/edit?tab=t.0#heading=h.9qfphopokr7u)).
+LCORE may move to it eventually, so redaction is maintained once across teams rather than
+per-project. The only obstacle is distribution. `data-anonymizer` lives on Red Hat's internal GitLab
+(`gitlab.cee.redhat.com/uxe-data-ai-solutions/data-anonymizer`), not PyPI, and a GitHub build/CI
+can't install from internal GitLab without internal credentials — so it can't go in
+`pyproject.toml`.
+
+The swap stays small because redaction is already funneled through the single `redact()` helper
+(§ Where redaction runs). To adopt the shared library without breaking the GitHub build, turn that
+helper into a **redaction slot** — one interface the telemetry path calls without knowing the
+backend:
+
+- **GitHub build (default):** the slot keeps using public Presidio from PyPI.
+- **Red Hat's internal build:** a downstream build fills the slot with `data-anonymizer` via an
+  adapter, added at the stage where internal GitLab is reachable.
+
+Until such a move is deemed required, the PyPI Presidio helper above is the whole
+implementation.
+
+### Requirements addendum
+
+- **R11 — PII redaction before export.** Raw content on the three core inference spans shall pass
+  through PII detection/redaction before leaving the process (OTLP export or cross-org sharing).
+
 ## Appendix A: Jira epics and related tracking
 
 **Epics**
 
 - [LCORE-1791](https://redhat.atlassian.net/browse/LCORE-1791)
 - [LCORE-1799](https://redhat.atlassian.net/browse/LCORE-1799)
+- [UIESTRAT-229](https://redhat.atlassian.net/browse/UIESTRAT-229)
 
 ## Appendix B: External references
 
