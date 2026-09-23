@@ -24,11 +24,9 @@ from pydantic_ai.usage import RunUsage
 from pytest_mock import MockerFixture
 
 from constants import ENDPOINT_PATH_QUERY
-from models.common.moderation import ShieldModerationBlocked, ShieldModerationPassed
 from models.common.query import Attachment
 from models.common.responses.responses_api_params import ResponsesApiParams
 from models.common.responses.types import ResponseInput
-from models.common.turn_summary import TurnSummary
 from utils.agents.query import (
     AgentFinishReason,
     build_turn_summary_from_agent_run,
@@ -102,15 +100,6 @@ def responses_params_fixture(
 ) -> ResponsesApiParams:
     """Default ResponsesApiParams for agent query tests."""
     return make_responses_params()
-
-
-@pytest.fixture(name="blocked_moderation")
-def blocked_moderation_fixture() -> ShieldModerationBlocked:
-    """Blocked shield moderation result for tests."""
-    return ShieldModerationBlocked(
-        message="Content blocked by shield.",
-        moderation_id="modr-test-456",
-    )
 
 
 @pytest.fixture(name="patch_query_configuration")
@@ -366,38 +355,6 @@ class TestRetrieveAgentResponse:
     """Tests for retrieve_agent_response."""
 
     @pytest.mark.asyncio
-    async def test_blocked_moderation_returns_refusal_summary(
-        self,
-        mocker: MockerFixture,
-        responses_params: ResponsesApiParams,
-        blocked_moderation: ShieldModerationBlocked,
-    ) -> None:
-        """Test blocked moderation persists refusal and returns a turn summary."""
-        mock_client = mocker.AsyncMock()
-        mock_append = mocker.patch(
-            "utils.agents.query.append_turn_items_to_conversation",
-            new=mocker.AsyncMock(),
-        )
-
-        summary = await retrieve_agent_response(
-            client=mock_client,
-            responses_params=responses_params,
-            moderation_result=blocked_moderation,
-            endpoint_path=ENDPOINT_PATH_QUERY,
-        )
-
-        mock_append.assert_awaited_once_with(
-            mock_client,
-            responses_params.conversation,
-            responses_params.input,
-            [blocked_moderation.refusal_response],
-        )
-        assert summary == TurnSummary(
-            id="modr-test-456",
-            llm_response="Content blocked by shield.",
-        )
-
-    @pytest.mark.asyncio
     async def test_success_returns_turn_summary(
         self,
         mocker: MockerFixture,
@@ -420,7 +377,6 @@ class TestRetrieveAgentResponse:
         summary = await retrieve_agent_response(
             client=mocker.AsyncMock(),
             responses_params=make_responses_params(input_text="Say hello"),
-            moderation_result=ShieldModerationPassed(),
             endpoint_path=ENDPOINT_PATH_QUERY,
         )
 
@@ -454,41 +410,11 @@ class TestRetrieveAgentResponse:
         summary = await retrieve_agent_response(
             client=mocker.AsyncMock(),
             responses_params=params,
-            moderation_result=ShieldModerationPassed(),
             endpoint_path=ENDPOINT_PATH_QUERY,
         )
 
         mock_agent.run.assert_awaited_once_with("new question")
         assert summary.llm_response == "Answer"
-
-    @pytest.mark.asyncio
-    async def test_blocked_moderation_compacted_skips_append(
-        self,
-        mocker: MockerFixture,
-        make_responses_params: Callable[..., ResponsesApiParams],
-        blocked_moderation: ShieldModerationBlocked,
-    ) -> None:
-        """Test blocked moderation does not append explicit input in compacted mode."""
-        params = make_responses_params().model_copy(
-            update={
-                "input": [OpenAIResponseMessage(role="user", content="q")],
-                "omit_conversation": True,
-            }
-        )
-        mock_append = mocker.patch(
-            "utils.agents.query.append_turn_items_to_conversation",
-            new=mocker.AsyncMock(),
-        )
-
-        summary = await retrieve_agent_response(
-            client=mocker.AsyncMock(),
-            responses_params=params,
-            moderation_result=blocked_moderation,
-            endpoint_path=ENDPOINT_PATH_QUERY,
-        )
-
-        mock_append.assert_not_awaited()
-        assert summary.llm_response == "Content blocked by shield."
 
     @pytest.mark.asyncio
     async def test_inference_error_is_logged(
@@ -514,7 +440,6 @@ class TestRetrieveAgentResponse:
                 await retrieve_agent_response(
                     client=mocker.AsyncMock(),
                     responses_params=make_responses_params(),
-                    moderation_result=ShieldModerationPassed(),
                     endpoint_path=ENDPOINT_PATH_QUERY,
                 )
 
@@ -548,7 +473,6 @@ class TestRetrieveAgentResponse:
                 await retrieve_agent_response(
                     client=mocker.AsyncMock(),
                     responses_params=make_responses_params(),
-                    moderation_result=ShieldModerationPassed(),
                     endpoint_path=ENDPOINT_PATH_QUERY,
                 )
 
@@ -592,7 +516,6 @@ class TestRetrieveAgentResponse:
         summary = await retrieve_agent_response(
             client=mocker.AsyncMock(),
             responses_params=params,
-            moderation_result=ShieldModerationPassed(),
             endpoint_path=ENDPOINT_PATH_QUERY,
             image_attachments=[image_attachment],
         )
@@ -623,7 +546,6 @@ class TestRetrieveAgentResponse:
             await retrieve_agent_response(
                 client=mocker.AsyncMock(),
                 responses_params=responses_params,
-                moderation_result=ShieldModerationPassed(),
                 endpoint_path=ENDPOINT_PATH_QUERY,
             )
 
@@ -659,7 +581,6 @@ class TestRetrieveAgentResponse:
             await retrieve_agent_response(
                 client=mocker.AsyncMock(),
                 responses_params=responses_params,
-                moderation_result=ShieldModerationPassed(),
                 endpoint_path=ENDPOINT_PATH_QUERY,
             )
 
@@ -718,7 +639,6 @@ class TestQueryCompactedTurnPersistence:
         await retrieve_agent_response(
             client=client,
             responses_params=params,
-            moderation_result=ShieldModerationPassed(),
             endpoint_path=ENDPOINT_PATH_QUERY,
             original_input="new question",
         )
@@ -750,7 +670,6 @@ class TestQueryCompactedTurnPersistence:
         await retrieve_agent_response(
             client=client,
             responses_params=make_responses_params(input_text="hi"),
-            moderation_result=ShieldModerationPassed(),
             endpoint_path=ENDPOINT_PATH_QUERY,
         )
 

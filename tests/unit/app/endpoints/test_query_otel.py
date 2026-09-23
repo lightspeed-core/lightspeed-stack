@@ -15,7 +15,6 @@ from app.endpoints.query import query_endpoint_handler
 from configuration import AppConfig
 from models.api.requests import QueryRequest
 from models.api.responses.error import QuotaExceededResponse
-from models.common.moderation import ShieldModerationPassed
 from models.common.responses.responses_api_params import ResponsesApiParams
 from models.common.turn_summary import TurnSummary
 from quota.quota_exceed_error import QuotaExceedError
@@ -80,10 +79,6 @@ def _patch_query_success(mocker: MockerFixture) -> None:
     mocker.patch(
         f"{MODULE}.maybe_get_topic_summary",
         new=mocker.AsyncMock(return_value=None),
-    )
-    mocker.patch(
-        f"{MODULE}.run_shield_moderation",
-        new=mocker.AsyncMock(return_value=ShieldModerationPassed()),
     )
 
     mock_params = mocker.Mock(spec=ResponsesApiParams)

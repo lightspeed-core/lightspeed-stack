@@ -65,7 +65,6 @@ from utils.conversation_compaction import (
     reject_image_attachments_in_compacted_mode,
     store_compacted_turn,
 )
-from utils.conversations import append_turn_items_to_conversation
 from utils.otel_tracing import (
     SpanAttributes,
     SpanEvents,
@@ -90,7 +89,6 @@ from utils.stream_interrupts import (
     persist_interrupted_turn,
     register_interrupt_callback,
 )
-from utils.streaming_sse import shield_violation_generator
 
 type AgentDispatchEvent = AgentStreamEvent | AgentRunResultEvent
 
@@ -113,7 +111,7 @@ async def retrieve_agent_response_generator(
 
     Args:
         responses_params: Prepared Responses API parameters.
-        context: Streaming request context and moderation result.
+        context: Streaming request context.
         endpoint_path: Endpoint path used for metric labeling.
         no_tools: Whether to skip tool processing.
         image_attachments: Image attachments for multimodal prompt construction.
@@ -123,26 +121,6 @@ async def retrieve_agent_response_generator(
     """
     turn_summary = TurnSummary()
     try:
-        if context.moderation_result.decision == "blocked":
-            turn_summary.llm_response = context.moderation_result.message
-            turn_summary.id = context.moderation_result.moderation_id
-            turn_summary.output_items = [context.moderation_result.refusal_response]
-            if not responses_params.omit_conversation:
-                await append_turn_items_to_conversation(
-                    context.client,
-                    responses_params.conversation,
-                    responses_params.input,
-                    [context.moderation_result.refusal_response],
-                )
-            media_type = context.query_request.media_type or MEDIA_TYPE_JSON
-            return (
-                shield_violation_generator(
-                    context.moderation_result.message,
-                    media_type,
-                ),
-                turn_summary,
-            )
-
         agent = build_agent(
             context.client,
             responses_params,
