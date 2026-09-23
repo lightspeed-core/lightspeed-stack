@@ -85,7 +85,7 @@ class _MockSpan:
 
 def _mock_span() -> trace.Span:
     """Return a typed span stand-in for behavioral handler unit tests."""
-    return cast(trace.Span, _MockSpan())
+    return cast("trace.Span", _MockSpan())
 
 
 def build_api_params_and_context(  # pylint: disable=too-many-arguments
@@ -553,7 +553,7 @@ class TestResponsesEndpointHandler:
             OpenAIResponseMessage(role="user", content="What is K8s?"),
         ]
         responses_request = ResponsesRequest(
-            input=cast(Any, structured_input),
+            input=cast("Any", structured_input),
         )
         _patch_base(mocker, minimal_config)
         _patch_client(mocker)

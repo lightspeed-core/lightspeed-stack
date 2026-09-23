@@ -829,9 +829,7 @@ def print_rag_response(response):
             print(f"  Tool Call ID: {output_item.id}")
             print(f"  Tool Status: {output_item.status}")
             print(f"  Queries: {', '.join(output_item.queries)}")
-            print(
-                f"  Results: {output_item.results if output_item.results else 'None'}"
-            )
+            print(f"  Results: {output_item.results or 'None'}")
         else:
             print(f"Response content: {output_item.content}")
 

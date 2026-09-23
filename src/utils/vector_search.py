@@ -4,14 +4,13 @@ This module contains common functionality for performing vector searches
 and processing RAG chunks that is shared between query_v2.py and streaming_query_v2.py.
 """
 
+# pylint: disable=unused-import
+
 import asyncio
 import traceback
-from typing import Any, Optional, cast
+from typing import TYPE_CHECKING, Any, Optional, cast
 from urllib.parse import urljoin
 
-from ogx_api.openai_responses import (
-    OpenAIResponseMessage as ResponseMessage,
-)
 from ogx_client import AsyncOgxClient
 from opentelemetry import trace
 from pydantic import AnyUrl, ValidationError
@@ -26,11 +25,15 @@ from utils.otel_tracing import (
     SpanAttributes,
     SpanEvents,
     add_span_event,
-    anonymize_value,
     set_span_attributes,
 )
 from utils.reranker import apply_byok_rerank_boost, rerank_chunks_with_cross_encoder
 from utils.responses import resolve_vector_store_ids
+
+if TYPE_CHECKING:
+    from ogx_api.openai_responses import (
+        OpenAIResponseMessage as ResponseMessage,
+    )
 
 logger = get_logger(__name__)
 tracer = trace.get_tracer(__name__)
@@ -294,8 +297,8 @@ async def _query_store_for_byok_rag(  # pylint: disable=too-many-arguments,too-m
         )
         return _extract_byok_rag_chunks(search_response, vector_store_id, weight)
     except (
-        Exception  # pylint: disable=broad-exception-caught
-    ) as e:  # noqa: BLE001 RUF100
+        Exception  # pylint: disable=broad-exception-caught  # noqa: BLE001 RUF100
+    ) as e:
         logger.warning("Failed to search '%s': %s", vector_store_id, e)
         return []
 
@@ -567,8 +570,8 @@ async def _fetch_byok_rag(  # pylint: disable=too-many-locals
         referenced_documents = _process_byok_rag_chunks_for_documents(top_results)
 
     except (
-        Exception  # pylint: disable=broad-exception-caught
-    ) as e:  # noqa: BLE001 RUF100
+        Exception  # pylint: disable=broad-exception-caught  # noqa: BLE001 RUF100
+    ) as e:
         logger.warning("Failed to perform BYOK RAG search: %s", e)
         logger.debug("BYOK RAG error details: %s", traceback.format_exc())
 
@@ -638,8 +641,8 @@ async def _fetch_okp_rag(  # pylint: disable=too-many-locals
                 logger.debug("OKP RAG returned %d chunks", len(rag_chunks))
 
     except (
-        Exception  # pylint: disable=broad-exception-caught
-    ) as e:  # noqa: BLE001 RUF100
+        Exception  # pylint: disable=broad-exception-caught  # noqa: BLE001 RUF100
+    ) as e:
         logger.warning("Failed to query OKP for chunks: %s", e)
         logger.debug("OKP query error details: %s", traceback.format_exc())
 
@@ -671,7 +674,7 @@ async def build_rag_context(  # pylint: disable=too-many-locals,too-many-branche
     """
     with tracer.start_as_current_span("rag.retrieve") as span:
         # Set RAG input attribute
-        span.set_attribute(SpanAttributes.RAG_INPUT, anonymize_value(query))
+        span.set_attribute(SpanAttributes.RAG_INPUT, query)
 
         if moderation_decision == "blocked":
             span.set_attribute(SpanAttributes.RAG_SOURCES_COUNT, 0)
@@ -874,7 +877,7 @@ def append_inline_rag_context_to_responses_input(
     for item in input_value:
         if item.type != "message" or item.role != "user":
             continue
-        message = cast(ResponseMessage, item)
+        message = cast("ResponseMessage", item)
         content = message.content
         if isinstance(content, str):
             message.content = content + "\n\n" + inline_rag_context_text

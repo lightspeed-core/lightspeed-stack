@@ -916,11 +916,6 @@ class TestGenerateAgentResponseOtel:
         mock_config.quota_limiters = []
         mocker.patch("utils.agents.streaming.configuration", mock_config)
 
-        mocker.patch(
-            "utils.agents.streaming.anonymize_value",
-            side_effect=lambda v: f"[anon:{v}]",
-        )
-
         [
             event
             async for event in generate_agent_response(
@@ -940,7 +935,7 @@ class TestGenerateAgentResponseOtel:
         assert span.attributes[SpanAttributes.SESSION_ID] == context.conversation_id
         assert span.attributes[SpanAttributes.LLM_USAGE_INPUT_TOKENS] == 10
         assert span.attributes[SpanAttributes.LLM_USAGE_OUTPUT_TOKENS] == 5
-        assert span.attributes[SpanAttributes.OUTPUT] == "[anon:The answer is 42]"
+        assert span.attributes[SpanAttributes.OUTPUT] == "The answer is 42"
         event_names = [e.name for e in span.events]
         assert SpanEvents.TURN_PERSISTED in event_names
         assert SpanEvents.LLM_RESPONSE_COMPLETED in event_names
@@ -985,10 +980,6 @@ class TestGenerateAgentResponseOtel:
         mock_config = mocker.Mock()
         mock_config.quota_limiters = []
         mocker.patch("utils.agents.streaming.configuration", mock_config)
-        mocker.patch(
-            "utils.agents.streaming.anonymize_value",
-            side_effect=lambda v: f"[anon:{v}]",
-        )
 
         [
             event

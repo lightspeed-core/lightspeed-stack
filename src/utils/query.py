@@ -456,7 +456,7 @@ def update_conversation_topic_summary(
             configuration.conversation_cache.set_topic_summary(
                 user_id, conversation_id, topic_summary, skip_userid_check
             )
-        except Exception as e:  # pylint: disable=broad-except
+        except Exception as e:  # pylint: disable=broad-except  # noqa: BLE001 RUF100
             logger.warning(
                 "Failed to update topic summary in cache for %s: %s",
                 normalized_id,

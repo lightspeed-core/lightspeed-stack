@@ -478,7 +478,7 @@ async def test_no_auth_header(
         await dependency(no_token_request)
 
     assert exc_info.value.status_code == 401
-    detail = cast(dict, exc_info.value.detail)
+    detail = cast("dict", exc_info.value.detail)
     assert detail["cause"] == "No Authorization header found"
     assert detail["response"] == "Missing or invalid credentials provided by client"
 
@@ -498,7 +498,7 @@ async def test_no_bearer(
         await dependency(not_bearer_token_request)
 
     assert exc_info.value.status_code == 401
-    detail = cast(dict[str, str], exc_info.value.detail)
+    detail = cast("dict[str, str]", exc_info.value.detail)
     assert detail["response"] == ("Missing or invalid credentials provided by client")
     assert detail["cause"] == "No token found in Authorization header"
 

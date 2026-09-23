@@ -24,6 +24,8 @@ jobs:
       matrix:
         mode: ["server", "library"]
         environment: ["ci"]
+        is_release_06:
+          - ${{ github.base_ref == 'release/0.6' }}
         # Config-aligned shards (@cfg_*). Packed small groups keep job count reasonable
         # while avoiding mixed-config restarts inside large suites.
         shard:
@@ -45,14 +47,64 @@ jobs:
           # mode=server before any library jobs. include would append after library.
           - name: tls
             tags: "not @skip and @cfg_tls"
+          - name: group 1
+            tags: "not @skip and @e2e_group_1"
+          - name: group 2
+            tags: "not @skip and @e2e_group_2"
+          - name: group 3
+            tags: "not @skip and @e2e_group_3"
         exclude:
           - mode: library
             shard:
               name: tls
               tags: "not @skip and @cfg_tls"
+          - is_release_06: true
+            shard:
+              name: default
+              tags: "not @skip and @cfg_default"
+          - is_release_06: true
+            shard:
+              name: authorized
+              tags: "not @skip and @cfg_authorized"
+          - is_release_06: true
+            shard:
+              name: mcp
+              tags: "not @skip and (@cfg_mcp or @cfg_mcp_invalid or @cfg_mcp_api_auth)"
+          - is_release_06: true
+            shard:
+              name: rbac
+              tags: "not @skip and @cfg_rbac"
+          - is_release_06: true
+            shard:
+              name: skills
+              tags: "not @skip and (@cfg_skills or @cfg_skills_directory)"
+          - is_release_06: true
+            shard:
+              name: shields
+              tags: "not @skip and @cfg_shields"
+          - is_release_06: true
+            shard:
+              name: other
+              tags: "not @skip and (@cfg_rh_identity or @cfg_negative or @cfg_byok_pdf or @cfg_degraded or @cfg_unified)"
+          - is_release_06: true
+            shard:
+              name: tls
+              tags: "not @skip and @cfg_tls"
+          - is_release_06: false
+            shard:
+              name: group 1
+              tags: "not @skip and @e2e_group_1"
+          - is_release_06: false
+            shard:
+              name: group 2
+              tags: "not @skip and @e2e_group_2"
+          - is_release_06: false
+            shard:
+              name: group 3
+              tags: "not @skip and @e2e_group_3"
 
     name: "E2E: ${{ matrix.mode }} / ${{ matrix.environment }} / ${{ matrix.shard.name }}"
-    
+
     env:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       E2E_OPENAI_MODEL: ${{ vars.E2E_OPENAI_MODEL }}

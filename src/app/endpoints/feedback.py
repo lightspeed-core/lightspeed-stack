@@ -107,8 +107,9 @@ def _record_feedback_request_attributes(
     """Set high-level feedback attributes on the root span.
 
     User-generated free text (the question, LLM response, and comment) is
-    anonymized before being recorded. Low-cardinality signals (rating and
-    categories) are recorded as-is.
+    recorded as raw content; anonymization is handled downstream at ingestion.
+    Only the user identifier is anonymized at emission. Low-cardinality signals
+    (rating and categories) are recorded as-is.
 
     Parameters:
         span: The root feedback span to annotate.
@@ -121,8 +122,8 @@ def _record_feedback_request_attributes(
             SpanAttributes.FEEDBACK_OPERATION: "submit",
             SpanAttributes.USER_ID: anonymize_value(user_id) if user_id else "",
             SpanAttributes.FEEDBACK_CONVERSATION: feedback_request.conversation_id,
-            SpanAttributes.INPUT: anonymize_value(feedback_request.user_question),
-            SpanAttributes.OUTPUT: anonymize_value(feedback_request.llm_response),
+            SpanAttributes.INPUT: feedback_request.user_question,
+            SpanAttributes.OUTPUT: feedback_request.llm_response,
         },
     )
     if feedback_request.sentiment is not None:
@@ -130,7 +131,7 @@ def _record_feedback_request_attributes(
     if feedback_request.user_feedback:
         span.set_attribute(
             SpanAttributes.FEEDBACK_COMMENT,
-            anonymize_value(feedback_request.user_feedback),
+            feedback_request.user_feedback,
         )
     if feedback_request.categories:
         span.set_attribute(

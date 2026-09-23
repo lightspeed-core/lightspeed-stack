@@ -293,7 +293,7 @@ async def persist_interrupted_turn(
             await append_turn_to_conversation(
                 context.client,
                 responses_params.conversation,
-                cast(str, responses_params.input),
+                cast("str", responses_params.input),
                 turn_summary.llm_response,
             )
     except Exception:  # pylint: disable=broad-except

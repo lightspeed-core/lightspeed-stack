@@ -20,6 +20,10 @@ Integration tests for the /v1/conversations REST API endpoints.
 
 Integration tests for the /v2/conversations REST API endpoints (cache-based).
 
+## [test_granite_guardian_integration.py](test_granite_guardian_integration.py)
+
+Integration tests for Granite Guardian input guardrail across endpoints.
+
 ## [test_health_integration.py](test_health_integration.py)
 
 Integration tests for the /health endpoint.

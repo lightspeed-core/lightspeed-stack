@@ -2,7 +2,7 @@
 
 import pytest
 
-from models.api.requests import QueryRequest
+from models.api.requests import QueryRequest, StreamingInterruptRequest
 from models.common.query import Attachment, SolrVectorSearchRequest
 
 
@@ -76,6 +76,28 @@ class TestQueryRequest:
             qr.attachments[1].content == "kind: Pod\n metadata:\n name:    private-reg"
         )
 
+    def test_with_provider_but_not_model(self) -> None:
+        """Test that provider must be set if model is set."""
+        msg = "Model must be specified if provider is specified"
+        with pytest.raises(ValueError, match=msg):
+            _ = QueryRequest(
+                query="Tell me about Kubernetes",
+                conversation_id="123e4567-e89b-12d3-a456-426614174000",
+                provider="OpenAI",
+                system_prompt="You are a helpful assistant",
+            )  # pyright: ignore[reportCallIssue]
+
+    def test_with_model_but_not_provider(self) -> None:
+        """Test that provider must be set if model is set."""
+        msg = "Provider must be specified if model is specified"
+        with pytest.raises(ValueError, match=msg):
+            _ = QueryRequest(
+                query="Tell me about Kubernetes",
+                conversation_id="123e4567-e89b-12d3-a456-426614174000",
+                model="gpt4mini",
+                system_prompt="You are a helpful assistant",
+            )  # pyright: ignore[reportCallIssue]
+
     def test_with_optional_fields(self) -> None:
         """Test the QueryRequest with optional fields."""
         qr = QueryRequest(
@@ -107,6 +129,23 @@ class TestQueryRequest:
         assert qr.provider == "OpenAI"
         assert qr.model == "gpt-3.5-turbo"
         assert qr.media_type == "text/plain"
+
+    def test_validate_for_media_type(self) -> None:
+        """Test the unknown media_type values on QueryRequest.
+
+        Constructs a QueryRequest with provider, model, and a supported
+        ``media_type`` and asserts these are checked correctly.
+        """
+        msg = (
+            "Value error, media_type must be either 'application/json' or 'text/plain'"
+        )
+        with pytest.raises(ValueError, match=msg):
+            _ = QueryRequest(
+                query="Tell me about Kubernetes",
+                provider="OpenAI",
+                model="gpt-3.5-turbo",
+                media_type="text/javascript",
+            )  # pyright: ignore[reportCallIssue]
 
     def test_generate_topic_summary_explicit_false(self) -> None:
         """Test that generate_topic_summary can be explicitly set to False.
@@ -147,3 +186,36 @@ class TestQueryRequest:
         solr_request = SolrVectorSearchRequest.model_validate(qr.solr)
         assert solr_request.mode == "hybrid"
         assert solr_request.filters == {"fq": ["x:y"]}
+
+
+class TestStreamingInterruptRequest:
+    """Test cases for the StreamingInterruptRequest model."""
+
+    def test_validate_valid_request_id(self) -> None:
+        """Test the request_id values on StreamingInterruptRequest.
+
+        Constructs a StreamingInterruptRequest with provider, model, and a request_id
+        and asserts these are checked correctly.
+        """
+        sr = StreamingInterruptRequest(
+            request_id="60556869-096a-4d5d-8a53-ddd538176504",
+        )  # pyright: ignore[reportCallIssue]
+        assert sr.request_id == "60556869-096a-4d5d-8a53-ddd538176504"
+
+    def test_validate_invalid_request_id(self) -> None:
+        """Test the request_id values on StreamingInterruptRequest.
+
+        Constructs a StreamingInterruptRequest with provider, model, and a request_id
+        and asserts these are checked correctly.
+        """
+        msg = "Improper request ID xyzzy869-096a-4d5d-8a53-ddd538176504"
+        with pytest.raises(ValueError, match=msg):
+            _ = StreamingInterruptRequest(
+                request_id="xyzzy869-096a-4d5d-8a53-ddd538176504",
+            )  # pyright: ignore[reportCallIssue]
+
+    def test_validate_no_request_id(self) -> None:
+        """Test the request_id values on StreamingInterruptRequest."""
+        msg = "Field required"
+        with pytest.raises(ValueError, match=msg):
+            _ = StreamingInterruptRequest()  # pyright: ignore[reportCallIssue]
