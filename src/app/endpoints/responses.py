@@ -816,9 +816,12 @@ async def handle_streaming_response(
             parent=root_span,
         )
         try:
-            response = await context.client.responses.create(
-                **api_params.model_dump(exclude_none=True)
-            )
+            with trace.use_span(  # pylint: disable=not-context-manager
+                inference_span, end_on_exit=False
+            ):
+                response = await context.client.responses.create(
+                    **api_params.model_dump(exclude_none=True)
+                )
             generator = response_generator(
                 stream=cast("AsyncIterator[OpenAIResponseObjectStream]", response),
                 original_request=original_request,
@@ -1117,104 +1120,109 @@ async def response_generator(
     inference_metric_recorded = False
 
     try:
-        async for chunk in stream:
-            logger.debug("Processing streaming chunk, type: %s", chunk.type)
+        with trace.use_span(  # pylint: disable=not-context-manager
+            inference_span, end_on_exit=False
+        ):
+            async for chunk in stream:
+                logger.debug("Processing streaming chunk, type: %s", chunk.type)
 
-            # Filter out streaming events for server-deployed MCP tools.
-            # These are handled internally by LCS and should not be forwarded
-            # to clients that don't understand the mcp_call item type.
-            if _should_filter_mcp_chunk(
-                chunk, configured_mcp_labels, server_mcp_output_indices
-            ):
-                continue
+                # Filter out streaming events for server-deployed MCP tools.
+                # These are handled internally by LCS and should not be forwarded
+                # to clients that don't understand the mcp_call item type.
+                if _should_filter_mcp_chunk(
+                    chunk, configured_mcp_labels, server_mcp_output_indices
+                ):
+                    continue
 
-            chunk_dict = dump_ogx_model(chunk)
+                chunk_dict = dump_ogx_model(chunk)
 
-            # Create own sequence number for chunks to maintain order
-            chunk_dict["sequence_number"] = sequence_number
-            sequence_number += 1
+                # Create own sequence number for chunks to maintain order
+                chunk_dict["sequence_number"] = sequence_number
+                sequence_number += 1
 
-            if "response" in chunk_dict:
-                chunk_dict["response"]["conversation"] = normalize_conversation_id(
-                    api_params.conversation
-                )
-                _sanitize_response_dict(
-                    chunk_dict["response"],
-                    configured_mcp_labels,
-                    original_request,
-                )
-                tools = chunk_dict["response"].get("tools")
-                if tools is not None:
-                    chunk_dict["response"]["tools"] = (
-                        translate_vector_store_ids_to_user_facing(
-                            tools,
-                            configuration.rag_id_mapping,
-                        )
+                if "response" in chunk_dict:
+                    chunk_dict["response"]["conversation"] = normalize_conversation_id(
+                        api_params.conversation
                     )
-            # Intermediate response - no quota consumption and text yet
-            if chunk.type == "response.in_progress":
-                chunk_dict["response"]["available_quotas"] = {}
-                chunk_dict["response"]["output_text"] = ""
+                    _sanitize_response_dict(
+                        chunk_dict["response"],
+                        configured_mcp_labels,
+                        original_request,
+                    )
+                    tools = chunk_dict["response"].get("tools")
+                    if tools is not None:
+                        chunk_dict["response"]["tools"] = (
+                            translate_vector_store_ids_to_user_facing(
+                                tools,
+                                configuration.rag_id_mapping,
+                            )
+                        )
+                # Intermediate response - no quota consumption and text yet
+                if chunk.type == "response.in_progress":
+                    chunk_dict["response"]["available_quotas"] = {}
+                    chunk_dict["response"]["output_text"] = ""
 
-            # Handle completion, incomplete, and failed events
-            if chunk.type in (
-                "response.completed",
-                "response.incomplete",
-                "response.failed",
-            ):
-                latest_response_object = cast(
-                    "OpenAIResponseObject", cast("Any", chunk).response
-                )
+                # Handle completion, incomplete, and failed events
+                if chunk.type in (
+                    "response.completed",
+                    "response.incomplete",
+                    "response.failed",
+                ):
+                    latest_response_object = cast(
+                        "OpenAIResponseObject", cast("Any", chunk).response
+                    )
 
-                # Record inference duration metric at the terminal-event
-                # boundary, before post-processing that could raise.
-                result = (
-                    recording.LLM_INFERENCE_RESULT_FAILURE
-                    if chunk.type == "response.failed"
-                    else recording.LLM_INFERENCE_RESULT_SUCCESS
-                )
-                _record_response_inference_result(
-                    api_params.model,
-                    context.endpoint_path,
-                    result,
-                    time.monotonic() - inference_start_time,
-                    record_failure=(result == recording.LLM_INFERENCE_RESULT_FAILURE),
-                )
-                inference_metric_recorded = True
-
-                # Extract and consume tokens if any were used
-                turn_summary.token_usage = extract_token_usage(
-                    latest_response_object.usage,
-                    api_params.model,
-                    context.endpoint_path,
-                )
-                consume_query_tokens(
-                    user_id=context.auth[0],
-                    model_id=api_params.model,
-                    token_usage=turn_summary.token_usage,
-                )
-
-                # Get available quotas after token consumption
-                chunk_dict["response"]["available_quotas"] = get_available_quotas(
-                    quota_limiters=configuration.quota_limiters,
-                    user_id=context.auth[0],
-                )
-                turn_summary.llm_response = extract_text_from_response_items(
-                    latest_response_object.output
-                )
-                chunk_dict["response"]["output_text"] = turn_summary.llm_response
-
-                if chunk.type == "response.failed":
-                    _record_inference_span_exception(
-                        inference_span,
-                        Exception(
-                            chunk.response.error.message
-                            if chunk.response.error
-                            else "response.failed"
+                    # Record inference duration metric at the terminal-event
+                    # boundary, before post-processing that could raise.
+                    result = (
+                        recording.LLM_INFERENCE_RESULT_FAILURE
+                        if chunk.type == "response.failed"
+                        else recording.LLM_INFERENCE_RESULT_SUCCESS
+                    )
+                    _record_response_inference_result(
+                        api_params.model,
+                        context.endpoint_path,
+                        result,
+                        time.monotonic() - inference_start_time,
+                        record_failure=(
+                            result == recording.LLM_INFERENCE_RESULT_FAILURE
                         ),
                     )
+                    inference_metric_recorded = True
 
-            yield f"event: {chunk.type or 'error'}\ndata: {json.dumps(chunk_dict)}\n\n"
+                    # Extract and consume tokens if any were used
+                    turn_summary.token_usage = extract_token_usage(
+                        latest_response_object.usage,
+                        api_params.model,
+                        context.endpoint_path,
+                    )
+                    consume_query_tokens(
+                        user_id=context.auth[0],
+                        model_id=api_params.model,
+                        token_usage=turn_summary.token_usage,
+                    )
+
+                    # Get available quotas after token consumption
+                    chunk_dict["response"]["available_quotas"] = get_available_quotas(
+                        quota_limiters=configuration.quota_limiters,
+                        user_id=context.auth[0],
+                    )
+                    turn_summary.llm_response = extract_text_from_response_items(
+                        latest_response_object.output
+                    )
+                    chunk_dict["response"]["output_text"] = turn_summary.llm_response
+
+                    if chunk.type == "response.failed":
+                        _record_inference_span_exception(
+                            inference_span,
+                            Exception(
+                                chunk.response.error.message
+                                if chunk.response.error
+                                else "response.failed"
+                            ),
+                        )
+
+                yield f"event: {chunk.type or 'error'}\ndata: {json.dumps(chunk_dict)}\n\n"
     except Exception as exc:
         _record_inference_span_exception(inference_span, exc)
         inference_span.end()
@@ -1345,12 +1353,15 @@ async def handle_non_streaming_response(
             parent=root_span,
         )
         try:
-            api_response = cast(
-                "OpenAIResponseObject",
-                await context.client.responses.create(
-                    **api_params.model_dump(exclude_none=True)
-                ),
-            )
+            with trace.use_span(  # pylint: disable=not-context-manager
+                inference_span, end_on_exit=False
+            ):
+                api_response = cast(
+                    "OpenAIResponseObject",
+                    await context.client.responses.create(
+                        **api_params.model_dump(exclude_none=True)
+                    ),
+                )
             _record_response_inference_result(
                 api_params.model,
                 context.endpoint_path,
