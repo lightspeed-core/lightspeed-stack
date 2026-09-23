@@ -2,7 +2,7 @@
 
 import pytest
 
-from models.api.requests import QueryRequest
+from models.api.requests import QueryRequest, StreamingInterruptRequest
 from models.common.query import Attachment, SolrVectorSearchRequest
 
 
@@ -186,3 +186,36 @@ class TestQueryRequest:
         solr_request = SolrVectorSearchRequest.model_validate(qr.solr)
         assert solr_request.mode == "hybrid"
         assert solr_request.filters == {"fq": ["x:y"]}
+
+
+class TestStreamingInterruptRequest:
+    """Test cases for the StreamingInterruptRequest model."""
+
+    def test_validate_valid_request_id(self) -> None:
+        """Test the request_id values on StreamingInterruptRequest.
+
+        Constructs a StreamingInterruptRequest with provider, model, and a request_id
+        and asserts these are checked correctly.
+        """
+        sr = StreamingInterruptRequest(
+            request_id="60556869-096a-4d5d-8a53-ddd538176504",
+        )  # pyright: ignore[reportCallIssue]
+        assert sr.request_id == "60556869-096a-4d5d-8a53-ddd538176504"
+
+    def test_validate_invalid_request_id(self) -> None:
+        """Test the request_id values on StreamingInterruptRequest.
+
+        Constructs a StreamingInterruptRequest with provider, model, and a request_id
+        and asserts these are checked correctly.
+        """
+        msg = "Improper request ID xyzzy869-096a-4d5d-8a53-ddd538176504"
+        with pytest.raises(ValueError, match=msg):
+            _ = StreamingInterruptRequest(
+                request_id="xyzzy869-096a-4d5d-8a53-ddd538176504",
+            )  # pyright: ignore[reportCallIssue]
+
+    def test_validate_no_request_id(self) -> None:
+        """Test the request_id values on StreamingInterruptRequest."""
+        msg = "Field required"
+        with pytest.raises(ValueError, match=msg):
+            _ = StreamingInterruptRequest()  # pyright: ignore[reportCallIssue]
