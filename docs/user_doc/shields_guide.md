@@ -19,6 +19,7 @@ request overrides work.
   - [Supported shield types](#supported-shield-types)
   - [question_validity](#question_validity)
   - [redaction](#redaction)
+  - [granite_guardian](#granite_guardian)
 - [How shields apply at runtime](#how-shields-apply-at-runtime)
   - [Agent-based endpoints](#agent-based-endpoints)
   - [Responses-based endpoints](#responses-based-endpoints)
@@ -38,7 +39,7 @@ configuration. Each entry has:
 | Field | Meaning |
 |-------|---------|
 | `name` | Unique shield name used in `/v1/shields` and in `shield_ids` overrides |
-| `provider_id` | Shield type discriminator (`question_validity` or `redaction`) |
+| `provider_id` | Shield type discriminator (`question_validity`, `redaction`, or `granite_guardian`) |
 | `config` | Type-specific settings |
 
 Names must be unique across the `shields` list.
@@ -75,6 +76,7 @@ for a complete example.
 |---------------|---------|---------------------|
 | `question_validity` | Classify whether the user question is in-topic; reject off-topic input with a fixed reply | Agent capability on agent-based endpoints; also considered by direct-run input moderation |
 | `redaction` | Regex-based PII / sensitive-data redaction of model messages | Agent capability on agent-based endpoints |
+| `granite_guardian` | IBM Granite Guardian model screening for custom safety risks at input, output, and tool points | Agent capability on agent-based endpoints: input risks checked before the run starts, output risks checked incrementally while streaming, tool risks checked on each tool result |
 
 ## question_validity
 
@@ -93,17 +95,52 @@ for a complete example.
 
 Invalid regex patterns are rejected at configuration load time.
 
+## granite_guardian
+
+IBM Granite Guardian screening with configurable risk definitions, thresholds,
+and guardrail points (`input`, `output`, `tool`). Requires a Granite Guardian
+model behind an OpenAI-compatible API.
+
+| Config field | Required | Description |
+|--------------|----------|-------------|
+| `url` | Yes | Base URL of the OpenAI-compatible Granite Guardian API |
+| `model_id` | No (default `ibm-granite/granite-guardian-4.1-8b`) | Model name sent to the inference server; override when the server registers the model under a different name (for example an Ollama tag) |
+| `api_key` | No | API key for the inference endpoint |
+| `timeout` | No (default `30`) | Request timeout in seconds (5-300) |
+| `max_retries` | No (default `2`) | Retry count for transient errors (0-5) |
+| `verify_ssl` | No (default `true`) | TLS verification: `true`, `false`, or a path to a CA bundle |
+| `batch_size` | No (default `3`) | Number of risk checks to run in parallel per batch (1-10) |
+| `risks` | Yes | Non-empty list of risk definitions: `{name, description, points, violation_message, threshold?, enabled?}` |
+| `streaming_output_check_interval_tokens` | No (default `50`) | For risks with `output` in `points`, re-check the response against those risks roughly every N generated output tokens while streaming, plus once more over any remaining text once generation completes. Ignored when no configured risk targets the `output` point |
+
+As a pydantic-ai capability on agent-based endpoints:
+
+- INPUT-point risks are checked against the user prompt before the real run
+  starts; a violation rejects the run immediately.
+- OUTPUT-point risks are checked incrementally against the streamed response,
+  roughly every `streaming_output_check_interval_tokens` tokens (plus a final
+  check over any remainder), so a violation partway through generation stops
+  the response before the rest is released to the caller.
+- TOOL-point risks are checked against each tool call's result once it
+  returns, screening content coming back from tools (for example MCP
+  servers) before it can flow into the model's context.
+
+Any of these checks short-circuits the run with a rejection message built
+from the violated risk's `violation_message`.
+
 # How shields apply at runtime
 
-The same shield logic (`question_validity` and `redaction`) is used on both
-agent-based and responses-based endpoints; only the integration point differs.
+The same shield logic (`question_validity`, `redaction`, and
+`granite_guardian`) is used on both agent-based and responses-based
+endpoints; only the integration point differs.
 
 ## Agent-based endpoints
 
 On agent-based endpoints (for example `/v1/query` and `/v1/streaming_query`),
 shields run as **pydantic-ai capabilities** attached when the agent is built.
 Those capabilities wrap the agent pipeline — for example rejecting off-topic
-questions or redacting PII from model messages — using the configured shields.
+questions, redacting PII from model messages, or screening input/output/tool
+content against Granite Guardian risks — using the configured shields.
 
 ## Responses-based endpoints
 
@@ -132,7 +169,7 @@ Each catalog entry has this shape:
 | Field | Description |
 |-------|-------------|
 | `name` | Configured shield name |
-| `provider_id` | `question_validity` or `redaction` |
+| `provider_id` | `question_validity`, `redaction`, or `granite_guardian` |
 | `type` | Always `"shield"` |
 | `config` | Type-specific shield configuration |
 
