@@ -76,6 +76,28 @@ class TestQueryRequest:
             qr.attachments[1].content == "kind: Pod\n metadata:\n name:    private-reg"
         )
 
+    def test_with_provider_but_not_model(self) -> None:
+        """Test that provider must be set if model is set."""
+        msg = "Model must be specified if provider is specified"
+        with pytest.raises(ValueError, match=msg):
+            _ = QueryRequest(
+                query="Tell me about Kubernetes",
+                conversation_id="123e4567-e89b-12d3-a456-426614174000",
+                provider="OpenAI",
+                system_prompt="You are a helpful assistant",
+            )  # pyright: ignore[reportCallIssue]
+
+    def test_with_model_but_not_provider(self) -> None:
+        """Test that provider must be set if model is set."""
+        msg = "Provider must be specified if model is specified"
+        with pytest.raises(ValueError, match=msg):
+            _ = QueryRequest(
+                query="Tell me about Kubernetes",
+                conversation_id="123e4567-e89b-12d3-a456-426614174000",
+                model="gpt4mini",
+                system_prompt="You are a helpful assistant",
+            )  # pyright: ignore[reportCallIssue]
+
     def test_with_optional_fields(self) -> None:
         """Test the QueryRequest with optional fields."""
         qr = QueryRequest(
@@ -107,6 +129,23 @@ class TestQueryRequest:
         assert qr.provider == "OpenAI"
         assert qr.model == "gpt-3.5-turbo"
         assert qr.media_type == "text/plain"
+
+    def test_validate_for_media_type(self) -> None:
+        """Test the unknown media_type values on QueryRequest.
+
+        Constructs a QueryRequest with provider, model, and a supported
+        ``media_type`` and asserts these are checked correctly.
+        """
+        msg = (
+            "Value error, media_type must be either 'application/json' or 'text/plain'"
+        )
+        with pytest.raises(ValueError, match=msg):
+            _ = QueryRequest(
+                query="Tell me about Kubernetes",
+                provider="OpenAI",
+                model="gpt-3.5-turbo",
+                media_type="text/javascript",
+            )  # pyright: ignore[reportCallIssue]
 
     def test_generate_topic_summary_explicit_false(self) -> None:
         """Test that generate_topic_summary can be explicitly set to False.
