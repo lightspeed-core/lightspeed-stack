@@ -166,9 +166,12 @@ async def streaming_query_endpoint_handler(  # pylint: disable=too-many-locals
     """
     root_span = tracer.start_span("streaming_query.handle_request")
     try:
-        return await _handle_streaming_query_with_tracing(
-            request, query_request, auth, mcp_headers, root_span
-        )
+        with trace.use_span(  # pylint: disable=not-context-manager
+            root_span, end_on_exit=False
+        ):
+            return await _handle_streaming_query_with_tracing(
+                request, query_request, auth, mcp_headers, root_span
+            )
     except Exception:
         root_span.end()
         raise
@@ -398,8 +401,8 @@ async def generate_response_with_compaction(
     context: ResponseGeneratorContext,
     responses_params: ResponsesApiParams,
     endpoint_path: str,
+    root_span: trace.Span,
     image_attachments: Optional[list[Attachment]] = None,
-    root_span: Optional[trace.Span] = None,
 ) -> AsyncIterator[str]:
     """Stream a response for a conversation that requires compaction.
 
@@ -414,8 +417,8 @@ async def generate_response_with_compaction(
         context: The response generator context.
         responses_params: The base Responses API parameters.
         endpoint_path: API endpoint path used for metric labeling.
-        image_attachments: Image attachments for multimodal prompt construction.
         root_span: OpenTelemetry root span for this request.
+        image_attachments: Image attachments for multimodal prompt construction.
 
     Yields:
         SSE-formatted strings.
@@ -497,12 +500,11 @@ async def generate_response_with_compaction(
             responses_params,
             turn_summary,
             background_topic_summary_tasks=_background_topic_summary_tasks,
+            root_span=root_span,
             emit_start=False,
             original_input=compacted_original_input,
-            root_span=root_span,
             context_status=context_status,
         ):
             yield event
     finally:
-        if root_span is not None:
-            root_span.end()
+        root_span.end()
