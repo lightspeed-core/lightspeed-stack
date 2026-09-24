@@ -48,7 +48,6 @@ from utils.otel_tracing import (
 )
 from utils.query import (
     consume_query_tokens,
-    prepare_input,
     store_query_results,
     validate_attachments_metadata,
     validate_model_provider_override,
@@ -59,7 +58,7 @@ from utils.responses import (
     maybe_get_topic_summary,
     prepare_responses_params,
 )
-from utils.shields import run_shield_moderation, validate_shield_ids_override
+from utils.shields import validate_shield_ids_override
 from utils.suid import normalize_conversation_id
 from utils.types import Responses
 from utils.vector_search import build_rag_context
@@ -205,18 +204,12 @@ async def _handle_query_with_tracing(
 
     client = AsyncOgxClientHolder().get_client()
 
-    # Moderation input is the raw user content (query + attachments) without injected RAG
-    # context, to avoid false positives from retrieved document content.
+    # Input shields run as pydantic-ai capabilities on the agent.
     endpoint_path = ENDPOINT_PATH_QUERY
-    moderation_input = prepare_input(query_request)
-    moderation_result = await run_shield_moderation(
-        client, moderation_input, endpoint_path, query_request.shield_ids
-    )
 
     # Build RAG context from Inline RAG sources
     inline_rag_context = await build_rag_context(
         client,
-        moderation_result.decision,
         query_request.query,
         query_request.vector_store_ids,
         query_request.solr,
@@ -269,7 +262,6 @@ async def _handle_query_with_tracing(
     turn_summary = await retrieve_agent_response(
         client,
         responses_params,
-        moderation_result,
         endpoint_path,
         compaction.original_input if compaction.compacted else None,
         shield_ids=query_request.shield_ids,
@@ -277,19 +269,18 @@ async def _handle_query_with_tracing(
         image_attachments=image_attachments,
     )
 
-    if moderation_result.decision == "passed":
-        # Combine inline RAG results (BYOK + Solr) with tool-based RAG results for the transcript
-        rag_chunks = inline_rag_context.rag_chunks
-        tool_rag_chunks = turn_summary.rag_chunks
-        logger.info("RAG as a tool retrieved %d chunks", len(tool_rag_chunks))
-        turn_summary.rag_chunks = rag_chunks + tool_rag_chunks
+    # Combine inline RAG results (BYOK + Solr) with tool-based RAG results for the transcript
+    rag_chunks = inline_rag_context.rag_chunks
+    tool_rag_chunks = turn_summary.rag_chunks
+    logger.info("RAG as a tool retrieved %d chunks", len(tool_rag_chunks))
+    turn_summary.rag_chunks = rag_chunks + tool_rag_chunks
 
-        # Add tool-based RAG documents and chunks
-        rag_documents = inline_rag_context.referenced_documents
-        tool_rag_documents = turn_summary.referenced_documents
-        turn_summary.referenced_documents = deduplicate_referenced_documents(
-            rag_documents + tool_rag_documents
-        )
+    # Add tool-based RAG documents and chunks
+    rag_documents = inline_rag_context.referenced_documents
+    tool_rag_documents = turn_summary.referenced_documents
+    turn_summary.referenced_documents = deduplicate_referenced_documents(
+        rag_documents + tool_rag_documents
+    )
 
     # Get topic summary for new conversation
     should_generate = not user_conversation and bool(

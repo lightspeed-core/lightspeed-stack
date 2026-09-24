@@ -4,7 +4,6 @@ import uuid
 from typing import Literal, Optional
 
 from fastapi import HTTPException
-from ogx_client import AsyncOgxClient
 from opentelemetry import trace
 from pydantic_ai.exceptions import AgentRunError
 
@@ -177,41 +176,6 @@ def build_shield(
                 f"Unsupported shield config type for shield '{shield_config.name}': "
                 f"{type(shield_config.config).__name__}"
             )
-
-
-async def run_shield_moderation(
-    _client: AsyncOgxClient,
-    _input_text: str,
-    _endpoint_path: str,
-    _shield_ids: Optional[list[str]] = None,
-) -> ShieldModerationResult:
-    """
-    Run shield moderation on input text.
-
-    Iterates through configured shields and runs moderation checks.
-    Raises HTTPException if shield model is not found.
-
-    Parameters:
-    ----------
-        client: The OGX client.
-        input_text: The text to moderate.
-        endpoint_path: The API endpoint path for metric labeling.
-        shield_ids: Optional list of shield IDs to use. If None, uses all shields.
-                   If empty list, skips all shields.
-
-    Returns:
-    -------
-        ShieldModerationResult: Result indicating if content was blocked and the message.
-
-    Raises:
-    ------
-        HTTPException: If shield's provider_resource_id is not configured or model not found.
-    """
-    with tracer.start_as_current_span("shield.moderate") as span:
-        # Currently stubbed to always pass until LCS-owned input shields are wired.
-        result = ShieldModerationPassed()
-        span.set_attribute(SpanAttributes.SHIELD_RESULT, "passed")
-        return result
 
 
 def get_shields_for_request(

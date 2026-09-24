@@ -73,7 +73,6 @@ from utils.query import (
     extract_provider_and_model_from_model_id,
     handle_known_apistatus_errors,
     is_context_length_error,
-    prepare_input,
     validate_attachments_metadata,
     validate_model_provider_override,
 )
@@ -83,10 +82,7 @@ from utils.responses import (
     extract_vector_store_ids_from_tools,
     prepare_responses_params,
 )
-from utils.shields import (
-    run_shield_moderation,
-    validate_shield_ids_override,
-)
+from utils.shields import validate_shield_ids_override
 from utils.streaming_sse import (
     http_exception_stream_event,
     stream_compaction_event,
@@ -253,18 +249,12 @@ async def _handle_streaming_query_with_tracing(  # pylint: disable=too-many-loca
 
     client = AsyncOgxClientHolder().get_client()
 
-    # Moderation input is the raw user content (query + attachments) without injected RAG
-    # context, to avoid false positives from retrieved document content.
-    moderation_input = prepare_input(query_request)
+    # Input shields run as pydantic-ai capabilities on the agent.
     endpoint_path = ENDPOINT_PATH_STREAMING_QUERY
-    moderation_result = await run_shield_moderation(
-        client, moderation_input, endpoint_path, query_request.shield_ids
-    )
 
     # Build RAG context from Inline RAG sources
     inline_rag_context = await build_rag_context(
         client,
-        moderation_result.decision,
         query_request.query,
         query_request.vector_store_ids,
         query_request.solr,
@@ -304,7 +294,6 @@ async def _handle_streaming_query_with_tracing(  # pylint: disable=too-many-loca
         query_request=query_request,
         started_at=started_at,
         client=client,
-        moderation_result=moderation_result,
         vector_store_ids=extract_vector_store_ids_from_tools(responses_params.tools),
         rag_id_mapping=configuration.rag_id_mapping,
         inline_rag_context=inline_rag_context,
@@ -361,10 +350,9 @@ async def _handle_streaming_query_with_tracing(  # pylint: disable=too-many-loca
     )
 
     # Combine inline RAG results (BYOK + Solr) with tool-based results
-    if context.moderation_result.decision == "passed":
-        turn_summary.referenced_documents = deduplicate_referenced_documents(
-            inline_rag_context.referenced_documents + turn_summary.referenced_documents
-        )
+    turn_summary.referenced_documents = deduplicate_referenced_documents(
+        inline_rag_context.referenced_documents + turn_summary.referenced_documents
+    )
 
     return StreamingResponse(
         generate_agent_response(
@@ -486,11 +474,10 @@ async def generate_response_with_compaction(
             return
 
         # Combine inline RAG results (BYOK + Solr) with tool-based results
-        if context.moderation_result.decision == "passed":
-            turn_summary.referenced_documents = deduplicate_referenced_documents(
-                context.inline_rag_context.referenced_documents
-                + turn_summary.referenced_documents
-            )
+        turn_summary.referenced_documents = deduplicate_referenced_documents(
+            context.inline_rag_context.referenced_documents
+            + turn_summary.referenced_documents
+        )
 
         # The start event was already emitted above; delegate the rest (re-yield,
         # finalization, compacted-turn storage) to the shared generator.

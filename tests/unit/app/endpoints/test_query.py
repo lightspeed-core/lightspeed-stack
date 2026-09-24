@@ -12,7 +12,6 @@ from app.endpoints.query import query_endpoint_handler
 from configuration import AppConfig
 from models.api.requests import QueryRequest
 from models.api.responses.successful import QueryResponse
-from models.common.moderation import ShieldModerationPassed
 from models.common.query import Attachment
 from models.common.responses.responses_api_params import ResponsesApiParams
 from models.common.turn_summary import (
@@ -126,10 +125,6 @@ class TestQueryEndpointHandler:
             "app.endpoints.query.maybe_get_topic_summary",
             new=mocker.AsyncMock(return_value=None),
         )
-        mocker.patch(
-            "app.endpoints.query.run_shield_moderation",
-            new=mocker.AsyncMock(return_value=ShieldModerationPassed()),
-        )
 
         mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
         mock_responses_params.model = "provider1/model1"
@@ -212,10 +207,6 @@ class TestQueryEndpointHandler:
             "app.endpoints.query.maybe_get_topic_summary",
             new=mocker.AsyncMock(return_value=None),
         )
-        mocker.patch(
-            "app.endpoints.query.run_shield_moderation",
-            new=mocker.AsyncMock(return_value=ShieldModerationPassed()),
-        )
 
         mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
         mock_responses_params.model = "provider1/model1"
@@ -286,10 +277,6 @@ class TestQueryEndpointHandler:
         mocker.patch(
             "app.endpoints.query.AsyncOgxClientHolder",
             return_value=mock_client_holder,
-        )
-        mocker.patch(
-            "app.endpoints.query.run_shield_moderation",
-            new=mocker.AsyncMock(return_value=ShieldModerationPassed()),
         )
 
         inline_chunk = RAGChunk(content="inline chunk content", source="byok")
@@ -394,10 +381,6 @@ class TestQueryEndpointHandler:
             new=mocker.AsyncMock(return_value=mock_responses_params),
         )
         mocker.patch(
-            "app.endpoints.query.run_shield_moderation",
-            new=mocker.AsyncMock(return_value=ShieldModerationPassed()),
-        )
-        mocker.patch(
             "app.endpoints.query.retrieve_agent_response",
             new=mocker.AsyncMock(return_value=TurnSummary()),
         )
@@ -456,10 +439,6 @@ class TestQueryEndpointHandler:
         mocker.patch(
             "app.endpoints.query.maybe_get_topic_summary",
             new=mocker.AsyncMock(return_value=None),
-        )
-        mocker.patch(
-            "app.endpoints.query.run_shield_moderation",
-            new=mocker.AsyncMock(return_value=ShieldModerationPassed()),
         )
 
         mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
@@ -523,10 +502,6 @@ class TestQueryEndpointHandler:
         mocker.patch(
             "app.endpoints.query.AsyncOgxClientHolder",
             return_value=mock_client_holder,
-        )
-        mocker.patch(
-            "app.endpoints.query.run_shield_moderation",
-            new=mocker.AsyncMock(return_value=ShieldModerationPassed()),
         )
 
         mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
@@ -597,10 +572,6 @@ class TestQueryEndpointHandler:
         mocker.patch(
             "app.endpoints.query.maybe_get_topic_summary",
             new=mocker.AsyncMock(return_value=None),
-        )
-        mocker.patch(
-            "app.endpoints.query.run_shield_moderation",
-            new=mocker.AsyncMock(return_value=ShieldModerationPassed()),
         )
 
         mock_responses_params = mocker.Mock(spec=ResponsesApiParams)

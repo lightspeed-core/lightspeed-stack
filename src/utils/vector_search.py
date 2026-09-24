@@ -651,7 +651,6 @@ async def _fetch_okp_rag(  # pylint: disable=too-many-locals
 
 async def build_rag_context(  # pylint: disable=too-many-locals,too-many-branches
     client: AsyncOgxClient,
-    moderation_decision: str,  # pylint: disable=unused-argument
     query: str,
     vector_store_ids: Optional[list[str]],
     solr: Optional[SolrVectorSearchRequest] = None,
@@ -675,10 +674,6 @@ async def build_rag_context(  # pylint: disable=too-many-locals,too-many-branche
     with tracer.start_as_current_span("rag.retrieve") as span:
         # Set RAG input attribute
         span.set_attribute(SpanAttributes.RAG_INPUT, query)
-
-        if moderation_decision == "blocked":
-            span.set_attribute(SpanAttributes.RAG_SOURCES_COUNT, 0)
-            return RAGContext()
 
         top_k = configuration.rag.retrieval.inline.max_chunks
 

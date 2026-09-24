@@ -194,7 +194,6 @@ async def test_expected_child_spans_are_emitted(
     expected = {
         "query.handle_request",
         "quota.check",
-        "shield.moderate",
         "llm.inference",
     }
     missing = expected - span_names

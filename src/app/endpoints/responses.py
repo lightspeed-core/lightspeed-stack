@@ -55,7 +55,7 @@ from models.common.moderation import ShieldModerationBlocked
 from models.common.responses.contexts import ResponsesContext
 from models.common.responses.responses_api_params import ResponsesApiParams
 from models.common.responses.types import ResponseInput, ResponseMessage
-from models.common.turn_summary import TurnSummary
+from models.common.turn_summary import RAGContext, TurnSummary
 from models.config import Action
 from observability.responses_telemetry import (
     queue_blocked_response_event,
@@ -681,18 +681,19 @@ async def handle_responses_with_tracing(  # pylint: disable=too-many-locals
         if original_request.tools is not None
         else None
     )
-    # Build RAG context from Inline RAG sources
-    inline_rag_context = await build_rag_context(
-        client,
-        moderation_result.decision,
-        input_text,
-        vector_store_ids,
-        original_request.solr,
-    )
+    # Build RAG context from Inline RAG sources (skip when input shields blocked)
     if moderation_result.decision == "passed":
+        inline_rag_context = await build_rag_context(
+            client,
+            input_text,
+            vector_store_ids,
+            original_request.solr,
+        )
         updated_request.input = append_inline_rag_context_to_responses_input(
             original_request.input, inline_rag_context.context_text
         )
+    else:
+        inline_rag_context = RAGContext()
 
     if "max_infer_iters" not in original_request.model_fields_set:
         updated_request.max_infer_iters = configuration.inference.max_infer_iters

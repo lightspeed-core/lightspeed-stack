@@ -53,7 +53,6 @@ from models.common.agents import (
     ToolResultStreamPayload,
     TurnCompleteStreamPayload,
 )
-from models.common.moderation import ShieldModerationBlocked, ShieldModerationPassed
 from models.common.query import Attachment as QueryAttachment
 from models.common.responses.contexts import ResponseGeneratorContext
 from models.common.responses.responses_api_params import ResponsesApiParams
@@ -130,15 +129,6 @@ def responses_params_fixture(
     return make_responses_params()
 
 
-@pytest.fixture(name="blocked_moderation")
-def blocked_moderation_fixture() -> ShieldModerationBlocked:
-    """Blocked shield moderation result for streaming tests."""
-    return ShieldModerationBlocked(
-        message="Content blocked by shield.",
-        moderation_id="modr-test-456",
-    )
-
-
 @pytest.fixture(name="make_generator_context")
 def make_generator_context_fixture(
     mocker: MockerFixture,
@@ -154,9 +144,6 @@ def make_generator_context_fixture(
         media_type: Optional[str] = MEDIA_TYPE_JSON,
         generate_topic_summary: bool = False,
         conversation_id_in_request: Optional[str] = TEST_CONVERSATION_ID,
-        moderation_result: Optional[
-            ShieldModerationPassed | ShieldModerationBlocked
-        ] = None,
     ) -> ResponseGeneratorContext:
         context = mocker.Mock(spec=ResponseGeneratorContext)
         context.conversation_id = conversation_id
@@ -166,7 +153,6 @@ def make_generator_context_fixture(
         context.model_id = "provider1/model1"
         context.started_at = "2024-01-01T00:00:00Z"
         context.client = mocker.AsyncMock()
-        context.moderation_result = moderation_result or ShieldModerationPassed()
         context.inline_rag_context = RAGContext()
         context.vector_store_ids = []
         context.rag_id_mapping = {}
@@ -508,77 +494,13 @@ class TestRetrieveAgentResponseGenerator:
     """Tests for retrieve_agent_response_generator."""
 
     @pytest.mark.asyncio
-    async def test_blocked_moderation_returns_shield_generator(
-        self,
-        mocker: MockerFixture,
-        make_generator_context: Callable[..., ResponseGeneratorContext],
-        make_responses_params: Callable[..., ResponsesApiParams],
-        blocked_moderation: ShieldModerationBlocked,
-    ) -> None:
-        """Test blocked moderation returns shield violation stream and summary."""
-        context = make_generator_context(moderation_result=blocked_moderation)
-        responses_params = make_responses_params()
-        mock_shield = mocker.patch(
-            "utils.agents.streaming.shield_violation_generator",
-            return_value=_async_iter(["shield-event"]),
-        )
-        mock_append = mocker.patch(
-            "utils.agents.streaming.append_turn_items_to_conversation",
-            new=mocker.AsyncMock(),
-        )
-
-        generator, turn_summary = await retrieve_agent_response_generator(
-            responses_params,
-            context,
-            ENDPOINT_PATH_STREAMING_QUERY,
-        )
-
-        events = [event async for event in generator]
-        assert events == ["shield-event"]
-        mock_shield.assert_called_once_with(
-            blocked_moderation.message,
-            MEDIA_TYPE_JSON,
-        )
-        mock_append.assert_awaited_once()
-        assert turn_summary.llm_response == blocked_moderation.message
-        assert turn_summary.id == blocked_moderation.moderation_id
-
-    @pytest.mark.asyncio
-    async def test_blocked_moderation_skips_append_when_omit_conversation(
-        self,
-        mocker: MockerFixture,
-        make_generator_context: Callable[..., ResponseGeneratorContext],
-        make_responses_params: Callable[..., ResponsesApiParams],
-        blocked_moderation: ShieldModerationBlocked,
-    ) -> None:
-        """Test compacted mode does not append blocked turn to conversation."""
-        context = make_generator_context(moderation_result=blocked_moderation)
-        responses_params = make_responses_params(omit_conversation=True)
-        mocker.patch(
-            "utils.agents.streaming.shield_violation_generator",
-            return_value=_async_iter([]),
-        )
-        mock_append = mocker.patch(
-            "utils.agents.streaming.append_turn_items_to_conversation",
-            new=mocker.AsyncMock(),
-        )
-
-        await retrieve_agent_response_generator(
-            responses_params,
-            context,
-            ENDPOINT_PATH_STREAMING_QUERY,
-        )
-
-        mock_append.assert_not_awaited()
-
-    @pytest.mark.asyncio
     async def test_success_returns_agent_generator(
         self,
         mocker: MockerFixture,
         make_generator_context: Callable[..., ResponseGeneratorContext],
         responses_params: ResponsesApiParams,
     ) -> None:
-        """Test passed moderation builds agent and returns streaming generator."""
+        """Test successful path builds agent and returns streaming generator."""
         context = make_generator_context()
         mock_agent = mocker.Mock()
         mocker.patch(
