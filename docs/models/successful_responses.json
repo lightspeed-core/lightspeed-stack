@@ -533,7 +533,8 @@
                         "description": "Shield provider / type discriminator",
                         "enum": [
                             "question_validity",
-                            "redaction"
+                            "redaction",
+                            "granite_guardian"
                         ],
                         "title": "Provider Id",
                         "type": "string"

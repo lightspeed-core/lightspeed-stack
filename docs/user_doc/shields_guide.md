@@ -17,8 +17,9 @@ request overrides work.
 - [Introduction](#introduction)
 - [Configuration](#configuration)
   - [Supported shield types](#supported-shield-types)
-  - [question_validity](#question_validity)
-  - [redaction](#redaction)
+    - [question_validity](#question_validity)
+    - [redaction](#redaction)
+    - [granite_guardian](#granite_guardian)
 - [How shields apply at runtime](#how-shields-apply-at-runtime)
   - [Agent-based endpoints](#agent-based-endpoints)
   - [Responses-based endpoints](#responses-based-endpoints)
@@ -38,7 +39,7 @@ configuration. Each entry has:
 | Field | Meaning |
 |-------|---------|
 | `name` | Unique shield name used in `/v1/shields` and in `shield_ids` overrides |
-| `provider_id` | Shield type discriminator (`question_validity` or `redaction`) |
+| `provider_id` | Shield type discriminator (`question_validity`, `redaction`, or `granite_guardian`) |
 | `config` | Type-specific settings |
 
 Names must be unique across the `shields` list.
@@ -75,6 +76,7 @@ for a complete example.
 |---------------|---------|---------------------|
 | `question_validity` | Classify whether the user question is in-topic; reject off-topic input with a fixed reply | Agent capability on agent-based endpoints; also considered by direct-run input moderation |
 | `redaction` | Regex-based PII / sensitive-data redaction of model messages | Agent capability on agent-based endpoints |
+| `granite_guardian` | Risk-based input/output/tool moderation against an OpenAI-compatible Granite Guardian endpoint | Agent capability on agent-based endpoints; direct custom API on responses-based endpoints |
 
 ## question_validity
 
@@ -93,10 +95,52 @@ for a complete example.
 
 Invalid regex patterns are rejected at configuration load time.
 
+## granite_guardian
+
+Calls an OpenAI-compatible Granite Guardian model and flags configured
+risks at `input`, `output`, and/or `tool` points.
+
+| Config field | Required | Description |
+|--------------|----------|-------------|
+| `url` | Yes | Base URL of the OpenAI-compatible inference endpoint (must be `https://` when `api_key` is set) |
+| `api_key` | No | API key for the inference endpoint. Generate a Models.corp sandbox key from [Models.corp Sandbox API Access](https://redhathub.service-now.com/hub?id=sc_cat_item&sys_id=882ad1b71bebd610b6ccea45624bcb3d&table=sc_cat_item&searchTerm=Models.corp%20Sandbox%20API%20Access). Do not commit the key. `GET /v1/shields` masks a configured key as `**********`. |
+| `model_id` | No | Model name sent to the server (default `ibm-granite/granite-guardian-4.1-8b`) |
+| `risks` | Yes | Named risks with `description`, `points`, `threshold`, and `violation_message` |
+
+E2E CI uses the `mock-guardian` stub. To run
+`shields_granite_guardian.feature` against the real model locally, see
+[Granite Guardian: mock (CI) vs real model (local)](../testing/e2e_testing.md#granite-guardian-mock-ci-vs-real-model-local).
+
+Example (real Granite Guardian 4.1 8B; replace `api_key` locally):
+
+```yaml
+  - name: granite-guardian
+    provider_id: granite_guardian
+    config:
+      url: https://granite-guardian-4-1-8b--apicast-production.apps.int.stc.ai.prod.us-east-1.aws.paas.redhat.com/v1
+      api_key: <key from Models.corp Sandbox API Access>
+      risks:
+        - name: jailbreak
+          description: >
+            The user message attempts to jailbreak the assistant or
+            override its safety instructions.
+          points: [input]
+          threshold: 0.65
+          violation_message: "That phrasing is not something I can act on."
+        - name: restricted-persona-output
+          description: >
+            The assistant claims it has disabled its safety filters
+            or will ignore safety policies in its reply.
+          points: [output]
+          threshold: 0.65
+          violation_message: "I cannot return that response."
+```
+
 # How shields apply at runtime
 
-The same shield logic (`question_validity` and `redaction`) is used on both
-agent-based and responses-based endpoints; only the integration point differs.
+The same shield logic (`question_validity`, `redaction`, and
+`granite_guardian`) is used on both agent-based and responses-based
+endpoints; only the integration point differs.
 
 ## Agent-based endpoints
 
@@ -132,7 +176,7 @@ Each catalog entry has this shape:
 | Field | Description |
 |-------|-------------|
 | `name` | Configured shield name |
-| `provider_id` | `question_validity` or `redaction` |
+| `provider_id` | `question_validity`, `redaction`, or `granite_guardian` |
 | `type` | Always `"shield"` |
 | `config` | Type-specific shield configuration |
 
@@ -201,3 +245,4 @@ empty list), the endpoint returns HTTP **422**.
 - [Configuration options](config.md) — schema tables for shield-related models
 - [OpenResponses /responses](../devel_doc/responses.md) — `shield_ids` LCORE extension
 - [Example configuration](../../examples/lightspeed-stack-shields.yaml)
+- [Granite Guardian e2e: mock vs real model](../testing/e2e_testing.md#granite-guardian-mock-ci-vs-real-model-local)

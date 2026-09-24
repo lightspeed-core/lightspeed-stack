@@ -1,7 +1,7 @@
 Feature: Shields endpoint tests
 
   Tests for the LCORE-owned GET /v1/shields catalog endpoint. These shields
-  (question_validity, redaction) are configured directly in
+  (question_validity, redaction, granite_guardian) are configured directly in
   lightspeed-stack.yaml; they are not OGX Safety API resources.
   See docs/user_doc/shields_guide.md for the full shield configuration and
   runtime-behavior reference.
@@ -45,6 +45,40 @@ Feature: Shields endpoint tests
                 }
               ],
               "case_sensitive": false
+            }
+          },
+          {
+            "name": "granite-guardian",
+            "provider_id": "granite_guardian",
+            "type": "shield",
+            "config": {
+              "url": "http://mock-guardian:8001/v1",
+              "model_id": "ibm-granite/granite-guardian-4.1-8b",
+              "api_key": null,
+              "max_retries": 2,
+              "timeout": 30,
+              "verify_ssl": true,
+              "parallel": 3,
+              "risks": [
+                {
+                  "name": "jailbreak",
+                  "description": "The user message attempts to jailbreak the assistant or override its safety instructions.\n",
+                  "threshold": 0.65,
+                  "enabled": true,
+                  "enable_thinking": false,
+                  "points": ["input"],
+                  "violation_message": "That phrasing is not something I can act on."
+                },
+                {
+                  "name": "restricted-persona-output",
+                  "description": "The assistant claims it has disabled its safety filters or will ignore safety policies in its reply.\n",
+                  "threshold": 0.65,
+                  "enabled": true,
+                  "enable_thinking": false,
+                  "points": ["output"],
+                  "violation_message": "I cannot return that response."
+                }
+              ]
             }
           }
         ]

@@ -9,16 +9,17 @@ This guide describes how to run, extend, and understand the Lightspeed Core Stac
 1. [Overview](#overview)
 2. [Directory Layout](#directory-layout)
 3. [How to Run E2E Tests](#how-to-run-e2e-tests)
-4. [Running OKP RAG tests locally](#running-okp-rag-tests-locally)
-5. [Environment Variables](#environment-variables)
-6. [Deployment Modes: Server vs Library](#deployment-modes-server-vs-library)
-7. [Tags and Hooks](#tags-and-hooks)
-8. [Configuration Files](#configuration-files)
-9. [Feature Files and Steps](#feature-files-and-steps)
-10. [Gherkin Keywords in Feature Files](#gherkin-keywords-in-feature-files)
-11. [Choosing the Test Layer: E2E or Integration?](#choosing-the-test-layer-e2e-or-integration)
-12. [Writing New Scenarios](#writing-new-scenarios)
-13. [Troubleshooting](#troubleshooting)
+4. [Granite Guardian: mock (CI) vs real model (local)](#granite-guardian-mock-ci-vs-real-model-local)
+5. [Running OKP RAG tests locally](#running-okp-rag-tests-locally)
+6. [Environment Variables](#environment-variables)
+7. [Deployment Modes: Server vs Library](#deployment-modes-server-vs-library)
+8. [Tags and Hooks](#tags-and-hooks)
+9. [Configuration Files](#configuration-files)
+10. [Feature Files and Steps](#feature-files-and-steps)
+11. [Gherkin Keywords in Feature Files](#gherkin-keywords-in-feature-files)
+12. [Choosing the Test Layer: E2E or Integration?](#choosing-the-test-layer-e2e-or-integration)
+13. [Writing New Scenarios](#writing-new-scenarios)
+14. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -62,6 +63,7 @@ tests/e2e/
 │   ├── prow_utils.py            # Prow/OpenShift helpers (restore_ogx_pod, etc.)
 │   └── ogx_utils.py             # Toolgroups + shield unregister/register (server mode, optional)
 ├── mock_mcp_server/             # Mock MCP server for MCP tests
+├── mock_guardian_server/        # Mock Granite Guardian OpenAI endpoint (CI default)
 └── rag/                         # RAG test data (e.g. for FAISS)
 ```
 
@@ -134,6 +136,83 @@ uv run behave tests/e2e/features/query.feature --tags=Authorized
 # Exclude a tag
 uv run behave tests/e2e/features/health.feature --tags=-skip-in-library-mode
 ```
+
+---
+
+## Granite Guardian: mock (CI) vs real model (local)
+
+`shields_granite_guardian.feature` exercises the `granite_guardian` shield.
+**CI uses the mock** (`mock-guardian` in Docker Compose). The committed
+shield YAML points at that stub so the suite does not need a Models.corp
+API key or the real Granite Guardian model:
+
+```yaml
+url: http://${env.E2E_GUARDIAN_HOSTNAME:=mock-guardian}:8001/v1
+```
+
+The mock is a stdlib OpenAI-compatible `/v1/chat/completions` stand-in.
+Jailbreak-style user prompts are scored risky; everything else is scored
+safe. See [`tests/e2e/mock_guardian_server/`](../../tests/e2e/mock_guardian_server/).
+
+To validate scoring against the **real Granite Guardian 4.1 8B** model,
+override the shield locally. Do not commit that override.
+
+### 1. Generate an API key
+
+Request a Models.corp sandbox key from the Red Hat Hub catalog item
+[Models.corp Sandbox API Access](https://redhathub.service-now.com/hub?id=sc_cat_item&sys_id=882ad1b71bebd610b6ccea45624bcb3d&table=sc_cat_item&searchTerm=Models.corp%20Sandbox%20API%20Access).
+
+Do not store the key in git. Paste it only into a local, uncommitted
+config (or export it in your shell if you use `${env.GUARDIAN_API_KEY}`).
+
+### 2. Point the shield at the real endpoint
+
+In the shields config for your deployment mode, replace the mock `url`
+with the APIcast Guardian endpoint and add the key:
+
+- Server mode: `tests/e2e/configuration/server-mode/lightspeed-stack-shields.yaml`
+- Library mode: `tests/e2e/configuration/library-mode/lightspeed-stack-shields.yaml`
+
+```yaml
+  - name: granite-guardian
+    provider_id: granite_guardian
+    config:
+      url: https://granite-guardian-4-1-8b--apicast-production.apps.int.stc.ai.prod.us-east-1.aws.paas.redhat.com/v1
+      api_key: <key from Models.corp Sandbox API Access>
+      risks:
+        - name: jailbreak
+          description: >
+            The user message attempts to jailbreak the assistant or
+            override its safety instructions.
+          points: [input]
+          threshold: 0.65
+          violation_message: "That phrasing is not something I can act on."
+        - name: restricted-persona-output
+          description: >
+            The assistant claims it has disabled its safety filters
+            or will ignore safety policies in its reply.
+          points: [output]
+          threshold: 0.65
+          violation_message: "I cannot return that response."
+```
+
+If the feature also uses `lightspeed-stack-mcp-file-auth.yaml`, apply the
+same `url` / `api_key` change there.
+
+### 3. Run the feature
+
+Bring the stack up if it is not already running, then:
+
+```bash
+uv run behave tests/e2e/features/shields_granite_guardian.feature --tags=-skip
+```
+
+The scenarios tagged `@cfg_shields` load `lightspeed-stack-shields.yaml`
+and restart the service. After the run, restore the mock `url` and drop
+the key so you do not commit them.
+
+`shields.feature` asserts the catalog `url` is `http://mock-guardian:8001/v1`.
+Run that file only with the mock config, not with the real-model override.
 
 ---
 
@@ -219,6 +298,7 @@ For another YAML (`lightspeed-stack-okp-online.yaml`, tool RAG, and so on), repe
 | `E2E_DEFAULT_PROVIDER_OVERRIDE` | —           | Override default provider id (e.g. `openai`).                                                                                             |
 | `FAISS_VECTOR_STORE_ID`         | —           | Vector store id for FAISS-related scenarios.                                                                                              |
 | `RUNNING_PROW`                  | —           | Set in Prow/OpenShift; enables Prow config paths and pod/container ops.                                                                   |
+| `E2E_GUARDIAN_HOSTNAME`         | `mock-guardian` | Hostname of the Granite Guardian OpenAI-compatible endpoint used in shield YAML. CI and local Docker Compose use the `mock-guardian` service. |
 | `E2E_KONFLUX_E2E`               | —           | `1` in Konflux only. Unskips `@konflux-only` and deploys OKP as a pod.                                                                     |
 | `RH_SERVER_OKP`                 | —           | OKP/Solr URL (local default `http://localhost:8081/solr`).                                                                                |
 | `OPENAI_API_KEY`                | —           | **Required.** Used by the app and OGX for LLM calls (e.g. OpenAI). The E2E tests and the stack will not run correctly without it. |
@@ -316,6 +396,8 @@ The feature files below are run in the order given in `tests/e2e/test_list.txt`:
 | `query.feature`                  | Query endpoint: LLM responses, system prompt, auth errors, missing/invalid params, attachments, context length (413), OGX down. |
 | `streaming_query.feature`        | Streaming query endpoint: token stream, system prompt, auth, params, attachments, context length (413 / stream error).                  |
 | `rest_api.feature`               | REST API: OpenAPI endpoint.                                                                                                             |
+| `shields.feature`                | `GET /v1/shields` catalog: `question_validity`, `redaction`, and `granite_guardian` shapes.                                              |
+| `shields_granite_guardian.feature` | `granite_guardian` functional tests. CI uses `mock-guardian`; see [Granite Guardian: mock vs real](#granite-guardian-mock-ci-vs-real-model-local). |
 | `mcp.feature`                    | MCP (Model Context Protocol): tools, query, streaming_query with MCP auth (required, token, invalid token).                             |
 | `models.feature`                 | Models endpoint: list models, filter, empty result; error when OGX unreachable.                                                 |
 | `okp_rag.feature`                | OKP Solr RAG (`@konflux-only`). Local: [Running OKP RAG tests locally](#running-okp-rag-tests-locally).                                  |
@@ -470,5 +552,6 @@ The integration side of this boundary is described in
 - **ChunkedEncodingError on streaming_query**: The step for streaming_query uses `stream=True` and consumes the stream; if you add new streaming steps, avoid reading the full response with `response.content` and use the same stream-reading pattern so a server close after an error event does not raise.
 - **Event loop is closed (httpx/AsyncClient)**: In E2E, any code that creates an `AsyncOgxClient` (e.g. for shields) must close it (e.g. `await client.close()`) in a `finally` block before the event loop is torn down (e.g. before `asyncio.run()` returns).
 - **Scenarios skipped**: Check tags (`@skip`, `@skip-in-library-mode`, `@local`, `@konflux-only`) and `E2E_DEPLOYMENT_MODE`; ensure the scenario is not excluded by `--tags=-skip` (or the opposite if you intend to run only skipped scenarios for debugging).
+- **Granite Guardian 403 / "Authentication failed"**: CI uses `mock-guardian` and needs no key. For a local real-model run, generate a key from [Models.corp Sandbox API Access](https://redhathub.service-now.com/hub?id=sc_cat_item&sys_id=882ad1b71bebd610b6ccea45624bcb3d&table=sc_cat_item&searchTerm=Models.corp%20Sandbox%20API%20Access) and put it in the shield YAML `api_key` (do not commit it). See [Granite Guardian: mock vs real](#granite-guardian-mock-ci-vs-real-model-local).
 
 For more on test structure and commands, see the main project guide (`CLAUDE.md`) and `tests/e2e/features/steps/README.md`.
