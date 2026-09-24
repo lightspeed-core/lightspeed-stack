@@ -14728,6 +14728,13 @@
                         "type": "array",
                         "title": "Defined risks",
                         "description": "Risks to be considered while applying this guardrail"
+                    },
+                    "streaming_output_check_interval_tokens": {
+                        "type": "integer",
+                        "exclusiveMinimum": 0.0,
+                        "title": "Streaming output check interval (tokens)",
+                        "description": "For risks with `output` in `points`, re-check the response against those risks approximately every N generated output tokens while streaming, plus once more over any remaining text once generation completes. Ignored when no configured risk targets the `output` point.",
+                        "default": 50
                     }
                 },
                 "additionalProperties": false,
