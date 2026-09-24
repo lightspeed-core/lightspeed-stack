@@ -340,8 +340,6 @@ async def _handle_query_with_tracing(
         root_span,
         {
             SpanAttributes.SESSION_ID: conversation_id,
-            SpanAttributes.LLM_USAGE_INPUT_TOKENS: turn_summary.token_usage.input_tokens,
-            SpanAttributes.LLM_USAGE_OUTPUT_TOKENS: turn_summary.token_usage.output_tokens,
             SpanAttributes.OUTPUT: turn_summary.llm_response,
         },
     )

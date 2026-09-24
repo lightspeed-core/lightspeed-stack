@@ -959,8 +959,6 @@ class TestGenerateAgentResponseOtel:
         assert topic.parent.span_id == root.context.span_id
         assert root.attributes is not None
         assert root.attributes[SpanAttributes.SESSION_ID] == context.conversation_id
-        assert root.attributes[SpanAttributes.LLM_USAGE_INPUT_TOKENS] == 10
-        assert root.attributes[SpanAttributes.LLM_USAGE_OUTPUT_TOKENS] == 5
         assert root.attributes[SpanAttributes.OUTPUT] == "The answer is 42"
         event_names = [e.name for e in root.events]
         assert SpanEvents.TURN_PERSISTED in event_names
