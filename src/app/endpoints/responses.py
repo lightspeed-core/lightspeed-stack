@@ -163,32 +163,11 @@ def _finalize_responses_root_span(
 
     Args:
         root_span: OpenTelemetry root span for the request.
-        turn_summary: Completed turn summary with tokens, tools, and output.
+        turn_summary: Completed turn summary with output text.
     """
-    tool_names = [tc.name for tc in turn_summary.tool_calls]
     set_span_attributes(
         root_span,
         {
-            SpanAttributes.TOOL_CALLS_COUNT: len(tool_names),
-            SpanAttributes.TOOL_CALLS_NAMES: tool_names,
-        },
-    )
-    if tool_names:
-        add_span_event(
-            root_span,
-            SpanEvents.TOOL_EXECUTION_COMPLETED,
-            {"tool.calls": ", ".join(tool_names)},
-        )
-
-    set_span_attributes(
-        root_span,
-        {
-            SpanAttributes.LLM_USAGE_INPUT_TOKENS: (
-                turn_summary.token_usage.input_tokens
-            ),
-            SpanAttributes.LLM_USAGE_OUTPUT_TOKENS: (
-                turn_summary.token_usage.output_tokens
-            ),
             SpanAttributes.OUTPUT: turn_summary.llm_response,
         },
     )
@@ -226,23 +205,39 @@ def _start_llm_inference_span(
 
 def _complete_llm_inference_span(
     span: trace.Span,
-    input_tokens: int,
-    output_tokens: int,
+    turn_summary: TurnSummary,
 ) -> None:
-    """Record token usage and completion event, then end an inference span.
+    """Record usage/tool attrs and completion event, then end an inference span.
 
     Args:
         span: The ``llm.inference`` span to finalize.
-        input_tokens: Input token count for the inference call.
-        output_tokens: Output token count for the inference call.
+        turn_summary: Completed turn summary providing token usage and tool calls.
     """
     set_span_attributes(
         span,
         {
-            SpanAttributes.LLM_USAGE_INPUT_TOKENS: input_tokens,
-            SpanAttributes.LLM_USAGE_OUTPUT_TOKENS: output_tokens,
+            SpanAttributes.LLM_USAGE_INPUT_TOKENS: (
+                turn_summary.token_usage.input_tokens
+            ),
+            SpanAttributes.LLM_USAGE_OUTPUT_TOKENS: (
+                turn_summary.token_usage.output_tokens
+            ),
         },
     )
+    tool_names = [tc.name for tc in turn_summary.tool_calls]
+    if tool_names:
+        set_span_attributes(
+            span,
+            {
+                SpanAttributes.TOOL_CALLS_COUNT: len(tool_names),
+                SpanAttributes.TOOL_CALLS_NAMES: tool_names,
+            },
+        )
+        add_span_event(
+            span,
+            SpanEvents.TOOL_EXECUTION_COMPLETED,
+            {"tool.calls": ", ".join(tool_names)},
+        )
     add_span_event(span, SpanEvents.LLM_INFERENCE_COMPLETED)
     span.end()
 
@@ -1236,13 +1231,7 @@ async def response_generator(
             )
         raise
 
-    _complete_llm_inference_span(
-        inference_span,
-        turn_summary.token_usage.input_tokens,
-        turn_summary.token_usage.output_tokens,
-    )
-
-    # Extract response metadata from final response object
+    # Populate tools before closing llm.inference so tool attrs land on that span.
     if latest_response_object:
         _populate_turn_summary(
             latest_response_object,
@@ -1250,6 +1239,11 @@ async def response_generator(
             context,
             turn_summary,
         )
+
+    _complete_llm_inference_span(
+        inference_span,
+        turn_summary,
+    )
 
     # Explicitly append the turn to conversation if context passed by previous response
     if latest_response_object:
@@ -1333,6 +1327,7 @@ async def handle_non_streaming_response(
     user_id = context.auth[0]
 
     # Fork: Get response object (blocked vs normal)
+    inference_span: Optional[trace.Span] = None
     if context.moderation_result.decision == "blocked":
         output_text = context.moderation_result.message
         api_response = OpenAIResponseObject.model_construct(
@@ -1372,11 +1367,6 @@ async def handle_non_streaming_response(
             token_usage = extract_token_usage(
                 api_response.usage, api_params.model, context.endpoint_path
             )
-            _complete_llm_inference_span(
-                inference_span,
-                token_usage.input_tokens,
-                token_usage.output_tokens,
-            )
             logger.info("Consuming tokens")
             consume_query_tokens(
                 user_id=user_id,
@@ -1406,18 +1396,6 @@ async def handle_non_streaming_response(
                 )
             _raise_response_api_http_exception(e, api_params, context, inference_span)
 
-    # Get available quotas
-    logger.info("Getting available quotas")
-    available_quotas = get_available_quotas(
-        quota_limiters=configuration.quota_limiters, user_id=user_id
-    )
-    topic_summary = await maybe_get_topic_summary(
-        generate_topic_summary=context.generate_topic_summary,
-        input_text=context.input_text,
-        client=context.client,
-        model_id=api_params.model,
-    )
-
     vector_store_ids = extract_vector_store_ids_from_tools(api_params.tools)
     turn_summary = build_turn_summary(
         api_response,
@@ -1432,6 +1410,26 @@ async def handle_non_streaming_response(
         + turn_summary.referenced_documents
     )
     turn_summary.rag_chunks.extend(context.inline_rag_context.rag_chunks)
+
+    # Close llm.inference after tools are known so usage + tool attrs share one span.
+    if inference_span is not None:
+        _complete_llm_inference_span(
+            inference_span,
+            turn_summary,
+        )
+
+    # Get available quotas
+    logger.info("Getting available quotas")
+    available_quotas = get_available_quotas(
+        quota_limiters=configuration.quota_limiters, user_id=user_id
+    )
+    topic_summary = await maybe_get_topic_summary(
+        generate_topic_summary=context.generate_topic_summary,
+        input_text=context.input_text,
+        client=context.client,
+        model_id=api_params.model,
+    )
+
     completed_at = datetime.now(UTC)
     if _store_response_query_results(
         api_params,
