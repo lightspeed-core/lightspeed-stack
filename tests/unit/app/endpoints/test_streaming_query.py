@@ -1,5 +1,7 @@
 """Unit tests for the /streaming_query (v2) endpoint using Responses API."""
 
+# pylint: disable=too-many-lines
+
 from collections.abc import AsyncIterator
 from typing import Any
 
@@ -11,6 +13,7 @@ from opentelemetry import trace
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
     InMemorySpanExporter,
 )
+from opentelemetry.trace import NonRecordingSpan, SpanContext, TraceFlags
 from pytest_mock import MockerFixture
 
 from app.endpoints.streaming_query import (
@@ -993,6 +996,14 @@ class TestGenerateResponseWithCompaction:  # pylint: disable=too-few-public-meth
                 context=context,
                 responses_params=responses_params,
                 endpoint_path="/v1/streaming_query",
+                root_span=NonRecordingSpan(
+                    SpanContext(
+                        trace_id=0x1,
+                        span_id=0x2,
+                        is_remote=False,
+                        trace_flags=TraceFlags(0x01),
+                    )
+                ),
             )
         ]
 
