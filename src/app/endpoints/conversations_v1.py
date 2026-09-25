@@ -200,6 +200,15 @@ async def get_conversation_endpoint_handler(  # pylint: disable=too-many-locals,
     if not found, 503 if the backend is unavailable, and 500 for
     unexpected errors.
 
+    Note: ``tool_calls``/``tool_results`` here reflect OGX's raw,
+    unredacted item history. If a Granite Guardian TOOL-point guardrail
+    later blocks a tool result, only the final assistant message in OGX's
+    store is patched (see ``replace_last_assistant_message``) -- the tool
+    item itself still shows the original, unredacted content. The v2/v3
+    conversation reads (backed by LCORE's own conversation cache) are the
+    guardrail-authoritative view; see "Troubleshooting" in
+    ``docs/devel_doc/conversations_api.md`` for details.
+
     Args:
         request: The FastAPI request object
         conversation_id: Unique identifier of the conversation to retrieve
