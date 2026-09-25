@@ -75,6 +75,7 @@ can shard by config (fewer restarts per job). See
 | `lightspeed-stack-mcp-{file,kubernetes,client,oauth}-auth.yaml` | Per-auth MCP (`mcp.feature`) |
 | `lightspeed-stack-byok-pdf.yaml` | BYOK PDF (library only) |
 | `lightspeed-stack-tls.yaml` / `-degraded.yaml` | TLS / degraded mode (server only) |
+| `lightspeed-stack-shields.yaml` | LCORE shields (`question_validity`, `redaction`, `granite_guardian`). CI points `granite_guardian` at `mock-guardian`. |
 
 Bootstrap default: `lightspeed-stack.yaml`. Environment-specific:
 `lightspeed-stack-rhelai.yaml`, `lightspeed-stack-rhoai.yaml`.

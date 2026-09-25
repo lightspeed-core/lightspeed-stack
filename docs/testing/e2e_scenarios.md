@@ -181,6 +181,17 @@ Konflux only (`@konflux-only`) in CI. Targeted local Behave (match YAML to OGX/L
 
 * Check if the OpenAPI endpoint works as expected
 
+## [`shields_granite_guardian.feature`](https://github.com/lightspeed-core/lightspeed-stack/blob/main/tests/e2e/features/shields_granite_guardian.feature)
+
+* granite_guardian allows a legitimate in-topic question
+* granite_guardian blocks jailbreak risk at input
+* granite_guardian blocks unsafe generated output (currently `@skip`)
+* granite_guardian blocks poisoned MCP tool content at tool (currently `@skip`)
+
+CI uses `mock-guardian`. To run these scenarios against the real Granite
+Guardian model locally, see
+[Granite Guardian: mock (CI) vs real model (local)](e2e_testing.md#granite-guardian-mock-ci-vs-real-model-local).
+
 ## [`smoketests.feature`](https://github.com/lightspeed-core/lightspeed-stack/blob/main/tests/e2e/features/smoketests.feature)
 
 * Check if the main endpoint is reachable

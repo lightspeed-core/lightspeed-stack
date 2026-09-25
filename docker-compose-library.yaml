@@ -13,6 +13,8 @@ services:
         condition: service_healthy
       mock-otel:
         condition: service_healthy
+      mock-guardian:
+        condition: service_healthy
     networks:
       - lightspeednet
     volumes:
@@ -113,6 +115,24 @@ services:
       - lightspeednet
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:3000/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+      start_period: 2s
+
+  # Mock Granite Guardian OpenAI-compatible endpoint for shield e2e tests.
+  # Port 8001 avoids colliding with mock-jwks on 8000.
+  mock-guardian:
+    build:
+      context: ./tests/e2e/mock_guardian_server
+      dockerfile: Dockerfile
+    container_name: mock-guardian
+    ports:
+      - "127.0.0.1:8001:8001"
+    networks:
+      - lightspeednet
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
       interval: 5s
       timeout: 3s
       retries: 3
