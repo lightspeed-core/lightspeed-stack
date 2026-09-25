@@ -308,6 +308,27 @@ class TestProcessFunctionToolResult:
         assert process_function_tool_result(turn_state, part) is None
         assert len(turn_state.turn_summary.tool_results) == 1
 
+    def test_skips_denied_result(self, turn_state: AgentTurnAccumulator) -> None:
+        """Test a denied function tool call's result is never recorded.
+
+        Denied outcomes cover cases like a TOOL-point guardrail violation,
+        where the call itself should still surface (via
+        ``process_function_tool_call``) but its result -- the content that
+        failed the check -- must not reach ``tool_results``.
+        """
+        part = ToolReturnPart(
+            tool_name="fn",
+            content="flagged content",
+            tool_call_id="result-denied",
+            outcome="denied",
+        )
+
+        result = process_function_tool_result(turn_state, part)
+
+        assert result is None
+        assert turn_state.turn_summary.tool_results == []
+        assert "result-denied" not in turn_state.emitted_tool_result_ids
+
 
 class TestBuildReferencedDocument:
     """Tests for build_referenced_document."""
@@ -713,3 +734,24 @@ class TestProcessNativeToolResult:
         )
         process_native_tool_result(turn_state, known)
         assert process_native_tool_result(turn_state, known) is None
+
+    def test_skips_denied_result(self, turn_state: AgentTurnAccumulator) -> None:
+        """Test a denied native tool call's result is never recorded.
+
+        Denied outcomes cover cases like a TOOL-point guardrail violation on
+        an MCP tool call, where the call itself should still surface (via
+        ``process_native_tool_call``) but its result -- the content that
+        failed the check -- must not reach ``tool_results``.
+        """
+        part = NativeToolReturnPart(
+            tool_name=f"{MCPServerTool.kind}:srv",
+            tool_call_id="mcp-denied",
+            content={},
+            outcome="denied",
+        )
+
+        result = process_native_tool_result(turn_state, part)
+
+        assert result is None
+        assert turn_state.turn_summary.tool_results == []
+        assert "mcp-denied" not in turn_state.emitted_tool_result_ids
