@@ -3271,6 +3271,18 @@ class GraniteGuardianConfig(ConfigurationBase):
         description="Risks to be considered while applying this guardrail",
     )
 
+    streaming_output_check_interval_tokens: PositiveInt = Field(
+        default=50,
+        title="Streaming output check interval (tokens)",
+        description=(
+            "For risks with `output` in `points`, re-check the response "
+            "against those risks approximately every N generated output "
+            "tokens while streaming, plus once more over any remaining "
+            "text once generation completes. Ignored when no configured "
+            "risk targets the `output` point."
+        ),
+    )
+
     @model_validator(mode="after")
     def validate_api_key_requires_https(self) -> Self:
         """Require HTTPS when an API key is configured.

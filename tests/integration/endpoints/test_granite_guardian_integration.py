@@ -720,9 +720,9 @@ class TestQueryGraniteGuardian:
         )
 
         assert VIOLATION_MESSAGE not in response.response
-        # Both token counts are rough estimates produced by FunctionModel's
-        # _estimate_usage: input = 50-token base + prompt tokens, output = response text tokens.
-        assert response.input_tokens == 52
+        # GraniteGuardian registers wrap_run_event_stream, so pydantic-ai streams
+        # agent.run() and FunctionModel estimates usage on the streaming path.
+        assert response.input_tokens == 50
         assert response.output_tokens == 8
 
 
