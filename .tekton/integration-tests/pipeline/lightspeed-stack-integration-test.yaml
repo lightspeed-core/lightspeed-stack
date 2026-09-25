@@ -6,9 +6,8 @@ metadata:
 spec:
   description: |
     This pipeline automates the process of running end-to-end tests for Lightspeed Stack
-    using a ROSA (Red Hat OpenShift Service on AWS cluster. The pipeline provisions
-    the ROSA cluster, installs the Lightspeed Stack, runs the tests, collects artifacts,
-    and finally deprovisions the ROSA cluster.
+    using an OpenShift CI HyperShift cluster. The pipeline provisions the cluster,
+    installs the Lightspeed Stack, runs the tests, and collects artifacts.
   params:
     - name: SNAPSHOT
       description: 'The JSON string representing the snapshot of the application under test (includes lightspeed-stack image).'
@@ -24,62 +23,45 @@ spec:
     - name: namespace
       description: 'Namespace to run tests in'
       default: 'lightspeed-stack'
+    - name: ocp-version
+      description: 'OpenShift minor version for the ephemeral HyperShift cluster.'
+      default: '4.19'
+      type: string
+    - name: compute-node-type
+      description: 'AWS instance type for the ephemeral HyperShift compute nodes.'
+      default: 'm5.large'
+      type: string
+    - name: hosted-management-cluster
+      description: 'Hosted management cluster used to provision the ephemeral cluster.'
+      default: 'hosted-mgmt2'
+      type: string
   tasks:
-    - name: eaas-provision-space
+    - name: provision-cluster
       taskRef:
         resolver: git
         params:
           - name: url
-            value: https://github.com/konflux-ci/build-definitions.git
+            value: https://github.com/openshift/konflux-tasks
           - name: revision
             value: main
           - name: pathInRepo
-            value: task/eaas-provision-space/0.1/eaas-provision-space.yaml
+            value: tasks/provision-ephemeral-cluster/0.1/provision-ephemeral-cluster.yaml
       params:
-        - name: ownerKind
-          value: PipelineRun
         - name: ownerName
           value: $(context.pipelineRun.name)
         - name: ownerUid
           value: $(context.pipelineRun.uid)
-    - name: provision-cluster
-      runAfter:
-        - eaas-provision-space
-      taskSpec:
-        results:
-          - name: clusterName
-            value: "$(steps.create-cluster.results.clusterName)"
-        steps:
-          - name: pick-version
-            ref:
-              resolver: git
-              params:
-                - name: url
-                  value: https://github.com/konflux-ci/build-definitions.git
-                - name: revision
-                  value: main
-                - name: pathInRepo
-                  value: stepactions/eaas-get-latest-openshift-version-by-prefix/0.1/eaas-get-latest-openshift-version-by-prefix.yaml
-            params:
-              - name: prefix
-                value: "4.19."
-          - name: create-cluster
-            ref:
-              resolver: git
-              params:
-                - name: url
-                  value: https://github.com/konflux-ci/build-definitions.git
-                - name: revision
-                  value: main
-                - name: pathInRepo
-                  value: stepactions/eaas-create-ephemeral-cluster-hypershift-aws/0.1/eaas-create-ephemeral-cluster-hypershift-aws.yaml
-            params:
-              - name: eaasSpaceSecretRef
-                value: $(tasks.eaas-provision-space.results.secretRef)
-              - name: version
-                value: "$(steps.pick-version.results.version)"
-              - name: instanceType
-                value: "m5.large"
+        - name: workflow
+          value: hypershift-hostedcluster-workflow
+        - name: clusterProfile
+          value: aws-konflux-prod
+        - name: timeout
+          value: 1h
+        - name: releases
+          value: >-
+            {"latest":{"release":{"channel":"stable","version":"$(params.ocp-version)","architecture":"multi"}}}
+        - name: env
+          value: '{"COMPUTE_NODE_TYPE":"$(params.compute-node-type)","HOSTED_MANAGEMENT_CLUSTER":"$(params.hosted-management-cluster)"}'
     - name: get-stack-images
       description: Extract lightspeed-stack image and commit from SNAPSHOT (OGX runs from source in-pod)
       runAfter:
@@ -180,10 +162,10 @@ spec:
           value: $(tasks.get-stack-images.results.commit)
         - name: namespace
           value: "$(params.namespace)"
-        - name: spaceRequestSecretName
-          value: $(tasks.eaas-provision-space.results.secretRef)
-        - name: clusterName
-          value: $(tasks.provision-cluster.results.clusterName)
+        - name: clusterCredentialsSecretRef
+          value: $(tasks.provision-cluster.results.secretRef)
+        - name: ocp-version
+          value: $(params.ocp-version)
       runAfter:
         - echo-integration-params
       taskSpec:
@@ -194,9 +176,9 @@ spec:
           - name: commit
           - name: namespace
             type: string
-          - name: spaceRequestSecretName
+          - name: clusterCredentialsSecretRef
             type: string
-          - name: clusterName
+          - name: ocp-version
             type: string
         results:
           - name: TEST_OUTPUT
@@ -217,25 +199,9 @@ spec:
             secret:
               secretName: redhat-registry-io-pull-secret
           - name: credentials
-            emptyDir: {}
+            secret:
+              secretName: $(params.clusterCredentialsSecretRef)
         steps:
-          - name: get-kubeconfig
-            ref:
-              resolver: git
-              params:
-                - name: url
-                  value: https://github.com/konflux-ci/build-definitions.git
-                - name: revision
-                  value: main
-                - name: pathInRepo
-                  value: stepactions/eaas-get-ephemeral-cluster-credentials/0.1/eaas-get-ephemeral-cluster-credentials.yaml
-            params:
-              - name: eaasSpaceSecretRef
-                value: $(params.spaceRequestSecretName)
-              - name: clusterName
-                value: "$(params.clusterName)"
-              - name: credentials
-                value: credentials
           - name: run-e2e-tests
             #onError: continue
             # Do not use onError: continue here unless a later step like
@@ -262,7 +228,7 @@ spec:
                 mountPath: /credentials
             env:
               - name: KUBECONFIG
-                value: "/credentials/$(steps.get-kubeconfig.results.kubeconfig)"
+                value: "/credentials/kubeconfig"
               - name: ARTIFACT_DIR
                 value: "/workspace/artifacts"
               - name: SUITE_ID
@@ -288,7 +254,7 @@ spec:
               echo "[e2e] 2/8 Installing deps (git, tar, jq, curl-minimal, python3, gettext for envsubst)..."
               microdnf -y install git tar jq curl-minimal python3 gettext
               echo "[e2e] 3/8 Downloading oc client..."
-              curl -sL -o oc.tar.gz https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/latest-4.19/openshift-client-linux-amd64-rhel9.tar.gz
+              curl -sL -o oc.tar.gz https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/latest-$(params.ocp-version)/openshift-client-linux-amd64-rhel9.tar.gz
               tar -xzf oc.tar.gz && chmod +x kubectl oc && mv oc kubectl /usr/local/bin/
               echo "[e2e] 4/8 SNAPSHOT (length ${#SNAPSHOT} chars; clone URL fixed — SNAPSHOT is main/upstream, not fork)..."
               # Fixed fork + branch: Konflux SNAPSHOT points at main repo/rev, not the PR/fork under test.
@@ -319,7 +285,7 @@ spec:
           #     - name: credentials
           #       value: "credentials"
           #     - name: kubeconfig
-          #       value: "$(steps.get-kubeconfig.results.kubeconfig)"
+          #       value: "kubeconfig"
           #     - name: artifact-dir
           #       value: "/workspace/konflux-artifacts"
           # # validate that the cluster resources are available in another tekton step
