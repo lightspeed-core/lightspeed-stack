@@ -66,7 +66,6 @@ from utils.conversation_compaction import (
     apply_compaction_blocking,
     configured_conversation_cache,
 )
-from utils.conversations import append_turn_items_to_conversation
 from utils.endpoints import (
     check_configuration_loaded,
     resolve_response_context,
@@ -84,6 +83,7 @@ from utils.otel_tracing import (
     root_span_turn_attributes,
     set_span_attributes,
 )
+from utils.pending_turn import PendingTurn
 from utils.prompts import get_system_prompt
 from utils.query import (
     consume_query_tokens,
@@ -363,38 +363,52 @@ def _raise_response_api_http_exception(
     raise HTTPException(**error_response.model_dump()) from error
 
 
+def _pending_turn(
+    api_params: ResponsesApiParams,
+    context: ResponsesContext,
+) -> PendingTurn:
+    """Return the pending turn of a request, which stores it when OGX does not.
+
+    Args:
+        api_params: Responses API parameters of the request, after compaction.
+        context: Request-scoped Responses API context, carrying the input as
+            it arrived when the request is compacted.
+
+    Returns:
+        The pending turn of the request.
+    """
+    return PendingTurn.for_request(
+        context.client, api_params, context.compacted_original_input
+    )
+
+
 async def _persist_blocked_response_turn(
     api_params: ResponsesApiParams,
     context: ResponsesContext,
+    turn: Optional[PendingTurn] = None,
 ) -> None:
     """Persist a shield-blocked refusal turn when response storage is enabled.
+
+    In compacted mode the conversation parameter was dropped and
+    ``api_params.input`` is the explicit-input rewrite, so the turn is stored
+    against the input as it arrived (LCORE-1572).
 
     Args:
         api_params: Responses API parameters for the blocked request.
         context: Request-scoped Responses API context with moderation details.
+        turn: The pending turn of the request; created from the parameters
+            and the context when not given.
     """
-    if api_params.store:
-        moderation_result = cast("ShieldModerationBlocked", context.moderation_result)
-        # In compacted mode the conversation parameter was dropped and
-        # api_params.input is the explicit-input rewrite, so persist the turn
-        # against the original user input instead (LCORE-1572).
-        user_input = (
-            context.compacted_original_input
-            if context.compacted_original_input is not None
-            else api_params.input
-        )
-        await append_turn_items_to_conversation(
-            client=context.client,
-            conversation_id=api_params.conversation,
-            user_input=user_input,
-            llm_output=[moderation_result.refusal_response],
-        )
+    moderation_result = cast("ShieldModerationBlocked", context.moderation_result)
+    turn = turn or _pending_turn(api_params, context)
+    await turn.store_blocked(moderation_result.refusal_response)
 
 
 async def _append_previous_response_turn(
     api_params: ResponsesApiParams,
     context: ResponsesContext,
     output: Sequence[OpenAIResponseOutput],
+    turn: Optional[PendingTurn] = None,
 ) -> None:
     """Append the completed turn when OGX did not store it automatically.
 
@@ -409,23 +423,11 @@ async def _append_previous_response_turn(
         api_params: Responses API parameters containing conversation details.
         context: Request-scoped Responses API context.
         output: Final output items from the Responses API object.
+        turn: The pending turn of the request; created from the parameters
+            and the context when not given.
     """
-    if not api_params.store:
-        return
-    if context.compacted_original_input is not None:
-        await append_turn_items_to_conversation(
-            context.client,
-            api_params.conversation,
-            context.compacted_original_input,
-            output,
-        )
-    elif api_params.previous_response_id:
-        await append_turn_items_to_conversation(
-            context.client,
-            api_params.conversation,
-            api_params.input,
-            output,
-        )
+    turn = turn or _pending_turn(api_params, context)
+    await turn.store_completed(output)
 
 
 def _store_response_query_results(
@@ -791,7 +793,9 @@ async def handle_streaming_response(
         turn_summary.id = context.moderation_result.moderation_id
         turn_summary.llm_response = context.moderation_result.message
         generator = shield_violation_generator(api_params, context)
-        await _persist_blocked_response_turn(api_params, context)
+        turn = _pending_turn(api_params, context)
+        await _persist_blocked_response_turn(api_params, context, turn)
+        turn.ensure_settled()
         queue_blocked_response_event(
             api_params,
             context,
@@ -1243,13 +1247,17 @@ async def response_generator(
         context.inline_rag_context.rag_chunks + turn_summary.rag_chunks
     )
 
-    # Explicitly append the turn to conversation if context passed by previous response
+    # Store the turn when OGX did not: in compacted mode, or when the request
+    # continues from a previous response.
     if latest_response_object:
+        turn = _pending_turn(api_params, context)
         await _append_previous_response_turn(
             api_params,
             context,
             latest_response_object.output,
+            turn,
         )
+        turn.ensure_settled()
 
 
 async def generate_response(
@@ -1331,6 +1339,7 @@ async def handle_non_streaming_response(
     inference_span: Optional[trace.Span] = None
     inference_start_time: Optional[float] = None
     inference_time: Optional[float] = None
+    turn = _pending_turn(api_params, context)
 
     # Fork: Get response object (blocked vs normal)
     if context.moderation_result.decision == "blocked":
@@ -1343,7 +1352,7 @@ async def handle_non_streaming_response(
             usage=get_zero_usage(),
             **api_params.echoed_params(configuration.rag_id_mapping),
         )
-        await _persist_blocked_response_turn(api_params, context)
+        await _persist_blocked_response_turn(api_params, context, turn)
         queue_blocked_response_event(api_params, context, output_text)
     else:
         inference_start_time = time.monotonic()
@@ -1379,11 +1388,13 @@ async def handle_non_streaming_response(
                 token_usage=token_usage,
             )
             output_text = extract_text_from_response_items(api_response.output)
-            # Explicitly append the turn to conversation if context passed by previous response
+            # Store the turn when OGX did not: in compacted mode, or when the
+            # request continues from a previous response.
             await _append_previous_response_turn(
                 api_params,
                 context,
                 api_response.output,
+                turn,
             )
 
         except (
@@ -1400,6 +1411,10 @@ async def handle_non_streaming_response(
                     record_failure=True,
                 )
             _raise_response_api_http_exception(e, api_params, context, inference_span)
+
+    # The request has its answer. Fail it if its turn had to be stored here
+    # and nobody tried to.
+    turn.ensure_settled()
 
     vector_store_ids = extract_vector_store_ids_from_tools(api_params.tools)
     turn_summary = build_turn_summary(
