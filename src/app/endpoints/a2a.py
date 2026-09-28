@@ -57,7 +57,7 @@ from authentication.interface import AuthTuple
 from authorization.middleware import authorize
 from client.ogx import AsyncOgxClientHolder
 from configuration import configuration
-from constants import MEDIA_TYPE_EVENT_STREAM
+from constants import ENDPOINT_PATH_A2A, MEDIA_TYPE_EVENT_STREAM
 from log import get_logger
 from models.api.requests import QueryRequest
 from models.common.responses.responses_api_params import ResponsesApiParams
@@ -228,6 +228,7 @@ async def _compact_a2a_request(
         responses_params,
         configuration.inference,
         configuration.compaction,
+        endpoint_path=ENDPOINT_PATH_A2A,
     )
     return compaction.params, PendingTurn.for_request(
         client, compaction.params, compaction.original_input

@@ -6,6 +6,7 @@ import json
 import time
 from collections.abc import AsyncIterator, Sequence
 from datetime import UTC, datetime
+from functools import partial
 from typing import Annotated, Any, Final, NoReturn, Optional, cast
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
@@ -85,6 +86,7 @@ from utils.pending_turn import PendingTurn
 from utils.prompts import get_system_prompt
 from utils.query import (
     consume_query_tokens,
+    consume_summarization_tokens,
     extract_provider_and_model_from_model_id,
     handle_known_apistatus_errors,
     is_context_length_error,
@@ -723,6 +725,11 @@ async def handle_responses_with_tracing(  # pylint: disable=too-many-locals
             cache=configured_conversation_cache(),
             user_id=user_id,
             skip_user_id_check=skip_userid_check,
+            endpoint_path=endpoint_path,
+            # The summarization calls are charged to the user. The usage
+            # object of the response stays as OGX reported it, so it covers
+            # the answer alone.
+            charge=partial(consume_summarization_tokens, user_id),
         )
         api_params = compaction.params
         if compaction.compacted:

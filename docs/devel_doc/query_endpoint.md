@@ -308,7 +308,7 @@ Cancels an in-progress streaming query.
 | `interrupted` | boolean | Whether an active stream was interrupted (`false` if already completed) |
 | `message` | string | Human-readable status message |
 
-When a stream is interrupted, any partial response is persisted to conversation history and token consumption is skipped. A request a shield had blocked is the exception: its refusal turn is stored before the stream starts, so an interrupt adds nothing to the conversation.
+When a stream is interrupted, any partial response is persisted to conversation history and token consumption for the answer is skipped. The summarization calls conversation compaction made for the request were charged when they were made (see [Quota and Token Counting](#quota-and-token-counting)). A request a shield had blocked is the exception: its refusal turn is stored before the stream starts, so an interrupt adds nothing to the conversation.
 
 ---
 
@@ -361,8 +361,9 @@ If the server configuration sets `disable_query_system_prompt` to `true`, reques
 
 - **Pre-request:** `check_tokens_available()` verifies the user/cluster has available quota (429 if not)
 - **Post-response:** `consume_query_tokens()` deducts `input_tokens` and `output_tokens` from configured quota limiters
+- **Compaction:** each LLM call that summarizes older turns is charged by `consume_summarization_tokens()` as soon as it returned, so also when the turn is then blocked, fails or is interrupted. The `input_tokens` and `output_tokens` the response reports include these calls
 - **Available quotas:** Remaining balances per limiter are included in the response (`available_quotas` field in sync, `end` event in streaming)
-- **Stream interruption:** Token consumption is skipped for interrupted streams
+- **Stream interruption:** Token consumption is skipped for interrupted streams, except for the summarization calls, which were charged before the answer started
 
 ---
 

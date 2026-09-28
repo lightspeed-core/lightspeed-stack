@@ -89,6 +89,7 @@ from utils.stream_interrupts import (
     register_interrupt_callback,
 )
 from utils.streaming_sse import shield_violation_generator
+from utils.token_counter import TokenCounter
 
 type AgentDispatchEvent = AgentStreamEvent | AgentRunResultEvent
 
@@ -213,6 +214,7 @@ async def generate_agent_response(  # pylint: disable=too-many-statements
     emit_start: bool = True,
     turn: Optional[PendingTurn] = None,
     context_status: ContextStatus = "full",
+    summarization_usage: Optional[TokenCounter] = None,
 ) -> AsyncIterator[str]:
     """Wrap an agent SSE generator with cleanup logic.
 
@@ -236,6 +238,9 @@ async def generate_agent_response(  # pylint: disable=too-many-statements
         context_status: Whether the conversation context was sent in full
             ("full") or older turns were replaced by a summary ("summarized").
             Reported to the client in the SSE end event.
+        summarization_usage: Usage of the summarization calls compaction made
+            for this request (LCORE-3910). They were charged when they were
+            made; here they are added to the usage the turn reports.
 
     Yields:
         SSE-formatted strings from the wrapped generator.
@@ -354,6 +359,9 @@ async def generate_agent_response(  # pylint: disable=too-many-statements
         model_id=responses_params.model,
         token_usage=turn_summary.token_usage,
     )
+    # The turn reports the summarization calls made for it as part of its
+    # usage. They were charged when they were made.
+    reported_usage = turn_summary.token_usage + (summarization_usage or TokenCounter())
     logger.info("Getting available quotas")
     available_quotas = get_available_quotas(
         quota_limiters=configuration.quota_limiters,
@@ -362,8 +370,8 @@ async def generate_agent_response(  # pylint: disable=too-many-statements
     end_payload = EndStreamPayload.create(
         referenced_documents=turn_summary.referenced_documents,
         context_status=context_status,
-        input_tokens=turn_summary.token_usage.input_tokens,
-        output_tokens=turn_summary.token_usage.output_tokens,
+        input_tokens=reported_usage.input_tokens,
+        output_tokens=reported_usage.output_tokens,
         available_quotas=available_quotas,
     )
     yield serialize_event(end_payload, media_type)
@@ -388,12 +396,8 @@ async def generate_agent_response(  # pylint: disable=too-many-statements
         root_span,
         {
             SpanAttributes.SESSION_ID: context.conversation_id,
-            SpanAttributes.LLM_USAGE_INPUT_TOKENS: (
-                turn_summary.token_usage.input_tokens
-            ),
-            SpanAttributes.LLM_USAGE_OUTPUT_TOKENS: (
-                turn_summary.token_usage.output_tokens
-            ),
+            SpanAttributes.LLM_USAGE_INPUT_TOKENS: reported_usage.input_tokens,
+            SpanAttributes.LLM_USAGE_OUTPUT_TOKENS: reported_usage.output_tokens,
             SpanAttributes.OUTPUT: turn_summary.llm_response,
         },
     )

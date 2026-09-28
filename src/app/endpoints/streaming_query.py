@@ -3,6 +3,7 @@
 import asyncio
 import datetime
 from collections.abc import AsyncIterator
+from functools import partial
 from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -70,6 +71,7 @@ from utils.otel_tracing import (
 )
 from utils.pending_turn import PendingTurn
 from utils.query import (
+    consume_summarization_tokens,
     extract_provider_and_model_from_model_id,
     handle_known_apistatus_errors,
     is_context_length_error,
@@ -94,6 +96,7 @@ from utils.streaming_sse import (
     stream_start_event,
 )
 from utils.suid import get_suid, normalize_conversation_id
+from utils.token_counter import TokenCounter
 from utils.types import Responses
 from utils.vector_search import build_rag_context
 
@@ -437,6 +440,7 @@ async def generate_response_with_compaction(
 
         turn: Optional[PendingTurn] = None
         context_status: ContextStatus = "full"
+        summarization_usage = TokenCounter()
         try:
             async for item in apply_compaction(
                 context.client,
@@ -447,6 +451,8 @@ async def generate_response_with_compaction(
                 cache=configured_conversation_cache(),
                 user_id=context.user_id,
                 skip_user_id_check=context.skip_userid_check,
+                endpoint_path=endpoint_path,
+                charge=partial(consume_summarization_tokens, context.user_id),
             ):
                 if isinstance(item, CompactionStartedEvent):
                     yield stream_compaction_event(context.conversation_id)
@@ -456,6 +462,7 @@ async def generate_response_with_compaction(
                         context.client, item.params, item.original_input
                     )
                     context_status = item.context_status
+                    summarization_usage = item.summarization_usage
 
             generator, turn_summary = await retrieve_agent_response_generator(
                 responses_params=responses_params,
@@ -512,6 +519,7 @@ async def generate_response_with_compaction(
             emit_start=False,
             turn=turn,
             context_status=context_status,
+            summarization_usage=summarization_usage,
         ):
             yield event
     finally:

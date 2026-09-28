@@ -311,7 +311,7 @@ Add `compaction` field to the root `Configuration` class.
 |----------------------------------------|----------------------------------------------------------------------------|
 | `pyproject.toml`                       | Add `tiktoken` dependency                                                  |
 | `src/utils/token_estimator.py`         | New module: `estimate_tokens()`, `estimate_conversation_tokens()`          |
-| `src/utils/compaction.py`              | New module: summarization logic, partitioning, additive summary management |
+| `src/utils/compaction.py`              | New module: summarization logic, partitioning, additive summary management; reports the usage of each LLM call it makes — LCORE-3910 |
 | `src/models/config.py`                 | Add `CompactionConfiguration` (near `ConversationHistoryConfiguration`)    |
 | `src/configuration.py`                 | Add `compaction_configuration` property to `AppConfig` singleton           |
 | `src/utils/conversation_compaction.py` | New module: `apply_compaction()` / `apply_compaction_blocking()`, `needs_compaction_path()`, marker helpers, per-conversation lock |
@@ -332,9 +332,11 @@ reusable unit in `src/utils/conversation_compaction.py` that each endpoint
 calls after its params are prepared:
 
 - `apply_compaction_blocking(client, params, inference_config, compaction_config)`
-  returns a `CompactionResult` (possibly-rewritten params, a `summarized`
-  flag, and the `original_input`). Non-streaming `/v1/query`, A2A, and
-  `/v1/responses` use this.
+  returns a `CompactionResult` (possibly-rewritten params, a `compacted`
+  flag, the `original_input`, and the `summarization_usage`). Non-streaming
+  `/v1/query`, A2A, and `/v1/responses` use this. The endpoints also pass
+  `endpoint_path` and, where there is a quota, `charge`; see
+  [Who pays for the summarization calls](#who-pays-for-the-summarization-calls).
 - `apply_compaction(..., emit_events=True)` is the async-generator variant that
   yields a `CompactionStartedEvent` before the summarization LLM call; the
   native `/v1/streaming_query` SSE path uses it to satisfy R12.
@@ -446,6 +448,50 @@ Example config files go in `examples/`.
 | Post-trigger turn | 1 LLM call          | 1 LLM call (no change)                  |
 
 Compaction adds latency only on the trigger turn. In PoC testing, compaction turns took 14-40 seconds vs 9-20 seconds for normal turns (gpt-4o-mini).
+
+## Who pays for the summarization calls
+
+The provider bills the summarization call and the fold call like any other, so
+lightspeed-stack counts them (LCORE-3910). Before that, their usage was
+discarded: a user could go over the quota without it ever showing, and by more
+the longer the conversation was.
+
+`summarize_chunk()` and `recursively_resummarize()` report each call they make
+to a `count_call` callback, with the model and the usage the provider reported.
+They do it as soon as the response arrived and before they look at it, so a
+call that returned no text is reported too. `apply_compaction()` takes the
+path of the endpoint and a `charge` callback, and counts the calls with
+`SummarizationCalls` (`src/utils/compaction_usage.py`): for each call it
+records the token and call metrics under that endpoint, calls `charge`, and
+adds the usage up. The sum is handed to the endpoint as
+`CompactionResult.summarization_usage`.
+
+| Endpoint               | Quota   | Counts the client sees                                   |
+|------------------------|---------|----------------------------------------------------------|
+| `/v1/query`            | charged | `input_tokens` / `output_tokens` include summarization   |
+| `/v1/streaming_query`  | charged | the same, in the `end` event                             |
+| `/v1/responses`        | charged | `usage` as the provider reported it, the answer alone    |
+| `/a2a`                 | none    | none; the endpoint has no quota, the metrics are recorded |
+
+The endpoints with a quota pass `consume_summarization_tokens()`
+(`src/utils/query.py`), bound to the user, as `charge`. A call is therefore
+charged when it returned, and not together with the turn: the summary is
+written before the model is asked for the answer and is kept whatever becomes
+of the turn, so the call is a cost of the conversation. It is charged also
+when the turn is blocked, fails or is interrupted, and when compaction itself
+fails after the call (the marker cannot be written, the fold fails). `/a2a`
+passes no `charge`.
+
+`/v1/query` and `/v1/streaming_query` add `summarization_usage` to the usage of
+the turn in what they report to the client and set on the request span
+(`llm.usage.input_tokens`, `llm.usage.output_tokens`). The sum is not stored
+with the turn; the token usage history receives the charges one by one.
+`/v1/responses` passes the `usage` object of the response through unchanged, to
+stay a drop-in for clients of the OpenAI Responses API.
+
+Two limits. A call that fails, or is cancelled before its response arrived,
+has no usage to count, whatever the provider bills for it. And a call the
+provider reports no usage for is counted as a call and charges nothing.
 
 # Open Questions for Future Work
 
