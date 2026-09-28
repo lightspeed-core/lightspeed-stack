@@ -19,7 +19,7 @@ OGX_CONFIG ?= run.yaml
 OGX_CONTAINER_NAME ?= lightspeed-ogx
 OGX_IMAGE ?= lightspeed-ogx:local
 OGX_PORT ?= 8321
-LIGHTSPEED_PROVIDERS_DIR ?= $(shell [ -d ../lightspeed-providers ] && cd ../lightspeed-providers && pwd)
+LIGHTSPEED_PROVIDERS_DIR ?= $(shell [ -d providers/lightspeed_stack_providers ] && cd providers && pwd)
 CONTAINER_RUNTIME ?= $(shell command -v podman 2>/dev/null || command -v docker 2>/dev/null)
 
 # Doc tools configuration
@@ -377,9 +377,6 @@ konflux-requirements:	## Generate .konflux/requirements.*.txt files for Konflux 
 
 konflux-rpm-lock:	## Generate rpm.lock.yaml file for Konflux build
 	./scripts/generate-rpm-lock.sh
-
-konflux-artifacts-lock: ## Regenerate artifacts.lock.yaml file for Konflux build
-	./scripts/generate-artifacts-lock.sh
 
 help: ## Show this help screen
 	@echo 'Usage: make <OPTIONS> ... <TARGETS>'

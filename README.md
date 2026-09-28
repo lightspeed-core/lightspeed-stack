@@ -974,7 +974,6 @@ distribution-archives             Generate distribution archives to be uploaded 
 upload-distribution-archives      Upload distribution archives into Python registry
 konflux-requirements              Generate hermetic requirements.*.txt file for Konflux build
 konflux-rpm-lock                  Generate rpm.lock.yaml file for Konflux build
-konflux-artifacts-lock            Regenerate artifacts.lock.yaml file for Konflux build
 help                              Show this help screen
 ```
 

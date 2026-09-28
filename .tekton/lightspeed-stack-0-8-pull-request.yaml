@@ -40,10 +40,6 @@ spec:
            "path": ".konflux"
          },
          {
-           "type": "generic",
-           "path": ".konflux"
-         },
-         {
            "type": "pip",
            "path": ".konflux",
            "requirements_files": [
