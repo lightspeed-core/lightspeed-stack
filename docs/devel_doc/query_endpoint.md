@@ -308,7 +308,7 @@ Cancels an in-progress streaming query.
 | `interrupted` | boolean | Whether an active stream was interrupted (`false` if already completed) |
 | `message` | string | Human-readable status message |
 
-When a stream is interrupted, any partial response is persisted to conversation history and token consumption is skipped.
+When a stream is interrupted, any partial response is persisted to conversation history and token consumption is skipped. A request a shield had blocked is the exception: its refusal turn is stored before the stream starts, so an interrupt adds nothing to the conversation.
 
 ---
 

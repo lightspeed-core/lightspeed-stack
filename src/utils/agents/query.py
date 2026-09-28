@@ -27,7 +27,6 @@ from models.common.agents import AgentTurnAccumulator
 from models.common.moderation import ShieldModerationResult
 from models.common.query import Attachment
 from models.common.responses.responses_api_params import ResponsesApiParams
-from models.common.responses.types import ResponseInput
 from models.common.turn_summary import TurnSummary
 from utils.agents.error_handler import map_agent_inference_error
 from utils.agents.tool_processor import (
@@ -39,15 +38,14 @@ from utils.agents.tool_processor import (
 from utils.conversation_compaction import (
     agent_prompt_text,
     reject_image_attachments_in_compacted_mode,
-    store_compacted_turn,
 )
-from utils.conversations import append_turn_items_to_conversation
 from utils.otel_tracing import (
     SpanAttributes,
     SpanEvents,
     add_span_event,
     set_span_attributes,
 )
+from utils.pending_turn import PendingTurn
 from utils.pydantic_ai_helpers import build_agent, captured_output_items
 from utils.query import (
     build_multimodal_input,
@@ -238,7 +236,7 @@ async def retrieve_agent_response(
     responses_params: ResponsesApiParams,
     moderation_result: ShieldModerationResult,
     endpoint_path: str,
-    original_input: Optional[ResponseInput] = None,
+    turn: Optional[PendingTurn] = None,
     no_tools: bool = False,
     image_attachments: Optional[list[Attachment]] = None,
     shield_ids: Optional[list[str]] = None,
@@ -250,9 +248,10 @@ async def retrieve_agent_response(
         responses_params: Prepared Responses API parameters.
         moderation_result: Shield moderation outcome for the turn.
         endpoint_path: Endpoint path used for metric labeling.
-        original_input: Original user input before the explicit-input rewrite.
-            Set only in compacted mode; when set, the completed turn is
-            appended to the conversation explicitly (LCORE-3883).
+        turn: The pending turn of the request, which stores the turn when OGX
+            does not (LCORE-3908). Required in compacted mode, where it
+            carries the input as it arrived; created from the parameters
+            otherwise.
         no_tools: Whether to skip tool processing.
         image_attachments: Image attachments for multimodal prompt construction.
         shield_ids: Optional list of shield names to run for this turn, mirroring
@@ -262,7 +261,10 @@ async def retrieve_agent_response(
 
     Raises:
         HTTPException: On moderation is not applicable; on agent or provider failure.
+        ValueError: When the request is compacted and no pending turn is given.
     """
+    if turn is None:
+        turn = PendingTurn.for_request(client, responses_params)
     with tracer.start_as_current_span("llm.inference") as span:
         # Extract provider and model from model_id
         provider_id, model_id = extract_provider_and_model_from_model_id(
@@ -279,13 +281,13 @@ async def retrieve_agent_response(
         )
 
         if moderation_result.decision == "blocked":
-            if not responses_params.omit_conversation:
-                await append_turn_items_to_conversation(
-                    client,
-                    responses_params.conversation,
-                    responses_params.input,
-                    [moderation_result.refusal_response],
-                )
+            if responses_params.omit_conversation:
+                # Kept as it was: on this endpoint the refusal turn of a
+                # compacted conversation is not stored. LCORE-3788 settles
+                # what all endpoints should do with it.
+                turn.drop("blocked by a shield in compacted mode")
+            else:
+                await turn.store_blocked(moderation_result.refusal_response)
             return TurnSummary(
                 id=moderation_result.moderation_id,
                 llm_response=moderation_result.message,
@@ -345,14 +347,8 @@ async def retrieve_agent_response(
         add_span_event(span, SpanEvents.LLM_INFERENCE_COMPLETED)
 
         # In compacted mode the conversation parameter was not sent, so OGX did
-        # not persist this turn. Append it ourselves to keep the recent-turn
+        # not persist this turn. It is stored here, to keep the recent-turn
         # buffer and the audit history intact for the next request (LCORE-3883).
-        if original_input is not None:
-            await store_compacted_turn(
-                client,
-                responses_params.conversation,
-                original_input,
-                turn_summary.output_items,
-            )
+        await turn.store_completed(turn_summary.output_items)
 
         return turn_summary

@@ -33,7 +33,7 @@ from a2a.types import (
 )
 from a2a.utils import new_agent_text_message, new_task
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from ogx_client import ApiException
+from ogx_client import ApiException, AsyncOgxClient
 from opentelemetry import trace
 from pydantic_ai import AgentRunResultEvent
 from pydantic_ai.exceptions import AgentRunError
@@ -63,11 +63,7 @@ from models.api.requests import QueryRequest
 from models.common.responses.responses_api_params import ResponsesApiParams
 from models.config import Action
 from utils.agents.error_handler import map_agent_inference_error
-from utils.conversation_compaction import (
-    CompactionResult,
-    apply_compaction_blocking,
-    store_compacted_turn,
-)
+from utils.conversation_compaction import apply_compaction_blocking
 from utils.mcp.mcp_headers import McpHeaders, mcp_headers_dependency
 from utils.otel_tracing import (
     SpanAttributes,
@@ -76,6 +72,7 @@ from utils.otel_tracing import (
     anonymize_value,
     set_span_attributes,
 )
+from utils.pending_turn import PendingTurn
 from utils.pydantic_ai_helpers import build_agent, captured_output_items
 from utils.query import extract_provider_and_model_from_model_id
 from utils.responses import prepare_responses_params
@@ -206,10 +203,39 @@ def _record_execution_span(
             span.set_attribute(SpanAttributes.OUTPUT, output_text)
 
 
-async def _persist_compacted_a2a_turn(
-    client: Any,
+async def _compact_a2a_request(
+    client: AsyncOgxClient,
     responses_params: ResponsesApiParams,
-    compaction: CompactionResult,
+) -> tuple[ResponsesApiParams, PendingTurn]:
+    """Compact the conversation of an A2A request if it nears the context window.
+
+    A2A is not a browser SSE stream, so no progress event is emitted; the
+    blocking variant summarizes inline before the call. No conversation cache
+    is passed: the A2A executor has no resolved user_id for the
+    (user_id, conversation_id) cache key, so A2A runs in marker-only mode
+    (additive summaries, no persisted fold).
+
+    Parameters:
+        client: OGX client.
+        responses_params: Prepared Responses API parameters.
+
+    Returns:
+        The parameters to send, and the pending turn of the request, which
+        stores the turn when OGX does not (LCORE-3908).
+    """
+    compaction = await apply_compaction_blocking(
+        client,
+        responses_params,
+        configuration.inference,
+        configuration.compaction,
+    )
+    return compaction.params, PendingTurn.for_request(
+        client, compaction.params, compaction.original_input
+    )
+
+
+async def _persist_compacted_a2a_turn(
+    turn: PendingTurn,
     agent: Any,
     task_id: str,
 ) -> None:
@@ -221,22 +247,13 @@ async def _persist_compacted_a2a_turn(
     context.
 
     Parameters:
-        client: OGX client used to write the conversation items.
-        responses_params: Prepared Responses API parameters.
-        compaction: Outcome of applying compaction. Nothing is written unless
-            the request was served in compacted mode.
+        turn: The pending turn of the request. Nothing is written when OGX
+            stores the turn itself.
         agent: The pydantic-ai agent whose model captured the output items.
         task_id: A2A task identifier, used for error reporting.
     """
-    if not compaction.compacted or compaction.original_input is None:
-        return
     try:
-        await store_compacted_turn(
-            client,
-            responses_params.conversation,
-            compaction.original_input,
-            captured_output_items(agent),
-        )
+        await turn.store_completed(captured_output_items(agent))
     except Exception:  # pylint: disable=broad-except
         # The caller already has its answer; the cost of the failure is that the
         # next turn in this context loses this one.
@@ -471,19 +488,9 @@ class A2AAgentExecutor(AgentExecutor):
                     store=True,
                     request_headers=self.request_headers,
                 )
-                # Compact the conversation if it is approaching the context window
-                # limit. A2A is not a browser SSE stream, so no progress event is
-                # emitted; the blocking variant summarizes inline before the call.
-                # No conversation cache is passed: the A2A executor has no resolved
-                # user_id for the (user_id, conversation_id) cache key, so A2A runs
-                # in marker-only mode (additive summaries, no persisted fold).
-                compaction = await apply_compaction_blocking(
-                    client,
-                    responses_params,
-                    configuration.inference,
-                    configuration.compaction,
+                responses_params, turn = await _compact_a2a_request(
+                    client, responses_params
                 )
-                responses_params = compaction.params
 
                 _record_model_span(span, responses_params.model)
                 agent = build_agent(
@@ -574,9 +581,8 @@ class A2AAgentExecutor(AgentExecutor):
                 )
                 return
 
-            await _persist_compacted_a2a_turn(
-                client, responses_params, compaction, agent, task_id
-            )
+            await _persist_compacted_a2a_turn(turn, agent, task_id)
+            turn.ensure_settled()
 
             _record_execution_span(span, self._tool_call_names, self._run_result)
 

@@ -68,6 +68,7 @@ from utils.agents.streaming import (
     serialize_event,
 )
 from utils.otel_tracing import SpanAttributes, SpanEvents
+from utils.pending_turn import PendingTurn
 from utils.token_counter import TokenCounter
 
 INTERRUPTED_INDICATOR = f"\n\n*{INTERRUPTED_RESPONSE_MESSAGE}*"
@@ -503,6 +504,19 @@ class TestDispatchStreamEvent:
         assert not turn_state.turn_summary.tool_calls
 
 
+def capture_conversation_writes(context: Any) -> list[Any]:
+    """Wire a stateful fake onto the client and return the captured items."""
+    stored: list[Any] = []
+
+    async def _create(
+        _conversation_id: str, *, add_items_request: Any = None, **_kwargs: Any
+    ) -> None:
+        stored.extend(getattr(add_items_request, "items", add_items_request) or [])
+
+    context.client.items.create = _create
+    return stored
+
+
 @pytest.mark.usefixtures("patch_streaming_configuration")
 class TestRetrieveAgentResponseGenerator:
     """Tests for retrieve_agent_response_generator."""
@@ -522,10 +536,7 @@ class TestRetrieveAgentResponseGenerator:
             "utils.agents.streaming.shield_violation_generator",
             return_value=_async_iter(["shield-event"]),
         )
-        mock_append = mocker.patch(
-            "utils.agents.streaming.append_turn_items_to_conversation",
-            new=mocker.AsyncMock(),
-        )
+        stored = capture_conversation_writes(context)
 
         generator, turn_summary = await retrieve_agent_response_generator(
             responses_params,
@@ -539,7 +550,10 @@ class TestRetrieveAgentResponseGenerator:
             blocked_moderation.message,
             MEDIA_TYPE_JSON,
         )
-        mock_append.assert_awaited_once()
+        texts = [str(item) for item in stored]
+        assert len(stored) == 2, f"expected user turn + refusal, got {texts}"
+        assert str(responses_params.input) in texts[0]
+        assert blocked_moderation.message in texts[1]
         assert turn_summary.llm_response == blocked_moderation.message
         assert turn_summary.id == blocked_moderation.moderation_id
 
@@ -558,10 +572,7 @@ class TestRetrieveAgentResponseGenerator:
             "utils.agents.streaming.shield_violation_generator",
             return_value=_async_iter([]),
         )
-        mock_append = mocker.patch(
-            "utils.agents.streaming.append_turn_items_to_conversation",
-            new=mocker.AsyncMock(),
-        )
+        stored = capture_conversation_writes(context)
 
         await retrieve_agent_response_generator(
             responses_params,
@@ -569,7 +580,7 @@ class TestRetrieveAgentResponseGenerator:
             ENDPOINT_PATH_STREAMING_QUERY,
         )
 
-        mock_append.assert_not_awaited()
+        assert stored == []
 
     @pytest.mark.asyncio
     async def test_success_returns_agent_generator(
@@ -1646,20 +1657,6 @@ class TestCompactedTurnPersistence:
     """
 
     @staticmethod
-    def _capture_conversation_writes(context: Any) -> list[Any]:
-        """Wire a stateful fake onto the client and return the captured items."""
-        stored: list[Any] = []
-
-        async def _create(
-            conversation_id: str, *, add_items_request: Any = None, **_: Any
-        ) -> None:
-            _ = conversation_id
-            stored.extend(getattr(add_items_request, "items", add_items_request) or [])
-
-        context.client.items.create = _create
-        return stored
-
-    @staticmethod
     def _patch_finalizers(mocker: MockerFixture) -> None:
         """Stub the post-stream finalization the persistence test does not exercise."""
         mocker.patch("utils.agents.streaming.consume_query_tokens")
@@ -1680,11 +1677,12 @@ class TestCompactedTurnPersistence:
         self,
         mocker: MockerFixture,
         make_generator_context: Callable[..., ResponseGeneratorContext],
-        responses_params: ResponsesApiParams,
+        make_responses_params: Callable[..., ResponsesApiParams],
     ) -> None:
         """A completed compacted stream writes the user turn and the LLM output."""
         context = make_generator_context()
-        stored = self._capture_conversation_writes(context)
+        compacted_params = make_responses_params(omit_conversation=True)
+        stored = capture_conversation_writes(context)
         self._patch_finalizers(mocker)
 
         turn_summary = TurnSummary()
@@ -1704,10 +1702,12 @@ class TestCompactedTurnPersistence:
             async for event in generate_agent_response(
                 inner(),
                 context,
-                responses_params,
+                compacted_params,
                 turn_summary,
                 [],
-                original_input="the original question",
+                turn=PendingTurn.for_request(
+                    context.client, compacted_params, "the original question"
+                ),
                 root_span=_dummy_root_span(),
             )
         ]
@@ -1727,7 +1727,7 @@ class TestCompactedTurnPersistence:
     ) -> None:
         """Without compaction OGX stores the turn, so we must not duplicate it."""
         context = make_generator_context()
-        stored = self._capture_conversation_writes(context)
+        stored = capture_conversation_writes(context)
         self._patch_finalizers(mocker)
 
         turn_summary = TurnSummary()
@@ -1757,13 +1757,22 @@ class TestCompactedTurnPersistence:
         self,
         mocker: MockerFixture,
         make_generator_context: Callable[..., ResponseGeneratorContext],
-        responses_params: ResponsesApiParams,
+        make_responses_params: Callable[..., ResponsesApiParams],
     ) -> None:
-        """An interrupt that already persisted the turn blocks the success path."""
+        """An interrupt that already persisted the turn blocks the success path.
+
+        Both protections agree here: the guard shared with the interrupt path
+        is set, and the turn is settled. The next test opens the guard.
+        """
         context = make_generator_context()
-        stored = self._capture_conversation_writes(context)
+        compacted_params = make_responses_params(omit_conversation=True)
+        stored = capture_conversation_writes(context)
         self._patch_finalizers(mocker)
-        # Simulate the interrupt path having already persisted this turn.
+        # The interrupt path has already persisted this turn.
+        turn = PendingTurn.for_request(
+            context.client, compacted_params, "the original question"
+        )
+        await turn.store_interrupted("The ans")
         mocker.patch(
             "utils.agents.streaming.register_interrupt_callback", return_value=[True]
         )
@@ -1784,25 +1793,84 @@ class TestCompactedTurnPersistence:
             async for event in generate_agent_response(
                 inner(),
                 context,
-                responses_params,
+                compacted_params,
                 turn_summary,
                 [],
-                original_input="the original question",
+                turn=turn,
                 root_span=_dummy_root_span(),
             )
         ]
 
-        assert stored == []
+        texts = [str(item) for item in stored]
+        assert len(stored) == 2, f"expected the interrupted turn only, got {texts}"
+        assert "the original question" in texts[0]
+        assert "The ans" in texts[1]
+        assert "The answer." not in texts[1]
+
+    @pytest.mark.asyncio
+    async def test_settled_turn_is_not_stored_again_at_the_end_of_the_stream(
+        self,
+        mocker: MockerFixture,
+        make_generator_context: Callable[..., ResponseGeneratorContext],
+        make_responses_params: Callable[..., ResponsesApiParams],
+    ) -> None:
+        """The owner alone keeps the end of the stream from storing a second turn.
+
+        The guard shared with the interrupt path is open here, so the end of
+        the stream does try to store the turn. The turn has been stored by
+        then, and its owner stores it once.
+        """
+        context = make_generator_context()
+        compacted_params = make_responses_params(omit_conversation=True)
+        stored = capture_conversation_writes(context)
+        self._patch_finalizers(mocker)
+        turn = PendingTurn.for_request(
+            context.client, compacted_params, "the original question"
+        )
+        await turn.store_interrupted("The ans")
+        mocker.patch(
+            "utils.agents.streaming.register_interrupt_callback", return_value=[False]
+        )
+
+        turn_summary = TurnSummary()
+        turn_summary.token_usage = TokenCounter(input_tokens=1, output_tokens=1)
+        turn_summary.output_items = [
+            OpenAIResponseMessage(role="assistant", content="The answer.")
+        ]
+
+        async def inner() -> AsyncIterator[str]:
+            yield serialize_event(
+                TokenStreamPayload.create(chunk_id=0, token="x"), MEDIA_TYPE_JSON
+            )
+
+        _ = [
+            event
+            async for event in generate_agent_response(
+                inner(),
+                context,
+                compacted_params,
+                turn_summary,
+                [],
+                turn=turn,
+                root_span=_dummy_root_span(),
+            )
+        ]
+
+        texts = [str(item) for item in stored]
+        assert len(stored) == 2, f"expected the interrupted turn only, got {texts}"
+        assert "The ans" in texts[1]
+        assert "The answer." not in texts[1]
 
     @pytest.mark.asyncio
     async def test_persistence_failure_does_not_fail_the_stream(
         self,
         mocker: MockerFixture,
         make_generator_context: Callable[..., ResponseGeneratorContext],
-        responses_params: ResponsesApiParams,
+        make_responses_params: Callable[..., ResponsesApiParams],
     ) -> None:
         """The client keeps its answer even when the conversation write fails."""
         context = make_generator_context()
+        compacted_params = make_responses_params(omit_conversation=True)
         self._patch_finalizers(mocker)
 
         async def _boom(_conversation_id: str, **_: Any) -> None:
@@ -1826,10 +1894,10 @@ class TestCompactedTurnPersistence:
             async for event in generate_agent_response(
                 inner(),
                 context,
-                responses_params,
+                compacted_params,
                 turn_summary,
                 [],
-                original_input="q",
+                turn=PendingTurn.for_request(context.client, compacted_params, "q"),
                 root_span=_dummy_root_span(),
             )
         ]

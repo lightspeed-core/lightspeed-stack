@@ -42,7 +42,6 @@ from models.api.responses.successful import StreamingQueryResponse
 from models.common.query import Attachment
 from models.common.responses.contexts import ResponseGeneratorContext
 from models.common.responses.responses_api_params import ResponsesApiParams
-from models.common.responses.types import ResponseInput
 from models.common.turn_summary import ContextStatus
 from models.config import Action
 from utils.agents.streaming import (
@@ -69,6 +68,7 @@ from utils.otel_tracing import (
     anonymize_value,
     set_span_attributes,
 )
+from utils.pending_turn import PendingTurn
 from utils.query import (
     extract_provider_and_model_from_model_id,
     handle_known_apistatus_errors,
@@ -352,12 +352,16 @@ async def _handle_streaming_query_with_tracing(  # pylint: disable=too-many-loca
             media_type=response_media_type,
         )
 
+    # This request is not compacted, so OGX stores its turn when it completes.
+    # A turn that is blocked or interrupted is still ours to store.
+    turn = PendingTurn.for_request(context.client, responses_params)
     generator, turn_summary = await retrieve_agent_response_generator(
         responses_params=responses_params,
         context=context,
         endpoint_path=endpoint_path,
         no_tools=bool(query_request.no_tools),
         image_attachments=image_attachments,
+        turn=turn,
     )
 
     # Combine inline RAG results (BYOK + Solr) with tool-based results
@@ -374,6 +378,7 @@ async def _handle_streaming_query_with_tracing(  # pylint: disable=too-many-loca
             turn_summary=turn_summary,
             background_topic_summary_tasks=_background_topic_summary_tasks,
             root_span=root_span,
+            turn=turn,
         ),
         media_type=response_media_type,
     )
@@ -430,7 +435,7 @@ async def generate_response_with_compaction(
             request_id=context.request_id,
         )
 
-        compacted_original_input: Optional[ResponseInput] = None
+        turn: Optional[PendingTurn] = None
         context_status: ContextStatus = "full"
         try:
             async for item in apply_compaction(
@@ -447,7 +452,9 @@ async def generate_response_with_compaction(
                     yield stream_compaction_event(context.conversation_id)
                 elif isinstance(item, CompactionResult):
                     responses_params = item.params
-                    compacted_original_input = item.original_input
+                    turn = PendingTurn.for_request(
+                        context.client, item.params, item.original_input
+                    )
                     context_status = item.context_status
 
             generator, turn_summary = await retrieve_agent_response_generator(
@@ -455,6 +462,7 @@ async def generate_response_with_compaction(
                 context=context,
                 endpoint_path=endpoint_path,
                 image_attachments=image_attachments,
+                turn=turn,
             )
         except HTTPException as e:
             yield http_exception_stream_event(e)
@@ -502,7 +510,7 @@ async def generate_response_with_compaction(
             background_topic_summary_tasks=_background_topic_summary_tasks,
             root_span=root_span,
             emit_start=False,
-            original_input=compacted_original_input,
+            turn=turn,
             context_status=context_status,
         ):
             yield event
