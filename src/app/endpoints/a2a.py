@@ -1086,7 +1086,7 @@ async def _handle_a2a_jsonrpc(  # pylint: disable=too-many-locals,too-many-state
                 logger.warning(
                     "Could not parse A2A request body for method detection: %s", str(e)
                 )
-    except Exception as e:  # pylint: disable=broad-except
+    except Exception as e:  # pylint: disable=broad-except  # noqa: BLE001
         logger.error("Error detecting streaming request: %s", str(e))
 
     with tracer.start_as_current_span("a2a.dispatch") as span:

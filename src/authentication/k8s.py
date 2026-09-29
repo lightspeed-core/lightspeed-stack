@@ -382,7 +382,7 @@ def get_user_info(token: str) -> Optional[kubernetes.client.V1TokenReviewStatus]
             cause=f"Kubernetes API request failed: {e.reason} (status {e.status})",
         )
         raise HTTPException(**response_obj.model_dump()) from e
-    except Exception as e:  # pylint: disable=broad-exception-caught
+    except Exception as e:  # pylint: disable=broad-exception-caught  # noqa: BLE001
         logger.error("Unexpected error during TokenReview: %s", e)
         return None
 

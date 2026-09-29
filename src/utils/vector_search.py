@@ -296,9 +296,7 @@ async def _query_store_for_byok_rag(  # pylint: disable=too-many-arguments,too-m
             },
         )
         return _extract_byok_rag_chunks(search_response, vector_store_id, weight)
-    except (
-        Exception  # pylint: disable=broad-exception-caught  # noqa: BLE001 RUF100
-    ) as e:
+    except Exception as e:  # pylint: disable=broad-exception-caught  # noqa: BLE001
         logger.warning("Failed to search '%s': %s", vector_store_id, e)
         return []
 
@@ -569,9 +567,7 @@ async def _fetch_byok_rag(  # pylint: disable=too-many-locals
         # Extract referenced documents from BYOK RAG chunks (now with resolved sources)
         referenced_documents = _process_byok_rag_chunks_for_documents(top_results)
 
-    except (
-        Exception  # pylint: disable=broad-exception-caught  # noqa: BLE001 RUF100
-    ) as e:
+    except Exception as e:  # pylint: disable=broad-exception-caught  # noqa: BLE001
         logger.warning("Failed to perform BYOK RAG search: %s", e)
         logger.debug("BYOK RAG error details: %s", traceback.format_exc())
 
@@ -640,9 +636,7 @@ async def _fetch_okp_rag(  # pylint: disable=too-many-locals
                 )
                 logger.debug("OKP RAG returned %d chunks", len(rag_chunks))
 
-    except (
-        Exception  # pylint: disable=broad-exception-caught  # noqa: BLE001 RUF100
-    ) as e:
+    except Exception as e:  # pylint: disable=broad-exception-caught  # noqa: BLE001
         logger.warning("Failed to query OKP for chunks: %s", e)
         logger.debug("OKP query error details: %s", traceback.format_exc())
 

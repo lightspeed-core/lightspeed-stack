@@ -230,7 +230,9 @@ class SQLiteCache(Cache):
             if cursor is not None:
                 try:
                     cursor.close()
-                except Exception:  # pylint: disable=broad-exception-caught
+                except (
+                    Exception  # pylint: disable=broad-exception-caught  # noqa: BLE001
+                ):
                     logger.warning("Unable to close cursor")
 
     def initialize_cache(self) -> None:
