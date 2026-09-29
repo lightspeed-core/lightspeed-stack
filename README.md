@@ -700,7 +700,7 @@ user_data_collection:
 > [!WARNING]
 > The legacy two-file setup (`library_client_config_path:` pointing at an
 > externally maintained `run.yaml`) is deprecated — it logs a startup
-> warning since 0.6 and is removed in 0.7. See the
+> warning since 0.6 and is removed in 0.8. See the
 > [migration guide](docs/user_doc/deployment_guide.md#migrating-from-the-legacy-two-file-configuration).
 
 ## OGX version check
@@ -1060,7 +1060,7 @@ ogx:
   use_as_library_client: true
   # Unified mode: the mounted run.yaml is the synthesis profile. (The
   # legacy library_client_config_path equivalent is deprecated, removed
-  # in 0.7.)
+  # in 0.8.)
   config:
     profile: /app-root/run.yaml
 ```
