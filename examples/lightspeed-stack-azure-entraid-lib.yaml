@@ -12,7 +12,10 @@ ogx:
   # use_as_library_client: false
   # Alternative for "as library use"
   use_as_library_client: true
-  library_client_config_path: examples/azure-run.yaml
+  # Unified mode: azure-run.yaml next to this file is the synthesis profile
+  # (relative paths resolve against this file's directory).
+  config:
+    profile: azure-run.yaml
   # url: http://localhost:8321
   # api_key: xyzzy
 user_data_collection:
