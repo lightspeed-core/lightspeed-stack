@@ -182,6 +182,46 @@ synthesizer evolves.
 
 
 
+### High-level inference providers
+
+LLM providers can be declared directly in `lightspeed-stack.yaml`, in the
+top-level `inference.providers` section, without writing any OGX
+configuration:
+
+```yaml
+ogx:
+  use_as_library_client: true
+  config:
+    baseline: byo-llm
+inference:
+  default_provider: openai
+  default_model: gpt-4o-mini
+  providers:
+    - type: openai
+      api_key_env: OPENAI_API_KEY
+      allowed_models:
+        - gpt-4o-mini
+```
+
+`api_key_env` names the environment variable that holds the key. The
+synthesized configuration contains only a `${env.OPENAI_API_KEY}` reference;
+the value is never written to disk. A complete file is in
+[examples/lightspeed-stack-unified-byo-llm.yaml](../../examples/lightspeed-stack-unified-byo-llm.yaml).
+
+`ogx.config.baseline` selects the starting point of the synthesis:
+
+| Baseline | Meaning |
+|---|---|
+| `byo-llm` | The built-in baseline without any LLM provider. Declare yours under `inference.providers`. Recommended. |
+| `default` | The built-in baseline including a built-in OpenAI provider that is enabled when `OPENAI_API_KEY` is set. |
+| `empty` | Starts from an empty configuration. Used by `--migrate-config`. |
+
+> [!WARNING]
+> The built-in OpenAI provider in `baseline: default` is deprecated in
+> release 0.7 (a startup warning is logged) and will be removed in release
+> 0.8. Set `baseline: byo-llm` and declare your LLM providers under
+> `inference.providers`.
+
 ### OGX as a server
 
 When this mode is selected, OGX is started as a separate REST API service. All communication with OGX is performed via REST API calls, which means that OGX can run on a separate machine if needed.
