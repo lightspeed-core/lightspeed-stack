@@ -1060,7 +1060,7 @@ ogx:
   use_as_library_client: true
   # Unified mode: the mounted run.yaml is the synthesis profile. (The
   # legacy library_client_config_path equivalent is deprecated, removed
-  # in 0.7.)
+  # in 0.8.)
   config:
     profile: /app-root/run.yaml
 ```
