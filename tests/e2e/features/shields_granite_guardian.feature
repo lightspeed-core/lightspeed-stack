@@ -46,7 +46,7 @@ Feature: granite_guardian shield functional tests
       And The response contains token counter fields
       And The body of the response contains That phrasing is not something I can act on.
       And The body of the response does not contain I cannot return that response.
-  @skip
+
   Scenario Outline: granite_guardian blocks unsafe generated output
     Given The service uses the lightspeed-stack-shields.yaml configuration
       And The service is restarted
@@ -67,7 +67,7 @@ Feature: granite_guardian shield functional tests
 
   # MCP is the `tool` point. The query cannot force a tool call; tool_calls
   # is the proof mock_tool_poisoned_e2e ran, then granite-guardian screens its result.
-  @flaky @skip
+  @flaky 
   Scenario: granite_guardian blocks poisoned MCP tool content at tool
     Given The service uses the lightspeed-stack-mcp-file-auth.yaml configuration
       And The service is restarted
