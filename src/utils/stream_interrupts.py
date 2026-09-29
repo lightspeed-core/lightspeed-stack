@@ -6,9 +6,7 @@ from collections.abc import Callable, Coroutine
 from dataclasses import dataclass, field
 from enum import StrEnum
 from threading import Lock
-from typing import Any, Optional, cast
-
-from ogx_api import OpenAIResponseMessage
+from typing import Any, Optional
 
 from constants import (
     INTERRUPTED_RESPONSE_MESSAGE,
@@ -17,13 +15,9 @@ from constants import (
 from log import get_logger
 from models.common.responses.contexts import ResponseGeneratorContext
 from models.common.responses.responses_api_params import ResponsesApiParams
-from models.common.responses.types import ResponseInput
 from models.common.turn_summary import TurnSummary
-from utils.conversations import (
-    append_turn_items_to_conversation,
-    append_turn_to_conversation,
-)
 from utils.markdown_repair import close_open_markdown
+from utils.pending_turn import PendingTurn
 from utils.query import store_query_results, update_conversation_topic_summary
 from utils.responses import get_topic_summary
 from utils.types import Singleton
@@ -254,7 +248,7 @@ async def persist_interrupted_turn(
     responses_params: ResponsesApiParams,
     turn_summary: TurnSummary,
     background_topic_summary_tasks: list[asyncio.Task[None]],
-    original_input: Optional[ResponseInput] = None,
+    turn: Optional[PendingTurn] = None,
 ) -> None:
     """Persist the user query and an interrupted response into the conversation.
 
@@ -271,31 +265,18 @@ async def persist_interrupted_turn(
             interrupted message.
         background_topic_summary_tasks: Mutable list tracking fire-and-forget
             topic summary tasks for graceful shutdown.
-        original_input: In compacted mode, the original user input before the
-            explicit-input rewrite. When set, the turn is persisted against it
-            (the ``conversation`` parameter was dropped, and
-            ``responses_params.input`` is the explicit rewrite); ``None``
-            otherwise (LCORE-1572).
+        turn: The pending turn of the request, which stores the turn against
+            the input as it arrived and does so once (LCORE-3908). Required in
+            compacted mode; created from the parameters otherwise.
+
+    Raises:
+    ------
+        ValueError: When the request is compacted and no pending turn is given.
     """
+    if turn is None:
+        turn = PendingTurn.for_request(context.client, responses_params)
     try:
-        if original_input is not None:
-            await append_turn_items_to_conversation(
-                context.client,
-                responses_params.conversation,
-                original_input,
-                [
-                    OpenAIResponseMessage(
-                        role="assistant", content=turn_summary.llm_response
-                    )
-                ],
-            )
-        else:
-            await append_turn_to_conversation(
-                context.client,
-                responses_params.conversation,
-                cast("str", responses_params.input),
-                turn_summary.llm_response,
-            )
+        await turn.store_interrupted(turn_summary.llm_response)
     except Exception:  # pylint: disable=broad-except
         logger.exception(
             "Failed to append interrupted turn to conversation for request %s",
@@ -342,7 +323,7 @@ def register_interrupt_callback(
     responses_params: ResponsesApiParams,
     turn_summary: TurnSummary,
     background_topic_summary_tasks: list[asyncio.Task[None]],
-    original_input: Optional[ResponseInput] = None,
+    turn: Optional[PendingTurn] = None,
 ) -> list[bool]:
     """Build an interrupt callback and register the stream for cancellation.
 
@@ -361,8 +342,7 @@ def register_interrupt_callback(
         turn_summary: TurnSummary populated during streaming.
         background_topic_summary_tasks: Mutable list tracking fire-and-forget
             topic summary tasks for graceful shutdown.
-        original_input: In compacted mode, the original user input before the
-            explicit-input rewrite; ``None`` otherwise.
+        turn: The pending turn of the request; required in compacted mode.
 
     Returns:
     -------
@@ -383,7 +363,7 @@ def register_interrupt_callback(
             responses_params,
             turn_summary,
             background_topic_summary_tasks,
-            original_input,
+            turn,
         )
 
     current_task = asyncio.current_task()

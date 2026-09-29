@@ -46,6 +46,7 @@ from utils.otel_tracing import (
     anonymize_value,
     set_span_attributes,
 )
+from utils.pending_turn import pending_turn
 from utils.query import (
     consume_query_tokens,
     prepare_input,
@@ -265,17 +266,22 @@ async def _handle_query_with_tracing(
         if a.content_type in IMAGE_CONTENT_TYPES
     ] or None
 
-    # Retrieve response using Responses API
-    turn_summary = await retrieve_agent_response(
-        client,
-        responses_params,
-        moderation_result,
-        endpoint_path,
-        compaction.original_input if compaction.compacted else None,
-        shield_ids=query_request.shield_ids,
-        no_tools=bool(query_request.no_tools),
-        image_attachments=image_attachments,
-    )
+    # Retrieve response using Responses API. In compacted mode OGX does not
+    # store the turn; the scope fails the request if nobody tried to store the
+    # turn or dropped it on purpose.
+    async with pending_turn(
+        client, responses_params, compaction.original_input
+    ) as turn:
+        turn_summary = await retrieve_agent_response(
+            client,
+            responses_params,
+            moderation_result,
+            endpoint_path,
+            turn,
+            shield_ids=query_request.shield_ids,
+            no_tools=bool(query_request.no_tools),
+            image_attachments=image_attachments,
+        )
 
     if moderation_result.decision == "passed":
         # Combine inline RAG results (BYOK + Solr) with tool-based RAG results for the transcript
