@@ -144,6 +144,37 @@ Compaction acquires a per-conversation lock to prevent concurrent requests on th
 
 Over very long conversations, multiple compaction summaries may accumulate. When the total size of cached summaries approaches the context window threshold, they are recursively folded into a single summary using a dedicated re-summarization prompt. This prevents summaries from themselves exceeding the context window.
 
+### Token usage and quota
+
+Summarizing older turns takes an LLM call of its own, and so does folding the
+summaries. The provider bills these calls, so they are counted:
+
+| Endpoint | Quota | Reported token counts | Metrics |
+|---|---|---|---|
+| `POST /v1/query` | Charged to the user. | `input_tokens` and `output_tokens` include the summarization calls. | Counted under `/v1/query`. |
+| `POST /v1/streaming_query` | Charged to the user. | `input_tokens` and `output_tokens` of the `end` event include the summarization calls. | Counted under `/v1/streaming_query`. |
+| `POST /v1/responses` | Charged to the user. | `usage` is what the provider reported for the response, so it covers the answer alone. `available_quotas` shows the quota left after both. | Counted under `/v1/responses`. |
+| `POST /a2a` | Not charged. The endpoint does not use quotas. | None. | The summarization calls are counted under `/a2a`. The call that answers the request is not recorded in these metrics on this endpoint. |
+
+The metrics are `ls_llm_calls_total`, `ls_llm_token_sent_total` and
+`ls_llm_token_received_total`, labelled with the endpoint.
+
+Only a request that makes a summarization call pays for it: one whose
+estimated input crosses the threshold. The other requests are served from the
+stored summary and cost what they cost without compaction. With the default
+settings a summarization happens once every several turns; with a small
+context window or a low `threshold_ratio` it can happen on every request.
+
+Each summarization call is charged as soon as it returned, before the model is
+asked for the answer. It is therefore charged also when the request is blocked
+by a shield, fails afterwards, or is interrupted by the client. The summary is
+kept in these cases, so the next request on the conversation does not pay for
+it again. A summarization call that itself fails, or is cut off before it
+returned, reports no usage and is not charged.
+
+On `/v1/responses`, the difference between the quota consumed and the `usage`
+of the response is the summarization.
+
 ## When compaction is disabled
 
 When compaction is disabled (the default), requests that cause the conversation history to exceed the model's context window will fail with HTTP 413 (Prompt Too Long). Clients must manage conversation length themselves, for example by starting new conversations or deleting old ones.
@@ -158,7 +189,11 @@ Compaction summarizes older turns, so fine-grained details from early in the con
 
 **Does compaction use extra tokens?**
 
-Yes. The summarization step requires an additional LLM call, which consumes tokens. These tokens are counted against the user's quota. The trade-off is that the conversation can continue instead of failing with HTTP 413.
+Yes. The summarization step requires an additional LLM call, which consumes tokens. On `/v1/query` and `/v1/streaming_query` these tokens are counted against the user's quota and are included in the `input_tokens` and `output_tokens` of the request that triggered the summarization. `/v1/responses` charges the quota and leaves `usage` as the provider reported it; `/a2a` has no quota. See [Token usage and quota](#token-usage-and-quota). The trade-off is that the conversation can continue instead of failing with HTTP 413.
+
+**Why did one request use many more tokens than the ones before it?**
+
+On `/v1/query` and `/v1/streaming_query`, that request triggered a summarization. Its `input_tokens` include the older turns that were sent to the LLM to be summarized, and its `output_tokens` include the summary. `context_status` is `"summarized"` on that request, and also on the requests after it that are served from the stored summary and do not pay for it again.
 
 **Can I use compaction with all LLM providers?**
 

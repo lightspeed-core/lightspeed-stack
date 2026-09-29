@@ -1,6 +1,7 @@
 """Handler for REST API call to provide answer to query using Response API."""
 
 import datetime
+from functools import partial
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request
@@ -46,8 +47,10 @@ from utils.otel_tracing import (
     anonymize_value,
     set_span_attributes,
 )
+from utils.pending_turn import pending_turn
 from utils.query import (
     consume_query_tokens,
+    consume_summarization_tokens,
     prepare_input,
     store_query_results,
     validate_attachments_metadata,
@@ -246,6 +249,8 @@ async def _handle_query_with_tracing(
         cache=configured_conversation_cache(),
         user_id=user_id,
         skip_user_id_check=_skip_userid_check,
+        endpoint_path=endpoint_path,
+        charge=partial(consume_summarization_tokens, user_id),
     )
     responses_params = compaction.params
 
@@ -265,17 +270,22 @@ async def _handle_query_with_tracing(
         if a.content_type in IMAGE_CONTENT_TYPES
     ] or None
 
-    # Retrieve response using Responses API
-    turn_summary = await retrieve_agent_response(
-        client,
-        responses_params,
-        moderation_result,
-        endpoint_path,
-        compaction.original_input if compaction.compacted else None,
-        shield_ids=query_request.shield_ids,
-        no_tools=bool(query_request.no_tools),
-        image_attachments=image_attachments,
-    )
+    # Retrieve response using Responses API. In compacted mode OGX does not
+    # store the turn; the scope fails the request if nobody tried to store the
+    # turn or dropped it on purpose.
+    async with pending_turn(
+        client, responses_params, compaction.original_input
+    ) as turn:
+        turn_summary = await retrieve_agent_response(
+            client,
+            responses_params,
+            moderation_result,
+            endpoint_path,
+            turn,
+            shield_ids=query_request.shield_ids,
+            no_tools=bool(query_request.no_tools),
+            image_attachments=image_attachments,
+        )
 
     if moderation_result.decision == "passed":
         # Combine inline RAG results (BYOK + Solr) with tool-based RAG results for the transcript
@@ -308,6 +318,9 @@ async def _handle_query_with_tracing(
         model_id=responses_params.model,
         token_usage=turn_summary.token_usage,
     )
+    # The turn reports the summarization calls made for it as part of its
+    # usage. They were charged when they were made.
+    reported_usage = turn_summary.token_usage + compaction.summarization_usage
 
     logger.info("Getting available quotas")
     available_quotas = get_available_quotas(
@@ -340,8 +353,8 @@ async def _handle_query_with_tracing(
         root_span,
         {
             SpanAttributes.SESSION_ID: conversation_id,
-            SpanAttributes.LLM_USAGE_INPUT_TOKENS: turn_summary.token_usage.input_tokens,
-            SpanAttributes.LLM_USAGE_OUTPUT_TOKENS: turn_summary.token_usage.output_tokens,
+            SpanAttributes.LLM_USAGE_INPUT_TOKENS: reported_usage.input_tokens,
+            SpanAttributes.LLM_USAGE_OUTPUT_TOKENS: reported_usage.output_tokens,
             SpanAttributes.OUTPUT: turn_summary.llm_response,
         },
     )
@@ -358,7 +371,7 @@ async def _handle_query_with_tracing(
         referenced_documents=turn_summary.referenced_documents,
         truncated=False,
         context_status=compaction.context_status,
-        input_tokens=turn_summary.token_usage.input_tokens,
-        output_tokens=turn_summary.token_usage.output_tokens,
+        input_tokens=reported_usage.input_tokens,
+        output_tokens=reported_usage.output_tokens,
         available_quotas=available_quotas,
     )

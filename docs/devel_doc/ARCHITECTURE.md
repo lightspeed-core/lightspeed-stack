@@ -274,9 +274,9 @@ The system defines 30+ actions that can be authorized. Examples (see `docs/user_
    - Update quota counters
 
 3. **On Error:**
-   - If LLM call fails, no tokens are consumed
-   - Quota remains unchanged
-   - User can retry the request
+   - If LLM call fails, no tokens are consumed for that call
+   - Quota remains unchanged, with one exception: the calls conversation compaction made to summarize older turns for the request were charged when they were made
+   - User can retry the request; the summary is kept, so the retry does not pay for it again
 
 ---
 
@@ -391,7 +391,7 @@ The compaction system is split into two layers:
    - Marker persistence (`[lightspeed:compaction-summary]` sentinel in conversation items)
    - `CompactionStartedEvent` emission for streaming progress indicators
    - `apply_compaction()` (async generator) — Main entry point used by all endpoints
-   - `store_compacted_turn()` — Appends user query + LLM output when in compacted mode
+   - `PendingTurn` (`utils/pending_turn.py`) — Owns the turns the endpoints store themselves: appends user query + LLM output when in compacted mode, once per request
 
 **Data Flow:**
 

@@ -790,6 +790,10 @@ class TestA2AAgentExecutor:
         mock_responses_params = mocker.Mock()
         mock_responses_params.model = "test-model"
         mock_responses_params.conversation = "conv_x"
+        mock_responses_params.input = "What is OpenShift?"
+        mock_responses_params.store = True
+        mock_responses_params.previous_response_id = None
+        mock_responses_params.omit_conversation = False
         mocker.patch(
             "app.endpoints.a2a.prepare_responses_params",
             new=mocker.AsyncMock(return_value=mock_responses_params),
@@ -873,6 +877,10 @@ class TestA2AAgentExecutor:
         mock_responses_params = mocker.Mock()
         mock_responses_params.model = "test-model"
         mock_responses_params.conversation = "conv_x"
+        mock_responses_params.input = "What is OpenShift?"
+        mock_responses_params.store = True
+        mock_responses_params.previous_response_id = None
+        mock_responses_params.omit_conversation = False
         mocker.patch(
             "app.endpoints.a2a.prepare_responses_params",
             new=mocker.AsyncMock(return_value=mock_responses_params),
@@ -950,6 +958,10 @@ class TestA2AAgentExecutor:
         mock_params = mocker.Mock()
         mock_params.model = "test-model"
         mock_params.conversation = "conv_x"
+        mock_params.input = "What is OpenShift?"
+        mock_params.store = True
+        mock_params.previous_response_id = None
+        mock_params.omit_conversation = False
         mock_params.skills = None
         mocker.patch(
             "app.endpoints.a2a.prepare_responses_params",
@@ -1277,6 +1289,10 @@ class TestA2AOtelSpans:
         mock_responses_params = mocker.Mock()
         mock_responses_params.model = "watsonx/granite-3.1"
         mock_responses_params.conversation = "conv_x"
+        mock_responses_params.input = "What is OpenShift?"
+        mock_responses_params.store = True
+        mock_responses_params.previous_response_id = None
+        mock_responses_params.omit_conversation = False
         mocker.patch(
             "app.endpoints.a2a.prepare_responses_params",
             new=mocker.AsyncMock(return_value=mock_responses_params),
@@ -1284,6 +1300,8 @@ class TestA2AOtelSpans:
 
         compaction_result = mocker.Mock()
         compaction_result.params = mock_responses_params
+        compaction_result.compacted = False
+        compaction_result.original_input = None
         mocker.patch(
             "app.endpoints.a2a.apply_compaction_blocking",
             new=mocker.AsyncMock(return_value=compaction_result),
@@ -1373,6 +1391,10 @@ class TestA2AOtelSpans:
         mock_responses_params = mocker.Mock()
         mock_responses_params.model = "openai/gpt-4"
         mock_responses_params.conversation = "conv_x"
+        mock_responses_params.input = "What is OpenShift?"
+        mock_responses_params.store = True
+        mock_responses_params.previous_response_id = None
+        mock_responses_params.omit_conversation = False
         mocker.patch(
             "app.endpoints.a2a.prepare_responses_params",
             new=mocker.AsyncMock(return_value=mock_responses_params),
@@ -1380,6 +1402,8 @@ class TestA2AOtelSpans:
 
         compaction_result = mocker.Mock()
         compaction_result.params = mock_responses_params
+        compaction_result.compacted = False
+        compaction_result.original_input = None
         mocker.patch(
             "app.endpoints.a2a.apply_compaction_blocking",
             new=mocker.AsyncMock(return_value=compaction_result),
@@ -1483,6 +1507,10 @@ class TestA2AOtelSpans:
         mock_responses_params = mocker.Mock()
         mock_responses_params.model = "test-model"
         mock_responses_params.conversation = "conv_x"
+        mock_responses_params.input = "What is OpenShift?"
+        mock_responses_params.store = True
+        mock_responses_params.previous_response_id = None
+        mock_responses_params.omit_conversation = False
         mocker.patch(
             "app.endpoints.a2a.prepare_responses_params",
             new=mocker.AsyncMock(return_value=mock_responses_params),
@@ -1490,6 +1518,8 @@ class TestA2AOtelSpans:
 
         compaction_result = mocker.Mock()
         compaction_result.params = mock_responses_params
+        compaction_result.compacted = False
+        compaction_result.original_input = None
         mocker.patch(
             "app.endpoints.a2a.apply_compaction_blocking",
             new=mocker.AsyncMock(return_value=compaction_result),
@@ -1701,6 +1731,10 @@ class TestA2AOtelSpans:
         mock_responses_params = mocker.Mock()
         mock_responses_params.model = "test-model"
         mock_responses_params.conversation = "conv_x"
+        mock_responses_params.input = "What is OpenShift?"
+        mock_responses_params.store = True
+        mock_responses_params.previous_response_id = None
+        mock_responses_params.omit_conversation = False
         mocker.patch(
             "app.endpoints.a2a.prepare_responses_params",
             new=mocker.AsyncMock(return_value=mock_responses_params),
@@ -1708,6 +1742,8 @@ class TestA2AOtelSpans:
 
         compaction_result = mocker.Mock()
         compaction_result.params = mock_responses_params
+        compaction_result.compacted = False
+        compaction_result.original_input = None
         mocker.patch(
             "app.endpoints.a2a.apply_compaction_blocking",
             new=mocker.AsyncMock(return_value=compaction_result),

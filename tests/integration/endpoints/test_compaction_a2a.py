@@ -4,20 +4,9 @@
 # pylint: disable=too-many-positional-arguments
 
 import asyncio
-import json
-import uuid
-from collections.abc import AsyncIterator
 from typing import Any
 
 import pytest
-from a2a.types import (
-    AgentCapabilities,
-    AgentCard,
-    AgentProvider,
-)
-from fastapi import Request
-from ogx_api.openai_responses import OpenAIResponseMessage
-from pydantic_ai import AgentRunResultEvent
 from pytest_mock import AsyncMockType, MockerFixture
 
 from app.endpoints.a2a import handle_a2a_jsonrpc_post
@@ -30,101 +19,19 @@ from tests.integration.endpoints._compaction_helpers import (
     CONV_ID_LLAMA,
     DEFAULT_MODEL_RESPONSE,
     DEFAULT_SUMMARY_TEXT,
+    FAKE_AGENT_CARD,
     TEST_MODEL,
     assert_marker_count,
     await_lock_contention,
+    build_a2a_request,
     collect_items,
     enable_compaction,
     marker,
+    mock_a2a_agent,
     msg,
     patch_get_all_conversation_items,
     verify_store_content,
 )
-
-_FAKE_AGENT_CARD = AgentCard(
-    name="Test Agent",
-    description="Test",
-    version="0.0.1",
-    url="http://localhost:8080/a2a",
-    provider=AgentProvider(organization="test", url="http://test"),
-    skills=[],
-    default_input_modes=["text/plain"],
-    default_output_modes=["text/plain"],
-    capabilities=AgentCapabilities(streaming=False),
-    protocol_version="0.3.0",
-)
-
-
-def _build_a2a_request(user_input: str) -> Request:
-    """Build a FastAPI Request with a JSON-RPC ``message/send`` body.
-
-    Args:
-        user_input: The user message text to include in the A2A request.
-
-    Returns:
-        A FastAPI Request object with the JSON-RPC body ready for consumption.
-    """
-    body_dict = {
-        "jsonrpc": "2.0",
-        "id": str(uuid.uuid4()),
-        "method": "message/send",
-        "params": {
-            "message": {
-                "role": "user",
-                "parts": [{"type": "text", "text": user_input}],
-                "messageId": f"msg-{uuid.uuid4()}",
-                "contextId": f"ctx-{uuid.uuid4()}",
-            }
-        },
-    }
-    body_bytes = json.dumps(body_dict).encode()
-
-    async def receive() -> dict[str, Any]:
-        """Return the pre-built body as an ASGI receive event."""
-        return {"type": "http.request", "body": body_bytes, "more_body": False}
-
-    return Request(
-        scope={
-            "type": "http",
-            "method": "POST",
-            "path": "/a2a",
-            "root_path": "",
-            "query_string": b"",
-            "headers": [
-                (b"content-type", b"application/json"),
-            ],
-        },
-        receive=receive,
-    )
-
-
-def _mock_a2a_agent(mocker: MockerFixture) -> Any:
-    """Build a mock pydantic-ai agent that yields a single result event.
-
-    Args:
-        mocker: pytest-mock fixture.
-
-    Returns:
-        A mock agent whose ``run_stream_events`` returns a single result event.
-    """
-    mock_run_result = mocker.MagicMock()
-    mock_run_result.response.text = "Test A2A response"
-    result_event = mocker.MagicMock(spec=AgentRunResultEvent)
-    result_event.result = mock_run_result
-
-    async def _event_stream() -> AsyncIterator[Any]:
-        """Yield a single agent run result event."""
-        yield result_event
-
-    mock_stream_ctx = mocker.AsyncMock()
-    mock_stream_ctx.__aenter__ = mocker.AsyncMock(return_value=_event_stream())
-    mock_stream_ctx.__aexit__ = mocker.AsyncMock(return_value=False)
-    mock_agent = mocker.MagicMock()
-    mock_agent.run_stream_events.return_value = mock_stream_ctx
-    mock_agent.model.last_output_items = [
-        OpenAIResponseMessage(role="assistant", content=DEFAULT_MODEL_RESPONSE)
-    ]
-    return mock_agent
 
 
 def _setup_a2a_compaction_mocks(
@@ -148,7 +55,7 @@ def _setup_a2a_compaction_mocks(
     """
     mocker.patch(
         "app.endpoints.a2a.get_lightspeed_agent_card",
-        return_value=_FAKE_AGENT_CARD,
+        return_value=FAKE_AGENT_CARD,
     )
 
     async def _fake_prepare(client, query_request, *args, **kwargs):
@@ -167,7 +74,7 @@ def _setup_a2a_compaction_mocks(
         side_effect=_fake_prepare,
     )
 
-    mock_agent = _mock_a2a_agent(mocker)
+    mock_agent = mock_a2a_agent(mocker)
     mock_build_agent = mocker.patch(
         "app.endpoints.a2a.build_agent",
         return_value=mock_agent,
@@ -222,7 +129,7 @@ class TestA2AConversationCompaction:
 
         mock_summarize, mock_build_agent = _setup_a2a_compaction_mocks(mocker, items)
 
-        request = _build_a2a_request("What else can you help with?")
+        request = build_a2a_request("What else can you help with?")
         await handle_a2a_jsonrpc_post(request=request, auth=test_auth, mcp_headers={})
 
         mock_summarize.assert_awaited_once()
@@ -287,7 +194,7 @@ class TestA2AConversationCompaction:
 
         mock_summarize, mock_build_agent = _setup_a2a_compaction_mocks(mocker, items)
 
-        request = _build_a2a_request("What else can you help with?")
+        request = build_a2a_request("What else can you help with?")
         await handle_a2a_jsonrpc_post(request=request, auth=test_auth, mcp_headers={})
 
         mock_summarize.assert_awaited_once()
@@ -349,7 +256,7 @@ class TestA2AConversationCompaction:
 
         mock_summarize, mock_build_agent = _setup_a2a_compaction_mocks(mocker, items)
 
-        request = _build_a2a_request("Any updates?")
+        request = build_a2a_request("Any updates?")
         await handle_a2a_jsonrpc_post(request=request, auth=test_auth, mcp_headers={})
 
         mock_summarize.assert_not_called()
@@ -406,7 +313,7 @@ class TestA2AConversationCompaction:
 
         mock_summarize, mock_build_agent = _setup_a2a_compaction_mocks(mocker, items)
 
-        request = _build_a2a_request("short question")
+        request = build_a2a_request("short question")
         await handle_a2a_jsonrpc_post(request=request, auth=test_auth, mcp_headers={})
 
         mock_summarize.assert_not_called()
@@ -434,7 +341,7 @@ class TestA2AConversationCompaction:
 
         _, mock_build_agent = _setup_a2a_compaction_mocks(mocker, [])
 
-        request = _build_a2a_request("What is Ansible?")
+        request = build_a2a_request("What is Ansible?")
         await handle_a2a_jsonrpc_post(request=request, auth=test_auth, mcp_headers={})
 
         agent_params = mock_build_agent.call_args[0][1]
@@ -472,7 +379,7 @@ class TestA2AConversationCompaction:
         mock_summarize, mock_build_agent = _setup_a2a_compaction_mocks(mocker, items)
 
         # --- Round 1 ---
-        request = _build_a2a_request("What else can you help with?")
+        request = build_a2a_request("What else can you help with?")
         await handle_a2a_jsonrpc_post(request=request, auth=test_auth, mcp_headers={})
 
         mock_summarize.assert_awaited_once()
@@ -511,7 +418,7 @@ class TestA2AConversationCompaction:
 
         mock_summarize.reset_mock()
 
-        request = _build_a2a_request("Follow-up question")
+        request = build_a2a_request("Follow-up question")
         await handle_a2a_jsonrpc_post(request=request, auth=test_auth, mcp_headers={})
 
         mock_summarize.assert_awaited_once()
@@ -565,13 +472,13 @@ class TestA2AConversationCompaction:
 
         entered, release, task2_entered = patch_get_all_conversation_items(mocker)
 
-        request1 = _build_a2a_request("What is Ansible?")
+        request1 = build_a2a_request("What is Ansible?")
         task1 = asyncio.create_task(
             handle_a2a_jsonrpc_post(request=request1, auth=test_auth, mcp_headers={})
         )
         await entered.wait()
 
-        request2 = _build_a2a_request("What is RHEL?")
+        request2 = build_a2a_request("What is RHEL?")
         task2 = asyncio.create_task(
             handle_a2a_jsonrpc_post(request=request2, auth=test_auth, mcp_headers={})
         )

@@ -23,6 +23,22 @@ class TokenCounter:
     input_tokens_counted: int = 0
     llm_calls: int = 0
 
+    def __add__(self, other: "TokenCounter") -> "TokenCounter":
+        """Return the usage of two sets of LLM calls taken together.
+
+        Parameters:
+            other: The token counter to add.
+
+        Returns:
+            A new counter holding the sums; neither operand is changed.
+        """
+        return TokenCounter(
+            input_tokens=self.input_tokens + other.input_tokens,
+            output_tokens=self.output_tokens + other.output_tokens,
+            input_tokens_counted=self.input_tokens_counted + other.input_tokens_counted,
+            llm_calls=self.llm_calls + other.llm_calls,
+        )
+
     def __str__(self) -> str:
         """
         Return a human-readable summary of the token usage stored in this TokenCounter.

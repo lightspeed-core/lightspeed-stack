@@ -311,10 +311,11 @@ Add `compaction` field to the root `Configuration` class.
 |----------------------------------------|----------------------------------------------------------------------------|
 | `pyproject.toml`                       | Add `tiktoken` dependency                                                  |
 | `src/utils/token_estimator.py`         | New module: `estimate_tokens()`, `estimate_conversation_tokens()`          |
-| `src/utils/compaction.py`              | New module: summarization logic, partitioning, additive summary management |
+| `src/utils/compaction.py`              | New module: summarization logic, partitioning, additive summary management; reports the usage of each LLM call it makes — LCORE-3910 |
 | `src/models/config.py`                 | Add `CompactionConfiguration` (near `ConversationHistoryConfiguration`)    |
 | `src/configuration.py`                 | Add `compaction_configuration` property to `AppConfig` singleton           |
 | `src/utils/conversation_compaction.py` | New module: `apply_compaction()` / `apply_compaction_blocking()`, `needs_compaction_path()`, marker helpers, per-conversation lock |
+| `src/utils/pending_turn.py`            | `PendingTurn`, the owner of every turn the endpoints store themselves: decides whether the turn is ours, stores it against the input as it arrived, and stores it once — LCORE-3908 |
 | `src/models/common/responses/responses_api_params.py` | `omit_conversation` flag — drops the `conversation` parameter from the request body in compacted mode |
 | `src/app/endpoints/query.py`           | Call `apply_compaction_blocking()` after preparing params; store the turn in compacted mode |
 | `src/app/endpoints/streaming_query.py` | Compaction-aware SSE path that emits the `compaction` event before summarizing (R12) |
@@ -331,9 +332,11 @@ reusable unit in `src/utils/conversation_compaction.py` that each endpoint
 calls after its params are prepared:
 
 - `apply_compaction_blocking(client, params, inference_config, compaction_config)`
-  returns a `CompactionResult` (possibly-rewritten params, a `summarized`
-  flag, and the `original_input`). Non-streaming `/v1/query`, A2A, and
-  `/v1/responses` use this.
+  returns a `CompactionResult` (possibly-rewritten params, a `compacted`
+  flag, the `original_input`, and the `summarization_usage`). Non-streaming
+  `/v1/query`, A2A, and `/v1/responses` use this. The endpoints also pass
+  `endpoint_path` and, where there is a quota, `charge`; see
+  [Who pays for the summarization calls](#who-pays-for-the-summarization-calls).
 - `apply_compaction(..., emit_events=True)` is the async-generator variant that
   yields a `CompactionStartedEvent` before the summarization LLM call; the
   native `/v1/streaming_query` SSE path uses it to satisfy R12.
@@ -345,6 +348,67 @@ calls after its params are prepared:
 When compaction is active, the endpoint builds explicit input, the
 `conversation` parameter is omitted (via `ResponsesApiParams.omit_conversation`),
 and the completed turn is appended to the conversation items afterward.
+
+That append has one owner, `PendingTurn` in `src/utils/pending_turn.py`
+(LCORE-3908). An endpoint creates it from the parameters the request is sent
+with and the `original_input` of the `CompactionResult`, and reports how the
+turn ended: `store_completed`, `store_blocked`, `store_interrupted` or `drop`.
+The first report settles the turn and every later one does nothing, so a turn is
+stored once even when several paths of a request want to store it (the end of a
+stream, the cancellation handler, the interrupt callback). `PendingTurn` also
+covers the other turns OGX does not store: a request a shield blocked, an
+interrupted stream, a continuation from `previous_response_id`.
+
+A compacted request that loses its turn through a change in the code fails.
+Building a `PendingTurn` for compacted parameters without the original input
+raises `ValueError`, and `ensure_settled()` raises `TurnNotStoredError` when a
+compacted request reaches the end of its handler and nobody tried to store its
+turn or dropped it on purpose. `/v1/query` runs inside the `pending_turn()`
+scope, which makes that check when it is left; the streaming paths,
+`/v1/responses` and A2A make it after their write. Before this, a lost write
+was silent: the conversation stopped growing and nothing failed (LCORE-3883).
+
+The check does not cover three endings, which store nothing and are rows of the
+table below: a stream the client stops reading, a `/v1/responses` stream without
+a final response, and a failed write where the failure is logged.
+
+The shield capabilities (question validity, Granite Guardian) are the one writer
+outside the owner. They store the turn they rejected from inside the agent run,
+and only when the model was handed the conversation, so never in compacted mode.
+
+What is stored, per endpoint and per way a turn can end. "OGX" means the
+`conversation` parameter was sent and OGX stores the turn itself. The last
+column says what a failed write does to the request.
+
+| Endpoint | Turn ended | Not compacted | Compacted | Failed write |
+|---|---|---|---|---|
+| `/v1/query` | completed | OGX | stored | request fails |
+| | blocked by a shield | stored | not stored (LCORE-3788) | request fails |
+| | model call failed | not stored | not stored | |
+| | run did not finish with success | OGX | not stored | |
+| `/v1/streaming_query` | completed, also when the run did not finish with success | OGX | stored when the stream ends | logged |
+| | blocked by a shield | stored before the stream starts | stored when the stream ends | request fails / logged |
+| | interrupted by the client | stored, with the answer so far | stored, with the answer so far | logged |
+| | blocked by a shield, then interrupted | the refusal, stored once before the stream; the interrupt adds nothing | stored, with the answer so far | logged |
+| | client stopped reading | OGX | not stored | |
+| `/v1/responses` | completed, incomplete or failed | OGX; stored when continuing from `previous_response_id` | stored | request fails; a stream ends before `[DONE]` |
+| | blocked by a shield | stored | stored | request fails |
+| | stream without a final response | not stored | not stored | |
+| | `store: false` | not stored | never compacted | |
+| A2A | completed | OGX | stored | logged |
+| | agent run failed | not stored | not stored | |
+
+`tests/integration/endpoints/test_turn_persistence.py` pins the table. It runs
+the real handlers and compares the conversation item by item after the request.
+The compacted column is covered row by row; the other column for the rows where
+lightspeed-stack stores the turn, and for a completed turn on each endpoint. The
+last column is covered for a completed turn on each endpoint, for a blocked and
+for an interrupted stream.
+
+The row "blocked by a shield, then interrupted" is the one place where this
+change alters what is stored. The interrupt used to store the turn a second
+time, with the interruption notice for an answer. It still records the turn in
+the database.
 
 ## Fetching conversation history
 
@@ -384,6 +448,50 @@ Example config files go in `examples/`.
 | Post-trigger turn | 1 LLM call          | 1 LLM call (no change)                  |
 
 Compaction adds latency only on the trigger turn. In PoC testing, compaction turns took 14-40 seconds vs 9-20 seconds for normal turns (gpt-4o-mini).
+
+## Who pays for the summarization calls
+
+The provider bills the summarization call and the fold call like any other, so
+lightspeed-stack counts them (LCORE-3910). Before that, their usage was
+discarded: a user could go over the quota without it ever showing, and by more
+the longer the conversation was.
+
+`summarize_chunk()` and `recursively_resummarize()` report each call they make
+to a `count_call` callback, with the model and the usage the provider reported.
+They do it as soon as the response arrived and before they look at it, so a
+call that returned no text is reported too. `apply_compaction()` takes the
+path of the endpoint and a `charge` callback, and counts the calls with
+`SummarizationCalls` (`src/utils/compaction_usage.py`): for each call it
+records the token and call metrics under that endpoint, calls `charge`, and
+adds the usage up. The sum is handed to the endpoint as
+`CompactionResult.summarization_usage`.
+
+| Endpoint               | Quota   | Counts the client sees                                   |
+|------------------------|---------|----------------------------------------------------------|
+| `/v1/query`            | charged | `input_tokens` / `output_tokens` include summarization   |
+| `/v1/streaming_query`  | charged | the same, in the `end` event                             |
+| `/v1/responses`        | charged | `usage` as the provider reported it, the answer alone    |
+| `/a2a`                 | none    | none; the endpoint has no quota, the metrics are recorded |
+
+The endpoints with a quota pass `consume_summarization_tokens()`
+(`src/utils/query.py`), bound to the user, as `charge`. A call is therefore
+charged when it returned, and not together with the turn: the summary is
+written before the model is asked for the answer and is kept whatever becomes
+of the turn, so the call is a cost of the conversation. It is charged also
+when the turn is blocked, fails or is interrupted, and when compaction itself
+fails after the call (the marker cannot be written, the fold fails). `/a2a`
+passes no `charge`.
+
+`/v1/query` and `/v1/streaming_query` add `summarization_usage` to the usage of
+the turn in what they report to the client and set on the request span
+(`llm.usage.input_tokens`, `llm.usage.output_tokens`). The sum is not stored
+with the turn; the token usage history receives the charges one by one.
+`/v1/responses` passes the `usage` object of the response through unchanged, to
+stay a drop-in for clients of the OpenAI Responses API.
+
+Two limits. A call that fails, or is cancelled before its response arrived,
+has no usage to count, whatever the provider bills for it. And a call the
+provider reports no usage for is counted as a call and charges nothing.
 
 # Open Questions for Future Work
 

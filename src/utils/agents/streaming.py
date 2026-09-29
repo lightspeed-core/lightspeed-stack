@@ -43,7 +43,6 @@ from models.common.agents import (
     TurnCompleteStreamPayload,
 )
 from models.common.query import Attachment
-from models.common.responses import ResponseInput
 from models.common.responses.contexts import ResponseGeneratorContext
 from models.common.responses.responses_api_params import ResponsesApiParams
 from models.common.turn_summary import ContextStatus, TurnSummary
@@ -63,15 +62,14 @@ from utils.agents.tool_processor import (
 from utils.conversation_compaction import (
     agent_prompt_text,
     reject_image_attachments_in_compacted_mode,
-    store_compacted_turn,
 )
-from utils.conversations import append_turn_items_to_conversation
 from utils.otel_tracing import (
     SpanAttributes,
     SpanEvents,
     add_span_event,
     set_span_attributes,
 )
+from utils.pending_turn import PendingTurn
 from utils.pydantic_ai_helpers import build_agent, captured_output_items
 from utils.query import (
     build_multimodal_input,
@@ -91,6 +89,7 @@ from utils.stream_interrupts import (
     register_interrupt_callback,
 )
 from utils.streaming_sse import shield_violation_generator
+from utils.token_counter import TokenCounter
 
 type AgentDispatchEvent = AgentStreamEvent | AgentRunResultEvent
 
@@ -108,6 +107,7 @@ async def retrieve_agent_response_generator(
     endpoint_path: str,
     no_tools: bool = False,
     image_attachments: Optional[list[Attachment]] = None,
+    turn: Optional[PendingTurn] = None,
 ) -> tuple[AsyncIterator[str], TurnSummary]:
     """Return the SSE generator and mutable turn summary for an agent run.
 
@@ -117,6 +117,9 @@ async def retrieve_agent_response_generator(
         endpoint_path: Endpoint path used for metric labeling.
         no_tools: Whether to skip tool processing.
         image_attachments: Image attachments for multimodal prompt construction.
+        turn: The pending turn of the request, shared with
+            :func:`generate_agent_response` so that the turn is stored once
+            (LCORE-3908). Created from the parameters when not given.
 
     Returns:
         Tuple of SSE async iterator and mutable turn summary.
@@ -127,13 +130,13 @@ async def retrieve_agent_response_generator(
             turn_summary.llm_response = context.moderation_result.message
             turn_summary.id = context.moderation_result.moderation_id
             turn_summary.output_items = [context.moderation_result.refusal_response]
+            # Outside compacted mode the refusal turn is stored before the
+            # stream starts. In compacted mode it is stored when the stream
+            # ends, as the output of the turn.
             if not responses_params.omit_conversation:
-                await append_turn_items_to_conversation(
-                    context.client,
-                    responses_params.conversation,
-                    responses_params.input,
-                    [context.moderation_result.refusal_response],
-                )
+                if turn is None:
+                    turn = PendingTurn.for_request(context.client, responses_params)
+                await turn.store_blocked(context.moderation_result.refusal_response)
             media_type = context.query_request.media_type or MEDIA_TYPE_JSON
             return (
                 shield_violation_generator(
@@ -169,9 +172,8 @@ async def retrieve_agent_response_generator(
 
 async def _persist_compacted_turn(
     context: ResponseGeneratorContext,
-    responses_params: ResponsesApiParams,
+    turn: PendingTurn,
     turn_summary: TurnSummary,
-    original_input: Optional[ResponseInput],
     persist_guard: list[bool],
 ) -> None:
     """Append a completed compacted turn to the conversation (LCORE-3883).
@@ -181,24 +183,18 @@ async def _persist_compacted_turn(
     recent-turn buffer and the audit history intact for the next request.
 
     Parameters:
-        context: Streaming request context, providing the OGX client.
-        responses_params: Prepared Responses API parameters.
+        context: Streaming request context, used for error reporting.
+        turn: The pending turn of the request. Nothing is written when OGX
+            stores the turn itself.
         turn_summary: Completed turn, carrying the captured output items.
-        original_input: The user input before the explicit-input rewrite. When
-            ``None`` the request was not compacted and nothing is written.
-        persist_guard: Single-element flag shared with the interrupt path, so a
-            turn is persisted at most once.
+        persist_guard: Single-element flag shared with the interrupt path, so
+            that only one of them finishes the turn.
     """
-    if original_input is None or persist_guard[0]:
+    if not turn.ours or persist_guard[0]:
         return
     persist_guard[0] = True
     try:
-        await store_compacted_turn(
-            context.client,
-            responses_params.conversation,
-            original_input,
-            turn_summary.output_items,
-        )
+        await turn.store_completed(turn_summary.output_items)
     except Exception:  # pylint: disable=broad-except
         # The client already has its answer, so the stream still succeeds; the
         # cost of the failure is that the next request loses this turn.
@@ -216,8 +212,9 @@ async def generate_agent_response(  # pylint: disable=too-many-statements
     background_topic_summary_tasks: list[asyncio.Task[None]],
     root_span: trace.Span,
     emit_start: bool = True,
-    original_input: Optional[ResponseInput] = None,
+    turn: Optional[PendingTurn] = None,
     context_status: ContextStatus = "full",
+    summarization_usage: Optional[TokenCounter] = None,
 ) -> AsyncIterator[str]:
     """Wrap an agent SSE generator with cleanup logic.
 
@@ -234,23 +231,34 @@ async def generate_agent_response(  # pylint: disable=too-many-statements
         root_span: OpenTelemetry root span for this request.
         emit_start: Whether to emit the SSE start event. False when the caller
             (the compaction-aware wrapper) has already emitted it.
-        original_input: In compacted mode, the original user input before the
-            explicit-input rewrite. Used to persist the completed turn with its
-            structured input (preserving attachments); ``None`` otherwise.
+        turn: The pending turn of the request, which stores the turn when OGX
+            does not (LCORE-3908). Required in compacted mode, where it
+            carries the input as it arrived; created from the parameters
+            otherwise.
         context_status: Whether the conversation context was sent in full
             ("full") or older turns were replaced by a summary ("summarized").
             Reported to the client in the SSE end event.
+        summarization_usage: Usage of the summarization calls compaction made
+            for this request (LCORE-3910). They were charged when they were
+            made; here they are added to the usage the turn reports.
 
     Yields:
         SSE-formatted strings from the wrapped generator.
+
+    Raises:
+        ValueError: When the request is compacted and no pending turn is given.
+        TurnNotStoredError: When a compacted stream ran to its end and nobody
+            tried to store its turn.
     """
     media_type = context.query_request.media_type or MEDIA_TYPE_JSON
+    if turn is None:
+        turn = PendingTurn.for_request(context.client, responses_params)
     persist_guard = register_interrupt_callback(
         context,
         responses_params,
         turn_summary,
         background_topic_summary_tasks,
-        original_input,
+        turn,
     )
     stream_completed = False
     if emit_start:
@@ -290,7 +298,7 @@ async def generate_agent_response(  # pylint: disable=too-many-statements
                 responses_params,
                 turn_summary,
                 background_topic_summary_tasks,
-                original_input,
+                turn,
             )
         yield serialize_event(
             TokenStreamPayload.create(
@@ -309,9 +317,10 @@ async def generate_agent_response(  # pylint: disable=too-many-statements
         root_span.end()
         return
 
-    await _persist_compacted_turn(
-        context, responses_params, turn_summary, original_input, persist_guard
-    )
+    await _persist_compacted_turn(context, turn, turn_summary, persist_guard)
+    # The stream ran to its end. Fail if its turn had to be stored here and
+    # neither this path nor an interrupt tried to.
+    turn.ensure_settled()
 
     should_generate_topic_summary = (
         context.query_request.conversation_id is None
@@ -350,6 +359,9 @@ async def generate_agent_response(  # pylint: disable=too-many-statements
         model_id=responses_params.model,
         token_usage=turn_summary.token_usage,
     )
+    # The turn reports the summarization calls made for it as part of its
+    # usage. They were charged when they were made.
+    reported_usage = turn_summary.token_usage + (summarization_usage or TokenCounter())
     logger.info("Getting available quotas")
     available_quotas = get_available_quotas(
         quota_limiters=configuration.quota_limiters,
@@ -358,8 +370,8 @@ async def generate_agent_response(  # pylint: disable=too-many-statements
     end_payload = EndStreamPayload.create(
         referenced_documents=turn_summary.referenced_documents,
         context_status=context_status,
-        input_tokens=turn_summary.token_usage.input_tokens,
-        output_tokens=turn_summary.token_usage.output_tokens,
+        input_tokens=reported_usage.input_tokens,
+        output_tokens=reported_usage.output_tokens,
         available_quotas=available_quotas,
     )
     yield serialize_event(end_payload, media_type)
@@ -384,12 +396,8 @@ async def generate_agent_response(  # pylint: disable=too-many-statements
         root_span,
         {
             SpanAttributes.SESSION_ID: context.conversation_id,
-            SpanAttributes.LLM_USAGE_INPUT_TOKENS: (
-                turn_summary.token_usage.input_tokens
-            ),
-            SpanAttributes.LLM_USAGE_OUTPUT_TOKENS: (
-                turn_summary.token_usage.output_tokens
-            ),
+            SpanAttributes.LLM_USAGE_INPUT_TOKENS: reported_usage.input_tokens,
+            SpanAttributes.LLM_USAGE_OUTPUT_TOKENS: reported_usage.output_tokens,
             SpanAttributes.OUTPUT: turn_summary.llm_response,
         },
     )

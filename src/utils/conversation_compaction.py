@@ -44,7 +44,7 @@ boundary between summarized history and the recent verbatim turns.
 import asyncio
 from collections.abc import AsyncIterator, Sequence
 from contextlib import asynccontextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Optional, cast
 
 from fastapi import HTTPException
@@ -62,15 +62,17 @@ from models.common.turn_summary import ContextStatus
 from models.compaction import ConversationSummary
 from models.config import CompactionConfiguration, InferenceConfiguration
 from utils.compaction import (
+    CallCounter,
     partition_conversation,
     recursively_resummarize,
     summarize_chunk,
 )
+from utils.compaction_usage import SummarizationCalls
 from utils.conversations import (
-    append_turn_items_to_conversation,
     build_add_items_request,
     get_all_conversation_items,
 )
+from utils.token_counter import TokenCounter
 from utils.token_estimator import (
     DEFAULT_ENCODING_NAME,
     estimate_conversation_tokens,
@@ -175,14 +177,21 @@ class CompactionResult:
         original_input: The new user query exactly as it arrived (before the
             explicit-input rewrite). Populated only in compacted mode (where
             ``compacted`` is True); ``None`` otherwise. In compacted mode the
-            caller must append this plus the LLM output to the conversation
-            items itself, since the ``conversation`` parameter is no longer
-            passed to OGX.
+            caller hands it to ``utils.pending_turn.PendingTurn``, which
+            stores this plus the LLM output in the conversation, since the
+            ``conversation`` parameter is no longer passed to OGX.
+        summarization_usage: Token usage of the LLM calls compaction made for
+            this request: the summarization of older turns and the fold of
+            the summaries. Empty when the request made neither. The calls are
+            recorded and charged by the time the result is returned; the
+            usage is here for the endpoints that report token counts to the
+            client (LCORE-3910).
     """
 
     params: ResponsesApiParams
     compacted: bool
     original_input: Optional[ResponseInput] = None
+    summarization_usage: TokenCounter = field(default_factory=TokenCounter)
 
     @property
     def context_status(self) -> ContextStatus:
@@ -533,12 +542,15 @@ async def _maybe_persist_fold(  # pylint: disable=too-many-arguments,too-many-po
     context_window: int,
     threshold_ratio: float,
     encoding_name: str,
+    count_call: Optional[CallCounter] = None,
 ) -> tuple[list[str], list[ConversationSummary]]:
     """Run the recursive fold (R3) if persisted summaries crossed the threshold.
 
     Requires a persisting cache (marker-only conversations keep additive chunks).
     Returns the (possibly updated) ``(summaries, cached_summaries)``; on a cache
-    write failure the unfolded values are returned unchanged.
+    write failure the unfolded values are returned unchanged. ``count_call`` is
+    told about the fold call once it returned, also when its result cannot be
+    stored afterwards (LCORE-3910).
     """
     if cache is None or len(cached_summaries) < 2:
         return summaries, cached_summaries
@@ -552,7 +564,7 @@ async def _maybe_persist_fold(  # pylint: disable=too-many-arguments,too-many-po
         conversation_id,
     )
     folded = await recursively_resummarize(
-        client, model, cached_summaries, encoding_name
+        client, model, cached_summaries, encoding_name, count_call=count_call
     )
     try:
         cache.replace_summaries(user_id, conversation_id, folded, skip_user_id_check)
@@ -567,14 +579,29 @@ def _compacted_result(
     summaries: list[str],
     recent_items: list[Any],
     original_input: ResponseInput,
+    usage: TokenCounter,
 ) -> CompactionResult:
-    """Build the CompactionResult for compacted mode (explicit input + omit_conversation)."""
+    """Build the CompactionResult for compacted mode (explicit input + omit_conversation).
+
+    Parameters:
+        params: The prepared parameters of the request.
+        summaries: The summaries that stand for the older turns.
+        recent_items: The recent items sent verbatim.
+        original_input: The input as it arrived.
+        usage: Token usage of the LLM calls compaction made for the request.
+
+    Returns:
+        The result for a request served in compacted mode.
+    """
     explicit_input = _build_explicit_input(summaries, recent_items, original_input)
     compacted_params = params.model_copy(
         update={"input": explicit_input, "omit_conversation": True}
     )
     return CompactionResult(
-        compacted_params, compacted=True, original_input=original_input
+        compacted_params,
+        compacted=True,
+        original_input=original_input,
+        summarization_usage=usage,
     )
 
 
@@ -588,6 +615,8 @@ async def apply_compaction(  # pylint: disable=too-many-arguments,too-many-posit
     cache: Optional[Cache] = None,
     user_id: str = "",
     skip_user_id_check: bool = False,
+    endpoint_path: Optional[str] = None,
+    charge: Optional[CallCounter] = None,
 ) -> AsyncIterator[Any]:
     """Apply conversation compaction to a prepared request, yielding the result.
 
@@ -614,9 +643,18 @@ async def apply_compaction(  # pylint: disable=too-many-arguments,too-many-posit
             falls back to marker-only summaries with no folding.
         user_id: User identifier for cache reads/writes.
         skip_user_id_check: Whether to bypass the cache's user_id validation.
+        endpoint_path: Path of the endpoint serving the request. The LLM calls
+            compaction makes are recorded in the metrics under it; without it
+            they are not recorded.
+        charge: Called with the model and the token usage of each LLM call
+            compaction makes, as soon as the call returned. The endpoints
+            with a quota charge the user here (LCORE-3910).
 
     Yields:
         Zero or more CompactionStartedEvent, then exactly one CompactionResult.
+
+    Raises:
+        HTTPException: When ``charge`` fails.
     """
     if not compaction_config.enabled:
         # ``enabled: false`` is a full off-switch: the request passes through
@@ -632,6 +670,7 @@ async def apply_compaction(  # pylint: disable=too-many-arguments,too-many-posit
     conversation_id = params.conversation
     model = params.model
     original_input = params.input
+    calls = SummarizationCalls(endpoint_path, charge)
 
     async with _conversation_lock(conversation_id):
         items = await get_all_conversation_items(client, conversation_id)
@@ -666,6 +705,7 @@ async def apply_compaction(  # pylint: disable=too-many-arguments,too-many-posit
                         old_items,
                         summarized_through_turn=already + len(old_items),
                         encoding_name=encoding_name,
+                        count_call=calls.count,
                     )
                     await _persist_new_summary_chunk(
                         client,
@@ -690,6 +730,7 @@ async def apply_compaction(  # pylint: disable=too-many-arguments,too-many-posit
                 context_window,
                 compaction_config.threshold_ratio,
                 encoding_name,
+                calls.count,
             )
 
         if not summaries:
@@ -700,7 +741,9 @@ async def apply_compaction(  # pylint: disable=too-many-arguments,too-many-posit
 
         # Compacted mode: lightspeed owns the context. Build explicit input and
         # stop passing the conversation parameter to inference.
-        yield _compacted_result(params, summaries, recent_items, original_input)
+        yield _compacted_result(
+            params, summaries, recent_items, original_input, calls.usage
+        )
 
 
 async def apply_compaction_blocking(  # pylint: disable=too-many-arguments,too-many-positional-arguments
@@ -712,12 +755,15 @@ async def apply_compaction_blocking(  # pylint: disable=too-many-arguments,too-m
     cache: Optional[Cache] = None,
     user_id: str = "",
     skip_user_id_check: bool = False,
+    endpoint_path: Optional[str] = None,
+    charge: Optional[CallCounter] = None,
 ) -> CompactionResult:
     """Non-streaming wrapper around :func:`apply_compaction`.
 
     Drains the generator with event emission disabled and returns the final
     :class:`CompactionResult`. See :func:`apply_compaction` for the ``cache`` /
-    ``user_id`` / ``skip_user_id_check`` parameters.
+    ``user_id`` / ``skip_user_id_check`` / ``endpoint_path`` / ``charge``
+    parameters.
     """
     result: Optional[CompactionResult] = None
     async for item in apply_compaction(
@@ -730,6 +776,8 @@ async def apply_compaction_blocking(  # pylint: disable=too-many-arguments,too-m
         cache=cache,
         user_id=user_id,
         skip_user_id_check=skip_user_id_check,
+        endpoint_path=endpoint_path,
+        charge=charge,
     ):
         if isinstance(item, CompactionResult):
             result = item
@@ -778,21 +826,3 @@ async def needs_compaction_path(
     estimated += estimate_conversation_tokens(items, encoding_name=encoding_name)
     estimated += _estimate_response_input_tokens(params.input, encoding_name)
     return _should_compact(estimated, context_window, compaction_config)
-
-
-async def store_compacted_turn(
-    client: AsyncOgxClient,
-    conversation_id: str,
-    original_input: ResponseInput,
-    output_items: Sequence[Any],
-) -> None:
-    """Append a completed turn to the conversation when in compacted mode.
-
-    In compacted mode the ``conversation`` parameter is not sent to inference,
-    so OGX does not auto-store the turn. lightspeed-stack appends the
-    user query and the LLM output to the conversation items itself, keeping the
-    full history (and the recent-turn buffer for the next request) intact.
-    """
-    await append_turn_items_to_conversation(
-        client, conversation_id, original_input, output_items
-    )

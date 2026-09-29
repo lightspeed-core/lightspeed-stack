@@ -310,6 +310,33 @@ def consume_query_tokens(
         raise HTTPException(**response.model_dump()) from e
 
 
+def consume_summarization_tokens(
+    user_id: str,
+    model_id: str,
+    summarization_usage: TokenCounter,
+) -> None:
+    """Consume the tokens of an LLM call compaction made for a request.
+
+    Compaction summarizes older turns with LLM calls of its own, and the
+    provider bills them. Each is charged as soon as it returned and not with
+    the turn, so that it is charged also when the turn is blocked, fails or
+    is interrupted. Nothing is consumed for a call the provider reported no
+    usage for.
+
+    Parameters:
+        user_id: The authenticated user ID.
+        model_id: The full model identifier in "provider/model" format.
+        summarization_usage: The token usage the provider reported.
+
+    Raises:
+        HTTPException: On database errors during token consumption.
+    """
+    if summarization_usage.input_tokens or summarization_usage.output_tokens:
+        consume_query_tokens(
+            user_id=user_id, model_id=model_id, token_usage=summarization_usage
+        )
+
+
 def is_transcripts_enabled() -> bool:
     """Check if transcripts is enabled.
 
