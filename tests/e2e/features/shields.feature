@@ -78,7 +78,8 @@ Feature: Shields endpoint tests
                   "points": ["output"],
                   "violation_message": "I cannot return that response."
                 }
-              ]
+              ],
+               "streaming_output_check_interval_tokens": 50
             }
           }
         ]
