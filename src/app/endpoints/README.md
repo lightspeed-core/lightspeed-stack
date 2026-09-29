@@ -22,8 +22,7 @@ Handler for REST API call to retrieve service configuration.
 
 ## [conversations_v1.py](conversations_v1.py)
 
-Handler for REST API calls to manage conversation history using Conversations API
-(deprecated; use `conversations_v2.py` / `/v2/conversations`).
+Handler for REST API calls to manage conversation history using Conversations API.
 
 ## [conversations_v2.py](conversations_v2.py)
 

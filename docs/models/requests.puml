@@ -163,9 +163,9 @@ class "VectorStoreUpdateRequest" as src.models.api.requests.vector_stores.Vector
   name : Optional[str]
   check_at_least_one_field() -> Self
 }
-src.models.api.requests.rlsapi.RlsapiV1Attachment --* src.models.api.requests.rlsapi.RlsapiV1Context : attachments
-src.models.api.requests.rlsapi.RlsapiV1CLA --* src.models.api.requests.rlsapi.RlsapiV1Context : cla
-src.models.api.requests.rlsapi.RlsapiV1Context --* src.models.api.requests.rlsapi.RlsapiV1InferRequest : context
-src.models.api.requests.rlsapi.RlsapiV1SystemInfo --* src.models.api.requests.rlsapi.RlsapiV1Context : systeminfo
-src.models.api.requests.rlsapi.RlsapiV1Terminal --* src.models.api.requests.rlsapi.RlsapiV1Context : terminal
+src.models.api.requests.rlsapi.RlsapiV1Context --> src.models.api.requests.rlsapi.RlsapiV1Attachment : attachments
+src.models.api.requests.rlsapi.RlsapiV1Context --> src.models.api.requests.rlsapi.RlsapiV1CLA : cla
+src.models.api.requests.rlsapi.RlsapiV1InferRequest --> src.models.api.requests.rlsapi.RlsapiV1Context : context
+src.models.api.requests.rlsapi.RlsapiV1Context --> src.models.api.requests.rlsapi.RlsapiV1SystemInfo : systeminfo
+src.models.api.requests.rlsapi.RlsapiV1Context --> src.models.api.requests.rlsapi.RlsapiV1Terminal : terminal
 @enduml

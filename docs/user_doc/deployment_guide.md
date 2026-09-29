@@ -94,7 +94,7 @@ ways it can drive the underlying OGX:
    (the deprecated `llama_stack` YAML-section alias is still accepted)
    points at an external, hand-maintained `run.yaml`. This path is deprecated:
    since release 0.6 it logs a startup warning, and it is **removed in
-   release 0.7**. See
+   release 0.8**. See
    [Migrating from the legacy two-file configuration](#migrating-from-the-legacy-two-file-configuration).
 
 > [!NOTE]
@@ -199,7 +199,7 @@ Three migration paths, per deployment:
 
 | Path | Effort | Result |
 |---|---|---|
-| Do nothing | none | Legacy keeps working until removal in 0.7 (with a startup deprecation warning) |
+| Do nothing | none | Legacy keeps working until removal in 0.8 (with a startup deprecation warning) |
 | Lift-and-shift | seconds — `--migrate-config` | Single file, byte-equivalent OGX behavior |
 | Re-express | hours+ | Single file; high-level sections and/or a profile replace the lifted `run.yaml` |
 
@@ -261,7 +261,7 @@ providers into the high-level `inference.providers` section or into a
 
 Unified mode shipped in release 0.6 with legacy mode fully functional plus
 a startup deprecation warning; the legacy two-file path is removed in
-release 0.7.
+release 0.8.
 
 
 
@@ -1215,7 +1215,7 @@ authentication:
 > [!WARNING]
 > The legacy equivalent — `library_client_config_path: ./run.yaml` instead
 > of the `config:` block — is deprecated and will be removed in release
-> 0.7. See
+> 0.8. See
 > [Migrating from the legacy two-file configuration](#migrating-from-the-legacy-two-file-configuration).
 
 

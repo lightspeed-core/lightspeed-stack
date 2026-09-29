@@ -108,8 +108,8 @@
      overflow: visible;
     }
     hr {
-      background-color: #1a1a1a;
       border: none;
+      border-top: 1px solid #1a1a1a;
       height: 1px;
       margin: 1em 0;
     }
@@ -194,19 +194,19 @@ storage.</p>
         <col style="width: 50%"/>
       </colgroup>
       <thead>
-        <tr class="header">
+        <tr>
           <th>Field</th>
           <th>Type</th>
           <th>Description</th>
         </tr>
       </thead>
       <tbody>
-        <tr class="odd">
+        <tr>
           <td>sqlite</td>
           <td/>
           <td>SQLite database configuration for A2A state storage.</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>postgres</td>
           <td/>
           <td>PostgreSQL database configuration for A2A state storage.</td>
@@ -217,14 +217,14 @@ storage.</p>
     <p>API Key Token configuration.</p>
     <table>
       <thead>
-        <tr class="header">
+        <tr>
           <th>Field</th>
           <th>Type</th>
           <th>Description</th>
         </tr>
       </thead>
       <tbody>
-        <tr class="odd">
+        <tr>
           <td>api_key</td>
           <td>string</td>
           <td/>
@@ -235,19 +235,19 @@ storage.</p>
     <p>Rule defining what actions a role can perform.</p>
     <table>
       <thead>
-        <tr class="header">
+        <tr>
           <th>Field</th>
           <th>Type</th>
           <th>Description</th>
         </tr>
       </thead>
       <tbody>
-        <tr class="odd">
+        <tr>
           <td>role</td>
           <td>string</td>
           <td>Name of the role</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>actions</td>
           <td>array</td>
           <td>Allowed actions for this role</td>
@@ -270,19 +270,19 @@ before execution. never: Tool names that never require approval
         <col style="width: 50%"/>
       </colgroup>
       <thead>
-        <tr class="header">
+        <tr>
           <th>Field</th>
           <th>Type</th>
           <th>Description</th>
         </tr>
       </thead>
       <tbody>
-        <tr class="odd">
+        <tr>
           <td>always</td>
           <td>array</td>
           <td>List of tool names that always require human approval</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>never</td>
           <td>array</td>
           <td>List of tool names that never require approval</td>
@@ -301,19 +301,19 @@ retain decided approvals for audit purposes before cleanup.</p>
         <col style="width: 50%"/>
       </colgroup>
       <thead>
-        <tr class="header">
+        <tr>
           <th>Field</th>
           <th>Type</th>
           <th>Description</th>
         </tr>
       </thead>
       <tbody>
-        <tr class="odd">
+        <tr>
           <td>approval_timeout_seconds</td>
           <td>integer</td>
           <td>Seconds before pending approval requests expire</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>approval_retention_days</td>
           <td>integer</td>
           <td>Days to retain decided approvals before cleanup</td>
@@ -329,59 +329,59 @@ retain decided approvals for audit purposes before cleanup.</p>
         <col style="width: 50%"/>
       </colgroup>
       <thead>
-        <tr class="header">
+        <tr>
           <th>Field</th>
           <th>Type</th>
           <th>Description</th>
         </tr>
       </thead>
       <tbody>
-        <tr class="odd">
+        <tr>
           <td>module</td>
           <td>string</td>
           <td/>
         </tr>
-        <tr class="even">
+        <tr>
           <td>skip_tls_verification</td>
           <td>boolean</td>
           <td/>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>skip_for_health_probes</td>
           <td>boolean</td>
           <td>Skip authorization for readiness and liveness probes</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>skip_for_metrics</td>
           <td>boolean</td>
           <td>Skip authorization for the /metrics endpoint</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>k8s_cluster_api</td>
           <td>string</td>
           <td/>
         </tr>
-        <tr class="even">
+        <tr>
           <td>k8s_ca_cert_path</td>
           <td>string</td>
           <td/>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>jwk_config</td>
           <td/>
           <td/>
         </tr>
-        <tr class="even">
+        <tr>
           <td>api_key_config</td>
           <td/>
           <td/>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>rh_identity_config</td>
           <td/>
           <td/>
         </tr>
-        <tr class="even">
+        <tr>
           <td>trusted_proxy_config</td>
           <td/>
           <td/>
@@ -392,14 +392,14 @@ retain decided approvals for audit purposes before cleanup.</p>
     <p>Authorization configuration.</p>
     <table>
       <thead>
-        <tr class="header">
+        <tr>
           <th>Field</th>
           <th>Type</th>
           <th>Description</th>
         </tr>
       </thead>
       <tbody>
-        <tr class="odd">
+        <tr>
           <td>access_rules</td>
           <td>array</td>
           <td>Rules for role-based access control</td>
@@ -415,29 +415,29 @@ retain decided approvals for audit purposes before cleanup.</p>
         <col style="width: 50%"/>
       </colgroup>
       <thead>
-        <tr class="header">
+        <tr>
           <th>Field</th>
           <th>Type</th>
           <th>Description</th>
         </tr>
       </thead>
       <tbody>
-        <tr class="odd">
+        <tr>
           <td>tenant_id</td>
           <td>string</td>
           <td/>
         </tr>
-        <tr class="even">
+        <tr>
           <td>client_id</td>
           <td>string</td>
           <td/>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>client_secret</td>
           <td>string</td>
           <td/>
         </tr>
-        <tr class="even">
+        <tr>
           <td>scope</td>
           <td>string</td>
           <td>Azure Cognitive Services scope for token requests. Override only if
@@ -454,19 +454,19 @@ using a different Azure service.</td>
         <col style="width: 50%"/>
       </colgroup>
       <thead>
-        <tr class="header">
+        <tr>
           <th>Field</th>
           <th>Type</th>
           <th>Description</th>
         </tr>
       </thead>
       <tbody>
-        <tr class="odd">
+        <tr>
           <td>max_chunks</td>
           <td>integer</td>
           <td>Maximum total number of chunks returned across all BYOK stores.</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>stores</td>
           <td>array</td>
           <td>List of BYOK RAG store configurations.</td>
@@ -501,14 +501,14 @@ CORS?</a>
         <col style="width: 50%"/>
       </colgroup>
       <thead>
-        <tr class="header">
+        <tr>
           <th>Field</th>
           <th>Type</th>
           <th>Description</th>
         </tr>
       </thead>
       <tbody>
-        <tr class="odd">
+        <tr>
           <td>allow_origins</td>
           <td>array</td>
           <td>A list of origins allowed for cross-origin requests. An origin is
@@ -516,19 +516,19 @@ the combination of protocol (http, https), domain (myapp.com, localhost,
 localhost.tiangolo.com), and port (80, 443, 8080). Use [&#x2019;*&#x2019;] to allow
 all origins.</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>allow_credentials</td>
           <td>boolean</td>
           <td>Indicate that cookies should be supported for cross-origin
 requests</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>allow_methods</td>
           <td>array</td>
           <td>A list of HTTP methods that should be allowed for cross-origin
 requests. You can use [&#x2019;*&#x2019;] to allow all standard methods.</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>allow_headers</td>
           <td>array</td>
           <td>A list of HTTP request headers that should be supported for
@@ -563,37 +563,37 @@ occupy, regardless of buffer_turns.</p>
         <col style="width: 50%"/>
       </colgroup>
       <thead>
-        <tr class="header">
+        <tr>
           <th>Field</th>
           <th>Type</th>
           <th>Description</th>
         </tr>
       </thead>
       <tbody>
-        <tr class="odd">
+        <tr>
           <td>enabled</td>
           <td>boolean</td>
           <td>When true, older conversation turns are summarized when estimated
 tokens approach the context window limit.</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>threshold_ratio</td>
           <td>number</td>
           <td>Trigger compaction when estimated tokens exceed this fraction of the
 model&#x2019;s context window (0.0-1.0).</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>token_floor</td>
           <td>integer</td>
           <td>Minimum token count before compaction can trigger. Prevents
 triggering on very small context windows.</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>buffer_turns</td>
           <td>integer</td>
           <td>Number of recent turns to keep verbatim.</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>buffer_max_ratio</td>
           <td>number</td>
           <td>Maximum fraction of context window the buffer zone can occupy,
@@ -610,20 +610,20 @@ regardless of buffer_turns.</td>
         <col style="width: 50%"/>
       </colgroup>
       <thead>
-        <tr class="header">
+        <tr>
           <th>Field</th>
           <th>Type</th>
           <th>Description</th>
         </tr>
       </thead>
       <tbody>
-        <tr class="odd">
+        <tr>
           <td>name</td>
           <td>string</td>
           <td>Name of the service. That value will be used in REST API
 endpoints.</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>config_format_version</td>
           <td>string</td>
           <td>Optional explicit marker of the configuration format. When set, it
@@ -633,31 +633,31 @@ non-empty vector_store.providers, or an ogx.config block), &#x2018;legacy&#x2019
 requires no synthesis input. Reserved as the lever for a future breaking
 change of the unified schema (R11).</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>service</td>
           <td/>
           <td>This section contains Lightspeed Core Stack service
 configuration.</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>ogx</td>
           <td/>
           <td>This section contains OGX configuration. Lightspeed Core Stack
 service can call OGX in library mode or in server mode.</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>user_data_collection</td>
           <td/>
           <td>This section contains configuration for subsystem that collects user
 data(transcription history and feedbacks).</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>database</td>
           <td/>
           <td>Configuration for database to store conversation IDs and other
 runtime data</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>mcp_servers</td>
           <td>array</td>
           <td>MCP (Model Context Protocol) servers provide tools and capabilities
@@ -666,12 +666,12 @@ defined in the lightspeed-stack.yaml configuration are available to the
 agents. Tools configured in the OGX run.yaml are not accessible to
 lightspeed-core agents.</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>authentication</td>
           <td/>
           <td>Authentication configuration</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>authorization</td>
           <td/>
           <td>Lightspeed Core Stack implements a modular authentication and
@@ -680,26 +680,26 @@ is configurable through role-based access control. Authentication is
 handled through selectable modules configured via the module field in
 the authentication configuration.</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>customization</td>
           <td/>
           <td>It is possible to customize Lightspeed Core Stack via this section.
 System prompt can be customized and also different parts of the service
 can be replaced by custom Python modules.</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>inference</td>
           <td/>
           <td>One LLM provider and one its model might be selected as default
 ones. When no provider+model pair is specified in REST API calls (query
 endpoints), the default provider and model are used.</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>conversation_cache</td>
           <td/>
           <td/>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>compaction</td>
           <td/>
           <td>Controls when conversation history is summarized to keep the model&#x2019;s
@@ -707,12 +707,12 @@ input below the context window limit. Disabled by default &#x2014; when
 disabled, requests that exceed the window continue to surface as HTTP
 413.</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>approvals</td>
           <td/>
           <td>Settings for human-in-the-loop approval of MCP tool invocations</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>vector_store</td>
           <td/>
           <td>Dynamic vector-store provider capacity for runtime POST
@@ -721,63 +721,63 @@ registered corpora). When providers is non-empty, default_provider is
 required and must match one of providers[].id. Applied in unified
 synthesis only.</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>a2a_state</td>
           <td/>
           <td>Configuration for A2A protocol persistent state storage.</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>quota_handlers</td>
           <td/>
           <td>Quota handlers configuration</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>azure_entra_id</td>
           <td/>
           <td/>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>rlsapi_v1</td>
           <td/>
           <td>Configuration for the rlsapi v1 /infer endpoint used by the RHEL
 Lightspeed Command Line Assistant (CLA).</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>splunk</td>
           <td/>
           <td>Splunk HEC configuration for sending telemetry events.</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>observability</td>
           <td/>
           <td>OpenTelemetry and observability configuration collected from OTEL_*
 environment variables.</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>deployment_environment</td>
           <td>string</td>
           <td>Deployment environment name (e.g., &#x2018;development&#x2019;, &#x2018;staging&#x2019;,
 &#x2018;production&#x2019;). Used in telemetry events.</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>rag</td>
           <td/>
           <td>Unified RAG configuration: BYOK stores, OKP provider, and retrieval
 strategies (inline and tool-based).</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>skills</td>
           <td/>
           <td>Agent skills configuration. Specifies paths to skill
 directories.</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>saved_prompts</td>
           <td/>
           <td>Configuration for saved prompts feature limits including maximum
 prompts per user, display name length, and content length.</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>shields</td>
           <td>array</td>
           <td>List of pydantic-ai-lightspeed agent guardrail shields (question
@@ -796,30 +796,30 @@ validity and PII redaction). Each entry has a unique &#x2018;name&#x2019;, a
         <col style="width: 50%"/>
       </colgroup>
       <thead>
-        <tr class="header">
+        <tr>
           <th>Field</th>
           <th>Type</th>
           <th>Description</th>
         </tr>
       </thead>
       <tbody>
-        <tr class="odd">
+        <tr>
           <td>type</td>
           <td>string</td>
           <td>Type of database where the conversation history is to be
 stored.</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>memory</td>
           <td/>
           <td>In-memory cache configuration</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>sqlite</td>
           <td/>
           <td>SQLite database configuration</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>postgres</td>
           <td/>
           <td>PostgreSQL database configuration</td>
@@ -830,19 +830,19 @@ stored.</td>
     <p>Custom profile customization for prompts and validation.</p>
     <table>
       <thead>
-        <tr class="header">
+        <tr>
           <th>Field</th>
           <th>Type</th>
           <th>Description</th>
         </tr>
       </thead>
       <tbody>
-        <tr class="odd">
+        <tr>
           <td>path</td>
           <td>string</td>
           <td>Path to Python modules containing custom profile.</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>prompts</td>
           <td>object</td>
           <td>Dictionary containing map of system prompts</td>
@@ -853,49 +853,49 @@ stored.</td>
     <p>Service customization.</p>
     <table>
       <thead>
-        <tr class="header">
+        <tr>
           <th>Field</th>
           <th>Type</th>
           <th>Description</th>
         </tr>
       </thead>
       <tbody>
-        <tr class="odd">
+        <tr>
           <td>profile_path</td>
           <td>string</td>
           <td/>
         </tr>
-        <tr class="even">
+        <tr>
           <td>disable_query_system_prompt</td>
           <td>boolean</td>
           <td/>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>disable_shield_ids_override</td>
           <td>boolean</td>
           <td/>
         </tr>
-        <tr class="even">
+        <tr>
           <td>system_prompt_path</td>
           <td>string</td>
           <td/>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>system_prompt</td>
           <td>string</td>
           <td/>
         </tr>
-        <tr class="even">
+        <tr>
           <td>agent_card_path</td>
           <td>string</td>
           <td/>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>agent_card_config</td>
           <td>object</td>
           <td/>
         </tr>
-        <tr class="even">
+        <tr>
           <td>custom_profile</td>
           <td/>
           <td/>
@@ -906,19 +906,19 @@ stored.</td>
     <p>Database configuration.</p>
     <table>
       <thead>
-        <tr class="header">
+        <tr>
           <th>Field</th>
           <th>Type</th>
           <th>Description</th>
         </tr>
       </thead>
       <tbody>
-        <tr class="odd">
+        <tr>
           <td>sqlite</td>
           <td/>
           <td>SQLite database configuration</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>postgres</td>
           <td/>
           <td>PostgreSQL database configuration</td>
@@ -934,36 +934,36 @@ stored.</td>
         <col style="width: 50%"/>
       </colgroup>
       <thead>
-        <tr class="header">
+        <tr>
           <th>Field</th>
           <th>Type</th>
           <th>Description</th>
         </tr>
       </thead>
       <tbody>
-        <tr class="odd">
+        <tr>
           <td>id</td>
           <td>string</td>
           <td>OGX vector_io provider_id. Surrounding whitespace is stripped before
 validation and emission.</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>embedding_model</td>
           <td>string</td>
           <td>Embedding model identification used for stores created against this
 provider.</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>embedding_dimension</td>
           <td>integer</td>
           <td>Dimensionality of embedding vectors for this provider.</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>type</td>
           <td>string</td>
           <td>Product type for this dynamic vector-store provider.</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>config</td>
           <td/>
           <td>FAISS storage settings for this provider.</td>
@@ -974,14 +974,14 @@ provider.</td>
     <p>Storage config for a FAISS dynamic vector-store provider.</p>
     <table>
       <thead>
-        <tr class="header">
+        <tr>
           <th>Field</th>
           <th>Type</th>
           <th>Description</th>
         </tr>
       </thead>
       <tbody>
-        <tr class="odd">
+        <tr>
           <td>path</td>
           <td>string</td>
           <td>On-disk FAISS/SQLite path for this provider.</td>
@@ -991,35 +991,47 @@ provider.</td>
     <h2 id="graniteguardianconfig">GraniteGuardianConfig</h2>
     <p>Configuration for the Granite Guardian moderation guardrail.</p>
     <table>
+      <colgroup>
+        <col style="width: 26%"/>
+        <col style="width: 23%"/>
+        <col style="width: 50%"/>
+      </colgroup>
       <thead>
-        <tr class="header">
+        <tr>
           <th>Field</th>
           <th>Type</th>
           <th>Description</th>
         </tr>
       </thead>
       <tbody>
-        <tr class="odd">
+        <tr>
           <td>url</td>
           <td>string</td>
-          <td>The model_id to use for the guard</td>
+          <td>Base URL of the OpenAI-compatible inference endpoint.</td>
         </tr>
-        <tr class="even">
+        <tr>
+          <td>model_id</td>
+          <td>string</td>
+          <td>Model name sent to the inference server. Override when the server
+registers the model under a different name (e.g.&#xA0;an Ollama tag). The
+prompt template is built for the 4.1 format.</td>
+        </tr>
+        <tr>
           <td>api_key</td>
           <td>string</td>
           <td>API key for the inference</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>max_retries</td>
           <td>integer</td>
           <td>Maximun number of retries</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>timeout</td>
           <td>integer</td>
           <td>Request timeout in seconds</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>verify_ssl</td>
           <td/>
           <td>SSL certificate verification. Can be:</td>
@@ -1029,8 +1041,10 @@ provider.</td>
     <ul>
       <li>True: Verify using system CA bundle (default, recommended)</li>
       <li>False: Disable verification (insecure, for dev only)</li>
-      <li>str: Path to custom CA bundle file (for internal PKI) | | risks |
-array | Risks to be considered while applying this guardrail |</li>
+      <li>str: Path to custom CA bundle file (for internal PKI) | | parallel |
+| True to run all risk checks in parallel, False to run sequentially, or
+an integer 1-10 for explicit batch size. | | risks | array | Risks to be
+considered while applying this guardrail |</li>
     </ul>
     <h2 id="graniteguardianshieldconfiguration">GraniteGuardianShieldConfiguration</h2>
     <p>Configuration for a named Granite Guardian guardrail shield.</p>
@@ -1045,24 +1059,24 @@ configuration.</p>
         <col style="width: 50%"/>
       </colgroup>
       <thead>
-        <tr class="header">
+        <tr>
           <th>Field</th>
           <th>Type</th>
           <th>Description</th>
         </tr>
       </thead>
       <tbody>
-        <tr class="odd">
+        <tr>
           <td>name</td>
           <td>string</td>
           <td>Unique, user-facing name identifying this shield instance.</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>provider_id</td>
           <td>string</td>
           <td>Discriminator identifying this as a granite-guardian shield.</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>config</td>
           <td/>
           <td>Granite-guardian-specific configuration for this shield</td>
@@ -1078,14 +1092,14 @@ configuration.</p>
         <col style="width: 50%"/>
       </colgroup>
       <thead>
-        <tr class="header">
+        <tr>
           <th>Field</th>
           <th>Type</th>
           <th>Description</th>
         </tr>
       </thead>
       <tbody>
-        <tr class="odd">
+        <tr>
           <td>max_entries</td>
           <td>integer</td>
           <td>Maximum number of entries stored in the in-memory cache</td>
@@ -1101,26 +1115,26 @@ configuration.</p>
         <col style="width: 50%"/>
       </colgroup>
       <thead>
-        <tr class="header">
+        <tr>
           <th>Field</th>
           <th>Type</th>
           <th>Description</th>
         </tr>
       </thead>
       <tbody>
-        <tr class="odd">
+        <tr>
           <td>default_model</td>
           <td>string</td>
           <td>Identification of default model used when no other model is
 specified.</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>default_provider</td>
           <td>string</td>
           <td>Identification of default provider used when no other model is
 specified.</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>context_windows</td>
           <td>object</td>
           <td>Map of fully-qualified model identifier (e.g., &#x201C;openai/gpt-4o-mini&#x201D;)
@@ -1130,7 +1144,7 @@ exceeds the window. Models absent from this map have no registered
 window &#x2014; callers fall back to their own default or skip the token-based
 trigger.</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>providers</td>
           <td>array</td>
           <td>Unified-mode synthesis input (Decision S5): a high-level,
@@ -1141,7 +1155,7 @@ Empty (the default) leaves legacy/remote modes unaffected. The sibling
 default_model / default_provider keep their query-time routing meaning
 and are independent of this list.</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>max_infer_iters</td>
           <td>integer</td>
           <td>Server-side default for the maximum number of inference iterations a
@@ -1149,7 +1163,7 @@ model can perform in a single request. Prevents small models from
 looping indefinitely on tool calls. Per-request values take precedence
 over this default. Set to None to disable the limit.</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>max_tool_calls</td>
           <td>integer</td>
           <td>Server-side default for the maximum number of tool calls allowed in
@@ -1184,19 +1198,19 @@ Web Key</a>
         <col style="width: 50%"/>
       </colgroup>
       <thead>
-        <tr class="header">
+        <tr>
           <th>Field</th>
           <th>Type</th>
           <th>Description</th>
         </tr>
       </thead>
       <tbody>
-        <tr class="odd">
+        <tr>
           <td>url</td>
           <td>string</td>
           <td>HTTPS URL of the JWK (JSON Web Key) set used to validate JWTs.</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>jwt_configuration</td>
           <td/>
           <td>JWT (JSON Web Token) configuration</td>
@@ -1233,24 +1247,24 @@ Web Tokens</a>
         <col style="width: 50%"/>
       </colgroup>
       <thead>
-        <tr class="header">
+        <tr>
           <th>Field</th>
           <th>Type</th>
           <th>Description</th>
         </tr>
       </thead>
       <tbody>
-        <tr class="odd">
+        <tr>
           <td>user_id_claim</td>
           <td>string</td>
           <td>JWT claim name that uniquely identifies the user (subject ID).</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>username_claim</td>
           <td>string</td>
           <td>JWT claim name that provides the human-readable username.</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>role_rules</td>
           <td>array</td>
           <td>Rules for extracting roles from JWT claims</td>
@@ -1266,34 +1280,34 @@ Web Tokens</a>
         <col style="width: 50%"/>
       </colgroup>
       <thead>
-        <tr class="header">
+        <tr>
           <th>Field</th>
           <th>Type</th>
           <th>Description</th>
         </tr>
       </thead>
       <tbody>
-        <tr class="odd">
+        <tr>
           <td>jsonpath</td>
           <td>string</td>
           <td>JSONPath expression to evaluate against the JWT payload</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>operator</td>
           <td/>
           <td>JSON path comparison operator</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>negate</td>
           <td>boolean</td>
           <td>If set to true, the meaning of the rule is negated</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>value</td>
           <td/>
           <td>Value to compare against</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>roles</td>
           <td>array</td>
           <td>Roles to be assigned if the rule matches</td>
@@ -1328,29 +1342,29 @@ article</a>
         <col style="width: 50%"/>
       </colgroup>
       <thead>
-        <tr class="header">
+        <tr>
           <th>Field</th>
           <th>Type</th>
           <th>Description</th>
         </tr>
       </thead>
       <tbody>
-        <tr class="odd">
+        <tr>
           <td>name</td>
           <td>string</td>
           <td>MCP server name that must be unique</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>provider_id</td>
           <td>string</td>
           <td>MCP provider identification</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>url</td>
           <td>string</td>
           <td>URL of the MCP server</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>authorization_headers</td>
           <td>object</td>
           <td>Headers to send to the MCP server. The map contains the header name
@@ -1362,7 +1376,7 @@ string &#x2018;client&#x2019; instead of the file path. 3. Usage of the oauth to
 the header. To specify this use a string &#x2018;oauth&#x2019; instead of the file
 path.</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>headers</td>
           <td>array</td>
           <td>List of HTTP header names to automatically forward from the incoming
@@ -1373,14 +1387,14 @@ headers that MCP servers need, such as x-rh-identity in HCC. Header
 matching is case-insensitive. These headers are additive with
 authorization_headers and MCP-HEADERS.</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>require_approval</td>
           <td/>
           <td>When to require human approval for tool invocations. &#x2018;always&#x2019;
 requires approval for all tools, &#x2018;never&#x2019; auto-approves, or use
 ApprovalFilter for granular control.</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>timeout</td>
           <td>integer</td>
           <td>Timeout in seconds for requests to the MCP server. If not specified,
@@ -1402,14 +1416,14 @@ secrets redacted.</p>
         <col style="width: 50%"/>
       </colgroup>
       <thead>
-        <tr class="header">
+        <tr>
           <th>Field</th>
           <th>Type</th>
           <th>Description</th>
         </tr>
       </thead>
       <tbody>
-        <tr class="odd">
+        <tr>
           <td>otel</td>
           <td>object</td>
           <td>Active OpenTelemetry configuration from OTEL_* environment
@@ -1444,31 +1458,31 @@ AI Applications with OGX</a>
         <col style="width: 50%"/>
       </colgroup>
       <thead>
-        <tr class="header">
+        <tr>
           <th>Field</th>
           <th>Type</th>
           <th>Description</th>
         </tr>
       </thead>
       <tbody>
-        <tr class="odd">
+        <tr>
           <td>url</td>
           <td>string</td>
           <td>URL to OGX service; used when library mode is disabled. Must be a
 valid HTTP or HTTPS URL.</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>api_key</td>
           <td>string</td>
           <td>API key to access OGX service</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>use_as_library_client</td>
           <td>boolean</td>
           <td>When set to true OGX will be used in library mode, not in server
 mode (default)</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>library_client_config_path</td>
           <td>string</td>
           <td>Path to configuration file used when OGX is run in library mode.
@@ -1477,13 +1491,13 @@ is removed in 0.8 &#x2014; use unified mode instead (the config block below,
 and/or the root-level inference.providers section); migrate with
 lightspeed-stack &#x2013;migrate-config.</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>timeout</td>
           <td>integer</td>
           <td>Timeout in seconds for requests to OGX service. Default is 180
 seconds (3 minutes) to accommodate long-running RAG queries.</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>max_retries</td>
           <td>integer</td>
           <td>Maximum number of connection attempts before giving up. Used on
@@ -1491,7 +1505,7 @@ startup to connect to OGX and retrieve its version. Connection attempts
 are retried with a fixed delay to handle the case where OGX is still
 starting up (e.g., when running as a sidecar in the same pod).</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>retry_delay</td>
           <td>integer</td>
           <td>Delay in seconds between retry attempts. Used on startup to connect
@@ -1499,13 +1513,13 @@ to OGX and retrieve its version. Connection attempts are retried with a
 fixed delay to handle the case where OGX is still starting up (e.g.,
 when running as a sidecar in the same pod).</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>allow_degraded_mode</td>
           <td>boolean</td>
           <td>If enabled, Lightspeed Core can be started even when OGX is not
 accessible (valid for server mode only)</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>config</td>
           <td/>
           <td>Backend-specific knobs for unified mode, where LCORE synthesizes the
@@ -1532,34 +1546,34 @@ relevant when <code>"okp"</code> is listed in
         <col style="width: 50%"/>
       </colgroup>
       <thead>
-        <tr class="header">
+        <tr>
           <th>Field</th>
           <th>Type</th>
           <th>Description</th>
         </tr>
       </thead>
       <tbody>
-        <tr class="odd">
+        <tr>
           <td>rhokp_url</td>
           <td>string</td>
           <td>Base URL for the OKP server (http or https). Set to
 <code>${env.RH_SERVER_OKP}</code> in YAML to use the environment
 variable. When unset, the default from constants is used.</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>offline</td>
           <td>boolean</td>
           <td>When True, use parent_id for OKP chunk source URLs. When False, use
 reference_url for chunk source URLs.</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>chunk_filter_query</td>
           <td>string</td>
           <td>Additional OKP filter query applied to every OKP search request. Use
 Solr boolean syntax, e.g.&#xA0;&#x2018;product:ansible AND
 product:<em>openshift</em>&#x2019;.</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>search_mode</td>
           <td>string</td>
           <td>Default Solr search mode for OKP queries. &#x2018;keyword&#x2019; uses BM25 text
@@ -1567,7 +1581,7 @@ search (no embedding model needed). &#x2018;hybrid&#x2019; combines vector + key
 search. &#x2018;semantic&#x2019; uses pure vector search. When unset, falls back to
 the global default (&#x2018;hybrid&#x2019;).</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>max_chunks</td>
           <td>integer</td>
           <td>Maximum number of chunks fetched from OKP.</td>
@@ -1583,36 +1597,36 @@ the global default (&#x2018;hybrid&#x2019;).</td>
         <col style="width: 50%"/>
       </colgroup>
       <thead>
-        <tr class="header">
+        <tr>
           <th>Field</th>
           <th>Type</th>
           <th>Description</th>
         </tr>
       </thead>
       <tbody>
-        <tr class="odd">
+        <tr>
           <td>id</td>
           <td>string</td>
           <td>OGX vector_io provider_id. Surrounding whitespace is stripped before
 validation and emission.</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>embedding_model</td>
           <td>string</td>
           <td>Embedding model identification used for stores created against this
 provider.</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>embedding_dimension</td>
           <td>integer</td>
           <td>Dimensionality of embedding vectors for this provider.</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>type</td>
           <td>string</td>
           <td>Product type for this dynamic vector-store provider.</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>config</td>
           <td/>
           <td>pgvector connection settings for this provider.</td>
@@ -1628,35 +1642,35 @@ provider.</td>
         <col style="width: 50%"/>
       </colgroup>
       <thead>
-        <tr class="header">
+        <tr>
           <th>Field</th>
           <th>Type</th>
           <th>Description</th>
         </tr>
       </thead>
       <tbody>
-        <tr class="odd">
+        <tr>
           <td>host</td>
           <td>string</td>
           <td>PostgreSQL host. Defaults to ${env.POSTGRES_HOST}.</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>port</td>
           <td/>
           <td>PostgreSQL port. Defaults to ${env.POSTGRES_PORT}. Accepts string
 placeholders and integer values.</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>db</td>
           <td>string</td>
           <td>PostgreSQL database name. Defaults to ${env.POSTGRES_DATABASE}.</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>user</td>
           <td>string</td>
           <td>PostgreSQL user. Defaults to ${env.POSTGRES_USER}.</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>password</td>
           <td>string</td>
           <td>PostgreSQL password. Defaults to ${env.POSTGRES_PASSWORD}.</td>
@@ -1690,55 +1704,55 @@ Use PostgreSQL in Python</a>
         <col style="width: 50%"/>
       </colgroup>
       <thead>
-        <tr class="header">
+        <tr>
           <th>Field</th>
           <th>Type</th>
           <th>Description</th>
         </tr>
       </thead>
       <tbody>
-        <tr class="odd">
+        <tr>
           <td>host</td>
           <td>string</td>
           <td>Database server host or socket directory</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>port</td>
           <td>integer</td>
           <td>Database server port</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>db</td>
           <td>string</td>
           <td>Database name to connect to</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>user</td>
           <td>string</td>
           <td>Database user name used to authenticate</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>password</td>
           <td>string</td>
           <td>Password used to authenticate</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>namespace</td>
           <td>string</td>
           <td>Database namespace</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>ssl_mode</td>
           <td>string</td>
           <td>SSL mode</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>gss_encmode</td>
           <td>string</td>
           <td>This option determines whether or with what priority a secure GSS
 TCP/IP connection will be negotiated with the server.</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>ca_cert_path</td>
           <td>string</td>
           <td>Path to CA certificate</td>
@@ -1754,25 +1768,25 @@ TCP/IP connection will be negotiated with the server.</td>
         <col style="width: 50%"/>
       </colgroup>
       <thead>
-        <tr class="header">
+        <tr>
           <th>Field</th>
           <th>Type</th>
           <th>Description</th>
         </tr>
       </thead>
       <tbody>
-        <tr class="odd">
+        <tr>
           <td>model_id</td>
           <td>string</td>
           <td>The model_id to use for the guard</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>model_prompt</td>
           <td>string</td>
           <td>The default prompt sent to the LLM used to validate the Users&#x2019;
 question.</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>invalid_question_response</td>
           <td>string</td>
           <td>The default response when the Users&#x2019; question is determined to be
@@ -1793,24 +1807,24 @@ configuration.</p>
         <col style="width: 50%"/>
       </colgroup>
       <thead>
-        <tr class="header">
+        <tr>
           <th>Field</th>
           <th>Type</th>
           <th>Description</th>
         </tr>
       </thead>
       <tbody>
-        <tr class="odd">
+        <tr>
           <td>name</td>
           <td>string</td>
           <td>Unique, user-facing name identifying this shield instance.</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>provider_id</td>
           <td>string</td>
           <td>Discriminator identifying this as a question-validity shield.</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>config</td>
           <td/>
           <td>Question-validity-specific configuration for this shield.</td>
@@ -1831,34 +1845,34 @@ that makes sense in OpenShift deployment).</p>
         <col style="width: 50%"/>
       </colgroup>
       <thead>
-        <tr class="header">
+        <tr>
           <th>Field</th>
           <th>Type</th>
           <th>Description</th>
         </tr>
       </thead>
       <tbody>
-        <tr class="odd">
+        <tr>
           <td>sqlite</td>
           <td/>
           <td>SQLite database configuration</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>postgres</td>
           <td/>
           <td>PostgreSQL database configuration</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>limiters</td>
           <td>array</td>
           <td>Quota limiters configuration</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>scheduler</td>
           <td/>
           <td>Quota scheduler configuration</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>enable_token_history</td>
           <td>boolean</td>
           <td>Enables storing information about token usage history</td>
@@ -1894,34 +1908,34 @@ periodically (for example on a daily basis), set
         <col style="width: 50%"/>
       </colgroup>
       <thead>
-        <tr class="header">
+        <tr>
           <th>Field</th>
           <th>Type</th>
           <th>Description</th>
         </tr>
       </thead>
       <tbody>
-        <tr class="odd">
+        <tr>
           <td>type</td>
           <td>string</td>
           <td>Quota limiter type, either user_limiter or cluster_limiter</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>name</td>
           <td>string</td>
           <td>Human readable quota limiter name</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>initial_quota</td>
           <td>integer</td>
           <td>Quota set at beginning of the period</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>quota_increase</td>
           <td>integer</td>
           <td>Delta value used to increase quota when period is reached</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>period</td>
           <td>string</td>
           <td>Period specified in human readable form</td>
@@ -1937,26 +1951,26 @@ periodically (for example on a daily basis), set
         <col style="width: 50%"/>
       </colgroup>
       <thead>
-        <tr class="header">
+        <tr>
           <th>Field</th>
           <th>Type</th>
           <th>Description</th>
         </tr>
       </thead>
       <tbody>
-        <tr class="odd">
+        <tr>
           <td>period</td>
           <td>integer</td>
           <td>Quota scheduler period specified in seconds</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>database_reconnection_count</td>
           <td>integer</td>
           <td>Database reconnection count on startup. When database for quota is
 not available on startup, the service tries to reconnect N times with
 specified delay.</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>database_reconnection_delay</td>
           <td>integer</td>
           <td>Database reconnection delay specified in seconds. When database for
@@ -1974,19 +1988,19 @@ times with specified delay.</td>
         <col style="width: 50%"/>
       </colgroup>
       <thead>
-        <tr class="header">
+        <tr>
           <th>Field</th>
           <th>Type</th>
           <th>Description</th>
         </tr>
       </thead>
       <tbody>
-        <tr class="odd">
+        <tr>
           <td>required_entitlements</td>
           <td>array</td>
           <td>List of all required entitlements.</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>max_header_size</td>
           <td>integer</td>
           <td>Maximum allowed size in bytes for the base64-encoded x-rh-identity
@@ -2005,25 +2019,25 @@ retrieval strategies (inline and tool).</p>
         <col style="width: 50%"/>
       </colgroup>
       <thead>
-        <tr class="header">
+        <tr>
           <th>Field</th>
           <th>Type</th>
           <th>Description</th>
         </tr>
       </thead>
       <tbody>
-        <tr class="odd">
+        <tr>
           <td>byok</td>
           <td/>
           <td>Bring Your Own Knowledge store configurations and settings.</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>okp</td>
           <td/>
           <td>OKP provider settings. Only used when &#x2018;okp&#x2019; is listed in
 retrieval.inline.sources or retrieval.tool.sources.</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>retrieval</td>
           <td/>
           <td>Inline and tool retrieval strategy settings.</td>
@@ -2039,81 +2053,81 @@ retrieval.inline.sources or retrieval.tool.sources.</td>
         <col style="width: 50%"/>
       </colgroup>
       <thead>
-        <tr class="header">
+        <tr>
           <th>Field</th>
           <th>Type</th>
           <th>Description</th>
         </tr>
       </thead>
       <tbody>
-        <tr class="odd">
+        <tr>
           <td>rag_id</td>
           <td>string</td>
           <td>Unique RAG ID</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>backend</td>
           <td>string</td>
           <td>Type of RAG database (e.g.&#xA0;&#x2018;faiss&#x2019;, &#x2018;pgvector&#x2019;).</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>embedding_model</td>
           <td>string</td>
           <td>Embedding model identification</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>embedding_dimension</td>
           <td>integer</td>
           <td>Dimensionality of embedding vectors.</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>vector_db_id</td>
           <td>string</td>
           <td>Vector database identification.</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>db_path</td>
           <td>string</td>
           <td>Path to RAG database. Required for faiss backend.</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>score_multiplier</td>
           <td>number</td>
           <td>Multiplier applied to relevance scores from this vector store. Used
 to weight results when querying multiple knowledge sources. Values &gt;
 1 boost this store&#x2019;s results; values &lt; 1 reduce them.</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>relevance_cutoff_score</td>
           <td>number</td>
           <td>Minimum raw similarity score to consider a result relevant. Results
 with a similarity score below this threshold are not returned.</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>host</td>
           <td>string</td>
           <td>PostgreSQL host for pgvector backend. Defaults to
 ${env.POSTGRES_HOST} when backend is pgvector.</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>port</td>
           <td/>
           <td>PostgreSQL port for pgvector backend. Defaults to
 ${env.POSTGRES_PORT} when backend is pgvector.</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>db</td>
           <td>string</td>
           <td>PostgreSQL database name for pgvector backend. Defaults to
 ${env.POSTGRES_DATABASE} when backend is pgvector.</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>user</td>
           <td>string</td>
           <td>PostgreSQL user for pgvector backend. Defaults to
 ${env.POSTGRES_USER} when backend is pgvector.</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>password</td>
           <td>string</td>
           <td>PostgreSQL password for pgvector backend. Defaults to
@@ -2135,19 +2149,19 @@ sequentially. case_sensitive: When False, patterns are compiled with
         <col style="width: 50%"/>
       </colgroup>
       <thead>
-        <tr class="header">
+        <tr>
           <th>Field</th>
           <th>Type</th>
           <th>Description</th>
         </tr>
       </thead>
       <tbody>
-        <tr class="odd">
+        <tr>
           <td>rules</td>
           <td>array</td>
           <td>Ordered list of PII redaction rules</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>case_sensitive</td>
           <td>boolean</td>
           <td>When False, patterns are compiled with re.IGNORECASE</td>
@@ -2167,24 +2181,24 @@ Per-rule override for case sensitivity. When None, the global
         <col style="width: 50%"/>
       </colgroup>
       <thead>
-        <tr class="header">
+        <tr>
           <th>Field</th>
           <th>Type</th>
           <th>Description</th>
         </tr>
       </thead>
       <tbody>
-        <tr class="odd">
+        <tr>
           <td>pattern</td>
           <td>string</td>
           <td>Regex pattern to match sensitive data</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>replacement</td>
           <td>string</td>
           <td>Replacement string for matched text</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>case_sensitive</td>
           <td>boolean</td>
           <td>Per-rule case sensitivity override. When None, the global config
@@ -2204,24 +2218,24 @@ shield. config: Redaction-specific configuration.</p>
         <col style="width: 50%"/>
       </colgroup>
       <thead>
-        <tr class="header">
+        <tr>
           <th>Field</th>
           <th>Type</th>
           <th>Description</th>
         </tr>
       </thead>
       <tbody>
-        <tr class="odd">
+        <tr>
           <td>name</td>
           <td>string</td>
           <td>Unique, user-facing name identifying this shield instance.</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>provider_id</td>
           <td>string</td>
           <td>Discriminator identifying this as a redaction shield.</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>config</td>
           <td/>
           <td>Redaction-specific configuration for this shield.</td>
@@ -2237,20 +2251,20 @@ shield. config: Redaction-specific configuration.</p>
         <col style="width: 50%"/>
       </colgroup>
       <thead>
-        <tr class="header">
+        <tr>
           <th>Field</th>
           <th>Type</th>
           <th>Description</th>
         </tr>
       </thead>
       <tbody>
-        <tr class="odd">
+        <tr>
           <td>enabled</td>
           <td>boolean</td>
           <td>When True, reranking applied to RAG chunks. When False, reranking is
 disabled and original scoring used.</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>model</td>
           <td>string</td>
           <td>Cross-encoder model name for reranking RAG chunks. Defaults to
@@ -2261,20 +2275,25 @@ disabled and original scoring used.</td>
     <h2 id="retrievalconfiguration">RetrievalConfiguration</h2>
     <p>Configuration for inline and tool retrieval strategies.</p>
     <table>
+      <colgroup>
+        <col style="width: 26%"/>
+        <col style="width: 23%"/>
+        <col style="width: 50%"/>
+      </colgroup>
       <thead>
-        <tr class="header">
+        <tr>
           <th>Field</th>
           <th>Type</th>
           <th>Description</th>
         </tr>
       </thead>
       <tbody>
-        <tr class="odd">
+        <tr>
           <td>inline</td>
           <td/>
           <td>Inline RAG: context injected before the LLM request.</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>tool</td>
           <td/>
           <td>Tool RAG: LLM can call file_search on demand.</td>
@@ -2290,25 +2309,25 @@ disabled and original scoring used.</td>
         <col style="width: 50%"/>
       </colgroup>
       <thead>
-        <tr class="header">
+        <tr>
           <th>Field</th>
           <th>Type</th>
           <th>Description</th>
         </tr>
       </thead>
       <tbody>
-        <tr class="odd">
+        <tr>
           <td>sources</td>
           <td>array</td>
           <td>RAG IDs to use for this retrieval strategy. Use &#x2018;okp&#x2019; to include the
 OKP vector store.</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>max_chunks</td>
           <td>integer</td>
           <td>Maximum number of chunks returned by this retrieval strategy.</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>reranker</td>
           <td/>
           <td>Neural reranking of RAG chunks using cross-encoder. Only applicable
@@ -2336,50 +2355,50 @@ directly - it is managed internally.</p>
         <col style="width: 50%"/>
       </colgroup>
       <thead>
-        <tr class="header">
+        <tr>
           <th>Field</th>
           <th>Type</th>
           <th>Description</th>
         </tr>
       </thead>
       <tbody>
-        <tr class="odd">
+        <tr>
           <td>name</td>
           <td>string</td>
           <td>Unique identifier for this risk (e.g., &#x2018;liability&#x2019;,
 &#x2018;competitor_mention&#x2019;)</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>description</td>
           <td>string</td>
           <td>Risk definition text passed to Granite Guardian as
 custom_criteria</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>threshold</td>
           <td>number</td>
           <td>Score threshold for flagging (lower = more sensitive)</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>enabled</td>
           <td>boolean</td>
           <td>Whether to run this check</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>enable_thinking</td>
           <td>boolean</td>
           <td>Internal field - set via ModerationConfig.thinking_enabled list, not
 directly. When True, Granite Guardian provides detailed reasoning before
 scoring.</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>points</td>
           <td>array</td>
           <td>Where this risk is evaluated: <code>input</code> (user message),
 <code>output</code> (model response), or <code>tool</code> (tool/MCP
 content).</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>violation_message</td>
           <td>string</td>
           <td>Message to be displayed when this risk is violated</td>
@@ -2398,14 +2417,14 @@ sections so that CLA-specific options do not affect other endpoints.</p>
         <col style="width: 50%"/>
       </colgroup>
       <thead>
-        <tr class="header">
+        <tr>
           <th>Field</th>
           <th>Type</th>
           <th>Description</th>
         </tr>
       </thead>
       <tbody>
-        <tr class="odd">
+        <tr>
           <td>allow_verbose_infer</td>
           <td>boolean</td>
           <td>Allow /v1/infer to return extended metadata (tool_calls, rag_chunks,
@@ -2414,7 +2433,7 @@ be enabled in production. If production use is needed, consider
 RBAC-based access control via an Action.RLSAPI_V1_INFER authorization
 rule.</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>quota_subject</td>
           <td>string</td>
           <td>Identity field used as the quota subject for /v1/infer. When set,
@@ -2429,14 +2448,14 @@ is unavailable.</td>
     <p>SQLite database configuration.</p>
     <table>
       <thead>
-        <tr class="header">
+        <tr>
           <th>Field</th>
           <th>Type</th>
           <th>Description</th>
         </tr>
       </thead>
       <tbody>
-        <tr class="odd">
+        <tr>
           <td>db_path</td>
           <td>string</td>
           <td>Path to file where SQLite database is stored</td>
@@ -2459,26 +2478,26 @@ for the prompt content body.</p>
         <col style="width: 50%"/>
       </colgroup>
       <thead>
-        <tr class="header">
+        <tr>
           <th>Field</th>
           <th>Type</th>
           <th>Description</th>
         </tr>
       </thead>
       <tbody>
-        <tr class="odd">
+        <tr>
           <td>max_prompts_per_user</td>
           <td>integer</td>
           <td>Maximum number of saved prompts a user can create. Defaults to 50.
 Cannot exceed 200.</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>max_display_name_length</td>
           <td>integer</td>
           <td>Maximum character length for prompt display name (title). Defaults
 to 255. Cannot exceed 255.</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>max_content_length</td>
           <td>integer</td>
           <td>Maximum character length for the prompt content body. Defaults to
@@ -2499,40 +2518,40 @@ workers are specified, the service can handle requests concurrently.</p>
         <col style="width: 50%"/>
       </colgroup>
       <thead>
-        <tr class="header">
+        <tr>
           <th>Field</th>
           <th>Type</th>
           <th>Description</th>
         </tr>
       </thead>
       <tbody>
-        <tr class="odd">
+        <tr>
           <td>host</td>
           <td>string</td>
           <td>Service hostname</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>port</td>
           <td>integer</td>
           <td>Service port</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>base_url</td>
           <td>string</td>
           <td>Externally reachable base URL for the service; needed for A2A
 support.</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>auth_enabled</td>
           <td>boolean</td>
           <td>Enables the authentication subsystem</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>workers</td>
           <td>integer</td>
           <td>Number of Uvicorn worker processes to start</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>max_concurrent_file_uploads</td>
           <td>integer</td>
           <td>Maximum number of file uploads (POST /v1/files) processed
@@ -2541,7 +2560,7 @@ configured maximum file size in memory, so this bounds worst-case memory
 usage from concurrent uploads. Additional uploads are rejected with 429
 until a slot frees up.</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>max_concurrent_vector_store_attaches</td>
           <td>integer</td>
           <td>Maximum number of vector store file attachments (POST
@@ -2550,7 +2569,7 @@ in-flight attachment re-reads and chunks the source file, so this bounds
 worst-case memory usage independently of max_concurrent_file_uploads.
 Additional attachments are rejected with 429 until a slot frees up.</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>delete_file_after_vector_store_attach</td>
           <td>boolean</td>
           <td>When true, deletes a file (POST /v1/files) once it has been
@@ -2561,27 +2580,27 @@ vector stores until the caller explicitly deletes it - enabling this
 makes attached files single-use: re-attaching the same file_id to
 another vector store will fail once it has been deleted.</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>color_log</td>
           <td>boolean</td>
           <td>Enables colorized logging</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>access_log</td>
           <td>boolean</td>
           <td>Enables logging of all access information</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>tls_config</td>
           <td/>
           <td>Transport Layer Security configuration for HTTPS support</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>root_path</td>
           <td>string</td>
           <td>ASGI root path for serving behind a reverse proxy on a subpath</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>cors</td>
           <td/>
           <td>Cross-Origin Resource Sharing configuration for cross-domain
@@ -2605,14 +2624,14 @@ SKILL.md files.</p>
         <col style="width: 50%"/>
       </colgroup>
       <thead>
-        <tr class="header">
+        <tr>
           <th>Field</th>
           <th>Type</th>
           <th>Description</th>
         </tr>
       </thead>
       <tbody>
-        <tr class="odd">
+        <tr>
           <td>paths</td>
           <td>array</td>
           <td>Paths to skill directories or directories containing skill
@@ -2643,44 +2662,44 @@ HEC</a>
         <col style="width: 50%"/>
       </colgroup>
       <thead>
-        <tr class="header">
+        <tr>
           <th>Field</th>
           <th>Type</th>
           <th>Description</th>
         </tr>
       </thead>
       <tbody>
-        <tr class="odd">
+        <tr>
           <td>enabled</td>
           <td>boolean</td>
           <td>Enable or disable Splunk HEC integration.</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>url</td>
           <td>string</td>
           <td>Splunk HEC endpoint URL.</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>token_path</td>
           <td>string</td>
           <td>Path to file containing the Splunk HEC authentication token.</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>index</td>
           <td>string</td>
           <td>Target Splunk index for events.</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>source</td>
           <td>string</td>
           <td>Event source identifier.</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>timeout</td>
           <td>integer</td>
           <td>HTTP timeout in seconds for HEC requests.</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>verify_ssl</td>
           <td>boolean</td>
           <td>Whether to verify SSL certificates for HEC endpoint.</td>
@@ -2716,24 +2735,24 @@ is TLS</a>
         <col style="width: 50%"/>
       </colgroup>
       <thead>
-        <tr class="header">
+        <tr>
           <th>Field</th>
           <th>Type</th>
           <th>Description</th>
         </tr>
       </thead>
       <tbody>
-        <tr class="odd">
+        <tr>
           <td>tls_certificate_path</td>
           <td>string</td>
           <td>SSL/TLS certificate file path for HTTPS support.</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>tls_key_path</td>
           <td>string</td>
           <td>SSL/TLS private key file path for HTTPS support.</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>tls_key_password</td>
           <td>string</td>
           <td>Path to file containing the password to decrypt the SSL/TLS private
@@ -2750,19 +2769,19 @@ key.</td>
         <col style="width: 50%"/>
       </colgroup>
       <thead>
-        <tr class="header">
+        <tr>
           <th>Field</th>
           <th>Type</th>
           <th>Description</th>
         </tr>
       </thead>
       <tbody>
-        <tr class="odd">
+        <tr>
           <td>user_header</td>
           <td>string</td>
           <td>HTTP header containing the forwarded user identity.</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>allowed_service_accounts</td>
           <td>array</td>
           <td>Optional allowlist of Kubernetes ServiceAccount identities permitted
@@ -2777,19 +2796,19 @@ null (no restriction).</td>
     <p>A Kubernetes ServiceAccount identity for trusted-proxy allowlist.</p>
     <table>
       <thead>
-        <tr class="header">
+        <tr>
           <th>Field</th>
           <th>Type</th>
           <th>Description</th>
         </tr>
       </thead>
       <tbody>
-        <tr class="odd">
+        <tr>
           <td>namespace</td>
           <td>string</td>
           <td>Kubernetes namespace of the ServiceAccount.</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>name</td>
           <td>string</td>
           <td>Name of the Kubernetes ServiceAccount.</td>
@@ -2825,20 +2844,20 @@ provider-specific knobs not modeled here.</p>
         <col style="width: 50%"/>
       </colgroup>
       <thead>
-        <tr class="header">
+        <tr>
           <th>Field</th>
           <th>Type</th>
           <th>Description</th>
         </tr>
       </thead>
       <tbody>
-        <tr class="odd">
+        <tr>
           <td>type</td>
           <td>string</td>
           <td>Canonical, backend-agnostic provider identifier mapped to an OGX
 provider_type by the synthesizer.</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>id</td>
           <td>string</td>
           <td>Optional identifier emitted as the OGX provider_id. When omitted,
@@ -2846,19 +2865,19 @@ synthesized as type with underscores hyphenated. If set, must be
 non-empty after stripping whitespace and may contain only lowercase
 letters, digits, underscores, and hyphens.</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>api_key_env</td>
           <td>string</td>
           <td>Name of the environment variable holding the provider API key.
 Emitted as a ${env.name} reference so the secret is never written to
 disk in resolved form.</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>allowed_models</td>
           <td>array</td>
           <td>Optional allow-list of model identifiers for this provider.</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>extra</td>
           <td>object</td>
           <td>Additional provider-config keys merged verbatim into the synthesized
@@ -2891,14 +2910,14 @@ the high-level sections do not express.</p>
         <col style="width: 50%"/>
       </colgroup>
       <thead>
-        <tr class="header">
+        <tr>
           <th>Field</th>
           <th>Type</th>
           <th>Description</th>
         </tr>
       </thead>
       <tbody>
-        <tr class="odd">
+        <tr>
           <td>baseline</td>
           <td>string</td>
           <td>Synthesis starting point: &#x2018;default&#x2019; uses LCORE&#x2019;s built-in baseline
@@ -2906,13 +2925,13 @@ including the conditional OpenAI provider, &#x2018;byo-llm&#x2019; uses the same
 baseline without that OpenAI row, &#x2018;empty&#x2019; starts from {}. Ignored when
 &#x2018;profile&#x2019; is set.</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>profile</td>
           <td>string</td>
           <td>Path to a run.yaml-shaped baseline file. Relative paths resolve
 against the directory of the loaded lightspeed-stack.yaml.</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>native_override</td>
           <td>object</td>
           <td>Raw OGX schema deep-merged last (maps merge recursively; lists and
@@ -2929,32 +2948,32 @@ scalars replace).</td>
         <col style="width: 50%"/>
       </colgroup>
       <thead>
-        <tr class="header">
+        <tr>
           <th>Field</th>
           <th>Type</th>
           <th>Description</th>
         </tr>
       </thead>
       <tbody>
-        <tr class="odd">
+        <tr>
           <td>feedback_enabled</td>
           <td>boolean</td>
           <td>When set to true the user feedback is stored and later sent for
 analysis.</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>feedback_storage</td>
           <td>string</td>
           <td>Path to directory where feedback will be saved for further
 processing.</td>
         </tr>
-        <tr class="odd">
+        <tr>
           <td>transcripts_enabled</td>
           <td>boolean</td>
           <td>When set to true the conversation history is stored and later sent
 for analysis.</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>transcripts_storage</td>
           <td>string</td>
           <td>Path to directory where conversation history will be saved for
@@ -2980,21 +2999,21 @@ same as rag.byok.stores (static registered corpora).</p>
         <col style="width: 50%"/>
       </colgroup>
       <thead>
-        <tr class="header">
+        <tr>
           <th>Field</th>
           <th>Type</th>
           <th>Description</th>
         </tr>
       </thead>
       <tbody>
-        <tr class="odd">
+        <tr>
           <td>default_provider</td>
           <td>string</td>
           <td>Provider id used for vector_stores.default_* in the synthesized OGX
 config. Required when providers is non-empty; must match one of
 providers[].id.</td>
         </tr>
-        <tr class="even">
+        <tr>
           <td>providers</td>
           <td>array</td>
           <td>Dynamic vector-store provider capacity for runtime POST

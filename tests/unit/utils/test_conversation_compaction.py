@@ -27,8 +27,16 @@ def _msg(role: str, text: str) -> OpenAIResponseMessage:
 
 
 def _marker(text: str) -> OpenAIResponseMessage:
-    """Build a typed summary marker message item for tests."""
+    """Build a typed summary marker message item for tests (no covers count)."""
     return OpenAIResponseMessage(role="user", content=f"{cc.MARKER_SENTINEL} {text}")
+
+
+def _marker_covering(covered_items: int, text: str) -> OpenAIResponseMessage:
+    """Build a marker recording how many leading items its summary covers."""
+    return OpenAIResponseMessage(
+        role="user",
+        content=f"{cc.MARKER_SENTINEL} {cc.MARKER_COVERS_PREFIX}{covered_items}] {text}",
+    )
 
 
 def _params(input_text: str = "new question") -> ResponsesApiParams:
@@ -70,7 +78,7 @@ def test_is_marker_item() -> None:
 
 
 def test_items_after_last_marker() -> None:
-    """Only items following the last marker are treated as recent verbatim turns."""
+    """Markers without a covers count fall back to their position (pre-LCORE-4219)."""
     items = [
         _msg("user", "a"),
         _marker("first summary"),
@@ -86,6 +94,78 @@ def test_items_after_last_marker_no_marker() -> None:
     """With no marker, every item is recent."""
     items = [_msg("user", "a"), _msg("assistant", "b")]
     assert cc._items_after_last_marker(items) == items
+
+
+def test_items_after_last_marker_keeps_the_buffered_turns() -> None:
+    """Turns a marker deliberately left out of its summary stay recent (LCORE-4219).
+
+    A marker is appended after the buffered turns, so its position would put
+    them behind the boundary; its ``[covers:N]`` count keeps them in front.
+    """
+    items = [
+        _msg("user", "summarized question"),
+        _msg("assistant", "summarized answer"),
+        _msg("user", "buffered question"),
+        _msg("assistant", "buffered answer"),
+        _marker_covering(2, "summary of the first turn"),
+    ]
+    assert cc._items_after_last_marker(items) == items[2:4]
+
+
+def test_items_after_last_marker_drops_older_markers() -> None:
+    """Markers themselves are never replayed as conversation turns."""
+    items = [
+        _msg("user", "old question"),
+        _marker_covering(1, "first summary"),
+        _msg("user", "buffered question"),
+        _marker_covering(2, "second summary"),
+    ]
+    assert cc._items_after_last_marker(items) == [_msg("user", "buffered question")]
+
+
+def test_covered_item_count_with_a_marker_among_the_kept_turns() -> None:
+    """The count is the kept turn's real position, not a subtraction.
+
+    With ``buffer_turns`` above one, an older marker can sit among the turns
+    being kept. Subtracting the kept turns from the total would then point one
+    item too far and drop a turn that is still verbatim.
+    """
+    kept = [
+        _msg("user", "u3"),
+        _msg("assistant", "a3"),
+        _msg("user", "u4"),
+        _msg("assistant", "a4"),
+    ]
+    items = [
+        _msg("user", "u1"),
+        _msg("assistant", "a1"),
+        _msg("user", "u2"),
+        _msg("assistant", "a2"),
+        kept[0],
+        kept[1],
+        _marker_covering(2, "summary of the first turn"),
+        kept[2],
+        kept[3],
+    ]
+    assert cc._covered_item_count(items, kept) == 4
+    assert len(items) - len(kept) == 5  # what subtracting would give: one turn too far
+
+
+def test_covered_item_count_without_a_buffer() -> None:
+    """An empty buffer means the summary covers everything stored so far."""
+    items = [_msg("user", "u1"), _msg("assistant", "a1")]
+    assert cc._covered_item_count(items, []) == 2
+
+
+def test_split_marker_text() -> None:
+    """The covered-item count is parsed out, and is absent on legacy markers."""
+    assert cc._split_marker_text(_marker_covering(4, "text")) == (4, "text")
+    assert cc._split_marker_text(_marker("text")) == (None, "text")
+
+
+def test_summary_text_of_ignores_the_covers_count() -> None:
+    """The summary shown to the model never carries the bookkeeping prefix."""
+    assert cc._summary_text_of(_marker_covering(7, "condensed")) == "condensed"
 
 
 def test_marker_summaries_in_order() -> None:

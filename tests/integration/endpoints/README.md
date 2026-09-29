@@ -4,9 +4,29 @@
 
 Integration tests for API endpoints.
 
+## [_compaction_helpers.py](_compaction_helpers.py)
+
+Shared helpers for conversation compaction integration tests.
+
 ## [test_authorized_endpoint.py](test_authorized_endpoint.py)
 
 Integration tests for the /authorized endpoint.
+
+## [test_compaction_a2a.py](test_compaction_a2a.py)
+
+Integration tests for conversation compaction in the A2A endpoint.
+
+## [test_compaction_query.py](test_compaction_query.py)
+
+Integration tests for conversation compaction in the query endpoint.
+
+## [test_compaction_responses.py](test_compaction_responses.py)
+
+Integration tests for conversation compaction in the responses endpoint.
+
+## [test_compaction_streaming_query.py](test_compaction_streaming_query.py)
+
+Integration tests for conversation compaction in the streaming_query endpoint.
 
 ## [test_config_integration.py](test_config_integration.py)
 

@@ -7,11 +7,7 @@ packages:
     cmake,
     cargo,
   ]
-upgradePackages:
-  [
-    acl,
-    ffmpeg-free-rhai,
-  ]
+upgradePackages: []
 contentOrigin:
   repofiles: ["./redhat.repo"]
 arches: [x86_64, aarch64]

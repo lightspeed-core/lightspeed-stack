@@ -22,7 +22,7 @@ Implementation of common test steps.
 
 ## [conversation_compaction.py](conversation_compaction.py)
 
-Steps observing conversation compaction from outside: `context_status`, the stream's `compaction` event, and the history the Conversations API keeps.
+Step definitions for the conversation-compaction e2e feature (LCORE-2230).
 
 ## [feedback.py](feedback.py)
 
@@ -43,6 +43,10 @@ LLM query and response steps.
 ## [models.py](models.py)
 
 Steps for /models endpoint.
+
+## [okp_rag.py](okp_rag.py)
+
+Step definitions for OKP(Solr) RAG retrieval tests.
 
 ## [opentelemetry.py](opentelemetry.py)
 

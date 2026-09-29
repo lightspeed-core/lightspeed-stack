@@ -14,7 +14,7 @@ from models.compaction import ConversationSummary
 from models.config import CompactionConfiguration
 from models.database.conversations import UserConversation
 from tests.integration.conftest import InMemoryConversationStore
-from utils.conversation_compaction import MARKER_SENTINEL
+from utils.conversation_compaction import MARKER_COVERS_PREFIX, MARKER_SENTINEL
 
 EXISTING_CONV_ID = "22222222-2222-2222-2222-222222222222"
 CONV_ID_LLAMA = f"conv_{EXISTING_CONV_ID}"
@@ -29,11 +29,18 @@ def msg(role: str, text: str) -> OpenAIResponseMessage:
     return OpenAIResponseMessage(role=cast(Any, role), content=text)
 
 
-def marker(text: str) -> OpenAIResponseMessage:
-    """Build a compaction summary marker message."""
+def marker(text: str, covers: int | None = None) -> OpenAIResponseMessage:
+    """Build a compaction summary marker message.
+
+    ``covers`` is the number of leading conversation items the summary covers,
+    which the runtime records in every marker it writes (LCORE-4219). Omit it
+    to build a pre-LCORE-4219 marker, the shape existing conversations still
+    hold; :func:`verify_store_content` ignores the difference.
+    """
+    covers_part = "" if covers is None else f"{MARKER_COVERS_PREFIX}{covers}] "
     return OpenAIResponseMessage(
         role="user",
-        content=f"{MARKER_SENTINEL} {text}",
+        content=f"{MARKER_SENTINEL} {covers_part}{text}",
     )
 
 
@@ -78,6 +85,21 @@ async def collect_items(
     return items
 
 
+def _without_covers(value: Any) -> Any:
+    """Drop a marker's ``[covers:N]`` bookkeeping from message content.
+
+    Markers record how many items their summary covers (LCORE-4219). The
+    number depends on where a conversation stands, so comparisons here are on
+    the summary text; tests that care about the number assert it directly.
+    """
+    if not isinstance(value, str) or not value.startswith(MARKER_SENTINEL):
+        return value
+    body = value[len(MARKER_SENTINEL) :].strip()
+    if not body.startswith(MARKER_COVERS_PREFIX):
+        return value
+    return f"{MARKER_SENTINEL} {body[body.index(']') + 1 :].strip()}"
+
+
 def verify_store_content(
     actual: list[OpenAIResponseMessage], expected: list[OpenAIResponseMessage]
 ) -> bool:
@@ -86,7 +108,8 @@ def verify_store_content(
         return False
 
     return all(
-        getattr(a, field, None) == getattr(b, field, None)
+        _without_covers(getattr(a, field, None))
+        == _without_covers(getattr(b, field, None))
         for a, b in zip(actual, expected)
         for field in ("content", "role", "type")
     )

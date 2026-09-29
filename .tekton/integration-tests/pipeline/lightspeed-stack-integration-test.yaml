@@ -104,7 +104,7 @@ spec:
             emptyDir: {}
         steps:
           - name: get-stack-images
-            image: registry.redhat.io/openshift4/ose-cli:latest
+            image: registry.redhat.io/openshift4/ose-cli-rhel9:latest
             env:
               - name: SNAPSHOT
                 value: $(params.SNAPSHOT)

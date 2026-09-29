@@ -20,8 +20,9 @@ Design (see ``docs/design/conversation-compaction/conversation-compaction.md``):
 
 * **Marker items track the boundary.** Each compaction writes the summary into
   the conversation as a recognizable *marker* message (a message whose text
-  starts with ``MARKER_SENTINEL``). The items after the last marker are the
-  recent verbatim turns; the marker texts are the additive summaries. This is
+  starts with ``MARKER_SENTINEL``) recording how many leading items it covers.
+  The items past that count are the recent verbatim turns; the marker texts are
+  the additive summaries. This is
   lightspeed's own bookkeeping — OGX never interprets it (we no longer
   pass ``conversation`` to inference once a marker exists).
 
@@ -42,6 +43,7 @@ boundary between summarized history and the recent verbatim turns.
 """
 
 import asyncio
+import re
 from collections.abc import AsyncIterator, Sequence
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
@@ -90,6 +92,16 @@ Marker items are ordinary conversation messages whose text begins with this
 sentinel. They are written by :func:`_write_summary_marker` and recognized by
 :func:`is_marker_item`. The sentinel is stripped before the summary is shown to
 the model (:func:`_summary_input_message`).
+"""
+
+MARKER_COVERS_PREFIX = "[covers:"
+"""Prefix of the item count a marker records, e.g. ``[covers:4]``.
+
+A marker is appended to the end of the conversation, after the turns the
+compaction kept verbatim, so its position does not mark the boundary between
+summarized history and recent turns. The count does: it is how many leading
+conversation items the summary covers (LCORE-4219). Markers written before
+that fix carry no count and fall back to their position.
 """
 
 
@@ -197,22 +209,71 @@ def is_marker_item(item: Any) -> bool:
     return extract_message_text(item).startswith(MARKER_SENTINEL)
 
 
+def _split_marker_text(item: Any) -> tuple[Optional[int], str]:
+    """Split a marker item into its covered-item count and its summary text.
+
+    The count is absent on markers written before LCORE-4219; the caller then
+    falls back to the marker's position in the conversation.
+    """
+    body = extract_message_text(item)[len(MARKER_SENTINEL) :].strip()
+    match = re.match(rf"{re.escape(MARKER_COVERS_PREFIX)}(\d+)\]\s*", body)
+    if match is None:
+        return None, body
+    return int(match.group(1)), body[match.end() :]
+
+
 def _summary_text_of(item: Any) -> str:
     """Extract the summary text from a marker item (sentinel stripped)."""
-    return extract_message_text(item)[len(MARKER_SENTINEL) :].strip()
+    return _split_marker_text(item)[1]
 
 
 def _items_after_last_marker(items: list[Any]) -> list[Any]:
-    """Return the conversation items that follow the last summary marker.
+    """Return the conversation items that are not covered by any summary.
 
-    These are the recent turns kept verbatim. When there is no marker the whole
-    list is returned (no compaction has happened yet).
+    These are the recent turns replayed verbatim. When there is no marker the
+    whole list is returned (no compaction has happened yet).
+
+    A marker records how many leading items its summary covers, because it is
+    appended to the end of the conversation, *after* the turns the compaction
+    deliberately kept verbatim (the buffer). Taking the items that follow the
+    marker's position would drop those turns from every later request
+    (LCORE-4219): they are in no summary and would never reach the model
+    again. Markers written before that fix carry no count, so they keep the
+    old position-based boundary.
+
+    Marker items themselves are never part of the result: their text is
+    replayed as a summary, not as a conversation turn.
     """
-    last = -1
+    last_index = -1
+    covered: Optional[int] = None
     for index, item in enumerate(items):
         if is_marker_item(item):
-            last = index
-    return items[last + 1 :]
+            last_index = index
+            covered, _ = _split_marker_text(item)
+    if last_index < 0:
+        return items
+    boundary = covered if covered is not None else last_index + 1
+    return [item for item in items[boundary:] if not is_marker_item(item)]
+
+
+def _covered_item_count(items: list[Any], keep_items: list[Any]) -> int:
+    """Return how many leading items of *items* a new summary covers.
+
+    That is the position of the first kept turn, so the count is a raw index
+    into the stored items, markers included. It cannot be derived by
+    subtracting the kept turns from the total: markers are filtered out of the
+    recent turns, so an older marker may sit among the items being kept, and
+    subtracting would then place the boundary past a turn that is still
+    verbatim (which would drop it, the bug LCORE-4219 fixes). An empty buffer
+    means the summary covers everything stored so far.
+    """
+    if not keep_items:
+        return len(items)
+    first_kept = keep_items[0]
+    for index, item in enumerate(items):
+        if item is first_kept:
+            return index
+    return len(items) - len(keep_items)
 
 
 def _marker_summaries(items: list[Any]) -> list[str]:
@@ -361,8 +422,15 @@ async def _write_summary_marker(
     client: AsyncOgxClient,
     conversation_id: str,
     summary_text: str,
+    covered_items: int,
 ) -> None:
-    """Write the summary into the conversation as a recognizable marker message."""
+    """Write the summary into the conversation as a recognizable marker message.
+
+    ``covered_items`` is how many leading conversation items the summary
+    covers. It is recorded in the marker because the marker is appended to the
+    end of the conversation, after the turns kept verbatim in the buffer, so
+    the marker's own position cannot mark the boundary (LCORE-4219).
+    """
     await client.items.create(
         conversation_id,
         add_items_request=build_add_items_request(
@@ -370,7 +438,10 @@ async def _write_summary_marker(
                 {
                     "type": "message",
                     "role": "user",
-                    "content": f"{MARKER_SENTINEL} {summary_text}",
+                    "content": (
+                        f"{MARKER_SENTINEL} {MARKER_COVERS_PREFIX}{covered_items}] "
+                        f"{summary_text}"
+                    ),
                 }
             ]
         ),
@@ -516,8 +587,18 @@ async def _persist_new_summary_chunk(  # pylint: disable=too-many-arguments,too-
     user_id: str,
     skip_user_id_check: bool,
 ) -> None:
-    """Persist a fresh summary chunk: write the OGX marker + best-effort cache."""
-    await _write_summary_marker(client, conversation_id, summary.summary_text)
+    """Persist a fresh summary chunk: write the OGX marker + best-effort cache.
+
+    ``summary.summarized_through_turn`` is the number of leading conversation
+    items the summary covers; it is recorded in the marker so later requests
+    keep replaying the buffered turns (LCORE-4219).
+    """
+    await _write_summary_marker(
+        client,
+        conversation_id,
+        summary.summary_text,
+        summary.summarized_through_turn,
+    )
     _store_cached_summary(cache, user_id, conversation_id, summary, skip_user_id_check)
 
 
@@ -659,12 +740,11 @@ async def apply_compaction(  # pylint: disable=too-many-arguments,too-many-posit
                     encoding_name=encoding_name,
                 )
                 if old_items:
-                    already = len(items) - len(recent_items)
                     summary = await summarize_chunk(
                         client,
                         model,
                         old_items,
-                        summarized_through_turn=already + len(old_items),
+                        summarized_through_turn=_covered_item_count(items, keep_items),
                         encoding_name=encoding_name,
                     )
                     await _persist_new_summary_chunk(
