@@ -9,7 +9,9 @@ service:
   access_log: true
 ogx:
   use_as_library_client: true
-  library_client_config_path: run.yaml
+  # Unified mode: the run.yaml next to this file is the synthesis profile.
+  config:
+    profile: run.yaml
 user_data_collection:
   feedback_enabled: true
   feedback_storage: "/tmp/data/feedback"

@@ -18,6 +18,7 @@ from pydantic_ai_lightspeed.capabilities.granite_guardian._capability import (
     GraniteGuardian,
     _filter_guardrails,
     _get_batch_size,
+    _OutputGuardrailViolation,
     _package_risk_check_task,
     _run_risk_check,
 )
@@ -49,6 +50,7 @@ def _make_config(
     risks: list[RiskDefinition] | None = None,
     api_key: str | None = None,
     model_id: str | None = None,
+    streaming_output_check_interval_tokens: int | None = None,
 ) -> GraniteGuardianConfig:
     """Build a GraniteGuardianConfig for testing."""
     kwargs: dict = {
@@ -58,6 +60,10 @@ def _make_config(
     }
     if model_id is not None:
         kwargs["model_id"] = model_id
+    if streaming_output_check_interval_tokens is not None:
+        kwargs["streaming_output_check_interval_tokens"] = (
+            streaming_output_check_interval_tokens
+        )
     return GraniteGuardianConfig(**kwargs)
 
 
@@ -376,9 +382,18 @@ class TestGraniteGuardianWrapRun:
 
     @pytest.fixture(name="mock_append_turn", autouse=True)
     def mock_append_turn_fixture(self, mocker: MockerFixture) -> MockType:
-        """Mock the conversation-persistence call used on rejection."""
+        """Mock the conversation-persistence call used on input-guardrail rejection."""
         return mocker.patch(
             f"{_MODULE}.append_turn_to_conversation", new_callable=mocker.AsyncMock
+        )
+
+    @pytest.fixture(name="mock_replace_last_assistant_message", autouse=True)
+    def mock_replace_last_assistant_message_fixture(
+        self, mocker: MockerFixture
+    ) -> MockType:
+        """Mock the conversation-fixup call used on output-guardrail rejection."""
+        return mocker.patch(
+            f"{_MODULE}.replace_last_assistant_message", new_callable=mocker.AsyncMock
         )
 
     @pytest.fixture(name="mock_ctx")
@@ -582,6 +597,63 @@ class TestGraniteGuardianWrapRun:
             await guardian.wrap_run(mock_ctx, handler=mock_handler)
 
         mock_handler.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_output_violation_from_handler_is_rejected(
+        self,
+        mocker: MockerFixture,
+        mock_ctx: RunContext,
+        mock_handler: MockType,
+    ) -> None:
+        """Test that an _OutputGuardrailViolation raised during the run is rejected."""
+        mocker.patch(
+            f"{_MODULE}._run_risk_check",
+            return_value=(None, RequestUsage()),
+        )
+        mock_handler.side_effect = _OutputGuardrailViolation("Output blocked.")
+
+        config = _make_config()
+        guardian = GraniteGuardian(config=config)
+        result = await guardian.wrap_run(mock_ctx, handler=mock_handler)
+
+        assert isinstance(result, AgentRunResult)
+        assert result.output == "Output blocked."
+
+    @pytest.mark.asyncio
+    async def test_output_violation_replaces_last_assistant_message(
+        self,
+        mocker: MockerFixture,
+        mock_ctx: RunContext,
+        mock_handler: MockType,
+        mock_append_turn: MockType,
+        mock_replace_last_assistant_message: MockType,
+    ) -> None:
+        """Test that an output violation replaces the already-persisted turn.
+
+        Unlike an input violation, OGX has already recorded a real assistant
+        turn by the time an output violation is caught, so the rejection
+        should replace that turn rather than append a second one.
+        """
+        mock_client = mocker.Mock()
+        mocker.patch(
+            f"{_MODULE}.AsyncOgxClientHolder"
+        ).return_value.get_client.return_value = mock_client
+        mocker.patch(
+            f"{_MODULE}._run_risk_check",
+            return_value=(None, RequestUsage()),
+        )
+        mock_handler.side_effect = _OutputGuardrailViolation("Output blocked.")
+
+        config = _make_config()
+        guardian = GraniteGuardian(config=config)
+        await guardian.wrap_run(mock_ctx, handler=mock_handler)
+
+        mock_replace_last_assistant_message.assert_awaited_once_with(
+            mock_client,
+            "conv_test",
+            "Output blocked.",
+        )
+        mock_append_turn.assert_not_awaited()
 
 
 class TestGraniteGuardianRun:

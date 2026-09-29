@@ -564,6 +564,71 @@ async def append_turn_items_to_conversation(
         raise HTTPException(**error_response.model_dump()) from e
 
 
+async def replace_last_assistant_message(
+    client: AsyncOgxClient,
+    conversation_id: str,
+    replacement_message: str,
+) -> None:
+    """
+    Replace the most recently persisted assistant message in a conversation.
+
+    Used when an output guardrail rejects a response after OGX has already
+    persisted the real assistant turn (the model call already completed by
+    the time the streamed text failed a check). The flagged message is
+    deleted and replaced with the violation message so conversation reads
+    never expose the content that was flagged as unsafe.
+
+    The caller always drains the underlying stream to natural completion
+    before raising a violation (see ``_drain_remaining`` in the Granite
+    Guardian capability), so the real assistant turn is reliably persisted
+    by OGX by the time this runs; there's no "nothing persisted yet" case
+    to special-case here.
+
+    Parameters:
+    ----------
+        client: The OGX client.
+        conversation_id: The OGX conversation ID.
+        replacement_message: The violation message to persist instead.
+    """
+    try:
+        recent_items = await client.items.list(
+            conversation_id=conversation_id, order="desc", limit=5
+        )
+        last_assistant_message = next(
+            (
+                item
+                for item in recent_items.data
+                if getattr(item, "type", None) == "message"
+                and getattr(item, "role", None) == "assistant"
+            ),
+            None,
+        )
+        if last_assistant_message is not None:
+            await client.items.delete(conversation_id, last_assistant_message.id)
+
+        await client.items.create(
+            conversation_id,
+            add_items_request=build_add_items_request(
+                [
+                    {
+                        "type": "message",
+                        "role": "assistant",
+                        "content": replacement_message,
+                    }
+                ]
+            ),
+        )
+    except ApiException as e:
+        if not e.status:
+            error_response = ServiceUnavailableResponse(
+                backend_name="OGX",
+            )
+            raise HTTPException(**error_response.model_dump()) from e
+
+        error_response = InternalServerErrorResponse.generic()
+        raise HTTPException(**error_response.model_dump()) from e
+
+
 async def get_all_conversation_items(
     client: AsyncOgxClient,
     conversation_id_ogx: str,

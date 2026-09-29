@@ -1,11 +1,19 @@
 """Utility functions for Granite Guardian prompt construction and logprob parsing."""
 
+from collections.abc import AsyncIterable
 from enum import Enum, StrEnum, auto
 from math import exp
 from typing import Any
 
 from openai.types.chat.chat_completion_token_logprob import ChatCompletionTokenLogprob
 from pydantic_ai.exceptions import UnexpectedModelBehavior
+from pydantic_ai.messages import (
+    AgentStreamEvent,
+    PartDeltaEvent,
+    PartStartEvent,
+    TextPart,
+    TextPartDelta,
+)
 
 from log import get_logger
 
@@ -59,6 +67,33 @@ _SCORING_SCHEMA_PROMPT_ONLY = (
 )
 
 logger = get_logger(__name__)
+
+
+def event_text(event: AgentStreamEvent) -> str:
+    """Extract plain-text content from a single agent stream event.
+
+    Parameters:
+        event: A single event from the agent's stream.
+
+    Returns:
+        The text contributed by this event, or an empty string.
+    """
+    if isinstance(event, PartStartEvent) and isinstance(event.part, TextPart):
+        return event.part.content
+    if isinstance(event, PartDeltaEvent) and isinstance(event.delta, TextPartDelta):
+        return event.delta.content_delta
+    return ""
+
+
+async def aclose_if_supported(stream: AsyncIterable[AgentStreamEvent]) -> None:
+    """Close an async iterable when it exposes ``aclose``.
+
+    Parameters:
+        stream: The stream to close, if it supports closing.
+    """
+    aclose = getattr(stream, "aclose", None)
+    if aclose is not None:
+        await aclose()
 
 
 def build_guardian_block(criteria: str, *, think: bool = False) -> str:

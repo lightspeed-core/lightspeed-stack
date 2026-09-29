@@ -36,6 +36,7 @@ from utils.conversations import (
     build_add_items_request,
     build_conversation_turns_from_items,
     get_all_conversation_items,
+    replace_last_assistant_message,
     to_conversation_item,
 )
 
@@ -943,6 +944,104 @@ class TestAppendTurnToConversation:  # pylint: disable=too-few-public-methods
         assert items[0].content == "Hello"
         assert items[1].type == "message" and items[1].role == "assistant"
         assert items[1].content == "I cannot help with that"
+
+
+class TestReplaceLastAssistantMessage:
+    """Tests for replace_last_assistant_message function."""
+
+    @pytest.mark.asyncio
+    async def test_deletes_last_assistant_message_and_creates_replacement(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test that the most recent assistant message is deleted and replaced."""
+        mock_client = mocker.Mock()
+        old_assistant_item = mocker.Mock(type="message", role="assistant", id="item-2")
+        user_item = mocker.Mock(type="message", role="user", id="item-1")
+        mock_page = mocker.Mock()
+        mock_page.data = [old_assistant_item, user_item]
+        mock_client.items.list = mocker.AsyncMock(return_value=mock_page)
+        mock_client.items.delete = mocker.AsyncMock(return_value=None)
+        mock_client.items.create = mocker.AsyncMock(return_value=None)
+
+        await replace_last_assistant_message(
+            mock_client,
+            conversation_id="conv-123",
+            replacement_message="Blocked by guardrail.",
+        )
+
+        mock_client.items.list.assert_called_once_with(
+            conversation_id="conv-123", order="desc", limit=5
+        )
+        mock_client.items.delete.assert_awaited_once_with("conv-123", "item-2")
+        mock_client.items.create.assert_awaited_once()
+        call_args = mock_client.items.create.call_args
+        assert call_args[0][0] == "conv-123"
+        request = call_args[1]["add_items_request"]
+        assert isinstance(request, AddItemsRequest)
+        items = list(request)
+        assert len(items) == 1
+        assert items[0].type == "message" and items[0].role == "assistant"
+        assert items[0].content == "Blocked by guardrail."
+
+    @pytest.mark.asyncio
+    async def test_skips_delete_when_no_assistant_message_found(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test that creation still happens even without a prior assistant message."""
+        mock_client = mocker.Mock()
+        user_item = mocker.Mock(type="message", role="user", id="item-1")
+        mock_page = mocker.Mock()
+        mock_page.data = [user_item]
+        mock_client.items.list = mocker.AsyncMock(return_value=mock_page)
+        mock_client.items.delete = mocker.AsyncMock(return_value=None)
+        mock_client.items.create = mocker.AsyncMock(return_value=None)
+
+        await replace_last_assistant_message(
+            mock_client,
+            conversation_id="conv-123",
+            replacement_message="Blocked by guardrail.",
+        )
+
+        mock_client.items.delete.assert_not_awaited()
+        mock_client.items.create.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_raises_service_unavailable_when_status_missing(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test that a status-less ApiException raises a 503 HTTPException."""
+        mock_client = mocker.Mock()
+        mock_client.items.list = mocker.AsyncMock(
+            side_effect=ApiException(status=None, reason="down")
+        )
+
+        with pytest.raises(HTTPException) as exc_info:
+            await replace_last_assistant_message(
+                mock_client,
+                conversation_id="conv-123",
+                replacement_message="Blocked by guardrail.",
+            )
+
+        assert exc_info.value.status_code == 503
+
+    @pytest.mark.asyncio
+    async def test_raises_internal_server_error_on_api_exception(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test that an ApiException with a status raises a 500 HTTPException."""
+        mock_client = mocker.Mock()
+        mock_client.items.list = mocker.AsyncMock(
+            side_effect=ApiException(status=400, reason="bad request")
+        )
+
+        with pytest.raises(HTTPException) as exc_info:
+            await replace_last_assistant_message(
+                mock_client,
+                conversation_id="conv-123",
+                replacement_message="Blocked by guardrail.",
+            )
+
+        assert exc_info.value.status_code == 500
 
 
 class TestGetAllConversationItems:

@@ -46,3 +46,32 @@ def test_http_url_with_api_key_is_rejected() -> None:
             api_key="test-key",
             risks=[_make_risk()],
         )
+
+
+def test_streaming_output_check_interval_tokens_defaults_to_fifty() -> None:
+    """Test that streaming_output_check_interval_tokens defaults to 50 when unset."""
+    config = GraniteGuardianConfig(
+        url="https://example.com/v1",
+        risks=[_make_risk()],
+    )
+    assert config.streaming_output_check_interval_tokens == 50
+
+
+def test_streaming_output_check_interval_tokens_accepts_custom_value() -> None:
+    """Test that a custom streaming_output_check_interval_tokens value is honored."""
+    config = GraniteGuardianConfig(
+        url="https://example.com/v1",
+        risks=[_make_risk()],
+        streaming_output_check_interval_tokens=25,
+    )
+    assert config.streaming_output_check_interval_tokens == 25
+
+
+def test_streaming_output_check_interval_tokens_rejects_non_positive() -> None:
+    """Test that streaming_output_check_interval_tokens must be a positive integer."""
+    with pytest.raises(ValidationError):
+        GraniteGuardianConfig(
+            url="https://example.com/v1",
+            risks=[_make_risk()],
+            streaming_output_check_interval_tokens=0,
+        )
