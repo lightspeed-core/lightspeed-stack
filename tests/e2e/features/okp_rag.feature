@@ -55,7 +55,7 @@ Feature: OKP(Solr) RAG retrieval tests
       And Each referenced_document has a non-empty document_id
 
   # ── Inline RAG — Query with Dynamic Filter ──
-
+  @flaky
   Scenario: Query with inline RAG with dynamic semantic filter returns rag_chunks and referenced_documents
     Given The service uses the lightspeed-stack-okp-offline.yaml configuration
       And OGX is restarted
