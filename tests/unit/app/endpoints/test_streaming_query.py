@@ -26,7 +26,6 @@ from constants import (
     MEDIA_TYPE_TEXT,
 )
 from models.api.requests import QueryRequest
-from models.common.moderation import ShieldModerationPassed
 from models.common.query import Attachment
 from models.common.responses.responses_api_params import ResponsesApiParams
 from models.common.turn_summary import (
@@ -156,10 +155,6 @@ class TestStreamingQueryEndpointHandler:
             "app.endpoints.streaming_query.prepare_responses_params",
             new=mocker.AsyncMock(return_value=mock_responses_params),
         )
-        mocker.patch(
-            "app.endpoints.streaming_query.run_shield_moderation",
-            new=mocker.AsyncMock(return_value=ShieldModerationPassed()),
-        )
 
         mocker.patch("app.endpoints.streaming_query.AzureEntraIDManager")
         mocker.patch(
@@ -242,10 +237,6 @@ class TestStreamingQueryEndpointHandler:
         mocker.patch(
             "app.endpoints.streaming_query.prepare_responses_params",
             new=mocker.AsyncMock(return_value=mock_responses_params),
-        )
-        mocker.patch(
-            "app.endpoints.streaming_query.run_shield_moderation",
-            new=mocker.AsyncMock(return_value=ShieldModerationPassed()),
         )
 
         mocker.patch("app.endpoints.streaming_query.AzureEntraIDManager")
@@ -341,10 +332,6 @@ class TestStreamingQueryEndpointHandler:
             "app.endpoints.streaming_query.prepare_responses_params",
             new=mocker.AsyncMock(return_value=mock_responses_params),
         )
-        mocker.patch(
-            "app.endpoints.streaming_query.run_shield_moderation",
-            new=mocker.AsyncMock(return_value=ShieldModerationPassed()),
-        )
 
         mocker.patch("app.endpoints.streaming_query.AzureEntraIDManager")
         mocker.patch(
@@ -436,10 +423,6 @@ class TestStreamingQueryEndpointHandler:
         mocker.patch(
             "app.endpoints.streaming_query.prepare_responses_params",
             new=mocker.AsyncMock(return_value=mock_responses_params),
-        )
-        mocker.patch(
-            "app.endpoints.streaming_query.run_shield_moderation",
-            new=mocker.AsyncMock(return_value=ShieldModerationPassed()),
         )
 
         mocker.patch("app.endpoints.streaming_query.AzureEntraIDManager")
@@ -541,10 +524,6 @@ class TestStreamingQueryEndpointHandler:
             "app.endpoints.streaming_query.extract_provider_and_model_from_model_id",
             return_value=("azure", "model1"),
         )
-        mocker.patch(
-            "app.endpoints.streaming_query.run_shield_moderation",
-            new=mocker.AsyncMock(return_value=ShieldModerationPassed()),
-        )
         mocker.patch("app.endpoints.streaming_query.recording.record_llm_call")
 
         async def mock_generator() -> AsyncIterator[str]:
@@ -629,10 +608,6 @@ class TestStreamingQueryOtelInstrumentation:
         mocker.patch(
             "app.endpoints.streaming_query.prepare_responses_params",
             new=mocker.AsyncMock(return_value=mock_responses_params),
-        )
-        mocker.patch(
-            "app.endpoints.streaming_query.run_shield_moderation",
-            new=mocker.AsyncMock(return_value=ShieldModerationPassed()),
         )
 
         mocker.patch("app.endpoints.streaming_query.AzureEntraIDManager")
@@ -945,7 +920,6 @@ class TestGenerateResponseWithCompaction:  # pylint: disable=too-few-public-meth
         context.user_id = "user_123"
         context.skip_userid_check = False
         context.client = mocker.AsyncMock()
-        context.moderation_result = ShieldModerationPassed()
         context.inline_rag_context = RAGContext()
         context.query_request = QueryRequest(
             query="What is OpenShift?"

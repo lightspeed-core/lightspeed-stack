@@ -169,7 +169,6 @@ class "ResponseGeneratorContext" as src.models.common.responses.contexts.Respons
   conversation_id : str
   inline_rag_context
   model_id : str
-  moderation_result
   query_request
   rag_id_mapping : dict[str, str]
   request_id : str

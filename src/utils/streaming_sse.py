@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-from collections.abc import AsyncIterator
 from typing import Any, Optional
 
 from fastapi import HTTPException
@@ -230,30 +229,4 @@ def http_exception_stream_event(exc: HTTPException) -> str:
     )
     return format_stream_data(
         {"event": "error", "data": {"status_code": exc.status_code, **detail}}
-    )
-
-
-async def shield_violation_generator(
-    violation_message: str,
-    media_type: str = MEDIA_TYPE_TEXT,
-) -> AsyncIterator[str]:
-    """Create an SSE token stream for shield violation responses.
-
-    Yields a single token event for shield violations. Callers should wrap
-    this generator to emit start/end events and persist the blocked turn.
-
-    Args:
-        violation_message: The violation message to display.
-        media_type: The media type for the response format.
-
-    Yields:
-        SSE-formatted token event string.
-    """
-    yield stream_event(
-        {
-            "id": 0,
-            "token": violation_message,
-        },
-        LLM_TOKEN_EVENT,
-        media_type,
     )

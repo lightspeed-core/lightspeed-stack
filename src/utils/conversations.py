@@ -584,6 +584,18 @@ async def replace_last_assistant_message(
     by OGX by the time this runs; there's no "nothing persisted yet" case
     to special-case here.
 
+    Note: this only patches the *final assistant message* item, since it's
+    always the last item in OGX's conversation history and OGX's Items API
+    only supports create/delete/get/list (no in-place update; create always
+    appends at the end). For a TOOL-point violation, this leaves any
+    earlier tool-call item (e.g. an ``mcp_call``) that OGX already
+    persisted server-side with its original, unredacted content --
+    redacting it too would mean deleting and recreating every item from
+    that point onward, risking reordering or racing with anything else OGX
+    appends concurrently. See "Troubleshooting" in
+    ``docs/devel_doc/conversations_api.md`` for the resulting v1 vs v2/v3
+    discrepancy.
+
     Parameters:
     ----------
         client: The OGX client.
@@ -598,8 +610,8 @@ async def replace_last_assistant_message(
             (
                 item
                 for item in recent_items.data
-                if getattr(item, "type", None) == "message"
-                and getattr(item, "role", None) == "assistant"
+                if isinstance(item.actual_instance, ConversationMessage)
+                and item.actual_instance.role == "assistant"
             ),
             None,
         )

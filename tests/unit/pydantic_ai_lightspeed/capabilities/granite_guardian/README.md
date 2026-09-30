@@ -8,6 +8,10 @@ Unit tests for Granite Guardian capability.
 
 Unit tests for pydantic_ai_lightspeed.capabilities.granite_guardian._capability module.
 
+## [test_capability_streaming.py](test_capability_streaming.py)
+
+Unit tests for GraniteGuardian.wrap_run_event_stream (streaming output guardrails).
+
 ## [test_utils.py](test_utils.py)
 
 Unit tests for pydantic_ai_lightspeed.capabilities.granite_guardian.utils module.

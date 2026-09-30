@@ -312,6 +312,37 @@ def _verbatim_input_message(item: Any) -> Optional[OpenAIResponseMessage]:
     return OpenAIResponseMessage(role=cast("Any", role), content=text)
 
 
+def exclude_marker_items(items: Sequence[Any]) -> list[Any]:
+    """Return the conversation items without the compaction summary markers.
+
+    Markers are lightspeed's own bookkeeping, stored in the conversation as
+    synthetic user messages. They have to stay in storage, because they are the
+    fallback source of truth when no conversation cache is configured, but they
+    are not part of what the user and the assistant said.
+    ``GET /v1/conversations/{conversation_id}`` applies this filter, and any
+    other code that returns stored conversation items to a client has to apply
+    it as well (LCORE-3909).
+
+    Every marker starts with ``MARKER_SENTINEL``, whether or not it records a
+    covered-item count (``[covers:N]``, LCORE-4219), so markers already stored
+    are recognized as well and no migration is needed. Markers are only ever
+    written as user messages, so a message of any other role is kept even when
+    its text starts with the sentinel. A message the user typed with the
+    sentinel at its start cannot be told apart from a marker and is left out.
+
+    Parameters:
+        items: Conversation items, as stored.
+
+    Returns:
+        The items that are not markers, in their original order.
+    """
+    return [
+        item
+        for item in items
+        if not (is_marker_item(item) and getattr(item, "role", None) == "user")
+    ]
+
+
 def agent_prompt_text(params: ResponsesApiParams) -> str:
     """Return the textual user prompt for a pydantic-ai agent run.
 

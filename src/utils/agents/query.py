@@ -24,7 +24,6 @@ from models.api.responses.error import (
     PromptTooLongResponse,
 )
 from models.common.agents import AgentTurnAccumulator
-from models.common.moderation import ShieldModerationResult
 from models.common.query import Attachment
 from models.common.responses.responses_api_params import ResponsesApiParams
 from models.common.responses.types import ResponseInput
@@ -41,7 +40,6 @@ from utils.conversation_compaction import (
     reject_image_attachments_in_compacted_mode,
     store_compacted_turn,
 )
-from utils.conversations import append_turn_items_to_conversation
 from utils.otel_tracing import (
     SpanAttributes,
     SpanEvents,
@@ -236,7 +234,6 @@ def build_turn_summary_from_agent_run(
 async def retrieve_agent_response(
     client: AsyncOgxClient,
     responses_params: ResponsesApiParams,
-    moderation_result: ShieldModerationResult,
     endpoint_path: str,
     original_input: Optional[ResponseInput] = None,
     no_tools: bool = False,
@@ -246,9 +243,8 @@ async def retrieve_agent_response(
     """Retrieve a turn summary from a blocking agent run.
 
     Args:
-        client: OGX client for conversation persistence on moderation block.
+        client: OGX client used when building the agent.
         responses_params: Prepared Responses API parameters.
-        moderation_result: Shield moderation outcome for the turn.
         endpoint_path: Endpoint path used for metric labeling.
         original_input: Original user input before the explicit-input rewrite.
             Set only in compacted mode; when set, the completed turn is
@@ -261,7 +257,7 @@ async def retrieve_agent_response(
         Turn summary for the completed agent run.
 
     Raises:
-        HTTPException: On moderation is not applicable; on agent or provider failure.
+        HTTPException: On agent or provider failure.
     """
     with tracer.start_as_current_span("llm.inference") as span:
         # Extract provider and model from model_id
@@ -277,19 +273,6 @@ async def retrieve_agent_response(
                 SpanAttributes.LLM_PROVIDER_ID: provider_id,
             },
         )
-
-        if moderation_result.decision == "blocked":
-            if not responses_params.omit_conversation:
-                await append_turn_items_to_conversation(
-                    client,
-                    responses_params.conversation,
-                    responses_params.input,
-                    [moderation_result.refusal_response],
-                )
-            return TurnSummary(
-                id=moderation_result.moderation_id,
-                llm_response=moderation_result.message,
-            )
 
         # Emit inference started event
         add_span_event(span, SpanEvents.LLM_INFERENCE_STARTED)

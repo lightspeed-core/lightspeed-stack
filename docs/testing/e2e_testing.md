@@ -220,7 +220,7 @@ Run that file only with the mock config, not with the real-model override.
 
 `okp_rag.feature` is `@konflux-only`. CI deploys OKP as a pod; `make test-e2e` skips the feature. Do not set `E2E_KONFLUX_E2E=1` locally (that path is Kubernetes). On a laptop, start OKP in Docker, enrich and run OGX and LCS as host processes, then run **one scenario that matches the YAML you started**.
 
-Needs `registry.redhat.io` login, `OPENAI_API_KEY`, `uv sync --locked --group ogxlibdev`, and `../lightspeed-providers`.
+Needs `registry.redhat.io` login, `OPENAI_API_KEY`, `uv sync --locked --group ogxlibdev`, and an initialized `providers` submodule (`git submodule update --init providers`).
 
 ### Prerequisite: OKP in Docker
 
@@ -241,8 +241,8 @@ curl -sS -m 15 -o /dev/null -w "%{http_code}\n" \
 Use the same Lightspeed YAML the scenario will load (`-c`). Example: offline inline RAG.
 
 ```bash
-export PYTHONPATH="$(cd ../lightspeed-providers && pwd)${PYTHONPATH:+:$PYTHONPATH}"
-export EXTERNAL_PROVIDERS_DIR="$(cd ../lightspeed-providers && pwd)/resources/external_providers"
+export PYTHONPATH="$(pwd)/providers${PYTHONPATH:+:$PYTHONPATH}"
+export EXTERNAL_PROVIDERS_DIR="$(pwd)/providers/resources/external_providers"
 export RH_SERVER_OKP=http://localhost:8081/solr
 
 uv run python src/ogx_configuration.py \
@@ -254,8 +254,8 @@ uv run python src/ogx_configuration.py \
 ### 2. Start OGX
 
 ```bash
-export PYTHONPATH="$(cd ../lightspeed-providers && pwd)${PYTHONPATH:+:$PYTHONPATH}"
-export EXTERNAL_PROVIDERS_DIR="$(cd ../lightspeed-providers && pwd)/resources/external_providers"
+export PYTHONPATH="$(pwd)/providers${PYTHONPATH:+:$PYTHONPATH}"
+export EXTERNAL_PROVIDERS_DIR="$(pwd)/providers/resources/external_providers"
 
 uv run ogx stack run run_enriched.yaml --port 8321
 ```

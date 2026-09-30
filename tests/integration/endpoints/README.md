@@ -16,6 +16,14 @@ Integration tests for the /authorized endpoint.
 
 Integration tests for conversation compaction in the A2A endpoint.
 
+## [test_compaction_buffer.py](test_compaction_buffer.py)
+
+Integration tests for the buffered turns across consecutive compactions.
+
+## [test_compaction_conversations_api.py](test_compaction_conversations_api.py)
+
+Integration tests for compaction markers and the conversations API (LCORE-3909).
+
 ## [test_compaction_query.py](test_compaction_query.py)
 
 Integration tests for conversation compaction in the query endpoint.

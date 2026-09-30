@@ -22,7 +22,11 @@ from fastapi import Request
 from fastapi.responses import StreamingResponse
 from ogx_client.models.open_ai_response_object import OpenAIResponseObject
 from pydantic_ai.messages import ModelMessage, ModelResponse, TextPart
-from pydantic_ai.models import ModelRequestParameters, StreamedResponse
+from pydantic_ai.models import (
+    ModelRequestContext,
+    ModelRequestParameters,
+    StreamedResponse,
+)
 from pydantic_ai.models.function import FunctionModel
 from pydantic_ai.settings import ModelSettings
 from pydantic_ai.usage import RequestUsage
@@ -560,6 +564,28 @@ class _TestLLMModel(FunctionModel):
             response.finish_reason = "stop"
             response.provider_response_id = "response-123"
             yield response
+
+    async def count_tokens(
+        self,
+        messages: list[ModelMessage],
+        model_settings: ModelSettings | None,
+        model_request_parameters: ModelRequestParameters,
+    ) -> RequestUsage:
+        """Make a request to the model for counting tokens."""
+        raise NotImplementedError(
+            f"Token counting ahead of the request is not supported by {self.__class__.__name__}"
+        )
+
+    async def compact_messages(
+        self,
+        request_context: ModelRequestContext,
+        *,
+        instructions: str | None = None,
+    ) -> ModelResponse:
+        """Compact messages to reduce conversation context size."""
+        raise NotImplementedError(
+            f"Message compaction is not supported by {self.__class__.__name__}"
+        )
 
 
 def _mock_ogx_for_query(mocker: MockerFixture, module: str) -> Any:

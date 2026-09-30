@@ -9,6 +9,8 @@ from typing import Literal
 import pytest
 from pydantic_ai import AgentRunResult, RunContext
 from pydantic_ai.exceptions import ModelAPIError, UnexpectedModelBehavior
+from pydantic_ai.messages import ToolCallPart, ToolReturnPart
+from pydantic_ai.tools import ToolDefinition
 from pydantic_ai.usage import RequestUsage, RunUsage
 from pytest_mock import MockerFixture, MockType
 
@@ -21,6 +23,7 @@ from pydantic_ai_lightspeed.capabilities.granite_guardian._capability import (
     _OutputGuardrailViolation,
     _package_risk_check_task,
     _run_risk_check,
+    _ToolGuardrailViolation,
 )
 
 _MODULE = "pydantic_ai_lightspeed.capabilities.granite_guardian._capability"
@@ -654,6 +657,258 @@ class TestGraniteGuardianWrapRun:
             "Output blocked.",
         )
         mock_append_turn.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_tool_violation_from_handler_is_rejected(
+        self,
+        mocker: MockerFixture,
+        mock_ctx: RunContext,
+        mock_handler: MockType,
+    ) -> None:
+        """Test that a _ToolGuardrailViolation raised during the run is rejected."""
+        mocker.patch(
+            f"{_MODULE}._run_risk_check",
+            return_value=(None, RequestUsage()),
+        )
+        mock_handler.side_effect = _ToolGuardrailViolation("Tool output blocked.")
+
+        config = _make_config()
+        guardian = GraniteGuardian(config=config)
+        result = await guardian.wrap_run(mock_ctx, handler=mock_handler)
+
+        assert isinstance(result, AgentRunResult)
+        assert result.output == "Tool output blocked."
+
+    @pytest.mark.asyncio
+    async def test_tool_violation_replaces_last_assistant_message(
+        self,
+        mocker: MockerFixture,
+        mock_ctx: RunContext,
+        mock_handler: MockType,
+        mock_append_turn: MockType,
+        mock_replace_last_assistant_message: MockType,
+    ) -> None:
+        """Test that a tool violation replaces the already-persisted turn.
+
+        By the time a TOOL-point violation is caught, OGX has already
+        recorded the model's response requesting the tool call, so the
+        rejection should replace that turn rather than append a second one.
+        """
+        mock_client = mocker.Mock()
+        mocker.patch(
+            f"{_MODULE}.AsyncOgxClientHolder"
+        ).return_value.get_client.return_value = mock_client
+        mocker.patch(
+            f"{_MODULE}._run_risk_check",
+            return_value=(None, RequestUsage()),
+        )
+        mock_handler.side_effect = _ToolGuardrailViolation("Tool output blocked.")
+
+        config = _make_config()
+        guardian = GraniteGuardian(config=config)
+        await guardian.wrap_run(mock_ctx, handler=mock_handler)
+
+        mock_replace_last_assistant_message.assert_awaited_once_with(
+            mock_client,
+            "conv_test",
+            "Tool output blocked.",
+        )
+        mock_append_turn.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_tool_violation_preserves_tool_call_in_result(
+        self,
+        mocker: MockerFixture,
+        mock_ctx: RunContext,
+        mock_handler: MockType,
+    ) -> None:
+        """Test that a tool violation's preserved parts survive into the result.
+
+        The offending tool call (and its result) carried on the
+        ``_ToolGuardrailViolation`` should end up in the rejection's message
+        history, so ``tool_calls``/``tool_results`` built from it still show
+        what was actually called even though the answer text is replaced.
+        """
+        mocker.patch(
+            f"{_MODULE}._run_risk_check",
+            return_value=(None, RequestUsage()),
+        )
+        call = ToolCallPart(
+            tool_name="descriptive_stats", args={}, tool_call_id="call_1"
+        )
+        return_part = ToolReturnPart(
+            tool_name="descriptive_stats",
+            content="malicious output",
+            tool_call_id="call_1",
+        )
+        mock_handler.side_effect = _ToolGuardrailViolation(
+            "Tool output blocked.",
+            response_parts=(call,),
+            request_parts=(return_part,),
+        )
+
+        config = _make_config()
+        guardian = GraniteGuardian(config=config)
+        result = await guardian.wrap_run(mock_ctx, handler=mock_handler)
+
+        assert isinstance(result, AgentRunResult)
+        assert result.output == "Tool output blocked."
+        new_messages = result.new_messages()
+        tool_calls = [
+            part
+            for message in new_messages
+            if hasattr(message, "parts")
+            for part in message.parts
+            if isinstance(part, ToolCallPart)
+        ]
+        tool_returns = [
+            part
+            for message in new_messages
+            if hasattr(message, "parts")
+            for part in message.parts
+            if isinstance(part, ToolReturnPart)
+        ]
+        assert tool_calls == [call]
+        assert tool_returns == [return_part]
+
+
+class TestGraniteGuardianAfterToolExecute:
+    """Tests for GraniteGuardian.after_tool_execute."""
+
+    @pytest.fixture(autouse=True)
+    def _mock_init(self, mocker: MockerFixture) -> None:
+        """Mock model creation and clear cache for all tests."""
+        GraniteGuardian._model_cache.clear()
+        mocker.patch(f"{_MODULE}.httpx.AsyncClient")
+        mocker.patch(f"{_MODULE}.AsyncOpenAI")
+        mocker.patch(f"{_MODULE}.OpenAIProvider")
+        mocker.patch(f"{_MODULE}.OpenAIChatModel")
+
+    @pytest.fixture(name="mock_ctx")
+    def mock_ctx_fixture(self, mocker: MockerFixture) -> RunContext:
+        """Create a mock RunContext."""
+        return mocker.Mock(spec=RunContext)
+
+    @pytest.fixture(name="mock_call")
+    def mock_call_fixture(self) -> ToolCallPart:
+        """Create a real ToolCallPart (needed for tool_name/tool_call_id access)."""
+        return ToolCallPart(tool_name="test_tool", args={}, tool_call_id="call_1")
+
+    @pytest.fixture(name="mock_tool_def")
+    def mock_tool_def_fixture(self, mocker: MockerFixture) -> ToolDefinition:
+        """Create a mock ToolDefinition."""
+        return mocker.Mock(spec=ToolDefinition)
+
+    @pytest.mark.asyncio
+    async def test_passes_through_when_no_tool_guardrails(
+        self,
+        mocker: MockerFixture,
+        mock_ctx: RunContext,
+        mock_call: ToolCallPart,
+        mock_tool_def: ToolDefinition,
+    ) -> None:
+        """Test the result passes through unchanged with no TOOL-point risks."""
+        mock_run_risk_check = mocker.patch(f"{_MODULE}._run_risk_check")
+
+        config = _make_config(risks=[_make_risk(points=["input"])])
+        guardian = GraniteGuardian(config=config)
+        result = await guardian.after_tool_execute(
+            mock_ctx,
+            call=mock_call,
+            tool_def=mock_tool_def,
+            args={},
+            result="tool output",
+        )
+
+        assert result == "tool output"
+        mock_run_risk_check.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_safe_result_passes_through(
+        self,
+        mocker: MockerFixture,
+        mock_ctx: RunContext,
+        mock_call: ToolCallPart,
+        mock_tool_def: ToolDefinition,
+    ) -> None:
+        """Test that a safe tool result passes through unchanged."""
+        mocker.patch(
+            f"{_MODULE}._run_risk_check",
+            return_value=(None, RequestUsage()),
+        )
+
+        config = _make_config(risks=[_make_risk(points=["tool"])])
+        guardian = GraniteGuardian(config=config)
+        result = await guardian.after_tool_execute(
+            mock_ctx,
+            call=mock_call,
+            tool_def=mock_tool_def,
+            args={},
+            result="tool output",
+        )
+
+        assert result == "tool output"
+
+    @pytest.mark.asyncio
+    async def test_violation_raises_tool_guardrail_violation(
+        self,
+        mocker: MockerFixture,
+        mock_ctx: RunContext,
+        mock_call: ToolCallPart,
+        mock_tool_def: ToolDefinition,
+    ) -> None:
+        """Test that a violated TOOL-point risk raises _ToolGuardrailViolation."""
+        mocker.patch(
+            f"{_MODULE}._run_risk_check",
+            return_value=("Tool content blocked.", RequestUsage()),
+        )
+
+        config = _make_config(risks=[_make_risk(points=["tool"])])
+        guardian = GraniteGuardian(config=config)
+
+        with pytest.raises(
+            _ToolGuardrailViolation, match="Tool content blocked."
+        ) as exc_info:
+            await guardian.after_tool_execute(
+                mock_ctx,
+                call=mock_call,
+                tool_def=mock_tool_def,
+                args={},
+                result="malicious output",
+            )
+
+        # The tool call is preserved so tool_calls still shows it, but the
+        # result -- the flagged content -- is never preserved: tool_results
+        # must not expose it.
+        assert exc_info.value.response_parts == (mock_call,)
+        assert exc_info.value.request_parts == ()
+
+    @pytest.mark.asyncio
+    async def test_non_string_result_is_rendered_before_check(
+        self,
+        mocker: MockerFixture,
+        mock_ctx: RunContext,
+        mock_call: ToolCallPart,
+        mock_tool_def: ToolDefinition,
+    ) -> None:
+        """Test that a non-string result is rendered to text before checking."""
+        mock_run_risk_check = mocker.patch(
+            f"{_MODULE}._run_risk_check",
+            return_value=(None, RequestUsage()),
+        )
+
+        config = _make_config(risks=[_make_risk(points=["tool"])])
+        guardian = GraniteGuardian(config=config)
+        await guardian.after_tool_execute(
+            mock_ctx,
+            call=mock_call,
+            tool_def=mock_tool_def,
+            args={},
+            result={"a": 1},
+        )
+
+        mock_run_risk_check.assert_awaited_once()
+        assert mock_run_risk_check.call_args[0][0] == '{"a": 1}'
 
 
 class TestGraniteGuardianRun:

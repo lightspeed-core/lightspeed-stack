@@ -154,6 +154,7 @@ dev = [
     "memray>=1.13.0",
     "pygal>=3.1.3",
     "pygaljs>=1.0.2",
+    "pdm>=2.29.2",
 ]
 ogxlibdev = [
     # To check OGX API provider dependecies:

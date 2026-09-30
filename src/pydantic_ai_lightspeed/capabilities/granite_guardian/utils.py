@@ -1,11 +1,13 @@
 """Utility functions for Granite Guardian prompt construction and logprob parsing."""
 
+import json
 from collections.abc import AsyncIterable
 from enum import Enum, StrEnum, auto
 from math import exp
 from typing import Any
 
 from openai.types.chat.chat_completion_token_logprob import ChatCompletionTokenLogprob
+from pydantic import BaseModel
 from pydantic_ai.exceptions import UnexpectedModelBehavior
 from pydantic_ai.messages import (
     AgentStreamEvent,
@@ -13,6 +15,7 @@ from pydantic_ai.messages import (
     PartStartEvent,
     TextPart,
     TextPartDelta,
+    ToolReturn,
 )
 
 from log import get_logger
@@ -83,6 +86,36 @@ def event_text(event: AgentStreamEvent) -> str:
     if isinstance(event, PartDeltaEvent) and isinstance(event.delta, TextPartDelta):
         return event.delta.content_delta
     return ""
+
+
+def tool_result_to_str(result: Any) -> str:
+    """Render a raw tool execution result as text for guardrail evaluation.
+
+    ``result`` is whatever the tool function itself returned (str, dict,
+    Pydantic model, ``ToolReturn``, etc.), captured before pydantic-ai
+    serializes it into the ``ToolReturnPart`` sent back to the model. This
+    best-effort conversion mirrors that later serialization closely enough
+    for risk screening without depending on pydantic-ai's internals.
+
+    Parameters:
+        result: The raw tool result to render.
+
+    Returns:
+        A text representation of the result.
+    """
+    if isinstance(result, str):
+        return result
+
+    if isinstance(result, ToolReturn):
+        return tool_result_to_str(result.return_value)
+
+    if isinstance(result, BaseModel):
+        return result.model_dump_json()
+
+    try:
+        return json.dumps(result, default=str)
+    except TypeError:
+        return str(result)
 
 
 async def aclose_if_supported(stream: AsyncIterable[AgentStreamEvent]) -> None:

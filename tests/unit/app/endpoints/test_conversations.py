@@ -38,6 +38,7 @@ from models.common import ConversationTurn, Message
 from models.config import Action
 from models.database.conversations import UserConversation, UserTurn
 from tests.unit.utils.auth_helpers import mock_authorization_resolvers
+from utils.conversation_compaction import MARKER_SENTINEL
 from utils.conversations import build_conversation_turns_from_items
 
 MOCK_AUTH = ("mock_user_id", "mock_username", False, "mock_token")
@@ -754,6 +755,77 @@ class TestGetConversationEndpoint:
 
         assert isinstance(response, ConversationResponse)
         assert response.conversation_id == VALID_CONVERSATION_ID
+        actual_history = [
+            turn.model_dump(exclude_none=True) for turn in response.chat_history
+        ]
+        assert actual_history == expected_chat_history
+
+    @pytest.mark.asyncio
+    async def test_compaction_markers_are_not_returned(
+        self,
+        mocker: MockerFixture,
+        setup_configuration: AppConfig,
+        expected_chat_history: list[dict[str, Any]],
+        dummy_request: Request,
+        mock_conversation: MockType,
+    ) -> None:
+        """Test that compaction summary markers are left out of the chat history.
+
+        Compaction stores each summary as a synthetic user message (LCORE-3909).
+        Both marker shapes are covered: the one recording a covered-item count
+        (LCORE-4219) and the older one without it. Every turn also has to keep
+        its own metadata, which a marker counted as a turn would shift.
+        """
+        mock_authorization_resolvers(mocker)
+        mocker.patch(
+            "app.endpoints.conversations_v1.configuration", setup_configuration
+        )
+        mocker.patch("app.endpoints.conversations_v1.check_suid", return_value=True)
+
+        mock_db_turns = [
+            create_mock_db_turn(
+                mocker, 1, "2024-01-01T00:01:00Z", "2024-01-01T00:01:05Z"
+            ),
+            create_mock_db_turn(
+                mocker, 2, "2024-01-01T00:02:00Z", "2024-01-01T00:02:03Z"
+            ),
+        ]
+        mock_database_session(
+            mocker, query_result=[mock_conversation], db_turns=mock_db_turns
+        )
+
+        mock_client = mocker.AsyncMock()
+        mock_items = mocker.Mock()
+        mock_items.data = [
+            mocker.Mock(type="message", role="user", content="Hello"),
+            mocker.Mock(type="message", role="assistant", content="Hi there!"),
+            mocker.Mock(
+                type="message",
+                role="user",
+                content=f"{MARKER_SENTINEL} summary of the greeting",
+            ),
+            mocker.Mock(type="message", role="user", content="How are you?"),
+            mocker.Mock(
+                type="message", role="assistant", content="I'm doing well, thanks!"
+            ),
+            mocker.Mock(
+                type="message",
+                role="user",
+                content=f"{MARKER_SENTINEL} [covers:5] summary of both turns",
+            ),
+        ]
+        mock_items.has_more = False
+        mock_client.items.list = mocker.AsyncMock(return_value=mock_items)
+
+        mock_client_holder = mocker.patch(
+            "app.endpoints.conversations_v1.AsyncOgxClientHolder"
+        )
+        mock_client_holder.return_value.get_client.return_value = mock_client
+
+        response = await get_conversation_endpoint_handler(
+            request=dummy_request, conversation_id=VALID_CONVERSATION_ID, auth=MOCK_AUTH
+        )
+
         actual_history = [
             turn.model_dump(exclude_none=True) for turn in response.chat_history
         ]

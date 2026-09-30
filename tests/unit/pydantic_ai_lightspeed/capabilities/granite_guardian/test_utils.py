@@ -7,7 +7,10 @@ from openai.types.chat.chat_completion_token_logprob import (
     ChatCompletionTokenLogprob,
     TopLogprob,
 )
+from pydantic import BaseModel
 from pydantic_ai.exceptions import UnexpectedModelBehavior
+from pydantic_ai.messages import ToolReturn
+from pytest_mock import MockerFixture
 
 from pydantic_ai_lightspeed.capabilities.granite_guardian.utils import (
     _clean_up_candidates,
@@ -16,6 +19,7 @@ from pydantic_ai_lightspeed.capabilities.granite_guardian.utils import (
     _search_tag,
     build_guardian_block,
     is_safe,
+    tool_result_to_str,
 )
 
 
@@ -342,3 +346,65 @@ class TestIsSafe:
         """Test that input is unsafe when risky probability equals threshold."""
         logprobs = self._make_full_logprobs(0.5, 0.5)
         assert is_safe(0.5, logprobs) is False
+
+
+class _ExampleModel(BaseModel):
+    """Trivial Pydantic model for tool_result_to_str tests."""
+
+    value: str
+
+
+class TestToolResultToStr:
+    """Tests for tool_result_to_str."""
+
+    def test_str_passthrough(self) -> None:
+        """Test that a plain string is returned unchanged."""
+        assert tool_result_to_str("hello world") == "hello world"
+
+    def test_dict_serialized_as_json(self) -> None:
+        """Test that a dict is rendered as JSON."""
+        result = tool_result_to_str({"key": "value"})
+        assert result == '{"key": "value"}'
+
+    def test_list_serialized_as_json(self) -> None:
+        """Test that a list is rendered as JSON."""
+        result = tool_result_to_str([1, "two", 3.0])
+        assert result == '[1, "two", 3.0]'
+
+    def test_pydantic_model_serialized_as_json(self) -> None:
+        """Test that a Pydantic model is rendered via model_dump_json."""
+        result = tool_result_to_str(_ExampleModel(value="secret"))
+        assert result == '{"value":"secret"}'
+
+    def test_tool_return_unwraps_return_value(self) -> None:
+        """Test that a ToolReturn is rendered from its return_value."""
+        result = tool_result_to_str(ToolReturn(return_value="the actual result"))
+        assert result == "the actual result"
+
+    def test_tool_return_with_non_str_return_value(self) -> None:
+        """Test that a ToolReturn with a non-string return_value is serialized."""
+        result = tool_result_to_str(ToolReturn(return_value={"a": 1}))
+        assert result == '{"a": 1}'
+
+    def test_object_without_json_repr_uses_default_str(self) -> None:
+        """Test that an object with no direct JSON mapping is rendered via str()."""
+
+        class Custom:  # pylint: disable=too-few-public-methods
+            """Object with no JSON representation, but a custom str()."""
+
+            def __str__(self) -> str:
+                return "<custom>"
+
+        result = tool_result_to_str(Custom())
+        assert result == '"<custom>"'
+
+    def test_json_dumps_type_error_falls_back_to_str(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test that a TypeError from json.dumps itself falls back to str()."""
+        mocker.patch(
+            "pydantic_ai_lightspeed.capabilities.granite_guardian.utils.json.dumps",
+            side_effect=TypeError("boom"),
+        )
+        result = tool_result_to_str({"key": "value"})
+        assert result == "{'key': 'value'}"

@@ -206,7 +206,7 @@ def _patch_rag(
 
 
 def _patch_moderation(mocker: MockerFixture, decision: str = "passed") -> Any:
-    """Patch run_shield_moderation; return typed moderation result."""
+    """Patch run_shield_moderation_v2; return typed moderation result."""
     if decision == "blocked":
         moderation_result = ShieldModerationBlocked(
             message="Content blocked",
@@ -596,8 +596,8 @@ class TestResponsesEndpointHandler:
         mock_build_rag.assert_called_once()
         call_args = mock_build_rag.call_args[0]
         assert (
-            call_args[2] == "What is K8s?"
-        )  # input_text (3rd arg to build_rag_context)
+            call_args[1] == "What is K8s?"
+        )  # input_text (2nd arg to build_rag_context)
 
     @pytest.mark.asyncio
     async def test_responses_blocked_with_conversation_appends_refusal(

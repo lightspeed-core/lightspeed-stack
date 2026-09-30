@@ -171,9 +171,14 @@ def process_native_tool_result(
         part: Native tool return part from the model.
 
     Returns:
-        Tool result summary when recorded, otherwise None if already emitted.
+        Tool result summary when recorded, otherwise None if already emitted
+        or the call was denied (e.g. by a TOOL-point guardrail violation):
+        the call itself still surfaces via ``process_native_tool_call``, but
+        a denied call's result is never recorded.
     """
     if part.tool_call_id in state.emitted_tool_result_ids:
+        return None
+    if part.outcome == "denied":
         return None
 
     match part.tool_name:
@@ -214,9 +219,14 @@ def process_function_tool_result(
         part: Function tool return part from the agent.
 
     Returns:
-        Tool result summary when recorded, otherwise None if already emitted.
+        Tool result summary when recorded, otherwise None if already emitted
+        or the call was denied (e.g. by a TOOL-point guardrail violation):
+        the call itself still surfaces via ``process_function_tool_call``,
+        but a denied call's result is never recorded.
     """
     if part.tool_call_id in state.emitted_tool_result_ids:
+        return None
+    if part.outcome == "denied":
         return None
     tool_result = summarize_function_tool_result(part, state.tool_round)
     state.emitted_tool_result_ids.add(tool_result.id)

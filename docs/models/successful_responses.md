@@ -715,6 +715,7 @@ Configuration for the Granite Guardian moderation guardrail.
   - str: Path to custom CA bundle file (for internal PKI) |
 | parallel |  | True to run all risk checks in parallel, False to run sequentially, or an integer 1-10 for explicit batch size. |
 | risks | array | Risks to be considered while applying this guardrail |
+| streaming_output_check_interval_tokens | integer | For risks with `output` in `points`, re-check the response against those risks approximately every N generated output tokens while streaming, plus once more over any remaining text once generation completes. Ignored when no configured risk targets the `output` point. |
 
 
 ## GraniteGuardianShieldConfiguration

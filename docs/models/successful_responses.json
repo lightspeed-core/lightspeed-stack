@@ -1847,6 +1847,13 @@
                         },
                         "title": "Defined risks",
                         "type": "array"
+                    },
+                    "streaming_output_check_interval_tokens": {
+                        "default": 50,
+                        "description": "For risks with `output` in `points`, re-check the response against those risks approximately every N generated output tokens while streaming, plus once more over any remaining text once generation completes. Ignored when no configured risk targets the `output` point.",
+                        "minimum": 0,
+                        "title": "Streaming output check interval (tokens)",
+                        "type": "integer"
                     }
                 },
                 "required": [

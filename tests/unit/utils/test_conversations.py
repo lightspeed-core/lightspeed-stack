@@ -955,8 +955,24 @@ class TestReplaceLastAssistantMessage:
     ) -> None:
         """Test that the most recent assistant message is deleted and replaced."""
         mock_client = mocker.Mock()
-        old_assistant_item = mocker.Mock(type="message", role="assistant", id="item-2")
-        user_item = mocker.Mock(type="message", role="user", id="item-1")
+        old_assistant_item = to_conversation_item(
+            {
+                "type": "message",
+                "role": "assistant",
+                "id": "item-2",
+                "content": "Old answer.",
+            }
+        )
+        user_item = to_conversation_item(
+            {
+                "type": "message",
+                "role": "user",
+                "id": "item-1",
+                "content": "Hello",
+            }
+        )
+        assert old_assistant_item is not None
+        assert user_item is not None
         mock_page = mocker.Mock()
         mock_page.data = [old_assistant_item, user_item]
         mock_client.items.list = mocker.AsyncMock(return_value=mock_page)
