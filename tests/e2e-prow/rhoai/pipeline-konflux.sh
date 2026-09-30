@@ -157,9 +157,9 @@ fi
 
 
 #========================================
-# 4. DEPLOY MOCK SERVERS (JWKS & MCP)
+# 4. DEPLOY MOCK SERVERS (JWKS, MCP, GUARDIAN)
 #========================================
-progress "Deploying mock servers (JWKS, MCP)"
+progress "Deploying mock servers (JWKS, MCP, Guardian)"
 
 # Create ConfigMaps from server scripts (REPO_ROOT set in global config)
 log "Creating mock server ConfigMaps..."
@@ -171,6 +171,10 @@ oc create configmap mock-mcp-script -n "$NAMESPACE" \
     --from-file=server.py="$REPO_ROOT/tests/e2e/mock_mcp_server/server.py" \
     --dry-run=client -o yaml | oc apply -f -
 
+oc create configmap mock-guardian-script -n "$NAMESPACE" \
+    --from-file=server.py="$REPO_ROOT/tests/e2e/mock_guardian_server/server.py" \
+    --dry-run=client -o yaml | oc apply -f -
+
 # Deploy mock server pods and services
 log "Deploying mock-jwks..."
 oc apply -n "$NAMESPACE" -f "$PIPELINE_DIR/manifests/lightspeed/mock-jwks.yaml"
@@ -178,14 +182,18 @@ oc apply -n "$NAMESPACE" -f "$PIPELINE_DIR/manifests/lightspeed/mock-jwks.yaml"
 log "Deploying mock-mcp..."
 oc apply -n "$NAMESPACE" -f "$PIPELINE_DIR/manifests/lightspeed/mock-mcp.yaml"
 
+log "Deploying mock-guardian..."
+oc apply -n "$NAMESPACE" -f "$PIPELINE_DIR/manifests/lightspeed/mock-guardian.yaml"
+
 # Wait for mock servers to be ready
 log "Waiting for mock servers to be ready..."
-oc wait pod/mock-jwks pod/mock-mcp \
+oc wait pod/mock-jwks pod/mock-mcp pod/mock-guardian \
     -n "$NAMESPACE" --for=condition=Ready --timeout=120s || {
     echo "⚠️  Mock servers not ready, checking status..."
-    oc get pods -n "$NAMESPACE" | grep -E "mock-jwks|mock-mcp" || true
+    oc get pods -n "$NAMESPACE" | grep -E "mock-jwks|mock-mcp|mock-guardian" || true
     oc describe pod mock-jwks -n "$NAMESPACE" 2>/dev/null | tail -20 || true
     oc describe pod mock-mcp -n "$NAMESPACE" 2>/dev/null | tail -20 || true
+    oc describe pod mock-guardian -n "$NAMESPACE" 2>/dev/null | tail -20 || true
     echo "❌ Mock servers failed to become ready"
     exit 1
 }

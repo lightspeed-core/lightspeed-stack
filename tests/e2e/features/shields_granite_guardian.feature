@@ -1,4 +1,4 @@
-@cfg_shields @skip-in-prow
+@cfg_shields
 Feature: granite_guardian shield functional tests
 
   Functional tests for `granite_guardian` shield.
