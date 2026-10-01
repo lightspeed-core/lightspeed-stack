@@ -1,6 +1,9 @@
 SHELL := /bin/bash
 #TODO: We need to rename all those python and config files as well
 
+# Define comma for use in $(if) expressions (where commas are argument separators)
+COMMA := ,
+
 ARTIFACT_DIR := $(if $(ARTIFACT_DIR),$(ARTIFACT_DIR),tests/test_results)
 PATH_TO_PLANTUML := ~/bin
 
@@ -16,7 +19,11 @@ OGX_CONFIG ?= run.yaml
 OGX_CONTAINER_NAME ?= lightspeed-ogx
 OGX_IMAGE ?= lightspeed-ogx:local
 OGX_PORT ?= 8321
+LIGHTSPEED_PROVIDERS_DIR ?= $(shell [ -d providers/lightspeed_stack_providers ] && cd providers && pwd)
 CONTAINER_RUNTIME ?= $(shell command -v podman 2>/dev/null || command -v docker 2>/dev/null)
+
+# Doc tools configuration
+UML_GENERATOR = uv run pyreverse
 
 .PHONY: run \
 	run-ogx \
@@ -86,6 +93,9 @@ start-ogx-container: build-ogx-image ## Start OGX container
 		-v $(PWD)/$(CONFIG):/opt/app-root/lightspeed-stack.yaml:ro,z \
 		-v $(PWD)/scripts/ogx-entrypoint.sh:/opt/app-root/enrich-entrypoint.sh:ro,z \
 		-v $(PWD)/src/ogx_configuration.py:/opt/app-root/ogx_configuration.py:ro,z \
+		$(if $(LIGHTSPEED_PROVIDERS_DIR),-v $(LIGHTSPEED_PROVIDERS_DIR)/lightspeed_stack_providers:/opt/app-root/providers/lightspeed_stack_providers:ro$(COMMA)z) \
+		$(if $(LIGHTSPEED_PROVIDERS_DIR),-v $(LIGHTSPEED_PROVIDERS_DIR)/resources/external_providers:/opt/app-root/src/.llama/providers.d:ro$(COMMA)z) \
+		$(if $(LIGHTSPEED_PROVIDERS_DIR),-e EXTERNAL_PROVIDERS_DIR=/opt/app-root/src/.llama/providers.d) \
 		-e OPENAI_API_KEY \
 		-e BRAVE_SEARCH_API_KEY \
 		-e TAVILY_SEARCH_API_KEY \
@@ -164,7 +174,7 @@ test-e2e-local: ## Run end to end tests for the service (no script wrapper)
 
 # Tag-based subsets (@cfg_* on features/scenarios). Default runs all config groups; override for one shard, e.g.
 #   E2E_BEHAVE_TAG_EXPR='not @skip and @cfg_authorized' make test-e2e-tagged-local
-E2E_BEHAVE_TAG_EXPR ?= not @skip and (@cfg_default or @cfg_authorized or @cfg_mcp or @cfg_mcp_invalid or @cfg_mcp_api_auth or @cfg_rbac or @cfg_rh_identity or @cfg_negative or @cfg_skills or @cfg_skills_directory or @cfg_shields or @cfg_byok_pdf or @cfg_tls or @cfg_degraded or @cfg_unified)
+E2E_BEHAVE_TAG_EXPR ?= not @skip and (@cfg_default or @cfg_authorized or @cfg_mcp or @cfg_mcp_invalid or @cfg_mcp_api_auth or @cfg_rbac or @cfg_rh_identity or @cfg_negative or @cfg_skills or @cfg_skills_directory or @cfg_shields or @cfg_byok_pdf or @cfg_tls or @cfg_degraded or @cfg_unified or @cfg_compaction)
 
 test-e2e-tagged: ## Run e2e tests with E2E_BEHAVE_TAG_EXPR (default: all @cfg_*)
 	script -q -e -c "uv run behave --color --format pretty --tags=\"$(E2E_BEHAVE_TAG_EXPR)\" -D dump_errors=true @tests/e2e/test_list.txt"
@@ -256,19 +266,19 @@ docs/models/common_responses.json:	$(wildcard src/models/common/responses/*)	## 
 	mv common_responses.json $@
 
 docs/models/requests.puml:	$(wildcard src/models/api/requests/*)	## Generate PlantUML class diagram for requests data models
-	uv run pyreverse src/models/api/requests/ --output puml --output-directory=docs/models/
+	${UML_GENERATOR} src/models/api/requests/ --output puml --output-directory=docs/models/
 	mv docs/models/classes.puml docs/models/requests.puml
 
 docs/models/responses.puml:	$(wildcard src/models/api/responses/error/* src/models/api/responses/successful/*)	## Generate PlantUML class diagram for responses data models
-	uv run pyreverse src/models/api/responses/ --output puml --output-directory=docs/models/
+	${UML_GENERATOR} src/models/api/responses/ --output puml --output-directory=docs/models/
 	mv docs/models/classes.puml docs/models/responses.puml
 
 docs/models/common.puml:	$(wildcard src/models/common/* src/models/common/agents/* src/models/common/responses/* )	## Generate PlantUML class diagram for common data models
-	uv run pyreverse src/models/common/ --output puml --output-directory=docs/models/
+	${UML_GENERATOR} src/models/common/ --output puml --output-directory=docs/models/
 	mv docs/models/classes.puml docs/models/common.puml
 
 docs/models/database.puml:	$(wildcard src/models/database/*)	## Generate PlantUML class diagram for database data models
-	uv run pyreverse src/models/database/ --output puml --output-directory=docs/models/
+	${UML_GENERATOR} src/models/database/ --output puml --output-directory=docs/models/
 	mv docs/models/classes.puml docs/models/database.puml
 
 docs/models/requests.svg:	docs/models/requests.puml	## Generate an SVG with requests data models
@@ -300,7 +310,7 @@ docs/models/database.svg:	docs/models/database.puml	## Generate a SVG with datab
 	popd
 
 docs/config.puml:	src/models/config.py ## Generate PlantUML class diagram for configuration
-	uv run pyreverse $< --output puml --output-directory=docs/
+	${UML_GENERATOR} $< --output puml --output-directory=docs/
 	mv docs/classes.puml docs/config.puml
 
 # Omit --theme rose on the CLI: it fails with some plantuml.jar builds on pyreverse output.
@@ -362,14 +372,11 @@ distribution-archives:	## Generate distribution archives to be uploaded into Pyt
 upload-distribution-archives:	## Upload distribution archives into Python registry
 	uv run python -m twine upload --repository ${PYTHON_REGISTRY} dist/*
 
-konflux-requirements:	## Generate hermetic requirements.*.txt file for Konflux build
-	./scripts/konflux_requirements.sh
+konflux-requirements:	## Generate .konflux/requirements.*.txt files for Konflux hermetic build
+	scripts/konflux_resolve.py --profile cpu
 
 konflux-rpm-lock:	## Generate rpm.lock.yaml file for Konflux build
 	./scripts/generate-rpm-lock.sh
-
-konflux-artifacts-lock: ## Regenerate artifacts.lock.yaml file for Konflux build
-	./scripts/generate-artifacts-lock.sh
 
 help: ## Show this help screen
 	@echo 'Usage: make <OPTIONS> ... <TARGETS>'

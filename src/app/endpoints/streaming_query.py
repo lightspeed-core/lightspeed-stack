@@ -73,7 +73,6 @@ from utils.query import (
     extract_provider_and_model_from_model_id,
     handle_known_apistatus_errors,
     is_context_length_error,
-    prepare_input,
     validate_attachments_metadata,
     validate_model_provider_override,
 )
@@ -83,10 +82,7 @@ from utils.responses import (
     extract_vector_store_ids_from_tools,
     prepare_responses_params,
 )
-from utils.shields import (
-    run_shield_moderation,
-    validate_shield_ids_override,
-)
+from utils.shields import validate_shield_ids_override
 from utils.streaming_sse import (
     http_exception_stream_event,
     stream_compaction_event,
@@ -166,9 +162,12 @@ async def streaming_query_endpoint_handler(  # pylint: disable=too-many-locals
     """
     root_span = tracer.start_span("streaming_query.handle_request")
     try:
-        return await _handle_streaming_query_with_tracing(
-            request, query_request, auth, mcp_headers, root_span
-        )
+        with trace.use_span(  # pylint: disable=not-context-manager
+            root_span, end_on_exit=False
+        ):
+            return await _handle_streaming_query_with_tracing(
+                request, query_request, auth, mcp_headers, root_span
+            )
     except Exception:
         root_span.end()
         raise
@@ -206,7 +205,7 @@ async def _handle_streaming_query_with_tracing(  # pylint: disable=too-many-loca
         root_span,
         {
             SpanAttributes.USER_ID: anonymize_value(user_id),
-            SpanAttributes.INPUT: anonymize_value(query_request.query),
+            SpanAttributes.INPUT: query_request.query,
             SpanAttributes.REQUEST_ATTACHMENTS_COUNT: (
                 len(query_request.attachments) if query_request.attachments else 0
             ),
@@ -250,18 +249,12 @@ async def _handle_streaming_query_with_tracing(  # pylint: disable=too-many-loca
 
     client = AsyncOgxClientHolder().get_client()
 
-    # Moderation input is the raw user content (query + attachments) without injected RAG
-    # context, to avoid false positives from retrieved document content.
-    moderation_input = prepare_input(query_request)
+    # Input shields run as pydantic-ai capabilities on the agent.
     endpoint_path = ENDPOINT_PATH_STREAMING_QUERY
-    moderation_result = await run_shield_moderation(
-        client, moderation_input, endpoint_path, query_request.shield_ids
-    )
 
     # Build RAG context from Inline RAG sources
     inline_rag_context = await build_rag_context(
         client,
-        moderation_result.decision,
         query_request.query,
         query_request.vector_store_ids,
         query_request.solr,
@@ -301,7 +294,6 @@ async def _handle_streaming_query_with_tracing(  # pylint: disable=too-many-loca
         query_request=query_request,
         started_at=started_at,
         client=client,
-        moderation_result=moderation_result,
         vector_store_ids=extract_vector_store_ids_from_tools(responses_params.tools),
         rag_id_mapping=configuration.rag_id_mapping,
         inline_rag_context=inline_rag_context,
@@ -358,10 +350,9 @@ async def _handle_streaming_query_with_tracing(  # pylint: disable=too-many-loca
     )
 
     # Combine inline RAG results (BYOK + Solr) with tool-based results
-    if context.moderation_result.decision == "passed":
-        turn_summary.referenced_documents = deduplicate_referenced_documents(
-            inline_rag_context.referenced_documents + turn_summary.referenced_documents
-        )
+    turn_summary.referenced_documents = deduplicate_referenced_documents(
+        inline_rag_context.referenced_documents + turn_summary.referenced_documents
+    )
 
     return StreamingResponse(
         generate_agent_response(
@@ -398,8 +389,8 @@ async def generate_response_with_compaction(
     context: ResponseGeneratorContext,
     responses_params: ResponsesApiParams,
     endpoint_path: str,
+    root_span: trace.Span,
     image_attachments: Optional[list[Attachment]] = None,
-    root_span: Optional[trace.Span] = None,
 ) -> AsyncIterator[str]:
     """Stream a response for a conversation that requires compaction.
 
@@ -414,8 +405,8 @@ async def generate_response_with_compaction(
         context: The response generator context.
         responses_params: The base Responses API parameters.
         endpoint_path: API endpoint path used for metric labeling.
-        image_attachments: Image attachments for multimodal prompt construction.
         root_span: OpenTelemetry root span for this request.
+        image_attachments: Image attachments for multimodal prompt construction.
 
     Yields:
         SSE-formatted strings.
@@ -483,11 +474,10 @@ async def generate_response_with_compaction(
             return
 
         # Combine inline RAG results (BYOK + Solr) with tool-based results
-        if context.moderation_result.decision == "passed":
-            turn_summary.referenced_documents = deduplicate_referenced_documents(
-                context.inline_rag_context.referenced_documents
-                + turn_summary.referenced_documents
-            )
+        turn_summary.referenced_documents = deduplicate_referenced_documents(
+            context.inline_rag_context.referenced_documents
+            + turn_summary.referenced_documents
+        )
 
         # The start event was already emitted above; delegate the rest (re-yield,
         # finalization, compacted-turn storage) to the shared generator.
@@ -497,12 +487,11 @@ async def generate_response_with_compaction(
             responses_params,
             turn_summary,
             background_topic_summary_tasks=_background_topic_summary_tasks,
+            root_span=root_span,
             emit_start=False,
             original_input=compacted_original_input,
-            root_span=root_span,
             context_status=context_status,
         ):
             yield event
     finally:
-        if root_span is not None:
-            root_span.end()
+        root_span.end()

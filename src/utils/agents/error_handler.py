@@ -98,7 +98,7 @@ def map_pydantic_agent_run_error(  # pylint: disable=too-many-return-statements
         case IncompleteToolCall():
             return PromptTooLongResponse(model=model_id)
         case UnexpectedModelBehavior():
-            logger.error("Unexpected model behavior: %s", exc, exc_info=True)
+            logger.error("Unexpected model behavior: %s", exc)
             return InternalServerErrorResponse.generic()
         case UsageLimitExceeded():
             return QuotaExceededResponse.model(model_id)

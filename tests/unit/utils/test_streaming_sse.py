@@ -2,7 +2,6 @@
 
 import json
 
-import pytest
 from pydantic import AnyUrl
 from pytest_mock import MockerFixture
 
@@ -16,7 +15,6 @@ from constants import (
 from models.api.responses.error import InternalServerErrorResponse
 from models.common.turn_summary import ReferencedDocument
 from utils.streaming_sse import (
-    shield_violation_generator,
     stream_end_event,
     stream_event,
     stream_http_error_event,
@@ -248,30 +246,3 @@ class TestStreamStartEvent:  # pylint: disable=too-few-public-methods
         assert "start" in result
         assert "conv_123" in result
         assert "123e4567-e89b-12d3-a456-426614174000" in result
-
-
-class TestShieldViolationGenerator:
-    """Tests for shield_violation_generator function."""
-
-    @pytest.mark.asyncio
-    async def test_shield_violation_generator_json(self) -> None:
-        """Test shield violation generator for JSON media type."""
-        result = []
-        async for item in shield_violation_generator(
-            "Violation message", MEDIA_TYPE_JSON
-        ):
-            result.append(item)
-
-        assert len(result) > 0
-        assert any("Violation message" in item for item in result)
-
-    @pytest.mark.asyncio
-    async def test_shield_violation_generator_text(self) -> None:
-        """Test shield violation generator for text media type."""
-        result = []
-        async for item in shield_violation_generator(
-            "Violation message", MEDIA_TYPE_TEXT
-        ):
-            result.append(item)
-
-        assert len(result) > 0

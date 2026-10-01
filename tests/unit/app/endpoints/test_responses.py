@@ -85,7 +85,7 @@ class _MockSpan:
 
 def _mock_span() -> trace.Span:
     """Return a typed span stand-in for behavioral handler unit tests."""
-    return cast(trace.Span, _MockSpan())
+    return cast("trace.Span", _MockSpan())
 
 
 def build_api_params_and_context(  # pylint: disable=too-many-arguments
@@ -206,7 +206,7 @@ def _patch_rag(
 
 
 def _patch_moderation(mocker: MockerFixture, decision: str = "passed") -> Any:
-    """Patch run_shield_moderation; return typed moderation result."""
+    """Patch run_shield_moderation_v2; return typed moderation result."""
     if decision == "blocked":
         moderation_result = ShieldModerationBlocked(
             message="Content blocked",
@@ -553,7 +553,7 @@ class TestResponsesEndpointHandler:
             OpenAIResponseMessage(role="user", content="What is K8s?"),
         ]
         responses_request = ResponsesRequest(
-            input=cast(Any, structured_input),
+            input=cast("Any", structured_input),
         )
         _patch_base(mocker, minimal_config)
         _patch_client(mocker)
@@ -596,8 +596,8 @@ class TestResponsesEndpointHandler:
         mock_build_rag.assert_called_once()
         call_args = mock_build_rag.call_args[0]
         assert (
-            call_args[2] == "What is K8s?"
-        )  # input_text (3rd arg to build_rag_context)
+            call_args[1] == "What is K8s?"
+        )  # input_text (2nd arg to build_rag_context)
 
     @pytest.mark.asyncio
     async def test_responses_blocked_with_conversation_appends_refusal(
@@ -1228,7 +1228,7 @@ class TestHandleStreamingResponse:
         assert "event: response.output_item.added" in body
         assert "event: response.output_item.done" in body
         assert "event: response.completed" in body
-        assert "[DONE]" in body
+        assert body.count("data: [DONE]") == 1
         mock_client.responses.create.assert_not_called()
 
     @pytest.mark.asyncio

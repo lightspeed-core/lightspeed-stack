@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import asyncio
 import datetime
+import time
 from collections.abc import AsyncIterator
 from functools import singledispatch
 from typing import Any, Final, Optional
@@ -65,18 +66,19 @@ from utils.conversation_compaction import (
     reject_image_attachments_in_compacted_mode,
     store_compacted_turn,
 )
-from utils.conversations import append_turn_items_to_conversation
 from utils.otel_tracing import (
     SpanAttributes,
     SpanEvents,
     add_span_event,
-    anonymize_value,
+    llm_inference_span_attributes,
+    root_span_turn_attributes,
     set_span_attributes,
 )
 from utils.pydantic_ai_helpers import build_agent, captured_output_items
 from utils.query import (
     build_multimodal_input,
     consume_query_tokens,
+    extract_provider_and_model_from_model_id,
     store_query_results,
 )
 from utils.quota_utils import get_available_quotas
@@ -90,11 +92,11 @@ from utils.stream_interrupts import (
     persist_interrupted_turn,
     register_interrupt_callback,
 )
-from utils.streaming_sse import shield_violation_generator
 
 type AgentDispatchEvent = AgentStreamEvent | AgentRunResultEvent
 
 logger = get_logger(__name__)
+tracer = trace.get_tracer(__name__)
 
 DEFAULT_REFUSAL_RESPONSE: Final[str] = (
     "I cannot process this request due to policy restrictions."
@@ -112,7 +114,7 @@ async def retrieve_agent_response_generator(
 
     Args:
         responses_params: Prepared Responses API parameters.
-        context: Streaming request context and moderation result.
+        context: Streaming request context.
         endpoint_path: Endpoint path used for metric labeling.
         no_tools: Whether to skip tool processing.
         image_attachments: Image attachments for multimodal prompt construction.
@@ -122,26 +124,6 @@ async def retrieve_agent_response_generator(
     """
     turn_summary = TurnSummary()
     try:
-        if context.moderation_result.decision == "blocked":
-            turn_summary.llm_response = context.moderation_result.message
-            turn_summary.id = context.moderation_result.moderation_id
-            turn_summary.output_items = [context.moderation_result.refusal_response]
-            if not responses_params.omit_conversation:
-                await append_turn_items_to_conversation(
-                    context.client,
-                    responses_params.conversation,
-                    responses_params.input,
-                    [context.moderation_result.refusal_response],
-                )
-            media_type = context.query_request.media_type or MEDIA_TYPE_JSON
-            return (
-                shield_violation_generator(
-                    context.moderation_result.message,
-                    media_type,
-                ),
-                turn_summary,
-            )
-
         agent = build_agent(
             context.client,
             responses_params,
@@ -213,9 +195,9 @@ async def generate_agent_response(  # pylint: disable=too-many-statements
     responses_params: ResponsesApiParams,
     turn_summary: TurnSummary,
     background_topic_summary_tasks: list[asyncio.Task[None]],
+    root_span: trace.Span,
     emit_start: bool = True,
     original_input: Optional[ResponseInput] = None,
-    root_span: Optional[trace.Span] = None,
     context_status: ContextStatus = "full",
 ) -> AsyncIterator[str]:
     """Wrap an agent SSE generator with cleanup logic.
@@ -230,12 +212,12 @@ async def generate_agent_response(  # pylint: disable=too-many-statements
         turn_summary: TurnSummary populated during streaming.
         background_topic_summary_tasks: Mutable list tracking fire-and-forget
             topic summary tasks for graceful shutdown.
+        root_span: OpenTelemetry root span for this request.
         emit_start: Whether to emit the SSE start event. False when the caller
             (the compaction-aware wrapper) has already emitted it.
         original_input: In compacted mode, the original user input before the
             explicit-input rewrite. Used to persist the completed turn with its
             structured input (preserving attachments); ``None`` otherwise.
-        root_span: OpenTelemetry root span for this request.
         context_status: Whether the conversation context was sent in full
             ("full") or older turns were replaced by a summary ("summarized").
             Reported to the client in the SSE end event.
@@ -261,8 +243,11 @@ async def generate_agent_response(  # pylint: disable=too-many-statements
             media_type,
         )
     try:
-        async for event in generator:
-            yield event
+        with trace.use_span(  # pylint: disable=not-context-manager
+            root_span, end_on_exit=False
+        ):
+            async for event in generator:
+                yield event
 
         stream_completed = True
 
@@ -302,8 +287,7 @@ async def generate_agent_response(  # pylint: disable=too-many-statements
         deregister_stream(context.request_id)
 
     if not stream_completed:
-        if root_span is not None:
-            root_span.end()
+        root_span.end()
         return
 
     await _persist_compacted_turn(
@@ -315,12 +299,15 @@ async def generate_agent_response(  # pylint: disable=too-many-statements
         and bool(context.query_request.generate_topic_summary)
     )
     try:
-        topic_summary = await maybe_get_topic_summary(
-            generate_topic_summary=should_generate_topic_summary,
-            input_text=context.query_request.query,
-            client=context.client,
-            model_id=responses_params.model,
-        )
+        with trace.use_span(  # pylint: disable=not-context-manager
+            root_span, end_on_exit=False
+        ):
+            topic_summary = await maybe_get_topic_summary(
+                generate_topic_summary=should_generate_topic_summary,
+                input_text=context.query_request.query,
+                client=context.client,
+                model_id=responses_params.model,
+            )
     except HTTPException as exc:
         logger.warning(
             "Topic summary failed for request %s: %s",
@@ -336,8 +323,7 @@ async def generate_agent_response(  # pylint: disable=too-many-statements
             ),
             media_type,
         )
-        if root_span is not None:
-            root_span.end()
+        root_span.end()
         return
     logger.info("Consuming tokens")
     consume_query_tokens(
@@ -373,38 +359,18 @@ async def generate_agent_response(  # pylint: disable=too-many-statements
         topic_summary=topic_summary,
     )
 
-    # Set final OTEL span attributes
-    if root_span is not None:
-        add_span_event(root_span, SpanEvents.TURN_PERSISTED)
-        if turn_summary.tool_calls:
-            tool_names = [tc.name for tc in turn_summary.tool_calls]
-            set_span_attributes(
-                root_span,
-                {
-                    SpanAttributes.TOOL_CALLS_COUNT: len(tool_names),
-                    SpanAttributes.TOOL_CALLS_NAMES: tool_names,
-                },
-            )
-            add_span_event(
-                root_span,
-                SpanEvents.TOOL_EXECUTION_COMPLETED,
-                {"tool.calls": ", ".join(tool_names)},
-            )
-        set_span_attributes(
-            root_span,
-            {
-                SpanAttributes.SESSION_ID: context.conversation_id,
-                SpanAttributes.LLM_USAGE_INPUT_TOKENS: (
-                    turn_summary.token_usage.input_tokens
-                ),
-                SpanAttributes.LLM_USAGE_OUTPUT_TOKENS: (
-                    turn_summary.token_usage.output_tokens
-                ),
-                SpanAttributes.OUTPUT: anonymize_value(turn_summary.llm_response),
-            },
-        )
-        add_span_event(root_span, SpanEvents.LLM_RESPONSE_COMPLETED)
-        root_span.end()
+    # Set final OTEL root-span attributes (input set earlier; llm.* on llm.inference)
+    add_span_event(root_span, SpanEvents.TURN_PERSISTED)
+    set_span_attributes(
+        root_span,
+        root_span_turn_attributes(
+            turn_summary,
+            context.conversation_id,
+            context_status == "summarized",
+        ),
+    )
+    add_span_event(root_span, SpanEvents.LLM_RESPONSE_COMPLETED)
+    root_span.end()
 
     logger.info("Agent streaming complete")
 
@@ -430,57 +396,96 @@ async def agent_response_generator(
     Yields:
         Serialized SSE event strings.
     """
-    media_type = context.query_request.media_type or MEDIA_TYPE_JSON
-    dispatch_state = AgentTurnAccumulator(
-        vector_store_ids=context.vector_store_ids,
-        rag_id_mapping=context.rag_id_mapping,
-        turn_summary=turn_summary,
-    )
-    reject_image_attachments_in_compacted_mode(responses_params, image_attachments)
-    if image_attachments:
-        prompt = build_multimodal_input(
-            agent_prompt_text(responses_params),
-            image_attachments,
+    with tracer.start_as_current_span("llm.inference") as span:
+        provider_id, model_id = extract_provider_and_model_from_model_id(
+            responses_params.model
         )
-    else:
-        prompt = agent_prompt_text(responses_params)
+        set_span_attributes(
+            span,
+            {
+                SpanAttributes.LLM_MODEL_ID: model_id,
+                SpanAttributes.LLM_PROVIDER_ID: provider_id,
+            },
+        )
+        add_span_event(span, SpanEvents.LLM_INFERENCE_STARTED)
+        inference_start_time = time.monotonic()
 
-    logger.debug("Starting agent streaming response processing")
-    async with agent.run_stream_events(prompt) as stream:
-        async for event in stream:
-            if payload := dispatch_stream_event(event, dispatch_state):
-                yield serialize_event(payload, media_type)
+        media_type = context.query_request.media_type or MEDIA_TYPE_JSON
+        dispatch_state = AgentTurnAccumulator(
+            vector_store_ids=context.vector_store_ids,
+            rag_id_mapping=context.rag_id_mapping,
+            turn_summary=turn_summary,
+        )
+        reject_image_attachments_in_compacted_mode(responses_params, image_attachments)
+        if image_attachments:
+            prompt = build_multimodal_input(
+                agent_prompt_text(responses_params),
+                image_attachments,
+            )
+        else:
+            prompt = agent_prompt_text(responses_params)
 
-    # Capture the structured output items OGX returned so compacted mode can
-    # persist the turn exactly as OGX would have (LCORE-3883).
-    turn_summary.output_items = captured_output_items(agent)
+        logger.debug("Starting agent streaming response processing")
+        async with agent.run_stream_events(prompt) as stream:
+            async for event in stream:
+                if payload := dispatch_stream_event(event, dispatch_state):
+                    yield serialize_event(payload, media_type)
 
-    if dispatch_state.run_result is None:
-        logger.error("No final result received from agent run")
-        return
+        inference_time = time.monotonic() - inference_start_time
 
-    run_result = dispatch_state.run_result
-    turn_summary.token_usage = extract_agent_token_usage(
-        run_result.usage,
-        responses_params.model,
-        endpoint_path,
-    )
+        # Capture the structured output items OGX returned so compacted mode can
+        # persist the turn exactly as OGX would have (LCORE-3883).
+        turn_summary.output_items = captured_output_items(agent)
 
-    finish_reason = get_agent_finish_reason(run_result.response)
-    if finish_reason != AgentFinishReason.SUCCESS:
-        error_response = get_finish_reason_error(finish_reason, responses_params.model)
-        yield serialize_event(
-            ErrorStreamPayload.from_error_response(error_response),
-            media_type,
+        if dispatch_state.run_result is None:
+            logger.error("No final result received from agent run")
+            return
+
+        run_result = dispatch_state.run_result
+        turn_summary.token_usage = extract_agent_token_usage(
+            run_result.usage,
+            responses_params.model,
+            endpoint_path,
         )
 
-    turn_summary.referenced_documents = deduplicate_referenced_documents(
-        context.inline_rag_context.referenced_documents
-        + turn_summary.referenced_documents
-    )
-    turn_summary.rag_chunks = (
-        context.inline_rag_context.rag_chunks + turn_summary.rag_chunks
-    )
+        turn_summary.referenced_documents = deduplicate_referenced_documents(
+            context.inline_rag_context.referenced_documents
+            + turn_summary.referenced_documents
+        )
+
+        set_span_attributes(
+            span,
+            llm_inference_span_attributes(
+                turn_summary,
+                model_id,
+                provider_id,
+                inference_time,
+            ),
+        )
+
+        if turn_summary.tool_calls:
+            tool_names = [tc.name for tc in turn_summary.tool_calls]
+            add_span_event(
+                span,
+                SpanEvents.TOOL_EXECUTION_COMPLETED,
+                {"tool.calls": ", ".join(tool_names)},
+            )
+
+        add_span_event(span, SpanEvents.LLM_INFERENCE_COMPLETED)
+
+        finish_reason = get_agent_finish_reason(run_result.response)
+        if finish_reason != AgentFinishReason.SUCCESS:
+            error_response = get_finish_reason_error(
+                finish_reason, responses_params.model
+            )
+            yield serialize_event(
+                ErrorStreamPayload.from_error_response(error_response),
+                media_type,
+            )
+
+        turn_summary.rag_chunks = (
+            context.inline_rag_context.rag_chunks + turn_summary.rag_chunks
+        )
 
 
 def serialize_event(

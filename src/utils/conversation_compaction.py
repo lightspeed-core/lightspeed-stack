@@ -309,7 +309,7 @@ def _verbatim_input_message(item: Any) -> Optional[OpenAIResponseMessage]:
     if role not in ("system", "developer", "user", "assistant"):
         role = "user"
     # role validated above; cast satisfies the Literal-typed parameter.
-    return OpenAIResponseMessage(role=cast(Any, role), content=text)
+    return OpenAIResponseMessage(role=cast("Any", role), content=text)
 
 
 def exclude_marker_items(items: Sequence[Any]) -> list[Any]:

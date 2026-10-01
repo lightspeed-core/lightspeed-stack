@@ -27,4 +27,4 @@ class Singleton(type):
         if cls not in Singleton._instances:
             Singleton._instances[cls] = type.__call__(cls, *args, **kwargs)
 
-        return cast(T, Singleton._instances[cls])
+        return cast("T", Singleton._instances[cls])

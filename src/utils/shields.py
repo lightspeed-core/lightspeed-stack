@@ -1,10 +1,9 @@
 """Utility helpers for shield override validation and moderation."""
 
 import uuid
-from typing import Optional
+from typing import Literal, Optional
 
 from fastapi import HTTPException
-from ogx_client import AsyncOgxClient
 from opentelemetry import trace
 from pydantic_ai.exceptions import AgentRunError
 
@@ -28,6 +27,9 @@ from models.config import (
     ShieldConfiguration,
 )
 from pydantic_ai_lightspeed.capabilities.base import AbstractSafetyCapability
+from pydantic_ai_lightspeed.capabilities.granite_guardian import (
+    GraniteGuardian,
+)
 from pydantic_ai_lightspeed.capabilities.question_validity._capability import (
     QuestionValidity,
 )
@@ -36,7 +38,12 @@ from pydantic_ai_lightspeed.capabilities.redaction._capability import (
 )
 from utils.agents.error_handler import map_agent_inference_error
 from utils.input_sanitization import sanitize_input
-from utils.otel_tracing import SpanAttributes, SpanEvents, add_span_event
+from utils.otel_tracing import (
+    SpanEvents,
+    add_span_event,
+    set_span_attributes,
+    shield_span_attributes,
+)
 
 logger = get_logger(__name__)
 tracer = trace.get_tracer(__name__)
@@ -82,6 +89,7 @@ async def run_shield_moderation_v2(
     input_text: str,
     shield_configs: list[ShieldConfiguration],
     selected_shield_ids: Optional[list[str]] = None,
+    guardrail_point: Literal["input", "output", "tool"] = "input",
 ) -> ShieldModerationResult:
     """Run v2 shield moderation on input text.
 
@@ -102,17 +110,13 @@ async def run_shield_moderation_v2(
         normalized_text, rejection_reason = sanitize_input(input_text)
         if rejection_reason:
             logger.warning("Input blocked by sanitization: %s", rejection_reason)
-            span.set_attribute(SpanAttributes.SHIELD_RESULT, "blocked")
-            add_span_event(
-                span,
-                SpanEvents.SHIELD_REJECTED,
-                {"shield.reason": "input_sanitization"},
-            )
-            return ShieldModerationBlocked(
+            blocked = ShieldModerationBlocked(
                 decision="blocked",
                 message=OBFUSCATION_REJECTION_MESSAGE,
                 moderation_id=str(uuid.uuid4()),
             )
+            set_span_attributes(span, shield_span_attributes(blocked))
+            return blocked
         input_text = normalized_text
 
         selected_shield_configs = get_shields_for_request(
@@ -120,7 +124,7 @@ async def run_shield_moderation_v2(
         )
 
         for shield_config in selected_shield_configs:
-            shield = build_shield(shield_config)
+            shield = build_shield(shield_config, guardrail_point)
 
             try:
                 shield_result = await shield.run(input_text)
@@ -137,19 +141,18 @@ async def run_shield_moderation_v2(
                 raise HTTPException(**response.model_dump()) from exc
 
             if shield_result.decision == "blocked":
-                span.set_attribute(SpanAttributes.SHIELD_RESULT, "blocked")
-                add_span_event(
-                    span,
-                    SpanEvents.SHIELD_REJECTED,
-                    {"shield.name": shield_config.name},
-                )
+                set_span_attributes(span, shield_span_attributes(shield_result))
+                add_span_event(span, SpanEvents.SHIELD_REJECTED)
                 return shield_result
 
-        span.set_attribute(SpanAttributes.SHIELD_RESULT, "passed")
+        set_span_attributes(span, shield_span_attributes(ShieldModerationPassed()))
         return ShieldModerationPassed()
 
 
-def build_shield(shield_config: ShieldConfiguration) -> AbstractSafetyCapability:
+def build_shield(
+    shield_config: ShieldConfiguration,
+    guardrail_point: Literal["input", "output", "tool"] = "input",
+) -> AbstractSafetyCapability:
     """Build a safety capability instance from a shield configuration.
 
     Parameters:
@@ -164,47 +167,12 @@ def build_shield(shield_config: ShieldConfiguration) -> AbstractSafetyCapability
         case RedactionConfig():
             return PiiRedactionCapability(shield_config.config)
         case GraniteGuardianConfig():
-            raise NotImplementedError("Granite Guardian capability not implemented")
+            return GraniteGuardian(shield_config.config, guardrail_point)
         case _:
             raise ValueError(
                 f"Unsupported shield config type for shield '{shield_config.name}': "
                 f"{type(shield_config.config).__name__}"
             )
-
-
-async def run_shield_moderation(
-    _client: AsyncOgxClient,
-    _input_text: str,
-    _endpoint_path: str,
-    _shield_ids: Optional[list[str]] = None,
-) -> ShieldModerationResult:
-    """
-    Run shield moderation on input text.
-
-    Iterates through configured shields and runs moderation checks.
-    Raises HTTPException if shield model is not found.
-
-    Parameters:
-    ----------
-        client: The OGX client.
-        input_text: The text to moderate.
-        endpoint_path: The API endpoint path for metric labeling.
-        shield_ids: Optional list of shield IDs to use. If None, uses all shields.
-                   If empty list, skips all shields.
-
-    Returns:
-    -------
-        ShieldModerationResult: Result indicating if content was blocked and the message.
-
-    Raises:
-    ------
-        HTTPException: If shield's provider_resource_id is not configured or model not found.
-    """
-    with tracer.start_as_current_span("shield.moderate") as span:
-        # Currently stubbed to always pass until LCS-owned input shields are wired.
-        result = ShieldModerationPassed()
-        span.set_attribute(SpanAttributes.SHIELD_RESULT, "passed")
-        return result
 
 
 def get_shields_for_request(

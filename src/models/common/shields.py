@@ -18,7 +18,7 @@ class CatalogShield(BaseModel):
     """
 
     name: str = Field(description="Unique, user-facing name of the shield instance")
-    provider_id: Literal["question_validity", "redaction"] = Field(
+    provider_id: Literal["question_validity", "redaction", "granite_guardian"] = Field(
         description="Shield provider / type discriminator",
     )
     type: Literal["shield"] = Field(

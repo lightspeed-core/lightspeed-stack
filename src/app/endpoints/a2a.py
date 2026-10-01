@@ -158,11 +158,11 @@ def _record_model_span(span: trace.Span, model_id: str) -> None:
         span: The active OpenTelemetry span.
         model_id: Full model identifier in "provider/model" format.
     """
-    provider_id, _ = extract_provider_and_model_from_model_id(model_id)
+    provider_id, bare_model_id = extract_provider_and_model_from_model_id(model_id)
     set_span_attributes(
         span,
         {
-            SpanAttributes.LLM_MODEL_ID: model_id,
+            SpanAttributes.LLM_MODEL_ID: bare_model_id,
             SpanAttributes.LLM_PROVIDER_ID: provider_id,
         },
     )
@@ -172,6 +172,8 @@ def _record_execution_span(
     span: trace.Span,
     tool_call_names: list[str],
     run_result: Optional[AgentRunResult[str]],
+    compacted: bool,
+    inference_time: float,
 ) -> None:
     """Record tool-call metrics, token usage, and output on an a2a.execute span.
 
@@ -179,6 +181,8 @@ def _record_execution_span(
         span: The active OpenTelemetry span.
         tool_call_names: Tool names collected during streaming.
         run_result: Completed agent run result, or None.
+        compacted: Whether the turn used compacted conversation context.
+        inference_time: Request processing duration in seconds.
     """
     if tool_call_names:
         set_span_attributes(
@@ -203,7 +207,10 @@ def _record_execution_span(
 
         output_text = run_result.response.text
         if output_text:
-            span.set_attribute(SpanAttributes.OUTPUT, anonymize_value(output_text))
+            span.set_attribute(SpanAttributes.OUTPUT, output_text)
+
+    span.set_attribute(SpanAttributes.COMPACTED, compacted)
+    span.set_attribute(SpanAttributes.INFERENCE_TIME, inference_time)
 
 
 async def _persist_compacted_a2a_turn(
@@ -385,7 +392,7 @@ class A2AAgentExecutor(AgentExecutor):
                     "Failed to publish failure event: %s", enqueue_error, exc_info=True
                 )
 
-    async def _process_task_streaming(  # pylint: disable=too-many-locals
+    async def _process_task_streaming(  # pylint: disable=too-many-locals,too-many-statements
         self,
         context: RequestContext,
         task_updater: TaskUpdater,
@@ -405,6 +412,7 @@ class A2AAgentExecutor(AgentExecutor):
 
         with tracer.start_as_current_span("a2a.execute") as span:
             span.set_attribute(SpanAttributes.SESSION_ID, context_id)
+            started_at = datetime.now(UTC)
 
             # Extract user input using SDK utility
             user_input = context.get_user_input()
@@ -420,7 +428,7 @@ class A2AAgentExecutor(AgentExecutor):
                 )
                 return
 
-            span.set_attribute(SpanAttributes.INPUT, anonymize_value(user_input))
+            span.set_attribute(SpanAttributes.INPUT, user_input)
             preview = user_input[:200] + ("..." if len(user_input) > 200 else "")
             logger.info("Processing A2A request: %s", preview)
 
@@ -578,7 +586,13 @@ class A2AAgentExecutor(AgentExecutor):
                 client, responses_params, compaction, agent, task_id
             )
 
-            _record_execution_span(span, self._tool_call_names, self._run_result)
+            _record_execution_span(
+                span,
+                self._tool_call_names,
+                self._run_result,
+                compaction.compacted,
+                (datetime.now(UTC) - started_at).total_seconds(),
+            )
 
             # Publish the final task result event
             if aggregator.task_state == TaskState.working:
@@ -1086,7 +1100,7 @@ async def _handle_a2a_jsonrpc(  # pylint: disable=too-many-locals,too-many-state
                 logger.warning(
                     "Could not parse A2A request body for method detection: %s", str(e)
                 )
-    except Exception as e:  # pylint: disable=broad-except
+    except Exception as e:  # pylint: disable=broad-except  # noqa: BLE001
         logger.error("Error detecting streaming request: %s", str(e))
 
     with tracer.start_as_current_span("a2a.dispatch") as span:
@@ -1094,9 +1108,7 @@ async def _handle_a2a_jsonrpc(  # pylint: disable=too-many-locals,too-many-state
             span,
             {
                 SpanAttributes.A2A_RPC_METHOD: rpc_method,
-                SpanAttributes.A2A_REQUEST_ID: (
-                    anonymize_value(rpc_request_id) if rpc_request_id else ""
-                ),
+                SpanAttributes.A2A_REQUEST_ID: rpc_request_id if rpc_request_id else "",
                 SpanAttributes.USER_ID: anonymize_value(auth[0]) if auth[0] else "",
             },
         )
@@ -1226,7 +1238,7 @@ async def _handle_a2a_jsonrpc(  # pylint: disable=too-many-locals,too-many-state
         return Response(
             content=b"".join(response_body),
             status_code=status_code,
-            headers=dict((k.decode(), v.decode()) for k, v in headers),
+            headers={k.decode(): v.decode() for k, v in headers},
         )
 
 

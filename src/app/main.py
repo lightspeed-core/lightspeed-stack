@@ -42,7 +42,13 @@ _OPENAPI_TAGS: Final[list[dict[str, str]]] = [
     {"name": "a2a", "description": "Agent-to-Agent (A2A) protocol."},
     {"name": "authorized", "description": "Authorization probe."},
     {"name": "config", "description": "Service configuration."},
-    {"name": "conversations_v1", "description": "Conversations API v1."},
+    {
+        "name": "conversations_v1",
+        "description": (
+            "Conversations API v1 (OGX-backed). Deprecated: use /v2/conversations; "
+            "scheduled for removal when OGX is dropped."
+        ),
+    },
     {"name": "conversations_v2", "description": "Conversations API v2."},
     {"name": "feedback", "description": "User feedback."},
     {"name": "health", "description": "Health and readiness probes."},

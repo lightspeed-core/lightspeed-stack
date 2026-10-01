@@ -358,7 +358,7 @@ class TestGetConversationsListEndpoint:
         assert exc_info.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
         detail = exc_info.value.detail
         assert isinstance(detail, dict)
-        detail_dict = cast(dict[str, Any], detail)
+        detail_dict = cast("dict[str, Any]", detail)
         response_text = detail_dict.get("response", "")
         assert "Conversation cache not configured" in response_text
 
@@ -507,7 +507,7 @@ class TestGetConversationEndpoint:
         assert exc_info.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
         detail = exc_info.value.detail
         assert isinstance(detail, dict)
-        detail_dict = cast(dict[str, Any], detail)
+        detail_dict = cast("dict[str, Any]", detail)
         response_text = detail_dict.get("response", "")
         assert "Conversation cache not configured" in response_text
 
@@ -746,7 +746,7 @@ class TestDeleteConversationEndpoint:
         assert exc_info.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
         detail = exc_info.value.detail
         assert isinstance(detail, dict)
-        detail_dict = cast(dict[str, Any], detail)
+        detail_dict = cast("dict[str, Any]", detail)
         response_text = detail_dict.get("response", "")
         assert "Conversation cache not configured" in response_text
 
@@ -897,7 +897,7 @@ class TestUpdateConversationEndpoint:
         assert exc_info.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
         detail = exc_info.value.detail
         assert isinstance(detail, dict)
-        detail_dict = cast(dict[str, Any], detail)
+        detail_dict = cast("dict[str, Any]", detail)
         response_text = detail_dict.get("response", "")
         assert "Conversation cache not configured" in response_text
 

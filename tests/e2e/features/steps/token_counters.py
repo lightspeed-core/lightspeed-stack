@@ -99,7 +99,7 @@ def check_token_metrics_unchanged(context: Context) -> None:
 @then("The streamed response contains token counter fields")
 def check_streamed_token_counter_fields(context: Context) -> None:
     """Check that streamed response end event contains token fields."""
-    assert context.response_data is not None, "Response data needs to be parsed first"
+    assert context.response is not None, "Request needs to be performed first"
 
     # Parse the end event from the streaming response to get token info
     end_event_data = _get_end_event_data(context.response.text)

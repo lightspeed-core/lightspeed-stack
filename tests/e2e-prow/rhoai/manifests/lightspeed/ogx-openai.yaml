@@ -43,12 +43,23 @@ spec:
           # Fast-path: PVC already has a valid venv from a previous pod creation in this pipeline run.
           # TLS scenarios delete+recreate this pod up to 16 times; skipping the expensive install
           # reduces per-restart time from ~6-15 min to ~30-90 s (just RAG seed refresh + chown).
+          # The stack revision pins the providers submodule, so a pin change
+          # invalidates the cached checkout as well (LCORE-4022).
+          CACHED_REVISION=""
+          if [[ -f /opt/app-root/.cached-revision ]]; then
+            CACHED_REVISION=$(cat /opt/app-root/.cached-revision)
+          fi
+          REPO_REVISION="${REPO_REVISION:-main}"
+
           if [[ -d /opt/app-root/.venv ]] \
               && /opt/app-root/.venv/bin/python --version >/dev/null 2>&1 \
               && [[ -d /opt/app-root/src ]] \
               && [[ -f /opt/app-root/scripts/ogx-entrypoint.sh ]] \
-              && [[ -f /opt/app-root/src/ogx_configuration.py ]]; then
-            echo "PVC cache hit: app-root already provisioned — skipping full install"
+              && [[ -f /opt/app-root/src/ogx_configuration.py ]] \
+              && [[ -d /opt/app-root/lightspeed_stack_providers ]] \
+              && [[ -d /opt/app-root/providers.d ]] \
+              && [[ "$CACHED_REVISION" == "$REPO_REVISION" ]]; then
+            echo "PVC cache hit: app-root already provisioned at $REPO_REVISION — skipping full install"
             mkdir -p /opt/app-root/.e2e-rag-seed /opt/app-root/.e2e-rag-work /opt/app-root/src/.ogx /opt/app-root/src/.llama/storage/files
             if [[ -f /rag-seed/kv_store.db.gz ]]; then
               gzip -dc /rag-seed/kv_store.db.gz > /opt/app-root/.e2e-rag-seed/kv_store.db
@@ -77,10 +88,14 @@ spec:
           export GIT_TERMINAL_PROMPT=0
           git clone -q "${REPO_URL}" /opt/app-root/repo
           cd /opt/app-root/repo && git fetch origin "${REPO_REVISION}" 2>/dev/null || true && git checkout -q "${REPO_REVISION}"
+          git submodule update --init --recursive providers
           uv sync --locked --no-install-project --group ogxlibdev
           (cd /opt/app-root/repo && tar cf - .) | (cd /opt/app-root && tar xf -)
           rm -rf /opt/app-root/repo
           sed -i 's|/opt/app-root/repo/.venv|/opt/app-root/.venv|g' /opt/app-root/.venv/bin/* 2>/dev/null || true
+          # Install provider code and specs from the checked-out submodule.
+          cp -a /opt/app-root/providers/lightspeed_stack_providers /opt/app-root/
+          cp -a /opt/app-root/providers/resources/external_providers /opt/app-root/providers.d
           mkdir -p /opt/app-root/.e2e-rag-seed /opt/app-root/.e2e-rag-work /opt/app-root/src/.ogx /opt/app-root/src/.llama/storage/files
           if [[ ! -f /rag-seed/kv_store.db.gz ]]; then
             echo "FATAL: missing /rag-seed/kv_store.db.gz (ConfigMap rag-data key kv_store.db.gz)"
@@ -96,6 +111,8 @@ spec:
           cp -f /opt/app-root/.e2e-rag-seed/kv_store.db /opt/app-root/.e2e-rag-work/kv_store.db
           cp -f /opt/app-root/scripts/ogx-entrypoint.sh /opt/app-root/enrich-entrypoint.sh
           cp -f /opt/app-root/src/ogx_configuration.py /opt/app-root/ogx_configuration.py
+          # Save the provisioned revision for cache validation.
+          echo "${REPO_REVISION:-main}" > /opt/app-root/.cached-revision
           chmod 755 /opt/app-root/enrich-entrypoint.sh
           chmod -R 775 /opt/app-root && chown -R 1001:0 /opt/app-root
       volumeMounts:
@@ -138,7 +155,9 @@ spec:
         - name: PATH
           value: "/opt/app-root/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
         - name: PYTHONPATH
-          value: "/opt/app-root/src"
+          value: "/opt/app-root:/opt/app-root/src"
+        - name: EXTERNAL_PROVIDERS_DIR
+          value: "/opt/app-root/providers.d"
         - name: HOME
           value: "/opt/app-root/src"
         # Match GitHub Actions docker-compose + ogx-entrypoint.sh:
@@ -188,6 +207,10 @@ spec:
             secretKeyRef:
               name: llama-stack-ip-secret
               key: key
+        # In-cluster OKP Solr Service. Used when LCS YAML lists okp as a RAG source
+        # and OGX enriches run.yaml. Offline doc_url rewriting stays on LCS (localhost:8081 default).
+        - name: RH_SERVER_OKP
+          value: "http://okp-solr-service-svc:8080"
       command:
         - /bin/bash
         - -c

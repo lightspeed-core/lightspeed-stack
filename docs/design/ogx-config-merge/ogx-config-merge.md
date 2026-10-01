@@ -41,8 +41,7 @@ Key shape:
   `llama_stack` YAML-section alias is still accepted) +
   external `run.yaml`) is preserved during a deprecation window;
   mutually exclusive with the unified *synthesis inputs* (a non-empty
-  `inference.providers`, a non-empty `vector_store.providers`, or an
-  `ogx.config` block).
+  `inference.providers` or a `ogx.config` block).
 
 ## Why
 
@@ -120,8 +119,7 @@ detail that LCORE owns, not an operator-facing artifact.
   location for debugging.
 - **R11:** Shape detection determines mode. Unified mode is signalled by
   the presence of any *synthesis input* — a non-empty top-level
-  `inference.providers`, a non-empty top-level `vector_store.providers`,
-  or an `ogx.config` block; legacy mode by
+  `inference.providers` or a `ogx.config` block; legacy mode by
   `library_client_config_path`. An optional `config_format_version` field
   is accepted but must agree with the detected shape when present. See the
   "Mode detection" table under Architecture for the full matrix.
@@ -180,10 +178,10 @@ lightspeed-stack.yaml (unified mode)
  └────────────┬───────────────┘    and `library_client_config_path`.
               │ Configuration (typed)
               ▼
- ┌────────────────────────────┐   Baseline selection (profile / default /
- │ Synthesizer                │   byo-llm / empty) + high-level sections
- │  synthesize_configuration  │   + native_override deep-merge, then
- │  (ogx_config…)             │   enrichment (BYOK RAG, Solr/OKP, Azure).
+ ┌────────────────────────────┐   Baseline selection (profile /
+ │ Synthesizer                │   default / empty) + enrichment
+ │  synthesize_configuration  │   (BYOK RAG, Solr/OKP) + high-level
+ │  (ogx_config…)             │   sections + native_override deep-merge.
  └────────────┬───────────────┘
               │ synthesized run.yaml (dict)
               ▼
@@ -199,23 +197,23 @@ lightspeed-stack.yaml (unified mode)
 ### Trigger mechanism
 
 At LCORE startup (library mode): if any synthesis input is present (a
-non-empty top-level `inference.providers`, a non-empty top-level
-`vector_store.providers`, or an `ogx.config` block), the synthesizer produces a `run.yaml` dict, writes it to disk,
+non-empty top-level `inference.providers`, or a `ogx.config`
+block), the synthesizer produces a `run.yaml` dict, writes it to disk,
 and passes the path to the library client.
 
 At OGX container startup (server mode): the container's
 entrypoint script invokes
 `python3 /opt/app-root/ogx_configuration.py -c <lightspeed-stack.yaml>
--i <run.yaml> -o /tmp/generated-run.yaml` (`-i` is used in legacy mode only). The Python CLI auto-detects unified vs legacy
+-o /opt/app-root/run.yaml`. The Python CLI auto-detects unified vs legacy
 by the same synthesis-input check; in unified mode it synthesizes and
 writes the output; in legacy mode it performs in-place enrichment as
 before.
 
 ### Mode detection
 
-*Synthesis inputs* are the top-level high-level sections (a non-empty
-`inference.providers` or a non-empty `vector_store.providers`; future
-`rag`, …) and the `ogx.config` block. The loaded `lightspeed-stack.yaml` maps to a mode as follows:
+*Synthesis inputs* are the top-level high-level sections (v1: a non-empty
+`inference.providers`; future `rag`, …) and the `ogx.config`
+block. The loaded `lightspeed-stack.yaml` maps to a mode as follows:
 
 | Shape | Mode |
 |---|---|
@@ -475,16 +473,15 @@ not have had a full release with a working migration path. Releases:
    is `byo-llm`, strip the built-in conditional OpenAI inference row.
    `empty` and `profile:` are unchanged.
 3. Run `dedupe_providers_vector_io` on the baseline.
-4. If top-level `inference.providers` is non-empty →
+4. Apply existing enrichment: `enrich_byok_rag`, `enrich_solr` (Azure
+   Entra ID intentionally stays separate because it's a `.env`
+   side-effect, not an `ogx_config` mutation).
+5. If top-level `inference.providers` is non-empty →
    `apply_high_level_inference(ogx_config, lcs_config["inference"])`.
-5. Unless the baseline is `empty` → `ensure_mcp_tool_runtime(ogx_config)`.
 6. If `unified` and `unified.native_override` non-empty →
    `deep_merge_list_replace(ogx_config, native_override)`.
-7. Apply existing enrichment, after the override merge (LCORE-3370):
-   `enrich_azure_entra_id_inference`, `enrich_byok_rag`, `enrich_solr`,
-   `enrich_vector_store`.
-8. `dedupe_providers_vector_io` again.
-9. Return the final dict.
+7. `dedupe_providers_vector_io` again for good measure.
+8. Return the final dict.
 
 **`_load_library_client` fork point** (in `src/client/ogx.py`). The check is
 "is there a synthesis input?", which spans the root `inference.providers`

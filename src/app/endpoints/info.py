@@ -20,7 +20,7 @@ from models.api.responses.error import (
 )
 from models.api.responses.successful import InfoResponse
 from models.config import Action
-from utils.otel_tracing import set_span_attributes
+from utils.otel_tracing import SpanAttributes, set_span_attributes
 from utils.types import Responses
 from version import __version__
 
@@ -85,8 +85,8 @@ async def info_endpoint_handler(
             set_span_attributes(
                 span,
                 {
-                    "service.name": configuration.configuration.name,
-                    "service.version": __version__,
+                    SpanAttributes.SERVICE_NAME: configuration.configuration.name,
+                    SpanAttributes.SERVICE_VERSION: __version__,
                 },
             )
             return InfoResponse(

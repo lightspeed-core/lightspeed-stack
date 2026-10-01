@@ -71,7 +71,7 @@ async def shields_endpoint_handler(
         check_configuration_loaded(configuration)
 
         shields = [
-            CatalogShield.model_validate(shield.model_dump())
+            CatalogShield.model_validate(shield.model_dump(mode="json"))
             for shield in configuration.shields
         ]
         logger.info("Returning %d configured shield(s)", len(shields))

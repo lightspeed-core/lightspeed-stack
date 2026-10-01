@@ -21,7 +21,7 @@ from models.config import CustomProfile, ModelContextProtocolServer
 from utils.checks import InvalidConfigurationError
 
 
-# pylint: disable=broad-exception-caught,protected-access
+# pylint: disable=protected-access
 @pytest.fixture(autouse=True)
 def _reset_app_config_between_tests() -> Generator:
     # ensure clean state before each test
@@ -32,18 +32,12 @@ def _reset_app_config_between_tests() -> Generator:
     AppConfig()._quota_limiters to an empty list, ignoring any exceptions, then
     yields control to the test and repeats the cleanup after the test.
     """
-    try:
-        AppConfig()._configuration = None  # type: ignore[attr-defined]
-        AppConfig()._quota_limiters = []  # type: ignore[attr-defined]
-    except Exception:
-        pass
+    AppConfig()._configuration = None  # type: ignore[attr-defined]
+    AppConfig()._quota_limiters = []  # type: ignore[attr-defined]
     yield
     # ensure clean state after each test
-    try:
-        AppConfig()._configuration = None  # type: ignore[attr-defined]
-        AppConfig()._quota_limiters = []  # type: ignore[attr-defined]
-    except Exception:
-        pass
+    AppConfig()._configuration = None  # type: ignore[attr-defined]
+    AppConfig()._quota_limiters = []  # type: ignore[attr-defined]
 
 
 def test_default_configuration() -> None:

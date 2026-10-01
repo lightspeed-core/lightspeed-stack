@@ -20,6 +20,10 @@ Common steps for HTTP-related operations.
 
 Implementation of common test steps.
 
+## [conversation_compaction.py](conversation_compaction.py)
+
+Step definitions for the conversation-compaction e2e feature (LCORE-2230).
+
 ## [feedback.py](feedback.py)
 
 Implementation of common test steps for the feedback API.
@@ -39,6 +43,14 @@ LLM query and response steps.
 ## [models.py](models.py)
 
 Steps for /models endpoint.
+
+## [okp_rag.py](okp_rag.py)
+
+Step definitions for OKP(Solr) RAG retrieval tests.
+
+## [opentelemetry.py](opentelemetry.py)
+
+Step definitions for the OpenTelemetry telemetry-delivery E2E scenario.
 
 ## [place_holder.py](place_holder.py)
 
@@ -71,4 +83,8 @@ Step definitions for TLS configuration e2e tests.
 ## [token_counters.py](token_counters.py)
 
 Step definitions for token counter validation.
+
+## [unified_mode.py](unified_mode.py)
+
+Step definitions for the unified-mode e2e features (LCORE-2343).
 

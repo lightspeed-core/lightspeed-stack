@@ -1,0 +1,58 @@
+name: Lightspeed Core Service (LCS)
+service:
+  host: 0.0.0.0
+  port: 8080
+  auth_enabled: false
+  workers: 1
+  color_log: true
+  access_log: true
+ogx:
+  # Server mode - connects to separate OGX service
+  use_as_library_client: false
+  url: http://${env.E2E_OGX_HOSTNAME}:8321
+  api_key: xyzzy
+user_data_collection:
+  feedback_enabled: true
+  feedback_storage: "/tmp/data/feedback"
+  transcripts_enabled: true
+  transcripts_storage: "/tmp/data/transcripts"
+authentication:
+  module: "noop"
+inference:
+  default_provider: openai
+  default_model: gpt-4o-mini
+  # Compaction e2e (LCORE-1673): a deliberately small window for every
+  # model the e2e workflows run against, so the third query of the
+  # compaction scenarios crosses the trigger threshold. The real windows
+  # are far larger; this only drives the local estimate, never the provider.
+  # The vLLM-backed runs (rhaiis, rhelai) take the model id from an env
+  # var, and context_windows keys are not env-substituted, so they are
+  # not listed and skip the token-based trigger.
+  context_windows:
+    openai/gpt-4o-mini: 2000
+    azure/gpt-4o-mini: 2000
+    google-vertex/publishers/google/models/gemini-2.5-flash: 2000
+    watsonx/meta-llama/llama-3-3-70b-instruct: 2000
+    aws-bedrock/deepseek.v3-v1:0: 2000
+rag:
+  byok:
+    stores:
+      - rag_id: e2e-test-docs
+        backend: faiss
+        embedding_model: sentence-transformers/all-mpnet-base-v2
+        embedding_dimension: 768
+        vector_db_id: ${env.FAISS_VECTOR_STORE_ID}
+        db_path: ${env.KV_RAG_PATH:=~/.llama/storage/rag/kv_store.db}
+        score_multiplier: 1.0
+  retrieval:
+    tool:
+      sources:
+        - e2e-test-docs
+
+# Compaction on with a low threshold: 10% of the 2000-token window,
+# above a 100-token floor, keeping one recent turn verbatim.
+compaction:
+  enabled: true
+  threshold_ratio: 0.1
+  token_floor: 100
+  buffer_turns: 1

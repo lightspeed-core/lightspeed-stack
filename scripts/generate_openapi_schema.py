@@ -16,11 +16,11 @@ CFG_FILE = "lightspeed-stack.yaml"
 configuration.load_configuration(CFG_FILE)
 
 # OGX client needs to be loaded before REST API is fully initialized
-import asyncio  # noqa: E402  pylint: disable=C0411,C0413
+import asyncio  # pylint: disable=C0411,C0413
 
 asyncio.run(AsyncOgxClientHolder().load(configuration.configuration.ogx))
 
-from app.main import app  # noqa: E402  pylint: disable=C0413
+from app.main import app  # pylint: disable=C0413
 
 
 def read_version_from_openapi(openapi_filename: str) -> str:

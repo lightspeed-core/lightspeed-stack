@@ -4,14 +4,14 @@ This module contains common functionality for performing vector searches
 and processing RAG chunks that is shared between query_v2.py and streaming_query_v2.py.
 """
 
+# pylint: disable=unused-import
+
 import asyncio
+import json
 import traceback
-from typing import Any, Optional, cast
+from typing import TYPE_CHECKING, Any, Optional, cast
 from urllib.parse import urljoin
 
-from ogx_api.openai_responses import (
-    OpenAIResponseMessage as ResponseMessage,
-)
 from ogx_client import AsyncOgxClient
 from opentelemetry import trace
 from pydantic import AnyUrl, ValidationError
@@ -26,11 +26,15 @@ from utils.otel_tracing import (
     SpanAttributes,
     SpanEvents,
     add_span_event,
-    anonymize_value,
     set_span_attributes,
 )
 from utils.reranker import apply_byok_rerank_boost, rerank_chunks_with_cross_encoder
 from utils.responses import resolve_vector_store_ids
+
+if TYPE_CHECKING:
+    from ogx_api.openai_responses import (
+        OpenAIResponseMessage as ResponseMessage,
+    )
 
 logger = get_logger(__name__)
 tracer = trace.get_tracer(__name__)
@@ -111,13 +115,13 @@ def _get_solr_vector_store_ids() -> list[str]:
 
 def _build_query_params(
     solr: Optional[SolrVectorSearchRequest] = None,
-    k: Optional[int] = None,
+    max_chunks: Optional[int] = None,
 ) -> dict[str, Any]:
     """Build query parameters for Solr vector_io search.
 
     Args:
         solr: Optional structured Solr request (mode and filters from the API).
-        k: Optional number of results to return. If not provided, uses default.
+        max_chunks: Optional number of chunks to return. If not provided, uses default.
 
     Returns:
         Query parameters dict for vector_io.query.
@@ -136,7 +140,11 @@ def _build_query_params(
     )
     resolved_mode = constants.SOLR_SEARCH_MODE_MAP.get(resolved_mode, resolved_mode)
     params: dict[str, Any] = {
-        "k": k if k is not None else constants.SOLR_VECTOR_SEARCH_DEFAULT_K,
+        "max_chunks": (
+            max_chunks
+            if max_chunks is not None
+            else constants.SOLR_VECTOR_SEARCH_DEFAULT_K
+        ),
         "score_threshold": constants.SOLR_VECTOR_SEARCH_DEFAULT_SCORE_THRESHOLD,
         "mode": resolved_mode,
     }
@@ -289,9 +297,7 @@ async def _query_store_for_byok_rag(  # pylint: disable=too-many-arguments,too-m
             },
         )
         return _extract_byok_rag_chunks(search_response, vector_store_id, weight)
-    except (
-        Exception  # pylint: disable=broad-exception-caught
-    ) as e:  # noqa: BLE001 RUF100
+    except Exception as e:  # pylint: disable=broad-exception-caught  # noqa: BLE001
         logger.warning("Failed to search '%s': %s", vector_store_id, e)
         return []
 
@@ -562,9 +568,7 @@ async def _fetch_byok_rag(  # pylint: disable=too-many-locals
         # Extract referenced documents from BYOK RAG chunks (now with resolved sources)
         referenced_documents = _process_byok_rag_chunks_for_documents(top_results)
 
-    except (
-        Exception  # pylint: disable=broad-exception-caught
-    ) as e:  # noqa: BLE001 RUF100
+    except Exception as e:  # pylint: disable=broad-exception-caught  # noqa: BLE001
         logger.warning("Failed to perform BYOK RAG search: %s", e)
         logger.debug("BYOK RAG error details: %s", traceback.format_exc())
 
@@ -605,7 +609,7 @@ async def _fetch_okp_rag(  # pylint: disable=too-many-locals
         if vector_store_ids:
             # Assuming only one Solr vector store is registered
             vector_store_id = vector_store_ids[0]
-            params = _build_query_params(solr)
+            params = _build_query_params(solr, max_chunks=limit)
 
             query_response = await client.vector_io.query(
                 vector_store_id=vector_store_id,
@@ -622,28 +626,18 @@ async def _fetch_okp_rag(  # pylint: disable=too-many-locals
                     query_response.scores if hasattr(query_response, "scores") else []
                 )
 
-                # Limit to top N chunks
-                top_chunks = query_response.chunks[:limit]
-                top_scores = retrieved_scores[:limit]
-
                 # Extract referenced documents from Solr chunks
                 referenced_documents = _process_solr_chunks_for_documents(
-                    top_chunks, offline
+                    query_response.chunks, offline
                 )
 
                 # Convert retrieved chunks to RAGChunk format
                 rag_chunks = _convert_solr_chunks_to_rag_format(
-                    top_chunks, top_scores, offline
+                    query_response.chunks, retrieved_scores, offline
                 )
-                logger.debug(
-                    "Filtered top %d chunks from OKP RAG (%d were retrieved)",
-                    limit,
-                    len(rag_chunks),
-                )
+                logger.debug("OKP RAG returned %d chunks", len(rag_chunks))
 
-    except (
-        Exception  # pylint: disable=broad-exception-caught
-    ) as e:  # noqa: BLE001 RUF100
+    except Exception as e:  # pylint: disable=broad-exception-caught  # noqa: BLE001
         logger.warning("Failed to query OKP for chunks: %s", e)
         logger.debug("OKP query error details: %s", traceback.format_exc())
 
@@ -652,7 +646,6 @@ async def _fetch_okp_rag(  # pylint: disable=too-many-locals
 
 async def build_rag_context(  # pylint: disable=too-many-locals,too-many-branches
     client: AsyncOgxClient,
-    moderation_decision: str,  # pylint: disable=unused-argument
     query: str,
     vector_store_ids: Optional[list[str]],
     solr: Optional[SolrVectorSearchRequest] = None,
@@ -675,11 +668,7 @@ async def build_rag_context(  # pylint: disable=too-many-locals,too-many-branche
     """
     with tracer.start_as_current_span("rag.retrieve") as span:
         # Set RAG input attribute
-        span.set_attribute(SpanAttributes.RAG_INPUT, anonymize_value(query))
-
-        if moderation_decision == "blocked":
-            span.set_attribute(SpanAttributes.RAG_SOURCES_COUNT, 0)
-            return RAGContext()
+        span.set_attribute(SpanAttributes.RAG_INPUT, query)
 
         top_k = configuration.rag.retrieval.inline.max_chunks
 
@@ -725,12 +714,15 @@ async def build_rag_context(  # pylint: disable=too-many-locals,too-many-branche
         all_documents = byok_documents + solr_documents
         top_documents = _filter_documents_for_chunks(all_documents, context_chunks)
 
-        # Set RAG attributes
+        # Set RAG attributes (inline chunks only; tool RAG lives on llm.inference)
         set_span_attributes(
             span,
             {
                 SpanAttributes.RAG_SOURCES_COUNT: len(top_documents),
                 SpanAttributes.RAG_SOURCES: [doc.doc_url for doc in top_documents],
+                SpanAttributes.RAG_CHUNKS: json.dumps(
+                    [chunk.model_dump(mode="json") for chunk in context_chunks]
+                ),
             },
         )
 
@@ -878,7 +870,7 @@ def append_inline_rag_context_to_responses_input(
     for item in input_value:
         if item.type != "message" or item.role != "user":
             continue
-        message = cast(ResponseMessage, item)
+        message = cast("ResponseMessage", item)
         content = message.content
         if isinstance(content, str):
             message.content = content + "\n\n" + inline_rag_context_text

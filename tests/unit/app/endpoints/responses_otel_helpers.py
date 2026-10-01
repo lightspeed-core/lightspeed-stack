@@ -262,7 +262,7 @@ def assert_root_setup_attributes(
     assert root.name == ROOT_SPAN_NAME
     assert root.attributes is not None
     assert root.attributes[SpanAttributes.USER_ID] == f"[anon:{MOCK_AUTH[0]}]"
-    assert root.attributes[SpanAttributes.INPUT] == f"[anon:{input_text}]"
+    assert root.attributes[SpanAttributes.INPUT] == input_text
     assert (
         root.attributes[SpanAttributes.REQUEST_ATTACHMENTS_COUNT] == attachments_count
     )
@@ -286,6 +286,7 @@ async def run_responses_setup_smoke(
     *,
     stream: bool,
     input_text: str = "What is Kubernetes?",
+    safety_identifier: str | None = None,
 ) -> ReadableSpan:
     """Run the handler through setup and return the root span."""
     patch_responses_otel_tracers(mocker, tracer, minimal_config)
@@ -306,6 +307,7 @@ async def run_responses_setup_smoke(
             store=False,
             conversation=OTEL_CONV_ID,
             generate_topic_summary=False,
+            safety_identifier=safety_identifier,
         ),
         auth=MOCK_AUTH,
         mcp_headers={},

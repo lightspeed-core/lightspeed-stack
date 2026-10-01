@@ -146,7 +146,7 @@ The "buffer zone" is the most recent turns kept verbatim (not summarized).
 
 Anthropic's compaction uses token-based thresholds throughout — the buffer is implicit (whatever fits after the compaction block).
 
-**Recommendation**: **Hybrid with degrading guard**. Start with the last 4 turns. If their token count exceeds the available budget, degrade to 3, then 2, then 1, then 0. This handles pathological cases where a few large turns (e.g., with tool results) would overflow the context even after summarizing everything else.
+**Recommendation**: **Hybrid with degrading guard**. Start with the last 4 turns. If their token count exceeds the available budget, degrade to 3, then 2, then 1, then 0. The token estimate only counts message text — non-message items (tool calls, tool results) are not included — so the guard may underestimate turns that carry large tool-result payloads.
 
 ## Decision 10: Concurrency during compaction
 

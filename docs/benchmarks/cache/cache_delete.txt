@@ -1,0 +1,51 @@
+============================= test session starts ==============================
+platform linux -- Python 3.14.7, pytest-9.1.1, pluggy-1.6.0 -- /tmp/ramdisk/lightspeed-stack-LCORE-4/.venv/bin/python3
+cachedir: .pytest_cache
+benchmark: 5.3.0 (defaults: timer=time.perf_counter disable_gc=False min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=100000)
+rootdir: /tmp/ramdisk/lightspeed-stack-LCORE-4
+configfile: pyproject.toml
+plugins: platformdirs-4.12.2, logfire-5.1.1, mock-3.16.0, anyio-4.15.1, benchmark-5.3.0, cov-7.1.0, order-1.5.0, asyncio-1.4.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 15 items
+
+tests/benchmarks/test_cache_delete.py::test_noop_cache_existing_conversation PASSED [  6%]
+tests/benchmarks/test_cache_delete.py::test_noop_cache_10_short_conversations PASSED [ 13%]
+tests/benchmarks/test_cache_delete.py::test_noop_cache_10_medium_conversations PASSED [ 20%]
+tests/benchmarks/test_cache_delete.py::test_noop_cache_10_long_conversations PASSED [ 26%]
+tests/benchmarks/test_cache_delete.py::test_noop_cache_10_extra_long_conversations PASSED [ 33%]
+tests/benchmarks/test_cache_delete.py::test_noop_cache_100_short_conversations PASSED [ 40%]
+tests/benchmarks/test_cache_delete.py::test_noop_cache_100_medium_conversations PASSED [ 46%]
+tests/benchmarks/test_cache_delete.py::test_noop_cache_100_long_conversations PASSED [ 53%]
+tests/benchmarks/test_cache_delete.py::test_noop_cache_100_extra_long_conversations PASSED [ 60%]
+tests/benchmarks/test_cache_delete.py::test_noop_cache_1000_short_conversations PASSED [ 66%]
+tests/benchmarks/test_cache_delete.py::test_noop_cache_1000_medium_conversations PASSED [ 73%]
+tests/benchmarks/test_cache_delete.py::test_noop_cache_1000_long_conversations PASSED [ 80%]
+tests/benchmarks/test_cache_delete.py::test_noop_cache_1000_extra_long_conversations PASSED [ 86%]
+tests/benchmarks/test_cache_delete.py::test_noop_cache_nonexistent_conversation PASSED [ 93%]
+tests/benchmarks/test_cache_delete.py::test_noop_cache_skip_user_id_check PASSED [100%]
+
+
+----------------------------------------------------------------------------------------------- benchmark: 15 tests ------------------------------------------------------------------------------------------------
+Name (time in us)                                    Min                 Max              Mean            StdDev            Median               IQR            Outliers  OPS (Kops/s)            Rounds  Iterations
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+test_noop_cache_skip_user_id_check                2.7160 (1.0)       73.1190 (3.20)     3.0604 (1.0)      0.4629 (1.42)     2.9210 (1.0)      0.2349 (2.02)   12860;18288      326.7580 (1.0)      102260           1
+test_noop_cache_100_short_conversations           4.4580 (1.64)      59.7871 (2.61)     4.7753 (1.56)     0.4665 (1.43)     4.7310 (1.62)     0.1289 (1.11)    1101;4338      209.4104 (0.64)     109541           1
+test_noop_cache_10_short_conversations            4.4641 (1.64)      39.3650 (1.72)     4.7441 (1.55)     0.3683 (1.13)     4.7049 (1.61)     0.1161 (1.0)     1528;4592      210.7887 (0.65)     115513           1
+test_noop_cache_1000_short_conversations          4.4650 (1.64)      35.6840 (1.56)     4.8402 (1.58)     0.4151 (1.27)     4.7480 (1.63)     0.1850 (1.59)    7961;9818      206.6017 (0.63)      99434           1
+test_noop_cache_1000_long_conversations           4.4690 (1.65)      30.1800 (1.32)     5.0156 (1.64)     0.5197 (1.59)     4.8249 (1.65)     0.6271 (5.40)     6715;650      199.3763 (0.61)      96665           1
+test_noop_cache_10_extra_long_conversations       4.4791 (1.65)      53.8899 (2.36)     4.7846 (1.56)     0.3948 (1.21)     4.7459 (1.62)     0.1279 (1.10)     946;2942      209.0047 (0.64)      84076           1
+test_noop_cache_10_long_conversations             4.4800 (1.65)     592.2670 (25.90)    4.8286 (1.58)     1.8956 (5.80)     4.7580 (1.63)     0.1390 (1.20)     784;6944      207.0999 (0.63)     117330           1
+test_noop_cache_100_extra_long_conversations      4.4809 (1.65)      35.7860 (1.56)     4.7712 (1.56)     0.3817 (1.17)     4.7280 (1.62)     0.1269 (1.09)    1495;3861      209.5889 (0.64)      98436           1
+test_noop_cache_1000_extra_long_conversations     4.4811 (1.65)      22.8670 (1.0)      4.7721 (1.56)     0.3266 (1.0)      4.7340 (1.62)     0.1260 (1.09)     976;1958      209.5521 (0.64)      50066           1
+test_noop_cache_10_medium_conversations           4.4850 (1.65)      67.4711 (2.95)     4.7858 (1.56)     0.4238 (1.30)     4.7450 (1.62)     0.1271 (1.10)    1369;4552      208.9525 (0.64)     111757           1
+test_noop_cache_existing_conversation             4.4890 (1.65)     582.7220 (25.48)    4.7698 (1.56)     2.3593 (7.22)     4.7149 (1.61)     0.1180 (1.02)     362;2580      209.6506 (0.64)      62093           1
+test_noop_cache_nonexistent_conversation          4.4899 (1.65)      30.3590 (1.33)     4.7766 (1.56)     0.3870 (1.18)     4.7371 (1.62)     0.1240 (1.07)     533;1513      209.3540 (0.64)      40317           1
+test_noop_cache_1000_medium_conversations         4.4940 (1.65)      33.8020 (1.48)     4.7849 (1.56)     0.3950 (1.21)     4.7389 (1.62)     0.1310 (1.13)    1672;4729      208.9903 (0.64)     106316           1
+test_noop_cache_100_long_conversations            4.4941 (1.65)      59.9730 (2.62)     4.7841 (1.56)     0.4441 (1.36)     4.7280 (1.62)     0.1300 (1.12)    1720;6150      209.0243 (0.64)     105575           1
+test_noop_cache_100_medium_conversations          4.5029 (1.66)      38.4310 (1.68)     4.7912 (1.57)     0.3873 (1.19)     4.7490 (1.63)     0.1261 (1.09)    1605;4596      208.7173 (0.64)     115328           1
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Legend:
+  Outliers: 1 Standard Deviation from Mean; 1.5 IQR (InterQuartile Range) from 1st Quartile and 3rd Quartile.
+  OPS: Operations Per Second, computed as 1 / Mean
+======================== 15 passed in 238.82s (0:03:58) ========================

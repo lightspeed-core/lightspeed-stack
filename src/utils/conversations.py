@@ -1,5 +1,7 @@
 """Utilities for conversations."""
 
+# pylint: disable=unused-import
+
 import json
 from collections.abc import Sequence
 from datetime import UTC, datetime
@@ -151,7 +153,7 @@ def _function_call_output_to_str(output: FunctionCallOutputContent) -> str:
     fragments: list[str] = []
     for part in output:
         if getattr(part, "type", None) == "input_text":
-            text_part = cast(InputTextContent, part)
+            text_part = cast("InputTextContent", part)
             fragments.append(text_part.text)
         else:
             fragments.append(part.model_dump_json(exclude_none=True))
@@ -169,7 +171,7 @@ def _parse_message_item(item: ConversationMessage) -> Message:
     """
     return Message(
         content=_extract_text_from_content(item.content),
-        type=cast(Literal["user", "assistant", "system", "developer"], item.role),
+        type=cast("Literal['user', 'assistant', 'system', 'developer']", item.role),
         referenced_documents=None,
     )
 
@@ -189,7 +191,7 @@ def _build_tool_call_summary_from_item(  # pylint: disable=too-many-return-state
     item_type = getattr(item, "type", None)
 
     if item_type == "function_call":
-        function_call_item = cast(FunctionCall, item)
+        function_call_item = cast("FunctionCall", item)
         return (
             ToolCallSummary(
                 id=function_call_item.call_id,
@@ -201,7 +203,7 @@ def _build_tool_call_summary_from_item(  # pylint: disable=too-many-return-state
         )
 
     if item_type == "file_search_call":
-        file_search_item = cast(FileSearchCall, item)
+        file_search_item = cast("FileSearchCall", item)
         response_payload: Optional[dict[str, Any]] = None
         if file_search_item.results is not None:
             response_payload = {
@@ -224,7 +226,7 @@ def _build_tool_call_summary_from_item(  # pylint: disable=too-many-return-state
         )
 
     if item_type == "web_search_call":
-        web_search_item = cast(WebSearchCall, item)
+        web_search_item = cast("WebSearchCall", item)
         return (
             ToolCallSummary(
                 id=web_search_item.id,
@@ -242,7 +244,7 @@ def _build_tool_call_summary_from_item(  # pylint: disable=too-many-return-state
         )
 
     if item_type == "mcp_call":
-        mcp_call_item = cast(MCPCall, item)
+        mcp_call_item = cast("MCPCall", item)
         args = parse_arguments_string(mcp_call_item.arguments)
         if mcp_call_item.server_label:
             args["server_label"] = mcp_call_item.server_label
@@ -265,7 +267,7 @@ def _build_tool_call_summary_from_item(  # pylint: disable=too-many-return-state
         )
 
     if item_type == "mcp_list_tools":
-        mcp_list_tools_item = cast(MCPListTools, item)
+        mcp_list_tools_item = cast("MCPListTools", item)
         tools_info = [
             {
                 "name": tool.name,
@@ -295,7 +297,7 @@ def _build_tool_call_summary_from_item(  # pylint: disable=too-many-return-state
         )
 
     if item_type == "mcp_approval_request":
-        approval_request_item = cast(MCPApprovalRequest, item)
+        approval_request_item = cast("MCPApprovalRequest", item)
         args = parse_arguments_string(approval_request_item.arguments)
         return (
             ToolCallSummary(
@@ -308,7 +310,7 @@ def _build_tool_call_summary_from_item(  # pylint: disable=too-many-return-state
         )
 
     if item_type == "mcp_approval_response":
-        approval_response_item = cast(MCPApprovalResponse, item)
+        approval_response_item = cast("MCPApprovalResponse", item)
         content_dict = {}
         if approval_response_item.reason:
             content_dict["reason"] = approval_response_item.reason
@@ -324,14 +326,14 @@ def _build_tool_call_summary_from_item(  # pylint: disable=too-many-return-state
         )
 
     if item_type == "function_call_output":
-        function_output = cast(FunctionCallOutput, item)
+        function_output = cast("FunctionCallOutput", item)
         return (
             None,
             ToolResultSummary(
                 id=function_output.call_id,
                 status=function_output.status or "success",
                 content=_function_call_output_to_str(
-                    cast(FunctionCallOutputContent, function_output.output)
+                    cast("FunctionCallOutputContent", function_output.output)
                 ),
                 type="function_call_output",
                 round=1,
@@ -417,7 +419,7 @@ def _group_items_into_turns(
 
         # User message marks the beginning of a new turn
         if item_type == "message":
-            message_item = cast(ConversationMessage, item)
+            message_item = cast("ConversationMessage", item)
             if message_item.role == "user":
                 # If we have accumulated items, finish the previous turn
                 if current_turn_items:
@@ -459,7 +461,7 @@ def _process_turn_items(
         item_type = getattr(item, "type", None)
 
         if item_type == "message":
-            message_item = cast(ConversationMessage, item)
+            message_item = cast("ConversationMessage", item)
             message = _parse_message_item(message_item)
             messages.append(message)
         else:
@@ -550,6 +552,83 @@ async def append_turn_items_to_conversation(
         await client.items.create(
             conversation_id,
             add_items_request=build_add_items_request(items),
+        )
+    except ApiException as e:
+        if not e.status:
+            error_response = ServiceUnavailableResponse(
+                backend_name="OGX",
+            )
+            raise HTTPException(**error_response.model_dump()) from e
+
+        error_response = InternalServerErrorResponse.generic()
+        raise HTTPException(**error_response.model_dump()) from e
+
+
+async def replace_last_assistant_message(
+    client: AsyncOgxClient,
+    conversation_id: str,
+    replacement_message: str,
+) -> None:
+    """
+    Replace the most recently persisted assistant message in a conversation.
+
+    Used when an output guardrail rejects a response after OGX has already
+    persisted the real assistant turn (the model call already completed by
+    the time the streamed text failed a check). The flagged message is
+    deleted and replaced with the violation message so conversation reads
+    never expose the content that was flagged as unsafe.
+
+    The caller always drains the underlying stream to natural completion
+    before raising a violation (see ``_drain_remaining`` in the Granite
+    Guardian capability), so the real assistant turn is reliably persisted
+    by OGX by the time this runs; there's no "nothing persisted yet" case
+    to special-case here.
+
+    Note: this only patches the *final assistant message* item, since it's
+    always the last item in OGX's conversation history and OGX's Items API
+    only supports create/delete/get/list (no in-place update; create always
+    appends at the end). For a TOOL-point violation, this leaves any
+    earlier tool-call item (e.g. an ``mcp_call``) that OGX already
+    persisted server-side with its original, unredacted content --
+    redacting it too would mean deleting and recreating every item from
+    that point onward, risking reordering or racing with anything else OGX
+    appends concurrently. See "Troubleshooting" in
+    ``docs/devel_doc/conversations_api.md`` for the resulting v1 vs v2/v3
+    discrepancy.
+
+    Parameters:
+    ----------
+        client: The OGX client.
+        conversation_id: The OGX conversation ID.
+        replacement_message: The violation message to persist instead.
+    """
+    try:
+        recent_items = await client.items.list(
+            conversation_id=conversation_id, order="desc", limit=5
+        )
+        last_assistant_message = next(
+            (
+                item
+                for item in recent_items.data
+                if isinstance(item.actual_instance, ConversationMessage)
+                and item.actual_instance.role == "assistant"
+            ),
+            None,
+        )
+        if last_assistant_message is not None:
+            await client.items.delete(conversation_id, last_assistant_message.id)
+
+        await client.items.create(
+            conversation_id,
+            add_items_request=build_add_items_request(
+                [
+                    {
+                        "type": "message",
+                        "role": "assistant",
+                        "content": replacement_message,
+                    }
+                ]
+            ),
         )
     except ApiException as e:
         if not e.status:

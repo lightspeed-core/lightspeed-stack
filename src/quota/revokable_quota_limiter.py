@@ -230,7 +230,7 @@ class RevokableQuotaLimiter(QuotaLimiter):
         # check if ID still have available tokens to be consumed
         if available <= 0:
             e = QuotaExceedError(subject_id, self.subject_type, available)
-            logger.exception("Quota exceed: %s", e)
+            logger.error("Quota exceed: %s", e)
             raise e
 
     @connection

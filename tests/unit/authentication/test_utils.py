@@ -22,7 +22,7 @@ def test_extract_user_token_no_header() -> None:
         extract_user_token(headers)
     except HTTPException as exc:
         assert exc.status_code == 401
-        detail = cast(dict[str, str], exc.detail)
+        detail = cast("dict[str, str]", exc.detail)
         assert detail["response"] == (
             "Missing or invalid credentials provided by client"
         )
@@ -36,7 +36,7 @@ def test_extract_user_token_invalid_format() -> None:
         extract_user_token(headers)
     except HTTPException as exc:
         assert exc.status_code == 401
-        detail = cast(dict[str, str], exc.detail)
+        detail = cast("dict[str, str]", exc.detail)
         assert detail["response"] == (
             "Missing or invalid credentials provided by client"
         )

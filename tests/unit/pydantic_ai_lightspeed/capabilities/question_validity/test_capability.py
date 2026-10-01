@@ -22,80 +22,82 @@ from pydantic_ai_lightspeed.capabilities.question_validity._capability import (
     SUBJECT_ALLOWED,
     SUBJECT_REJECTED,
     QuestionValidity,
-    _extract_conversation_id,
-    _extract_message_str_from_user_content,
+)
+from pydantic_ai_lightspeed.capabilities.utils import (
+    extract_conversation_id,
+    extract_message_str_from_user_content,
 )
 
 _MODULE = "pydantic_ai_lightspeed.capabilities.question_validity._capability"
 
 
 class TestExtractMessageStrFromUserContent:
-    """Tests for _extract_message_str_from_user_content helper."""
+    """Tests for extract_message_str_from_user_content helper."""
 
     def test_extracts_plain_strings(self) -> None:
         """Test extraction from a sequence of plain strings."""
         content = ["hello", "world"]
-        result = _extract_message_str_from_user_content(content)
+        result = extract_message_str_from_user_content(content)
         assert result == "hello\nworld"
 
     def test_extracts_text_content(self) -> None:
         """Test extraction from TextContent objects."""
         content = [TextContent(content="first"), TextContent(content="second")]
-        result = _extract_message_str_from_user_content(content)
+        result = extract_message_str_from_user_content(content)
         assert result == "first\nsecond"
 
     def test_mixed_str_and_text_content(self) -> None:
         """Test extraction from a mix of strings and TextContent."""
         content = ["plain", TextContent(content="rich")]
-        result = _extract_message_str_from_user_content(content)
+        result = extract_message_str_from_user_content(content)
         assert result == "plain\nrich"
 
     def test_empty_sequence(self) -> None:
         """Test extraction from an empty sequence."""
-        result = _extract_message_str_from_user_content([])
+        result = extract_message_str_from_user_content([])
         assert result == ""
 
     def test_single_string(self) -> None:
         """Test extraction from a single-element sequence."""
-        result = _extract_message_str_from_user_content(["only"])
+        result = extract_message_str_from_user_content(["only"])
         assert result == "only"
 
     def test_sequence_with_non_text_content(self) -> None:
         """Test extraction from a single-element sequence."""
-        result = _extract_message_str_from_user_content([ImageUrl("fake.png"), "keep"])
+        result = extract_message_str_from_user_content([ImageUrl("fake.png"), "keep"])
         assert result == "keep"
 
 
 class TestExtractConversationId:
-    """Tests for _extract_conversation_id helper."""
+    """Tests for extract_conversation_id helper."""
 
     def test_extracts_conversation_id(self, mocker: MockerFixture) -> None:
         """Test extraction when extra_body.conversation is set."""
         model = mocker.Mock()
         model.settings = {"extra_body": {"conversation": "conv_123"}}
 
-        assert _extract_conversation_id(model) == "conv_123"
+        assert extract_conversation_id(model) == "conv_123"
 
     def test_returns_none_when_settings_missing(self, mocker: MockerFixture) -> None:
         """Test that None settings yields None."""
         model = mocker.Mock()
         model.settings = None
 
-        assert _extract_conversation_id(model) is None
+        assert extract_conversation_id(model) is None
 
     def test_returns_none_when_extra_body_missing(self, mocker: MockerFixture) -> None:
         """Test that missing extra_body yields None."""
         model = mocker.Mock()
         model.settings = {}
 
-        assert _extract_conversation_id(model) is None
+        assert extract_conversation_id(model) is None
 
     def test_returns_none_when_extra_body_not_dict(self, mocker: MockerFixture) -> None:
         """Test that a non-dict extra_body yields None instead of raising."""
         model = mocker.Mock()
         model.settings = {"extra_body": "not-a-dict"}
 
-        assert _extract_conversation_id(model) is None
+        assert extract_conversation_id(model) is None
 
     def test_returns_none_when_conversation_not_string(
         self, mocker: MockerFixture
@@ -104,7 +106,7 @@ class TestExtractConversationId:
         model = mocker.Mock()
         model.settings = {"extra_body": {"conversation": 123}}
 
-        assert _extract_conversation_id(model) is None
+        assert extract_conversation_id(model) is None
 
 
 class TestQuestionValidityConfigInit:

@@ -182,7 +182,9 @@ async def test_stream_interrupt_registry_concurrent_cancel_and_deregister(
         try:
             barrier.wait(timeout=_CONCURRENT_BARRIER_TIMEOUT_S)
             registry.deregister_stream(REQUEST_ID_SUCCESS)
-        except Exception as exc:  # pylint: disable=broad-exception-caught
+        except (
+            Exception  # pylint: disable=broad-exception-caught  # noqa: BLE001 RUF100
+        ) as exc:
             errors.append(exc)
 
     thread = threading.Thread(target=deregister_in_thread)

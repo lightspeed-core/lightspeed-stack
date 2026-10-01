@@ -62,7 +62,7 @@ def quota_scheduler(config: QuotaHandlersConfiguration) -> bool:
             # if connection is established, we are ok
             if connection is not None:
                 break
-        except Exception as e:  # pylint: disable=broad-exception-caught
+        except Exception as e:  # pylint: disable=broad-exception-caught  # noqa: BLE001
             logger.warning("Can not connect to database, will try later: %s", e)
         sleep(config.scheduler.database_reconnection_delay)
     else:
@@ -99,7 +99,9 @@ def quota_scheduler(config: QuotaHandlersConfiguration) -> bool:
                     try:
                         if connection is not None:
                             connection.close()
-                    except Exception:  # pylint: disable=broad-exception-caught
+                    except (  # pylint: disable=broad-exception-caught
+                        Exception  # noqa: BLE001
+                    ):
                         pass  # Connection already dead
                     connection = connect(config)
                     if connection is None:
@@ -108,7 +110,9 @@ def quota_scheduler(config: QuotaHandlersConfiguration) -> bool:
                 quota_revocation(
                     connection, limiter, increase_quota_statement, reset_quota_statement
                 )
-            except Exception as e:  # pylint: disable=broad-exception-caught
+            except (
+                Exception  # pylint: disable=broad-exception-caught  # noqa: BLE001
+            ) as e:
                 logger.error("Quota revoke error: %s", e)
         logger.info("Quota scheduler sync finished")
         sleep(period)
@@ -138,7 +142,7 @@ def connected(connection: Any) -> bool:
         cursor.close()
         logger.info("Connection to storage is ok")
         return True
-    except Exception as e:  # pylint: disable=broad-exception-caught
+    except Exception as e:  # pylint: disable=broad-exception-caught  # noqa: BLE001
         logger.error("Disconnected from storage: %s", e)
         return False
 
