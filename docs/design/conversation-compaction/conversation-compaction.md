@@ -61,7 +61,7 @@ R9
 Compaction configuration must be admin-configurable via YAML: threshold ratio, fixed token floor, and buffer zone size.
 
 R10
-After compaction, lightspeed-stack builds the LLM input explicitly — the summaries plus the recent verbatim turns plus the new query — and stops passing the OGX `conversation` parameter for that request, because OGX always reloads the full message history when the `conversation` parameter is set (verified empirically on OGX 0.6.0; see the Changelog and the spike doc). The summary is still written into the conversation as a marked item so it appears in the OGX Conversations API, but the marker is lightspeed-stack's own boundary bookkeeping, not an OGX selection mechanism. The `conversation_id` is preserved across the whole conversation, and the full history (including pre-compaction turns) remains in the conversation's items for UI/audit. Because the `conversation` parameter is no longer sent in compacted mode, lightspeed-stack appends each completed turn to the conversation itself.
+After compaction, lightspeed-stack builds the LLM input explicitly — the summaries plus the recent verbatim turns plus the new query — and stops passing the OGX `conversation` parameter for that request, because OGX always reloads the full message history when the `conversation` parameter is set (verified empirically on OGX 0.6.0; see the Changelog and the spike doc). The summary is still written into the conversation as a marked item so it appears in the Conversations API, but the marker is lightspeed-stack's own boundary bookkeeping, not an OGX selection mechanism. The `conversation_id` is preserved across the whole conversation, and the full history (including pre-compaction turns) remains in the conversation's items for UI/audit. Because the `conversation` parameter is no longer sent in compacted mode, lightspeed-stack appends each completed turn to the conversation itself.
 
 This applies to every endpoint that builds context from a growing conversation and calls the Responses API: `/v1/query`, `/v1/streaming_query`, the A2A executor, and `/v1/responses`. (The `/v1/rlsapi` inference path is stateless — no stored conversation — and is therefore out of scope.)
 
@@ -229,11 +229,11 @@ As built, the cache is the **preferred source of truth** for summary text at run
 
 ## Changed request flow after compaction
 
-After compaction, lightspeed-stack writes the summary as a marked conversation item (a message whose text begins with a recognizable sentinel) so it appears in the OGX Conversations API and serves as lightspeed-stack's own boundary marker.
+After compaction, lightspeed-stack writes the summary as a marked conversation item (a message whose text begins with a recognizable sentinel) so it appears in the Conversations API and serves as lightspeed-stack's own boundary marker.
 
 When building context for a compacted conversation, lightspeed-stack fetches the conversation items, reads the active summaries from the summary cache (LCORE-1571) — falling back to the marker texts when no persisting cache is configured — takes the items after the last marker as the recent verbatim buffer, and sends `[summaries] + [recent items] + [new query]` as **explicit input**, **without** the `conversation` parameter. This is necessary because OGX reloads the *full* stored message history whenever the `conversation` parameter is set — there is no marker-based selection hook (verified empirically; see the Changelog). Each completed turn is then appended back to the conversation items by lightspeed-stack, since OGX no longer auto-stores it.
 
-This preserves a single continuous conversation identity. The `conversation_id` never changes and the user sees one conversation in the UI. OGX stores the full history, including the summary marker items, and returns it through its Conversations API. lightspeed-stack's own `GET /v1/conversations/{conversation_id}` leaves the marker items out of the chat history it returns (LCORE-3909): they are stored as user messages, but the user never sent them. Stored conversations are not migrated: the markers must stay in storage as the fallback source of truth, so they are filtered when the conversation is read.
+This preserves a single continuous conversation identity. The `conversation_id` never changes, the user sees one conversation in the UI, and the Conversations API returns the full history including the summary marker items.
 
 ## API response changes
 
@@ -323,7 +323,6 @@ Add `compaction` field to the root `Configuration` class.
 | `src/models/api/responses/successful/query.py` | `context_status` on `QueryResponse` (non-streaming `/v1/query`) — LCORE-1573 |
 | `src/models/common/agents/stream_payloads.py` | `context_status` on `EndEventData`, the streaming SSE `end` event payload (`StreamingQueryResponse` is docs-only and intentionally skipped) — LCORE-1573 |
 | `src/cache/` (all backends)            | `ConversationSummary` storage — LCORE-1571 |
-| `src/app/endpoints/conversations_v1.py` | Pass the stored items through `exclude_marker_items()` before building the chat history — LCORE-3909 |
 
 ## How compaction is invoked
 
@@ -435,16 +434,6 @@ persisted fold). `enabled: false` stays a full off-switch; disabling compaction
 mid-conversation on an already-compacted conversation reverts it to full-history
 replay (unsupported — see Configuration). The `CompactionResult` mode flag was
 renamed `summarized` → `compacted` for clarity.
-
-**2026-09-28 — Markers are left out of the conversation history (LCORE-3909).**
-`GET /v1/conversations/{conversation_id}` filters the marker items when the
-conversation is read. A marker is a user message that starts with the sentinel,
-with or without the covered-item count. The markers stay in storage as the
-fallback source of truth, and stored conversations are not migrated.
-`GET /v2/conversations/{conversation_id}` reads the conversation cache, which
-never holds a marker, and is unchanged. Earlier revisions of this document said
-that the Conversations API returns the marker items; that holds for the OGX
-Conversations API only.
 
 # Appendix A: PoC Evidence
 

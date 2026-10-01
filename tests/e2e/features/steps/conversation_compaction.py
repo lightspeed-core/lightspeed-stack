@@ -19,9 +19,6 @@ from behave.runner import Context
 from tests.e2e.features.steps.common import get_active_lightspeed_stack_config_basename
 from tests.e2e.utils.utils import absolute_repo_path, is_prow_environment
 
-COMPACTION_MARKER_PREFIX = "[lightspeed:compaction-summary]"
-"""Prefix of the message compaction stores each summary in."""
-
 
 def _active_fixture_path(context: Context) -> str:
     """Resolve the fixture file the last ``The service uses ...`` step applied.
@@ -137,35 +134,6 @@ def check_history_includes_user_queries(context: Context) -> None:
             f"user query {expected!r} not found in conversation history; "
             f"user queries present: {user_queries!r}"
         )
-
-
-@then("The conversation history holds {turns:d} turns and no compaction summary marker")
-def check_history_holds_no_marker(context: Context, turns: int) -> None:
-    """Assert the history is the turns that were sent, with no summary marker (LCORE-3909).
-
-    Compaction keeps each summary in the stored conversation as a synthetic
-    user message that starts with a fixed prefix. The prefix is spelled out
-    here, not imported, because steps never import from ``src/``.
-
-    The number of turns is checked as well, so the step does not depend on the
-    prefix alone: a marker is a user message, and every one of them returned
-    would show up as a turn of its own.
-    """
-    assert context.response is not None, "Request needs to be performed first"
-    response_json = context.response.json()
-    assert "chat_history" in response_json, "chat_history not found in response"
-    chat_history = response_json["chat_history"]
-    markers = [
-        message["content"]
-        for turn in chat_history
-        for message in turn.get("messages", [])
-        if message.get("content", "").startswith(COMPACTION_MARKER_PREFIX)
-    ]
-    assert not markers, f"compaction summary markers in the history: {markers!r}"
-    assert len(chat_history) == turns, (
-        f"the history holds {len(chat_history)} turns, expected {turns}: "
-        f"{[turn.get('messages', []) for turn in chat_history]!r}"
-    )
 
 
 @then("The streamed response contains a compaction event before the first token")

@@ -136,10 +136,6 @@ The `buffer_turns` setting specifies a target number of recent turns to preserve
 
 When compaction occurs, a marker message (prefixed with `[lightspeed:compaction-summary]`) is appended to the conversation in OGX. This marker serves as a fallback for reconstructing the compacted state in cache-less deployments or after cache eviction.
 
-The marker is internal bookkeeping, not something the user said. It stays in storage, but `GET /v1/conversations/{conversation_id}` leaves it out of the returned chat history, so clients see only the turns the user and the assistant exchanged. `GET /v2/conversations/{conversation_id}` reads the conversation cache, which never holds markers.
-
-The prefix is reserved. A user message that begins with `[lightspeed:compaction-summary]` cannot be told apart from a marker, so `GET /v1/conversations/{conversation_id}` leaves it out as well, whether or not compaction is enabled.
-
 ### Per-conversation locking
 
 Compaction acquires a per-conversation lock to prevent concurrent requests on the same conversation from racing during summarization. If multiple requests arrive simultaneously, they are serialized. The lock is automatically released after processing.
@@ -158,7 +154,7 @@ When compaction is disabled (the default), requests that cause the conversation 
 
 **Does compaction lose information?**
 
-Compaction summarizes older turns, so fine-grained details from early in the conversation may be condensed. The full original conversation history remains stored in OGX and is retrievable via the conversations API; the summaries themselves are not part of that history and are not returned. The LLM simply receives a summary instead of the full transcript for inference.
+Compaction summarizes older turns, so fine-grained details from early in the conversation may be condensed. The full original conversation history remains stored in OGX and is retrievable via the conversations API. The LLM simply receives a summary instead of the full transcript for inference.
 
 **Does compaction use extra tokens?**
 

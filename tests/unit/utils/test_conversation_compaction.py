@@ -9,10 +9,7 @@ from typing import Any, Optional, cast
 
 import pytest
 from fastapi import HTTPException
-from ogx_api.openai_responses import (
-    OpenAIResponseInputMessageContentText,
-    OpenAIResponseMessage,
-)
+from ogx_api.openai_responses import OpenAIResponseMessage
 from pytest_mock import MockerFixture
 
 from models.common.responses.responses_api_params import ResponsesApiParams
@@ -810,70 +807,3 @@ async def test_conversation_lock_cleanup_on_cancellation() -> None:
     except asyncio.CancelledError:
         pass
     assert "conv_cancel" not in cc._conversation_locks
-
-
-# --- markers are bookkeeping, not conversation history (LCORE-3909) ---
-
-
-def test_exclude_marker_items_drops_both_marker_shapes() -> None:
-    """Markers are dropped whether or not they record a covered-item count.
-
-    LCORE-4219 introduces the shape ``<sentinel> [covers:N] <summary>``; the
-    markers already stored read ``<sentinel> <summary>``. The turns around
-    them are returned unchanged and in order.
-    """
-    turns = [
-        _msg("user", "first question"),
-        _msg("assistant", "first answer"),
-        _msg("user", "second question"),
-        _msg("assistant", "second answer"),
-    ]
-    counted_marker = _msg("user", f"{cc.MARKER_SENTINEL} [covers:2] newer summary")
-    items = [*turns[:2], _marker("older summary"), *turns[2:], counted_marker]
-
-    assert cc.exclude_marker_items(items) == turns
-
-
-def test_exclude_marker_items_drops_marker_with_content_parts() -> None:
-    """A marker is recognized when its content is a list of parts, not a string."""
-    marker = OpenAIResponseMessage(
-        role="user",
-        content=[
-            OpenAIResponseInputMessageContentText(
-                text=f"{cc.MARKER_SENTINEL} summary kept as a content part"
-            )
-        ],
-    )
-    question = _msg("user", "a question")
-
-    assert cc.exclude_marker_items([marker, question]) == [question]
-
-
-def test_exclude_marker_items_keeps_everything_else() -> None:
-    """Tool items and messages that only mention the sentinel are not markers."""
-    items = [
-        _msg("user", f"what does {cc.MARKER_SENTINEL} mean?"),
-        SimpleNamespace(type="function_call", name="lookup"),
-        _msg("assistant", "it is an internal prefix"),
-    ]
-
-    assert cc.exclude_marker_items(items) == items
-
-
-def test_exclude_marker_items_keeps_other_roles() -> None:
-    """Markers are written as user messages, so an answer is never one.
-
-    An answer that happens to start with the sentinel is something the
-    assistant said, and the history has to show it.
-    """
-    items = [
-        _msg("user", "which prefix marks a summary?"),
-        _msg("assistant", f"{cc.MARKER_SENTINEL} is the prefix"),
-    ]
-
-    assert cc.exclude_marker_items(items) == items
-
-
-def test_exclude_marker_items_empty() -> None:
-    """An empty conversation stays empty."""
-    assert cc.exclude_marker_items([]) == []

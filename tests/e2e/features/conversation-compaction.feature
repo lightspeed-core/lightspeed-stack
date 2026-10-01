@@ -73,7 +73,6 @@ Feature: Conversation compaction
           | green-harbor              |
      When I use REST API conversation endpoint with conversation_id from above using HTTP GET method
      Then The status code of the response is 200
-      And The conversation history holds 5 turns and no compaction summary marker
       And The conversation history includes the following user queries
           | User query                                                                                                                                      |
           | My OpenShift cluster is named aurora-prod-7 and it runs in the datacenter called north-quarry. Remember both names and reply with OK only.      |

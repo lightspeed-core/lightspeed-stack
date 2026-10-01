@@ -46,7 +46,6 @@ from models.config import Action
 from models.database.conversations import (
     UserConversation,
 )
-from utils.conversation_compaction import exclude_marker_items
 from utils.conversations import (
     build_conversation_turns_from_items,
     get_all_conversation_items,
@@ -294,11 +293,9 @@ async def get_conversation_endpoint_handler(  # pylint: disable=too-many-locals,
                 conversation_id,
             )
 
-            # Build conversation turns from items and populate turns metadata.
-            # Compaction summary markers are stored as user messages, but the
-            # user never sent them, so they are not part of the history.
+            # Build conversation turns from items and populate turns metadata
             chat_history = build_conversation_turns_from_items(
-                exclude_marker_items(items), db_turns, conversation.created_at
+                items, db_turns, conversation.created_at
             )
 
             span.set_attribute("conversations.found", True)
