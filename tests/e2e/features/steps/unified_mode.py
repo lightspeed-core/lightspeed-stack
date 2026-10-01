@@ -1,6 +1,6 @@
 """Step definitions for the unified-mode e2e features (LCORE-2343).
 
-Only the startup-log evidence step lives here. Everything else the four
+Only the startup-log evidence step lives here. Everything else the five
 ``unified-mode-*.feature`` files need — applying a configuration, restarting
 containers, hitting ``readiness`` and ``query`` — resolves through the generic
 steps, and the configuration validation, migration and synthesis assertions
