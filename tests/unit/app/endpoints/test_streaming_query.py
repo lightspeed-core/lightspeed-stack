@@ -1,5 +1,7 @@
 """Unit tests for the /streaming_query (v2) endpoint using Responses API."""
 
+# pylint: disable=too-many-lines
+
 from collections.abc import AsyncIterator
 from typing import Any
 
@@ -11,6 +13,7 @@ from opentelemetry import trace
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
     InMemorySpanExporter,
 )
+from opentelemetry.trace import NonRecordingSpan, SpanContext, TraceFlags
 from pytest_mock import MockerFixture
 
 from app.endpoints.streaming_query import (
@@ -23,7 +26,6 @@ from constants import (
     MEDIA_TYPE_TEXT,
 )
 from models.api.requests import QueryRequest
-from models.common.moderation import ShieldModerationPassed
 from models.common.query import Attachment
 from models.common.responses.responses_api_params import ResponsesApiParams
 from models.common.turn_summary import (
@@ -153,10 +155,6 @@ class TestStreamingQueryEndpointHandler:
             "app.endpoints.streaming_query.prepare_responses_params",
             new=mocker.AsyncMock(return_value=mock_responses_params),
         )
-        mocker.patch(
-            "app.endpoints.streaming_query.run_shield_moderation",
-            new=mocker.AsyncMock(return_value=ShieldModerationPassed()),
-        )
 
         mocker.patch("app.endpoints.streaming_query.AzureEntraIDManager")
         mocker.patch(
@@ -239,10 +237,6 @@ class TestStreamingQueryEndpointHandler:
         mocker.patch(
             "app.endpoints.streaming_query.prepare_responses_params",
             new=mocker.AsyncMock(return_value=mock_responses_params),
-        )
-        mocker.patch(
-            "app.endpoints.streaming_query.run_shield_moderation",
-            new=mocker.AsyncMock(return_value=ShieldModerationPassed()),
         )
 
         mocker.patch("app.endpoints.streaming_query.AzureEntraIDManager")
@@ -338,10 +332,6 @@ class TestStreamingQueryEndpointHandler:
             "app.endpoints.streaming_query.prepare_responses_params",
             new=mocker.AsyncMock(return_value=mock_responses_params),
         )
-        mocker.patch(
-            "app.endpoints.streaming_query.run_shield_moderation",
-            new=mocker.AsyncMock(return_value=ShieldModerationPassed()),
-        )
 
         mocker.patch("app.endpoints.streaming_query.AzureEntraIDManager")
         mocker.patch(
@@ -433,10 +423,6 @@ class TestStreamingQueryEndpointHandler:
         mocker.patch(
             "app.endpoints.streaming_query.prepare_responses_params",
             new=mocker.AsyncMock(return_value=mock_responses_params),
-        )
-        mocker.patch(
-            "app.endpoints.streaming_query.run_shield_moderation",
-            new=mocker.AsyncMock(return_value=ShieldModerationPassed()),
         )
 
         mocker.patch("app.endpoints.streaming_query.AzureEntraIDManager")
@@ -538,10 +524,6 @@ class TestStreamingQueryEndpointHandler:
             "app.endpoints.streaming_query.extract_provider_and_model_from_model_id",
             return_value=("azure", "model1"),
         )
-        mocker.patch(
-            "app.endpoints.streaming_query.run_shield_moderation",
-            new=mocker.AsyncMock(return_value=ShieldModerationPassed()),
-        )
         mocker.patch("app.endpoints.streaming_query.recording.record_llm_call")
 
         async def mock_generator() -> AsyncIterator[str]:
@@ -626,10 +608,6 @@ class TestStreamingQueryOtelInstrumentation:
         mocker.patch(
             "app.endpoints.streaming_query.prepare_responses_params",
             new=mocker.AsyncMock(return_value=mock_responses_params),
-        )
-        mocker.patch(
-            "app.endpoints.streaming_query.run_shield_moderation",
-            new=mocker.AsyncMock(return_value=ShieldModerationPassed()),
         )
 
         mocker.patch("app.endpoints.streaming_query.AzureEntraIDManager")
@@ -725,7 +703,7 @@ class TestStreamingQueryOtelInstrumentation:
         assert root.attributes[SpanAttributes.USER_ID] == (
             "[anon:00000001-0001-0001-0001-000000000001]"
         )
-        assert root.attributes[SpanAttributes.INPUT] == "[anon:What is Kubernetes?]"
+        assert root.attributes[SpanAttributes.INPUT] == "What is Kubernetes?"
         assert root.attributes[SpanAttributes.REQUEST_ATTACHMENTS_COUNT] == 0
 
     @pytest.mark.asyncio
@@ -942,7 +920,6 @@ class TestGenerateResponseWithCompaction:  # pylint: disable=too-few-public-meth
         context.user_id = "user_123"
         context.skip_userid_check = False
         context.client = mocker.AsyncMock()
-        context.moderation_result = ShieldModerationPassed()
         context.inline_rag_context = RAGContext()
         context.query_request = QueryRequest(
             query="What is OpenShift?"
@@ -993,6 +970,14 @@ class TestGenerateResponseWithCompaction:  # pylint: disable=too-few-public-meth
                 context=context,
                 responses_params=responses_params,
                 endpoint_path="/v1/streaming_query",
+                root_span=NonRecordingSpan(
+                    SpanContext(
+                        trace_id=0x1,
+                        span_id=0x2,
+                        is_remote=False,
+                        trace_flags=TraceFlags(0x01),
+                    )
+                ),
             )
         ]
 

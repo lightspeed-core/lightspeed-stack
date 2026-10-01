@@ -6,6 +6,7 @@ import psycopg2
 import pytest
 
 from app import database
+from cache.noop_cache import NoopCache
 from configuration import AppConfig, configuration
 
 
@@ -125,3 +126,17 @@ def postgres_database_fixture(configuration_filename_postgres: str) -> None:
     # initialize database session and create tables
     database.initialize_database()
     database.create_tables()
+
+
+@pytest.fixture(name="noop_cache_fixture")
+def noop_cache() -> NoopCache:
+    """Fixture with constructed and initialized in memory cache object.
+
+    Create and initialize an in-memory NoopCache for use as a test fixture.
+
+    Returns:
+        NoopCache: An initialized NoopCache instance ready for tests.
+    """
+    c = NoopCache()
+    c.initialize_cache()
+    return c

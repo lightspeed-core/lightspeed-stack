@@ -26,6 +26,8 @@ product questions using backend LLM services, agents, and RAG databases.
 
 [Agent skills](https://lightspeed-core.github.io/lightspeed-stack/user_doc/skills_guide.html)
 
+[Safety shields](https://lightspeed-core.github.io/lightspeed-stack/user_doc/shields_guide.html)
+
 [A2A [Agent-to-Agent] Protocol](https://lightspeed-core.github.io/lightspeed-stack/user_doc/a2a_protocol.html)
 
 [RAG configuration guide](https://lightspeed-core.github.io/lightspeed-stack/user_doc/rag_guide.html)
@@ -33,6 +35,8 @@ product questions using backend LLM services, agents, and RAG databases.
 [BYOK guide](https://lightspeed-core.github.io/lightspeed-stack/user_doc/byok_guide.html)
 
 [OKP guide](https://lightspeed-core.github.io/lightspeed-stack/user_doc/okp_guide.html)
+
+[Conversation compaction](https://lightspeed-core.github.io/lightspeed-stack/user_doc/conversation_compaction.html)
 
 [Authentication and Authorization](https://lightspeed-core.github.io/lightspeed-stack/user_doc/auth.html)
 

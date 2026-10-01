@@ -169,7 +169,6 @@ class "ResponseGeneratorContext" as src.models.common.responses.contexts.Respons
   conversation_id : str
   inline_rag_context
   model_id : str
-  moderation_result
   query_request
   rag_id_mapping : dict[str, str]
   request_id : str
@@ -231,7 +230,7 @@ class "ShieldModerationBlocked" as src.models.common.moderation.ShieldModeration
   decision : Literal['blocked']
   message : str
   moderation_id : str
-  refusal_response
+  refusal_response : ResponseMessage
 }
 class "ShieldModerationPassed" as src.models.common.moderation.ShieldModerationPassed {
   decision : Literal['passed']
@@ -343,11 +342,11 @@ src.models.common.agents.stream_payloads.TokenStreamPayload --|> src.models.comm
 src.models.common.agents.stream_payloads.ToolCallStreamPayload --|> src.models.common.agents.stream_payloads.StreamPayloadBase
 src.models.common.agents.stream_payloads.ToolResultStreamPayload --|> src.models.common.agents.stream_payloads.StreamPayloadBase
 src.models.common.agents.stream_payloads.TurnCompleteStreamPayload --|> src.models.common.agents.stream_payloads.StreamPayloadBase
-src.models.common.agents.stream_payloads.EndEventData --* src.models.common.agents.stream_payloads.EndStreamPayload : data
-src.models.common.agents.stream_payloads.ErrorEventData --* src.models.common.agents.stream_payloads.ErrorStreamPayload : data
-src.models.common.agents.stream_payloads.InterruptedEventData --* src.models.common.agents.stream_payloads.InterruptedStreamPayload : data
-src.models.common.agents.stream_payloads.StartEventData --* src.models.common.agents.stream_payloads.StartStreamPayload : data
-src.models.common.agents.stream_payloads.TokenChunkData --* src.models.common.agents.stream_payloads.TokenStreamPayload : data
-src.models.common.agents.stream_payloads.TokenChunkData --* src.models.common.agents.stream_payloads.TurnCompleteStreamPayload : data
-src.models.common.transcripts.TranscriptMetadata --* src.models.common.transcripts.Transcript : metadata
+src.models.common.agents.stream_payloads.EndStreamPayload --> src.models.common.agents.stream_payloads.EndEventData : data
+src.models.common.agents.stream_payloads.ErrorStreamPayload --> src.models.common.agents.stream_payloads.ErrorEventData : data
+src.models.common.agents.stream_payloads.InterruptedStreamPayload --> src.models.common.agents.stream_payloads.InterruptedEventData : data
+src.models.common.agents.stream_payloads.StartStreamPayload --> src.models.common.agents.stream_payloads.StartEventData : data
+src.models.common.agents.stream_payloads.TokenStreamPayload --> src.models.common.agents.stream_payloads.TokenChunkData : data
+src.models.common.agents.stream_payloads.TurnCompleteStreamPayload --> src.models.common.agents.stream_payloads.TokenChunkData : data
+src.models.common.transcripts.Transcript --> src.models.common.transcripts.TranscriptMetadata : metadata
 @enduml

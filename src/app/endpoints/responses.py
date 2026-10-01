@@ -1,4 +1,4 @@
-# pylint: disable=too-many-locals,too-many-branches,too-many-nested-blocks,too-many-arguments,too-many-positional-arguments,too-many-lines,too-many-statements
+# pylint: disable=too-many-locals,too-many-branches,too-many-nested-blocks,too-many-arguments,too-many-positional-arguments,too-many-lines,too-many-statements,unused-import
 
 """Handler for REST API call to provide answer using Responses API (LCORE specification)."""
 
@@ -55,7 +55,7 @@ from models.common.moderation import ShieldModerationBlocked
 from models.common.responses.contexts import ResponsesContext
 from models.common.responses.responses_api_params import ResponsesApiParams
 from models.common.responses.types import ResponseInput, ResponseMessage
-from models.common.turn_summary import TurnSummary
+from models.common.turn_summary import RAGContext, TurnSummary
 from models.config import Action
 from observability.responses_telemetry import (
     queue_blocked_response_event,
@@ -79,7 +79,9 @@ from utils.otel_tracing import (
     SpanEvents,
     add_span_event,
     anonymize_value,
+    llm_inference_span_attributes,
     record_exception,
+    root_span_turn_attributes,
     set_span_attributes,
 )
 from utils.prompts import get_system_prompt
@@ -145,7 +147,7 @@ def _count_request_attachments(response_input: ResponseInput) -> int:
     for item in response_input:
         if item.type != "message":
             continue
-        message = cast(ResponseMessage, item)
+        message = cast("ResponseMessage", item)
         content = message.content
         if isinstance(content, str):
             continue
@@ -158,39 +160,20 @@ def _count_request_attachments(response_input: ResponseInput) -> int:
 def _finalize_responses_root_span(
     root_span: trace.Span,
     turn_summary: TurnSummary,
+    compacted: bool,
+    session_id: str,
 ) -> None:
     """Set final root-span attributes and completion events for /responses.
 
     Args:
         root_span: OpenTelemetry root span for the request.
-        turn_summary: Completed turn summary with tokens, tools, and output.
+        turn_summary: Completed turn summary with the LLM response text.
+        compacted: Whether the turn used compacted conversation context.
+        session_id: Normalized conversation id for ``session.id``.
     """
-    tool_names = [tc.name for tc in turn_summary.tool_calls]
     set_span_attributes(
         root_span,
-        {
-            SpanAttributes.TOOL_CALLS_COUNT: len(tool_names),
-            SpanAttributes.TOOL_CALLS_NAMES: tool_names,
-        },
-    )
-    if tool_names:
-        add_span_event(
-            root_span,
-            SpanEvents.TOOL_EXECUTION_COMPLETED,
-            {"tool.calls": ", ".join(tool_names)},
-        )
-
-    set_span_attributes(
-        root_span,
-        {
-            SpanAttributes.LLM_USAGE_INPUT_TOKENS: (
-                turn_summary.token_usage.input_tokens
-            ),
-            SpanAttributes.LLM_USAGE_OUTPUT_TOKENS: (
-                turn_summary.token_usage.output_tokens
-            ),
-            SpanAttributes.OUTPUT: anonymize_value(turn_summary.llm_response),
-        },
+        root_span_turn_attributes(turn_summary, session_id, compacted),
     )
     add_span_event(root_span, SpanEvents.LLM_RESPONSE_COMPLETED)
 
@@ -226,23 +209,35 @@ def _start_llm_inference_span(
 
 def _complete_llm_inference_span(
     span: trace.Span,
-    input_tokens: int,
-    output_tokens: int,
+    turn_summary: TurnSummary,
+    model: str,
+    inference_time: float,
 ) -> None:
-    """Record token usage and completion event, then end an inference span.
+    """Record turn-summary attrs and completion event, then end an inference span.
 
     Args:
         span: The ``llm.inference`` span to finalize.
-        input_tokens: Input token count for the inference call.
-        output_tokens: Output token count for the inference call.
+        turn_summary: Completed turn summary with tools, tool-based RAG, and tokens.
+        model: Composite model identifier in ``provider/model`` format.
+        inference_time: Inference duration in seconds.
     """
+    provider_id, bare_model_id = extract_provider_and_model_from_model_id(model)
     set_span_attributes(
         span,
-        {
-            SpanAttributes.LLM_USAGE_INPUT_TOKENS: input_tokens,
-            SpanAttributes.LLM_USAGE_OUTPUT_TOKENS: output_tokens,
-        },
+        llm_inference_span_attributes(
+            turn_summary,
+            bare_model_id,
+            provider_id,
+            inference_time,
+        ),
     )
+    if turn_summary.tool_calls:
+        tool_names = [tc.name for tc in turn_summary.tool_calls]
+        add_span_event(
+            span,
+            SpanEvents.TOOL_EXECUTION_COMPLETED,
+            {"tool.calls": ", ".join(tool_names)},
+        )
     add_span_event(span, SpanEvents.LLM_INFERENCE_COMPLETED)
     span.end()
 
@@ -379,7 +374,7 @@ async def _persist_blocked_response_turn(
         context: Request-scoped Responses API context with moderation details.
     """
     if api_params.store:
-        moderation_result = cast(ShieldModerationBlocked, context.moderation_result)
+        moderation_result = cast("ShieldModerationBlocked", context.moderation_result)
         # In compacted mode the conversation parameter was dropped and
         # api_params.input is the explicit-input rewrite, so persist the turn
         # against the original user input instead (LCORE-1572).
@@ -575,14 +570,18 @@ async def handle_responses_with_tracing(  # pylint: disable=too-many-locals
     )
     attachments_count = _count_request_attachments(original_request.input)
 
-    set_span_attributes(
-        root_span,
-        {
-            SpanAttributes.USER_ID: anonymize_value(user_id),
-            SpanAttributes.INPUT: anonymize_value(input_text),
-            SpanAttributes.REQUEST_ATTACHMENTS_COUNT: attachments_count,
-        },
-    )
+    span_attributes: dict[SpanAttributes, Any] = {
+        SpanAttributes.USER_ID: anonymize_value(user_id),
+        SpanAttributes.INPUT: input_text,
+        SpanAttributes.REQUEST_ATTACHMENTS_COUNT: attachments_count,
+    }
+    # safety_identifier is a caller-supplied, non-PII identifier, so it is
+    # recorded verbatim (not anonymized) when present.
+    if original_request.safety_identifier is not None:
+        span_attributes[SpanAttributes.SAFETY_IDENTIFIER] = (
+            original_request.safety_identifier
+        )
+    set_span_attributes(root_span, span_attributes)
 
     await check_mcp_auth(configuration, mcp_headers, token, request.headers)
 
@@ -610,14 +609,6 @@ async def handle_responses_with_tracing(  # pylint: disable=too-many-locals
         generate_topic_summary=original_request.generate_topic_summary,
     )
     updated_request.conversation = response_context.conversation
-    set_span_attributes(
-        root_span,
-        {
-            SpanAttributes.SESSION_ID: normalize_conversation_id(
-                response_context.conversation
-            ),
-        },
-    )
     updated_request.generate_topic_summary = response_context.generate_topic_summary
     client = AsyncOgxClientHolder().get_client()
 
@@ -677,18 +668,19 @@ async def handle_responses_with_tracing(  # pylint: disable=too-many-locals
         if original_request.tools is not None
         else None
     )
-    # Build RAG context from Inline RAG sources
-    inline_rag_context = await build_rag_context(
-        client,
-        moderation_result.decision,
-        input_text,
-        vector_store_ids,
-        original_request.solr,
-    )
+    # Build RAG context from Inline RAG sources (skip when input shields blocked)
     if moderation_result.decision == "passed":
+        inline_rag_context = await build_rag_context(
+            client,
+            input_text,
+            vector_store_ids,
+            original_request.solr,
+        )
         updated_request.input = append_inline_rag_context_to_responses_input(
             original_request.input, inline_rag_context.context_text
         )
+    else:
+        inline_rag_context = RAGContext()
 
     if "max_infer_iters" not in original_request.model_fields_set:
         updated_request.max_infer_iters = configuration.inference.max_infer_iters
@@ -807,16 +799,16 @@ async def handle_streaming_response(
         )
     else:
         inference_start_time = time.monotonic()
-        inference_span = _start_llm_inference_span(
-            api_params.model,
-            parent=root_span,
-        )
+        inference_span = _start_llm_inference_span(api_params.model, root_span)
         try:
-            response = await context.client.responses.create(
-                **api_params.model_dump(exclude_none=True)
-            )
+            with trace.use_span(  # pylint: disable=not-context-manager
+                inference_span, end_on_exit=False
+            ):
+                response = await context.client.responses.create(
+                    **api_params.model_dump(exclude_none=True)
+                )
             generator = response_generator(
-                stream=cast(AsyncIterator[OpenAIResponseObjectStream], response),
+                stream=cast("AsyncIterator[OpenAIResponseObjectStream]", response),
                 original_request=original_request,
                 api_params=api_params,
                 context=context,
@@ -859,13 +851,13 @@ async def shield_violation_generator(
         api_params: ResponsesApiParams
         context: ResponsesContext
     Yields:
-        SSE-formatted strings for streaming events, ending with [DONE]
+        SSE-formatted strings for streaming events
     """
     normalized_conv_id = normalize_conversation_id(api_params.conversation)
     available_quotas = get_available_quotas(
         quota_limiters=configuration.quota_limiters, user_id=context.auth[0]
     )
-    moderation_result = cast(ShieldModerationBlocked, context.moderation_result)
+    moderation_result = cast("ShieldModerationBlocked", context.moderation_result)
 
     # 1. Send response.created event with status "in_progress" and empty output
     created_response_object = ResponsesResponse.model_construct(
@@ -934,8 +926,6 @@ async def shield_violation_generator(
     }
     data_json = json.dumps(completed_event)
     yield f"event: response.completed\ndata: {data_json}\n\n"
-
-    yield "data: [DONE]\n\n"
 
 
 def _sanitize_response_dict(
@@ -1014,7 +1004,7 @@ def _should_filter_mcp_chunk(
         True if the chunk should be filtered out from the client stream.
     """
     if chunk.type == "response.output_item.added":
-        item_added_chunk = cast(OutputItemAddedChunk, chunk)
+        item_added_chunk = cast("OutputItemAddedChunk", chunk)
         item = item_added_chunk.item
         item_type = getattr(item, "type", None)
         if item_type in ("mcp_call", "mcp_list_tools", "mcp_approval_request"):
@@ -1033,7 +1023,7 @@ def _should_filter_mcp_chunk(
             return True
 
     if chunk.type == "response.output_item.done":
-        item_done_chunk = cast(OutputItemDoneChunk, chunk)
+        item_done_chunk = cast("OutputItemDoneChunk", chunk)
         item = item_done_chunk.item
         item_type = getattr(item, "type", None)
         if item_type in ("mcp_call", "mcp_list_tools", "mcp_approval_request"):
@@ -1080,7 +1070,7 @@ def _populate_turn_summary(
         vector_store_ids,
         configuration.rag_id_mapping,
     )
-    turn_summary.rag_chunks = context.inline_rag_context.rag_chunks + tool_rag_chunks
+    turn_summary.rag_chunks = tool_rag_chunks
 
 
 async def response_generator(
@@ -1115,104 +1105,109 @@ async def response_generator(
     inference_metric_recorded = False
 
     try:
-        async for chunk in stream:
-            logger.debug("Processing streaming chunk, type: %s", chunk.type)
+        with trace.use_span(  # pylint: disable=not-context-manager
+            inference_span, end_on_exit=False
+        ):
+            async for chunk in stream:
+                logger.debug("Processing streaming chunk, type: %s", chunk.type)
 
-            # Filter out streaming events for server-deployed MCP tools.
-            # These are handled internally by LCS and should not be forwarded
-            # to clients that don't understand the mcp_call item type.
-            if _should_filter_mcp_chunk(
-                chunk, configured_mcp_labels, server_mcp_output_indices
-            ):
-                continue
+                # Filter out streaming events for server-deployed MCP tools.
+                # These are handled internally by LCS and should not be forwarded
+                # to clients that don't understand the mcp_call item type.
+                if _should_filter_mcp_chunk(
+                    chunk, configured_mcp_labels, server_mcp_output_indices
+                ):
+                    continue
 
-            chunk_dict = dump_ogx_model(chunk)
+                chunk_dict = dump_ogx_model(chunk)
 
-            # Create own sequence number for chunks to maintain order
-            chunk_dict["sequence_number"] = sequence_number
-            sequence_number += 1
+                # Create own sequence number for chunks to maintain order
+                chunk_dict["sequence_number"] = sequence_number
+                sequence_number += 1
 
-            if "response" in chunk_dict:
-                chunk_dict["response"]["conversation"] = normalize_conversation_id(
-                    api_params.conversation
-                )
-                _sanitize_response_dict(
-                    chunk_dict["response"],
-                    configured_mcp_labels,
-                    original_request,
-                )
-                tools = chunk_dict["response"].get("tools")
-                if tools is not None:
-                    chunk_dict["response"]["tools"] = (
-                        translate_vector_store_ids_to_user_facing(
-                            tools,
-                            configuration.rag_id_mapping,
-                        )
+                if "response" in chunk_dict:
+                    chunk_dict["response"]["conversation"] = normalize_conversation_id(
+                        api_params.conversation
                     )
-            # Intermediate response - no quota consumption and text yet
-            if chunk.type == "response.in_progress":
-                chunk_dict["response"]["available_quotas"] = {}
-                chunk_dict["response"]["output_text"] = ""
+                    _sanitize_response_dict(
+                        chunk_dict["response"],
+                        configured_mcp_labels,
+                        original_request,
+                    )
+                    tools = chunk_dict["response"].get("tools")
+                    if tools is not None:
+                        chunk_dict["response"]["tools"] = (
+                            translate_vector_store_ids_to_user_facing(
+                                tools,
+                                configuration.rag_id_mapping,
+                            )
+                        )
+                # Intermediate response - no quota consumption and text yet
+                if chunk.type == "response.in_progress":
+                    chunk_dict["response"]["available_quotas"] = {}
+                    chunk_dict["response"]["output_text"] = ""
 
-            # Handle completion, incomplete, and failed events
-            if chunk.type in (
-                "response.completed",
-                "response.incomplete",
-                "response.failed",
-            ):
-                latest_response_object = cast(
-                    OpenAIResponseObject, cast(Any, chunk).response
-                )
+                # Handle completion, incomplete, and failed events
+                if chunk.type in (
+                    "response.completed",
+                    "response.incomplete",
+                    "response.failed",
+                ):
+                    latest_response_object = cast(
+                        "OpenAIResponseObject", cast("Any", chunk).response
+                    )
 
-                # Record inference duration metric at the terminal-event
-                # boundary, before post-processing that could raise.
-                result = (
-                    recording.LLM_INFERENCE_RESULT_FAILURE
-                    if chunk.type == "response.failed"
-                    else recording.LLM_INFERENCE_RESULT_SUCCESS
-                )
-                _record_response_inference_result(
-                    api_params.model,
-                    context.endpoint_path,
-                    result,
-                    time.monotonic() - inference_start_time,
-                    record_failure=(result == recording.LLM_INFERENCE_RESULT_FAILURE),
-                )
-                inference_metric_recorded = True
-
-                # Extract and consume tokens if any were used
-                turn_summary.token_usage = extract_token_usage(
-                    latest_response_object.usage,
-                    api_params.model,
-                    context.endpoint_path,
-                )
-                consume_query_tokens(
-                    user_id=context.auth[0],
-                    model_id=api_params.model,
-                    token_usage=turn_summary.token_usage,
-                )
-
-                # Get available quotas after token consumption
-                chunk_dict["response"]["available_quotas"] = get_available_quotas(
-                    quota_limiters=configuration.quota_limiters,
-                    user_id=context.auth[0],
-                )
-                turn_summary.llm_response = extract_text_from_response_items(
-                    latest_response_object.output
-                )
-                chunk_dict["response"]["output_text"] = turn_summary.llm_response
-
-                if chunk.type == "response.failed":
-                    _record_inference_span_exception(
-                        inference_span,
-                        Exception(
-                            chunk.response.error.message
-                            if chunk.response.error
-                            else "response.failed"
+                    # Record inference duration metric at the terminal-event
+                    # boundary, before post-processing that could raise.
+                    result = (
+                        recording.LLM_INFERENCE_RESULT_FAILURE
+                        if chunk.type == "response.failed"
+                        else recording.LLM_INFERENCE_RESULT_SUCCESS
+                    )
+                    _record_response_inference_result(
+                        api_params.model,
+                        context.endpoint_path,
+                        result,
+                        time.monotonic() - inference_start_time,
+                        record_failure=(
+                            result == recording.LLM_INFERENCE_RESULT_FAILURE
                         ),
                     )
+                    inference_metric_recorded = True
 
-            yield f"event: {chunk.type or 'error'}\ndata: {json.dumps(chunk_dict)}\n\n"
+                    # Extract and consume tokens if any were used
+                    turn_summary.token_usage = extract_token_usage(
+                        latest_response_object.usage,
+                        api_params.model,
+                        context.endpoint_path,
+                    )
+                    consume_query_tokens(
+                        user_id=context.auth[0],
+                        model_id=api_params.model,
+                        token_usage=turn_summary.token_usage,
+                    )
+
+                    # Get available quotas after token consumption
+                    chunk_dict["response"]["available_quotas"] = get_available_quotas(
+                        quota_limiters=configuration.quota_limiters,
+                        user_id=context.auth[0],
+                    )
+                    turn_summary.llm_response = extract_text_from_response_items(
+                        latest_response_object.output
+                    )
+                    chunk_dict["response"]["output_text"] = turn_summary.llm_response
+
+                    if chunk.type == "response.failed":
+                        _record_inference_span_exception(
+                            inference_span,
+                            Exception(
+                                chunk.response.error.message
+                                if chunk.response.error
+                                else "response.failed"
+                            ),
+                        )
+
+                yield f"event: {chunk.type or 'error'}\ndata: {json.dumps(chunk_dict)}\n\n"
     except Exception as exc:
         _record_inference_span_exception(inference_span, exc)
         inference_span.end()
@@ -1226,13 +1221,10 @@ async def response_generator(
             )
         raise
 
-    _complete_llm_inference_span(
-        inference_span,
-        turn_summary.token_usage.input_tokens,
-        turn_summary.token_usage.output_tokens,
-    )
+    inference_time = time.monotonic() - inference_start_time
 
-    # Extract response metadata from final response object
+    # Extract response metadata from final response object before closing
+    # the inference span so tool/RAG attrs can be recorded on it.
     if latest_response_object:
         _populate_turn_summary(
             latest_response_object,
@@ -1241,6 +1233,16 @@ async def response_generator(
             turn_summary,
         )
 
+    _complete_llm_inference_span(
+        inference_span,
+        turn_summary,
+        api_params.model,
+        inference_time,
+    )
+    turn_summary.rag_chunks = (
+        context.inline_rag_context.rag_chunks + turn_summary.rag_chunks
+    )
+
     # Explicitly append the turn to conversation if context passed by previous response
     if latest_response_object:
         await _append_previous_response_turn(
@@ -1248,8 +1250,6 @@ async def response_generator(
             context,
             latest_response_object.output,
         )
-
-    yield "data: [DONE]\n\n"
 
 
 async def generate_response(
@@ -1300,7 +1300,14 @@ async def generate_response(
             completed_at,
             turn_summary.llm_response,
         )
-        _finalize_responses_root_span(root_span, turn_summary)
+        _finalize_responses_root_span(
+            root_span,
+            turn_summary,
+            context.compacted_original_input is not None,
+            normalize_conversation_id(api_params.conversation),
+        )
+        # Persist conversation state before clients can close the stream.
+        yield "data: [DONE]\n\n"
     finally:
         root_span.end()
 
@@ -1321,6 +1328,9 @@ async def handle_non_streaming_response(
     """
     root_span = context.root_span
     user_id = context.auth[0]
+    inference_span: Optional[trace.Span] = None
+    inference_start_time: Optional[float] = None
+    inference_time: Optional[float] = None
 
     # Fork: Get response object (blocked vs normal)
     if context.moderation_result.decision == "blocked":
@@ -1338,32 +1348,30 @@ async def handle_non_streaming_response(
     else:
         inference_start_time = time.monotonic()
         inference_metric_recorded = False
-        inference_span = _start_llm_inference_span(
-            api_params.model,
-            parent=root_span,
-        )
+        inference_span = _start_llm_inference_span(api_params.model, root_span)
         try:
-            api_response = cast(
-                OpenAIResponseObject,
-                await context.client.responses.create(
-                    **api_params.model_dump(exclude_none=True)
-                ),
-            )
+            with trace.use_span(  # pylint: disable=not-context-manager
+                inference_span, end_on_exit=False
+            ):
+                api_response = cast(
+                    "OpenAIResponseObject",
+                    await context.client.responses.create(
+                        **api_params.model_dump(exclude_none=True)
+                    ),
+                )
+            inference_time = time.monotonic() - inference_start_time
             _record_response_inference_result(
                 api_params.model,
                 context.endpoint_path,
                 recording.LLM_INFERENCE_RESULT_SUCCESS,
-                time.monotonic() - inference_start_time,
+                inference_time,
             )
             inference_metric_recorded = True
             token_usage = extract_token_usage(
                 api_response.usage, api_params.model, context.endpoint_path
             )
-            _complete_llm_inference_span(
-                inference_span,
-                token_usage.input_tokens,
-                token_usage.output_tokens,
-            )
+            # Keep inference span open until turn_summary is built below so
+            # tool/RAG attributes can be recorded on llm.inference.
             logger.info("Consuming tokens")
             consume_query_tokens(
                 user_id=user_id,
@@ -1393,18 +1401,6 @@ async def handle_non_streaming_response(
                 )
             _raise_response_api_http_exception(e, api_params, context, inference_span)
 
-    # Get available quotas
-    logger.info("Getting available quotas")
-    available_quotas = get_available_quotas(
-        quota_limiters=configuration.quota_limiters, user_id=user_id
-    )
-    topic_summary = await maybe_get_topic_summary(
-        generate_topic_summary=context.generate_topic_summary,
-        input_text=context.input_text,
-        client=context.client,
-        model_id=api_params.model,
-    )
-
     vector_store_ids = extract_vector_store_ids_from_tools(api_params.tools)
     turn_summary = build_turn_summary(
         api_response,
@@ -1418,7 +1414,29 @@ async def handle_non_streaming_response(
         context.inline_rag_context.referenced_documents
         + turn_summary.referenced_documents
     )
+
+    # Close llm.inference after tools/RAG are known so usage + eval attrs share one span.
+    if inference_span is not None and inference_time is not None:
+        _complete_llm_inference_span(
+            inference_span,
+            turn_summary,
+            api_params.model,
+            inference_time,
+        )
     turn_summary.rag_chunks.extend(context.inline_rag_context.rag_chunks)
+
+    # Get available quotas
+    logger.info("Getting available quotas")
+    available_quotas = get_available_quotas(
+        quota_limiters=configuration.quota_limiters, user_id=user_id
+    )
+    topic_summary = await maybe_get_topic_summary(
+        generate_topic_summary=context.generate_topic_summary,
+        input_text=context.input_text,
+        client=context.client,
+        model_id=api_params.model,
+    )
+
     completed_at = datetime.now(UTC)
     if _store_response_query_results(
         api_params,
@@ -1435,7 +1453,12 @@ async def handle_non_streaming_response(
         completed_at,
         output_text,
     )
-    _finalize_responses_root_span(root_span, turn_summary)
+    _finalize_responses_root_span(
+        root_span,
+        turn_summary,
+        context.compacted_original_input is not None,
+        normalize_conversation_id(api_params.conversation),
+    )
     configured_mcp_labels = {s.name for s in configuration.mcp_servers}
     response_dict = (
         api_response.model_dump(exclude_none=True)

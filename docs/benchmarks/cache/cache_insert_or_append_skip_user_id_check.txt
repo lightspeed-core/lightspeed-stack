@@ -1,0 +1,23 @@
+============================= test session starts ==============================
+platform linux -- Python 3.14.7, pytest-9.1.1, pluggy-1.6.0 -- /tmp/ramdisk/lightspeed-stack-LCORE-4/.venv/bin/python3
+cachedir: .pytest_cache
+benchmark: 5.3.0 (defaults: timer=time.perf_counter disable_gc=False min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=100000)
+rootdir: /tmp/ramdisk/lightspeed-stack-LCORE-4
+configfile: pyproject.toml
+plugins: platformdirs-4.12.2, logfire-5.1.1, mock-3.16.0, anyio-4.15.1, benchmark-5.3.0, cov-7.1.0, order-1.5.0, asyncio-1.4.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 1 item
+
+tests/benchmarks/test_cache_insert_or_append_skip_user_id_check.py::test_noop_cache PASSED [100%]
+
+
+----------------------------------------------- benchmark: 1 tests ----------------------------------------------
+Name (time in us)        Min      Max    Mean  StdDev  Median     IQR  Outliers  OPS (Kops/s)  Rounds  Iterations
+-----------------------------------------------------------------------------------------------------------------
+test_noop_cache       2.7170  30.0400  2.9242  0.3420  2.8970  0.0860  240;1245      341.9709   36146           1
+-----------------------------------------------------------------------------------------------------------------
+
+Legend:
+  Outliers: 1 Standard Deviation from Mean; 1.5 IQR (InterQuartile Range) from 1st Quartile and 3rd Quartile.
+  OPS: Operations Per Second, computed as 1 / Mean
+============================== 1 passed in 0.28s ===============================

@@ -1274,11 +1274,11 @@ class TestRegistryValidation:
         paths = [s.path for s in LIGHTSPEED_STACK_FIELDS]
         assert len(paths) == len(
             set(paths)
-        ), f"Duplicate paths: {set(p for p in paths if paths.count(p) > 1)}"
+        ), f"Duplicate paths: { {p for p in paths if paths.count(p) > 1} }"
 
     def test_no_duplicate_paths_in_ogx_registry(self) -> None:
         """Verify no duplicate paths in OGX registry."""
         paths = [s.path for s in OGX_FIELDS]
         assert len(paths) == len(
             set(paths)
-        ), f"Duplicate paths: {set(p for p in paths if paths.count(p) > 1)}"
+        ), f"Duplicate paths: { {p for p in paths if paths.count(p) > 1} }"

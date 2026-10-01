@@ -974,7 +974,6 @@ distribution-archives             Generate distribution archives to be uploaded 
 upload-distribution-archives      Upload distribution archives into Python registry
 konflux-requirements              Generate hermetic requirements.*.txt file for Konflux build
 konflux-rpm-lock                  Generate rpm.lock.yaml file for Konflux build
-konflux-artifacts-lock            Regenerate artifacts.lock.yaml file for Konflux build
 help                              Show this help screen
 ```
 
@@ -1515,7 +1514,7 @@ Update these files when you:
 make konflux-requirements
 ```
 
-This compiles Python dependencies from `pyproject.toml` using `uv`, splits packages by their source index (PyPI vs Red Hat's internal registry), and generates hermetic requirements files with pinned versions and hashes for Konflux builds.
+This compiles Python dependencies from `pyproject.toml` using a fork of `uv` that supports a "prefer-index" package version resolution policy, splits packages by their source index (PyPI vs Red Hat's internal registry), and generates hermetic requirements files with pinned versions and hashes for Konflux builds.
 
 **Files produced:**
 - `.konflux/requirements.hashes.source.txt` – PyPI packages with hashes

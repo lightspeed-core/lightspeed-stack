@@ -1,0 +1,25 @@
+============================= test session starts ==============================
+platform linux -- Python 3.14.7, pytest-9.1.1, pluggy-1.6.0 -- /tmp/ramdisk/lightspeed-stack-LCORE-4/.venv/bin/python3
+cachedir: .pytest_cache
+benchmark: 5.3.0 (defaults: timer=time.perf_counter disable_gc=False min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=100000)
+rootdir: /tmp/ramdisk/lightspeed-stack-LCORE-4
+configfile: pyproject.toml
+plugins: platformdirs-4.12.2, logfire-5.1.1, mock-3.16.0, anyio-4.15.1, benchmark-5.3.0, cov-7.1.0, order-1.5.0, asyncio-1.4.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 2 items
+
+tests/benchmarks/test_cache_get.py::test_noop_cache_empty_cache PASSED   [ 50%]
+tests/benchmarks/test_cache_get.py::test_noop_cache_existing_user PASSED [100%]
+
+
+---------------------------------------------------------------------------------------- benchmark: 2 tests ---------------------------------------------------------------------------------------
+Name (time in us)                    Min                Max              Mean            StdDev            Median               IQR            Outliers  OPS (Kops/s)            Rounds  Iterations
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+test_noop_cache_existing_user     4.4859 (1.0)      66.9510 (2.53)     4.7648 (1.0)      0.4105 (1.08)     4.7190 (1.0)      0.1241 (1.0)     1447;5379      209.8724 (1.0)      108767           1
+test_noop_cache_empty_cache       4.5199 (1.01)     26.4349 (1.0)      4.8073 (1.01)     0.3791 (1.0)      4.7641 (1.01)     0.1241 (1.0)      461;1313      208.0150 (0.99)      30707           1
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Legend:
+  Outliers: 1 Standard Deviation from Mean; 1.5 IQR (InterQuartile Range) from 1st Quartile and 3rd Quartile.
+  OPS: Operations Per Second, computed as 1 / Mean
+============================== 2 passed in 1.10s ===============================

@@ -142,6 +142,7 @@ End to end tests are based on [Behave](https://behave.readthedocs.io/en/stable/)
 
 * Defined in [tests/e2e](https://github.com/lightspeed-core/lightspeed-stack/tree/main/tests/e2e)
 * **Comprehensive guide:** [e2e_testing.md](e2e_testing.md) — how to run E2E tests, environment variables, deployment modes (server vs library), tags and hooks, Gherkin keywords, configuration, and troubleshooting.
+* **Granite Guardian locally:** CI uses the `mock-guardian` stub. To run `shields_granite_guardian.feature` against the real model, see [Granite Guardian: mock (CI) vs real model (local)](e2e_testing.md#granite-guardian-mock-ci-vs-real-model-local).
 
 
 

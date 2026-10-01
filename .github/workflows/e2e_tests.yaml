@@ -5,6 +5,10 @@ on:
   push:
   pull_request_target:
     types: [opened, synchronize, reopened, labeled]
+    branches:
+      - main
+      - release/0.6
+      - release/0.7
 
 jobs:
   # Own job so repository secrets are never sent to a runner unless this passes.
@@ -20,6 +24,8 @@ jobs:
       matrix:
         mode: ["server", "library"]
         environment: ["ci"]
+        is_release_06:
+          - ${{ github.base_ref == 'release/0.6' }}
         # Config-aligned shards (@cfg_*). Packed small groups keep job count reasonable
         # while avoiding mixed-config restarts inside large suites.
         shard:
@@ -36,25 +42,76 @@ jobs:
           - name: shields
             tags: "not @skip and @cfg_shields"
           - name: other
-            tags: "not @skip and (@cfg_rh_identity or @cfg_negative or @cfg_byok_pdf or @cfg_degraded or @cfg_unified)"
+            tags: "not @skip and (@cfg_rh_identity or @cfg_negative or @cfg_byok_pdf or @cfg_degraded or @cfg_unified or @cfg_compaction)"
           # Server-only; listed in shard (not matrix.include) so it expands with
           # mode=server before any library jobs. include would append after library.
           - name: tls
             tags: "not @skip and @cfg_tls"
+          - name: group 1
+            tags: "not @skip and @e2e_group_1"
+          - name: group 2
+            tags: "not @skip and @e2e_group_2"
+          - name: group 3
+            tags: "not @skip and @e2e_group_3"
         exclude:
           - mode: library
             shard:
               name: tls
               tags: "not @skip and @cfg_tls"
+          - is_release_06: true
+            shard:
+              name: default
+              tags: "not @skip and @cfg_default"
+          - is_release_06: true
+            shard:
+              name: authorized
+              tags: "not @skip and @cfg_authorized"
+          - is_release_06: true
+            shard:
+              name: mcp
+              tags: "not @skip and (@cfg_mcp or @cfg_mcp_invalid or @cfg_mcp_api_auth)"
+          - is_release_06: true
+            shard:
+              name: rbac
+              tags: "not @skip and @cfg_rbac"
+          - is_release_06: true
+            shard:
+              name: skills
+              tags: "not @skip and (@cfg_skills or @cfg_skills_directory)"
+          - is_release_06: true
+            shard:
+              name: shields
+              tags: "not @skip and @cfg_shields"
+          - is_release_06: true
+            shard:
+              name: other
+              tags: "not @skip and (@cfg_rh_identity or @cfg_negative or @cfg_byok_pdf or @cfg_degraded or @cfg_unified)"
+          - is_release_06: true
+            shard:
+              name: tls
+              tags: "not @skip and @cfg_tls"
+          - is_release_06: false
+            shard:
+              name: group 1
+              tags: "not @skip and @e2e_group_1"
+          - is_release_06: false
+            shard:
+              name: group 2
+              tags: "not @skip and @e2e_group_2"
+          - is_release_06: false
+            shard:
+              name: group 3
+              tags: "not @skip and @e2e_group_3"
 
     name: "E2E: ${{ matrix.mode }} / ${{ matrix.environment }} / ${{ matrix.shard.name }}"
-    
+
     env:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       E2E_OPENAI_MODEL: ${{ vars.E2E_OPENAI_MODEL }}
       E2E_DEPLOYMENT_MODE: ${{ matrix.mode }}
       FAISS_VECTOR_STORE_ID: ${{ vars.FAISS_VECTOR_STORE_ID }}
       E2E_OGX_HOSTNAME: ogx
+      E2E_LLAMA_HOSTNAME: ${{ vars.E2E_LLAMA_HOSTNAME || 'llama-stack' }}
 
     steps:
       - uses: actions/checkout@v7
@@ -153,7 +210,7 @@ jobs:
           echo "Models: $(grep -c "model_id:" run.yaml)"
           echo ""
           echo "=== lightspeed-stack.yaml ==="
-          grep -A 3 "ogx:" lightspeed-stack.yaml
+          grep -A 3 -E '^(ogx|llama_stack):' lightspeed-stack.yaml
 
       - name: Cache HuggingFace embedding model
         uses: actions/cache@v4
@@ -288,8 +345,9 @@ jobs:
           echo "=== Test failure logs ==="
           
           if [ "${{ matrix.mode }}" == "server" ]; then
-            echo "=== OGX logs ==="
-            docker compose logs ogx
+            SERVICE=$(docker compose config --services | grep -E '^(ogx|llama-stack)$' | head -1)
+            echo "=== ${SERVICE} logs ==="
+            docker compose logs "$SERVICE"
             echo ""
             echo "=== lightspeed-stack logs ==="
             docker compose logs lightspeed-stack

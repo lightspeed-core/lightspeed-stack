@@ -1,9 +1,14 @@
 # Lightspeed Core Stack
 
 
+
+
+
 ---
 
 # 📋 Configuration schema
+
+
 
 ## A2AStateConfiguration
 
@@ -23,10 +28,10 @@ Attributes:
     postgres: PostgreSQL database configuration for A2A state storage.
 
 
-| Field    | Type | Description                                              |
-|----------|------|----------------------------------------------------------|
-| sqlite   |      | SQLite database configuration for A2A state storage.     |
-| postgres |      | PostgreSQL database configuration for A2A state storage. |
+| Field    | Type   | Description                                              |
+|----------|--------|--------------                                            |
+| sqlite   |        | SQLite database configuration for A2A state storage.     |
+| postgres |        | PostgreSQL database configuration for A2A state storage. |
 
 
 ## APIKeyTokenConfiguration
@@ -35,9 +40,9 @@ Attributes:
 API Key Token configuration.
 
 
-| Field   | Type   | Description |
-|---------|--------|-------------|
-| api_key | string |             |
+| Field   | Type   | Description   |
+|---------|--------|---------------|
+| api_key | string |               |
 
 
 ## AccessRule
@@ -47,7 +52,7 @@ Rule defining what actions a role can perform.
 
 
 | Field   | Type   | Description                   |
-|---------|--------|-------------------------------|
+|---------|--------|--------------                 |
 | role    | string | Name of the role              |
 | actions | array  | Allowed actions for this role |
 
@@ -72,10 +77,10 @@ Attributes:
     never: Tool names that never require approval (pre-approved).
 
 
-| Field  | Type  | Description                                           |
-|--------|-------|-------------------------------------------------------|
-| always | array | List of tool names that always require human approval |
-| never  | array | List of tool names that never require approval        |
+| Field   | Type   | Description                                           |
+|---------|--------|--------------                                         |
+| always  | array  | List of tool names that always require human approval |
+| never   | array  | List of tool names that never require approval        |
 
 
 ## ApprovalsConfiguration
@@ -91,7 +96,7 @@ Attributes:
 
 
 | Field                    | Type    | Description                                     |
-|--------------------------|---------|-------------------------------------------------|
+|--------                  |---------|--------------                                   |
 | approval_timeout_seconds | integer | Seconds before pending approval requests expire |
 | approval_retention_days  | integer | Days to retain decided approvals before cleanup |
 
@@ -103,7 +108,7 @@ Authentication configuration.
 
 
 | Field                  | Type    | Description                                          |
-|------------------------|---------|------------------------------------------------------|
+|--------                |---------|--------------                                        |
 | module                 | string  |                                                      |
 | skip_tls_verification  | boolean |                                                      |
 | skip_for_health_probes | boolean | Skip authorization for readiness and liveness probes |
@@ -122,9 +127,9 @@ Authentication configuration.
 Authorization configuration.
 
 
-| Field        | Type  | Description                         |
-|--------------|-------|-------------------------------------|
-| access_rules | array | Rules for role-based access control |
+| Field        | Type   | Description                         |
+|--------------|--------|--------------                       |
+| access_rules | array  | Rules for role-based access control |
 
 
 ## AzureEntraIdConfiguration
@@ -134,7 +139,7 @@ Microsoft Entra ID authentication attributes for Azure.
 
 
 | Field         | Type   | Description                                                                                          |
-|---------------|--------|------------------------------------------------------------------------------------------------------|
+|---------------|--------|--------------                                                                                        |
 | tenant_id     | string |                                                                                                      |
 | client_id     | string |                                                                                                      |
 | client_secret | string |                                                                                                      |
@@ -148,7 +153,7 @@ BYOK (Bring Your Own Knowledge) configuration.
 
 
 | Field      | Type    | Description                                                     |
-|------------|---------|-----------------------------------------------------------------|
+|------------|---------|--------------                                                   |
 | max_chunks | integer | Maximum total number of chunks returned across all BYOK stores. |
 | stores     | array   | List of BYOK RAG store configurations.                          |
 
@@ -170,7 +175,7 @@ Useful resources:
 
 
 | Field             | Type    | Description                                                                                                                                                                                                                                    |
-|-------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+|-------------------|---------|--------------                                                                                                                                                                                                                                  |
 | allow_origins     | array   | A list of origins allowed for cross-origin requests. An origin is the combination of protocol (http, https), domain (myapp.com, localhost, localhost.tiangolo.com), and port (80, 443, 8080). Use ['*'] to allow all origins.                  |
 | allow_credentials | boolean | Indicate that cookies should be supported for cross-origin requests                                                                                                                                                                            |
 | allow_methods     | array   | A list of HTTP methods that should be allowed for cross-origin requests. You can use ['*'] to allow all standard methods.                                                                                                                      |
@@ -207,7 +212,7 @@ Attributes:
 
 
 | Field            | Type    | Description                                                                                                 |
-|------------------|---------|-------------------------------------------------------------------------------------------------------------|
+|------------------|---------|--------------                                                                                               |
 | enabled          | boolean | When true, older conversation turns are summarized when estimated tokens approach the context window limit. |
 | threshold_ratio  | number  | Trigger compaction when estimated tokens exceed this fraction of the model's context window (0.0-1.0).      |
 | token_floor      | integer | Minimum token count before compaction can trigger. Prevents triggering on very small context windows.       |
@@ -222,7 +227,7 @@ Global service configuration.
 
 
 | Field                  | Type   | Description                                                                                                                                                                                                                                                                                                                                                                                  |
-|------------------------|--------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+|--------                |--------|--------------                                                                                                                                                                                                                                                                                                                                                                                |
 | name                   | string | Name of the service. That value will be used in REST API endpoints.                                                                                                                                                                                                                                                                                                                          |
 | config_format_version  | string | Optional explicit marker of the configuration format. When set, it must agree with the shape detected from the configuration body: 'unified' requires a synthesis input (a non-empty inference.providers, a non-empty vector_store.providers, or an ogx.config block), 'legacy' requires no synthesis input. Reserved as the lever for a future breaking change of the unified schema (R11). |
 | service                |        | This section contains Lightspeed Core Stack service configuration.                                                                                                                                                                                                                                                                                                                           |
@@ -248,7 +253,7 @@ Global service configuration.
 | rag                    |        | Unified RAG configuration: BYOK stores, OKP provider, and retrieval strategies (inline and tool-based).                                                                                                                                                                                                                                                                                      |
 | skills                 |        | Agent skills configuration. Specifies paths to skill directories.                                                                                                                                                                                                                                                                                                                            |
 | saved_prompts          |        | Configuration for saved prompts feature limits including maximum prompts per user, display name length, and content length.                                                                                                                                                                                                                                                                  |
-| shields                | array  | List of pydantic-ai-lightspeed agent guardrail shields (question validity and PII redaction). Each entry has a unique 'name', a 'provider_id' ('question_validity' or 'redaction'), and a type-specific 'config'.                                                                                                                                                                            |
+| shields                | array  | List of LCS guardrail shields (question validity, PII redaction, and Granite Guardian). Each entry has a unique 'name', a 'provider_id' ('question_validity', 'redaction', or 'granite_guardian'), and a type-specific 'config'. See [shields_guide.md](shields_guide.md). |
 
 
 ## ConversationHistoryConfiguration
@@ -258,7 +263,7 @@ Conversation history configuration.
 
 
 | Field    | Type   | Description                                                      |
-|----------|--------|------------------------------------------------------------------|
+|----------|--------|--------------                                                    |
 | type     | string | Type of database where the conversation history is to be stored. |
 | memory   |        | In-memory cache configuration                                    |
 | sqlite   |        | SQLite database configuration                                    |
@@ -272,7 +277,7 @@ Custom profile customization for prompts and validation.
 
 
 | Field   | Type   | Description                                       |
-|---------|--------|---------------------------------------------------|
+|---------|--------|--------------                                     |
 | path    | string | Path to Python modules containing custom profile. |
 | prompts | object | Dictionary containing map of system prompts       |
 
@@ -283,16 +288,16 @@ Custom profile customization for prompts and validation.
 Service customization.
 
 
-| Field                       | Type    | Description |
-|-----------------------------|---------|-------------|
-| profile_path                | string  |             |
-| disable_query_system_prompt | boolean |             |
-| disable_shield_ids_override | boolean |             |
-| system_prompt_path          | string  |             |
-| system_prompt               | string  |             |
-| agent_card_path             | string  |             |
-| agent_card_config           | object  |             |
-| custom_profile              |         |             |
+| Field                       | Type    | Description   |
+|--------                     |---------|---------------|
+| profile_path                | string  |               |
+| disable_query_system_prompt | boolean |               |
+| disable_shield_ids_override | boolean |               |
+| system_prompt_path          | string  |               |
+| system_prompt               | string  |               |
+| agent_card_path             | string  |               |
+| agent_card_config           | object  |               |
+| custom_profile              |         |               |
 
 
 ## DatabaseConfiguration
@@ -301,10 +306,10 @@ Service customization.
 Database configuration.
 
 
-| Field    | Type | Description                       |
-|----------|------|-----------------------------------|
-| sqlite   |      | SQLite database configuration     |
-| postgres |      | PostgreSQL database configuration |
+| Field    | Type   | Description                       |
+|----------|--------|--------------                     |
+| sqlite   |        | SQLite database configuration     |
+| postgres |        | PostgreSQL database configuration |
 
 
 ## FaissVectorStoreProvider
@@ -314,7 +319,7 @@ Dynamic FAISS vector-store provider (runtime create capacity).
 
 
 | Field               | Type    | Description                                                                                   |
-|---------------------|---------|-----------------------------------------------------------------------------------------------|
+|---------------------|---------|--------------                                                                                 |
 | id                  | string  | OGX vector_io provider_id. Surrounding whitespace is stripped before validation and emission. |
 | embedding_model     | string  | Embedding model identification used for stores created against this provider.                 |
 | embedding_dimension | integer | Dimensionality of embedding vectors for this provider.                                        |
@@ -328,9 +333,9 @@ Dynamic FAISS vector-store provider (runtime create capacity).
 Storage config for a FAISS dynamic vector-store provider.
 
 
-| Field | Type   | Description                                  |
-|-------|--------|----------------------------------------------|
-| path  | string | On-disk FAISS/SQLite path for this provider. |
+| Field   | Type   | Description                                  |
+|---------|--------|--------------                                |
+| path    | string | On-disk FAISS/SQLite path for this provider. |
 
 
 ## GraniteGuardianConfig
@@ -339,14 +344,19 @@ Storage config for a FAISS dynamic vector-store provider.
 Configuration for the Granite Guardian moderation guardrail.
 
 
-| Field       | Type    | Description                                          |
-|-------------|---------|------------------------------------------------------|
-| url         | string  | The model_id to use for the guard                    |
-| api_key     | string  | API key for the inference                            |
-| max_retries | integer | Maximun number of retries                            |
-| timeout     | integer | Request timeout in seconds                           |
-| verify_ssl  |         | SSL certificate verification                         |
-| risks       | array   | Risks to be considered while applying this guardrail |
+| Field       | Type    | Description                                                                                                                                                                         |
+|-------------|---------|--------------                                                                                                                                                                       |
+| url         | string  | Base URL of the OpenAI-compatible inference endpoint.                                                                                                                               |
+| model_id    | string  | Model name sent to the inference server. Override when the server registers the model under a different name (e.g. an Ollama tag). The prompt template is built for the 4.1 format. |
+| api_key     | string  | API key for the inference                                                                                                                                                           |
+| max_retries | integer | Maximun number of retries                                                                                                                                                           |
+| timeout     | integer | Request timeout in seconds                                                                                                                                                          |
+| verify_ssl  |         | SSL certificate verification. Can be:                                                                                                                                               |
+  - True: Verify using system CA bundle (default, recommended)
+  - False: Disable verification (insecure, for dev only)
+  - str: Path to custom CA bundle file (for internal PKI) |
+| parallel |       | True to run all risk checks in parallel, False to run sequentially, or an integer 1-10 for explicit batch size. |
+| risks    | array | Risks to be considered while applying this guardrail                                                            |
 
 
 ## GraniteGuardianShieldConfiguration
@@ -361,7 +371,7 @@ Attributes:
 
 
 | Field       | Type   | Description                                                  |
-|-------------|--------|--------------------------------------------------------------|
+|-------------|--------|--------------                                                |
 | name        | string | Unique, user-facing name identifying this shield instance.   |
 | provider_id | string | Discriminator identifying this as a granite-guardian shield. |
 | config      |        | Granite-guardian-specific configuration for this shield      |
@@ -374,7 +384,7 @@ In-memory cache configuration.
 
 
 | Field       | Type    | Description                                             |
-|-------------|---------|---------------------------------------------------------|
+|-------------|---------|--------------                                           |
 | max_entries | integer | Maximum number of entries stored in the in-memory cache |
 
 
@@ -385,13 +395,45 @@ Inference configuration.
 
 
 | Field            | Type    | Description                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-|------------------|---------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+|------------------|---------|--------------                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | default_model    | string  | Identification of default model used when no other model is specified.                                                                                                                                                                                                                                                                                                                                                                                   |
 | default_provider | string  | Identification of default provider used when no other model is specified.                                                                                                                                                                                                                                                                                                                                                                                |
 | context_windows  | object  | Map of fully-qualified model identifier (e.g., "openai/gpt-4o-mini") to context window size in tokens. Used by the conversation compaction trigger to decide when older turns must be summarized before the input exceeds the window. Models absent from this map have no registered window — callers fall back to their own default or skip the token-based trigger.                                                                                    |
 | providers        | array   | Unified-mode synthesis input (Decision S5): a high-level, backend-agnostic list of inference providers the synthesizer expands into OGX provider entries. Lives at the configuration root so it survives a future backend change. A non-empty list signals unified mode. Empty (the default) leaves legacy/remote modes unaffected. The sibling default_model / default_provider keep their query-time routing meaning and are independent of this list. |
 | max_infer_iters  | integer | Server-side default for the maximum number of inference iterations a model can perform in a single request. Prevents small models from looping indefinitely on tool calls. Per-request values take precedence over this default. Set to None to disable the limit.                                                                                                                                                                                       |
 | max_tool_calls   | integer | Server-side default for the maximum number of tool calls allowed in a single response. Prevents small models from exhausting the context window with repeated tool calls. Per-request values take precedence over this default. Set to None to disable the limit.                                                                                                                                                                                        |
+
+
+## GraniteGuardianConfig
+
+
+Configuration for the Granite Guardian moderation guardrail.
+
+
+| Field       | Type    | Description |
+|-------------|---------|-------------|
+| url         | string  | Base URL of the OpenAI-compatible Granite Guardian API. |
+| model_id    | string  | Model name sent to the inference server (default `ibm-granite/granite-guardian-4.1-8b`); override when the server registers the model under a different name. |
+| api_key     | string  | API key for the inference endpoint (optional). |
+| max_retries | integer | Maximum number of retries for transient errors (0–5, default 2). |
+| timeout     | integer | Request timeout in seconds (5–300, default 30). |
+| verify_ssl  | boolean or string | TLS verification: `true`, `false`, or path to a CA bundle (default `true`). |
+| batch_size  | integer | Number of risk checks to run in parallel per batch (1–10, default 3). |
+| risks       | array   | List of [RiskDefinition](#riskdefinition) entries to evaluate. |
+| streaming_output_check_interval_tokens | integer | For risks with `output` in `points`, re-check the response against those risks approximately every N generated output tokens while streaming, plus once more over any remaining text once generation completes (default 50). Ignored when no configured risk targets the `output` point. |
+
+
+## GraniteGuardianShieldConfiguration
+
+
+Configuration for a named Granite Guardian guardrail shield.
+
+
+| Field       | Type   | Description |
+|-------------|--------|-------------|
+| name        | string | Unique, user-facing name identifying this shield instance. |
+| provider_id | string | Must be `granite_guardian`. |
+| config      |        | [GraniteGuardianConfig](#graniteguardianconfig) for this shield. |
 
 
 ## JsonPathOperator
@@ -419,7 +461,7 @@ Useful resources:
 
 
 | Field             | Type   | Description                                                    |
-|-------------------|--------|----------------------------------------------------------------|
+|-------------------|--------|--------------                                                  |
 | url               | string | HTTPS URL of the JWK (JSON Web Key) set used to validate JWTs. |
 | jwt_configuration |        | JWT (JSON Web Token) configuration                             |
 
@@ -445,7 +487,7 @@ Useful resources:
 
 
 | Field          | Type   | Description                                                    |
-|----------------|--------|----------------------------------------------------------------|
+|----------------|--------|--------------                                                  |
 | user_id_claim  | string | JWT claim name that uniquely identifies the user (subject ID). |
 | username_claim | string | JWT claim name that provides the human-readable username.      |
 | role_rules     | array  | Rules for extracting roles from JWT claims                     |
@@ -458,7 +500,7 @@ Rule for extracting roles from JWT claims.
 
 
 | Field    | Type    | Description                                             |
-|----------|---------|---------------------------------------------------------|
+|----------|---------|--------------                                           |
 | jsonpath | string  | JSONPath expression to evaluate against the JWT payload |
 | operator |         | JSON path comparison operator                           |
 | negate   | boolean | If set to true, the meaning of the rule is negated      |
@@ -485,7 +527,7 @@ Useful resources:
 
 
 | Field                 | Type    | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-|-----------------------|---------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+|-----------------------|---------|--------------                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | name                  | string  | MCP server name that must be unique                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | provider_id           | string  | MCP provider identification                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | url                   | string  | URL of the MCP server                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
@@ -507,9 +549,9 @@ Attributes:
     otel: Dictionary of OTEL_* environment variables with secrets redacted.
 
 
-| Field | Type   | Description                                                          |
-|-------|--------|----------------------------------------------------------------------|
-| otel  | object | Active OpenTelemetry configuration from OTEL_* environment variables |
+| Field   | Type   | Description                                                          |
+|---------|--------|--------------                                                        |
+| otel    | object | Active OpenTelemetry configuration from OTEL_* environment variables |
 
 
 ## OgxConfiguration
@@ -530,7 +572,7 @@ Useful resources:
 
 
 | Field                      | Type    | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
-|----------------------------|---------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+|--------                    |---------|--------------                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | url                        | string  | URL to OGX service; used when library mode is disabled. Must be a valid HTTP or HTTPS URL.                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | api_key                    | string  | API key to access OGX service                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | use_as_library_client      | boolean | When set to true OGX will be used in library mode, not in server mode (default)                                                                                                                                                                                                                                                                                                                                                                                                                                         |
@@ -553,7 +595,7 @@ or ``rag.retrieval.tool.sources``.
 
 
 | Field              | Type    | Description                                                                                                                                                                                                                                    |
-|--------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+|--------------------|---------|--------------                                                                                                                                                                                                                                  |
 | rhokp_url          | string  | Base URL for the OKP server (http or https). Set to `${env.RH_SERVER_OKP}` in YAML to use the environment variable. When unset, the default from constants is used.                                                                            |
 | offline            | boolean | When True, use parent_id for OKP chunk source URLs. When False, use reference_url for chunk source URLs.                                                                                                                                       |
 | chunk_filter_query | string  | Additional OKP filter query applied to every OKP search request. Use Solr boolean syntax, e.g. 'product:ansible AND product:*openshift*'.                                                                                                      |
@@ -568,7 +610,7 @@ Dynamic pgvector vector-store provider (runtime create capacity).
 
 
 | Field               | Type    | Description                                                                                   |
-|---------------------|---------|-----------------------------------------------------------------------------------------------|
+|---------------------|---------|--------------                                                                                 |
 | id                  | string  | OGX vector_io provider_id. Surrounding whitespace is stripped before validation and emission. |
 | embedding_model     | string  | Embedding model identification used for stores created against this provider.                 |
 | embedding_dimension | integer | Dimensionality of embedding vectors for this provider.                                        |
@@ -583,7 +625,7 @@ Storage config for a pgvector dynamic vector-store provider.
 
 
 | Field    | Type   | Description                                                                                        |
-|----------|--------|----------------------------------------------------------------------------------------------------|
+|----------|--------|--------------                                                                                      |
 | host     | string | PostgreSQL host. Defaults to ${env.POSTGRES_HOST}.                                                 |
 | port     |        | PostgreSQL port. Defaults to ${env.POSTGRES_PORT}. Accepts string placeholders and integer values. |
 | db       | string | PostgreSQL database name. Defaults to ${env.POSTGRES_DATABASE}.                                    |
@@ -608,7 +650,7 @@ Useful resources:
 
 
 | Field        | Type    | Description                                                                                                             |
-|--------------|---------|-------------------------------------------------------------------------------------------------------------------------|
+|--------------|---------|--------------                                                                                                           |
 | host         | string  | Database server host or socket directory                                                                                |
 | port         | integer | Database server port                                                                                                    |
 | db           | string  | Database name to connect to                                                                                             |
@@ -627,7 +669,7 @@ Configuration for the question validity guardrail.
 
 
 | Field                     | Type   | Description                                                                |
-|---------------------------|--------|----------------------------------------------------------------------------|
+|--------                   |--------|--------------                                                              |
 | model_id                  | string | The model_id to use for the guard                                          |
 | model_prompt              | string | The default prompt sent to the LLM used to validate the Users' question.   |
 | invalid_question_response | string | The default response when the Users' question is determined to be invalid. |
@@ -645,7 +687,7 @@ Attributes:
 
 
 | Field       | Type   | Description                                                   |
-|-------------|--------|---------------------------------------------------------------|
+|-------------|--------|--------------                                                 |
 | name        | string | Unique, user-facing name identifying this shield instance.    |
 | provider_id | string | Discriminator identifying this as a question-validity shield. |
 | config      |        | Question-validity-specific configuration for this shield.     |
@@ -663,7 +705,7 @@ _quota limiter_. It can be of type `user_limiter` or `cluster_limiter`
 
 
 | Field                | Type    | Description                                           |
-|----------------------|---------|-------------------------------------------------------|
+|----------------------|---------|--------------                                         |
 | sqlite               |         | SQLite database configuration                         |
 | postgres             |         | PostgreSQL database configuration                     |
 | limiters             | array   | Quota limiters configuration                          |
@@ -696,7 +738,7 @@ There are two basic use cases:
 
 
 | Field          | Type    | Description                                                |
-|----------------|---------|------------------------------------------------------------|
+|----------------|---------|--------------                                              |
 | type           | string  | Quota limiter type, either user_limiter or cluster_limiter |
 | name           | string  | Human readable quota limiter name                          |
 | initial_quota  | integer | Quota set at beginning of the period                       |
@@ -711,7 +753,7 @@ Quota scheduler configuration.
 
 
 | Field                       | Type    | Description                                                                                                                                                         |
-|-----------------------------|---------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+|--------                     |---------|--------------                                                                                                                                                       |
 | period                      | integer | Quota scheduler period specified in seconds                                                                                                                         |
 | database_reconnection_count | integer | Database reconnection count on startup. When database for quota is not available on startup, the service tries to reconnect N times with specified delay.           |
 | database_reconnection_delay | integer | Database reconnection delay specified in seconds. When database for quota is not available on startup, the service tries to reconnect N times with specified delay. |
@@ -724,7 +766,7 @@ Red Hat Identity authentication configuration.
 
 
 | Field                 | Type    | Description                                                                                                                          |
-|-----------------------|---------|--------------------------------------------------------------------------------------------------------------------------------------|
+|-----------------------|---------|--------------                                                                                                                        |
 | required_entitlements | array   | List of all required entitlements.                                                                                                   |
 | max_header_size       | integer | Maximum allowed size in bytes for the base64-encoded x-rh-identity header. Headers exceeding this size are rejected before decoding. |
 
@@ -738,11 +780,11 @@ Groups all RAG-related settings: BYOK stores, OKP provider, and
 retrieval strategies (inline and tool).
 
 
-| Field     | Type | Description                                                                                                  |
-|-----------|------|--------------------------------------------------------------------------------------------------------------|
-| byok      |      | Bring Your Own Knowledge store configurations and settings.                                                  |
-| okp       |      | OKP provider settings. Only used when 'okp' is listed in retrieval.inline.sources or retrieval.tool.sources. |
-| retrieval |      | Inline and tool retrieval strategy settings.                                                                 |
+| Field     | Type   | Description                                                                                                  |
+|-----------|--------|--------------                                                                                                |
+| byok      |        | Bring Your Own Knowledge store configurations and settings.                                                  |
+| okp       |        | OKP provider settings. Only used when 'okp' is listed in retrieval.inline.sources or retrieval.tool.sources. |
+| retrieval |        | Inline and tool retrieval strategy settings.                                                                 |
 
 
 ## RagStore
@@ -752,14 +794,14 @@ BYOK (Bring Your Own Knowledge) RAG store configuration.
 
 
 | Field                  | Type    | Description                                                                                                                                                                                    |
-|------------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+|--------                |---------|--------------                                                                                                                                                                                  |
 | rag_id                 | string  | Unique RAG ID                                                                                                                                                                                  |
 | backend                | string  | Type of RAG database (e.g. 'faiss', 'pgvector').                                                                                                                                               |
 | embedding_model        | string  | Embedding model identification                                                                                                                                                                 |
 | embedding_dimension    | integer | Dimensionality of embedding vectors.                                                                                                                                                           |
 | vector_db_id           | string  | Vector database identification.                                                                                                                                                                |
 | db_path                | string  | Path to RAG database. Required for faiss backend.                                                                                                                                              |
-| score_multiplier       | number  | Multiplier applied to relevance scores from this vector store. Used to weight results when querying multiple knowledge sources. Values > 1 boost this store's results; values &lt; 1 reduce them. |
+| score_multiplier       | number  | Multiplier applied to relevance scores from this vector store. Used to weight results when querying multiple knowledge sources. Values > 1 boost this store's results; values < 1 reduce them. |
 | relevance_cutoff_score | number  | Minimum raw similarity score to consider a result relevant. Results with a similarity score below this threshold are not returned.                                                             |
 | host                   | string  | PostgreSQL host for pgvector backend. Defaults to ${env.POSTGRES_HOST} when backend is pgvector.                                                                                               |
 | port                   |         | PostgreSQL port for pgvector backend. Defaults to ${env.POSTGRES_PORT} when backend is pgvector.                                                                                               |
@@ -783,7 +825,7 @@ Attributes:
 
 
 | Field          | Type    | Description                                          |
-|----------------|---------|------------------------------------------------------|
+|----------------|---------|--------------                                        |
 | rules          | array   | Ordered list of PII redaction rules                  |
 | case_sensitive | boolean | When False, patterns are compiled with re.IGNORECASE |
 
@@ -802,7 +844,7 @@ Attributes:
 
 
 | Field          | Type    | Description                                                                    |
-|----------------|---------|--------------------------------------------------------------------------------|
+|----------------|---------|--------------                                                                  |
 | pattern        | string  | Regex pattern to match sensitive data                                          |
 | replacement    | string  | Replacement string for matched text                                            |
 | case_sensitive | boolean | Per-rule case sensitivity override. When None, the global config flag applies. |
@@ -820,10 +862,27 @@ Attributes:
 
 
 | Field       | Type   | Description                                                |
-|-------------|--------|------------------------------------------------------------|
+|-------------|--------|--------------                                              |
 | name        | string | Unique, user-facing name identifying this shield instance. |
 | provider_id | string | Discriminator identifying this as a redaction shield.      |
 | config      |        | Redaction-specific configuration for this shield.          |
+
+
+## RiskDefinition
+
+
+Definition for a custom risk category evaluated by Granite Guardian.
+
+
+| Field             | Type    | Description |
+|-------------------|---------|-------------|
+| name              | string  | Unique identifier for this risk (for example `roleplay-jailbreak`). |
+| description       | string  | Risk definition text passed to Granite Guardian as `custom_criteria`. |
+| threshold         | number  | Score threshold for flagging, 0.0–1.0 (default 0.65; lower = more sensitive). |
+| enabled           | boolean | Whether to run this check (default `true`). |
+| enable_thinking   | boolean | Internal — set via `ModerationConfig.thinking_enabled`, not directly. |
+| points            | array   | Where to evaluate: `input`, `output`, and/or `tool` (at least one). |
+| violation_message | string  | Message returned when this risk is violated. |
 
 
 ## RerankerConfiguration
@@ -833,7 +892,7 @@ Reranker configuration for RAG chunk reranking.
 
 
 | Field   | Type    | Description                                                                                                                      |
-|---------|---------|----------------------------------------------------------------------------------------------------------------------------------|
+|---------|---------|--------------                                                                                                                    |
 | enabled | boolean | When True, reranking applied to RAG chunks. When False, reranking is disabled and original scoring used.                         |
 | model   | string  | Cross-encoder model name for reranking RAG chunks. Defaults to 'cross-encoder/ms-marco-MiniLM-L6-v2' from sentence-transformers. |
 
@@ -844,10 +903,10 @@ Reranker configuration for RAG chunk reranking.
 Configuration for inline and tool retrieval strategies.
 
 
-| Field  | Type | Description                                          |
-|--------|------|------------------------------------------------------|
-| inline |      | Inline RAG: context injected before the LLM request. |
-| tool   |      | Tool RAG: LLM can call file_search on demand.        |
+| Field   | Type   | Description                                          |
+|---------|--------|--------------                                        |
+| inline  |        | Inline RAG: context injected before the LLM request. |
+| tool    |        | Tool RAG: LLM can call file_search on demand.        |
 
 
 ## RetrievalStrategyConfiguration
@@ -857,7 +916,7 @@ Configuration for a single retrieval strategy (inline or tool).
 
 
 | Field      | Type    | Description                                                                              |
-|------------|---------|------------------------------------------------------------------------------------------|
+|------------|---------|--------------                                                                            |
 | sources    | array   | RAG IDs to use for this retrieval strategy. Use 'okp' to include the OKP vector store.   |
 | max_chunks | integer | Maximum number of chunks returned by this retrieval strategy.                            |
 | reranker   |         | Neural reranking of RAG chunks using cross-encoder. Only applicable to inline retrieval. |
@@ -891,7 +950,7 @@ Note:
 
 
 | Field             | Type    | Description                                                                                                                                            |
-|-------------------|---------|--------------------------------------------------------------------------------------------------------------------------------------------------------|
+|-------------------|---------|--------------                                                                                                                                          |
 | name              | string  | Unique identifier for this risk (e.g., 'liability', 'competitor_mention')                                                                              |
 | description       | string  | Risk definition text passed to Granite Guardian as custom_criteria                                                                                     |
 | threshold         | number  | Score threshold for flagging (lower = more sensitive)                                                                                                  |
@@ -912,7 +971,7 @@ sections so that CLA-specific options do not affect other endpoints.
 
 
 | Field               | Type    | Description                                                                                                                                                                                                                                                                                |
-|---------------------|---------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+|---------------------|---------|--------------                                                                                                                                                                                                                                                                              |
 | allow_verbose_infer | boolean | Allow /v1/infer to return extended metadata (tool_calls, rag_chunks, token_usage) when the client sends "include_metadata": true. Should NOT be enabled in production. If production use is needed, consider RBAC-based access control via an Action.RLSAPI_V1_INFER authorization rule.   |
 | quota_subject       | string  | Identity field used as the quota subject for /v1/infer. When set, token quota enforcement is enabled for this endpoint. Requires quota_handlers to be configured. "org_id" and "system_id" require rh-identity authentication; falls back to user_id when rh-identity data is unavailable. |
 
@@ -924,7 +983,7 @@ SQLite database configuration.
 
 
 | Field   | Type   | Description                                  |
-|---------|--------|----------------------------------------------|
+|---------|--------|--------------                                |
 | db_path | string | Path to file where SQLite database is stored |
 
 
@@ -944,7 +1003,7 @@ Attributes:
 
 
 | Field                   | Type    | Description                                                                                   |
-|-------------------------|---------|-----------------------------------------------------------------------------------------------|
+|--------                 |---------|--------------                                                                                 |
 | max_prompts_per_user    | integer | Maximum number of saved prompts a user can create. Defaults to 50. Cannot exceed 200.         |
 | max_display_name_length | integer | Maximum character length for prompt display name (title). Defaults to 255. Cannot exceed 255. |
 | max_content_length      | integer | Maximum character length for the prompt content body. Defaults to 10000. Cannot exceed 30000. |
@@ -962,7 +1021,7 @@ the service can handle requests concurrently.
 
 
 | Field                                 | Type    | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-|---------------------------------------|---------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+|--------                               |---------|--------------                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | host                                  | string  | Service hostname                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | port                                  | integer | Service port                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | base_url                              | string  | Externally reachable base URL for the service; needed for A2A support.                                                                                                                                                                                                                                                                                                                                                                                                         |
@@ -993,9 +1052,9 @@ Each path can point to either:
 Paths are validated at startup to ensure they exist and contain valid SKILL.md files.
 
 
-| Field | Type  | Description                                                                |
-|-------|-------|----------------------------------------------------------------------------|
-| paths | array | Paths to skill directories or directories containing skill subdirectories. |
+| Field   | Type   | Description                                                                |
+|---------|--------|--------------                                                              |
+| paths   | array  | Paths to skill directories or directories containing skill subdirectories. |
 
 
 ## SplunkConfiguration
@@ -1014,7 +1073,7 @@ Useful resources:
 
 
 | Field      | Type    | Description                                                  |
-|------------|---------|--------------------------------------------------------------|
+|------------|---------|--------------                                                |
 | enabled    | boolean | Enable or disable Splunk HEC integration.                    |
 | url        | string  | Splunk HEC endpoint URL.                                     |
 | token_path | string  | Path to file containing the Splunk HEC authentication token. |
@@ -1043,7 +1102,7 @@ Useful resources:
 
 
 | Field                | Type   | Description                                                              |
-|----------------------|--------|--------------------------------------------------------------------------|
+|----------------------|--------|--------------                                                            |
 | tls_certificate_path | string | SSL/TLS certificate file path for HTTPS support.                         |
 | tls_key_path         | string | SSL/TLS private key file path for HTTPS support.                         |
 | tls_key_password     | string | Path to file containing the password to decrypt the SSL/TLS private key. |
@@ -1056,7 +1115,7 @@ Configuration for trusted-proxy auth module.
 
 
 | Field                    | Type   | Description                                                                                                                                                                                                                                                                                                      |
-|--------------------------|--------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+|--------                  |--------|--------------                                                                                                                                                                                                                                                                                                    |
 | user_header              | string | HTTP header containing the forwarded user identity.                                                                                                                                                                                                                                                              |
 | allowed_service_accounts | array  | Optional allowlist of Kubernetes ServiceAccount identities permitted to act as trusted proxies. When set to null/omitted, any ServiceAccount with a valid token is accepted. When set to a non-empty list, only the listed ServiceAccounts are allowed. An empty list behaves the same as null (no restriction). |
 
@@ -1068,7 +1127,7 @@ A Kubernetes ServiceAccount identity for trusted-proxy allowlist.
 
 
 | Field     | Type   | Description                                 |
-|-----------|--------|---------------------------------------------|
+|-----------|--------|--------------                               |
 | namespace | string | Kubernetes namespace of the ServiceAccount. |
 | name      | string | Name of the Kubernetes ServiceAccount.      |
 
@@ -1103,7 +1162,7 @@ Attributes:
 
 
 | Field          | Type   | Description                                                                                                                                                                                                                                       |
-|----------------|--------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+|----------------|--------|--------------                                                                                                                                                                                                                                     |
 | type           | string | Canonical, backend-agnostic provider identifier mapped to an OGX provider_type by the synthesizer.                                                                                                                                                |
 | id             | string | Optional identifier emitted as the OGX provider_id. When omitted, synthesized as type with underscores hyphenated. If set, must be non-empty after stripping whitespace and may contain only lowercase letters, digits, underscores, and hyphens. |
 | api_key_env    | string | Name of the environment variable holding the provider API key. Emitted as a ${env.<name>} reference so the secret is never written to disk in resolved form.                                                                                      |
@@ -1137,7 +1196,7 @@ Attributes:
 
 
 | Field           | Type   | Description                                                                                                                                                                                                                    |
-|-----------------|--------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+|-----------------|--------|--------------                                                                                                                                                                                                                  |
 | baseline        | string | Synthesis starting point: 'default' uses LCORE's built-in baseline including the conditional OpenAI provider, 'byo-llm' uses the same baseline without that OpenAI row, 'empty' starts from {}. Ignored when 'profile' is set. |
 | profile         | string | Path to a run.yaml-shaped baseline file. Relative paths resolve against the directory of the loaded lightspeed-stack.yaml.                                                                                                     |
 | native_override | object | Raw OGX schema deep-merged last (maps merge recursively; lists and scalars replace).                                                                                                                                           |
@@ -1150,7 +1209,7 @@ User data collection configuration.
 
 
 | Field               | Type    | Description                                                                        |
-|---------------------|---------|------------------------------------------------------------------------------------|
+|---------------------|---------|--------------                                                                      |
 | feedback_enabled    | boolean | When set to true the user feedback is stored and later sent for analysis.          |
 | feedback_storage    | string  | Path to directory where feedback will be saved for further processing.             |
 | transcripts_enabled | boolean | When set to true the conversation history is stored and later sent for analysis.   |
@@ -1176,6 +1235,6 @@ Attributes:
 
 
 | Field            | Type   | Description                                                                                                                                         |
-|------------------|--------|-----------------------------------------------------------------------------------------------------------------------------------------------------|
+|------------------|--------|--------------                                                                                                                                       |
 | default_provider | string | Provider id used for vector_stores.default_* in the synthesized OGX config. Required when providers is non-empty; must match one of providers[].id. |
 | providers        | array  | Dynamic vector-store provider capacity for runtime POST /v1/vector-stores creates. Not the same as rag.byok.stores (static registered corpora).     |

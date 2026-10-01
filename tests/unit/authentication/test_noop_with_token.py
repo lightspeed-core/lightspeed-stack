@@ -87,7 +87,7 @@ async def test_noop_with_token_auth_dependency_no_token() -> None:
         await dependency(request)
 
     assert exc_info.value.status_code == 401
-    detail = cast(dict[str, str], exc_info.value.detail)
+    detail = cast("dict[str, str]", exc_info.value.detail)
     assert detail["response"] == ("Missing or invalid credentials provided by client")
     assert detail["cause"] == "No Authorization header found"
 
@@ -119,7 +119,7 @@ async def test_noop_with_token_auth_dependency_no_bearer() -> None:
         await dependency(request)
 
     assert exc_info.value.status_code == 401
-    detail = cast(dict[str, str], exc_info.value.detail)
+    detail = cast("dict[str, str]", exc_info.value.detail)
     assert detail["response"] == ("Missing or invalid credentials provided by client")
     assert detail["cause"] == "No token found in Authorization header"
 

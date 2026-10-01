@@ -4,9 +4,37 @@
 
 Integration tests for API endpoints.
 
+## [_compaction_helpers.py](_compaction_helpers.py)
+
+Shared helpers for conversation compaction integration tests.
+
 ## [test_authorized_endpoint.py](test_authorized_endpoint.py)
 
 Integration tests for the /authorized endpoint.
+
+## [test_compaction_a2a.py](test_compaction_a2a.py)
+
+Integration tests for conversation compaction in the A2A endpoint.
+
+## [test_compaction_buffer.py](test_compaction_buffer.py)
+
+Integration tests for the buffered turns across consecutive compactions.
+
+## [test_compaction_conversations_api.py](test_compaction_conversations_api.py)
+
+Integration tests for compaction markers and the conversations API (LCORE-3909).
+
+## [test_compaction_query.py](test_compaction_query.py)
+
+Integration tests for conversation compaction in the query endpoint.
+
+## [test_compaction_responses.py](test_compaction_responses.py)
+
+Integration tests for conversation compaction in the responses endpoint.
+
+## [test_compaction_streaming_query.py](test_compaction_streaming_query.py)
+
+Integration tests for conversation compaction in the streaming_query endpoint.
 
 ## [test_config_integration.py](test_config_integration.py)
 
@@ -19,6 +47,10 @@ Integration tests for the /v1/conversations REST API endpoints.
 ## [test_conversations_v2_integration.py](test_conversations_v2_integration.py)
 
 Integration tests for the /v2/conversations REST API endpoints (cache-based).
+
+## [test_granite_guardian_integration.py](test_granite_guardian_integration.py)
+
+Integration tests for Granite Guardian input guardrail across endpoints.
 
 ## [test_health_integration.py](test_health_integration.py)
 

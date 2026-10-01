@@ -8,3 +8,7 @@ Pluggable capabilities for pydantic-ai agents in Lightspeed.
 
 Abstract base for safety capabilities with a standalone run interface.
 
+## [utils.py](utils.py)
+
+Shared utility functions for safety capabilities.
+

@@ -7,6 +7,7 @@ features/shields.feature
 features/shields_question_validity.feature
 features/shields_redaction.feature
 features/shields_overrides.feature
+features/shields_granite_guardian.feature
 features/smoketests.feature
 features/inline_rag.feature
 features/proxy.feature
@@ -23,6 +24,7 @@ features/rlsapi_v1.feature
 features/streaming_query.feature
 features/vector_stores.feature
 features/conversation_cache_v2.feature
+features/conversation-compaction.feature
 features/feedback.feature
 features/http_401_unauthorized.feature
 features/rbac.feature

@@ -115,6 +115,20 @@
 * Check if models can be filtered
 * Check if filtering can return empty list of models
 
+## [`okp_rag.feature`](https://github.com/lightspeed-core/lightspeed-stack/blob/main/tests/e2e/features/okp_rag.feature)
+
+Konflux only (`@konflux-only`) in CI. Targeted local Behave (match YAML to OGX/LCS): [Running OKP RAG tests locally](e2e_testing.md#running-okp-rag-tests-locally).
+
+* Offline mode query with inline RAG returns rag_chunks and referenced_documents
+* Online mode streaming query with inline RAG returns referenced_documents
+* Query with inline RAG with dynamic semantic filter returns rag_chunks and referenced_documents
+* Offline query API with OKP tool RAG has rag_chunk and referenced_documents returned
+* Online responses API with OKP tool RAG has rag results returned
+* Query succeeds with empty rag_chunks when OKP server is unavailable
+* Streaming query succeeds with empty referenced_documents when OKP server is unavailable
+* Query returns no rag_chunks and no referenced_documents when OKP is disabled
+* Streaming query returns no referenced_documents when OKP is disabled
+
 ## [`proxy.feature`](https://github.com/lightspeed-core/lightspeed-stack/blob/main/tests/e2e/features/proxy.feature)
 
 * LLM traffic is routed through a configured tunnel proxy
@@ -166,6 +180,17 @@
 ## [`rest_api.feature`](https://github.com/lightspeed-core/lightspeed-stack/blob/main/tests/e2e/features/rest_api.feature)
 
 * Check if the OpenAPI endpoint works as expected
+
+## [`shields_granite_guardian.feature`](https://github.com/lightspeed-core/lightspeed-stack/blob/main/tests/e2e/features/shields_granite_guardian.feature)
+
+* granite_guardian allows a legitimate in-topic question
+* granite_guardian blocks jailbreak risk at input
+* granite_guardian blocks unsafe generated output (currently `@skip`)
+* granite_guardian blocks poisoned MCP tool content at tool (currently `@skip`)
+
+CI uses `mock-guardian`. To run these scenarios against the real Granite
+Guardian model locally, see
+[Granite Guardian: mock (CI) vs real model (local)](e2e_testing.md#granite-guardian-mock-ci-vs-real-model-local).
 
 ## [`smoketests.feature`](https://github.com/lightspeed-core/lightspeed-stack/blob/main/tests/e2e/features/smoketests.feature)
 

@@ -1,4 +1,14 @@
-"""Handler for REST API calls to manage conversation history using Conversations API."""
+"""Handler for REST API calls to manage conversation history using Conversations API.
+
+These routes use OGX Conversations persistence. They are deprecated and will be
+removed in a later LCS release when OGX is dropped from the stack. Use
+``/v2/conversations`` instead (LCORE-owned storage).
+"""
+
+CONVERSATIONS_V1_DEPRECATED_REASON: str = (
+    "OGX-backed Conversations API; deprecated and scheduled for removal. "
+    "Use /v2/conversations instead."
+)
 
 from typing import Any
 
@@ -7,6 +17,7 @@ from ogx_api import ConversationNotFoundError, InvalidParameterError
 from ogx_client import ApiException
 from opentelemetry import trace
 from sqlalchemy.exc import SQLAlchemyError
+from typing_extensions import deprecated
 
 from app.database import get_session
 from authentication import get_auth_dependency
@@ -57,7 +68,10 @@ from utils.types import Responses
 
 logger = get_logger(__name__)
 tracer = trace.get_tracer(__name__)
-router = APIRouter(tags=["conversations_v1"])
+router = APIRouter(
+    tags=["conversations_v1"],
+    deprecated=True,
+)
 
 conversation_get_responses: Responses = {
     200: ConversationResponse.openapi_response(),
@@ -121,6 +135,7 @@ conversation_update_responses: Responses = {
     summary="Conversations List Endpoint Handler V1",
 )
 @authorize(Action.LIST_CONVERSATIONS)
+@deprecated(CONVERSATIONS_V1_DEPRECATED_REASON)
 async def get_conversations_list_endpoint_handler(
     request: Request,
     auth: Any = Depends(get_auth_dependency()),
@@ -187,6 +202,7 @@ async def get_conversations_list_endpoint_handler(
     summary="Conversation Get Endpoint Handler V1",
 )
 @authorize(Action.GET_CONVERSATION)
+@deprecated(CONVERSATIONS_V1_DEPRECATED_REASON)
 async def get_conversation_endpoint_handler(  # pylint: disable=too-many-locals,too-many-statements
     request: Request,
     conversation_id: str,
@@ -200,6 +216,15 @@ async def get_conversation_endpoint_handler(  # pylint: disable=too-many-locals,
     them in a structured response. Raises HTTP 400 for invalid IDs, 404
     if not found, 503 if the backend is unavailable, and 500 for
     unexpected errors.
+
+    Note: ``tool_calls``/``tool_results`` here reflect OGX's raw,
+    unredacted item history. If a Granite Guardian TOOL-point guardrail
+    later blocks a tool result, only the final assistant message in OGX's
+    store is patched (see ``replace_last_assistant_message``) -- the tool
+    item itself still shows the original, unredacted content. The v2/v3
+    conversation reads (backed by LCORE's own conversation cache) are the
+    guardrail-authoritative view; see "Troubleshooting" in
+    ``docs/devel_doc/conversations_api.md`` for details.
 
     Args:
         request: The FastAPI request object
@@ -311,6 +336,7 @@ async def get_conversation_endpoint_handler(  # pylint: disable=too-many-locals,
     summary="Conversation Delete Endpoint Handler V1",
 )
 @authorize(Action.DELETE_CONVERSATION)
+@deprecated(CONVERSATIONS_V1_DEPRECATED_REASON)
 async def delete_conversation_endpoint_handler(
     request: Request,
     conversation_id: str,
@@ -431,6 +457,7 @@ async def delete_conversation_endpoint_handler(
     summary="Conversation Update Endpoint Handler V1",
 )
 @authorize(Action.UPDATE_CONVERSATION)
+@deprecated(CONVERSATIONS_V1_DEPRECATED_REASON)
 async def update_conversation_endpoint_handler(  # pylint: disable=too-many-statements
     request: Request,
     conversation_id: str,

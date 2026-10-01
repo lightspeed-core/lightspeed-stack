@@ -533,7 +533,8 @@
                         "description": "Shield provider / type discriminator",
                         "enum": [
                             "question_validity",
-                            "redaction"
+                            "redaction",
+                            "granite_guardian"
                         ],
                         "title": "Provider Id",
                         "type": "string"
@@ -1778,8 +1779,14 @@
                 "description": "Configuration for the Granite Guardian moderation guardrail.",
                 "properties": {
                     "url": {
-                        "description": "The model_id to use for the guard",
+                        "description": "Base URL of the OpenAI-compatible inference endpoint.",
                         "title": "Base URL",
+                        "type": "string"
+                    },
+                    "model_id": {
+                        "default": "ibm-granite/granite-guardian-4.1-8b",
+                        "description": "Model name sent to the inference server. Override when the server registers the model under a different name (e.g. an Ollama tag). The prompt template is built for the 4.1 format.",
+                        "title": "Model name",
                         "type": "string"
                     },
                     "api_key": {
@@ -1818,6 +1825,21 @@
                         "description": "SSL certificate verification. Can be:\n  - True: Verify using system CA bundle (default, recommended)\n  - False: Disable verification (insecure, for dev only)\n  - str: Path to custom CA bundle file (for internal PKI)",
                         "title": "Verify SSL"
                     },
+                    "parallel": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "maximum": 10,
+                                "minimum": 1,
+                                "type": "integer"
+                            }
+                        ],
+                        "default": 3,
+                        "description": "True to run all risk checks in parallel, False to run sequentially, or an integer 1-10 for explicit batch size.",
+                        "title": "Parallel execution"
+                    },
                     "risks": {
                         "description": "Risks to be considered while applying this guardrail",
                         "items": {
@@ -1825,6 +1847,13 @@
                         },
                         "title": "Defined risks",
                         "type": "array"
+                    },
+                    "streaming_output_check_interval_tokens": {
+                        "default": 50,
+                        "description": "For risks with `output` in `points`, re-check the response against those risks approximately every N generated output tokens while streaming, plus once more over any remaining text once generation completes. Ignored when no configured risk targets the `output` point.",
+                        "minimum": 0,
+                        "title": "Streaming output check interval (tokens)",
+                        "type": "integer"
                     }
                 },
                 "required": [

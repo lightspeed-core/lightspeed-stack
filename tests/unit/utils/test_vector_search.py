@@ -1,6 +1,7 @@
 """Unit tests for vector search utilities."""
 
 # pylint: disable=too-many-lines
+import json
 from collections.abc import Awaitable, Callable
 from typing import Any
 
@@ -99,7 +100,7 @@ class TestBuildQueryParams:
         """Test default parameters when no solr filters provided."""
         params = _build_query_params()
 
-        assert params["k"] == constants.SOLR_VECTOR_SEARCH_DEFAULT_K
+        assert params["max_chunks"] == constants.SOLR_VECTOR_SEARCH_DEFAULT_K
         assert (
             params["score_threshold"]
             == constants.SOLR_VECTOR_SEARCH_DEFAULT_SCORE_THRESHOLD
@@ -119,7 +120,7 @@ class TestBuildQueryParams:
         params = _build_query_params(solr=solr)
 
         assert params["solr"] == {"fq": ["platform:openshift"]}
-        assert params["k"] == constants.SOLR_VECTOR_SEARCH_DEFAULT_K
+        assert params["max_chunks"] == constants.SOLR_VECTOR_SEARCH_DEFAULT_K
         assert "filters" not in params
 
     def test_with_structured_metadata_filters(self) -> None:
@@ -142,7 +143,7 @@ class TestBuildQueryParams:
         assert params["filters"]["type"] == "eq"
         assert params["filters"]["key"] == "platform"
         assert params["filters"]["value"] == "openshift"
-        assert params["k"] == constants.SOLR_VECTOR_SEARCH_DEFAULT_K
+        assert params["max_chunks"] == constants.SOLR_VECTOR_SEARCH_DEFAULT_K
         # No remaining solr params
         assert "solr" not in params
 
@@ -167,7 +168,7 @@ class TestBuildQueryParams:
         assert params["filters"]["key"] == "version"
         # Other params remain under solr key
         assert params["solr"] == {"custom_param": "value"}
-        assert params["k"] == constants.SOLR_VECTOR_SEARCH_DEFAULT_K
+        assert params["max_chunks"] == constants.SOLR_VECTOR_SEARCH_DEFAULT_K
 
     def test_with_compound_filter(self) -> None:
         """Test parameters with compound AND filter."""
@@ -1034,8 +1035,12 @@ class TestFetchSolrRag:
 
         client_mock.vector_io.query.assert_called_once()
         call_kwargs = client_mock.vector_io.query.call_args.kwargs
+        assert (
+            call_kwargs["params"]["max_chunks"] == constants.DEFAULT_OKP_RAG_MAX_CHUNKS
+        )
         assert call_kwargs["params"]["mode"] == "semantic"
         assert call_kwargs["params"]["solr"] == {"fq": ["x:y"]}
+        assert "k" not in call_kwargs["params"]
 
 
 class TestBuildRagContext:
@@ -1055,7 +1060,7 @@ class TestBuildRagContext:
         mocker.patch("utils.vector_search.configuration", config_mock)
 
         client_mock = mocker.AsyncMock()
-        context = await build_rag_context(client_mock, "passed", "test query", None)
+        context = await build_rag_context(client_mock, "test query", None)
 
         assert context.context_text == ""
         assert context.rag_chunks == []
@@ -1097,7 +1102,7 @@ class TestBuildRagContext:
         client_mock = mocker.AsyncMock()
         client_mock.vector_io.query.return_value = search_response
 
-        context = await build_rag_context(client_mock, "passed", "test query", None)
+        context = await build_rag_context(client_mock, "test query", None)
 
         assert len(context.rag_chunks) > 0
         assert "BYOK content" in context.context_text
@@ -1151,7 +1156,7 @@ class TestBuildRagContext:
             RAGChunk(content="BYOK content", source="rag_1", score=0.95)
         ]
 
-        context = await build_rag_context(client_mock, "passed", "test query", None)
+        context = await build_rag_context(client_mock, "test query", None)
 
         # Verify cross-encoder was called
         mock_rerank.assert_called_once()
@@ -1202,7 +1207,7 @@ class TestBuildRagContext:
         # Mock cross-encoder reranking function
         mock_rerank = mocker.patch("utils.reranker.rerank_chunks_with_cross_encoder")
 
-        context = await build_rag_context(client_mock, "passed", "test query", None)
+        context = await build_rag_context(client_mock, "test query", None)
 
         # Verify cross-encoder was NOT called
         mock_rerank.assert_not_called()
@@ -1693,47 +1698,14 @@ class TestBuildRagContextOtel:
         mocker.patch("utils.vector_search.configuration", config_mock)
 
     @pytest.mark.asyncio
-    async def test_blocked_moderation_sets_zero_sources_without_completed_event(
-        self,
-        otel: tuple[Any, InMemorySpanExporter],
-        mocker: MockerFixture,
-    ) -> None:
-        """Blocked moderation skips retrieval and does not emit completed event."""
-        tracer, exporter = otel
-        mocker.patch("utils.vector_search.tracer", tracer)
-        mocker.patch(
-            "utils.vector_search.anonymize_value",
-            side_effect=lambda value: f"[anon:{value}]",
-        )
-        self._patch_rag_config(mocker)
-        client = mocker.AsyncMock()
-
-        await build_rag_context(client, "blocked", "test query", None)
-
-        span = next(
-            span
-            for span in exporter.get_finished_spans()
-            if span.name == "rag.retrieve"
-        )
-        assert span.attributes is not None
-        assert span.attributes[SpanAttributes.RAG_INPUT] == "[anon:test query]"
-        assert span.attributes[SpanAttributes.RAG_SOURCES_COUNT] == 0
-        event_names = [event.name for event in span.events]
-        assert SpanEvents.RAG_RETRIEVAL_COMPLETED not in event_names
-
-    @pytest.mark.asyncio
     async def test_passed_with_no_chunks_emits_zero_count_event(
         self,
         otel: tuple[Any, InMemorySpanExporter],
         mocker: MockerFixture,
     ) -> None:
-        """Passed moderation with no chunks emits retrieval completed with count 0."""
+        """No chunks emits retrieval completed with count 0."""
         tracer, exporter = otel
         mocker.patch("utils.vector_search.tracer", tracer)
-        mocker.patch(
-            "utils.vector_search.anonymize_value",
-            side_effect=lambda value: f"[anon:{value}]",
-        )
         self._patch_rag_config(mocker)
         mocker.patch(
             "utils.vector_search._fetch_byok_rag",
@@ -1745,7 +1717,7 @@ class TestBuildRagContextOtel:
         )
         client = mocker.AsyncMock()
 
-        await build_rag_context(client, "passed", "test query", None)
+        await build_rag_context(client, "test query", None)
 
         span = next(
             span
@@ -1754,6 +1726,7 @@ class TestBuildRagContextOtel:
         )
         assert span.attributes is not None
         assert span.attributes[SpanAttributes.RAG_SOURCES_COUNT] == 0
+        assert span.attributes[SpanAttributes.RAG_CHUNKS] == "[]"
         completed = next(
             event
             for event in span.events
@@ -1769,13 +1742,9 @@ class TestBuildRagContextOtel:
         otel: tuple[Any, InMemorySpanExporter],
         mocker: MockerFixture,
     ) -> None:
-        """Passed moderation with chunks sets source attrs and chunk count event."""
+        """Chunks set source attrs and chunk count event."""
         tracer, exporter = otel
         mocker.patch("utils.vector_search.tracer", tracer)
-        mocker.patch(
-            "utils.vector_search.anonymize_value",
-            side_effect=lambda value: f"[anon:{value}]",
-        )
         self._patch_rag_config(mocker)
         chunk = RAGChunk(
             content="chunk text",
@@ -1797,7 +1766,7 @@ class TestBuildRagContextOtel:
         )
         client = mocker.AsyncMock()
 
-        await build_rag_context(client, "passed", "test query", None)
+        await build_rag_context(client, "test query", None)
 
         span = next(
             span
@@ -1806,6 +1775,13 @@ class TestBuildRagContextOtel:
         )
         assert span.attributes is not None
         assert span.attributes[SpanAttributes.RAG_SOURCES_COUNT] == 1
+        rag_chunks_attr = span.attributes[SpanAttributes.RAG_CHUNKS]
+        assert isinstance(rag_chunks_attr, str)
+        rag_chunks = json.loads(rag_chunks_attr)
+        assert len(rag_chunks) == 1
+        assert rag_chunks[0]["content"] == "chunk text"
+        assert rag_chunks[0]["source"] == "source-a"
+        assert rag_chunks[0]["score"] == 0.9
         completed = next(
             event
             for event in span.events

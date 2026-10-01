@@ -27,7 +27,7 @@ class "BadRequestResponse" as src.models.api.responses.error.bad_request.BadRequ
 }
 class "ConfigurationResponse" as src.models.api.responses.successful.configuration.ConfigurationResponse {
   configuration
-  model_config : ConfigDict
+  model_config
 }
 class "ConflictResponse" as src.models.api.responses.error.conflict.ConflictResponse {
   description : ClassVar[str]
@@ -376,6 +376,6 @@ class "VectorStoresListResponse" as src.models.api.responses.successful.vector_s
   model_config : dict
   object : str
 }
-src.models.api.responses.error.bases.DetailModel --* src.models.api.responses.error.bases.AbstractErrorResponse : detail
-src.models.api.responses.successful.rlsapi.RlsapiV1InferData --* src.models.api.responses.successful.rlsapi.RlsapiV1InferResponse : data
+src.models.api.responses.error.bases.AbstractErrorResponse --> src.models.api.responses.error.bases.DetailModel : detail
+src.models.api.responses.successful.rlsapi.RlsapiV1InferResponse --> src.models.api.responses.successful.rlsapi.RlsapiV1InferData : data
 @enduml

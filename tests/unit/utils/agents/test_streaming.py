@@ -15,6 +15,7 @@ from ogx_client import ApiException
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
     InMemorySpanExporter,
 )
+from opentelemetry.trace import NonRecordingSpan, SpanContext, TraceFlags
 from pydantic_ai import AgentRunResultEvent
 from pydantic_ai.exceptions import AgentRunError
 from pydantic_ai.messages import (
@@ -52,11 +53,10 @@ from models.common.agents import (
     ToolResultStreamPayload,
     TurnCompleteStreamPayload,
 )
-from models.common.moderation import ShieldModerationBlocked, ShieldModerationPassed
 from models.common.query import Attachment as QueryAttachment
 from models.common.responses.contexts import ResponseGeneratorContext
 from models.common.responses.responses_api_params import ResponsesApiParams
-from models.common.turn_summary import RAGContext, ToolCallSummary, TurnSummary
+from models.common.turn_summary import RAGChunk, RAGContext, TurnSummary
 from utils.agents.query import AgentFinishReason
 from utils.agents.streaming import (
     DEFAULT_REFUSAL_RESPONSE,
@@ -72,6 +72,18 @@ from utils.token_counter import TokenCounter
 INTERRUPTED_INDICATOR = f"\n\n*{INTERRUPTED_RESPONSE_MESSAGE}*"
 
 TEST_CONVERSATION_ID = "123e4567-e89b-12d3-a456-426614174000"
+
+
+def _dummy_root_span() -> Any:
+    """Non-recording root span for generate_agent_response call sites."""
+    return NonRecordingSpan(
+        SpanContext(
+            trace_id=0x1,
+            span_id=0x2,
+            is_remote=False,
+            trace_flags=TraceFlags(0x01),
+        )
+    )
 
 
 @pytest.fixture(name="turn_state")
@@ -117,15 +129,6 @@ def responses_params_fixture(
     return make_responses_params()
 
 
-@pytest.fixture(name="blocked_moderation")
-def blocked_moderation_fixture() -> ShieldModerationBlocked:
-    """Blocked shield moderation result for streaming tests."""
-    return ShieldModerationBlocked(
-        message="Content blocked by shield.",
-        moderation_id="modr-test-456",
-    )
-
-
 @pytest.fixture(name="make_generator_context")
 def make_generator_context_fixture(
     mocker: MockerFixture,
@@ -141,9 +144,6 @@ def make_generator_context_fixture(
         media_type: Optional[str] = MEDIA_TYPE_JSON,
         generate_topic_summary: bool = False,
         conversation_id_in_request: Optional[str] = TEST_CONVERSATION_ID,
-        moderation_result: Optional[
-            ShieldModerationPassed | ShieldModerationBlocked
-        ] = None,
     ) -> ResponseGeneratorContext:
         context = mocker.Mock(spec=ResponseGeneratorContext)
         context.conversation_id = conversation_id
@@ -153,7 +153,6 @@ def make_generator_context_fixture(
         context.model_id = "provider1/model1"
         context.started_at = "2024-01-01T00:00:00Z"
         context.client = mocker.AsyncMock()
-        context.moderation_result = moderation_result or ShieldModerationPassed()
         context.inline_rag_context = RAGContext()
         context.vector_store_ids = []
         context.rag_id_mapping = {}
@@ -495,77 +494,13 @@ class TestRetrieveAgentResponseGenerator:
     """Tests for retrieve_agent_response_generator."""
 
     @pytest.mark.asyncio
-    async def test_blocked_moderation_returns_shield_generator(
-        self,
-        mocker: MockerFixture,
-        make_generator_context: Callable[..., ResponseGeneratorContext],
-        make_responses_params: Callable[..., ResponsesApiParams],
-        blocked_moderation: ShieldModerationBlocked,
-    ) -> None:
-        """Test blocked moderation returns shield violation stream and summary."""
-        context = make_generator_context(moderation_result=blocked_moderation)
-        responses_params = make_responses_params()
-        mock_shield = mocker.patch(
-            "utils.agents.streaming.shield_violation_generator",
-            return_value=_async_iter(["shield-event"]),
-        )
-        mock_append = mocker.patch(
-            "utils.agents.streaming.append_turn_items_to_conversation",
-            new=mocker.AsyncMock(),
-        )
-
-        generator, turn_summary = await retrieve_agent_response_generator(
-            responses_params,
-            context,
-            ENDPOINT_PATH_STREAMING_QUERY,
-        )
-
-        events = [event async for event in generator]
-        assert events == ["shield-event"]
-        mock_shield.assert_called_once_with(
-            blocked_moderation.message,
-            MEDIA_TYPE_JSON,
-        )
-        mock_append.assert_awaited_once()
-        assert turn_summary.llm_response == blocked_moderation.message
-        assert turn_summary.id == blocked_moderation.moderation_id
-
-    @pytest.mark.asyncio
-    async def test_blocked_moderation_skips_append_when_omit_conversation(
-        self,
-        mocker: MockerFixture,
-        make_generator_context: Callable[..., ResponseGeneratorContext],
-        make_responses_params: Callable[..., ResponsesApiParams],
-        blocked_moderation: ShieldModerationBlocked,
-    ) -> None:
-        """Test compacted mode does not append blocked turn to conversation."""
-        context = make_generator_context(moderation_result=blocked_moderation)
-        responses_params = make_responses_params(omit_conversation=True)
-        mocker.patch(
-            "utils.agents.streaming.shield_violation_generator",
-            return_value=_async_iter([]),
-        )
-        mock_append = mocker.patch(
-            "utils.agents.streaming.append_turn_items_to_conversation",
-            new=mocker.AsyncMock(),
-        )
-
-        await retrieve_agent_response_generator(
-            responses_params,
-            context,
-            ENDPOINT_PATH_STREAMING_QUERY,
-        )
-
-        mock_append.assert_not_awaited()
-
-    @pytest.mark.asyncio
     async def test_success_returns_agent_generator(
         self,
         mocker: MockerFixture,
         make_generator_context: Callable[..., ResponseGeneratorContext],
         responses_params: ResponsesApiParams,
     ) -> None:
-        """Test passed moderation builds agent and returns streaming generator."""
+        """Test successful path builds agent and returns streaming generator."""
         context = make_generator_context()
         mock_agent = mocker.Mock()
         mocker.patch(
@@ -672,6 +607,7 @@ class TestGenerateAgentResponse:
                 responses_params,
                 turn_summary,
                 background_tasks,
+                root_span=_dummy_root_span(),
             )
         ]
 
@@ -730,6 +666,7 @@ class TestGenerateAgentResponse:
                 turn_summary,
                 background_tasks,
                 **generate_kwargs,
+                root_span=_dummy_root_span(),
             )
         ]
 
@@ -780,6 +717,7 @@ class TestGenerateAgentResponse:
                 responses_params,
                 turn_summary,
                 background_tasks,
+                root_span=_dummy_root_span(),
             )
         ]
 
@@ -828,6 +766,7 @@ class TestGenerateAgentResponse:
                 TurnSummary(),
                 [],
                 emit_start=False,
+                root_span=_dummy_root_span(),
             )
         ]
 
@@ -869,6 +808,7 @@ class TestGenerateAgentResponse:
                 responses_params,
                 turn_summary,
                 [],
+                root_span=_dummy_root_span(),
             )
         ]
 
@@ -907,19 +847,19 @@ class TestGenerateAgentResponseOtel:
             "utils.agents.streaming.get_available_quotas",
             return_value={"daily": 100},
         )
+
+        async def topic_summary_with_span(*_args: Any, **_kwargs: Any) -> Optional[str]:
+            with tracer.start_as_current_span("topic.summary"):
+                return None
+
         mocker.patch(
             "utils.agents.streaming.maybe_get_topic_summary",
-            new=mocker.AsyncMock(return_value=None),
+            new=topic_summary_with_span,
         )
         mocker.patch("utils.agents.streaming.store_query_results")
         mock_config = mocker.Mock()
         mock_config.quota_limiters = []
         mocker.patch("utils.agents.streaming.configuration", mock_config)
-
-        mocker.patch(
-            "utils.agents.streaming.anonymize_value",
-            side_effect=lambda v: f"[anon:{v}]",
-        )
 
         [
             event
@@ -934,14 +874,16 @@ class TestGenerateAgentResponseOtel:
         ]
 
         spans = exporter.get_finished_spans()
-        assert len(spans) == 1
-        span = spans[0]
-        assert span.attributes is not None
-        assert span.attributes[SpanAttributes.SESSION_ID] == context.conversation_id
-        assert span.attributes[SpanAttributes.LLM_USAGE_INPUT_TOKENS] == 10
-        assert span.attributes[SpanAttributes.LLM_USAGE_OUTPUT_TOKENS] == 5
-        assert span.attributes[SpanAttributes.OUTPUT] == "[anon:The answer is 42]"
-        event_names = [e.name for e in span.events]
+        root = next(s for s in spans if s.name == "streaming_query.handle_request")
+        topic = next(s for s in spans if s.name == "topic.summary")
+        assert root.context is not None
+        assert topic.parent is not None
+        assert topic.parent.span_id == root.context.span_id
+        assert root.attributes is not None
+        assert root.attributes[SpanAttributes.SESSION_ID] == context.conversation_id
+        assert root.attributes[SpanAttributes.OUTPUT] == "The answer is 42"
+        assert root.attributes[SpanAttributes.COMPACTED] is False
+        event_names = [e.name for e in root.events]
         assert SpanEvents.TURN_PERSISTED in event_names
         assert SpanEvents.LLM_RESPONSE_COMPLETED in event_names
 
@@ -951,73 +893,94 @@ class TestGenerateAgentResponseOtel:
         mocker: MockerFixture,
         make_generator_context: Callable[..., ResponseGeneratorContext],
         responses_params: ResponsesApiParams,
+        make_agent_run_result: Callable[..., Any],
+        patch_recording_metrics: None,
         otel: tuple[Any, InMemorySpanExporter],
     ) -> None:
-        """Test that tool call OTEL attributes are emitted on the root span."""
+        """Tool call OTEL attributes are emitted on the llm.inference span."""
         tracer, exporter = otel
+        mocker.patch("utils.agents.streaming.tracer", tracer)
         context = make_generator_context()
+        context.inline_rag_context = RAGContext(
+            rag_chunks=[
+                RAGChunk(content="inline chunk", source="byok", score=0.8),
+            ]
+        )
         turn_summary = TurnSummary()
-        turn_summary.token_usage = TokenCounter(input_tokens=10, output_tokens=5)
-        turn_summary.llm_response = "Result"
-        turn_summary.tool_calls = [
-            ToolCallSummary(id="tc-1", name="web_search", type="web_search_call"),
-            ToolCallSummary(id="tc-2", name="file_search", type="file_search_call"),
+        run_result = make_agent_run_result(
+            content="Answer",
+            response_id="resp-tools-1",
+            input_tokens=4,
+            output_tokens=2,
+        )
+        events = [
+            PartEndEvent(
+                index=0,
+                part=NativeToolCallPart(
+                    tool_name=WebSearchTool.kind,
+                    args={"query": "OpenShift"},
+                    tool_call_id="ws-stream-call",
+                ),
+            ),
+            PartStartEvent(
+                index=1,
+                part=NativeToolReturnPart(
+                    tool_name=WebSearchTool.kind,
+                    tool_call_id="ws-stream-call",
+                    content={"status": "success"},
+                ),
+            ),
+            PartStartEvent(index=2, part=TextPart(content="Answer")),
+            AgentRunResultEvent(result=run_result),
         ]
-        background_tasks: list[asyncio.Task[None]] = []
-        root_span = tracer.start_span("streaming_query.handle_request")
-
-        async def inner() -> AsyncIterator[str]:
-            yield serialize_event(
-                TokenStreamPayload.create(chunk_id=0, token="Hi"),
-                MEDIA_TYPE_JSON,
-            )
-
-        mocker.patch("utils.agents.streaming.consume_query_tokens")
+        mock_agent = mocker.Mock()
+        mock_agent.run_stream_events.return_value = _mock_run_stream(events)
         mocker.patch(
-            "utils.agents.streaming.get_available_quotas",
-            return_value={"daily": 100},
+            "utils.agents.streaming.get_agent_finish_reason",
+            return_value=AgentFinishReason.SUCCESS,
         )
         mocker.patch(
-            "utils.agents.streaming.maybe_get_topic_summary",
-            new=mocker.AsyncMock(return_value=None),
+            "utils.agents.streaming.deduplicate_referenced_documents",
+            side_effect=lambda docs: docs,
         )
-        mocker.patch("utils.agents.streaming.store_query_results")
-        mock_config = mocker.Mock()
-        mock_config.quota_limiters = []
-        mocker.patch("utils.agents.streaming.configuration", mock_config)
-        mocker.patch(
-            "utils.agents.streaming.anonymize_value",
-            side_effect=lambda v: f"[anon:{v}]",
-        )
+        mocker.patch("utils.agents.streaming.captured_output_items", return_value=[])
 
         [
             event
-            async for event in generate_agent_response(
-                inner(),
-                context,
+            async for event in agent_response_generator(
+                mock_agent,
                 responses_params,
+                context,
                 turn_summary,
-                background_tasks,
-                root_span=root_span,
+                ENDPOINT_PATH_STREAMING_QUERY,
             )
         ]
 
-        spans = exporter.get_finished_spans()
+        spans = [s for s in exporter.get_finished_spans() if s.name == "llm.inference"]
         assert len(spans) == 1
         span = spans[0]
         assert span.attributes is not None
-        assert span.attributes[SpanAttributes.TOOL_CALLS_COUNT] == 2
-        assert span.attributes[SpanAttributes.TOOL_CALLS_NAMES] == (
-            "web_search",
-            "file_search",
-        )
+        assert span.attributes[SpanAttributes.LLM_PROVIDER_ID] == "provider1"
+        assert span.attributes[SpanAttributes.LLM_MODEL_ID] == "model1"
+        assert span.attributes[SpanAttributes.LLM_USAGE_INPUT_TOKENS] == 4
+        assert span.attributes[SpanAttributes.LLM_USAGE_OUTPUT_TOKENS] == 2
+        assert SpanAttributes.INFERENCE_TIME in span.attributes
+        assert SpanAttributes.TOOL_CALLS in span.attributes
+        assert SpanAttributes.TOOL_RESULTS in span.attributes
+        assert SpanAttributes.RAG_CHUNKS in span.attributes
+        rag_chunks_attr = span.attributes[SpanAttributes.RAG_CHUNKS]
+        assert isinstance(rag_chunks_attr, str)
+        assert json.loads(rag_chunks_attr) == []
+        assert [chunk.content for chunk in turn_summary.rag_chunks] == ["inline chunk"]
         event_names = [e.name for e in span.events]
+        assert SpanEvents.LLM_INFERENCE_STARTED in event_names
+        assert SpanEvents.LLM_INFERENCE_COMPLETED in event_names
         assert SpanEvents.TOOL_EXECUTION_COMPLETED in event_names
         tool_event = next(
             e for e in span.events if e.name == SpanEvents.TOOL_EXECUTION_COMPLETED
         )
         assert tool_event.attributes is not None
-        assert tool_event.attributes["tool.calls"] == "web_search, file_search"
+        assert tool_event.attributes["tool.calls"] == WebSearchTool.kind
 
     @pytest.mark.asyncio
     async def test_span_ended_on_stream_error(
@@ -1112,54 +1075,6 @@ class TestGenerateAgentResponseOtel:
 
         spans = exporter.get_finished_spans()
         assert len(spans) == 1
-
-    @pytest.mark.asyncio
-    async def test_no_spans_finished_when_root_span_is_none(
-        self,
-        mocker: MockerFixture,
-        make_generator_context: Callable[..., ResponseGeneratorContext],
-        responses_params: ResponsesApiParams,
-        otel: tuple[Any, InMemorySpanExporter],
-    ) -> None:
-        """Test that no spans are finished when root_span is None."""
-        _tracer, exporter = otel
-        context = make_generator_context()
-        turn_summary = TurnSummary()
-        turn_summary.token_usage = TokenCounter(input_tokens=3, output_tokens=7)
-
-        async def inner() -> AsyncIterator[str]:
-            yield serialize_event(
-                TokenStreamPayload.create(chunk_id=0, token="Hi"),
-                MEDIA_TYPE_JSON,
-            )
-
-        mocker.patch("utils.agents.streaming.consume_query_tokens")
-        mocker.patch(
-            "utils.agents.streaming.get_available_quotas",
-            return_value={"daily": 100},
-        )
-        mocker.patch(
-            "utils.agents.streaming.maybe_get_topic_summary",
-            new=mocker.AsyncMock(return_value=None),
-        )
-        mocker.patch("utils.agents.streaming.store_query_results")
-        mock_config = mocker.Mock()
-        mock_config.quota_limiters = []
-        mocker.patch("utils.agents.streaming.configuration", mock_config)
-
-        [
-            event
-            async for event in generate_agent_response(
-                inner(),
-                context,
-                responses_params,
-                turn_summary,
-                [],
-                root_span=None,
-            )
-        ]
-
-        assert len(exporter.get_finished_spans()) == 0
 
     @pytest.mark.asyncio
     async def test_span_ended_on_cancelled_error(
@@ -1537,6 +1452,7 @@ class TestInterruptPartialTokenAccumulation:
                 responses_params,
                 turn_summary,
                 background_tasks,
+                root_span=_dummy_root_span(),
             )
         ]
 
@@ -1598,6 +1514,7 @@ class TestInterruptPartialTokenAccumulation:
                 responses_params,
                 turn_summary,
                 background_tasks,
+                root_span=_dummy_root_span(),
             )
         ]
 
@@ -1723,6 +1640,7 @@ class TestCompactedTurnPersistence:
                 turn_summary,
                 [],
                 original_input="the original question",
+                root_span=_dummy_root_span(),
             )
         ]
 
@@ -1755,7 +1673,12 @@ class TestCompactedTurnPersistence:
         _ = [
             event
             async for event in generate_agent_response(
-                inner(), context, responses_params, turn_summary, []
+                inner(),
+                context,
+                responses_params,
+                turn_summary,
+                [],
+                root_span=_dummy_root_span(),
             )
         ]
 
@@ -1797,6 +1720,7 @@ class TestCompactedTurnPersistence:
                 turn_summary,
                 [],
                 original_input="the original question",
+                root_span=_dummy_root_span(),
             )
         ]
 
@@ -1838,6 +1762,7 @@ class TestCompactedTurnPersistence:
                 turn_summary,
                 [],
                 original_input="q",
+                root_span=_dummy_root_span(),
             )
         ]
 

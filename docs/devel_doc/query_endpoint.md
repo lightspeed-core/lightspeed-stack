@@ -145,6 +145,7 @@ The optional `solr` field configures Solr inline RAG behavior:
 | `tool_results` | array[object] | `[]` | Tool call results |
 | `rag_chunks` | array[object] | `[]` | *(Deprecated)* RAG chunks used |
 | `truncated` | boolean | `false` | *(Deprecated)* Always `false` |
+| `context_status` | string | `"full"` | Whether the conversation context is `"full"` (complete history) or `"summarized"` (older turns were summarized via conversation compaction) |
 
 **`referenced_documents` items:**
 
@@ -242,7 +243,7 @@ Emitted when the full response is assembled.
 
 #### 7. `end`
 
-Emitted last on success. Contains metadata.
+Emitted last on success. Contains metadata including `context_status` (`"full"` or `"summarized"`).
 
 ```json
 {
@@ -251,7 +252,8 @@ Emitted last on success. Contains metadata.
     "referenced_documents": [],
     "truncated": null,
     "input_tokens": 11,
-    "output_tokens": 19
+    "output_tokens": 19,
+    "context_status": "full"
   },
   "available_quotas": {"UserQuotaLimiter": 998911}
 }
@@ -327,9 +329,9 @@ Both endpoints share the same pre-processing pipeline:
 11. Prepare Responses API parameters (model, system prompt, tools, MCP headers)
 12. Extract image attachments separately for multimodal input construction
 
-**`/v1/query` then:** applies conversation compaction (blocking), calls the LLM, generates topic summary, consumes tokens, stores results, returns JSON.
+**`/v1/query` then:** applies conversation compaction (blocking), calls the LLM, generates topic summary, consumes tokens, stores results, returns JSON. When compaction is applied, the response includes `context_status: "summarized"`; otherwise `context_status: "full"`.
 
-**`/v1/streaming_query` then:** generates a `request_id`, starts the SSE stream, emits events as the LLM generates tokens, performs post-stream cleanup (topic summary, token consumption, persistence).
+**`/v1/streaming_query` then:** generates a `request_id`, starts the SSE stream, applies compaction if needed (emitting a `compaction` SSE event), emits events as the LLM generates tokens, performs post-stream cleanup (topic summary, token consumption, persistence). The `end` event includes `context_status` indicating whether compaction was applied.
 
 ---
 
@@ -409,7 +411,8 @@ curl -X POST http://localhost:8090/v1/query \
   "tool_calls": [],
   "tool_results": [],
   "rag_chunks": [],
-  "truncated": false
+  "truncated": false,
+  "context_status": "full"
 }
 ```
 
@@ -500,7 +503,7 @@ data: {"event": "token", "data": {"id": 2, "token": " an"}}
 
 data: {"event": "turn_complete", "data": {"id": 50, "token": "Kubernetes is an open-source..."}}
 
-data: {"event": "end", "data": {"referenced_documents": [], "truncated": null, "input_tokens": 11, "output_tokens": 50}, "available_quotas": {"UserQuotaLimiter": 998950}}
+data: {"event": "end", "data": {"referenced_documents": [], "truncated": null, "input_tokens": 11, "output_tokens": 50, "context_status": "full"}, "available_quotas": {"UserQuotaLimiter": 998950}}
 ```
 
 ### Streaming Query Interrupt

@@ -750,7 +750,9 @@ async def add_file_to_vector_store(  # pylint: disable=too-many-locals,too-many-
         ):
             try:
                 await client.files.delete(body.file_id)
-            except Exception as delete_error:  # pylint: disable=broad-exception-caught
+            except (
+                Exception  # pylint: disable=broad-exception-caught  # noqa: BLE001
+            ) as delete_error:
                 logger.warning(
                     "Failed to delete file %s after vector store attach: %s",
                     body.file_id,

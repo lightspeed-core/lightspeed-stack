@@ -13,7 +13,7 @@
             "name": "Apache 2.0",
             "url": "https://www.apache.org/licenses/LICENSE-2.0.html"
         },
-        "version": "0.7.0rc3"
+        "version": "0.7.0"
     },
     "servers": [
         {
@@ -8490,7 +8490,8 @@
                             }
                         }
                     }
-                }
+                },
+                "deprecated": true
             }
         },
         "/v1/conversations/{conversation_id}": {
@@ -8499,8 +8500,9 @@
                     "conversations_v1"
                 ],
                 "summary": "Conversation Get Endpoint Handler V1",
-                "description": "Handle request to retrieve a conversation identified by ID using Conversations API.\n\nRetrieve a conversation's chat history by its ID using the OGX\nConversations API. This endpoint fetches the conversation items from\nthe backend, simplifies them to essential chat history, and returns\nthem in a structured response. Raises HTTP 400 for invalid IDs, 404\nif not found, 503 if the backend is unavailable, and 500 for\nunexpected errors.\n\nArgs:\n    request: The FastAPI request object\n    conversation_id: Unique identifier of the conversation to retrieve\n    auth: Authentication tuple from dependency\n\nReturns:\n    ConversationResponse: Structured response containing the conversation\n    ID and simplified chat history",
+                "description": "Handle request to retrieve a conversation identified by ID using Conversations API.\n\nRetrieve a conversation's chat history by its ID using the OGX\nConversations API. This endpoint fetches the conversation items from\nthe backend, simplifies them to essential chat history, and returns\nthem in a structured response. Raises HTTP 400 for invalid IDs, 404\nif not found, 503 if the backend is unavailable, and 500 for\nunexpected errors.\n\nNote: ``tool_calls``/``tool_results`` here reflect OGX's raw,\nunredacted item history. If a Granite Guardian TOOL-point guardrail\nlater blocks a tool result, only the final assistant message in OGX's\nstore is patched (see ``replace_last_assistant_message``) -- the tool\nitem itself still shows the original, unredacted content. The v2/v3\nconversation reads (backed by LCORE's own conversation cache) are the\nguardrail-authoritative view; see \"Troubleshooting\" in\n``docs/devel_doc/conversations_api.md`` for details.\n\nArgs:\n    request: The FastAPI request object\n    conversation_id: Unique identifier of the conversation to retrieve\n    auth: Authentication tuple from dependency\n\nReturns:\n    ConversationResponse: Structured response containing the conversation\n    ID and simplified chat history",
                 "operationId": "get_conversation_endpoint_handler_v1_conversations__conversation_id__get",
+                "deprecated": true,
                 "parameters": [
                     {
                         "name": "conversation_id",
@@ -8765,6 +8767,7 @@
                 "summary": "Conversation Delete Endpoint Handler V1",
                 "description": "Handle request to delete a conversation by ID using Conversations API.\n\nValidates the conversation ID format and attempts to delete the\nconversation from the OGX backend using the Conversations API.\nRaises HTTP errors for invalid IDs, not found conversations, connection\nissues, or unexpected failures.\n\nArgs:\n    request: The FastAPI request object\n    conversation_id: Unique identifier of the conversation to delete\n    auth: Authentication tuple from dependency\n\nReturns:\n    ConversationDeleteResponse: Response indicating the result of the deletion operation",
                 "operationId": "delete_conversation_endpoint_handler_v1_conversations__conversation_id__delete",
+                "deprecated": true,
                 "parameters": [
                     {
                         "name": "conversation_id",
@@ -9002,6 +9005,7 @@
                 "summary": "Conversation Update Endpoint Handler V1",
                 "description": "Handle request to update a conversation metadata using Conversations API.\n\nUpdates the conversation metadata (including topic summary) in both the\nOGX backend using the Conversations API and the local database.\n\nArgs:\n    request: The FastAPI request object\n    conversation_id: Unique identifier of the conversation to update\n    update_request: Request containing the topic summary to update\n    auth: Authentication tuple from dependency\n\nReturns:\n    ConversationUpdateResponse: Response indicating the result of the update operation",
                 "operationId": "update_conversation_endpoint_handler_v1_conversations__conversation_id__put",
+                "deprecated": true,
                 "parameters": [
                     {
                         "name": "conversation_id",
@@ -12937,7 +12941,8 @@
                         "type": "string",
                         "enum": [
                             "question_validity",
-                            "redaction"
+                            "redaction",
+                            "granite_guardian"
                         ],
                         "title": "Provider Id",
                         "description": "Shield provider / type discriminator"
@@ -14649,7 +14654,13 @@
                     "url": {
                         "type": "string",
                         "title": "Base URL",
-                        "description": "The model_id to use for the guard"
+                        "description": "Base URL of the OpenAI-compatible inference endpoint."
+                    },
+                    "model_id": {
+                        "type": "string",
+                        "title": "Model name",
+                        "description": "Model name sent to the inference server. Override when the server registers the model under a different name (e.g. an Ollama tag). The prompt template is built for the 4.1 format.",
+                        "default": "ibm-granite/granite-guardian-4.1-8b"
                     },
                     "api_key": {
                         "anyOf": [
@@ -14696,6 +14707,21 @@
                         "description": "SSL certificate verification. Can be:\n  - True: Verify using system CA bundle (default, recommended)\n  - False: Disable verification (insecure, for dev only)\n  - str: Path to custom CA bundle file (for internal PKI)",
                         "default": true
                     },
+                    "parallel": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "integer",
+                                "maximum": 10.0,
+                                "minimum": 1.0
+                            }
+                        ],
+                        "title": "Parallel execution",
+                        "description": "True to run all risk checks in parallel, False to run sequentially, or an integer 1-10 for explicit batch size.",
+                        "default": 3
+                    },
                     "risks": {
                         "items": {
                             "$ref": "#/components/schemas/RiskDefinition"
@@ -14703,6 +14729,13 @@
                         "type": "array",
                         "title": "Defined risks",
                         "description": "Risks to be considered while applying this guardrail"
+                    },
+                    "streaming_output_check_interval_tokens": {
+                        "type": "integer",
+                        "exclusiveMinimum": 0.0,
+                        "title": "Streaming output check interval (tokens)",
+                        "description": "For risks with `output` in `points`, re-check the response against those risks approximately every N generated output tokens while streaming, plus once more over any remaining text once generation completes. Ignored when no configured risk targets the `output` point.",
+                        "default": 50
                     }
                 },
                 "additionalProperties": false,
@@ -23693,7 +23726,7 @@
         },
         {
             "name": "conversations_v1",
-            "description": "Conversations API v1."
+            "description": "Conversations API v1 (OGX-backed). Deprecated: use /v2/conversations; scheduled for removal when OGX is dropped."
         },
         {
             "name": "conversations_v2",

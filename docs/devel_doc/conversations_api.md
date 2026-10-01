@@ -28,6 +28,7 @@ This document explains how the Conversations API works with the Responses API in
 * [Testing with curl](#testing-with-curl)
 * [Database Schema](#database-schema)
 * [Troubleshooting](#troubleshooting)
+   * [Tool `tool_calls`/`tool_results` Differ Between v1 and v2/v3 Conversation Reads](#tool-tool_callstool_results-differ-between-v1-and-v2v3-conversation-reads)
 
 ---
 
@@ -495,6 +496,51 @@ The `last_used_model` and `last_used_provider` fields don't update when using a 
 
 **Explanation:**
 This is expected behavior. The Responses API v2 allows you to change the model/provider for each query within the same conversation. The `last_used_model` field only tracks the most recently used model for display purposes in the conversation list.
+
+### Tool `tool_calls`/`tool_results` Differ Between v1 and v2/v3 Conversation Reads
+
+**Symptom:**
+After a Granite Guardian TOOL-point guardrail blocks a tool result (see
+[Safety Shields Guide](../user_doc/shields_guide.md)), `GET
+/v1/conversations/{conversation_id}` shows the tool call *and* its real
+(flagged) result content, while the live query response and the LCORE
+conversation cache (used by `/v2` and `/v3` conversation reads) correctly
+show the call with the result withheld.
+
+**Explanation:**
+This is expected, not a bug — the two reads have different sources of truth:
+
+- The live response and LCORE's own conversation cache are built from the
+  in-memory `AgentRunResult` that the Granite Guardian capability rewrites on
+  a TOOL-point violation (see
+  `pydantic_ai_lightspeed.capabilities.granite_guardian._capability`): the
+  offending tool call is kept, but its result — and every later tool
+  result in that same turn — is replaced with a content-stripped,
+  `outcome="denied"` placeholder before it's ever cached or returned.
+- `GET /v1/conversations/{conversation_id}` instead reads OGX's own
+  Conversations API item history (`conversation_items` table) directly.
+  When a `conversation` ID is attached to the model request, **OGX persists
+  each tool-call item itself, server-side, as part of the model call** —
+  before the Granite Guardian capability ever gets a chance to screen the
+  result. By the time a TOOL-point violation is caught, that item is already
+  durably stored with its real content.
+
+  LCORE does patch OGX's copy of the *final assistant message* on a
+  violation (`replace_last_assistant_message` in `src/utils/conversations.py`,
+  used from `_reject`), since it's always the very last item and OGX's Items
+  API only supports `create`/`delete`/`get`/`list` (no in-place update, and
+  `create` always appends at the end). Applying the same redaction to an
+  earlier tool-call item would mean deleting and recreating every item from
+  that point onward — including the trailing assistant message — which risks
+  reordering or racing with anything else OGX appends to the conversation
+  concurrently. That trade-off hasn't been made, so v1's raw item history
+  currently reflects OGX's original, unredacted record for tool activity.
+
+**Takeaway:** Treat the LCORE conversation cache (`/v2`/`/v3` conversation
+reads, and the live query/response body) as the guardrail-authoritative view
+of `tool_calls`/`tool_results`. `GET /v1/conversations/{conversation_id}`
+reflects OGX's raw, unredacted item history and may still show content that
+a TOOL-point risk flagged.
 
 ### Empty Conversation History
 

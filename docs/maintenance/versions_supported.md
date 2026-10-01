@@ -11,4 +11,4 @@ Dates shown in italic are scheduled and can be adjusted.
 | 0.7.0rc1 | 2026-08-01 | Current     | 2026-08-07    | to be decided | Pavel Tišnovský, Erin Bournival, Štefan Bunčiak |
 | 0.7.0rc2 | 2026-09-01 | Current     | 2026-09-03    | to be decided | Pavel Tišnovský, Erin Bournival, Štefan Bunčiak |
 | 0.7.0rc3 | 2026-09-01 | Current     | 2026-09-16    | to be decided | Pavel Tišnovský, Erin Bournival, Štefan Bunčiak |
-| 0.7.0    | 2026-07-01 | Future      |               | 2027-01-31    | Pavel Tišnovský, Erin Bournival, Štefan Bunčiak |
+| 0.7.0    | 2026-07-01 | Current     | 2026-09-30    | 2027-01-31    | Pavel Tišnovský, Erin Bournival, Štefan Bunčiak |
