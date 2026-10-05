@@ -1,5 +1,6 @@
 """Factory for creating A2A storage backends."""
 
+from pathlib import Path
 from typing import Optional
 from urllib.parse import quote_plus
 
@@ -138,6 +139,9 @@ class A2AStorageFactory:
             case "sqlite":
                 if config.sqlite is None:
                     raise ValueError("SQLite configuration required")
+                db_path = Path(config.sqlite.db_path)
+                if db_path.parent != Path(""):
+                    db_path.parent.mkdir(parents=True, exist_ok=True)
                 connection_string = f"sqlite+aiosqlite:///{config.sqlite.db_path}"
                 cls._engine = create_async_engine(
                     connection_string,
