@@ -2,8 +2,7 @@
 Feature: A2A protocol full-flow tests
 
   LCS is an A2A server. An external A2A client discovers this instance
-  via the agent card and sends work to /a2a. These scenarios run that
-  path through a live OGX. 
+  via the agent card and sends work to /a2a.
 
   Background:
     Given The service is started locally
@@ -62,7 +61,7 @@ Feature: A2A protocol full-flow tests
       And The A2A stream ends with a completed task
       And The A2A artifact text contains "light"
 
-    Scenario: Viewer views agent card but cannot send messages
+  Scenario: Viewer views agent card but cannot send messages
     And I authenticate as "viewer" user
     When I fetch the A2A agent card from "/.well-known/agent-card.json"
     Then The status code of the response is 200
@@ -75,3 +74,12 @@ Feature: A2A protocol full-flow tests
     What is the capital of France? Reply with the city name.
     """
     Then The status code of the response is 403
+    And The body of the response is the following
+    """
+     {
+        "detail": {
+          "response": "User does not have permission to access this endpoint",
+         "cause": "User viewer-id is not authorized to access this endpoint."
+        }
+      }
+    """

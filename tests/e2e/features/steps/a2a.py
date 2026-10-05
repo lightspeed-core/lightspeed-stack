@@ -1,9 +1,8 @@
 """Behave steps for A2A protocol e2e flows.
 
-These steps drive LCS as an A2A *server*: fetch the agent card, send
-``message/send`` / ``message/stream`` to ``/a2a``, and assert on the
-client-visible task, context id, and artifact text. They never import
-from ``src/``.
+Drives LCS as an A2A server: fetch the agent card, send
+``message/send``/``message/stream`` to ``/a2a``, and assert on the
+client-visible task, context id, and artifact text.
 """
 
 from __future__ import annotations
@@ -222,12 +221,7 @@ def _store_jsonrpc_response(context: Context, body: Mapping[str, Any]) -> None:
 
 
 def _should_parse_response(response: requests.Response) -> bool:
-    """Check if the response should be parsed as a JSON-RPC result.
-
-    HTTP error responses (4xx, 5xx) contain FastAPI error details,
-    not JSON-RPC envelopes, so we skip parsing to allow scenarios
-    to assert on the status code without triggering parse errors.
-    """
+    """Return False for HTTP error responses, which aren't JSON-RPC envelopes."""
     return response.status_code < 400
 
 
@@ -257,7 +251,6 @@ def _post_a2a(
         body_text = _read_streamed_response(resp)
         resp._content = body_text.encode(resp.encoding or "utf-8")
         context.response = resp
-        # Skip parsing for HTTP errors - let the scenario assert the status code
         if not _should_parse_response(resp):
             return
         events = _parse_sse_jsonrpc_results(body_text)
@@ -272,7 +265,6 @@ def _post_a2a(
         headers=headers,
         timeout=DEFAULT_LLM_TIMEOUT,
     )
-    # Skip parsing for HTTP errors - let the scenario assert the status code
     if not _should_parse_response(context.response):
         return
 
@@ -300,10 +292,7 @@ def fetch_a2a_agent_card(context: Context, endpoint: str) -> None:
 
 @when('I send an A2A "{method}" request')
 def send_a2a_message(context: Context, method: str) -> None:
-    """Send a new A2A message (no previous contextId).
-
-    The user text is the Gherkin docstring. ``message/stream`` is read as SSE.
-    """
+    """Send a new A2A message (no previous contextId) using the docstring text."""
     assert context.text is not None, "A2A user message text is required"
     stream = method == "message/stream"
     _post_a2a(context, method, context.text, stream=stream)

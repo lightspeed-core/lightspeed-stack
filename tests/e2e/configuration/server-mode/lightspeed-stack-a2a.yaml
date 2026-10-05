@@ -1,7 +1,6 @@
 # @cfg_a2a
 # A2A server e2e: JWK bearer auth (see docs/user_doc/a2a_protocol.md) plus
-# agent card and sqlite a2a_state. One LCS instance; clients call /a2a.
-# No BYOK RAG — these flows do not pass vector_store_ids.
+# agent card and sqlite a2a_state. 
 name: Lightspeed Core Service (LCS)
 service:
   host: 0.0.0.0
@@ -20,11 +19,6 @@ user_data_collection:
   feedback_storage: "/tmp/data/feedback"
   transcripts_enabled: true
   transcripts_storage: "/tmp/data/transcripts"
-
-conversation_cache:
-  type: "sqlite"
-  sqlite:
-    db_path: "/tmp/data/conversation-cache.db"
 
 authentication:
   module: "jwk-token"
