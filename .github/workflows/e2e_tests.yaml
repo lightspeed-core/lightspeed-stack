@@ -85,7 +85,7 @@ jobs:
           - is_release_06: true
             shard:
               name: other
-              tags: "not @skip and (@cfg_rh_identity or @cfg_negative or @cfg_byok_pdf or @cfg_degraded or @cfg_unified)"
+              tags: "not @skip and (@cfg_rh_identity or @cfg_negative or @cfg_byok_pdf or @cfg_degraded or @cfg_unified or @cfg_compaction or @cfg_a2a)"
           - is_release_06: true
             shard:
               name: tls
