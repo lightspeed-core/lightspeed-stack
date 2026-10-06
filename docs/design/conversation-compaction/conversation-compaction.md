@@ -233,6 +233,8 @@ After compaction, lightspeed-stack writes the summary as a marked conversation i
 
 When building context for a compacted conversation, lightspeed-stack fetches the conversation items, reads the active summaries from the summary cache (LCORE-1571) — falling back to the marker texts when no persisting cache is configured — takes the items after the last marker as the recent verbatim buffer, and sends `[summaries] + [recent items] + [new query]` as **explicit input**, **without** the `conversation` parameter. This is necessary because OGX reloads the *full* stored message history whenever the `conversation` parameter is set — there is no marker-based selection hook (verified empirically; see the Changelog). Each completed turn is then appended back to the conversation items by lightspeed-stack, since OGX no longer auto-stores it.
 
+Image attachments (LCORE-3789): on `/v1/query` and `/v1/streaming_query` an image attachment is not part of the text input. It reaches the model as a part of the pydantic-ai user prompt, and the explicit input is text only. Whenever the prompt carries an image, `OgxResponsesModel` therefore replaces the trailing message of the explicit input, the new query, with pydantic-ai's mapping of the same text followed by the images of the prompt, so the new query is sent in the form it has outside compacted mode. Only the images of the current turn are sent. Recent turns are rendered from their text and summaries are text, so an image from an earlier turn is not sent again once the conversation is compacted. Images are not counted in the token estimate that triggers compaction, which reads message text only. The turn that lightspeed-stack appends to the conversation holds the text input, without the image.
+
 This preserves a single continuous conversation identity. The `conversation_id` never changes and the user sees one conversation in the UI. OGX stores the full history, including the summary marker items, and returns it through its Conversations API. lightspeed-stack's own `GET /v1/conversations/{conversation_id}` leaves the marker items out of the chat history it returns (LCORE-3909): they are stored as user messages, but the user never sent them. Stored conversations are not migrated: the markers must stay in storage as the fallback source of truth, so they are filtered when the conversation is read.
 
 ## API response changes
@@ -445,6 +447,13 @@ fallback source of truth, and stored conversations are not migrated.
 never holds a marker, and is unchanged. Earlier revisions of this document said
 that the Conversations API returns the marker items; that holds for the OGX
 Conversations API only.
+
+**2026-10-06 — Image attachments in compacted mode (LCORE-3789).**
+A compacted turn on `/v1/query` or `/v1/streaming_query` that carried an image
+attachment was rejected by a guard (LCORE-3582; HTTP 422 on `/v1/query`),
+because the explicit input is text only. `OgxResponsesModel` now merges the
+images of the current turn into the explicit input, and the guard is removed.
+Details are in "Changed request flow after compaction".
 
 # Appendix A: PoC Evidence
 
