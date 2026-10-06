@@ -215,6 +215,46 @@ async def test_only_a_blocked_turn_is_stored_as_blocked() -> None:
 
 
 @pytest.mark.asyncio
+async def test_agent_turn_a_shield_rejected_is_stored_as_blocked() -> None:
+    """In compacted mode the refusal is stored, marked, not what the model returned."""
+    client = RecordingClient()
+    turn = _turn(client, compacted=True)
+
+    assert await turn.store_agent_turn([ANSWER], "blocked by a shield") is True
+
+    assert client.stored == [USER, (CONVERSATION, "assistant", "blocked by a shield")]
+    assert client.marked_blocked == [True, True]
+    # an empty refusal text is still a refusal
+    other = RecordingClient()
+    assert await _turn(other, compacted=True).store_agent_turn([ANSWER], "") is True
+    assert other.marked_blocked == [True, True]
+
+
+@pytest.mark.asyncio
+async def test_agent_turn_no_shield_rejected_is_stored_as_completed() -> None:
+    """Without a refusal the turn of an agent run is an ordinary completed turn."""
+    client = RecordingClient()
+    turn = _turn(client, compacted=True)
+
+    assert await turn.store_agent_turn([ANSWER]) is True
+
+    assert client.stored == [USER, (CONVERSATION, "assistant", "the answer")]
+    assert client.marked_blocked == [False, False]
+
+
+@pytest.mark.asyncio
+async def test_agent_turn_the_shield_stored_itself_is_not_stored_again() -> None:
+    """With the conversation at hand the shield stored the turn it rejected."""
+    client = RecordingClient()
+    turn = _turn(client)
+
+    assert await turn.store_agent_turn([ANSWER], "blocked by a shield") is False
+
+    assert not client.stored
+    assert turn.outcome == "left to the shield"
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("compacted", [False, True])
 async def test_interrupted_turn_is_stored(compacted: bool) -> None:
     """An interrupted stream stores the part of the answer that was received."""

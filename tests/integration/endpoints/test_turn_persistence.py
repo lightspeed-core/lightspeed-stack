@@ -61,6 +61,7 @@ from models.database.conversations import UserConversation, UserTurn
 from tests.integration.conftest import (
     InMemoryConversationStore,
     create_agent_run_result,
+    create_text_agent_stream_events,
     make_openai_response_object,
     mock_agent_run_stream,
 )
@@ -78,7 +79,7 @@ from tests.integration.endpoints._compaction_helpers import (
     mock_a2a_agent,
     msg,
 )
-from utils.blocked_turns import is_blocked_item
+from utils.blocked_turns import SHIELD_BLOCKED_METADATA_KEY, is_blocked_item
 from utils.pending_turn import TurnNotStoredError
 from utils.stream_interrupts import (
     CancelStreamResult,
@@ -90,6 +91,7 @@ from utils.token_estimator import extract_message_text
 NEW_QUERY = "What else can you help with?"
 BLOCKED_QUERY = "A question the shield does not let through"
 REFUSAL = "Content blocked by safety shield"
+FLAGGED_ANSWER = "An answer the shield does not let through"
 PARTIAL_ANSWER = "Ansible is"
 PREVIOUS_RESPONSE_ID = "resp_previous_turn"
 LARGE_WINDOW = 100_000
@@ -157,11 +159,47 @@ def _blocked() -> ShieldModerationBlocked:
     return ShieldModerationBlocked(message=REFUSAL, moderation_id="modr_blocked_1")
 
 
+async def _assert_blocked_turn_was_not_replayed(
+    store: InMemoryConversationStore, sent_input: Any
+) -> None:
+    """Assert a blocked turn is stored, marked, and absent from the next request.
+
+    The conversation holds the blocked turn (the query and the refusal, both
+    marked as blocked) and the follow-up turn (not marked). ``sent_input`` is
+    the input of the follow-up request; it carries neither the blocked query
+    nor the refusal.
+    """
+    await _assert_stored(
+        store,
+        _compacted_conversation()
+        + _turn(REFUSAL, BLOCKED_QUERY)
+        + _turn(DEFAULT_MODEL_RESPONSE),
+    )
+    stored = await collect_items(store, CONV_ID_LLAMA)
+    assert all(str(item.id).startswith("msg_blocked_") for item in stored[3:5])
+    assert not any(is_blocked_item(item) for item in stored[5:])
+    assert NEW_QUERY in str(sent_input[-1])
+    assert not any(BLOCKED_QUERY in str(item) for item in sent_input)
+    assert not any(REFUSAL in str(item) for item in sent_input)
+
+
 def _agent_answer(agent: Any, text: str = DEFAULT_MODEL_RESPONSE) -> None:
     """Set the output items the agent's model captured for the turn."""
     agent.model.last_output_items = [
         OpenAIResponseMessage(role="assistant", content=text)
     ]
+
+
+def _run_a_shield_rejected(mocker: MockerFixture) -> Any:
+    """Return the result of an agent run a shield capability rejected."""
+    return create_agent_run_result(
+        mocker,
+        model_response=ModelResponse(
+            parts=[TextPart(REFUSAL)],
+            finish_reason="stop",
+            metadata={SHIELD_BLOCKED_METADATA_KEY: True},
+        ),
+    )
 
 
 def _run_cut_short(mocker: MockerFixture) -> Any:
@@ -187,11 +225,13 @@ async def _drain(response: Any) -> list[str]:
 # ==========================================
 
 
-async def _send_query(test_request: Request, test_auth: AuthTuple) -> Any:
+async def _send_query(
+    test_request: Request, test_auth: AuthTuple, query: str = NEW_QUERY
+) -> Any:
     """Send the new query on the stored conversation."""
     return await query_endpoint_handler(
         request=test_request,
-        query_request=QueryRequest(query=NEW_QUERY, conversation_id=EXISTING_CONV_ID),
+        query_request=QueryRequest(query=query, conversation_id=EXISTING_CONV_ID),
         auth=test_auth,
         mcp_headers={},
     )
@@ -251,6 +291,42 @@ class TestQueryTurnPersistence:
             _compacted_conversation()
             + _turn(DEFAULT_MODEL_RESPONSE)
             + _turn(DEFAULT_MODEL_RESPONSE),
+        )
+
+    @pytest.mark.asyncio
+    async def test_turn_a_shield_rejected_is_not_sent_to_the_model_by_the_next_request(
+        self,
+        test_config: AppConfig,
+        mock_ogx_client: AsyncMockType,
+        mock_query_agent: AsyncMockType,
+        mock_conversation_store: InMemoryConversationStore,
+        test_request: Request,
+        test_auth: AuthTuple,
+        patch_db_session: Session,
+        mocker: MockerFixture,
+    ) -> None:
+        """A turn a shield rejected is stored and is not sent with the next request.
+
+        A shield capability rejects the first run, after the model answered;
+        the second request is an ordinary follow-up on the same compacted
+        conversation. The store holds the query and the refusal, marked as
+        blocked, not the model's answer, and the input of the second request
+        carries neither (LCORE-3788).
+        """
+        _ = mock_ogx_client
+        create_existing_conversation(patch_db_session, test_auth[0])
+        await _seed(test_config, mock_conversation_store, _compacted_conversation())
+        _agent_answer(mock_query_agent, FLAGGED_ANSWER)
+        mock_query_agent.run.return_value = _run_a_shield_rejected(mocker)
+        await _send_query(test_request, test_auth, BLOCKED_QUERY)
+
+        _agent_answer(mock_query_agent)
+        mock_query_agent.run.return_value = create_agent_run_result(mocker)
+        await _send_query(test_request, test_auth)
+
+        await _assert_blocked_turn_was_not_replayed(
+            mock_conversation_store,
+            mock_query_agent.build_agent_mock.call_args[0][1].input,
         )
 
     @pytest.mark.asyncio
@@ -368,11 +444,13 @@ def _request_id_of(chunks: list[str]) -> str:
     raise AssertionError(f"no start event in {chunks!r}")
 
 
-async def _send_streaming_query(test_request: Request, test_auth: AuthTuple) -> Any:
+async def _send_streaming_query(
+    test_request: Request, test_auth: AuthTuple, query: str = NEW_QUERY
+) -> Any:
     """Send the new query on the stored conversation."""
     return await streaming_query_endpoint_handler(
         request=test_request,
-        query_request=QueryRequest(query=NEW_QUERY, conversation_id=EXISTING_CONV_ID),
+        query_request=QueryRequest(query=query, conversation_id=EXISTING_CONV_ID),
         auth=test_auth,
         mcp_headers={},
     )
@@ -436,6 +514,45 @@ class TestStreamingQueryTurnPersistence:
         await _assert_stored(
             mock_conversation_store,
             _compacted_conversation() + _turn(DEFAULT_MODEL_RESPONSE),
+        )
+
+    @pytest.mark.asyncio
+    async def test_turn_a_shield_rejected_is_not_sent_to_the_model_by_the_next_request(
+        self,
+        test_config: AppConfig,
+        mock_ogx_client: AsyncMockType,
+        mock_streaming_query_agent: AsyncMockType,
+        mock_conversation_store: InMemoryConversationStore,
+        test_request: Request,
+        test_auth: AuthTuple,
+        patch_db_session: Session,
+        mocker: MockerFixture,
+    ) -> None:
+        """A turn a shield rejected is stored and is not sent with the next request.
+
+        The same two requests as on /v1/query: a run a shield capability
+        rejects, then a follow-up (LCORE-3788).
+        """
+        _ = mock_ogx_client
+        agent = mock_streaming_query_agent
+        create_existing_conversation(patch_db_session, test_auth[0])
+        await _seed(test_config, mock_conversation_store, _compacted_conversation())
+        _agent_answer(agent, FLAGGED_ANSWER)
+        agent.run_stream_events.return_value = mock_agent_run_stream(
+            [AgentRunResultEvent(result=_run_a_shield_rejected(mocker))]
+        )
+        await _drain(
+            await _send_streaming_query(test_request, test_auth, BLOCKED_QUERY)
+        )
+
+        _agent_answer(agent)
+        agent.run_stream_events.return_value = mock_agent_run_stream(
+            create_text_agent_stream_events(mocker)
+        )
+        await _drain(await _send_streaming_query(test_request, test_auth))
+
+        await _assert_blocked_turn_was_not_replayed(
+            mock_conversation_store, agent.build_agent_mock.call_args[0][1].input
         )
 
     @pytest.mark.asyncio
@@ -844,20 +961,11 @@ class TestResponsesTurnPersistence:
         )
         await _send_response_request(test_request, test_auth, stream)
 
-        await _assert_stored(
-            mock_conversation_store,
-            _compacted_conversation()
-            + _turn(REFUSAL, BLOCKED_QUERY)
-            + _turn(DEFAULT_MODEL_RESPONSE),
-        )
-        stored = await collect_items(mock_conversation_store, CONV_ID_LLAMA)
-        assert all(str(item.id).startswith("msg_blocked_") for item in stored[3:5])
-        assert not any(is_blocked_item(item) for item in stored[5:])
         mock_ogx_client.responses.create.assert_awaited_once()
-        sent_input = mock_ogx_client.responses.create.await_args.kwargs["input"]
-        assert NEW_QUERY in str(sent_input[-1])
-        assert not any(BLOCKED_QUERY in str(item) for item in sent_input)
-        assert not any(REFUSAL in str(item) for item in sent_input)
+        await _assert_blocked_turn_was_not_replayed(
+            mock_conversation_store,
+            mock_ogx_client.responses.create.await_args.kwargs["input"],
+        )
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize("stream", [False, True], ids=["blocking", "streaming"])

@@ -15,11 +15,12 @@ inference server is needed.
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import Any
+from typing import Any, Optional
 
 import pytest
 from fastapi import Request
 from fastapi.responses import StreamingResponse
+from ogx_api.openai_responses import OpenAIResponseMessage
 from ogx_client.models.open_ai_response_object import OpenAIResponseObject
 from pydantic_ai.messages import ModelMessage, ModelResponse, TextPart
 from pydantic_ai.models import (
@@ -44,6 +45,7 @@ from models.api.requests.rlsapi import RlsapiV1InferRequest
 from models.api.responses.successful import ResponsesResponse
 from models.api.responses.successful.rlsapi import RlsapiV1InferResponse
 from models.common.responses.contexts import ResponsesContext
+from models.common.responses.responses_api_params import ResponsesApiParams
 from models.config import (
     GraniteGuardianConfig,
     GraniteGuardianShieldConfiguration,
@@ -54,7 +56,9 @@ from tests.integration.conftest import (
     make_openai_model,
     make_openai_models_list_response,
 )
+from utils.agents.query import retrieve_agent_response
 from utils.blocked_turns import is_blocked_item
+from utils.pending_turn import PendingTurn
 from version import __version__
 
 _GUARDIAN_MODULE = "pydantic_ai_lightspeed.capabilities.granite_guardian._capability"
@@ -96,7 +100,9 @@ _RESPONSE_DUMP: dict[str, Any] = {
 }
 
 
-def _guardian_shield_config() -> GraniteGuardianShieldConfiguration:
+def _guardian_shield_config(
+    points: Optional[list[Any]] = None,
+) -> GraniteGuardianShieldConfiguration:
     """Build a GraniteGuardianShieldConfiguration for testing."""
     return GraniteGuardianShieldConfiguration(
         name="granite-guardian",
@@ -108,7 +114,7 @@ def _guardian_shield_config() -> GraniteGuardianShieldConfiguration:
                     name="harmful_content",
                     description="Content that is harmful",
                     threshold=0.5,
-                    points=["input"],
+                    points=points or ["input"],
                     violation_message=VIOLATION_MESSAGE,
                 )
             ],
@@ -187,9 +193,11 @@ def _setup_responses_test(mocker: MockerFixture) -> Any:
     return mock_client
 
 
-def _inject_guardian_shield(test_config: AppConfig) -> None:
+def _inject_guardian_shield(
+    test_config: AppConfig, points: Optional[list[Any]] = None
+) -> None:
     """Add the Granite Guardian shield to the test configuration."""
-    test_config.configuration.shields = [_guardian_shield_config()]
+    test_config.configuration.shields = [_guardian_shield_config(points)]
 
 
 # ============================================================================
@@ -715,6 +723,53 @@ class TestQueryGraniteGuardian:
 
         assert "Ansible" in response.response
         assert VIOLATION_MESSAGE not in response.response
+
+    @pytest.mark.asyncio
+    async def test_output_violation_in_compacted_mode_stores_the_refusal(
+        self, test_config: AppConfig, mocker: MockerFixture
+    ) -> None:
+        """In compacted mode the refusal is stored, not the output Guardian flagged.
+
+        The model is not handed the conversation, so the capability stores
+        nothing and the turn is stored after the run. By then the model's
+        output has been captured; it must not be what the conversation gets
+        (LCORE-3788).
+        """
+        _inject_guardian_shield(test_config, points=["output"])
+        guardian_client = _mock_guardian_for_capability(mocker)
+        mocker.patch(f"{_GUARDIAN_MODULE}.is_safe", return_value=False)
+        model = _TestLLMModel(_mock_llm, stream_function=_mock_llm_stream)
+        mocker.patch.object(
+            model,
+            "last_output_items",
+            [OpenAIResponseMessage(role="assistant", content="flagged output")],
+            create=True,
+        )
+        mocker.patch(
+            "utils.pydantic_ai_helpers.OgxResponsesModel.from_ogx_client",
+            return_value=model,
+        )
+        client = mocker.AsyncMock()
+        params = ResponsesApiParams(
+            input="A question",
+            model="test-provider/test-model",
+            conversation=MOCK_CONV_ID,
+            store=True,
+            stream=False,
+            omit_conversation=True,
+        )
+        turn = PendingTurn.for_request(client, params, "A question")
+
+        summary = await retrieve_agent_response(client, params, "/v1/query", turn)
+
+        assert summary.llm_response == VIOLATION_MESSAGE
+        guardian_client.items.create.assert_not_called()
+        items = client.items.create.call_args[1]["add_items_request"].items
+        assert [item.actual_instance.content for item in items] == [
+            "A question",
+            VIOLATION_MESSAGE,
+        ]
+        assert all(is_blocked_item(item) for item in items)
 
     @pytest.mark.asyncio
     async def test_guardian_token_usage_is_not_included_in_user_token_usage(

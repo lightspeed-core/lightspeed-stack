@@ -58,6 +58,7 @@ from utils.agents.tool_processor import (
     process_native_tool_call,
     process_native_tool_result,
 )
+from utils.blocked_turns import shield_refusal_of
 from utils.conversation_compaction import (
     agent_prompt_text,
 )
@@ -168,7 +169,9 @@ async def _persist_compacted_turn(
         context: Streaming request context, used for error reporting.
         turn: The pending turn of the request. Nothing is written when OGX
             stores the turn itself.
-        turn_summary: Completed turn, carrying the captured output items.
+        turn_summary: Completed turn, carrying the captured output items
+            and, when a shield rejected the run, the refusal; the turn is then
+            stored as a blocked turn (LCORE-3788).
         persist_guard: Single-element flag shared with the interrupt path, so
             that only one of them finishes the turn.
 
@@ -177,7 +180,9 @@ async def _persist_compacted_turn(
         return
     persist_guard[0] = True
     try:
-        await turn.store_completed(turn_summary.output_items)
+        await turn.store_agent_turn(
+            turn_summary.output_items, turn_summary.shield_refusal
+        )
     except Exception:  # pylint: disable=broad-except
         # The client already has its answer, so the stream still succeeds; the
         # cost of the failure is that the next request loses this turn.
@@ -461,6 +466,7 @@ async def agent_response_generator(
             return
 
         run_result = dispatch_state.run_result
+        turn_summary.shield_refusal = shield_refusal_of(run_result)
         turn_summary.token_usage = extract_agent_token_usage(
             run_result.usage,
             responses_params.model,

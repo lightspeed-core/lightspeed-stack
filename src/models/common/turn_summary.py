@@ -123,6 +123,11 @@ class TurnSummary(BaseModel):
         description="Structured response output items, captured for compacted-mode "
         "turn persistence (LCORE-1572). Empty on the non-compacted path.",
     )
+    shield_refusal: Optional[str] = Field(
+        default=None,
+        description="The refusal, when a shield rejected the agent run. The turn "
+        "is then stored as a blocked turn (LCORE-3788).",
+    )
     partial_tokens: list[str] = Field(
         default_factory=list,
         description="Accumulated text deltas during streaming, used to reconstruct "
