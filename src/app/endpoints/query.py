@@ -1,6 +1,7 @@
 """Handler for REST API call to provide answer to query using Response API."""
 
 import datetime
+from functools import partial
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request
@@ -50,6 +51,7 @@ from utils.otel_tracing import (
 from utils.pending_turn import pending_turn
 from utils.query import (
     consume_query_tokens,
+    consume_summarization_tokens,
     store_query_results,
     validate_attachments_metadata,
     validate_model_provider_override,
@@ -243,6 +245,7 @@ async def _handle_query_with_tracing(
         user_id=user_id,
         skip_user_id_check=_skip_userid_check,
         endpoint_path=endpoint_path,
+        charge=partial(consume_summarization_tokens, user_id),
     )
     responses_params = compaction.params
 
