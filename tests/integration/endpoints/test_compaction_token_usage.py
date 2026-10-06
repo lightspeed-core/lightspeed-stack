@@ -156,11 +156,13 @@ async def scene_fixture(  # pylint: disable=too-many-arguments,too-many-position
 
 @pytest.mark.asyncio
 async def test_turn_that_summarizes_pays_for_the_summarization(scene: Scene) -> None:
-    """The quota falls by the turn and by the summarization call, and the client is told."""
+    """The turn and the summarization call are charged, and the client is told both."""
     response = await scene.query()
 
     assert_marker_count(scene.store, CONV_ID_LLAMA, 1)
     assert response.context_status == "summarized"
+    assert response.input_tokens == TURN_INPUT + SUMMARY_INPUT
+    assert response.output_tokens == TURN_OUTPUT + SUMMARY_OUTPUT
     assert response.available_quotas == {
         "UserQuotaLimiter": INITIAL_QUOTA - TURN - SUMMARY
     }
