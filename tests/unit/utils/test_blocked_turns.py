@@ -1,5 +1,8 @@
 """Unit tests for the mark of a turn a shield blocked (LCORE-3788)."""
 
+import re
+
+from ogx.core.conversations.conversations import ConversationServiceImpl
 from ogx_api.openai_responses import OpenAIResponseMessage
 from ogx_client.models.open_ai_response_message11_variants import (
     OpenAIResponseMessage11Variants as ConversationItem,
@@ -44,6 +47,22 @@ def test_is_blocked_item_reads_the_id_prefix() -> None:
     assert not is_blocked_item(_msg("x", "msg_0123456789abcdef"))
     assert not is_blocked_item(_msg("x"))
     assert not is_blocked_item({"type": "function_call"})
+
+
+def test_ogx_keeps_the_id_a_blocked_message_is_sent_with() -> None:
+    """The mark rests on OGX storing a message under the id it is sent.
+
+    Fails when an ogx upgrade starts to replace ids the caller supplies.
+    """
+    service = object.__new__(ConversationServiceImpl)  # the method does not use self
+    blocked_id = new_blocked_item_id()
+
+    # pylint: disable=protected-access
+    kept = service._get_or_generate_item_id(_msg("x", blocked_id), {})
+    generated = service._get_or_generate_item_id(_msg("x"), {})
+
+    assert kept == blocked_id
+    assert re.fullmatch(r"msg_[0-9a-f]+", generated)
 
 
 def test_exclude_blocked_items_keeps_the_rest_as_they_are() -> None:
