@@ -432,6 +432,7 @@ async def generate_response_with_compaction(
                 cache=configured_conversation_cache(),
                 user_id=context.user_id,
                 skip_user_id_check=context.skip_userid_check,
+                endpoint_path=endpoint_path,
             ):
                 if isinstance(item, CompactionStartedEvent):
                     yield stream_compaction_event(context.conversation_id)

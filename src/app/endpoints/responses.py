@@ -730,6 +730,7 @@ async def handle_responses_with_tracing(  # pylint: disable=too-many-locals
             cache=configured_conversation_cache(),
             user_id=user_id,
             skip_user_id_check=skip_userid_check,
+            endpoint_path=endpoint_path,
         )
         api_params = compaction.params
         if compaction.compacted:
