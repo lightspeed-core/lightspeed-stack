@@ -31,6 +31,7 @@ from openai.types import responses
 from pydantic_ai import UnexpectedModelBehavior
 from pydantic_ai._run_context import RunContext
 from pydantic_ai._utils import PeekableAsyncStream, Unset, number_to_datetime
+from pydantic_ai.exceptions import ModelHTTPError
 from pydantic_ai.messages import ModelMessage, ModelResponse
 from pydantic_ai.models import (
     ModelRequestParameters,
@@ -150,12 +151,27 @@ class _FilteredResponseStream:
     async def _filtered_iter(
         self,
     ) -> AsyncIterator[responses.ResponseStreamEvent]:
-        """Yield events, buffering early argument deltas until their item is announced."""
+        """Yield events, buffering early argument deltas until their item is announced.
+
+        Raises:
+            ModelHTTPError: When OGX reports the request as failed.
+        """
         async for event in self._source:
             if self._on_completed is not None and isinstance(
                 event, responses.ResponseCompletedEvent
             ):
                 self._on_completed(event.response)
+            if isinstance(event, responses.ResponseFailedEvent):
+                # OGX reports a provider failure of a streamed request in-band
+                # (HTTP 200); the non-streamed call raises an HTTP error with
+                # the same message. Raise here too, or pydantic-ai takes the
+                # empty response for a missing answer and asks the model again.
+                error = event.response.error
+                raise ModelHTTPError(
+                    status_code=500,
+                    model_name=event.response.model,
+                    body=error.model_dump() if error is not None else None,
+                )
             if isinstance(event, responses.ResponseOutputItemAddedEvent):
                 if (
                     isinstance(event.item, responses.ResponseFunctionToolCall)

@@ -1,6 +1,6 @@
 """Unit tests for pydantic_ai_lightspeed.ogx._model module."""
 
-# pylint: disable=protected-access,too-few-public-methods
+# pylint: disable=protected-access,too-few-public-methods,too-many-lines
 
 from collections.abc import AsyncIterator
 from typing import Any
@@ -11,7 +11,8 @@ from ogx_api.openai_responses import (
     OpenAIResponseReasoning,
 )
 from openai.types import responses
-from pydantic_ai import ModelMessage, UnexpectedModelBehavior
+from pydantic_ai import Agent, ModelMessage, UnexpectedModelBehavior
+from pydantic_ai.exceptions import ModelHTTPError
 from pydantic_ai.messages import ModelResponse
 from pydantic_ai.models.openai import (
     OpenAIResponsesModel,
@@ -21,13 +22,16 @@ from pydantic_ai.models.openai import (
 from pydantic_ai.settings import ModelSettings
 from pytest_mock import MockerFixture
 
+from models.api.responses.error import PromptTooLongResponse
 from models.common.responses.responses_api_params import ResponsesApiParams
+from pydantic_ai_lightspeed.ogx import OgxProvider
 from pydantic_ai_lightspeed.ogx._model import (
     _LLS_RESPONSES_EXTRA_FIELDS,
     OgxResponsesModel,
     _FilteredResponseStream,
     _model_settings_from_responses_params,
 )
+from utils.agents.error_handler import map_agent_inference_error
 
 _REQUIRED_PARAMS = {
     "input": "hello",
@@ -36,6 +40,12 @@ _REQUIRED_PARAMS = {
     "store": True,
     "stream": True,
 }
+
+# What OpenAI answers a prompt that is too long with; OGX passes the message on.
+_CONTEXT_LENGTH_MESSAGE = (
+    "This model's maximum context length is 128000 tokens. However, your "
+    "messages resulted in 153021 tokens. Please reduce the length of the messages."
+)
 
 
 def _make_params(**overrides: object) -> ResponsesApiParams:
@@ -550,6 +560,20 @@ def _make_response_created_event() -> responses.ResponseCreatedEvent:
     )
 
 
+def _make_response_failed_event(message: str) -> responses.ResponseFailedEvent:
+    """Build the event OGX ends a streamed request with when the provider fails."""
+    return responses.ResponseFailedEvent(
+        response=_make_response_created_event().response.model_copy(
+            update={
+                "status": "failed",
+                "error": responses.ResponseError(code="server_error", message=message),
+            }
+        ),
+        sequence_number=1,
+        type="response.failed",
+    )
+
+
 class TestRequestStream:
     """Tests for OgxResponsesModel.request_stream."""
 
@@ -669,6 +693,75 @@ class TestRequestStream:
         model._responses_create = mocker.AsyncMock(return_value=mock_stream)
         async with model.request_stream([mocker.Mock()], {}, mocker.Mock()) as streamed:
             assert isinstance(streamed, OpenAIResponsesStreamedResponse)
+
+    @pytest.mark.asyncio
+    async def test_failed_response_raises_the_provider_error(
+        self, model: OgxResponsesModel, mocker: MockerFixture
+    ) -> None:
+        """Test that a request OGX reports as failed in the stream is a model error.
+
+        OGX answers a streamed request with HTTP 200 and reports a provider
+        failure as a ``response.failed`` event. Passed on, pydantic-ai takes
+        the empty response for a missing answer and asks the model again.
+        """
+        events = [
+            _make_response_created_event(),
+            _make_response_failed_event(_CONTEXT_LENGTH_MESSAGE),
+        ]
+        model._responses_create = mocker.AsyncMock(
+            return_value=_make_mock_response_stream(mocker, events)
+        )
+
+        with pytest.raises(ModelHTTPError, match="maximum context length") as exc_info:
+            async with model.request_stream(
+                [mocker.Mock()], {}, mocker.Mock()
+            ) as streamed:
+                async for _ in streamed:
+                    pass
+
+        assert exc_info.value.status_code == 500
+
+
+class TestAgentRunOverFailedStream:
+    """Tests for an agent run whose streamed model request OGX reports as failed."""
+
+    @pytest.mark.asyncio
+    async def test_run_ends_after_one_request_as_prompt_too_long(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test that the run ends with the provider error, without a retry.
+
+        Without the error pydantic-ai sends a second request that carries a
+        retry prompt, and its reply is streamed as the answer (LCORE-4070).
+        A context-length failure maps to 413.
+        """
+        model = OgxResponsesModel(
+            "test-model", provider=OgxProvider(base_url="http://localhost:8321/v1")
+        )
+        responses_create = mocker.patch.object(
+            model,
+            "_responses_create",
+            new_callable=mocker.AsyncMock,
+            side_effect=lambda *_: _make_mock_response_stream(
+                mocker,
+                [
+                    _make_response_created_event(),
+                    _make_response_failed_event(_CONTEXT_LENGTH_MESSAGE),
+                ],
+            ),
+        )
+        agent = Agent(model, defer_model_check=True)
+
+        with pytest.raises(ModelHTTPError) as exc_info:
+            async with agent.run_stream_events("question") as stream:
+                async for _ in stream:
+                    pass
+
+        assert responses_create.await_count == 1
+        assert isinstance(
+            map_agent_inference_error(exc_info.value, "openai/test-model"),
+            PromptTooLongResponse,
+        )
 
 
 class TestLlsResponsesExtraFields:
