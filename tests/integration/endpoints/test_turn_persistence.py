@@ -1135,7 +1135,9 @@ def _put_a2a_on_the_conversation(mocker: MockerFixture) -> Any:
 
     mocker.patch("app.endpoints.a2a.prepare_responses_params", side_effect=_prepare)
     agent = mock_a2a_agent(mocker)
-    mocker.patch("app.endpoints.a2a.build_agent", return_value=agent)
+    agent.build_agent_mock = mocker.patch(
+        "app.endpoints.a2a.build_agent", return_value=agent
+    )
     return agent
 
 
@@ -1163,6 +1165,40 @@ class TestA2ATurnPersistence:
         await _assert_stored(
             mock_conversation_store,
             _compacted_conversation() + _turn(DEFAULT_MODEL_RESPONSE),
+        )
+
+    @pytest.mark.asyncio
+    async def test_turn_a_shield_rejected_is_not_sent_to_the_model_by_the_next_request(
+        self,
+        test_config: AppConfig,
+        mock_ogx_client: AsyncMockType,
+        mock_conversation_store: InMemoryConversationStore,
+        test_auth: AuthTuple,
+        mocker: MockerFixture,
+    ) -> None:
+        """A turn a shield rejected is stored and is not sent with the next request.
+
+        The same two requests as on /v1/query: a run a shield capability
+        rejects, then a follow-up (LCORE-3788).
+        """
+        _ = mock_ogx_client
+        await _seed(test_config, mock_conversation_store, _compacted_conversation())
+        rejected = _put_a2a_on_the_conversation(mocker)
+        _agent_answer(rejected, FLAGGED_ANSWER)
+        rejected.run_stream_events.return_value = mock_agent_run_stream(
+            [AgentRunResultEvent(result=_run_a_shield_rejected(mocker))]
+        )
+        await handle_a2a_jsonrpc_post(
+            request=build_a2a_request(BLOCKED_QUERY), auth=test_auth, mcp_headers={}
+        )
+
+        agent = _put_a2a_on_the_conversation(mocker)
+        await handle_a2a_jsonrpc_post(
+            request=build_a2a_request(NEW_QUERY), auth=test_auth, mcp_headers={}
+        )
+
+        await _assert_blocked_turn_was_not_replayed(
+            mock_conversation_store, agent.build_agent_mock.call_args[0][1].input
         )
 
     @pytest.mark.asyncio
