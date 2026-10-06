@@ -91,6 +91,7 @@ from utils.streaming_sse import (
     stream_start_event,
 )
 from utils.suid import get_suid, normalize_conversation_id
+from utils.token_counter import TokenCounter
 from utils.types import Responses
 from utils.vector_search import build_rag_context
 
@@ -426,6 +427,7 @@ async def generate_response_with_compaction(
 
         turn: Optional[PendingTurn] = None
         context_status: ContextStatus = "full"
+        summarization_usage = TokenCounter()
         try:
             async for item in apply_compaction(
                 context.client,
@@ -447,6 +449,7 @@ async def generate_response_with_compaction(
                         context.client, item.params, item.original_input
                     )
                     context_status = item.context_status
+                    summarization_usage = item.summarization_usage
 
             generator, turn_summary = await retrieve_agent_response_generator(
                 responses_params=responses_params,
@@ -501,6 +504,7 @@ async def generate_response_with_compaction(
             emit_start=False,
             turn=turn,
             context_status=context_status,
+            summarization_usage=summarization_usage,
         ):
             yield event
     finally:

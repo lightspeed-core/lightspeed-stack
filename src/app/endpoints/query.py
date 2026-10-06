@@ -310,6 +310,9 @@ async def _handle_query_with_tracing(
         model_id=responses_params.model,
         token_usage=turn_summary.token_usage,
     )
+    # The turn reports the summarization calls made for it as part of its
+    # usage. They were charged when they were made.
+    reported_usage = turn_summary.token_usage + compaction.summarization_usage
 
     logger.info("Getting available quotas")
     available_quotas = get_available_quotas(
@@ -355,7 +358,7 @@ async def _handle_query_with_tracing(
         referenced_documents=turn_summary.referenced_documents,
         truncated=False,
         context_status=compaction.context_status,
-        input_tokens=turn_summary.token_usage.input_tokens,
-        output_tokens=turn_summary.token_usage.output_tokens,
+        input_tokens=reported_usage.input_tokens,
+        output_tokens=reported_usage.output_tokens,
         available_quotas=available_quotas,
     )
