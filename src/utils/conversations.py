@@ -712,6 +712,9 @@ async def append_turn_to_conversation(
 
     Used to record a conversation turn when a shield blocks the request,
     storing both the user's original message and the violation response.
+    Both are stored with the blocked mark, which keeps them out of what
+    conversation compaction sends to the model (LCORE-3788). Only the shield
+    capabilities call this.
 
     Parameters:
     ----------
@@ -725,14 +728,16 @@ async def append_turn_to_conversation(
         await client.items.create(
             conversation_id,
             add_items_request=build_add_items_request(
-                [
-                    {"type": "message", "role": "user", "content": user_message},
-                    {
-                        "type": "message",
-                        "role": "assistant",
-                        "content": assistant_message,
-                    },
-                ]
+                mark_blocked(
+                    [
+                        {"type": "message", "role": "user", "content": user_message},
+                        {
+                            "type": "message",
+                            "role": "assistant",
+                            "content": assistant_message,
+                        },
+                    ]
+                )
             ),
         )
     except ApiException as e:

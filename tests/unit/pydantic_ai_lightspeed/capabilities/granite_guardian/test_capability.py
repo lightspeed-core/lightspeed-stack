@@ -26,6 +26,7 @@ from pydantic_ai_lightspeed.capabilities.granite_guardian._capability import (
     _run_risk_check,
     _ToolGuardrailViolation,
 )
+from utils.blocked_turns import shield_refusal_of
 
 _MODULE = "pydantic_ai_lightspeed.capabilities.granite_guardian._capability"
 
@@ -459,6 +460,7 @@ class TestGraniteGuardianWrapRun:
         mock_handler.assert_not_awaited()
         assert isinstance(result, AgentRunResult)
         assert result.output == "Content blocked."
+        assert shield_refusal_of(result) == "Content blocked."
 
     @pytest.mark.asyncio
     async def test_violation_persists_turn_to_conversation(
@@ -621,6 +623,7 @@ class TestGraniteGuardianWrapRun:
 
         assert isinstance(result, AgentRunResult)
         assert result.output == "Output blocked."
+        assert shield_refusal_of(result) == "Output blocked."
 
     @pytest.mark.asyncio
     async def test_output_violation_replaces_last_assistant_message(
@@ -753,6 +756,7 @@ class TestGraniteGuardianWrapRun:
 
         assert isinstance(result, AgentRunResult)
         assert result.output == "Tool output blocked."
+        assert shield_refusal_of(result) == "Tool output blocked."
         new_messages = result.new_messages()
         tool_calls = [
             part

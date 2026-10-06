@@ -54,6 +54,7 @@ from tests.integration.conftest import (
     make_openai_model,
     make_openai_models_list_response,
 )
+from utils.blocked_turns import is_blocked_item
 from version import __version__
 
 _GUARDIAN_MODULE = "pydantic_ai_lightspeed.capabilities.granite_guardian._capability"
@@ -247,6 +248,7 @@ class TestResponsesGraniteGuardian:
         assistant_msg = items[1].actual_instance
         assert assistant_msg.role == "assistant"
         assert assistant_msg.content == VIOLATION_MESSAGE
+        assert all(is_blocked_item(item) for item in items)
 
     @pytest.mark.asyncio
     async def test_passes_safe_input(
@@ -687,6 +689,7 @@ class TestQueryGraniteGuardian:
         assistant_msg = items[1].actual_instance
         assert assistant_msg.role == "assistant"
         assert assistant_msg.content == VIOLATION_MESSAGE
+        assert all(is_blocked_item(item) for item in items)
 
     @pytest.mark.asyncio
     async def test_passes_safe_input(
@@ -810,6 +813,7 @@ class TestStreamingQueryGraniteGuardian:
         assistant_msg = items[1].actual_instance
         assert assistant_msg.role == "assistant"
         assert assistant_msg.content == VIOLATION_MESSAGE
+        assert all(is_blocked_item(item) for item in items)
 
     @pytest.mark.asyncio
     async def test_passes_safe_input(

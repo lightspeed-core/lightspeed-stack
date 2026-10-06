@@ -4,13 +4,17 @@ from ogx_api.openai_responses import OpenAIResponseMessage
 from ogx_client.models.open_ai_response_message11_variants import (
     OpenAIResponseMessage11Variants as ConversationItem,
 )
+from pydantic_ai.messages import ModelResponse, TextPart
+from pytest_mock import MockerFixture
 
 from utils.blocked_turns import (
     BLOCKED_ITEM_ID_PREFIX,
+    SHIELD_BLOCKED_METADATA_KEY,
     exclude_blocked_items,
     is_blocked_item,
     mark_blocked,
     new_blocked_item_id,
+    shield_refusal_of,
 )
 
 
@@ -78,3 +82,18 @@ def test_mark_blocked_gives_every_message_a_new_blocked_id() -> None:
     # the dicts handed in are not modified
     assert items[0]["id"] == "msg_client"
     assert "id" not in items[2]
+
+
+def test_shield_refusal_of_reads_the_flag_a_shield_sets(mocker: MockerFixture) -> None:
+    """Only a run whose last response carries the flag was rejected by a shield."""
+    refusal = ModelResponse(
+        [TextPart("refused")], metadata={SHIELD_BLOCKED_METADATA_KEY: True}
+    )
+
+    assert shield_refusal_of(mocker.Mock(response=refusal)) == "refused"
+    assert (
+        shield_refusal_of(mocker.Mock(response=ModelResponse([TextPart("answer")])))
+        is None
+    )
+    # a test double that answers every attribute is not a rejected run
+    assert shield_refusal_of(mocker.MagicMock()) is None
