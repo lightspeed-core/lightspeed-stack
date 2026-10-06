@@ -63,6 +63,7 @@ from models.common.responses.types import ResponseInput
 from models.common.turn_summary import ContextStatus
 from models.compaction import ConversationSummary
 from models.config import CompactionConfiguration, InferenceConfiguration
+from utils.blocked_turns import exclude_blocked_items, is_blocked_item
 from utils.compaction import (
     partition_conversation,
     recursively_resummarize,
@@ -204,8 +205,13 @@ class CompactionResult:
 
 
 def is_marker_item(item: Any) -> bool:
-    """Return True when *item* is a compaction summary marker message."""
-    if not is_message_item(item):
+    """Return True when *item* is a compaction summary marker message.
+
+    A message of a turn a shield blocked is never a marker, whatever its
+    text: a marker is read back as a summary and sets the boundary of the
+    recent turns (LCORE-3788).
+    """
+    if not is_message_item(item) or is_blocked_item(item):
         return False
     return extract_message_text(item).startswith(MARKER_SENTINEL)
 
@@ -329,7 +335,8 @@ def exclude_marker_items(items: Sequence[Any]) -> list[Any]:
     are recognized as well and no migration is needed. Markers are only ever
     written as user messages, so a message of any other role is kept even when
     its text starts with the sentinel. A message the user typed with the
-    sentinel at its start cannot be told apart from a marker and is left out.
+    sentinel at its start cannot be told apart from a marker and is left out,
+    unless it carries the blocked mark (:func:`is_marker_item`).
 
     Parameters:
         items: Conversation items, as stored.
@@ -585,6 +592,10 @@ def _load_compaction_state(
     configured. The recent-verbatim boundary is always derived from marker
     position in the conversation items.
 
+    Turns a shield blocked are left out of the recent items, after the
+    boundary was applied to the stored items: they are neither estimated,
+    summarized nor replayed (LCORE-3788).
+
     Returns ``(summaries, cached_summaries, recent_items)``.
     """
     cached_summaries = _read_cached_summaries(
@@ -595,7 +606,7 @@ def _load_compaction_state(
         if cached_summaries
         else _marker_summaries(items)
     )
-    recent_items = _items_after_last_marker(items)
+    recent_items = exclude_blocked_items(_items_after_last_marker(items))
     return summaries, cached_summaries, recent_items
 
 
@@ -889,6 +900,8 @@ async def needs_compaction_path(
         return True
     context_window = resolve_context_window(params.model, inference_config)
     estimated = estimate_tokens(params.instructions or "", encoding_name)
-    estimated += estimate_conversation_tokens(items, encoding_name=encoding_name)
+    estimated += estimate_conversation_tokens(
+        exclude_blocked_items(items), encoding_name=encoding_name
+    )
     estimated += _estimate_response_input_tokens(params.input, encoding_name)
     return _should_compact(estimated, context_window, compaction_config)
