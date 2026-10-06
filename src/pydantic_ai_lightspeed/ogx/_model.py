@@ -20,7 +20,7 @@ from the include parameter, which OGX / OGX doesn't support.
 from __future__ import annotations as _annotations
 
 from collections import defaultdict
-from collections.abc import AsyncIterator, Callable
+from collections.abc import AsyncIterator, Callable, Sequence
 from contextlib import asynccontextmanager
 from typing import Any, Final, Optional, cast
 
@@ -31,7 +31,14 @@ from openai.types import responses
 from pydantic_ai import UnexpectedModelBehavior
 from pydantic_ai._run_context import RunContext
 from pydantic_ai._utils import PeekableAsyncStream, Unset, number_to_datetime
-from pydantic_ai.messages import ModelMessage, ModelResponse
+from pydantic_ai.messages import (
+    ModelMessage,
+    ModelRequest,
+    ModelResponse,
+    UserContent,
+    UserPromptPart,
+    is_multi_modal_content,
+)
 from pydantic_ai.models import (
     ModelRequestParameters,
     StreamedResponse,
@@ -82,7 +89,8 @@ def _model_settings_from_responses_params(
         # the wire ``input`` from the prompt alone. Overriding via extra_body
         # replaces it with the explicit list, exactly as the non-agent
         # /v1/responses path sends it. Dropped again on tool-loop
-        # continuations — see ``_prepare_compacted_input``.
+        # continuations — see ``_prepare_compacted_input``. The media of the
+        # current prompt is merged back in by ``_carry_prompt_media``.
         extra_body["input"] = payload["input"]
     settings_dict: dict[str, Any] = {}
     if extra_body:
@@ -103,6 +111,28 @@ def _model_settings_from_responses_params(
             responses_params.previous_response_id
         )
     return cast("OpenAIResponsesModelSettings", settings_dict)
+
+
+def _prompt_media(messages: Sequence[ModelMessage]) -> list[UserContent]:
+    """Return the media items, such as images, of the user prompt being sent.
+
+    Parameters:
+        messages: Model messages for the request.
+
+    Returns:
+        The media items of the last user prompt part, in prompt order. Empty
+        when there is no user prompt or it is text only.
+    """
+    prompts = [
+        part
+        for message in messages
+        if isinstance(message, ModelRequest)
+        for part in message.parts
+        if isinstance(part, UserPromptPart)
+    ]
+    if not prompts or isinstance(prompts[-1].content, str):
+        return []
+    return [item for item in prompts[-1].content if is_multi_modal_content(item)]
 
 
 class _FilteredResponseStream:
@@ -348,6 +378,7 @@ class OgxResponsesModel(OpenAIResponsesModel):
             messages, model_settings
         )
         model_settings = self._prepare_compacted_input(messages, model_settings)
+        model_settings = await self._carry_prompt_media(messages, model_settings)
         return await super().request(messages, model_settings, model_request_parameters)
 
     def _prepare_conversation_continuation(
@@ -419,6 +450,51 @@ class OgxResponsesModel(OpenAIResponsesModel):
         new_settings["extra_body"] = new_extra_body
         return cast("ModelSettings", new_settings)
 
+    async def _carry_prompt_media(
+        self,
+        messages: list[ModelMessage],
+        model_settings: Optional[ModelSettings],
+    ) -> Optional[ModelSettings]:
+        """Give the compacted ``input`` override the media of the current prompt.
+
+        The explicit item list is text only, while image attachments reach the
+        model as ``ImageUrl`` parts of the user prompt, so they would be lost
+        when the override replaces the prompt-derived ``input`` (LCORE-3789).
+        When the prompt carries media, the trailing user message of the
+        override (the new query) is replaced by pydantic-ai's own mapping of
+        its text followed by that media, which is the form the query has
+        outside compacted mode. The text stays the one the override carries:
+        for an empty query the prompt holds the text of an earlier message
+        (see ``agent_prompt_text``). A text-only prompt leaves the override as
+        it was built.
+
+        Parameters:
+            messages: Model messages for the request.
+            model_settings: Model settings, possibly carrying the override.
+
+        Returns:
+            The settings unchanged, or a copy whose override ends with the
+            new query and its media.
+        """
+        if not model_settings or not isinstance(model_settings, dict):
+            return model_settings
+        extra_body = model_settings.get("extra_body")
+        if not isinstance(extra_body, dict) or "input" not in extra_body:
+            return model_settings
+        content = _prompt_media(messages)
+        if not content:
+            return model_settings
+
+        history = list(extra_body["input"])
+        query = history[-1] if history else {}
+        if query.get("role") == "user" and isinstance(query.get("content"), str):
+            history.pop()
+            content = [query["content"], *content]
+        new_query = await self._map_user_prompt(UserPromptPart(content=content))
+        new_settings = dict(model_settings)
+        new_settings["extra_body"] = {**extra_body, "input": [*history, new_query]}
+        return cast("ModelSettings", new_settings)
+
     @asynccontextmanager
     async def request_stream(  # pylint: disable=unused-argument
         self,
@@ -446,6 +522,7 @@ class OgxResponsesModel(OpenAIResponsesModel):
             messages, model_settings
         )
         model_settings = self._prepare_compacted_input(messages, model_settings)
+        model_settings = await self._carry_prompt_media(messages, model_settings)
 
         model_settings_cast = cast("OpenAIResponsesModelSettings", model_settings or {})
         response = await self._responses_create(
