@@ -9,6 +9,7 @@ from typing import Any, Optional, cast
 
 import pytest
 from ogx_api.openai_responses import (
+    OpenAIResponseInputMessageContentImage,
     OpenAIResponseInputMessageContentText,
     OpenAIResponseMessage,
 )
@@ -26,6 +27,19 @@ CONV = "conv_abc123"
 def _msg(role: str, text: str) -> OpenAIResponseMessage:
     """Build a typed OGX message item for tests."""
     return OpenAIResponseMessage(role=cast("Any", role), content=text)
+
+
+def _msg_with_image(text: str) -> OpenAIResponseMessage:
+    """Build a user message item that carries an image next to its text."""
+    return OpenAIResponseMessage(
+        role="user",
+        content=[
+            OpenAIResponseInputMessageContentText(text=text),
+            OpenAIResponseInputMessageContentImage(
+                image_url="data:image/png;base64,AAAA"
+            ),
+        ],
+    )
 
 
 def _marker(text: str) -> OpenAIResponseMessage:
@@ -190,6 +204,27 @@ def test_build_explicit_input_shape() -> None:
     assert texts[3] == "brand new question"
     # items are typed OpenAIResponseMessage objects (so they serialize cleanly)
     assert built[2].role == "assistant"
+
+
+def test_build_explicit_input_does_not_replay_earlier_images() -> None:
+    """An image sent in an earlier turn is not sent again in compacted mode.
+
+    Recent turns are rendered from their text, so the image part of a stored
+    message stays behind and every explicit item is plain text (LCORE-3789).
+    """
+    built = cc._build_explicit_input(
+        summaries=[],
+        recent_items=[
+            _msg_with_image("what is in this picture?"),
+            _msg("assistant", "a cat"),
+        ],
+        original_input="and what colour is it?",
+    )
+    assert [message.content for message in built] == [
+        "what is in this picture?",
+        "a cat",
+        "and what colour is it?",
+    ]
 
 
 def test_should_compact() -> None:
@@ -674,6 +709,20 @@ def test_estimate_response_input_tokens_counts_list_form() -> None:
     )
     assert string_tokens > 10
     assert list_tokens > 10
+
+
+def test_estimate_does_not_count_image_parts() -> None:
+    """An image part adds nothing to the estimate that triggers compaction.
+
+    Only the text of a message is counted, so a base64 payload is never run
+    through the tokenizer (LCORE-3789).
+    """
+    text = "what is in this picture?"
+    with_image = cc._estimate_response_input_tokens(
+        cast("Any", [_msg_with_image(text)]), cc.DEFAULT_ENCODING_NAME
+    )
+    text_only = cc._estimate_response_input_tokens(text, cc.DEFAULT_ENCODING_NAME)
+    assert with_image == text_only > 0
 
 
 # --- per-conversation lock (R11): ref-counted cleanup ---
