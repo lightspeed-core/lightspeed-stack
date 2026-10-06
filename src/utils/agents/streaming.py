@@ -62,7 +62,6 @@ from utils.agents.tool_processor import (
 )
 from utils.conversation_compaction import (
     agent_prompt_text,
-    reject_image_attachments_in_compacted_mode,
 )
 from utils.otel_tracing import (
     SpanAttributes,
@@ -421,7 +420,6 @@ async def agent_response_generator(
             rag_id_mapping=context.rag_id_mapping,
             turn_summary=turn_summary,
         )
-        reject_image_attachments_in_compacted_mode(responses_params, image_attachments)
         if image_attachments:
             prompt = build_multimodal_input(
                 agent_prompt_text(responses_params),
