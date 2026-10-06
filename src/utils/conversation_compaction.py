@@ -365,9 +365,10 @@ def agent_prompt_text(params: ResponsesApiParams) -> str:
         return params.input
     for item in reversed(list(params.input)):
         if is_message_item(item):
-            text = extract_message_text(item)
-            if text:
-                return text
+            # The trailing message is the new query. An empty one (an image
+            # sent without text) stays empty rather than borrowing the text
+            # of an earlier message.
+            return extract_message_text(item)
     # The wire input still carries the explicit list via the extra_body
     # override, so the request itself is well-formed — but capabilities and
     # multimodal construction operate on this prompt, and an explicit input

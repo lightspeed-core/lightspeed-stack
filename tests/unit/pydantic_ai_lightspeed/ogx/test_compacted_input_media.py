@@ -149,11 +149,7 @@ async def test_image_prompt_adds_the_image_to_the_new_query(
 
 @pytest.mark.asyncio
 async def test_query_text_comes_from_the_explicit_input(provider: OgxProvider) -> None:
-    """Test that an empty query stays empty next to its image.
-
-    For an empty query the agent prompt falls back to the text of an earlier
-    message. That text must not be sent again as the user's words.
-    """
+    """Test that the query text comes from the explicit input, not from the prompt."""
     model = OgxResponsesModel("test-model", provider=provider)
     messages: list[ModelMessage] = [
         ModelRequest(parts=[UserPromptPart(content=["recent a", IMAGE])])

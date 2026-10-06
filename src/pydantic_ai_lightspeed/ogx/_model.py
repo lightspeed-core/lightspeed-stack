@@ -463,10 +463,9 @@ class OgxResponsesModel(OpenAIResponsesModel):
         When the prompt carries media, the trailing user message of the
         override (the new query) is replaced by pydantic-ai's own mapping of
         its text followed by that media, which is the form the query has
-        outside compacted mode. The text stays the one the override carries:
-        for an empty query the prompt holds the text of an earlier message
-        (see ``agent_prompt_text``). A text-only prompt leaves the override as
-        it was built.
+        outside compacted mode. The text stays the one the override carries,
+        so the explicit list is the only source of the query text. A text-only
+        prompt leaves the override as it was built.
 
         Parameters:
             messages: Model messages for the request.
