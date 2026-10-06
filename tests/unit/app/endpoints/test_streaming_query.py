@@ -927,9 +927,12 @@ class TestGenerateResponseWithCompaction:  # pylint: disable=too-few-public-meth
 
         compaction_result = CompactionResult(responses_params, compacted=compacted)
 
+        compaction_kwargs: dict[str, Any] = {}
+
         async def fake_apply_compaction(
-            *_args: Any, **_kwargs: Any
+            *_args: Any, **kwargs: Any
         ) -> AsyncIterator[CompactionResult]:
+            compaction_kwargs.update(kwargs)
             yield compaction_result
 
         mocker.patch(
@@ -983,3 +986,5 @@ class TestGenerateResponseWithCompaction:  # pylint: disable=too-few-public-meth
 
         assert events  # the start event plus the delegated events
         assert captured_kwargs["context_status"] == expected_status
+        # The summarization calls are recorded under this endpoint (LCORE-3910).
+        assert compaction_kwargs["endpoint_path"] == "/v1/streaming_query"

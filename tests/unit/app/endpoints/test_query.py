@@ -231,7 +231,7 @@ class TestQueryEndpointHandler:
             cast("ResponsesApiParams", mock_responses_params),
             compacted=compacted,
         )
-        mocker.patch(
+        apply = mocker.patch(
             "app.endpoints.query.apply_compaction_blocking",
             new=mocker.AsyncMock(return_value=compaction_result),
         )
@@ -259,6 +259,8 @@ class TestQueryEndpointHandler:
 
         assert isinstance(response, QueryResponse)
         assert response.context_status == expected_status
+        # The summarization calls are recorded under this endpoint (LCORE-3910).
+        assert apply.await_args.kwargs["endpoint_path"] == "/v1/query"
 
     @pytest.mark.asyncio
     async def test_query_merges_inline_and_tool_rag_chunks_and_documents(

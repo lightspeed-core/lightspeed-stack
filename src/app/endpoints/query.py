@@ -242,6 +242,7 @@ async def _handle_query_with_tracing(
         cache=configured_conversation_cache(),
         user_id=user_id,
         skip_user_id_check=_skip_userid_check,
+        endpoint_path=endpoint_path,
     )
     responses_params = compaction.params
 
