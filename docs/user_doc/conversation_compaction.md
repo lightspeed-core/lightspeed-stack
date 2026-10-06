@@ -186,7 +186,13 @@ When compaction occurs, a marker message (prefixed with `[lightspeed:compaction-
 
 The marker is internal bookkeeping, not something the user said. It stays in storage, but `GET /v1/conversations/{conversation_id}` leaves it out of the returned chat history, so clients see only the turns the user and the assistant exchanged. `GET /v2/conversations/{conversation_id}` reads the conversation cache, which never holds markers.
 
-The prefix is reserved. A user message that begins with `[lightspeed:compaction-summary]` cannot be told apart from a marker, so `GET /v1/conversations/{conversation_id}` leaves it out as well, whether or not compaction is enabled.
+The prefix is reserved. A user message that begins with `[lightspeed:compaction-summary]` cannot be told apart from a marker, so `GET /v1/conversations/{conversation_id}` leaves it out as well, whether or not compaction is enabled. The exception is a message of a turn that was stored as blocked by a shield (see below): it is returned.
+
+### Turns blocked by a shield
+
+A turn a shield blocked stays in the conversation history, with the refusal in place of an answer, and `GET /v1/conversations/{conversation_id}` returns it. Compaction does not send it to the LLM again: it is neither replayed with the recent turns nor included in a summary.
+
+Blocked turns stored by a version without this behavior are not recognized and are treated like any other turn. The same holds when Granite Guardian rejects an answer or a tool result, rather than the question, while the conversation has not been compacted yet. Before a conversation is compacted, OGX builds the LLM context itself and this filter does not apply.
 
 ### Per-conversation locking
 
