@@ -24,9 +24,10 @@ from tests.e2e.utils.utils import (
 )
 
 DEFAULT_LLM_TIMEOUT = 180 if os.getenv("RUNNING_PROW") else 120
-MAX_STREAM_BYTES = 10 * 1024 * 1024  
-MAX_STREAM_EVENTS = 2000  
-MAX_DIAGNOSTIC_EXCERPT_BYTES = 4096 
+MAX_STREAM_BYTES = 10 * 1024 * 1024
+MAX_STREAM_EVENTS = 2000
+MAX_DIAGNOSTIC_EXCERPT_BYTES = 4096
+
 
 def _auth_headers(context: Context) -> dict[str, str]:
     """Return Authorization headers stored on the Behave context, if any."""
