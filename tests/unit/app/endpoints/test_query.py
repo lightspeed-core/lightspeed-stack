@@ -22,6 +22,7 @@ from models.common.turn_summary import (
 )
 from models.database.conversations import UserConversation
 from utils.conversation_compaction import CompactionResult
+from utils.query import consume_summarization_tokens
 
 # User ID must be proper UUID
 MOCK_AUTH = (
@@ -259,8 +260,12 @@ class TestQueryEndpointHandler:
 
         assert isinstance(response, QueryResponse)
         assert response.context_status == expected_status
-        # The summarization calls are recorded under this endpoint (LCORE-3910).
+        # The summarization calls are recorded under this endpoint and charged
+        # to the user of the request (LCORE-3910).
         assert apply.await_args.kwargs["endpoint_path"] == "/v1/query"
+        charge = apply.await_args.kwargs["charge"]
+        assert charge.func is consume_summarization_tokens
+        assert charge.args == (MOCK_AUTH[0],)
 
     @pytest.mark.asyncio
     async def test_query_merges_inline_and_tool_rag_chunks_and_documents(

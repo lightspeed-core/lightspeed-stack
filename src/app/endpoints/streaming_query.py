@@ -3,6 +3,7 @@
 import asyncio
 import datetime
 from collections.abc import AsyncIterator
+from functools import partial
 from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -70,6 +71,7 @@ from utils.otel_tracing import (
 )
 from utils.pending_turn import PendingTurn
 from utils.query import (
+    consume_summarization_tokens,
     extract_provider_and_model_from_model_id,
     handle_known_apistatus_errors,
     is_context_length_error,
@@ -433,6 +435,7 @@ async def generate_response_with_compaction(
                 user_id=context.user_id,
                 skip_user_id_check=context.skip_userid_check,
                 endpoint_path=endpoint_path,
+                charge=partial(consume_summarization_tokens, context.user_id),
             ):
                 if isinstance(item, CompactionStartedEvent):
                     yield stream_compaction_event(context.conversation_id)
