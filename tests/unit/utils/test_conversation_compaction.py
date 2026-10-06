@@ -261,6 +261,17 @@ def test_agent_prompt_text_explicit_list_returns_last_message_text() -> None:
     assert cc.agent_prompt_text(compacted) == "new question"
 
 
+def test_agent_prompt_text_empty_query_stays_empty() -> None:
+    """An empty query (an image sent without text) does not borrow earlier text."""
+    explicit = cc._build_explicit_input(
+        ["earlier summary"], [_msg("assistant", "prior answer")], ""
+    )
+    compacted = _params().model_copy(
+        update={"input": explicit, "omit_conversation": True}
+    )
+    assert cc.agent_prompt_text(compacted) == ""
+
+
 def test_agent_prompt_text_empty_list_returns_empty() -> None:
     """An empty explicit list yields an empty prompt rather than crashing."""
     params = _params().model_copy(update={"input": [], "omit_conversation": True})
