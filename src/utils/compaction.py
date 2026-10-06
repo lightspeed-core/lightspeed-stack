@@ -27,14 +27,16 @@ mocking the whole stack and lets LCORE-1572 wire it in without having
 to disentangle a tangle of side effects.
 """
 
+from collections.abc import Callable
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, Optional
 
 from ogx_client import AsyncOgxClient
 
 from log import get_logger
 from models.compaction import ConversationSummary
 from utils.query import normalize_vertex_ai_model_id
+from utils.token_counter import TokenCounter
 from utils.token_estimator import (
     estimate_conversation_tokens,
     estimate_tokens,
@@ -43,6 +45,15 @@ from utils.token_estimator import (
 )
 
 logger = get_logger(__name__)
+
+CallCounter = Callable[[str, TokenCounter], None]
+"""Receives the model and the token usage of one LLM call made here.
+
+The provider bills the calls this module makes, so their usage must not be
+lost (LCORE-3910). What is done with it (metrics, quota) is the caller's
+business: this module only reports each call, as soon as its response
+arrived and before the response is looked at.
+"""
 
 
 SUMMARIZATION_PROMPT = (
@@ -197,12 +208,32 @@ def _extract_response_text(response: Any) -> str:
     return "".join(parts)
 
 
-async def summarize_chunk(
+def reported_usage(response: Any) -> TokenCounter:
+    """Return the token usage the provider reported for one LLM call.
+
+    Parameters:
+        response: The result of ``client.responses.create``.
+
+    Returns:
+        The usage of that one call. The call is counted also when the
+        provider reported no usage for it; the token counts are 0 then.
+    """
+    usage = getattr(response, "usage", None)
+    return TokenCounter(
+        input_tokens=int(getattr(usage, "input_tokens", 0) or 0),
+        output_tokens=int(getattr(usage, "output_tokens", 0) or 0),
+        llm_calls=1,
+    )
+
+
+async def summarize_chunk(  # pylint: disable=too-many-arguments
     client: AsyncOgxClient,
     model: str,
     old_items: list[Any],
     summarized_through_turn: int,
     encoding_name: str,
+    *,
+    count_call: Optional[CallCounter] = None,
 ) -> ConversationSummary:
     """Summarize *old_items* via one LLM call and return a ConversationSummary.
 
@@ -242,6 +273,9 @@ async def summarize_chunk(
         encoding_name: Tiktoken encoding name used to count tokens in
             the produced summary. Should match the encoding used to
             decide the compaction trigger.
+        count_call: Called with the model and the usage the provider
+            reported, once the LLM call returned. It is called also
+            when the call returned no text and this function raises.
 
     Returns:
         A populated ConversationSummary.
@@ -275,6 +309,8 @@ async def summarize_chunk(
         stream=False,
         store=False,
     )
+    if count_call is not None:
+        count_call(model, reported_usage(response))
     summary_text = _extract_response_text(response).strip()
     if not summary_text:
         raise ValueError(
@@ -314,6 +350,8 @@ async def recursively_resummarize(
     model: str,
     summaries: list[ConversationSummary],
     encoding_name: str,
+    *,
+    count_call: Optional[CallCounter] = None,
 ) -> ConversationSummary:
     """Collapse multiple ``ConversationSummary`` records into one.
 
@@ -348,6 +386,9 @@ async def recursively_resummarize(
             short-circuit before invoking this function.
         encoding_name: Tiktoken encoding name used to count tokens in
             the produced fold.
+        count_call: Called with the model and the usage the provider
+            reported, once the LLM call returned. It is called also
+            when the call returned no text and this function raises.
 
     Returns:
         A single ConversationSummary representing the union of
@@ -387,6 +428,8 @@ async def recursively_resummarize(
         stream=False,
         store=False,
     )
+    if count_call is not None:
+        count_call(model, reported_usage(response))
     folded_text = _extract_response_text(response).strip()
     if not folded_text:
         raise ValueError(
