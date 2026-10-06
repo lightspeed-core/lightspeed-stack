@@ -24,7 +24,9 @@ from tests.e2e.utils.utils import (
 )
 
 DEFAULT_LLM_TIMEOUT = 180 if os.getenv("RUNNING_PROW") else 120
-
+MAX_STREAM_BYTES = 10 * 1024 * 1024  
+MAX_STREAM_EVENTS = 2000  
+MAX_DIAGNOSTIC_EXCERPT_BYTES = 4096 
 
 def _auth_headers(context: Context) -> dict[str, str]:
     """Return Authorization headers stored on the Behave context, if any."""
@@ -46,39 +48,71 @@ def _field(data: Mapping[str, Any], *names: str) -> Any:
     return None
 
 
-def _read_streamed_response(response: requests.Response) -> str:
-    """Read a streaming body, tolerating a premature close after an error event."""
-    chunks: list[str] = []
+def _consume_sse_jsonrpc_stream(
+    response: requests.Response,
+) -> tuple[list[dict[str, Any]], bytes, Optional[Any]]:
+    """Incrementally read and decode an A2A JSON-RPC SSE stream.
+
+    Lines are processed one at a time instead of being buffered into a full
+    response body: each line is inspected for a ``data:`` payload, decoded,
+    and either discarded or appended to the (bounded) results list. Only a
+    small, bounded excerpt of the raw stream is retained, for use in failure
+    messages, instead of a full copy of the body.
+
+    A premature close after an error event is tolerated (the server may
+    terminate the connection right after sending an error). To guard against
+    an unexpectedly large or runaway stream, both the total bytes read and
+    the number of parsed result events are capped; exceeding either limit
+    fails the test instead of growing memory without bound.
+
+    Returns:
+        A tuple of (parsed JSON-RPC ``result`` objects, bounded diagnostic
+        excerpt of the raw stream, first JSON-RPC ``error`` object seen, if
+        any). The caller decides whether/when to raise on that error.
+    """
+    results: list[dict[str, Any]] = []
+    excerpt = bytearray()
+    first_error: Optional[Any] = None
+    total_bytes = 0
+    encoding = response.encoding or "utf-8"
     try:
         for line in response.iter_lines(decode_unicode=True):
-            if line is not None:
-                chunks.append(line + "\n")
+            if line is None:
+                continue
+            line_bytes = line.encode(encoding)
+            total_bytes += len(line_bytes) + 1
+            assert total_bytes <= MAX_STREAM_BYTES, (
+                f"A2A SSE stream exceeded {MAX_STREAM_BYTES} bytes "
+                "without completing"
+            )
+            if len(excerpt) < MAX_DIAGNOSTIC_EXCERPT_BYTES:
+                remaining = MAX_DIAGNOSTIC_EXCERPT_BYTES - len(excerpt)
+                excerpt.extend(line_bytes[:remaining])
+                excerpt.extend(b"\n")
+
+            stripped = line.strip()
+            if not stripped.startswith("data:"):
+                continue
+            payload = stripped[5:].strip()
+            if not payload or payload == "[DONE]":
+                continue
+            try:
+                envelope = json.loads(payload)
+            except json.JSONDecodeError:
+                continue
+            error = envelope.get("error")
+            if error and first_error is None:
+                first_error = error
+            result = envelope.get("result")
+            if isinstance(result, dict):
+                assert len(results) < MAX_STREAM_EVENTS, (
+                    f"A2A SSE stream exceeded {MAX_STREAM_EVENTS} JSON-RPC "
+                    "result events without completing"
+                )
+                results.append(result)
     except requests.exceptions.ChunkedEncodingError:
         pass
-    return "".join(chunks)
-
-
-def _parse_sse_jsonrpc_results(response_text: str) -> list[dict[str, Any]]:
-    """Decode JSON-RPC ``result`` objects from A2A SSE ``data:`` lines."""
-    results: list[dict[str, Any]] = []
-    for raw_line in response_text.splitlines():
-        line = raw_line.strip()
-        if not line.startswith("data:"):
-            continue
-        payload = line[5:].strip()
-        if not payload or payload == "[DONE]":
-            continue
-        try:
-            envelope = json.loads(payload)
-        except json.JSONDecodeError:
-            continue
-        error = envelope.get("error")
-        if error:
-            raise AssertionError(f"A2A JSON-RPC stream error: {error}")
-        result = envelope.get("result")
-        if isinstance(result, dict):
-            results.append(result)
-    return results
+    return results, bytes(excerpt), first_error
 
 
 def _parts_text(parts: Any) -> str:
@@ -235,6 +269,8 @@ def _post_a2a(
 ) -> None:
     """POST /a2a and store the parsed A2A result on the Behave context."""
     url = _service_url(context, "/a2a")
+    context.a2a_result = None
+    context.a2a_events = None
     payload = _build_jsonrpc_payload(context, method, user_text, context_id)
     headers = _auth_headers(context)
     headers["Content-Type"] = "application/json"
@@ -248,12 +284,12 @@ def _post_a2a(
             timeout=DEFAULT_LLM_TIMEOUT,
             stream=True,
         )
-        body_text = _read_streamed_response(resp)
-        resp._content = body_text.encode(resp.encoding or "utf-8")
+        events, excerpt, error = _consume_sse_jsonrpc_stream(resp)
+        resp._content = excerpt
         context.response = resp
         if not _should_parse_response(resp):
             return
-        events = _parse_sse_jsonrpc_results(body_text)
+        assert not error, f"A2A JSON-RPC stream error: {error}"
         context.a2a_events = events
         context.a2a_result = _synthesize_result_from_stream(events)
         return

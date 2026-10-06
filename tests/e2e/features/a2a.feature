@@ -12,7 +12,7 @@ Feature: A2A protocol full-flow tests
       And The service is restarted
 
   Scenario: Discover the agent and complete one task
-    And I authenticate as "user" user
+    Given I authenticate as "user" user
     When I fetch the A2A agent card from "/.well-known/agent.json"
     Then The status code of the response is 200
       And The A2A agent card name is "E2E A2A Assistant"
@@ -29,7 +29,7 @@ Feature: A2A protocol full-flow tests
       And The A2A artifact text contains "Paris"
 
   Scenario: Multi-turn conversation keeps context
-    And I authenticate as "user" user
+    Given I authenticate as "user" user
     When I send an A2A "message/send" request
     """
     What is the capital of France? Reply with the city name.
@@ -49,7 +49,7 @@ Feature: A2A protocol full-flow tests
       And The A2A artifact text contains "Paris"
 
   Scenario: Streaming message produces a completed task
-    And I authenticate as "user" user
+    Given I authenticate as "user" user
     When I send an A2A "message/stream" request
     """
     Explain how photosynthesis works in two short sentences.
@@ -62,7 +62,7 @@ Feature: A2A protocol full-flow tests
       And The A2A artifact text contains "light"
 
   Scenario: Viewer views agent card but cannot send messages
-    And I authenticate as "viewer" user
+    Given I authenticate as "viewer" user
     When I fetch the A2A agent card from "/.well-known/agent-card.json"
     Then The status code of the response is 200
       And The A2A agent card name is "E2E A2A Assistant"
