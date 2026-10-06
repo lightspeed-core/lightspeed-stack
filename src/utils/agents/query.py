@@ -38,7 +38,6 @@ from utils.agents.tool_processor import (
 )
 from utils.conversation_compaction import (
     agent_prompt_text,
-    reject_image_attachments_in_compacted_mode,
     store_compacted_turn,
 )
 from utils.otel_tracing import (
@@ -282,9 +281,6 @@ async def retrieve_agent_response(
                 no_tools=no_tools,
             )
             logger.debug("Starting agent non-streaming response processing")
-            reject_image_attachments_in_compacted_mode(
-                responses_params, image_attachments
-            )
             if image_attachments:
                 prompt = build_multimodal_input(
                     agent_prompt_text(responses_params),

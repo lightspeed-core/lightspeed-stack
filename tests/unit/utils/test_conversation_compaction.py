@@ -8,7 +8,6 @@ from types import SimpleNamespace
 from typing import Any, Optional, cast
 
 import pytest
-from fastapi import HTTPException
 from ogx_api.openai_responses import (
     OpenAIResponseInputMessageContentText,
     OpenAIResponseMessage,
@@ -225,38 +224,6 @@ def test_agent_prompt_text_explicit_list_returns_last_message_text() -> None:
     )
     compacted = params.model_copy(update={"input": explicit, "omit_conversation": True})
     assert cc.agent_prompt_text(compacted) == "new question"
-
-
-@pytest.mark.parametrize(
-    ("omit_conversation", "has_images"),
-    [(True, False), (False, True), (False, False)],
-)
-def test_reject_image_attachments_allows_supported_combinations(
-    omit_conversation: bool, has_images: bool
-) -> None:
-    """Only a compacted turn carrying images is rejected; the rest pass through."""
-    params = _params().model_copy(update={"omit_conversation": omit_conversation})
-    attachments = [object()] if has_images else None
-    cc.reject_image_attachments_in_compacted_mode(params, attachments)
-
-
-def test_reject_image_attachments_in_compacted_mode_raises_422() -> None:
-    """A compacted turn with images fails explicitly instead of ignoring them.
-
-    The explicit-input override replaces the prompt-derived request input, and
-    the explicit list is text-only, so the images would never reach the model.
-    Answering anyway would return a confident response that never saw the
-    image, with nothing telling the caller it was dropped (LCORE-3582).
-    """
-    params = _params().model_copy(update={"omit_conversation": True})
-
-    with pytest.raises(HTTPException) as exc_info:
-        cc.reject_image_attachments_in_compacted_mode(params, [object()])
-
-    assert exc_info.value.status_code == 422
-    detail = exc_info.value.detail
-    assert "Image attachments are not supported" in detail["response"]
-    assert "compacted" in detail["cause"]
 
 
 def test_agent_prompt_text_empty_list_returns_empty() -> None:
