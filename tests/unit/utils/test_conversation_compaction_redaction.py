@@ -7,6 +7,7 @@ from ogx_api.openai_responses import OpenAIResponseMessage
 from pytest_mock import MockerFixture
 
 from models.common.responses.responses_api_params import ResponsesApiParams
+from models.compaction import ConversationSummary
 from models.config import (
     CompactionConfiguration,
     InferenceConfiguration,
@@ -36,10 +37,31 @@ def _msg(role: str, text: str) -> OpenAIResponseMessage:
     return OpenAIResponseMessage(role=cast("Any", role), content=text)
 
 
+# A conversation compacted once, with a buffer of two turns: the marker covers
+# the first turn and sits behind the two turns that compaction kept.
+HISTORY = [
+    _msg("user", "q1"),
+    _msg("assistant", "a1"),
+    _msg("user", "ask bob@example.org"),
+    _msg("assistant", "bob@example.org is out"),
+    _msg("user", "then ask ann@example.net"),
+    _msg("assistant", "ann@example.net replied"),
+    _msg(
+        "user", f"{cc.MARKER_SENTINEL} {cc.MARKER_COVERS_PREFIX}2] met eve@example.com"
+    ),
+    _msg("user", "q4"),
+    _msg("assistant", "a4"),
+]
+
+
 async def _compact(
-    mocker: MockerFixture, items: list[Any], redact: Optional[TextRedactor]
+    mocker: MockerFixture,
+    items: list[Any],
+    redact: Optional[TextRedactor],
+    window: int = 1_000_000,
+    **compaction: Any,
 ) -> cc.CompactionResult:
-    """Apply compaction to RAW_QUERY over *items*, far below the trigger."""
+    """Apply compaction to RAW_QUERY over *items*, by default far below the trigger."""
     mocker.patch.object(
         cc, "get_all_conversation_items", mocker.AsyncMock(return_value=items)
     )
@@ -52,8 +74,8 @@ async def _compact(
             store=True,
             stream=False,
         ),
-        inference_config=InferenceConfiguration(context_windows={MODEL: 1_000_000}),
-        compaction_config=CompactionConfiguration(enabled=True),
+        inference_config=InferenceConfiguration(context_windows={MODEL: window}),
+        compaction_config=CompactionConfiguration(enabled=True, **compaction),
         redact=redact,
     )
 
@@ -88,3 +110,62 @@ async def test_compacted_turn_carries_the_redacted_query(
     override = cast("dict[str, Any]", settings["extra_body"])["input"]
     assert override[-1]["content"] == expected_query
     assert result.original_input == expected_query
+
+
+@pytest.mark.asyncio
+async def test_replayed_user_turns_and_summaries_are_redacted(
+    mocker: MockerFixture,
+) -> None:
+    """What is replayed as user messages is redacted; other turns are not."""
+    items = [*HISTORY, _msg("system", "ops@example.com owns the report")]
+    result = await _compact(mocker, items, request_redactor([SHIELD]))
+
+    assert [message.content for message in result.params.input] == [
+        "Summary of earlier conversation:\nmet [EMAIL]",
+        "ask [EMAIL]",
+        "bob@example.org is out",
+        "then ask [EMAIL]",
+        "ann@example.net replied",
+        "q4",
+        "a4",
+        "ops@example.com owns the report",
+        REDACTED_QUERY,
+    ]
+
+
+@pytest.mark.asyncio
+async def test_summarizer_gets_redacted_user_turns(mocker: MockerFixture) -> None:
+    """The summarizer is handed redacted user turns, and the boundary stays put.
+
+    The first kept turn is looked up in the stored items by identity
+    (LCORE-4219), so the kept turns must not be replaced by redacted copies
+    before that: with the older marker among them the fallback count is 5.
+    """
+    summary = ConversationSummary(
+        summary_text="second summary",
+        summarized_through_turn=4,
+        token_count=2,
+        created_at="2026-10-07T00:00:00Z",
+        model_used=MODEL,
+    )
+    summarize = mocker.patch.object(
+        cc, "summarize_chunk", mocker.AsyncMock(return_value=summary)
+    )
+    mocker.patch.object(cc, "_write_summary_marker", mocker.AsyncMock())
+
+    await _compact(
+        mocker,
+        HISTORY,
+        request_redactor([SHIELD]),
+        window=1000,
+        threshold_ratio=0.01,
+        token_floor=0,
+        buffer_turns=2,
+    )
+
+    summarized = summarize.await_args.args[2]
+    assert [item.content for item in summarized] == [
+        "ask [EMAIL]",
+        "bob@example.org is out",
+    ]
+    assert summarize.await_args.kwargs["summarized_through_turn"] == 4

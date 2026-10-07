@@ -439,6 +439,33 @@ def _query_input_message(original_input: ResponseInput) -> list[Any]:
     return list(original_input)
 
 
+def _redact_user_messages(
+    items: list[Any], redact: Optional[TextRedactor]
+) -> list[Any]:
+    """Return conversation items with the text of their user messages redacted.
+
+    User messages are the ones :func:`_verbatim_input_message` replays with
+    the user role; other messages are left as stored, as the redaction
+    capability leaves them. A message the redaction changes is replaced by a
+    text-only copy and every other item is the object that was passed in, so
+    the stored conversation is not rewritten. Without a redaction the items
+    are returned as they are.
+    """
+    if redact is None:
+        return items
+    redacted_items: list[Any] = []
+    for item in items:
+        replacement = item
+        role = getattr(item, "role", "user")
+        if is_message_item(item) and role not in ("system", "developer", "assistant"):
+            text = extract_message_text(item)
+            redacted_text = redact(text)
+            if redacted_text != text:
+                replacement = OpenAIResponseMessage(role="user", content=redacted_text)
+        redacted_items.append(replacement)
+    return redacted_items
+
+
 def _build_explicit_input(
     summaries: list[str],
     recent_items: list[Any],
@@ -730,7 +757,10 @@ async def apply_compaction(  # pylint: disable=too-many-arguments,too-many-posit
         redact: The redaction of the shields the request selects
             (``utils.shields.request_redactor``), or ``None``. It is applied
             to the new query, so that a compacted turn sends and stores the
-            text the redaction capability sends outside compacted mode.
+            text the redaction capability sends outside compacted mode. It
+            is also applied to the summaries and the user turns replayed from
+            the conversation and to the user turns handed to the summarizer,
+            which may have been stored unredacted.
         cache: Conversation cache, the preferred summary store and the home of
             the persisted recursive fold. ``None`` (or a non-persisting backend)
             falls back to marker-only summaries with no folding.
@@ -788,7 +818,7 @@ async def apply_compaction(  # pylint: disable=too-many-arguments,too-many-posit
                 summary = await summarize_chunk(
                     client,
                     model,
-                    old_items,
+                    _redact_user_messages(old_items, redact),
                     summarized_through_turn=_covered_item_count(items, keep_items),
                     encoding_name=encoding_name,
                 )
@@ -822,6 +852,13 @@ async def apply_compaction(  # pylint: disable=too-many-arguments,too-many-posit
             # normal conversation-parameter flow untouched.
             yield CompactionResult(params, compacted=False)
             return
+
+        if redact is not None:
+            # Summaries and replayed user turns go out as user messages and may
+            # have been stored unredacted. Not earlier: the kept turns are found
+            # among the stored items by identity (_covered_item_count).
+            summaries = [redact(text) for text in summaries]
+            recent_items = _redact_user_messages(recent_items, redact)
 
         # Compacted mode: lightspeed owns the context. Build explicit input and
         # stop passing the conversation parameter to inference.
