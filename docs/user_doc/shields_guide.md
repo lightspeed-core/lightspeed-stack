@@ -99,8 +99,17 @@ In a [compacted conversation](conversation_compaction.md), Lightspeed Core
 Stack builds the model input and stores the turn itself. It applies the
 redaction shields selected for the request to the new query there, so that the
 model receives and the conversation stores the same redacted query as outside
-compacted mode. Answers of the model are stored and replayed as the model
-produced them, in both modes. Text that is already stored is not rewritten.
+compacted mode. The user messages and the summaries it replays from the
+conversation, and the user messages it hands to the summarizer, go through the
+same rules each time they are sent, so a replacement must not itself match a
+rule.
+
+Not covered: answers of the model are stored and replayed as the model
+produced them, in both modes, and the summarizer gets them as stored. Text
+that is already stored is not rewritten, so
+`GET /v1/conversations/{conversation_id}` returns it as stored. The recursive
+re-summarization sends the stored summaries as they are, and `/v1/responses`
+replays a compacted conversation as stored.
 
 ## granite_guardian
 
