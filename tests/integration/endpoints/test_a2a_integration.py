@@ -8,7 +8,7 @@ from collections.abc import Generator
 from typing import Any, Optional
 
 import pytest
-from fastapi import HTTPException, Request, status
+from fastapi import HTTPException, status
 from ogx_client import ApiException
 from pytest_mock import MockerFixture
 
@@ -27,6 +27,7 @@ from models.config import (
     RHIdentityConfiguration,
 )
 from tests.integration.conftest import (
+    build_a2a_request,
     create_text_agent_stream_events,
     make_openai_model,
     make_openai_models_list_response,
@@ -90,9 +91,10 @@ def configure_a2a_agent_card(test_config: AppConfig) -> None:
 
     Autouse because most tests in this module go through
     ``_create_a2a_app``/``get_lightspeed_agent_card``, which require one.
-    It's a harmless no-op for the handful of tests (e.g. the missing-
-    credentials check) that bypass the real endpoint entirely and never
-    read ``configuration.customization``.
+    It's a harmless no-op for the handful of tests (e.g.
+    ``test_a2a_jsonrpc_forbidden_without_action``) that are rejected by the
+    ``@authorize`` decorator before the real endpoint body ever runs, and so
+    never read ``configuration.customization``.
     """
     assert test_config._configuration is not None
     test_config._configuration.customization = Customization(
@@ -112,33 +114,6 @@ def _install_agent(mocker: MockerFixture, *contents: str) -> Any:
     else:
         mock_agent.run_stream_events.side_effect = streams
     return mocker.patch("app.endpoints.a2a.build_agent", return_value=mock_agent)
-
-
-def _a2a_request(body: dict[str, Any] | bytes) -> Request:
-    """Build a POST ``/a2a`` request for ``handle_a2a_jsonrpc_post``.
-
-    ``body`` may be a JSON-RPC payload (dict) or raw bytes, so callers can
-    also exercise malformed/non-JSON request bodies.
-    """
-    body_bytes = body if isinstance(body, bytes) else json.dumps(body).encode()
-
-    async def receive() -> dict[str, Any]:
-        """Return the JSON-RPC body."""
-        return {"type": "http.request", "body": body_bytes, "more_body": False}
-
-    return Request(
-        scope={
-            "type": "http",
-            "method": "POST",
-            "path": "/a2a",
-            "root_path": "",
-            "query_string": b"",
-            "headers": [(b"content-type", b"application/json")],
-            "scheme": "http",
-            "server": ("localhost", 8080),
-        },
-        receive=receive,
-    )
 
 
 def _jsonrpc_body(
@@ -185,10 +160,10 @@ def _context_id(result: dict[str, Any]) -> str:
     return result.get("contextId", "")
 
 
-async def _post_a2a(body: dict[str, Any] | bytes, auth: AuthTuple) -> Any:
+async def _post_a2a(body: dict[str, Any], auth: AuthTuple) -> Any:
     """POST a JSON-RPC request to the A2A handler."""
     return await a2a_endpoint.handle_a2a_jsonrpc_post(
-        request=_a2a_request(body),
+        request=build_a2a_request(body),
         auth=auth,
         mcp_headers={},
     )
@@ -209,20 +184,6 @@ def _jsonrpc_result(response: Any) -> dict[str, Any]:
     result = payload.get("result")
     assert isinstance(result, dict), payload
     return result
-
-
-def _jsonrpc_error(response: Any) -> dict[str, Any]:
-    """Decode a JSON-RPC error result and return the ``error`` object.
-
-    Per the JSON-RPC 2.0 spec (https://www.jsonrpc.org/specification),
-    error responses are still delivered over HTTP 200; the error details
-    (including the standard ``code``) live in the JSON body.
-    """
-    payload = _parse_jsonrpc_response(response)
-    assert payload.get("error"), payload
-    error = payload["error"]
-    assert isinstance(error, dict), payload
-    return error
 
 
 @pytest.mark.asyncio
@@ -367,51 +328,3 @@ async def test_message_send_without_text_returns_input_required(
     # unlike the Python enum member name (TaskState.input_required).
     assert _task_state(result) == "input-required"
     build_agent.assert_not_called()
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize(
-    ("body", "expected_code"),
-    [
-        pytest.param(b"{not valid json", -32700, id="malformed-json-parse-error"),
-        pytest.param(
-            {"jsonrpc": "2.0", "id": "1", "params": {}},
-            -32600,
-            id="missing-method-invalid-request",
-        ),
-        pytest.param(
-            {
-                "jsonrpc": "2.0",
-                "id": "1",
-                "method": "message/does-not-exist",
-                "params": {},
-            },
-            -32601,
-            id="unknown-method-not-found",
-        ),
-        pytest.param(
-            {"jsonrpc": "2.0", "id": "1", "method": "message/send"},
-            -32602,
-            id="message-send-missing-params-invalid-params",
-        ),
-    ],
-)
-async def test_a2a_jsonrpc_rejects_malformed_requests(
-    test_auth: AuthTuple,
-    body: dict[str, Any] | bytes,
-    expected_code: int,
-) -> None:
-    """Malformed JSON-RPC requests get the standard JSON-RPC 2.0 error code.
-
-    These codes are not project-specific: they come straight from the public
-    JSON-RPC 2.0 spec (https://www.jsonrpc.org/specification, section on
-    error objects) and are produced by the ``a2a-sdk``'s own request
-    validation in ``JSONRPCApplication._handle_requests`` (base
-    ``JSONRPCRequest`` validation for -32600, method lookup for -32601,
-    method-specific param validation, e.g. ``SendMessageRequest``, for
-    -32602, and a JSON parse failure for -32700) -- this project doesn't
-    define or override any of that error handling, it's inherited verbatim
-    from the SDK.
-    """
-    error = _jsonrpc_error(await _post_a2a(body, test_auth))
-    assert error["code"] == expected_code

@@ -4,7 +4,6 @@
 # pylint: disable=too-many-positional-arguments
 
 import asyncio
-import json
 import uuid
 from collections.abc import AsyncIterator
 from typing import Any
@@ -25,7 +24,7 @@ from authentication.interface import AuthTuple
 from configuration import AppConfig
 from models.common.responses.responses_api_params import ResponsesApiParams
 from models.compaction import ConversationSummary
-from tests.integration.conftest import InMemoryConversationStore
+from tests.integration.conftest import InMemoryConversationStore, build_a2a_request
 from tests.integration.endpoints._compaction_helpers import (
     CONV_ID_LLAMA,
     DEFAULT_MODEL_RESPONSE,
@@ -77,25 +76,7 @@ def _build_a2a_request(user_input: str) -> Request:
             }
         },
     }
-    body_bytes = json.dumps(body_dict).encode()
-
-    async def receive() -> dict[str, Any]:
-        """Return the pre-built body as an ASGI receive event."""
-        return {"type": "http.request", "body": body_bytes, "more_body": False}
-
-    return Request(
-        scope={
-            "type": "http",
-            "method": "POST",
-            "path": "/a2a",
-            "root_path": "",
-            "query_string": b"",
-            "headers": [
-                (b"content-type", b"application/json"),
-            ],
-        },
-        receive=receive,
-    )
+    return build_a2a_request(body_dict)
 
 
 def _mock_a2a_agent(mocker: MockerFixture) -> Any:

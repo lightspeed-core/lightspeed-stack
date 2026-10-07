@@ -3,6 +3,7 @@
 # pylint: disable=too-many-lines
 
 import importlib
+import json
 import os
 from collections import defaultdict
 from collections.abc import AsyncIterator, Generator
@@ -584,6 +585,42 @@ def shutdown_integration_otel_provider(provider: TracerProvider) -> None:
     provider.shutdown()
     trace._TRACER_PROVIDER_SET_ONCE._done = False  # pylint: disable=protected-access
     trace._TRACER_PROVIDER = None  # pylint: disable=protected-access
+
+
+def build_a2a_request(body: dict[str, Any]) -> Request:
+    """Build a POST ``/a2a`` FastAPI Request wrapping a JSON-RPC body.
+
+    Shared by the A2A integration test modules (``test_a2a_integration.py``
+    and ``test_compaction_a2a.py``) so the ASGI scope/receive wiring for a
+    synthetic ``/a2a`` request isn't duplicated across files.
+
+    Parameters:
+        body: JSON-RPC request payload (e.g. a ``message/send`` body) to
+            serialize as the request body.
+
+    Returns:
+        Request: FastAPI Request object whose body yields the serialized
+        ``body`` dict when read (e.g. via ``await request.body()``).
+    """
+    body_bytes = json.dumps(body).encode()
+
+    async def receive() -> dict[str, Any]:
+        """Return the JSON-RPC body as a single ASGI receive event."""
+        return {"type": "http.request", "body": body_bytes, "more_body": False}
+
+    return Request(
+        scope={
+            "type": "http",
+            "method": "POST",
+            "path": "/a2a",
+            "root_path": "",
+            "query_string": b"",
+            "headers": [(b"content-type", b"application/json")],
+            "scheme": "http",
+            "server": ("localhost", 8080),
+        },
+        receive=receive,
+    )
 
 
 # ==========================================

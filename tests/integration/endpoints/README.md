@@ -12,7 +12,7 @@ Shared helpers for conversation compaction integration tests.
 
 Integration tests for the /authorized endpoint.
 
-## [test_a2a_integration.py](test_authorized_endpoint.py)
+## [test_a2a_integration.py](test_a2a_integration.py)
 
 Integration tests for the A2A JSON-RPC endpoint.
 
