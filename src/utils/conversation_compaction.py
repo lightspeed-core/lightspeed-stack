@@ -80,6 +80,7 @@ from utils.token_estimator import (
     extract_message_text,
     is_message_item,
 )
+from utils.types import TextRedactor
 
 logger = get_logger(__name__)
 
@@ -184,7 +185,7 @@ class CompactionResult:
             or the cache), so the ``conversation`` parameter is omitted. This is
             True whether the summary was created this request or reused from a
             prior one. Drives ``context_status``.
-        original_input: The new user query exactly as it arrived (before the
+        original_input: The new user query after redaction, if any (before the
             explicit-input rewrite). Populated only in compacted mode (where
             ``compacted`` is True); ``None`` otherwise. In compacted mode the
             caller hands it to ``utils.pending_turn.PendingTurn``, which
@@ -701,6 +702,7 @@ async def apply_compaction(  # pylint: disable=too-many-arguments,too-many-posit
     compaction_config: CompactionConfiguration,
     emit_events: bool = False,
     encoding_name: str = DEFAULT_ENCODING_NAME,
+    redact: Optional[TextRedactor] = None,
     cache: Optional[Cache] = None,
     user_id: str = "",
     skip_user_id_check: bool = False,
@@ -725,6 +727,10 @@ async def apply_compaction(  # pylint: disable=too-many-arguments,too-many-posit
         compaction_config: Compaction tuning (enabled, threshold, buffer, ...).
         emit_events: Whether to yield CompactionStartedEvent before summarizing.
         encoding_name: tiktoken encoding name for estimation/summarization.
+        redact: The redaction of the shields the request selects
+            (``utils.shields.request_redactor``), or ``None``. It is applied
+            to the new query, so that a compacted turn sends and stores the
+            text the redaction capability sends outside compacted mode.
         cache: Conversation cache, the preferred summary store and the home of
             the persisted recursive fold. ``None`` (or a non-persisting backend)
             falls back to marker-only summaries with no folding.
@@ -755,6 +761,10 @@ async def apply_compaction(  # pylint: disable=too-many-arguments,too-many-posit
         summaries, cached_summaries, recent_items = _load_compaction_state(
             items, cache, user_id, conversation_id, skip_user_id_check
         )
+        # An item list (the /v1/responses form) is left alone: that endpoint
+        # passes no redaction.
+        if redact is not None and isinstance(original_input, str):
+            original_input = redact(original_input)
 
         context_window = resolve_context_window(model, inference_config)
         estimated = _estimate_total_tokens(
@@ -824,6 +834,7 @@ async def apply_compaction_blocking(  # pylint: disable=too-many-arguments,too-m
     inference_config: InferenceConfiguration,
     compaction_config: CompactionConfiguration,
     encoding_name: str = DEFAULT_ENCODING_NAME,
+    redact: Optional[TextRedactor] = None,
     cache: Optional[Cache] = None,
     user_id: str = "",
     skip_user_id_check: bool = False,
@@ -842,6 +853,7 @@ async def apply_compaction_blocking(  # pylint: disable=too-many-arguments,too-m
         compaction_config,
         emit_events=False,
         encoding_name=encoding_name,
+        redact=redact,
         cache=cache,
         user_id=user_id,
         skip_user_id_check=skip_user_id_check,
