@@ -14,11 +14,15 @@ from models.common.moderation import ShieldModerationBlocked, ShieldModerationPa
 from models.config import (
     QuestionValidityConfig,
     QuestionValidityShieldConfiguration,
+    RedactionConfig,
+    RedactionRule,
+    RedactionShieldConfiguration,
     ShieldConfiguration,
 )
 from utils.otel_tracing import SpanAttributes, SpanEvents
 from utils.shields import (
     get_shields_for_request,
+    request_redactor,
     run_shield_moderation_v2,
     validate_shield_ids_override,
 )
@@ -30,6 +34,19 @@ def _shield_config(name: str) -> QuestionValidityShieldConfiguration:
         name=name,
         provider_id="question_validity",
         config=QuestionValidityConfig(model_id="test-model"),
+    )
+
+
+def _redaction_shield(
+    name: str, pattern: str, replacement: str
+) -> RedactionShieldConfiguration:
+    """Build a redaction shield with one rule for tests."""
+    return RedactionShieldConfiguration(
+        name=name,
+        provider_id="redaction",
+        config=RedactionConfig(
+            rules=[RedactionRule(pattern=pattern, replacement=replacement)]
+        ),
     )
 
 
@@ -402,3 +419,51 @@ class TestGetShieldsForRequest:
         assert "Shields" in detail["response"]
         assert "missing-1" in detail["cause"]
         assert "missing-2" in detail["cause"]
+
+
+class TestRequestRedactor:
+    """Tests for request_redactor function."""
+
+    def test_returns_none_when_no_redaction_rule_is_selected(self) -> None:
+        """There is no redactor when the selection holds no redaction rule."""
+        email = _redaction_shield("email", r"\S+@\S+", "[EMAIL]")
+        no_rules = RedactionShieldConfiguration(
+            name="no-rules", provider_id="redaction", config=RedactionConfig()
+        )
+        validity = _shield_config("validity")
+
+        assert request_redactor([validity, no_rules]) is None
+        assert request_redactor([email], shield_ids=[]) is None
+        assert request_redactor([email, validity], shield_ids=["validity"]) is None
+
+    def test_redacts_with_all_configured_shields_by_default(self) -> None:
+        """Without shield_ids every configured redaction shield applies."""
+        redact = request_redactor(
+            [
+                _shield_config("validity"),
+                _redaction_shield("email", r"\S+@\S+", "[EMAIL]"),
+            ]
+        )
+
+        assert redact is not None
+        assert redact("mail jane@example.com now") == "mail [EMAIL] now"
+
+    def test_applies_shields_in_configuration_order(self) -> None:
+        """Rules run in configuration order, whatever the order of shield_ids."""
+        first = _redaction_shield("first", "secret", "token")
+        second = _redaction_shield("second", "token", "[GONE]")
+
+        redact = request_redactor([first, second], shield_ids=["second", "first"])
+
+        assert redact is not None
+        assert redact("my secret") == "my [GONE]"
+
+    def test_raises_404_when_requested_shield_not_configured(self) -> None:
+        """An unknown shield name is the same 404 as on the agent path."""
+        with pytest.raises(HTTPException) as exc_info:
+            request_redactor(
+                [_redaction_shield("email", r"\S+@\S+", "[EMAIL]")],
+                shield_ids=["missing-shield"],
+            )
+
+        assert exc_info.value.status_code == status.HTTP_404_NOT_FOUND
