@@ -60,7 +60,7 @@ from utils.responses import (
     maybe_get_topic_summary,
     prepare_responses_params,
 )
-from utils.shields import validate_shield_ids_override
+from utils.shields import request_redactor, validate_shield_ids_override
 from utils.suid import normalize_conversation_id
 from utils.types import Responses
 from utils.vector_search import build_rag_context
@@ -239,6 +239,7 @@ async def _handle_query_with_tracing(
         responses_params,
         configuration.inference,
         configuration.compaction,
+        redact=request_redactor(configuration.shields, query_request.shield_ids),
         cache=configured_conversation_cache(),
         user_id=user_id,
         skip_user_id_check=_skip_userid_check,
