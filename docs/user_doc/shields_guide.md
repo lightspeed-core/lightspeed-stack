@@ -95,6 +95,13 @@ for a complete example.
 
 Invalid regex patterns are rejected at configuration load time.
 
+In a [compacted conversation](conversation_compaction.md), Lightspeed Core
+Stack builds the model input and stores the turn itself. It applies the
+redaction shields selected for the request to the new query there, so that the
+model receives and the conversation stores the same redacted query as outside
+compacted mode. Answers of the model are stored and replayed as the model
+produced them, in both modes. Text that is already stored is not rewritten.
+
 ## granite_guardian
 
 IBM Granite Guardian screening with configurable risk definitions, thresholds,
