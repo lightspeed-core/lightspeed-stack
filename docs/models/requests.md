@@ -102,7 +102,7 @@ Attributes:
     llm_response: The required LLM response.
     sentiment: The optional sentiment.
     user_feedback: The optional user feedback.
-    categories: The optional list of feedback categories (multi-select for negative feedback).
+    categories: The optional list of positive or negative feedback categories.
 
 
 | Field | Type | Description |
@@ -112,7 +112,7 @@ Attributes:
 | llm_response | string | Response from LLM |
 | sentiment | integer | User sentiment, if provided must be -1 or 1 |
 | user_feedback | string | Feedback on the LLM response. |
-| categories | array | List of feedback categories that describe issues with the LLM response (for negative feedback). |
+| categories | array | List of positive or negative feedback categories. Categories may be selected independently of the sentiment value. |
 
 
 ## FeedbackStatusUpdateRequest
@@ -837,6 +837,17 @@ The top log probability for a token from an OpenAI-compatible chat completion re
 | token | string | The token. |
 | bytes | array | The bytes for the token. |
 | logprob | number | The log probability of the token. |
+
+
+## PositiveFeedbackCategory
+
+
+Enum representing predefined categories for positive AI responses.
+
+These categories cover qualities commonly associated with a useful answer.
+Users can select them regardless of the separate sentiment value.
+
+
 
 
 ## PromptCreateRequest

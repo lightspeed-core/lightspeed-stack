@@ -4,7 +4,7 @@ from typing import Optional, Self
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-from models.common import FeedbackCategory
+from models.common import FeedbackCategory, PositiveFeedbackCategory
 from utils import suid
 
 
@@ -17,7 +17,7 @@ class FeedbackRequest(BaseModel):
         llm_response: The required LLM response.
         sentiment: The optional sentiment.
         user_feedback: The optional user feedback.
-        categories: The optional list of feedback categories (multi-select for negative feedback).
+        categories: The optional list of positive or negative feedback categories.
     """
 
     conversation_id: str = Field(
@@ -51,14 +51,17 @@ class FeedbackRequest(BaseModel):
         examples=["I'm not satisfied with the response because it is too vague."],
     )
 
-    # Optional list of predefined feedback categories for negative feedback
-    categories: Optional[list[FeedbackCategory]] = Field(
+    # Categories are accepted independently of the sentiment value.
+    categories: Optional[list[FeedbackCategory | PositiveFeedbackCategory]] = Field(
         default=None,
         description=(
-            "List of feedback categories that describe issues with the LLM response "
-            "(for negative feedback)."
+            "List of positive or negative feedback categories. Categories may be "
+            "selected independently of the sentiment value."
         ),
-        examples=[["incorrect", "incomplete"]],
+        examples=[
+            ["incorrect", "incomplete"],
+            ["helpful", "accurate", "resolved_issue"],
+        ],
     )
 
     # provides examples for /docs endpoint
@@ -79,6 +82,13 @@ class FeedbackRequest(BaseModel):
                     "llm_response": "The capital of France is Berlin.",
                     "sentiment": -1,
                     "categories": ["incorrect"],
+                },
+                {
+                    "conversation_id": "12345678-abcd-0000-0123-456789abcdef",
+                    "user_question": "How do I use the API?",
+                    "llm_response": "The API is easy to use.",
+                    "sentiment": 1,
+                    "categories": ["helpful"],
                 },
                 {
                     "conversation_id": "12345678-abcd-0000-0123-456789abcdef",
@@ -135,8 +145,9 @@ class FeedbackRequest(BaseModel):
     @field_validator("categories")
     @classmethod
     def validate_categories(
-        cls, value: Optional[list[FeedbackCategory]]
-    ) -> Optional[list[FeedbackCategory]]:
+        cls,
+        value: Optional[list[FeedbackCategory | PositiveFeedbackCategory]],
+    ) -> Optional[list[FeedbackCategory | PositiveFeedbackCategory]]:
         """Normalize and deduplicate a feedback categories list.
 
         Converts an empty list to None for consistency and removes duplicate

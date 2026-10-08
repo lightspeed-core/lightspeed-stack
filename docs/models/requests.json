@@ -137,7 +137,7 @@
             },
             "FeedbackRequest": {
                 "additionalProperties": false,
-                "description": "Model representing a feedback request.\n\nAttributes:\n    conversation_id: The required conversation ID (UUID).\n    user_question: The required user question.\n    llm_response: The required LLM response.\n    sentiment: The optional sentiment.\n    user_feedback: The optional user feedback.\n    categories: The optional list of feedback categories (multi-select for negative feedback).",
+                "description": "Model representing a feedback request.\n\nAttributes:\n    conversation_id: The required conversation ID (UUID).\n    user_question: The required user question.\n    llm_response: The required LLM response.\n    sentiment: The optional sentiment.\n    user_feedback: The optional user feedback.\n    categories: The optional list of positive or negative feedback categories.",
                 "examples": [
                     {
                         "conversation_id": "12345678-abcd-0000-0123-456789abcdef",
@@ -154,6 +154,15 @@
                         "llm_response": "The capital of France is Berlin.",
                         "sentiment": -1,
                         "user_question": "What is the capital of France?"
+                    },
+                    {
+                        "categories": [
+                            "helpful"
+                        ],
+                        "conversation_id": "12345678-abcd-0000-0123-456789abcdef",
+                        "llm_response": "The API is easy to use.",
+                        "sentiment": 1,
+                        "user_question": "How do I use the API?"
                     },
                     {
                         "categories": [
@@ -217,11 +226,16 @@
                         "type": "array",
                         "nullable": true,
                         "default": null,
-                        "description": "List of feedback categories that describe issues with the LLM response (for negative feedback).",
+                        "description": "List of positive or negative feedback categories. Categories may be selected independently of the sentiment value.",
                         "examples": [
                             [
                                 "incorrect",
                                 "incomplete"
+                            ],
+                            [
+                                "helpful",
+                                "accurate",
+                                "resolved_issue"
                             ]
                         ],
                         "title": "Categories"
@@ -1849,6 +1863,19 @@
                 ],
                 "title": "OpenAITopLogProb",
                 "type": "object"
+            },
+            "PositiveFeedbackCategory": {
+                "description": "Enum representing predefined categories for positive AI responses.\n\nThese categories cover qualities commonly associated with a useful answer.\nUsers can select them regardless of the separate sentiment value.",
+                "enum": [
+                    "helpful",
+                    "accurate",
+                    "clear",
+                    "relevant",
+                    "actionable",
+                    "resolved_issue"
+                ],
+                "title": "PositiveFeedbackCategory",
+                "type": "string"
             },
             "PromptCreateRequest": {
                 "additionalProperties": false,

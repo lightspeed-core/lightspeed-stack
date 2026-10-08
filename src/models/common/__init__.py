@@ -6,7 +6,7 @@ from models.common.conversation import (
     ConversationTurn,
     Message,
 )
-from models.common.feedback import FeedbackCategory
+from models.common.feedback import FeedbackCategory, PositiveFeedbackCategory
 from models.common.health import (
     HealthStatus,
     ProviderHealthStatus,
@@ -56,6 +56,7 @@ __all__ = [
     "MCPServerAuthInfo",
     "MCPServerInfo",
     "Message",
+    "PositiveFeedbackCategory",
     "ProviderHealthStatus",
     "RAGChunk",
     "RAGContext",
