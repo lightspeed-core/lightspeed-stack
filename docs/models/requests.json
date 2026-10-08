@@ -224,6 +224,16 @@
                     },
                     "categories": {
                         "type": "array",
+                        "items": {
+                            "anyOf": [
+                                {
+                                    "$ref": "`#/components/schemas/`FeedbackCategory"
+                                },
+                                {
+                                    "$ref": "`#/components/schemas/`PositiveFeedbackCategory"
+                                }
+                            ]
+                        },
                         "nullable": true,
                         "default": null,
                         "description": "List of positive or negative feedback categories.",
