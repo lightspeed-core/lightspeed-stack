@@ -23,7 +23,6 @@ class PositiveFeedbackCategory(StrEnum):
     """Enum representing predefined categories for positive AI responses.
 
     These categories cover qualities commonly associated with a useful answer.
-    Users can select them regardless of the separate sentiment value.
     """
 
     HELPFUL = "helpful"  # "The response is useful"

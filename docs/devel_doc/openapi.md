@@ -6404,12 +6404,6 @@ These categories help provide structured feedback about AI inference quality
 when users provide negative feedback (thumbs down). Multiple categories can
 be selected to provide comprehensive feedback about response issues.
 
-The predefined categories are `incorrect`, `not_relevant`, `incomplete`,
-`outdated_information`, `unsafe`, and `other`.
-
-
-
-
 ## FeedbackRequest
 
 
@@ -6431,7 +6425,7 @@ Attributes:
 | llm_response | string | Response from LLM |
 | sentiment |  | User sentiment, if provided must be -1 or 1 |
 | user_feedback |  | Feedback on the LLM response. |
-| categories | array of FeedbackCategory or PositiveFeedbackCategory | Positive and negative categories may be selected independently of sentiment. |
+| categories | array of FeedbackCategory or PositiveFeedbackCategory | List of positive or negative feedback categories. |
 
 
 ## FeedbackResponse
@@ -7804,11 +7798,6 @@ Useful resources:
 ## PositiveFeedbackCategory
 
 Enum representing predefined categories for positive feedback.
-
-The predefined categories are `helpful`, `accurate`, `clear`, `relevant`,
-`actionable`, and `resolved_issue`. These values are accepted independently of
-the sentiment field.
-
 
 ## PromptCreateRequest
 

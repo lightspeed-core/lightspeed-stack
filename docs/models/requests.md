@@ -112,7 +112,7 @@ Attributes:
 | llm_response | string | Response from LLM |
 | sentiment | integer | User sentiment, if provided must be -1 or 1 |
 | user_feedback | string | Feedback on the LLM response. |
-| categories | array | List of positive or negative feedback categories. Categories may be selected independently of the sentiment value. |
+| categories | array | List of positive or negative feedback categories. |
 
 
 ## FeedbackStatusUpdateRequest
@@ -845,7 +845,6 @@ The top log probability for a token from an OpenAI-compatible chat completion re
 Enum representing predefined categories for positive AI responses.
 
 These categories cover qualities commonly associated with a useful answer.
-Users can select them regardless of the separate sentiment value.
 
 
 

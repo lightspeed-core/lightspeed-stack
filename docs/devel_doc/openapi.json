@@ -14365,7 +14365,7 @@
                             }
                         ],
                         "title": "Categories",
-                        "description": "List of positive or negative feedback categories. Categories may be selected independently of the sentiment value.",
+                        "description": "List of positive or negative feedback categories.",
                         "examples": [
                             [
                                 "incorrect",
@@ -18247,7 +18247,7 @@
                     "resolved_issue"
                 ],
                 "title": "PositiveFeedbackCategory",
-                "description": "Enum representing predefined categories for positive AI responses.\n\nThese categories cover qualities commonly associated with a useful answer.\nUsers can select them regardless of the separate sentiment value."
+                "description": "Enum representing predefined categories for positive AI responses.\n\nThese categories cover qualities commonly associated with a useful answer."
             },
             "PostgreSQLDatabaseConfiguration": {
                 "properties": {

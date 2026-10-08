@@ -51,13 +51,10 @@ class FeedbackRequest(BaseModel):
         examples=["I'm not satisfied with the response because it is too vague."],
     )
 
-    # Categories are accepted independently of the sentiment value.
+    # Optional list of predefined feedback categories for positive and negative feedback
     categories: Optional[list[FeedbackCategory | PositiveFeedbackCategory]] = Field(
         default=None,
-        description=(
-            "List of positive or negative feedback categories. Categories may be "
-            "selected independently of the sentiment value."
-        ),
+        description="List of positive or negative feedback categories.",
         examples=[
             ["incorrect", "incomplete"],
             ["helpful", "accurate", "resolved_issue"],
