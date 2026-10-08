@@ -295,7 +295,7 @@ class TestRHIdentityData:
             rh_identity.validate_entitlements()
 
     @pytest.mark.parametrize(
-        "missing_field,expected_error",
+        ("missing_field", "expected_error"),
         [
             ({"identity": None}, "Invalid identity data"),
             ({"identity": {"org_id": "123"}}, "Invalid identity data"),
