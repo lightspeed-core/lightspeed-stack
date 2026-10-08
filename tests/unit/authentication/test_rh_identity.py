@@ -216,7 +216,7 @@ class TestRHIdentityData:
         assert rh_identity.get_org_id() == ""
 
     @pytest.mark.parametrize(
-        "service,expected",
+        ("service", "expected"),
         [
             ("rhel", True),  # Entitled service
             ("ansible", True),  # Entitled service
@@ -247,7 +247,7 @@ class TestRHIdentityData:
         assert rh_identity.has_entitlements(services) is expected
 
     @pytest.mark.parametrize(
-        "required_entitlements,should_raise,expected_error",
+        ("required_entitlements", "should_raise", "expected_error"),
         [
             (["rhel"], False, None),  # Single valid
             (["rhel", "ansible"], False, None),  # Multiple valid
