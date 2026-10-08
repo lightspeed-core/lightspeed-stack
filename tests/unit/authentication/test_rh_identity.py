@@ -232,7 +232,7 @@ class TestRHIdentityData:
         assert rh_identity.has_entitlement(service) is expected
 
     @pytest.mark.parametrize(
-        "services,expected",
+        ("services", "expected"),
         [
             (["rhel", "ansible"], True),  # All entitled
             (["rhel", "openshift"], False),  # One not entitled
