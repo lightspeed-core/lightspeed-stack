@@ -2600,6 +2600,37 @@ class QuotaHandlersConfiguration(ConfigurationBase):
         description="Enables storing information about token usage history",
     )
 
+    @model_validator(mode="after")
+    def check_limiter_periods(self) -> Self:
+        """
+        Ensure that the SQLite storage can use the period of every limiter.
+
+        The quota scheduler passes the period to the SQLite function datetime()
+        as a modifier. For a period SQLite can not parse datetime() returns
+        NULL and the quota is never renewed, without any error. Such a period
+        is rejected, and so is a period that does not move the time forward.
+        Nothing is checked when SQLite is not configured: PostgreSQL accepts a
+        wider syntax.
+
+        Returns:
+            Self: The validated configuration instance.
+
+        Raises:
+            ValueError: If SQLite is configured and it can not use the period
+            of a limiter.
+        """
+        if self.sqlite is None:
+            return self
+        for limiter in self.limiters:
+            if not checks.is_valid_sqlite_period(limiter.period):
+                raise ValueError(
+                    f"Quota limiter '{limiter.name}': period '{limiter.period}' "
+                    "can not be used with the SQLite storage. Use one positive "
+                    "number followed by seconds, minutes, hours, days, months "
+                    "or years, for example '7 days'."
+                )
+        return self
+
 
 class RerankerConfiguration(ConfigurationBase):
     """Reranker configuration for RAG chunk reranking."""

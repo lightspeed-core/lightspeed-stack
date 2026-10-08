@@ -236,3 +236,22 @@ def test_no_system_prompts_profile() -> None:
         result = checks.is_valid_profile(fetched_module)
 
     assert result is False
+
+
+@pytest.mark.parametrize(
+    ("period", "expected"),
+    [
+        ("7 days", True),
+        ("30 seconds", True),
+        ("1 month", True),
+        ("1 week", False),
+        ("1 day 2 hours", False),
+        ("0 days", False),
+        ("-1 day", False),
+        ("subsec", False),
+        ("", False),
+    ],
+)
+def test_is_valid_sqlite_period(period: str, expected: bool) -> None:
+    """Test which periods SQLite can use to move a timestamp forward."""
+    assert checks.is_valid_sqlite_period(period) is expected
