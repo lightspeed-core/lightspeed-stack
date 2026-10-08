@@ -33,7 +33,7 @@ def test_get_logger_invalid_env_var_fallback(monkeypatch: pytest.MonkeyPatch) ->
 
 
 @pytest.mark.parametrize(
-    "level_name,expected_level",
+    ("level_name", "expected_level"),
     [
         ("DEBUG", logging.DEBUG),
         ("debug", logging.DEBUG),
