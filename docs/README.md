@@ -185,6 +185,12 @@ See the full documentation at [`../README.md`](../README.md) or browse sub-pages
 
 [Design](https://lightspeed-core.github.io/lightspeed-stack/design/observability-opentelemetry/observability-opentelemetry.html)
 
+*** Widget System in Lightspeed Stack ***
+
+[Spike](https://lightspeed-core.github.io/lightspeed-stack/design/widget-system/widget-system-spike.html)
+
+[Design](https://lightspeed-core.github.io/lightspeed-stack/design/widget-system/widget-system.html)
+
 ## Demos
 
 [LCORE introduction](https://lightspeed-core.github.io/lightspeed-stack/demos/lcore/lcore.html#/)
