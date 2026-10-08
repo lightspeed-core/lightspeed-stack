@@ -1886,7 +1886,10 @@ that makes sense in OpenShift deployment).</p>
       <li><code>period</code> is specified in a human-readable form, see
 https://www.postgresql.org/docs/current/datatype-datetime.html#DATATYPE-INTERVAL-INPUT
 for all possible options. When the end of the period is reached, the
-quota is reset or increased.</li>
+quota is reset or increased. With the SQLite storage the period must be
+a modifier of the SQLite function <code>datetime()</code> that moves the
+time forward, for example <code>7 days</code>; <code>1 week</code> is
+rejected.</li>
       <li><code>initial_quota</code> is the value set at the beginning of the
 period.</li>
       <li><code>quota_increase</code> is the value (if specified) used to
