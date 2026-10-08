@@ -64,7 +64,9 @@ def _consume_sse_jsonrpc_stream(
     messages, instead of a full copy of the body.
 
     A premature close after an error event is tolerated (the server may
-    terminate the connection right after sending an error). To guard against
+    terminate the connection right after sending an error). A close with no
+    error event fails the test, so a truncated stream is not treated as a
+    successful prefix. To guard against
     an unexpectedly large or runaway stream, both the total bytes read and
     the number of parsed result events are capped; exceeding either limit
     fails the test instead of growing memory without bound.
@@ -120,6 +122,10 @@ def _consume_sse_jsonrpc_stream(
                 results.append(result)
     except requests.exceptions.ChunkedEncodingError:
         logger.warning("A2A SSE stream closed before completion", exc_info=True)
+        assert first_error is not None, (
+            "A2A SSE stream closed before a JSON-RPC error event was received: "
+            f"{bytes(excerpt)!r}"
+        )
     return results, bytes(excerpt), first_error
 
 
@@ -435,15 +441,11 @@ def assert_a2a_context_id_unchanged(context: Context) -> None:
 
 @then("The A2A stream contains a submitted task")
 def assert_a2a_stream_submitted(context: Context) -> None:
-    """Assert the SSE stream included a task in submitted state (or kind=task)."""
+    """Assert the SSE stream included a task in submitted state."""
     events = _require_a2a_events(context)
     submitted = False
     for event in events:
-        if event.get("kind") == "task" and _task_state(event) in (
-            "",
-            "submitted",
-            "working",
-        ):
+        if event.get("kind") == "task" and _task_state(event) in ("", "submitted"):
             submitted = True
         if event.get("kind") == "status-update" and _task_state(event) == "submitted":
             submitted = True
