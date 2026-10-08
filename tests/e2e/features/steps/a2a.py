@@ -8,6 +8,7 @@ client-visible task, context id, and artifact text.
 from __future__ import annotations
 
 import json
+import logging
 import os
 import uuid
 from collections.abc import Mapping
@@ -22,6 +23,8 @@ from tests.e2e.utils.utils import (
     replace_placeholders,
     request_with_transient_retry,
 )
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_LLM_TIMEOUT = 180 if os.getenv("RUNNING_PROW") else 120
 MAX_STREAM_BYTES = 10 * 1024 * 1024
@@ -100,6 +103,10 @@ def _consume_sse_jsonrpc_stream(
             try:
                 envelope = json.loads(payload)
             except json.JSONDecodeError:
+                logger.warning(
+                    "Skipping non-JSON A2A SSE data line",
+                    exc_info=True,
+                )
                 continue
             error = envelope.get("error")
             if error and first_error is None:
@@ -112,7 +119,7 @@ def _consume_sse_jsonrpc_stream(
                 )
                 results.append(result)
     except requests.exceptions.ChunkedEncodingError:
-        pass
+        logger.warning("A2A SSE stream closed before completion", exc_info=True)
     return results, bytes(excerpt), first_error
 
 
@@ -305,12 +312,14 @@ def _post_a2a(
     if not _should_parse_response(context.response):
         return
 
+    parsed = True
     try:
         body = context.response.json()
-    except json.JSONDecodeError as exc:
-        raise AssertionError(
-            f"A2A response is not JSON: {context.response.text}"
-        ) from exc
+    except json.JSONDecodeError:
+        logger.error("A2A response is not JSON", exc_info=True)
+        parsed = False
+        body = None
+    assert parsed, f"A2A response is not JSON: {context.response.text}"
     assert isinstance(body, dict), f"A2A JSON-RPC envelope is not an object: {body}"
     _store_jsonrpc_response(context, body)
 
@@ -428,24 +437,28 @@ def assert_a2a_context_id_unchanged(context: Context) -> None:
 def assert_a2a_stream_submitted(context: Context) -> None:
     """Assert the SSE stream included a task in submitted state (or kind=task)."""
     events = _require_a2a_events(context)
+    submitted = False
     for event in events:
-        if event.get("kind") == "task":
-            state = _task_state(event)
-            if state in ("", "submitted", "working"):
-                return
+        if event.get("kind") == "task" and _task_state(event) in (
+            "",
+            "submitted",
+            "working",
+        ):
+            submitted = True
         if event.get("kind") == "status-update" and _task_state(event) == "submitted":
-            return
-    raise AssertionError(f"A2A stream has no submitted task event: {events}")
+            submitted = True
+    assert submitted, f"A2A stream has no submitted task event: {events}"
 
 
 @then("The A2A stream contains working status updates")
 def assert_a2a_stream_working(context: Context) -> None:
     """Assert at least one status-update event is in working state."""
     events = _require_a2a_events(context)
+    working = False
     for event in events:
         if event.get("kind") == "status-update" and _task_state(event) == "working":
-            return
-    raise AssertionError(f"A2A stream has no working status-update: {events}")
+            working = True
+    assert working, f"A2A stream has no working status-update: {events}"
 
 
 @then("The A2A stream ends with a completed task")
@@ -456,10 +469,7 @@ def assert_a2a_stream_completed(context: Context) -> None:
     for event in events:
         if _task_state(event) != "completed":
             continue
-        final = event.get("final")
-        if event.get("kind") == "status-update" and final is True:
-            completed = True
-        if event.get("kind") == "task":
+        if event.get("kind") == "status-update" and event.get("final") is True:
             completed = True
     assert completed, f"A2A stream did not complete: {events}"
     actual = _task_state(_require_a2a_result(context))
