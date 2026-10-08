@@ -1082,7 +1082,13 @@ async def test_kube_admin_invalid_cluster_version_returns_500(
 
 
 @pytest.mark.parametrize(
-    "api_status,reason,expected_status,expected_response,expected_cause_fragment",
+    (
+        "api_status",
+        "reason",
+        "expected_status",
+        "expected_response",
+        "expected_cause_fragment",
+    ),
     [
         (
             HTTPStatus.SERVICE_UNAVAILABLE,

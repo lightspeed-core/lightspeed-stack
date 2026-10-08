@@ -91,7 +91,7 @@ class TestGetAuthorizationResolvers:
         )
 
     @pytest.mark.parametrize(
-        "auth_module,expected_types",
+        ("auth_module", "expected_types"),
         [
             (constants.AUTH_MOD_NOOP, (NoopRolesResolver, NoopAccessResolver)),
             (constants.AUTH_MOD_K8S, (NoopRolesResolver, NoopAccessResolver)),

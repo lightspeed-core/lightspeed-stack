@@ -209,7 +209,7 @@ def test_servers_section_present_from_url(spec_from_url: dict[str, Any]) -> None
 
 
 @pytest.mark.parametrize(
-    "path,method,expected_codes",
+    ("path", "method", "expected_codes"),
     [
         ("/", "get", {"200"}),
         ("/v1/info", "get", {"200", "401", "403", "503"}),
@@ -325,7 +325,7 @@ def test_paths_and_responses_exist_from_file(
 
 
 @pytest.mark.parametrize(
-    "path,method,expected_codes",
+    ("path", "method", "expected_codes"),
     [
         ("/", "get", {"200", "401", "403"}),
         ("/v1/info", "get", {"200", "401", "403", "503"}),

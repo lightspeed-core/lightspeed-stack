@@ -816,7 +816,10 @@ class UnifiedOgxConfig(ConfigurationBase):
             of the loaded lightspeed-stack.yaml.
         native_override: Raw OGX schema deep-merged last (maps merge
             recursively, lists and scalars replace). The escape hatch for
-            anything the high-level sections do not express.
+            anything the high-level sections do not express. Note:
+            `registered_resources.models` is a list, so a native_override
+            that sets it replaces — not merges with — any LLM models LCORE
+            auto-registered from `inference.providers[].allowed_models`.
     """
 
     baseline: Literal["default", "empty", "byo-llm"] = Field(
@@ -839,7 +842,10 @@ class UnifiedOgxConfig(ConfigurationBase):
         default_factory=dict,
         title="Native override",
         description="Raw OGX schema deep-merged last (maps "
-        "merge recursively; lists and scalars replace).",
+        "merge recursively; lists and scalars replace). Note: setting "
+        "registered_resources.models here replaces, not merges with, any "
+        "LLM models LCORE auto-registered from "
+        "inference.providers[].allowed_models.",
     )
 
 
@@ -1866,6 +1872,35 @@ class InferenceConfiguration(ConfigurationBase):
             raise ValueError(
                 "Default provider must be specified when default model is set"
             )
+        return self
+
+    @model_validator(mode="after")
+    def check_unique_provider_ids(self) -> Self:
+        """Reject two high-level providers that resolve to the same provider_id.
+
+        The synthesizer emits each provider under its explicit ``id`` when set,
+        otherwise the ``type`` with underscores hyphenated. Two entries
+        resolving to the same emitted id would collide in the synthesized
+        ``providers.inference`` list (the later one silently overwriting the
+        earlier), so reject the ambiguity here rather than resolving it as
+        last-wins at synthesis time.
+
+        Raises:
+            ValueError: If two providers resolve to the same emitted id.
+
+        Returns:
+            self (Self): The validated configuration instance.
+        """
+        seen: set[str] = set()
+        for provider in self.providers:
+            emitted_id = provider.id or provider.type.replace("_", "-")
+            if emitted_id in seen:
+                raise ValueError(
+                    f"duplicate inference provider id {emitted_id!r}: two "
+                    "inference.providers entries resolve to the same "
+                    "provider_id; set a distinct 'id' on one of them"
+                )
+            seen.add(emitted_id)
         return self
 
 

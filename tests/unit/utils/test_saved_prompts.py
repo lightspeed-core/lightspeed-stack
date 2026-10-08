@@ -82,9 +82,7 @@ class TestValidateSavedPromptQuota:
         """Test create is rejected when current count equals the inclusive max."""
         with pytest.raises(
             SavedPromptLimitExceededError,
-            match=(
-                r"Saved prompt limit exceeded: 50 existing prompts, " r"maximum is 50"
-            ),
+            match=(r"Saved prompt limit exceeded: 50 existing prompts, maximum is 50"),
         ):
             validate_saved_prompt_quota(50, 50)
 
@@ -92,9 +90,7 @@ class TestValidateSavedPromptQuota:
         """Test create is rejected when current count is above the max."""
         with pytest.raises(
             SavedPromptLimitExceededError,
-            match=(
-                r"Saved prompt limit exceeded: 51 existing prompts, " r"maximum is 50"
-            ),
+            match=(r"Saved prompt limit exceeded: 51 existing prompts, maximum is 50"),
         ):
             validate_saved_prompt_quota(51, 50)
 
@@ -102,9 +98,7 @@ class TestValidateSavedPromptQuota:
         """Test max_prompts_per_user of 0 rejects even a zero current count."""
         with pytest.raises(
             SavedPromptLimitExceededError,
-            match=(
-                r"Saved prompt limit exceeded: 0 existing prompts, " r"maximum is 0"
-            ),
+            match=(r"Saved prompt limit exceeded: 0 existing prompts, maximum is 0"),
         ):
             validate_saved_prompt_quota(0, 0)
 

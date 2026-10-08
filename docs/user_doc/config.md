@@ -1192,14 +1192,17 @@ Attributes:
         of the loaded lightspeed-stack.yaml.
     native_override: Raw OGX schema deep-merged last (maps merge
         recursively, lists and scalars replace). The escape hatch for
-        anything the high-level sections do not express.
+        anything the high-level sections do not express. Note:
+        `registered_resources.models` is a list, so a native_override
+        that sets it replaces — not merges with — any LLM models LCORE
+        auto-registered from `inference.providers[].allowed_models`.
 
 
 | Field           | Type   | Description                                                                                                                                                                                                                    |
 |-----------------|--------|--------------                                                                                                                                                                                                                  |
 | baseline        | string | Synthesis starting point: 'default' uses LCORE's built-in baseline including the conditional OpenAI provider, 'byo-llm' uses the same baseline without that OpenAI row, 'empty' starts from {}. Ignored when 'profile' is set. |
 | profile         | string | Path to a run.yaml-shaped baseline file. Relative paths resolve against the directory of the loaded lightspeed-stack.yaml.                                                                                                     |
-| native_override | object | Raw OGX schema deep-merged last (maps merge recursively; lists and scalars replace).                                                                                                                                           |
+| native_override | object | Raw OGX schema deep-merged last (maps merge recursively; lists and scalars replace). Note: setting registered_resources.models here replaces, not merges with, any LLM models LCORE auto-registered from inference.providers[].allowed_models. |
 
 
 ## UserDataCollection

@@ -33,8 +33,8 @@ class TokenCounter:
         """
         return (
             f"{self.__class__.__name__}: "
-            + f"input_tokens: {self.input_tokens} "
-            + f"output_tokens: {self.output_tokens} "
-            + f"counted: {self.input_tokens_counted} "
-            + f"LLM calls: {self.llm_calls}"
+            f"input_tokens: {self.input_tokens} "
+            f"output_tokens: {self.output_tokens} "
+            f"counted: {self.input_tokens_counted} "
+            f"LLM calls: {self.llm_calls}"
         )

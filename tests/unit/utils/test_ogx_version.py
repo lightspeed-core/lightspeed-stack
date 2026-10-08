@@ -62,7 +62,7 @@ async def test_check_ogx_version_too_small_version(
 
     expected_exception_msg = (
         f"OGX version >= {MINIMAL_SUPPORTED_OGX_VERSION} "
-        + "is required, but 0.0.0 is used"
+        "is required, but 0.0.0 is used"
     )
     # test if the version is checked
     with pytest.raises(InvalidOgxVersionException, match=expected_exception_msg):
@@ -84,7 +84,7 @@ async def _check_version_must_fail(mock_client: Any, bigger_version: Version) ->
 
     expected_exception_msg = (
         f"OGX version <= {MAXIMAL_SUPPORTED_OGX_VERSION} is required, "
-        + f"but {bigger_version} is used"
+        f"but {bigger_version} is used"
     )
     # test if the version is checked
     with pytest.raises(InvalidOgxVersionException, match=expected_exception_msg):

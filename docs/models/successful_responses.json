@@ -6804,7 +6804,7 @@
             },
             "UnifiedOgxConfig": {
                 "additionalProperties": false,
-                "description": "Backend-specific knobs for unified-mode OGX synthesis.\n\nPer Decision S5 of the design spike, backend-agnostic high-level sections\n(inference, ...) live at the configuration root, not here. This block holds\nonly the OGX-specific synthesis controls: which baseline to start\nfrom, an optional profile file, and a raw native_override escape hatch.\n\nAttributes:\n    baseline: Synthesis starting point. \"default\" begins from LCORE's\n        built-in baseline (src/data/default_run.yaml) including the\n        conditional OpenAI inference provider. \"byo-llm\" begins from the\n        same file with that OpenAI row removed. \"empty\" begins from an\n        empty dict (used by the migration tool for an exact round-trip).\n        Ignored when `profile` is set.\n    profile: Optional path to a user-authored run.yaml-shaped file used as\n        the synthesis baseline. Relative paths resolve against the directory\n        of the loaded lightspeed-stack.yaml.\n    native_override: Raw OGX schema deep-merged last (maps merge\n        recursively, lists and scalars replace). The escape hatch for\n        anything the high-level sections do not express.",
+                "description": "Backend-specific knobs for unified-mode OGX synthesis.\n\nPer Decision S5 of the design spike, backend-agnostic high-level sections\n(inference, ...) live at the configuration root, not here. This block holds\nonly the OGX-specific synthesis controls: which baseline to start\nfrom, an optional profile file, and a raw native_override escape hatch.\n\nAttributes:\n    baseline: Synthesis starting point. \"default\" begins from LCORE's\n        built-in baseline (src/data/default_run.yaml) including the\n        conditional OpenAI inference provider. \"byo-llm\" begins from the\n        same file with that OpenAI row removed. \"empty\" begins from an\n        empty dict (used by the migration tool for an exact round-trip).\n        Ignored when `profile` is set.\n    profile: Optional path to a user-authored run.yaml-shaped file used as\n        the synthesis baseline. Relative paths resolve against the directory\n        of the loaded lightspeed-stack.yaml.\n    native_override: Raw OGX schema deep-merged last (maps merge\n        recursively, lists and scalars replace). The escape hatch for\n        anything the high-level sections do not express. Note:\n        `registered_resources.models` is a list, so a native_override\n        that sets it replaces \u2014 not merges with \u2014 any LLM models LCORE\n        auto-registered from `inference.providers[].allowed_models`.",
                 "properties": {
                     "baseline": {
                         "default": "default",
@@ -6826,7 +6826,7 @@
                     },
                     "native_override": {
                         "additionalProperties": true,
-                        "description": "Raw OGX schema deep-merged last (maps merge recursively; lists and scalars replace).",
+                        "description": "Raw OGX schema deep-merged last (maps merge recursively; lists and scalars replace). Note: setting registered_resources.models here replaces, not merges with, any LLM models LCORE auto-registered from inference.providers[].allowed_models.",
                         "title": "Native override",
                         "type": "object"
                     }

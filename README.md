@@ -82,11 +82,13 @@ The service includes comprehensive user data collection capabilities for various
     * [Readiness Endpoint](#readiness-endpoint)
     * [Liveness Endpoint](#liveness-endpoint)
     * [Models endpoint](#models-endpoint)
+    * [Skills endpoint](#skills-endpoint)
 * [Database structure](#database-structure)
 * [Publish the service as Python package on PyPI](#publish-the-service-as-python-package-on-pypi)
     * [Generate distribution archives to be uploaded into Python registry](#generate-distribution-archives-to-be-uploaded-into-python-registry)
     * [Upload distribution archives into selected Python registry](#upload-distribution-archives-into-selected-python-registry)
     * [Packages on PyPI and Test PyPI](#packages-on-pypi-and-test-pypi)
+* [Security policy](#security-policy)
 * [Contributing](#contributing)
 * [Testing](#testing)
 * [Releasing](#releasing)
@@ -1378,6 +1380,10 @@ If this configuration file does not exist, you will be prompted to specify API t
 * https://test.pypi.org/project/lightspeed-stack/0.1.0/
 
 
+
+# Security policy
+
+* See [security policy document](SECURITY.md).
 
 # Contributing
 

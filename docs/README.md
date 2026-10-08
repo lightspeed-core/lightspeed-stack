@@ -111,6 +111,14 @@ See the full documentation at [`../README.md`](../README.md) or browse sub-pages
 
 [List of e2e scenarios](https://lightspeed-core.github.io/lightspeed-stack/testing/e2e_scenarios.html)
 
+### Benchmarks
+
+[DB operations](https://lightspeed-core.github.io/lightspeed-stack/benchmarks/DB/README.html)
+
+[Conversation cache](https://lightspeed-core.github.io/lightspeed-stack/benchmarks/cache/README.html)
+
+[Tokenizer](https://lightspeed-core.github.io/lightspeed-stack/benchmarks/tokenizer/README.html)
+
 ## Maintenance
 
 [Status of Lightspeed Core Stack versions](https://lightspeed-core.github.io/lightspeed-stack/maintenance/version_status.html)
@@ -176,6 +184,12 @@ See the full documentation at [`../README.md`](../README.md) or browse sub-pages
 *** OpenTelemetry tracing in Lightspeed Core ***
 
 [Design](https://lightspeed-core.github.io/lightspeed-stack/design/observability-opentelemetry/observability-opentelemetry.html)
+
+*** Widget System in Lightspeed Stack ***
+
+[Spike](https://lightspeed-core.github.io/lightspeed-stack/design/widget-system/widget-system-spike.html)
+
+[Design](https://lightspeed-core.github.io/lightspeed-stack/design/widget-system/widget-system.html)
 
 ## Demos
 

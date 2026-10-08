@@ -144,8 +144,10 @@ async def test_readiness_probe_fails_when_model_not_available(
     )
     mock_check_model.return_value = (
         False,
-        "Default model google-vertex/publishers/google/models/gemini-2.5-flash "
-        "not found in model registry",
+        (
+            "Default model google-vertex/publishers/google/models/gemini-2.5-flash "
+            "not found in model registry"
+        ),
     )
 
     mock_response = mocker.Mock()

@@ -113,7 +113,7 @@ async def run_shield_moderation_v2(
             blocked = ShieldModerationBlocked(
                 decision="blocked",
                 message=OBFUSCATION_REJECTION_MESSAGE,
-                moderation_id=str(uuid.uuid4()),
+                moderation_id=f"modr-{uuid.uuid4()}",
             )
             set_span_attributes(span, shield_span_attributes(blocked))
             return blocked

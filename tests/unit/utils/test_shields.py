@@ -325,6 +325,9 @@ class TestRunShieldModerationV2Otel:
         result = await run_shield_moderation_v2(obfuscated, [_shield_config("alpha")])
 
         assert isinstance(result, ShieldModerationBlocked)
+        assert result.moderation_id.startswith(
+            "modr-"
+        ), "Sanitization block must use modr- prefix per LCORE convention"
         span = next(
             span
             for span in exporter.get_finished_spans()

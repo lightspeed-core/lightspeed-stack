@@ -33,7 +33,7 @@ class "CatalogModel" as src.models.common.models.CatalogModel {
 class "CatalogShield" as src.models.common.shields.CatalogShield {
   config : dict[str, Any]
   name : str
-  provider_id : Literal['question_validity', 'redaction']
+  provider_id : Literal['question_validity', 'redaction', 'granite_guardian']
   type : Literal['shield']
 }
 class "CatalogTool" as src.models.common.tools.CatalogTool {
