@@ -49,7 +49,6 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from typing import Any, Optional, cast
 
-from fastapi import HTTPException
 from ogx_api.openai_responses import OpenAIResponseMessage
 from ogx_client import AsyncOgxClient
 
@@ -57,7 +56,6 @@ from cache.cache import Cache
 from cache.cache_error import CacheError
 from configuration import configuration
 from log import get_logger
-from models.api.responses.error import UnprocessableEntityResponse
 from models.common.responses.responses_api_params import ResponsesApiParams
 from models.common.responses.types import ResponseInput
 from models.common.turn_summary import ContextStatus
@@ -351,7 +349,9 @@ def agent_prompt_text(params: ResponsesApiParams) -> str:
     the new user query is the trailing message item. The agent pipeline still
     needs a plain string prompt (capabilities and multimodal input operate on
     it); the full explicit list reaches the request body separately via the
-    ``extra_body`` input override (LCORE-3582).
+    ``extra_body`` input override (LCORE-3582). Image attachments added to
+    this prompt are merged into that override by ``OgxResponsesModel``
+    (LCORE-3789).
 
     Args:
         params: Prepared (possibly compaction-rewritten) request parameters.
@@ -365,9 +365,10 @@ def agent_prompt_text(params: ResponsesApiParams) -> str:
         return params.input
     for item in reversed(list(params.input)):
         if is_message_item(item):
-            text = extract_message_text(item)
-            if text:
-                return text
+            # The trailing message is the new query. An empty one (an image
+            # sent without text) stays empty rather than borrowing the text
+            # of an earlier message.
+            return extract_message_text(item)
     # The wire input still carries the explicit list via the extra_body
     # override, so the request itself is well-formed — but capabilities and
     # multimodal construction operate on this prompt, and an explicit input
@@ -378,48 +379,6 @@ def agent_prompt_text(params: ResponsesApiParams) -> str:
         "agent prompt falls back to an empty string"
     )
     return ""
-
-
-def reject_image_attachments_in_compacted_mode(
-    params: ResponsesApiParams,
-    image_attachments: Optional[Sequence[Any]],
-) -> None:
-    """Reject a compacted turn that carries image attachments (LCORE-3582).
-
-    In compacted mode the wire ``input`` is overridden with the explicit item
-    list built by :func:`_build_explicit_input`, which is text-only: image
-    attachments are converted to pydantic-ai ``ImageUrl`` parts on the prompt,
-    and the override replaces the prompt-derived input wholesale, so those
-    parts never reach the request body.
-
-    Answering anyway would return a confident response that never saw the
-    image, with nothing to tell the caller their attachment was ignored. Fail
-    explicitly instead until the explicit input can carry ``input_image``
-    content parts of its own (LCORE-3789).
-
-    Args:
-        params: Prepared (possibly compaction-rewritten) request parameters.
-        image_attachments: Image attachments for this turn, if any.
-
-    Raises:
-        HTTPException: 422 when the turn is compacted and carries images.
-    """
-    if not image_attachments or not params.omit_conversation:
-        return
-    logger.warning(
-        "Rejecting compacted turn with %d image attachment(s): the explicit "
-        "input override cannot carry image content parts (LCORE-3789)",
-        len(image_attachments),
-    )
-    response = UnprocessableEntityResponse(
-        response="Image attachments are not supported on this conversation",
-        cause=(
-            "This conversation has been compacted to fit the model's context "
-            "window, and compacted turns cannot carry image attachments yet. "
-            "Send the image in a new conversation, or retry without it."
-        ),
-    )
-    raise HTTPException(**response.model_dump())
 
 
 def _query_input_message(original_input: ResponseInput) -> list[Any]:

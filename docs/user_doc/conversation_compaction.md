@@ -128,6 +128,15 @@ Compaction triggers when **all** of the following are true:
 3. The estimated token count of the conversation exceeds `threshold_ratio × context_window`
 4. The estimated token count is at least `token_floor`
 
+### Image attachments
+
+A query with image attachments on `/v1/query` or `/v1/streaming_query` is answered in a compacted conversation as well:
+
+- The images attached to the current query are sent to the LLM, together with the summary and the recent turns.
+- Images from earlier turns are not sent again once the conversation is compacted. The LLM gets the text of those turns, or their summary.
+- Images are not counted in the token estimate that triggers compaction. Only text is counted.
+- The turn that the service stores in the conversation holds the text of the query, without the image.
+
 ### Degrading guard
 
 The `buffer_turns` setting specifies a target number of recent turns to preserve. If the selected buffer turns exceed the available budget (`buffer_max_ratio × context_window`), the system reduces the buffer by one turn pair at a time until the budget fits. In extreme cases, the buffer can shrink to zero turns, meaning only the summary and the current query are sent to the LLM.
