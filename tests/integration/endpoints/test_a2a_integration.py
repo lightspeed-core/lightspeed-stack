@@ -2,15 +2,18 @@
 
 # pylint: disable=protected-access
 
+import asyncio
 import json
 import uuid
 from collections.abc import Generator
 from typing import Any, Optional
 
 import pytest
-from fastapi import HTTPException, status
+from fastapi import HTTPException, Request, status
+from fastapi.testclient import TestClient
 from ogx_client import ApiException
 from pytest_mock import MockerFixture
+from starlette.responses import StreamingResponse
 
 import app.endpoints.a2a as a2a_endpoint
 import constants
@@ -27,7 +30,6 @@ from models.config import (
     RHIdentityConfiguration,
 )
 from tests.integration.conftest import (
-    build_a2a_request,
     create_text_agent_stream_events,
     make_openai_model,
     make_openai_models_list_response,
@@ -122,8 +124,9 @@ def _jsonrpc_body(
     context_id: Optional[str] = None,
     metadata: Optional[dict[str, Any]] = None,
     parts: Optional[list[dict[str, Any]]] = None,
+    method: str = "message/send",
 ) -> dict[str, Any]:
-    """Build a ``message/send`` JSON-RPC request body.
+    """Build a JSON-RPC request body for message/send or message/stream.
 
     Parameters:
         text: Text content for the default single text part. Ignored when
@@ -132,6 +135,7 @@ def _jsonrpc_body(
         metadata: Optional message metadata (e.g. ``model``, ``vector_store_ids``).
         parts: Optional explicit parts list, overriding the default single
             text part. Pass ``[]`` to build a message with no input content.
+        method: JSON-RPC method, either "message/send" or "message/stream".
     """
     message: dict[str, Any] = {
         "messageId": str(uuid.uuid4()),
@@ -145,7 +149,7 @@ def _jsonrpc_body(
     return {
         "jsonrpc": "2.0",
         "id": "1",
-        "method": "message/send",
+        "method": method,
         "params": {"message": message},
     }
 
@@ -160,10 +164,95 @@ def _context_id(result: dict[str, Any]) -> str:
     return result.get("contextId", "")
 
 
+async def _collect_stream_results(response: Any) -> list[dict[str, Any]]:
+    """Consume a ``message/stream`` SSE response and return each event's ``result``.
+
+    Parameters:
+        response: ``StreamingResponse`` returned for a ``message/stream`` request.
+
+    Returns:
+        One parsed JSON-RPC ``result`` dict per ``data:`` frame in the SSE
+        stream, in emission order.
+    """
+    results: list[dict[str, Any]] = []
+    async for chunk in response.body_iterator:
+        text = chunk if isinstance(chunk, str) else bytes(chunk).decode()
+        for line in text.splitlines():
+            if line.startswith("data: "):
+                payload = json.loads(line[len("data: ") :])
+                result = payload.get("result")
+                if isinstance(result, dict):
+                    results.append(result)
+    return results
+
+
+def _stream_artifact_text(results: list[dict[str, Any]]) -> str:
+    """Return concatenated text parts from the stream's artifact-update event."""
+    text = ""
+    for result in results:
+        if result.get("kind") != "artifact-update":
+            continue
+        for part in result.get("artifact", {}).get("parts", []):
+            if part.get("kind") == "text":
+                text += part.get("text", "")
+    return text
+
+
+def _build_a2a_request(body: dict[str, Any]) -> Request:
+    """Build a POST ``/a2a`` FastAPI Request wrapping a JSON-RPC body.
+
+    The synthetic ``receive()`` here blocks forever on any call after the
+    body is delivered, instead of immediately returning another
+    ``http.request``. ``message/stream`` responses are served via
+    sse-starlette's ``EventSourceResponse``, which spawns a background task
+    that repeatedly calls ``receive()`` to detect client disconnection; a
+    non-yielding coroutine there spins the event loop forever, hanging any
+    test that fully consumes a streaming response's ``body_iterator``.
+    Blocking on an unresolved ``Future`` yields control properly (no busy
+    loop) without falsely signaling a premature disconnect (which would
+    short-circuit the A2A app before it produces any events). The pending
+    call is cancelled along with the rest of the background task once the
+    stream ends.
+
+    Parameters:
+        body: JSON-RPC request payload (e.g. a ``message/send`` body) to
+            serialize as the request body.
+
+    Returns:
+        Request: FastAPI Request object whose body yields the serialized
+        ``body`` dict when read (e.g. via ``await request.body()``).
+    """
+    body_bytes = json.dumps(body).encode()
+    body_sent = False
+
+    async def receive() -> dict[str, Any]:
+        """Return the JSON-RPC body once, then block forever (no disconnect)."""
+        nonlocal body_sent
+        if not body_sent:
+            body_sent = True
+            return {"type": "http.request", "body": body_bytes, "more_body": False}
+        await asyncio.Future()
+        raise AssertionError("unreachable")  # pragma: no cover
+
+    return Request(
+        scope={
+            "type": "http",
+            "method": "POST",
+            "path": "/a2a",
+            "root_path": "",
+            "query_string": b"",
+            "headers": [(b"content-type", b"application/json")],
+            "scheme": "http",
+            "server": ("localhost", 8080),
+        },
+        receive=receive,
+    )
+
+
 async def _post_a2a(body: dict[str, Any], auth: AuthTuple) -> Any:
     """POST a JSON-RPC request to the A2A handler."""
     return await a2a_endpoint.handle_a2a_jsonrpc_post(
-        request=build_a2a_request(body),
+        request=_build_a2a_request(body),
         auth=auth,
         mcp_headers={},
     )
@@ -210,18 +299,73 @@ async def test_a2a_jsonrpc_forbidden_without_action(
 
 
 @pytest.mark.asyncio
-async def test_message_send_returns_failed_task_when_ogx_is_unreachable(
+@pytest.mark.parametrize(
+    "method",
+    ["message/send", "message/stream"],
+)
+async def test_ogx_unreachable_handles_gracefully(
     mock_ogx_client: Any,
     test_auth: AuthTuple,
+    method: str,
 ) -> None:
-    """``message/send`` returns a failed task when OGX cannot be reached."""
+    """Both message/send and message/stream handle OGX unreachable gracefully."""
     mock_ogx_client.openai.list.side_effect = ApiException(status=None)
 
-    result = _jsonrpc_result(
-        await _post_a2a(_jsonrpc_body("What is a pod?"), test_auth)
+    response = await _post_a2a(
+        _jsonrpc_body("What is a pod?", method=method), test_auth
     )
 
-    assert _task_state(result) == "failed"
+    if method == "message/send":
+        result = _jsonrpc_result(response)
+        assert _task_state(result) == "failed"
+    else:
+        assert isinstance(response, StreamingResponse)
+        results = await _collect_stream_results(response)
+        assert any(_task_state(result) == "failed" for result in results)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "method",
+    ["message/send", "message/stream"],
+)
+async def test_message_without_text_short_circuits(
+    test_auth: AuthTuple,
+    mocker: MockerFixture,
+    method: str,
+) -> None:
+    """Message without text short-circuits without calling agent.
+
+    Note: the parts list itself can't be empty -- the a2a-sdk's own
+    ``new_task()`` raises ``ValueError`` for an empty ``parts`` list before
+    our handler ever runs (see ``a2a.utils.task.new_task``), which surfaces
+    as a JSON-RPC -32603 Internal Error rather than our own
+    ``input_required`` handling. To reach our ``if not user_input`` branch
+    for real, the message must carry a non-text part (e.g. ``DataPart``) so
+    ``RequestContext.get_user_input()`` -- which only extracts ``TextPart``
+    content -- returns an empty string while ``parts`` stays non-empty.
+    """
+    build_agent = mocker.patch("app.endpoints.a2a.build_agent")
+
+    response = await _post_a2a(
+        _jsonrpc_body(
+            "", parts=[{"kind": "data", "data": {"foo": "bar"}}], method=method
+        ),
+        test_auth,
+    )
+
+    if method == "message/send":
+        result = _jsonrpc_result(response)
+        assert _task_state(result) == "input-required"
+    else:
+        assert isinstance(response, StreamingResponse)
+        results = await _collect_stream_results(response)
+        assert any(_task_state(result) == "input-required" for result in results)
+
+    # Consuming the stream above drives the background task that would call
+    # build_agent to completion; asserting beforehand would pass trivially
+    # since asyncio.create_task() hasn't had a chance to run yet.
+    build_agent.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -239,10 +383,13 @@ async def test_follow_up_reuses_one_conversation(
     context_id = _context_id(first)
     assert context_id
 
-    await _post_a2a(
-        _jsonrpc_body("What is its population?", context_id=context_id),
-        test_auth,
+    second = _jsonrpc_result(
+        await _post_a2a(
+            _jsonrpc_body("What is its population?", context_id=context_id),
+            test_auth,
+        )
     )
+    assert _context_id(second) == context_id
 
     mock_ogx_client.conversations.create.assert_awaited_once()
     assert build_agent.call_args.args[1].conversation == "conv_" + "a" * 48
@@ -299,32 +446,101 @@ async def test_message_metadata_sets_vector_store_ids(
 
 
 @pytest.mark.asyncio
-async def test_message_send_without_text_returns_input_required(
-    mock_ogx_client: Any,  # pylint: disable=unused-argument
+async def test_a2a_health_check_returns_healthy_status() -> None:
+    """Health check endpoint returns expected structure and healthy status."""
+    result = await a2a_endpoint.a2a_health_check()
+
+    assert result["status"] == "healthy"
+    assert result["service"] == "lightspeed-a2a"
+    assert "version" in result
+    assert result["version"]
+    assert "a2a_sdk_version" in result
+    assert result["a2a_sdk_version"]
+    assert "timestamp" in result
+    assert result["timestamp"]
+
+
+@pytest.mark.parametrize(
+    "endpoint_path",
+    [
+        "/.well-known/agent.json",
+        "/.well-known/agent-card.json",
+    ],
+)
+def test_agent_card_endpoints_return_same_card(
+    integration_http_client: TestClient,
+    endpoint_path: str,
+) -> None:
+    """Both agent card endpoints return identical agent card based on _AGENT_CARD_CONFIG.
+
+    Issues an actual HTTP request through the ASGI app for each
+    ``endpoint_path`` so both route registrations (and FastAPI's routing to
+    the shared ``get_agent_card`` handler) are exercised, not just the
+    handler function in isolation.
+    """
+    response = integration_http_client.get(endpoint_path)
+
+    assert response.status_code == status.HTTP_200_OK
+    agent_card = response.json()
+
+    assert agent_card["name"] == _AGENT_CARD_CONFIG["name"]
+    assert agent_card["description"] == _AGENT_CARD_CONFIG["description"]
+    assert agent_card["protocolVersion"] == _AGENT_CARD_CONFIG["protocolVersion"]
+
+    assert agent_card["provider"] is not None
+    assert (
+        agent_card["provider"]["organization"]
+        == _AGENT_CARD_CONFIG["provider"]["organization"]
+    )
+    assert agent_card["provider"]["url"] == _AGENT_CARD_CONFIG["provider"]["url"]
+
+    assert len(agent_card["skills"]) == len(_AGENT_CARD_CONFIG["skills"])
+    assert agent_card["skills"][0]["id"] == _AGENT_CARD_CONFIG["skills"][0]["id"]
+    assert agent_card["skills"][0]["name"] == _AGENT_CARD_CONFIG["skills"][0]["name"]
+    assert (
+        agent_card["skills"][0]["description"]
+        == _AGENT_CARD_CONFIG["skills"][0]["description"]
+    )
+
+    assert agent_card["capabilities"] is not None
+    assert (
+        agent_card["capabilities"]["streaming"]
+        == _AGENT_CARD_CONFIG["capabilities"]["streaming"]
+    )
+    assert (
+        agent_card["capabilities"]["pushNotifications"]
+        == _AGENT_CARD_CONFIG["capabilities"]["pushNotifications"]
+    )
+    assert (
+        agent_card["capabilities"]["stateTransitionHistory"]
+        == _AGENT_CARD_CONFIG["capabilities"]["stateTransitionHistory"]
+    )
+
+
+@pytest.mark.asyncio
+async def test_message_stream_with_metadata_returns_streaming_response(
+    mock_ogx_client: Any,
     test_auth: AuthTuple,
     mocker: MockerFixture,
 ) -> None:
-    """A message with no text part short-circuits to an ``input_required`` task.
+    """message/stream with metadata returns the expected stream and model routing."""
+    mock_ogx_client.openai.list.return_value = make_openai_models_list_response(
+        make_openai_model(model_id="together/llama3.1", provider_id="together"),
+    )
+    build_agent = _install_agent(mocker, "Response with metadata")
 
-    Note: the parts list itself can't be empty -- the a2a-sdk's own
-    ``new_task()`` raises ``ValueError`` for an empty ``parts`` list before
-    our handler ever runs (see ``a2a.utils.task.new_task``), which surfaces
-    as a JSON-RPC -32603 Internal Error rather than our own
-    ``input_required`` handling. To reach our ``if not user_input`` branch
-    for real, the message must carry a non-text part (e.g. ``DataPart``) so
-    ``RequestContext.get_user_input()`` -- which only extracts ``TextPart``
-    content -- returns an empty string while ``parts`` stays non-empty.
-    """
-    build_agent = mocker.patch("app.endpoints.a2a.build_agent")
-
-    result = _jsonrpc_result(
-        await _post_a2a(
-            _jsonrpc_body("", parts=[{"kind": "data", "data": {"foo": "bar"}}]),
-            test_auth,
-        )
+    response = await _post_a2a(
+        _jsonrpc_body(
+            "What is a pod?",
+            method="message/stream",
+            metadata={"model": "llama3.1", "provider": "together"},
+        ),
+        test_auth,
     )
 
-    # TaskState serializes with a hyphen on the wire ("input-required"),
-    # unlike the Python enum member name (TaskState.input_required).
-    assert _task_state(result) == "input-required"
-    build_agent.assert_not_called()
+    assert isinstance(response, StreamingResponse)
+    results = await _collect_stream_results(response)
+
+    assert any(_task_state(result) == "completed" for result in results)
+    assert _stream_artifact_text(results) == "Response with metadata"
+    assert build_agent.call_args.args[1].model == "together/llama3.1"
