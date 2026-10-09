@@ -44,7 +44,6 @@ from models.common.agents import (
     TurnCompleteStreamPayload,
 )
 from models.common.query import Attachment
-from models.common.responses import ResponseInput
 from models.common.responses.contexts import ResponseGeneratorContext
 from models.common.responses.responses_api_params import ResponsesApiParams
 from models.common.turn_summary import ContextStatus, TurnSummary
@@ -64,7 +63,6 @@ from utils.agents.tool_processor import (
 from utils.conversation_compaction import (
     agent_prompt_text,
     reject_image_attachments_in_compacted_mode,
-    store_compacted_turn,
 )
 from utils.otel_tracing import (
     SpanAttributes,
@@ -74,6 +72,7 @@ from utils.otel_tracing import (
     root_span_turn_attributes,
     set_span_attributes,
 )
+from utils.pending_turn import PendingTurn
 from utils.pydantic_ai_helpers import build_agent, captured_output_items
 from utils.query import (
     build_multimodal_input,
@@ -150,9 +149,8 @@ async def retrieve_agent_response_generator(
 
 async def _persist_compacted_turn(
     context: ResponseGeneratorContext,
-    responses_params: ResponsesApiParams,
+    turn: PendingTurn,
     turn_summary: TurnSummary,
-    original_input: Optional[ResponseInput],
     persist_guard: list[bool],
 ) -> None:
     """Append a completed compacted turn to the conversation (LCORE-3883).
@@ -162,24 +160,18 @@ async def _persist_compacted_turn(
     recent-turn buffer and the audit history intact for the next request.
 
     Parameters:
-        context: Streaming request context, providing the OGX client.
-        responses_params: Prepared Responses API parameters.
+        context: Streaming request context, used for error reporting.
+        turn: The pending turn of the request. Nothing is written when OGX
+            stores the turn itself.
         turn_summary: Completed turn, carrying the captured output items.
-        original_input: The user input before the explicit-input rewrite. When
-            ``None`` the request was not compacted and nothing is written.
-        persist_guard: Single-element flag shared with the interrupt path, so a
-            turn is persisted at most once.
+        persist_guard: Single-element flag shared with the interrupt path, so
+            that only one of them finishes the turn.
     """
-    if original_input is None or persist_guard[0]:
+    if not turn.ours or persist_guard[0]:
         return
     persist_guard[0] = True
     try:
-        await store_compacted_turn(
-            context.client,
-            responses_params.conversation,
-            original_input,
-            turn_summary.output_items,
-        )
+        await turn.store_completed(turn_summary.output_items)
     except Exception:  # pylint: disable=broad-except
         # The client already has its answer, so the stream still succeeds; the
         # cost of the failure is that the next request loses this turn.
@@ -197,7 +189,7 @@ async def generate_agent_response(  # pylint: disable=too-many-statements
     background_topic_summary_tasks: list[asyncio.Task[None]],
     root_span: trace.Span,
     emit_start: bool = True,
-    original_input: Optional[ResponseInput] = None,
+    turn: Optional[PendingTurn] = None,
     context_status: ContextStatus = "full",
 ) -> AsyncIterator[str]:
     """Wrap an agent SSE generator with cleanup logic.
@@ -215,23 +207,31 @@ async def generate_agent_response(  # pylint: disable=too-many-statements
         root_span: OpenTelemetry root span for this request.
         emit_start: Whether to emit the SSE start event. False when the caller
             (the compaction-aware wrapper) has already emitted it.
-        original_input: In compacted mode, the original user input before the
-            explicit-input rewrite. Used to persist the completed turn with its
-            structured input (preserving attachments); ``None`` otherwise.
+        turn: The pending turn of the request, which stores the turn when OGX
+            does not (LCORE-3908). Required in compacted mode, where it
+            carries the input as it arrived; created from the parameters
+            otherwise.
         context_status: Whether the conversation context was sent in full
             ("full") or older turns were replaced by a summary ("summarized").
             Reported to the client in the SSE end event.
 
     Yields:
         SSE-formatted strings from the wrapped generator.
+
+    Raises:
+        ValueError: When the request is compacted and no pending turn is given.
+        TurnNotStoredError: When a compacted stream ran to its end and nobody
+            tried to store its turn.
     """
     media_type = context.query_request.media_type or MEDIA_TYPE_JSON
+    if turn is None:
+        turn = PendingTurn.for_request(context.client, responses_params)
     persist_guard = register_interrupt_callback(
         context,
         responses_params,
         turn_summary,
         background_topic_summary_tasks,
-        original_input,
+        turn,
     )
     stream_completed = False
     if emit_start:
@@ -271,7 +271,7 @@ async def generate_agent_response(  # pylint: disable=too-many-statements
                 responses_params,
                 turn_summary,
                 background_topic_summary_tasks,
-                original_input,
+                turn,
             )
         yield serialize_event(
             TokenStreamPayload.create(
@@ -290,9 +290,10 @@ async def generate_agent_response(  # pylint: disable=too-many-statements
         root_span.end()
         return
 
-    await _persist_compacted_turn(
-        context, responses_params, turn_summary, original_input, persist_guard
-    )
+    await _persist_compacted_turn(context, turn, turn_summary, persist_guard)
+    # The stream ran to its end. Fail if its turn had to be stored here and
+    # neither this path nor an interrupt tried to.
+    turn.ensure_settled()
 
     should_generate_topic_summary = (
         context.query_request.conversation_id is None

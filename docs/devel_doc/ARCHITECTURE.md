@@ -391,7 +391,7 @@ The compaction system is split into two layers:
    - Marker persistence (`[lightspeed:compaction-summary]` sentinel in conversation items)
    - `CompactionStartedEvent` emission for streaming progress indicators
    - `apply_compaction()` (async generator) — Main entry point used by all endpoints
-   - `store_compacted_turn()` — Appends user query + LLM output when in compacted mode
+   - `PendingTurn` (`utils/pending_turn.py`) — Owns the turns the endpoints store themselves: appends user query + LLM output when in compacted mode, once per request
 
 **Data Flow:**
 

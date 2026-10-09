@@ -315,6 +315,7 @@ Add `compaction` field to the root `Configuration` class.
 | `src/models/config.py`                 | Add `CompactionConfiguration` (near `ConversationHistoryConfiguration`)    |
 | `src/configuration.py`                 | Add `compaction_configuration` property to `AppConfig` singleton           |
 | `src/utils/conversation_compaction.py` | New module: `apply_compaction()` / `apply_compaction_blocking()`, `needs_compaction_path()`, marker helpers, per-conversation lock |
+| `src/utils/pending_turn.py`            | `PendingTurn`, the owner of every turn the endpoints store themselves: decides whether the turn is ours, stores it against the input as it arrived, and stores it once — LCORE-3908 |
 | `src/models/common/responses/responses_api_params.py` | `omit_conversation` flag — drops the `conversation` parameter from the request body in compacted mode |
 | `src/app/endpoints/query.py`           | Call `apply_compaction_blocking()` after preparing params; store the turn in compacted mode |
 | `src/app/endpoints/streaming_query.py` | Compaction-aware SSE path that emits the `compaction` event before summarizing (R12) |
@@ -346,6 +347,60 @@ calls after its params are prepared:
 When compaction is active, the endpoint builds explicit input, the
 `conversation` parameter is omitted (via `ResponsesApiParams.omit_conversation`),
 and the completed turn is appended to the conversation items afterward.
+
+That append has one owner, `PendingTurn` in `src/utils/pending_turn.py`
+(LCORE-3908). An endpoint creates it from the parameters the request is sent
+with and the `original_input` of the `CompactionResult`, and reports how the
+turn ended: `store_completed`, `store_blocked` or `store_interrupted`.
+The first report settles the turn and every later one does nothing, so a turn is
+stored once even when several paths of a request want to store it (the end of a
+stream, the cancellation handler, the interrupt callback). `PendingTurn` also
+covers the other turns OGX does not store: a request a shield blocked on
+`/v1/responses`, an interrupted stream, a continuation from
+`previous_response_id`.
+
+A compacted request that loses its turn through a change in the code fails.
+Building a `PendingTurn` for compacted parameters without the original input
+raises `ValueError`, and `ensure_settled()` raises `TurnNotStoredError` when a
+compacted request reaches the end of its handler and nobody tried to store its
+turn. `/v1/query` runs inside the `pending_turn()` scope, which makes that check
+when it is left; the streaming paths, `/v1/responses` and A2A make it after
+their write. Before this, a lost write was silent: the conversation stopped
+growing and nothing failed (LCORE-3883).
+
+The check does not cover three endings, which store nothing and are rows of the
+table below: a stream the client stops reading, a `/v1/responses` stream without
+a final response, and a failed write where the failure is logged.
+
+The shield capabilities (question validity, Granite Guardian) are the one writer
+outside the owner. They store the turn they rejected from inside the agent run,
+and only when the model was handed the conversation, so never in compacted mode.
+
+What is stored, per endpoint and per way a turn can end. "OGX" means the
+`conversation` parameter was sent and OGX stores the turn itself. The last
+column says what a failed write does to the request.
+
+| Endpoint | Turn ended | Not compacted | Compacted | Failed write |
+|---|---|---|---|---|
+| `/v1/query` | completed | OGX | stored | request fails |
+| | model call failed | not stored | not stored | |
+| | run did not finish with success | OGX | not stored | |
+| `/v1/streaming_query` | completed, also when the run did not finish with success | OGX | stored when the stream ends | logged |
+| | interrupted by the client | stored, with the answer so far | stored, with the answer so far | logged |
+| | client stopped reading | OGX | not stored | |
+| `/v1/responses` | completed, incomplete or failed | OGX; stored when continuing from `previous_response_id` | stored | request fails; a stream ends before `[DONE]` |
+| | blocked by a shield | stored | stored | request fails |
+| | stream without a final response | not stored | not stored | |
+| | `store: false` | not stored | never compacted | |
+| A2A | completed | OGX | stored | logged |
+| | agent run failed | not stored | not stored | |
+
+`tests/integration/endpoints/test_turn_persistence.py` pins the table. It runs
+the real handlers and compares the conversation item by item after the request.
+The compacted column is covered row by row; the other column for the rows where
+lightspeed-stack stores the turn, and for a completed turn on each endpoint. The
+last column is covered for a completed turn on each endpoint and for an
+interrupted stream.
 
 ## Fetching conversation history
 

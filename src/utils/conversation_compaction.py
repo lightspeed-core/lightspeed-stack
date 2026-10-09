@@ -69,7 +69,6 @@ from utils.compaction import (
     summarize_chunk,
 )
 from utils.conversations import (
-    append_turn_items_to_conversation,
     build_add_items_request,
     get_all_conversation_items,
 )
@@ -187,9 +186,9 @@ class CompactionResult:
         original_input: The new user query exactly as it arrived (before the
             explicit-input rewrite). Populated only in compacted mode (where
             ``compacted`` is True); ``None`` otherwise. In compacted mode the
-            caller must append this plus the LLM output to the conversation
-            items itself, since the ``conversation`` parameter is no longer
-            passed to OGX.
+            caller hands it to ``utils.pending_turn.PendingTurn``, which
+            stores this plus the LLM output in the conversation, since the
+            ``conversation`` parameter is no longer passed to OGX.
     """
 
     params: ResponsesApiParams
@@ -889,21 +888,3 @@ async def needs_compaction_path(
     estimated += estimate_conversation_tokens(items, encoding_name=encoding_name)
     estimated += _estimate_response_input_tokens(params.input, encoding_name)
     return _should_compact(estimated, context_window, compaction_config)
-
-
-async def store_compacted_turn(
-    client: AsyncOgxClient,
-    conversation_id: str,
-    original_input: ResponseInput,
-    output_items: Sequence[Any],
-) -> None:
-    """Append a completed turn to the conversation when in compacted mode.
-
-    In compacted mode the ``conversation`` parameter is not sent to inference,
-    so OGX does not auto-store the turn. lightspeed-stack appends the
-    user query and the LLM output to the conversation items itself, keeping the
-    full history (and the recent-turn buffer for the next request) intact.
-    """
-    await append_turn_items_to_conversation(
-        client, conversation_id, original_input, output_items
-    )

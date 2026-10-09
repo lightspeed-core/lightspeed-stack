@@ -3,9 +3,19 @@
 # pylint: disable=import-outside-toplevel
 
 import asyncio
+import json
+import uuid
+from collections.abc import AsyncIterator
 from typing import Any, cast
 
+from a2a.types import (
+    AgentCapabilities,
+    AgentCard,
+    AgentProvider,
+)
+from fastapi import Request
 from ogx_api.openai_responses import OpenAIResponseMessage
+from pydantic_ai import AgentRunResultEvent
 from pytest_mock import AsyncMockType, MockerFixture
 from sqlalchemy.orm import Session
 
@@ -278,3 +288,89 @@ def create_existing_conversation(
     )
     db_session.add(conv)
     db_session.commit()
+
+
+FAKE_AGENT_CARD = AgentCard(
+    name="Test Agent",
+    description="Test",
+    version="0.0.1",
+    url="http://localhost:8080/a2a",
+    provider=AgentProvider(organization="test", url="http://test"),
+    skills=[],
+    default_input_modes=["text/plain"],
+    default_output_modes=["text/plain"],
+    capabilities=AgentCapabilities(streaming=False),
+    protocol_version="0.3.0",
+)
+
+
+def build_a2a_request(user_input: str) -> Request:
+    """Build a FastAPI Request with a JSON-RPC ``message/send`` body.
+
+    Args:
+        user_input: The user message text to include in the A2A request.
+
+    Returns:
+        A FastAPI Request object with the JSON-RPC body ready for consumption.
+    """
+    body_dict = {
+        "jsonrpc": "2.0",
+        "id": str(uuid.uuid4()),
+        "method": "message/send",
+        "params": {
+            "message": {
+                "role": "user",
+                "parts": [{"type": "text", "text": user_input}],
+                "messageId": f"msg-{uuid.uuid4()}",
+                "contextId": f"ctx-{uuid.uuid4()}",
+            }
+        },
+    }
+    body_bytes = json.dumps(body_dict).encode()
+
+    async def receive() -> dict[str, Any]:
+        """Return the pre-built body as an ASGI receive event."""
+        return {"type": "http.request", "body": body_bytes, "more_body": False}
+
+    return Request(
+        scope={
+            "type": "http",
+            "method": "POST",
+            "path": "/a2a",
+            "root_path": "",
+            "query_string": b"",
+            "headers": [
+                (b"content-type", b"application/json"),
+            ],
+        },
+        receive=receive,
+    )
+
+
+def mock_a2a_agent(mocker: MockerFixture) -> Any:
+    """Build a mock pydantic-ai agent that yields a single result event.
+
+    Args:
+        mocker: pytest-mock fixture.
+
+    Returns:
+        A mock agent whose ``run_stream_events`` returns a single result event.
+    """
+    mock_run_result = mocker.MagicMock()
+    mock_run_result.response.text = "Test A2A response"
+    result_event = mocker.MagicMock(spec=AgentRunResultEvent)
+    result_event.result = mock_run_result
+
+    async def _event_stream() -> AsyncIterator[Any]:
+        """Yield a single agent run result event."""
+        yield result_event
+
+    mock_stream_ctx = mocker.AsyncMock()
+    mock_stream_ctx.__aenter__ = mocker.AsyncMock(return_value=_event_stream())
+    mock_stream_ctx.__aexit__ = mocker.AsyncMock(return_value=False)
+    mock_agent = mocker.MagicMock()
+    mock_agent.run_stream_events.return_value = mock_stream_ctx
+    mock_agent.model.last_output_items = [
+        OpenAIResponseMessage(role="assistant", content=DEFAULT_MODEL_RESPONSE)
+    ]
+    return mock_agent
