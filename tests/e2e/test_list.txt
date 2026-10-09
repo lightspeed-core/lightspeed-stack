@@ -20,6 +20,7 @@ features/prompts.feature
 features/query.feature
 features/responses.feature
 features/responses_streaming.feature
+features/a2a.feature
 features/rlsapi_v1.feature
 features/streaming_query.feature
 features/vector_stores.feature

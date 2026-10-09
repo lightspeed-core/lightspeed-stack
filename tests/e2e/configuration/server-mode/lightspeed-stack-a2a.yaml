@@ -1,0 +1,101 @@
+# @cfg_a2a
+# A2A server e2e: JWK bearer auth (see docs/user_doc/a2a_protocol.md) plus
+# agent card and sqlite a2a_state. 
+name: Lightspeed Core Service (LCS)
+service:
+  host: 0.0.0.0
+  port: 8080
+  base_url: http://localhost:8080
+  auth_enabled: true
+  workers: 1
+  color_log: true
+  access_log: true
+ogx:
+  use_as_library_client: false
+  url: http://${env.E2E_OGX_HOSTNAME}:8321
+  api_key: xyzzy
+user_data_collection:
+  feedback_enabled: true
+  feedback_storage: "/tmp/data/feedback"
+  transcripts_enabled: true
+  transcripts_storage: "/tmp/data/transcripts"
+
+authentication:
+  module: "jwk-token"
+  jwk_config:
+    url: "http://mock-jwks:8000/.well-known/jwks.json"
+    jwt_configuration:
+      user_id_claim: "sub"
+      username_claim: "name"
+      role_rules:
+        - jsonpath: "$.admin"
+          operator: "equals"
+          value: [true]
+          roles: ["admin"]
+        - jsonpath: "$.role"
+          operator: "equals"
+          value: ["user"]
+          roles: ["user"]
+        - jsonpath: "$.role"
+          operator: "equals"
+          value: ["viewer"]
+          roles: ["viewer"]
+
+authorization:
+  access_rules:
+    - role: "admin"
+      actions: ["admin"]
+    - role: "user"
+      actions:
+        - "info"
+        - "model_override"
+        - "a2a_jsonrpc"
+        - "a2a_agent_card"
+        - "a2a_task_execution"
+        - "a2a_message"
+    - role: "viewer"
+      actions:
+        - "info"
+        - "a2a_agent_card"
+    - role: "*"
+      actions:
+        - "info"
+
+inference:
+  default_provider: openai
+  default_model: gpt-4o-mini
+
+a2a_state:
+  sqlite:
+    db_path: "/tmp/data/a2a-state.db"
+
+customization:
+  agent_card_config:
+    name: "E2E A2A Assistant"
+    description: "E2E A2A server for Lightspeed Core Stack"
+    protocolVersion: "0.3.0"
+    provider:
+      organization: "Red Hat"
+      url: "https://redhat.com"
+    skills:
+      - id: "general-qa"
+        name: "General Q&A"
+        description: "Answer general questions"
+        tags: ["qa", "general"]
+        inputModes: ["text/plain"]
+        outputModes: ["text/plain"]
+        examples:
+          - "What is the capital of France?"
+          - "Explain how photosynthesis works"
+    capabilities:
+      streaming: true
+      pushNotifications: false
+      stateTransitionHistory: false
+    defaultInputModes: ["text/plain"]
+    defaultOutputModes: ["text/plain"]
+    security:
+      - bearer: []
+    security_schemes:
+      bearer:
+        type: http
+        scheme: bearer
