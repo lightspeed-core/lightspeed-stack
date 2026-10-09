@@ -64,6 +64,7 @@ async def test_query_v2_endpoint_successful_response(
         mock_query_agent: Mocked Pydantic AI agent for build_agent/agent.run
         test_request: FastAPI request
         test_auth: noop authentication tuple
+
     """
     _ = test_config
     _ = mock_ogx_client
@@ -116,6 +117,7 @@ async def test_query_v2_endpoint_handles_connection_error(
     Returns:
     -------
         None
+
     """
     _ = test_config
     _ = mock_ogx_client
@@ -189,6 +191,7 @@ async def test_query_v2_endpoint_returns_401_for_mcp_oauth(
         test_request: FastAPI request
         test_auth: noop authentication tuple
         mocker: pytest-mock fixture
+
     """
     _ = test_config
     _ = mock_ogx_client
@@ -258,6 +261,7 @@ async def test_query_v2_endpoint_empty_query(
     Returns:
     -------
         None
+
     """
     _ = test_config
     _ = mock_ogx_client
@@ -392,6 +396,7 @@ async def test_query_v2_endpoint_attachment_handling(
         mock_query_agent: Mocked Pydantic AI agent for build_agent/agent.run
         test_request: FastAPI request
         test_auth: noop authentication tuple
+
     """
     _ = test_config
     _ = mock_ogx_client
@@ -465,6 +470,7 @@ async def test_query_v2_endpoint_with_tool_calls(
         test_request: FastAPI request
         test_auth: noop authentication tuple
         mocker: pytest-mock fixture
+
     """
     _ = test_config
     _ = mock_ogx_client
@@ -527,6 +533,7 @@ async def test_query_v2_endpoint_with_mcp_list_tools(
         test_request: FastAPI request
         test_auth: noop authentication tuple
         mocker: pytest-mock fixture
+
     """
     _ = test_config
     _ = mock_ogx_client
@@ -588,6 +595,7 @@ async def test_query_v2_endpoint_with_multiple_tool_types(
         test_request: FastAPI request
         test_auth: noop authentication tuple
         mocker: pytest-mock fixture
+
     """
     _ = test_config
     _ = mock_ogx_client
@@ -643,6 +651,7 @@ async def test_query_v2_endpoint_bypasses_tools_when_no_tools_true(
     Returns:
     -------
         None
+
     """
     _ = test_config
     _ = patch_db_session
@@ -699,6 +708,7 @@ async def test_query_v2_endpoint_uses_tools_when_available(  # pylint: disable=u
     Returns:
     -------
         None
+
     """
     # prepare_tools does not require OGX client anymore so the way to
     # enable RAG tools is through config
@@ -753,6 +763,7 @@ async def test_query_v2_endpoint_persists_conversation_to_database(
         test_request: FastAPI request
         test_auth: noop authentication tuple
         patch_db_session: Test database session
+
     """
     _ = test_config
     _ = mock_ogx_client
@@ -809,6 +820,7 @@ async def test_query_v2_endpoint_updates_existing_conversation(
         test_request: FastAPI request
         test_auth: noop authentication tuple
         patch_db_session: Test database session
+
     """
     _ = test_config
     _ = mock_ogx_client
@@ -882,6 +894,7 @@ async def test_query_v2_endpoint_conversation_ownership_validation(
         test_request: FastAPI request
         test_auth: noop authentication tuple
         patch_db_session: Test database session
+
     """
     _ = test_config
     _ = mock_ogx_client
@@ -947,6 +960,7 @@ async def test_query_v2_endpoint_creates_valid_cache_entry(
     Returns:
     -------
         None
+
     """
     _ = test_config
     _ = mock_ogx_client
@@ -1009,6 +1023,7 @@ async def test_query_v2_endpoint_conversation_not_found_returns_404(
         test_request: FastAPI request
         test_auth: noop authentication tuple
         patch_db_session: Test database session
+
     """
     _ = test_config
     _ = mock_ogx_client
@@ -1070,6 +1085,7 @@ async def test_query_v2_endpoint_with_shield_violation(
         test_auth: noop authentication tuple
         patch_db_session: Test database session
         mocker: pytest-mock fixture (only for OGX response)
+
     """
     _ = test_config
     _ = mock_ogx_client
@@ -1127,6 +1143,7 @@ async def test_query_v2_endpoint_without_shields(
         test_request: FastAPI request
         test_auth: noop authentication tuple
         patch_db_session: Test database session
+
     """
     _ = test_config
     _ = patch_db_session
@@ -1177,6 +1194,7 @@ async def test_query_v2_endpoint_handles_empty_llm_response(
         test_request: FastAPI request
         test_auth: noop authentication tuple
         mocker: pytest-mock fixture
+
     """
     _ = test_config
     _ = mock_ogx_client
@@ -1236,6 +1254,7 @@ async def test_query_v2_endpoint_quota_integration(
         test_auth: noop authentication tuple
         patch_db_session: Test database session
         mocker: pytest-mock fixture (only for spying on quota functions)
+
     """
     _ = test_config
     _ = mock_ogx_client
@@ -1309,6 +1328,7 @@ async def test_query_v2_endpoint_rejects_query_when_quota_exceeded(
     Returns:
     -------
         None
+
     """
     _ = test_config
     _ = mock_ogx_client
@@ -1374,6 +1394,7 @@ async def test_query_v2_endpoint_transcript_behavior(
         test_auth: noop authentication tuple
         patch_db_session: Test database session
         mocker: pytest-mock fixture
+
     """
     _ = mock_ogx_client
     _ = mock_query_agent
@@ -1467,6 +1488,7 @@ async def test_query_v2_endpoint_uses_conversation_history_model(
         test_request: FastAPI request
         test_auth: noop authentication tuple
         patch_db_session: Test database session
+
     """
     _ = test_config
     _ = mock_ogx_client

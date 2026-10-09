@@ -41,6 +41,7 @@ def create_dummy_request() -> Request:
     Returns:
         request (fastapi.Request): A Request constructed with a bare HTTP scope
         (type "http") for use in tests.
+
     """
     return Request(scope={"type": "http", "headers": []})
 
@@ -60,6 +61,7 @@ def setup_configuration_fixture() -> AppConfig:
 
     Returns:
         AppConfig: an initialized configuration instance suitable for test fixtures.
+
     """
     config_dict: dict[Any, Any] = {
         "name": "test",

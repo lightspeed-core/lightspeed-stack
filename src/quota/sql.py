@@ -38,7 +38,7 @@ INCREASE_QUOTA_STATEMENT_SQLITE = """
     UPDATE quota_limits
        SET available=available+?, revoked_at=datetime('now')
      WHERE subject=?
-       AND revoked_at < datetime('now', ?);
+       AND datetime(revoked_at, ?) <= datetime('now');
     """
 
 
@@ -54,7 +54,7 @@ RESET_QUOTA_STATEMENT_SQLITE = """
     UPDATE quota_limits
        SET available=?, revoked_at=datetime('now')
      WHERE subject=?
-       AND revoked_at < datetime('now', ?);
+       AND datetime(revoked_at, ?) <= datetime('now');
     """
 
 INIT_QUOTA_PG = """

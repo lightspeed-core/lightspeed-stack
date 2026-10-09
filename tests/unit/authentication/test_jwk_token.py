@@ -34,6 +34,7 @@ def token_header(single_key_set: list[dict[str, Any]]) -> dict[str, Any]:
     -------
         dict: JWT header with keys `"alg": "RS256"`, `"typ": "JWT"`, and
         `"kid"` set to the first key's `kid`.
+
     """
     return {"alg": "RS256", "typ": "JWT", "kid": single_key_set[0]["kid"]}
 
@@ -47,6 +48,7 @@ def token_payload() -> dict[str, Any]:
     Returns:
         dict: A mapping with keys "user_id", "username", "exp", and "iat";
         "exp" and "iat" are UNIX timestamps (seconds since epoch).
+
     """
     return {
         "user_id": TEST_USER_ID,
@@ -66,6 +68,7 @@ def make_key() -> dict[str, Any]:
             - "private_key": the generated private JsonWebKey instance.
             - "public_key": the corresponding public JsonWebKey instance.
             - "kid": the key identifier (thumbprint) as a string.
+
     """
     key = JsonWebKey.generate_key("RSA", 2048, is_private=True)
     return {
@@ -92,6 +95,7 @@ def another_single_key_set() -> list[dict[str, Any]]:
             - `private_key`: the generated private JsonWebKey
             - `public_key`: the corresponding public JsonWebKey
             - `kid`: the key identifier (thumbprint)
+
     """
     return [make_key()]
 
@@ -116,6 +120,7 @@ def valid_token(
     Returns:
     -------
         str: The compact serialized JWT signed with the provided private key.
+
     """
     jwt_instance = JsonWebToken(algorithms=["RS256"])
     return jwt_instance.encode(
@@ -163,6 +168,7 @@ def make_signing_server(
             the public JWK derived from `private_key.as_dict(private=False)`
             extended with `kid` and `alg`.
           - `response.raise_for_status()` is a no-op.
+
     """
     mock_session_class = mocker.patch("aiohttp.ClientSession")
     mock_response = mocker.AsyncMock()
@@ -214,6 +220,7 @@ def mocked_signing_keys_server(
         single_key_set (list[dict[str, Any]]): A list containing one JWK dict
         (public key representation) that will be returned by the mocked JWKS
         endpoint.
+
     """
     return make_signing_server(mocker, single_key_set, ["RS256"])
 
@@ -231,6 +238,7 @@ def default_jwk_configuration() -> JwkConfiguration:
     Returns:
         JwkConfiguration: Configuration with a mocked JWKS URL and default
         claim mappings (`user_id` and `username`).
+
     """
     return JwkConfiguration(
         url=AnyHttpUrl("https://this#isgonnabemocked.com/jwks.json"),
@@ -254,6 +262,7 @@ def dummy_request(token: str) -> Request:
     -------
         request (Request): FastAPI Request object with the Authorization header
         set to "Bearer <token>".
+
     """
     return Request(
         scope={
@@ -273,6 +282,7 @@ def no_token_request() -> Request:
     Returns:
         request (Request): A request object with an HTTP scope and an empty
         headers list (no Authorization present).
+
     """
     return Request(
         scope={
@@ -291,6 +301,7 @@ def not_bearer_token_request() -> Request:
 
     Returns:
         Request: A request with an Authorization header set to "NotBearer anything".
+
     """
     return Request(
         scope={
@@ -314,6 +325,7 @@ def set_auth_header(request: Request, token: str) -> None:
     ----------
         request (Request): FastAPI/Starlette Request whose headers will be modified.
         token (str): Full Authorization header value to set (e.g., "Bearer <token>").
+
     """
     new_headers = [
         (k, v) for k, v in request.scope["headers"] if k.lower() != b"authorization"
@@ -337,6 +349,7 @@ def ensure_test_user_id_and_name(auth_tuple: tuple, expected_token: str) -> None
         AssertionError: If any element of auth_tuple does not match the expected test values
                         (user id equals TEST_USER_ID, username equals TEST_USER_NAME,
                         skip_userid_check is False, and token equals expected_token).
+
     """
     user_id, username, skip_userid_check, token = auth_tuple
     assert user_id == TEST_USER_ID
@@ -382,6 +395,7 @@ def expired_token(
     Returns:
     -------
         str: The signed JWT as a string with an expired `exp` claim.
+
     """
     jwt_instance = JsonWebToken(algorithms=["RS256"])
     token_payload["exp"] = int(time.time()) - 3600  # Set expiration in the past
@@ -438,6 +452,7 @@ def invalid_token(
     Returns:
     -------
         str: The serialized JWT as a compact string.
+
     """
     jwt_instance = JsonWebToken(algorithms=["RS256"])
     return jwt_instance.encode(
@@ -522,6 +537,7 @@ def no_user_id_token(
 
     Returns:
         jwt (str): Encoded JWT as a string that does not contain the `user_id` claim.
+
     """
     jwt_instance = JsonWebToken(algorithms=["RS256"])
     # Modify the token payload to include different claims
@@ -564,6 +580,7 @@ def no_username_token(
 
     Returns:
         A compact JWT string (signed) that does not contain the `username` claim.
+
     """
     jwt_instance = JsonWebToken(algorithms=["RS256"])
     # Modify the token payload to include different claims
@@ -615,6 +632,7 @@ def custom_claims_token(
     Returns:
     -------
         str: The encoded JWT as a string.
+
     """
     jwt_instance = JsonWebToken(algorithms=["RS256"])
 
@@ -646,6 +664,7 @@ def custom_claims_configuration(
     -------
         JwkConfiguration: A copy of the input configuration with `jwt_configuration.user_id_claim`
         set to "id_of_the_user" and `jwt_configuration.username_claim` set to "name_of_the_user".
+
     """
     # Create a copy of the default configuration
     custom_config = default_jwk_configuration.model_copy()
@@ -688,6 +707,7 @@ def token_header_256_1(multi_key_set: list[dict[str, Any]]) -> dict[str, Any]:
 
     Returns:
         dict[str, Any]: JWT header containing "alg", "typ", and "kid".
+
     """
     return {"alg": "RS256", "typ": "JWT", "kid": multi_key_set[0]["kid"]}
 
@@ -707,6 +727,7 @@ def token_header_256_2(multi_key_set: list[dict[str, Any]]) -> dict[str, Any]:
     -------
         dict[str, Any]: JWT header with keys `"alg": "RS256"`, `"typ": "JWT"`,
         and `"kid"` taken from `multi_key_set[1]["kid"]`.
+
     """
     return {"alg": "RS256", "typ": "JWT", "kid": multi_key_set[1]["kid"]}
 
@@ -727,6 +748,7 @@ def token_header_384(multi_key_set: list[dict[str, Any]]) -> dict[str, Any]:
     -------
         dict[str, Any]: JWT header with keys `"alg": "RS384"`, `"typ": "JWT"`,
         and `"kid"` set to the third key's `kid`.
+
     """
     return {"alg": "RS384", "typ": "JWT", "kid": multi_key_set[2]["kid"]}
 
@@ -739,6 +761,7 @@ def token_header_256_no_kid() -> dict[str, Any]:
 
     Returns:
         header (dict[str, Any]): JWT header with "alg" set to "RS256" and no "kid" field.
+
     """
     return {"alg": "RS256", "typ": "JWT"}
 
@@ -751,6 +774,7 @@ def token_header_384_no_kid() -> dict[str, Any]:
 
     Returns:
         header (dict): JWT header with `"alg": "RS384"` and `"typ": "JWT"`, without a `kid` entry.
+
     """
     return {"alg": "RS384", "typ": "JWT"}
 
@@ -766,6 +790,7 @@ def multi_key_set() -> list[dict[str, Any]]:
 
     Returns:
         list[dict[str, Any]]: A list of three signing key dictionaries.
+
     """
     return [make_key(), make_key(), make_key()]
 
@@ -788,6 +813,7 @@ def valid_tokens(
         signed with multi_key_set[0] (RS256, header token_header_256_1),
         multi_key_set[1] (RS256, header token_header_256_2), and
         multi_key_set[2] (RS384, header token_header_384), respectively.
+
     """
     key_for_256_1 = multi_key_set[0]
     key_for_256_2 = multi_key_set[1]
@@ -826,6 +852,7 @@ def valid_tokens_no_kid(
     Returns:
         tuple[str, str, str]: Tuple of JWT strings in order (RS256 signed with
         first key, RS256 signed with second key, RS384 signed with third key).
+
     """
     key_for_256_1 = multi_key_set[0]
     key_for_256_2 = multi_key_set[1]
@@ -871,6 +898,7 @@ def multi_key_signing_server(
     -------
         A mock object that simulates an aiohttp client/session which, when
         queried, yields a response containing the configured JWKs.
+
     """
     return make_signing_server(mocker, multi_key_set, ["RS256", "RS256", "RS384"])
 

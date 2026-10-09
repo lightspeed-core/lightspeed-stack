@@ -62,6 +62,7 @@ def _fetch_models_from_service() -> dict:
 
     Returns:
         Dict with model_id and provider_id, or empty dict if unavailable
+
     """
     try:
         host_env = os.getenv("E2E_LSC_HOSTNAME", "localhost")
@@ -103,6 +104,7 @@ def before_all(context: Context) -> None:
             - is_library_mode (bool): True when deployment_mode is "library".
             - default_model (str): Detected model id or fallback model.
             - default_provider (str): Detected provider id or fallback provider.
+
     """
     # Set OTEL anonymization secret for E2E tests if not already configured
     if not os.environ.get("OTEL_ANONYMIZATION_SECRET"):
@@ -335,6 +337,7 @@ def after_scenario(context: Context, scenario: Scenario) -> None:
             - okp_was_running (bool, optional): whether OKP server was running
               before it was stopped by the scenario.
         scenario (Scenario): Behave scenario used for failure log dumps in Prow.
+
     """
     if is_prow_environment():
         _dump_pod_logs_on_failure(

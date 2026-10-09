@@ -275,6 +275,7 @@ def _prompt_row(  # pylint: disable=too-many-arguments
 
     Returns:
         A ``SimpleNamespace`` with attributes matching a ``SavedPrompt`` row.
+
     """
     return SimpleNamespace(
         id=prompt_id,

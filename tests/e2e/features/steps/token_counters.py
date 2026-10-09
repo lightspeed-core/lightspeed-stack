@@ -137,6 +137,7 @@ def _get_current_token_metrics(context: Context) -> dict[str, float]:
     Returns:
     -------
         Dictionary with 'token_sent' and 'token_received' totals.
+
     """
     base = f"http://{context.hostname}:{context.port}"
     url = f"{base}/metrics"
@@ -161,6 +162,7 @@ def _get_end_event_data(response_text: str) -> Optional[dict]:
     -------
         The data dictionary from the end event (including available_quotas),
         or None if not found.
+
     """
     lines = response_text.strip().split("\n")
     for line in lines:
@@ -187,6 +189,7 @@ def _parse_token_metrics(metrics_text: str) -> dict[str, float]:
     Returns:
     -------
         Dictionary with 'token_sent' and 'token_received' totals.
+
     """
     token_sent_total = 0.0
     token_received_total = 0.0

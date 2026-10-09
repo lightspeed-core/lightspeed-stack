@@ -48,6 +48,7 @@ def absolute_repo_path(repo_relative: str) -> str:
 
     Returns:
         Normalized absolute filesystem path.
+
     """
     rel = repo_relative.strip()
     if os.path.isabs(rel):
@@ -97,6 +98,7 @@ def request_with_transient_retry(
 
     Raises:
         The last :exc:`requests.exceptions.ConnectionError` if all attempts fail.
+
     """
     last_err: Optional[BaseException] = None
     for attempt in range(E2E_HTTP_TRANSIENT_MAX_ATTEMPTS):
@@ -119,6 +121,7 @@ def cluster_lightspeed_config_dir() -> str:
 
     Returns:
         Non-empty repo-relative directory path.
+
     """
     raw = os.getenv("E2E_LIGHTSPEED_CONFIG_DIR", _DEFAULT_CLUSTER_LIGHTSPEED_CONFIG_DIR)
     stripped = raw.strip()
@@ -137,6 +140,7 @@ def cluster_lightspeed_config_path(filename: str) -> str:
 
     Returns:
         Absolute path suitable for ``switch_config`` and ``oc --from-file`` on CI.
+
     """
     base = cluster_lightspeed_config_dir()
     if os.path.isabs(base):
@@ -159,6 +163,7 @@ def normalize_endpoint(endpoint: str) -> str:
     Returns:
     -------
         str: The normalized endpoint starting with '/' and containing no double-quote characters.
+
     """
     endpoint = endpoint.replace('"', "")
     if not endpoint.startswith("/"):
@@ -185,6 +190,7 @@ def validate_json(message: Any, schema: Any) -> None:
         AssertionError: If the instance does not conform to the schema or if
         the schema itself is invalid; the assertion message contains the
         underlying jsonschema error.
+
     """
     try:
         jsonschema.validate(
@@ -225,6 +231,7 @@ def wait_for_container_health(
     ----------
         container_name (str): Docker container name or ID to check.
         max_attempts (int | None): Maximum health check attempts (default from env).
+
     """
     if max_attempts is None:
         max_attempts = E2E_CONTAINER_HEALTH_MAX_ATTEMPTS
@@ -280,6 +287,7 @@ def wait_for_ogx_ready(
     Returns:
     -------
         True if healthy; False if the wait soft-failed.
+
     """
     return wait_for_container_health("ogx", max_attempts=max_attempts)
 
@@ -298,6 +306,7 @@ def _parsed_json_container(value: Any) -> Optional[Any]:
     -------
         The parsed ``dict`` or ``list``, or None when ``value`` is not a string
         holding a JSON object or array.
+
     """
     if not isinstance(value, str):
         return None
@@ -323,6 +332,7 @@ def _json_values_equal(left: Any, right: Any) -> bool:
     Returns:
     -------
         True when both values have the same JSON types and contents.
+
     """
     if type(left) is not type(right):
         return False
@@ -357,6 +367,7 @@ def validate_json_partially(actual: Any, expected: Any) -> None:
     Raises:
         AssertionError: If a required key is missing, no list element matches
         an expected item, or a value does not equal the expected value.
+
     """
     if isinstance(expected, dict):
         for key, expected_value in expected.items():
@@ -469,6 +480,7 @@ def switch_config(
         PermissionError: If the file cannot be read or destination cannot be
                          written due to permissions.
         OSError: For other OS-related failures during the copy operation.
+
     """
     if is_prow_environment():
         update_config_configmap(source_path)
@@ -494,6 +506,7 @@ def create_config_backup(config_path: str) -> str:
         FileNotFoundError: If the source config file does not exist.
         PermissionError: If the process lacks permission to read or write the files.
         OSError: For other OS-level errors encountered while copying.
+
     """
     if is_prow_environment():
         return backup_configmap_to_memory()
@@ -522,6 +535,7 @@ def remove_config_backup(backup_path: str) -> None:
     Parameters:
     ----------
         backup_path (str): Filesystem path to the backup file to remove.
+
     """
     if is_prow_environment():
         remove_configmap_backup(backup_path)
@@ -548,6 +562,7 @@ def restart_container(container_name: str) -> None:
             budget. Docker health itself stays a soft failure; the HTTP wait
             does not, so callers that must not fail (teardown hooks) have to
             guard the call.
+
     """
     if is_prow_environment():
         restart_pod(container_name)
@@ -604,6 +619,7 @@ def restart_lightspeed_stack_service(*, skip_ogx_restore: bool = False) -> None:
     ----------
         skip_ogx_restore: When True on Prow/Konflux, tell e2e-ops not to
             bring llama back before recreating LCS (degraded-mode startup).
+
     """
     previous = os.environ.get("E2E_SKIP_OGX_RESTORE_ON_LCS_RESTART")
     if skip_ogx_restore:
@@ -650,6 +666,7 @@ def wait_for_lightspeed_stack_http_ready(
     Raises:
     ------
         AssertionError: If ``/liveness`` does not return an accepted status in time.
+
     """
     if is_prow_environment():
         return
@@ -704,6 +721,7 @@ def replace_placeholders(context: Context, text: str) -> str:
     Returns:
     -------
         String with placeholders replaced by actual values.
+
     """
     result = text.replace("{MODEL}", context.default_model)
     result = result.replace("{PROVIDER}", context.default_provider)

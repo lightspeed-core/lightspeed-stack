@@ -48,6 +48,7 @@ async def _collect_sse_events(response: Any) -> list[dict[str, Any]]:
 
     Returns:
         List of parsed JSON event dicts (one per ``data:`` line).
+
     """
     events: list[dict[str, Any]] = []
     async for chunk in response.body_iterator:
@@ -73,6 +74,7 @@ def _setup_streaming_compaction_mocks(
 
     Returns:
         The mock for ``summarize_chunk``.
+
     """
     mock_streaming_query_agent.model.last_output_items = [
         OpenAIResponseMessage(

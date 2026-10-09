@@ -127,6 +127,7 @@ def get_test_config() -> dict[str, Any]:
 
     Returns:
         Test configuration dictionary.
+
     """
     return {
         "name": "foo",
@@ -157,6 +158,7 @@ def get_test_request() -> Request:
 
     Returns:
         Test request object.
+
     """
     return Request(
         scope={
@@ -171,6 +173,7 @@ def get_test_auth() -> AuthTuple:
 
     Returns:
         Test auth tuple.
+
     """
     return ("test_user_id", "test_user", True, "test_token")
 

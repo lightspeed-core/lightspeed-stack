@@ -26,6 +26,7 @@ def mock_library_client_fixture(mocker: MockerFixture) -> Any:
 
     Returns:
         A mocked library client with route_impls set to an empty dict.
+
     """
     client = mocker.Mock()
     client.route_impls = {}
@@ -39,6 +40,7 @@ def transport_fixture(mock_library_client: Any) -> OgxLibraryTransport:
 
     Returns:
         An initialized OgxLibraryTransport.
+
     """
     return OgxLibraryTransport(mock_library_client)
 

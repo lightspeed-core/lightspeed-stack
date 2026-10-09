@@ -19,6 +19,7 @@ def test_from_environment_no_otel_vars(monkeypatch: pytest.MonkeyPatch) -> None:
     Parameters:
     ----------
         monkeypatch (pytest.MonkeyPatch): Pytest fixture for environment manipulation.
+
     """
     # Clear any existing OTEL_ variables
     for key in list(os.environ.keys()):
@@ -35,6 +36,7 @@ def test_from_environment_with_otel_vars(monkeypatch: pytest.MonkeyPatch) -> Non
     Parameters:
     ----------
         monkeypatch (pytest.MonkeyPatch): Pytest fixture for environment manipulation.
+
     """
     # Set OTEL_ environment variables
     otel_vars = {
@@ -63,6 +65,7 @@ def test_from_environment_ignores_non_otel_vars(
     Parameters:
     ----------
         monkeypatch (pytest.MonkeyPatch): Pytest fixture for environment manipulation.
+
     """
     # Set some non-OTEL variables
     monkeypatch.setenv("PATH", "/usr/bin")
@@ -119,6 +122,7 @@ def test_otel_dict_sizes(otel_dict: dict[str, str], expected_count: int) -> None
     ----------
         otel_dict (dict[str, str]): Dictionary of OTEL environment variables to test.
         expected_count (int): Expected number of items in the resulting otel dict.
+
     """
     cfg = ObservabilityConfiguration(otel=otel_dict)
     assert len(cfg.otel) == expected_count
@@ -154,6 +158,7 @@ def test_from_environment_redacts_secret_headers(
     Parameters:
     ----------
         monkeypatch (pytest.MonkeyPatch): Pytest fixture for environment manipulation.
+
     """
     monkeypatch.setenv(
         "OTEL_EXPORTER_OTLP_HEADERS", "api-key=secret_token,tenant-id=acme"
@@ -182,6 +187,7 @@ def test_from_environment_redacts_mtls_credentials(
     Parameters:
     ----------
         monkeypatch (pytest.MonkeyPatch): Pytest fixture for environment manipulation.
+
     """
     monkeypatch.setenv("OTEL_EXPORTER_OTLP_CERTIFICATE", "/path/to/cert.pem")
     monkeypatch.setenv("OTEL_EXPORTER_OTLP_CLIENT_KEY", "/path/to/key.pem")
@@ -205,6 +211,7 @@ def test_from_environment_redacts_all_secret_vars(
     Parameters:
     ----------
         monkeypatch (pytest.MonkeyPatch): Pytest fixture for environment manipulation.
+
     """
     # Set headers with key=value format
     monkeypatch.setenv("OTEL_EXPORTER_OTLP_HEADERS", "api-key=secret")

@@ -144,6 +144,7 @@ def test_jwt_role_rule_invalid_regexp() -> None:
     Raises:
         ValidationError: if the provided regex pattern for MATCH is invalid
         (message contains "Invalid regex pattern for MATCH operator").
+
     """
     with pytest.raises(
         ValidationError, match="Invalid regex pattern for MATCH operator"

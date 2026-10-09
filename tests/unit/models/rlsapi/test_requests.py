@@ -48,6 +48,7 @@ def sample_request_fixture(sample_context: RlsapiV1Context) -> RlsapiV1InferRequ
     Returns:
         RlsapiV1InferRequest: Request initialized with question "How do I list
         files?", the provided context, and skip_rag set to True.
+
     """
     return RlsapiV1InferRequest(
         question="How do I list files?",
@@ -347,6 +348,7 @@ def make_request_fixture() -> Any:
     Returns:
         _RequestBuilder: Helper class with a `build(...)` static method to
         create requests for tests.
+
     """
 
     class _RequestBuilder:  # pylint: disable=too-few-public-methods
@@ -369,6 +371,7 @@ def make_request_fixture() -> Any:
 
             Returns:
                 RlsapiV1InferRequest: The constructed request with the specified context values.
+
             """
             return RlsapiV1InferRequest(
                 question=question,
@@ -667,6 +670,7 @@ def test_value_max_length(model: Callable, field: str, max_length: int) -> None:
         model (Callable): The Pydantic model or constructor to test.
         field (str): The name of the string field to validate on the model.
         max_length (int): The maximum allowed length for the field.
+
     """
     value = "a" * max_length
     bad_value = value + "a"

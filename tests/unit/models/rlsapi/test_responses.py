@@ -37,6 +37,7 @@ def sample_response_fixture(sample_data: RlsapiV1InferData) -> RlsapiV1InferResp
 
     Returns:
         RlsapiV1InferResponse: A response model whose `data` is `sample_data`.
+
     """
     return RlsapiV1InferResponse(data=sample_data)
 

@@ -207,6 +207,7 @@ def _ensure_tls_provider(config: dict[str, Any]) -> dict[str, Any]:
     Returns:
     -------
         The tls-openai provider configuration dictionary.
+
     """
     providers = config.setdefault("providers", {})
     inference = providers.setdefault("inference", [])
@@ -235,6 +236,7 @@ def _configure_tls(tls_config: dict[str, Any], base_url: Optional[str] = None) -
     ----------
         tls_config: The TLS configuration dictionary.
         base_url: Optional base URL override for the provider.
+
     """
     backup_ogx_config()
     config = load_ogx_config()

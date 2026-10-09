@@ -66,6 +66,7 @@ def ogx_connection_broken(context: Context) -> None:
     ----------
         context (behave.runner.Context): Behave context used to store
         `ogx_was_running` and share state between steps.
+
     """
     if _ogx_disrupt_once["applied"]:
         print("OGX disruption skipped (already applied once this feature)")

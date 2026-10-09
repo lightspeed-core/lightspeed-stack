@@ -86,6 +86,8 @@ product questions using backend LLM services, agents, and RAG databases.
 
 ### Models
 
+#### Descriptions
+
 [Common](https://lightspeed-core.github.io/lightspeed-stack/models/common.html)
 
 [Database](https://lightspeed-core.github.io/lightspeed-stack/models/database.html)
@@ -174,7 +176,7 @@ product questions using backend LLM services, agents, and RAG databases.
 
 [Design](https://lightspeed-core.github.io/lightspeed-stack/design/human-in-the-loop/human-in-the-loop.html)
 
-*** ogx config merge (unified `lightspeed-stack.yaml`) ***
+*** OGX config merge (unified `lightspeed-stack.yaml`) ***
 
 [Spike](https://lightspeed-core.github.io/lightspeed-stack/design/ogx-config-merge/ogx-config-merge-spike.html)
 
@@ -189,6 +191,12 @@ product questions using backend LLM services, agents, and RAG databases.
 *** OpenTelemetry tracing in Lightspeed Core ***
 
 [Design](https://lightspeed-core.github.io/lightspeed-stack/design/observability-opentelemetry/observability-opentelemetry.html)
+
+*** Widget System in Lightspeed Stack ***
+
+[Spike](https://lightspeed-core.github.io/lightspeed-stack/design/widget-system/widget-system-spike.html)
+
+[Design](https://lightspeed-core.github.io/lightspeed-stack/design/widget-system/widget-system.html)
 
 ## Demos
 

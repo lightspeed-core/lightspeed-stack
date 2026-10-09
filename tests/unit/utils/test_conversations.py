@@ -55,6 +55,7 @@ def create_mock_user_turn_fixture(mocker: MockerFixture) -> Any:
 
     Returns:
         Function that creates a mock UserTurn with specified attributes
+
     """
 
     def _create(

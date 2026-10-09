@@ -323,6 +323,7 @@ Lightspeed Core Stack (LCS) service API specification.
     * [OpenIdConnectSecurityScheme](#openidconnectsecurityscheme)
     * [PasswordOAuthFlow](#passwordoauthflow)
     * [PostgreSQLDatabaseConfiguration](#postgresqldatabaseconfiguration)
+    * [PositiveFeedbackCategory](#positivefeedbackcategory)
     * [PromptCreateRequest](#promptcreaterequest)
     * [PromptDeleteResponse](#promptdeleteresponse)
     * [PromptResourceResponse](#promptresourceresponse)
@@ -6403,9 +6404,6 @@ These categories help provide structured feedback about AI inference quality
 when users provide negative feedback (thumbs down). Multiple categories can
 be selected to provide comprehensive feedback about response issues.
 
-
-
-
 ## FeedbackRequest
 
 
@@ -6417,7 +6415,7 @@ Attributes:
     llm_response: The required LLM response.
     sentiment: The optional sentiment.
     user_feedback: The optional user feedback.
-    categories: The optional list of feedback categories (multi-select for negative feedback).
+    categories: The optional list of positive or negative feedback categories.
 
 
 | Field | Type | Description |
@@ -6427,7 +6425,7 @@ Attributes:
 | llm_response | string | Response from LLM |
 | sentiment |  | User sentiment, if provided must be -1 or 1 |
 | user_feedback |  | Feedback on the LLM response. |
-| categories |  | List of feedback categories that describe issues with the LLM response (for negative feedback). |
+| categories | array of FeedbackCategory or PositiveFeedbackCategory | List of positive or negative feedback categories. |
 
 
 ## FeedbackResponse
@@ -7797,6 +7795,10 @@ Useful resources:
 | ca_cert_path |  | Path to CA certificate |
 
 
+## PositiveFeedbackCategory
+
+Enum representing predefined categories for positive feedback.
+
 ## PromptCreateRequest
 
 
@@ -8056,7 +8058,9 @@ There are three configuration options for each limiter:
 1. ``period`` is specified in a human-readable form, see
    https://www.postgresql.org/docs/current/datatype-datetime.html#DATATYPE-INTERVAL-INPUT
    for all possible options. When the end of the period is reached, the
-   quota is reset or increased.
+   quota is reset or increased. With the SQLite storage the period must be
+   a modifier of the SQLite function ``datetime()`` that moves the time
+   forward, for example ``7 days``; ``1 week`` is rejected.
 2. ``initial_quota`` is the value set at the beginning of the period.
 3. ``quota_increase`` is the value (if specified) used to increase the
    quota when the period is reached.

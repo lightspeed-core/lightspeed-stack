@@ -90,6 +90,7 @@ def make_openai_models_list_response(
 
     Returns:
         ``ListModelsV1ModelsGet200Response`` wrapping ``OpenAIListModelsResponse``.
+
     """
     return ListModelsV1ModelsGet200Response(
         OpenAIListModelsResponse.model_construct(data=list(models))
@@ -111,6 +112,7 @@ def make_openai_model(
 
     Returns:
         Constructed ``OpenAIModel`` instance.
+
     """
     return OpenAIModel.model_construct(
         id=model_id,
@@ -147,6 +149,7 @@ def make_openai_response_object(  # pylint: disable=too-many-arguments,too-many-
 
     Returns:
         ``OpenAIResponseObject`` instance suitable for ``dump_ogx_model()``.
+
     """
     output: list[dict[str, Any]] = list(tool_calls or [])
     message_content: list[dict[str, Any]] = (
@@ -208,6 +211,7 @@ def create_mock_llm_response(  # pylint: disable=too-many-arguments,too-many-pos
 
     Returns:
         ``OpenAIResponseObject`` with the specified configuration.
+
     """
     _ = mocker
     return make_openai_response_object(
@@ -233,6 +237,7 @@ def create_mock_vector_store_response(
 
     Returns:
         Mock vector store response object.
+
     """
     mock_response = mocker.MagicMock()
 
@@ -268,6 +273,7 @@ def create_mock_tool_call(
 
     Returns:
         Mock tool call object.
+
     """
     mock_tool_call = mocker.MagicMock()
     mock_tool_call.id = call_id
@@ -303,6 +309,7 @@ def create_agent_run_result(  # pylint: disable=too-many-arguments,too-many-posi
 
     Returns:
         Mock AgentRunResult compatible with build_turn_summary_from_agent_run.
+
     """
     if model_response is None:
         parts = [TextPart(content)] if content else []
@@ -776,6 +783,7 @@ def test_config_fixture() -> Generator:
 
     Yields:
         The `configuration` module with the loaded settings.
+
     """
     config_path = (
         Path(__file__).parent.parent / "configuration" / "lightspeed-stack.yaml"
@@ -798,6 +806,7 @@ def current_config_fixture() -> Generator:
 
     Yields:
         configuration: The loaded configuration object.
+
     """
     config_path = Path(__file__).parent.parent.parent / "lightspeed-stack.yaml"
     assert config_path.exists(), f"Config file not found: {config_path}"
@@ -821,6 +830,7 @@ def test_db_engine_fixture() -> Generator:
 
     Yields:
         engine (Engine): A SQLAlchemy Engine connected to a new in-memory SQLite database.
+
     """
     # Create in-memory SQLite database with StaticPool for thread safety
     engine = create_engine(
@@ -849,6 +859,7 @@ def test_db_session_fixture(test_db_engine: Engine) -> Generator[Session, None, 
     Yields:
         session (Session): A database session bound to the test engine; the
         fixture closes the session after the test.
+
     """
     session_local = sessionmaker(autocommit=False, autoflush=False, bind=test_db_engine)
     session = session_local()
@@ -865,6 +876,7 @@ def test_request_fixture() -> Request:
     Returns:
         request (fastapi.Request): A Request object whose scope has `"type":
         "http"`, an empty `query_string`, and no headers.
+
     """
     return Request(
         scope={
@@ -881,6 +893,7 @@ def test_response_fixture() -> Response:
 
     Returns:
         Response: Response with empty content, status 200, and media_type "application/json".
+
     """
     return Response(content="", status_code=200, media_type="application/json")
 
@@ -894,6 +907,7 @@ async def test_auth_fixture(test_request: Request) -> AuthTuple:
 
     Returns:
         AuthTuple: Authentication information produced by NoopAuthDependency.
+
     """
     noop_auth = NoopAuthDependency()
     return await noop_auth(test_request)
@@ -915,6 +929,7 @@ def non_admin_test_request_fixture(
 
     Yields:
         Request: Test request that will have limited permissions when used with @authorize decorator
+
     """
     # Define standard user actions (excluding OTHERS and ADMIN permissions)
     standard_actions = {
@@ -981,6 +996,7 @@ def patch_db_session_fixture(
 
     Yields:
         The test database Session instance to be used by the test.
+
     """
     # Store original values to restore later
     original_engine = app.database.engine
@@ -1009,6 +1025,7 @@ def mock_request_with_auth_fixture() -> Request:
 
     Returns:
         Request: Request object with all actions authorized.
+
     """
     request = Request(
         scope={
@@ -1043,6 +1060,7 @@ def mock_ogx_client_fixture(
 
     Yields:
         mock_client: The mocked OGX client instance.
+
     """
     # Patch AsyncOgxClientHolder at multiple import locations
     # This ensures the mock is active both during app startup (app.main)
@@ -1108,6 +1126,7 @@ def conversation_store_fixture(
 
     Returns:
         The InMemoryConversationStore instance backing the mock client.
+
     """
     store = InMemoryConversationStore()
     mock_ogx_client.conversations.items.list = store.list

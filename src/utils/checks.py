@@ -3,10 +3,15 @@
 import importlib
 import importlib.util
 import os
+import sqlite3
+from contextlib import closing
 from types import ModuleType
 from typing import Optional
 
 from pydantic import FilePath
+
+# fixed point in time the quota limiter periods are tried on
+SQLITE_PERIOD_REFERENCE = "2000-01-01 00:00:00"
 
 
 class InvalidConfigurationError(Exception):
@@ -153,3 +158,32 @@ def is_valid_profile(profile_module: ModuleType) -> bool:
         return False
 
     return isinstance(profile_config.get("system_prompts"), dict)
+
+
+def is_valid_sqlite_period(period: str) -> bool:
+    """
+    Check whether SQLite can use the period to move a timestamp forward.
+
+    The quota scheduler passes the period of a quota limiter to the SQLite
+    function datetime() as a modifier. SQLite itself is asked what it makes of
+    the period, so the check can not drift from what SQLite accepts: datetime()
+    returns NULL for a modifier it can not parse, and a zero or negative period
+    does not give a later time.
+
+    Parameters:
+    ----------
+        period (str): Period as specified in the quota limiter configuration.
+
+    Returns:
+    -------
+        bool: True if datetime() applied to a fixed timestamp with the period
+        as the modifier returns a later time, False otherwise.
+    """
+    # julianday() makes it a comparison of times: as text, the result of the
+    # modifier 'subsec' would be greater than the timestamp it does not move
+    with closing(sqlite3.connect(":memory:")) as connection:
+        (is_later,) = connection.execute(
+            "SELECT julianday(datetime(?, ?)) > julianday(?)",
+            (SQLITE_PERIOD_REFERENCE, period, SQLITE_PERIOD_REFERENCE),
+        ).fetchone()
+    return bool(is_later)

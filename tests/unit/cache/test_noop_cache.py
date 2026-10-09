@@ -38,6 +38,7 @@ def cache() -> NoopCache:
 
     Returns:
         NoopCache: An initialized NoopCache instance ready for tests.
+
     """
     c = NoopCache()
     c.initialize_cache()
@@ -126,6 +127,7 @@ def test_delete_improper_conversation_id(cache_fixture: NoopCache) -> None:
     Raises:
         ValueError: If the conversation ID is not a valid UUID (message
         contains "Invalid conversation ID").
+
     """
     with pytest.raises(ValueError, match="Invalid conversation ID"):
         cache_fixture.delete(USER_ID, "invalid-id")
@@ -222,6 +224,7 @@ def test_list_improper_user_id(cache_fixture: NoopCache, uuid: Optional[str]) ->
     Parameters:
         - uuid (Optional[str]): The invalid user-id value to test; the test
           asserts a ValueError with message "Invalid user ID {uuid}".
+
     """
     with pytest.raises(ValueError, match=f"Invalid user ID {uuid}"):
         cache_fixture.list(uuid)

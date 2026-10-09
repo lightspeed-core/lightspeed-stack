@@ -62,6 +62,7 @@ def _build_a2a_request(user_input: str) -> Request:
 
     Returns:
         A FastAPI Request object with the JSON-RPC body ready for consumption.
+
     """
     body_dict = {
         "jsonrpc": "2.0",
@@ -87,6 +88,7 @@ def _mock_a2a_agent(mocker: MockerFixture) -> Any:
 
     Returns:
         A mock agent whose ``run_stream_events`` returns a single result event.
+
     """
     mock_run_result = mocker.MagicMock()
     mock_run_result.response.text = "Test A2A response"
@@ -126,6 +128,7 @@ def _setup_a2a_compaction_mocks(
 
     Returns:
         Tuple of (mock_summarize, mock_build_agent).
+
     """
     mocker.patch(
         "app.endpoints.a2a.get_lightspeed_agent_card",

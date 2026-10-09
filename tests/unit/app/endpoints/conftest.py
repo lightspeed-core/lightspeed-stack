@@ -15,6 +15,7 @@ def mock_request_factory_fixture(mocker: MockerFixture) -> Callable[..., Any]:
 
     Returns:
         Callable that accepts an optional rh_identity argument and returns a Mock request.
+
     """
 
     def _create(rh_identity: Any = None) -> Any:
@@ -39,5 +40,6 @@ def mock_background_tasks_fixture(mocker: MockerFixture) -> Any:
 
     Returns:
         A Mock object representing FastAPI BackgroundTasks.
+
     """
     return mocker.Mock()

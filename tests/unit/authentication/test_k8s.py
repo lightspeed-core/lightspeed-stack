@@ -59,6 +59,7 @@ class MockK8sResponseStatus:
             when `authenticated` is True.
             groups (Optional[list[str]]): Group list to set on the created
             `MockK8sUser` when `authenticated` is True.
+
         """
         self.authenticated = authenticated
         self.allowed = allowed
@@ -91,6 +92,7 @@ class MockK8sUser:
                 uid (Optional[str]): The user's unique identifier, or None if not provided.
                 groups (Optional[list[str]]): List of groups the user belongs
                 to, or None if not provided.
+
         """
         self.username = username
         self.uid = uid
@@ -122,6 +124,7 @@ class MockK8sResponse:
             username (Optional[str]): Username of the authenticated user, if any.
             uid (Optional[str]): User ID of the authenticated user, if any.
             groups (Optional[list[str]]): Groups the authenticated user belongs to, if any.
+
         """
         self.status = MockK8sResponseStatus(
             authenticated, allowed, username, uid, groups
@@ -1082,7 +1085,13 @@ async def test_kube_admin_invalid_cluster_version_returns_500(
 
 
 @pytest.mark.parametrize(
-    "api_status,reason,expected_status,expected_response,expected_cause_fragment",
+    (
+        "api_status",
+        "reason",
+        "expected_status",
+        "expected_response",
+        "expected_cause_fragment",
+    ),
     [
         (
             HTTPStatus.SERVICE_UNAVAILABLE,

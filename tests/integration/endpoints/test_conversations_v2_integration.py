@@ -43,6 +43,7 @@ def setup_conversation_cache_fixture(
 
     Returns:
         SQLiteCache: The configured cache instance.
+
     """
     # Ensure cache configuration is set to sqlite with in-memory database
     test_config.conversation_cache_configuration.type = "sqlite"
@@ -90,6 +91,7 @@ def create_test_cache_entry(
 
     Returns:
         CacheEntry: A cache entry with all required fields populated.
+
     """
     now = datetime.now(UTC).isoformat()
     return CacheEntry(
@@ -167,6 +169,7 @@ async def test_conversation_cache_unavailable_error_handling(
         test_config: Test configuration
         non_admin_test_request: FastAPI request with standard user permissions
         test_auth: noop authentication tuple
+
     """
     endpoint = test_case["endpoint"]
     conversation_id = test_case.get("conversation_id")
@@ -229,6 +232,7 @@ async def test_list_conversations_filters_by_user_id(
         non_admin_test_request: FastAPI request with standard user permissions
         test_auth: noop authentication tuple
         setup_conversation_cache: Configured conversation cache
+
     """
     _ = test_config
 
@@ -377,6 +381,7 @@ async def test_conversation_validation_errors(
         non_admin_test_request: FastAPI request with standard user permissions
         test_auth: noop authentication tuple
         setup_conversation_cache: Configured conversation cache
+
     """
     _ = test_config
 
@@ -444,6 +449,7 @@ async def test_get_conversation_returns_chat_history(
         non_admin_test_request: FastAPI request with standard user permissions
         test_auth: noop authentication tuple
         setup_conversation_cache: Configured conversation cache
+
     """
     _ = test_config
 
@@ -523,6 +529,7 @@ async def test_get_conversation_with_tool_calls(
         non_admin_test_request: FastAPI request with standard user permissions
         test_auth: noop authentication tuple
         setup_conversation_cache: Configured conversation cache
+
     """
     _ = test_config
 
@@ -612,6 +619,7 @@ async def test_delete_conversation_removes_from_cache(
         non_admin_test_request: FastAPI request with standard user permissions
         test_auth: noop authentication tuple
         setup_conversation_cache: Configured conversation cache
+
     """
     _ = test_config
 
@@ -670,6 +678,7 @@ async def test_delete_conversation_non_existent_returns_success(
         non_admin_test_request: FastAPI request with standard user permissions
         test_auth: noop authentication tuple
         setup_conversation_cache: Configured conversation cache
+
     """
     _ = test_config
     _ = setup_conversation_cache
@@ -710,6 +719,7 @@ async def test_update_conversation_updates_topic_summary(
         non_admin_test_request: FastAPI request with standard user permissions
         test_auth: noop authentication tuple
         setup_conversation_cache: Configured conversation cache
+
     """
     _ = test_config
 
@@ -764,6 +774,7 @@ async def test_update_conversation_with_multiple_turns(
         non_admin_test_request: FastAPI request with standard user permissions
         test_auth: noop authentication tuple
         setup_conversation_cache: Configured conversation cache
+
     """
     _ = test_config
 

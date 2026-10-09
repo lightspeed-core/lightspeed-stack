@@ -104,6 +104,7 @@ def restore_ogx_config_if_modified() -> bool:
 
     Returns:
         True when a restore happened, otherwise False.
+
     """
     if is_prow_environment():
         backup_key = _ogx_config_backup_key["value"]

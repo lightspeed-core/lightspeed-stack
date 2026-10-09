@@ -17,3 +17,17 @@ class FeedbackCategory(StrEnum):
     OUTDATED_INFORMATION = "outdated_information"  # "This information is from several years ago and no longer accurate"  # pylint: disable=line-too-long
     UNSAFE = "unsafe"  # "This response could be harmful or dangerous if followed"
     OTHER = "other"  # "The response has issues not covered by other categories"
+
+
+class PositiveFeedbackCategory(StrEnum):
+    """Enum representing predefined categories for positive AI responses.
+
+    These categories cover qualities commonly associated with a useful answer.
+    """
+
+    HELPFUL = "helpful"  # "The response is useful"
+    ACCURATE = "accurate"  # "The information provided is correct"
+    CLEAR = "clear"  # "The response is easy to understand"
+    RELEVANT = "relevant"  # "This answer addresses my question"
+    ACTIONABLE = "actionable"  # "The response provides steps I can follow"
+    RESOLVED_ISSUE = "resolved_issue"  # "This response solved my problem"

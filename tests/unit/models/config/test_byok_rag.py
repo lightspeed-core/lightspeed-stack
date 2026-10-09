@@ -118,6 +118,7 @@ def test_rag_store_configuration_empty_backend() -> None:
     Raises:
         ValidationError: if `backend` is an empty string; error message
         includes "String should have at least 1 character".
+
     """
     with pytest.raises(
         ValidationError, match="String should have at least 1 character"

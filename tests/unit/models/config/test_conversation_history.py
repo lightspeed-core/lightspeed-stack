@@ -54,6 +54,7 @@ def test_conversation_cache_correct_type_but_not_configured(subtests: SubTests) 
     ----------
         subtests (SubTests): pytest_subtests SubTests object used to create
         subtests for memory, sqlite, and postgres cases.
+
     """
     with subtests.test(msg="Memory cache"):
         with pytest.raises(

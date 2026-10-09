@@ -84,6 +84,7 @@ def test_two_databases_configuration() -> None:
 
     Raises:
         ValidationError: If more than one database configuration is provided.
+
     """
     d1 = PostgreSQLDatabaseConfiguration(
         db="db", user="user", password="password"

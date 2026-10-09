@@ -76,6 +76,7 @@ def _host_special_dns_from_container(hostname: str) -> Optional[str]:
     Returns:
     -------
         IPv4 dotted-quad string, or ``None`` if the name does not resolve.
+
     """
     probe = (
         "import socket,sys\n"
@@ -207,6 +208,7 @@ def _get_proxy_host(is_docker: bool) -> str:
     Parameters:
     ----------
         is_docker: Whether services are running in Docker (local e2e).
+
     """
     if is_prow_environment():
         return _cluster_tunnel_proxy_host()
@@ -246,6 +248,7 @@ def _find_inference_provider(
 
     Raises:
         AssertionError: If no suitable remote inference provider is found.
+
     """
     providers = config.get("providers", {})
     inference_providers = providers.get("inference", [])

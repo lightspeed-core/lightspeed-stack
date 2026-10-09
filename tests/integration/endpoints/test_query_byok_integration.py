@@ -73,6 +73,7 @@ def _make_vector_io_response(
     Returns:
     -------
         Mock with .chunks and .scores attributes.
+
     """
     chunks = []
     scores = []

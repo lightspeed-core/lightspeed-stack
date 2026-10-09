@@ -30,6 +30,7 @@ def claims_to_token(claims: dict) -> str:
         token (str): A token string in the form "foo_header.<base64url(JSON
         claims)>.foo_signature", where the payload is base64url-encoded without
         padding.
+
     """
     string_claims = json.dumps(claims)
     b64_encoded_claims = (
@@ -53,6 +54,7 @@ def claims_to_auth_tuple(claims: dict) -> AuthTuple:
         `username` is the fixed string "user", `token_id` is the fixed string
         "token", `expired` is False, and `jwt_token` is the token produced from
         `claims`.
+
     """
     return ("user", "token", False, claims_to_token(claims))
 
@@ -71,6 +73,7 @@ class TestJwtRolesResolver:
             JwtRoleRule: Configured to match `$.realm_access.roles[*]` with a
             CONTAINS operator for the value `"redhat:employees"` and map
             matches to the `["employee"]` role.
+
         """
         return JwtRoleRule(
             jsonpath="$.realm_access.roles[*]",
@@ -96,6 +99,7 @@ class TestJwtRolesResolver:
         Returns:
         -------
             JwtRolesResolver: Resolver initialized with the given rule.
+
         """
         return JwtRolesResolver([employee_role_rule])
 
@@ -126,6 +130,7 @@ class TestJwtRolesResolver:
         Returns:
             dict: JWT claims where `realm_access.roles` does not include the Red Hat employee role
             (e.g., contains `"uma_authorization"` and `"default-roles-example"`).
+
         """
         return {
             "exp": 1754489339,
@@ -179,6 +184,7 @@ class TestJwtRolesResolver:
             JwtRolesResolver: Resolver configured with a single MATCH rule on
             `$.email` using the regex with RedHat domain that yields the
             `redhat_employee` role.
+
         """
         return JwtRolesResolver(
             [
@@ -200,6 +206,7 @@ class TestJwtRolesResolver:
             JwtRolesResolver: Resolver configured with one JwtRoleRule
             (jsonpath="$.foo", operator=EQUALS, value=["bar"],
             roles=["foobar"]).
+
         """
         return JwtRolesResolver(
             [
@@ -229,6 +236,7 @@ class TestJwtRolesResolver:
         Returns:
             JwtRolesResolver: Resolver that maps the JSONPath value ['bar'] or
             ['baz'] at "$.foo" to the role "in_role".
+
         """
         return JwtRolesResolver(
             [
@@ -379,6 +387,7 @@ class TestGenericAccessResolver:
         Returns:
             list[AccessRule]: A list with one AccessRule for role "superuser"
             whose actions include Action.ADMIN.
+
         """
         return [AccessRule(role="superuser", actions=[Action.ADMIN])]
 
@@ -390,6 +399,7 @@ class TestGenericAccessResolver:
             list[AccessRule]: A list containing two AccessRule instances — the
             "user" role allowing `Action.QUERY` and `Action.GET_MODELS`, and
             the "moderator" role allowing `Action.FEEDBACK`.
+
         """
         return [
             AccessRule(role="user", actions=[Action.QUERY, Action.GET_MODELS]),

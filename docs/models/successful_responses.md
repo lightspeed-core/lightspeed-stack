@@ -2059,7 +2059,9 @@ There are three configuration options for each limiter:
 1. ``period`` is specified in a human-readable form, see
    https://www.postgresql.org/docs/current/datatype-datetime.html#DATATYPE-INTERVAL-INPUT
    for all possible options. When the end of the period is reached, the
-   quota is reset or increased.
+   quota is reset or increased. With the SQLite storage the period must be
+   a modifier of the SQLite function ``datetime()`` that moves the time
+   forward, for example ``7 days``; ``1 week`` is rejected.
 2. ``initial_quota`` is the value set at the beginning of the period.
 3. ``quota_increase`` is the value (if specified) used to increase the
    quota when the period is reached.

@@ -13,7 +13,8 @@ spec:
     - name: redhat-registry-pull-secret
   containers:
     - name: okp-solr
-      image: registry.redhat.io/offline-knowledge-portal/rhokp-rhel9:latest
+      # pinning this image before OKP 1.3.0 is released, for details see - LCORE-4589
+      image: registry.redhat.io/offline-knowledge-portal/rhokp-rhel9@sha256:576abe26ace61e70c077ca45bbb7c754ae3e1579b3122a09ea97ca311b3c8c3f
       imagePullPolicy: IfNotPresent
       securityContext:
         allowPrivilegeEscalation: false

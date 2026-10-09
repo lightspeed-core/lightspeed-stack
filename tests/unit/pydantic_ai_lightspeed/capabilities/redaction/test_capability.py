@@ -222,6 +222,7 @@ class TestPiiRedactionCapability:
 
         Returns:
             A configured PiiRedactionCapability instance.
+
         """
         config = RedactionConfig(
             rules=[
@@ -328,6 +329,7 @@ class TestPiiRedactionCapabilityRun:
 
         Returns:
             A configured PiiRedactionCapability instance.
+
         """
         config = RedactionConfig(
             rules=[

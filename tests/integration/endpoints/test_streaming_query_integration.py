@@ -166,6 +166,7 @@ async def test_streaming_query_v2_endpoint_attachment_handling(  # pylint: disab
         mock_streaming_query_agent: Mocked Pydantic AI agent for build_agent
         test_request: FastAPI request
         test_auth: noop authentication tuple
+
     """
     _ = test_config
     _ = mock_streaming_ogx_client
@@ -272,6 +273,7 @@ async def test_streaming_query_endpoint_returns_401_for_mcp_oauth(  # pylint: di
         test_request: FastAPI request
         test_auth: noop authentication tuple
         mocker: pytest-mock fixture
+
     """
     _ = test_config
     _ = mock_streaming_ogx_client

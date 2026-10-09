@@ -18,6 +18,7 @@ def read_version_from_pyproject() -> str:
 
     Raises:
         subprocess.CalledProcessError: If the `pdm` command exits with a non-zero status.
+
     """
     # it is not safe to just try to read version from pyproject.toml file directly
     # the PDM tool itself is able to retrieve the version, even if the version
@@ -38,6 +39,7 @@ def test_version_handling() -> None:
     Raises:
         AssertionError: If the source version and the project-reported version
         differ; the message includes both versions.
+
     """
     source_version = __version__
     project_version = read_version_from_pyproject()

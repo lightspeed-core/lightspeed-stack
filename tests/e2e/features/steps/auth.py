@@ -18,6 +18,7 @@ def _encode_rh_identity(identity_data: dict) -> str:
 
     Returns:
         Base64-encoded UTF-8 string representation of the JSON payload.
+
     """
     json_str = json.dumps(identity_data)
     return base64.b64encode(json_str.encode("utf-8")).decode("utf-8")
@@ -30,6 +31,7 @@ def set_authorization_header_custom(context: Context, header_value: str) -> None
     Parameters:
     ----------
         header_value (str): The value to set for the `Authorization` header.
+
     """
     if not hasattr(context, "auth_headers"):
         context.auth_headers = {}
@@ -56,6 +58,7 @@ def access_rest_api_endpoint_post(
     ----------
         endpoint (str): Endpoint path to call; will be normalized.
         user_id (str): Value used for the `user_id` query parameter (surrounding quotes are removed).
+
     """
     endpoint = normalize_endpoint(endpoint)
     user_id = user_id.replace('"', "")

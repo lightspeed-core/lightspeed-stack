@@ -6168,7 +6168,7 @@ def test_dump_models(tmpdir: Path) -> None:
                 },
                 "QuotaLimiterConfiguration": {
                     "additionalProperties": false,
-                    "description": "Configuration for one quota limiter.\n\nThere are three configuration options for each limiter:\n\n1. ``period`` is specified in a human-readable form, see\n   https://www.postgresql.org/docs/current/datatype-datetime.html#DATATYPE-INTERVAL-INPUT\n   for all possible options. When the end of the period is reached, the\n   quota is reset or increased.\n2. ``initial_quota`` is the value set at the beginning of the period.\n3. ``quota_increase`` is the value (if specified) used to increase the\n   quota when the period is reached.\n\nThere are two basic use cases:\n\n1. When the quota needs to be reset to a specific value periodically (for\n   example on a weekly or monthly basis), set ``initial_quota`` to the\n   required value.\n2. When the quota needs to be increased by a specific value periodically\n   (for example on a daily basis), set ``quota_increase``.",
+                    "description": "Configuration for one quota limiter.\n\nThere are three configuration options for each limiter:\n\n1. ``period`` is specified in a human-readable form, see\n   https://www.postgresql.org/docs/current/datatype-datetime.html#DATATYPE-INTERVAL-INPUT\n   for all possible options. When the end of the period is reached, the\n   quota is reset or increased. With the SQLite storage the period must be\n   a modifier of the SQLite function ``datetime()`` that moves the time\n   forward, for example ``7 days``; ``1 week`` is rejected.\n2. ``initial_quota`` is the value set at the beginning of the period.\n3. ``quota_increase`` is the value (if specified) used to increase the\n   quota when the period is reached.\n\nThere are two basic use cases:\n\n1. When the quota needs to be reset to a specific value periodically (for\n   example on a weekly or monthly basis), set ``initial_quota`` to the\n   required value.\n2. When the quota needs to be increased by a specific value periodically\n   (for example on a daily basis), set ``quota_increase``.",
                     "properties": {
                         "type": {
                             "description": "Quota limiter type, either user_limiter or cluster_limiter",
@@ -10179,6 +10179,7 @@ def test_dump_models(tmpdir: Path) -> None:
             "PgvectorVectorStoreProvider",
             "PgvectorVectorStoreProviderConfig",
             "PostgreSQLDatabaseConfiguration",
+            "PositiveFeedbackCategory",
             "PromptCreateRequest",
             "PromptDeleteResponse",
             "PromptResourceResponse",

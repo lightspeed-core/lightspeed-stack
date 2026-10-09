@@ -86,6 +86,7 @@ def test_dump_configuration_minimal_cfg(tmp_path: Path) -> None:
     Parameters:
     ----------
         tmp_path (Path): Directory where the test JSON file will be written.
+
     """
     cfg = Configuration(
         name="test_name",
@@ -289,6 +290,7 @@ def test_dump_configuration_valid_values(tmp_path: Path) -> None:
     Parameters:
     ----------
         tmp_path (Path): Directory where the test JSON file will be written.
+
     """
     cfg = Configuration(
         name="test_name",
@@ -531,6 +533,7 @@ def test_dump_configuration_with_one_mcp_server(tmp_path: Path) -> None:
     Parameters:
     ----------
         tmp_path: Temporary directory path provided by pytest for file output.
+
     """
     mcp_servers = [
         ModelContextProtocolServer(name="test-server", url="http://localhost:8080"),
@@ -1914,6 +1917,7 @@ def test_dump_configuration_allow_degraded_mode(tmp_path: Path) -> None:
     Parameters:
     ----------
         tmp_path (Path): Directory where the test JSON file will be written.
+
     """
     cfg = Configuration(
         name="test_name",
@@ -2158,6 +2162,7 @@ def test_dump_configuration_max_retries_settings(tmp_path: Path) -> None:
     Parameters:
     ----------
         tmp_path (Path): Directory where the test JSON file will be written.
+
     """
     cfg = Configuration(
         name="test_name",
@@ -2402,6 +2407,7 @@ def test_dump_configuration_retry_count_settings(tmp_path: Path) -> None:
     Parameters:
     ----------
         tmp_path (Path): Directory where the test JSON file will be written.
+
     """
     cfg = Configuration(
         name="test_name",
@@ -2646,6 +2652,7 @@ def test_dump_configuration_specific_compaction_values(tmp_path: Path) -> None:
     Parameters:
     ----------
         tmp_path (Path): Directory where the test JSON file will be written.
+
     """
     cfg = Configuration(
         name="test_name",

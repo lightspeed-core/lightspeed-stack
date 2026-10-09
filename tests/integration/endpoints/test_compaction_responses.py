@@ -89,6 +89,7 @@ def _setup_responses_base(
 
     Returns:
         The mock ``handle_non_streaming_response`` function.
+
     """
     mock_response = mocker.MagicMock()
     mock_response.id = "resp_compaction_test"
@@ -156,6 +157,7 @@ def _setup_responses_compaction_mocks(
 
     Returns:
         The mock for ``summarize_chunk``.
+
     """
     return mocker.patch(
         "utils.conversation_compaction.summarize_chunk",

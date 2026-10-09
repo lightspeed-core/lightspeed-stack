@@ -38,6 +38,7 @@ def container_runtime() -> str:
     Raises
     ------
         pytest.skip: If no container runtime is available.
+
     """
     for runtime in ["podman", "docker"]:
         try:
@@ -73,6 +74,7 @@ def _run_container_command(
     Returns
     -------
         CompletedProcess: Result of the subprocess execution.
+
     """
     return run(
         cmd, capture_output=capture_output, text=text, timeout=timeout, check=check

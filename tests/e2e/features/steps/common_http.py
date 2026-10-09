@@ -166,6 +166,7 @@ def check_prediction_result_ignoring_field(context: Context, field: str) -> None
     Parameters:
     ----------
         field (str): The name of the field to exclude from both the actual and expected JSON objects during comparison.
+
     """
     assert context.response is not None, "Request needs to be performed first"
     assert context.text is not None, "Response does not contain any payload"
@@ -328,6 +329,7 @@ def check_response_field_body(context: Context, field: str) -> None:
     Parameters:
         context: Behave context with ``response`` and/or ``response_data``.
         field: Name of the field to check (e.g. ``tool_results``).
+
     """
     if getattr(context, "use_streaming_response_data", False):
         response_body = context.response_data

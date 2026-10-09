@@ -14349,7 +14349,14 @@
                         "anyOf": [
                             {
                                 "items": {
-                                    "$ref": "#/components/schemas/FeedbackCategory"
+                                    "anyOf": [
+                                        {
+                                            "$ref": "#/components/schemas/FeedbackCategory"
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/PositiveFeedbackCategory"
+                                        }
+                                    ]
                                 },
                                 "type": "array"
                             },
@@ -14358,11 +14365,16 @@
                             }
                         ],
                         "title": "Categories",
-                        "description": "List of feedback categories that describe issues with the LLM response (for negative feedback).",
+                        "description": "List of positive or negative feedback categories.",
                         "examples": [
                             [
                                 "incorrect",
                                 "incomplete"
+                            ],
+                            [
+                                "helpful",
+                                "accurate",
+                                "resolved_issue"
                             ]
                         ]
                     }
@@ -14375,7 +14387,7 @@
                     "llm_response"
                 ],
                 "title": "FeedbackRequest",
-                "description": "Model representing a feedback request.\n\nAttributes:\n    conversation_id: The required conversation ID (UUID).\n    user_question: The required user question.\n    llm_response: The required LLM response.\n    sentiment: The optional sentiment.\n    user_feedback: The optional user feedback.\n    categories: The optional list of feedback categories (multi-select for negative feedback).",
+                "description": "Model representing a feedback request.\n\nAttributes:\n    conversation_id: The required conversation ID (UUID).\n    user_question: The required user question.\n    llm_response: The required LLM response.\n    sentiment: The optional sentiment.\n    user_feedback: The optional user feedback.\n    categories: The optional list of positive or negative feedback categories.",
                 "examples": [
                     {
                         "conversation_id": "12345678-abcd-0000-0123-456789abcdef",
@@ -14392,6 +14404,15 @@
                         "llm_response": "The capital of France is Berlin.",
                         "sentiment": -1,
                         "user_question": "What is the capital of France?"
+                    },
+                    {
+                        "categories": [
+                            "helpful"
+                        ],
+                        "conversation_id": "12345678-abcd-0000-0123-456789abcdef",
+                        "llm_response": "The API is easy to use.",
+                        "sentiment": 1,
+                        "user_question": "How do I use the API?"
                     },
                     {
                         "categories": [
@@ -18215,6 +18236,19 @@
                 "title": "PgvectorVectorStoreProviderConfig",
                 "description": "Storage config for a pgvector dynamic vector-store provider."
             },
+            "PositiveFeedbackCategory": {
+                "type": "string",
+                "enum": [
+                    "helpful",
+                    "accurate",
+                    "clear",
+                    "relevant",
+                    "actionable",
+                    "resolved_issue"
+                ],
+                "title": "PositiveFeedbackCategory",
+                "description": "Enum representing predefined categories for positive AI responses.\n\nThese categories cover qualities commonly associated with a useful answer."
+            },
             "PostgreSQLDatabaseConfiguration": {
                 "properties": {
                     "host": {
@@ -19416,7 +19450,7 @@
                     "period"
                 ],
                 "title": "QuotaLimiterConfiguration",
-                "description": "Configuration for one quota limiter.\n\nThere are three configuration options for each limiter:\n\n1. ``period`` is specified in a human-readable form, see\n   https://www.postgresql.org/docs/current/datatype-datetime.html#DATATYPE-INTERVAL-INPUT\n   for all possible options. When the end of the period is reached, the\n   quota is reset or increased.\n2. ``initial_quota`` is the value set at the beginning of the period.\n3. ``quota_increase`` is the value (if specified) used to increase the\n   quota when the period is reached.\n\nThere are two basic use cases:\n\n1. When the quota needs to be reset to a specific value periodically (for\n   example on a weekly or monthly basis), set ``initial_quota`` to the\n   required value.\n2. When the quota needs to be increased by a specific value periodically\n   (for example on a daily basis), set ``quota_increase``."
+                "description": "Configuration for one quota limiter.\n\nThere are three configuration options for each limiter:\n\n1. ``period`` is specified in a human-readable form, see\n   https://www.postgresql.org/docs/current/datatype-datetime.html#DATATYPE-INTERVAL-INPUT\n   for all possible options. When the end of the period is reached, the\n   quota is reset or increased. With the SQLite storage the period must be\n   a modifier of the SQLite function ``datetime()`` that moves the time\n   forward, for example ``7 days``; ``1 week`` is rejected.\n2. ``initial_quota`` is the value set at the beginning of the period.\n3. ``quota_increase`` is the value (if specified) used to increase the\n   quota when the period is reached.\n\nThere are two basic use cases:\n\n1. When the quota needs to be reset to a specific value periodically (for\n   example on a weekly or monthly basis), set ``initial_quota`` to the\n   required value.\n2. When the quota needs to be increased by a specific value periodically\n   (for example on a daily basis), set ``quota_increase``."
             },
             "QuotaSchedulerConfiguration": {
                 "properties": {

@@ -265,7 +265,7 @@ correct_configurations = [
                 "name": "Christina Hall",
                 "initial_quota": 723,
                 "quota_increase": 112,
-                "period": "Media pretty recently push gas.",
+                "period": "1 day",
             }
         ],
         "scheduler": {
@@ -284,14 +284,14 @@ correct_configurations = [
                 "name": "Xavier Anthony",
                 "initial_quota": 536,
                 "quota_increase": 80,
-                "period": "Wrong class strategy.",
+                "period": "30 seconds",
             },
             {
                 "type": "user_limiter",
                 "name": "Caroline Weaver",
                 "initial_quota": 31,
                 "quota_increase": 57,
-                "period": "Lead boy least base.",
+                "period": "2 hours",
             },
         ],
         "scheduler": {
@@ -388,7 +388,7 @@ correct_configurations = [
                 "name": "Bill Boyd",
                 "initial_quota": 582,
                 "quota_increase": 84,
-                "period": "Side no born set. Different weight speak why daugh",
+                "period": "7 days",
             }
         ],
         "scheduler": {
@@ -416,21 +416,21 @@ correct_configurations = [
                 "name": "William Armstrong",
                 "initial_quota": 305,
                 "quota_increase": 648,
-                "period": "Relate couple song way wind rule model.",
+                "period": "5 minutes",
             },
             {
                 "type": "user_limiter",
                 "name": "Terry Mitchell",
                 "initial_quota": 206,
                 "quota_increase": 316,
-                "period": "Onto within arrive type group. Black none human re",
+                "period": "1 month",
             },
             {
                 "type": "user_limiter",
                 "name": "Deborah Vazquez",
                 "initial_quota": 24,
                 "quota_increase": 24,
-                "period": "Call close table.",
+                "period": "1 year",
             },
         ],
         "scheduler": {
@@ -458,21 +458,21 @@ correct_configurations = [
                 "name": "James Burgess",
                 "initial_quota": 698,
                 "quota_increase": 945,
-                "period": "Employee stage activity total.",
+                "period": "3 seconds",
             },
             {
                 "type": "user_limiter",
                 "name": "Brenda Richard",
                 "initial_quota": 583,
                 "quota_increase": 582,
-                "period": "Among or only nearly.",
+                "period": "12 hours",
             },
             {
                 "type": "user_limiter",
                 "name": "Carol Colon",
                 "initial_quota": 26,
                 "quota_increase": 527,
-                "period": "Machine pull finally stock without us him.",
+                "period": "30 days",
             },
         ],
         "scheduler": {
@@ -748,3 +748,82 @@ def test_quota_handlers_from_dict_negative_cases(config_dict: dict[str, Any]) ->
         # try to initialize the app config and load configuration from a Python
         # dictionary
         QuotaHandlersConfiguration(**config_dict)
+
+
+sqlite_storage = {"sqlite": {"db_path": ":memory:"}}
+
+postgres_storage = {"postgres": {"db": "quota", "user": "quota", "password": "secret"}}
+
+no_storage: dict[str, Any] = {}
+
+
+def configuration_with_period(storage: dict[str, Any], period: str) -> dict[str, Any]:
+    """Return quota handlers configuration whose second limiter has the given period."""
+    return {
+        **storage,
+        "limiters": [
+            {
+                "type": "cluster_limiter",
+                "name": "cluster_daily_limits",
+                "initial_quota": 1000,
+                "quota_increase": 0,
+                "period": "1 day",
+            },
+            {
+                "type": "user_limiter",
+                "name": "user_weekly_limits",
+                "initial_quota": 100,
+                "quota_increase": 0,
+                "period": period,
+            },
+        ],
+    }
+
+
+periods_usable_by_sqlite = [
+    "3 seconds",
+    "30 minutes",
+    "2 hours",
+    "7 days",
+    "1 month",
+    "1 year",
+]
+
+
+@pytest.mark.parametrize("period", periods_usable_by_sqlite)
+def test_quota_handlers_sqlite_usable_period(period: str) -> None:
+    """Test that a period SQLite can use is accepted with the SQLite storage."""
+    cfg = QuotaHandlersConfiguration(
+        **configuration_with_period(sqlite_storage, period)
+    )
+    assert cfg.limiters[1].period == period
+
+
+periods_not_usable_by_sqlite = [
+    "1 week",
+    "1 day 2 hours",
+    "0 days",
+    "-1 day",
+    "",
+    "forever",
+]
+
+
+@pytest.mark.parametrize("period", periods_not_usable_by_sqlite)
+def test_quota_handlers_sqlite_unusable_period(period: str) -> None:
+    """Test that a period SQLite can not use is rejected with the SQLite storage."""
+    with pytest.raises(
+        ValidationError,
+        match=f"Quota limiter 'user_weekly_limits': period '{period}' can not be "
+        "used with the SQLite storage.*for example '7 days'",
+    ):
+        QuotaHandlersConfiguration(**configuration_with_period(sqlite_storage, period))
+
+
+@pytest.mark.parametrize("storage", [postgres_storage, no_storage])
+def test_quota_handlers_period_not_checked_without_sqlite(
+    storage: dict[str, Any],
+) -> None:
+    """Test that the period is not checked when the SQLite storage is not configured."""
+    cfg = QuotaHandlersConfiguration(**configuration_with_period(storage, "1 week"))
+    assert cfg.limiters[1].period == "1 week"

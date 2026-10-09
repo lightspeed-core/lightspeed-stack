@@ -311,6 +311,7 @@ def build_fully_populated_config() -> Configuration:
 
     Returns:
         A fully-populated Configuration for testing PII masking.
+
     """
     return Configuration.model_construct(
         name="test-service",
@@ -661,6 +662,7 @@ def build_minimal_config() -> Configuration:
 
     Returns:
         A minimal Configuration for testing snapshot behavior with defaults.
+
     """
     return Configuration.model_construct(
         name="minimal",
@@ -803,6 +805,7 @@ def ogx_config_file_fixture(tmp_path: Path) -> str:
     Returns:
     -------
         str: Path to the temporary YAML file.
+
     """
     path = tmp_path / "ogx_config.yaml"
     path.write_text(yaml.dump(SAMPLE_OGX_CONFIG))

@@ -56,6 +56,7 @@ async def test_list_conversations_returns_user_conversations(
         non_admin_test_request: FastAPI request with standard user permissions
         test_auth: noop authentication tuple
         patch_db_session: Test database session
+
     """
     _ = test_config
 
@@ -211,6 +212,7 @@ async def test_conversation_validation_errors(
         non_admin_test_request: FastAPI request with standard user permissions
         test_auth: noop authentication tuple
         patch_db_session: Test database session
+
     """
     _ = test_config
 
@@ -338,6 +340,7 @@ async def test_conversation_error_handling(  # pylint: disable=too-many-locals
         non_admin_test_request: FastAPI request with standard user permissions
         test_auth: noop authentication tuple
         patch_db_session: Test database session
+
     """
     _ = test_config
 
@@ -421,6 +424,7 @@ async def test_get_conversation_returns_chat_history(
         test_auth: noop authentication tuple
         patch_db_session: Test database session
         mocker: pytest-mock fixture
+
     """
     _ = test_config
 
@@ -500,6 +504,7 @@ async def test_get_conversation_with_turns_metadata(
         test_auth: noop authentication tuple
         patch_db_session: Test database session
         mocker: pytest-mock fixture
+
     """
     _ = test_config
 
@@ -602,6 +607,7 @@ async def test_delete_conversation_deletes_from_database_and_ogx(
         test_auth: noop authentication tuple
         patch_db_session: Test database session
         mocker: pytest-mock fixture
+
     """
     _ = test_config
 
@@ -665,6 +671,7 @@ async def test_delete_conversation_handles_not_found_in_ogx(
         non_admin_test_request: FastAPI request with standard user permissions
         test_auth: noop authentication tuple
         patch_db_session: Test database session
+
     """
     _ = test_config
 
@@ -730,6 +737,7 @@ async def test_delete_conversation_non_existent_returns_success(
         test_auth: noop authentication tuple
         patch_db_session: Test database session
         mocker: pytest-mock fixture
+
     """
     _ = test_config
     _ = patch_db_session
@@ -777,6 +785,7 @@ async def test_update_conversation_updates_topic_summary(
         non_admin_test_request: FastAPI request with standard user permissions
         test_auth: noop authentication tuple
         patch_db_session: Test database session
+
     """
     _ = test_config
 

@@ -31,6 +31,7 @@ def mock_ogx_client_fixture(
     Yields:
     ------
         AsyncMock: A mocked OGX client configured for tests.
+
     """
     mock_holder_class = mocker.patch("app.endpoints.info.AsyncOgxClientHolder")
 
@@ -71,6 +72,7 @@ async def test_info_endpoint_returns_service_information(
     Returns:
     -------
         None
+
     """
     # Fixtures with side effects (needed but not directly used)
     _ = test_config
@@ -106,6 +108,7 @@ async def test_info_endpoint_handles_connection_error(
         mock_ogx_client: Mocked OGX client
         test_request: FastAPI request
         test_auth: noop authentication tuple
+
     """
     # test_config fixture loads configuration, which is required for the endpoint
     _ = test_config
@@ -144,6 +147,7 @@ async def test_info_endpoint_uses_configuration_values(
         mock_ogx_client: Mocked OGX client
         test_request: Real FastAPI request
         test_auth: Real noop authentication tuple
+
     """
     # Fixtures with side effects (needed but not directly used)
     _ = mock_ogx_client
