@@ -189,6 +189,7 @@ def prepare_agent_mocks_fixture(
     Yields:
         tuple: (mock_client, mock_agent) — two AsyncMock objects
         representing the client and the agent.
+
     """
     mock_client = mocker.AsyncMock()
     mock_agent = mocker.AsyncMock()
@@ -213,6 +214,7 @@ def minimal_config_fixture() -> AppConfig:
 
     Returns:
         AppConfig: A minimal AppConfig instance with required fields only.
+
     """
     cfg = AppConfig()
     cfg.init_from_dict(

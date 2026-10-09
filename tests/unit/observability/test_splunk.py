@@ -35,6 +35,7 @@ def mock_splunk_config_fixture(tmp_path: Path, mocker: MockerFixture) -> Any:
 
     Returns:
         mock_config: A MagicMock configured with the above Splunk fields.
+
     """
     token_file = tmp_path / "token"
     token_file.write_text("test-hec-token")
@@ -61,6 +62,7 @@ def mock_session_fixture(mocker: MockerFixture) -> Any:
         AsyncMock: A mock session (`spec=aiohttp.ClientSession`) whose `post()`
         returns an async context manager that yields a response mock with
         `status = 200`.
+
     """
     mock_response = mocker.AsyncMock()
     mock_response.status = 200

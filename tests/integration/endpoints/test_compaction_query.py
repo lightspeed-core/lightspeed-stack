@@ -54,6 +54,7 @@ def _setup_query_compaction_mocks(
 
     Returns:
         The mock for ``summarize_chunk``.
+
     """
     mock_query_agent.model.last_output_items = [
         OpenAIResponseMessage(role="assistant", content=DEFAULT_MODEL_RESPONSE)

@@ -59,6 +59,7 @@ class CursorMock:
 
         Raises:
             sqlite3.Error: Always raised with message "can not SELECT".
+
         """
         raise sqlite3.Error("can not SELECT")
 
@@ -84,6 +85,7 @@ class ConnectionMock:
         Returns:
             CursorMock: A mock cursor instance that simulates a DB cursor; its
             `execute` raises `sqlite3.Error` to emulate select-related errors.
+
         """
         return CursorMock()
 
@@ -102,6 +104,7 @@ def create_cache(path: Path) -> SQLiteCache:
     -------
         SQLiteCache: Cache instance configured to use the `test.sqlite`
         database at the provided path.
+
     """
     db_path = str(path / "test.sqlite")
     cc = SQLiteDatabaseConfiguration(db_path=db_path)
@@ -179,6 +182,7 @@ def test_initialize_cache_when_disconnected(tmpdir: Path) -> None:
 
     Raises:
         CacheError: If the cache connection is None with message "cache is disconnected".
+
     """
     cache = create_cache(tmpdir)
     cache.connection = None

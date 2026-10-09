@@ -35,6 +35,7 @@ def mock_ogx_client_fixture(
     Returns:
     -------
         mock_client: The mocked OGX client instance configured as described above.
+
     """
     # Patch in app.endpoints.models where it's actually used by models_endpoint_handler_base
     mock_holder_class = mocker.patch("app.endpoints.models.AsyncOgxClientHolder")
@@ -72,6 +73,7 @@ def mock_ogx_client_failing_fixture(
     Returns:
     -------
         mock_client: The mocked OGX client instance configured as described above.
+
     """
     # Patch in app.endpoints.models where it's actually used by models_endpoint_handler_base
     mock_holder_class = mocker.patch("app.endpoints.models.AsyncOgxClientHolder")
@@ -147,6 +149,7 @@ async def test_models_list_with_filter(
         mock_ogx_client: Mocked OGX client
         test_request: FastAPI request
         test_auth: noop authentication tuple
+
     """
     _ = test_config
     _ = mock_ogx_client
@@ -190,6 +193,7 @@ async def test_models_list_on_api_connection_error(
         mock_ogx_client_failing: Mocked OGX client that raises ApiException
         test_request: FastAPI request
         test_auth: noop authentication tuple
+
     """
     _ = test_config
     _ = mock_ogx_client_failing

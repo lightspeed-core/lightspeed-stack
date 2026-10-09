@@ -189,6 +189,7 @@ def test_postgresql_database_configuration_ca_cert_path(subtests: SubTests) -> N
     Parameters:
     ----------
         subtests (SubTests): Test helper providing subtest contexts.
+
     """
     with subtests.test(msg="Path exists"):
         c = PostgreSQLDatabaseConfiguration(

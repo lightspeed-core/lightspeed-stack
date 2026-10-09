@@ -117,6 +117,7 @@ def patch_responses_endpoint_setup(
 
     Returns:
         Mock AsyncOgxClient wired through AsyncOgxClientHolder.
+
     """
     mocker.patch(f"{MODULE}.check_configuration_loaded")
     mocker.patch(f"{MODULE}.validate_model_provider_override")

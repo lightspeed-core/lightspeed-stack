@@ -1097,6 +1097,7 @@ def mock_quota_config_fixture(
 
     Returns:
         Callable that accepts a quota_subject value and patches configuration.
+
     """
 
     def _set(quota_subject: str) -> None:
@@ -1664,6 +1665,7 @@ def _setup_responses_mock_with_capture(
 
     Returns:
         The mock create coroutine, whose call_args can be inspected.
+
     """
     mock_response = mocker.Mock()
     mock_response.output = [_create_mock_response_output(mocker, response_text)]

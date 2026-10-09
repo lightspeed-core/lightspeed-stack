@@ -84,6 +84,7 @@ def test_tls_configuration_wrong_password_path() -> None:
     Raises:
         ValueError: with message "Path does not point to a file" if
         `tls_key_password` is not a file.
+
     """
     with pytest.raises(ValueError, match="Path does not point to a file"):
         TLSConfiguration(
@@ -131,6 +132,7 @@ def test_tls_configuration_certificate_path_to_directory() -> None:
 
     Raises:
         ValueError: If any of the provided TLS paths does not point to a file.
+
     """
     with pytest.raises(ValueError, match="Path does not point to a file"):
         TLSConfiguration(

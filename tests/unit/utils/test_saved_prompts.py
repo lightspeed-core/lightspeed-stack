@@ -34,6 +34,7 @@ def sqlite_engine_fixture() -> Generator[Engine, None, None]:
 
     Yields:
         Engine: SQLAlchemy engine bound to an in-memory SQLite database.
+
     """
     engine = create_engine(
         "sqlite:///:memory:",
@@ -55,6 +56,7 @@ def patch_saved_prompts_get_session_fixture(
     Parameters:
         mocker: pytest-mock fixture.
         sqlite_engine: Function-scoped in-memory engine.
+
     """
     session_factory = sessionmaker(
         autocommit=False, autoflush=False, bind=sqlite_engine
@@ -65,6 +67,7 @@ def patch_saved_prompts_get_session_fixture(
 
         Returns:
             Session: A new SQLAlchemy session for patched DAL calls.
+
         """
         return session_factory()
 

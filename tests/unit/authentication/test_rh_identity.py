@@ -34,6 +34,7 @@ def user_identity_data() -> dict[str, Any]:
             - "entitlements": maps service names (e.g., "rhel", "ansible",
               "openshift") to entitlement objects with "is_entitled" and
               "is_trial".
+
     """
     return {
         "identity": {
@@ -70,6 +71,7 @@ def system_identity_data() -> dict[str, Any]:
               }
             - entitlements: mapping of product names to entitlement objects, e.g.
               {"rhel": {"is_entitled": bool, "is_trial": bool}}
+
     """
     return {
         "identity": {
@@ -93,6 +95,7 @@ def service_account_identity_data() -> dict[str, Any]:
 
     Returns:
         dict: A ServiceAccount identity dictionary with identity and entitlements.
+
     """
     return {
         "identity": {
@@ -126,6 +129,7 @@ def create_auth_header(identity_data: dict[str, Any]) -> str:
     Returns:
     -------
         header_value (str): Base64-encoded JSON string representing the provided identity data.
+
     """
     json_str = json.dumps(identity_data)
     return base64.b64encode(json_str.encode("utf-8")).decode("utf-8")
@@ -149,6 +153,7 @@ def create_request_with_header(
         Request: A mocked Request object whose `headers` contains
         `{"x-rh-identity": header_value}` when a value is provided, or an empty
         dict otherwise.
+
     """
     request = mocker.Mock(spec=Request)
     request.headers = {"x-rh-identity": header_value} if header_value else {}
@@ -609,6 +614,7 @@ class TestRHIdentityHealthProbeSkip:
             skip_for_health_probes (bool): Value to assign to the mocked
             configuration's authentication_configuration.skip_for_health_probes
             flag.
+
         """
         mock_config = mocker.MagicMock()
         mock_config.authentication_configuration.skip_for_health_probes = (
@@ -687,6 +693,7 @@ class TestRHIdentityMetricsSkip:
         Parameters:
             skip_for_metrics (bool): Value to assign to the mocked
             configuration's authentication_configuration.skip_for_metrics flag.
+
         """
         mock_config = mocker.MagicMock()
         mock_config.authentication_configuration.skip_for_metrics = skip_for_metrics

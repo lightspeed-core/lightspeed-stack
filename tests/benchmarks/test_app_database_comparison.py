@@ -34,6 +34,7 @@ def test_store_new_user_conversations(
     Returns:
     -------
         None
+
     """
     request.getfixturevalue(db_fixture)
     benchmark_store_new_user_conversations(benchmark, DB_RECORDS_COUNT)
@@ -55,6 +56,7 @@ def test_update_user_conversation(
     Returns:
     -------
         None
+
     """
     request.getfixturevalue(db_fixture)
     benchmark_update_user_conversation(benchmark, DB_RECORDS_COUNT)
@@ -76,6 +78,7 @@ def test_list_conversations_for_all_users(
     Returns:
     -------
         None
+
     """
     request.getfixturevalue(db_fixture)
     benchmark_list_conversations_for_all_users(benchmark, DB_RECORDS_COUNT)
@@ -97,6 +100,7 @@ def test_list_conversations_for_one_user(
     Returns:
     -------
         None
+
     """
     request.getfixturevalue(db_fixture)
     benchmark_list_conversations_for_one_user(benchmark, DB_RECORDS_COUNT)
@@ -118,6 +122,7 @@ def test_retrieve_conversation_for_all_users(
     Returns:
     -------
         None
+
     """
     request.getfixturevalue(db_fixture)
     benchmark_retrieve_conversation(benchmark, DB_RECORDS_COUNT)
@@ -139,6 +144,7 @@ def test_retrieve_conversation_for_one_user(
     Returns:
     -------
         None
+
     """
     request.getfixturevalue(db_fixture)
     benchmark_retrieve_conversation_for_one_user(benchmark, DB_RECORDS_COUNT)

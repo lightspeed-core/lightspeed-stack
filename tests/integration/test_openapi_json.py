@@ -36,6 +36,7 @@ def _load_openapi_spec_from_file() -> dict[str, Any]:
 
     Raises:
         AssertionError: Causes the test to fail through pytest.fail when the file is not found.
+
     """
     path = Path(OPENAPI_FILE)
     if path.is_file():
@@ -53,6 +54,7 @@ def _load_openapi_spec_from_url() -> dict[str, Any]:
 
     Returns:
         dict[str, Any]: The parsed OpenAPI specification as a dictionary.
+
     """
     configuration_filename = "tests/configuration/lightspeed-stack-proper-name.yaml"
     cfg = configuration
@@ -80,6 +82,7 @@ def open_api_spec_from_file() -> dict[str, Any]:
 
     Returns:
         openapi_spec (dict[str, Any]): The OpenAPI document parsed from docs/openapi.json.
+
     """
     return _load_openapi_spec_from_file()
 
@@ -93,6 +96,7 @@ def open_api_spec_from_url() -> dict[str, Any]:
 
     Returns:
         dict: The OpenAPI document parsed into a dictionary.
+
     """
     return _load_openapi_spec_from_url()
 
@@ -111,6 +115,7 @@ def _check_openapi_top_level_info(spec: dict[str, Any]) -> None:
     ------
         AssertionError: If any required top-level field is missing or does not
         match the expected value.
+
     """
     assert spec.get("openapi") == "3.1.0"
 
@@ -136,6 +141,7 @@ def _check_server_section_present(spec: dict[str, Any]) -> None:
     Raises:
     ------
         AssertionError: If the 'servers' field is missing, not a list, or empty.
+
     """
     servers = spec.get("servers")
     assert isinstance(servers, list) and servers, "servers must be a non-empty list"
@@ -156,6 +162,7 @@ def _check_paths_and_responses_exist(
     Raises:
     ------
          AssertionError: If the path, method, or any of the expected response codes are missing.
+
     """
     paths = spec.get("paths") or {}
     assert path in paths, f"Missing path: {path}"
@@ -179,6 +186,7 @@ def test_openapi_top_level_info_from_file(spec_from_file: dict[str, Any]) -> Non
     ----------
         spec_from_file (dict[str, Any]): OpenAPI specification dictionary
         loaded from docs/openapi.json.
+
     """
     _check_openapi_top_level_info(spec_from_file)
 
@@ -194,6 +202,7 @@ def test_openapi_top_level_info_from_url(spec_from_url: dict[str, Any]) -> None:
     ----------
         spec_from_url (dict[str, Any]): OpenAPI document parsed from the
         application's /openapi.json endpoint.
+
     """
     _check_openapi_top_level_info(spec_from_url)
 
@@ -320,6 +329,7 @@ def test_paths_and_responses_exist_from_file(
         method (str): HTTP method to check for the path (e.g., "get", "post").
         expected_codes (set[str]): Set of expected HTTP response status codes
         as strings (e.g., {"200", "404"}).
+
     """
     _check_paths_and_responses_exist(spec_from_file, path, method, expected_codes)
 
@@ -436,5 +446,6 @@ def test_paths_and_responses_exist_from_url(
         "post"); case-insensitive.
         expected_codes (set[str]): Set of response status code strings expected
         to be present for the operation (for example, {"200", "404"}).
+
     """
     _check_paths_and_responses_exist(spec_from_url, path, method, expected_codes)

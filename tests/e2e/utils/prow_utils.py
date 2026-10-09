@@ -52,6 +52,7 @@ def run_e2e_ops(
 
     Returns:
         CompletedProcess object with stdout/stderr.
+
     """
     script_path = _get_e2e_ops_script()
     cmd = ["bash", script_path, command] + (args or [])
@@ -153,6 +154,7 @@ def restore_ogx_pod() -> None:
     Raises:
         subprocess.CalledProcessError: If oc/e2e-ops restore fails.
         subprocess.TimeoutExpired: If the operation times out.
+
     """
     if os.environ.get("E2E_KONFLUX_E2E") == "1":
         # Konflux: PVC fast-path init ~60-90s + Llama startup ~120-180s + health +
@@ -175,6 +177,7 @@ def disrupt_ogx_pod() -> bool:
 
     Returns:
         True if the pod was running and has been disrupted, False otherwise.
+
     """
     try:
         result = run_e2e_ops("disrupt-ogx", timeout=90)
@@ -276,6 +279,7 @@ def _recreate_configmap(
     Args:
         configmap_name: Name of the ConfigMap.
         source_file: Path to the file to create the ConfigMap from.
+
     """
     result = run_e2e_ops(
         "update-configmap",
@@ -299,6 +303,7 @@ def update_config_configmap(
 
     Args:
         source: Either a file path or a backup key from _configmap_backups.
+
     """
     temp_path: Optional[str] = None
 
@@ -359,6 +364,7 @@ def assert_okp_reachable_from_ogx() -> None:
     Raises:
         subprocess.CalledProcessError: If the in-cluster GET fails.
         subprocess.TimeoutExpired: If the operation times out.
+
     """
     result = run_e2e_ops("check-okp-solr-from-llama", timeout=60)
     print(result.stdout, end="")
@@ -377,6 +383,7 @@ def ensure_okp_solr_ready() -> None:
     Raises:
         subprocess.CalledProcessError: If deploy-okp-solr fails.
         subprocess.TimeoutExpired: If the operation times out.
+
     """
     # 300 wait_for_pod attempts × 3s = 900s, plus oc apply. 1080s leaves margin.
     result = run_e2e_ops("deploy-okp-solr", timeout=1080)
@@ -394,6 +401,7 @@ def disrupt_okp_solr_pod() -> bool:
 
     Returns:
         True if the pod was running and has been disrupted, False otherwise.
+
     """
     try:
         result = run_e2e_ops("disrupt-okp-solr", timeout=60)
@@ -421,6 +429,7 @@ def restore_okp_solr_pod() -> None:
     Raises:
         subprocess.CalledProcessError: If oc/e2e-ops restore fails.
         subprocess.TimeoutExpired: If the operation times out.
+
     """
     # restore-okp-solr can spend 180 seconds in wait_for_pod, plus oc apply time.
     # Use a timeout with margin (240s) so we fail instead of hanging forever.

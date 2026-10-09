@@ -24,6 +24,7 @@ async def test_authorized_endpoint(
     ----------
         test_config (AppConfig): Loads root configuration
         test_auth (AuthTuple): noop authentication tuple
+
     """
     # Fixtures with side effects (needed but not directly used)
     _ = test_config

@@ -29,6 +29,7 @@ async def test_config_endpoint_returns_config(
         test_config (AppConfig): Fixture providing the expected configuration to be returned.
         test_request (Request): FastAPI request object used to call the endpoint.
         test_auth (AuthTuple): Authentication fixture used for the request.
+
     """
     response = await config_endpoint_handler(auth=test_auth, request=test_request)
 
@@ -55,6 +56,7 @@ async def test_config_endpoint_returns_current_config(
         current_config (AppConfig): Loads root configuration
         test_request (Request): FastAPI request
         test_auth (AuthTuple): noop authentication tuple
+
     """
     response = await config_endpoint_handler(auth=test_auth, request=test_request)
 
@@ -77,6 +79,7 @@ async def test_config_endpoint_fails_without_configuration(
     ----------
         test_request (Request): FastAPI request fixture
         test_auth (AuthTuple): noop authentication fixture
+
     """
     # Verify that HTTPException is raised when configuration is not loaded
     with pytest.raises(HTTPException) as exc_info:
@@ -108,6 +111,7 @@ async def test_config_endpoint_includes_observability(
         current_config (AppConfig): Loads root configuration
         test_request (Request): FastAPI request
         test_auth (AuthTuple): noop authentication tuple
+
     """
     response = await config_endpoint_handler(auth=test_auth, request=test_request)
 
@@ -140,6 +144,7 @@ async def test_config_endpoint_observability_collects_otel_vars(
         test_request (Request): FastAPI request
         test_auth (AuthTuple): noop authentication tuple
         monkeypatch (pytest.MonkeyPatch): Fixture to modify environment variables
+
     """
     # pylint: disable=import-outside-toplevel
     from pathlib import Path

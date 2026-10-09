@@ -85,6 +85,7 @@ class MockFastAPI(FastAPI):
             Accepts additional FastAPI-compatible parameters for
             API compatibility but ignores them; only the (router,
             prefix) pair is recorded.
+
         """
         self.routers.append((router, prefix))
 
@@ -93,6 +94,7 @@ class MockFastAPI(FastAPI):
 
         Returns:
             routers (list[Any]): List of registered router objects in the order they were added.
+
         """
         return [r[0] for r in self.routers]
 
@@ -113,6 +115,7 @@ class MockFastAPI(FastAPI):
         Raises:
         ------
             IndexError: If the router is not registered in the mock app.
+
         """
         return next(filter(lambda r: r[0] == router, self.routers))[1]
 

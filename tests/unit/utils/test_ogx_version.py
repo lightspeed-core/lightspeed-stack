@@ -79,6 +79,7 @@ async def _check_version_must_fail(mock_client: Any, bigger_version: Version) ->
     Raises:
         InvalidOgxVersionException: If the OGX version is greater than the
         maximal supported version.
+
     """
     mock_client.inspect.version.return_value = VersionInfo(version=str(bigger_version))
 

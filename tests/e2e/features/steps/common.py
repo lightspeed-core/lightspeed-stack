@@ -60,6 +60,7 @@ def service_is_started_locally(context: Context) -> None:
     Parameters:
     ----------
         context (Context): Behave context object to receive the endpoint attributes.
+
     """
     assert context is not None
     context.hostname = os.getenv("E2E_LSC_HOSTNAME", "localhost")
@@ -84,6 +85,7 @@ def set_lightspeed_stack_config_directory(context: Context, directory: str) -> N
     Parameters:
         context: Behave context; sets ``lightspeed_stack_config_directory``.
         directory: Path relative to the repository root (e.g. ``tests/e2e/configuration``).
+
     """
     context.lightspeed_stack_config_directory = directory.strip().rstrip("/")
 
@@ -117,6 +119,7 @@ def configure_service(context: Context, config_name: str) -> None:
     ----------
         context (Context): Behave context.
         config_name (str): Config filename (e.g. lightspeed-stack-default.yaml).
+
     """
     config_name = config_name.strip()
     if _active_lightspeed_stack_config_basename["basename"] == config_name:
@@ -194,6 +197,7 @@ def restart_service(context: Context) -> None:
     Parameters:
     ----------
         context (Context): Behave context.
+
     """
     if getattr(context, "lightspeed_stack_skip_restart", False):
         context.lightspeed_stack_skip_restart = False
@@ -230,5 +234,6 @@ def system_in_default_state(context: Context) -> None:
     Raises:
     ------
         AssertionError: If `context` is None.
+
     """
     assert context is not None

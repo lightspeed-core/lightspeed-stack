@@ -78,6 +78,7 @@ def _get_nested_field(item: dict[str, Any], field_path: str) -> Any:
 
     Returns:
         Field value or None if not found.
+
     """
     keys = field_path.split(".")
     value: Any = item
@@ -102,6 +103,7 @@ def _assert_count_matches(items: list, expected_count: int, item_type: str) -> N
 
     Raises:
         AssertionError: If count doesn't match.
+
     """
     actual_count = len(items)
     assert (
@@ -118,6 +120,7 @@ def _assert_not_empty(items: list, item_type: str) -> None:
 
     Raises:
         AssertionError: If collection is empty.
+
     """
     assert len(items) > 0, f"{item_type} is empty — no items were found"
 
@@ -131,6 +134,7 @@ def _assert_empty(items: list, item_type: str) -> None:
 
     Raises:
         AssertionError: If collection is not empty.
+
     """
     assert len(items) == 0, f"Expected no {item_type}, but found {len(items)}"
 
@@ -147,6 +151,7 @@ def _assert_field_not_empty(
 
     Raises:
         AssertionError: If any item has empty or missing field.
+
     """
     assert items, f"No {item_type} to check"
     for i, item in enumerate(items):
@@ -170,6 +175,7 @@ def _assert_field_contains(
 
     Raises:
         AssertionError: If any item's field doesn't contain substring.
+
     """
     assert items, f"No {item_type} to check"
     for i, item in enumerate(items):
@@ -196,6 +202,7 @@ def _assert_field_matches(
 
     Raises:
         AssertionError: If any item's field doesn't match expected value.
+
     """
     assert items, f"No {item_type} to check"
     for i, item in enumerate(items):
@@ -221,6 +228,7 @@ def _assert_has_fields(
 
     Raises:
         AssertionError: If any item is missing required fields.
+
     """
     assert items, f"No {item_type} to check"
     for i, item in enumerate(items):

@@ -34,6 +34,7 @@ def test_loading_proper_configuration(configuration_filename: str) -> None:
     Parameters:
     ----------
         configuration_filename (str): Path to the YAML configuration file used for the test.
+
     """
     cfg = configuration
     cfg.load_configuration(configuration_filename)

@@ -20,6 +20,7 @@ def mock_ogx_tools_fixture(
 
     Returns:
         Mock client with toolgroups.list and tools.list configured.
+
     """
     mock_holder_class = mocker.patch("app.endpoints.tools.AsyncOgxClientHolder")
     mock_client = mocker.AsyncMock()
@@ -71,6 +72,7 @@ async def test_tools_endpoint_returns_401_for_mcp_oauth(  # pylint: disable=too-
         test_request: FastAPI request
         test_auth: noop authentication tuple
         mocker: pytest-mock fixture
+
     """
     _ = test_config
     _ = mock_ogx_tools

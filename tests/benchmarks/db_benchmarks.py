@@ -37,6 +37,7 @@ def store_new_user_conversation(
     Returns:
     -------
         None
+
     """
     provider = generate_provider()
     model = generate_model_for_provider(provider)
@@ -69,6 +70,7 @@ def update_user_conversation(session: Session, id: str) -> None:
     Returns:
     -------
         None
+
     """
     provider = generate_provider()
     model = generate_model_for_provider(provider)
@@ -99,6 +101,7 @@ def list_conversation_for_all_users(session: Session) -> None:
     Returns:
     -------
         None
+
     """
     query = session.query(UserConversation)
 
@@ -122,6 +125,7 @@ def retrieve_conversation(
     Returns:
     -------
         None
+
     """
     query = session.query(UserConversation).filter_by(id=conversation_id)
 
@@ -147,6 +151,7 @@ def retrieve_conversation_for_one_user(
     Returns:
     -------
         None
+
     """
     query = session.query(UserConversation).filter_by(
         id=conversation_id, user_id=user_id
@@ -173,6 +178,7 @@ def list_conversation_for_one_user(session: Session, user_id: str) -> None:
     Returns:
     -------
         None
+
     """
     query = session.query(UserConversation).filter_by(user_id=user_id)
 
@@ -197,6 +203,7 @@ def benchmark_store_new_user_conversations(
     Returns:
     -------
         None
+
     """
     with get_session() as session:
         # store bunch of conversations first
@@ -223,6 +230,7 @@ def benchmark_update_user_conversation(
     Returns:
     -------
         None
+
     """
     with get_session() as session:
         # store bunch of conversations first
@@ -255,6 +263,7 @@ def benchmark_list_conversations_for_all_users(
     Returns:
     -------
         None
+
     """
     with get_session() as session:
         # store bunch of conversations first
@@ -280,6 +289,7 @@ def benchmark_list_conversations_for_one_user(
     Returns:
     -------
         None
+
     """
     with get_session() as session:
         # store bunch of conversations first
@@ -308,6 +318,7 @@ def benchmark_retrieve_conversation(
     Returns:
     -------
         None
+
     """
     with get_session() as session:
         # store bunch of conversations first
@@ -338,6 +349,7 @@ def benchmark_retrieve_conversation_for_one_user(
     Returns:
     -------
         None
+
     """
     with get_session() as session:
         # store bunch of conversations first

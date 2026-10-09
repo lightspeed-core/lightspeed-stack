@@ -42,6 +42,7 @@ async def create_prompt_via_handler(
 
     Returns:
         SavedPromptResponse from the create handler.
+
     """
     return await create_saved_prompts_handler(
         request=request,

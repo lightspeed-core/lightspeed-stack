@@ -21,6 +21,7 @@ def default_api_key_token_configuration() -> APIKeyTokenConfiguration:
     Returns:
         APIKeyTokenConfiguration: configuration with `api_key` set to
         `SecretStr("some-test-api-key")`.
+
     """
     return APIKeyTokenConfiguration(api_key=SecretStr("some-test-api-key"))
 

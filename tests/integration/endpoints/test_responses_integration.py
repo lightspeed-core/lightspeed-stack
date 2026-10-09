@@ -126,6 +126,7 @@ def _setup_test(mocker: MockerFixture) -> Any:
 
     Returns:
         The mock OGX client for further test-specific configuration.
+
     """
     mock_client = _build_mock_client(mocker)
     _patch_client_holders(mocker, mock_client)
@@ -145,6 +146,7 @@ def _configure_shield_blocked(
     Args:
         mocker: pytest-mock fixture.
         moderation_id: The moderation ID for the blocked response.
+
     """
     blocked = ShieldModerationBlocked(
         message="Content blocked by safety shield",

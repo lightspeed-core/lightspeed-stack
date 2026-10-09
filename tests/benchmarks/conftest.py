@@ -21,6 +21,7 @@ def configuration_filename_sqlite_fixture() -> str:
     Returns:
     -------
         str: Path to the benchmark configuration file to load.
+
     """
     return "tests/configuration/benchmarks-sqlite.yaml"
 
@@ -36,6 +37,7 @@ def configuration_filename_postgres_fixture() -> str:
     Returns:
     -------
         str: Path to the benchmark configuration file to load.
+
     """
     return "tests/configuration/benchmarks-postgres.yaml"
 
@@ -58,6 +60,7 @@ def sqlite_database_fixture(configuration_filename_sqlite: str, tmp_path: Path) 
     Raises:
     ------
         AssertionError: If the configuration does not include an sqlite configuration.
+
     """
     # try to load the configuration containing SQLite database setup
     configuration.load_configuration(configuration_filename_sqlite)
@@ -115,6 +118,7 @@ def postgres_database_fixture(configuration_filename_postgres: str) -> None:
     Raises:
     ------
         AssertionError: If the configuration does not include an postgres configuration.
+
     """
     # try to load the configuration containing postgres database setup
     configuration.load_configuration(configuration_filename_postgres)
@@ -136,6 +140,7 @@ def noop_cache() -> NoopCache:
 
     Returns:
         NoopCache: An initialized NoopCache instance ready for tests.
+
     """
     c = NoopCache()
     c.initialize_cache()

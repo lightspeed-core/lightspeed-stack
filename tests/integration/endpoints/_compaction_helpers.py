@@ -59,6 +59,7 @@ def enable_compaction(
         threshold_ratio: Ratio of context window that triggers compaction.
         buffer_turns: Number of recent turns to keep uncompacted.
         buffer_max_ratio: Maximum ratio of context window for buffered turns.
+
     """
     # pylint: disable=protected-access
     assert config._configuration is not None
@@ -126,6 +127,7 @@ def assert_marker_count(
         store: The in-memory conversation store to inspect.
         conv_id: Conversation ID to look up.
         expected: Expected number of markers.
+
     """
     markers = [
         item
@@ -148,6 +150,7 @@ def patch_get_all_conversation_items(mocker: MockerFixture):
 
     Returns:
         Tuple of (entered, release, task2_entered) asyncio Events.
+
     """
     entered = asyncio.Event()
     release = asyncio.Event()
@@ -208,6 +211,7 @@ def setup_fold_mocks(
 
     Returns:
         Tuple of (mock_cache, mock_summarize, mock_resummarize).
+
     """
     existing_summaries = [
         ConversationSummary(
@@ -267,6 +271,7 @@ def create_existing_conversation(
     Args:
         db_session: SQLAlchemy session bound to the test database.
         user_id: Owner user ID for the conversation row.
+
     """
     conv = UserConversation(
         id=EXISTING_CONV_ID,

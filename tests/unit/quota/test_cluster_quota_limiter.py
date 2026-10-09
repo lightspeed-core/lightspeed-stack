@@ -31,6 +31,7 @@ def create_quota_limiter(
     Returns:
         ClusterQuotaLimiter: A configured ClusterQuotaLimiter backed by an
         in-memory SQLite database.
+
     """
     configuration = QuotaHandlersConfiguration()  # pyright: ignore[reportCallIssue]
     configuration.sqlite = SQLiteDatabaseConfiguration(

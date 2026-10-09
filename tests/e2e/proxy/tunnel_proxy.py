@@ -39,6 +39,7 @@ class TunnelProxy:
         port: Port to listen on.
         connect_count: Number of CONNECT requests handled.
         last_connect_target: The last host:port that was tunneled to.
+
     """
 
     def __init__(self, host: str = "127.0.0.1", port: int = 8888) -> None:
