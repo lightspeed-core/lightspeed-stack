@@ -323,6 +323,7 @@ Lightspeed Core Stack (LCS) service API specification.
     * [OpenIdConnectSecurityScheme](#openidconnectsecurityscheme)
     * [PasswordOAuthFlow](#passwordoauthflow)
     * [PostgreSQLDatabaseConfiguration](#postgresqldatabaseconfiguration)
+    * [PositiveFeedbackCategory](#positivefeedbackcategory)
     * [PromptCreateRequest](#promptcreaterequest)
     * [PromptDeleteResponse](#promptdeleteresponse)
     * [PromptResourceResponse](#promptresourceresponse)
@@ -6403,9 +6404,6 @@ These categories help provide structured feedback about AI inference quality
 when users provide negative feedback (thumbs down). Multiple categories can
 be selected to provide comprehensive feedback about response issues.
 
-
-
-
 ## FeedbackRequest
 
 
@@ -6417,7 +6415,7 @@ Attributes:
     llm_response: The required LLM response.
     sentiment: The optional sentiment.
     user_feedback: The optional user feedback.
-    categories: The optional list of feedback categories (multi-select for negative feedback).
+    categories: The optional list of positive or negative feedback categories.
 
 
 | Field | Type | Description |
@@ -6427,7 +6425,7 @@ Attributes:
 | llm_response | string | Response from LLM |
 | sentiment |  | User sentiment, if provided must be -1 or 1 |
 | user_feedback |  | Feedback on the LLM response. |
-| categories |  | List of feedback categories that describe issues with the LLM response (for negative feedback). |
+| categories | array of FeedbackCategory or PositiveFeedbackCategory | List of positive or negative feedback categories. |
 
 
 ## FeedbackResponse
@@ -7796,6 +7794,10 @@ Useful resources:
 | gss_encmode | string | This option determines whether or with what priority a secure GSS TCP/IP connection will be negotiated with the server. |
 | ca_cert_path |  | Path to CA certificate |
 
+
+## PositiveFeedbackCategory
+
+Enum representing predefined categories for positive feedback.
 
 ## PromptCreateRequest
 

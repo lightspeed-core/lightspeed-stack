@@ -4,7 +4,7 @@ import pytest
 from pydantic import ValidationError
 
 from models.api.requests import FeedbackRequest
-from models.common import FeedbackCategory
+from models.common import FeedbackCategory, PositiveFeedbackCategory
 
 
 class TestFeedbackRequest:
@@ -110,6 +110,74 @@ class TestFeedbackRequest:
         )
         assert fr.categories == [FeedbackCategory.INCORRECT]
 
+    def test_mixed_categories_are_deduplicated_and_serialize_as_strings(self) -> None:
+        """Test positive and negative categories retain order and serialize as strings."""
+        wire_categories = [
+            "helpful",
+            "incorrect",
+            "accurate",
+            "helpful",
+            "incorrect",
+        ]
+        fr = FeedbackRequest.model_validate(
+            {
+                "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
+                "user_question": "What is Docker?",
+                "llm_response": "Docker is a container platform.",
+                "categories": wire_categories,
+                "sentiment": None,
+            }
+        )
+        assert fr.categories == [
+            PositiveFeedbackCategory.HELPFUL,
+            FeedbackCategory.INCORRECT,
+            PositiveFeedbackCategory.ACCURATE,
+        ]
+        assert fr.categories is not None
+        assert all(
+            isinstance(category, (FeedbackCategory, PositiveFeedbackCategory))
+            for category in fr.categories
+        )
+        assert fr.model_dump(mode="json")["categories"] == wire_categories[:3]
+
+    def test_all_positive_feedback_categories_are_valid(self) -> None:
+        """Test each predefined positive category is accepted independent of sentiment."""
+        positive_categories = [
+            "helpful",
+            "accurate",
+            "clear",
+            "relevant",
+            "actionable",
+            "resolved_issue",
+        ]
+        fr = FeedbackRequest.model_validate(
+            {
+                "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
+                "user_question": "What is Docker?",
+                "llm_response": "Docker is a container platform.",
+                "categories": positive_categories,
+                "sentiment": -1,
+            }
+        )
+        assert fr.categories is not None
+        assert fr.model_dump(mode="json")["categories"] == positive_categories
+        assert all(
+            isinstance(category, PositiveFeedbackCategory) for category in fr.categories
+        )
+
+    def test_unknown_feedback_category_is_rejected(self) -> None:
+        """Test category strings outside the fixed enums are rejected."""
+        with pytest.raises(ValidationError):
+            FeedbackRequest.model_validate(
+                {
+                    "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
+                    "user_question": "What is Docker?",
+                    "llm_response": "Docker is a container platform.",
+                    "categories": ["domain_issue"],
+                    "sentiment": 1,
+                }
+            )
+
     def test_categories_with_duplicates(self) -> None:
         """Test that duplicate categories are removed."""
         fr = FeedbackRequest(
@@ -179,13 +247,14 @@ class TestFeedbackRequest:
     def test_all_feedback_categories(self) -> None:
         """Test that all defined feedback categories are valid."""
         all_categories = list(FeedbackCategory)
-
-        fr = FeedbackRequest(
-            conversation_id="123e4567-e89b-12d3-a456-426614174000",
-            user_question="Test question",
-            llm_response="Test response",
-            categories=all_categories,
-            sentiment=1,
+        fr = FeedbackRequest.model_validate(
+            {
+                "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
+                "user_question": "Test question",
+                "llm_response": "Test response",
+                "categories": all_categories,
+                "sentiment": 1,
+            }
         )
         assert fr.categories is not None
         assert len(fr.categories) == len(all_categories)
@@ -200,6 +269,15 @@ class TestFeedbackRequest:
                 user_question="Test question",
                 llm_response="Test response",
                 categories="invalid_type",  # pyright: ignore Should be list, not string
+                sentiment=1,
+            )
+
+        with pytest.raises(ValidationError):
+            FeedbackRequest(
+                conversation_id="123e4567-e89b-12d3-a456-426614174000",
+                user_question="Test question",
+                llm_response="Test response",
+                categories=[None],  # pyright: ignore[reportArgumentType]
                 sentiment=1,
             )
 

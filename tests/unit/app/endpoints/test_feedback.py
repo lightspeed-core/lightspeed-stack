@@ -138,13 +138,14 @@ async def test_assert_feedback_enabled_disabled_full_config_chain(
     "feedback_request_data",
     [
         {**VALID_BASE, "sentiment": 1},
+        {**VALID_BASE, "sentiment": 1, "categories": ["helpful"]},
         {
             **VALID_BASE,
             "sentiment": -1,
             "categories": ["incorrect", "incomplete"],
         },
     ],
-    ids=["no_categories", "with_negative_categories"],
+    ids=["no_categories", "with_positive_category", "with_negative_categories"],
 )
 @pytest.mark.asyncio
 async def test_feedback_endpoint_handler(

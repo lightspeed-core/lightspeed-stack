@@ -10179,6 +10179,7 @@ def test_dump_models(tmpdir: Path) -> None:
             "PgvectorVectorStoreProvider",
             "PgvectorVectorStoreProviderConfig",
             "PostgreSQLDatabaseConfiguration",
+            "PositiveFeedbackCategory",
             "PromptCreateRequest",
             "PromptDeleteResponse",
             "PromptResourceResponse",
