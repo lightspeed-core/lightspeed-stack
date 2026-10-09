@@ -33,6 +33,7 @@ def fixture_dummy_auth_tuple() -> AuthTuple:
         AuthTuple: A tuple of (user_id, username, is_admin_flag, token) where
         `user_id` and `username` are strings, `is_admin_flag` is a boolean, and
         `token` is a mock token string.
+
     """
     return ("user_id", "username", False, "mock_token")
 
@@ -54,6 +55,7 @@ class TestGetAuthorizationResolvers:
             Mock: A MagicMock whose `authorization_configuration.access_rules` and
             `authentication_configuration.jwk_configuration.jwt_configuration.role_rules`
             are set to empty lists.
+
         """
         config = mocker.MagicMock()
         config.authorization_configuration.access_rules = []
@@ -70,6 +72,7 @@ class TestGetAuthorizationResolvers:
         Returns:
             AccessRule: An AccessRule configured with role "test" and actions
                         containing `Action.QUERY`.
+
         """
         return AccessRule(role="test", actions=[Action.QUERY])
 
@@ -81,6 +84,7 @@ class TestGetAuthorizationResolvers:
         Returns:
             JwtRoleRule: Configured with jsonpath "$.test", operator
                          `JsonPathOperator.EQUALS`, value "test", and roles ["test"].
+
         """
         return JwtRoleRule(
             jsonpath="$.test",
@@ -241,6 +245,7 @@ class TestPerformAuthorizationCheck:
                 - role_resolver: an AsyncMock whose `resolve_roles` returns `{"employee"}`.
                 - access_resolver: a MagicMock with `check_access` returning
                                    `True` and `get_actions` returning `{Action.QUERY}`.
+
         """
         role_resolver = mocker.AsyncMock()
         access_resolver = mocker.MagicMock()
@@ -368,6 +373,7 @@ class TestAuthorizeDecorator:
 
             Returns:
                 A string indicating the mock operation was successful.
+
             """
             return "success"
 
@@ -393,6 +399,7 @@ class TestAuthorizeDecorator:
 
             Returns:
                 A string indicating the success of the operation.
+
             """
             return "success"
 

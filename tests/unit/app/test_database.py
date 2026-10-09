@@ -22,6 +22,7 @@ def reset_database_state_fixture() -> Generator:
     Returns:
         generator: A fixture generator that yields control to the test and
         restores global database state afterwards.
+
     """
     original_engine = database.engine
     original_session_local = database.session_local
@@ -45,6 +46,7 @@ def base_postgres_config_fixture() -> PostgreSQLDatabaseConfiguration:
         PostgreSQLDatabaseConfiguration: Configuration with host "localhost",
         port 5432, database "testdb", user "testuser", password "testpass", and
         namespace "public".
+
     """
     return PostgreSQLDatabaseConfiguration(
         host="localhost",
@@ -294,6 +296,7 @@ class TestInitializeDatabase:
             mock_session_local) where `mock_engine` is a mocked SQLAlchemy
             Engine and `mock_session_local` is the mocked session-local
             factory.
+
         """
         mock_engine = mocker.MagicMock(spec=Engine)
         mock_session_local = mocker.MagicMock()
@@ -322,6 +325,7 @@ class TestInitializeDatabase:
             assigned to database.engine.
             mock_session_local (MockType): Mock session factory expected to be
             assigned to database.session_local.
+
         """
         mock_sessionmaker.assert_called_once_with(
             autocommit=False, autoflush=False, bind=mock_engine

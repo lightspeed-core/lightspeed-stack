@@ -185,6 +185,7 @@ def _export_expired_client_cert(
         Accesses ca._private_key which is a private attribute of trustme.CA.
         This is fragile and may break if trustme changes its internal implementation.
         No public API exists in trustme for re-signing certs with custom validity.
+
     """
     original = client_cert.cert_chain_pems[0].bytes()
     from cryptography.x509 import load_pem_x509_certificate
@@ -219,6 +220,7 @@ def _export_expired_ca_cert(ca: trustme.CA, path: Path) -> None:
         Accesses ca._certificate and ca._private_key which are private attributes
         of trustme.CA. This is fragile and may break if trustme changes its
         internal implementation. No public API exists for re-signing with custom validity.
+
     """
     original = ca._certificate
     now = datetime.datetime.now(datetime.UTC)
@@ -251,6 +253,7 @@ def _make_tls_context(
     Returns:
     -------
         Configured SSL context for server-side TLS.
+
     """
     ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     server_cert.configure_cert(ctx)

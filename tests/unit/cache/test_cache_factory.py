@@ -34,6 +34,7 @@ def noop_cache_config() -> ConversationHistoryConfiguration:
 
     Returns:
         ConversationHistoryConfiguration: configuration instance with `type` set to CACHE_TYPE_NOOP
+
     """
     return ConversationHistoryConfiguration(
         type=CACHE_TYPE_NOOP
@@ -50,6 +51,7 @@ def memory_cache_config() -> ConversationHistoryConfiguration:
     Returns:
         ConversationHistoryConfiguration: Configuration with type set to
         in-memory and an InMemoryCacheConfig(max_entries=10).
+
     """
     return ConversationHistoryConfiguration(
         type=CACHE_TYPE_MEMORY, memory=InMemoryCacheConfig(max_entries=10)
@@ -67,6 +69,7 @@ def postgres_cache_config() -> ConversationHistoryConfiguration:
         ConversationHistoryConfiguration: Configuration with type set to
         POSTGRES and `postgres` populated with db="database", user="user", and
         password=SecretStr("password").
+
     """
     return ConversationHistoryConfiguration(
         type=CACHE_TYPE_POSTGRES,
@@ -93,6 +96,7 @@ def sqlite_cache_config(tmpdir: Path) -> ConversationHistoryConfiguration:
         ConversationHistoryConfiguration: Configuration with `type` set to the
         SQLite cache constant and `sqlite` set to a SQLiteDatabaseConfiguration
         pointing to the test database path.
+
     """
     db_path = str(tmpdir / "test.sqlite")
     return ConversationHistoryConfiguration(
@@ -109,6 +113,7 @@ def invalid_cache_type_config() -> ConversationHistoryConfiguration:
 
     Returns:
         ConversationHistoryConfiguration: configuration with `type` set to "foo bar baz".
+
     """
     c = ConversationHistoryConfiguration()  # pyright: ignore[reportCallIssue]
     # the conversation cache type name is incorrect in purpose
@@ -138,6 +143,7 @@ def test_conversation_cache_in_memory(
         - memory_cache_config_fixture (ConversationHistoryConfiguration): a
           configuration with `type` set to the in-memory cache and a valid
           `memory` configuration.
+
     """
     cache = CacheFactory.conversation_cache(memory_cache_config_fixture)
     assert cache is not None

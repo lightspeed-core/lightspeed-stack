@@ -38,6 +38,7 @@ async def _collect_sse_events(response: StreamingResponse) -> list[dict[str, Any
     Returns:
     -------
         List of parsed JSON event dicts from ``data:`` lines.
+
     """
     events: list[dict[str, Any]] = []
     async for chunk in response.body_iterator:

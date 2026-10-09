@@ -31,6 +31,7 @@ def test_user_data_collection_feedback_disabled() -> None:
 
     Raises:
         ValueError: if feedback is enabled while feedback_storage is None.
+
     """
     # incorrect configuration
     with pytest.raises(

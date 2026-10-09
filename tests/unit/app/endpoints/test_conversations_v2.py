@@ -242,6 +242,7 @@ def mock_configuration(mocker: MockerFixture) -> MockType:
     Returns:
     -------
         Mock: A mock configuration object whose `conversation_cache` attribute is a mock.
+
     """
     mock_config = mocker.Mock()
     mock_cache = mocker.Mock()

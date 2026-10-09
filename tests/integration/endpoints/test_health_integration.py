@@ -29,6 +29,7 @@ def mock_ogx_client_fixture(
     Returns:
         mock_client: An AsyncMock representing the OGX client whose
         `inspect.version` returns an empty list.
+
     """
     mock_holder_class = mocker.patch("app.endpoints.health.AsyncOgxClientHolder")
 
@@ -63,6 +64,7 @@ async def test_health_liveness(
     Returns:
     -------
         None
+
     """
     _ = test_config
 
@@ -90,6 +92,7 @@ async def test_health_readiness_provider_statuses(
     ----------
         mock_ogx_client_health: Mocked OGX client
         mocker: pytest-mock fixture for creating mock objects
+
     """
     # Arrange: Set up mock provider list with mixed health statuses
     mock_ogx_client_health.providers.list.return_value = [
@@ -145,6 +148,7 @@ async def test_health_readiness_client_error(
     ----------
         test_response: FastAPI response object
         test_auth: noop authentication tuple
+
     """
     # Verify that RuntimeError propagates from the endpoint (not caught)
     with pytest.raises(RuntimeError) as exc_info:
@@ -178,6 +182,7 @@ async def test_health_readiness(
     Returns:
     -------
         None
+
     """
     _ = mock_ogx_client_health
 

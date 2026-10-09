@@ -20,6 +20,7 @@ def sqlite_engine_fixture() -> Generator[Engine, None, None]:
     Yields:
         Engine: A SQLAlchemy Engine bound to an in-memory SQLite database with
         tables created from Base.metadata.
+
     """
     engine = create_engine(
         "sqlite:///:memory:",
@@ -41,6 +42,7 @@ def db_session_fixture(sqlite_engine: Engine) -> Generator[Session, None, None]:
 
     Yields:
         Session: A SQLAlchemy Session bound to the test engine.
+
     """
     session_factory = sessionmaker(
         autocommit=False, autoflush=False, bind=sqlite_engine

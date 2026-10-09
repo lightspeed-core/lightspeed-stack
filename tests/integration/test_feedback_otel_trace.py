@@ -52,6 +52,7 @@ async def test_feedback_storage_span_nested_under_submit(
         test_auth: Authentication tuple from the real noop auth dependency.
         otel_collector: In-memory OTEL exporter collecting finished spans.
         mocker: pytest-mock fixture used to patch conversation retrieval.
+
     """
     user_id, _, _, _ = test_auth
     configuration.user_data_collection_configuration.feedback_storage = str(tmp_path)

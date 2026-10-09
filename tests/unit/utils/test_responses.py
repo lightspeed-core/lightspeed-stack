@@ -152,6 +152,7 @@ def make_output_item(
 
     Returns:
         MockOutputItem: Mock object with type, role, and content attributes
+
     """
     return MockOutputItem(item_type=item_type, role=role, content=content)
 
@@ -170,6 +171,7 @@ def make_content_part(
 
     Returns:
         MockContentPart: Mock object with text and/or refusal attributes
+
     """
     return MockContentPart(text=text, refusal=refusal, part_type=part_type)
 
@@ -245,6 +247,7 @@ def test_extract_text_list_content(content_parts: list[Any], expected: str) -> N
     Args:
         content_parts: List of content parts (strings, objects, dicts)
         expected: Expected concatenated text result
+
     """
     output_item = make_output_item(
         item_type="message", role="assistant", content=content_parts

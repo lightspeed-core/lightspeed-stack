@@ -628,6 +628,7 @@ def _mock_guardian_for_capability(mocker: MockerFixture) -> Any:
 
     Returns:
         The mock OGX client used by the Guardian capability.
+
     """
     _mock_guardian_init(mocker)
     _mock_guardian_model_request(mocker)

@@ -30,6 +30,7 @@ def _write_skill(skills_root: Path, name: str, description: str) -> None:
 
     Returns:
         None.
+
     """
     skill_dir = skills_root / name
     skill_dir.mkdir(parents=True)
@@ -54,6 +55,7 @@ async def test_skills_endpoint_returns_configured_skills(
         test_request: FastAPI request.
         test_auth: noop authentication tuple.
         tmp_path: pytest tmp path fixture used to host real SKILL.md files on disk.
+
     """
     skills_root = tmp_path / "skills"
     _write_skill(skills_root, "code-review", "Review code for quality and security")
@@ -87,6 +89,7 @@ async def test_skills_endpoint_returns_empty_list_when_unconfigured(
         test_config: Real loaded configuration (from tests/configuration/lightspeed-stack.yaml).
         test_request: FastAPI request.
         test_auth: noop authentication tuple.
+
     """
     test_config.configuration.skills = None
 

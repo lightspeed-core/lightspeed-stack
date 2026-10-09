@@ -86,6 +86,7 @@ async def test_rags_endpoint_success(
             Parameters:
             ----------
                 rag_id (str): The unique identifier for the RAG.
+
             """
             self.id = rag_id
 
@@ -225,6 +226,7 @@ async def test_rag_info_endpoint_success(
                 object (str): Type of object, set to "faiss".
                 status (str): Status of the instance, set to "completed".
                 usage_bytes (int): Usage in bytes, set to 100.
+
             """
             self.id = "xyzzy"
             self.name = "rag_name"

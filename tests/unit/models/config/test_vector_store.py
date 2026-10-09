@@ -105,6 +105,7 @@ def test_pgvector_accepts_int_port_from_env_substitution(
 
     Parameters:
         monkeypatch: Fixture that sets and restores environment variables.
+
     """
     monkeypatch.setenv("PGVECTOR_PORT", "5432")
     resolved = replace_env_vars({"port": "${env.PGVECTOR_PORT:=5432}"})
@@ -136,6 +137,7 @@ def test_pgvector_accepts_int_port_from_env_default(
 
     Parameters:
         monkeypatch: Fixture that removes and restores environment variables.
+
     """
     monkeypatch.delenv("PGVECTOR_PORT", raising=False)
     resolved = replace_env_vars({"port": "${env.PGVECTOR_PORT:=5432}"})

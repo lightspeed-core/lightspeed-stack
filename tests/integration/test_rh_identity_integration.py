@@ -22,6 +22,7 @@ def client() -> Generator[TestClient, None, None]:
 
     Yields:
         TestClient: A test client instance for the FastAPI app.
+
     """
     # Save original env var if it exists
     original_config = os.environ.get("LIGHTSPEED_STACK_CONFIG_PATH")
@@ -79,6 +80,7 @@ def system_identity_json() -> dict:
             - "identity": contains "account_number", "org_id", "type" set to
               "System", and "system" with "cn".
             - "entitlements": contains "rhel" with "is_entitled" and "is_trial" boolean flags.
+
     """
     return {
         "identity": {
@@ -104,6 +106,7 @@ def service_account_identity_json() -> dict:
               "client_id", "username", and "user_id".
             - "entitlements": contains "rhel" with "is_entitled" and "is_trial"
               boolean flags.
+
     """
     return {
         "identity": {
@@ -133,6 +136,7 @@ def encode_identity(identity_json: dict) -> str:
     Returns:
     -------
         str: Base64-encoded UTF-8 string representation of the JSON payload.
+
     """
     json_str = json.dumps(identity_json)
     return base64.b64encode(json_str.encode("utf-8")).decode("utf-8")

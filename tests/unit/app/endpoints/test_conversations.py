@@ -106,6 +106,7 @@ def create_mock_conversation(
     Returns:
     -------
         mock_conversation: A mock object configured with the above attributes.
+
     """
     mock_conversation = mocker.Mock()
     mock_conversation.id = conversation_id
@@ -140,6 +141,7 @@ def create_mock_db_turn(
 
     Returns:
         Mock UserTurn database object with required attributes
+
     """
     mock_turn = mocker.Mock(spec=UserTurn)
     mock_turn.turn_number = turn_number
@@ -159,6 +161,7 @@ def _setup_user_turn_query(
     Args:
         mock_query: The mock query object to configure.
         db_turns: List of UserTurn objects to return, or None for empty list.
+
     """
     turns_to_return = db_turns if db_turns is not None else []
     mock_query.filter_by.return_value.order_by.return_value.all.return_value = (
@@ -174,6 +177,7 @@ def _setup_user_conversation_query(
     Args:
         mock_query: The mock query object to configure.
         query_result: List of UserConversation objects to return, or None for None.
+
     """
     if query_result is not None:
         mock_query.all.return_value = query_result
@@ -193,6 +197,7 @@ def _patch_get_session_functions(
     Args:
         mocker: Mocker fixture for creating patches.
         mock_session_context: The context manager mock to return from get_session.
+
     """
     mocker.patch(
         "app.endpoints.conversations_v1.get_session", return_value=mock_session_context
@@ -224,6 +229,7 @@ def mock_database_session(
     -------
         Mock: The mocked session object that will be yielded by the patched
         get_session context manager.
+
     """
     mock_session = mocker.Mock()
 
@@ -259,6 +265,7 @@ def setup_configuration_fixture() -> AppConfig:
         containing defaults suitable for tests (local service host/port,
         disabled auth and user-data collection, test OGX API key and
         URL, and single worker).
+
     """
     config_dict: dict[str, Any] = {
         "name": "test",
@@ -310,6 +317,7 @@ def mock_session_data_fixture() -> dict[str, Any]:
     Returns:
         dict: A mock session data structure matching the shape produced by the
         OGX client for use in unit tests.
+
     """
     return {
         "session_id": VALID_CONVERSATION_ID,
@@ -364,6 +372,7 @@ def expected_chat_history_fixture() -> list[dict[str, Any]]:
             - tool_results: list of tool result summaries (empty by default)
             - started_at: ISO 8601 UTC timestamp string for the turn start
             - completed_at: ISO 8601 UTC timestamp string for the turn end
+
     """
     return [
         {
@@ -402,6 +411,7 @@ def mock_conversation_fixture() -> UserConversation:
         VALID_CONVERSATION_ID, user_id set to "another_user", message_count 2,
         last_used_model "mock-model", last_used_provider "mock-provider", and
         topic_summary "Mock topic".
+
     """
     mock_conv = UserConversation()
     mock_conv.id = VALID_CONVERSATION_ID

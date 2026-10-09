@@ -71,6 +71,7 @@ class CursorMock:
         Raises:
         ------
                 psycopg2.DatabaseError: Always raised with the message "can not INSERT".
+
         """
         raise psycopg2.DatabaseError("can not INSERT")
 
@@ -90,6 +91,7 @@ class ConnectionMock:
 
         Raises:
             psycopg2.OperationalError: Always raised to simulate inability to acquire a cursor.
+
         """
         raise psycopg2.OperationalError("can not SELECT")
 
@@ -104,6 +106,7 @@ def postgres_cache_config() -> PostgreSQLDatabaseConfiguration:
         PostgreSQLDatabaseConfiguration: A configuration object with host,
         port, db, user, and a SecretStr password. Values are placeholders and
         not intended for real database connections.
+
     """
     # can be any configuration, because tests won't really try to
     # connect to database
@@ -128,6 +131,7 @@ def postgres_cache_config_wrong_namespace() -> PostgreSQLDatabaseConfiguration:
         port, db, user, SecretStr password, and an invalid namespace containing
         spaces. Values are placeholders and not intended for real database
         connections.
+
     """
     # can be any configuration, because tests won't really try to
     # connect to database
@@ -153,6 +157,7 @@ def postgres_cache_config_too_long_namespace() -> PostgreSQLDatabaseConfiguratio
         port, db, user, SecretStr password, and a namespace exceeding 63
         characters. Values are placeholders and not intended for real database
         connections.
+
     """
     # can be any configuration, because tests won't really try to
     # connect to database

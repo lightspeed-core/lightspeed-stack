@@ -166,6 +166,7 @@ def _build_config_dict(**overrides: Any) -> dict[str, Any]:
 
     Returns:
         A dict suitable for Configuration(**dict).
+
     """
     base: dict[str, Any] = {
         "name": "test",

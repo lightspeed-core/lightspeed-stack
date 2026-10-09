@@ -29,6 +29,7 @@ def mock_ogx_client_fixture(
     Yields:
     ------
         AsyncMock: A mocked OGX client configured for tests.
+
     """
     mock_holder_class = mocker.patch("app.endpoints.info.AsyncOgxClientHolder")
 
@@ -61,6 +62,7 @@ async def test_root_endpoint(
         test_config (AppConfig): Loads root configuration
         test_request (Request): FastAPI request
         test_auth (AuthTuple): noop authentication tuple
+
     """
     # Fixtures with side effects (needed but not directly used)
     _ = test_config

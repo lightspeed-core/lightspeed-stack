@@ -28,6 +28,7 @@ def test_estimate_empty_string(benchmark: BenchmarkFixture) -> None:
     Returns:
     -------
         None
+
     """
     input_string = ""
     benchmark(estimate_tokens, input_string)
@@ -43,6 +44,7 @@ def test_estimate_hello_world(benchmark: BenchmarkFixture) -> None:
     Returns:
     -------
         None
+
     """
     input_string = "Hello world"
     benchmark(estimate_tokens, input_string)
@@ -58,6 +60,7 @@ def test_pangram(benchmark: BenchmarkFixture) -> None:
     Returns:
     -------
         None
+
     """
     input_string = "The quick brown fox jumps over the lazy dog."
     benchmark(estimate_tokens, input_string)
@@ -73,6 +76,7 @@ def test_lorem_ipsum(benchmark: BenchmarkFixture) -> None:
     Returns:
     -------
         None
+
     """
     input_string = LOREM_IPSUM
     benchmark(estimate_tokens, input_string)
@@ -88,6 +92,7 @@ def test_lorem_ipsum_times_10_times(benchmark: BenchmarkFixture) -> None:
     Returns:
     -------
         None
+
     """
     input_string = LOREM_IPSUM * 10
     benchmark(estimate_tokens, input_string)
@@ -103,6 +108,7 @@ def test_lorem_ipsum_times_100_times(benchmark: BenchmarkFixture) -> None:
     Returns:
     -------
         None
+
     """
     input_string = LOREM_IPSUM * 100
     benchmark(estimate_tokens, input_string)
@@ -118,6 +124,7 @@ def test_lorem_ipsum_times_1000_times(benchmark: BenchmarkFixture) -> None:
     Returns:
     -------
         None
+
     """
     input_string = LOREM_IPSUM * 1000
     benchmark(estimate_tokens, input_string)
@@ -133,6 +140,7 @@ def test_lorem_ipsum_times_2000_times(benchmark: BenchmarkFixture) -> None:
     Returns:
     -------
         None
+
     """
     input_string = LOREM_IPSUM * 2000
     benchmark(estimate_tokens, input_string)
@@ -149,6 +157,7 @@ def benchmark_file_tokenization(benchmark: BenchmarkFixture, filename: str) -> N
     Returns:
     -------
         None
+
     """
     data_dir = Path(__file__).parent / "data"
     with (data_dir / filename).open(encoding="utf-8") as fin:
@@ -167,6 +176,7 @@ def test_xml_file_10_lines(benchmark: BenchmarkFixture) -> None:
     Returns:
     -------
         None
+
     """
     benchmark_file_tokenization(benchmark, "xml_10_lines.xml")
 
@@ -181,6 +191,7 @@ def test_xml_file_100_lines(benchmark: BenchmarkFixture) -> None:
     Returns:
     -------
         None
+
     """
     benchmark_file_tokenization(benchmark, "xml_100_lines.xml")
 
@@ -195,6 +206,7 @@ def test_xml_file_1000_lines(benchmark: BenchmarkFixture) -> None:
     Returns:
     -------
         None
+
     """
     benchmark_file_tokenization(benchmark, "xml_1000_lines.xml")
 
@@ -209,6 +221,7 @@ def test_xml_file_10000_lines(benchmark: BenchmarkFixture) -> None:
     Returns:
     -------
         None
+
     """
     benchmark_file_tokenization(benchmark, "xml_10000_lines.xml")
 
@@ -223,6 +236,7 @@ def test_yaml_file_10_lines(benchmark: BenchmarkFixture) -> None:
     Returns:
     -------
         None
+
     """
     benchmark_file_tokenization(benchmark, "yaml_10_lines.yml")
 
@@ -237,6 +251,7 @@ def test_yaml_file_100_lines(benchmark: BenchmarkFixture) -> None:
     Returns:
     -------
         None
+
     """
     benchmark_file_tokenization(benchmark, "yaml_100_lines.yml")
 
@@ -251,6 +266,7 @@ def test_yaml_file_1000_lines(benchmark: BenchmarkFixture) -> None:
     Returns:
     -------
         None
+
     """
     benchmark_file_tokenization(benchmark, "yaml_1000_lines.yml")
 
@@ -265,6 +281,7 @@ def test_yaml_file_10000_lines(benchmark: BenchmarkFixture) -> None:
     Returns:
     -------
         None
+
     """
     benchmark_file_tokenization(benchmark, "yaml_10000_lines.yml")
 
@@ -279,6 +296,7 @@ def test_json_file_10_lines(benchmark: BenchmarkFixture) -> None:
     Returns:
     -------
         None
+
     """
     benchmark_file_tokenization(benchmark, "json_10_lines.json")
 
@@ -293,6 +311,7 @@ def test_json_file_100_lines(benchmark: BenchmarkFixture) -> None:
     Returns:
     -------
         None
+
     """
     benchmark_file_tokenization(benchmark, "json_100_lines.json")
 
@@ -307,6 +326,7 @@ def test_json_file_1000_lines(benchmark: BenchmarkFixture) -> None:
     Returns:
     -------
         None
+
     """
     benchmark_file_tokenization(benchmark, "json_1000_lines.json")
 
@@ -321,6 +341,7 @@ def test_json_file_10000_lines(benchmark: BenchmarkFixture) -> None:
     Returns:
     -------
         None
+
     """
     benchmark_file_tokenization(benchmark, "json_10000_lines.json")
 
@@ -335,6 +356,7 @@ def test_python_source_10_lines(benchmark: BenchmarkFixture) -> None:
     Returns:
     -------
         None
+
     """
     benchmark_file_tokenization(benchmark, "python_10_lines.py")
 
@@ -349,6 +371,7 @@ def test_python_source_100_lines(benchmark: BenchmarkFixture) -> None:
     Returns:
     -------
         None
+
     """
     benchmark_file_tokenization(benchmark, "python_100_lines.py")
 
@@ -363,6 +386,7 @@ def test_python_source_1000_lines(benchmark: BenchmarkFixture) -> None:
     Returns:
     -------
         None
+
     """
     benchmark_file_tokenization(benchmark, "python_1000_lines.py")
 
@@ -377,6 +401,7 @@ def test_python_source_10000_lines(benchmark: BenchmarkFixture) -> None:
     Returns:
     -------
         None
+
     """
     benchmark_file_tokenization(benchmark, "python_10000_lines.py")
 
@@ -391,6 +416,7 @@ def test_javascript_source_10_lines(benchmark: BenchmarkFixture) -> None:
     Returns:
     -------
         None
+
     """
     benchmark_file_tokenization(benchmark, "js_10_lines.js")
 
@@ -405,6 +431,7 @@ def test_javascript_source_100_lines(benchmark: BenchmarkFixture) -> None:
     Returns:
     -------
         None
+
     """
     benchmark_file_tokenization(benchmark, "js_100_lines.js")
 
@@ -419,6 +446,7 @@ def test_javascript_source_1000_lines(benchmark: BenchmarkFixture) -> None:
     Returns:
     -------
         None
+
     """
     benchmark_file_tokenization(benchmark, "js_1000_lines.js")
 
@@ -433,6 +461,7 @@ def test_javascript_source_10000_lines(benchmark: BenchmarkFixture) -> None:
     Returns:
     -------
         None
+
     """
     benchmark_file_tokenization(benchmark, "js_10000_lines.js")
 
@@ -447,6 +476,7 @@ def test_go_source_10_lines(benchmark: BenchmarkFixture) -> None:
     Returns:
     -------
         None
+
     """
     benchmark_file_tokenization(benchmark, "go_10_lines.go")
 
@@ -461,6 +491,7 @@ def test_go_source_100_lines(benchmark: BenchmarkFixture) -> None:
     Returns:
     -------
         None
+
     """
     benchmark_file_tokenization(benchmark, "go_100_lines.go")
 
@@ -475,6 +506,7 @@ def test_go_source_1000_lines(benchmark: BenchmarkFixture) -> None:
     Returns:
     -------
         None
+
     """
     benchmark_file_tokenization(benchmark, "go_1000_lines.go")
 
@@ -489,5 +521,6 @@ def test_go_source_10000_lines(benchmark: BenchmarkFixture) -> None:
     Returns:
     -------
         None
+
     """
     benchmark_file_tokenization(benchmark, "go_10000_lines.go")

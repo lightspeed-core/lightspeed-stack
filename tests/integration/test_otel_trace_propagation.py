@@ -37,6 +37,7 @@ def _inject_w3c_context(traceparent: str) -> object:
 
     Returns:
         Context token to pass to ``otel_context.detach``.
+
     """
     ctx = TraceContextTextMapPropagator().extract({"traceparent": traceparent})
     return otel_context.attach(ctx)

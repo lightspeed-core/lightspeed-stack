@@ -11,6 +11,7 @@ def generate_provider() -> str:
 
     Returns:
         str: Selected provider name.
+
     """
     providers = [
         "openai",
@@ -35,6 +36,7 @@ def generate_model_for_provider(provider: str) -> str:
     -------
         str: A model identifier associated with the given provider. If the
             provider is unknown, a fallback value of "foo" is returned.
+
     """
     models: dict[str, list[str]] = {
         "openai": [
@@ -105,6 +107,7 @@ def generate_topic_summary() -> str:
 
     Returns:
         str: Generated summary sentence ending with a period.
+
     """
     yaps = [
         [

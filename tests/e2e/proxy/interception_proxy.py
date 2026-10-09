@@ -49,6 +49,7 @@ class InterceptionProxy:  # pylint: disable=too-many-instance-attributes
         ca: The trustme CA used to generate interception certificates.
         intercepted_hosts: Set of host:port targets that were intercepted.
         connect_count: Number of CONNECT requests handled.
+
     """
 
     def __init__(
@@ -78,6 +79,7 @@ class InterceptionProxy:  # pylint: disable=too-many-instance-attributes
         -------
             An ssl.SSLContext configured for server-side TLS with a cert
             signed by the proxy's CA for the given hostname.
+
         """
         server_cert = self.ca.issue_cert(hostname)
         ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
@@ -239,6 +241,7 @@ class InterceptionProxy:  # pylint: disable=too-many-instance-attributes
         Parameters:
         ----------
             path: File path to write the CA certificate PEM to.
+
         """
         self.ca.cert_pem.write_to_path(str(path))
         logger.info("Exported interception proxy CA cert to %s", path)

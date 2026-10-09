@@ -13,6 +13,7 @@ def mock_authorization_resolvers(mocker: MockerFixture) -> None:
 
     Args:
         mocker: The pytest-mock mocker fixture
+
     """
     mock_resolvers = mocker.patch(
         "authorization.middleware.get_authorization_resolvers"

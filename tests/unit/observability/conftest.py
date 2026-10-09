@@ -12,5 +12,6 @@ def mock_background_tasks_fixture(mocker: MockerFixture) -> Any:
 
     Returns:
         A Mock object representing FastAPI BackgroundTasks.
+
     """
     return mocker.Mock()

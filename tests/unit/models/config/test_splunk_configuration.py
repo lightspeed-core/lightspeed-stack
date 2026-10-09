@@ -14,6 +14,7 @@ def token_file_fixture(tmp_path: Path) -> Path:
 
     Returns:
         Path: Path to the created token file.
+
     """
     token_file = tmp_path / "token"
     token_file.write_text("test-token")

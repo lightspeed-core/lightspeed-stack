@@ -610,6 +610,7 @@ def test_rh_identity_max_header_size_validation(
         - expectation (AbstractContextManager): A context manager that asserts
           either successful construction or that a ValidationError is raised
           for invalid values.
+
     """
     with expectation:
         config = RHIdentityConfiguration(max_header_size=max_header_size)
