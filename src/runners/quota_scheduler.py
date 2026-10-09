@@ -217,7 +217,8 @@ def quota_revocation(
 
     subject_id = get_subject_id(quota_limiter.type)
 
-    if quota_limiter.quota_increase is not None:
+    # do not update quota revocation date when the increase is set to zero
+    if quota_limiter.quota_increase is not None and quota_limiter.quota_increase > 0:
         increase_quota(
             connection,
             increase_quota_statement,
@@ -226,6 +227,7 @@ def quota_revocation(
             quota_limiter.period,
         )
 
+    # do not update quota revocation date when the initial quota is set to zero
     if quota_limiter.initial_quota is not None and quota_limiter.initial_quota > 0:
         reset_quota(
             connection,
