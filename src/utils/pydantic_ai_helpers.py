@@ -53,6 +53,7 @@ def _skills_capability(
     return SkillsCapability(
         directories=[str(path) for path in skills_config.paths],
         validate=False,
+        exclude_tools=["run_skill_script"],
     )
 
 

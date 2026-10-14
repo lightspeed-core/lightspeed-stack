@@ -458,7 +458,6 @@ class TestGetAgentCapabilityTools:
             "list_skills",
             "load_skill",
             "read_skill_resource",
-            "run_skill_script",
         ]
         assert all(
             tool.provider_id == "agent-skills"
