@@ -8,8 +8,8 @@ from types import SimpleNamespace
 from typing import Any, Optional, cast
 
 import pytest
-from fastapi import HTTPException
 from ogx_api.openai_responses import (
+    OpenAIResponseInputMessageContentImage,
     OpenAIResponseInputMessageContentText,
     OpenAIResponseMessage,
 )
@@ -27,6 +27,19 @@ CONV = "conv_abc123"
 def _msg(role: str, text: str) -> OpenAIResponseMessage:
     """Build a typed OGX message item for tests."""
     return OpenAIResponseMessage(role=cast("Any", role), content=text)
+
+
+def _msg_with_image(text: str) -> OpenAIResponseMessage:
+    """Build a user message item that carries an image next to its text."""
+    return OpenAIResponseMessage(
+        role="user",
+        content=[
+            OpenAIResponseInputMessageContentText(text=text),
+            OpenAIResponseInputMessageContentImage(
+                image_url="data:image/png;base64,AAAA"
+            ),
+        ],
+    )
 
 
 def _marker(text: str) -> OpenAIResponseMessage:
@@ -193,6 +206,27 @@ def test_build_explicit_input_shape() -> None:
     assert built[2].role == "assistant"
 
 
+def test_build_explicit_input_does_not_replay_earlier_images() -> None:
+    """An image sent in an earlier turn is not sent again in compacted mode.
+
+    Recent turns are rendered from their text, so the image part of a stored
+    message stays behind and every explicit item is plain text (LCORE-3789).
+    """
+    built = cc._build_explicit_input(
+        summaries=[],
+        recent_items=[
+            _msg_with_image("what is in this picture?"),
+            _msg("assistant", "a cat"),
+        ],
+        original_input="and what colour is it?",
+    )
+    assert [message.content for message in built] == [
+        "what is in this picture?",
+        "a cat",
+        "and what colour is it?",
+    ]
+
+
 def test_should_compact() -> None:
     """Trigger requires exceeding both the ratio threshold and the token floor."""
     cfg = _compaction(threshold_ratio=0.7, token_floor=100)
@@ -227,36 +261,15 @@ def test_agent_prompt_text_explicit_list_returns_last_message_text() -> None:
     assert cc.agent_prompt_text(compacted) == "new question"
 
 
-@pytest.mark.parametrize(
-    ("omit_conversation", "has_images"),
-    [(True, False), (False, True), (False, False)],
-)
-def test_reject_image_attachments_allows_supported_combinations(
-    omit_conversation: bool, has_images: bool
-) -> None:
-    """Only a compacted turn carrying images is rejected; the rest pass through."""
-    params = _params().model_copy(update={"omit_conversation": omit_conversation})
-    attachments = [object()] if has_images else None
-    cc.reject_image_attachments_in_compacted_mode(params, attachments)
-
-
-def test_reject_image_attachments_in_compacted_mode_raises_422() -> None:
-    """A compacted turn with images fails explicitly instead of ignoring them.
-
-    The explicit-input override replaces the prompt-derived request input, and
-    the explicit list is text-only, so the images would never reach the model.
-    Answering anyway would return a confident response that never saw the
-    image, with nothing telling the caller it was dropped (LCORE-3582).
-    """
-    params = _params().model_copy(update={"omit_conversation": True})
-
-    with pytest.raises(HTTPException) as exc_info:
-        cc.reject_image_attachments_in_compacted_mode(params, [object()])
-
-    assert exc_info.value.status_code == 422
-    detail = exc_info.value.detail
-    assert "Image attachments are not supported" in detail["response"]
-    assert "compacted" in detail["cause"]
+def test_agent_prompt_text_empty_query_stays_empty() -> None:
+    """An empty query (an image sent without text) does not borrow earlier text."""
+    explicit = cc._build_explicit_input(
+        ["earlier summary"], [_msg("assistant", "prior answer")], ""
+    )
+    compacted = _params().model_copy(
+        update={"input": explicit, "omit_conversation": True}
+    )
+    assert cc.agent_prompt_text(compacted) == ""
 
 
 def test_agent_prompt_text_empty_list_returns_empty() -> None:
@@ -707,6 +720,20 @@ def test_estimate_response_input_tokens_counts_list_form() -> None:
     )
     assert string_tokens > 10
     assert list_tokens > 10
+
+
+def test_estimate_does_not_count_image_parts() -> None:
+    """An image part adds nothing to the estimate that triggers compaction.
+
+    Only the text of a message is counted, so a base64 payload is never run
+    through the tokenizer (LCORE-3789).
+    """
+    text = "what is in this picture?"
+    with_image = cc._estimate_response_input_tokens(
+        cast("Any", [_msg_with_image(text)]), cc.DEFAULT_ENCODING_NAME
+    )
+    text_only = cc._estimate_response_input_tokens(text, cc.DEFAULT_ENCODING_NAME)
+    assert with_image == text_only > 0
 
 
 # --- per-conversation lock (R11): ref-counted cleanup ---

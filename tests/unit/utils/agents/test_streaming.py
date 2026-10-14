@@ -1248,6 +1248,7 @@ class TestAgentResponseGenerator:
         assert mock_agent.run_stream_events.call_args[0][0] == "new question"
 
     @pytest.mark.asyncio
+    @pytest.mark.parametrize("compacted", [False, True])
     async def test_streams_with_image_attachments_passes_multimodal_prompt(
         self,
         mocker: MockerFixture,
@@ -1255,8 +1256,13 @@ class TestAgentResponseGenerator:
         make_responses_params: Callable[..., ResponsesApiParams],
         make_agent_run_result: Callable[..., Any],
         patch_recording_metrics: None,
+        compacted: bool,
     ) -> None:
-        """Test that image attachments produce a multimodal prompt for streaming."""
+        """Test that image attachments produce a multimodal prompt for streaming.
+
+        A compacted turn is no exception: it streams with the new query and
+        the image, rather than being rejected (LCORE-3789).
+        """
         context = make_generator_context()
         turn_summary = TurnSummary()
         run_result = make_agent_run_result(
@@ -1290,6 +1296,16 @@ class TestAgentResponseGenerator:
             content_type="image/jpeg",
         )
         params = make_responses_params(input_text="describe this")
+        if compacted:
+            explicit = [
+                OpenAIResponseMessage(
+                    role="user", content="Summary of earlier conversation:\nS1"
+                ),
+                OpenAIResponseMessage(role="user", content="describe this"),
+            ]
+            params = params.model_copy(
+                update={"input": explicit, "omit_conversation": True}
+            )
 
         _ = [
             event

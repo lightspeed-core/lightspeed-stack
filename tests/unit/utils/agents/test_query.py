@@ -486,14 +486,20 @@ class TestRetrieveAgentResponse:
         assert matching[0].exc_info is not None, "traceback was not attached"
 
     @pytest.mark.asyncio
+    @pytest.mark.parametrize("compacted", [False, True])
     async def test_success_with_image_attachments_sends_multimodal_prompt(
         self,
         mocker: MockerFixture,
         make_agent_run_result: Callable[..., Any],
         make_responses_params: Callable[..., ResponsesApiParams],
         patch_recording_metrics: None,
+        compacted: bool,
     ) -> None:
-        """Test that image attachments produce a multimodal prompt."""
+        """Test that image attachments produce a multimodal prompt.
+
+        A compacted turn is no exception: it runs with the new query and the
+        image, rather than being rejected (LCORE-3789).
+        """
         run_result = make_agent_run_result(
             content="I see a screenshot.",
             response_id="resp-image",
@@ -512,6 +518,16 @@ class TestRetrieveAgentResponse:
             content_type="image/jpeg",
         )
         params = make_responses_params(input_text="describe this")
+        if compacted:
+            explicit = [
+                OpenAIResponseMessage(
+                    role="user", content="Summary of earlier conversation:\nS1"
+                ),
+                OpenAIResponseMessage(role="user", content="describe this"),
+            ]
+            params = params.model_copy(
+                update={"input": explicit, "omit_conversation": True}
+            )
 
         summary = await retrieve_agent_response(
             client=mocker.AsyncMock(),
