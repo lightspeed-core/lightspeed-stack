@@ -9,8 +9,8 @@ packages:
   ]
 upgradePackages:
   [
-    python3,
-    python3-libs,
+    pcre2-syntax,
+    pcre2,
   ]
 contentOrigin:
   repofiles: ["./redhat.repo"]
