@@ -2564,7 +2564,7 @@ ogxlibdev = [
     { name = "pypdf", specifier = ">=6.10.2" },
     { name = "pythainlp", specifier = ">=3.0.10" },
     { name = "requests", specifier = ">=2.33.0" },
-    { name = "sentence-transformers", specifier = ">=5.0.0" },
+    { name = "sentence-transformers", specifier = ">=5.6.0" },
     { name = "torch", specifier = "==2.11.0", index = "https://download.pytorch.org/whl/cpu", conflict = { package = "lightspeed-stack", group = "ogxlibdev" } },
     { name = "transformers", specifier = ">=4.34.0" },
     { name = "tree-sitter", specifier = ">=0.24.0" },
