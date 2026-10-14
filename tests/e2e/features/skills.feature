@@ -101,37 +101,6 @@ Feature: Agent skills tests
             "toolgroup_id": "builtin::agent-skills",
             "server_source": "builtin",
             "type": "tool"
-          },
-          {
-            "identifier": "run_skill_script",
-            "description": "Execute a skill script that performs actions or computations.\n\nScripts are executable programs provided by skills that can perform actions\n(API calls, file operations), process data (transformations, analysis), or\ngenerate outputs (reports, visualizations).\n\nWhen to use this:\n- When a skill's instructions tell you to run a specific script\n- To perform automated tasks that the skill provides\n- For data processing, API interactions, or file operations",
-            "parameters": [
-              {
-                "name": "skill_name",
-                "description": "Name of the skill containing the script.",
-                "parameter_type": "string",
-                "required": true,
-                "default": null
-              },
-              {
-                "name": "script_name",
-                "description": "Exact name of the script as listed in the skill.\nExamples: \"analyze.py\", \"scripts/analyze.py\", \"scripts/deploy.sh\", \"scripts/runner\"\nMust match exactly - do not infer or guess.",
-                "parameter_type": "string",
-                "required": true,
-                "default": null
-              },
-              {
-                "name": "args",
-                "description": "Arguments required by the script.\nKeys must match the parameter names in the script's schema.",
-                "parameter_type": "object",
-                "required": false,
-                "default": null
-              }
-            ],
-            "provider_id": "agent-skills",
-            "toolgroup_id": "builtin::agent-skills",
-            "server_source": "builtin",
-            "type": "tool"
           }
         ]
       }

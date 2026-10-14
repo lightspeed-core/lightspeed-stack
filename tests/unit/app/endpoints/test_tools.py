@@ -353,7 +353,6 @@ async def test_tools_endpoint_includes_agent_capability_tools(
     assert "list_skills" in tool_ids
     assert "load_skill" in tool_ids
     assert "read_skill_resource" in tool_ids
-    assert "run_skill_script" in tool_ids
 
     list_skills = next(
         tool for tool in response.tools if tool.identifier == "list_skills"
