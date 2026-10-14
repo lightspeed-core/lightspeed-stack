@@ -20,12 +20,15 @@ from dataclasses import dataclass, replace
 from typing import Optional
 
 from pydantic_ai.capabilities import AbstractCapability
-from pydantic_ai.tools import AgentDepsT
+from pydantic_ai.messages import TextContent, UserContent
+from pydantic_ai.models import ModelRequestContext
+from pydantic_ai.tools import AgentDepsT, RunContext
 from sentence_transformers import CrossEncoder
 
 from knowledge.reranker import rerank
 from knowledge.sources.base import KnowledgeSource
 from knowledge.types import KnowledgeMatch
+from knowledge.utils import append_latest_message, extract_latest_message_text
 
 
 async def search_sources(
@@ -62,3 +65,53 @@ class Knowledge(AbstractCapability[AgentDepsT]):
     `'cross-encoder/ms-marco-MiniLM-L-6-v2'`) used to rerank matches by
     relevance to the query before they're returned or injected. Loaded
     lazily on first use; requires the `sentence-transformers` package."""
+
+    async def before_model_request(
+        self,
+        ctx: RunContext[AgentDepsT],
+        request_context: ModelRequestContext,
+    ) -> ModelRequestContext:
+        """Search every auto-mode source concurrently, rank the merged matches, and inject them."""
+
+        def to_message(matches: list[KnowledgeMatch]) -> Optional[UserContent]:
+            if not matches:
+                return None
+
+            match_blocks = [
+                f'<match id="{match.id}" source="{match.source}" '
+                f'knowledge_source="{match.metadata.get("knowledge_source", "")}">\n'
+                f"{match.content.strip()}\n"
+                f"</match>"
+                for match in matches
+            ]
+
+            body = "\n\n".join(match_blocks)
+
+            return TextContent(
+                content=f"<knowledge>\n{body}\n</knowledge>",
+                metadata={
+                    "kind": "knowledge",
+                    "knowledge_scores": {match.id: match.score for match in matches},
+                    "knowledge_metadata": {
+                        match.id: match.metadata for match in matches
+                    },
+                    "knowledge_sources": {
+                        match.id: match.metadata.get("knowledge_source")
+                        for match in matches
+                    },
+                },
+            )
+
+        auto_sources = [source for source in self.sources if "auto" in source.mode]
+        if not auto_sources:
+            return request_context
+
+        prompt = extract_latest_message_text(request_context.messages)
+        if not prompt:
+            return request_context
+
+        matches = await search_sources(auto_sources, prompt, self.reranker)
+        if message := to_message(matches):
+            append_latest_message(request_context.messages, message)
+
+        return request_context
