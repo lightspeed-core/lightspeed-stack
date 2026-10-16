@@ -40,7 +40,7 @@ class KnowledgeSource(ABC):
         """Check the readiness of the knowledge source."""
 
 
-class VectorStore(ABC):
+class VectorStore(ABC):  # pylint: disable=too-few-public-methods
     """Vector store to search by embedding vector."""
 
     @abstractmethod
@@ -58,7 +58,6 @@ class VectorStore(ABC):
             threshold: The minimum similarity score to return.
 
         """
-        ...
 
 
 @dataclass
@@ -90,3 +89,7 @@ class VectorStoreKnowledgeSource(KnowledgeSource):
             limit=self.top_k,
             threshold=self.score_threshold,
         )
+
+    @abstractmethod
+    async def readiness(self) -> KnowledgeReadiness:
+        """Check the readiness of the vector store."""
