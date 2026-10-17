@@ -2,7 +2,7 @@
 
 # pylint: disable=too-few-public-methods
 
-from typing import Any
+from typing import Any, Optional
 
 import pytest
 from pytest_mock import MockerFixture
@@ -17,8 +17,10 @@ from utils.compaction import (
     is_message_item,
     partition_conversation,
     recursively_resummarize,
+    reported_usage,
     summarize_chunk,
 )
+from utils.token_counter import TokenCounter
 from utils.token_estimator import (
     DEFAULT_ENCODING_NAME,
     estimate_conversation_tokens,
@@ -595,3 +597,98 @@ class TestRecursivelyResummarize:
                 summaries=summaries,
                 encoding_name=DEFAULT_ENCODING_NAME,
             )
+
+
+# ---------------------------------------------------------------------------
+# token usage of the two LLM calls (LCORE-3910)
+# ---------------------------------------------------------------------------
+
+MODEL = "openai/gpt-4o-mini"
+CALL_USAGE = TokenCounter(input_tokens=640, output_tokens=72, llm_calls=1)
+
+
+def _make_billed_response(mocker: MockerFixture, text: str) -> Any:
+    """Build a response that yields *text* and reports ``CALL_USAGE``."""
+    response = _make_summary_response(mocker, text)
+    response.usage = mocker.Mock(input_tokens=640, output_tokens=72)
+    return response
+
+
+class TestCallUsage:
+    """What summarize_chunk and recursively_resummarize report of their call."""
+
+    def test_reported_usage(self, mocker: MockerFixture) -> None:
+        """The usage of a call is what the provider reported for it."""
+        assert reported_usage(_make_billed_response(mocker, "text")) == CALL_USAGE
+
+    @pytest.mark.parametrize(
+        "usage",
+        [None, {"input_tokens": None, "output_tokens": None}, {}],
+        ids=["no usage", "empty counts", "no counts"],
+    )
+    def test_call_without_reported_usage_is_still_a_call(
+        self, mocker: MockerFixture, usage: Optional[dict[str, Any]]
+    ) -> None:
+        """Without reported usage the counts stay at zero; the call counts."""
+        response = mocker.Mock(
+            usage=None if usage is None else mocker.Mock(spec_set=list(usage), **usage)
+        )
+        assert reported_usage(response) == TokenCounter(llm_calls=1)
+
+    @pytest.mark.asyncio
+    async def test_summarize_chunk_reports_its_call(
+        self, mocker: MockerFixture
+    ) -> None:
+        """The summarization call is reported with the usage the provider gave."""
+        client = mocker.AsyncMock()
+        client.responses.create.return_value = _make_billed_response(mocker, "text")
+        count_call = mocker.Mock()
+        await summarize_chunk(
+            client=client,
+            model=MODEL,
+            old_items=[_MessageItem("user", "hi")],
+            summarized_through_turn=1,
+            encoding_name=DEFAULT_ENCODING_NAME,
+            count_call=count_call,
+        )
+        count_call.assert_called_once_with(MODEL, CALL_USAGE)
+
+    @pytest.mark.asyncio
+    async def test_summarize_chunk_reports_a_call_that_returned_no_text(
+        self, mocker: MockerFixture
+    ) -> None:
+        """The call was made and billed, also when its answer holds no summary."""
+        client = mocker.AsyncMock()
+        client.responses.create.return_value = _make_billed_response(mocker, "")
+        count_call = mocker.Mock()
+        with pytest.raises(ValueError, match="no extractable text"):
+            await summarize_chunk(
+                client=client,
+                model=MODEL,
+                old_items=[_MessageItem("user", "hi")],
+                summarized_through_turn=1,
+                encoding_name=DEFAULT_ENCODING_NAME,
+                count_call=count_call,
+            )
+        count_call.assert_called_once_with(MODEL, CALL_USAGE)
+
+    @pytest.mark.asyncio
+    async def test_fold_reports_a_call_that_returned_no_text(
+        self, mocker: MockerFixture
+    ) -> None:
+        """The fold call was made and billed, also when its answer is empty."""
+        client = mocker.AsyncMock()
+        client.responses.create.return_value = _make_billed_response(mocker, "")
+        count_call = mocker.Mock()
+        with pytest.raises(ValueError, match="no extractable text"):
+            await recursively_resummarize(
+                client=client,
+                model=MODEL,
+                summaries=[
+                    _make_summary("a", through=1),
+                    _make_summary("b", through=2),
+                ],
+                encoding_name=DEFAULT_ENCODING_NAME,
+                count_call=count_call,
+            )
+        count_call.assert_called_once_with(MODEL, CALL_USAGE)
