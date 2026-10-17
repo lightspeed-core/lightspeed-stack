@@ -136,10 +136,10 @@ Context window sizes are configured per model in YAML:
 
 ``` yaml
 inference:
-  default_model: openai/gpt-4o-mini
+  default_model: openai/gpt-5.6-luna
   context_windows:
-    openai/gpt-4o-mini: 128000
-    openai/gpt-4o: 128000
+    openai/gpt-5.6-luna: 128000
+    openai/gpt-5.6-luna: 128000
 ```
 
 Token estimation runs on every request. Cost: ~1-5ms for a 10K token conversation, negligible compared to the LLM call (seconds).
@@ -384,7 +384,7 @@ Example config files go in `examples/`.
 | Trigger turn      | 1 LLM call (or 413) | 2 LLM calls (summarize + respond)       |
 | Post-trigger turn | 1 LLM call          | 1 LLM call (no change)                  |
 
-Compaction adds latency only on the trigger turn. In PoC testing, compaction turns took 14-40 seconds vs 9-20 seconds for normal turns (gpt-4o-mini).
+Compaction adds latency only on the trigger turn. In PoC testing, compaction turns took 14-40 seconds vs 9-20 seconds for normal turns (gpt-5.6-luna).
 
 # Open Questions for Future Work
 

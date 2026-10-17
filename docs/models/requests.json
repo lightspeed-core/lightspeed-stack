@@ -2237,7 +2237,7 @@
                         "generate_topic_summary": true,
                         "input": "Hello World!",
                         "instructions": "You are a helpful assistant",
-                        "model": "openai/gpt-4o-mini",
+                        "model": "openai/gpt-5.6-luna",
                         "store": true,
                         "stream": false
                     }

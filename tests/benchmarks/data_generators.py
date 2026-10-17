@@ -45,7 +45,7 @@ def generate_model_for_provider(provider: str) -> str:
             "gpt-5.2 pro",
             "gpt-5 mini",
             "gpt-4.1",
-            "gpt-4o",
+            "gpt-5.6-luna",
             "gpt-4-turbo",
             "gpt-4.1 mini",
             "gpt-4.1 nano",

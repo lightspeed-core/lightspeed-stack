@@ -195,12 +195,12 @@ ogx:
     baseline: byo-llm
 inference:
   default_provider: openai
-  default_model: gpt-4o-mini
+  default_model: gpt-5.6-luna
   providers:
     - type: openai
       api_key_env: OPENAI_API_KEY
       allowed_models:
-        - gpt-4o-mini
+        - gpt-5.6-luna
 ```
 
 `api_key_env` names the environment variable that holds the key. The
@@ -735,10 +735,10 @@ is consumed as the synthesis [profile](#profiles) via
                         DEBUG    Set provider/model configuration for openai/openai/gpt-3.5-turbo-instruct to 0                  utils.py:45
                         DEBUG    Set provider/model configuration for openai/openai/gpt-4 to 0                                   utils.py:45
                         DEBUG    Set provider/model configuration for openai/openai/gpt-4-turbo to 0                             utils.py:45
-                        DEBUG    Set provider/model configuration for openai/openai/gpt-4o to 0                                  utils.py:45
+                        DEBUG    Set provider/model configuration for openai/openai/gpt-5.6-luna to 0                                  utils.py:45
                         DEBUG    Set provider/model configuration for openai/openai/gpt-4o-2024-08-06 to 0                       utils.py:45
                         DEBUG    Set provider/model configuration for openai/openai/gpt-4o-audio-preview to 0                    utils.py:45
-                        DEBUG    Set provider/model configuration for openai/openai/gpt-4o-mini to 0                             utils.py:45
+                        DEBUG    Set provider/model configuration for openai/openai/gpt-5.6-luna to 0                             utils.py:45
                         DEBUG    Set provider/model configuration for openai/openai/o1 to 0                                      utils.py:45
                         DEBUG    Set provider/model configuration for openai/openai/o1-mini to 0                                 utils.py:45
                         DEBUG    Set provider/model configuration for openai/openai/o3-mini to 0                                 utils.py:45
@@ -1349,12 +1349,12 @@ Please note that actual response from the service is larger. It was stripped dow
       "model_type": "llm"
     },
     {
-      "identifier": "openai/gpt-4o-mini",
+      "identifier": "openai/gpt-5.6-luna",
       "metadata": {},
       "api_model_type": "llm",
       "provider_id": "openai",
       "type": "model",
-      "provider_resource_id": "gpt-4o-mini",
+      "provider_resource_id": "gpt-5.6-luna",
       "model_type": "llm"
     },
     {

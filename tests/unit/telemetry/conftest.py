@@ -252,9 +252,9 @@ SAMPLE_OGX_CONFIG: dict[str, Any] = {
     "registered_resources": {
         "models": [
             {
-                "model_id": "gpt-4o-mini",
+                "model_id": "gpt-5.6-luna",
                 "provider_id": "openai",
-                "provider_model_id": "gpt-4o-mini",
+                "provider_model_id": "gpt-5.6-luna",
                 "model_type": "llm",
             },
             {
@@ -354,9 +354,9 @@ def build_fully_populated_config() -> Configuration:
             ),
         ),
         inference=InferenceConfiguration.model_construct(
-            default_model="gpt-4o-mini",
+            default_model="gpt-5.6-luna",
             default_provider="openai",
-            context_windows={"openai/gpt-4o-mini": 128000},
+            context_windows={"openai/gpt-5.6-luna": 128000},
             max_infer_iters=10,
             max_tool_calls=30,
             providers=[
@@ -364,7 +364,7 @@ def build_fully_populated_config() -> Configuration:
                     type="openai",
                     id="openai-provider",
                     api_key_env=PII_PROVIDER_API_KEY_ENV,
-                    allowed_models=["gpt-4o-mini", "gpt-4o"],
+                    allowed_models=["gpt-5.6-luna", "gpt-5.6-luna"],
                     extra={},
                     skip_model_discovery=False,
                     config=OpenAIInferenceProviderConfig.model_construct(

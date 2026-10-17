@@ -451,7 +451,7 @@ async def test_get_default_model_id_auto_discovery_success(
     mocker.patch("app.endpoints.rlsapi_v1.configuration", minimal_config)
 
     mock_llm_model = make_openai_model(
-        model_id="openai/gpt-4o-mini",
+        model_id="openai/gpt-5.6-luna",
         provider_id="openai",
         model_type="llm",
     )
@@ -479,7 +479,7 @@ async def test_get_default_model_id_auto_discovery_success(
 
     model_id = await _get_default_model_id()
 
-    assert model_id == "openai/gpt-4o-mini"
+    assert model_id == "openai/gpt-5.6-luna"
 
 
 # --- Test get_rh_identity_context ---

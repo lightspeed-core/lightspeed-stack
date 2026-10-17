@@ -1197,9 +1197,9 @@ class TestModelReasoningEnabledByDefault:
         """gpt-5-chat does not use reasoning."""
         assert model_reasoning_enabled_by_default("openai/gpt-5-chat-latest") is False
 
-    def test_gpt_4o_mini(self) -> None:
-        """gpt-4o-mini does not use reasoning."""
-        assert model_reasoning_enabled_by_default("openai/gpt-4o-mini") is False
+    def test_gpt_5_6_luna_default_on(self) -> None:
+        """gpt-5.6-luna reasons by default when reasoning is omitted."""
+        assert model_reasoning_enabled_by_default("openai/gpt-5.6-luna") is True
 
 
 class TestApplyReasoningForResolvedTools:
@@ -1207,7 +1207,7 @@ class TestApplyReasoningForResolvedTools:
 
     _DEFAULT_ON_MODEL = "openai/gpt-5.6-terra"
     _OPT_IN_MODEL = "openai/gpt-5.4"
-    _NON_REASONING_MODEL = "openai/gpt-4o-mini"
+    _NON_REASONING_MODEL = "openai/gpt-5-chat-latest"
 
     @staticmethod
     def _sample_tools() -> list[InputTool]:
@@ -2436,7 +2436,7 @@ class TestPrepareResponsesParams:
         mock_client.openai.list = mocker.AsyncMock(
             return_value=make_openai_models_list_response(
                 make_openai_model(
-                    model_id="openai/gpt-4o-mini",
+                    model_id="openai/gpt-5-chat-latest",
                     provider_id="openai",
                     model_type="llm",
                 )

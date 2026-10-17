@@ -311,7 +311,7 @@ See [OKP Guide](okp_guide.md) for detailed setup instructions.
 
 #### Other Configuration
 
-- `E2E_OPENAI_MODEL`: OpenAI model for E2E tests (default: `gpt-4o-mini`)
+- `E2E_OPENAI_MODEL`: OpenAI model for E2E tests (default: `gpt-5.6-luna`)
 - `OGX_LOGGING`: Enable debug logging in OGX
 - `FAISS_VECTOR_STORE_ID`: FAISS vector store identifier
 - `LITELLM_DROP_PARAMS`: Drop unsupported params in LiteLLM (default: `true`)

@@ -243,11 +243,11 @@ __Note__: Support for individual models is dependent on the specific inference p
 
 | Provider       | Model                                                                        | Tool Calling  | provider_type    | Example                                                                    |
 |----------------|------------------------------------------------------------------------------|---------------|------------------|----------------------------------------------------------------------------|
-| OpenAI         | gpt-5, gpt-4o, gpt-4-turbo, gpt-4.1, o1, o3, o4                               | Yes           | remote::openai   | [1](examples/openai-faiss-run.yaml) [2](examples/openai-pgvector-run.yaml) |
+| OpenAI         | gpt-5, gpt-5.6-luna, gpt-4-turbo, gpt-4.1, o1, o3, o4                               | Yes           | remote::openai   | [1](examples/openai-faiss-run.yaml) [2](examples/openai-pgvector-run.yaml) |
 | OpenAI         | gpt-3.5-turbo, gpt-4                                                         | No            | remote::openai   |                                                                            |
 | RHOAI (vLLM)   | meta-llama/Llama-3.2-1B-Instruct                                             | Yes           | remote::vllm     | [1](tests/e2e-prow/rhoai/configs/run.yaml)                                 |
 | RHEL AI (RHAIIS/vLLM) | meta-llama/Llama-3.1-8B-Instruct                                      | Yes           | remote::vllm     | [1](tests/e2e/configs/run-rhelai.yaml) [2](tests/e2e/configs/run-rhaiis.yaml) |
-| Azure          | gpt-5, gpt-5-mini, gpt-5-nano, gpt-4o-mini, o3-mini, o4-mini, o1             | Yes           | remote::azure    | [1](examples/azure-run.yaml)                                               |
+| Azure          | gpt-5, gpt-5-mini, gpt-5-nano, gpt-5.6-luna, o3-mini, o4-mini, o1             | Yes           | remote::azure    | [1](examples/azure-run.yaml)                                               |
 | Azure          | gpt-5-chat, gpt-4.1, gpt-4.1-mini, gpt-4.1-nano,  o1-mini                    | No or limited | remote::azure    |                                                                            |
 | VertexAI       | google/gemini-2.0-flash, google/gemini-2.5-flash, google/gemini-2.5-pro [^1] | Yes           | remote::vertexai | [1](examples/vertexai-run.yaml)                                            |
 | WatsonX        | meta-llama/llama-3-3-70b-instruct                                            | Yes           | remote::watsonx  | [1](examples/watsonx-run.yaml)                                             |
@@ -1256,12 +1256,12 @@ will be returned.
       "model_type": "embedding"
     },
     {
-      "identifier": "openai/gpt-4o-mini",
+      "identifier": "openai/gpt-5.6-luna",
       "metadata": {},
       "api_model_type": "llm",
       "provider_id": "openai",
       "type": "model",
-      "provider_resource_id": "gpt-4o-mini",
+      "provider_resource_id": "gpt-5.6-luna",
       "model_type": "llm"
     },
     {

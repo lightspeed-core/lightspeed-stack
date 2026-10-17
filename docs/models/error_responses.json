@@ -372,7 +372,7 @@
                     },
                     {
                         "detail": {
-                            "cause": "Model with ID gpt-4o-mini does not exist",
+                            "cause": "Model with ID gpt-5.6-luna does not exist",
                             "response": "Model not found"
                         },
                         "label": "model"
@@ -443,7 +443,7 @@
                 "examples": [
                     {
                         "detail": {
-                            "cause": "The input exceeds the context window size of model 'gpt-4o-mini'.",
+                            "cause": "The input exceeds the context window size of model 'gpt-5.6-luna'.",
                             "response": "Context window exceeded"
                         },
                         "label": "context window exceeded"

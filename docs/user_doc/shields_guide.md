@@ -53,7 +53,7 @@ shields:
   - name: topic-guard
     provider_id: question_validity
     config:
-      model_id: openai/gpt-4o-mini
+      model_id: openai/gpt-5.6-luna
       # optional:
       # model_prompt: "..."
       # invalid_question_response: "..."
@@ -82,7 +82,7 @@ for a complete example.
 
 | Config field | Required | Description |
 |--------------|----------|-------------|
-| `model_id` | Yes | Model used for the validity check (for example `openai/gpt-4o-mini`) |
+| `model_id` | Yes | Model used for the validity check (for example `openai/gpt-5.6-luna`) |
 | `model_prompt` | No | Classifier prompt (has a built-in default) |
 | `invalid_question_response` | No | Reply returned when the question is rejected |
 

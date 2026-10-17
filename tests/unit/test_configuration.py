@@ -4180,7 +4180,7 @@ def test_native_override_env_refs_not_resolved(
     OGX's own raw schema.
     """
     monkeypatch.setenv("LCORE_TEST_SECRET", "supersecret")
-    monkeypatch.setenv("LCORE_TEST_MODEL", "gpt-4o-mini")
+    monkeypatch.setenv("LCORE_TEST_MODEL", "gpt-5.6-luna")
     config_dict = {
         "inference": {"default_model": "${env.LCORE_TEST_MODEL}"},
         "ogx": {
@@ -4206,7 +4206,7 @@ def test_native_override_env_refs_not_resolved(
     assert override_api_key == "${env.LCORE_TEST_SECRET}"
     assert "supersecret" not in str(resolved["ogx"])
     # everything outside native_override still resolves
-    assert resolved["inference"]["default_model"] == "gpt-4o-mini"
+    assert resolved["inference"]["default_model"] == "gpt-5.6-luna"
 
 
 def test_replace_env_vars_preserves_native_override_under_deprecated_llama_stack_key(
@@ -4241,7 +4241,7 @@ def test_replace_env_vars_without_native_override_resolves_all(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """With no native_override, the helper resolves env refs like the plain call."""
-    monkeypatch.setenv("LCORE_TEST_MODEL", "gpt-4o-mini")
+    monkeypatch.setenv("LCORE_TEST_MODEL", "gpt-5.6-luna")
     config_dict = {"inference": {"default_model": "${env.LCORE_TEST_MODEL}"}}
     resolved = replace_env_vars_preserving_native_override(config_dict)
-    assert resolved["inference"]["default_model"] == "gpt-4o-mini"
+    assert resolved["inference"]["default_model"] == "gpt-5.6-luna"

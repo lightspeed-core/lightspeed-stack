@@ -284,7 +284,7 @@ models:
 - model_id: my-model 
   provider_id: openai
   model_type: llm
-  provider_model_id: <model-name> # e.g. gpt-4o-mini
+  provider_model_id: <model-name> # e.g. gpt-5.6-luna
 
 providers:
 [...]

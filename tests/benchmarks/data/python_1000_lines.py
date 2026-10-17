@@ -922,7 +922,7 @@ print_rag_response(response)
 # - tisk odpovědi
 
 
-llm = ChatOpenAI(model_name="gpt-4o-mini")
+llm = ChatOpenAI(model_name="gpt-5.6-luna")
 response = llm.invoke("Say Hi")
 print(response)
 
@@ -933,7 +933,7 @@ print(response)
 # - tisk odpovědi v naformátované podobě
 
 
-llm = ChatOpenAI(model_name="gpt-4o-mini")
+llm = ChatOpenAI(model_name="gpt-5.6-luna")
 response = llm.invoke("Say Hi")
 print(response)
 
@@ -944,7 +944,7 @@ print(response)
 # - tisk odpovědi
 
 
-llm = ChatOpenAI(model_name="gpt-4o-mini", temperature=0.7)
+llm = ChatOpenAI(model_name="gpt-5.6-luna", temperature=0.7)
 response = llm.invoke("Say Hi")
 print(response)
 
@@ -957,7 +957,7 @@ print(response)
 
 prompt = PromptTemplate.from_template("How to say 'hi' in {language} language?")
 
-llm = ChatOpenAI(model_name="gpt-4o-mini")
+llm = ChatOpenAI(model_name="gpt-5.6-luna")
 chain = LLMChain(prompt=prompt, llm=llm)
 
 response = chain.invoke("Czech")
@@ -976,7 +976,7 @@ prompt = PromptTemplate(
 )
 
 
-llm = ChatOpenAI(model_name="gpt-4o-mini")
+llm = ChatOpenAI(model_name="gpt-5.6-luna")
 chain = LLMChain(prompt=prompt, llm=llm)
 
 response = chain.invoke("Czech")
@@ -990,7 +990,7 @@ print(response)
 
 prompt = PromptTemplate.from_template("How to say 'hi' in {language} language?")
 
-llm = ChatOpenAI(model_name="gpt-4o-mini")
+llm = ChatOpenAI(model_name="gpt-5.6-luna")
 
 chain = prompt | llm | StrOutputParser()
 

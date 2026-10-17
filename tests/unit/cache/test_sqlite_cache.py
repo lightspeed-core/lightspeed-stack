@@ -630,14 +630,14 @@ summary_1 = ConversationSummary(
     summarized_through_turn=8,
     token_count=14,
     created_at="2025-10-03T09:31:29Z",
-    model_used="openai/gpt-4o-mini",
+    model_used="openai/gpt-5.6-luna",
 )
 summary_2 = ConversationSummary(
     summary_text="User then moved on to Helm charts and Istio routing.",
     summarized_through_turn=18,
     token_count=12,
     created_at="2025-10-03T10:05:01Z",
-    model_used="openai/gpt-4o-mini",
+    model_used="openai/gpt-5.6-luna",
 )
 # A fold collapsing summary_1 + summary_2; created after both (R3, LCORE-1572).
 folded_summary = ConversationSummary(
@@ -645,7 +645,7 @@ folded_summary = ConversationSummary(
     summarized_through_turn=18,
     token_count=11,
     created_at="2025-10-03T11:00:00Z",
-    model_used="openai/gpt-4o-mini",
+    model_used="openai/gpt-5.6-luna",
 )
 # A chunk produced after a fold; created later still, so it sorts after the fold.
 summary_after_fold = ConversationSummary(
@@ -653,7 +653,7 @@ summary_after_fold = ConversationSummary(
     summarized_through_turn=26,
     token_count=10,
     created_at="2025-10-03T11:42:00Z",
-    model_used="openai/gpt-4o-mini",
+    model_used="openai/gpt-5.6-luna",
 )
 
 

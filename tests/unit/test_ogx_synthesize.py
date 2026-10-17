@@ -173,7 +173,7 @@ def test_load_default_baseline_openai_is_conditional_on_api_key() -> None:
             "provider_type": "remote::openai",
             "config": {
                 "api_key": OPENAI_CONDITIONAL_API_KEY,
-                "allowed_models": ["${env.E2E_OPENAI_MODEL:=gpt-4o-mini}"],
+                "allowed_models": ["${env.E2E_OPENAI_MODEL:=gpt-5.6-luna}"],
             },
         }
     ]
@@ -273,7 +273,7 @@ def test_apply_high_level_inference_maps_type_and_emits_env_ref() -> None:
             {
                 "type": "openai",
                 "api_key_env": "OPENAI_API_KEY",
-                "allowed_models": ["gpt-4o-mini"],
+                "allowed_models": ["gpt-5.6-luna"],
                 "extra": {},
             }
         ]
@@ -283,7 +283,7 @@ def test_apply_high_level_inference_maps_type_and_emits_env_ref() -> None:
     assert entry["provider_id"] == "openai"
     assert entry["provider_type"] == "remote::openai"
     assert entry["config"]["api_key"] == "${env.OPENAI_API_KEY}"
-    assert entry["config"]["allowed_models"] == ["gpt-4o-mini"]
+    assert entry["config"]["allowed_models"] == ["gpt-5.6-luna"]
 
 
 def test_apply_high_level_inference_hyphenates_provider_id() -> None:
@@ -552,7 +552,7 @@ def test_apply_high_level_inference_registers_llm_model() -> None:
             {
                 "type": "openai",
                 "api_key_env": "OPENAI_API_KEY",
-                "allowed_models": ["gpt-4o-mini"],
+                "allowed_models": ["gpt-5.6-luna"],
             }
         ]
     }
@@ -560,10 +560,10 @@ def test_apply_high_level_inference_registers_llm_model() -> None:
     models = ls_config["registered_resources"]["models"]
     assert models == [
         {
-            "model_id": "gpt-4o-mini",
+            "model_id": "gpt-5.6-luna",
             "model_type": "llm",
             "provider_id": "openai",
-            "provider_model_id": "gpt-4o-mini",
+            "provider_model_id": "gpt-5.6-luna",
         }
     ]
 
@@ -618,14 +618,14 @@ def test_apply_high_level_inference_same_model_distinct_providers() -> None:
     ls_config: dict[str, Any] = {"providers": {"inference": []}}
     inference = {
         "providers": [
-            {"type": "openai", "id": "openai", "allowed_models": ["gpt-4o"]},
-            {"type": "azure", "id": "azure", "allowed_models": ["gpt-4o"]},
+            {"type": "openai", "id": "openai", "allowed_models": ["gpt-5.6-luna"]},
+            {"type": "azure", "id": "azure", "allowed_models": ["gpt-5.6-luna"]},
         ]
     }
     apply_high_level_inference(ls_config, inference)
     models = ls_config["registered_resources"]["models"]
     by_provider = {(m["provider_id"], m["model_id"]) for m in models}
-    assert by_provider == {("openai", "gpt-4o"), ("azure", "gpt-4o")}
+    assert by_provider == {("openai", "gpt-5.6-luna"), ("azure", "gpt-5.6-luna")}
 
 
 def test_apply_high_level_inference_skips_already_registered_model() -> None:
@@ -635,15 +635,15 @@ def test_apply_high_level_inference_skips_already_registered_model() -> None:
         "registered_resources": {
             "models": [
                 {
-                    "model_id": "gpt-4o-mini",
+                    "model_id": "gpt-5.6-luna",
                     "model_type": "llm",
                     "provider_id": "openai",
-                    "provider_model_id": "gpt-4o-mini",
+                    "provider_model_id": "gpt-5.6-luna",
                 }
             ]
         },
     }
-    inference = {"providers": [{"type": "openai", "allowed_models": ["gpt-4o-mini"]}]}
+    inference = {"providers": [{"type": "openai", "allowed_models": ["gpt-5.6-luna"]}]}
     apply_high_level_inference(ls_config, inference)
     models = ls_config["registered_resources"]["models"]
     assert len(models) == 1
@@ -657,17 +657,17 @@ def test_apply_high_level_inference_registers_model_for_new_provider() -> None:
         "registered_resources": {
             "models": [
                 {
-                    "model_id": "gpt-4o-mini",
+                    "model_id": "gpt-5.6-luna",
                     "model_type": "llm",
                     "provider_id": "other-provider",
-                    "provider_model_id": "gpt-4o-mini",
+                    "provider_model_id": "gpt-5.6-luna",
                 }
             ]
         },
     }
     inference = {
         "providers": [
-            {"type": "openai", "id": "openai", "allowed_models": ["gpt-4o-mini"]}
+            {"type": "openai", "id": "openai", "allowed_models": ["gpt-5.6-luna"]}
         ]
     }
     apply_high_level_inference(ls_config, inference)
@@ -675,7 +675,7 @@ def test_apply_high_level_inference_registers_model_for_new_provider() -> None:
         (m["provider_id"], m["model_id"])
         for m in ls_config["registered_resources"]["models"]
     }
-    assert keys == {("other-provider", "gpt-4o-mini"), ("openai", "gpt-4o-mini")}
+    assert keys == {("other-provider", "gpt-5.6-luna"), ("openai", "gpt-5.6-luna")}
 
 
 def test_inference_config_rejects_duplicate_explicit_provider_ids() -> None:
@@ -1165,7 +1165,7 @@ _LEGACY_RUN_YAML: dict[str, Any] = {
                 "provider_type": "remote::openai",
                 "config": {
                     "api_key": "${env.OPENAI_API_KEY}",
-                    "allowed_models": ["gpt-4o-mini"],
+                    "allowed_models": ["gpt-5.6-luna"],
                 },
             },
             {

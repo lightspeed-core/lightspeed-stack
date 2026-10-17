@@ -76,9 +76,9 @@ Compaction is disabled by default. To enable it, add a `compaction` section to y
 ```yaml
 inference:
   default_provider: openai
-  default_model: gpt-4o-mini
+  default_model: gpt-5.6-luna
   context_windows:
-    openai/gpt-4o-mini: 128000
+    openai/gpt-5.6-luna: 128000
 
 compaction:
   enabled: true
@@ -89,10 +89,10 @@ compaction:
 ```yaml
 inference:
   default_provider: openai
-  default_model: gpt-4o-mini
+  default_model: gpt-5.6-luna
   context_windows:
-    openai/gpt-4o-mini: 128000
-    openai/gpt-4o: 128000
+    openai/gpt-5.6-luna: 128000
+    openai/gpt-5.6-luna: 128000
 
 compaction:
   enabled: true
@@ -114,7 +114,7 @@ compaction:
 
 ### Prerequisites
 
-- **Context windows must be registered.** Add entries to `inference.context_windows` mapping each fully-qualified model identifier (e.g., `"openai/gpt-4o-mini"`) to its context window size in tokens. Models absent from this map have no registered window and compaction will not trigger for them.
+- **Context windows must be registered.** Add entries to `inference.context_windows` mapping each fully-qualified model identifier (e.g., `"openai/gpt-5.6-luna"`) to its context window size in tokens. Models absent from this map have no registered window and compaction will not trigger for them.
 - **A conversation cache is recommended.** While compaction works without a cache (using marker-only mode), enabling a conversation cache (PostgreSQL, SQLite, or in-memory) improves performance by caching summaries across requests and enabling recursive fold-up of accumulated summaries.
 
 ## Behavior details

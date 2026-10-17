@@ -97,10 +97,10 @@ storage:
       backend: sql_default
 registered_resources:
   models:
-  - model_id: gpt-4o-mini
+  - model_id: gpt-5.6-luna
     provider_id: azure
     model_type: llm
-    provider_model_id: gpt-4o-mini
+    provider_model_id: gpt-5.6-luna
   - model_id: all-mpnet-base-v2
     model_type: embedding
     provider_id: sentence-transformers

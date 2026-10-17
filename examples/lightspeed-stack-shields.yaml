@@ -24,7 +24,7 @@ shields:
   - name: topic-guard
     provider_id: question_validity
     config:
-      model_id: openai/gpt-4o-mini
+      model_id: openai/gpt-5.6-luna
       # Optional; omit to use built-in defaults. Must reference ${message}
       # (string.Template substitution) or the classifier never sees the
       # question it's meant to classify.

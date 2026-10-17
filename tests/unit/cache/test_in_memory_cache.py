@@ -21,7 +21,7 @@ summary_1 = ConversationSummary(
     summarized_through_turn=8,
     token_count=9,
     created_at="2025-10-03T09:31:29Z",
-    model_used="openai/gpt-4o-mini",
+    model_used="openai/gpt-5.6-luna",
 )
 
 

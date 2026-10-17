@@ -20,7 +20,7 @@ authentication:
   module: "noop"
 inference:
   default_provider: openai
-  default_model: gpt-4o-mini
+  default_model: gpt-5.6-luna
   # Compaction e2e (LCORE-1673): a deliberately small window for every
   # model the e2e workflows run against, so the third query of the
   # compaction scenarios crosses the trigger threshold. The real windows
@@ -29,8 +29,8 @@ inference:
   # var, and context_windows keys are not env-substituted, so they are
   # not listed and skip the token-based trigger.
   context_windows:
-    openai/gpt-4o-mini: 2000
-    azure/gpt-4o-mini: 2000
+    openai/gpt-5.6-luna: 2000
+    azure/gpt-5.6-luna: 2000
     google-vertex/publishers/google/models/gemini-2.5-flash: 2000
     watsonx/meta-llama/llama-3-3-70b-instruct: 2000
     aws-bedrock/deepseek.v3-v1:0: 2000

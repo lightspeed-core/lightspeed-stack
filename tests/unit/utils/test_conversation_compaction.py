@@ -20,7 +20,7 @@ from models.compaction import ConversationSummary
 from models.config import CompactionConfiguration, InferenceConfiguration
 from utils import conversation_compaction as cc
 
-MODEL = "openai/gpt-4o-mini"
+MODEL = "openai/gpt-5.6-luna"
 CONV = "conv_abc123"
 
 

@@ -258,12 +258,12 @@ Top-level high-level sections plus a sub-section under the existing
 # with a `providers:` list (Decision S5). Backend-agnostic: it stays at the
 # root, not under `ogx`, so it survives a future backend change.
 inference:
-  default_model: gpt-4o-mini       # existing — query-time default routing
+  default_model: gpt-5.6-luna       # existing — query-time default routing
   default_provider: openai         # existing — query-time default routing
   providers:                       # NEW — high-level provider setup (synthesis input)
     - type: openai                 # mapped to remote::openai
       api_key_env: OPENAI_API_KEY
-      allowed_models: [gpt-4o-mini]
+      allowed_models: [gpt-5.6-luna]
     - type: sentence_transformers
 
 ogx:
@@ -591,7 +591,7 @@ providers:
       provider_type: remote::openai
       config:
         api_key: ${env.OPENAI_API_KEY}
-        allowed_models: ["${env.E2E_OPENAI_MODEL:=gpt-4o-mini}"]
+        allowed_models: ["${env.E2E_OPENAI_MODEL:=gpt-5.6-luna}"]
 # ... more ...
 ```
 
@@ -632,7 +632,7 @@ ogx:
             provider_type: remote::openai
             config:
               api_key: ${env.OPENAI_API_KEY}
-              allowed_models: ["${env.E2E_OPENAI_MODEL:=gpt-4o-mini}"]
+              allowed_models: ["${env.E2E_OPENAI_MODEL:=gpt-5.6-luna}"]
       # ... rest of run.yaml content under native_override ...
 # ... rest of lightspeed-stack.yaml content ...
 ```
@@ -655,7 +655,7 @@ providers:
       provider_type: remote::openai
       config:
         api_key: ${env.OPENAI_API_KEY}
-        allowed_models: ["${env.OPENAI_MODEL:=gpt-4o-mini}"]
+        allowed_models: ["${env.OPENAI_MODEL:=gpt-5.6-luna}"]
     - provider_id: sentence-transformers
       provider_type: inline::sentence-transformers
 # ... the rest is the same shape as a working run.yaml ...
