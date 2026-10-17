@@ -85,6 +85,10 @@ def _patch_query_success(mocker: MockerFixture) -> None:
     mock_params.model = "provider1/model1"
     mock_params.conversation = "conv_123"
     mock_params.tools = None
+    mock_params.input = "What is OpenShift?"
+    mock_params.store = True
+    mock_params.previous_response_id = None
+    mock_params.omit_conversation = False
     mock_params.model_dump.return_value = {"input": "test", "model": "provider1/model1"}
     mocker.patch(
         f"{MODULE}.prepare_responses_params",

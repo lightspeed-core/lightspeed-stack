@@ -58,6 +58,8 @@ VALID_CONV_ID = "conv_e6afd7aaa97b49ce8f4f96a801b07893d9cb784d72e53e3c"
 VALID_CONV_ID_NORMALIZED = "e6afd7aaa97b49ce8f4f96a801b07893d9cb784d72e53e3c"
 MODULE = "app.endpoints.responses"
 ENDPOINTS_MODULE = "utils.endpoints"
+# The one function that appends a turn to a conversation, where its owner calls it.
+TURN_WRITER = "utils.pending_turn.append_turn_items_to_conversation"
 UTILS_RESPONSES_MODULE = "utils.responses"
 MODEL = "google-vertex/publishers/google/models/gemini-2.5-flash"
 SERVER_INSTRUCTIONS = "Server instructions"
@@ -646,7 +648,7 @@ class TestResponsesEndpointHandler:
         mock_moderation.message = "Blocked"
         mock_moderation.moderation_id = "resp_blocked_123"
         mock_append = mocker.patch(
-            f"{MODULE}.append_turn_items_to_conversation",
+            TURN_WRITER,
             new=mocker.AsyncMock(),
         )
         mocker.patch(f"{MODULE}.store_query_results")
@@ -659,10 +661,10 @@ class TestResponsesEndpointHandler:
         )
 
         mock_append.assert_awaited_once_with(
-            client=mock_client,
-            conversation_id=VALID_CONV_ID,
-            user_input=responses_request.input,
-            llm_output=[mock_moderation.refusal_response],
+            mock_client,
+            VALID_CONV_ID,
+            responses_request.input,
+            [mock_moderation.refusal_response],
         )
         assert isinstance(response, ResponsesResponse)
         payload = response.model_dump()
@@ -786,7 +788,7 @@ class TestHandleNonStreamingResponse:
 
         _patch_handle_non_streaming_common(mocker, minimal_config)
         mocker.patch(
-            f"{MODULE}.append_turn_items_to_conversation",
+            TURN_WRITER,
             new=mocker.AsyncMock(),
         )
         mock_client.items.create = mocker.AsyncMock()
@@ -972,7 +974,7 @@ class TestHandleNonStreamingResponse:
             return_value=VALID_CONV_ID_NORMALIZED,
         )
         mock_append = mocker.patch(
-            f"{MODULE}.append_turn_items_to_conversation",
+            TURN_WRITER,
             new=mocker.AsyncMock(),
         )
 
@@ -1547,7 +1549,7 @@ class TestHandleStreamingResponse:
             return_value=VALID_CONV_ID_NORMALIZED,
         )
         mock_append = mocker.patch(
-            f"{MODULE}.append_turn_items_to_conversation",
+            TURN_WRITER,
             new=mocker.AsyncMock(),
         )
         mock_holder = mocker.Mock()
@@ -2830,7 +2832,7 @@ async def test_append_previous_response_turn_compacted(mocker: MockerFixture) ->
     rewritten explicit input on api_params.
     """
     append = mocker.patch(
-        "app.endpoints.responses.append_turn_items_to_conversation",
+        TURN_WRITER,
         new=mocker.AsyncMock(),
     )
     api_params = mocker.Mock(
@@ -2838,6 +2840,7 @@ async def test_append_previous_response_turn_compacted(mocker: MockerFixture) ->
         conversation="conv_x",
         previous_response_id=None,
         input=["rewritten explicit input"],
+        omit_conversation=True,
     )
     context = mocker.Mock(
         client=mocker.AsyncMock(),
@@ -2857,11 +2860,14 @@ async def test_append_previous_response_turn_not_stored_when_store_false(
 ) -> None:
     """No append happens when store is disabled, even in compacted mode."""
     append = mocker.patch(
-        "app.endpoints.responses.append_turn_items_to_conversation",
+        TURN_WRITER,
         new=mocker.AsyncMock(),
     )
     api_params = mocker.Mock(
-        store=False, conversation="conv_x", previous_response_id=None
+        store=False,
+        conversation="conv_x",
+        previous_response_id=None,
+        omit_conversation=True,
     )
     context = mocker.Mock(client=mocker.AsyncMock(), compacted_original_input="q")
 
@@ -2879,12 +2885,15 @@ async def test_persist_blocked_response_turn_compacted(mocker: MockerFixture) ->
     against the original user input carried on the context (LCORE-1572).
     """
     append = mocker.patch(
-        "app.endpoints.responses.append_turn_items_to_conversation",
+        TURN_WRITER,
         new=mocker.AsyncMock(),
     )
     refusal = mocker.Mock()
     api_params = mocker.Mock(
-        store=True, conversation="conv_x", input=["rewritten explicit input"]
+        store=True,
+        conversation="conv_x",
+        input=["rewritten explicit input"],
+        omit_conversation=True,
     )
     context = mocker.Mock(
         client=mocker.AsyncMock(),
@@ -2895,8 +2904,5 @@ async def test_persist_blocked_response_turn_compacted(mocker: MockerFixture) ->
     await _persist_blocked_response_turn(api_params, context)
 
     append.assert_awaited_once_with(
-        client=context.client,
-        conversation_id="conv_x",
-        user_input="the original query",
-        llm_output=[refusal],
+        context.client, "conv_x", "the original query", [refusal]
     )

@@ -34,6 +34,7 @@ from utils.agents.query import (
     get_agent_finish_reason,
     retrieve_agent_response,
 )
+from utils.pending_turn import PendingTurn
 from utils.token_counter import TokenCounter
 
 
@@ -351,6 +352,20 @@ class TestBuildTurnSummaryFromAgentRun:
         assert exc_info.value.status_code == 500
 
 
+def client_capturing_writes(mocker: MockerFixture) -> tuple[Any, list[Any]]:
+    """Return a client whose conversation writes are recorded."""
+    stored: list[Any] = []
+
+    async def _create(
+        _conversation_id: str, *, add_items_request: Any = None, **_kwargs: Any
+    ) -> None:
+        stored.extend(getattr(add_items_request, "items", add_items_request) or [])
+
+    client = mocker.AsyncMock()
+    client.items.create = _create
+    return client, stored
+
+
 class TestRetrieveAgentResponse:
     """Tests for retrieve_agent_response."""
 
@@ -406,15 +421,46 @@ class TestRetrieveAgentResponse:
         mock_agent = mocker.AsyncMock()
         mock_agent.run = mocker.AsyncMock(return_value=run_result)
         mocker.patch("utils.agents.query.build_agent", return_value=mock_agent)
+        client = mocker.AsyncMock()
 
         summary = await retrieve_agent_response(
-            client=mocker.AsyncMock(),
+            client=client,
             responses_params=params,
             endpoint_path=ENDPOINT_PATH_QUERY,
+            turn=PendingTurn.for_request(client, params, "new question"),
         )
 
         mock_agent.run.assert_awaited_once_with("new question")
         assert summary.llm_response == "Answer"
+
+    @pytest.mark.asyncio
+    async def test_compacted_request_without_its_turn_is_refused(
+        self,
+        mocker: MockerFixture,
+        make_responses_params: Callable[..., ResponsesApiParams],
+    ) -> None:
+        """Test a compacted request cannot run without the owner of its turn.
+
+        This is how a caller that lost the hand-over looks (LCORE-3883): the
+        parameters are compacted, the input as it arrived is gone. The turn
+        could not be stored, so the request is refused before the model call.
+        """
+        params = make_responses_params().model_copy(
+            update={
+                "input": [OpenAIResponseMessage(role="user", content="q")],
+                "omit_conversation": True,
+            }
+        )
+        mock_build_agent = mocker.patch("utils.agents.query.build_agent")
+
+        with pytest.raises(ValueError, match="original input"):
+            await retrieve_agent_response(
+                client=mocker.AsyncMock(),
+                responses_params=params,
+                endpoint_path=ENDPOINT_PATH_QUERY,
+            )
+
+        mock_build_agent.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_inference_error_is_logged(
@@ -594,21 +640,6 @@ class TestQueryCompactedTurnPersistence:
     arguments of a mocked helper, so a break in the write path is caught.
     """
 
-    @staticmethod
-    def _client_capturing_writes(mocker: MockerFixture) -> tuple[Any, list[Any]]:
-        """Return a client whose conversation writes are recorded."""
-        stored: list[Any] = []
-
-        async def _create(
-            conversation_id: str, *, add_items_request: Any = None, **_: Any
-        ) -> None:
-            _ = conversation_id
-            stored.extend(getattr(add_items_request, "items", add_items_request) or [])
-
-        client = mocker.AsyncMock()
-        client.items.create = _create
-        return client, stored
-
     @pytest.mark.asyncio
     async def test_compacted_success_appends_turn_with_captured_output(
         self,
@@ -634,13 +665,13 @@ class TestQueryCompactedTurnPersistence:
             OpenAIResponseMessage(role="assistant", content="Answer")
         ]
         mocker.patch("utils.agents.query.build_agent", return_value=mock_agent)
-        client, stored = self._client_capturing_writes(mocker)
+        client, stored = client_capturing_writes(mocker)
 
         await retrieve_agent_response(
             client=client,
             responses_params=params,
             endpoint_path=ENDPOINT_PATH_QUERY,
-            original_input="new question",
+            turn=PendingTurn.for_request(client, params, "new question"),
         )
 
         texts = [str(item) for item in stored]
@@ -665,7 +696,7 @@ class TestQueryCompactedTurnPersistence:
             OpenAIResponseMessage(role="assistant", content="Answer")
         ]
         mocker.patch("utils.agents.query.build_agent", return_value=mock_agent)
-        client, stored = self._client_capturing_writes(mocker)
+        client, stored = client_capturing_writes(mocker)
 
         await retrieve_agent_response(
             client=client,

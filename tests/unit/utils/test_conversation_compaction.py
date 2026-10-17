@@ -404,17 +404,6 @@ async def test_streaming_emits_event_before_summarizing(mocker: MockerFixture) -
     assert yielded[-1].compacted is True
 
 
-@pytest.mark.asyncio
-async def test_store_compacted_turn_appends(mocker: MockerFixture) -> None:
-    """store_compacted_turn delegates to append_turn_items_to_conversation."""
-    append = mocker.patch.object(
-        cc, "append_turn_items_to_conversation", mocker.AsyncMock()
-    )
-    client = mocker.AsyncMock()
-    await cc.store_compacted_turn(client, CONV, "the query", ["out"])
-    append.assert_awaited_once_with(client, CONV, "the query", ["out"])
-
-
 # --- needs_compaction_path (the tight gate protecting non-compacting requests) ---
 
 
