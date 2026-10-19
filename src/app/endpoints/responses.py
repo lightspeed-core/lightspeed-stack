@@ -33,7 +33,11 @@ from authorization.azure_token_manager import AzureEntraIDManager
 from authorization.middleware import authorize
 from client.ogx import AsyncOgxClientHolder
 from configuration import configuration
-from constants import ENDPOINT_PATH_RESPONSES, SUBSTITUTED_INSTRUCTIONS_PLACEHOLDER
+from constants import (
+    ENDPOINT_PATH_RESPONSES,
+    RESPONSES_REQUEST_MAX_SIZE,
+    SUBSTITUTED_INSTRUCTIONS_PLACEHOLDER,
+)
 from log import get_logger
 from metrics import recording
 from models.api.requests import ResponsesRequest
@@ -1476,6 +1480,13 @@ async def handle_non_streaming_response(
             tools,
             configuration.rag_id_mapping,
         )
+
+    # retrieve max size of response request
+    responses_request_max_size = RESPONSES_REQUEST_MAX_SIZE
+    customization = configuration.configuration.customization
+    if customization is not None:
+        responses_request_max_size = customization.responses_request_max_size
+
     return ResponsesResponse.model_validate(
         {
             **response_dict,
@@ -1483,5 +1494,6 @@ async def handle_non_streaming_response(
             "conversation": normalize_conversation_id(api_params.conversation),
             "completed_at": int(completed_at.timestamp()),
             "output_text": output_text,
-        }
+        },
+        context={"responses_request_max_size": responses_request_max_size},
     )
