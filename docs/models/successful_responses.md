@@ -604,6 +604,7 @@ Service customization.
 | agent_card_path | string |  |
 | agent_card_config | object |  |
 | custom_profile |  |  |
+| responses_request_max_size | integer | Maximum character length for the serialized /v1/response responses request body |
 
 
 ## DatabaseConfiguration

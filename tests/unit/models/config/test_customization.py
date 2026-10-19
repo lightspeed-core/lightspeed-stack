@@ -6,9 +6,8 @@ import pytest
 from pydantic import ValidationError
 from pytest_subtests import SubTests
 
-from models.config import Customization
-
 from constants import RESPONSES_REQUEST_MAX_SIZE
+from models.config import Customization
 
 
 def test_service_customization(subtests: SubTests) -> None:
@@ -68,7 +67,7 @@ def test_service_customization_max_response_request_size(subtests: SubTests) -> 
         assert c.responses_request_max_size == RESPONSES_REQUEST_MAX_SIZE
 
     with subtests.test(msg="Max response request size is specified"):
-        c = Customization(responses_request_max_size = 42)
+        c = Customization(responses_request_max_size=42)
         assert c is not None
         # default value should not be used now
         assert c.responses_request_max_size == 42

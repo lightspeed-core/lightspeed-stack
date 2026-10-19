@@ -1570,6 +1570,12 @@
                             }
                         ],
                         "default": null
+                    },
+                    "responses_request_max_size": {
+                        "default": 65536,
+                        "description": "Maximum character length for the serialized /v1/response responses request body",
+                        "title": "Maximum character length for the serialized responses request body",
+                        "type": "integer"
                     }
                 },
                 "title": "Customization",
