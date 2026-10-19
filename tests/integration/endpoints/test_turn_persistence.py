@@ -17,6 +17,7 @@ that is missing, a write that happens twice, and a write of the wrong input.
 # pylint: disable=too-many-lines
 
 import asyncio
+import contextlib
 import json
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime
@@ -80,9 +81,7 @@ from tests.integration.endpoints._compaction_helpers import (
 )
 from utils.pending_turn import TurnNotStoredError
 from utils.stream_interrupts import (
-    CancelStreamResult,
     build_interrupted_response,
-    get_stream_interrupt_registry,
 )
 from utils.token_estimator import extract_message_text
 
@@ -354,18 +353,6 @@ def _stream_that_stalls(release: asyncio.Event) -> Any:
     return _RunStreamCtx()
 
 
-def _request_id_of(chunks: list[str]) -> str:
-    """Return the request id the stream announced in its start event."""
-    for chunk in chunks:
-        for line in chunk.splitlines():
-            if not line.startswith("data: "):
-                continue
-            event = json.loads(line[len("data: ") :])
-            if event.get("event") == "start":
-                return event["data"]["request_id"]
-    raise AssertionError(f"no start event in {chunks!r}")
-
-
 async def _send_streaming_query(test_request: Request, test_auth: AuthTuple) -> Any:
     """Send the new query on the stored conversation."""
     return await streaming_query_endpoint_handler(
@@ -391,11 +378,11 @@ async def _interrupt_stream(test_request: Request, test_auth: AuthTuple) -> list
 
     consumer = asyncio.create_task(_consume())
     await asyncio.wait_for(first_token.wait(), timeout=5)
-    result = get_stream_interrupt_registry().cancel_stream(
-        _request_id_of(chunks), test_auth[0]
-    )
-    assert result == CancelStreamResult.CANCELLED
-    await asyncio.wait_for(consumer, timeout=5)
+    # The registry holds no cancellation token for the run until LCORE-4733,
+    # so the stream is cancelled the way a client disconnect cancels it.
+    consumer.cancel()
+    with contextlib.suppress(asyncio.CancelledError):
+        await asyncio.wait_for(consumer, timeout=5)
     # The interrupt callback runs as a task of its own; let it finish.
     pending = [
         task

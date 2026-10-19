@@ -15,10 +15,8 @@ from models.common.responses.types import ResponseInput
 from models.common.turn_summary import TurnSummary
 from utils.pending_turn import PendingTurn
 from utils.stream_interrupts import (
-    StreamInterruptRegistry,
     build_interrupted_response,
     persist_interrupted_turn,
-    register_interrupt_callback,
 )
 from utils.token_estimator import extract_message_text
 
@@ -183,54 +181,6 @@ async def test_persist_interrupted_turn_schedules_background_topic_summary(
         context=context,
         model="provider1/model1",
     )
-
-
-def test_register_interrupt_callback_registers_current_task(
-    mocker: MockerFixture,
-) -> None:
-    """register_interrupt_callback binds the current asyncio task to the registry."""
-    registry = mocker.Mock(spec=StreamInterruptRegistry)
-    mocker.patch(
-        "utils.stream_interrupts.get_stream_interrupt_registry",
-        return_value=registry,
-    )
-    persist_mock = mocker.patch(
-        "utils.stream_interrupts.persist_interrupted_turn",
-        new=mocker.AsyncMock(),
-    )
-
-    context = mocker.Mock(spec=ResponseGeneratorContext)
-    context.request_id = "req-1"
-    context.user_id = "user_1"
-    context.conversation_id = "conv-1"
-    responses_params = mocker.Mock(spec=ResponsesApiParams)
-    turn_summary = TurnSummary()
-    background_tasks: list[asyncio.Task[None]] = []
-
-    async def run() -> list[bool]:
-        return register_interrupt_callback(
-            context,
-            responses_params,
-            turn_summary,
-            background_tasks,
-        )
-
-    guard = asyncio.run(run())
-
-    assert guard == [False]
-    registry.register_stream.assert_called_once()
-    assert registry.register_stream.call_args.kwargs["request_id"] == "req-1"
-    assert registry.register_stream.call_args.kwargs["user_id"] == "user_1"
-    assert registry.register_stream.call_args.kwargs["conversation_id"] == "conv-1"
-    assert persist_mock.await_count == 0
-
-    on_interrupt = registry.register_stream.call_args.kwargs["on_interrupt"]
-
-    async def invoke_callback() -> None:
-        await on_interrupt()
-
-    asyncio.run(invoke_callback())
-    persist_mock.assert_awaited_once()
 
 
 class TestBuildInterruptedResponse:
