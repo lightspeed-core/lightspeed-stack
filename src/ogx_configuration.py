@@ -26,11 +26,11 @@ from typing import Any, Final, Optional
 from urllib.parse import urljoin
 
 import yaml
-from ogx.core.stack import replace_env_vars
 from pydantic import SecretStr
 
 import constants
 from log import get_logger, setup_logging
+from utils.env_vars import normalize_env_references, resolve_env_references
 
 logger = get_logger(__name__)
 
@@ -315,10 +315,10 @@ def construct_vector_stores_section(
             output = ogx_config["registered_resources"]["vector_stores"].copy()
 
     # append new vector_stores entries, skipping duplicates
-    # Resolve ${env.VAR} patterns so comparisons work when existing entries
+    # Resolve ${env.VAR} and ${VAR} so comparisons work when existing entries
     # use environment variable references and new entries have resolved values.
     existing_store_ids = {
-        replace_env_vars(vs.get("vector_store_id", "")) for vs in output
+        resolve_env_references(vs.get("vector_store_id", "")) for vs in output
     }
     added = 0
     for brag in byok_rag:
@@ -879,8 +879,8 @@ def enrich_solr(  # pylint: disable=too-many-locals,too-many-statements,too-many
     base_url_raw = (
         str(rhokp_raw) if rhokp_raw is not None else constants.RH_SERVER_OKP_DEFAULT_URL
     )
-    # Resolve environment variables in the URL (e.g., ${env.RH_SERVER_OKP})
-    base_url = replace_env_vars(base_url_raw)
+    # Resolve ${env.RH_SERVER_OKP} and ${RH_SERVER_OKP} before joining the URL path.
+    base_url = resolve_env_references(base_url_raw)
     solr_url = urljoin(base_url, "/solr")
 
     logger.info("Enriching OGX config with OKP")
@@ -1479,6 +1479,8 @@ def synthesize_configuration(  # pylint: disable=too-many-locals
         dict[str, Any]: The synthesized OGX configuration.
 
     """
+    # Keep raw references deferred for OGX startup while canonicalizing their syntax.
+    lcs_config = normalize_env_references(lcs_config)
     unified = ogx_config_section(lcs_config).get("config")
 
     # 1-2. Select the baseline.
@@ -1711,6 +1713,9 @@ def generate_configuration(
 
     """
     logger.info("Reading OGX configuration from file %s", input_file)
+
+    # Normalize raw LCORE enrichment references without looking up their values.
+    config = normalize_env_references(config)
 
     with open(input_file, encoding="utf-8") as file:
         ogx_config = yaml.safe_load(file)
