@@ -30,7 +30,7 @@ spec:
       type: string
     - name: model
       description: 'HuggingFace model to serve on RHEL AI.'
-      default: 'meta-llama/Llama-3.1-8B-Instruct'
+      default: 'RedHatAI/Qwen3.8-27B-INT4'
       type: string
     - name: namespace
       description: 'Namespace to run tests in'
@@ -148,7 +148,7 @@ spec:
                     --hf-token "${HF_TOKEN}" \
                     --api-key "${VLLM_API_KEY}" \
                     --expose-ports 8000 \
-                    --vllm-extra-args "--max-model-len 131072 --enable-auto-tool-choice --tool-call-parser llama3_json --chat-template /opt/app-root/template/tool_chat_template_llama3.1_json.jinja" \
+                    --vllm-extra-args "--max-model-len 131072 --enable-auto-tool-choice --tool-call-parser hermes" \
                     --tags "project=lightspeed-core,environment=konflux-ci"; then
                   CREATED=1
                 else
@@ -174,7 +174,7 @@ spec:
                       --hf-token "${HF_TOKEN}" \
                       --api-key "${VLLM_API_KEY}" \
                       --expose-ports 8000 \
-                      --vllm-extra-args "--max-model-len 131072 --enable-auto-tool-choice --tool-call-parser llama3_json --chat-template /opt/app-root/template/tool_chat_template_llama3.1_json.jinja" \
+                      --vllm-extra-args "--max-model-len 131072 --enable-auto-tool-choice --tool-call-parser hermes" \
                       --tags "project=lightspeed-core,environment=konflux-ci"; then
                     CREATED=1
                     break
