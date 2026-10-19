@@ -55,3 +55,70 @@ class TestResponsesRequestBodySize:
 
         error_text = str(exc_info.value)
         assert "65536" in error_text
+
+    def test_model_validation_normal_request_accepted(self) -> None:
+        """A small, normal request must be accepted without raising."""
+        req = ResponsesRequest.model_validate(
+            {
+                "input": "hello",
+            }
+        )
+        assert req.input == "hello"
+
+    def test_model_validation_normal_request_accepted_configurable_limit(self) -> None:
+        """A small, normal request must be accepted without raising."""
+        req = ResponsesRequest.model_validate(
+            {
+                "input": "hello",
+            },
+            context={"responses_request_max_size": 100_000},
+        )
+        assert req.input == "hello"
+
+    def test_model_validation_over_limit(self) -> None:
+        """A request whose JSON serialization is 65,537 chars raises ValidationError."""
+        payload = "x" * (_AT_LIMIT_PADDING + 1)
+        serialized = json.dumps({"input": payload})
+        assert len(serialized) == _LIMIT + 1
+
+        with pytest.raises(ValidationError) as exc_info:
+            ResponsesRequest.model_validate(
+                {
+                    "input": payload,
+                }
+            )
+
+        error_text = str(exc_info.value)
+        assert "65536" in error_text
+        assert str(_LIMIT + 1) in error_text
+
+    def test_model_validation_over_standard_limit_not_reached_threshold(self) -> None:
+        """Validation for custom limit."""
+        payload = "x" * (_AT_LIMIT_PADDING + 1)
+        serialized = json.dumps({"input": payload})
+        assert len(serialized) == _LIMIT + 1
+
+        req = ResponsesRequest.model_validate(
+            {
+                "input": payload,
+            },
+            context={"responses_request_max_size": 100_000},
+        )
+        assert req.input is not None
+        assert "xxxx" in req.input
+
+    def test_model_validation_over_limit_reached_threshold(self) -> None:
+        """A request whose JSON serialization is longer than max size raises ValidationError."""
+        payload = "x" * (110_000 - _OVERHEAD)
+
+        with pytest.raises(ValidationError) as exc_info:
+            ResponsesRequest.model_validate(
+                {
+                    "input": payload,
+                },
+                context={"responses_request_max_size": 100_000},
+            )
+
+        error_text = str(exc_info.value)
+        assert "110000" in error_text
+        assert "100000" in error_text
