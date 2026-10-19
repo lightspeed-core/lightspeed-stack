@@ -669,6 +669,7 @@ async def handle_responses_with_tracing(  # pylint: disable=too-many-locals
         original_request.reasoning,
         updated_request.tools,
         updated_request.model,
+        configuration.skills,
     )
 
     # Extract vector store IDs for Inline RAG context from the original request
