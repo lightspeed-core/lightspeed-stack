@@ -68,6 +68,7 @@ from models.config import (
     InferenceConfiguration,
     ModelContextProtocolServer,
     RagStore,
+    SkillsConfiguration,
 )
 from tests.unit.conftest import (
     make_openai_model,
@@ -1305,14 +1306,16 @@ class TestApplyReasoningForResolvedTools:
         """Keep caller reasoning when the resolved request has no tools."""
         reasoning = OpenAIResponseReasoning(effort="high")
         assert (
-            apply_reasoning_for_resolved_tools(reasoning, None, self._DEFAULT_ON_MODEL)
+            apply_reasoning_for_resolved_tools(
+                reasoning, None, self._DEFAULT_ON_MODEL, None
+            )
             == reasoning
         )
 
     def test_preserves_none_reasoning_when_no_tools(self) -> None:
         """Leave reasoning unset when no tools are resolved."""
         assert (
-            apply_reasoning_for_resolved_tools(None, None, self._DEFAULT_ON_MODEL)
+            apply_reasoning_for_resolved_tools(None, None, self._DEFAULT_ON_MODEL, None)
             is None
         )
 
@@ -1320,7 +1323,7 @@ class TestApplyReasoningForResolvedTools:
         """Do not inject reasoning for models that do not use it."""
         assert (
             apply_reasoning_for_resolved_tools(
-                None, self._sample_tools(), self._NON_REASONING_MODEL
+                None, self._sample_tools(), self._NON_REASONING_MODEL, None
             )
             is None
         )
@@ -1329,7 +1332,7 @@ class TestApplyReasoningForResolvedTools:
         """Do not inject reasoning for opt-in models that default to off."""
         assert (
             apply_reasoning_for_resolved_tools(
-                None, self._sample_tools(), self._OPT_IN_MODEL
+                None, self._sample_tools(), self._OPT_IN_MODEL, None
             )
             is None
         )
@@ -1337,7 +1340,7 @@ class TestApplyReasoningForResolvedTools:
     def test_sets_none_effort_when_tools_present_and_reasoning_missing(self) -> None:
         """Default to explicit effort none when tools are present."""
         result = apply_reasoning_for_resolved_tools(
-            None, self._sample_tools(), self._DEFAULT_ON_MODEL
+            None, self._sample_tools(), self._DEFAULT_ON_MODEL, None
         )
         assert result is not None
         assert result.effort == "none"
@@ -1348,7 +1351,7 @@ class TestApplyReasoningForResolvedTools:
         """Override non-none reasoning effort when tools are present."""
         reasoning = OpenAIResponseReasoning(effort="medium")
         result = apply_reasoning_for_resolved_tools(
-            reasoning, self._sample_tools(), self._DEFAULT_ON_MODEL
+            reasoning, self._sample_tools(), self._DEFAULT_ON_MODEL, None
         )
         assert result is not None
         assert result.effort == "none"
@@ -1357,12 +1360,53 @@ class TestApplyReasoningForResolvedTools:
         """Preserve other reasoning fields when forcing effort to none."""
         reasoning = OpenAIResponseReasoning(effort="none", summary="concise")
         result = apply_reasoning_for_resolved_tools(
-            reasoning, self._sample_tools(), self._DEFAULT_ON_MODEL
+            reasoning, self._sample_tools(), self._DEFAULT_ON_MODEL, None
         )
         assert result is not None
         assert result is not reasoning
         assert result.effort == "none"
         assert result.summary == "concise"
+
+    def test_sets_none_effort_when_skills_configured_without_resolved_tools(
+        self,
+    ) -> None:
+        """Skills configuration counts as tool-bearing for reasoning-default models."""
+        skills = SkillsConfiguration(paths=[Path("/app-root/skills/echo")])
+        result = apply_reasoning_for_resolved_tools(
+            None,
+            None,
+            "openai/gpt-5.6-luna",
+            skills,
+        )
+        assert result is not None
+        assert result.effort == "none"
+
+    def test_skips_reasoning_for_skills_on_non_reasoning_model(self) -> None:
+        """Skills configuration alone does not affect non-reasoning models."""
+        skills = SkillsConfiguration(paths=[Path("/app-root/skills/echo")])
+        assert (
+            apply_reasoning_for_resolved_tools(
+                None,
+                None,
+                self._NON_REASONING_MODEL,
+                skills,
+            )
+            is None
+        )
+
+    def test_sets_none_effort_when_skills_configuration_object_has_empty_paths(
+        self,
+    ) -> None:
+        """Any non-None skills configuration object triggers the tools path."""
+        skills = SkillsConfiguration()
+        result = apply_reasoning_for_resolved_tools(
+            None,
+            None,
+            self._DEFAULT_ON_MODEL,
+            skills,
+        )
+        assert result is not None
+        assert result.effort == "none"
 
 
 class TestResolveToolChoice:
@@ -2503,6 +2547,44 @@ class TestPrepareResponsesParams:
         mocker.patch("utils.responses.configuration", mock_config)
         mocker.patch("utils.responses.get_system_prompt", return_value="System prompt")
         mocker.patch("utils.responses.prepare_tools", return_value=tools)
+        mocker.patch("utils.responses.prepare_input", return_value="test")
+
+        result = await prepare_responses_params(
+            mock_client, query_request, None, "token"
+        )
+
+        assert result.reasoning is not None
+        assert result.reasoning.effort == "none"
+
+    @pytest.mark.asyncio
+    async def test_prepare_responses_params_sets_reasoning_none_when_skills_configured(
+        self, mocker: MockerFixture
+    ) -> None:
+        """prepare_responses_params forwards configuration.skills into reasoning logic."""
+        mock_client = mock_async_ogx_client(mocker)
+        mock_client.openai.list = mocker.AsyncMock(
+            return_value=make_openai_models_list_response(
+                make_openai_model(
+                    model_id="openai/gpt-5.6-luna",
+                    provider_id="openai",
+                    model_type="llm",
+                )
+            )
+        )
+
+        mock_conversation = mocker.Mock()
+        mock_conversation.id = "new_conv_id"
+        mock_client.conversations.create = mocker.AsyncMock(
+            return_value=mock_conversation
+        )
+
+        query_request = QueryRequest(query="test")  # pyright: ignore[reportCallIssue]
+        mock_config = mocker.Mock()
+        mock_config.inference = InferenceConfiguration()
+        mock_config.skills = SkillsConfiguration(paths=[Path("/app-root/skills/echo")])
+        mocker.patch("utils.responses.configuration", mock_config)
+        mocker.patch("utils.responses.get_system_prompt", return_value="System prompt")
+        mocker.patch("utils.responses.prepare_tools", return_value=None)
         mocker.patch("utils.responses.prepare_input", return_value="test")
 
         result = await prepare_responses_params(
