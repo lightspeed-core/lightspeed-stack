@@ -178,7 +178,7 @@ spec:
               key: key
               optional: true
         - name: E2E_OPENAI_MODEL
-          value: "gpt-4o-mini"
+          value: "gpt-5.6-luna"
         - name: VLLM_URL
           valueFrom:
             secretKeyRef:

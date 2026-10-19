@@ -118,7 +118,7 @@ spec:
               key: key
               optional: true
         - name: E2E_OPENAI_MODEL
-          value: "gpt-4o-mini"
+          value: "gpt-5.6-luna"
         - name: LLAMA_STACK_CONFIG
           value: "/opt/app-root/src/.llama/storage/run.yaml"
         - name: FAISS_VECTOR_STORE_ID

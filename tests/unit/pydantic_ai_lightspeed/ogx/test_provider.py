@@ -44,7 +44,7 @@ class TestOgxProviderProperties:
 
     def test_model_profile_known_model(self) -> None:
         """Test model_profile returns a profile for a known OpenAI model."""
-        profile = OgxProvider.model_profile("gpt-4o")
+        profile = OgxProvider.model_profile("gpt-5.6-luna")
         assert profile is not None
 
     def test_model_profile_unknown_model(self) -> None:

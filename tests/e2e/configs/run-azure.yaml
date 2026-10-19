@@ -19,13 +19,13 @@ providers:
     config: 
       base_url: https://ols-test.openai.azure.com/openai/v1
       api_version: 2024-02-15-preview
-      allowed_models: ["gpt-4o-mini"]
+      allowed_models: ["gpt-5.6-luna"]
       model_validation: false
   - provider_id: openai
     provider_type: remote::openai
     config:
       api_key: ${env.OPENAI_API_KEY}
-      allowed_models: ["${env.E2E_OPENAI_MODEL:=gpt-4o-mini}"]
+      allowed_models: ["${env.E2E_OPENAI_MODEL:=gpt-5.6-luna}"]
   - config: {}
     provider_id: sentence-transformers
     provider_type: inline::sentence-transformers
@@ -99,10 +99,10 @@ storage:
       backend: sql_default
 registered_resources:
   models:
-  - model_id: gpt-4o-mini
+  - model_id: gpt-5.6-luna
     provider_id: azure
     model_type: llm
-    provider_model_id: gpt-4o-mini
+    provider_model_id: gpt-5.6-luna
   - model_id: all-mpnet-base-v2
     model_type: embedding
     provider_id: sentence-transformers

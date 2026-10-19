@@ -501,7 +501,7 @@ To verify: check that the docs site renders correctly and OpenAPI spec validates
 
 # PoC results
 
-A proof-of-concept was built in lightspeed-stack and tested against a real OGX + OpenAI (gpt-4o-mini) setup.
+A proof-of-concept was built in lightspeed-stack and tested against a real OGX + OpenAI (gpt-5.6-luna) setup.
 
 ## What the PoC does
 

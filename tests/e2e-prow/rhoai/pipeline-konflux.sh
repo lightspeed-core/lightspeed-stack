@@ -480,7 +480,7 @@ if [[ -n "${VLLM_URL:-}" ]]; then
   : "${E2E_DEFAULT_MODEL_OVERRIDE:=${VLLM_MODEL:-meta-llama/Llama-3.2-1B-Instruct}}"
 else
   : "${E2E_DEFAULT_PROVIDER_OVERRIDE:=openai}"
-  : "${E2E_DEFAULT_MODEL_OVERRIDE:=${E2E_OPENAI_MODEL:-gpt-4o-mini}}"
+  : "${E2E_DEFAULT_MODEL_OVERRIDE:=${E2E_OPENAI_MODEL:-gpt-5.6-luna}}"
 fi
 export E2E_DEFAULT_PROVIDER_OVERRIDE E2E_DEFAULT_MODEL_OVERRIDE
 log "LCS accessible at: http://$E2E_LSC_HOSTNAME:8080"

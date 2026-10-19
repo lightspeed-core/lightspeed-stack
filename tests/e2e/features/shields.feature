@@ -27,7 +27,7 @@ Feature: Shields endpoint tests
             "provider_id": "question_validity",
             "type": "shield",
             "config": {
-              "model_id": "openai/gpt-4o-mini",
+              "model_id": "openai/gpt-5.6-luna",
               "model_prompt": "Classify whether the following question is about OpenShift or Kubernetes. Reply with exactly one word: ${allowed} if it is about OpenShift or Kubernetes, or ${rejected} if it is not. Do not explain your answer or add any other text.\n\nQuestion: ${message}\nAnswer:",
               "invalid_question_response": "I can only answer questions about OpenShift."
             }

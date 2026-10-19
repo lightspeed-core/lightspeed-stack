@@ -69,19 +69,19 @@ def test_context_windows_accepts_model_to_size_map() -> None:
     """Test context_windows accepts a populated model-to-window map."""
     inference_config = InferenceConfiguration(
         context_windows={
-            "openai/gpt-4o-mini": 128000,
-            "openai/gpt-4o": 128000,
+            "openai/gpt-5.6-luna": 128000,
+            "openai/gpt-5.6-terra": 128000,
         },
     )  # pyright: ignore[reportCallIssue]
-    assert inference_config.context_windows["openai/gpt-4o-mini"] == 128000
-    assert inference_config.context_windows["openai/gpt-4o"] == 128000
+    assert inference_config.context_windows["openai/gpt-5.6-luna"] == 128000
+    assert inference_config.context_windows["openai/gpt-5.6-terra"] == 128000
 
 
 def test_context_windows_rejects_non_positive_size() -> None:
     """Test that a non-positive window size is rejected by Pydantic."""
     with pytest.raises(ValueError):
         InferenceConfiguration(
-            context_windows={"openai/gpt-4o-mini": 0},
+            context_windows={"openai/gpt-5.6-luna": 0},
         )  # pyright: ignore[reportCallIssue]
 
 
@@ -89,7 +89,7 @@ def test_context_windows_rejects_negative_size() -> None:
     """Test that a negative window size is rejected by Pydantic."""
     with pytest.raises(ValueError):
         InferenceConfiguration(
-            context_windows={"openai/gpt-4o-mini": -1},
+            context_windows={"openai/gpt-5.6-luna": -1},
         )  # pyright: ignore[reportCallIssue]
 
 

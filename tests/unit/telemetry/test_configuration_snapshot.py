@@ -465,7 +465,7 @@ class TestBuildLightspeedStackSnapshot:
         assert snapshot["service"]["cors"]["allow_credentials"] is True
         assert snapshot["service"]["cors"]["allow_methods"] == ["GET", "POST"]
         assert snapshot["ogx"]["use_as_library_client"] is False
-        assert snapshot["inference"]["default_model"] == "gpt-4o-mini"
+        assert snapshot["inference"]["default_model"] == "gpt-5.6-luna"
         assert snapshot["inference"]["default_provider"] == "openai"
         assert snapshot["authentication"]["module"] == "jwk_token"
         assert snapshot["authentication"]["skip_tls_verification"] is False
@@ -599,7 +599,7 @@ class TestBuildLightspeedStackSnapshot:
         """Test inference context_windows passes through."""
         snapshot = build_lightspeed_stack_snapshot(build_fully_populated_config())
         assert snapshot["inference"]["context_windows"] == {
-            "openai/gpt-4o-mini": 128000
+            "openai/gpt-5.6-luna": 128000
         }
 
     def test_inference_max_infer_iters_passthrough(self) -> None:
@@ -621,7 +621,7 @@ class TestBuildLightspeedStackSnapshot:
         assert providers[0]["type"] == "openai"
         assert providers[0]["id"] == "openai-provider"
         assert providers[0]["api_key_env"] == CONFIGURED
-        assert providers[0]["allowed_models"] == ["gpt-4o-mini", "gpt-4o"]
+        assert providers[0]["allowed_models"] == ["gpt-5.6-luna", "gpt-5.6-luna"]
 
     def test_inference_providers_empty(self) -> None:
         """Test inference providers when empty."""
@@ -1097,7 +1097,7 @@ class TestBuildOgxSnapshot:
         result = await build_ogx_snapshot(ogx_config_file)
         models = result["registered_resources"]["models"]
         assert len(models) == 2
-        assert models[0]["model_id"] == "gpt-4o-mini"
+        assert models[0]["model_id"] == "gpt-5.6-luna"
         assert models[0]["model_type"] == "llm"
 
     @pytest.mark.asyncio

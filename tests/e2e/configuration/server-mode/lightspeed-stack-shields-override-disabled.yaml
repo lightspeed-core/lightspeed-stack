@@ -25,14 +25,14 @@ authentication:
   module: "noop"
 inference:
   default_provider: openai
-  default_model: gpt-4o-mini
+  default_model: gpt-5.6-luna
 customization:
   disable_shield_ids_override: true
 shields:
   - name: topic-guard
     provider_id: question_validity
     config:
-      model_id: openai/gpt-4o-mini
+      model_id: openai/gpt-5.6-luna
       model_prompt: "Classify whether the following question is about OpenShift or Kubernetes. Reply with exactly one word: ${allowed} if it is about OpenShift or Kubernetes, or ${rejected} if it is not. Do not explain your answer or add any other text.\n\nQuestion: ${message}\nAnswer:"
       invalid_question_response: "I can only answer questions about OpenShift."
   - name: pii-redaction

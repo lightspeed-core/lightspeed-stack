@@ -24,7 +24,7 @@ Feature: granite_guardian shield functional tests
     }
     """
     Then The status code of the response is 200
-      And The body of the response contains cluster
+      And The body of the response contains kubectl
       And The body of the response does not contain That phrasing is not something I can act on.
       And The body of the response does not contain I cannot return that response.
 

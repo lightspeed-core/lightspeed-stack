@@ -294,7 +294,7 @@ For another YAML (`lightspeed-stack-okp-online.yaml`, tool RAG, and so on), repe
 | `E2E_OGX_PORT`                | `8321`      | Port of the OGX service.                                                                                                          |
 | `E2E_OGX_STACK_URL`           | —           | Full base URL for OGX (overrides host/port if set). Used by shield helpers.                                                       |
 | `E2E_OGX_STACK_API_KEY`       | `xyzzy`     | API key for OGX client (e.g. shield API).                                                                                         |
-| `E2E_DEFAULT_MODEL_OVERRIDE`    | —           | Override default LLM model id (e.g. `gpt-4o-mini`).                                                                                       |
+| `E2E_DEFAULT_MODEL_OVERRIDE`    | —           | Override default LLM model id (e.g. `gpt-5.6-luna`).                                                                                       |
 | `E2E_DEFAULT_PROVIDER_OVERRIDE` | —           | Override default provider id (e.g. `openai`).                                                                                             |
 | `FAISS_VECTOR_STORE_ID`         | —           | Vector store id for FAISS-related scenarios.                                                                                              |
 | `RUNNING_PROW`                  | —           | Set in Prow/OpenShift; enables Prow config paths and pod/container ops.                                                                   |

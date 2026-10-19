@@ -12,7 +12,7 @@ def _valid_kwargs() -> dict:
         "summarized_through_turn": 8,
         "token_count": 42,
         "created_at": "2026-05-11T00:00:00Z",
-        "model_used": "openai/gpt-4o-mini",
+        "model_used": "openai/gpt-5.6-luna",
     }
 
 
@@ -23,7 +23,7 @@ def test_constructor_with_valid_values() -> None:
     assert summary.summarized_through_turn == 8
     assert summary.token_count == 42
     assert summary.created_at == "2026-05-11T00:00:00Z"
-    assert summary.model_used == "openai/gpt-4o-mini"
+    assert summary.model_used == "openai/gpt-5.6-luna"
 
 
 def test_summarized_through_turn_accepts_zero() -> None:
