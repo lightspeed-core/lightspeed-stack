@@ -39,12 +39,12 @@ class TestResponsesRequestBodySize:
             ResponsesRequest(input=payload)  # pyright: ignore[reportCallIssue]
 
         error_text = str(exc_info.value)
-        assert "65536" in error_text
+        assert "131073" in error_text
         assert str(_LIMIT + 1) in error_text
 
     def test_large_list_input_rejected(self) -> None:
         """A request with a list input that exceeds 64 KB is rejected."""
-        long_item_text = "a" * 1000
+        long_item_text = "a" * 2000
         large_list = [{"role": "user", "content": long_item_text}] * 100
 
         raw = {"input": large_list}
@@ -54,7 +54,7 @@ class TestResponsesRequestBodySize:
             ResponsesRequest(input=large_list)  # pyright: ignore[reportCallIssue]
 
         error_text = str(exc_info.value)
-        assert "65536" in error_text
+        assert "203311" in error_text
 
     def test_model_validation_normal_request_accepted(self) -> None:
         """A small, normal request must be accepted without raising."""
@@ -71,7 +71,7 @@ class TestResponsesRequestBodySize:
             {
                 "input": "hello",
             },
-            context={"responses_request_max_size": _LIMIT*2},
+            context={"responses_request_max_size": _LIMIT * 2},
         )
         assert req.input == "hello"
 
@@ -89,7 +89,7 @@ class TestResponsesRequestBodySize:
             )
 
         error_text = str(exc_info.value)
-        assert "65536" in error_text
+        assert "131073" in error_text
         assert str(_LIMIT + 1) in error_text
 
     def test_model_validation_over_standard_limit_not_reached_threshold(self) -> None:
@@ -102,7 +102,7 @@ class TestResponsesRequestBodySize:
             {
                 "input": payload,
             },
-            context={"responses_request_max_size": _LIMIT*2},
+            context={"responses_request_max_size": _LIMIT * 2},
         )
         assert req.input is not None
         assert "xxxx" in req.input

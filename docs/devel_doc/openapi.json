@@ -14158,7 +14158,7 @@
                         "type": "integer",
                         "title": "Maximum character length for the serialized responses request body",
                         "description": "Maximum character length for the serialized /v1/response responses request body",
-                        "default": 65536
+                        "default": 131072
                     }
                 },
                 "additionalProperties": false,
