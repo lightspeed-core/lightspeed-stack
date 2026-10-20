@@ -348,8 +348,8 @@ ENDPOINT_PATH_RESPONSES: Final[str] = "/v1/responses"
 # Input size limits for API request validation
 # Maximum character length for the question field in /v1/infer requests (32 KiB)
 RLSAPI_V1_QUESTION_MAX_LENGTH: Final[int] = 32_768
-# Maximum character length for the serialized /v1/responses request body (64 KiB)
-RESPONSES_REQUEST_MAX_SIZE: Final[int] = 65_536
+# Maximum character length for the serialized /v1/responses request body (128 KiB)
+RESPONSES_REQUEST_MAX_SIZE: Final[int] = 131_072
 
 # Sentry configuration constants
 # Environment variable name for the Sentry DSN (Data Source Name)

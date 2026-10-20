@@ -71,7 +71,7 @@ class TestResponsesRequestBodySize:
             {
                 "input": "hello",
             },
-            context={"responses_request_max_size": 100_000},
+            context={"responses_request_max_size": _LIMIT*2},
         )
         assert req.input == "hello"
 
@@ -102,7 +102,7 @@ class TestResponsesRequestBodySize:
             {
                 "input": payload,
             },
-            context={"responses_request_max_size": 100_000},
+            context={"responses_request_max_size": _LIMIT*2},
         )
         assert req.input is not None
         assert "xxxx" in req.input
