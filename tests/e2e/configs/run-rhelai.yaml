@@ -20,7 +20,10 @@ providers:
       base_url: ${env.VLLM_URL}/v1/
       api_token: ${env.VLLM_API_KEY:=}
       tls_verify: false
-      max_tokens: 2048
+      # Qwen3 thinking mode can spend a large chunk of the token budget on
+      # <think> reasoning before ever emitting a tool call; 2048 risked
+      # truncating generation before a tool call was ever produced.
+      max_tokens: 8192
   - provider_id: openai
     provider_type: remote::openai
     config:
