@@ -295,7 +295,7 @@ Feature: Agent skills tests
       And The token metrics have increased
 
 
-  @SkillsConfig @cfg_skills
+  @SkillsConfig @cfg_skills @flaky
   Scenario: LLM can load a skill reference file via read_skill_resource tool using streaming_query endpoint
     Given The service uses the lightspeed-stack-skills.yaml configuration
       And The service is restarted

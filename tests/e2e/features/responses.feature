@@ -142,6 +142,13 @@ Feature: Responses endpoint API tests
     Then The status code of the response is 200
       And The body of the response contains alpha
 
+  # OGX's chat-completion router mutates the model id in place when routing
+  # the auto-selected model (no .model_copy() guard on the non-reasoning
+  # path, see ogx streaming.py), collapsing "org/model"-style provider
+  # resource ids (e.g. vLLM's "RedHatAI/Qwen3.8-27B-INT4") down to just the
+  # last path segment in the echoed response. Harmless for slash-free ids
+  # (e.g. openai's "gpt-5.6-luna"), so only skipped on the vLLM matrix.
+  @skip-on-vllm
   Scenario: Responses omits model and auto-selects when only input is sent
     Given The system is in default state
     When I use "responses" to ask question with authorization header
