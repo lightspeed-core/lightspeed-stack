@@ -27,7 +27,7 @@ The pipeline supports two provisioning modes, controlled by the `spot` pipeline 
 - **Spot (default):** MAPT searches all AWS regions for the cheapest spot instance across multiple GPU instance types (g5.12xlarge, g6.12xlarge, g5.24xlarge, g6.24xlarge). Cheaper (~$2-4/hr) but instances can be evicted.
 - **On-demand (`spot: false`):** Tries on-demand provisioning sequentially across regions (us-east-1, us-east-2, us-west-2, eu-west-1, eu-central-1, ap-northeast-1) with a 10-minute timeout per attempt. More expensive (~$5-6/hr) but guaranteed capacity once found.
 
-The model used is `meta-llama/Llama-3.1-8B-Instruct` with a 131072-token context window. The VRAM requirement depends on the combination of model size and context window — changing any of these may require a different instance type. All configured instance types provide 96GB+ total VRAM across 4 GPUs.
+The default model is `RedHatAI/Qwen3.8-27B-INT4` with a 69632-token vLLM context window (`--max-model-len`), `--gpu-memory-utilization 0.90`, and Qwen3 tool/reasoning parsers. MAPT sets `--tensor-parallel-size` to the instance GPU count during RHAIIS setup; it does not override GPU memory utilization. The VRAM requirement depends on the combination of model size and context window — changing any of these may require a different instance type. All configured instance types provide 96GB+ total VRAM across 4 GPUs.
 
 ## RHEL AI AMI Version
 

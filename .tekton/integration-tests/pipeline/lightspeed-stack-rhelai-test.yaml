@@ -148,7 +148,7 @@ spec:
                     --hf-token "${HF_TOKEN}" \
                     --api-key "${VLLM_API_KEY}" \
                     --expose-ports 8000 \
-                    --vllm-extra-args "--max-model-len 131072 --enable-auto-tool-choice --tool-call-parser qwen3_coder --reasoning-parser qwen3" \
+                    --vllm-extra-args "--max-model-len 69632 --gpu-memory-utilization 0.90 --enable-auto-tool-choice --tool-call-parser qwen3_coder --reasoning-parser qwen3" \
                     --tags "project=lightspeed-core,environment=konflux-ci"; then
                   CREATED=1
                 else
@@ -174,7 +174,7 @@ spec:
                       --hf-token "${HF_TOKEN}" \
                       --api-key "${VLLM_API_KEY}" \
                       --expose-ports 8000 \
-                      --vllm-extra-args "--max-model-len 131072 --enable-auto-tool-choice --tool-call-parser qwen3_coder --reasoning-parser qwen3" \
+                      --vllm-extra-args "--max-model-len 69632 --gpu-memory-utilization 0.90 --enable-auto-tool-choice --tool-call-parser qwen3_coder --reasoning-parser qwen3" \
                       --tags "project=lightspeed-core,environment=konflux-ci"; then
                     CREATED=1
                     break
