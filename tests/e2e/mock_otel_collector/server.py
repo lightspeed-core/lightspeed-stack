@@ -31,6 +31,7 @@ import threading
 from collections import deque
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
+from urllib.parse import unquote_plus
 
 # Resource bounds so a reachable caller cannot exhaust process memory by sending
 # large or repeated exports (the Compose service publishes port 4318). The
@@ -94,7 +95,12 @@ class Handler(BaseHTTPRequestHandler):
         for pair in query.split("&"):
             key, sep, value = pair.partition("=")
             if sep and key == "contains":
-                contains = value
+                # Decode percent-encoding (and '+') so markers with reserved
+                # characters match. A client such as ``requests`` encodes
+                # ``<EMAIL_ADDRESS>`` to ``%3CEMAIL_ADDRESS%3E`` and ``@`` to
+                # ``%40``; without decoding, the raw-byte search would never
+                # find the plaintext marker embedded in the OTLP payload.
+                contains = unquote_plus(value)
                 break
 
         if contains is not None:
