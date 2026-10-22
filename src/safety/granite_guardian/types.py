@@ -1,3 +1,5 @@
+"""Risk descriptions used to build Granite Guardian guards."""
+
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import Literal

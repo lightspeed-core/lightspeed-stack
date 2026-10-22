@@ -1,3 +1,5 @@
+"""Verdicts and the streamed-output buffer used by safety capabilities."""
+
 from dataclasses import dataclass, field
 from typing import Literal, Optional, Self
 

@@ -1,7 +1,8 @@
 """``RedactionCapability``: pattern-based text redaction for prompts and model output.
 
-A minimal, standalone :class:`~lightspeed.core.agent.safety.base.AbstractSafetyCapability`:
-unlike :class:`~lightspeed.core.agent.safety.question_validity.capability.QuestionValidityCapability`,
+A minimal, standalone
+:class:`~lightspeed.core.agent.safety.base.AbstractSafetyCapability`: unlike
+:class:`~lightspeed.core.agent.safety.question_validity.capability.QuestionValidityCapability`,
 it never blocks a request -- it only ever rewrites the spans its patterns match, via
 `GuardrailResult.replace`, so it composes safely alongside guards that do block without
 competing with them over the same verdict.
