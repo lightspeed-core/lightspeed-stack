@@ -8,7 +8,7 @@
 | **Feature**        | [LCORE-4573](https://redhat.atlassian.net/browse/LCORE-4573) |
 | **Epic / Feature** | [UIESTRAT-215](https://redhat.atlassian.net/browse/UIESTRAT-215) |
 | **Spike**          | [LCORE-4291](https://redhat.atlassian.net/browse/LCORE-4291) |
-| **Links**          | [Spike doc](rag-vector-stores-migration-spike.md), [RAG guide](../../user_doc/rag_guide.md), [OKP guide](../../user_doc/okp_guide.md) |
+| **Links**          | [Spike doc](rag-vector-stores-migration-spike.md), [Dynamic stores](dynamic-knowledge.md), [RAG guide](../../user_doc/rag_guide.md), [OKP guide](../../user_doc/okp_guide.md) |
 
 This is the spec for the LCS Knowledge capability. Native `rag-content`
 writers (LCORE-3302) are a sibling epic; the shared contract is the
@@ -408,8 +408,9 @@ shapes.
   not log chunk text at info level.
 - Do not register OKP MCP tools on the agent in addition to the
   Knowledge source (avoids a second, unmoderated retrieval path).
-- Dynamic `/v1/vector-stores` stays deprecated and is not this
-  feature.
+- Runtime `/v1/vector-stores` ingest is
+  [dynamic-knowledge.md](dynamic-knowledge.md). This feature does
+  not implement it. Static sources stay read-only.
 
 ### Migration / backwards compatibility
 
@@ -419,8 +420,9 @@ shapes.
 - After Knowledge is attached, delete
   `_fetch_byok_rag` / `_fetch_okp_rag` / BYOK `file_search` extra_body
   tools / BYOK `providers.vector_io` synthesis used only so OGX can
-  serve those stores, unless still required for deprecated dynamic
-  vector-store routes.
+  serve those stores. Top-level `vector_store` provider synthesis
+  stays until [dynamic-knowledge.md](dynamic-knowledge.md) replaces
+  those handlers with one `rag.dynamic` FAISS file.
 
 ## Acceptance test surface
 
@@ -438,7 +440,8 @@ suite as the e2e gate.
 | R7, R10, R11 | Local embedder, 30/70 rerank, `rag:` YAML | unit tests |
 | R12 | No new Knowledge `.feature` files | review of the e2e tree |
 
-Skip `vector_stores.feature` — dynamic APIs are out of this epic.
+Skip `vector_stores.feature` — runtime stores are
+[dynamic-knowledge.md](dynamic-knowledge.md), not this epic.
 
 ## Aspect-specific concerns
 
@@ -495,9 +498,9 @@ health.
 | `src/app/endpoints/responses.py` | Same; keep `file_search_call` translation if S3=B |
 | `src/utils/vector_search.py` | Map `KnowledgeMatch` → `RAGChunk` / `ReferencedDocument` (same keys as `_process_byok_rag_chunks_for_documents`). Delete `_fetch_byok_rag` / `_fetch_okp_rag` / BYOK branch of `build_rag_context` once endpoints no longer call them |
 | `src/utils/responses.py`, `src/utils/builtin_tools.py` | Stop attaching OGX builtin `file_search` for BYOK/OKP tool sources |
-| `src/ogx_configuration.py` | Drop BYOK `providers.vector_io` synthesis unless dynamic vector-store routes still need it |
+| `src/ogx_configuration.py` | Drop BYOK `providers.vector_io` synthesis. Leave top-level `vector_store` provider synthesis until [dynamic-knowledge.md](dynamic-knowledge.md) (`rag.dynamic`, one FAISS file) |
 | `src/utils/reranker.py` | Reuse 30/70 + BYOK boost; Knowledge reranker may call into this after adapting match ↔ `RAGChunk` |
-| `docs/user_doc/rag_guide.md`, `docs/user_doc/okp_guide.md` | Document native search and OKP-as-MCP; dynamic `/v1/vector-stores` remains deprecated |
+| `docs/user_doc/rag_guide.md`, `docs/user_doc/okp_guide.md` | Document native static search and OKP-as-MCP. Runtime `/v1/vector-stores` is [dynamic-knowledge.md](dynamic-knowledge.md) |
 
 ### Insertion point detail
 
@@ -547,17 +550,20 @@ No new Pydantic config classes. Factory reads `RagStore`,
   scope. Query embeddings stay local sentence-transformers. Revisit
   if a shared embedder registry appears later.
 - **Dynamic vector stores** (`POST /v1/vector-stores`, live ingest) —
-  origin: spike S1=B rejected. Remains deprecated.
+  origin: spike S1 left them out of this epic. Specified in
+  [dynamic-knowledge.md](dynamic-knowledge.md).
 
 ## Changelog
 
 | Date | Change | Reason |
 |------|--------|--------|
 | 2026-10-06 | Initial version | Spec for LCORE-4573 from LCORE-4291 spike |
+| 2026-10-22 | Point runtime vector stores at dynamic-knowledge.md | Follow-on spec for dynamic ingest |
 
 ## Appendix A — Out of scope
 
-- Dynamic `/v1/vector-stores` and live file ingest
+- Runtime `/v1/vector-stores` and live file ingest
+  ([dynamic-knowledge.md](dynamic-knowledge.md))
 - Native Solr / OGX `vector_io` OKP provider
 - New Knowledge e2e feature files
 - Changing rag-content chunking (LlamaIndex splitters)
