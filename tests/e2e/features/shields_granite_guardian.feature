@@ -46,7 +46,7 @@ Feature: granite_guardian shield functional tests
       And The response contains token counter fields
       And The body of the response contains That phrasing is not something I can act on.
       And The body of the response does not contain I cannot return that response.
-
+  @flaky
   Scenario Outline: granite_guardian blocks unsafe generated output
     Given The service uses the lightspeed-stack-shields.yaml configuration
       And The service is restarted

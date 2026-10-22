@@ -27,6 +27,7 @@ def main() -> int:
             `1` indicates an HTTP/request failure,
             `2` indicates the server response was not valid JSON,
             `3` indicates the JSON response did not contain a `"response"` field.
+
     """
     parser = argparse.ArgumentParser(
         description="Send a query to a local LLM endpoint."

@@ -69,6 +69,7 @@ def generate_documentation_on_path(path: Path) -> None:
     Parameters:
     ----------
         path (str or os.PathLike): Directory in which to generate the README.md file.
+
     """
     # directory can be skipped if it's part of DIRS_TO_SKIP global list.
     if path.as_posix() in DIRS_TO_SKIP:

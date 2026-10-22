@@ -29,6 +29,7 @@ def read_version_from_openapi(openapi_filename: str) -> str:
 
     Returns:
         str: The value of the OpenAPI document's `info.version`.
+
     """
     # retrieve pre-generated OpenAPI schema
     with open(openapi_filename, encoding="utf-8") as fin:
@@ -46,6 +47,7 @@ def read_version_from_pyproject() -> str:
 
     Returns:
         str: The project version string.
+
     """
     # it is not safe to just try to read version from pyproject.toml file directly
     # the PDM tool itself is able to retrieve the version, even if the version
