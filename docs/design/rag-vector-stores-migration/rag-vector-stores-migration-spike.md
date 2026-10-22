@@ -9,7 +9,9 @@ scope are left to the child tickets.
 
 **Reviewed at**: epic readout (acceptance criterion for LCORE-4291).
 
-**Spec**: [knowledge-capability.md](knowledge-capability.md) (LCORE-4573).
+**Spec**: [knowledge-capability.md](knowledge-capability.md) (LCORE-4573, static).
+Runtime stores: [dynamic-knowledge.md](dynamic-knowledge.md) (follow-on;
+not part of the Q4 recommendation below).
 
 **Target prototype**:
 `lightspeed-stack-pydantic/lightspeed/core/agent/knowledge`
@@ -62,7 +64,9 @@ a recommendation — please confirm or override.
 **Recommendation**: **A**, plus an OKP **MCP** `KnowledgeSource` under
 LCORE-4573 (not a third epic). Do not reimplement Solr/`vector_io`.
 OKP becomes another `KnowledgeSource` that calls the upcoming OKP MCP
-server. Dynamic vector-store APIs stay out.
+server. Dynamic vector-store APIs stay out of this recommendation.
+Their follow-on shape is
+[dynamic-knowledge.md](dynamic-knowledge.md).
 
 **Confidence**: 85%.
 
@@ -199,12 +203,14 @@ behavior change, not a simplification.
 ## Out of scope
 
 - **Dynamic vector stores** (`src/app/endpoints/vector_stores.py`) —
-  already deprecated; not "static".
+  out of this spike's Q4 recommendation (S1). Follow-on spec:
+  [dynamic-knowledge.md](dynamic-knowledge.md).
 - **Native Solr / OGX `vector_io` OKP provider** — Solr is deprecated.
   OKP is in scope only as an MCP-backed `KnowledgeSource` (see ticket
   below), not as a reimplemented Solr client.
-- **Live document ingest** (`POST /files`, attach-to-store) — dynamic,
-  not static.
+- **Live document ingest** (`POST /files`, attach-to-store) — same
+  follow-on as dynamic vector stores
+  ([dynamic-knowledge.md](dynamic-knowledge.md)).
 - **New e2e feature files or step definitions for Knowledge** — static
   BYOK is already covered by the existing RAG suite. LCORE-4573 must
   keep those scenarios green; it must not add a parallel Knowledge e2e
@@ -393,8 +399,9 @@ format.
   `faiss.feature`, `byok_pdf.feature`, `okp_rag.feature`, and
   `file_search` scenarios in `responses.feature`); do not add a new
   Knowledge e2e suite
-* Dynamic `/v1/vector-stores` and a native Solr reimplementation are
-  out of scope
+* Dynamic `/v1/vector-stores` is a follow-on
+  ([dynamic-knowledge.md](dynamic-knowledge.md)), not this epic. A
+  native Solr reimplementation is out of scope
 ```
 
 <!-- type: Task -->
@@ -805,8 +812,10 @@ Rip out, at least:
   (`src/utils/responses.py`, `src/utils/builtin_tools.py`,
   `file_search` extra_body tools)
 - BYOK `providers.vector_io` synthesis used only to make OGX serve
-  those stores (`src/ogx_configuration.py` BYOK helpers), unless still
-  required for deprecated dynamic vector-store routes
+  those stores (`src/ogx_configuration.py` BYOK helpers). Leave
+  top-level `vector_store` provider synthesis in place. Native
+  runtime stores are one `rag.dynamic` FAISS file
+  ([dynamic-knowledge.md](dynamic-knowledge.md))
 
 `rag_chunks` and `referenced_documents` stay populated via the
 Knowledge mapper. If S3=B, translate Knowledge tool results to
@@ -848,8 +857,10 @@ Existing RAG e2e (including okp_rag.feature) is the gate.
 `docs/user_doc/okp_guide.md`,
 `examples/lightspeed-stack-byok-okp-rag.yaml`, and rag-content's
 generated LCS snippet if the public schema changes. Document OKP as
-an MCP-backed Knowledge source (not Solr `vector_io`). State that
-dynamic `/v1/vector-stores` remains deprecated.
+an MCP-backed Knowledge source (not Solr `vector_io`). Point runtime
+`/v1/vector-stores` at
+[dynamic-knowledge.md](dynamic-knowledge.md) instead of describing
+them only as a deprecated OGX proxy.
 
 ---
 
@@ -1008,8 +1019,8 @@ assert. Implementation tickets treat this suite as the e2e gate:
 | `tests/e2e/features/okp_rag.feature` | OKP inline and tool RAG (gate for the OKP MCP KnowledgeSource) |
 
 Fixtures such as `tests/e2e/rag/kv_store.db` stay the corpus. Skip
-`vector_stores.feature` — dynamic vector-store APIs are out of this
-epic.
+`vector_stores.feature` here — runtime stores are
+[dynamic-knowledge.md](dynamic-knowledge.md), not this epic.
 
 If S3 keeps the `file_search` Responses contract, those scenarios
 should pass without Gherkin or step changes.
