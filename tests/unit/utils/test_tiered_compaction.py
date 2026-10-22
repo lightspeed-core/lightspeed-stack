@@ -3,6 +3,15 @@
 from typing import Optional
 
 import pytest
+from pydantic_ai import Agent
+from pydantic_ai.messages import (
+    ModelMessage,
+    ModelRequest,
+    ModelResponse,
+    TextPart,
+    UserPromptPart,
+)
+from pydantic_ai.models.function import AgentInfo, FunctionModel
 from pydantic_ai.models.test import TestModel
 from pydantic_ai_harness.compaction import (
     ClampOversizedMessages,
@@ -145,3 +154,33 @@ def test_invalid_summary_prompt_is_rejected(summary_prompt: str) -> None:
     """A prompt without {messages}, or with any other field, is rejected."""
     with pytest.raises(ValueError, match="summary_prompt"):
         build_tiered_compaction(ENABLED, TestModel(), summary_prompt=summary_prompt)
+
+
+@pytest.mark.asyncio
+async def test_capability_summarizes_history_inside_an_agent() -> None:
+    """An agent with the capability sends the summary, not the old turns."""
+    sent: list[list[ModelMessage]] = []
+
+    def chat(messages: list[ModelMessage], _: AgentInfo) -> ModelResponse:
+        """Record what the chat model receives and answer."""
+        sent.append(messages)
+        return ModelResponse(parts=[TextPart(content="answer")])
+
+    # User turns outgrow keep_tokens (250): none is kept, so tail loss spares the query.
+    history: list[ModelMessage] = []
+    for turn in range(3):
+        history.append(
+            ModelRequest(parts=[UserPromptPart(content=f"q{turn} " + "x " * 300)])
+        )
+        history.append(
+            ModelResponse(parts=[TextPart(content=f"a{turn} " + "y " * 300)])
+        )
+    compaction = _build(
+        model=TestModel(custom_output_text="SUMMARY"), context_window=1_000
+    )
+    await Agent(FunctionModel(chat), capabilities=[compaction]).run(
+        "current question", message_history=history
+    )
+    assert "SUMMARY" in repr(sent[-1])
+    assert "current question" in repr(sent[-1])
+    assert "q0 " not in repr(sent[-1])
