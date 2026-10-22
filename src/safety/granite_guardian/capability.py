@@ -139,7 +139,7 @@ class GraniteGuardian(CombinedCapability[AgentDepsT]):
         """
         prefix = f"{self.id}." if self.id is not None else ""
         self.capabilities = [
-            GraniteGuardianRisk(
+            GraniteGuardianRisk(  # pylint: disable=unexpected-keyword-arg
                 id=f"{prefix}{risk.name}",
                 risk=risk,
                 model=self.model,

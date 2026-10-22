@@ -60,7 +60,7 @@ _SCORING_SCHEMA_PROMPT_ONLY = (
 
 
 def build_guardian_block(criteria: str, *, think: bool = False) -> str:
-    """Build the instructions sent alongside a risk check, asking Granite Guardian to judge `criteria`."""
+    """Build Granite Guardian instructions that judge `criteria`."""
     preamble = _JUDGE_PREAMBLE_THINK if think else _JUDGE_PREAMBLE_NOTHINK
     return (
         f"{preamble}\n\n"

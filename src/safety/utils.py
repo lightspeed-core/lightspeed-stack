@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Sequence
-from typing import Any, Optional
+from typing import Any, Optional, TypeVar
 
 from pydantic import BaseModel
 from pydantic_ai.exceptions import UserError
@@ -23,8 +23,11 @@ from pydantic_ai.messages import (
     UserPromptPart,
 )
 
+PartT = TypeVar("PartT")
+MessageT = TypeVar("MessageT")
 
-def find_latest_part[PartT](
+
+def find_latest_part(
     messages: Sequence[ModelMessage], part_type: type[PartT]
 ) -> Optional[PartT]:
     """Return the most recent part of `part_type` in `messages`, scanning newest-first.
@@ -41,7 +44,7 @@ def find_latest_part[PartT](
     return None
 
 
-def find_latest_message[MessageT](
+def find_latest_message(
     messages: Sequence[ModelMessage], message_type: type[MessageT]
 ) -> Optional[MessageT]:
     """Return the most recent message of `message_type` in `messages`, scanning newest-first.

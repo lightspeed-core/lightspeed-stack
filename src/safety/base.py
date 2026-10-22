@@ -132,7 +132,8 @@ class AbstractSafetyCapability(AbstractCapability[AgentDepsT]):
                     return dataclasses.replace(result, output=str(verdict.replacement))
                 case _:
                     raise UserError(
-                        f"A Safety guard cannot return {verdict.action} on output; use allow, block, or replace."
+                        "A Safety guard cannot return "
+                        f"{verdict.action} on output; use allow, block, or replace."
                     )
         return result
 
@@ -158,6 +159,11 @@ class AbstractSafetyCapability(AbstractCapability[AgentDepsT]):
                             index=0, part=TextPart(content=str(result.replacement))
                         )
                     ]
+                case _:
+                    raise UserError(
+                        "A Safety guard cannot return "
+                        f"{result.action} on output; use allow, block, or replace."
+                    )
 
         async def drain() -> None:
             """Exhaust `stream` without processing it further.
@@ -252,11 +258,13 @@ class AbstractSafetyCapability(AbstractCapability[AgentDepsT]):
                         request_context.messages, str(result.replacement)
                     ):
                         raise UserError(
-                            "A Safety guard could not find a user prompt to redact in the request."
+                            "A Safety guard could not find a user prompt "
+                            "to redact in the request."
                         )
                 case _:
                     raise UserError(
-                        f"A Safety guard cannot return {result.action} on input; use allow, block, or replace."
+                        "A Safety guard cannot return "
+                        f"{result.action} on input; use allow, block, or replace."
                     )
 
         return await handler(request_context)
