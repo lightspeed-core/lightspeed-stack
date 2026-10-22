@@ -25,9 +25,12 @@ def _build(
     config: CompactionConfiguration = ENABLED,
     model: Optional[TestModel] = None,
     context_window: Optional[int] = None,
+    summary_prompt: Optional[str] = None,
 ) -> TieredCompaction[object]:
     """Build the capability for an enabled configuration and assert it exists."""
-    compaction = build_tiered_compaction(config, model or TestModel(), context_window)
+    compaction = build_tiered_compaction(
+        config, model or TestModel(), context_window, summary_prompt
+    )
     assert compaction is not None
     return compaction
 
@@ -42,7 +45,7 @@ def _summarizer(compaction: TieredCompaction[object]) -> SummarizingCompaction[o
 def test_disabled_configuration_builds_nothing() -> None:
     """A disabled configuration yields no capability, whatever else is passed."""
     config = CompactionConfiguration(enabled=False)
-    assert build_tiered_compaction(config, TestModel(), 128_000) is None
+    assert build_tiered_compaction(config, TestModel(), 128_000, "{messages}") is None
 
 
 def test_tiers_come_in_fixed_order() -> None:
@@ -109,3 +112,36 @@ def test_zero_threshold_ratio_is_rejected() -> None:
     config = ENABLED.model_copy(update={"threshold_ratio": 0.0})
     with pytest.raises(ValueError, match="target_fraction"):
         build_tiered_compaction(config, TestModel())
+
+
+def test_default_summary_prompt_is_kept() -> None:
+    """Without a custom prompt the harness default stays in place."""
+    default = SummarizingCompaction[object](max_messages=1).summary_prompt
+    assert _summarizer(_build()).summary_prompt == default
+
+
+@pytest.mark.parametrize(
+    "summary_prompt",
+    ["Summarize for support:\n{messages}", "Keep {{literal}} braces.\n{messages}"],
+)
+def test_custom_summary_prompt_is_used(summary_prompt: str) -> None:
+    """A prompt whose only placeholder is {messages} replaces the default."""
+    summarizer = _summarizer(_build(summary_prompt=summary_prompt))
+    assert summarizer.summary_prompt == summary_prompt
+
+
+@pytest.mark.parametrize(
+    "summary_prompt",
+    [
+        "Summarize the conversation.",
+        "",
+        "{messages} about {product}",
+        "{messages:.100}",
+        "{messages!r}",
+        "{messages",
+    ],
+)
+def test_invalid_summary_prompt_is_rejected(summary_prompt: str) -> None:
+    """A prompt without {messages}, or with any other field, is rejected."""
+    with pytest.raises(ValueError, match="summary_prompt"):
+        build_tiered_compaction(ENABLED, TestModel(), summary_prompt=summary_prompt)
