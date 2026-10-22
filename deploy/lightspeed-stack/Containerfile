@@ -39,7 +39,9 @@ COPY ${LSC_SOURCE_DIR}/pyproject.toml ${LSC_SOURCE_DIR}/LICENSE ${LSC_SOURCE_DIR
 COPY ${LSC_SOURCE_DIR}/providers/lightspeed_stack_providers /app-root/lightspeed_stack_providers
 COPY ${LSC_SOURCE_DIR}/providers/resources/external_providers /app-root/providers.d
 
-# Bundle additional dependencies for library mode.
+# Bundle additional dependencies for library mode and install the spaCy model for PII
+# redaction. The model is baked into the image so it is available in disconnected
+# environments where runtime downloads are not possible.
 # Source cachi2 environment for hermetic builds if available, otherwise use normal installation
 # cachi2.env has these env vars:
 # PIP_FIND_LINKS=/cachi2/output/deps/pip
@@ -51,7 +53,8 @@ RUN if [ -f /cachi2/cachi2.env ]; then \
     pip install --no-cache-dir --ignore-installed --no-index --find-links ${PIP_FIND_LINKS} --no-deps -r requirements.hashes.wheel.txt -r requirements.hashes.wheel.pypi.txt -r requirements.hashes.source.txt && \
     pip check; \
     else \
-    uv sync --locked --no-dev --group ogxlibdev; \
+    uv sync --locked --no-dev --group ogxlibdev && \
+    uv run --with pip python -m spacy download en_core_web_lg; \
     fi
 
 # Explicitly remove some packages to mitigate some CVEs

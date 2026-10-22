@@ -193,6 +193,13 @@ To quickly get hands on LCS, we can run it using the default configurations prov
    ```bash
    uv sync --group dev --group ogxlibdev
    ```
+   
+   If you plan to enable OpenTelemetry tracing with in-process PII redaction
+   (OTEL_TRACES_EXPORTER=redacting_otlp), also download the spaCy model:
+   ```bash
+   uv run python -m spacy download en_core_web_lg
+   ```
+
 1. create OGX `run.yaml`. you can do this by running the local run generation script
    ```bash
    ./scripts/generate_local_run.sh
