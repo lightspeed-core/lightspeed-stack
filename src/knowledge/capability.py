@@ -20,9 +20,11 @@ from typing import Optional
 
 from pydantic_ai.capabilities import AbstractCapability
 from pydantic_ai.tools import AgentDepsT
+from pydantic_ai.toolsets import AgentToolset
 from sentence_transformers import CrossEncoder
 
 from knowledge.sources.base import KnowledgeSource
+from knowledge.toolset import KnowledgeToolset
 
 
 @dataclass
@@ -37,3 +39,12 @@ class Knowledge(AbstractCapability[AgentDepsT]):
     `'cross-encoder/ms-marco-MiniLM-L-6-v2'`) used to rerank matches by
     relevance to the query before they're returned or injected. Loaded
     lazily on first use; requires the `sentence-transformers` package."""
+
+    def get_toolset(self) -> AgentToolset[AgentDepsT] | None:
+        """Provide a `search_knowledge` tool spanning every `'tool'`-mode source."""
+        tool_sources = [source for source in self.sources if "tool" in source.mode]
+        return (
+            KnowledgeToolset(tool_sources, reranker=self.reranker)
+            if tool_sources
+            else None
+        )
