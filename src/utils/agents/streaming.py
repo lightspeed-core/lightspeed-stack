@@ -89,7 +89,6 @@ from utils.stream_interrupts import (
     build_interrupted_response,
     deregister_stream,
     persist_interrupted_turn,
-    register_interrupt_callback,
 )
 
 type AgentDispatchEvent = AgentStreamEvent | AgentRunResultEvent
@@ -229,13 +228,7 @@ async def generate_agent_response(  # pylint: disable=too-many-statements
     media_type = context.query_request.media_type or MEDIA_TYPE_JSON
     if turn is None:
         turn = PendingTurn.for_request(context.client, responses_params)
-    persist_guard = register_interrupt_callback(
-        context,
-        responses_params,
-        turn_summary,
-        background_topic_summary_tasks,
-        turn,
-    )
+    persist_guard: list[bool] = [False]
     stream_completed = False
     if emit_start:
         yield serialize_event(

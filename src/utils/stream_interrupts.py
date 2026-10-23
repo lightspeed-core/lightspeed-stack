@@ -2,11 +2,12 @@
 
 import asyncio
 import datetime
-from collections.abc import Callable, Coroutine
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import StrEnum
 from threading import Lock
-from typing import Any, Optional
+from typing import Optional
+
+from pydantic_ai import CancellationToken
 
 from constants import (
     INTERRUPTED_RESPONSE_MESSAGE,
@@ -31,20 +32,14 @@ class ActiveStream:
 
     Attributes:
         user_id: Owner of the streaming request.
-        task: Asyncio task producing the stream response.
-        on_interrupt: Optional async callback invoked when the stream
-            is cancelled, scheduled as a separate task so it runs
-            regardless of where the ``CancelledError`` lands.
+        token: Cancellation token of the agent run producing the stream.
         conversation_id: Conversation the streaming request belongs to,
             surfaced for observability of interrupt requests.
 
     """
 
     user_id: str
-    task: asyncio.Task[None]
-    on_interrupt: Optional[Callable[[], Coroutine[Any, Any, None]]] = field(
-        default=None, repr=False
-    )
+    token: CancellationToken
     conversation_id: Optional[str] = None
 
 
@@ -58,7 +53,7 @@ class CancelStreamResult(StrEnum):
 
 
 class StreamInterruptRegistry(metaclass=Singleton):
-    """Registry for active streaming tasks keyed by request ID."""
+    """Ownership and cancellation index of active streams keyed by request ID."""
 
     def __init__(self) -> None:
         """Initialize an empty registry with a lock for thread-safety."""
@@ -69,19 +64,16 @@ class StreamInterruptRegistry(metaclass=Singleton):
         self,
         request_id: str,
         user_id: str,
-        task: asyncio.Task[None],
-        on_interrupt: Optional[Callable[[], Coroutine[Any, Any, None]]] = None,
+        token: CancellationToken,
         conversation_id: Optional[str] = None,
     ) -> None:
-        """Register an active stream task for interrupt support.
+        """Register an active stream for interrupt support.
 
         Parameters:
         ----------
             request_id: Unique streaming request identifier.
             user_id: User identifier that owns the stream.
-            task: Asyncio task associated with the stream.
-            on_interrupt: Optional async callback to run when the stream
-                is cancelled, executed in a separate task.
+            token: Cancellation token passed to the agent run of the stream.
             conversation_id: Conversation the stream belongs to, retained
                 for observability of subsequent interrupt requests.
 
@@ -89,22 +81,23 @@ class StreamInterruptRegistry(metaclass=Singleton):
         with self._lock:
             self._streams[request_id] = ActiveStream(
                 user_id=user_id,
-                task=task,
-                on_interrupt=on_interrupt,
+                token=token,
                 conversation_id=conversation_id,
             )
 
     def cancel_stream(self, request_id: str, user_id: str) -> CancelStreamResult:
-        """Cancel an active stream owned by user.
+        """Cancel the token of an active stream owned by user.
 
         The entire lookup-check-cancel sequence is performed under the
         lock so that a concurrent ``deregister_stream`` cannot remove
-        the entry between the ownership check and the cancel call.
-
-        When an ``on_interrupt`` callback was registered, it is
-        scheduled as a **separate** asyncio task after the cancel so
-        persistence runs regardless of where the ``CancelledError``
-        is raised (inside the generator or in Starlette's send).
+        the entry between the ownership check and the cancel call, and
+        so that only one caller sees a token flip to cancelled.
+        Cancelling the token asks the agent run to stop; the streaming
+        request itself finalizes the interrupted turn. PAI ignores a
+        cancel once the run has finished, so an entry that is still
+        registered after its run completed also returns ``CANCELLED``;
+        the streaming request should deregister as soon as its agent
+        run ends.
 
         Parameters:
         ----------
@@ -113,10 +106,11 @@ class StreamInterruptRegistry(metaclass=Singleton):
 
         Returns:
         -------
-            CancelStreamResult: Structured cancellation result.
+            CancelStreamResult: ``NOT_FOUND`` for an unknown request,
+            ``FORBIDDEN`` when another user owns it, ``ALREADY_DONE``
+            when its token was already cancelled, ``CANCELLED`` otherwise.
 
         """
-        on_interrupt = None
         with self._lock:
             stream = self._streams.get(request_id)
             if stream is None:
@@ -128,18 +122,13 @@ class StreamInterruptRegistry(metaclass=Singleton):
                     request_id,
                 )
                 return CancelStreamResult.FORBIDDEN
-            if stream.task.done():
+            if stream.token.cancelled:
                 return CancelStreamResult.ALREADY_DONE
-            stream.task.cancel()
-            on_interrupt = stream.on_interrupt
-
-        if on_interrupt is not None:
-            asyncio.get_running_loop().create_task(on_interrupt())
-
+            stream.token.cancel()
         return CancelStreamResult.CANCELLED
 
     def deregister_stream(self, request_id: str) -> None:
-        """Remove stream task from registry once completed/cancelled.
+        """Remove stream from registry once completed/cancelled.
 
         Parameters:
         ----------
@@ -325,71 +314,3 @@ async def persist_interrupted_turn(
             "Failed to store interrupted query results for request %s",
             context.request_id,
         )
-
-
-def register_interrupt_callback(
-    context: ResponseGeneratorContext,
-    responses_params: ResponsesApiParams,
-    turn_summary: TurnSummary,
-    background_topic_summary_tasks: list[asyncio.Task[None]],
-    turn: Optional[PendingTurn] = None,
-) -> list[bool]:
-    """Build an interrupt callback and register the stream for cancellation.
-
-    The callback is invoked by ``cancel_stream`` when the client
-    interrupts, so persistence runs regardless of where the
-    ``CancelledError`` is raised in the ASGI stack.
-
-    A mutable one-element list is used as a shared guard so the
-    callback and the in-generator ``CancelledError`` handler never
-    both persist the same turn.
-
-    Parameters:
-    ----------
-        context: The response generator context.
-        responses_params: The Responses API parameters.
-        turn_summary: TurnSummary populated during streaming.
-        background_topic_summary_tasks: Mutable list tracking fire-and-forget
-            topic summary tasks for graceful shutdown.
-        turn: The pending turn of the request; required in compacted mode.
-
-    Returns:
-    -------
-        A mutable list ``[False]`` used as a persist-done guard; the
-        caller should check ``guard[0]`` before persisting and set
-        it to ``True`` afterwards.
-
-    """
-    guard: list[bool] = [False]
-
-    async def _on_interrupt() -> None:
-        if guard[0]:
-            return
-        guard[0] = True
-        full_text, _ = build_interrupted_response(turn_summary.partial_tokens)
-        turn_summary.llm_response = full_text
-        await persist_interrupted_turn(
-            context,
-            responses_params,
-            turn_summary,
-            background_topic_summary_tasks,
-            turn,
-        )
-
-    current_task = asyncio.current_task()
-    if current_task is not None:
-        get_stream_interrupt_registry().register_stream(
-            request_id=context.request_id,
-            user_id=context.user_id,
-            task=current_task,
-            on_interrupt=_on_interrupt,
-            conversation_id=context.conversation_id,
-        )
-    else:
-        logger.warning(
-            "No current asyncio task for request %s; "
-            "stream interruption will not be available",
-            context.request_id,
-        )
-
-    return guard
