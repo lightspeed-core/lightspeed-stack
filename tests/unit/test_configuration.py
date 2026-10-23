@@ -4245,3 +4245,60 @@ def test_replace_env_vars_without_native_override_resolves_all(
     config_dict = {"inference": {"default_model": "${env.LCORE_TEST_MODEL}"}}
     resolved = replace_env_vars_preserving_native_override(config_dict)
     assert resolved["inference"]["default_model"] == "gpt-5.6-luna"
+
+
+def test_configuration_resolves_environment_reference_spellings(
+    monkeypatch: pytest.MonkeyPatch, reference_prefix: str
+) -> None:
+    """Resolve either spelling through the configuration preprocessing helper."""
+    monkeypatch.setenv("LCORE_TEST_MODEL", "gpt-4o-mini")
+    config = {
+        "inference": {"default_model": f"${{{reference_prefix}LCORE_TEST_MODEL}}"}
+    }
+
+    resolved = replace_env_vars_preserving_native_override(config)
+
+    assert resolved["inference"]["default_model"] == "gpt-4o-mini"
+
+
+@pytest.mark.parametrize("ogx_key", ["ogx", "llama_stack"])
+@pytest.mark.parametrize("secret_is_set", [True, False], ids=["set", "unset"])
+def test_configuration_defers_native_override_environment_references(
+    monkeypatch: pytest.MonkeyPatch,
+    reference_prefix: str,
+    ogx_key: str,
+    secret_is_set: bool,
+) -> None:
+    """Defer OGX references even when their secrets are absent from the environment."""
+    secret = "native-override-secret"
+    monkeypatch.delenv("LCORE_TEST_SECRET", raising=False)
+    if secret_is_set:
+        monkeypatch.setenv("LCORE_TEST_SECRET", secret)
+    monkeypatch.setenv("LCORE_TEST_MODEL", "gpt-4o-mini")
+    config = {
+        "inference": {"default_model": f"${{{reference_prefix}LCORE_TEST_MODEL}}"},
+        ogx_key: {
+            "config": {
+                "native_override": {
+                    "providers": {
+                        "inference": [
+                            {
+                                "config": {
+                                    "api_key": f"${{{reference_prefix}LCORE_TEST_SECRET}}"
+                                }
+                            }
+                        ]
+                    }
+                }
+            }
+        },
+    }
+
+    resolved = replace_env_vars_preserving_native_override(config)
+
+    api_key = resolved[ogx_key]["config"]["native_override"]["providers"]["inference"][
+        0
+    ]["config"]["api_key"]
+    assert api_key == "${env.LCORE_TEST_SECRET}"
+    assert resolved["inference"]["default_model"] == "gpt-4o-mini"
+    assert secret not in str(resolved)
