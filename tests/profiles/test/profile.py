@@ -32,6 +32,10 @@ Example Question:
 How can I integrate GitOps into my pipeline?
 Example Response:
 {SUBJECT_ALLOWED}
+
+Question:
+${{message}}
+Response:
 """
 
 TOPIC_SUMMARY_PROMPT_TEMPLATE = """
