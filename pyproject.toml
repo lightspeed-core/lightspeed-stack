@@ -85,6 +85,9 @@ dependencies = [
     "tiktoken>=0.8.0",
     # Used for Pydantic AI
     "pydantic-ai==2.27.1",
+    # Used for conversation compaction (TieredCompaction, LCORE-4692); 0.18.1 is the
+    # newest release that supports pydantic-ai 2.27.x (0.20+ needs pydantic-ai-slim>=2.28)
+    "pydantic-ai-harness==0.18.1",
     "pydantic-ai-skills>=0.11.0",
     # Used for OpenTelemetry instrumentation
     "opentelemetry-distro>=0.49b0",

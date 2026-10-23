@@ -29,6 +29,9 @@ ogx-client==1.2.5 \
 pydantic-ai==2.27.1 \
     --hash=sha256:9ff468db17b31411c85de63f021775afda517c7c3972362888d7c0ad739eb50f \
     --hash=sha256:c36946a1f4f537a14a59703900eba2ca38896b832118804469ae92c8b78ae94b
+pydantic-ai-harness==0.18.1 \
+    --hash=sha256:9eeae7147f36e85c804d48624b832e1e3346c02aba1d7bb8f1d455f8f70b44c5 \
+    --hash=sha256:a7cc6c5e584df6516c466cda98e9945bfacbd9b58dce0cd5ef61433fb0bdfd50
 pydantic-ai-skills==1.4.0 \
     --hash=sha256:7303e0738a837218415f8b2e7bd5b5cbc0ceeb74850b1902c2d079550e0b9b83 \
     --hash=sha256:bce8731a042f50c45965acc520dc883163e511c34b208f720eb62067ef5be686

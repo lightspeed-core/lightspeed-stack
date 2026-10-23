@@ -345,6 +345,10 @@ ENDPOINT_PATH_QUERY: Final[str] = "/v1/query"
 ENDPOINT_PATH_STREAMING_QUERY: Final[str] = "/v1/streaming_query"
 ENDPOINT_PATH_RESPONSES: Final[str] = "/v1/responses"
 
+# Context window (tokens) conversation compaction assumes for a model when
+# neither its catalog metadata nor automatic resolution gives one.
+DEFAULT_CONTEXT_WINDOW: Final[int] = 128_000
+
 # Input size limits for API request validation
 # Maximum character length for the question field in /v1/infer requests (32 KiB)
 RLSAPI_V1_QUESTION_MAX_LENGTH: Final[int] = 32_768
