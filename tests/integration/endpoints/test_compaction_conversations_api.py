@@ -46,6 +46,7 @@ from tests.integration.endpoints._compaction_helpers import (
     marker,
     msg,
 )
+from utils.blocked_turns import new_blocked_item_id
 from utils.conversation_compaction import MARKER_SENTINEL
 
 NEW_QUERY = "What else can you help with?"
@@ -259,6 +260,50 @@ class TestConversationsApiCompactionMarkers:
             ("provider-3", "model-3"),
         ]
         assert_marker_count(mock_conversation_store, CONV_ID_LLAMA, 2)
+
+    @pytest.mark.asyncio
+    async def test_blocked_turn_is_returned(
+        self,
+        test_config: AppConfig,
+        mock_ogx_client: AsyncMockType,
+        mock_conversation_store: InMemoryConversationStore,
+        non_admin_test_request: Request,
+        test_auth: AuthTuple,
+        patch_db_session: Session,
+    ) -> None:
+        """A turn a shield blocked is part of the history a client reads (LCORE-3788).
+
+        Unlike a marker, the user did send it. Only what the model reads
+        leaves blocked turns out.
+        """
+        _ = test_config
+        _ = mock_ogx_client
+
+        create_existing_conversation(patch_db_session, test_auth[0])
+        await mock_conversation_store.create(
+            conversation_id=CONV_ID_LLAMA,
+            items=[
+                OpenAIResponseMessage(
+                    role="user",
+                    content="the blocked question",
+                    id=new_blocked_item_id(),
+                ),
+                OpenAIResponseMessage(
+                    role="assistant", content="the refusal", id=new_blocked_item_id()
+                ),
+            ],
+        )
+
+        response = await get_conversation_v1(
+            request=non_admin_test_request,
+            conversation_id=EXISTING_CONV_ID,
+            auth=test_auth,
+        )
+
+        assert _returned_messages(response) == [
+            ("user", "the blocked question"),
+            ("assistant", "the refusal"),
+        ]
 
     @pytest.mark.asyncio
     async def test_v2_history_holds_no_marker_after_a_compaction(

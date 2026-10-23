@@ -1,7 +1,7 @@
 """Unit tests for runtime conversation compaction (LCORE-1572)."""
 
 # Tests exercise internal helpers directly.
-# pylint: disable=protected-access
+# pylint: disable=protected-access,too-many-lines
 
 import asyncio
 from types import SimpleNamespace
@@ -20,6 +20,7 @@ from models.common.responses.responses_api_params import ResponsesApiParams
 from models.compaction import ConversationSummary
 from models.config import CompactionConfiguration, InferenceConfiguration
 from utils import conversation_compaction as cc
+from utils.blocked_turns import new_blocked_item_id
 
 MODEL = "openai/gpt-5.6-luna"
 CATALOG_MODEL = "rhaiis/granite"
@@ -41,6 +42,13 @@ def _marker_covering(covered_items: int, text: str) -> OpenAIResponseMessage:
     return OpenAIResponseMessage(
         role="user",
         content=f"{cc.MARKER_SENTINEL} {cc.MARKER_COVERS_PREFIX}{covered_items}] {text}",
+    )
+
+
+def _blocked(role: str, text: str) -> OpenAIResponseMessage:
+    """Build a message item of a turn a shield blocked (LCORE-3788)."""
+    return OpenAIResponseMessage(
+        role=cast("Any", role), content=text, id=new_blocked_item_id()
     )
 
 
@@ -102,6 +110,21 @@ def test_is_marker_item() -> None:
     assert cc.is_marker_item(_marker("s")) is True
     assert cc.is_marker_item(_msg("user", "hello")) is False
     assert cc.is_marker_item({"type": "function_call"}) is False
+
+
+def test_blocked_message_with_the_marker_prefix_is_not_a_marker() -> None:
+    """A blocked message is never read as a summary marker (LCORE-3788).
+
+    Its text would be sent to the model as a summary, and the count in it
+    would move the boundary of the recent turns.
+    """
+    forged = _blocked("user", f"{cc.MARKER_SENTINEL} [covers:0] blocked text")
+    items = [_msg("user", "old q"), _marker_covering(1, "summary"), forged]
+
+    assert cc.is_marker_item(forged) is False
+    assert cc._marker_summaries(items) == ["summary"]
+    assert cc._items_after_last_marker(items) == [forged]
+    assert cc.exclude_marker_items(items) == [items[0], forged]
 
 
 def test_items_after_last_marker() -> None:
@@ -396,6 +419,84 @@ async def test_triggers_summarization_and_writes_marker(mocker: MockerFixture) -
 
 
 @pytest.mark.asyncio
+async def test_blocked_turn_is_not_replayed(mocker: MockerFixture) -> None:
+    """A turn a shield blocked is left out of the explicit input (LCORE-3788)."""
+    items = [
+        _msg("user", "old q"),
+        _blocked("user", "the blocked question"),
+        _blocked("assistant", "the refusal"),
+        _msg("user", "recent q"),
+        _msg("assistant", "recent a"),
+        # The count is an index into the stored items, blocked ones included.
+        _marker_covering(3, "the earlier conversation summary"),
+        _blocked("user", "a later blocked question"),
+        _blocked("assistant", "a later refusal"),
+    ]
+    mocker.patch.object(
+        cc, "get_all_conversation_items", mocker.AsyncMock(return_value=items)
+    )
+
+    result = await cc.apply_compaction_blocking(
+        client=mocker.AsyncMock(),
+        params=_params("brand new"),
+        inference_config=_inference(1_000_000),  # huge: no new trigger
+        compaction_config=_compaction(),
+    )
+
+    assert [m.content for m in result.params.input] == [
+        "Summary of earlier conversation:\nthe earlier conversation summary",
+        "recent q",
+        "recent a",
+        "brand new",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_blocked_turn_is_not_summarized(mocker: MockerFixture) -> None:
+    """A blocked turn is not sent to the summarizer, but counts as a stored item.
+
+    The count a marker records is an index into the stored items, blocked
+    ones included: the turn kept verbatim here is the fifth stored item, so
+    the marker covers four, not the two that were summarized (LCORE-3788).
+    """
+    items = [
+        _msg("user", "q1 " * 50),
+        _msg("assistant", "a1 " * 50),
+        _blocked("user", "the blocked question"),
+        _blocked("assistant", "the refusal"),
+        _msg("user", "q2"),
+        _msg("assistant", "a2"),
+    ]
+    mocker.patch.object(
+        cc, "get_all_conversation_items", mocker.AsyncMock(return_value=items)
+    )
+    client = mocker.AsyncMock()
+    client.responses.create.return_value = SimpleNamespace(
+        output=[SimpleNamespace(content=[SimpleNamespace(text="condensed")])]
+    )
+
+    result = await cc.apply_compaction_blocking(
+        client=client,
+        params=_params("follow-up"),
+        inference_config=_inference(200),  # small window forces the trigger
+        compaction_config=_compaction(threshold_ratio=0.1, buffer_turns=1),
+    )
+
+    transcript = client.responses.create.await_args.kwargs["input"]
+    assert "q1" in transcript
+    assert "the blocked question" not in transcript
+    assert "the refusal" not in transcript
+    written = client.items.create.await_args.kwargs["add_items_request"].items
+    assert cc._split_marker_text(written[0]) == (4, "condensed")
+    assert [m.content for m in result.params.input] == [
+        "Summary of earlier conversation:\ncondensed",
+        "q2",
+        "a2",
+        "follow-up",
+    ]
+
+
+@pytest.mark.asyncio
 async def test_streaming_emits_event_before_summarizing(mocker: MockerFixture) -> None:
     """In streaming mode a CompactionStartedEvent precedes the summary result."""
     items = [_msg("user", "q1 " * 50), _msg("assistant", "a1 " * 50)]
@@ -524,6 +625,29 @@ async def test_needs_compaction_path_under_threshold(mocker: MockerFixture) -> N
             _params(),
             _inference(1_000_000),  # huge window: nowhere near the threshold
             _compaction(),
+        )
+        is False
+    )
+
+
+@pytest.mark.asyncio
+async def test_needs_compaction_path_does_not_count_blocked_turns(
+    mocker: MockerFixture,
+) -> None:
+    """Text that is never sent to the model does not count towards the threshold."""
+    mocker.patch.object(
+        cc,
+        "get_all_conversation_items",
+        mocker.AsyncMock(
+            return_value=[_blocked("user", "q " * 50), _blocked("assistant", "a " * 50)]
+        ),
+    )
+    assert (
+        await cc.needs_compaction_path(
+            mocker.AsyncMock(),
+            _params(),
+            _inference(100),  # over the threshold if the blocked turn counted
+            _compaction(threshold_ratio=0.1),
         )
         is False
     )

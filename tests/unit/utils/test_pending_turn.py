@@ -16,6 +16,7 @@ from pytest_mock import MockerFixture
 from models.common.responses.responses_api_params import ResponsesApiParams
 from models.common.responses.types import ResponseInput
 from models.config import CompactionConfiguration, InferenceConfiguration
+from utils.blocked_turns import is_blocked_item
 from utils.conversation_compaction import MARKER_SENTINEL, apply_compaction_blocking
 from utils.pending_turn import PendingTurn, TurnNotStoredError, pending_turn
 from utils.token_estimator import extract_message_text
@@ -33,6 +34,7 @@ class RecordingClient:  # pylint: disable=too-few-public-methods
     def __init__(self, fail_with: Optional[Exception] = None) -> None:
         """Create the client, optionally one whose writes fail."""
         self.stored: list[tuple[str, str, str]] = []
+        self.marked_blocked: list[bool] = []
         self.writes = 0
         self._fail_with = fail_with
         self.items = self
@@ -47,6 +49,9 @@ class RecordingClient:  # pylint: disable=too-few-public-methods
         self.stored.extend(
             (conversation_id, str(item.role), extract_message_text(item))
             for item in add_items_request.items
+        )
+        self.marked_blocked.extend(
+            is_blocked_item(item) for item in add_items_request.items
         )
 
 
@@ -161,6 +166,24 @@ async def test_blocked_turn_is_stored(compacted: bool) -> None:
     assert await turn.store_blocked(REFUSAL) is True
 
     assert client.stored == [USER, (CONVERSATION, "assistant", "blocked by a shield")]
+
+
+@pytest.mark.asyncio
+async def test_only_a_blocked_turn_is_stored_as_blocked() -> None:
+    """A blocked turn carries the mark that keeps it from the model (LCORE-3788).
+
+    Both of its messages do, the input and the refusal. A turn that ended any
+    other way must not: it would be missing from the model's context.
+    """
+    blocked, completed, interrupted = (RecordingClient() for _ in range(3))
+
+    await _turn(blocked, compacted=True).store_blocked(REFUSAL)
+    await _turn(completed, compacted=True).store_completed([ANSWER])
+    await _turn(interrupted, compacted=True).store_interrupted("half an ans")
+
+    assert blocked.marked_blocked == [True, True]
+    assert completed.marked_blocked == [False, False]
+    assert interrupted.marked_blocked == [False, False]
 
 
 @pytest.mark.asyncio

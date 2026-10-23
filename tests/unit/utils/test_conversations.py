@@ -27,6 +27,7 @@ from pytest_mock import MockerFixture
 from constants import DEFAULT_RAG_TOOL
 from models.common.turn_summary import ToolCallSummary
 from models.database.conversations import UserTurn
+from utils.blocked_turns import is_blocked_item
 from utils.conversations import (
     _build_tool_call_summary_from_item,
     _extract_text_from_content,
@@ -914,6 +915,28 @@ class TestAppendTurnItemsToConversation:  # pylint: disable=too-few-public-metho
         assert items[0].content == "Hello"
         assert items[1].type == "message" and items[1].role == "assistant"
         assert items[1].content == "I cannot help with that"
+
+    @pytest.mark.asyncio
+    async def test_blocked_turn_is_stored_with_the_blocked_mark(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Every message of a blocked turn is stored under a blocked id (LCORE-3788)."""
+        mock_client = mocker.Mock()
+        mock_client.items.create = mocker.AsyncMock(return_value=None)
+
+        await append_turn_items_to_conversation(
+            mock_client,
+            conversation_id="conv-123",
+            user_input=[
+                OpenAIResponseMessage(role="user", content="Hello", id="msg_client")
+            ],
+            llm_output=[OpenAIResponseMessage(role="assistant", content="Refused")],
+            blocked=True,
+        )
+
+        stored = mock_client.items.create.call_args[1]["add_items_request"].items
+        assert [item.content for item in stored] == ["Hello", "Refused"]
+        assert all(is_blocked_item(item) for item in stored)
 
 
 class TestAppendTurnToConversation:  # pylint: disable=too-few-public-methods
