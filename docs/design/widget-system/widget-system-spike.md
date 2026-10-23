@@ -394,6 +394,42 @@ feature.
 - MCP tool definition examples for common widget patterns
 - Troubleshooting section
 
+#### LCORE-5147 Build AG-UI demo: CopilotKit + Lightspeed Stack + MCP
+
+**Description**: Build a working end-to-end demo that showcases the `/agui`
+endpoint with a CopilotKit frontend, Lightspeed Stack backend, and an MCP
+server providing UI-related tools (using A2UI generative UI or plain tool
+definitions). The demo serves two purposes: (1) give teams evaluating migration
+to the AG-UI endpoint a concrete example they can assess against their own use
+cases, and (2) provide a practical reference implementation they can learn from
+and adapt.
+
+**Scope**:
+- CopilotKit frontend application consuming AG-UI events from the `/agui`
+  endpoint
+- MCP server with example UI tools demonstrating widget patterns (e.g., forms,
+  confirmation dialogs, data tables) — using A2UI generative UI or plain tool
+  definitions
+- Docker Compose or equivalent setup for running the full stack locally
+- README with setup instructions, architecture overview, and walkthrough of
+  each demo scenario
+- At least 3 demo scenarios covering distinct widget patterns:
+  - Interactive form rendering (e.g., user profile editor)
+  - Confirmation dialog with human-in-the-loop approval
+  - Data display widget (e.g., table or chart rendered from tool output)
+
+**Acceptance criteria**:
+- Demo runs locally with documented setup steps
+- CopilotKit frontend successfully renders widgets driven by the agent via
+  `/agui`
+- MCP server tools are invoked by the agent and produce visible UI output
+- Demo is self-contained and reproducible by teams with no prior AG-UI
+  experience
+- README documents how to extend the demo with custom MCP tools
+
+**Blocked by**:
+- LCORE-4576 (AG-UI endpoint — client mode)
+
 ## PoC results
 
 No PoC was built for this spike. The core mechanisms are already validated:
