@@ -267,39 +267,115 @@ ticket. Take the Gherkin as-is.
 - LCORE-4577 (E2E feature files kickoff)
 - LCORE-4576 (AG-UI endpoint implementation)
 
-#### LCORE-4576 Implement `/agui` endpoint
+#### LCORE-4576 Implement `/agui` endpoint (client mode)
 
 **Description**: Create the core AG-UI endpoint handler in
-`src/app/endpoints/agui.py`. The endpoint receives AG-UI `RunAgentInput`
-requests, applies LCS middleware (auth, MCP, shields, quota, BYOK, conversation
-context, compaction), runs the pydantic-ai agent via `AGUIAdapter`, and streams
-AG-UI events back as SSE. This includes adding the `Action.AGUI` authorization
-action to the `Action` enum.
+`src/app/endpoints/agui.py` with **client mode** conversation handling. In
+client mode the frontend owns the conversation history and sends the entire
+message history on every request, aligning with the AG-UI protocol's design.
+No server-side conversation persistence or compaction is applied in this mode.
+
+The endpoint receives AG-UI `RunAgentInput` requests, applies LCS middleware
+(auth, MCP, shields via agent capability, quota, BYOK), runs the pydantic-ai
+agent via `AGUIAdapter`, and streams AG-UI events back as SSE. This includes
+adding the `Action.AGUI` authorization action to the `Action` enum.
+
+**Note**: This ticket is blocked on the pydantic-ai migration being completed.
+Having a working `/agui` endpoint with OGX alone provides no practical value —
+the AG-UI integration is built on pydantic-ai's `AGUIAdapter`, and the effort
+required to adapt OGX-specific utility functions (e.g., `prepare_responses_params()`)
+for a path that will be replaced by the pydantic-ai provider is not justified.
+Implementation should begin after the pydantic-ai migration lands.
 
 **Scope**:
 - Add `AGUI = "agui"` to `Action` enum in `src/models/config.py` (next to
   `STREAMING_QUERY`)
 - Create `src/app/endpoints/agui.py` with `POST /agui` handler
-- Use `AGUIAdapter.from_request()` for AG-UI protocol parsing
+- Use `build_run_input()` to parse the AG-UI request; extract fields passed
+  via `forwardedProps` for agent configuration (e.g., model selection, MCP
+  server hints)
+- Client mode only: use the full message history from `RunAgentInput` as-is;
+  no server-side conversation persistence or compaction
 - Apply LCS middleware: `get_auth_dependency()`, `@authorize(Action.AGUI)`,
   `mcp_headers_dependency`, `check_mcp_auth`, `check_tokens_available`,
-  `validate_model_provider_override`, `run_shield_moderation_v2`,
-  `apply_compaction_blocking`
+  `validate_model_provider_override`
+- Shield moderation via the shield capability integrated into the pydantic-ai
+  agent (not a standalone `run_shield_moderation_v2()` call)
 - Handle BYOK Azure token refresh (same pattern as `responses.py`)
-- Build agent via `build_agent()` and `prepare_responses_params()`
+- Build agent via `build_agent()`
 - Register router in `src/app/routers.py`
-- OTEL tracing following the A2A span pattern
+
+**Out of scope** (covered by separate tickets):
+- Server mode conversation handling (LCORE-5145)
+- OTEL tracing (LCORE-5146)
 
 **Acceptance criteria**:
 - `Action.AGUI` is available and can be used with `@authorize(Action.AGUI)`
 - Existing roles/permissions are not affected
 - `POST /agui` accepts AG-UI `RunAgentInput` and returns SSE AG-UI events
-- Auth, MCP, shields, quota, BYOK, conversations, compaction all function
+- Client mode: frontend-provided message history is used as the full context
+- Auth, MCP, shields (via agent capability), quota, BYOK all function
 - Unauthorized requests return 401
 - Forbidden requests return 403
 - Quota-exceeded requests return 429
 - Unit tests cover handler, error paths, and middleware integration
 - `uv run make verify` and `uv run make test-unit` pass
+
+**Blocked by**:
+- Pydantic-ai migration
+
+#### LCORE-5145 Implement `/agui` server mode conversation handling
+
+**Description**: Add **server mode** to the `/agui` endpoint. In server mode
+LCS manages conversation persistence — the frontend sends only the new message
+items for the current turn, and LCS loads the existing conversation history
+from the conversation store, appends the new items, and passes the assembled
+history to the agent.
+
+This mode wires the AG-UI endpoint into the LCS conversation endpoints and
+enables all features that modify history (compaction, conversation listing,
+deletion, metadata).
+
+**Scope**:
+- Add a mode parameter to the `/agui` request to select client vs. server mode
+- In server mode: load persisted conversation history from the LCS conversation
+  store using `threadId` → `conversation_id` mapping
+- Append new message items from `RunAgentInput` to the loaded history
+- Apply conversation compaction via `apply_compaction_blocking()` when the
+  conversation approaches the context window limit
+- Persist conversation turns after each agent run
+- Conversation history is retrievable via the existing conversations API
+
+**Acceptance criteria**:
+- Server mode loads and persists conversation turns correctly
+- Compaction triggers when context window limit is approached
+- Conversations are visible and manageable via the conversations API
+- Client mode behavior is unchanged
+- Unit tests cover server mode paths including compaction
+- `uv run make verify` and `uv run make test-unit` pass
+
+**Blocked by**:
+- LCORE-4576 (AG-UI endpoint — client mode)
+
+#### LCORE-5146 Add OTEL tracing to `/agui` endpoint
+
+**Description**: Add OpenTelemetry tracing spans to the `/agui` endpoint
+following the A2A span pattern.
+
+**Scope**:
+- `agui.handle_request` root span with `user_id`, `input`, `session_id`
+- `agui.execute` span with `tool_calls_count`, `tool_calls_names`
+- `llm.inference` span with `model_id`, `provider_id`, `input_tokens`,
+  `output_tokens`
+
+**Acceptance criteria**:
+- OTEL spans are emitted for AG-UI requests
+- Span attributes match the A2A pattern
+- Unit tests verify span emission
+- `uv run make verify` and `uv run make test-unit` pass
+
+**Blocked by**:
+- LCORE-4576 (AG-UI endpoint — client mode)
 
 #### LCORE-4588 Document AG-UI widget system for operators and API consumers
 
@@ -317,6 +393,42 @@ feature.
 - API usage examples with sample `RunAgentInput` payloads
 - MCP tool definition examples for common widget patterns
 - Troubleshooting section
+
+#### LCORE-5147 Build AG-UI demo: CopilotKit + Lightspeed Stack + MCP
+
+**Description**: Build a working end-to-end demo that showcases the `/agui`
+endpoint with a CopilotKit frontend, Lightspeed Stack backend, and an MCP
+server providing UI-related tools (using A2UI generative UI or plain tool
+definitions). The demo serves two purposes: (1) give teams evaluating migration
+to the AG-UI endpoint a concrete example they can assess against their own use
+cases, and (2) provide a practical reference implementation they can learn from
+and adapt.
+
+**Scope**:
+- CopilotKit frontend application consuming AG-UI events from the `/agui`
+  endpoint
+- MCP server with example UI tools demonstrating widget patterns (e.g., forms,
+  confirmation dialogs, data tables) — using A2UI generative UI or plain tool
+  definitions
+- Docker Compose or equivalent setup for running the full stack locally
+- README with setup instructions, architecture overview, and walkthrough of
+  each demo scenario
+- At least 3 demo scenarios covering distinct widget patterns:
+  - Interactive form rendering (e.g., user profile editor)
+  - Confirmation dialog with human-in-the-loop approval
+  - Data display widget (e.g., table or chart rendered from tool output)
+
+**Acceptance criteria**:
+- Demo runs locally with documented setup steps
+- CopilotKit frontend successfully renders widgets driven by the agent via
+  `/agui`
+- MCP server tools are invoked by the agent and produce visible UI output
+- Demo is self-contained and reproducible by teams with no prior AG-UI
+  experience
+- README documents how to extend the demo with custom MCP tools
+
+**Blocked by**:
+- LCORE-4576 (AG-UI endpoint — client mode)
 
 ## PoC results
 

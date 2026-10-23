@@ -66,12 +66,19 @@ team needing agent-driven UI in the future.
   `get_auth_dependency()` and a new `Action.AGUI` authorization action
 - **R3:** MCP tools (including customer-defined UI tools) are resolved via
   existing `mcp_headers_dependency` and `resolve_tool_choice()` mechanisms
-- **R4:** Conversations are supported via AG-UI `threadId` mapped to LCS
-  `conversation_id`
+- **R4:** The endpoint supports two conversation modes:
+  - **Client mode** (default): The frontend owns conversation history and sends
+    the entire message history on every request, aligning with the AG-UI
+    protocol's design. No server-side conversation persistence or compaction.
+  - **Server mode**: LCS manages conversation persistence. The frontend sends
+    only the new message items for the current turn. Conversation history is
+    wired to the LCS conversation endpoints and supports features that modify
+    history (e.g., compaction).
 - **R5:** Conversation compaction is applied via `apply_compaction_blocking()`
-  before inference when the conversation approaches the context window limit
-- **R6:** Shield moderation is applied to user input via
-  `run_shield_moderation_v2()` before inference
+  before inference, only in server mode, when the conversation approaches the
+  context window limit
+- **R6:** Shield moderation is applied via the shield capability integrated
+  into the pydantic-ai agent, rather than a standalone pre-inference call
 - **R7:** Token quota is checked via `check_tokens_available()` before inference
 - **R8:** BYOK (Azure Entra ID) token refresh is handled when the selected
   model is Azure-hosted
@@ -146,6 +153,7 @@ team needing agent-driven UI in the future.
   ┌─────────────────────┐
   │ Parse AG-UI input   │  AGUIAdapter.from_request() → RunAgentInput
   │                     │  Extract threadId → conversation_id
+  │                     │  Determine conversation mode (client / server)
   └──────────┬──────────┘
              │
              ▼
@@ -153,23 +161,24 @@ team needing agent-driven UI in the future.
   │ LCS middleware      │  check_mcp_auth()
   │                     │  check_tokens_available()
   │                     │  validate_model_provider_override()
-  │                     │  run_shield_moderation_v2()
   │                     │  Azure Entra ID token refresh (if BYOK)
   └──────────┬──────────┘
              │
              ▼
-  ┌─────────────────────┐
-  │ Resolve context     │  resolve_response_context() or direct conversation lookup
-  │                     │  prepare_responses_params()
-  └──────────┬──────────┘
-             │
-             ▼
-  ┌─────────────────────┐
-  │ Compaction          │  apply_compaction_blocking() if conversation
-  │                     │  is approaching context window limit
-  └──────────┬──────────┘
-             │
-             ▼
+  ┌─────────────────────────────────────────────────────────────────┐
+  │ Conversation mode                                               │
+  │                                                                 │
+  │  ┌─────────── client ───────────┐  ┌──────── server ─────────┐  │
+  │  │ Use full message history     │  │ Load persisted history  │  │
+  │  │ from RunAgentInput as-is.    │  │ from LCS conversation   │  │
+  │  │ No server-side persistence.  │  │ store. Append new items │  │
+  │  │ No compaction.               │  │ from RunAgentInput.     │  │
+  │  │                              │  │ Apply compaction if     │  │
+  │  │                              │  │ approaching ctx limit.  │  │
+  │  └──────────────────────────────┘  └─────────────────────────┘  │
+  └──────────────────┬──────────────────────────────────────────────┘
+                     │
+                     ▼
   ┌─────────────────────┐
   │ Build + run agent   │  build_agent() with MCP tools + frontend tools
   │                     │  AGUIAdapter.run_stream()
@@ -183,7 +192,7 @@ team needing agent-driven UI in the future.
              │
              ▼
   ┌─────────────────────┐
-  │ Post-stream         │  Persist conversation turn (if store=true)
+  │ Post-stream         │  Server mode: persist conversation turn
   │                     │  Emit OTEL telemetry
   │                     │  Consume quota tokens
   └─────────────────────┘
@@ -229,13 +238,16 @@ async def agui_endpoint_handler(
     shields, quota, BYOK, conversation context, compaction), runs the
     pydantic-ai agent via AGUIAdapter, and streams AG-UI events as SSE.
     """
-    # 1. Parse AG-UI request
-    # 2. Apply LCS middleware (auth, MCP, shields, quota, BYOK)
-    # 3. Resolve conversation context from threadId
-    # 4. Apply compaction if needed
+    # 1. Parse AG-UI request, determine conversation mode (client/server)
+    # 2. Apply LCS middleware (auth, MCP, quota, BYOK)
+    # 3. Resolve conversation context:
+    #    - Client mode: use messages from RunAgentInput as-is
+    #    - Server mode: load persisted history, append new items
+    # 4. Apply compaction if needed (server mode only)
     # 5. Build agent via build_agent() + prepare_responses_params()
+    #    (shield moderation via agent capability)
     # 6. Run via AGUIAdapter and stream response
-    # 7. Post-stream: persist turn, emit telemetry, consume quota
+    # 7. Post-stream: persist turn (server mode), emit telemetry, consume quota
     ...
 ```
 
@@ -277,7 +289,41 @@ def include_routers(app: FastAPI) -> None:
     app.include_router(agui.router)
 ```
 
-### Conversation mapping
+### Conversation modes
+
+The `/agui` endpoint supports two conversation modes — **client** and
+**server** — selected per-request. The mode determines who owns the
+conversation history and which LCS features are available.
+
+#### Client mode (default)
+
+In client mode the frontend owns the conversation history. The full message
+history is included in every `RunAgentInput` request, and LCS treats it as the
+complete context for the agent run. This aligns with the AG-UI protocol's
+design where the client is the source of truth.
+
+- No server-side conversation persistence — LCS does not store or retrieve
+  conversation turns.
+- No conversation compaction — the frontend is responsible for managing
+  context length.
+- `threadId` is still used for telemetry correlation and quota tracking, but
+  does not reference a server-side conversation store.
+
+#### Server mode
+
+In server mode LCS manages conversation persistence. The frontend sends only
+the new message items for the current turn, and LCS loads the existing
+conversation history from its conversation store, appends the new items, and
+passes the assembled history to the agent.
+
+- Conversation history is wired to the LCS conversation endpoints — turns are
+  persisted after each agent run and retrievable via the conversations API.
+- Conversation compaction is applied via `apply_compaction_blocking()` when the
+  conversation approaches the context window limit.
+- All conversation-related features (history listing, deletion, metadata) work
+  the same as the `/responses` endpoint.
+
+#### Conversation ID mapping
 
 AG-UI `threadId` maps directly to LCS `conversation_id` via
 `normalize_conversation_id()`. This is a direct mapping — no intermediate
@@ -289,8 +335,10 @@ adapter = await AGUIAdapter.from_request(request, agent=agent)
 conversation_id = normalize_conversation_id(adapter.conversation_id)
 ```
 
-When `threadId` is `None` (first turn), a new conversation is created via the
-standard `prepare_responses_params()` flow.
+The frontend always provides a `threadId` with every request. In server mode,
+the endpoint looks up whether the `threadId` already exists in the server
+conversation store — if it does, the existing conversation history is loaded;
+if not, a new conversation is created.
 
 ### MCP tool integration
 
@@ -373,17 +421,24 @@ This is applied after model selection and before agent construction.
 
 ### Shield moderation
 
-User input text is extracted from the AG-UI `RunAgentInput` messages and passed
-through `run_shield_moderation_v2()` before inference. If moderation blocks the
-request, the endpoint emits a `RunError` AG-UI event with the refusal message
-instead of running the agent.
+Shield moderation is applied via the shield capability integrated into the
+pydantic-ai agent, rather than a standalone `run_shield_moderation_v2()` call
+before inference. The shield capability is attached to the agent during
+construction and runs as part of the agent's execution pipeline. If moderation
+blocks the request, the model response is replaced with the violation message
+— the client sees a normal text response containing the violation message,
+not an error event.
 
 ### Conversation compaction
 
-Compaction is applied via `apply_compaction_blocking()` before inference, the
-same function used by both the `/responses` and A2A endpoints. The AG-UI
-endpoint operates in the same mode as A2A — blocking compaction with no
-client-side progress event, since AG-UI has its own lifecycle signaling.
+Compaction is applied only in **server mode** via `apply_compaction_blocking()`
+before inference, the same function used by both the `/responses` and A2A
+endpoints. The AG-UI endpoint operates in the same mode as A2A — blocking
+compaction with no client-side progress event, since AG-UI has its own
+lifecycle signaling.
+
+In **client mode** compaction is not applied — the frontend owns the
+conversation history and is responsible for managing context length.
 
 ### Telemetry
 
@@ -486,7 +541,8 @@ def include_routers(app: FastAPI) -> None:
 | Concern | Reference file | What to reuse |
 |---------|---------------|---------------|
 | Protocol adapter endpoint | `src/app/endpoints/a2a.py` | Overall structure: auth, agent build, stream conversion, telemetry |
-| LCS middleware integration | `src/app/endpoints/responses.py` | Shield moderation, BYOK, compaction, model selection, quota |
+| LCS middleware integration | `src/app/endpoints/responses.py` | BYOK, compaction, model selection, quota |
+| Shield capability | `src/pydantic_ai_lightspeed/capabilities/` | Shield moderation as agent capability |
 | Agent construction | `src/utils/pydantic_ai_helpers.py` | `build_agent()`, `captured_output_items()` |
 | Response params | `src/utils/responses.py` | `prepare_responses_params()` |
 | Compaction | `src/utils/conversation_compaction.py` | `apply_compaction_blocking()` |
@@ -529,6 +585,8 @@ def include_routers(app: FastAPI) -> None:
 | Date | Change | Reason |
 |------|--------|--------|
 | 2026-10-05 | Initial version | Widget system spike |
+| 2026-10-23 | Add client/server conversation modes | Client mode aligns with AG-UI protocol (frontend-owned history); server mode enables LCS conversation persistence and compaction |
+| 2026-10-23 | Shield moderation via agent capability | Replace `run_shield_moderation_v2()` with shield capability integrated into the pydantic-ai agent |
 
 ## Appendix A: AG-UI Event Types Reference
 
@@ -570,8 +628,8 @@ list is documented at [docs.ag-ui.com/concepts/events](https://docs.ag-ui.com/co
 | Frontend tools | No | No | Yes |
 | State sync | No | No | Yes (snapshot + delta) |
 | Human-in-the-loop | No | No | Yes (interrupt/resume) |
-| Conversation | `conversation_id` param | `contextId` → store | `threadId` → direct |
+| Conversation | `conversation_id` param | `contextId` → store | `threadId` → client mode (frontend-owned) or server mode (LCS-persisted) |
 | Target consumer | LCS-native clients | Other agents | Frontend apps |
 | Agent construction | `build_agent()` | `build_agent()` | `build_agent()` |
 | MCP tools | `resolve_tool_choice()` | `prepare_responses_params()` | `prepare_responses_params()` |
-| Compaction | `apply_compaction()` | `apply_compaction_blocking()` | `apply_compaction_blocking()` |
+| Compaction | `apply_compaction()` | `apply_compaction_blocking()` | `apply_compaction_blocking()` (server mode only) |
