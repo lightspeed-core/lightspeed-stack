@@ -31,6 +31,7 @@ from tests.unit import config_dict
 from utils.query import (
     build_multimodal_input,
     consume_query_tokens,
+    consume_summarization_tokens,
     extract_provider_and_model_from_model_id,
     handle_known_apistatus_errors,
     is_transcripts_enabled,
@@ -613,6 +614,41 @@ class TestConsumeQueryTokens:
                 token_usage=token_usage,
             )
         assert exc_info.value.status_code == 500
+
+
+class TestConsumeSummarizationTokens:
+    """Tests for consume_summarization_tokens function."""
+
+    def test_summarization_call_is_charged(self, mocker: MockerFixture) -> None:
+        """A call is charged for its input also when it produced no output tokens."""
+        mock_consume = mocker.patch("utils.query.consume_tokens")
+
+        consume_summarization_tokens(
+            "user1",
+            "provider1/model1",
+            TokenCounter(input_tokens=640, output_tokens=0, llm_calls=1),
+        )
+
+        mock_consume.assert_called_once()
+        charged = mock_consume.call_args.kwargs
+        assert charged["user_id"] == "user1"
+        assert (charged["input_tokens"], charged["output_tokens"]) == (640, 0)
+        assert (charged["provider_id"], charged["model_id"]) == (
+            "provider1",
+            "model1",
+        )
+
+    def test_call_without_reported_usage_consumes_nothing(
+        self, mocker: MockerFixture
+    ) -> None:
+        """A call the provider reported no usage for leaves nothing to consume."""
+        mock_consume = mocker.patch("utils.query.consume_tokens")
+
+        consume_summarization_tokens(
+            "user1", "provider1/model1", TokenCounter(llm_calls=1)
+        )
+
+        mock_consume.assert_not_called()
 
 
 class TestStoreQueryResults:

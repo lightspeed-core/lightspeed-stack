@@ -344,6 +344,7 @@ ENDPOINT_PATH_INFER: Final[str] = "/v1/infer"
 ENDPOINT_PATH_QUERY: Final[str] = "/v1/query"
 ENDPOINT_PATH_STREAMING_QUERY: Final[str] = "/v1/streaming_query"
 ENDPOINT_PATH_RESPONSES: Final[str] = "/v1/responses"
+ENDPOINT_PATH_A2A: Final[str] = "/a2a"
 
 # Context window (tokens) conversation compaction assumes for a model when
 # neither its catalog metadata nor automatic resolution gives one.

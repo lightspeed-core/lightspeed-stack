@@ -47,6 +47,8 @@ from models.common.turn_summary import RAGContext, ToolCallSummary, TurnSummary
 from models.config import Action, ModelContextProtocolServer
 from models.database.conversations import UserConversation
 from tests.unit.conftest import mock_async_ogx_client
+from utils.conversation_compaction import CompactionResult
+from utils.query import consume_summarization_tokens
 
 MOCK_AUTH = (
     "00000001-0001-0001-0001-000000000001",
@@ -494,6 +496,54 @@ class TestResponsesEndpointHandler:
             mcp_headers={},
         )
         assert response is mock_streaming
+
+    @pytest.mark.asyncio
+    async def test_summarization_calls_are_recorded_and_charged(
+        self,
+        dummy_request: Request,
+        minimal_config: AppConfig,
+        mocker: MockerFixture,
+    ) -> None:
+        """Compaction is told the endpoint and whom to charge (LCORE-3910)."""
+        minimal_config.compaction.enabled = True
+        _patch_base(mocker, minimal_config)
+        _patch_client(mocker)
+        _patch_resolve_response_context(mocker, conversation=VALID_CONV_ID)
+        mocker.patch(
+            f"{MODULE}.select_model_for_responses",
+            new=mocker.AsyncMock(return_value="provider/model1"),
+        )
+        mocker.patch(
+            f"{MODULE}.check_model_configured",
+            new=mocker.AsyncMock(return_value=True),
+        )
+        _patch_rag(mocker)
+        _patch_moderation(mocker, decision="passed")
+        mocker.patch(f"{MODULE}.configured_conversation_cache", return_value=None)
+        mocker.patch(
+            f"{MODULE}.handle_non_streaming_response",
+            new=mocker.AsyncMock(return_value=_make_responses_response()),
+        )
+        apply = mocker.patch(
+            f"{MODULE}.apply_compaction_blocking",
+            new=mocker.AsyncMock(
+                side_effect=lambda _client, params, *_args, **_kwargs: (
+                    CompactionResult(params, compacted=False)
+                )
+            ),
+        )
+
+        await responses_endpoint_handler(
+            request=dummy_request,
+            responses_request=ResponsesRequest(input="Hello"),
+            auth=MOCK_AUTH,
+            mcp_headers={},
+        )
+
+        assert apply.await_args.kwargs["endpoint_path"] == "/v1/responses"
+        charge = apply.await_args.kwargs["charge"]
+        assert charge.func is consume_summarization_tokens
+        assert charge.args == (MOCK_AUTH[0],)
 
     @pytest.mark.asyncio
     async def test_responses_azure_token_refresh(

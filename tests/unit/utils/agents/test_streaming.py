@@ -631,21 +631,36 @@ class TestGenerateAgentResponse:
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
-        ("generate_kwargs", "expected_status"),
+        ("generate_kwargs", "expected_status", "expected_tokens"),
         [
-            ({}, "full"),
-            ({"context_status": "summarized"}, "summarized"),
+            ({}, "full", (3, 7)),
+            (
+                {
+                    "context_status": "summarized",
+                    "summarization_usage": TokenCounter(
+                        input_tokens=640, output_tokens=72, llm_calls=1
+                    ),
+                },
+                "summarized",
+                (643, 79),
+            ),
         ],
     )
-    async def test_end_event_reports_context_status(
+    async def test_end_event_reports_context_status(  # pylint: disable=too-many-arguments,too-many-positional-arguments
         self,
         mocker: MockerFixture,
         make_generator_context: Callable[..., ResponseGeneratorContext],
         responses_params: ResponsesApiParams,
         generate_kwargs: dict[str, Any],
         expected_status: str,
+        expected_tokens: tuple[int, int],
     ) -> None:
-        """Test the end event carries context_status ("full" by default)."""
+        """Test the end event carries context_status and the token counts.
+
+        The counts include the summarization calls compaction made for the
+        request (LCORE-3910). Those were charged when they were made, so the
+        turn alone is charged here.
+        """
         context = make_generator_context()
         turn_summary = TurnSummary()
         turn_summary.token_usage = TokenCounter(input_tokens=3, output_tokens=7)
@@ -657,7 +672,7 @@ class TestGenerateAgentResponse:
                 MEDIA_TYPE_JSON,
             )
 
-        mocker.patch("utils.agents.streaming.consume_query_tokens")
+        consume_mock = mocker.patch("utils.agents.streaming.consume_query_tokens")
         mocker.patch(
             "utils.agents.streaming.get_available_quotas",
             return_value={"daily": 100},
@@ -693,6 +708,13 @@ class TestGenerateAgentResponse:
         ]
         assert len(end_events) == 1
         assert end_events[0]["data"]["context_status"] == expected_status
+        assert (
+            end_events[0]["data"]["input_tokens"],
+            end_events[0]["data"]["output_tokens"],
+        ) == expected_tokens
+        assert consume_mock.call_args.kwargs["token_usage"] == TokenCounter(
+            input_tokens=3, output_tokens=7
+        )
 
     @pytest.mark.asyncio
     async def test_cancelled_persists_interrupted_turn(
