@@ -9,8 +9,6 @@ packages:
   ]
 upgradePackages:
   [
-    python3,
-    python3-libs,
   ]
 contentOrigin:
   repofiles: ["./redhat.repo"]
