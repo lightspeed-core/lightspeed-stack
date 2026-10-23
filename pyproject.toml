@@ -92,6 +92,8 @@ dependencies = [
     "opentelemetry-distro>=0.49b0",
     "opentelemetry-exporter-otlp>=1.34.1",
     "opentelemetry-instrumentation-fastapi>=0.49b0",
+    # Prototype: in-process PII redaction engine (Presidio wrapper)
+    "lightspeed-data-anonymizer>=0.1.0",
 ]
 
 
@@ -112,6 +114,11 @@ paths = ["tests/e2e/features"]
 
 [project.scripts]
 lightspeed-stack = "lightspeed_stack:main"
+
+# Prototype: in-process PII redaction span exporter. Enable by setting
+# OTEL_TRACES_EXPORTER=redacting_otlp (auto-instrumentation picks it up).
+[project.entry-points.opentelemetry_traces_exporter]
+redacting_otlp = "observability.redacting_span_exporter:RedactingSpanExporter"
 
 [project.urls]
 Homepage = "https://github.com/lightspeed-core/lightspeed-stack"

@@ -4,6 +4,12 @@ services:
     build:
       context: .
       dockerfile: deploy/lightspeed-stack/Containerfile
+      args:
+        # spaCy model baked in for in-process PII redaction (RedactingSpanExporter).
+        # Defaults to the transformer model so the e2e stack redacts names and
+        # locations as well as structured PII. Override (e.g. en_core_web_lg) if
+        # a lighter image is needed.
+        SPACY_MODEL: ${SPACY_MODEL:-en_core_web_trf}
     platform: linux/amd64
     container_name: lightspeed-stack
     ports:
@@ -80,6 +86,13 @@ services:
       - OTEL_SERVICE_NAME=${OTEL_SERVICE_NAME:-lightspeed-stack-e2e}
       - OTEL_ANONYMIZATION_SECRET=${OTEL_ANONYMIZATION_SECRET:-lightspeed-stack-otel-anonymization-dev-default}
       - OTEL_SDK_DISABLED=${OTEL_SDK_DISABLED:-false}
+      # In-process PII redaction is on by default: OTEL_TRACES_EXPORTER=redacting_otlp
+      # routes spans through the RedactingSpanExporter before export.
+      # DATA_ANONYMIZER_SPACY_MODEL defaults to the model baked into the image
+      # (SPACY_MODEL above), so setting SPACY_MODEL alone keeps build and runtime
+      # aligned; override it explicitly only to pick a different installed model.
+      - OTEL_TRACES_EXPORTER=${OTEL_TRACES_EXPORTER:-redacting_otlp}
+      - DATA_ANONYMIZER_SPACY_MODEL=${DATA_ANONYMIZER_SPACY_MODEL:-${SPACY_MODEL:-en_core_web_trf}}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/liveness"]
       interval: 10s   # how often to run the check
