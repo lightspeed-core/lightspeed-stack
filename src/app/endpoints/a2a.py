@@ -76,6 +76,7 @@ from utils.pending_turn import PendingTurn
 from utils.pydantic_ai_helpers import build_agent, captured_output_items
 from utils.query import extract_provider_and_model_from_model_id
 from utils.responses import prepare_responses_params
+from utils.shields import request_redactor
 from utils.suid import normalize_conversation_id
 from version import __version__
 
@@ -241,6 +242,7 @@ async def _compact_a2a_request(
         responses_params,
         configuration.inference,
         configuration.compaction,
+        redact=request_redactor(configuration.shields),
     )
     return compaction.params, PendingTurn.for_request(
         client, compaction.params, compaction.original_input

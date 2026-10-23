@@ -1,5 +1,6 @@
 """Common types for the project."""
 
+from collections.abc import Callable
 from re import Pattern
 from typing import Any, TypeVar, cast
 
@@ -8,6 +9,9 @@ type SingletonInstances = dict[type, object]
 type Responses = dict[int | str, dict[str, Any]]
 
 CompiledPatterns = list[tuple[Pattern[str], str]]
+
+TextRedactor = Callable[[str], str]
+"""Rewrites a text with the redaction rules selected for a request."""
 
 T = TypeVar("T")
 
