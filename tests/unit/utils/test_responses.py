@@ -12,6 +12,7 @@ from fastapi import HTTPException
 from ogx_api.openai_responses import (
     AllowedToolsFilter,
     OpenAIResponseInputToolChoiceAllowedTools,
+    OpenAIResponseMessage,
     OpenAIResponseReasoning,
 )
 from ogx_api.openai_responses import ApprovalFilter as OgxApprovalFilter
@@ -84,6 +85,7 @@ from utils.responses import (
     build_tool_call_summary,
     build_tool_result_from_mcp_output_item_done,
     extract_rag_chunks_from_file_search_item,
+    extract_shield_moderation_text,
     extract_text_from_response_item,
     extract_text_from_response_items,
     extract_token_usage,
@@ -91,6 +93,7 @@ from utils.responses import (
     filter_tools_by_allowed_entries,
     get_mcp_tools,
     get_rag_tools,
+    get_shield_moderation_input,
     get_topic_summary,
     is_server_deployed_output,
     maybe_get_topic_summary,
@@ -379,6 +382,91 @@ class TestExtractTextFromResponseItems:
         )
         result = extract_text_from_response_items([output_item])
         assert result == "Part 1 Part 2"
+
+
+class TestGetShieldModerationInput:
+    """Test cases for get_shield_moderation_input windowing."""
+
+    @staticmethod
+    def _msg(
+        role: str, content: str, *, item_id: Optional[str] = None
+    ) -> OpenAIResponseMessage:
+        """Build a real OpenAIResponseMessage for windowing tests."""
+        return OpenAIResponseMessage(
+            role=cast("Any", role), content=content, id=item_id
+        )
+
+    def test_flag_false_returns_full_input(self) -> None:
+        """When after_last_refusal is False, return the full input unchanged."""
+        items = [
+            self._msg("user", "blocked"),
+            self._msg("assistant", "refusal", item_id="modr-1"),
+            self._msg("user", "clean"),
+        ]
+        assert get_shield_moderation_input(items, after_last_refusal=False) is items
+
+    def test_string_input_unchanged(self) -> None:
+        """String input is returned unchanged even when the flag is set."""
+        assert get_shield_moderation_input("hello", after_last_refusal=True) == "hello"
+
+    def test_no_modr_item_returns_full_list(self) -> None:
+        """Without a modr- item, return the full list when the flag is set."""
+        items = [
+            self._msg("user", "one"),
+            self._msg("assistant", "two", item_id="resp_1"),
+            self._msg("user", "three"),
+        ]
+        assert get_shield_moderation_input(items, after_last_refusal=True) is items
+
+    def test_windows_after_last_modr_item(self) -> None:
+        """Return only items after the last modr- refusal when the flag is set."""
+        items = [
+            self._msg("user", "blocked"),
+            self._msg("assistant", "refusal", item_id="modr-1"),
+            self._msg("user", "clean follow-up"),
+        ]
+        window = get_shield_moderation_input(items, after_last_refusal=True)
+        assert isinstance(window, list)
+        assert len(window) == 1
+        assert extract_text_from_response_items(window) == "clean follow-up"
+
+    def test_uses_last_modr_when_multiple(self) -> None:
+        """When multiple modr- items exist, window after the last one."""
+        items = [
+            self._msg("user", "bad-1"),
+            self._msg("assistant", "refusal-1", item_id="modr-1"),
+            self._msg("user", "bad-2"),
+            self._msg("assistant", "refusal-2", item_id="modr-2"),
+            self._msg("user", "clean"),
+        ]
+        window = get_shield_moderation_input(items, after_last_refusal=True)
+        assert isinstance(window, list)
+        assert len(window) == 1
+        assert extract_text_from_response_items(window) == "clean"
+
+    def test_empty_suffix_when_modr_is_last(self) -> None:
+        """When the last item is a modr- refusal, return an empty list."""
+        items = [
+            self._msg("user", "blocked"),
+            self._msg("assistant", "refusal", item_id="modr-1"),
+        ]
+        window = get_shield_moderation_input(items, after_last_refusal=True)
+        assert not window
+
+    def test_extract_shield_moderation_text_windows_suffix(self) -> None:
+        """extract_shield_moderation_text returns text only from the windowed suffix."""
+        items = [
+            self._msg("user", "blocked earlier"),
+            self._msg("assistant", "refusal", item_id="modr-1"),
+            self._msg("user", "What is Kubernetes?"),
+        ]
+        text = extract_shield_moderation_text(items, after_last_refusal=True)
+        assert text.startswith("What is Kubernetes?")
+        assert "blocked earlier" not in text
+
+    def test_extract_shield_moderation_text_string_input(self) -> None:
+        """String input is moderated as-is (plus empty attachments suffix)."""
+        assert extract_shield_moderation_text("hello") == "hello\n\n"
 
 
 class TestGetRAGTools:

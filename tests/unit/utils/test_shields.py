@@ -157,6 +157,7 @@ class TestRunShieldModerationV2:
 
         assert isinstance(result, ShieldModerationBlocked)
         assert result.message == "rejected"
+        assert result.refusal_response.id == "modr-123"
         mock_shield.run.assert_called_once()
 
     @pytest.mark.asyncio

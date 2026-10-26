@@ -670,6 +670,133 @@ class TestResponsesEndpointHandler:
         ResponsesResponse.model_validate(payload)
 
     @pytest.mark.asyncio
+    async def test_shield_after_last_refusal_header_windows_moderation(
+        self,
+        minimal_config: AppConfig,
+        mocker: MockerFixture,
+    ) -> None:
+        """X-LCS-Shield-After-Last-Refusal moderates only items after last modr-."""
+        structured_input: list[Any] = [
+            OpenAIResponseMessage(role="user", content="blocked earlier"),
+            OpenAIResponseMessage(
+                role="assistant",
+                content="I cannot help with that.",
+                id="modr-abc",
+            ),
+            OpenAIResponseMessage(role="user", content="What is Kubernetes?"),
+        ]
+        responses_request = ResponsesRequest(
+            input=cast("Any", structured_input),
+            store=False,
+        )
+        req = Request(
+            scope={
+                "type": "http",
+                "headers": [(b"x-lcs-shield-after-last-refusal", b"true")],
+            }
+        )
+        req.state.authorized_actions = {
+            Action.RESPONSES,
+            Action.READ_OTHERS_CONVERSATIONS,
+        }
+
+        _patch_base(mocker, minimal_config)
+        _patch_client(mocker)
+        _patch_resolve_response_context(mocker)
+        mocker.patch(
+            f"{MODULE}.select_model_for_responses",
+            new=mocker.AsyncMock(return_value="provider/model1"),
+        )
+        mocker.patch(
+            f"{MODULE}.check_model_configured",
+            new=mocker.AsyncMock(return_value=True),
+        )
+        _patch_rag(mocker)
+        mock_moderation = mocker.patch(
+            f"{MODULE}.run_shield_moderation_v2",
+            new=mocker.AsyncMock(return_value=ShieldModerationPassed()),
+        )
+        mocker.patch(
+            f"{MODULE}.handle_non_streaming_response",
+            new=mocker.AsyncMock(
+                return_value=_make_responses_response(
+                    output_text="K8s is Kubernetes.",
+                    conversation="conv_new",
+                )
+            ),
+        )
+
+        await responses_endpoint_handler(
+            request=req,
+            responses_request=responses_request,
+            auth=MOCK_AUTH,
+            mcp_headers={},
+        )
+
+        moderated_text = mock_moderation.await_args.args[0]
+        assert moderated_text.startswith("What is Kubernetes?")
+        assert "blocked earlier" not in moderated_text
+        assert "I cannot help with that." not in moderated_text
+
+    @pytest.mark.asyncio
+    async def test_without_shield_after_last_refusal_header_moderates_full_input(
+        self,
+        dummy_request: Request,
+        minimal_config: AppConfig,
+        mocker: MockerFixture,
+    ) -> None:
+        """Without the header, shields still see the full resent history."""
+        structured_input: list[Any] = [
+            OpenAIResponseMessage(role="user", content="blocked earlier"),
+            OpenAIResponseMessage(
+                role="assistant",
+                content="I cannot help with that.",
+                id="modr-abc",
+            ),
+            OpenAIResponseMessage(role="user", content="What is Kubernetes?"),
+        ]
+        responses_request = ResponsesRequest(
+            input=cast("Any", structured_input),
+            store=False,
+        )
+        _patch_base(mocker, minimal_config)
+        _patch_client(mocker)
+        _patch_resolve_response_context(mocker)
+        mocker.patch(
+            f"{MODULE}.select_model_for_responses",
+            new=mocker.AsyncMock(return_value="provider/model1"),
+        )
+        mocker.patch(
+            f"{MODULE}.check_model_configured",
+            new=mocker.AsyncMock(return_value=True),
+        )
+        _patch_rag(mocker)
+        mock_moderation = mocker.patch(
+            f"{MODULE}.run_shield_moderation_v2",
+            new=mocker.AsyncMock(return_value=ShieldModerationPassed()),
+        )
+        mocker.patch(
+            f"{MODULE}.handle_non_streaming_response",
+            new=mocker.AsyncMock(
+                return_value=_make_responses_response(
+                    output_text="K8s is Kubernetes.",
+                    conversation="conv_new",
+                )
+            ),
+        )
+
+        await responses_endpoint_handler(
+            request=dummy_request,
+            responses_request=responses_request,
+            auth=MOCK_AUTH,
+            mcp_headers={},
+        )
+
+        moderated_text = mock_moderation.await_args.args[0]
+        assert "blocked earlier" in moderated_text
+        assert "What is Kubernetes?" in moderated_text
+
+    @pytest.mark.asyncio
     async def test_tool_choice_none_without_tools_does_not_load_server_tools(
         self,
         dummy_request: Request,

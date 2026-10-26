@@ -595,12 +595,46 @@ When server-tool merging is active, the response stream and output include items
 
 In streaming mode, server-deployed MCP events (e.g. `mcp_call`, `mcp_list_tools`) are filtered from the SSE stream so clients only see standard output types (`message`, `function_call`, etc.) for their own tools.
 
+### Shield Moderation After Last Refusal
+
+By default, shields moderate the **entire** extracted `input` (plus attachments). Clients that own their own context (`store: false`, no conversation id) resend full history on every call. Once a blocked turn is in that history, every later request is refused — even when the new user turn is clean.
+
+Set the `X-LCS-Shield-After-Last-Refusal: true` request header to window moderation:
+
+```bash
+curl -X POST http://localhost:8090/v1/responses \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "X-LCS-Shield-After-Last-Refusal: true" \
+  -d '{
+    "input": [
+      {"type": "message", "role": "user", "content": "<some violent message>"},
+      {"type": "message", "role": "assistant", "id": "modr-abc", "content": "I cannot help with that."},
+      {"type": "message", "role": "user", "content": "What is Kubernetes?"}
+    ],
+    "store": false
+  }'
+```
+
+When this header is set to `true`:
+
+1. LCORE finds the **last** input item whose `id` starts with `modr` (a prior shield refusal).
+2. Shields run only on text and attachments extracted from items **after** that refusal.
+3. If no `modr-` item is present, behavior matches today (moderate the full input).
+
+When the header is absent or `false`, full-input moderation applies (no breaking change for conversation / `store: true` clients).
+
+**Client guidance:** Keep refusal items (with their `modr-…` ids) in resent history so the window can advance. Shield refusals use response and output-item ids of the form `modr-…` (not `resp_…`). Deployments that require blocked content never enter the model should omit this header.
+
+See also the [Safety Shields Guide](../user_doc/shields_guide.md).
+
 ### LCORE-Specific Extensions
 
 The API introduces extensions that are not part of the OpenResponses specification:
 
 - `generate_topic_summary` (request) — When set to `true` and a new conversation is created, a topic summary is automatically generated and stored in conversation metadata.
 - `shield_ids` (request) — Optional list of LCORE shield `name` values to apply. If omitted, all shields from `lightspeed-stack.yaml` are used. See the [Safety Shields Guide](../user_doc/shields_guide.md).
+- `X-LCS-Shield-After-Last-Refusal` (request header) — When `true`, shields moderate only input items after the last prior refusal (`modr-…`). See [Shield Moderation After Last Refusal](#shield-moderation-after-last-refusal).
 - `solr` (request) — Object with optional `mode` (`semantic`, `hybrid`, or `lexical`) and `filters` (Solr vector_io provider payload). Legacy filter-only objects (no `mode`/`filters` wrapper) still work.
 - `available_quotas` (response) — Provides real-time quota information from all configured quota limiters.
 

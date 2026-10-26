@@ -742,6 +742,7 @@ class TestQuestionValidityRun:
         assert result.moderation_id.startswith("modr-")
         assert result.refusal_response.role == "assistant"
         assert result.refusal_response.content == DEFAULT_INVALID_QUESTION_RESPONSE
+        assert result.refusal_response.id == result.moderation_id
 
     @pytest.mark.asyncio
     async def test_unexpected_response_returns_blocked(

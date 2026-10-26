@@ -104,7 +104,7 @@ from utils.responses import (
     build_turn_summary,
     check_model_configured,
     deduplicate_referenced_documents,
-    extract_attachments_text,
+    extract_shield_moderation_text,
     extract_text_from_response_items,
     extract_token_usage,
     extract_vector_store_ids_from_tools,
@@ -635,13 +635,18 @@ async def handle_responses_with_tracing(  # pylint: disable=too-many-locals
     ):
         client = await AsyncOgxClientHolder().update_azure_token()
 
-    attachments_text = extract_attachments_text(original_request.input)
     add_span_event(root_span, SpanEvents.VALIDATION_COMPLETED)
 
     endpoint_path = ENDPOINT_PATH_RESPONSES
 
+    shield_after_last_refusal = (
+        request.headers.get("X-LCS-Shield-After-Last-Refusal", "").lower() == "true"
+    )
     moderation_result = await run_shield_moderation_v2(
-        input_text + "\n\n" + attachments_text,
+        extract_shield_moderation_text(
+            original_request.input,
+            shield_after_last_refusal,
+        ),
         configuration.configuration.shields,
         responses_request.shield_ids,
     )

@@ -135,7 +135,7 @@ from utils.query import (
     normalize_vertex_ai_model_id,
     prepare_input,
 )
-from utils.suid import to_ogx_conversation_id
+from utils.suid import is_moderation_id, to_ogx_conversation_id
 from utils.token_counter import TokenCounter
 
 logger = get_logger(__name__)
@@ -1735,6 +1735,64 @@ def extract_attachments_text(response_input: ResponseInput) -> str:
                 if file_part.file_data:
                     file_data_parts.append(file_part.file_data)
     return "\n\n".join(file_data_parts)
+
+
+def get_shield_moderation_input(
+    response_input: ResponseInput,
+    after_last_refusal: bool = False,
+) -> ResponseInput:
+    """Return input for shield moderation, optionally after the last refusal.
+
+    Args:
+        response_input: Responses API ``input`` (string or item list).
+        after_last_refusal: When True, window after the last ``modr-…`` item.
+
+    Returns:
+        The full input, or the suffix list after the last moderated refusal.
+
+    """
+    if not after_last_refusal or isinstance(response_input, str):
+        return response_input
+
+    item_count = len(response_input)
+    for offset, item in enumerate(reversed(response_input)):
+        if (
+            isinstance(item, ResponseMessage)
+            and item.role == "assistant"
+            and item.id is not None
+            and is_moderation_id(item.id)
+        ):
+            return list(response_input[item_count - offset :])
+
+    return response_input
+
+
+def extract_shield_moderation_text(
+    response_input: ResponseInput,
+    after_last_refusal: bool = False,
+) -> str:
+    """Extract text and attachments for shield moderation.
+
+    Optionally windows to items after the last ``modr-…`` refusal first.
+
+    Args:
+        response_input: Responses API ``input`` (string or item list).
+        after_last_refusal: When True, window after the last ``modr-…`` item.
+
+    Returns:
+        Combined message text and attachment ``file_data`` for shields.
+
+    """
+    shield_input = get_shield_moderation_input(
+        response_input,
+        after_last_refusal=after_last_refusal,
+    )
+    text = (
+        shield_input
+        if isinstance(shield_input, str)
+        else extract_text_from_response_items(shield_input)
+    )
+    return text + "\n\n" + extract_attachments_text(shield_input)
 
 
 def _merge_tools(
