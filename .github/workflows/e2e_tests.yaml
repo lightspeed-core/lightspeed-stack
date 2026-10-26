@@ -107,7 +107,7 @@ jobs:
 
     env:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-      E2E_OPENAI_MODEL: ${{ vars.E2E_OPENAI_MODEL }}
+      E2E_OPENAI_MODEL: ${{ github.base_ref == 'release/0.6' && 'gpt-4o-mini' || vars.E2E_OPENAI_MODEL }}
       E2E_DEPLOYMENT_MODE: ${{ matrix.mode }}
       FAISS_VECTOR_STORE_ID: ${{ vars.FAISS_VECTOR_STORE_ID }}
       E2E_OGX_HOSTNAME: ogx
