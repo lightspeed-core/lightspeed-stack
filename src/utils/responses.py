@@ -321,7 +321,7 @@ async def prepare_tools(  # pylint: disable=too-many-arguments,too-many-position
     return toolgroups
 
 
-def _build_provider_data_headers(
+def build_provider_data_headers(
     tools: Optional[list[InputTool]],
 ) -> Optional[dict[str, str]]:
     """Build extra HTTP headers containing MCP provider data for OGX.
@@ -439,7 +439,7 @@ async def prepare_responses_params(  # pylint: disable=too-many-arguments,too-ma
         )
 
     # Build X-OGX-Provider-Data header from MCP tool headers
-    extra_headers = _build_provider_data_headers(tools)
+    extra_headers = build_provider_data_headers(tools)
 
     # Normalize Vertex AI model IDs to work around OGX 0.6.x bug
     normalized_model = normalize_vertex_ai_model_id(model)
