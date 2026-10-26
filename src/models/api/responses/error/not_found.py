@@ -36,7 +36,7 @@ class NotFoundResponse(AbstractErrorResponse):
                     "label": "model",
                     "detail": {
                         "response": "Model not found",
-                        "cause": "Model with ID gpt-4o-mini does not exist",
+                        "cause": "Model with ID gpt-5.6-luna does not exist",
                     },
                 },
                 {

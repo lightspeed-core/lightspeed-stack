@@ -215,7 +215,7 @@ cat << 'EOF'
 curl -X POST http://localhost:8321/v1/inference/chat-completion \
   -H 'Content-Type: application/json' \
   -d '{
-    "model_id": "openai/gpt-4o-mini",
+    "model_id": "openai/gpt-5.6-luna",
     "messages": [
       {
         "role": "user",

@@ -60,8 +60,8 @@ def check_shield_structure(context: Context) -> None:
     assert (
         found_shield["provider_id"] == "llama-guard"
     ), "provider_id should be 'llama-guard'"
-    assert found_shield["provider_resource_id"] == "openai/gpt-4o-mini", (
-        f"provider_resource_id should be 'openai/gpt-4o-mini', "
+    assert found_shield["provider_resource_id"] == "openai/gpt-5.6-luna", (
+        f"provider_resource_id should be 'openai/gpt-5.6-luna', "
         f"but is '{found_shield['provider_resource_id']}'"
     )
     assert (

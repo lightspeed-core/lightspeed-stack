@@ -24,7 +24,7 @@ class PromptTooLongResponse(AbstractErrorResponse):
                         "response": "Context window exceeded",
                         "cause": (
                             "The input exceeds the context window size "
-                            "of model 'gpt-4o-mini'."
+                            "of model 'gpt-5.6-luna'."
                         ),
                     },
                 },

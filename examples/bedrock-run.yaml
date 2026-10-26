@@ -148,7 +148,7 @@ registered_resources:
   shields:
   - shield_id: llama-guard
     provider_id: llama-guard
-    provider_shield_id: openai/gpt-4o-mini
+    provider_shield_id: openai/gpt-5.6-luna
   vector_stores: []
   datasets: []
   scoring_fns: []

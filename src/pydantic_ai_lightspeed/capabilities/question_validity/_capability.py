@@ -81,7 +81,7 @@ class QuestionValidity(AbstractCapability[None]):
         from pydantic_ai import Agent
         from pydantic_ai.models.openai import OpenAIResponsesModel
 
-        model = OpenAIResponsesModel("gpt-4o-mini")
+        model = OpenAIResponsesModel("gpt-5.6-luna")
         agent = Agent("openai:gpt-4.1", capabilities=[QuestionValidity(model)])
         ```
     """

@@ -421,7 +421,7 @@ class TestBuildLightspeedStackSnapshot:
         assert snapshot["service"]["cors"]["allow_credentials"] is True
         assert snapshot["service"]["cors"]["allow_methods"] == ["GET", "POST"]
         assert snapshot["llama_stack"]["use_as_library_client"] is False
-        assert snapshot["inference"]["default_model"] == "gpt-4o-mini"
+        assert snapshot["inference"]["default_model"] == "gpt-5.6-luna"
         assert snapshot["inference"]["default_provider"] == "openai"
         assert snapshot["authentication"]["module"] == "jwk_token"
         assert snapshot["authentication"]["skip_tls_verification"] is False
@@ -534,7 +534,7 @@ class TestBuildLlamaStackSnapshot:
         result = await build_llama_stack_snapshot(llama_stack_config_file)
         models = result["registered_resources"]["models"]
         assert len(models) == 2
-        assert models[0]["model_id"] == "gpt-4o-mini"
+        assert models[0]["model_id"] == "gpt-5.6-luna"
         assert models[0]["model_type"] == "llm"
 
     @pytest.mark.asyncio

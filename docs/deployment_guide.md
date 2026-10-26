@@ -535,7 +535,7 @@ cp examples/lightspeed-stack-lls-library.yaml lightspeed-stack.yaml
                         DEBUG    Set provider/model configuration for openai/openai/gpt-4o to 0                                  utils.py:45
                         DEBUG    Set provider/model configuration for openai/openai/gpt-4o-2024-08-06 to 0                       utils.py:45
                         DEBUG    Set provider/model configuration for openai/openai/gpt-4o-audio-preview to 0                    utils.py:45
-                        DEBUG    Set provider/model configuration for openai/openai/gpt-4o-mini to 0                             utils.py:45
+                        DEBUG    Set provider/model configuration for openai/openai/gpt-5.6-luna to 0                             utils.py:45
                         DEBUG    Set provider/model configuration for openai/openai/o1 to 0                                      utils.py:45
                         DEBUG    Set provider/model configuration for openai/openai/o1-mini to 0                                 utils.py:45
                         DEBUG    Set provider/model configuration for openai/openai/o3-mini to 0                                 utils.py:45
@@ -1137,12 +1137,12 @@ Please note that actual response from the service is larger. It was stripped dow
       "model_type": "llm"
     },
     {
-      "identifier": "openai/gpt-4o-mini",
+      "identifier": "openai/gpt-5.6-luna",
       "metadata": {},
       "api_model_type": "llm",
       "provider_id": "openai",
       "type": "model",
-      "provider_resource_id": "gpt-4o-mini",
+      "provider_resource_id": "gpt-5.6-luna",
       "model_type": "llm"
     },
     {

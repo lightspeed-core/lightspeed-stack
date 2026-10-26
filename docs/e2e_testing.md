@@ -146,7 +146,7 @@ uv run behave tests/e2e/features/health.feature --tags=-skip-in-library-mode
 | `E2E_LLAMA_PORT`                | `8321`      | Port of the Llama Stack service.                                                                                                          |
 | `E2E_LLAMA_STACK_URL`           | —           | Full base URL for Llama Stack (overrides host/port if set). Used by shield helpers.                                                       |
 | `E2E_LLAMA_STACK_API_KEY`       | `xyzzy`     | API key for Llama Stack client (e.g. shield API).                                                                                         |
-| `E2E_DEFAULT_MODEL_OVERRIDE`    | —           | Override default LLM model id (e.g. `gpt-4o-mini`).                                                                                       |
+| `E2E_DEFAULT_MODEL_OVERRIDE`    | —           | Override default LLM model id (e.g. `gpt-5.6-luna`).                                                                                       |
 | `E2E_DEFAULT_PROVIDER_OVERRIDE` | —           | Override default provider id (e.g. `openai`).                                                                                             |
 | `FAISS_VECTOR_STORE_ID`         | —           | Vector store id for FAISS-related scenarios.                                                                                              |
 | `RUNNING_PROW`                  | —           | Set in Prow/OpenShift; enables Prow config paths and pod/container ops.                                                                   |

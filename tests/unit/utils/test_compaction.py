@@ -362,7 +362,7 @@ class TestSummarizeChunk:
         ]
         summary = await summarize_chunk(
             client=client,
-            model="openai/gpt-4o-mini",
+            model="openai/gpt-5.6-luna",
             old_items=items,
             summarized_through_turn=2,
             encoding_name=DEFAULT_ENCODING_NAME,
@@ -373,7 +373,7 @@ class TestSummarizeChunk:
         )
         assert summary.summarized_through_turn == 2
         assert summary.token_count > 0
-        assert summary.model_used == "openai/gpt-4o-mini"
+        assert summary.model_used == "openai/gpt-5.6-luna"
         assert summary.created_at  # non-empty ISO 8601
 
     @pytest.mark.asyncio
@@ -388,7 +388,7 @@ class TestSummarizeChunk:
         )
         await summarize_chunk(
             client=client,
-            model="openai/gpt-4o-mini",
+            model="openai/gpt-5.6-luna",
             old_items=[_MessageItem("user", "hi")],
             summarized_through_turn=1,
             encoding_name=DEFAULT_ENCODING_NAME,
@@ -396,7 +396,7 @@ class TestSummarizeChunk:
         kwargs = client.responses.create.call_args.kwargs
         assert kwargs["store"] is False
         assert kwargs["stream"] is False
-        assert kwargs["model"] == "openai/gpt-4o-mini"
+        assert kwargs["model"] == "openai/gpt-5.6-luna"
         # System directives travel as `instructions`, transcript as `input`.
         # This keeps the directives in their own channel (resilient to
         # prompt-injection from user content) and matches the convention used
@@ -413,7 +413,7 @@ class TestSummarizeChunk:
         with pytest.raises(ValueError, match="no extractable text"):
             await summarize_chunk(
                 client=client,
-                model="openai/gpt-4o-mini",
+                model="openai/gpt-5.6-luna",
                 old_items=[_MessageItem("user", "hi")],
                 summarized_through_turn=1,
                 encoding_name=DEFAULT_ENCODING_NAME,
@@ -439,14 +439,14 @@ class TestSummarizeChunk:
 
         first = await summarize_chunk(
             client=client,
-            model="openai/gpt-4o-mini",
+            model="openai/gpt-5.6-luna",
             old_items=first_chunk,
             summarized_through_turn=1,
             encoding_name=DEFAULT_ENCODING_NAME,
         )
         second = await summarize_chunk(
             client=client,
-            model="openai/gpt-4o-mini",
+            model="openai/gpt-5.6-luna",
             old_items=second_chunk,
             summarized_through_turn=2,
             encoding_name=DEFAULT_ENCODING_NAME,
@@ -478,7 +478,7 @@ def _make_summary(text: str, through: int, tokens: int = 5) -> ConversationSumma
         summarized_through_turn=through,
         token_count=tokens,
         created_at="2026-05-11T00:00:00Z",
-        model_used="openai/gpt-4o-mini",
+        model_used="openai/gpt-5.6-luna",
     )
 
 
@@ -499,7 +499,7 @@ class TestRecursivelyResummarize:
         ]
         folded = await recursively_resummarize(
             client=client,
-            model="openai/gpt-4o-mini",
+            model="openai/gpt-5.6-luna",
             summaries=summaries,
             encoding_name=DEFAULT_ENCODING_NAME,
         )
@@ -508,7 +508,7 @@ class TestRecursivelyResummarize:
         # new turns were summarized by this call.
         assert folded.summarized_through_turn == 15
         assert folded.token_count > 0
-        assert folded.model_used == "openai/gpt-4o-mini"
+        assert folded.model_used == "openai/gpt-5.6-luna"
 
     @pytest.mark.asyncio
     async def test_prompt_lists_each_summary(self, mocker: MockerFixture) -> None:
@@ -524,7 +524,7 @@ class TestRecursivelyResummarize:
         ]
         await recursively_resummarize(
             client=client,
-            model="openai/gpt-4o-mini",
+            model="openai/gpt-5.6-luna",
             summaries=summaries,
             encoding_name=DEFAULT_ENCODING_NAME,
         )
@@ -547,7 +547,7 @@ class TestRecursivelyResummarize:
         ]
         await recursively_resummarize(
             client=client,
-            model="openai/gpt-4o-mini",
+            model="openai/gpt-5.6-luna",
             summaries=summaries,
             encoding_name=DEFAULT_ENCODING_NAME,
         )
@@ -562,7 +562,7 @@ class TestRecursivelyResummarize:
         with pytest.raises(ValueError, match="at least 2 summary chunks"):
             await recursively_resummarize(
                 client=client,
-                model="openai/gpt-4o-mini",
+                model="openai/gpt-5.6-luna",
                 summaries=[_make_summary("only one", through=5)],
                 encoding_name=DEFAULT_ENCODING_NAME,
             )
@@ -574,7 +574,7 @@ class TestRecursivelyResummarize:
         with pytest.raises(ValueError, match="at least 2 summary chunks"):
             await recursively_resummarize(
                 client=client,
-                model="openai/gpt-4o-mini",
+                model="openai/gpt-5.6-luna",
                 summaries=[],
                 encoding_name=DEFAULT_ENCODING_NAME,
             )
@@ -591,7 +591,7 @@ class TestRecursivelyResummarize:
         with pytest.raises(ValueError, match="no extractable text"):
             await recursively_resummarize(
                 client=client,
-                model="openai/gpt-4o-mini",
+                model="openai/gpt-5.6-luna",
                 summaries=summaries,
                 encoding_name=DEFAULT_ENCODING_NAME,
             )

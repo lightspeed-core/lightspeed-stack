@@ -93,7 +93,7 @@ class ResponsesRequest(BaseModel):
             "examples": [
                 {
                     "input": "Hello World!",
-                    "model": "openai/gpt-4o-mini",
+                    "model": "openai/gpt-5.6-luna",
                     "instructions": "You are a helpful assistant",
                     "store": True,
                     "stream": False,

@@ -434,7 +434,7 @@ async def test_get_default_model_id_auto_discovery_success(
 
     mock_llm_model = mocker.Mock()
     mock_llm_model.custom_metadata = {"model_type": "llm"}
-    mock_llm_model.id = "openai/gpt-4o-mini"
+    mock_llm_model.id = "openai/gpt-5.6-luna"
 
     mock_embedding_model = mocker.Mock()
     mock_embedding_model.custom_metadata = {"model_type": "embedding"}
@@ -455,7 +455,7 @@ async def test_get_default_model_id_auto_discovery_success(
 
     model_id = await _get_default_model_id()
 
-    assert model_id == "openai/gpt-4o-mini"
+    assert model_id == "openai/gpt-5.6-luna"
 
 
 # --- Test get_rh_identity_context ---

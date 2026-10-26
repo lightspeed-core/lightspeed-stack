@@ -113,9 +113,9 @@ SAMPLE_LLAMA_STACK_CONFIG: dict[str, Any] = {
     "registered_resources": {
         "models": [
             {
-                "model_id": "gpt-4o-mini",
+                "model_id": "gpt-5.6-luna",
                 "provider_id": "openai",
-                "provider_model_id": "gpt-4o-mini",
+                "provider_model_id": "gpt-5.6-luna",
                 "model_type": "llm",
             },
             {
@@ -205,7 +205,7 @@ def build_fully_populated_config() -> Configuration:
             timeout=180,
         ),
         inference=InferenceConfiguration.model_construct(
-            default_model="gpt-4o-mini",
+            default_model="gpt-5.6-luna",
             default_provider="openai",
         ),
         authentication=AuthenticationConfiguration.model_construct(

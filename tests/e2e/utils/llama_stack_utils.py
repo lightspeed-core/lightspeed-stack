@@ -155,6 +155,6 @@ def register_shield(
     if not provider_shield_id:
         provider_shield_id = os.getenv(
             "E2E_LLAMA_GUARD_PROVIDER_SHIELD_ID",
-            "openai/gpt-4o-mini",
+            "openai/gpt-5.6-luna",
         )
     asyncio.run(_register_shield_async(shield_id, provider_id, provider_shield_id))

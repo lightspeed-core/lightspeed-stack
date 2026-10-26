@@ -149,7 +149,7 @@ class ResponsesResponse(AbstractSuccessfulResponse):
                 "event: response.created\n"
                 'data: {"type":"response.created","sequence_number":0,'
                 '"response":{"id":"resp_abc","object":"response",'
-                '"created_at":1704067200,"status":"in_progress","model":"openai/gpt-4o-mini",'
+                '"created_at":1704067200,"status":"in_progress","model":"openai/gpt-5.6-luna",'
                 '"output":[],"store":true,"text":{"format":{"type":"text"}},'
                 '"conversation":"0d21ba731f21f798dc9680125d5d6f49",'
                 '"available_quotas":{},"output_text":""}}\n\n'
@@ -162,7 +162,7 @@ class ResponsesResponse(AbstractSuccessfulResponse):
                 "event: response.completed\n"
                 'data: {"type":"response.completed","sequence_number":30,'
                 '"response":{"id":"resp_abc","object":"response",'
-                '"created_at":1704067200,"status":"completed","model":"openai/gpt-4o-mini",'
+                '"created_at":1704067200,"status":"completed","model":"openai/gpt-5.6-luna",'
                 '"output":[{"id":"msg_abc","type":"message","status":"completed",'
                 '"role":"assistant","content":[{"type":"output_text",'
                 '"text":"Hello! How can I help?","annotations":[]}]}],'

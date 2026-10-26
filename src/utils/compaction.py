@@ -226,7 +226,7 @@ async def summarize_chunk(
     Parameters:
         client: Llama Stack client to call.
         model: Fully-qualified model identifier (e.g.,
-            ``"openai/gpt-4o-mini"``). The spec mandates the same
+            ``"openai/gpt-5.6-luna"``). The spec mandates the same
             model as the user's query (spike decision 3); the choice
             is the caller's, this function only records it.
         old_items: Conversation items to summarize. Non-message items

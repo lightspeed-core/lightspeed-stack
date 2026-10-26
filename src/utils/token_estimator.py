@@ -161,7 +161,7 @@ def get_context_window(
 
     Parameters:
         model: Fully-qualified model identifier (e.g.,
-            ``"openai/gpt-4o-mini"``).
+            ``"openai/gpt-5.6-luna"``).
         inference_config: The application's inference configuration.
 
     Returns:

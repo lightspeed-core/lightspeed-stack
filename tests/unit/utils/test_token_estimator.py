@@ -228,18 +228,18 @@ class TestGetContextWindow:
     def test_returns_size_for_known_model(self) -> None:
         """A configured model returns its window size."""
         config = InferenceConfiguration(
-            context_windows={"openai/gpt-4o-mini": 128000},
+            context_windows={"openai/gpt-5.6-luna": 128000},
         )  # pyright: ignore[reportCallIssue]
-        assert get_context_window("openai/gpt-4o-mini", config) == 128000
+        assert get_context_window("openai/gpt-5.6-luna", config) == 128000
 
     def test_returns_none_for_unknown_model(self) -> None:
         """An unconfigured model returns None — caller decides fallback."""
         config = InferenceConfiguration(
-            context_windows={"openai/gpt-4o-mini": 128000},
+            context_windows={"openai/gpt-5.6-luna": 128000},
         )  # pyright: ignore[reportCallIssue]
         assert get_context_window("anthropic/claude-3", config) is None
 
     def test_returns_none_when_map_empty(self) -> None:
         """An empty context_windows dict returns None for any model."""
         config = InferenceConfiguration()  # pyright: ignore[reportCallIssue]
-        assert get_context_window("openai/gpt-4o-mini", config) is None
+        assert get_context_window("openai/gpt-5.6-luna", config) is None

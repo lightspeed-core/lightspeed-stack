@@ -152,7 +152,7 @@ class ConversationTurn(BaseModel):
     model: str = Field(
         ...,
         description="Model identifier used for this turn",
-        examples=["gpt-4o-mini"],
+        examples=["gpt-5.6-luna"],
     )
     started_at: str = Field(
         ...,
