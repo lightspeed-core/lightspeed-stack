@@ -74,20 +74,6 @@ arches:
     name: info
     evr: 6.7-15.el9
     sourcerpm: texinfo-6.7-15.el9.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.6/aarch64/baseos/os/Packages/p/pcre2-10.40-6.el9_6.1.aarch64.rpm
-    repoid: rhel-9-for-aarch64-baseos-eus-rpms__9_DOT_6
-    size: 221527
-    checksum: sha256:ed35a043f78c425a5fd4bb349b2409028ddccbab82f3af29ce81811f913b6864
-    name: pcre2
-    evr: 10.40-6.el9_6.1
-    sourcerpm: pcre2-10.40-6.el9_6.1.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.6/aarch64/baseos/os/Packages/p/pcre2-syntax-10.40-6.el9_6.1.noarch.rpm
-    repoid: rhel-9-for-aarch64-baseos-eus-rpms__9_DOT_6
-    size: 142899
-    checksum: sha256:75f0e6ca588a40aa2aa6c4c6cbbfb290fb0de3256abe111efce047f68b9e6601
-    name: pcre2-syntax
-    evr: 10.40-6.el9_6.1
-    sourcerpm: pcre2-10.40-6.el9_6.1.src.rpm
   source: []
   module_metadata: []
 - arch: x86_64
@@ -162,19 +148,5 @@ arches:
     name: info
     evr: 6.7-15.el9
     sourcerpm: texinfo-6.7-15.el9.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.6/x86_64/baseos/os/Packages/p/pcre2-10.40-6.el9_6.1.x86_64.rpm
-    repoid: rhel-9-for-x86_64-baseos-eus-rpms__9_DOT_6
-    size: 238545
-    checksum: sha256:34c08cbbb06f9faddac0d314473bf53ab1f01c8ade4392f0f5c982e6a989d8a4
-    name: pcre2
-    evr: 10.40-6.el9_6.1
-    sourcerpm: pcre2-10.40-6.el9_6.1.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.6/x86_64/baseos/os/Packages/p/pcre2-syntax-10.40-6.el9_6.1.noarch.rpm
-    repoid: rhel-9-for-x86_64-baseos-eus-rpms__9_DOT_6
-    size: 142899
-    checksum: sha256:75f0e6ca588a40aa2aa6c4c6cbbfb290fb0de3256abe111efce047f68b9e6601
-    name: pcre2-syntax
-    evr: 10.40-6.el9_6.1
-    sourcerpm: pcre2-10.40-6.el9_6.1.src.rpm
   source: []
   module_metadata: []

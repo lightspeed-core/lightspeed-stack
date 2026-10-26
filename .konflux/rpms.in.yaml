@@ -9,8 +9,6 @@ packages:
   ]
 upgradePackages:
   [
-    pcre2-syntax,
-    pcre2,
   ]
 contentOrigin:
   repofiles: ["./redhat.repo"]
