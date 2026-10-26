@@ -33,7 +33,11 @@ from authorization.azure_token_manager import AzureEntraIDManager
 from authorization.middleware import authorize
 from client.ogx import AsyncOgxClientHolder
 from configuration import configuration
-from constants import ENDPOINT_PATH_RESPONSES, SUBSTITUTED_INSTRUCTIONS_PLACEHOLDER
+from constants import (
+    ENDPOINT_PATH_RESPONSES,
+    RESPONSES_REQUEST_MAX_SIZE,
+    SUBSTITUTED_INSTRUCTIONS_PLACEHOLDER,
+)
 from log import get_logger
 from metrics import recording
 from models.api.requests import ResponsesRequest
@@ -100,7 +104,7 @@ from utils.responses import (
     build_turn_summary,
     check_model_configured,
     deduplicate_referenced_documents,
-    extract_attachments_text,
+    extract_shield_moderation_text,
     extract_text_from_response_items,
     extract_token_usage,
     extract_vector_store_ids_from_tools,
@@ -631,13 +635,18 @@ async def handle_responses_with_tracing(  # pylint: disable=too-many-locals
     ):
         client = await AsyncOgxClientHolder().update_azure_token()
 
-    attachments_text = extract_attachments_text(original_request.input)
     add_span_event(root_span, SpanEvents.VALIDATION_COMPLETED)
 
     endpoint_path = ENDPOINT_PATH_RESPONSES
 
+    shield_after_last_refusal = (
+        request.headers.get("X-LCS-Shield-After-Last-Refusal", "").lower() == "true"
+    )
     moderation_result = await run_shield_moderation_v2(
-        input_text + "\n\n" + attachments_text,
+        extract_shield_moderation_text(
+            original_request.input,
+            shield_after_last_refusal,
+        ),
         configuration.configuration.shields,
         responses_request.shield_ids,
     )
@@ -660,6 +669,7 @@ async def handle_responses_with_tracing(  # pylint: disable=too-many-locals
         original_request.reasoning,
         updated_request.tools,
         updated_request.model,
+        configuration.skills,
     )
 
     # Extract vector store IDs for Inline RAG context from the original request
@@ -1476,6 +1486,13 @@ async def handle_non_streaming_response(
             tools,
             configuration.rag_id_mapping,
         )
+
+    # retrieve max size of response request
+    responses_request_max_size = RESPONSES_REQUEST_MAX_SIZE
+    customization = configuration.configuration.customization
+    if customization is not None:
+        responses_request_max_size = customization.responses_request_max_size
+
     return ResponsesResponse.model_validate(
         {
             **response_dict,
@@ -1483,5 +1500,6 @@ async def handle_non_streaming_response(
             "conversation": normalize_conversation_id(api_params.conversation),
             "completed_at": int(completed_at.timestamp()),
             "output_text": output_text,
-        }
+        },
+        context={"responses_request_max_size": responses_request_max_size},
     )

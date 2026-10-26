@@ -30,7 +30,7 @@ authentication:
   module: "noop"
 inference:
   default_provider: openai
-  default_model: gpt-4o-mini
+  default_model: gpt-5.6-luna
 
 # BYOK store built from a PDF by rag-content's `pdf` module (LCORE-2091).
 # The vector_db_id is hardcoded to the id baked into the committed fixture

@@ -188,7 +188,7 @@ class TestSetSpanAttributes:
                 span,
                 {
                     SpanAttributes.USER_ID: "user-456",
-                    SpanAttributes.LLM_MODEL_ID: "gpt-4o-mini",
+                    SpanAttributes.LLM_MODEL_ID: "gpt-5.6-luna",
                     SpanAttributes.LLM_USAGE_INPUT_TOKENS: 100,
                     SpanAttributes.LLM_USAGE_OUTPUT_TOKENS: 50,
                 },
@@ -198,7 +198,7 @@ class TestSetSpanAttributes:
         assert len(spans) == 1
         attrs = spans[0].attributes
         assert attrs[SpanAttributes.USER_ID] == "user-456"
-        assert attrs[SpanAttributes.LLM_MODEL_ID] == "gpt-4o-mini"
+        assert attrs[SpanAttributes.LLM_MODEL_ID] == "gpt-5.6-luna"
         assert attrs[SpanAttributes.LLM_USAGE_INPUT_TOKENS] == 100
         assert attrs[SpanAttributes.LLM_USAGE_OUTPUT_TOKENS] == 50
 

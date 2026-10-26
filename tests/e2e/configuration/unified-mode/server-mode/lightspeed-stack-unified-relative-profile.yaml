@@ -23,4 +23,4 @@ authentication:
   module: "noop"
 inference:
   default_provider: openai
-  default_model: gpt-4o-mini
+  default_model: gpt-5.6-luna

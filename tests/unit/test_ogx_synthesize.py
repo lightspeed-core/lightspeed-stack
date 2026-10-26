@@ -173,7 +173,7 @@ def test_load_default_baseline_openai_is_conditional_on_api_key() -> None:
             "provider_type": "remote::openai",
             "config": {
                 "api_key": OPENAI_CONDITIONAL_API_KEY,
-                "allowed_models": ["${env.E2E_OPENAI_MODEL:=gpt-4o-mini}"],
+                "allowed_models": ["${env.E2E_OPENAI_MODEL:=gpt-5.6-luna}"],
             },
         }
     ]
@@ -273,7 +273,7 @@ def test_apply_high_level_inference_maps_type_and_emits_env_ref() -> None:
             {
                 "type": "openai",
                 "api_key_env": "OPENAI_API_KEY",
-                "allowed_models": ["gpt-4o-mini"],
+                "allowed_models": ["gpt-5.6-luna"],
                 "extra": {},
             }
         ]
@@ -283,7 +283,7 @@ def test_apply_high_level_inference_maps_type_and_emits_env_ref() -> None:
     assert entry["provider_id"] == "openai"
     assert entry["provider_type"] == "remote::openai"
     assert entry["config"]["api_key"] == "${env.OPENAI_API_KEY}"
-    assert entry["config"]["allowed_models"] == ["gpt-4o-mini"]
+    assert entry["config"]["allowed_models"] == ["gpt-5.6-luna"]
 
 
 def test_apply_high_level_inference_hyphenates_provider_id() -> None:
@@ -993,7 +993,7 @@ _LEGACY_RUN_YAML: dict[str, Any] = {
                 "provider_type": "remote::openai",
                 "config": {
                     "api_key": "${env.OPENAI_API_KEY}",
-                    "allowed_models": ["gpt-4o-mini"],
+                    "allowed_models": ["gpt-5.6-luna"],
                 },
             },
             {

@@ -15,7 +15,7 @@ from ogx_api.openai_responses import (
 from ogx_api.openai_responses import (
     OpenAIResponseText as Text,
 )
-from pydantic import BaseModel, field_validator, model_validator
+from pydantic import BaseModel, ValidationInfo, field_validator, model_validator
 
 from constants import RESPONSES_REQUEST_MAX_SIZE
 from models.common.query import SolrVectorSearchRequest
@@ -105,7 +105,7 @@ class ResponsesRequest(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_body_size(cls, values: Any) -> Any:
+    def validate_body_size(cls, values: Any, info: ValidationInfo) -> Any:
         """Validate that the request body does not exceed the maximum allowed size.
 
         Serializes the raw request payload to JSON and checks the total character
@@ -130,10 +130,15 @@ class ResponsesRequest(BaseModel):
             # model instances).  The size guard only applies to wire-format HTTP
             # requests which FastAPI always parses into JSON-compatible dicts.
             return values
-        if len(serialized) > RESPONSES_REQUEST_MAX_SIZE:
+
+        max_size = (info.context or {}).get(
+            "responses_request_max_size", RESPONSES_REQUEST_MAX_SIZE
+        )
+
+        if len(serialized) > max_size:
             raise ValueError(
                 f"Request body size ({len(serialized)} characters) exceeds maximum "
-                f"allowed size of {RESPONSES_REQUEST_MAX_SIZE} characters"
+                f"allowed size of {max_size} characters"
             )
         return values
 

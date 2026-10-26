@@ -192,7 +192,7 @@ class TestShieldsResponse:
                 "provider_id": "question_validity",
                 "type": "shield",
                 "config": {
-                    "model_id": "openai/gpt-4o-mini",
+                    "model_id": "openai/gpt-5.6-luna",
                     "model_prompt": "Is this question valid?",
                     "invalid_question_response": (
                         "I can only answer questions about the product."

@@ -1451,7 +1451,7 @@ def test_dump_models(tmpdir: Path) -> None:
                                             "type": "assistant"
                                         }
                                     ],
-                                    "model": "gpt-4o-mini",
+                                    "model": "gpt-5.6-luna",
                                     "provider": "openai",
                                     "started_at": "2024-01-01T00:01:00Z",
                                     "tool_calls": [],
@@ -1485,7 +1485,7 @@ def test_dump_models(tmpdir: Path) -> None:
                                             "type": "assistant"
                                         }
                                     ],
-                                    "model": "gpt-4o-mini",
+                                    "model": "gpt-5.6-luna",
                                     "provider": "openai",
                                     "started_at": "2024-01-01T00:01:00Z",
                                     "tool_calls": [],
@@ -1507,7 +1507,7 @@ def test_dump_models(tmpdir: Path) -> None:
                     "type": "object"
                 },
                 "ConversationSummary": {
-                    "description": "A single compaction-produced summary chunk.\n\nAttributes:\n    summary_text: The natural-language summary produced by the\n        summarization LLM call. Used directly as context for\n        subsequent requests (alongside any later summary chunks\n        and the buffer of recent turns kept verbatim).\n    summarized_through_turn: Running total of conversation items\n        consumed by this and all preceding summaries. Used by the\n        caller to advance the partition boundary on the next\n        compaction so the new summary only covers items that\n        have not yet been summarized.\n    token_count: Number of tokens in ``summary_text``. Tracked so\n        the recursive-resummarize fallback can decide when the\n        cumulative summary size itself approaches the context\n        limit without re-tokenizing.\n    created_at: ISO 8601 timestamp recording when this summary was\n        produced. Kept as a string (not datetime) to match the\n        cache schema convention used elsewhere in the codebase.\n    model_used: Fully-qualified model identifier used for the\n        summarization LLM call (e.g., ``\"openai/gpt-4o-mini\"``).\n        Preserved for audit and for diagnostics when summary\n        quality varies between models.",
+                    "description": "A single compaction-produced summary chunk.\n\nAttributes:\n    summary_text: The natural-language summary produced by the\n        summarization LLM call. Used directly as context for\n        subsequent requests (alongside any later summary chunks\n        and the buffer of recent turns kept verbatim).\n    summarized_through_turn: Running total of conversation items\n        consumed by this and all preceding summaries. Used by the\n        caller to advance the partition boundary on the next\n        compaction so the new summary only covers items that\n        have not yet been summarized.\n    token_count: Number of tokens in ``summary_text``. Tracked so\n        the recursive-resummarize fallback can decide when the\n        cumulative summary size itself approaches the context\n        limit without re-tokenizing.\n    created_at: ISO 8601 timestamp recording when this summary was\n        produced. Kept as a string (not datetime) to match the\n        cache schema convention used elsewhere in the codebase.\n    model_used: Fully-qualified model identifier used for the\n        summarization LLM call (e.g., ``\"openai/gpt-5.6-luna\"``).\n        Preserved for audit and for diagnostics when summary\n        quality varies between models.",
                     "properties": {
                         "summary_text": {
                             "description": "Natural-language summary produced by the summarization LLM call.",
@@ -1585,7 +1585,7 @@ def test_dump_models(tmpdir: Path) -> None:
                         "model": {
                             "description": "Model identifier used for this turn",
                             "examples": [
-                                "gpt-4o-mini"
+                                "gpt-5.6-luna"
                             ],
                             "title": "Model",
                             "type": "string"
@@ -2473,7 +2473,7 @@ def test_dump_models(tmpdir: Path) -> None:
                                 "minimum": 0,
                                 "type": "integer"
                             },
-                            "description": "Map of fully-qualified model identifier (e.g., \"openai/gpt-4o-mini\") to context window size in tokens. Used by the conversation compaction trigger to decide when older turns must be summarized before the input exceeds the window. Models absent from this map have no registered window \u2014 callers fall back to their own default or skip the token-based trigger.",
+                            "description": "Map of fully-qualified model identifier (e.g., \"openai/gpt-5.6-luna\") to context window size in tokens. Used by the conversation compaction trigger to decide when older turns must be summarized before the input exceeds the window. Models absent from this map have no registered window \u2014 callers fall back to their own default or skip the token-based trigger.",
                             "title": "Per-model context window sizes (tokens)",
                             "type": "object"
                         },
@@ -3519,7 +3519,7 @@ def test_dump_models(tmpdir: Path) -> None:
                         },
                         {
                             "detail": {
-                                "cause": "Model with ID gpt-4o-mini does not exist",
+                                "cause": "Model with ID gpt-5.6-luna does not exist",
                                 "response": "Model not found"
                             },
                             "label": "model"
@@ -5372,7 +5372,7 @@ def test_dump_models(tmpdir: Path) -> None:
                     "examples": [
                         {
                             "detail": {
-                                "cause": "The input exceeds the context window size of model 'gpt-4o-mini'.",
+                                "cause": "The input exceeds the context window size of model 'gpt-5.6-luna'.",
                                 "response": "Context window exceeded"
                             },
                             "label": "context window exceeded"
@@ -6964,7 +6964,7 @@ def test_dump_models(tmpdir: Path) -> None:
                             "generate_topic_summary": true,
                             "input": "Hello World!",
                             "instructions": "You are a helpful assistant",
-                            "model": "openai/gpt-4o-mini",
+                            "model": "openai/gpt-5.6-luna",
                             "store": true,
                             "stream": false
                         }
@@ -7497,7 +7497,7 @@ def test_dump_models(tmpdir: Path) -> None:
                         "available_quotas",
                         "output_text"
                     ],
-                    "sse_example": "event: response.created\ndata: {\"type\":\"response.created\",\"sequence_number\":0,\"response\":{\"id\":\"resp_abc\",\"object\":\"response\",\"created_at\":1704067200,\"status\":\"in_progress\",\"model\":\"openai/gpt-4o-mini\",\"output\":[],\"store\":true,\"text\":{\"format\":{\"type\":\"text\"}},\"conversation\":\"0d21ba731f21f798dc9680125d5d6f49\",\"available_quotas\":{},\"output_text\":\"\"}}\n\nevent: response.output_item.added\ndata: {\"type\":\"response.output_item.added\",\"sequence_number\":1,\"response_id\":\"resp_abc\",\"output_index\":0,\"item\":{\"id\":\"msg_abc\",\"type\":\"message\",\"status\":\"in_progress\",\"role\":\"assistant\",\"content\":[]}}\n\n...\n\nevent: response.completed\ndata: {\"type\":\"response.completed\",\"sequence_number\":30,\"response\":{\"id\":\"resp_abc\",\"object\":\"response\",\"created_at\":1704067200,\"status\":\"completed\",\"model\":\"openai/gpt-4o-mini\",\"output\":[{\"id\":\"msg_abc\",\"type\":\"message\",\"status\":\"completed\",\"role\":\"assistant\",\"content\":[{\"type\":\"output_text\",\"text\":\"Hello! How can I help?\",\"annotations\":[]}]}],\"store\":true,\"text\":{\"format\":{\"type\":\"text\"}},\"usage\":{\"input_tokens\":10,\"output_tokens\":6,\"total_tokens\":16,\"input_tokens_details\":{\"cached_tokens\":0},\"output_tokens_details\":{\"reasoning_tokens\":0}},\"conversation\":\"0d21ba731f21f798dc9680125d5d6f49\",\"available_quotas\":{\"daily\":1000,\"monthly\":50000},\"output_text\":\"Hello! How can I help?\"}}\n\ndata: [DONE]\n\n",
+                    "sse_example": "event: response.created\ndata: {\"type\":\"response.created\",\"sequence_number\":0,\"response\":{\"id\":\"resp_abc\",\"object\":\"response\",\"created_at\":1704067200,\"status\":\"in_progress\",\"model\":\"openai/gpt-5.6-luna\",\"output\":[],\"store\":true,\"text\":{\"format\":{\"type\":\"text\"}},\"conversation\":\"0d21ba731f21f798dc9680125d5d6f49\",\"available_quotas\":{},\"output_text\":\"\"}}\n\nevent: response.output_item.added\ndata: {\"type\":\"response.output_item.added\",\"sequence_number\":1,\"response_id\":\"resp_abc\",\"output_index\":0,\"item\":{\"id\":\"msg_abc\",\"type\":\"message\",\"status\":\"in_progress\",\"role\":\"assistant\",\"content\":[]}}\n\n...\n\nevent: response.completed\ndata: {\"type\":\"response.completed\",\"sequence_number\":30,\"response\":{\"id\":\"resp_abc\",\"object\":\"response\",\"created_at\":1704067200,\"status\":\"completed\",\"model\":\"openai/gpt-5.6-luna\",\"output\":[{\"id\":\"msg_abc\",\"type\":\"message\",\"status\":\"completed\",\"role\":\"assistant\",\"content\":[{\"type\":\"output_text\",\"text\":\"Hello! How can I help?\",\"annotations\":[]}]}],\"store\":true,\"text\":{\"format\":{\"type\":\"text\"}},\"usage\":{\"input_tokens\":10,\"output_tokens\":6,\"total_tokens\":16,\"input_tokens_details\":{\"cached_tokens\":0},\"output_tokens_details\":{\"reasoning_tokens\":0}},\"conversation\":\"0d21ba731f21f798dc9680125d5d6f49\",\"available_quotas\":{\"daily\":1000,\"monthly\":50000},\"output_text\":\"Hello! How can I help?\"}}\n\ndata: [DONE]\n\n",
                     "title": "ResponsesResponse",
                     "type": "object"
                 },
@@ -8248,7 +8248,7 @@ def test_dump_models(tmpdir: Path) -> None:
                                 {
                                     "config": {
                                         "invalid_question_response": "I can only answer questions about the product.",
-                                        "model_id": "openai/gpt-4o-mini",
+                                        "model_id": "openai/gpt-5.6-luna",
                                         "model_prompt": "Is this question valid?"
                                     },
                                     "name": "question-validity",

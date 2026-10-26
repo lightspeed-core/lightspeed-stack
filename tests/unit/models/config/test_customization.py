@@ -6,6 +6,7 @@ import pytest
 from pydantic import ValidationError
 from pytest_subtests import SubTests
 
+from constants import RESPONSES_REQUEST_MAX_SIZE
 from models.config import Customization
 
 
@@ -55,6 +56,21 @@ def test_service_customization(subtests: SubTests) -> None:
         assert c.system_prompt == "This is system prompt."
         # but it is still disabled
         assert c.disable_query_system_prompt is True
+
+
+def test_service_customization_max_response_request_size(subtests: SubTests) -> None:
+    """Check the service customization class."""
+    with subtests.test(msg="Default response request size should be used"):
+        c = Customization()
+        assert c is not None
+        # default value should not be used now
+        assert c.responses_request_max_size == RESPONSES_REQUEST_MAX_SIZE
+
+    with subtests.test(msg="Max response request size is specified"):
+        c = Customization(responses_request_max_size=42)
+        assert c is not None
+        # default value should not be used now
+        assert c.responses_request_max_size == 42
 
 
 def test_service_customization_wrong_system_prompt_path() -> None:

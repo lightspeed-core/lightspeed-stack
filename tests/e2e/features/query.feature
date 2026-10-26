@@ -20,7 +20,7 @@ Feature: Query endpoint API tests
      Then The status code of the response is 200
       And The response contains following fragments
           | Fragments in LLM response |
-          | ask                       |
+          | questions                       |
       And The token metrics have increased
 
   @flaky

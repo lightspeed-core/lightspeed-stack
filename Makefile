@@ -99,7 +99,7 @@ start-ogx-container: build-ogx-image ## Start OGX container
 		-e OPENAI_API_KEY \
 		-e BRAVE_SEARCH_API_KEY \
 		-e TAVILY_SEARCH_API_KEY \
-		-e E2E_OPENAI_MODEL=$${E2E_OPENAI_MODEL:-gpt-4o-mini} \
+		-e E2E_OPENAI_MODEL=$${E2E_OPENAI_MODEL:-gpt-5.6-luna} \
 		-e TENANT_ID=$${TENANT_ID:-} \
 		-e CLIENT_ID=$${CLIENT_ID:-} \
 		-e CLIENT_SECRET \

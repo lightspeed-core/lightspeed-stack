@@ -40,7 +40,7 @@ Attributes:
         produced. Kept as a string (not datetime) to match the
         cache schema convention used elsewhere in the codebase.
     model_used: Fully-qualified model identifier used for the
-        summarization LLM call (e.g., ``"openai/gpt-4o-mini"``).
+        summarization LLM call (e.g., ``"openai/gpt-5.6-luna"``).
         Preserved for audit and for diagnostics when summary
         quality varies between models.
 

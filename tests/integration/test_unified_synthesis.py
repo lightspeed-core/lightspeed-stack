@@ -97,7 +97,7 @@ _OPERATOR_RUN_YAML: dict[str, Any] = {
     "registered_resources": {
         "models": [
             {
-                "model_id": "gpt-4o-mini",
+                "model_id": "gpt-5.6-luna",
                 "provider_id": "azure",
                 "model_type": "llm",
             }

@@ -157,6 +157,7 @@ class TestRunShieldModerationV2:
 
         assert isinstance(result, ShieldModerationBlocked)
         assert result.message == "rejected"
+        assert result.refusal_response.id == "modr-123"
         mock_shield.run.assert_called_once()
 
     @pytest.mark.asyncio
@@ -223,7 +224,7 @@ class TestRunShieldModerationV2:
         """Raise HTTP 429 when a shield raises ModelHTTPError with status 429."""
         mock_shield = mocker.Mock()
         mock_shield.run = mocker.AsyncMock(
-            side_effect=ModelHTTPError(429, "openai/gpt-4o-mini", "Quota exceeded")
+            side_effect=ModelHTTPError(429, "openai/gpt-5.6-luna", "Quota exceeded")
         )
         mocker.patch("utils.shields.build_shield", return_value=mock_shield)
 
@@ -242,7 +243,7 @@ class TestRunShieldModerationV2:
         mock_shield = mocker.Mock()
         mock_shield.run = mocker.AsyncMock(
             side_effect=ModelHTTPError(
-                413, "openai/gpt-4o-mini", "Context length exceeded"
+                413, "openai/gpt-5.6-luna", "Context length exceeded"
             )
         )
         mocker.patch("utils.shields.build_shield", return_value=mock_shield)

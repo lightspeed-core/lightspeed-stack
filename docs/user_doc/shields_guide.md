@@ -53,7 +53,7 @@ shields:
   - name: topic-guard
     provider_id: question_validity
     config:
-      model_id: openai/gpt-4o-mini
+      model_id: openai/gpt-5.6-luna
       # optional:
       # model_prompt: "..."
       # invalid_question_response: "..."
@@ -82,7 +82,7 @@ for a complete example.
 
 | Config field | Required | Description |
 |--------------|----------|-------------|
-| `model_id` | Yes | Model used for the validity check (for example `openai/gpt-4o-mini`) |
+| `model_id` | Yes | Model used for the validity check (for example `openai/gpt-5.6-luna`) |
 | `model_prompt` | No | Classifier prompt (has a built-in default) |
 | `invalid_question_response` | No | Reply returned when the question is rejected |
 
@@ -178,6 +178,12 @@ there is no agent capability layer. Instead, LCORE runs the **same core shield
 functionality directly** through a custom API (`run_shield_moderation`) before
 each request. When moderation blocks the input, the endpoint returns a refusal
 (and may persist the blocked turn) without calling the model.
+
+On `/v1/responses`, clients that resend full history (`store: false`) can opt
+into windowed moderation with the
+`X-LCS-Shield-After-Last-Refusal: true` header. Shields then judge only input
+items after the last prior refusal (`modr-…`). See
+[Shield Moderation After Last Refusal](../devel_doc/responses.md#shield-moderation-after-last-refusal).
 
 ## Per-endpoint behavior
 

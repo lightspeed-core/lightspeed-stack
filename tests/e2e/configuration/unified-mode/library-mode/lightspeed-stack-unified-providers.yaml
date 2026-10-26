@@ -18,7 +18,7 @@ authentication:
   module: "noop"
 inference:
   default_provider: openai
-  default_model: gpt-4o-mini
+  default_model: gpt-5.6-luna
   # Unified synthesis input (Decision S5): the high-level provider entry
   # replaces the default baseline's openai provider by id at synthesis time.
   providers:
@@ -26,4 +26,4 @@ inference:
       id: openai
       api_key_env: OPENAI_API_KEY
       allowed_models:
-        - ${env.E2E_OPENAI_MODEL:=gpt-4o-mini}
+        - ${env.E2E_OPENAI_MODEL:=gpt-5.6-luna}

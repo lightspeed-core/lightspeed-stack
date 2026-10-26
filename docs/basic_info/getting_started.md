@@ -184,10 +184,10 @@ authentication:
                         DEBUG    Set provider/model configuration for openai/openai/gpt-3.5-turbo-instruct to 0                  utils.py:45
                         DEBUG    Set provider/model configuration for openai/openai/gpt-4 to 0                                   utils.py:45
                         DEBUG    Set provider/model configuration for openai/openai/gpt-4-turbo to 0                             utils.py:45
-                        DEBUG    Set provider/model configuration for openai/openai/gpt-4o to 0                                  utils.py:45
+                        DEBUG    Set provider/model configuration for openai/openai/gpt-5.6-luna to 0                                  utils.py:45
                         DEBUG    Set provider/model configuration for openai/openai/gpt-4o-2024-08-06 to 0                       utils.py:45
                         DEBUG    Set provider/model configuration for openai/openai/gpt-4o-audio-preview to 0                    utils.py:45
-                        DEBUG    Set provider/model configuration for openai/openai/gpt-4o-mini to 0                             utils.py:45
+                        DEBUG    Set provider/model configuration for openai/openai/gpt-5.6-luna to 0                             utils.py:45
                         DEBUG    Set provider/model configuration for openai/openai/o1 to 0                                      utils.py:45
                         DEBUG    Set provider/model configuration for openai/openai/o1-mini to 0                                 utils.py:45
                         DEBUG    Set provider/model configuration for openai/openai/o3-mini to 0                                 utils.py:45

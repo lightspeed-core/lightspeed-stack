@@ -46,7 +46,7 @@ from tests.e2e.utils.utils import (
     switch_config,
 )
 
-FALLBACK_MODEL = "gpt-4o-mini"
+FALLBACK_MODEL = "gpt-5.6-luna"
 FALLBACK_PROVIDER = "openai"
 
 # Wall-clock start for each feature (on ``Feature``; survives Behave context resets).

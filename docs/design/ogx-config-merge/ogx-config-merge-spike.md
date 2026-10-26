@@ -200,7 +200,7 @@ also stay under `ogx.config` whenever they ship as high-level keys
 Literal values (`openai`, `azure`, `sentence_transformers`, `vertexai`,
 `watsonx`, `vllm_rhaiis`, `vllm_rhel_ai`). They are vendor identifiers
 that both OGX (`provider_type: remote::openai`) and Pydantic AI
-(model-string prefixes such as `openai:gpt-4o-mini`) recognise. Each
+(model-string prefixes such as `openai:gpt-5.6-luna`) recognise. Each
 backend-specific synthesizer translates the canonical LCORE vocabulary to
 its target shape; we do not adopt either backend's surface verbatim.
 
@@ -941,7 +941,7 @@ Summary of validation:
   from production design").
 - **Vacuous safety-shield validation in the library-mode PoC**. The
   `native_override` used during PoC validation registered `llama-guard`
-  with `provider_shield_id: openai/gpt-4o-mini` — an OpenAI chat model,
+  with `provider_shield_id: openai/gpt-5.6-luna` — an OpenAI chat model,
   not a Llama Guard checkpoint. The "`native_override` took effect"
   evidence row above only shows that the key landed in the synthesized
   output; it does **not** show that a real safety shield gated any
@@ -1184,7 +1184,7 @@ curl -sSL -o /tmp/lcore-836-poc/lightspeed-stack-unified-library.yaml \
 
 # 1. Start LCORE in library mode with the unified config
 export OPENAI_API_KEY=<your-key>
-export E2E_OPENAI_MODEL=gpt-4o-mini
+export E2E_OPENAI_MODEL=gpt-5.6-luna
 uv run lightspeed-stack \
   -c /tmp/lcore-836-poc/lightspeed-stack-unified-library.yaml
 
