@@ -197,8 +197,8 @@ security-check: ## Check the project for security issues
 	uv run bandit -c pyproject.toml -r src tests
 
 format: ## Format the code into unified format
-	uv run black --line-length 88 src tests
-	uv run ruff check src tests --fix
+	uv run black --line-length 88 src tests scripts
+	uv run ruff check src tests scripts --fix
 
 schema:	## Generate OpenAPI schema file stored in docs/devel_doc subdirectory
 	uv run scripts/generate_openapi_schema.py docs/devel_doc/openapi.json
@@ -347,7 +347,7 @@ docstyle:	## Check the docstring style using Docstyle checker
 	uv run pydocstyle -v src
 
 ruff:	## Check source code using Ruff linter
-	uv run ruff check src tests --per-file-ignores=tests/*:S101 --per-file-ignores=scripts/*:S101
+	uv run ruff check src tests scripts --per-file-ignores=tests/*:S101 --per-file-ignores=scripts/*:S101
 
 lint-openapi: ## Lint docs/devel_doc/openapi.json (Spectral OAS ruleset; fail on error)
 	@if command -v npx >/dev/null 2>&1; then \
