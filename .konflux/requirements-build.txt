@@ -6,49 +6,96 @@
 #
 calver==2025.10.20
     # via trove-classifiers
-dunamai==1.26.2
+coherent-licensed==0.5.2
+    # via
+    #   jaraco-context
+    #   jaraco-functools
+    #   keyring
+docutils==0.23
+    # via readme-renderer
+dunamai==1.26.3
     # via uv-dynamic-versioning
 flit-core==3.12.0
-    # via jinja2
+    # via
+    #   coherent-licensed
+    #   docutils
+    #   id
+    #   jinja2
+    #   markdown-it-py
+    #   mdurl
 flit-core==4.1.0
     # via
+    #   idna
+    #   more-itertools
     #   packaging
     #   pathspec
     #   pypdf
+    #   wheel
 hatch-vcs==0.5.0
-    # via pydantic-ai-skills
+    # via
+    #   pydantic-ai-skills
+    #   urllib3
 hatchling==1.32.4
     # via
     #   genai-prices
     #   hatch-vcs
     #   logfire
+    #   logfire-sdk
     #   pydantic-ai
     #   pydantic-ai-skills
     #   pydantic-ai-slim
     #   pydantic-evals
     #   pydantic-graph
+    #   pygments
     #   pythainlp
+    #   urllib3
     #   uv-dynamic-versioning
+id==1.6.1
+    # via twine
+nh3==0.3.7
+    # via readme-renderer
 pathspec==1.1.1
     # via hatchling
-pluggy==1.6.0
+pkginfo==1.13.3
+    # via google-genai
+pluggy==1.7.0
     # via hatchling
 poetry-core==2.5.0
     # via
     #   dunamai
+    #   rich
     #   tomlkit
+readme-renderer==46.0
+    # via twine
+requests-toolbelt==1.0.0
+    # via twine
+rfc3986==2.0.0
+    # via twine
+semantic-version==2.10.0
+    # via setuptools-rust
+setuptools-rust==1.13.0
+    # via maturin
 setuptools-scm==10.3.4
     # via
     #   hatch-vcs
+    #   jaraco-classes
+    #   jaraco-context
+    #   jaraco-functools
+    #   keyring
     #   ogx
     #   ogx-api
     #   pluggy
-tomlkit==0.15.1
+    #   setuptools-rust
+    #   twine
+    #   urllib3
+tomlkit==0.15.2
     # via
     #   hatchling
     #   uv-dynamic-versioning
 trove-classifiers==2026.9.21.13
     # via hatchling
+twine==7.0.0
+    # via google-genai
 uv-dynamic-versioning==0.14.1
     # via
     #   genai-prices
@@ -58,5 +105,7 @@ uv-dynamic-versioning==0.14.1
     #   pydantic-graph
 vcs-versioning==2.6.0
     # via setuptools-scm
+wheel==0.48.0
+    # via google-genai
 
 # The following packages are considered to be unsafe in a requirements file:
