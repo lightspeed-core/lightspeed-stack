@@ -28,3 +28,7 @@ Unit tests for model type inference helpers.
 
 Unit tests for the ProviderRegistry singleton.
 
+## [test_resolve.py](test_resolve.py)
+
+Unit tests for soft-fallback resolution helpers.
+

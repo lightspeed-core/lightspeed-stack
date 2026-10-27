@@ -6,6 +6,7 @@ from models.config import InferenceProviderEntryBase
 from providers.inference.errors import (
     ModelNotAvailableError,
     ModelTypeNotSupportedError,
+    NoModelConfiguredError,
     ProviderNotFoundError,
 )
 from providers.inference.types import ModelType
@@ -39,6 +40,14 @@ def test_unknown_provider_type_error_message_and_attributes() -> None:
 
     assert error.provider_id == "fake-openai"
     assert str(error) == "Inference provider 'fake-openai' is not registered"
+
+
+def test_no_model_configured_error_message_and_attributes() -> None:
+    """Error message and attributes identify the unresolved model type."""
+    error = NoModelConfiguredError("llm")
+
+    assert error.model_type == "llm"
+    assert str(error) == ("No 'llm' model is configured or available in the catalog")
 
 
 @pytest.mark.parametrize("model_type", ["llm", "embedding", "rerank"])
