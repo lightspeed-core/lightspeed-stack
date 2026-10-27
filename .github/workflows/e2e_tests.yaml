@@ -107,7 +107,7 @@ jobs:
 
     env:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-      E2E_OPENAI_MODEL: ${{ github.base_ref == 'release/0.6' && 'gpt-4o-mini' || vars.E2E_OPENAI_MODEL }}
+      E2E_OPENAI_MODEL: ${{ (github.event.pull_request.base.ref == 'release/0.6' || github.ref == 'refs/heads/release/0.6') && 'gpt-4o-mini' || vars.E2E_OPENAI_MODEL }}
       E2E_DEPLOYMENT_MODE: ${{ matrix.mode }}
       FAISS_VECTOR_STORE_ID: ${{ vars.FAISS_VECTOR_STORE_ID }}
       E2E_OGX_HOSTNAME: ogx
@@ -237,6 +237,7 @@ jobs:
         if: matrix.mode == 'server'
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          E2E_OPENAI_MODEL: ${{ (github.event.pull_request.base.ref == 'release/0.6' || github.ref == 'refs/heads/release/0.6') && 'gpt-4o-mini' || vars.E2E_OPENAI_MODEL }}
         run: |
           # Debug: Check if environment variable is available for docker-compose
           echo "OPENAI_API_KEY is set: $([ -n "$OPENAI_API_KEY" ] && echo 'YES' || echo 'NO')"
@@ -256,8 +257,9 @@ jobs:
 
       - name: Run services (Library Mode)
         if: matrix.mode == 'library'
-        env: 
+        env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          E2E_OPENAI_MODEL: ${{ (github.event.pull_request.base.ref == 'release/0.6' || github.ref == 'refs/heads/release/0.6') && 'gpt-4o-mini' || vars.E2E_OPENAI_MODEL }}
         run: |
           echo "Starting service in library mode (1 container)"
           docker compose -f docker-compose-library.yaml up -d
