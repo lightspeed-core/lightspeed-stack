@@ -2520,7 +2520,7 @@ requires-dist = [
     { name = "psycopg2-binary", specifier = ">=2.9.10" },
     { name = "pyasn1", specifier = ">=0.6.3" },
     { name = "pydantic-ai", specifier = "==2.38.0" },
-    { name = "pydantic-ai-skills", specifier = ">=0.11.0" },
+    { name = "pydantic-ai-skills", specifier = ">=0.11.0,<2.0.0" },
     { name = "pyjwt", specifier = ">=2.15.1" },
     { name = "python-dotenv", specifier = ">=1.2.2" },
     { name = "pyyaml", specifier = ">=6.0.0" },
@@ -4259,37 +4259,17 @@ wheels = [
 ]
 
 [[package]]
-name = "pydantic-ai-harness"
-version = "0.30.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "genai-prices" },
-    { name = "httpx" },
-    { name = "pydantic-ai-slim" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/eb/18/2f1950a8e3421b7a1616ca3e4fafccbe5c2b707f2e6cc72e1ed42db086a7/pydantic_ai_harness-0.30.0.tar.gz", hash = "sha256:226d35fc3602852e92adf26b5a29717721d66da0f99d5cbff6043bf49ecb0fee", size = 2560749, upload-time = "2026-09-09T03:49:00.64Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/24/07/8ff61abd60e794f739ee7588fbedb50d0d61af1e47e78b5a0c7372bd806c/pydantic_ai_harness-0.30.0-py3-none-any.whl", hash = "sha256:f9eaa6c19abf47e7af9a84c86124e96c59b432afe8b9f7deae3d9e98fa4677ef", size = 804266, upload-time = "2026-09-09T03:48:58.759Z" },
-]
-
-[package.optional-dependencies]
-skills = [
-    { name = "pyyaml" },
-]
-
-[[package]]
 name = "pydantic-ai-skills"
-version = "2.1.0"
+version = "1.4.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
-    { name = "pydantic-ai-harness", extra = ["skills"] },
     { name = "pydantic-ai-slim" },
     { name = "pyyaml" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/66/ca/20eab3731a7bc58b119373dacd9fb4a7ff3cf77cee1e847561eab679f51d/pydantic_ai_skills-2.1.0.tar.gz", hash = "sha256:a02e763ca1a1fba81c9c4720c91644a684ef615e54c399231df0f52a828533d7", size = 9230413, upload-time = "2026-10-04T00:51:13.324Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/0f/59/65d312c625c546b4754022d0e3e20921f9637f1e87225c0fbcbce09ddb82/pydantic_ai_skills-1.4.0.tar.gz", hash = "sha256:7303e0738a837218415f8b2e7bd5b5cbc0ceeb74850b1902c2d079550e0b9b83", size = 9095029, upload-time = "2026-08-16T13:01:26.999Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/26/4c/c59ed1497545533476a5e20c946eae741e5af29dfab1b230f2b316b349ef/pydantic_ai_skills-2.1.0-py3-none-any.whl", hash = "sha256:dfe10255348d79ff9ed1e2a66a5536f6f35ff6ad0727f58601bf124eb1f5d679", size = 74790, upload-time = "2026-10-04T00:51:11.166Z" },
+    { url = "https://files.pythonhosted.org/packages/96/eb/a4bea0c2c97f2351938e0ae2200fb197e4953928337198a17d89f0d0bbbb/pydantic_ai_skills-1.4.0-py3-none-any.whl", hash = "sha256:bce8731a042f50c45965acc520dc883163e511c34b208f720eb62067ef5be686", size = 75744, upload-time = "2026-08-16T13:01:25.501Z" },
 ]
 
 [[package]]
