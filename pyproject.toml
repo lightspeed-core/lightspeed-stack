@@ -199,7 +199,7 @@ ogxlibdev = [
     "transformers>=4.34.0",
     "numpy==2.3.5",
     # API tool_runtime: remote::model-context-protocol
-    "mcp>=1.23.0",
+    "mcp>=1.30.0",
     # API post_training: inline::huggingface
     "torch==2.11.0",
     "trl>=0.18.2",
