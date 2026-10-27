@@ -8,6 +8,9 @@ from providers.inference.azure.provider import AzureInferenceProvider
 from providers.inference.bedrock.provider import BedrockInferenceProvider
 from providers.inference.errors import ProviderNotFoundError
 from providers.inference.openai.provider import OpenAIInferenceProvider
+from providers.inference.sentence_transformers.provider import (
+    SentenceTransformersInferenceProvider,
+)
 from providers.inference.vertexai.provider import VertexAIInferenceProvider
 from providers.inference.watsonx.provider import WatsonxInferenceProvider
 from utils.types import Singleton
@@ -24,6 +27,7 @@ PROVIDER_CLASSES: Final[dict[ProviderType, type[InferenceProvider[Any, Any]]]] =
     "vertexai": VertexAIInferenceProvider,
     "bedrock": BedrockInferenceProvider,
     "watsonx": WatsonxInferenceProvider,
+    "sentence_transformers": SentenceTransformersInferenceProvider,
 }
 
 
