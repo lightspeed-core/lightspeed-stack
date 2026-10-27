@@ -5,7 +5,7 @@ packages:
     jq,
     patch,
     cmake,
-    cargo,
+    cargo >= 1.85,
   ]
 upgradePackages:
   [
