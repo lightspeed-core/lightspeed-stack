@@ -70,8 +70,8 @@ dill==0.4.1 \
     --hash=sha256:8aa45e639751fc9610ff6aa53229cd95c66142cb2372fa4b530985c0d6a445ce
 distro==1.9.0 \
     --hash=sha256:e76c1bcd413a800244e5719cda5e981e6890b1f9ac2e6d7d8bb4e6e9fcb1299e
-dnspython==2.9.0 \
-    --hash=sha256:6ab823c92af08a1b8da9b2e8f78a5b933d92687453beb8d3c5990adf4a254f5f
+dnspython==2.8.0 \
+    --hash=sha256:eebc57dce77a8daa02b3b4b9d3bc6866d233a8371468afd223008593fa66fd06
 docstring-parser==0.18.0 \
     --hash=sha256:99af886f2018766522dbfcfbd80dde97b776b4b407d7d298d5d17dcd502a4f7a
 durationpy==0.10 \
@@ -343,9 +343,9 @@ six==1.17.0 \
     --hash=sha256:6388b9db719664e1ccea84c166718ff3d2bbf56490cbf14fb7478b3b782eb0e5
 sniffio==1.3.1 \
     --hash=sha256:a9433d031973b1b14953cf89c651d1034e4a242d527a9b9302db215e722c5b9c
-sqlalchemy==2.1.6 \
-    --hash=sha256:62d88e595215dd6e8fd80df93f3351dcc5f7e86e5380c8397144ef35eb60d02a \
-    --hash=sha256:87175ff838ce80b239fd68c7dcf28a640953c9f2f30469120ac1b148a841a55e
+sqlalchemy==2.1.3 \
+    --hash=sha256:0daf9a06bf1ecbe96d600a9da638f71993f3cd254f71f154fda2788762b11af5 \
+    --hash=sha256:cd188a743a7d91348a4b14d2a9b29b7fff99da485f934a5cc95f1fa10cf55388
 sse-starlette==3.4.5 \
     --hash=sha256:c1f701f19f43c181be2d62c6164e90b7e8e4d5d67956fface4c794ac7a784962
 starlette==1.3.1 \
