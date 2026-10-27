@@ -420,7 +420,7 @@ class RhoaiIndex:
             try:
                 with urllib.request.urlopen(url, timeout=30) as resp:
                     return str(resp.read().decode())
-            except Exception as exc:
+            except Exception as exc:  # pylint: disable=broad-exception-caught  # noqa: BLE001 RUF100
                 last_exc = exc
                 logger.debug("Fetch %s attempt %d failed: %s", url, attempt + 1, exc)
                 time.sleep(2**attempt)
@@ -444,7 +444,7 @@ class RhoaiIndex:
         page_url = f"{self.index_url}{norm}/"
         try:
             page_html = self._fetch_url(page_url)
-        except Exception as exc:
+        except Exception as exc:  # pylint: disable=broad-exception-caught  # noqa: BLE001 RUF100
             logger.warning("Failed to fetch RHOAI page for %s: %s", norm, exc)
             return
 
@@ -615,7 +615,7 @@ class PypiClient:
             try:
                 with urllib.request.urlopen(url, timeout=30) as resp:
                     return str(resp.read().decode())
-            except Exception as exc:
+            except Exception as exc:  # pylint: disable=broad-exception-caught  # noqa: BLE001 RUF100
                 last_exc = exc
                 logger.debug("Fetch %s attempt %d failed: %s", url, attempt + 1, exc)
                 time.sleep(2**attempt)
@@ -813,7 +813,7 @@ class Resolver:
 
             try:
                 trans_deps = self.pypi.get_requires_dist(norm, pinned_version)
-            except Exception as exc:
+            except Exception as exc:  # pylint: disable=broad-exception-caught  # noqa: BLE001 RUF100
                 logger.warning(
                     "Could not fetch deps for %s==%s: %s", norm, pinned_version, exc
                 )
@@ -1142,7 +1142,7 @@ def _fetch_hashes_for_pypi_packages(
         version = info["version"]
         try:
             pkg_info = pypi.get_package_info(name)
-        except Exception as exc:
+        except Exception as exc:  # pylint: disable=broad-exception-caught  # noqa: BLE001 RUF100
             logger.warning("Could not fetch PyPI info for %s: %s", name, exc)
             continue
         ver_info = pkg_info.get(version, {})
