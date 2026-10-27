@@ -70,8 +70,8 @@ dill==0.4.1 \
     --hash=sha256:8aa45e639751fc9610ff6aa53229cd95c66142cb2372fa4b530985c0d6a445ce
 distro==1.9.0 \
     --hash=sha256:e76c1bcd413a800244e5719cda5e981e6890b1f9ac2e6d7d8bb4e6e9fcb1299e
-dnspython==2.8.0 \
-    --hash=sha256:eebc57dce77a8daa02b3b4b9d3bc6866d233a8371468afd223008593fa66fd06
+dnspython==2.9.0 \
+    --hash=sha256:6ab823c92af08a1b8da9b2e8f78a5b933d92687453beb8d3c5990adf4a254f5f
 docstring-parser==0.18.0 \
     --hash=sha256:99af886f2018766522dbfcfbd80dde97b776b4b407d7d298d5d17dcd502a4f7a
 durationpy==0.10 \
@@ -135,6 +135,8 @@ hf-xet==1.7.0 \
     --hash=sha256:bb84418dd1cc3dc19d7224806044892859f2318b6739e28734ba37c012b0804f
 httpcore==1.0.9 \
     --hash=sha256:fc0ea63671089523efc6fe94ec49d0b10c9660460cbca6172fc972c1c5f9c0ac
+httpcore2==2.16.0 \
+    --hash=sha256:47f54674cd5f79e597770bb40ecd3e97ecc56e0a67e2f6724b608806bb63ddaf
 httpx==0.28.1 \
     --hash=sha256:40b3fef8650d88ced417b05b236427596a6da9117b0f64ef5b0a5d548d20addb
 httpx-sse==0.4.3 \
@@ -204,13 +206,13 @@ narwhals==2.24.0 \
     --hash=sha256:30285014e6754ed468b29358bc0aebff0117d6a1d64383254ae55ceef31ffb25
 networkx==3.6.1 \
     --hash=sha256:56b687ad58bed743066f1b7d5e6f56a72d2f193c8eaf35064abaedda4fba3745
-nltk==3.10.3 \
-    --hash=sha256:fb9ae77ba878bf1f09e6cca649f2c296f20b1c83143932ae06c12018b505afd7
+nltk==3.10.4 \
+    --hash=sha256:1589427a8796443b5bc2cd30d53b11f487d476c450d18499518ee802839069f3
 numpy==2.3.5 \
     --hash=sha256:927205c8882f7a53543a8fc5b13fcb05771d6bfff35e06daf8030e57549cc7be \
     --hash=sha256:a08c6c26c26d7530d09ac93bc177593958c2e3ce4a9b5750c14a80329cca157c
-openai==3.24.0 \
-    --hash=sha256:b1f28deae48a66ff391724ffb51e801ea71d764a1e9996b545398ea9368e5f21
+openai==3.37.0 \
+    --hash=sha256:a7d349c815f6d7f18557abe5fcc9dc9b8f4848675280e20c20f5e215564646cb
 opentelemetry-api==1.44.0 \
     --hash=sha256:f43837b558a6ca8d83b0525bcdce06fe8ac35bf54c3954fce5d048e912b9dc7c
 opentelemetry-distro==0.65b0 \
@@ -341,9 +343,9 @@ six==1.17.0 \
     --hash=sha256:6388b9db719664e1ccea84c166718ff3d2bbf56490cbf14fb7478b3b782eb0e5
 sniffio==1.3.1 \
     --hash=sha256:a9433d031973b1b14953cf89c651d1034e4a242d527a9b9302db215e722c5b9c
-sqlalchemy==2.1.3 \
-    --hash=sha256:0daf9a06bf1ecbe96d600a9da638f71993f3cd254f71f154fda2788762b11af5 \
-    --hash=sha256:cd188a743a7d91348a4b14d2a9b29b7fff99da485f934a5cc95f1fa10cf55388
+sqlalchemy==2.1.6 \
+    --hash=sha256:62d88e595215dd6e8fd80df93f3351dcc5f7e86e5380c8397144ef35eb60d02a \
+    --hash=sha256:87175ff838ce80b239fd68c7dcf28a640953c9f2f30469120ac1b148a841a55e
 sse-starlette==3.4.5 \
     --hash=sha256:c1f701f19f43c181be2d62c6164e90b7e8e4d5d67956fface4c794ac7a784962
 starlette==1.3.1 \

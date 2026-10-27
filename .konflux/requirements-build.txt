@@ -31,8 +31,6 @@ flit-core==4.1.0
     #   pathspec
     #   pypdf
     #   wheel
-hatch-fancy-pypi-readme==25.1.0
-    # via httpcore2
 hatch-vcs==0.5.0
     # via
     #   pydantic-ai-skills
@@ -40,9 +38,7 @@ hatch-vcs==0.5.0
 hatchling==1.32.4
     # via
     #   genai-prices
-    #   hatch-fancy-pypi-readme
     #   hatch-vcs
-    #   httpcore2
     #   logfire
     #   logfire-sdk
     #   pydantic-ai
@@ -104,7 +100,6 @@ twine==7.0.0
 uv-dynamic-versioning==0.14.1
     # via
     #   genai-prices
-    #   httpcore2
     #   pydantic-ai
     #   pydantic-ai-harness
     #   pydantic-ai-slim
