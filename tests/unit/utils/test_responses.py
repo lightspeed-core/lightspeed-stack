@@ -1652,7 +1652,8 @@ class TestResolveToolChoice:
             ],
         )
         prepared, choice = await resolve_tool_choice(tools, allowed, "token")
-        assert prepared is not None and len(prepared) == 1
+        assert prepared is not None
+        assert len(prepared) == 1
         assert prepared[0].type == "web_search"
         assert choice == ToolChoiceMode.auto
 
