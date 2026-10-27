@@ -31,13 +31,20 @@ flit-core==4.2.0
     #   pathspec
     #   pypdf
     #   wheel
+hatch-fancy-pypi-readme==25.1.0
+    # via anthropic
 hatch-vcs==0.5.0
     # via
     #   pydantic-ai-skills
     #   urllib3
+hatchling==1.26.3
+    # via
+    #   anthropic
+    #   hatch-fancy-pypi-readme
 hatchling==1.32.4
     # via
     #   genai-prices
+    #   hatch-fancy-pypi-readme
     #   hatch-vcs
     #   logfire
     #   logfire-sdk

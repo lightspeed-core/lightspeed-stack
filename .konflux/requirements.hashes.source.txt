@@ -1,4 +1,7 @@
 --index-url https://pypi.org/simple
+anthropic==2.3.0 \
+    --hash=sha256:aa6a3984f9276f307933d42dc6f58b6efc821a5ecafbc8d1bb5993a066767622 \
+    --hash=sha256:edfdea1e3fa7b3ce25df1511953408b2f03bfa61eb6f6268f766101a9e18ad53
 genai-prices==0.1.13 \
     --hash=sha256:6d2b40760a2f7f5e207bac9b98de0af80e60c58ead497872a5331a7cee610477 \
     --hash=sha256:76c9e2dd3917fdacdf3bc562297c4591384142ea2283c477e1512fafa4e3a384
