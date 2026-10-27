@@ -1,2 +1,6 @@
-# override these package to the version available on RHOAI wheels index:
-# https://console.redhat.com/api/pypi/public-rhai/rhoai/3.3/cpu-ubi9/simple
+# Pin versions for the RHOAI wheels index used in Konflux (uv pip compile --override).
+# https://console.redhat.com/api/pypi/public-rhai/rhoai/3.5/cpu-ubi9/simple/
+#
+# aiohttp 3.14.5: Hermeto prefetch fails with "No wheels found" under binary filter;
+# 3.14.4 matches main and prefetches successfully. pyproject allows >=3.13.3.
+aiohttp==3.14.4
