@@ -1,6 +1,10 @@
 """Helper classes to count tokens sent and received by the LLM."""
 
+from __future__ import annotations as _annotations
+
 from dataclasses import dataclass
+
+from pydantic_ai import RunUsage
 
 from log import get_logger
 
@@ -39,4 +43,12 @@ class TokenCounter:
             f"output_tokens: {self.output_tokens} "
             f"counted: {self.input_tokens_counted} "
             f"LLM calls: {self.llm_calls}"
+        )
+
+    @staticmethod
+    def from_run_usage(usage: RunUsage) -> TokenCounter:
+        return TokenCounter(
+            input_tokens=usage.input_tokens,
+            output_tokens=usage.output_tokens,
+            llm_calls=max(usage.requests, 1),
         )

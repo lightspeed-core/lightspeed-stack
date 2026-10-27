@@ -1548,6 +1548,9 @@ class Action(StrEnum):
     # Access the streaming query endpoint
     STREAMING_QUERY = "streaming_query"
 
+    # Access the AG-UI protocol endpoint
+    AGUI = "agui"
+
     # Access the conversation endpoint
     GET_CONVERSATION = "get_conversation"
 

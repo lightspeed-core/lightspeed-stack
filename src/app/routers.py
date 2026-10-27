@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from app.endpoints import (
     # A2A (Agent-to-Agent) protocol support
     a2a,
+    agui,
     authorized,
     config,
     conversations_v1,
@@ -82,3 +83,6 @@ def include_routers(app: FastAPI) -> None:
 
     # A2A (Agent-to-Agent) protocol endpoint
     app.include_router(a2a.router)
+
+    # AG-UI protocol endpoint
+    app.include_router(agui.router, prefix="/v1")
