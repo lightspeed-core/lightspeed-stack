@@ -9,7 +9,7 @@ packages:
   ]
 upgradePackages:
   [
-    openssh-clients
+    libxml2,
   ]
 contentOrigin:
   repofiles: ["./redhat.repo"]
