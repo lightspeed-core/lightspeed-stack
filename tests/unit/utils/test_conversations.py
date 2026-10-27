@@ -862,7 +862,8 @@ class TestBuildAddItemsRequest:
         assert isinstance(request, AddItemsRequest)
         items = list(request)
         assert len(items) == 2
-        assert items[0].type == "message" and items[0].role == "user"
+        assert items[0].type == "message"
+        assert items[0].role == "user"
         assert items[0].content == "Hello"
         assert items[1].type == "message" and items[1].role == "assistant"
         assert items[1].content == "I cannot help with that"
