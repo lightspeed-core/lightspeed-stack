@@ -53,7 +53,7 @@ hatchling==1.32.4
     #   uv-dynamic-versioning
 id==1.6.1
     # via twine
-nh3==0.3.7
+nh3==0.3.1
     # via readme-renderer
 pathspec==1.1.1
     # via hatchling
