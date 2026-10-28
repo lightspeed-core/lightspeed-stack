@@ -701,9 +701,8 @@ customization:
     cfg = AppConfig()
     cfg.load_configuration(str(cfg_filename))
 
-    assert (
-        cfg.customization is not None and cfg.customization.custom_profile is not None
-    )
+    assert cfg.customization is not None
+    assert cfg.customization.custom_profile is not None
     fetched_prompts = cfg.customization.custom_profile.get_prompts()
     assert fetched_prompts is not None and fetched_prompts.get(
         "default"
