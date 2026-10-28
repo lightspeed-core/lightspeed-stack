@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Generic, Literal, Optional, TypeVar, overload
+from typing import TYPE_CHECKING, Any, Generic, Literal, Optional, TypeVar, overload
 
 from pydantic_ai.embeddings import EmbeddingModel
 from pydantic_ai.models import Model
@@ -17,7 +17,9 @@ from models.config import (
 )
 from providers.inference.catalog import CatalogModel, DiscoveredModel
 from providers.inference.errors import ModelNotAvailableError
-from providers.inference.types import ModelType, ProviderId
+
+if TYPE_CHECKING:
+    from providers.inference.types import ModelType, ProviderId
 
 logger = get_logger(__name__)
 

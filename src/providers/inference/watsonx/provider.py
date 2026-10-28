@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from pydantic_ai.embeddings import EmbeddingModel
 from pydantic_ai.embeddings.openai import OpenAIEmbeddingModel
@@ -15,9 +15,11 @@ from models.config import WatsonxInferenceProviderEntry
 from providers.inference.base import InferenceProvider
 from providers.inference.catalog import CatalogModel, DiscoveredModel
 from providers.inference.errors import ModelTypeNotSupportedError
-from providers.inference.types import ModelType
 from providers.inference.watsonx.pai_provider import WatsonxProvider
 from providers.inference.watsonx.specs import FoundationModelSpecsResponse
+
+if TYPE_CHECKING:
+    from providers.inference.types import ModelType
 
 
 class WatsonxInferenceProvider(

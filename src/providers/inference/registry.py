@@ -2,19 +2,21 @@
 
 from __future__ import annotations
 
-from typing import Any, Final, Optional
+from typing import TYPE_CHECKING, Any, Final, Optional
 
-from models.config import InferenceConfiguration
 from providers.inference.azure.provider import AzureInferenceProvider
-from providers.inference.base import InferenceProvider
 from providers.inference.bedrock.provider import BedrockInferenceProvider
-from providers.inference.catalog import CatalogModel
 from providers.inference.errors import ProviderNotFoundError
 from providers.inference.openai.provider import OpenAIInferenceProvider
-from providers.inference.types import ModelType, ProviderId, ProviderType
 from providers.inference.vertexai.provider import VertexAIInferenceProvider
 from providers.inference.watsonx.provider import WatsonxInferenceProvider
 from utils.types import Singleton
+
+if TYPE_CHECKING:
+    from models.config import InferenceConfiguration
+    from providers.inference.base import InferenceProvider
+    from providers.inference.catalog import CatalogModel
+    from providers.inference.types import ModelType, ProviderId, ProviderType
 
 PROVIDER_CLASSES: Final[dict[ProviderType, type[InferenceProvider[Any, Any]]]] = {
     "openai": OpenAIInferenceProvider,

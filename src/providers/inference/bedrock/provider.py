@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import os
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 import boto3
 from botocore.client import BaseClient
@@ -23,7 +23,9 @@ from providers.inference.base import InferenceProvider
 from providers.inference.bedrock.specs import FoundationModelSummary
 from providers.inference.catalog import CatalogModel, DiscoveredModel
 from providers.inference.errors import ModelTypeNotSupportedError
-from providers.inference.types import ModelType
+
+if TYPE_CHECKING:
+    from providers.inference.types import ModelType
 
 
 class _BearerTokenSession(Session):

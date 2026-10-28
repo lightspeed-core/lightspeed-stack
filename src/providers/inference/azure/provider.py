@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from azure.identity.aio import ClientSecretCredential, get_bearer_token_provider
 from openai import AsyncAzureOpenAI
@@ -21,7 +21,9 @@ from providers.inference.errors import ModelTypeNotSupportedError
 from providers.inference.model_type_inference import (
     infer_model_type_from_pai_known_names,
 )
-from providers.inference.types import ModelType
+
+if TYPE_CHECKING:
+    from providers.inference.types import ModelType
 
 
 class AzureInferenceProvider(
