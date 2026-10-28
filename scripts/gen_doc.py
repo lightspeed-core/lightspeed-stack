@@ -32,8 +32,8 @@ def generate_docfile(directory: Path) -> None:
     The file will begin with a header indicating the provided `directory` path.
     For each `.py` file in the current working directory the function writes a
     second-level Markdown header linking to the file, then writes the first
-    line of the module docstring if present, and finally writes the filename as
-    a separate entry.
+    line of the module docstring if present. Files with syntax errors retain
+    their headers but have no summary.
     """
     with open("README.md", "w", encoding="utf-8", newline="\n") as indexfile:
         print(

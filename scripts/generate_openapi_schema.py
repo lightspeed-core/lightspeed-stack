@@ -61,7 +61,16 @@ def read_version_from_pyproject() -> str:
 
 
 def generate_openapi_schema(schema_file_name: str) -> None:
-    """Generate OpenAPI schema into file with provided name."""
+    """Write the app's OpenAPI schema, then check its version against PDM.
+
+    Overwrites the named JSON file before checking versions; the file remains
+    if the check fails.
+
+    Raises:
+        AssertionError: If the schema and project versions differ.
+        subprocess.CalledProcessError: If ``pdm show --version`` fails.
+        OSError: If the file cannot be written or PDM cannot be started.
+    """
     print("Service metadata:")
     print(app.title)
     print(app.description)
