@@ -33,6 +33,7 @@ _ECHOED_FIELDS: Final[set[str]] = set(
         "model",
         "parallel_tool_calls",
         "previous_response_id",
+        "prompt_cache_key",
         "prompt",
         "reasoning",
         "safety_identifier",
@@ -86,6 +87,10 @@ class ResponsesApiParams(BaseModel):
     previous_response_id: Optional[str] = Field(
         default=None,
         description="Identifier of the previous response in a multi-turn conversation",
+    )
+    prompt_cache_key: Optional[str] = Field(
+        default=None,
+        description="Prompt cache key used by providers that support prompt caching",
     )
     prompt: Optional[Prompt] = Field(
         default=None,

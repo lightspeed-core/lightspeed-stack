@@ -42,6 +42,8 @@ class ResponsesRequest(BaseModel):
         parallel_tool_calls: Whether the model can make multiple tool calls in parallel.
         previous_response_id: Identifier of the previous response in a multi-turn
             conversation. Mutually exclusive with conversation.
+        prompt_cache_key: Prompt cache key used by providers that support prompt
+            caching.
         prompt: Prompt object containing a template with variables for dynamic
             substitution.
         reasoning: Reasoning configuration for the response.
@@ -74,6 +76,7 @@ class ResponsesRequest(BaseModel):
     metadata: Optional[dict[str, str]] = None
     parallel_tool_calls: Optional[bool] = None
     previous_response_id: Optional[str] = None
+    prompt_cache_key: Optional[str] = None
     prompt: Optional[Prompt] = None
     reasoning: Optional[Reasoning] = None
     safety_identifier: Optional[str] = None
@@ -96,6 +99,7 @@ class ResponsesRequest(BaseModel):
                     "input": "Hello World!",
                     "model": "openai/gpt-5.6-luna",
                     "instructions": "You are a helpful assistant",
+                    "prompt_cache_key": "example-cache-key",
                     "store": True,
                     "stream": False,
                     "generate_topic_summary": True,
