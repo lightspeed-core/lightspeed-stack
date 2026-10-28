@@ -47,7 +47,12 @@ sslclientcert = $SSL_CLIENT_CERT
 # everything resolves from the pinned 9.6 EUS snapshot first, and these repos
 # only supply packages that EUS 9.6 does not carry. Currently needed for
 # cargo >= 1.85 to build Rust sdists that use edition2024 (e.g. nh3 >= 0.3.x).
-[rhel-9-for-$basearch-appstream-rpms__ROLLING]
+# The repo ids below are the canonical (subscription-manager) ids with no
+# suffix: the Enterprise Contract "rpm_repos.ids_known" policy only accepts
+# repository ids from its known list, which has the canonical rolling ids
+# (e.g. rhel-9-for-x86_64-appstream-rpms) and EUS ids with __9_DOT_X
+# suffixes, but not custom suffixes like __ROLLING.
+[rhel-9-for-$basearch-appstream-rpms]
 name = Red Hat Enterprise Linux 9 for $basearch - AppStream (RPMs)
 baseurl = https://cdn.redhat.com/content/dist/rhel9/9/$basearch/appstream/os
 enabled = 1
@@ -62,7 +67,7 @@ priority = 50
 sslclientkey = $SSL_CLIENT_KEY
 sslclientcert = $SSL_CLIENT_CERT
 
-[rhel-9-for-$basearch-baseos-rpms__ROLLING]
+[rhel-9-for-$basearch-baseos-rpms]
 name = Red Hat Enterprise Linux 9 for $basearch - BaseOS (RPMs)
 baseurl = https://cdn.redhat.com/content/dist/rhel9/9/$basearch/baseos/os
 enabled = 1
@@ -77,7 +82,7 @@ priority = 50
 sslclientkey = $SSL_CLIENT_KEY
 sslclientcert = $SSL_CLIENT_CERT
 
-[rhel-9-for-$basearch-supplementary-rpms__ROLLING]
+[rhel-9-for-$basearch-supplementary-rpms]
 name = Red Hat Enterprise Linux 9 for $basearch - Supplementary (RPMs)
 baseurl = https://cdn.redhat.com/content/dist/rhel9/9/$basearch/supplementary/os
 enabled = 1
