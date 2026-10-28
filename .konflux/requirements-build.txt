@@ -23,7 +23,7 @@ flit-core==3.12.0
     #   jinja2
     #   markdown-it-py
     #   mdurl
-flit-core==4.1.0
+flit-core==4.2.0
     # via
     #   idna
     #   more-itertools
@@ -35,7 +35,7 @@ hatch-vcs==0.5.0
     # via
     #   pydantic-ai-skills
     #   urllib3
-hatchling==1.32.4
+hatchling==1.33.0
     # via
     #   genai-prices
     #   hatch-vcs
@@ -57,7 +57,7 @@ nh3==0.3.1
     # via readme-renderer
 pathspec==1.1.1
     # via hatchling
-pkginfo==1.13.3
+pkginfo==2.0
     # via google-genai
 pluggy==1.7.0
     # via hatchling
