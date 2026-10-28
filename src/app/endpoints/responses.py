@@ -6,7 +6,7 @@ import json
 import time
 from collections.abc import AsyncIterator, Sequence
 from datetime import UTC, datetime
-from typing import Annotated, Any, Final, NoReturn, Optional, cast
+from typing import TYPE_CHECKING, Annotated, Any, Final, NoReturn, Optional, cast
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
@@ -55,7 +55,6 @@ from models.api.responses.error import (
 )
 from models.api.responses.error.bases import AbstractErrorResponse
 from models.api.responses.successful import ResponsesResponse
-from models.common.moderation import ShieldModerationBlocked
 from models.common.responses.contexts import ResponsesContext
 from models.common.responses.responses_api_params import ResponsesApiParams
 from models.common.responses.types import ResponseInput, ResponseMessage
@@ -128,6 +127,9 @@ from utils.vector_search import (
     append_inline_rag_context_to_responses_input,
     build_rag_context,
 )
+
+if TYPE_CHECKING:
+    from models.common.moderation import ShieldModerationBlocked
 
 logger = get_logger(__name__)
 tracer = trace.get_tracer(__name__)

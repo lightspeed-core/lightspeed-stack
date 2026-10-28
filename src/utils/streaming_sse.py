@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from fastapi import HTTPException
 
@@ -16,9 +16,11 @@ from constants import (
     MEDIA_TYPE_TEXT,
 )
 from log import get_logger
-from models.api.responses.error import AbstractErrorResponse
-from models.common.turn_summary import ReferencedDocument
-from utils.token_counter import TokenCounter
+
+if TYPE_CHECKING:
+    from models.api.responses.error import AbstractErrorResponse
+    from models.common.turn_summary import ReferencedDocument
+    from utils.token_counter import TokenCounter
 
 logger = get_logger(__name__)
 

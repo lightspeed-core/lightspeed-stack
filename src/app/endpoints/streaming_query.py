@@ -3,7 +3,7 @@
 import asyncio
 import datetime
 from collections.abc import AsyncIterator
-from typing import Annotated, Optional
+from typing import TYPE_CHECKING, Annotated, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
@@ -42,7 +42,6 @@ from models.api.responses.successful import StreamingQueryResponse
 from models.common.query import Attachment
 from models.common.responses.contexts import ResponseGeneratorContext
 from models.common.responses.responses_api_params import ResponsesApiParams
-from models.common.turn_summary import ContextStatus
 from models.config import Action
 from utils.agents.streaming import (
     generate_agent_response,
@@ -92,6 +91,9 @@ from utils.streaming_sse import (
 from utils.suid import get_suid, normalize_conversation_id
 from utils.types import Responses
 from utils.vector_search import build_rag_context
+
+if TYPE_CHECKING:
+    from models.common.turn_summary import ContextStatus
 
 logger = get_logger(__name__)
 tracer = trace.get_tracer(__name__)

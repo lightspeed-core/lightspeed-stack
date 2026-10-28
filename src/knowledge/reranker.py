@@ -13,10 +13,12 @@ from __future__ import annotations
 
 import logging
 from dataclasses import replace
+from typing import TYPE_CHECKING
 
 from sentence_transformers import CrossEncoder
 
-from knowledge.types import KnowledgeMatch
+if TYPE_CHECKING:
+    from knowledge.types import KnowledgeMatch
 
 logger = logging.getLogger(__name__)
 

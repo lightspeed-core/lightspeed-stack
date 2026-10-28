@@ -33,14 +33,19 @@ two user quota limiters can be set to:
 import datetime
 import sqlite3
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 import psycopg2
 
 from log import get_logger
-from models.config import PostgreSQLDatabaseConfiguration, SQLiteDatabaseConfiguration
 from quota.connect_pg import connect_pg
 from quota.connect_sqlite import connect_sqlite
+
+if TYPE_CHECKING:
+    from models.config import (
+        PostgreSQLDatabaseConfiguration,
+        SQLiteDatabaseConfiguration,
+    )
 
 logger = get_logger(__name__)
 
