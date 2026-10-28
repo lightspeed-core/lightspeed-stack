@@ -1,6 +1,6 @@
 """Unit tests for the /models REST API endpoint."""
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pytest
 from fastapi import HTTPException, Request, status
@@ -13,11 +13,13 @@ from pytest_mock import MockerFixture
 from pytest_subtests import SubTests
 
 from app.endpoints.models import models_endpoint_handler
-from authentication.interface import AuthTuple
 from configuration import AppConfig
 from models.api.requests import ModelFilter
 from tests.unit.conftest import make_openai_model, make_openai_models_list_response
 from tests.unit.utils.auth_helpers import mock_authorization_resolvers
+
+if TYPE_CHECKING:
+    from authentication.interface import AuthTuple
 
 
 @pytest.mark.asyncio

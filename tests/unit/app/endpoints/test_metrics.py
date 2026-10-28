@@ -1,6 +1,6 @@
 """Unit tests for the /metrics REST API endpoint."""
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pytest
 from fastapi import Request
@@ -11,8 +11,10 @@ from pytest_mock import MockerFixture
 
 import metrics  # noqa: F401 pylint: disable=unused-import
 from app.endpoints.metrics import metrics_endpoint_handler
-from authentication.interface import AuthTuple
 from tests.unit.utils.auth_helpers import mock_authorization_resolvers
+
+if TYPE_CHECKING:
+    from authentication.interface import AuthTuple
 
 
 @pytest.mark.asyncio

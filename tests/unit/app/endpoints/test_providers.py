@@ -1,6 +1,6 @@
 """Unit tests for the /providers REST API endpoints."""
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pytest
 from fastapi import HTTPException, Request, status
@@ -16,9 +16,11 @@ from app.endpoints.providers import (
     get_provider_endpoint_handler,
     providers_endpoint_handler,
 )
-from authentication.interface import AuthTuple
 from configuration import AppConfig
 from tests.unit.utils.auth_helpers import mock_authorization_resolvers
+
+if TYPE_CHECKING:
+    from authentication.interface import AuthTuple
 
 
 @pytest.mark.asyncio
