@@ -10,6 +10,17 @@ roles:
     - coder
     - review
     - fix
+agents:
+    # Review: run only on an explicit /fs-review comment from a human, not on
+    # every PR open/push/ready. 
+    - name: review
+      runtime: pi
+      trigger: >-
+        event.transition.kind == "comment_added"
+        && has(event.entity.linked_change_proposal)
+        && has(event.transition.comment.command)
+        && event.transition.comment.command == "/fs-review"
+        && event.actor.kind == "human"
 allowed_remote_resources:
     - https://raw.githubusercontent.com/fullsend-ai/fullsend/
     - https://raw.githubusercontent.com/fullsend-ai/agents/
