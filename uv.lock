@@ -2436,6 +2436,7 @@ dependencies = [
     { name = "psycopg2-binary" },
     { name = "pyasn1" },
     { name = "pydantic-ai" },
+    { name = "pydantic-ai-harness" },
     { name = "pydantic-ai-skills" },
     { name = "pyjwt" },
     { name = "python-dotenv" },
@@ -2559,6 +2560,7 @@ requires-dist = [
     { name = "psycopg2-binary", specifier = ">=2.9.10" },
     { name = "pyasn1", specifier = ">=0.6.3" },
     { name = "pydantic-ai", specifier = "==2.38.0" },
+    { name = "pydantic-ai-harness", specifier = "==0.30.0" },
     { name = "pydantic-ai-skills", specifier = ">=0.11.0,<2.0.0" },
     { name = "pyjwt", specifier = ">=2.15.1" },
     { name = "python-dotenv", specifier = ">=1.2.2" },
@@ -4384,6 +4386,20 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/94/21/4999af595ff423d958a8ca2e01ae6e59d6acc6e8d7a72d4743fd4be79ad7/pydantic_ai-2.38.0.tar.gz", hash = "sha256:90fff4dd3b1db9994861bd102c786d471b81e07a3165c751f403b414bd02e3f9", size = 24373, upload-time = "2026-09-03T07:57:27.155Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/69/3a/b552b097d57a45ecb2a0a972f830b77428ae900b41c86880303c66f59369/pydantic_ai-2.38.0-py3-none-any.whl", hash = "sha256:2dc423fefdaf04998889440404ec84ea9060f7bc9dfadbc94be1f5c8cbcc0324", size = 9454, upload-time = "2026-09-03T07:57:18.519Z" },
+]
+
+[[package]]
+name = "pydantic-ai-harness"
+version = "0.30.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "genai-prices" },
+    { name = "httpx" },
+    { name = "pydantic-ai-slim" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/eb/18/2f1950a8e3421b7a1616ca3e4fafccbe5c2b707f2e6cc72e1ed42db086a7/pydantic_ai_harness-0.30.0.tar.gz", hash = "sha256:226d35fc3602852e92adf26b5a29717721d66da0f99d5cbff6043bf49ecb0fee", size = 2560749, upload-time = "2026-09-09T03:49:00.64Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/24/07/8ff61abd60e794f739ee7588fbedb50d0d61af1e47e78b5a0c7372bd806c/pydantic_ai_harness-0.30.0-py3-none-any.whl", hash = "sha256:f9eaa6c19abf47e7af9a84c86124e96c59b432afe8b9f7deae3d9e98fa4677ef", size = 804266, upload-time = "2026-09-09T03:48:58.759Z" },
 ]
 
 [[package]]
