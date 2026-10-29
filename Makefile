@@ -117,7 +117,6 @@ start-ogx-container: build-ogx-image ## Start OGX container
 		-e WATSONX_BASE_URL=$${WATSONX_BASE_URL:-} \
 		-e WATSONX_PROJECT_ID=$${WATSONX_PROJECT_ID:-} \
 		-e WATSONX_API_KEY \
-		-e LITELLM_DROP_PARAMS=true \
 		-e AWS_BEARER_TOKEN_BEDROCK \
 		-e OGX_LOGGING=$${OGX_LOGGING:-} \
 		-e FAISS_VECTOR_STORE_ID=$${FAISS_VECTOR_STORE_ID:-} \

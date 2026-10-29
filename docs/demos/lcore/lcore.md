@@ -183,7 +183,7 @@ Python ecosystem
 pdm init
 pdm add ogx ogx-api ogx-client fastapi opentelemetry-sdk \
 opentelemetry-exporter-otlp opentelemetry-instrumentation \
-aiosqlite litellm uvicorn blobfile
+aiosqlite uvicorn blobfile
 ```
 
 ---

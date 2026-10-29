@@ -57,7 +57,6 @@ services:
       - WATSONX_BASE_URL=${WATSONX_BASE_URL:-}
       - WATSONX_PROJECT_ID=${WATSONX_PROJECT_ID:-}
       - WATSONX_API_KEY=${WATSONX_API_KEY:-}
-      - LITELLM_DROP_PARAMS=true
       # AWS Bedrock
       - AWS_BEARER_TOKEN_BEDROCK=${AWS_BEARER_TOKEN_BEDROCK:-}
       # Enable debug logging if needed

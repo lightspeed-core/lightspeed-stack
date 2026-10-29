@@ -632,7 +632,6 @@ dependencies = [
     "opentelemetry-exporter-otlp>=1.34.0",
     "opentelemetry-instrumentation>=0.55b0",
     "aiosqlite>=0.21.0",
-    "litellm>=1.72.1",
     "uvicorn>=0.34.3",
     "blobfile>=3.0.0",
     "datasets>=3.6.0",
