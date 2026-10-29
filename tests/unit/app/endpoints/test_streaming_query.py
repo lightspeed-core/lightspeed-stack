@@ -941,6 +941,7 @@ class TestGenerateResponseWithCompaction:  # pylint: disable=too-few-public-meth
             return_value=None,
         )
         mock_config = mocker.Mock()
+        mock_config.shields = []
         mocker.patch("app.endpoints.streaming_query.configuration", mock_config)
 
         async def inner_generator() -> AsyncIterator[str]:

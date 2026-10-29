@@ -36,6 +36,7 @@ from pydantic_ai_lightspeed.capabilities.question_validity._capability import (
 from pydantic_ai_lightspeed.capabilities.redaction._capability import (
     PiiRedactionCapability,
 )
+from pydantic_ai_lightspeed.capabilities.redaction.core import redact_text
 from utils.agents.error_handler import map_agent_inference_error
 from utils.input_sanitization import sanitize_input
 from utils.otel_tracing import (
@@ -44,6 +45,7 @@ from utils.otel_tracing import (
     set_span_attributes,
     shield_span_attributes,
 )
+from utils.types import TextRedactor
 
 logger = get_logger(__name__)
 tracer = trace.get_tracer(__name__)
@@ -215,3 +217,43 @@ def get_shields_for_request(
         raise HTTPException(**response.model_dump())
 
     return [shield for shield in shields if shield.name in requested]
+
+
+def request_redactor(
+    shields: list[ShieldConfiguration],
+    shield_ids: Optional[list[str]] = None,
+) -> Optional[TextRedactor]:
+    """Build the text redaction of the shields a request selects.
+
+    The rules of the selected redaction shields are applied one after another
+    in configuration order, the order in which their capabilities run on an
+    agent. It is for the places where lightspeed-stack builds or stores text
+    that the redaction capability does not see.
+
+    Parameters:
+        shields: Configured LCS shields.
+        shield_ids: The shield selection of the request, with the meaning it
+            has for ``get_shields_for_request``.
+
+    Returns:
+        A function that redacts a text, or ``None`` when the selection holds
+        no redaction rule.
+
+    Raises:
+        HTTPException: 404 if shield_ids names a shield that is not configured.
+
+    """
+    patterns = [
+        compiled
+        for shield in get_shields_for_request(shields, shield_ids)
+        if isinstance(shield.config, RedactionConfig)
+        for compiled in shield.config.compiled_patterns
+    ]
+    if not patterns:
+        return None
+
+    def redact(text: str) -> str:
+        """Apply the selected redaction rules to a text."""
+        return redact_text(text, patterns).content
+
+    return redact
