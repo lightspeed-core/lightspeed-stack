@@ -555,7 +555,10 @@ of recent turns to keep verbatim. The runtime applies a degrading guard
 &#x2014; if these turns exceed the available budget, it reduces buffer_turns by
 one repeatedly until the budget fits, down to zero. buffer_max_ratio:
 Hard cap on the fraction of the context window the buffer zone may
-occupy, regardless of buffer_turns.</p>
+occupy, regardless of buffer_turns. summary_prompt: Optional prompt
+template for summarizing older turns in the Pydantic AI compaction. It
+must contain the <code>{messages}</code> placeholder and no other
+replacement field; when unset, the default prompt is used.</p>
     <table>
       <colgroup>
         <col style="width: 26%"/>
@@ -598,6 +601,15 @@ triggering on very small context windows.</td>
           <td>number</td>
           <td>Maximum fraction of context window the buffer zone can occupy,
 regardless of buffer_turns.</td>
+        </tr>
+        <tr>
+          <td>summary_prompt</td>
+          <td>string</td>
+          <td>Prompt template for summarizing older turns in the Pydantic AI
+compaction. The conversation transcript replaces the {messages}
+placeholder, which is required; no other replacement field is allowed,
+so double any literal braces. When unset, the default prompt is
+used.</td>
         </tr>
       </tbody>
     </table>

@@ -112,6 +112,10 @@ Unit tests for utils/streaming_sse.py.
 
 Unit tests for functions defined in utils.suid module.
 
+## [test_tiered_compaction.py](test_tiered_compaction.py)
+
+Unit tests for utils/tiered_compaction.
+
 ## [test_token_estimator.py](test_token_estimator.py)
 
 Unit tests for utils/token_estimator.

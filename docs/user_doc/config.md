@@ -209,15 +209,20 @@ Attributes:
     buffer_max_ratio: Hard cap on the fraction of the context
         window the buffer zone may occupy, regardless of
         buffer_turns.
+    summary_prompt: Optional prompt template for summarizing older
+        turns in the Pydantic AI compaction. It must contain the
+        ``{messages}`` placeholder and no other replacement field;
+        when unset, the default prompt is used.
 
 
-| Field            | Type    | Description                                                                                                 |
-|------------------|---------|--------------                                                                                               |
-| enabled          | boolean | When true, older conversation turns are summarized when estimated tokens approach the context window limit. |
-| threshold_ratio  | number  | Trigger compaction when estimated tokens exceed this fraction of the model's context window (0.0-1.0).      |
-| token_floor      | integer | Minimum token count before compaction can trigger. Prevents triggering on very small context windows.       |
-| buffer_turns     | integer | Number of recent turns to keep verbatim.                                                                    |
-| buffer_max_ratio | number  | Maximum fraction of context window the buffer zone can occupy, regardless of buffer_turns.                  |
+| Field            | Type    | Description                                                                                                                                                                                                                                                                 |
+|------------------|---------|--------------                                                                                                                                                                                                                                                               |
+| enabled          | boolean | When true, older conversation turns are summarized when estimated tokens approach the context window limit.                                                                                                                                                                 |
+| threshold_ratio  | number  | Trigger compaction when estimated tokens exceed this fraction of the model's context window (0.0-1.0).                                                                                                                                                                      |
+| token_floor      | integer | Minimum token count before compaction can trigger. Prevents triggering on very small context windows.                                                                                                                                                                       |
+| buffer_turns     | integer | Number of recent turns to keep verbatim.                                                                                                                                                                                                                                    |
+| buffer_max_ratio | number  | Maximum fraction of context window the buffer zone can occupy, regardless of buffer_turns.                                                                                                                                                                                  |
+| summary_prompt   | string  | Prompt template for summarizing older turns in the Pydantic AI compaction. The conversation transcript replaces the {messages} placeholder, which is required; no other replacement field is allowed, so double any literal braces. When unset, the default prompt is used. |
 
 
 ## Configuration

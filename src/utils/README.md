@@ -124,6 +124,10 @@ SSE formatting helpers for streaming query responses.
 
 Session ID utility functions.
 
+## [tiered_compaction.py](tiered_compaction.py)
+
+Build the harness ``TieredCompaction`` capability from the compaction config.
+
 ## [token_counter.py](token_counter.py)
 
 Helper classes to count tokens sent and received by the LLM.

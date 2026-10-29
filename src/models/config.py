@@ -8,6 +8,7 @@ from enum import StrEnum
 from functools import cached_property
 from pathlib import Path
 from re import Pattern
+from string import Formatter
 from typing import Annotated, Any, Literal, Optional, Self
 
 import jsonpath_ng
@@ -2164,6 +2165,10 @@ class CompactionConfiguration(ConfigurationBase):
         buffer_max_ratio: Hard cap on the fraction of the context
             window the buffer zone may occupy, regardless of
             buffer_turns.
+        summary_prompt: Optional prompt template for summarizing older
+            turns in the Pydantic AI compaction. It must contain the
+            ``{messages}`` placeholder and no other replacement field;
+            when unset, the default prompt is used.
 
     """
 
@@ -2196,6 +2201,14 @@ class CompactionConfiguration(ConfigurationBase):
         description="Maximum fraction of context window the buffer zone "
         "can occupy, regardless of buffer_turns.",
     )
+    summary_prompt: Optional[str] = Field(
+        default=None,
+        title="Summary prompt",
+        description="Prompt template for summarizing older turns in the Pydantic "
+        "AI compaction. The conversation transcript replaces the {messages} "
+        "placeholder, which is required; no other replacement field is allowed, "
+        "so double any literal braces. When unset, the default prompt is used.",
+    )
 
     @field_validator("threshold_ratio")
     @classmethod
@@ -2211,6 +2224,44 @@ class CompactionConfiguration(ConfigurationBase):
         """Reject buffer-max ratios outside the inclusive 0..1 range."""
         if not 0.0 <= value <= 1.0:
             raise ValueError("buffer_max_ratio must be between 0.0 and 1.0 (inclusive)")
+        return value
+
+    @field_validator("summary_prompt")
+    @classmethod
+    def _validate_summary_prompt(cls, value: Optional[str]) -> Optional[str]:
+        """Check that a summary prompt formats the transcript and nothing else.
+
+        The prompt is filled with ``str.format(messages=...)``. Without the
+        placeholder the transcript would be silently dropped, and any other
+        replacement field would fail only when a conversation is summarized,
+        so both are rejected when the configuration is loaded.
+
+        Parameters:
+            value: Prompt template, or None for the default prompt.
+
+        Returns:
+            The prompt, unchanged.
+
+        Raises:
+            ValueError: If the prompt does not contain ``{messages}``, contains
+                any other replacement field, or is not a valid format string.
+
+        """
+        if value is None:
+            return value
+        try:
+            fields = [
+                (name, spec, conversion)
+                for _, name, spec, conversion in Formatter().parse(value)
+                if name is not None
+            ]
+        except ValueError as e:
+            raise ValueError(f"summary_prompt is not a valid format string: {e}") from e
+        if not fields or any(field != ("messages", "", None) for field in fields):
+            raise ValueError(
+                "summary_prompt must contain the {messages} placeholder and no other "
+                "replacement field; double any literal braces"
+            )
         return value
 
 
