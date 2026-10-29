@@ -412,11 +412,13 @@ uv run make test-e2e         # End-to-end tests
 
 ## Pull Request Requirements
 
-**PR titles MUST start with a JIRA issue key prefix.** CI enforces this via `pr-title-checker` (config: `.github/pr-title-checker-config.json`).
+**PR titles MUST start with a valid JIRA issue key (project prefix + non-zero issue number).** CI enforces this via `pr-title-checker` (config: `.github/pr-title-checker-config.json`).
 
-Allowed prefixes: `LCORE-`, `RSPEED-`, `MGTM-`, `OLS-`, `RHIDP-`, `LEADS-`, `CWFHEALTH-`, `[release/`
+Allowed project prefixes: `LCORE`, `RSPEED`, `MGTM`, `OLS`, `RHIDP`, `LEADS`, `CWFHEALTH`. The issue number after the prefix must be a positive integer (e.g. `LCORE-1234`). Placeholder keys like `LCORE-0000` or `LCORE-0` are rejected. Release branch PRs may use the `[release/` prefix instead.
 
 - ✅ `RSPEED-2849: add user_agent to ResponsesEventData`
+- ✅ `[release/0.8] cherry-pick fix`
+- ❌ `LCORE-0000: placeholder key`
 - ❌ `feat(observability): add user_agent to ResponsesEventData`
 
 ## Development Workflow

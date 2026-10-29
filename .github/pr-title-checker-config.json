@@ -4,20 +4,11 @@
     "color": "EEEEEE"
   },
   "CHECKS": {
-    "prefixes": [
-      "LCORE-",
-      "RSPEED-",
-      "MGTM-",
-      "OLS-",
-      "RHIDP-",
-      "LEADS-",
-      "CWFHEALTH-",
-      "[release/"
-    ]
+    "regexp": "^(LCORE|RSPEED|MGTM|OLS|RHIDP|LEADS|CWFHEALTH)-[1-9]\\d*[: ]|^\\[release/"
   },
   "MESSAGES": {
     "success": "All OK",
-    "failure": "Failing CI test",
+    "failure": "Failing CI test — PR title must start with a valid JIRA key (e.g. LCORE-1234) or [release/",
     "notice": ""
   }
 }
