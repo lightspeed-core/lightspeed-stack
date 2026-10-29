@@ -458,3 +458,29 @@ single PR to avoid iterative CI failures.
    available as transitive dependencies of the removed/changed package.
 6. **Run `uv run make verify`** to confirm linting and type checking pass with
    the updated dependencies.
+
+### Dependency Removal Cleanup
+
+When removing a dependency from `pyproject.toml`, follow the standard update
+process above **and** perform these additional cleanup steps to eliminate stale
+references:
+
+1. **Grep the entire repo for the removed package name** to find stale
+   references in source files, docs, scripts, configs, and examples:
+   ```bash
+   grep -rn '<package_name>' --include='*.py' --include='*.md' \
+     --include='*.yaml' --include='*.yml' --include='*.toml' \
+     --include='*.txt' --include='Makefile' --include='Containerfile'
+   ```
+2. **Check for package-specific environment variables** — removed packages
+   often have env vars that should also be cleaned up (e.g., `LITELLM_DROP_PARAMS`
+   for litellm). Search for these across the repo.
+3. **Remove or update all stale references** found in:
+   - README and other documentation files
+   - Makefile and build scripts
+   - Containerfile and docker-compose files
+   - Example and default configuration files
+   - Inline code comments referencing the removed package
+4. **Verify no runtime imports remain** — confirm that no Python source file
+   still imports the removed package (including conditional or try/except
+   imports).
