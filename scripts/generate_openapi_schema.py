@@ -70,6 +70,7 @@ def generate_openapi_schema(schema_file_name: str) -> None:
         AssertionError: If the schema and project versions differ.
         subprocess.CalledProcessError: If ``pdm show --version`` fails.
         OSError: If the file cannot be written or PDM cannot be started.
+
     """
     print("Service metadata:")
     print(app.title)

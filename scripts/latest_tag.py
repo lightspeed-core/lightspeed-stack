@@ -34,6 +34,7 @@ def get_latest_stable() -> Optional[str]:
     Raises:
         subprocess.CalledProcessError: If ``git tag`` fails.
         OSError: If Git cannot be started.
+
     """
     stdout = subprocess.check_output(["git", "tag"], text=True)
     tags = [tag for tag in stdout.splitlines() if not is_prerelease(tag)]
