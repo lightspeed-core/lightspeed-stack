@@ -18,7 +18,6 @@ not turn pairs.
 """
 
 from dataclasses import replace
-from string import Formatter
 from typing import Final, Optional
 
 from pydantic_ai.models import Model
@@ -43,64 +42,29 @@ CLAMP_MAX_PART_TOKENS: Final[int] = 50_000
 _UNUSED_TIER_TRIGGER: Final[int] = 1
 
 
-def _validate_summary_prompt(summary_prompt: str) -> str:
-    """Check that a summary prompt formats the transcript and nothing else.
-
-    The harness fills the prompt with ``str.format(messages=...)``. Without
-    the placeholder the transcript is silently dropped, and any other
-    replacement field fails at summarization time.
-
-    Parameters:
-        summary_prompt: Prompt template for the summarizing tier.
-
-    Returns:
-        The prompt, unchanged.
-
-    Raises:
-        ValueError: If the prompt does not contain ``{messages}``, contains
-            any other replacement field, or is not a valid format string.
-
-    """
-    try:
-        fields = [
-            (name, spec, conversion)
-            for _, name, spec, conversion in Formatter().parse(summary_prompt)
-            if name is not None
-        ]
-    except ValueError as e:
-        raise ValueError(f"summary_prompt is not a valid format string: {e}") from e
-    if not fields or any(field != ("messages", "", None) for field in fields):
-        raise ValueError(
-            "summary_prompt must contain the {messages} placeholder and no other "
-            "replacement field; double any literal braces"
-        )
-    return summary_prompt
-
-
 def build_tiered_compaction(
     config: CompactionConfiguration,
     model: Model | str,
     context_window: Optional[int] = None,
-    summary_prompt: Optional[str] = None,
 ) -> Optional[TieredCompaction[object]]:
     """Build the tiered compaction capability for an agent.
 
     Parameters:
-        config: Compaction configuration.
+        config: Compaction configuration. Its ``summary_prompt``, already
+            validated when the configuration was loaded, replaces the harness
+            default prompt of the summarizing tier when set.
         model: Chat model that answers the user query; the summarizing tier
             uses it too.
         context_window: Context window of the model in tokens, when known.
             When omitted, the harness resolves it from the model name and
             falls back to ``DEFAULT_CONTEXT_WINDOW``.
-        summary_prompt: Prompt template for the summarizing tier, which must
-            contain ``{messages}``. When omitted, the harness default is used.
 
     Returns:
         The capability, or None when compaction is disabled.
 
     Raises:
-        ValueError: If the summary prompt is invalid, or the harness rejects
-            the configuration (for example ``threshold_ratio`` of 0).
+        ValueError: If the harness rejects the configuration (for example
+            ``threshold_ratio`` of 0).
 
     """
     if not config.enabled:
@@ -119,10 +83,8 @@ def build_tiered_compaction(
         preserve_first_user_message=True,
         keep_user_messages=True,
     )
-    if summary_prompt is not None:
-        summarizer = replace(
-            summarizer, summary_prompt=_validate_summary_prompt(summary_prompt)
-        )
+    if config.summary_prompt is not None:
+        summarizer = replace(summarizer, summary_prompt=config.summary_prompt)
     return TieredCompaction[object](
         tiers=[
             ClampOversizedMessages[object](
