@@ -1,0 +1,14 @@
+# Review harness overlay for lightspeed-core/lightspeed-stack
+#
+# Extends the upstream fullsend-ai/agents review harness (pinned to the v0.51.0
+# commit with a SHA-256 integrity fragment) and restricts dispatch to an
+# explicit /fs-review comment from a human. By default review runs on every PR
+# open/push/ready; this overlay makes it opt-in only.
+base: https://raw.githubusercontent.com/fullsend-ai/agents/16657d540187b16743c8693dc2ccc40366334430/harness/review.yaml#sha256=10a0d8a3c4f77ab89c4bd3cef5cead82d0680cc1f56965656a3c101aaf589a85
+
+trigger: >-
+  event.transition.kind == "comment_added"
+  && has(event.entity.linked_change_proposal)
+  && has(event.transition.comment.command)
+  && event.transition.comment.command == "/fs-review"
+  && event.actor.kind == "human"

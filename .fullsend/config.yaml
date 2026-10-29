@@ -10,6 +10,12 @@ roles:
     - coder
     - review
     - fix
+agents:
+    # Review: run only on an explicit /fs-review comment from a human, not on
+    # every PR open/push/ready. A built-in agent trigger must be carried by a
+    # source overlay on the installed fullsend v0.51.0 CLI.
+    - name: review
+      source: harness/review.yaml
 allowed_remote_resources:
     - https://raw.githubusercontent.com/fullsend-ai/fullsend/
     - https://raw.githubusercontent.com/fullsend-ai/agents/
