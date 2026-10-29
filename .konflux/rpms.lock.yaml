@@ -4,13 +4,69 @@ lockfileVendor: redhat
 arches:
 - arch: aarch64
   packages:
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.6/aarch64/appstream/os/Packages/c/cargo-1.84.1-1.el9_6.1.aarch64.rpm
-    repoid: rhel-9-for-aarch64-appstream-eus-rpms__9_DOT_6
-    size: 7738644
-    checksum: sha256:b2434331f45e87a2dcdf47e9c22bac31d23dfe29f5f3eec46f2edc2503c1f55e
+  - url: https://cdn.redhat.com/content/dist/rhel9/9/aarch64/appstream/os/Packages/c/cargo-1.92.0-2.el9_8.aarch64.rpm
+    repoid: rhel-9-for-aarch64-appstream-rpms
+    size: 8531221
+    checksum: sha256:82aa6ebbffe76188be0eef2e1dec030861a9ea513138a1d39567b0028ee787d0
     name: cargo
-    evr: 1.84.1-1.el9_6.1
-    sourcerpm: rust-1.84.1-1.el9_6.1.src.rpm
+    evr: 1.92.0-2.el9_8
+    sourcerpm: rust-1.92.0-2.el9_8.src.rpm
+  - url: https://cdn.redhat.com/content/dist/rhel9/9/aarch64/appstream/os/Packages/l/libomp-21.1.8-2.el9.aarch64.rpm
+    repoid: rhel-9-for-aarch64-appstream-rpms
+    size: 813991
+    checksum: sha256:04dfb9a02d03b62eacde6b2855c73a54bd3297e0c33a548472fb3396cc9797f1
+    name: libomp
+    evr: 21.1.8-2.el9
+    sourcerpm: llvm-21.1.8-2.el9.src.rpm
+  - url: https://cdn.redhat.com/content/dist/rhel9/9/aarch64/appstream/os/Packages/l/llvm-filesystem-21.1.8-2.el9.aarch64.rpm
+    repoid: rhel-9-for-aarch64-appstream-rpms
+    size: 20175
+    checksum: sha256:87b55002280f29f59e8452cf184307ce0ffcf613a8967f726cb5b3438ecbc70a
+    name: llvm-filesystem
+    evr: 21.1.8-2.el9
+    sourcerpm: llvm-21.1.8-2.el9.src.rpm
+  - url: https://cdn.redhat.com/content/dist/rhel9/9/aarch64/appstream/os/Packages/l/llvm-libs-21.1.8-2.el9.aarch64.rpm
+    repoid: rhel-9-for-aarch64-appstream-rpms
+    size: 31011258
+    checksum: sha256:47a47b60c922d628f7e0fa6c7e58484cd416221d6fbcd2b4708f5c901d6aecb4
+    name: llvm-libs
+    evr: 21.1.8-2.el9
+    sourcerpm: llvm-21.1.8-2.el9.src.rpm
+  - url: https://cdn.redhat.com/content/dist/rhel9/9/aarch64/appstream/os/Packages/m/mesa-dri-drivers-25.2.7-5.el9_8.aarch64.rpm
+    repoid: rhel-9-for-aarch64-appstream-rpms
+    size: 8499175
+    checksum: sha256:62d2e79b274e97e656b5e0f8ffdc8bd0c2d6114ee9510c683738e8dc4a61ace4
+    name: mesa-dri-drivers
+    evr: 25.2.7-5.el9_8
+    sourcerpm: mesa-25.2.7-5.el9_8.src.rpm
+  - url: https://cdn.redhat.com/content/dist/rhel9/9/aarch64/appstream/os/Packages/m/mesa-filesystem-25.2.7-5.el9_8.aarch64.rpm
+    repoid: rhel-9-for-aarch64-appstream-rpms
+    size: 17407
+    checksum: sha256:8f49e009f18231742bcdd4c75fb49c475e9fd055bd1dc9ba2d6c70dafb9e92df
+    name: mesa-filesystem
+    evr: 25.2.7-5.el9_8
+    sourcerpm: mesa-25.2.7-5.el9_8.src.rpm
+  - url: https://cdn.redhat.com/content/dist/rhel9/9/aarch64/appstream/os/Packages/m/mesa-libGL-25.2.7-5.el9_8.aarch64.rpm
+    repoid: rhel-9-for-aarch64-appstream-rpms
+    size: 130872
+    checksum: sha256:f1a1ce2b4475af4a2f3ba36dfed9ce87d5e1bbbee37add796881bd34ba6b25da
+    name: mesa-libGL
+    evr: 25.2.7-5.el9_8
+    sourcerpm: mesa-25.2.7-5.el9_8.src.rpm
+  - url: https://cdn.redhat.com/content/dist/rhel9/9/aarch64/appstream/os/Packages/r/rust-1.92.0-2.el9_8.aarch64.rpm
+    repoid: rhel-9-for-aarch64-appstream-rpms
+    size: 29432854
+    checksum: sha256:581cfaf221e8f4e402e101b044152070b2bccfdd34c0343e9f00bc686b1842e4
+    name: rust
+    evr: 1.92.0-2.el9_8
+    sourcerpm: rust-1.92.0-2.el9_8.src.rpm
+  - url: https://cdn.redhat.com/content/dist/rhel9/9/aarch64/appstream/os/Packages/r/rust-std-static-1.92.0-2.el9_8.aarch64.rpm
+    repoid: rhel-9-for-aarch64-appstream-rpms
+    size: 41509951
+    checksum: sha256:f2c6fbaa5a01c4c4ad2f73b282aa47ae28091b03a779f4ad846fa4fceba9e1bb
+    name: rust-std-static
+    evr: 1.92.0-2.el9_8
+    sourcerpm: rust-1.92.0-2.el9_8.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.6/aarch64/appstream/os/Packages/c/cmake-3.26.5-2.el9.aarch64.rpm
     repoid: rhel-9-for-aarch64-appstream-eus-rpms__9_DOT_6
     size: 7432689
@@ -39,6 +95,13 @@ arches:
     name: libuv
     evr: 1:1.42.0-2.el9_4
     sourcerpm: libuv-1.42.0-2.el9_4.src.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.6/aarch64/appstream/os/Packages/m/mesa-libgbm-23.3.3-1.el9.aarch64.rpm
+    repoid: rhel-9-for-aarch64-appstream-eus-rpms__9_DOT_6
+    size: 40149
+    checksum: sha256:de704e506b5b66bead9a8a4d3efe7503dd50ebd6ea340bc626a9192f30dd4b03
+    name: mesa-libgbm
+    evr: 23.3.3-1.el9
+    sourcerpm: mesa-23.3.3-1.el9.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.6/aarch64/appstream/os/Packages/p/patch-2.7.6-16.el9.aarch64.rpm
     repoid: rhel-9-for-aarch64-appstream-eus-rpms__9_DOT_6
     size: 129037
@@ -46,20 +109,6 @@ arches:
     name: patch
     evr: 2.7.6-16.el9
     sourcerpm: patch-2.7.6-16.el9.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.6/aarch64/appstream/os/Packages/r/rust-1.84.1-1.el9_6.1.aarch64.rpm
-    repoid: rhel-9-for-aarch64-appstream-eus-rpms__9_DOT_6
-    size: 26095615
-    checksum: sha256:973f4c018d21e532bf5284b22a7a4268bf7044264aa10ab4ba4ea4ce7e1504d8
-    name: rust
-    evr: 1.84.1-1.el9_6.1
-    sourcerpm: rust-1.84.1-1.el9_6.1.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.6/aarch64/appstream/os/Packages/r/rust-std-static-1.84.1-1.el9_6.1.aarch64.rpm
-    repoid: rhel-9-for-aarch64-appstream-eus-rpms__9_DOT_6
-    size: 39284938
-    checksum: sha256:2f18af8dbdb74eaff09f88b93ffade8035b1b923eb801c6db2e4942e0d2ddaa3
-    name: rust-std-static
-    evr: 1.84.1-1.el9_6.1
-    sourcerpm: rust-1.84.1-1.el9_6.1.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.6/aarch64/baseos/os/Packages/e/ed-1.14.2-12.el9.aarch64.rpm
     repoid: rhel-9-for-aarch64-baseos-eus-rpms__9_DOT_6
     size: 78931
@@ -92,13 +141,69 @@ arches:
   module_metadata: []
 - arch: x86_64
   packages:
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.6/x86_64/appstream/os/Packages/c/cargo-1.84.1-1.el9_6.1.x86_64.rpm
-    repoid: rhel-9-for-x86_64-appstream-eus-rpms__9_DOT_6
-    size: 8282043
-    checksum: sha256:9691df7b74f95c7dffe3e720d919e1c25822c24af01215b02d1f10fe26339152
+  - url: https://cdn.redhat.com/content/dist/rhel9/9/x86_64/appstream/os/Packages/c/cargo-1.92.0-2.el9_8.x86_64.rpm
+    repoid: rhel-9-for-x86_64-appstream-rpms
+    size: 9100896
+    checksum: sha256:051f0ca74495773ec1b2247a7eb084510b10a2920f49492c8a4d970ecee8b351
     name: cargo
-    evr: 1.84.1-1.el9_6.1
-    sourcerpm: rust-1.84.1-1.el9_6.1.src.rpm
+    evr: 1.92.0-2.el9_8
+    sourcerpm: rust-1.92.0-2.el9_8.src.rpm
+  - url: https://cdn.redhat.com/content/dist/rhel9/9/x86_64/appstream/os/Packages/l/libomp-21.1.8-2.el9.x86_64.rpm
+    repoid: rhel-9-for-x86_64-appstream-rpms
+    size: 863958
+    checksum: sha256:8953b4c466290476f82836fa204bccef5760d01fe1120c8691c8aa8f42d35642
+    name: libomp
+    evr: 21.1.8-2.el9
+    sourcerpm: llvm-21.1.8-2.el9.src.rpm
+  - url: https://cdn.redhat.com/content/dist/rhel9/9/x86_64/appstream/os/Packages/l/llvm-filesystem-21.1.8-2.el9.x86_64.rpm
+    repoid: rhel-9-for-x86_64-appstream-rpms
+    size: 20224
+    checksum: sha256:b54fc55927e26da6954bbf9a396735a2a29383b15fe9e3d70b9d24cd90b1c500
+    name: llvm-filesystem
+    evr: 21.1.8-2.el9
+    sourcerpm: llvm-21.1.8-2.el9.src.rpm
+  - url: https://cdn.redhat.com/content/dist/rhel9/9/x86_64/appstream/os/Packages/l/llvm-libs-21.1.8-2.el9.x86_64.rpm
+    repoid: rhel-9-for-x86_64-appstream-rpms
+    size: 32586819
+    checksum: sha256:6c71c84a680f89a551b312eac90c9ae2899c3bdfaacdc809e39d7da968657d5a
+    name: llvm-libs
+    evr: 21.1.8-2.el9
+    sourcerpm: llvm-21.1.8-2.el9.src.rpm
+  - url: https://cdn.redhat.com/content/dist/rhel9/9/x86_64/appstream/os/Packages/m/mesa-dri-drivers-25.2.7-5.el9_8.x86_64.rpm
+    repoid: rhel-9-for-x86_64-appstream-rpms
+    size: 9738019
+    checksum: sha256:355cc8ebbf6ca69c249f9db3b40ee8f98614624d4d405e3c094b55a5eddc17c2
+    name: mesa-dri-drivers
+    evr: 25.2.7-5.el9_8
+    sourcerpm: mesa-25.2.7-5.el9_8.src.rpm
+  - url: https://cdn.redhat.com/content/dist/rhel9/9/x86_64/appstream/os/Packages/m/mesa-filesystem-25.2.7-5.el9_8.x86_64.rpm
+    repoid: rhel-9-for-x86_64-appstream-rpms
+    size: 17453
+    checksum: sha256:ccc6bf21dc74200b5fd2ccf61cfcfc0416d98f3e8903ebdfb4d6354b376b4109
+    name: mesa-filesystem
+    evr: 25.2.7-5.el9_8
+    sourcerpm: mesa-25.2.7-5.el9_8.src.rpm
+  - url: https://cdn.redhat.com/content/dist/rhel9/9/x86_64/appstream/os/Packages/m/mesa-libGL-25.2.7-5.el9_8.x86_64.rpm
+    repoid: rhel-9-for-x86_64-appstream-rpms
+    size: 126363
+    checksum: sha256:06c47c58efc4005200f25354c24bb1fb168a504811399a1452816e3cbc150aab
+    name: mesa-libGL
+    evr: 25.2.7-5.el9_8
+    sourcerpm: mesa-25.2.7-5.el9_8.src.rpm
+  - url: https://cdn.redhat.com/content/dist/rhel9/9/x86_64/appstream/os/Packages/r/rust-1.92.0-2.el9_8.x86_64.rpm
+    repoid: rhel-9-for-x86_64-appstream-rpms
+    size: 31507830
+    checksum: sha256:4f94e5f41381c1b74f7ba1f2963ab877b7e97de6214bd3f457d59cda519cb74c
+    name: rust
+    evr: 1.92.0-2.el9_8
+    sourcerpm: rust-1.92.0-2.el9_8.src.rpm
+  - url: https://cdn.redhat.com/content/dist/rhel9/9/x86_64/appstream/os/Packages/r/rust-std-static-1.92.0-2.el9_8.x86_64.rpm
+    repoid: rhel-9-for-x86_64-appstream-rpms
+    size: 43004844
+    checksum: sha256:eb6b77944335dbf90fc4bc204c246a50a4a7928698b97d412a6eb6ccdb3b59a3
+    name: rust-std-static
+    evr: 1.92.0-2.el9_8
+    sourcerpm: rust-1.92.0-2.el9_8.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.6/x86_64/appstream/os/Packages/c/cmake-3.26.5-2.el9.x86_64.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms__9_DOT_6
     size: 9159462
@@ -127,6 +232,13 @@ arches:
     name: libuv
     evr: 1:1.42.0-2.el9_4
     sourcerpm: libuv-1.42.0-2.el9_4.src.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.6/x86_64/appstream/os/Packages/m/mesa-libgbm-23.3.3-1.el9.x86_64.rpm
+    repoid: rhel-9-for-x86_64-appstream-eus-rpms__9_DOT_6
+    size: 39716
+    checksum: sha256:97c875f0687cb2b7ca6272c3200a94f13d0dec0fbd5ca803e0bdf46cdf9b7de1
+    name: mesa-libgbm
+    evr: 23.3.3-1.el9
+    sourcerpm: mesa-23.3.3-1.el9.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.6/x86_64/appstream/os/Packages/p/patch-2.7.6-16.el9.x86_64.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms__9_DOT_6
     size: 133240
@@ -134,20 +246,6 @@ arches:
     name: patch
     evr: 2.7.6-16.el9
     sourcerpm: patch-2.7.6-16.el9.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.6/x86_64/appstream/os/Packages/r/rust-1.84.1-1.el9_6.1.x86_64.rpm
-    repoid: rhel-9-for-x86_64-appstream-eus-rpms__9_DOT_6
-    size: 28050740
-    checksum: sha256:852e55c0a6f42692c4e6a143ffc474f4da020481c0d33941e725b5e86c7ae312
-    name: rust
-    evr: 1.84.1-1.el9_6.1
-    sourcerpm: rust-1.84.1-1.el9_6.1.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.6/x86_64/appstream/os/Packages/r/rust-std-static-1.84.1-1.el9_6.1.x86_64.rpm
-    repoid: rhel-9-for-x86_64-appstream-eus-rpms__9_DOT_6
-    size: 41181526
-    checksum: sha256:fcb9406a44a0f50dfc8f0ea132a6fc8f54c0dccd63f92a018edc96e8506644c3
-    name: rust-std-static
-    evr: 1.84.1-1.el9_6.1
-    sourcerpm: rust-1.84.1-1.el9_6.1.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.6/x86_64/baseos/os/Packages/e/ed-1.14.2-12.el9.x86_64.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms__9_DOT_6
     size: 79993

@@ -1,10 +1,13 @@
 """Shared utility functions for safety capabilities."""
 
 from collections.abc import Sequence
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 from pydantic_ai.messages import TextContent, UserContent
-from pydantic_ai.models import AbstractModel, Model
+from pydantic_ai.models import Model
+
+if TYPE_CHECKING:
+    from pydantic_ai.models import AbstractModel
 
 
 def extract_message_str_from_user_content(
@@ -49,7 +52,7 @@ def message_to_str(message: Optional[str | Sequence[UserContent]]) -> str:
             return ""
 
 
-def extract_conversation_id(model: AbstractModel) -> Optional[str]:
+def extract_conversation_id(model: "AbstractModel") -> Optional[str]:
     """Extract the conversation ID from the agent's model settings.
 
     The main agent's model is built with ``conversation`` in its

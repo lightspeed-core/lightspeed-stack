@@ -57,7 +57,6 @@ dependencies = [
     # Used by authorization resolvers
     "jsonpath-ng>=1.6.1,<1.9.0",
     "psycopg2-binary>=2.9.10",
-    "litellm==1.107.0rc2",
     "urllib3>=2.6.3",
     # Used for agent card configuration
     "PyYAML>=6.0.0",
@@ -199,7 +198,7 @@ ogxlibdev = [
     "transformers>=4.34.0",
     "numpy==2.3.5",
     # API tool_runtime: remote::model-context-protocol
-    "mcp>=1.23.0",
+    "mcp>=1.30.0",
     # API post_training: inline::huggingface
     "torch==2.11.0",
     "trl>=0.18.2",
@@ -219,6 +218,8 @@ ogxlibdev = [
     "protobuf>=6.33.5",
     "filelock>=3.20.3",
     "uv-build==0.11.8",
+    # anthropic
+    "anthropic>=1.15.0"
 ]
 
 build = [

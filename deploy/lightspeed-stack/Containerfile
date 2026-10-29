@@ -96,8 +96,17 @@ USER root
 # Additional tools for derived images
 # Note: --allowerasing is only supported by dnf, not microdnf (used by the
 # *-minimal base images), so it is only appended when RUNTIME_DNF_COMMAND=dnf.
-RUN ${RUNTIME_DNF_COMMAND} install -y --nodocs --setopt=keepcache=0 --setopt=tsflags=nodocs jq patch && \
-    ${RUNTIME_DNF_COMMAND} update -y --nodocs --setopt=keepcache=0 --setopt=tsflags=nodocs
+# The rolling (non-EUS) repos (see .konflux/redhat.repo) exist only to supply
+# the newer Rust/LLVM toolchain for building wheels from source in the
+# builder stage. They must stay disabled here: Konflux injects them without
+# the dnf priority settings, and a plain "dnf update" would then try to pull
+# 9.8 packages (gcc, mesa, llvm, ...) whose dependencies are not available
+# from the injected EUS-only repo set, breaking the build.
+# The glob below matches the canonical rolling repo ids
+# (rhel-9-for-<arch>-{appstream,baseos,supplementary}-rpms) but not the EUS
+# ones (suffixed __9_DOT_6) nor the rhelai repo.
+RUN ${RUNTIME_DNF_COMMAND} --disablerepo="rhel-9-for-*-rpms" install -y --nodocs --setopt=keepcache=0 --setopt=tsflags=nodocs jq patch && \
+    ${RUNTIME_DNF_COMMAND} --disablerepo="rhel-9-for-*-rpms" update -y --nodocs --setopt=keepcache=0 --setopt=tsflags=nodocs
 
 # Create OGX directories for library mode
 RUN mkdir -p /opt/app-root/src/.llama/storage /opt/app-root/src/.llama/providers.d && \
