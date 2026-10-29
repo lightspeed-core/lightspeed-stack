@@ -42,6 +42,7 @@ hatchling==1.33.0
     #   logfire
     #   logfire-sdk
     #   pydantic-ai
+    #   pydantic-ai-harness
     #   pydantic-ai-skills
     #   pydantic-ai-slim
     #   pydantic-evals
@@ -95,6 +96,7 @@ uv-dynamic-versioning==0.14.1
     # via
     #   genai-prices
     #   pydantic-ai
+    #   pydantic-ai-harness
     #   pydantic-ai-slim
     #   pydantic-evals
     #   pydantic-graph
