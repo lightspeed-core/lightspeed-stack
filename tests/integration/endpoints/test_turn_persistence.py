@@ -53,7 +53,7 @@ from app.endpoints.streaming_query import streaming_query_endpoint_handler
 from authentication.interface import AuthTuple
 from configuration import AppConfig
 from models.api.requests import QueryRequest, ResponsesRequest
-from models.common.moderation import ShieldModerationBlocked
+from models.common.moderation import ShieldModerationBlocked, ShieldModerationPassed
 from models.common.responses.contexts import ResponsesContext
 from models.common.responses.responses_api_params import ResponsesApiParams
 from models.common.turn_summary import TurnSummary
@@ -78,6 +78,7 @@ from tests.integration.endpoints._compaction_helpers import (
     mock_a2a_agent,
     msg,
 )
+from utils.blocked_turns import is_blocked_item
 from utils.pending_turn import TurnNotStoredError
 from utils.stream_interrupts import (
     CancelStreamResult,
@@ -87,6 +88,7 @@ from utils.stream_interrupts import (
 from utils.token_estimator import extract_message_text
 
 NEW_QUERY = "What else can you help with?"
+BLOCKED_QUERY = "A question the shield does not let through"
 REFUSAL = "Content blocked by safety shield"
 PARTIAL_ANSWER = "Ansible is"
 PREVIOUS_RESPONSE_ID = "resp_previous_turn"
@@ -703,12 +705,13 @@ async def _send_response_request(
     stream: bool,
     store: bool = True,
     previous_response_id: Optional[str] = None,
+    query: str = NEW_QUERY,
 ) -> Any:
     """Send the new input on the stored conversation and read the answer."""
     response = await responses_endpoint_handler(
         request=test_request,
         responses_request=ResponsesRequest(
-            input=NEW_QUERY,
+            input=query,
             model=TEST_MODEL,
             conversation=None if previous_response_id else EXISTING_CONV_ID,
             previous_response_id=previous_response_id,
@@ -808,6 +811,53 @@ class TestResponsesTurnPersistence:
         await _assert_stored(
             mock_conversation_store, stored_conversation() + _turn(REFUSAL)
         )
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("stream", [False, True], ids=["blocking", "streaming"])
+    async def test_blocked_turn_is_not_sent_to_the_model_by_the_next_request(
+        self,
+        stream: bool,
+        test_config: AppConfig,
+        mock_ogx_client: AsyncMockType,
+        mock_conversation_store: InMemoryConversationStore,
+        test_request: Request,
+        test_auth: AuthTuple,
+        patch_db_session: Session,
+        mocker: MockerFixture,
+    ) -> None:
+        """A blocked turn stays in the conversation and out of the next request.
+
+        The first request is blocked by a shield, the second is an ordinary
+        follow-up on the same compacted conversation. The store holds the
+        blocked input and the refusal, marked as blocked, and the body of the
+        second request carries neither (LCORE-3788).
+        """
+        create_existing_conversation(patch_db_session, test_auth[0])
+        await _seed(test_config, mock_conversation_store, _compacted_conversation())
+        mocker.patch(
+            "app.endpoints.responses.run_shield_moderation_v2",
+            side_effect=[_blocked(), ShieldModerationPassed()],
+        )
+
+        await _send_response_request(
+            test_request, test_auth, stream, query=BLOCKED_QUERY
+        )
+        await _send_response_request(test_request, test_auth, stream)
+
+        await _assert_stored(
+            mock_conversation_store,
+            _compacted_conversation()
+            + _turn(REFUSAL, BLOCKED_QUERY)
+            + _turn(DEFAULT_MODEL_RESPONSE),
+        )
+        stored = await collect_items(mock_conversation_store, CONV_ID_LLAMA)
+        assert all(item.id.startswith("msg_blocked_") for item in stored[3:5])
+        assert not any(is_blocked_item(item) for item in stored[5:])
+        mock_ogx_client.responses.create.assert_awaited_once()
+        sent_input = mock_ogx_client.responses.create.await_args.kwargs["input"]
+        assert NEW_QUERY in str(sent_input[-1])
+        assert not any(BLOCKED_QUERY in str(item) for item in sent_input)
+        assert not any(REFUSAL in str(item) for item in sent_input)
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize("stream", [False, True], ids=["blocking", "streaming"])
