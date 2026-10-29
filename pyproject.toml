@@ -90,6 +90,7 @@ dependencies = [
     "opentelemetry-distro>=0.49b0",
     "opentelemetry-exporter-otlp>=1.34.1",
     "opentelemetry-instrumentation-fastapi>=0.49b0",
+    "boto3",
 ]
 
 

@@ -54,7 +54,7 @@ id==1.6.1
     # via twine
 pathspec==1.1.1
     # via hatchling
-pkginfo==1.13.3
+pkginfo==2.0
     # via google-genai
 pluggy==1.7.0
     # via hatchling
