@@ -104,7 +104,9 @@ Happy hacking!
   Allowed project prefixes: `LCORE`, `RSPEED`, `MGTM`, `OLS`, `RHIDP`, `LEADS`,
   `CWFHEALTH`. The issue number must be a positive integer (e.g. `LCORE-1234`).
   Placeholder keys like `LCORE-0000` or `LCORE-0` are rejected, as are keys with
-  leading zeros (e.g. `LCORE-0123`). Release branch PRs may use the `[release/` prefix instead.
+  leading zeros (e.g. `LCORE-0123`). The JIRA key must be followed by a colon or
+  space (e.g. `LCORE-1234: description`). Release branch PRs may use the `[release/`
+  prefix instead.
     - ✅ `LCORE-740: type hints for models unit tests`
     - ❌ `LCORE-0000: placeholder key`
 * Fill-in all relevant information in the PR template
