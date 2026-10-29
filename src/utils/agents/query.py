@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import time
 from enum import StrEnum
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 from fastapi import HTTPException
 from ogx_client import ApiException, AsyncOgxClient
@@ -25,8 +25,6 @@ from models.api.responses.error import (
     PromptTooLongResponse,
 )
 from models.common.agents import AgentTurnAccumulator
-from models.common.query import Attachment
-from models.common.responses.responses_api_params import ResponsesApiParams
 from models.common.turn_summary import TurnSummary
 from utils.agents.error_handler import map_agent_inference_error
 from utils.agents.tool_processor import (
@@ -54,6 +52,10 @@ from utils.query import (
 )
 from utils.responses import extract_vector_store_ids_from_tools
 from utils.token_counter import TokenCounter
+
+if TYPE_CHECKING:
+    from models.common.query import Attachment
+    from models.common.responses.responses_api_params import ResponsesApiParams
 
 logger = get_logger(__name__)
 tracer = trace.get_tracer(__name__)

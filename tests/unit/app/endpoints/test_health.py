@@ -1,6 +1,6 @@
 """Unit tests for the /health REST API endpoint."""
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pytest
 from ogx_client import ApiException
@@ -15,13 +15,15 @@ from app.endpoints.health import (
     liveness_probe_get_method,
     readiness_probe_get_method,
 )
-from authentication.interface import AuthTuple
 from models.api.responses.successful import ReadinessResponse
 from models.common import (
     HealthStatus,
     ProviderHealthStatus,
 )
 from tests.unit.utils.auth_helpers import mock_authorization_resolvers
+
+if TYPE_CHECKING:
+    from authentication.interface import AuthTuple
 
 
 @pytest.mark.asyncio

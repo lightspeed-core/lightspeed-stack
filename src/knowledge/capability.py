@@ -16,13 +16,14 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 from pydantic_ai.capabilities import AbstractCapability
 from pydantic_ai.tools import AgentDepsT
 from sentence_transformers import CrossEncoder
 
-from knowledge.sources.base import KnowledgeSource
+if TYPE_CHECKING:
+    from knowledge.sources.base import KnowledgeSource
 
 
 @dataclass

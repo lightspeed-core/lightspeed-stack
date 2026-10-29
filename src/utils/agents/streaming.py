@@ -9,7 +9,7 @@ import datetime
 import time
 from collections.abc import AsyncIterator
 from functools import singledispatch
-from typing import Any, Final, Optional
+from typing import TYPE_CHECKING, Any, Final, Optional
 
 from fastapi import HTTPException
 from ogx_client import ApiException
@@ -43,9 +43,6 @@ from models.common.agents import (
     ToolResultStreamPayload,
     TurnCompleteStreamPayload,
 )
-from models.common.query import Attachment
-from models.common.responses.contexts import ResponseGeneratorContext
-from models.common.responses.responses_api_params import ResponsesApiParams
 from models.common.turn_summary import ContextStatus, TurnSummary
 from utils.agents.error_handler import map_agent_inference_error
 from utils.agents.query import (
@@ -91,6 +88,11 @@ from utils.stream_interrupts import (
     persist_interrupted_turn,
     register_interrupt_callback,
 )
+
+if TYPE_CHECKING:
+    from models.common.query import Attachment
+    from models.common.responses.contexts import ResponseGeneratorContext
+    from models.common.responses.responses_api_params import ResponsesApiParams
 
 type AgentDispatchEvent = AgentStreamEvent | AgentRunResultEvent
 

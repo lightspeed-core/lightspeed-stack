@@ -22,7 +22,7 @@ from __future__ import annotations as _annotations
 from collections import defaultdict
 from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
-from typing import Any, Final, Optional, cast
+from typing import TYPE_CHECKING, Any, Final, Optional, cast
 
 from ogx.core.library_client import AsyncOGXAsLibraryClient
 from ogx_client import AsyncOgxClient
@@ -48,8 +48,10 @@ from pydantic_ai.profiles import ModelProfileSpec
 from pydantic_ai.settings import ModelSettings
 
 from log import get_logger
-from models.common.responses.responses_api_params import ResponsesApiParams
 from pydantic_ai_lightspeed.ogx._provider import OgxProvider
+
+if TYPE_CHECKING:
+    from models.common.responses.responses_api_params import ResponsesApiParams
 
 logger = get_logger(__name__)
 

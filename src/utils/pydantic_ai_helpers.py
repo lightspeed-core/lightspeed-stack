@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from typing import Any, Final, Optional
+from typing import TYPE_CHECKING, Any, Final, Optional
 
 from ogx.core.library_client import AsyncOGXAsLibraryClient
 from ogx_client import AsyncOgxClient
@@ -11,9 +11,7 @@ from pydantic_ai.agent import Agent
 from pydantic_ai.capabilities import AbstractCapability, AgentCapability
 from pydantic_ai_skills import SkillsCapability
 
-from configuration import AppConfig
 from log import get_logger
-from models.common.responses.responses_api_params import ResponsesApiParams
 from models.common.skills import SkillMetadata
 from models.common.tools import CatalogTool, CatalogToolParameter
 from models.config import (
@@ -30,6 +28,10 @@ from pydantic_ai_lightspeed.capabilities.granite_guardian import (
 from pydantic_ai_lightspeed.capabilities.redaction import PiiRedactionCapability
 from pydantic_ai_lightspeed.ogx import OgxResponsesModel
 from utils.shields import get_shields_for_request
+
+if TYPE_CHECKING:
+    from configuration import AppConfig
+    from models.common.responses.responses_api_params import ResponsesApiParams
 
 _AGENT_SKILLS_PROVIDER_ID: Final[str] = "agent-skills"
 _AGENT_SKILLS_TOOLGROUP_ID: Final[str] = "builtin::agent-skills"

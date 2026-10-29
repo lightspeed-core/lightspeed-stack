@@ -5,7 +5,7 @@ client that records its writes, not on a helper having been called.
 """
 
 from pathlib import Path
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 import pytest
 from fastapi import HTTPException
@@ -14,11 +14,13 @@ from ogx_client import ApiException
 from pytest_mock import MockerFixture
 
 from models.common.responses.responses_api_params import ResponsesApiParams
-from models.common.responses.types import ResponseInput
 from models.config import CompactionConfiguration, InferenceConfiguration
 from utils.conversation_compaction import MARKER_SENTINEL, apply_compaction_blocking
 from utils.pending_turn import PendingTurn, TurnNotStoredError, pending_turn
 from utils.token_estimator import extract_message_text
+
+if TYPE_CHECKING:
+    from models.common.responses.types import ResponseInput
 
 CONVERSATION = "conv_abc123"
 MODEL = "openai/gpt-4o-mini"
