@@ -1,0 +1,25 @@
+# UIE code harness overlay for lightspeed-core/lightspeed-stack
+#
+# Extends the upstream fullsend-ai/agents code harness (pinned to the v0.51.0
+# commit with a SHA-256 integrity fragment) and narrows dispatch to the UIE
+# routing boundary:
+#   - the issue carries exactly one repo: label, and it is this repository's
+#   - code dispatches only when ready-to-code is added (the reviewable handoff
+#     from triage), or a comment's first line is the /fs-code command
+# The routing label must stay identical to the triage harness and poller JQL.
+base: https://raw.githubusercontent.com/fullsend-ai/agents/16657d540187b16743c8693dc2ccc40366334430/harness/code.yaml#sha256=60637f213b5b1be33c016d3f1dfbcbde81270ebd9009664860f44a576443101b
+
+trigger: >
+  event.source.system == "jira"
+    && event.entity.kind == "work_item"
+    && "repo:lightspeed-core/lightspeed-stack" in event.state.labels
+    && event.state.labels.filter(label, label.startsWith("repo:")).size() == 1
+    && (
+      (event.transition.kind == "label_changed"
+        && event.transition.label.action == "added"
+        && event.transition.label.name == "ready-to-code")
+      ||
+      (event.transition.kind == "comment_added"
+        && has(event.transition.comment.command)
+        && event.transition.comment.command == "/fs-code")
+    )

@@ -10,12 +10,20 @@ roles:
     - coder
     - review
     - fix
-    - retro:
-        trigger: >
-          event.transition.kind == "comment_added"
-          && has(event.transition.comment.command)
-          && event.transition.comment.command == "/fs-retro"
-          && event.actor.kind == "human"
+    - retro
+agents:
+    # Retro: run only on an explicit /fs-retro comment from a human, not on
+    # every closed PR.
+    - name: retro
+      source: harness/retro.yaml
+    # Triage: UIE Jira-routed overlay (ready-to-triage / /fs-triage, single
+    # repo: label, auto-code handoff disabled).
+    - name: triage
+      source: harness/triage.yaml
+    # Code: UIE Jira-routed overlay (ready-to-code / /fs-code, single repo:
+    # label).
+    - name: code
+      source: harness/code.yaml
 allowed_remote_resources:
     - https://raw.githubusercontent.com/fullsend-ai/fullsend/
     - https://raw.githubusercontent.com/fullsend-ai/agents/
