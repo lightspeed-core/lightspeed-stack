@@ -32,7 +32,6 @@ It is possible to run Lightspeed Core Stack service with OGX "embedded" as a Pyt
     "opentelemetry-exporter-otlp>=1.34.0" \
     "opentelemetry-instrumentation>=0.55b0" \
     "aiosqlite>=0.21.0" \
-    "litellm>=1.72.1" \
     "uvicorn>=0.34.3" \
     "blobfile>=3.0.0" \
     "datasets>=3.6.0" \
@@ -64,7 +63,6 @@ It is possible to run Lightspeed Core Stack service with OGX "embedded" as a Pyt
      + grpcio==1.74.0
      + httpx-sse==0.4.1
      ~ lightspeed-stack==0.2.0 (from file:///tmp/ramdisk/lightspeed-stack)
-     + litellm==1.74.9.post1
      + lxml==6.0.0
      + mcp==1.12.2
      + mpmath==1.3.0

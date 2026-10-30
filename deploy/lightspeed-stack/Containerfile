@@ -23,7 +23,7 @@ USER root
 
 # Install gcc - required by polyleven python package on aarch64
 # (dependency of autoevals, no pre-built binary wheels for linux on aarch64)
-# cmake and cargo are required by fastuuid, maturin
+# cmake and cargo are required for building native extensions
 RUN ${BUILDER_DNF_COMMAND} install -y --nodocs --setopt=keepcache=0 --setopt=tsflags=nodocs gcc gcc-c++ cmake cargo && \
     ${BUILDER_DNF_COMMAND} update -y --nodocs --setopt=keepcache=0 --setopt=tsflags=nodocs --allowerasing
 
