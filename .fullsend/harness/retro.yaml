@@ -1,0 +1,13 @@
+# Retro harness overlay for lightspeed-core/lightspeed-stack
+#
+# Extends the upstream fullsend-ai/agents retro harness (pinned to the v0.51.0
+# commit with a SHA-256 integrity fragment) and restricts dispatch to an
+# explicit /fs-retro comment from a human. By default retro runs on every
+# closed pull request; this overlay makes it opt-in only.
+base: https://raw.githubusercontent.com/fullsend-ai/agents/16657d540187b16743c8693dc2ccc40366334430/harness/retro.yaml#sha256=97771fd79ad7f4095b5fc9d92dc9d447487c19482018d2c9ccce1c4398608fd5
+
+trigger: >-
+  event.transition.kind == "comment_added"
+  && has(event.transition.comment.command)
+  && event.transition.comment.command == "/fs-retro"
+  && event.actor.kind == "human"
