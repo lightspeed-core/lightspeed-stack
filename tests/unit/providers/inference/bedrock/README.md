@@ -4,6 +4,10 @@
 
 Unit tests for the Bedrock inference provider.
 
+## [test_model_discovery.py](test_model_discovery.py)
+
+Unit tests for Bedrock invokable-id resolution.
+
 ## [test_provider.py](test_provider.py)
 
 Unit tests for the Bedrock inference provider.

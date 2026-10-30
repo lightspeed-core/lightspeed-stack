@@ -2,7 +2,7 @@
 
 # pylint: disable=redefined-outer-name,protected-access
 
-from typing import Any
+from typing import Any, Optional
 
 import pytest
 from pydantic_ai.embeddings.bedrock import BedrockEmbeddingModel
@@ -31,6 +31,54 @@ def _entry(**config: Any) -> BedrockInferenceProviderEntry:
             },
         }
     )
+
+
+def _mock_control_plane(
+    mocker: Any,
+    provider: BedrockInferenceProvider,
+    foundations: list[dict[str, Any]],
+    profile_pages: Optional[list[list[dict[str, Any]]]] = None,
+) -> Any:
+    """Stub ListFoundationModels and paginated ListInferenceProfiles."""
+    client = mocker.MagicMock()
+    client.list_foundation_models.return_value = {"modelSummaries": foundations}
+    paginator = mocker.MagicMock()
+    paginator.paginate.return_value = [
+        {"inferenceProfileSummaries": page} for page in (profile_pages or [])
+    ]
+    client.get_paginator.return_value = paginator
+    mocker.patch.object(provider, "_create_bedrock_client", return_value=client)
+    return client
+
+
+def _foundation_summary(
+    model_id: str,
+    *,
+    inference_types: Optional[list[str]] = None,
+    modalities: Optional[list[str]] = None,
+) -> dict[str, Any]:
+    """Build a ListFoundationModels wire summary dict."""
+    summary: dict[str, Any] = {"modelId": model_id}
+    if modalities is not None:
+        summary["outputModalities"] = modalities
+    if inference_types is not None:
+        summary["inferenceTypesSupported"] = inference_types
+    return summary
+
+
+def _profile_summary(
+    profile_id: str,
+    *foundation_model_ids: str,
+    region: str = "us-east-1",
+) -> dict[str, Any]:
+    """Build a ListInferenceProfiles wire summary dict."""
+    return {
+        "inferenceProfileId": profile_id,
+        "models": [
+            {"modelArn": (f"arn:aws:bedrock:{region}::foundation-model/{model_id}")}
+            for model_id in foundation_model_ids
+        ],
+    }
 
 
 def _catalog_model(
@@ -129,33 +177,86 @@ async def test_discover_models_types_and_skips_by_modality(
     mocker: Any,
 ) -> None:
     """Keeps TEXT as llm and EMBEDDING as embedding; skips other modalities."""
-    client = mocker.MagicMock()
-    client.list_foundation_models.return_value = {
-        "modelSummaries": [
-            {
-                "modelId": "anthropic.claude-3-haiku-20240307-v1:0",
-                "outputModalities": ["TEXT"],
-            },
-            {
-                "modelId": "amazon.titan-embed-text-v2:0",
-                "outputModalities": ["EMBEDDING"],
-            },
-            {
-                "modelId": "stability.stable-diffusion-xl-v1",
-                "outputModalities": ["IMAGE"],
-            },
-            {"modelId": "custom-unknown"},
-        ]
-    }
-    mocker.patch.object(provider, "_create_bedrock_client", return_value=client)
+    client = _mock_control_plane(
+        mocker,
+        provider,
+        [
+            _foundation_summary(
+                "nvidia.nemotron-nano-12b-v2",
+                modalities=["TEXT"],
+                inference_types=["ON_DEMAND"],
+            ),
+            _foundation_summary(
+                "amazon.titan-embed-text-v2:0",
+                modalities=["EMBEDDING"],
+                inference_types=["ON_DEMAND"],
+            ),
+            _foundation_summary(
+                "stability.stable-diffusion-xl-v1",
+                modalities=["IMAGE"],
+                inference_types=["ON_DEMAND"],
+            ),
+            _foundation_summary("custom-unknown"),
+        ],
+    )
 
     discovered = await provider._discover_models()
 
     assert [(item.provider_model_id, item.model_type) for item in discovered] == [
-        ("anthropic.claude-3-haiku-20240307-v1:0", "llm"),
+        ("nvidia.nemotron-nano-12b-v2", "llm"),
         ("amazon.titan-embed-text-v2:0", "embedding"),
     ]
     client.list_foundation_models.assert_called_once_with()
+    client.get_paginator.assert_called_once_with("list_inference_profiles")
+    client.get_paginator.return_value.paginate.assert_called_once_with(
+        typeEquals="SYSTEM_DEFINED"
+    )
+
+
+@pytest.mark.asyncio
+async def test_discover_models_remaps_profile_only_and_skips_unusable(
+    provider: BedrockInferenceProvider,
+    mocker: Any,
+) -> None:
+    """Keeps on-demand ids, remaps the first profile, and drops unusable models."""
+    _mock_control_plane(
+        mocker,
+        provider,
+        [
+            _foundation_summary(
+                "amazon.nova-pro-v1:0",
+                modalities=["TEXT"],
+                inference_types=["ON_DEMAND", "INFERENCE_PROFILE"],
+            ),
+            _foundation_summary(
+                "openai.gpt-6-astra",
+                modalities=["TEXT"],
+                inference_types=["INFERENCE_PROFILE"],
+            ),
+            _foundation_summary(
+                "missing.profile-only",
+                modalities=["TEXT"],
+                inference_types=["INFERENCE_PROFILE"],
+            ),
+            _foundation_summary(
+                "amazon.nova-pro-v1:0:300k",
+                modalities=["TEXT"],
+                inference_types=["PROVISIONED"],
+            ),
+            _foundation_summary(
+                "amazon.titan-embed-text-v2:0:8k",
+                modalities=["EMBEDDING"],
+            ),
+        ],
+        [[_profile_summary("us.openai.gpt-6-astra", "openai.gpt-6-astra")]],
+    )
+
+    discovered = await provider._discover_models()
+
+    assert [(item.provider_model_id, item.model_type) for item in discovered] == [
+        ("amazon.nova-pro-v1:0", "llm"),
+        ("us.openai.gpt-6-astra", "llm"),
+    ]
 
 
 def test_create_llm_uses_bedrock_converse_model(
