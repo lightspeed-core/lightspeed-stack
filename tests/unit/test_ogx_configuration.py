@@ -1448,3 +1448,40 @@ def test_build_vector_io_config_rejects_unsupported_rag_type() -> None:
     """Test that an unsupported rag_type raises ValueError."""
     with pytest.raises(ValueError, match="Unsupported rag_type 'remote::chromadb'"):
         _build_vector_io_config("remote::chromadb", "some_backend", {})
+
+
+def test_vector_store_deduplication_resolves_environment_references(
+    monkeypatch: pytest.MonkeyPatch, reference_prefix: str
+) -> None:
+    """Compare resolved store IDs without replacing their deferred references."""
+    monkeypatch.setenv("LCORE_TEST_STORE_ID", "existing-store")
+    reference = f"${{{reference_prefix}LCORE_TEST_STORE_ID}}"
+    existing = {"vector_store_id": reference, "provider_id": "faiss"}
+    config = {"registered_resources": {"vector_stores": [existing]}}
+    byok = [{"rag_id": "kb", "vector_db_id": "existing-store"}]
+
+    stores = construct_vector_stores_section(config, byok)
+
+    assert len(stores) == 1
+    assert stores[0]["vector_store_id"] == reference
+
+
+def test_solr_enrichment_resolves_environment_url_references(
+    monkeypatch: pytest.MonkeyPatch, reference_prefix: str
+) -> None:
+    """Resolve either URL spelling before constructing the Solr endpoint."""
+    monkeypatch.setenv("LCORE_TEST_OKP_URL", "https://okp.example.test")
+    config: dict[str, Any] = {}
+
+    enrich_solr(
+        config,
+        _OKP_RAG_CONFIG,
+        {"rhokp_url": f"${{{reference_prefix}LCORE_TEST_OKP_URL}}"},
+    )
+
+    provider = next(
+        provider
+        for provider in config["providers"]["vector_io"]
+        if provider["provider_id"] == "okp_solr"
+    )
+    assert provider["config"]["solr_url"] == "https://okp.example.test/solr"
