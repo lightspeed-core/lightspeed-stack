@@ -98,11 +98,17 @@ Happy hacking!
 
 ## PR description
 
-* PR titles must start with a JIRA issue key prefix or the target branch of a backport. CI enforces this via
-  `pr-title-checker` (config: `.github/pr-title-checker-config.json`).
-  Allowed prefixes: `LCORE-`, `RSPEED-`, `MGTM-`, `OLS-`, `RHIDP-`, `LEADS-`,
-  `CWFHEALTH-`, `[release/`
-    - for example: `LCORE-740: type hints for models unit tests`
+* PR titles must start with a valid JIRA issue key (project prefix + non-zero issue number) or
+  the target branch of a backport. CI enforces this via `pr-title-checker`
+  (config: `.github/pr-title-checker-config.json`).
+  Allowed project prefixes: `LCORE`, `RSPEED`, `MGTM`, `OLS`, `RHIDP`, `LEADS`,
+  `CWFHEALTH`. The issue number must be a positive integer (e.g. `LCORE-1234`).
+  Placeholder keys like `LCORE-0000` or `LCORE-0` are rejected, as are keys with
+  leading zeros (e.g. `LCORE-0123`). The JIRA key must be followed by a colon or
+  space (e.g. `LCORE-1234: description`). Release branch PRs may use the `[release/`
+  prefix instead.
+    - ✅ `LCORE-740: type hints for models unit tests`
+    - ❌ `LCORE-0000: placeholder key`
 * Fill-in all relevant information in the PR template
     - unused parts of PR template (like information about testing etc.) can be deleted
 * Please note that CodeRabbitAI will create a summary of your pull request
