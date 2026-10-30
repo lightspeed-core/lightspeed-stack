@@ -16,6 +16,7 @@ features/authorized_noop_token.feature
 features/conversations.feature
 features/faiss.feature
 features/opentelemetry.feature
+features/otel_redaction.feature
 features/prompts.feature
 features/query.feature
 features/responses.feature
