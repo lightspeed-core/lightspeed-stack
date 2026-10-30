@@ -1002,6 +1002,9 @@ class TestA2AAgentExecutor:
         )
 
         apply.assert_awaited_once()
+        # The summarization calls are recorded under /a2a. There is no quota
+        # on this endpoint, so no charge is passed (LCORE-3910).
+        assert apply.await_args.kwargs == {"endpoint_path": "/a2a"}
 
     @pytest.mark.asyncio
     async def test_convert_stream_artifact_carries_conversation_id(

@@ -22,6 +22,8 @@ from models.common.turn_summary import (
 )
 from models.database.conversations import UserConversation
 from utils.conversation_compaction import CompactionResult
+from utils.query import consume_summarization_tokens
+from utils.token_counter import TokenCounter
 
 # User ID must be proper UUID
 MOCK_AUTH = (
@@ -230,14 +232,16 @@ class TestQueryEndpointHandler:
         compaction_result = CompactionResult(
             cast("ResponsesApiParams", mock_responses_params),
             compacted=compacted,
+            summarization_usage=TokenCounter(input_tokens=640, output_tokens=72),
         )
-        mocker.patch(
+        apply = mocker.patch(
             "app.endpoints.query.apply_compaction_blocking",
             new=mocker.AsyncMock(return_value=compaction_result),
         )
 
         mock_turn_summary = TurnSummary()
         mock_turn_summary.llm_response = "An answer"
+        mock_turn_summary.token_usage = TokenCounter(input_tokens=3, output_tokens=7)
         mocker.patch(
             "app.endpoints.query.retrieve_agent_response",
             new=mocker.AsyncMock(return_value=mock_turn_summary),
@@ -259,6 +263,14 @@ class TestQueryEndpointHandler:
 
         assert isinstance(response, QueryResponse)
         assert response.context_status == expected_status
+        # The summarization calls are recorded under this endpoint and charged
+        # to the user of the request (LCORE-3910).
+        assert apply.await_args.kwargs["endpoint_path"] == "/v1/query"
+        charge = apply.await_args.kwargs["charge"]
+        assert charge.func is consume_summarization_tokens
+        assert charge.args == (MOCK_AUTH[0],)
+        # The counts the client is told include the summarization calls.
+        assert (response.input_tokens, response.output_tokens) == (643, 79)
 
     @pytest.mark.asyncio
     async def test_query_merges_inline_and_tool_rag_chunks_and_documents(

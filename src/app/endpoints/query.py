@@ -1,6 +1,7 @@
 """Handler for REST API call to provide answer to query using Response API."""
 
 import datetime
+from functools import partial
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request
@@ -50,6 +51,7 @@ from utils.otel_tracing import (
 from utils.pending_turn import pending_turn
 from utils.query import (
     consume_query_tokens,
+    consume_summarization_tokens,
     store_query_results,
     validate_attachments_metadata,
     validate_model_provider_override,
@@ -242,6 +244,8 @@ async def _handle_query_with_tracing(
         cache=configured_conversation_cache(),
         user_id=user_id,
         skip_user_id_check=_skip_userid_check,
+        endpoint_path=endpoint_path,
+        charge=partial(consume_summarization_tokens, user_id),
     )
     responses_params = compaction.params
 
@@ -306,6 +310,9 @@ async def _handle_query_with_tracing(
         model_id=responses_params.model,
         token_usage=turn_summary.token_usage,
     )
+    # The turn reports the summarization calls made for it as part of its
+    # usage. They were charged when they were made.
+    reported_usage = turn_summary.token_usage + compaction.summarization_usage
 
     logger.info("Getting available quotas")
     available_quotas = get_available_quotas(
@@ -351,7 +358,7 @@ async def _handle_query_with_tracing(
         referenced_documents=turn_summary.referenced_documents,
         truncated=False,
         context_status=compaction.context_status,
-        input_tokens=turn_summary.token_usage.input_tokens,
-        output_tokens=turn_summary.token_usage.output_tokens,
+        input_tokens=reported_usage.input_tokens,
+        output_tokens=reported_usage.output_tokens,
         available_quotas=available_quotas,
     )
