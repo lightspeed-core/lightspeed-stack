@@ -24,6 +24,10 @@ Helpers for inferring catalog model types from known model ids.
 
 Singleton registry of initialized inference providers.
 
+## [resolve.py](resolve.py)
+
+Soft-fallback helpers for request-path model resolution.
+
 ## [types.py](types.py)
 
 Shared literals and aliases for the inference provider registry.
