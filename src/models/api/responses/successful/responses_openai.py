@@ -46,6 +46,8 @@ class ResponsesResponse(AbstractSuccessfulResponse):
         parallel_tool_calls: Whether the model can make multiple tool calls in parallel.
         previous_response_id: Identifier of the previous response in a multi-turn
             conversation.
+        prompt_cache_key: Prompt cache key used by providers that support prompt
+            caching.
         prompt: The input prompt object that was sent to the model.
         status: Current status of the response (e.g., "completed", "blocked",
             "in_progress").
@@ -81,6 +83,7 @@ class ResponsesResponse(AbstractSuccessfulResponse):
     output: list[Output]
     parallel_tool_calls: bool = True
     previous_response_id: Optional[str] = None
+    prompt_cache_key: Optional[str] = None
     prompt: Optional[Prompt] = None
     status: str
     temperature: Optional[float] = None
