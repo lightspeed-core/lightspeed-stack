@@ -1,0 +1,92 @@
+name: fullsend Jira poll
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch: {}
+
+permissions:
+  actions: write
+  contents: write
+  id-token: write
+  issues: write
+  packages: read
+  pull-requests: write
+
+jobs:
+  poll:
+    # UIE: permit manual validation before enabling scheduled polling.
+    if: github.event_name == 'workflow_dispatch' || vars.FULLSEND_JIRA_POLL_ENABLED == 'true'
+    runs-on: ubuntu-24.04
+    concurrency:
+      group: fullsend-jira-poll
+      cancel-in-progress: false
+    outputs:
+      matrix: ${{ steps.build-matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install fullsend
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # UIE: poll with the same tested CLI release as the harness jobs.
+          gh release download v0.51.0 --repo fullsend-ai/fullsend \
+            -p 'fullsend_*_linux_amd64.tar.gz' -O - | tar xz
+          sudo mv fullsend /usr/local/bin/
+
+      - name: Poll Jira
+        env:
+          JIRA_TOKEN: ${{ secrets.JIRA_TOKEN }}
+          JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
+          JIRA_BASE_URL: ${{ vars.JIRA_BASE_URL }}
+          TARGET_REPO: ${{ github.repository }}
+        run: |
+          fullsend poll \
+            --input-driver jira-poll \
+            --jira-url "${JIRA_BASE_URL}" \
+            --jira-project LCORE \
+            --jql 'project = LCORE AND labels = "repo:lightspeed-core/lightspeed-stack" AND statusCategory != Done ORDER BY updated DESC' \
+            --target-repo "${TARGET_REPO}" \
+            --output dispatches.json \
+            --fullsend-dir .fullsend
+
+      - name: Build dispatch matrix
+        id: build-matrix
+        run: |
+          set -euo pipefail
+          if ! jq -e 'length > 0' dispatches.json > /dev/null 2>&1; then
+            echo "No dispatches."
+            echo 'matrix={"include":[]}' >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+          MATRIX=$(jq -c '{include: .}' dispatches.json)
+          DELIM="MATRIX_$(openssl rand -hex 8)"
+          {
+            echo "matrix<<${DELIM}"
+            printf '%s' "${MATRIX}"
+            echo
+            echo "${DELIM}"
+          } >> "${GITHUB_OUTPUT}"
+
+  harness:
+    name: Harness
+    needs: poll
+    # UIE: use the same tested Fullsend release as the poller CLI.
+    # Higher assurance: @-suffix pinned to the release commit SHA for v0.51.0,
+    # matching the installed shim workflow (.github/workflows/fullsend.yaml).
+    uses: fullsend-ai/fullsend/.github/workflows/reusable-dispatch.yml@f3b9d9869483093802aeb000f1d931880c9a48b5  # v0.51.0
+    with:
+      matrix: ${{ needs.poll.outputs.matrix }}
+      mint_url: ${{ vars.FULLSEND_MINT_URL }}
+      gcp_region: ${{ vars.FULLSEND_GCP_REGION }}
+      jira_base_url: ${{ vars.JIRA_BASE_URL }}
+      # UIE: explicitly align the agent-run CLI with the poller CLI.
+      fullsend_version: v0.51.0
+    secrets:
+      FULLSEND_GCP_WIF_PROVIDER: ${{ secrets.FULLSEND_GCP_WIF_PROVIDER }}
+      FULLSEND_GCP_PROJECT_ID: ${{ secrets.FULLSEND_GCP_PROJECT_ID }}
+      OTEL_EXPORTER_OTLP_TRACES_HEADERS: ${{ secrets.OTEL_EXPORTER_OTLP_TRACES_HEADERS }}
+      OTEL_EXPORTER_OTLP_HEADERS: ${{ secrets.OTEL_EXPORTER_OTLP_HEADERS }}
+      JIRA_TOKEN: ${{ secrets.JIRA_TOKEN }}
+      JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
