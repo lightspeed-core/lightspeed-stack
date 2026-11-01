@@ -36,6 +36,10 @@ Integration tests for conversation compaction in the responses endpoint.
 
 Integration tests for conversation compaction in the streaming_query endpoint.
 
+## [test_compaction_token_usage.py](test_compaction_token_usage.py)
+
+Integration tests for the quota charge of the summarization calls (LCORE-3910).
+
 ## [test_config_integration.py](test_config_integration.py)
 
 Integration tests for the /config endpoint.

@@ -16,3 +16,7 @@ Unit tests for knowledge.reranker.
 
 Unit tests for knowledge.search.
 
+## [test_utils.py](test_utils.py)
+
+Unit tests for knowledge.utils message-history helpers.
+
