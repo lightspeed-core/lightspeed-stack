@@ -4,3 +4,7 @@
 
 vLLM inference provider package.
 
+## [provider.py](provider.py)
+
+vLLM runtime inference provider backed by Pydantic AI.
+

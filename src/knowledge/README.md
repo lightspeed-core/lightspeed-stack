@@ -20,3 +20,7 @@ Concurrent multi-source knowledge search with optional cross-encoder reranking.
 
 Shared types for knowledge capability.
 
+## [utils.py](utils.py)
+
+Shared helpers for reading and editing the current model request's messages.
+

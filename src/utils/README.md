@@ -20,6 +20,10 @@ Common utilities for the project.
 
 Conversation compaction — partitioning, summarization, additive fold-up.
 
+## [compaction_usage.py](compaction_usage.py)
+
+Accounting for the LLM calls conversation compaction makes (LCORE-3910).
+
 ## [connection_decorator.py](connection_decorator.py)
 
 Decorator that makes sure the object is 'connected' according to it's connected predicate.
