@@ -43,14 +43,19 @@ def recursive_update(
         ):
             # only the first type is correct,
             # we need to ignore the second one
-            val = value[0]["type"]
-            new["type"] = val
+            first_item = value[0]
+            new["type"] = first_item["type"]
+            # preserve all other constraints from the first item
+            for k, v in first_item.items():
+                if k != "type":
+                    new[k] = recursive_update(v) if isinstance(v, dict) else v
             # create new attribute
             new["nullable"] = True
         # exclusiveMinimum attribute handling is broken
         # in Pydantic - this is simple fix
         elif key == "exclusiveMinimum":
             new["minimum"] = value
+            new["exclusiveMinimum"] = True
         else:
             new[key] = value
     return new

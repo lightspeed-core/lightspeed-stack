@@ -11,6 +11,9 @@
                 "properties": {
                     "tool_names": {
                         "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
                         "nullable": true,
                         "default": null,
                         "title": "Tool Names"
@@ -24,12 +27,18 @@
                 "properties": {
                     "always": {
                         "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
                         "nullable": true,
                         "default": null,
                         "title": "Always"
                     },
                     "never": {
                         "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
                         "nullable": true,
                         "default": null,
                         "title": "Never"
@@ -214,6 +223,7 @@
                     },
                     "user_feedback": {
                         "type": "string",
+                        "maxLength": 4096,
                         "nullable": true,
                         "default": null,
                         "description": "Feedback on the LLM response.",
@@ -224,6 +234,16 @@
                     },
                     "categories": {
                         "type": "array",
+                        "items": {
+                            "anyOf": [
+                                {
+                                    "$ref": "`#/components/schemas/`FeedbackCategory"
+                                },
+                                {
+                                    "$ref": "`#/components/schemas/`PositiveFeedbackCategory"
+                                }
+                            ]
+                        },
                         "nullable": true,
                         "default": null,
                         "description": "List of positive or negative feedback categories.",
@@ -305,6 +325,7 @@
                     },
                     "headers": {
                         "type": "object",
+                        "additionalProperties": true,
                         "nullable": true,
                         "default": null,
                         "title": "Headers"
@@ -448,6 +469,9 @@
                     },
                     "authorization_headers": {
                         "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        },
                         "nullable": true,
                         "default": null,
                         "description": "Headers to send to the MCP server. Values must be one of the supported token resolution keywords: 'client' - forward the caller's token provided via MCP-HEADERS, 'kubernetes' - use the authenticated user's Kubernetes token, 'oauth' - use an OAuth token provided via MCP-HEADERS. File-path based secrets (used in static YAML config) are not supported for dynamically registered servers.",
@@ -466,6 +490,9 @@
                     },
                     "headers": {
                         "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
                         "nullable": true,
                         "default": null,
                         "description": "List of HTTP header names to forward from incoming requests",
@@ -478,6 +505,7 @@
                     },
                     "timeout": {
                         "type": "integer",
+                        "exclusiveMinimum": 0,
                         "nullable": true,
                         "default": null,
                         "description": "Request timeout in seconds for the MCP server",
@@ -999,12 +1027,15 @@
                     },
                     "filters": {
                         "type": "object",
+                        "additionalProperties": true,
                         "nullable": true,
                         "default": null,
                         "title": "Filters"
                     },
                     "max_num_results": {
                         "type": "integer",
+                        "maximum": 50,
+                        "minimum": 1,
                         "nullable": true,
                         "default": 10,
                         "title": "Max Num Results"
@@ -1048,6 +1079,7 @@
                     },
                     "parameters": {
                         "type": "object",
+                        "additionalProperties": true,
                         "nullable": true,
                         "title": "Parameters"
                     },
@@ -1092,6 +1124,11 @@
                     },
                     "search_context_size": {
                         "type": "string",
+                        "enum": [
+                            "low",
+                            "medium",
+                            "high"
+                        ],
                         "nullable": true,
                         "default": null,
                         "title": "Search Context Size"
@@ -1340,6 +1377,9 @@
                     },
                     "logprobs": {
                         "type": "array",
+                        "items": {
+                            "$ref": "`#/components/schemas/`OpenAITokenLogProb"
+                        },
                         "nullable": true,
                         "default": null,
                         "title": "Logprobs"
@@ -1377,6 +1417,9 @@
                     },
                     "results": {
                         "type": "array",
+                        "items": {
+                            "$ref": "`#/components/schemas/`OpenAIResponseOutputMessageFileSearchToolCallResults"
+                        },
                         "nullable": true,
                         "default": null,
                         "title": "Results"
@@ -1594,6 +1637,9 @@
                     },
                     "content": {
                         "type": "array",
+                        "items": {
+                            "$ref": "`#/components/schemas/`OpenAIResponseOutputMessageReasoningContent"
+                        },
                         "nullable": true,
                         "default": null,
                         "description": "The reasoning content from the model.",
@@ -1601,6 +1647,11 @@
                     },
                     "status": {
                         "type": "string",
+                        "enum": [
+                            "in_progress",
+                            "completed",
+                            "incomplete"
+                        ],
                         "nullable": true,
                         "default": null,
                         "description": "The status of the reasoning output.",
@@ -1688,6 +1739,27 @@
                     },
                     "variables": {
                         "type": "object",
+                        "additionalProperties": {
+                            "discriminator": {
+                                "mapping": {
+                                    "input_file": "`#/components/schemas/`OpenAIResponseInputMessageContentFile",
+                                    "input_image": "`#/components/schemas/`OpenAIResponseInputMessageContentImage",
+                                    "input_text": "`#/components/schemas/`OpenAIResponseInputMessageContentText"
+                                },
+                                "propertyName": "type"
+                            },
+                            "oneOf": [
+                                {
+                                    "$ref": "`#/components/schemas/`OpenAIResponseInputMessageContentText"
+                                },
+                                {
+                                    "$ref": "`#/components/schemas/`OpenAIResponseInputMessageContentImage"
+                                },
+                                {
+                                    "$ref": "`#/components/schemas/`OpenAIResponseInputMessageContentFile"
+                                }
+                            ]
+                        },
                         "nullable": true,
                         "default": null,
                         "title": "Variables"
@@ -1710,12 +1782,25 @@
                 "properties": {
                     "effort": {
                         "type": "string",
+                        "enum": [
+                            "none",
+                            "minimal",
+                            "low",
+                            "medium",
+                            "high",
+                            "xhigh"
+                        ],
                         "nullable": true,
                         "default": null,
                         "title": "Effort"
                     },
                     "generate_summary": {
                         "type": "string",
+                        "enum": [
+                            "auto",
+                            "concise",
+                            "detailed"
+                        ],
                         "nullable": true,
                         "default": null,
                         "deprecated": true,
@@ -1724,6 +1809,11 @@
                     },
                     "summary": {
                         "type": "string",
+                        "enum": [
+                            "auto",
+                            "concise",
+                            "detailed"
+                        ],
                         "nullable": true,
                         "default": null,
                         "description": "Summary mode for reasoning output. One of 'auto', 'concise', or 'detailed'.",
@@ -1749,6 +1839,11 @@
                     },
                     "verbosity": {
                         "type": "string",
+                        "enum": [
+                            "low",
+                            "medium",
+                            "high"
+                        ],
                         "nullable": true,
                         "default": "medium",
                         "title": "Verbosity"
@@ -1784,6 +1879,7 @@
                     },
                     "schema": {
                         "type": "object",
+                        "additionalProperties": true,
                         "nullable": true,
                         "title": "Schema"
                     },
@@ -1811,6 +1907,9 @@
                     },
                     "bytes": {
                         "type": "array",
+                        "items": {
+                            "type": "integer"
+                        },
                         "nullable": true,
                         "default": null,
                         "description": "The bytes for the token.",
@@ -1823,6 +1922,9 @@
                     },
                     "top_logprobs": {
                         "type": "array",
+                        "items": {
+                            "$ref": "`#/components/schemas/`OpenAITopLogProb"
+                        },
                         "nullable": true,
                         "default": null,
                         "description": "The top log probabilities for the token.",
@@ -1846,6 +1948,9 @@
                     },
                     "bytes": {
                         "type": "array",
+                        "items": {
+                            "type": "integer"
+                        },
                         "nullable": true,
                         "default": null,
                         "description": "The bytes for the token.",
@@ -1900,6 +2005,9 @@
                     },
                     "variables": {
                         "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
                         "nullable": true,
                         "default": null,
                         "description": "Variable names allowed in the template",
@@ -1946,6 +2054,7 @@
                             1
                         ],
                         "minimum": 0,
+                        "exclusiveMinimum": true,
                         "title": "Version",
                         "type": "integer"
                     },
@@ -1961,6 +2070,9 @@
                     },
                     "variables": {
                         "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
                         "nullable": true,
                         "default": null,
                         "description": "Updated allowed variable names",
@@ -2067,6 +2179,9 @@
                     },
                     "attachments": {
                         "type": "array",
+                        "items": {
+                            "$ref": "`#/components/schemas/`Attachment"
+                        },
                         "nullable": true,
                         "default": null,
                         "description": "The optional list of attachments.",
@@ -2124,6 +2239,9 @@
                     },
                     "vector_store_ids": {
                         "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
                         "nullable": true,
                         "default": null,
                         "description": "Optional list of specific vector store IDs to query for RAG. If not provided, all available vector stores will be queried.",
@@ -2136,6 +2254,9 @@
                     },
                     "shield_ids": {
                         "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
                         "nullable": true,
                         "default": null,
                         "description": "Optional list of configured shield names to apply. If None, all configured shields are used.",
@@ -2261,6 +2382,9 @@
                     },
                     "include": {
                         "type": "array",
+                        "items": {
+                            "$ref": "`#/components/schemas/`IncludeParameter"
+                        },
                         "nullable": true,
                         "default": null,
                         "title": "Include"
@@ -2291,6 +2415,9 @@
                     },
                     "metadata": {
                         "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        },
                         "nullable": true,
                         "default": null,
                         "title": "Metadata"
@@ -2418,6 +2545,34 @@
                     },
                     "tools": {
                         "type": "array",
+                        "items": {
+                            "discriminator": {
+                                "mapping": {
+                                    "file_search": "`#/components/schemas/`OpenAIResponseInputToolFileSearch",
+                                    "function": "`#/components/schemas/`OpenAIResponseInputToolFunction",
+                                    "mcp": "`#/components/schemas/`InputToolMCP",
+                                    "web_search": "`#/components/schemas/`OpenAIResponseInputToolWebSearch",
+                                    "web_search_2025_08_26": "`#/components/schemas/`OpenAIResponseInputToolWebSearch",
+                                    "web_search_preview": "`#/components/schemas/`OpenAIResponseInputToolWebSearch",
+                                    "web_search_preview_2025_03_11": "`#/components/schemas/`OpenAIResponseInputToolWebSearch"
+                                },
+                                "propertyName": "type"
+                            },
+                            "oneOf": [
+                                {
+                                    "$ref": "`#/components/schemas/`OpenAIResponseInputToolWebSearch"
+                                },
+                                {
+                                    "$ref": "`#/components/schemas/`OpenAIResponseInputToolFileSearch"
+                                },
+                                {
+                                    "$ref": "`#/components/schemas/`OpenAIResponseInputToolFunction"
+                                },
+                                {
+                                    "$ref": "`#/components/schemas/`InputToolMCP"
+                                }
+                            ]
+                        },
                         "nullable": true,
                         "default": null,
                         "title": "Tools"
@@ -2430,6 +2585,9 @@
                     },
                     "shield_ids": {
                         "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
                         "nullable": true,
                         "default": null,
                         "title": "Shield Ids"
@@ -2708,6 +2866,8 @@
                     },
                     "alpha": {
                         "type": "number",
+                        "maximum": 1.0,
+                        "minimum": 0.0,
                         "nullable": true,
                         "default": null,
                         "description": "Weight factor for weighted ranker",
@@ -2715,6 +2875,7 @@
                     },
                     "impact_factor": {
                         "type": "number",
+                        "exclusiveMinimum": 0.0,
                         "nullable": true,
                         "default": null,
                         "description": "Impact factor for RRF algorithm",
@@ -2722,6 +2883,9 @@
                     },
                     "weights": {
                         "type": "object",
+                        "additionalProperties": {
+                            "type": "number"
+                        },
                         "nullable": true,
                         "default": null,
                         "description": "Weights for combining vector, keyword, and neural scores. Keys: 'vector', 'keyword', 'neural'",
@@ -2744,6 +2908,12 @@
                 "properties": {
                     "mode": {
                         "type": "string",
+                        "enum": [
+                            "semantic",
+                            "hybrid",
+                            "lexical",
+                            "keyword"
+                        ],
                         "nullable": true,
                         "default": null,
                         "description": "Solr vector_io search mode. When omitted, the configured OKP default is used; otherwise 'hybrid' applies. 'keyword' and 'lexical' both use BM25 text search.",
@@ -2757,6 +2927,7 @@
                     },
                     "filters": {
                         "type": "object",
+                        "additionalProperties": true,
                         "nullable": true,
                         "default": null,
                         "description": "Solr provider filter payload passed through as params['solr']. Supports structured metadata filters (eq, ne, in, nin comparison operators). Legacy filter-only objects (e.g. fq) are still accepted.",
@@ -2862,6 +3033,7 @@
                     },
                     "embedding_dimension": {
                         "type": "integer",
+                        "exclusiveMinimum": 0,
                         "nullable": true,
                         "default": null,
                         "description": "Dimension of the embedding vectors",
@@ -2872,6 +3044,7 @@
                     },
                     "chunking_strategy": {
                         "type": "object",
+                        "additionalProperties": true,
                         "nullable": true,
                         "default": null,
                         "description": "Chunking strategy configuration",
@@ -2896,6 +3069,7 @@
                     },
                     "metadata": {
                         "type": "object",
+                        "additionalProperties": true,
                         "nullable": true,
                         "default": null,
                         "description": "Metadata dictionary for storing session information",
@@ -2941,6 +3115,19 @@
                     },
                     "attributes": {
                         "type": "object",
+                        "additionalProperties": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "number"
+                                },
+                                {
+                                    "type": "boolean"
+                                }
+                            ]
+                        },
                         "nullable": true,
                         "default": null,
                         "description": "Set of up to 16 key-value pairs for storing additional information. Keys: strings (max 64 chars). Values: strings (max 512 chars), booleans, or numbers.",
@@ -2954,6 +3141,7 @@
                     },
                     "chunking_strategy": {
                         "type": "object",
+                        "additionalProperties": true,
                         "nullable": true,
                         "default": null,
                         "description": "Chunking strategy configuration for this file",
@@ -2988,6 +3176,8 @@
                 "properties": {
                     "name": {
                         "type": "string",
+                        "maxLength": 256,
+                        "minLength": 1,
                         "nullable": true,
                         "default": null,
                         "description": "New name for the vector store",
@@ -2998,6 +3188,7 @@
                     },
                     "expires_at": {
                         "type": "integer",
+                        "exclusiveMinimum": 0,
                         "nullable": true,
                         "default": null,
                         "description": "Unix timestamp when the vector store should expire",
@@ -3008,6 +3199,7 @@
                     },
                     "metadata": {
                         "type": "object",
+                        "additionalProperties": true,
                         "nullable": true,
                         "default": null,
                         "description": "Metadata dictionary for storing session information",
@@ -3082,12 +3274,18 @@
                     },
                     "queries": {
                         "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
                         "nullable": true,
                         "default": null,
                         "title": "Queries"
                     },
                     "sources": {
                         "type": "array",
+                        "items": {
+                            "$ref": "`#/components/schemas/`WebSearchSource"
+                        },
                         "nullable": true,
                         "default": null,
                         "title": "Sources"
@@ -3104,6 +3302,9 @@
                 "properties": {
                     "allowed_domains": {
                         "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
                         "nullable": true,
                         "default": null,
                         "title": "Allowed Domains"

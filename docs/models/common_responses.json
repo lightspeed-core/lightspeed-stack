@@ -1,0 +1,2110 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "Lightspeed Core Stack",
+        "version": "0.3.0"
+    },
+    "components": {
+        "schemas": {
+            "AllowedToolsFilter": {
+                "description": "Filter configuration for restricting which MCP tools can be used.\n\n:param tool_names: (Optional) List of specific tool names that are allowed",
+                "properties": {
+                    "tool_names": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "nullable": true,
+                        "default": null,
+                        "title": "Tool Names"
+                    }
+                },
+                "title": "AllowedToolsFilter",
+                "type": "object"
+            },
+            "ApprovalFilter": {
+                "description": "Filter configuration for MCP tool approval requirements.\n\n:param always: (Optional) List of tool names that always require approval\n:param never: (Optional) List of tool names that never require approval",
+                "properties": {
+                    "always": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "nullable": true,
+                        "default": null,
+                        "title": "Always"
+                    },
+                    "never": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "nullable": true,
+                        "default": null,
+                        "title": "Never"
+                    }
+                },
+                "title": "ApprovalFilter",
+                "type": "object"
+            },
+            "IncludeParameter": {
+                "enum": [
+                    "web_search_call.action.sources",
+                    "code_interpreter_call.outputs",
+                    "computer_call_output.output.image_url",
+                    "file_search_call.results",
+                    "message.input_image.image_url",
+                    "message.output_text.logprobs"
+                ],
+                "type": "string"
+            },
+            "InputToolMCP": {
+                "description": "MCP input tool with authorization included when serializing request bodies.",
+                "properties": {
+                    "type": {
+                        "const": "mcp",
+                        "default": "mcp",
+                        "title": "Type",
+                        "type": "string"
+                    },
+                    "server_label": {
+                        "title": "Server Label",
+                        "type": "string"
+                    },
+                    "connector_id": {
+                        "type": "string",
+                        "nullable": true,
+                        "default": null,
+                        "title": "Connector Id"
+                    },
+                    "server_url": {
+                        "type": "string",
+                        "nullable": true,
+                        "default": null,
+                        "title": "Server Url"
+                    },
+                    "headers": {
+                        "type": "object",
+                        "additionalProperties": true,
+                        "nullable": true,
+                        "default": null,
+                        "title": "Headers"
+                    },
+                    "authorization": {
+                        "type": "string",
+                        "nullable": true,
+                        "default": null,
+                        "title": "Authorization"
+                    },
+                    "require_approval": {
+                        "anyOf": [
+                            {
+                                "const": "always",
+                                "type": "string"
+                            },
+                            {
+                                "const": "never",
+                                "type": "string"
+                            },
+                            {
+                                "$ref": "`#/components/schemas/`ApprovalFilter"
+                            }
+                        ],
+                        "default": "never",
+                        "title": "Require Approval"
+                    },
+                    "allowed_tools": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "$ref": "`#/components/schemas/`AllowedToolsFilter"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "default": null,
+                        "title": "Allowed Tools"
+                    }
+                },
+                "required": [
+                    "server_label"
+                ],
+                "title": "InputToolMCP",
+                "type": "object"
+            },
+            "MCPListToolsTool": {
+                "description": "Tool definition returned by MCP list tools operation.\n\n:param input_schema: JSON schema defining the tool's input parameters\n:param name: Name of the tool\n:param description: (Optional) Description of what the tool does",
+                "properties": {
+                    "input_schema": {
+                        "additionalProperties": true,
+                        "title": "Input Schema",
+                        "type": "object"
+                    },
+                    "name": {
+                        "title": "Name",
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string",
+                        "nullable": true,
+                        "default": null,
+                        "title": "Description"
+                    }
+                },
+                "required": [
+                    "input_schema",
+                    "name"
+                ],
+                "title": "MCPListToolsTool",
+                "type": "object"
+            },
+            "OpenAIResponseAnnotationCitation": {
+                "description": "URL citation annotation for referencing external web resources.\n\n:param type: Annotation type identifier, always \"url_citation\"\n:param end_index: End position of the citation span in the content\n:param start_index: Start position of the citation span in the content\n:param title: Title of the referenced web resource\n:param url: URL of the referenced web resource",
+                "properties": {
+                    "type": {
+                        "const": "url_citation",
+                        "default": "url_citation",
+                        "title": "Type",
+                        "type": "string"
+                    },
+                    "end_index": {
+                        "title": "End Index",
+                        "type": "integer"
+                    },
+                    "start_index": {
+                        "title": "Start Index",
+                        "type": "integer"
+                    },
+                    "title": {
+                        "title": "Title",
+                        "type": "string"
+                    },
+                    "url": {
+                        "title": "Url",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "end_index",
+                    "start_index",
+                    "title",
+                    "url"
+                ],
+                "title": "OpenAIResponseAnnotationCitation",
+                "type": "object"
+            },
+            "OpenAIResponseAnnotationContainerFileCitation": {
+                "description": "Container file citation annotation referencing a file within a container.",
+                "properties": {
+                    "type": {
+                        "const": "container_file_citation",
+                        "default": "container_file_citation",
+                        "title": "Type",
+                        "type": "string"
+                    },
+                    "container_id": {
+                        "title": "Container Id",
+                        "type": "string"
+                    },
+                    "end_index": {
+                        "title": "End Index",
+                        "type": "integer"
+                    },
+                    "file_id": {
+                        "title": "File Id",
+                        "type": "string"
+                    },
+                    "filename": {
+                        "title": "Filename",
+                        "type": "string"
+                    },
+                    "start_index": {
+                        "title": "Start Index",
+                        "type": "integer"
+                    }
+                },
+                "required": [
+                    "container_id",
+                    "end_index",
+                    "file_id",
+                    "filename",
+                    "start_index"
+                ],
+                "title": "OpenAIResponseAnnotationContainerFileCitation",
+                "type": "object"
+            },
+            "OpenAIResponseAnnotationFileCitation": {
+                "description": "File citation annotation for referencing specific files in response content.\n\n:param type: Annotation type identifier, always \"file_citation\"\n:param file_id: Unique identifier of the referenced file\n:param filename: Name of the referenced file\n:param index: Position index of the citation within the content",
+                "properties": {
+                    "type": {
+                        "const": "file_citation",
+                        "default": "file_citation",
+                        "title": "Type",
+                        "type": "string"
+                    },
+                    "file_id": {
+                        "title": "File Id",
+                        "type": "string"
+                    },
+                    "filename": {
+                        "title": "Filename",
+                        "type": "string"
+                    },
+                    "index": {
+                        "title": "Index",
+                        "type": "integer"
+                    }
+                },
+                "required": [
+                    "file_id",
+                    "filename",
+                    "index"
+                ],
+                "title": "OpenAIResponseAnnotationFileCitation",
+                "type": "object"
+            },
+            "OpenAIResponseAnnotationFilePath": {
+                "description": "File path annotation referencing a generated file in response content.",
+                "properties": {
+                    "type": {
+                        "const": "file_path",
+                        "default": "file_path",
+                        "title": "Type",
+                        "type": "string"
+                    },
+                    "file_id": {
+                        "title": "File Id",
+                        "type": "string"
+                    },
+                    "index": {
+                        "title": "Index",
+                        "type": "integer"
+                    }
+                },
+                "required": [
+                    "file_id",
+                    "index"
+                ],
+                "title": "OpenAIResponseAnnotationFilePath",
+                "type": "object"
+            },
+            "OpenAIResponseContentPartRefusal": {
+                "description": "Refusal content within a streamed response part.\n\n:param type: Content part type identifier, always \"refusal\"\n:param refusal: Refusal text supplied by the model",
+                "properties": {
+                    "type": {
+                        "const": "refusal",
+                        "default": "refusal",
+                        "title": "Type",
+                        "type": "string"
+                    },
+                    "refusal": {
+                        "title": "Refusal",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "refusal"
+                ],
+                "title": "OpenAIResponseContentPartRefusal",
+                "type": "object"
+            },
+            "OpenAIResponseInputFunctionToolCallOutput": {
+                "description": "This represents the output of a function call that gets passed back to the model.",
+                "properties": {
+                    "call_id": {
+                        "title": "Call Id",
+                        "type": "string"
+                    },
+                    "output": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "items": {
+                                    "discriminator": {
+                                        "mapping": {
+                                            "input_file": "`#/components/schemas/`OpenAIResponseInputMessageContentFile",
+                                            "input_image": "`#/components/schemas/`OpenAIResponseInputMessageContentImage",
+                                            "input_text": "`#/components/schemas/`OpenAIResponseInputMessageContentText"
+                                        },
+                                        "propertyName": "type"
+                                    },
+                                    "oneOf": [
+                                        {
+                                            "$ref": "`#/components/schemas/`OpenAIResponseInputMessageContentText"
+                                        },
+                                        {
+                                            "$ref": "`#/components/schemas/`OpenAIResponseInputMessageContentImage"
+                                        },
+                                        {
+                                            "$ref": "`#/components/schemas/`OpenAIResponseInputMessageContentFile"
+                                        }
+                                    ]
+                                },
+                                "type": "array"
+                            }
+                        ],
+                        "title": "Output"
+                    },
+                    "type": {
+                        "const": "function_call_output",
+                        "default": "function_call_output",
+                        "title": "Type",
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string",
+                        "nullable": true,
+                        "default": null,
+                        "title": "Id"
+                    },
+                    "status": {
+                        "type": "string",
+                        "nullable": true,
+                        "default": null,
+                        "title": "Status"
+                    }
+                },
+                "required": [
+                    "call_id",
+                    "output"
+                ],
+                "title": "OpenAIResponseInputFunctionToolCallOutput",
+                "type": "object"
+            },
+            "OpenAIResponseInputMessageContentFile": {
+                "description": "File content for input messages in OpenAI response format.\n\n:param type: The type of the input item. Always `input_file`.\n:param file_data: The data of the file to be sent to the model.\n:param file_id: (Optional) The ID of the file to be sent to the model.\n:param file_url: The URL of the file to be sent to the model.\n:param filename: The name of the file to be sent to the model.",
+                "properties": {
+                    "type": {
+                        "const": "input_file",
+                        "default": "input_file",
+                        "title": "Type",
+                        "type": "string"
+                    },
+                    "file_data": {
+                        "type": "string",
+                        "nullable": true,
+                        "default": null,
+                        "title": "File Data"
+                    },
+                    "file_id": {
+                        "type": "string",
+                        "nullable": true,
+                        "default": null,
+                        "title": "File Id"
+                    },
+                    "file_url": {
+                        "type": "string",
+                        "nullable": true,
+                        "default": null,
+                        "title": "File Url"
+                    },
+                    "filename": {
+                        "type": "string",
+                        "nullable": true,
+                        "default": null,
+                        "title": "Filename"
+                    }
+                },
+                "title": "OpenAIResponseInputMessageContentFile",
+                "type": "object"
+            },
+            "OpenAIResponseInputMessageContentImage": {
+                "description": "Image content for input messages in OpenAI response format.\n\n:param detail: Level of detail for image processing, can be \"low\", \"high\", or \"auto\"\n:param type: Content type identifier, always \"input_image\"\n:param file_id: (Optional) The ID of the file to be sent to the model.\n:param image_url: (Optional) URL of the image content",
+                "properties": {
+                    "detail": {
+                        "anyOf": [
+                            {
+                                "const": "low",
+                                "type": "string"
+                            },
+                            {
+                                "const": "high",
+                                "type": "string"
+                            },
+                            {
+                                "const": "auto",
+                                "type": "string"
+                            }
+                        ],
+                        "default": "auto",
+                        "title": "Detail"
+                    },
+                    "type": {
+                        "const": "input_image",
+                        "default": "input_image",
+                        "title": "Type",
+                        "type": "string"
+                    },
+                    "file_id": {
+                        "type": "string",
+                        "nullable": true,
+                        "default": null,
+                        "title": "File Id"
+                    },
+                    "image_url": {
+                        "type": "string",
+                        "nullable": true,
+                        "default": null,
+                        "title": "Image Url"
+                    }
+                },
+                "title": "OpenAIResponseInputMessageContentImage",
+                "type": "object"
+            },
+            "OpenAIResponseInputMessageContentText": {
+                "description": "Text content for input messages in OpenAI response format.\n\n:param text: The text content of the input message\n:param type: Content type identifier, always \"input_text\"",
+                "properties": {
+                    "text": {
+                        "title": "Text",
+                        "type": "string"
+                    },
+                    "type": {
+                        "const": "input_text",
+                        "default": "input_text",
+                        "title": "Type",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "text"
+                ],
+                "title": "OpenAIResponseInputMessageContentText",
+                "type": "object"
+            },
+            "OpenAIResponseInputToolChoiceAllowedTools": {
+                "description": "Constrains the tools available to the model to a pre-defined set.\n\n:param mode: Constrains the tools available to the model to a pre-defined set\n:param tools: A list of tool definitions that the model should be allowed to call\n:param type: Tool choice type identifier, always \"allowed_tools\"",
+                "properties": {
+                    "mode": {
+                        "default": "auto",
+                        "enum": [
+                            "auto",
+                            "required"
+                        ],
+                        "title": "Mode",
+                        "type": "string"
+                    },
+                    "tools": {
+                        "items": {
+                            "additionalProperties": {
+                                "type": "string"
+                            },
+                            "type": "object"
+                        },
+                        "title": "Tools",
+                        "type": "array"
+                    },
+                    "type": {
+                        "const": "allowed_tools",
+                        "default": "allowed_tools",
+                        "title": "Type",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "tools"
+                ],
+                "title": "OpenAIResponseInputToolChoiceAllowedTools",
+                "type": "object"
+            },
+            "OpenAIResponseInputToolChoiceCustomTool": {
+                "description": "Forces the model to call a custom tool.\n\n:param type: Tool choice type identifier, always \"custom\"\n:param name: The name of the custom tool to call.",
+                "properties": {
+                    "type": {
+                        "const": "custom",
+                        "default": "custom",
+                        "title": "Type",
+                        "type": "string"
+                    },
+                    "name": {
+                        "title": "Name",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "name"
+                ],
+                "title": "OpenAIResponseInputToolChoiceCustomTool",
+                "type": "object"
+            },
+            "OpenAIResponseInputToolChoiceFileSearch": {
+                "description": "Indicates that the model should use file search to generate a response.\n\n:param type: Tool choice type identifier, always \"file_search\"",
+                "properties": {
+                    "type": {
+                        "const": "file_search",
+                        "default": "file_search",
+                        "title": "Type",
+                        "type": "string"
+                    }
+                },
+                "title": "OpenAIResponseInputToolChoiceFileSearch",
+                "type": "object"
+            },
+            "OpenAIResponseInputToolChoiceFunctionTool": {
+                "description": "Forces the model to call a specific function.\n\n:param name: The name of the function to call\n:param type: Tool choice type identifier, always \"function\"",
+                "properties": {
+                    "name": {
+                        "title": "Name",
+                        "type": "string"
+                    },
+                    "type": {
+                        "const": "function",
+                        "default": "function",
+                        "title": "Type",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "name"
+                ],
+                "title": "OpenAIResponseInputToolChoiceFunctionTool",
+                "type": "object"
+            },
+            "OpenAIResponseInputToolChoiceMCPTool": {
+                "description": "Forces the model to call a specific tool on a remote MCP server\n\n:param server_label: The label of the MCP server to use.\n:param type: Tool choice type identifier, always \"mcp\"\n:param name: (Optional) The name of the tool to call on the server.",
+                "properties": {
+                    "server_label": {
+                        "title": "Server Label",
+                        "type": "string"
+                    },
+                    "type": {
+                        "const": "mcp",
+                        "default": "mcp",
+                        "title": "Type",
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string",
+                        "nullable": true,
+                        "default": null,
+                        "title": "Name"
+                    }
+                },
+                "required": [
+                    "server_label"
+                ],
+                "title": "OpenAIResponseInputToolChoiceMCPTool",
+                "type": "object"
+            },
+            "OpenAIResponseInputToolChoiceMode": {
+                "description": "Enumeration of simple tool choice modes for response generation.",
+                "enum": [
+                    "auto",
+                    "required",
+                    "none"
+                ],
+                "title": "OpenAIResponseInputToolChoiceMode",
+                "type": "string"
+            },
+            "OpenAIResponseInputToolChoiceWebSearch": {
+                "description": "Indicates that the model should use web search to generate a response\n\n:param type: Web search tool type variant to use",
+                "properties": {
+                    "type": {
+                        "anyOf": [
+                            {
+                                "const": "web_search",
+                                "type": "string"
+                            },
+                            {
+                                "const": "web_search_preview",
+                                "type": "string"
+                            },
+                            {
+                                "const": "web_search_preview_2025_03_11",
+                                "type": "string"
+                            },
+                            {
+                                "const": "web_search_2025_08_26",
+                                "type": "string"
+                            }
+                        ],
+                        "default": "web_search",
+                        "title": "Type"
+                    }
+                },
+                "title": "OpenAIResponseInputToolChoiceWebSearch",
+                "type": "object"
+            },
+            "OpenAIResponseInputToolFileSearch": {
+                "description": "File search tool configuration for OpenAI response inputs.\n\n:param type: Tool type identifier, always \"file_search\"\n:param vector_store_ids: List of vector store identifiers to search within\n:param filters: (Optional) Additional filters to apply to the search\n:param max_num_results: (Optional) Maximum number of search results to return (1-50)\n:param ranking_options: (Optional) Options for ranking and scoring search results",
+                "properties": {
+                    "type": {
+                        "const": "file_search",
+                        "default": "file_search",
+                        "title": "Type",
+                        "type": "string"
+                    },
+                    "vector_store_ids": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "title": "Vector Store Ids",
+                        "type": "array"
+                    },
+                    "filters": {
+                        "type": "object",
+                        "additionalProperties": true,
+                        "nullable": true,
+                        "default": null,
+                        "title": "Filters"
+                    },
+                    "max_num_results": {
+                        "type": "integer",
+                        "maximum": 50,
+                        "minimum": 1,
+                        "nullable": true,
+                        "default": 10,
+                        "title": "Max Num Results"
+                    },
+                    "ranking_options": {
+                        "anyOf": [
+                            {
+                                "$ref": "`#/components/schemas/`SearchRankingOptions"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "default": null
+                    }
+                },
+                "required": [
+                    "vector_store_ids"
+                ],
+                "title": "OpenAIResponseInputToolFileSearch",
+                "type": "object"
+            },
+            "OpenAIResponseInputToolFunction": {
+                "description": "Function tool configuration for OpenAI response inputs.\n\n:param type: Tool type identifier, always \"function\"\n:param name: Name of the function that can be called\n:param description: (Optional) Description of what the function does\n:param parameters: (Optional) JSON schema defining the function's parameters\n:param strict: (Optional) Whether to enforce strict parameter validation",
+                "properties": {
+                    "type": {
+                        "const": "function",
+                        "default": "function",
+                        "title": "Type",
+                        "type": "string"
+                    },
+                    "name": {
+                        "title": "Name",
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string",
+                        "nullable": true,
+                        "default": null,
+                        "title": "Description"
+                    },
+                    "parameters": {
+                        "type": "object",
+                        "additionalProperties": true,
+                        "nullable": true,
+                        "title": "Parameters"
+                    },
+                    "strict": {
+                        "type": "boolean",
+                        "nullable": true,
+                        "default": null,
+                        "title": "Strict"
+                    }
+                },
+                "required": [
+                    "name",
+                    "parameters"
+                ],
+                "title": "OpenAIResponseInputToolFunction",
+                "type": "object"
+            },
+            "OpenAIResponseInputToolWebSearch": {
+                "description": "Web search tool configuration for OpenAI response inputs.",
+                "properties": {
+                    "type": {
+                        "anyOf": [
+                            {
+                                "const": "web_search",
+                                "type": "string"
+                            },
+                            {
+                                "const": "web_search_preview",
+                                "type": "string"
+                            },
+                            {
+                                "const": "web_search_preview_2025_03_11",
+                                "type": "string"
+                            },
+                            {
+                                "const": "web_search_2025_08_26",
+                                "type": "string"
+                            }
+                        ],
+                        "default": "web_search",
+                        "title": "Type"
+                    },
+                    "search_context_size": {
+                        "type": "string",
+                        "enum": [
+                            "low",
+                            "medium",
+                            "high"
+                        ],
+                        "nullable": true,
+                        "default": null,
+                        "title": "Search Context Size"
+                    },
+                    "filters": {
+                        "anyOf": [
+                            {
+                                "$ref": "`#/components/schemas/`WebSearchFilters"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "default": null
+                    },
+                    "user_location": {
+                        "anyOf": [
+                            {
+                                "$ref": "`#/components/schemas/`WebSearchUserLocation"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "default": null
+                    }
+                },
+                "title": "OpenAIResponseInputToolWebSearch",
+                "type": "object"
+            },
+            "OpenAIResponseMCPApprovalRequest": {
+                "description": "A request for human approval of a tool invocation.",
+                "properties": {
+                    "arguments": {
+                        "title": "Arguments",
+                        "type": "string"
+                    },
+                    "id": {
+                        "title": "Id",
+                        "type": "string"
+                    },
+                    "name": {
+                        "title": "Name",
+                        "type": "string"
+                    },
+                    "server_label": {
+                        "title": "Server Label",
+                        "type": "string"
+                    },
+                    "type": {
+                        "const": "mcp_approval_request",
+                        "default": "mcp_approval_request",
+                        "title": "Type",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "arguments",
+                    "id",
+                    "name",
+                    "server_label"
+                ],
+                "title": "OpenAIResponseMCPApprovalRequest",
+                "type": "object"
+            },
+            "OpenAIResponseMCPApprovalResponse": {
+                "description": "A response to an MCP approval request.",
+                "properties": {
+                    "approval_request_id": {
+                        "title": "Approval Request Id",
+                        "type": "string"
+                    },
+                    "approve": {
+                        "title": "Approve",
+                        "type": "boolean"
+                    },
+                    "type": {
+                        "const": "mcp_approval_response",
+                        "default": "mcp_approval_response",
+                        "title": "Type",
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string",
+                        "nullable": true,
+                        "default": null,
+                        "title": "Id"
+                    },
+                    "reason": {
+                        "type": "string",
+                        "nullable": true,
+                        "default": null,
+                        "title": "Reason"
+                    }
+                },
+                "required": [
+                    "approval_request_id",
+                    "approve"
+                ],
+                "title": "OpenAIResponseMCPApprovalResponse",
+                "type": "object"
+            },
+            "OpenAIResponseMessage": {
+                "description": "Corresponds to the various Message types in the Responses API.\nThey are all under one type because the Responses API gives them all\nthe same \"type\" value, and there is no way to tell them apart in certain\nscenarios.",
+                "properties": {
+                    "content": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "items": {
+                                    "discriminator": {
+                                        "mapping": {
+                                            "input_file": "`#/components/schemas/`OpenAIResponseInputMessageContentFile",
+                                            "input_image": "`#/components/schemas/`OpenAIResponseInputMessageContentImage",
+                                            "input_text": "`#/components/schemas/`OpenAIResponseInputMessageContentText"
+                                        },
+                                        "propertyName": "type"
+                                    },
+                                    "oneOf": [
+                                        {
+                                            "$ref": "`#/components/schemas/`OpenAIResponseInputMessageContentText"
+                                        },
+                                        {
+                                            "$ref": "`#/components/schemas/`OpenAIResponseInputMessageContentImage"
+                                        },
+                                        {
+                                            "$ref": "`#/components/schemas/`OpenAIResponseInputMessageContentFile"
+                                        }
+                                    ]
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "items": {
+                                    "discriminator": {
+                                        "mapping": {
+                                            "output_text": "`#/components/schemas/`OpenAIResponseOutputMessageContentOutputText",
+                                            "refusal": "`#/components/schemas/`OpenAIResponseContentPartRefusal"
+                                        },
+                                        "propertyName": "type"
+                                    },
+                                    "oneOf": [
+                                        {
+                                            "$ref": "`#/components/schemas/`OpenAIResponseOutputMessageContentOutputText"
+                                        },
+                                        {
+                                            "$ref": "`#/components/schemas/`OpenAIResponseContentPartRefusal"
+                                        }
+                                    ]
+                                },
+                                "type": "array"
+                            }
+                        ],
+                        "title": "Content"
+                    },
+                    "role": {
+                        "anyOf": [
+                            {
+                                "const": "system",
+                                "type": "string"
+                            },
+                            {
+                                "const": "developer",
+                                "type": "string"
+                            },
+                            {
+                                "const": "user",
+                                "type": "string"
+                            },
+                            {
+                                "const": "assistant",
+                                "type": "string"
+                            }
+                        ],
+                        "title": "Role"
+                    },
+                    "type": {
+                        "const": "message",
+                        "default": "message",
+                        "title": "Type",
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string",
+                        "nullable": true,
+                        "default": null,
+                        "title": "Id"
+                    },
+                    "status": {
+                        "type": "string",
+                        "nullable": true,
+                        "default": null,
+                        "title": "Status"
+                    }
+                },
+                "required": [
+                    "content",
+                    "role"
+                ],
+                "title": "OpenAIResponseMessage",
+                "type": "object"
+            },
+            "OpenAIResponseOutputMessageContentOutputText": {
+                "description": "Text content within an output message of an OpenAI response.",
+                "properties": {
+                    "text": {
+                        "title": "Text",
+                        "type": "string"
+                    },
+                    "type": {
+                        "const": "output_text",
+                        "default": "output_text",
+                        "title": "Type",
+                        "type": "string"
+                    },
+                    "annotations": {
+                        "items": {
+                            "discriminator": {
+                                "mapping": {
+                                    "container_file_citation": "`#/components/schemas/`OpenAIResponseAnnotationContainerFileCitation",
+                                    "file_citation": "`#/components/schemas/`OpenAIResponseAnnotationFileCitation",
+                                    "file_path": "`#/components/schemas/`OpenAIResponseAnnotationFilePath",
+                                    "url_citation": "`#/components/schemas/`OpenAIResponseAnnotationCitation"
+                                },
+                                "propertyName": "type"
+                            },
+                            "oneOf": [
+                                {
+                                    "$ref": "`#/components/schemas/`OpenAIResponseAnnotationFileCitation"
+                                },
+                                {
+                                    "$ref": "`#/components/schemas/`OpenAIResponseAnnotationCitation"
+                                },
+                                {
+                                    "$ref": "`#/components/schemas/`OpenAIResponseAnnotationContainerFileCitation"
+                                },
+                                {
+                                    "$ref": "`#/components/schemas/`OpenAIResponseAnnotationFilePath"
+                                }
+                            ]
+                        },
+                        "title": "Annotations",
+                        "type": "array"
+                    },
+                    "logprobs": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "`#/components/schemas/`OpenAITokenLogProb"
+                        },
+                        "nullable": true,
+                        "default": null,
+                        "title": "Logprobs"
+                    }
+                },
+                "required": [
+                    "text"
+                ],
+                "title": "OpenAIResponseOutputMessageContentOutputText",
+                "type": "object"
+            },
+            "OpenAIResponseOutputMessageFileSearchToolCall": {
+                "description": "File search tool call output message for OpenAI responses.\n\n:param id: Unique identifier for this tool call\n:param queries: List of search queries executed\n:param status: Current status of the file search operation\n:param type: Tool call type identifier, always \"file_search_call\"\n:param results: (Optional) Search results returned by the file search operation",
+                "properties": {
+                    "id": {
+                        "title": "Id",
+                        "type": "string"
+                    },
+                    "queries": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "title": "Queries",
+                        "type": "array"
+                    },
+                    "status": {
+                        "title": "Status",
+                        "type": "string"
+                    },
+                    "type": {
+                        "const": "file_search_call",
+                        "default": "file_search_call",
+                        "title": "Type",
+                        "type": "string"
+                    },
+                    "results": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "`#/components/schemas/`OpenAIResponseOutputMessageFileSearchToolCallResults"
+                        },
+                        "nullable": true,
+                        "default": null,
+                        "title": "Results"
+                    }
+                },
+                "required": [
+                    "id",
+                    "queries",
+                    "status"
+                ],
+                "title": "OpenAIResponseOutputMessageFileSearchToolCall",
+                "type": "object"
+            },
+            "OpenAIResponseOutputMessageFileSearchToolCallResults": {
+                "description": "Search results returned by the file search operation.\n\n:param attributes: (Optional) Key-value attributes associated with the file\n:param file_id: Unique identifier of the file containing the result\n:param filename: Name of the file containing the result\n:param score: Relevance score for this search result (between 0 and 1)\n:param text: Text content of the search result",
+                "properties": {
+                    "attributes": {
+                        "additionalProperties": true,
+                        "title": "Attributes",
+                        "type": "object"
+                    },
+                    "file_id": {
+                        "title": "File Id",
+                        "type": "string"
+                    },
+                    "filename": {
+                        "title": "Filename",
+                        "type": "string"
+                    },
+                    "score": {
+                        "title": "Score",
+                        "type": "number"
+                    },
+                    "text": {
+                        "title": "Text",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "attributes",
+                    "file_id",
+                    "filename",
+                    "score",
+                    "text"
+                ],
+                "title": "OpenAIResponseOutputMessageFileSearchToolCallResults",
+                "type": "object"
+            },
+            "OpenAIResponseOutputMessageFunctionToolCall": {
+                "description": "Function tool call output message for OpenAI responses.\n\n:param call_id: Unique identifier for the function call\n:param name: Name of the function being called\n:param arguments: JSON string containing the function arguments\n:param type: Tool call type identifier, always \"function_call\"\n:param id: (Optional) Additional identifier for the tool call\n:param status: (Optional) Current status of the function call execution",
+                "properties": {
+                    "call_id": {
+                        "title": "Call Id",
+                        "type": "string"
+                    },
+                    "name": {
+                        "title": "Name",
+                        "type": "string"
+                    },
+                    "arguments": {
+                        "title": "Arguments",
+                        "type": "string"
+                    },
+                    "type": {
+                        "const": "function_call",
+                        "default": "function_call",
+                        "title": "Type",
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string",
+                        "nullable": true,
+                        "default": null,
+                        "title": "Id"
+                    },
+                    "status": {
+                        "type": "string",
+                        "nullable": true,
+                        "default": null,
+                        "title": "Status"
+                    }
+                },
+                "required": [
+                    "call_id",
+                    "name",
+                    "arguments"
+                ],
+                "title": "OpenAIResponseOutputMessageFunctionToolCall",
+                "type": "object"
+            },
+            "OpenAIResponseOutputMessageMCPCall": {
+                "description": "Model Context Protocol (MCP) call output message for OpenAI responses.\n\n:param id: Unique identifier for this MCP call\n:param type: Tool call type identifier, always \"mcp_call\"\n:param arguments: JSON string containing the MCP call arguments\n:param name: Name of the MCP method being called\n:param server_label: Label identifying the MCP server handling the call\n:param error: (Optional) Error message if the MCP call failed\n:param output: (Optional) Output result from the successful MCP call",
+                "properties": {
+                    "id": {
+                        "title": "Id",
+                        "type": "string"
+                    },
+                    "type": {
+                        "const": "mcp_call",
+                        "default": "mcp_call",
+                        "title": "Type",
+                        "type": "string"
+                    },
+                    "arguments": {
+                        "title": "Arguments",
+                        "type": "string"
+                    },
+                    "name": {
+                        "title": "Name",
+                        "type": "string"
+                    },
+                    "server_label": {
+                        "title": "Server Label",
+                        "type": "string"
+                    },
+                    "error": {
+                        "type": "string",
+                        "nullable": true,
+                        "default": null,
+                        "title": "Error"
+                    },
+                    "output": {
+                        "type": "string",
+                        "nullable": true,
+                        "default": null,
+                        "title": "Output"
+                    }
+                },
+                "required": [
+                    "id",
+                    "arguments",
+                    "name",
+                    "server_label"
+                ],
+                "title": "OpenAIResponseOutputMessageMCPCall",
+                "type": "object"
+            },
+            "OpenAIResponseOutputMessageMCPListTools": {
+                "description": "MCP list tools output message containing available tools from an MCP server.\n\n:param id: Unique identifier for this MCP list tools operation\n:param type: Tool call type identifier, always \"mcp_list_tools\"\n:param server_label: Label identifying the MCP server providing the tools\n:param tools: List of available tools provided by the MCP server",
+                "properties": {
+                    "id": {
+                        "title": "Id",
+                        "type": "string"
+                    },
+                    "type": {
+                        "const": "mcp_list_tools",
+                        "default": "mcp_list_tools",
+                        "title": "Type",
+                        "type": "string"
+                    },
+                    "server_label": {
+                        "title": "Server Label",
+                        "type": "string"
+                    },
+                    "tools": {
+                        "items": {
+                            "$ref": "`#/components/schemas/`MCPListToolsTool"
+                        },
+                        "title": "Tools",
+                        "type": "array"
+                    }
+                },
+                "required": [
+                    "id",
+                    "server_label",
+                    "tools"
+                ],
+                "title": "OpenAIResponseOutputMessageMCPListTools",
+                "type": "object"
+            },
+            "OpenAIResponseOutputMessageReasoningContent": {
+                "description": "Reasoning text from the model.",
+                "properties": {
+                    "text": {
+                        "description": "The reasoning text content from the model.",
+                        "title": "Text",
+                        "type": "string"
+                    },
+                    "type": {
+                        "const": "reasoning_text",
+                        "default": "reasoning_text",
+                        "description": "The type identifier, always 'reasoning_text'.",
+                        "title": "Type",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "text"
+                ],
+                "title": "OpenAIResponseOutputMessageReasoningContent",
+                "type": "object"
+            },
+            "OpenAIResponseOutputMessageReasoningItem": {
+                "description": "Reasoning output from the model, representing the model's thinking process.",
+                "properties": {
+                    "id": {
+                        "description": "Unique identifier for the reasoning output item.",
+                        "title": "Id",
+                        "type": "string"
+                    },
+                    "summary": {
+                        "description": "Summary of the reasoning output.",
+                        "items": {
+                            "$ref": "`#/components/schemas/`OpenAIResponseOutputMessageReasoningSummary"
+                        },
+                        "title": "Summary",
+                        "type": "array"
+                    },
+                    "type": {
+                        "const": "reasoning",
+                        "default": "reasoning",
+                        "description": "The type identifier, always 'reasoning'.",
+                        "title": "Type",
+                        "type": "string"
+                    },
+                    "content": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "`#/components/schemas/`OpenAIResponseOutputMessageReasoningContent"
+                        },
+                        "nullable": true,
+                        "default": null,
+                        "description": "The reasoning content from the model.",
+                        "title": "Content"
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "in_progress",
+                            "completed",
+                            "incomplete"
+                        ],
+                        "nullable": true,
+                        "default": null,
+                        "description": "The status of the reasoning output.",
+                        "title": "Status"
+                    }
+                },
+                "required": [
+                    "id",
+                    "summary"
+                ],
+                "title": "OpenAIResponseOutputMessageReasoningItem",
+                "type": "object"
+            },
+            "OpenAIResponseOutputMessageReasoningSummary": {
+                "description": "A summary of reasoning output from the model.",
+                "properties": {
+                    "text": {
+                        "description": "The summary text of the reasoning output.",
+                        "title": "Text",
+                        "type": "string"
+                    },
+                    "type": {
+                        "const": "summary_text",
+                        "default": "summary_text",
+                        "description": "The type identifier, always 'summary_text'.",
+                        "title": "Type",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "text"
+                ],
+                "title": "OpenAIResponseOutputMessageReasoningSummary",
+                "type": "object"
+            },
+            "OpenAIResponseOutputMessageWebSearchToolCall": {
+                "description": "Web search tool call output message for OpenAI responses.",
+                "properties": {
+                    "id": {
+                        "title": "Id",
+                        "type": "string"
+                    },
+                    "status": {
+                        "title": "Status",
+                        "type": "string"
+                    },
+                    "type": {
+                        "const": "web_search_call",
+                        "default": "web_search_call",
+                        "title": "Type",
+                        "type": "string"
+                    },
+                    "action": {
+                        "anyOf": [
+                            {
+                                "$ref": "`#/components/schemas/`WebSearchActionSearch"
+                            },
+                            {
+                                "$ref": "`#/components/schemas/`WebSearchActionOpenPage"
+                            },
+                            {
+                                "$ref": "`#/components/schemas/`WebSearchActionFind"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "default": null,
+                        "title": "Action"
+                    }
+                },
+                "required": [
+                    "id",
+                    "status"
+                ],
+                "title": "OpenAIResponseOutputMessageWebSearchToolCall",
+                "type": "object"
+            },
+            "OpenAIResponsePrompt": {
+                "description": "OpenAI compatible Prompt object that is used in OpenAI responses.\n\n:param id: Unique identifier of the prompt template\n:param variables: Dictionary of variable names to OpenAIResponseInputMessageContent structure for template substitution. The substitution values can either be strings, or other Response input types\nlike images or files.\n:param version: Version number of the prompt to use (defaults to latest if not specified)",
+                "properties": {
+                    "id": {
+                        "title": "Id",
+                        "type": "string"
+                    },
+                    "variables": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "discriminator": {
+                                "mapping": {
+                                    "input_file": "`#/components/schemas/`OpenAIResponseInputMessageContentFile",
+                                    "input_image": "`#/components/schemas/`OpenAIResponseInputMessageContentImage",
+                                    "input_text": "`#/components/schemas/`OpenAIResponseInputMessageContentText"
+                                },
+                                "propertyName": "type"
+                            },
+                            "oneOf": [
+                                {
+                                    "$ref": "`#/components/schemas/`OpenAIResponseInputMessageContentText"
+                                },
+                                {
+                                    "$ref": "`#/components/schemas/`OpenAIResponseInputMessageContentImage"
+                                },
+                                {
+                                    "$ref": "`#/components/schemas/`OpenAIResponseInputMessageContentFile"
+                                }
+                            ]
+                        },
+                        "nullable": true,
+                        "default": null,
+                        "title": "Variables"
+                    },
+                    "version": {
+                        "type": "string",
+                        "nullable": true,
+                        "default": null,
+                        "title": "Version"
+                    }
+                },
+                "required": [
+                    "id"
+                ],
+                "title": "OpenAIResponsePrompt",
+                "type": "object"
+            },
+            "OpenAIResponseReasoning": {
+                "description": "Configuration for reasoning effort in OpenAI responses.\n\nControls how much reasoning the model performs before generating a response.\n\n:param effort: The effort level for reasoning. \"low\" favors speed and economical token usage,\n               \"high\" favors more complete reasoning, \"medium\" is a balance between the two.",
+                "properties": {
+                    "effort": {
+                        "type": "string",
+                        "enum": [
+                            "none",
+                            "minimal",
+                            "low",
+                            "medium",
+                            "high",
+                            "xhigh"
+                        ],
+                        "nullable": true,
+                        "default": null,
+                        "title": "Effort"
+                    },
+                    "generate_summary": {
+                        "type": "string",
+                        "enum": [
+                            "auto",
+                            "concise",
+                            "detailed"
+                        ],
+                        "nullable": true,
+                        "default": null,
+                        "deprecated": true,
+                        "description": "Deprecated: use 'summary' instead.",
+                        "title": "Generate Summary"
+                    },
+                    "summary": {
+                        "type": "string",
+                        "enum": [
+                            "auto",
+                            "concise",
+                            "detailed"
+                        ],
+                        "nullable": true,
+                        "default": null,
+                        "description": "Summary mode for reasoning output. One of 'auto', 'concise', or 'detailed'.",
+                        "title": "Summary"
+                    }
+                },
+                "title": "OpenAIResponseReasoning",
+                "type": "object"
+            },
+            "OpenAIResponseText": {
+                "description": "Text response configuration for OpenAI responses.\n\n:param format: (Optional) Text format configuration specifying output format requirements\n:param verbosity: (Optional) Controls response verbosity level",
+                "properties": {
+                    "format": {
+                        "anyOf": [
+                            {
+                                "$ref": "`#/components/schemas/`OpenAIResponseTextFormat"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "default": null
+                    },
+                    "verbosity": {
+                        "type": "string",
+                        "enum": [
+                            "low",
+                            "medium",
+                            "high"
+                        ],
+                        "nullable": true,
+                        "default": "medium",
+                        "title": "Verbosity"
+                    }
+                },
+                "title": "OpenAIResponseText",
+                "type": "object"
+            },
+            "OpenAIResponseTextFormat": {
+                "description": "Configuration for Responses API text format.\n\n:param type: Must be \"text\", \"json_schema\", or \"json_object\" to identify the format type\n:param name: The name of the response format. Only used for json_schema.\n:param schema: The JSON schema the response should conform to. In a Python SDK, this is often a `pydantic` model. Only used for json_schema.\n:param description: (Optional) A description of the response format. Only used for json_schema.\n:param strict: (Optional) Whether to strictly enforce the JSON schema. If true, the response must match the schema exactly. Only used for json_schema.",
+                "properties": {
+                    "type": {
+                        "anyOf": [
+                            {
+                                "const": "text",
+                                "type": "string"
+                            },
+                            {
+                                "const": "json_schema",
+                                "type": "string"
+                            },
+                            {
+                                "const": "json_object",
+                                "type": "string"
+                            }
+                        ],
+                        "title": "Type"
+                    },
+                    "name": {
+                        "type": "string",
+                        "nullable": true,
+                        "title": "Name"
+                    },
+                    "schema": {
+                        "type": "object",
+                        "additionalProperties": true,
+                        "nullable": true,
+                        "title": "Schema"
+                    },
+                    "description": {
+                        "type": "string",
+                        "nullable": true,
+                        "title": "Description"
+                    },
+                    "strict": {
+                        "type": "boolean",
+                        "nullable": true,
+                        "title": "Strict"
+                    }
+                },
+                "title": "OpenAIResponseTextFormat",
+                "type": "object"
+            },
+            "OpenAITokenLogProb": {
+                "description": "The log probability for a token from an OpenAI-compatible chat completion response.",
+                "properties": {
+                    "token": {
+                        "description": "The token.",
+                        "title": "Token",
+                        "type": "string"
+                    },
+                    "bytes": {
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        },
+                        "nullable": true,
+                        "default": null,
+                        "description": "The bytes for the token.",
+                        "title": "Bytes"
+                    },
+                    "logprob": {
+                        "description": "The log probability of the token.",
+                        "title": "Logprob",
+                        "type": "number"
+                    },
+                    "top_logprobs": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "`#/components/schemas/`OpenAITopLogProb"
+                        },
+                        "nullable": true,
+                        "default": null,
+                        "description": "The top log probabilities for the token.",
+                        "title": "Top Logprobs"
+                    }
+                },
+                "required": [
+                    "token",
+                    "logprob"
+                ],
+                "title": "OpenAITokenLogProb",
+                "type": "object"
+            },
+            "OpenAITopLogProb": {
+                "description": "The top log probability for a token from an OpenAI-compatible chat completion response.",
+                "properties": {
+                    "token": {
+                        "description": "The token.",
+                        "title": "Token",
+                        "type": "string"
+                    },
+                    "bytes": {
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        },
+                        "nullable": true,
+                        "default": null,
+                        "description": "The bytes for the token.",
+                        "title": "Bytes"
+                    },
+                    "logprob": {
+                        "description": "The log probability of the token.",
+                        "title": "Logprob",
+                        "type": "number"
+                    }
+                },
+                "required": [
+                    "token",
+                    "logprob"
+                ],
+                "title": "OpenAITopLogProb",
+                "type": "object"
+            },
+            "ResponseInput": {
+                "anyOf": [
+                    {
+                        "type": "string"
+                    },
+                    {
+                        "items": {
+                            "$ref": "`#/components/schemas/`ResponseItem"
+                        },
+                        "type": "array"
+                    }
+                ]
+            },
+            "ResponseItem": {
+                "anyOf": [
+                    {
+                        "$ref": "`#/components/schemas/`OpenAIResponseMessage"
+                    },
+                    {
+                        "$ref": "`#/components/schemas/`OpenAIResponseOutputMessageWebSearchToolCall"
+                    },
+                    {
+                        "$ref": "`#/components/schemas/`OpenAIResponseOutputMessageFileSearchToolCall"
+                    },
+                    {
+                        "$ref": "`#/components/schemas/`OpenAIResponseInputFunctionToolCallOutput"
+                    },
+                    {
+                        "$ref": "`#/components/schemas/`OpenAIResponseOutputMessageMCPCall"
+                    },
+                    {
+                        "$ref": "`#/components/schemas/`OpenAIResponseOutputMessageMCPListTools"
+                    },
+                    {
+                        "$ref": "`#/components/schemas/`OpenAIResponseMCPApprovalRequest"
+                    },
+                    {
+                        "$ref": "`#/components/schemas/`OpenAIResponseOutputMessageFunctionToolCall"
+                    },
+                    {
+                        "$ref": "`#/components/schemas/`OpenAIResponseMCPApprovalResponse"
+                    },
+                    {
+                        "$ref": "`#/components/schemas/`OpenAIResponseOutputMessageReasoningItem"
+                    }
+                ]
+            },
+            "ResponsesApiParams": {
+                "description": "Parameters for an OGX Responses API request.\n\nAll fields accepted by the OGX client responses.create() body are\nincluded so that dumped model can be passed directly to response create.",
+                "properties": {
+                    "input": {
+                        "$ref": "`#/components/schemas/`ResponseInput",
+                        "description": "The input text or structured input items"
+                    },
+                    "model": {
+                        "description": "The full model ID in format \"provider/model\"",
+                        "title": "Model",
+                        "type": "string"
+                    },
+                    "conversation": {
+                        "description": "The conversation ID in OGX format",
+                        "title": "Conversation",
+                        "type": "string"
+                    },
+                    "include": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "`#/components/schemas/`IncludeParameter"
+                        },
+                        "nullable": true,
+                        "default": null,
+                        "description": "Output item types to include in the response",
+                        "title": "Include"
+                    },
+                    "instructions": {
+                        "type": "string",
+                        "nullable": true,
+                        "default": null,
+                        "description": "The resolved system prompt",
+                        "title": "Instructions"
+                    },
+                    "max_infer_iters": {
+                        "type": "integer",
+                        "nullable": true,
+                        "default": null,
+                        "description": "Maximum number of inference iterations",
+                        "title": "Max Infer Iters"
+                    },
+                    "max_output_tokens": {
+                        "type": "integer",
+                        "nullable": true,
+                        "default": null,
+                        "description": "Maximum number of tokens allowed in the response",
+                        "title": "Max Output Tokens"
+                    },
+                    "max_tool_calls": {
+                        "type": "integer",
+                        "nullable": true,
+                        "default": null,
+                        "description": "Maximum tool calls allowed in a single response",
+                        "title": "Max Tool Calls"
+                    },
+                    "metadata": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        },
+                        "nullable": true,
+                        "default": null,
+                        "description": "Custom metadata for tracking or logging",
+                        "title": "Metadata"
+                    },
+                    "parallel_tool_calls": {
+                        "type": "boolean",
+                        "nullable": true,
+                        "default": null,
+                        "description": "Whether the model can make multiple tool calls in parallel",
+                        "title": "Parallel Tool Calls"
+                    },
+                    "previous_response_id": {
+                        "type": "string",
+                        "nullable": true,
+                        "default": null,
+                        "description": "Identifier of the previous response in a multi-turn conversation",
+                        "title": "Previous Response Id"
+                    },
+                    "prompt_cache_key": {
+                        "type": "string",
+                        "nullable": true,
+                        "default": null,
+                        "description": "Prompt cache key used by providers that support prompt caching",
+                        "title": "Prompt Cache Key"
+                    },
+                    "prompt": {
+                        "anyOf": [
+                            {
+                                "$ref": "`#/components/schemas/`OpenAIResponsePrompt"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "default": null,
+                        "description": "Prompt template with variables for dynamic substitution"
+                    },
+                    "reasoning": {
+                        "anyOf": [
+                            {
+                                "$ref": "`#/components/schemas/`OpenAIResponseReasoning"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "default": null,
+                        "description": "Reasoning configuration for the response"
+                    },
+                    "safety_identifier": {
+                        "type": "string",
+                        "nullable": true,
+                        "default": null,
+                        "description": "Stable identifier for safety monitoring and abuse detection",
+                        "title": "Safety Identifier"
+                    },
+                    "store": {
+                        "description": "Whether to store the response",
+                        "title": "Store",
+                        "type": "boolean"
+                    },
+                    "stream": {
+                        "description": "Whether to stream the response",
+                        "title": "Stream",
+                        "type": "boolean"
+                    },
+                    "temperature": {
+                        "type": "number",
+                        "nullable": true,
+                        "default": null,
+                        "description": "Sampling temperature (e.g. 0.0-2.0)",
+                        "title": "Temperature"
+                    },
+                    "text": {
+                        "anyOf": [
+                            {
+                                "$ref": "`#/components/schemas/`OpenAIResponseText"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "default": null,
+                        "description": "Text response configuration (format constraints)"
+                    },
+                    "tool_choice": {
+                        "anyOf": [
+                            {
+                                "$ref": "`#/components/schemas/`OpenAIResponseInputToolChoiceMode"
+                            },
+                            {
+                                "discriminator": {
+                                    "mapping": {
+                                        "allowed_tools": "`#/components/schemas/`OpenAIResponseInputToolChoiceAllowedTools",
+                                        "custom": "`#/components/schemas/`OpenAIResponseInputToolChoiceCustomTool",
+                                        "file_search": "`#/components/schemas/`OpenAIResponseInputToolChoiceFileSearch",
+                                        "function": "`#/components/schemas/`OpenAIResponseInputToolChoiceFunctionTool",
+                                        "mcp": "`#/components/schemas/`OpenAIResponseInputToolChoiceMCPTool",
+                                        "web_search": "`#/components/schemas/`OpenAIResponseInputToolChoiceWebSearch",
+                                        "web_search_2025_08_26": "`#/components/schemas/`OpenAIResponseInputToolChoiceWebSearch",
+                                        "web_search_preview": "`#/components/schemas/`OpenAIResponseInputToolChoiceWebSearch",
+                                        "web_search_preview_2025_03_11": "`#/components/schemas/`OpenAIResponseInputToolChoiceWebSearch"
+                                    },
+                                    "propertyName": "type"
+                                },
+                                "oneOf": [
+                                    {
+                                        "$ref": "`#/components/schemas/`OpenAIResponseInputToolChoiceAllowedTools"
+                                    },
+                                    {
+                                        "$ref": "`#/components/schemas/`OpenAIResponseInputToolChoiceFileSearch"
+                                    },
+                                    {
+                                        "$ref": "`#/components/schemas/`OpenAIResponseInputToolChoiceWebSearch"
+                                    },
+                                    {
+                                        "$ref": "`#/components/schemas/`OpenAIResponseInputToolChoiceFunctionTool"
+                                    },
+                                    {
+                                        "$ref": "`#/components/schemas/`OpenAIResponseInputToolChoiceMCPTool"
+                                    },
+                                    {
+                                        "$ref": "`#/components/schemas/`OpenAIResponseInputToolChoiceCustomTool"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "default": null,
+                        "description": "Tool selection strategy",
+                        "title": "Tool Choice"
+                    },
+                    "tools": {
+                        "type": "array",
+                        "items": {
+                            "discriminator": {
+                                "mapping": {
+                                    "file_search": "`#/components/schemas/`OpenAIResponseInputToolFileSearch",
+                                    "function": "`#/components/schemas/`OpenAIResponseInputToolFunction",
+                                    "mcp": "`#/components/schemas/`InputToolMCP",
+                                    "web_search": "`#/components/schemas/`OpenAIResponseInputToolWebSearch",
+                                    "web_search_2025_08_26": "`#/components/schemas/`OpenAIResponseInputToolWebSearch",
+                                    "web_search_preview": "`#/components/schemas/`OpenAIResponseInputToolWebSearch",
+                                    "web_search_preview_2025_03_11": "`#/components/schemas/`OpenAIResponseInputToolWebSearch"
+                                },
+                                "propertyName": "type"
+                            },
+                            "oneOf": [
+                                {
+                                    "$ref": "`#/components/schemas/`OpenAIResponseInputToolWebSearch"
+                                },
+                                {
+                                    "$ref": "`#/components/schemas/`OpenAIResponseInputToolFileSearch"
+                                },
+                                {
+                                    "$ref": "`#/components/schemas/`OpenAIResponseInputToolFunction"
+                                },
+                                {
+                                    "$ref": "`#/components/schemas/`InputToolMCP"
+                                }
+                            ]
+                        },
+                        "nullable": true,
+                        "default": null,
+                        "description": "Prepared tool groups for Responses API (same type as ResponsesRequest.tools)",
+                        "title": "Tools"
+                    },
+                    "extra_headers": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        },
+                        "nullable": true,
+                        "default": null,
+                        "description": "Extra HTTP headers to send with the request (e.g. X-OGX-Provider-Data)",
+                        "title": "Extra Headers"
+                    },
+                    "omit_conversation": {
+                        "default": false,
+                        "description": "When True, the conversation parameter is dropped from the request body while remaining on the object for identity. Set by conversation compaction (LCORE-1572): once a conversation is compacted, lightspeed-stack supplies explicit input and must not let OGX reload the full history via the conversation parameter.",
+                        "title": "Omit Conversation",
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "input",
+                    "model",
+                    "conversation",
+                    "store",
+                    "stream"
+                ],
+                "title": "ResponsesApiParams",
+                "type": "object"
+            },
+            "SearchRankingOptions": {
+                "description": "Options for ranking and filtering search results.\n\nThis class configures how search results are ranked and filtered. You can use algorithm-based\nrerankers (weighted, RRF) or neural rerankers. Defaults from VectorStoresConfig are\nused when parameters are not provided.\n\nExamples:\n    # Weighted ranker with custom alpha\n    SearchRankingOptions(ranker=\"weighted\", alpha=0.7)\n\n    # RRF ranker with custom impact factor\n    SearchRankingOptions(ranker=\"rrf\", impact_factor=50.0)\n\n    # Use config defaults (just specify ranker type)\n    SearchRankingOptions(ranker=\"weighted\")  # Uses alpha from VectorStoresConfig\n\n    # Score threshold filtering\n    SearchRankingOptions(ranker=\"weighted\", score_threshold=0.5)\n\n:param ranker: (Optional) Name of the ranking algorithm to use. Supported values:\n    - \"weighted\": Weighted combination of vector and keyword scores\n    - \"rrf\": Reciprocal Rank Fusion algorithm\n    - \"neural\": Neural reranking model (requires model parameter)\n    Note: For OpenAI API compatibility, any string value is accepted, but only the above values are supported.\n:param score_threshold: (Optional) Minimum relevance score threshold for results. Default: 0.0\n:param alpha: (Optional) Weight factor for weighted ranker (0-1).\n    - 0.0 = keyword only\n    - 0.5 = equal weight (default)\n    - 1.0 = vector only\n    Only used when ranker=\"weighted\" and weights is not provided.\n    Falls back to VectorStoresConfig.chunk_retrieval_params.weighted_search_alpha if not provided.\n:param impact_factor: (Optional) Impact factor (k) for RRF algorithm.\n    Lower values emphasize higher-ranked results. Default: 60.0 (optimal from research).\n    Only used when ranker=\"rrf\".\n    Falls back to VectorStoresConfig.chunk_retrieval_params.rrf_impact_factor if not provided.\n:param weights: (Optional) Dictionary of weights for combining different signal types.\n    Keys can be \"vector\", \"keyword\", \"neural\". Values should sum to 1.0.\n    Used when combining algorithm-based reranking with neural reranking.\n    Example: {\"vector\": 0.3, \"keyword\": 0.3, \"neural\": 0.4}\n:param model: (Optional) Model identifier for neural reranker\n    (e.g., \"sentence-transformers/Qwen/Qwen3-Reranker-0.6B\"). Required when ranker=\"neural\" or when\n    weights contains \"neural\".",
+                "properties": {
+                    "ranker": {
+                        "type": "string",
+                        "nullable": true,
+                        "default": null,
+                        "title": "Ranker"
+                    },
+                    "score_threshold": {
+                        "type": "number",
+                        "nullable": true,
+                        "default": 0.0,
+                        "title": "Score Threshold"
+                    },
+                    "alpha": {
+                        "type": "number",
+                        "maximum": 1.0,
+                        "minimum": 0.0,
+                        "nullable": true,
+                        "default": null,
+                        "description": "Weight factor for weighted ranker",
+                        "title": "Alpha"
+                    },
+                    "impact_factor": {
+                        "type": "number",
+                        "exclusiveMinimum": 0.0,
+                        "nullable": true,
+                        "default": null,
+                        "description": "Impact factor for RRF algorithm",
+                        "title": "Impact Factor"
+                    },
+                    "weights": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "number"
+                        },
+                        "nullable": true,
+                        "default": null,
+                        "description": "Weights for combining vector, keyword, and neural scores. Keys: 'vector', 'keyword', 'neural'",
+                        "title": "Weights"
+                    },
+                    "model": {
+                        "type": "string",
+                        "nullable": true,
+                        "default": null,
+                        "description": "Model identifier for neural reranker",
+                        "title": "Model"
+                    }
+                },
+                "title": "SearchRankingOptions",
+                "type": "object"
+            },
+            "WebSearchActionFind": {
+                "description": "Web search action: searches for a pattern within a loaded page.",
+                "properties": {
+                    "type": {
+                        "const": "find_in_page",
+                        "default": "find_in_page",
+                        "title": "Type",
+                        "type": "string"
+                    },
+                    "url": {
+                        "title": "Url",
+                        "type": "string"
+                    },
+                    "pattern": {
+                        "title": "Pattern",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "url",
+                    "pattern"
+                ],
+                "title": "WebSearchActionFind",
+                "type": "object"
+            },
+            "WebSearchActionOpenPage": {
+                "description": "Web search action: opens a specific URL from search results.",
+                "properties": {
+                    "type": {
+                        "const": "open_page",
+                        "default": "open_page",
+                        "title": "Type",
+                        "type": "string"
+                    },
+                    "url": {
+                        "type": "string",
+                        "nullable": true,
+                        "default": null,
+                        "title": "Url"
+                    }
+                },
+                "title": "WebSearchActionOpenPage",
+                "type": "object"
+            },
+            "WebSearchActionSearch": {
+                "description": "Web search action: performs a search query.",
+                "properties": {
+                    "type": {
+                        "const": "search",
+                        "default": "search",
+                        "title": "Type",
+                        "type": "string"
+                    },
+                    "query": {
+                        "title": "Query",
+                        "type": "string"
+                    },
+                    "queries": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "nullable": true,
+                        "default": null,
+                        "title": "Queries"
+                    },
+                    "sources": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "`#/components/schemas/`WebSearchSource"
+                        },
+                        "nullable": true,
+                        "default": null,
+                        "title": "Sources"
+                    }
+                },
+                "required": [
+                    "query"
+                ],
+                "title": "WebSearchActionSearch",
+                "type": "object"
+            },
+            "WebSearchFilters": {
+                "description": "Domain filters for web search results.",
+                "properties": {
+                    "allowed_domains": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "nullable": true,
+                        "default": null,
+                        "title": "Allowed Domains"
+                    }
+                },
+                "title": "WebSearchFilters",
+                "type": "object"
+            },
+            "WebSearchSource": {
+                "description": "A source URL returned by a web search action.",
+                "properties": {
+                    "type": {
+                        "const": "url",
+                        "default": "url",
+                        "title": "Type",
+                        "type": "string"
+                    },
+                    "url": {
+                        "title": "Url",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "url"
+                ],
+                "title": "WebSearchSource",
+                "type": "object"
+            },
+            "WebSearchUserLocation": {
+                "description": "Approximate user location to refine web search results.",
+                "properties": {
+                    "type": {
+                        "const": "approximate",
+                        "default": "approximate",
+                        "title": "Type",
+                        "type": "string"
+                    },
+                    "city": {
+                        "type": "string",
+                        "nullable": true,
+                        "default": null,
+                        "title": "City"
+                    },
+                    "country": {
+                        "type": "string",
+                        "nullable": true,
+                        "default": null,
+                        "title": "Country"
+                    },
+                    "region": {
+                        "type": "string",
+                        "nullable": true,
+                        "default": null,
+                        "title": "Region"
+                    },
+                    "timezone": {
+                        "type": "string",
+                        "nullable": true,
+                        "default": null,
+                        "title": "Timezone"
+                    }
+                },
+                "title": "WebSearchUserLocation",
+                "type": "object"
+            }
+        }
+    },
+    "paths": {}
+}
