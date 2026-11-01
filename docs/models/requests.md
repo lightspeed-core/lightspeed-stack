@@ -954,6 +954,8 @@ Attributes:
     parallel_tool_calls: Whether the model can make multiple tool calls in parallel.
     previous_response_id: Identifier of the previous response in a multi-turn
         conversation. Mutually exclusive with conversation.
+    prompt_cache_key: Prompt cache key used by providers that support prompt
+        caching.
     prompt: Prompt object containing a template with variables for dynamic
         substitution.
     reasoning: Reasoning configuration for the response.
@@ -987,6 +989,7 @@ Attributes:
 | metadata | object |  |
 | parallel_tool_calls | boolean |  |
 | previous_response_id | string |  |
+| prompt_cache_key | string |  |
 | prompt |  |  |
 | reasoning |  |  |
 | safety_identifier | string |  |

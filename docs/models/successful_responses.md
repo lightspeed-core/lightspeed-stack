@@ -2430,6 +2430,8 @@ Attributes:
     parallel_tool_calls: Whether the model can make multiple tool calls in parallel.
     previous_response_id: Identifier of the previous response in a multi-turn
         conversation.
+    prompt_cache_key: Prompt cache key used by providers that support prompt
+        caching.
     prompt: The input prompt object that was sent to the model.
     status: Current status of the response (e.g., "completed", "blocked",
         "in_progress").
@@ -2466,6 +2468,7 @@ Attributes:
 | output | array |  |
 | parallel_tool_calls | boolean |  |
 | previous_response_id | string |  |
+| prompt_cache_key | string |  |
 | prompt |  |  |
 | status | string |  |
 | temperature | number |  |

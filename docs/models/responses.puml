@@ -241,6 +241,7 @@ class "ResponsesResponse" as src.models.api.responses.successful.responses_opena
   parallel_tool_calls : bool
   previous_response_id : Optional[str]
   prompt : Optional[Prompt]
+  prompt_cache_key : Optional[str]
   reasoning : Optional[Reasoning]
   safety_identifier : Optional[str]
   status : str
