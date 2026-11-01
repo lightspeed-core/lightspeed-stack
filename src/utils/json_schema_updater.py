@@ -12,7 +12,8 @@ def recursive_update(
     Recursively walks the input mapping and applies compatibility fixes:
     - converts patterns like `anyOf: [{ "type": X }, { "type": "null" }]` into
       a single `"type": X` with `"nullable": True` (optional types)
-    - rewrites `"exclusiveMinimum"` to `"minimum"`
+    - rewrites `"exclusiveMinimum"` to `"minimum"` plus `"exclusiveMinimum": true`
+      (OpenAPI 3.0 boolean form)
     - otherwise preserves entries
 
     Parameters:
@@ -45,10 +46,11 @@ def recursive_update(
             # we need to ignore the second one
             first_item = value[0]
             new["type"] = first_item["type"]
-            # preserve all other constraints from the first item
-            for k, v in first_item.items():
-                if k != "type":
-                    new[k] = recursive_update(v) if isinstance(v, dict) else v
+            # preserve all other constraints from the first item,
+            # processing them through recursive_update so that keys like
+            # exclusiveMinimum are converted to OpenAPI 3.0 form
+            remaining = {k: v for k, v in first_item.items() if k != "type"}
+            new.update(recursive_update(remaining))
             # create new attribute
             new["nullable"] = True
         # exclusiveMinimum attribute handling is broken

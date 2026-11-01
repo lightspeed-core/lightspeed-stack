@@ -1922,7 +1922,8 @@
                     },
                     "impact_factor": {
                         "type": "number",
-                        "exclusiveMinimum": 0.0,
+                        "minimum": 0.0,
+                        "exclusiveMinimum": true,
                         "nullable": true,
                         "default": null,
                         "description": "Impact factor for RRF algorithm",

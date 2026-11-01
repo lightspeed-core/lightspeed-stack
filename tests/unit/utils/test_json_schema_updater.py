@@ -493,6 +493,36 @@ def test_anyof_nullable_preserves_nested_items() -> None:
     assert result == expected
 
 
+def test_anyof_nullable_with_top_level_exclusive_minimum() -> None:
+    """Test anyOf nullable conversion when first item contains exclusiveMinimum.
+
+    This covers the Optional[PositiveInt] pattern where Pydantic emits
+    {"anyOf": [{"type": "integer", "exclusiveMinimum": 0}, {"type": "null"}]}.
+    The integer exclusiveMinimum must be converted to OpenAPI 3.0 boolean form.
+    """
+    # input to updater — Optional[PositiveInt] pattern
+    original = {
+        "anyOf": [
+            {"type": "integer", "exclusiveMinimum": 0},
+            {"type": "null"},
+        ]
+    }
+
+    # expected output from updater
+    expected = {
+        "type": "integer",
+        "minimum": 0,
+        "exclusiveMinimum": True,
+        "nullable": True,
+    }
+
+    # perform the update
+    result = recursive_update(original)
+
+    # non-empty dict with known content should be returned
+    assert result == expected
+
+
 def test_anyof_with_additional_fields_more_items() -> None:
     """Optional (nullable) types with additional fields."""
     # input to updater

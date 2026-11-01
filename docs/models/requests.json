@@ -505,7 +505,8 @@
                     },
                     "timeout": {
                         "type": "integer",
-                        "exclusiveMinimum": 0,
+                        "minimum": 0,
+                        "exclusiveMinimum": true,
                         "nullable": true,
                         "default": null,
                         "description": "Request timeout in seconds for the MCP server",
@@ -2875,7 +2876,8 @@
                     },
                     "impact_factor": {
                         "type": "number",
-                        "exclusiveMinimum": 0.0,
+                        "minimum": 0.0,
+                        "exclusiveMinimum": true,
                         "nullable": true,
                         "default": null,
                         "description": "Impact factor for RRF algorithm",
@@ -3033,7 +3035,8 @@
                     },
                     "embedding_dimension": {
                         "type": "integer",
-                        "exclusiveMinimum": 0,
+                        "minimum": 0,
+                        "exclusiveMinimum": true,
                         "nullable": true,
                         "default": null,
                         "description": "Dimension of the embedding vectors",
@@ -3188,7 +3191,8 @@
                     },
                     "expires_at": {
                         "type": "integer",
-                        "exclusiveMinimum": 0,
+                        "minimum": 0,
+                        "exclusiveMinimum": true,
                         "nullable": true,
                         "default": null,
                         "description": "Unix timestamp when the vector store should expire",
