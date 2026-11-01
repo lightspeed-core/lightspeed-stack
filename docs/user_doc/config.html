@@ -258,6 +258,48 @@ storage.</p>
     <p>Available actions in the system.</p>
     <p>Note: this is not a real model, just an enumeration of all action
 names.</p>
+    <h2 id="allowedmodel">AllowedModel</h2>
+    <p>Configuration for an allowed inference model.</p>
+    <p>Accepts string IDs or dictionaries. String IDs populate both
+<code>name</code> and <code>provider_model_id</code>; dictionary inputs
+default <code>name</code> to <code>provider_model_id</code>.</p>
+    <table>
+      <colgroup>
+        <col style="width: 26%"/>
+        <col style="width: 23%"/>
+        <col style="width: 50%"/>
+      </colgroup>
+      <thead>
+        <tr>
+          <th>Field</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>name</td>
+          <td>string</td>
+          <td/>
+        </tr>
+        <tr>
+          <td>provider_model_id</td>
+          <td>string</td>
+          <td/>
+        </tr>
+        <tr>
+          <td>model_type</td>
+          <td>string</td>
+          <td>Optional capability override (llm, embedding, or rerank).</td>
+        </tr>
+        <tr>
+          <td>metadata</td>
+          <td>object</td>
+          <td>Optional catalog metadata. context_window: the model&#x2019;s context
+window in tokens, used by conversation compaction.</td>
+        </tr>
+      </tbody>
+    </table>
     <h2 id="approvalfilter">ApprovalFilter</h2>
     <p>Granular approval control for specific MCP tools.</p>
     <p>Attributes: always: Tool names that always require human approval
@@ -442,6 +484,194 @@ retain decided approvals for audit purposes before cleanup.</p>
           <td>string</td>
           <td>Azure Cognitive Services scope for token requests. Override only if
 using a different Azure service.</td>
+        </tr>
+      </tbody>
+    </table>
+    <h2 id="azureinferenceproviderconfig">AzureInferenceProviderConfig</h2>
+    <p>Connection settings for an Azure OpenAI inference provider.</p>
+    <table>
+      <colgroup>
+        <col style="width: 26%"/>
+        <col style="width: 23%"/>
+        <col style="width: 50%"/>
+      </colgroup>
+      <thead>
+        <tr>
+          <th>Field</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>base_url</td>
+          <td>string</td>
+          <td/>
+        </tr>
+        <tr>
+          <td>api_key</td>
+          <td>string</td>
+          <td/>
+        </tr>
+        <tr>
+          <td>api_version</td>
+          <td>string</td>
+          <td/>
+        </tr>
+        <tr>
+          <td>entra_id</td>
+          <td/>
+          <td>Preferred Entra ID auth for this provider. Takes precedence over the
+legacy top-level Azure Entra ID settings.</td>
+        </tr>
+      </tbody>
+    </table>
+    <h2 id="azureinferenceproviderentry">AzureInferenceProviderEntry</h2>
+    <p>Azure OpenAI inference provider.</p>
+    <table>
+      <colgroup>
+        <col style="width: 26%"/>
+        <col style="width: 23%"/>
+        <col style="width: 50%"/>
+      </colgroup>
+      <thead>
+        <tr>
+          <th>Field</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>id</td>
+          <td>string</td>
+          <td/>
+        </tr>
+        <tr>
+          <td>skip_model_discovery</td>
+          <td>boolean</td>
+          <td/>
+        </tr>
+        <tr>
+          <td>allowed_models</td>
+          <td>array</td>
+          <td/>
+        </tr>
+        <tr>
+          <td>model_profiles_path</td>
+          <td>string</td>
+          <td/>
+        </tr>
+        <tr>
+          <td>api_key_env</td>
+          <td>string</td>
+          <td>Deprecated: prefer config.api_key with ${env.VAR}.</td>
+        </tr>
+        <tr>
+          <td>extra</td>
+          <td>object</td>
+          <td>Deprecated escape hatch for unmodeled provider knobs.</td>
+        </tr>
+        <tr>
+          <td>type</td>
+          <td>string</td>
+          <td>Azure OpenAI remote inference provider.</td>
+        </tr>
+        <tr>
+          <td>config</td>
+          <td/>
+          <td>Endpoint, API key or Entra ID, and API version.</td>
+        </tr>
+      </tbody>
+    </table>
+    <h2 id="bedrockinferenceproviderconfig">BedrockInferenceProviderConfig</h2>
+    <p>Connection settings for an AWS Bedrock inference provider.</p>
+    <table>
+      <colgroup>
+        <col style="width: 26%"/>
+        <col style="width: 23%"/>
+        <col style="width: 50%"/>
+      </colgroup>
+      <thead>
+        <tr>
+          <th>Field</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>region</td>
+          <td>string</td>
+          <td/>
+        </tr>
+        <tr>
+          <td>profile_name</td>
+          <td>string</td>
+          <td/>
+        </tr>
+        <tr>
+          <td>api_key</td>
+          <td>string</td>
+          <td>Optional Bedrock bearer token (alternative to SigV4).</td>
+        </tr>
+      </tbody>
+    </table>
+    <h2 id="bedrockinferenceproviderentry">BedrockInferenceProviderEntry</h2>
+    <p>AWS Bedrock inference provider.</p>
+    <table>
+      <colgroup>
+        <col style="width: 26%"/>
+        <col style="width: 23%"/>
+        <col style="width: 50%"/>
+      </colgroup>
+      <thead>
+        <tr>
+          <th>Field</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>id</td>
+          <td>string</td>
+          <td/>
+        </tr>
+        <tr>
+          <td>skip_model_discovery</td>
+          <td>boolean</td>
+          <td/>
+        </tr>
+        <tr>
+          <td>allowed_models</td>
+          <td>array</td>
+          <td/>
+        </tr>
+        <tr>
+          <td>model_profiles_path</td>
+          <td>string</td>
+          <td/>
+        </tr>
+        <tr>
+          <td>api_key_env</td>
+          <td>string</td>
+          <td>Deprecated: prefer config.api_key with ${env.VAR}.</td>
+        </tr>
+        <tr>
+          <td>extra</td>
+          <td>object</td>
+          <td>Deprecated escape hatch for unmodeled provider knobs.</td>
+        </tr>
+        <tr>
+          <td>type</td>
+          <td>string</td>
+          <td>AWS Bedrock remote inference provider.</td>
+        </tr>
+        <tr>
+          <td>config</td>
+          <td/>
+          <td>AWS region, optional profile, and optional bearer token.</td>
         </tr>
       </tbody>
     </table>
@@ -852,6 +1082,11 @@ stored.</td>
     <h2 id="customization">Customization</h2>
     <p>Service customization.</p>
     <table>
+      <colgroup>
+        <col style="width: 26%"/>
+        <col style="width: 23%"/>
+        <col style="width: 50%"/>
+      </colgroup>
       <thead>
         <tr>
           <th>Field</th>
@@ -899,6 +1134,12 @@ stored.</td>
           <td>custom_profile</td>
           <td/>
           <td/>
+        </tr>
+        <tr>
+          <td>responses_request_max_size</td>
+          <td>integer</td>
+          <td>Maximum character length for the serialized /v1/response responses
+request body</td>
         </tr>
       </tbody>
     </table>
@@ -1044,7 +1285,13 @@ prompt template is built for the 4.1 format.</td>
       <li>str: Path to custom CA bundle file (for internal PKI) | | parallel |
 | True to run all risk checks in parallel, False to run sequentially, or
 an integer 1-10 for explicit batch size. | | risks | array | Risks to be
-considered while applying this guardrail |</li>
+considered while applying this guardrail | |
+streaming_output_check_interval_tokens | integer | For risks with
+<code>output</code> in <code>points</code>, re-check the response
+against those risks approximately every N generated output tokens while
+streaming, plus once more over any remaining text once generation
+completes. Ignored when no configured risk targets the
+<code>output</code> point. |</li>
     </ul>
     <h2 id="graniteguardianshieldconfiguration">GraniteGuardianShieldConfiguration</h2>
     <p>Configuration for a named Granite Guardian guardrail shield.</p>
@@ -1146,13 +1393,9 @@ model&#x2019;s catalog metadata has no context_window.</td>
         <tr>
           <td>providers</td>
           <td>array</td>
-          <td>Unified-mode synthesis input (Decision S5): a high-level,
-backend-agnostic list of inference providers the synthesizer expands
-into OGX provider entries. Lives at the configuration root so it
-survives a future backend change. A non-empty list signals unified mode.
-Empty (the default) leaves legacy/remote modes unaffected. The sibling
-default_model / default_provider keep their query-time routing meaning
-and are independent of this list.</td>
+          <td>Discriminated list of inference providers. Empty by default. The
+sibling default_model / default_provider keep their query-time routing
+meaning and are independent of this list.</td>
         </tr>
         <tr>
           <td>max_infer_iters</td>
@@ -1584,6 +1827,87 @@ the global default (&#x2018;hybrid&#x2019;).</td>
           <td>max_chunks</td>
           <td>integer</td>
           <td>Maximum number of chunks fetched from OKP.</td>
+        </tr>
+      </tbody>
+    </table>
+    <h2 id="openaiinferenceproviderconfig">OpenAIInferenceProviderConfig</h2>
+    <p>Connection settings for an OpenAI inference provider.</p>
+    <table>
+      <thead>
+        <tr>
+          <th>Field</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>api_key</td>
+          <td>string</td>
+          <td/>
+        </tr>
+        <tr>
+          <td>base_url</td>
+          <td>string</td>
+          <td/>
+        </tr>
+      </tbody>
+    </table>
+    <h2 id="openaiinferenceproviderentry">OpenAIInferenceProviderEntry</h2>
+    <p>OpenAI inference provider.</p>
+    <table>
+      <colgroup>
+        <col style="width: 26%"/>
+        <col style="width: 23%"/>
+        <col style="width: 50%"/>
+      </colgroup>
+      <thead>
+        <tr>
+          <th>Field</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>id</td>
+          <td>string</td>
+          <td/>
+        </tr>
+        <tr>
+          <td>skip_model_discovery</td>
+          <td>boolean</td>
+          <td/>
+        </tr>
+        <tr>
+          <td>allowed_models</td>
+          <td>array</td>
+          <td/>
+        </tr>
+        <tr>
+          <td>model_profiles_path</td>
+          <td>string</td>
+          <td/>
+        </tr>
+        <tr>
+          <td>api_key_env</td>
+          <td>string</td>
+          <td>Deprecated: prefer config.api_key with ${env.VAR}.</td>
+        </tr>
+        <tr>
+          <td>extra</td>
+          <td>object</td>
+          <td>Deprecated escape hatch for unmodeled provider knobs.</td>
+        </tr>
+        <tr>
+          <td>type</td>
+          <td>string</td>
+          <td>OpenAI remote inference provider.</td>
+        </tr>
+        <tr>
+          <td>config</td>
+          <td/>
+          <td>API key and optional base URL.</td>
         </tr>
       </tbody>
     </table>
@@ -2507,6 +2831,87 @@ to 255. Cannot exceed 255.</td>
         </tr>
       </tbody>
     </table>
+    <h2 id="sentencetransformersinferenceproviderconfig">SentenceTransformersInferenceProviderConfig</h2>
+    <p>Settings for the local sentence-transformers inference provider.</p>
+    <table>
+      <thead>
+        <tr>
+          <th>Field</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>device</td>
+          <td>string</td>
+          <td/>
+        </tr>
+        <tr>
+          <td>cache_dir</td>
+          <td>string</td>
+          <td/>
+        </tr>
+      </tbody>
+    </table>
+    <h2 id="sentencetransformersinferenceproviderentry">SentenceTransformersInferenceProviderEntry</h2>
+    <p>Local sentence-transformers inference provider.</p>
+    <table>
+      <colgroup>
+        <col style="width: 26%"/>
+        <col style="width: 23%"/>
+        <col style="width: 50%"/>
+      </colgroup>
+      <thead>
+        <tr>
+          <th>Field</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>id</td>
+          <td>string</td>
+          <td/>
+        </tr>
+        <tr>
+          <td>skip_model_discovery</td>
+          <td>boolean</td>
+          <td/>
+        </tr>
+        <tr>
+          <td>allowed_models</td>
+          <td>array</td>
+          <td/>
+        </tr>
+        <tr>
+          <td>model_profiles_path</td>
+          <td>string</td>
+          <td/>
+        </tr>
+        <tr>
+          <td>api_key_env</td>
+          <td>string</td>
+          <td>Deprecated: prefer config.api_key with ${env.VAR}.</td>
+        </tr>
+        <tr>
+          <td>extra</td>
+          <td>object</td>
+          <td>Deprecated escape hatch for unmodeled provider knobs.</td>
+        </tr>
+        <tr>
+          <td>type</td>
+          <td>string</td>
+          <td>Local sentence-transformers embedding and rerank provider.</td>
+        </tr>
+        <tr>
+          <td>config</td>
+          <td/>
+          <td>Optional device and Hugging Face cache directory.</td>
+        </tr>
+      </tbody>
+    </table>
     <h2 id="serviceconfiguration">ServiceConfiguration</h2>
     <p>Service configuration.</p>
     <p>Lightspeed Core Stack is a REST API service that accepts requests on
@@ -2817,76 +3222,6 @@ null (no restriction).</td>
         </tr>
       </tbody>
     </table>
-    <h2 id="unifiedinferenceprovider">UnifiedInferenceProvider</h2>
-    <p>A high-level inference provider entry for unified-mode synthesis.</p>
-    <p>Operators describe inference providers at this high level
-(backend-agnostic vocabulary) instead of authoring raw OGX provider
-blocks. The synthesizer (<code>apply_high_level_inference</code>)
-expands each entry into an OGX <code>providers.inference</code> entry,
-mapping <code>type</code> to a <code>provider_type</code> and emitting
-<code>${env.&lt;VAR&gt;}</code> references for secrets (never literal
-values).</p>
-    <p>Attributes: type: Canonical provider identifier. Vendor-neutral so it
-survives a future backend change; each backend-specific synthesizer maps
-it to its own provider vocabulary. id: Optional identifier emitted as
-the OGX provider_id. When omitted, synthesized as type with underscores
-hyphenated. If set, must be non-empty after stripping whitespace and may
-contain only lowercase letters, digits, underscores, and hyphens.
-api_key_env: Name of the environment variable holding the provider API
-key. Emitted verbatim as <code>${env.&lt;name&gt;}</code> so the secret
-never lands on disk resolved. allowed_models: Optional allow-list of
-model identifiers passed through to the synthesized provider config.
-extra: Additional provider-config keys merged verbatim into the
-synthesized provider&#x2019;s <code>config</code> block &#x2014; an escape hatch for
-provider-specific knobs not modeled here.</p>
-    <table>
-      <colgroup>
-        <col style="width: 26%"/>
-        <col style="width: 23%"/>
-        <col style="width: 50%"/>
-      </colgroup>
-      <thead>
-        <tr>
-          <th>Field</th>
-          <th>Type</th>
-          <th>Description</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td>type</td>
-          <td>string</td>
-          <td>Canonical, backend-agnostic provider identifier mapped to an OGX
-provider_type by the synthesizer.</td>
-        </tr>
-        <tr>
-          <td>id</td>
-          <td>string</td>
-          <td>Optional identifier emitted as the OGX provider_id. When omitted,
-synthesized as type with underscores hyphenated. If set, must be
-non-empty after stripping whitespace and may contain only lowercase
-letters, digits, underscores, and hyphens.</td>
-        </tr>
-        <tr>
-          <td>api_key_env</td>
-          <td>string</td>
-          <td>Name of the environment variable holding the provider API key.
-Emitted as a ${env.name} reference so the secret is never written to
-disk in resolved form.</td>
-        </tr>
-        <tr>
-          <td>allowed_models</td>
-          <td>array</td>
-          <td>Optional allow-list of model identifiers for this provider.</td>
-        </tr>
-        <tr>
-          <td>extra</td>
-          <td>object</td>
-          <td>Additional provider-config keys merged verbatim into the synthesized
-provider&#x2019;s config block.</td>
-        </tr>
-      </tbody>
-    </table>
     <h2 id="unifiedogxconfig">UnifiedOgxConfig</h2>
     <p>Backend-specific knobs for unified-mode OGX synthesis.</p>
     <p>Per Decision S5 of the design spike, backend-agnostic high-level
@@ -2904,7 +3239,11 @@ run.yaml-shaped file used as the synthesis baseline. Relative paths
 resolve against the directory of the loaded lightspeed-stack.yaml.
 native_override: Raw OGX schema deep-merged last (maps merge
 recursively, lists and scalars replace). The escape hatch for anything
-the high-level sections do not express.</p>
+the high-level sections do not express. Note:
+<code>registered_resources.models</code> is a list, so a native_override
+that sets it replaces &#x2014; not merges with &#x2014; any LLM models LCORE
+auto-registered from
+<code>inference.providers[].allowed_models</code>.</p>
     <table>
       <colgroup>
         <col style="width: 26%"/>
@@ -2937,7 +3276,9 @@ against the directory of the loaded lightspeed-stack.yaml.</td>
           <td>native_override</td>
           <td>object</td>
           <td>Raw OGX schema deep-merged last (maps merge recursively; lists and
-scalars replace).</td>
+scalars replace). Note: setting registered_resources.models here
+replaces, not merges with, any LLM models LCORE auto-registered from
+inference.providers[].allowed_models.</td>
         </tr>
       </tbody>
     </table>
@@ -3021,6 +3362,257 @@ providers[].id.</td>
           <td>Dynamic vector-store provider capacity for runtime POST
 /v1/vector-stores creates. Not the same as rag.byok.stores (static
 registered corpora).</td>
+        </tr>
+      </tbody>
+    </table>
+    <h2 id="vertexaiinferenceproviderconfig">VertexAIInferenceProviderConfig</h2>
+    <p>Connection settings for a Vertex AI inference provider.</p>
+    <p>Authentication uses Google Application Default Credentials. Set
+GOOGLE_APPLICATION_CREDENTIALS in the environment when a credentials
+file is required; there is no credentials path field in config.</p>
+    <table>
+      <thead>
+        <tr>
+          <th>Field</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>project</td>
+          <td>string</td>
+          <td/>
+        </tr>
+        <tr>
+          <td>location</td>
+          <td>string</td>
+          <td/>
+        </tr>
+      </tbody>
+    </table>
+    <h2 id="vertexaiinferenceproviderentry">VertexAIInferenceProviderEntry</h2>
+    <p>Vertex AI inference provider.</p>
+    <table>
+      <colgroup>
+        <col style="width: 26%"/>
+        <col style="width: 23%"/>
+        <col style="width: 50%"/>
+      </colgroup>
+      <thead>
+        <tr>
+          <th>Field</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>id</td>
+          <td>string</td>
+          <td/>
+        </tr>
+        <tr>
+          <td>skip_model_discovery</td>
+          <td>boolean</td>
+          <td/>
+        </tr>
+        <tr>
+          <td>allowed_models</td>
+          <td>array</td>
+          <td/>
+        </tr>
+        <tr>
+          <td>model_profiles_path</td>
+          <td>string</td>
+          <td/>
+        </tr>
+        <tr>
+          <td>api_key_env</td>
+          <td>string</td>
+          <td>Deprecated: prefer config.api_key with ${env.VAR}.</td>
+        </tr>
+        <tr>
+          <td>extra</td>
+          <td>object</td>
+          <td>Deprecated escape hatch for unmodeled provider knobs.</td>
+        </tr>
+        <tr>
+          <td>type</td>
+          <td>string</td>
+          <td>Google Vertex AI remote inference provider.</td>
+        </tr>
+        <tr>
+          <td>config</td>
+          <td/>
+          <td>GCP project and location.</td>
+        </tr>
+      </tbody>
+    </table>
+    <h2 id="vllminferenceproviderconfig">VllmInferenceProviderConfig</h2>
+    <p>Connection settings for a vLLM inference provider.</p>
+    <table>
+      <thead>
+        <tr>
+          <th>Field</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>base_url</td>
+          <td>string</td>
+          <td/>
+        </tr>
+        <tr>
+          <td>api_key</td>
+          <td>string</td>
+          <td/>
+        </tr>
+      </tbody>
+    </table>
+    <h2 id="vllminferenceproviderentry">VllmInferenceProviderEntry</h2>
+    <p>vLLM inference provider.</p>
+    <table>
+      <colgroup>
+        <col style="width: 26%"/>
+        <col style="width: 23%"/>
+        <col style="width: 50%"/>
+      </colgroup>
+      <thead>
+        <tr>
+          <th>Field</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>id</td>
+          <td>string</td>
+          <td/>
+        </tr>
+        <tr>
+          <td>skip_model_discovery</td>
+          <td>boolean</td>
+          <td/>
+        </tr>
+        <tr>
+          <td>allowed_models</td>
+          <td>array</td>
+          <td/>
+        </tr>
+        <tr>
+          <td>model_profiles_path</td>
+          <td>string</td>
+          <td/>
+        </tr>
+        <tr>
+          <td>api_key_env</td>
+          <td>string</td>
+          <td>Deprecated: prefer config.api_key with ${env.VAR}.</td>
+        </tr>
+        <tr>
+          <td>extra</td>
+          <td>object</td>
+          <td>Deprecated escape hatch for unmodeled provider knobs.</td>
+        </tr>
+        <tr>
+          <td>type</td>
+          <td>string</td>
+          <td>vLLM OpenAI-compatible remote inference provider.</td>
+        </tr>
+        <tr>
+          <td>config</td>
+          <td/>
+          <td>Base URL and optional API key.</td>
+        </tr>
+      </tbody>
+    </table>
+    <h2 id="watsonxinferenceproviderconfig">WatsonxInferenceProviderConfig</h2>
+    <p>Connection settings for a WatsonX inference provider.</p>
+    <table>
+      <thead>
+        <tr>
+          <th>Field</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>api_key</td>
+          <td>string</td>
+          <td/>
+        </tr>
+        <tr>
+          <td>project_id</td>
+          <td>string</td>
+          <td/>
+        </tr>
+        <tr>
+          <td>base_url</td>
+          <td>string</td>
+          <td/>
+        </tr>
+      </tbody>
+    </table>
+    <h2 id="watsonxinferenceproviderentry">WatsonxInferenceProviderEntry</h2>
+    <p>WatsonX inference provider.</p>
+    <table>
+      <colgroup>
+        <col style="width: 26%"/>
+        <col style="width: 23%"/>
+        <col style="width: 50%"/>
+      </colgroup>
+      <thead>
+        <tr>
+          <th>Field</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>id</td>
+          <td>string</td>
+          <td/>
+        </tr>
+        <tr>
+          <td>skip_model_discovery</td>
+          <td>boolean</td>
+          <td/>
+        </tr>
+        <tr>
+          <td>allowed_models</td>
+          <td>array</td>
+          <td/>
+        </tr>
+        <tr>
+          <td>model_profiles_path</td>
+          <td>string</td>
+          <td/>
+        </tr>
+        <tr>
+          <td>api_key_env</td>
+          <td>string</td>
+          <td>Deprecated: prefer config.api_key with ${env.VAR}.</td>
+        </tr>
+        <tr>
+          <td>extra</td>
+          <td>object</td>
+          <td>Deprecated escape hatch for unmodeled provider knobs.</td>
+        </tr>
+        <tr>
+          <td>type</td>
+          <td>string</td>
+          <td>IBM WatsonX remote inference provider.</td>
+        </tr>
+        <tr>
+          <td>config</td>
+          <td/>
+          <td>API key, project ID, and base URL.</td>
         </tr>
       </tbody>
     </table>

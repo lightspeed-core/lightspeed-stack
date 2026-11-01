@@ -195,6 +195,7 @@ class "ResponsesApiParams" as src.models.common.responses.responses_api_params.R
   parallel_tool_calls : Optional[bool]
   previous_response_id : Optional[str]
   prompt : Optional[Prompt]
+  prompt_cache_key : Optional[str]
   reasoning : Optional[Reasoning]
   safety_identifier : Optional[str]
   store : bool

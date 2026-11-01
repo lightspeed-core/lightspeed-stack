@@ -14,5 +14,5 @@ Unit tests for the Bedrock inference provider.
 
 ## [test_specs.py](test_specs.py)
 
-Unit tests for Bedrock foundation-model wire specs.
+Unit tests for Bedrock discovery wire specs.
 

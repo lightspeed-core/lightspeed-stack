@@ -20,6 +20,10 @@ Unit tests for functions defined in utils/checks module.
 
 Unit tests for utils/compaction — partitioning, prompt, summarization.
 
+## [test_compaction_usage.py](test_compaction_usage.py)
+
+Unit tests for the accounting of the summarization calls (LCORE-3910).
+
 ## [test_connection_decorator.py](test_connection_decorator.py)
 
 Unit tests for the connection decorator.
