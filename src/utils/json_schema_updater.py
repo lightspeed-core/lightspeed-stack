@@ -10,8 +10,10 @@ def recursive_update(
     """Transform a JSON Schema-like dictionary into an OpenAPI-compatible schema.
 
     Recursively walks the input mapping and applies compatibility fixes:
-    - converts patterns like `anyOf: [{ "type": X }, { "type": "null" }]` into
-      a single `"type": X` with `"nullable": True` (optional types)
+    - converts patterns like `anyOf: [{"type": X, ...constraints}, {"type": "null"}]`
+      into a single `"type": X` with `"nullable": True`, preserving all additional
+      constraints from the first variant and recursively applying OpenAPI 3.0
+      fixes to them (optional types)
     - rewrites `"exclusiveMinimum"` to `"minimum"` plus `"exclusiveMinimum": true`
       (OpenAPI 3.0 boolean form)
     - otherwise preserves entries
