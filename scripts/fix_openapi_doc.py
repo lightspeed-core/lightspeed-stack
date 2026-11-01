@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-"""Filter to fix the generated OpenAPI documentation."""
+"""Filter to fix the generated OpenAPI documentation with configuration schema."""
 
 import fileinput
 
@@ -10,8 +10,22 @@ lines = list(fileinput.input())
 
 lines_count = len(lines)
 
+in_json = False
+in_table = False
+
 for i in range(lines_count):
     current_line = lines[i].rstrip("\r\n")
+
+    if current_line == "Examples":
+        continue
+    if current_line == "```json":
+        in_json = True
+        continue
+    if current_line == "```" and in_json:
+        in_json = False
+        continue
+    if in_json:
+        continue
 
     # limit check
     if i == lines_count - 1:
