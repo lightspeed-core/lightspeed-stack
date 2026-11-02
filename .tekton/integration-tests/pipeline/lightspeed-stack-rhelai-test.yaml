@@ -195,18 +195,19 @@ spec:
 
               echo "[mapt] Instance created; waiting for vLLM to expose $(params.model)..."
               VLLM_HOST="$(cat /opt/host-info/host)"
+              VLLM_READINESS_DEADLINE=$((SECONDS + 1200))
               n=0
-              while [ "$n" -lt 60 ]; do
+              while true; do
                 if curl -sf --max-time 15 -H "Authorization: Bearer ${VLLM_API_KEY}" \
                     "http://${VLLM_HOST}:8000/v1/models" | grep -Fq "$(params.model)"; then
                   echo "[mapt] vLLM models API ready (poll ${n})"
                   break
                 fi
-                n=$((n + 1))
-                if [ "$n" -ge 60 ]; then
+                if [ "$SECONDS" -ge "$VLLM_READINESS_DEADLINE" ]; then
                   echo "[mapt] ERROR: vLLM did not list model after 20m (check instance logs / OOM)"
                   exit 1
                 fi
+                n=$((n + 1))
                 sleep 20
               done
               echo -n "${VLLM_API_KEY}" > $(results.vllm-api-key.path)
