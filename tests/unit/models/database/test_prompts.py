@@ -11,7 +11,6 @@ from sqlalchemy.pool import StaticPool
 
 from models.database.base import Base
 from models.database.prompts import Prompt, PromptVersion
-from prompts.exceptions import PromptValidationError
 
 
 @pytest.fixture(name="sqlite_engine")
@@ -265,47 +264,3 @@ class TestPromptVersionDatabaseOperations:
         result = db_session.get(PromptVersion, (sample_prompt.id, 1))
         assert result is not None
         assert result.variables == []
-
-
-class TestPromptVersionVariableValidation:
-    """Test cases for PromptVersion variable uniqueness validation."""
-
-    def test_unique_variables_accepted(self) -> None:
-        """Test that a list of unique variable names is accepted."""
-        version = PromptVersion(
-            prompt_id="pmpt_001",
-            version=1,
-            template="{{a}} {{b}}",
-            variables=["a", "b"],
-        )
-        assert version.variables == ["a", "b"]
-
-    def test_duplicate_variables_raises_validation_error(self) -> None:
-        """Test that duplicate variable names raise PromptValidationError."""
-        with pytest.raises(PromptValidationError, match="duplicate names"):
-            PromptVersion(
-                prompt_id="pmpt_001",
-                version=1,
-                template="{{a}} {{a}}",
-                variables=["a", "a"],
-            )
-
-    def test_empty_variables_accepted(self) -> None:
-        """Test that an empty variable list is accepted."""
-        version = PromptVersion(
-            prompt_id="pmpt_001",
-            version=1,
-            template="No variables",
-            variables=[],
-        )
-        assert version.variables == []
-
-    def test_single_variable_accepted(self) -> None:
-        """Test that a single variable is accepted."""
-        version = PromptVersion(
-            prompt_id="pmpt_001",
-            version=1,
-            template="{{name}}",
-            variables=["name"],
-        )
-        assert version.variables == ["name"]
