@@ -406,7 +406,7 @@ Lightspeed Core Stack (LCS) service API specification.
 | Method | Path                                                  | Description                                                                                                                                          |
 |--------|-------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------|
 | GET    | `/`                                                   | Returns the static HTML index page                                                                                                                   |
-| GET    | `/v1/info`                                            | Returns the service name, version and OGX version                                                                                            |
+| GET    | `/v1/info`                                            | Returns the service name and version                                                                                                         |
 | GET    | `/v1/models`                                          | List of available models                                                                                                                             |
 | GET    | `/v1/tools`                                           | Consolidated list of available tools from all configured MCP servers                                                                                 |
 | GET    | `/v1/mcp-auth/client-options`                         | List of MCP servers configured to accept client-provided authorization tokens, along with the header names where clients should provide these tokens |
@@ -622,7 +622,7 @@ Examples
 Handle request to the /info endpoint.
 
 Process GET requests to the /info endpoint, returning the
-service name, version and OGX version.
+service name and version. The answer does not depend on OGX.
 
 ### Parameters:
 - request: The incoming HTTP request (used by middleware).
@@ -632,7 +632,7 @@ service name, version and OGX version.
 - HTTPException: with status 401 for unauthorized access.
 - HTTPException: with status 403 if permission is denied.
 - HTTPException: with status 503 and a detail object containing `response`
-  and `cause` when unable to connect to OGX.
+  and `cause` when the Kubernetes authentication backend is unreachable.
 
 ### Returns:
 - InfoResponse: An object containing the service's name and version.
@@ -757,18 +757,6 @@ Examples
   }
 }
 ```
-
-```json
-{
-  "detail": {
-    "cause": "Connection error while trying to reach backend service.",
-    "response": "Unable to connect to OGX"
-  }
-}
-```
-
-
-
 
 ```json
 {
@@ -6564,14 +6552,12 @@ Model representing a response to an info request.
 Attributes:
     name: Service name.
     service_version: Service version.
-    ogx_version: OGX version.
 
 
 | Field | Type | Description |
 |-------|------|-------------|
 | name | string | Service name |
 | service_version | string | Service version |
-| ogx_version | string | OGX version |
 
 
 ## InputToolMCP

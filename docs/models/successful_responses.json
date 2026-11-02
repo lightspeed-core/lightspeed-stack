@@ -2283,11 +2283,10 @@
                 "type": "object"
             },
             "InfoResponse": {
-                "description": "Model representing a response to an info request.\n\nAttributes:\n    name: Service name.\n    service_version: Service version.\n    ogx_version: OGX version.",
+                "description": "Model representing a response to an info request.\n\nAttributes:\n    name: Service name.\n    service_version: Service version.",
                 "examples": [
                     {
                         "name": "Lightspeed Stack",
-                        "ogx_version": "1.0.0",
                         "service_version": "1.0.0"
                     }
                 ],
@@ -2309,24 +2308,11 @@
                         ],
                         "title": "Service Version",
                         "type": "string"
-                    },
-                    "ogx_version": {
-                        "description": "OGX version",
-                        "examples": [
-                            "0.2.1",
-                            "0.2.2",
-                            "0.2.18",
-                            "0.2.21",
-                            "0.2.22"
-                        ],
-                        "title": "Ogx Version",
-                        "type": "string"
                     }
                 },
                 "required": [
                     "name",
-                    "service_version",
-                    "ogx_version"
+                    "service_version"
                 ],
                 "title": "InfoResponse",
                 "type": "object"

@@ -60,16 +60,13 @@ Feature: OGX connection disrupted
 
 
   @cfg_default
-  Scenario: Check if info endpoint reports error when ogx connection is not working
+  Scenario: Check if info endpoint works when ogx connection is not working
     Given The service uses the lightspeed-stack-default.yaml configuration
       And The service is restarted
     And The ogx connection is disrupted
     When I access REST API endpoint "info" using HTTP GET method
-    Then The status code of the response is 503
-    And The body of the response is the following
-    """
-       {"detail": {"response": "Unable to connect to OGX", "cause": "Connection error while trying to reach backend service."}}
-    """
+    Then The status code of the response is 200
+    And The body of the response contains service_version
 
 
 # --- @cfg_default (noop auth; tools list needs no bearer) ---

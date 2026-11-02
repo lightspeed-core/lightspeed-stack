@@ -873,14 +873,12 @@ Model representing a response to an info request.
 Attributes:
     name: Service name.
     service_version: Service version.
-    ogx_version: OGX version.
 
 
 | Field | Type | Description |
 |-------|------|-------------|
 | name | string | Service name |
 | service_version | string | Service version |
-| ogx_version | string | OGX version |
 
 
 ## JsonPathOperator
