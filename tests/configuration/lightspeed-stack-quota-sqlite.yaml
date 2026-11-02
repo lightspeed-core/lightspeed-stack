@@ -1,0 +1,39 @@
+# Quota handlers on a SQLite file whose path comes from the environment, so
+# that the integration tests can point it at a temporary directory
+# (tests/integration/test_quota_configuration.py). The user limiter resets,
+# the cluster limiter increases, both after two seconds; the tests move the
+# rows into the past instead of waiting.
+name: Lightspeed Core Service (LCS)
+service:
+  host: localhost
+  port: 8080
+  auth_enabled: false
+  workers: 1
+  color_log: true
+  access_log: true
+ogx:
+  use_as_library_client: false
+  url: http://localhost:8321
+  api_key: xyzzy
+user_data_collection:
+  feedback_enabled: true
+  feedback_storage: "/tmp/data/feedback"
+authentication:
+  module: "noop"
+quota_handlers:
+  sqlite:
+    db_path: ${env.LCS_QUOTA_DB_PATH}
+  limiters:
+    - name: user quota
+      type: user_limiter
+      initial_quota: 100
+      quota_increase: 0
+      period: "2 seconds"
+    - name: cluster quota
+      type: cluster_limiter
+      initial_quota: 0
+      quota_increase: 500
+      period: "2 seconds"
+  scheduler:
+    period: 1
+  enable_token_history: true

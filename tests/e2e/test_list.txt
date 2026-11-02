@@ -26,6 +26,7 @@ features/streaming_query.feature
 features/vector_stores.feature
 features/conversation_cache_v2.feature
 features/conversation-compaction.feature
+features/quota.feature
 features/feedback.feature
 features/http_401_unauthorized.feature
 features/rbac.feature

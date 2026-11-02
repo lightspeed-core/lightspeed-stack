@@ -328,6 +328,7 @@ All tag behaviour is implemented in **`features/environment.py`**: the hooks (`b
 | `@skip`                         | Scenario is skipped (reason: "Marked with @skip"). Use for broken or WIP scenarios.                                                                     |
 | `@konflux-only`                 | Skipped unless `E2E_KONFLUX_E2E=1`. Used by `okp_rag.feature`.                                                                           |
 | `@cfg_okp`                      | OKP Solr RAG. Konflux deploys OKP in `before_feature`. Local: [Running OKP RAG tests locally](#running-okp-rag-tests-locally).            |
+| `@cfg_quota`                    | Quota management (`quota.feature`): `lightspeed-stack-quota.yaml` and `-quota-renewal.yaml`, packed into the `other` CI shard.           |
 | `@skip-in-library-mode`         | Scenario is skipped when `E2E_DEPLOYMENT_MODE=library`. Used for tests that require a separate OGX (e.g. connection disruption).                |
 | `@local`                        | Skipped unless running in "local" mode (context flag).                                                                                                  |
 | `@InvalidFeedbackStorageConfig` | Before scenario: switch to invalid-feedback-storage config and restart container. After: restore feature config and restart.                            |
@@ -395,6 +396,7 @@ The feature files below are run in the order given in `tests/e2e/test_list.txt`:
 | `info.feature`                   | Info, OpenAPI, shields, tools, metrics, MCP client auth options endpoints.                                                              |
 | `query.feature`                  | Query endpoint: LLM responses, system prompt, auth errors, missing/invalid params, attachments, context length (413), OGX down. |
 | `streaming_query.feature`        | Streaming query endpoint: token stream, system prompt, auth, params, attachments, context length (413 / stream error).                  |
+| `quota.feature`                  | Quota management: 429 once a user's quota is spent, balances reported by query/streaming_query/responses, cluster quota shared, renewal by the scheduler. |
 | `rest_api.feature`               | REST API: OpenAPI endpoint.                                                                                                             |
 | `shields.feature`                | `GET /v1/shields` catalog: `question_validity`, `redaction`, and `granite_guardian` shapes.                                              |
 | `shields_granite_guardian.feature` | `granite_guardian` functional tests. CI uses `mock-guardian`; see [Granite Guardian: mock vs real](#granite-guardian-mock-ci-vs-real-model-local). |
