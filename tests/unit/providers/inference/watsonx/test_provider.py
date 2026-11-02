@@ -128,8 +128,13 @@ async def test_discover_models_keeps_chat_and_embedding_only(
             ),
             body=None,
         ),
+        httpx.HTTPStatusError(
+            "IAM token exchange failed",
+            request=httpx.Request("POST", "https://iam.cloud.ibm.com/identity/token"),
+            response=httpx.Response(401),
+        ),
     ],
-    ids=["connection-error", "authentication-error"],
+    ids=["connection-error", "authentication-error", "iam-http-status-error"],
 )
 async def test_discover_models_wraps_api_error(
     provider: WatsonxInferenceProvider,
