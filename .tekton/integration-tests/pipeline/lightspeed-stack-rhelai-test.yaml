@@ -197,7 +197,7 @@ spec:
               VLLM_HOST="$(cat /opt/host-info/host)"
               n=0
               while [ "$n" -lt 60 ]; do
-                if curl -sf -H "Authorization: Bearer ${VLLM_API_KEY}" \
+                if curl -sf --max-time 15 -H "Authorization: Bearer ${VLLM_API_KEY}" \
                     "http://${VLLM_HOST}:8000/v1/models" | grep -Fq "$(params.model)"; then
                   echo "[mapt] vLLM models API ready (poll ${n})"
                   break

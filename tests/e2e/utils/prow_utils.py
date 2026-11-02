@@ -157,10 +157,11 @@ def restore_ogx_pod() -> None:
         subprocess.TimeoutExpired: If the operation times out.
 
     """
-    if os.environ.get("E2E_KONFLUX_E2E") == "1":
-        # Konflux: PVC fast-path init ~60-90s + Llama startup ~120-180s + health +
-        # port-forward. 600s gives ample headroom without masking runaway installs.
-        timeout = 600
+    # Match ``restart_pod("ogx")`` caps so restore after disruption does not time out first.
+    if os.environ.get("E2E_COPY_MOCK_TLS_CERTS_TO_OGX") == "1":
+        timeout = 1200
+    elif os.environ.get("E2E_KONFLUX_E2E") == "1":
+        timeout = 720
     else:
         timeout = 420
     result = run_e2e_ops("restart-ogx", timeout=timeout)
