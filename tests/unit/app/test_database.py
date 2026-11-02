@@ -180,7 +180,7 @@ class TestCreatePostgresEngine:
         assert result is mock_engine
         # Verify URL construction
         expected_url = (
-            "postgresql://testuser:testpass@localhost:5432/testdb?"
+            "postgresql+psycopg2://testuser:testpass@localhost:5432/testdb?"
             "sslmode=prefer&gssencmode=prefer"
         )
         mock_create_engine.assert_called_once()
