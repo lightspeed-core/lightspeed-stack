@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 from typing import TYPE_CHECKING, Any, Optional
 
+from openai import APIError
 from pydantic_ai.embeddings import EmbeddingModel
 from pydantic_ai.embeddings.openai import OpenAIEmbeddingModel
 from pydantic_ai.models import Model
@@ -14,7 +15,7 @@ from sentence_transformers import CrossEncoder
 from models.config import WatsonxInferenceProviderEntry
 from providers.inference.base import InferenceProvider
 from providers.inference.catalog import CatalogModel, DiscoveredModel
-from providers.inference.errors import ModelTypeNotSupportedError
+from providers.inference.errors import ModelDiscoveryError, ModelTypeNotSupportedError
 from providers.inference.watsonx.pai_provider import WatsonxProvider
 from providers.inference.watsonx.specs import FoundationModelSpecsResponse
 
@@ -49,15 +50,21 @@ class WatsonxInferenceProvider(
         Returns:
             Discovered models before allow-list filtering.
 
+        Raises:
+            ModelDiscoveryError: If WatsonX models or foundation-spec APIs fail.
+
         """
         project_id = self._entry.config.project_id
         pai = self._get_provider
-        models_response, functions_by_id = await asyncio.gather(
-            pai.client.models.list(
-                extra_query={"project_id": project_id} if project_id else None,
-            ),
-            self._list_foundation_model_functions(),
-        )
+        try:
+            models_response, functions_by_id = await asyncio.gather(
+                pai.client.models.list(
+                    extra_query={"project_id": project_id} if project_id else None,
+                ),
+                self._list_foundation_model_functions(),
+            )
+        except APIError as exc:
+            raise ModelDiscoveryError(self.provider_id) from exc
 
         discovered: list[DiscoveredModel] = []
         for model in models_response.data:

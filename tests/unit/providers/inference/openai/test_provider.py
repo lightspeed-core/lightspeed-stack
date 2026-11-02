@@ -4,14 +4,16 @@
 
 from typing import Any
 
+import httpx
 import pytest
+from openai import APIConnectionError, AuthenticationError
 from pydantic_ai.embeddings.openai import OpenAIEmbeddingModel
 from pydantic_ai.models.openai import OpenAIResponsesModel
 from pydantic_ai.providers.openai import OpenAIProvider
 
 from models.config import OpenAIInferenceProviderEntry
 from providers.inference.catalog import CatalogModel
-from providers.inference.errors import ModelTypeNotSupportedError
+from providers.inference.errors import ModelDiscoveryError, ModelTypeNotSupportedError
 from providers.inference.openai.provider import OpenAIInferenceProvider
 
 
@@ -69,6 +71,45 @@ async def test_discover_models_infers_model_types(
     assert discovered[0].provider_model_id == model_id
     assert discovered[0].model_type == expected_type
     pai_provider.client.models.list.assert_awaited_once_with()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "cause",
+    [
+        APIConnectionError(
+            message="connection failed",
+            request=httpx.Request(  # pyright: ignore[reportArgumentType]
+                "GET", "https://example.test/v1/models"
+            ),
+        ),
+        AuthenticationError(
+            message="unauthorized",
+            response=httpx.Response(  # pyright: ignore[reportArgumentType]
+                401,
+                request=httpx.Request("GET", "https://example.test/v1/models"),
+            ),
+            body=None,
+        ),
+    ],
+    ids=["connection-error", "authentication-error"],
+)
+async def test_discover_models_wraps_api_error(
+    provider: OpenAIInferenceProvider,
+    mocker: Any,
+    cause: Exception,
+) -> None:
+    """OpenAI models.list API subclasses become ModelDiscoveryError."""
+    pai_provider = mocker.MagicMock(spec=OpenAIProvider)
+    pai_provider.client.models.list = mocker.AsyncMock(side_effect=cause)
+    provider._provider = pai_provider
+
+    with pytest.raises(ModelDiscoveryError) as exc_info:
+        await provider._discover_models()
+
+    assert exc_info.value.provider_id == "openai"
+    assert str(exc_info.value) == "Failed to discover models for provider 'openai'"
+    assert exc_info.value.__cause__ is cause
 
 
 def test_create_llm_uses_openai_responses_model(

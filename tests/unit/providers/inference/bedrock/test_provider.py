@@ -5,6 +5,7 @@
 from typing import Any, Optional
 
 import pytest
+from botocore.exceptions import ClientError, EndpointConnectionError
 from pydantic_ai.embeddings.bedrock import BedrockEmbeddingModel
 from pydantic_ai.models.bedrock import BedrockConverseModel
 from pydantic_ai.providers.bedrock import BedrockProvider
@@ -15,7 +16,7 @@ from providers.inference.bedrock.provider import (
     _BearerTokenSession,
 )
 from providers.inference.catalog import CatalogModel
-from providers.inference.errors import ModelTypeNotSupportedError
+from providers.inference.errors import ModelDiscoveryError, ModelTypeNotSupportedError
 
 
 def _entry(**config: Any) -> BedrockInferenceProviderEntry:
@@ -257,6 +258,38 @@ async def test_discover_models_remaps_profile_only_and_skips_unusable(
         ("amazon.nova-pro-v1:0", "llm"),
         ("us.openai.gpt-6-astra", "llm"),
     ]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "cause",
+    [
+        ClientError(
+            {"Error": {"Code": "AccessDeniedException", "Message": "denied"}},
+            "ListFoundationModels",
+        ),
+        EndpointConnectionError(endpoint_url="https://bedrock.example.test"),
+    ],
+    ids=["client-error", "endpoint-connection-error"],
+)
+async def test_discover_models_wraps_foreign_failures(
+    provider: BedrockInferenceProvider,
+    mocker: Any,
+    cause: Exception,
+) -> None:
+    """Bedrock service and transport subclasses become ModelDiscoveryError."""
+    mocker.patch.object(
+        provider,
+        "_create_bedrock_client",
+        side_effect=cause,
+    )
+
+    with pytest.raises(ModelDiscoveryError) as exc_info:
+        await provider._discover_models()
+
+    assert exc_info.value.provider_id == "bedrock"
+    assert str(exc_info.value) == "Failed to discover models for provider 'bedrock'"
+    assert exc_info.value.__cause__ is cause
 
 
 def test_create_llm_uses_bedrock_converse_model(

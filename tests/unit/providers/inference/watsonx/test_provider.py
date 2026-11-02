@@ -4,13 +4,15 @@
 
 from typing import Any, Optional
 
+import httpx
 import pytest
+from openai import APIConnectionError, AuthenticationError
 from pydantic_ai.embeddings.openai import OpenAIEmbeddingModel
 from pydantic_ai.models.openai import OpenAIChatModel
 
 from models.config import WatsonxInferenceProviderEntry
 from providers.inference.catalog import CatalogModel
-from providers.inference.errors import ModelTypeNotSupportedError
+from providers.inference.errors import ModelDiscoveryError, ModelTypeNotSupportedError
 from providers.inference.watsonx.auth import WatsonxIAMAuth
 from providers.inference.watsonx.pai_provider import WatsonxProvider
 from providers.inference.watsonx.provider import WatsonxInferenceProvider
@@ -104,6 +106,51 @@ async def test_discover_models_keeps_chat_and_embedding_only(
     pai_provider.client.models.list.assert_awaited_once_with(
         extra_query={"project_id": "test-project"}
     )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "cause",
+    [
+        APIConnectionError(
+            message="connection failed",
+            request=httpx.Request(  # pyright: ignore[reportArgumentType]
+                "GET", "https://us-south.ml.cloud.ibm.com/ml/v1/models"
+            ),
+        ),
+        AuthenticationError(
+            message="unauthorized",
+            response=httpx.Response(  # pyright: ignore[reportArgumentType]
+                401,
+                request=httpx.Request(
+                    "GET", "https://us-south.ml.cloud.ibm.com/ml/v1/models"
+                ),
+            ),
+            body=None,
+        ),
+    ],
+    ids=["connection-error", "authentication-error"],
+)
+async def test_discover_models_wraps_api_error(
+    provider: WatsonxInferenceProvider,
+    mocker: Any,
+    cause: Exception,
+) -> None:
+    """WatsonX models.list API subclasses become ModelDiscoveryError."""
+    pai_provider = _attach_pai_provider(provider, mocker)
+    pai_provider.client.models.list = mocker.AsyncMock(side_effect=cause)
+    mocker.patch.object(
+        provider,
+        "_list_foundation_model_functions",
+        new=mocker.AsyncMock(return_value={}),
+    )
+
+    with pytest.raises(ModelDiscoveryError) as exc_info:
+        await provider._discover_models()
+
+    assert exc_info.value.provider_id == "watsonx"
+    assert str(exc_info.value) == "Failed to discover models for provider 'watsonx'"
+    assert exc_info.value.__cause__ is cause
 
 
 @pytest.mark.asyncio

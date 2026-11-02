@@ -5,13 +5,15 @@
 from typing import Any
 
 import pytest
+from google.auth.exceptions import DefaultCredentialsError
+from google.genai.errors import ClientError as GoogleGenAIClientError
 from pydantic_ai.embeddings.google import GoogleEmbeddingModel
 from pydantic_ai.models.google import GoogleModel
 from pydantic_ai.providers.google_cloud import GoogleCloudProvider
 
 from models.config import VertexAIInferenceProviderEntry
 from providers.inference.catalog import CatalogModel
-from providers.inference.errors import ModelTypeNotSupportedError
+from providers.inference.errors import ModelDiscoveryError, ModelTypeNotSupportedError
 from providers.inference.vertexai.provider import VertexAIInferenceProvider
 
 
@@ -105,6 +107,33 @@ async def test_discover_models_keeps_catalog_name(
     assert discovered[0].provider_model_id == name
     assert discovered[0].model_type == expected_type
     pai_provider.client.aio.models.list.assert_awaited_once_with()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "cause",
+    [
+        GoogleGenAIClientError(401, {"error": {"message": "unauthorized"}}),
+        DefaultCredentialsError("credentials unavailable"),
+    ],
+    ids=["genai-client-error", "default-credentials-error"],
+)
+async def test_discover_models_wraps_foreign_failures(
+    provider: VertexAIInferenceProvider,
+    mocker: Any,
+    cause: Exception,
+) -> None:
+    """Vertex API/auth subclasses become ModelDiscoveryError."""
+    pai_provider = mocker.MagicMock(spec=GoogleCloudProvider)
+    pai_provider.client.aio.models.list = mocker.AsyncMock(side_effect=cause)
+    provider._provider = pai_provider
+
+    with pytest.raises(ModelDiscoveryError) as exc_info:
+        await provider._discover_models()
+
+    assert exc_info.value.provider_id == "vertexai"
+    assert str(exc_info.value) == "Failed to discover models for provider 'vertexai'"
+    assert exc_info.value.__cause__ is cause
 
 
 def test_create_llm_uses_google_model(
