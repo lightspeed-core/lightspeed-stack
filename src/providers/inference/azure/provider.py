@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from azure.core.exceptions import ClientAuthenticationError
 from azure.identity.aio import ClientSecretCredential, get_bearer_token_provider
-from openai import AsyncAzureOpenAI
+from openai import APIError, AsyncAzureOpenAI
 from pydantic_ai.embeddings import EmbeddingModel
 from pydantic_ai.embeddings.openai import OpenAIEmbeddingModel
 from pydantic_ai.models import Model
@@ -17,7 +18,7 @@ from configuration import configuration
 from models.config import AzureInferenceProviderEntry
 from providers.inference.base import InferenceProvider
 from providers.inference.catalog import CatalogModel, DiscoveredModel
-from providers.inference.errors import ModelTypeNotSupportedError
+from providers.inference.errors import ModelDiscoveryError, ModelTypeNotSupportedError
 from providers.inference.model_type_inference import (
     infer_model_type_from_pai_known_names,
 )
@@ -71,8 +72,15 @@ class AzureInferenceProvider(
         Returns:
             Discovered models with inferred types, before allow-list filtering.
 
+        Raises:
+            ModelDiscoveryError: If the Azure OpenAI models API or Entra ID
+                authentication fails.
+
         """
-        response = await self._get_provider.client.models.list()
+        try:
+            response = await self._get_provider.client.models.list()
+        except (APIError, ClientAuthenticationError) as exc:
+            raise ModelDiscoveryError(self.provider_id) from exc
         return [
             DiscoveredModel(
                 provider_model_id=model.id,

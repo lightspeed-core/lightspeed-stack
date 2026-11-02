@@ -70,3 +70,17 @@ class NoModelConfiguredError(Exception):
             f"No {model_type!r} model is configured or available in the catalog"
         )
         self.model_type = model_type
+
+
+class ModelDiscoveryError(Exception):
+    """Raised when a provider cannot discover available models."""
+
+    def __init__(self, provider_id: ProviderId) -> None:
+        """Initialize with the provider whose model discovery failed.
+
+        Args:
+            provider_id: Provider whose model discovery failed.
+
+        """
+        super().__init__(f"Failed to discover models for provider {provider_id!r}")
+        self.provider_id = provider_id

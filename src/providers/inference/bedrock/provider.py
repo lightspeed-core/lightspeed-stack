@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any, Optional
 import boto3
 from botocore.client import BaseClient
 from botocore.config import Config
+from botocore.exceptions import BotoCoreError, ClientError
 from botocore.session import Session
 from botocore.tokens import FrozenAuthToken
 from pydantic_ai.embeddings import EmbeddingModel
@@ -27,7 +28,7 @@ from providers.inference.bedrock.model_discovery import (
     to_discovered_model,
 )
 from providers.inference.catalog import CatalogModel, DiscoveredModel
-from providers.inference.errors import ModelTypeNotSupportedError
+from providers.inference.errors import ModelDiscoveryError, ModelTypeNotSupportedError
 
 if TYPE_CHECKING:
     from providers.inference.types import ModelType
@@ -120,10 +121,17 @@ class BedrockInferenceProvider(
         Returns:
             Discovered models before allow-list filtering.
 
+        Raises:
+            ModelDiscoveryError: If Bedrock control-plane listing or AWS
+                credentials/transport fail.
+
         """
-        client = self._create_bedrock_client()
-        foundations = await asyncio.to_thread(list_foundation_models, client)
-        profiles = await asyncio.to_thread(list_inference_profiles, client)
+        try:
+            client = self._create_bedrock_client()
+            foundations = await asyncio.to_thread(list_foundation_models, client)
+            profiles = await asyncio.to_thread(list_inference_profiles, client)
+        except (ClientError, BotoCoreError) as exc:
+            raise ModelDiscoveryError(self.provider_id) from exc
         profile_ids = first_profile_id_by_foundation_model_id(profiles)
 
         discovered: list[DiscoveredModel] = []

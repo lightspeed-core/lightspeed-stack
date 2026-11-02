@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from openai import APIError
 from pydantic_ai.embeddings import EmbeddingModel
 from pydantic_ai.embeddings.openai import OpenAIEmbeddingModel
 from pydantic_ai.models import Model
@@ -14,7 +15,7 @@ from sentence_transformers import CrossEncoder
 from models.config import VllmInferenceProviderEntry
 from providers.inference.base import InferenceProvider
 from providers.inference.catalog import CatalogModel, DiscoveredModel
-from providers.inference.errors import ModelTypeNotSupportedError
+from providers.inference.errors import ModelDiscoveryError, ModelTypeNotSupportedError
 from providers.inference.model_type_inference import (
     infer_model_type_from_pai_known_names,
 )
@@ -46,8 +47,14 @@ class VllmInferenceProvider(
         Returns:
             Discovered models with inferred types, before allow-list filtering.
 
+        Raises:
+            ModelDiscoveryError: If the vLLM models API fails.
+
         """
-        response = await self._get_provider.client.models.list()
+        try:
+            response = await self._get_provider.client.models.list()
+        except APIError as exc:
+            raise ModelDiscoveryError(self.provider_id) from exc
         return [
             DiscoveredModel(
                 provider_model_id=model.id,
