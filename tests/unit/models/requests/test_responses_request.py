@@ -122,3 +122,14 @@ class TestResponsesRequestBodySize:
         error_text = str(exc_info.value)
         assert "110000" in error_text
         assert "100000" in error_text
+
+    def test_prompt_cache_key_accepted(self) -> None:
+        """A request containing prompt_cache_key must be accepted."""
+        req = ResponsesRequest.model_validate(
+            {
+                "input": "hello",
+                "prompt_cache_key": "example-cache-key",
+            }
+        )
+
+        assert req.prompt_cache_key == "example-cache-key"
