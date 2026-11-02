@@ -129,7 +129,7 @@ def _create_postgres_engine(
 
     """
     postgres_url = (
-        f"postgresql://{config.user}:{config.password.get_secret_value()}@"
+        f"postgresql+psycopg2://{config.user}:{config.password.get_secret_value()}@"
         f"{config.host}:{config.port}/{config.db}"
         f"?sslmode={config.ssl_mode}&gssencmode={config.gss_encmode}"
     )
