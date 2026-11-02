@@ -1,22 +1,19 @@
 """LLM query and response steps."""
 
 import json
-import os
 from typing import Any, cast
 
-import requests
 from behave import step, then  # pyright: ignore[reportAttributeAccessIssue]
 from behave.runner import Context
 
 from tests.e2e.utils.utils import (
+    DEFAULT_LLM_TIMEOUT,
     RESPONSE_TOOL_OUTPUT_ITEM_TYPES,
     parse_responses_sse_final_response_object,
+    read_streamed_response,
     replace_placeholders,
     request_with_transient_retry,
 )
-
-# Longer timeout for Prow/OpenShift with CPU-based vLLM
-DEFAULT_LLM_TIMEOUT = 180 if os.getenv("RUNNING_PROW") else 120
 
 
 def _response_contains_fragment(text: str, fragment: str) -> bool:
@@ -114,18 +111,6 @@ def ask_question(context: Context, endpoint: str) -> None:
     )
 
 
-def _read_streamed_response(response: requests.Response) -> str:
-    """Read a streaming response body, tolerating premature close (e.g. after error event)."""
-    chunks = []
-    try:
-        for line in response.iter_lines(decode_unicode=True):
-            if line is not None:
-                chunks.append(line + "\n")
-    except requests.exceptions.ChunkedEncodingError:
-        pass  # Server may close stream after sending an error event
-    return "".join(chunks)
-
-
 @step('I use "{endpoint}" to ask question with authorization header')
 def ask_question_authorized(context: Context, endpoint: str) -> None:
     """Call the service REST API endpoint with question."""
@@ -150,7 +135,7 @@ def ask_question_authorized(context: Context, endpoint: str) -> None:
             stream=True,
         )
         # Consume stream so server close after error event does not raise
-        body = _read_streamed_response(resp)
+        body = read_streamed_response(resp)
         resp._content = body.encode(resp.encoding or "utf-8")
         context.response = resp
         # Parse SSE events and make data available for assertions

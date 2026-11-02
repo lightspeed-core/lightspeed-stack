@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 import uuid
 from collections.abc import Mapping
 from typing import Any, Optional
@@ -19,6 +18,7 @@ from behave import step, then, when  # pyright: ignore[reportAttributeAccessIssu
 from behave.runner import Context
 
 from tests.e2e.utils.utils import (
+    DEFAULT_LLM_TIMEOUT,
     normalize_endpoint,
     replace_placeholders,
     request_with_transient_retry,
@@ -26,7 +26,6 @@ from tests.e2e.utils.utils import (
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_LLM_TIMEOUT = 180 if os.getenv("RUNNING_PROW") else 120
 MAX_STREAM_BYTES = 10 * 1024 * 1024
 MAX_STREAM_EVENTS = 2000
 MAX_DIAGNOSTIC_EXCERPT_BYTES = 4096
