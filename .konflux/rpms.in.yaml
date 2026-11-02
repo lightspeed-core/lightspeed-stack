@@ -9,6 +9,8 @@ packages:
   ]
 upgradePackages:
   [
+    curl-minimal,
+    libcurl-minimal,
   ]
 contentOrigin:
   repofiles: ["./redhat.repo"]
