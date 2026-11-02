@@ -16,7 +16,11 @@ from providers.inference.errors import (
 )
 from providers.inference.openai.provider import OpenAIInferenceProvider
 from providers.inference.resolve import configured_defaults, conversation_last_used
+from providers.inference.sentence_transformers.provider import (
+    SentenceTransformersInferenceProvider,
+)
 from providers.inference.vertexai.provider import VertexAIInferenceProvider
+from providers.inference.vllm.provider import VllmInferenceProvider
 from providers.inference.watsonx.provider import WatsonxInferenceProvider
 from utils.types import Singleton
 
@@ -32,6 +36,8 @@ PROVIDER_CLASSES: Final[dict[ProviderType, type[InferenceProvider[Any, Any]]]] =
     "vertexai": VertexAIInferenceProvider,
     "bedrock": BedrockInferenceProvider,
     "watsonx": WatsonxInferenceProvider,
+    "vllm": VllmInferenceProvider,
+    "sentence_transformers": SentenceTransformersInferenceProvider,
 }
 
 
