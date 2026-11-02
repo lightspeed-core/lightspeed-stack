@@ -34,7 +34,7 @@ The tables below summarize each provider category, containing the following atri
 | Name                  | Type   | Pip Dependencies                                                                                                                                                      | Supported in LCS |
 |-----------------------|--------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------|:----------------:|
 | meta-reference        | inline | `accelerate`, `fairscale`, `torch`, `torchvision`, `transformers`, `zmq`, `lm-format-enforcer`, `sentence-transformers`, `torchao==0.8.0`, `fbgemm-gpu-genai==1.1.2`  | ❌               |
-| sentence-transformers | inline | `torch torchvision torchao>=0.12.0 --extra-index-url https://download.pytorch.org/whl/cpu`, `sentence-transformers --no-deps`                                         | ❌               |
+| sentence-transformers | inline | `torch torchvision torchao>=0.12.0 --extra-index-url https://download.pytorch.org/whl/cpu`, `sentence-transformers --no-deps`                                         | ✅               |
 | anthropic             | remote | `litellm`                                                                                                                                                             | ❌               |
 | azure                 | remote | —                                                                                                                                                                     | ✅               |
 | bedrock               | remote | -                                                                                                                                                                     | ✅               |
@@ -55,6 +55,7 @@ The tables below summarize each provider category, containing the following atri
 | tgi                   | remote | `huggingface_hub`, `aiohttp`                                                                                                                                          | ❌               |
 | together              | remote | `together`                                                                                                                                                            | ❌               |
 | vertexai              | remote | `google-auth`                                                                                                                                                         | ✅               |
+| vllm                  | remote | —                                                                                                                                                                     | ✅               |
 | watsonx               | remote | `litellm`                                                                                                                                                             | ✅               |
 
 Red Hat providers:
