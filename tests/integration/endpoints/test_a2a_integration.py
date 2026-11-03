@@ -136,6 +136,7 @@ def _jsonrpc_body(
         parts: Optional explicit parts list, overriding the default single
             text part. Pass ``[]`` to build a message with no input content.
         method: JSON-RPC method, either "message/send" or "message/stream".
+
     """
     message: dict[str, Any] = {
         "messageId": str(uuid.uuid4()),
@@ -173,6 +174,7 @@ async def _collect_stream_results(response: Any) -> list[dict[str, Any]]:
     Returns:
         One parsed JSON-RPC ``result`` dict per ``data:`` frame in the SSE
         stream, in emission order.
+
     """
     results: list[dict[str, Any]] = []
     async for chunk in response.body_iterator:
@@ -221,6 +223,7 @@ def _build_a2a_request(body: dict[str, Any]) -> Request:
     Returns:
         Request: FastAPI Request object whose body yields the serialized
         ``body`` dict when read (e.g. via ``await request.body()``).
+
     """
     body_bytes = json.dumps(body).encode()
     body_sent = False
