@@ -18,7 +18,7 @@ Feature: shield_ids override tests
     <request_body>
     """
     Then The status code of the response is 200
-      And The body of the response contains at least one of <expected_fragment>
+      And The body of the response contains <expected_fragment>
 
     Examples:
       | request_body                                                                                                                                                                                                                             | expected_fragment                                    |
