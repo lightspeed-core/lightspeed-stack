@@ -186,12 +186,10 @@ Lightspeed Core Stack (LCS) service API specification.
         * [✅ Responses](#-responses-39)
     * [GET `/.well-known/agent.json`](#get-well-knownagentjson)
         * [✅ Responses](#-responses-40)
-    * [GET `/a2a`](#get-a2a)
-        * [✅ Responses](#-responses-41)
     * [POST `/a2a`](#post-a2a)
-        * [✅ Responses](#-responses-42)
+        * [✅ Responses](#-responses-41)
     * [GET `/a2a/health`](#get-a2ahealth)
-        * [✅ Responses](#-responses-43)
+        * [✅ Responses](#-responses-42)
 * [📋 Components](#-components)
     * [A2AStateConfiguration](#a2astateconfiguration)
     * [APIKeySecurityScheme](#apikeysecurityscheme)
@@ -458,7 +456,6 @@ Lightspeed Core Stack (LCS) service API specification.
 | GET    | `/metrics`                                            | Returns the latest Prometheus metrics in a form of plain text                                                                                        |
 | GET    | `/.well-known/agent-card.json`                        | Serve the A2A Agent Card at the well-known location                                                                                                  |
 | GET    | `/.well-known/agent.json`                             | Handle A2A JSON-RPC requests following the A2A protocol specification                                                                                |
-| GET    | `/a2a`                                                | Handle A2A JSON-RPC requests following the A2A protocol specification                                                                                |
 | POST   | `/a2a`                                                | Handle A2A JSON-RPC requests following the A2A protocol specification                                                                                |
 | GET    | `/a2a/health`                                         | Handle A2A JSON-RPC requests following the A2A protocol specification                                                                                |
 
@@ -5521,39 +5518,6 @@ capabilities according to the A2A protocol specification.
 | Status Code | Description | Component |
 |-------------|-------------|-----------|
 | 200 | Successful Response | [AgentCard](#agentcard) |
-
-## GET `/a2a`
-
-> **Handle A2A Jsonrpc**
-
-Handle A2A JSON-RPC requests following the A2A protocol specification.
-
-This endpoint uses the DefaultRequestHandler from the A2A SDK to handle
-all JSON-RPC requests including message/send, message/stream, etc.
-
-The A2A SDK application is created per-request to include authentication
-context while still leveraging FastAPI's authorization middleware.
-
-Automatically detects streaming requests (message/stream JSON-RPC method)
-and returns a StreamingResponse to enable real-time chunk delivery.
-
-Args:
-    request: FastAPI request object
-    auth: Authentication tuple
-    mcp_headers: MCP headers for context propagation
-
-Returns:
-    JSON-RPC response or streaming response
-
-
-
-
-
-### ✅ Responses
-
-| Status Code | Description | Component |
-|-------------|-------------|-----------|
-| 200 | Successful Response | ... |
 
 ## POST `/a2a`
 
