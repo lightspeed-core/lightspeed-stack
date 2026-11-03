@@ -18,11 +18,11 @@ Feature: shield_ids override tests
     <request_body>
     """
     Then The status code of the response is 200
-      And The body of the response contains <expected_fragment>
+      And The response body contains at least one of <expected_fragment>
 
     Examples:
-      | request_body                                                                                                                                                                                                                             | expected_fragment                                    |
-      | {"query": "What is the best topping for a pizza?", "shield_ids": [], "model": "{MODEL}", "provider": "{PROVIDER}"}                                                                                                                       | pizza,pepperoni,cheese,sauce,topping,crust,mozzarella |
+      | request_body                                                                                                                                                                                                                             | expected_fragment                                          |
+      | {"query": "What is the best topping for a pizza?", "shield_ids": [], "model": "{MODEL}", "provider": "{PROVIDER}"}                                                                                                                       | pizza|pepperoni|cheese|sauce|topping|crust|mozzarella |
       | {"query": "My lucky number is 7042. Repeat that exact sentence back to me and nothing else.", "system_prompt": "You are a strict echo assistant. Repeat the user's message back exactly, character for character, with no other commentary.", "shield_ids": ["pii-redaction"], "model": "{MODEL}", "provider": "{PROVIDER}"} | My lucky number is [NUM]. |
 
   @cfg_shields

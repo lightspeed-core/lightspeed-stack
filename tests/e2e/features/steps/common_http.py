@@ -86,15 +86,7 @@ def check_response_body_schema(context: Context) -> None:
 
 @then("The body of the response contains {substring}")
 def check_response_body_contains(context: Context, substring: str) -> None:
-    """Check that response body contains a substring or any of several alternatives.
-
-    When *substring* contains a comma it is treated as a comma-separated
-    list of candidate substrings and the assertion passes when **at least
-    one** of them appears in the response body (case-insensitive).  Each
-    candidate is stripped of leading/trailing whitespace.
-
-    A value without a comma behaves exactly like the original single-
-    substring check.
+    """Check that response body contains a substring.
 
     Supports {MODEL} and {PROVIDER} placeholders in the substring so
     assertions work with any configured provider (e.g. unknown-provider
@@ -104,21 +96,39 @@ def check_response_body_contains(context: Context, substring: str) -> None:
     do not fail otherwise-identical scenarios.
     """
     assert context.response is not None, "Request needs to be performed first"
+    expected = replace_placeholders(context, substring)
+    response_text_lower = context.response.text.lower()
+    expected_substring_lower = expected.lower()
+    assert (
+        expected_substring_lower in response_text_lower
+    ), f"The response text '{context.response.text}' doesn't contain '{expected}'"
+
+
+@then("The response body contains at least one of {alternatives}")
+def check_response_body_contains_any(context: Context, alternatives: str) -> None:
+    """Assert that the response body contains at least one of several candidates.
+
+    *alternatives* is a pipe-separated list of candidate substrings
+    (e.g. ``pizza|pepperoni|cheese``).  The assertion passes when **at
+    least one** candidate appears in the response body (case-insensitive).
+
+    This step uses a distinct pattern prefix (``The response body``
+    instead of ``The body of the response``) so behave's default ``parse``
+    matcher treats it as unambiguous relative to
+    ``check_response_body_contains``.
+
+    Supports {MODEL} and {PROVIDER} placeholders in each candidate.
+    """
+    assert context.response is not None, "Request needs to be performed first"
     response_text_lower = context.response.text.lower()
     candidates = [
-        replace_placeholders(context, c.strip()) for c in substring.split(",")
+        replace_placeholders(context, c.strip()) for c in alternatives.split("|")
     ]
-    if len(candidates) == 1:
-        expected = candidates[0]
-        assert (
-            expected.lower() in response_text_lower
-        ), f"The response text '{context.response.text}' doesn't contain '{expected}'"
-    else:
-        matched = any(c.lower() in response_text_lower for c in candidates)
-        assert matched, (
-            f"The response text '{context.response.text}' doesn't contain any of "
-            f"{candidates}"
-        )
+    matched = any(c.lower() in response_text_lower for c in candidates)
+    assert matched, (
+        f"The response text '{context.response.text}' doesn't contain any of "
+        f"{candidates}"
+    )
 
 
 @then("The body of the response does not contain {substring}")
