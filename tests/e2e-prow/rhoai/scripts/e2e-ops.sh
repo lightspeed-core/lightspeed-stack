@@ -401,6 +401,11 @@ _restart_llama_stack_core() {
         return 1
     fi
 
+    if ! _wait_for_vllm_model_in_ogx_registry; then
+        e2e_ops_dump_pod_logs "llama-stack-service" 200
+        return 1
+    fi
+
     echo "===== Llama-stack restore complete ====="
     return 0
 }
@@ -560,6 +565,31 @@ verify_llama_local_forward() {
         fi
     done
     echo "OGX localhost:8321 connectivity check failed (HTTP: ${http_code:-unknown})"
+    return 1
+}
+
+# RHEL AI: OGX /v1/health can be 200 while vLLM registration is still pending (or failed once).
+_wait_for_vllm_model_in_ogx_registry() {
+    if ! oc get secret vllm-url-secret -n "$NAMESPACE" &>/dev/null; then
+        return 0
+    fi
+    local model_id
+    model_id="$(oc get secret vllm-model-secret -n "$NAMESPACE" -o jsonpath='{.data.key}' 2>/dev/null | base64 -d 2>/dev/null || true)"
+    if [[ -z "$model_id" ]]; then
+        return 0
+    fi
+    local needle="vllm/${model_id}"
+    local local_port="${LOCAL_OGX_PORT:-8321}"
+    echo "[e2e-ops] Waiting for ${needle} in OGX GET /v1/models..."
+    local attempt
+    for ((attempt=1; attempt<=60; attempt++)); do
+        if curl -sf --max-time 15 "http://127.0.0.1:${local_port}/v1/models" 2>/dev/null | grep -Fq "$needle"; then
+            echo "[e2e-ops] OGX registry lists ${needle} (attempt ${attempt})"
+            return 0
+        fi
+        sleep 5
+    done
+    echo "[e2e-ops] ERROR: ${needle} not registered in OGX after llama restart (5m)"
     return 1
 }
 
