@@ -94,6 +94,22 @@ Resolved 322 packages in 2ms
 
 ---
 
+## CVE fixes
+
+* pyproject.toml + uv.lock
+* requirements.txt used by Konflux
+    - public packages
+    - RHOAI packages
+
+---
+
+![RHOAI](../rhoai_packages/component_diagram.svg)
+
+---
+
+![RHOAI](../rhoai_packages/sequence_diagram.svg)
+
+---
 
 ## Thank you
 
