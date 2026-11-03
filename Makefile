@@ -375,8 +375,28 @@ upload-distribution-archives:	## Upload distribution archives into Python regist
 konflux-requirements:	## Generate .konflux/requirements.*.txt files for Konflux hermetic build
 	scripts/konflux_resolve.py --profile cpu
 
-konflux-rpm-lock:	## Generate rpm.lock.yaml file for Konflux build
-	./scripts/generate-rpm-lock.sh
+# Konflux RPM lock generation. The base image and credentials must be supplied
+# on the command line (or environment), e.g.
+#   make konflux-rpm-lock KONFLUX_BASE_IMAGE=<image> RHSM_ACTIVATION_KEY=<key> RHSM_ORG_ID=<org>
+RHSM_ACTIVATION_KEY ?=
+RHSM_ORG_ID ?=
+KONFLUX_RPMS_IN ?= .konflux/rpms.in.yaml
+KONFLUX_RPMS_LOCK ?= .konflux/rpms.lock.yaml
+KONFLUX_BASE_IMAGE ?=
+
+konflux-rpm-lock:	## Generate .konflux/rpms.lock.yaml file for Konflux build (requires KONFLUX_BASE_IMAGE, RHSM_ACTIVATION_KEY and RHSM_ORG_ID)
+	@if [ -z "$(KONFLUX_BASE_IMAGE)" ] || [ -z "$(RHSM_ACTIVATION_KEY)" ] || [ -z "$(RHSM_ORG_ID)" ]; then \
+		echo "ERROR: set KONFLUX_BASE_IMAGE, RHSM_ACTIVATION_KEY and RHSM_ORG_ID, e.g."; \
+		echo "       make konflux-rpm-lock KONFLUX_BASE_IMAGE=<image> RHSM_ACTIVATION_KEY=<key> RHSM_ORG_ID=<org>"; \
+		exit 1; \
+	fi
+	./scripts/generate-rpm-lock.sh \
+		-a "$(RHSM_ACTIVATION_KEY)" \
+		-g "$(RHSM_ORG_ID)" \
+		-i "$(KONFLUX_BASE_IMAGE)" \
+		-f "$(KONFLUX_RPMS_IN)" \
+		-O rpms.lock.yaml
+	mv rpms.lock.yaml $(KONFLUX_RPMS_LOCK)
 
 help: ## Show this help screen
 	@echo 'Usage: make <OPTIONS> ... <TARGETS>'
