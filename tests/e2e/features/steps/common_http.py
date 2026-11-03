@@ -108,9 +108,13 @@ def check_response_body_contains(context: Context, substring: str) -> None:
 def check_response_body_contains_any(context: Context, alternatives: str) -> None:
     """Assert that the response body contains at least one of several candidates.
 
-    *alternatives* is a pipe-separated list of candidate substrings
-    (e.g. ``pizza|pepperoni|cheese``).  The assertion passes when **at
+    *alternatives* is a semicolon-separated list of candidate substrings
+    (e.g. ``pizza;pepperoni;cheese``).  The assertion passes when **at
     least one** candidate appears in the response body (case-insensitive).
+
+    Semicolons are used as delimiters instead of pipes because the pipe
+    character is Gherkin's table column delimiter and cannot appear
+    unescaped inside Examples table cells.
 
     This step uses a distinct pattern prefix (``The response body``
     instead of ``The body of the response``) so behave's default ``parse``
@@ -122,7 +126,7 @@ def check_response_body_contains_any(context: Context, alternatives: str) -> Non
     assert context.response is not None, "Request needs to be performed first"
     response_text_lower = context.response.text.lower()
     candidates = [
-        replace_placeholders(context, c.strip()) for c in alternatives.split("|")
+        replace_placeholders(context, c.strip()) for c in alternatives.split(";")
     ]
     matched = any(c.lower() in response_text_lower for c in candidates)
     assert matched, (
