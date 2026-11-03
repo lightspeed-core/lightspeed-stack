@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING, Any, Optional
 from pydantic_ai.embeddings.sentence_transformers import (
     SentenceTransformerEmbeddingModel,
 )
-from pydantic_ai.models import Model
 from pydantic_ai.providers import Provider
 from sentence_transformers import CrossEncoder, SentenceTransformer
 
@@ -15,7 +14,6 @@ from log import get_logger
 from models.config import SentenceTransformersInferenceProviderEntry
 from providers.inference.base import InferenceProvider
 from providers.inference.catalog import CatalogModel, DiscoveredModel
-from providers.inference.errors import ModelTypeNotSupportedError
 from providers.inference.sentence_transformers.model_cache import (
     SentenceTransformersModelCache,
 )
@@ -98,19 +96,6 @@ class SentenceTransformersInferenceProvider(
                 )
             )
         return catalog
-
-    def _create_llm(self, model: CatalogModel) -> Model:
-        """Reject LLM construction; this provider never serves chat models.
-
-        Args:
-            model: Catalog entry that requested LLM support.
-
-        Raises:
-            ModelTypeNotSupportedError: Always, because llm is unsupported.
-
-        """
-        _ = model
-        raise ModelTypeNotSupportedError("llm", self.provider_id)
 
     def _create_embedding(self, model: CatalogModel) -> EmbeddingModel:
         """Create or reuse a cached Pydantic AI sentence-transformers embedding model.

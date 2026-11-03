@@ -17,7 +17,6 @@ from pydantic_ai.embeddings.bedrock import BedrockEmbeddingModel
 from pydantic_ai.models import Model
 from pydantic_ai.models.bedrock import BedrockConverseModel
 from pydantic_ai.providers.bedrock import BedrockProvider
-from sentence_transformers import CrossEncoder
 
 from models.config import BedrockInferenceProviderEntry
 from providers.inference.base import InferenceProvider
@@ -28,7 +27,7 @@ from providers.inference.bedrock.model_discovery import (
     to_discovered_model,
 )
 from providers.inference.catalog import CatalogModel, DiscoveredModel
-from providers.inference.errors import ModelDiscoveryError, ModelTypeNotSupportedError
+from providers.inference.errors import ModelDiscoveryError
 
 if TYPE_CHECKING:
     from providers.inference.types import ModelType
@@ -177,19 +176,6 @@ class BedrockInferenceProvider(
             model.provider_model_id,
             provider=self._get_provider,
         )
-
-    def _create_rerank(self, model: CatalogModel) -> CrossEncoder:
-        """Reject rerank requests; this provider has no rerank API.
-
-        Args:
-            model: Catalog entry that requested rerank support.
-
-        Raises:
-            ModelTypeNotSupportedError: Always, because rerank is unsupported.
-
-        """
-        _ = model
-        raise ModelTypeNotSupportedError("rerank", self.provider_id)
 
     def _infer_model_type(
         self,

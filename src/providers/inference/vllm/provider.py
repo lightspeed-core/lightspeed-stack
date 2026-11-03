@@ -10,12 +10,11 @@ from pydantic_ai.embeddings.openai import OpenAIEmbeddingModel
 from pydantic_ai.models import Model
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.vllm import VLLMProvider
-from sentence_transformers import CrossEncoder
 
 from models.config import VllmInferenceProviderEntry
 from providers.inference.base import InferenceProvider
 from providers.inference.catalog import CatalogModel, DiscoveredModel
-from providers.inference.errors import ModelDiscoveryError, ModelTypeNotSupportedError
+from providers.inference.errors import ModelDiscoveryError
 from providers.inference.model_type_inference import (
     infer_model_type_from_pai_known_names,
 )
@@ -92,19 +91,6 @@ class VllmInferenceProvider(
             model.provider_model_id,
             provider=self._get_provider,
         )
-
-    def _create_rerank(self, model: CatalogModel) -> CrossEncoder:
-        """Reject rerank requests; this provider has no rerank API.
-
-        Args:
-            model: Catalog entry that requested rerank support.
-
-        Raises:
-            ModelTypeNotSupportedError: Always, because rerank is unsupported.
-
-        """
-        _ = model
-        raise ModelTypeNotSupportedError("rerank", self.provider_id)
 
     def _infer_model_type(
         self,

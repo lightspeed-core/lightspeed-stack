@@ -11,12 +11,11 @@ from pydantic_ai.embeddings.google import GoogleEmbeddingModel
 from pydantic_ai.models import Model
 from pydantic_ai.models.google import GoogleModel
 from pydantic_ai.providers.google_cloud import GoogleCloudProvider
-from sentence_transformers import CrossEncoder
 
 from models.config import VertexAIInferenceProviderEntry
 from providers.inference.base import InferenceProvider
 from providers.inference.catalog import CatalogModel, DiscoveredModel
-from providers.inference.errors import ModelDiscoveryError, ModelTypeNotSupportedError
+from providers.inference.errors import ModelDiscoveryError
 from providers.inference.model_type_inference import (
     infer_model_type_from_pai_known_names,
 )
@@ -105,19 +104,6 @@ class VertexAIInferenceProvider(
             model.provider_model_id,
             provider=self._get_provider,
         )
-
-    def _create_rerank(self, model: CatalogModel) -> CrossEncoder:
-        """Reject rerank requests; this provider has no rerank API.
-
-        Args:
-            model: Catalog entry that requested rerank support.
-
-        Raises:
-            ModelTypeNotSupportedError: Always, because rerank is unsupported.
-
-        """
-        _ = model
-        raise ModelTypeNotSupportedError("rerank", self.provider_id)
 
     def _infer_model_type(
         self,
