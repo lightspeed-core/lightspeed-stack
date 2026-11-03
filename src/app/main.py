@@ -13,6 +13,7 @@ from fastapi.routing import iter_route_contexts
 from ogx_client import ApiException, AsyncOgxClient
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
+import constants
 import version
 from a2a_storage import A2AStorageFactory
 from app import routers
@@ -151,6 +152,14 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
 
     initialize_database()
     create_tables()
+
+    # A bad db_path would otherwise surface only on the first request that needs
+    # the cache. PostgreSQL stays lazy, an outage there must not stop the service.
+    if (
+        configuration.conversation_cache_configuration.type
+        == constants.CACHE_TYPE_SQLITE
+    ):
+        _ = configuration.conversation_cache
 
     yield
 
