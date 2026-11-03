@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Literal, Optional, overload
+from typing import Literal, Optional, cast, overload
 
 from pydantic_ai.embeddings import EmbeddingModel
 from sentence_transformers import CrossEncoder
@@ -69,4 +69,4 @@ class SentenceTransformersModelCache:
         if isinstance(model, CrossEncoder):
             self._rerankers[provider_model_id] = model
         else:
-            self._embeddings[provider_model_id] = model
+            self._embeddings[provider_model_id] = cast(EmbeddingModel, model)
