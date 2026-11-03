@@ -312,6 +312,7 @@ def test_servers_section_present_from_url(spec_from_url: dict[str, Any]) -> None
         ("/liveness", "get", {"200", "401", "403"}),
         ("/authorized", "post", {"200", "401", "403"}),
         ("/metrics", "get", {"200", "401", "403", "500", "503"}),
+        ("/a2a", "post", {"200"}),
     ],
 )
 def test_paths_and_responses_exist_from_file(
@@ -429,6 +430,7 @@ def test_paths_and_responses_exist_from_file(
         ("/liveness", "get", {"200", "401", "403"}),
         ("/authorized", "post", {"200", "401", "403"}),
         ("/metrics", "get", {"200", "401", "403", "500", "503"}),
+        ("/a2a", "post", {"200"}),
     ],
 )
 def test_paths_and_responses_exist_from_url(
@@ -450,3 +452,13 @@ def test_paths_and_responses_exist_from_url(
 
     """
     _check_paths_and_responses_exist(spec_from_url, path, method, expected_codes)
+
+
+def test_a2a_only_accepts_post_from_file(spec_from_file: dict[str, Any]) -> None:
+    """Test that the stored OpenAPI document offers POST as the only /a2a method."""
+    assert set(spec_from_file["paths"]["/a2a"]) == {"post"}
+
+
+def test_a2a_only_accepts_post_from_url(spec_from_url: dict[str, Any]) -> None:
+    """Test that the served OpenAPI document offers POST as the only /a2a method."""
+    assert set(spec_from_url["paths"]["/a2a"]) == {"post"}

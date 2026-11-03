@@ -11587,40 +11587,6 @@
             }
         },
         "/a2a": {
-            "get": {
-                "tags": [
-                    "a2a"
-                ],
-                "summary": "Handle A2A JSON-RPC GET",
-                "description": "Handle GET on /a2a for A2A JSON-RPC requests following the A2A protocol specification.",
-                "operationId": "handle_a2a_jsonrpc_a2a_get",
-                "responses": {
-                    "200": {
-                        "description": "Successful response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "description": "JSON-RPC 2.0 response or A2A-over-HTTP payload"
-                                },
-                                "example": {
-                                    "jsonrpc": "2.0",
-                                    "id": "1",
-                                    "result": {}
-                                }
-                            },
-                            "text/event-stream": {
-                                "schema": {
-                                    "type": "string",
-                                    "format": "text/event-stream",
-                                    "description": "Server-Sent Events stream when the JSON-RPC method is message/stream"
-                                },
-                                "example": "data: {\"jsonrpc\":\"2.0\",\"id\":\"1\",\"result\":{}}\n\n"
-                            }
-                        }
-                    }
-                }
-            },
             "post": {
                 "tags": [
                     "a2a"
