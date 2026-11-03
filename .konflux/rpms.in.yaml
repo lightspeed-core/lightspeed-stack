@@ -9,7 +9,8 @@ packages:
   ]
 upgradePackages:
   [
-    libxml2,
+    curl-minimal,
+    libcurl-minimal,
   ]
 contentOrigin:
   repofiles: ["./redhat.repo"]
