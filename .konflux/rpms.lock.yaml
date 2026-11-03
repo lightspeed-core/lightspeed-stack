@@ -60,6 +60,13 @@ arches:
     name: rust-std-static
     evr: 1.84.1-1.el9_6.1
     sourcerpm: rust-1.84.1-1.el9_6.1.src.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.6/aarch64/baseos/os/Packages/c/curl-minimal-7.76.1-31.el9_6.4.aarch64.rpm
+    repoid: rhel-9-for-aarch64-baseos-eus-rpms__9_DOT_6
+    size: 125239
+    checksum: sha256:2ecd0625e515ed14c606247a307fe77fb92e0a7f719fa4ec0d2970d53a94aad0
+    name: curl-minimal
+    evr: 7.76.1-31.el9_6.4
+    sourcerpm: curl-7.76.1-31.el9_6.4.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.6/aarch64/baseos/os/Packages/e/ed-1.14.2-12.el9.aarch64.rpm
     repoid: rhel-9-for-aarch64-baseos-eus-rpms__9_DOT_6
     size: 78931
@@ -74,6 +81,13 @@ arches:
     name: info
     evr: 6.7-15.el9
     sourcerpm: texinfo-6.7-15.el9.src.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.6/aarch64/baseos/os/Packages/l/libcurl-minimal-7.76.1-31.el9_6.4.aarch64.rpm
+    repoid: rhel-9-for-aarch64-baseos-eus-rpms__9_DOT_6
+    size: 225436
+    checksum: sha256:02734e347f33c0f468feb7b5a51ae3a9c2d3ce905584e3b44869921f21496f6d
+    name: libcurl-minimal
+    evr: 7.76.1-31.el9_6.4
+    sourcerpm: curl-7.76.1-31.el9_6.4.src.rpm
   source: []
   module_metadata: []
 - arch: x86_64
@@ -134,6 +148,13 @@ arches:
     name: rust-std-static
     evr: 1.84.1-1.el9_6.1
     sourcerpm: rust-1.84.1-1.el9_6.1.src.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.6/x86_64/baseos/os/Packages/c/curl-minimal-7.76.1-31.el9_6.4.x86_64.rpm
+    repoid: rhel-9-for-x86_64-baseos-eus-rpms__9_DOT_6
+    size: 128880
+    checksum: sha256:f78473a803dab272bb2211784b025cfce54e3a7f3519d9fa1713235577384088
+    name: curl-minimal
+    evr: 7.76.1-31.el9_6.4
+    sourcerpm: curl-7.76.1-31.el9_6.4.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.6/x86_64/baseos/os/Packages/e/ed-1.14.2-12.el9.x86_64.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms__9_DOT_6
     size: 79993
@@ -148,5 +169,12 @@ arches:
     name: info
     evr: 6.7-15.el9
     sourcerpm: texinfo-6.7-15.el9.src.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.6/x86_64/baseos/os/Packages/l/libcurl-minimal-7.76.1-31.el9_6.4.x86_64.rpm
+    repoid: rhel-9-for-x86_64-baseos-eus-rpms__9_DOT_6
+    size: 229836
+    checksum: sha256:986b7e2e5112340ceda2f6643130cc6cfa6bec9a0ca47445dff9687ca8b31915
+    name: libcurl-minimal
+    evr: 7.76.1-31.el9_6.4
+    sourcerpm: curl-7.76.1-31.el9_6.4.src.rpm
   source: []
   module_metadata: []
