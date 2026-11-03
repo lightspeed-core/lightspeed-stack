@@ -20,8 +20,6 @@ from providers.inference.model_type_inference import (
 )
 
 if TYPE_CHECKING:
-    from sentence_transformers import CrossEncoder
-
     from providers.inference.types import ModelType
 
 
