@@ -84,26 +84,6 @@ def check_response_body_schema(context: Context) -> None:
     validate_json(schema, body)
 
 
-@then("The body of the response contains {substring}")
-def check_response_body_contains(context: Context, substring: str) -> None:
-    """Check that response body contains a substring.
-
-    Supports {MODEL} and {PROVIDER} placeholders in the substring so
-    assertions work with any configured provider (e.g. unknown-provider
-    error message includes the actual model id).
-
-    Matching is case-insensitive so LLM replies (e.g. ``Hello`` vs ``hello``)
-    do not fail otherwise-identical scenarios.
-    """
-    assert context.response is not None, "Request needs to be performed first"
-    expected = replace_placeholders(context, substring)
-    response_text_lower = context.response.text.lower()
-    expected_substring_lower = expected.lower()
-    assert (
-        expected_substring_lower in response_text_lower
-    ), f"The response text '{context.response.text}' doesn't contain '{expected}'"
-
-
 @then("The body of the response contains at least one of {alternatives}")
 def check_response_body_contains_any(context: Context, alternatives: str) -> None:
     """Check that response body contains at least one of the given alternatives.
@@ -127,6 +107,26 @@ def check_response_body_contains_any(context: Context, alternatives: str) -> Non
         f"The response text '{context.response.text}' doesn't contain any of "
         f"{candidates}"
     )
+
+
+@then("The body of the response contains {substring}")
+def check_response_body_contains(context: Context, substring: str) -> None:
+    """Check that response body contains a substring.
+
+    Supports {MODEL} and {PROVIDER} placeholders in the substring so
+    assertions work with any configured provider (e.g. unknown-provider
+    error message includes the actual model id).
+
+    Matching is case-insensitive so LLM replies (e.g. ``Hello`` vs ``hello``)
+    do not fail otherwise-identical scenarios.
+    """
+    assert context.response is not None, "Request needs to be performed first"
+    expected = replace_placeholders(context, substring)
+    response_text_lower = context.response.text.lower()
+    expected_substring_lower = expected.lower()
+    assert (
+        expected_substring_lower in response_text_lower
+    ), f"The response text '{context.response.text}' doesn't contain '{expected}'"
 
 
 @then("The body of the response does not contain {substring}")
