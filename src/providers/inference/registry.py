@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING, Any, Final, Literal, Optional, overload
 
 from pydantic_ai.embeddings import EmbeddingModel
@@ -40,6 +41,8 @@ PROVIDER_CLASSES: Final[dict[ProviderType, type[InferenceProvider[Any, Any]]]] =
     "sentence_transformers": SentenceTransformersInferenceProvider,
 }
 
+logger = logging.getLogger(__name__)
+
 
 class ProviderRegistry(metaclass=Singleton):
     """Registry of initialized inference providers."""
@@ -60,6 +63,13 @@ class ProviderRegistry(metaclass=Singleton):
             provider = provider_cls(entry)
             await provider.initialize()
             self._providers[provider.provider_id] = provider
+
+        provider_ids = [provider.provider_id for provider in self.list_providers()]
+        logger.info(
+            "Inference provider registry initialized with %d provider(s): %s",
+            len(provider_ids),
+            provider_ids,
+        )
 
     def find_provider(
         self, provider_id: ProviderId

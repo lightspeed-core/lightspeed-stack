@@ -12,6 +12,10 @@ Unit tests for app.database module.
 
 Unit tests for the pure ASGI middlewares in main.py.
 
+## [test_main_startup.py](test_main_startup.py)
+
+Unit tests for FastAPI lifespan wiring of the inference provider registry.
+
 ## [test_routers.py](test_routers.py)
 
 Unit tests for routers.py.
