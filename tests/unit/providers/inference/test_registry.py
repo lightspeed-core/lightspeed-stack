@@ -202,8 +202,8 @@ async def test_initialize_registers_configured_providers() -> None:
 
 
 @pytest.mark.asyncio
-async def test_initialize_adds_to_existing_providers() -> None:
-    """Repeated initialization adds providers without removing existing ones."""
+async def test_initialize_replaces_previous_providers() -> None:
+    """Re-initialization replaces previous providers entirely."""
     _register_fake("openai", "vllm")
     registry = ProviderRegistry()
 
@@ -211,8 +211,68 @@ async def test_initialize_adds_to_existing_providers() -> None:
     await registry.initialize(_inference_config(_vllm_entry()))
 
     assert [provider.provider_id for provider in registry.list_providers()] == [
-        "openai",
         "vllm",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_partial_failure_leaves_registry_empty() -> None:
+    """When the Nth provider fails, no providers remain registered."""
+    _register_fake("openai", "vllm")
+    registry = ProviderRegistry()
+
+    failing_entry = _vllm_entry("failing")
+    config = _inference_config(_openai_entry(), failing_entry)
+
+    # Patch FakeInferenceProvider.initialize to fail for the second provider
+    original_initialize = FakeInferenceProvider.initialize
+
+    async def _failing_initialize(self: Any) -> None:  # type: ignore[override]
+        if self.provider_id == "failing":
+            msg = "provider init failed"
+            raise RuntimeError(msg)
+        await original_initialize(self)
+
+    FakeInferenceProvider.initialize = _failing_initialize  # type: ignore[assignment]
+    try:
+        with pytest.raises(RuntimeError, match="provider init failed"):
+            await registry.initialize(config)
+    finally:
+        FakeInferenceProvider.initialize = original_initialize  # type: ignore[assignment]
+
+    assert registry.list_providers() == []
+
+
+@pytest.mark.asyncio
+async def test_empty_providers_initializes_successfully() -> None:
+    """Empty providers list yields a valid registry with zero providers."""
+    registry = ProviderRegistry()
+
+    await registry.initialize(_inference_config())
+
+    assert registry.list_providers() == []
+
+
+@pytest.mark.asyncio
+async def test_reinitialize_idempotency() -> None:
+    """Calling initialize() twice with different configs keeps only the last."""
+    _register_fake("openai", "vllm")
+    registry = ProviderRegistry()
+
+    await registry.initialize(
+        _inference_config(
+            _openai_entry("first-openai"),
+            _vllm_entry("first-vllm"),
+        )
+    )
+    assert [p.provider_id for p in registry.list_providers()] == [
+        "first-openai",
+        "first-vllm",
+    ]
+
+    await registry.initialize(_inference_config(_openai_entry("second-openai")))
+    assert [p.provider_id for p in registry.list_providers()] == [
+        "second-openai",
     ]
 
 

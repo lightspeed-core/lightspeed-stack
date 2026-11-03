@@ -55,15 +55,24 @@ class ProviderRegistry(metaclass=Singleton):
     async def initialize(self, inference: InferenceConfiguration) -> None:
         """Register and initialize providers from configuration.
 
+        Builds the new provider mapping in a local variable and assigns
+        it to ``self._providers`` only after every provider initializes
+        successfully.  Previous providers are cleared at the start so
+        retries begin from a clean slate; on partial failure the registry
+        is left empty rather than half-populated.
+
         Args:
             inference: Inference provider configuration to load at startup.
 
         """
+        self._providers = {}
+        providers: dict[ProviderId, InferenceProvider[Any, Any]] = {}
         for entry in inference.providers:
             provider_cls = PROVIDER_CLASSES[entry.type]
             provider = provider_cls(entry)
             await provider.initialize()
-            self._providers[provider.provider_id] = provider
+            providers[provider.provider_id] = provider
+        self._providers = providers
 
         provider_ids = [provider.provider_id for provider in self.list_providers()]
         logger.info(
