@@ -1,0 +1,99 @@
+# Vulnerability management in LCore
+
+---
+
+![LCORE](images/lcore.jpg)
+
+Pavel Tišnovský,
+ptisnovs@redhat.com
+
+---
+
+&bdquo;Do You Control Your Dependencies Or Are They Controlling You?&ldquo;
+
+---
+
+## Direct vs transitive dependencies
+
+```
+$ uv pip list | wc -l
+284
+
+$ uv tree | wc -l
+
+Resolved 322 packages in 2ms
+649
+```
+
+---
+
+## Current state (LCore)
+
+![State](../vulnerabilities/lcore_state.svg)
+
+---
+
+## Severities
+
+![Severities](../vulnerabilities/lcore_severity.svg)
+
+---
+
+## Days to resolve CVE
+
+![Days to resolve](../vulnerabilities/lcore_days.svg)
+
+---
+
+## Packages with most CVEs
+
+![Packages with most CVEs](../vulnerabilities/lcore_packages.svg)
+
+---
+
+## New CVEs over time
+
+![New CVEs over time](../vulnerabilities/lcore_timeline.svg)
+
+---
+
+## Not just LCore!
+
+* providers
+* rag-content (tool)
+
+---
+
+## Current state (Rag content)
+
+![State](../vulnerabilities/rag_content_state.svg)
+
+---
+
+## Severities
+
+![Severities](../vulnerabilities/rag_content_severity.svg)
+
+---
+
+## Days to resolve CVE
+
+![Days to resolve](../vulnerabilities/rag_content_days.svg)
+
+---
+
+## Packages with most CVEs
+
+![Packages with most CVEs](../vulnerabilities/rag_content_packages.svg)
+
+---
+
+## New CVEs over time
+
+![New CVEs over time](../vulnerabilities/rag_content_timeline.svg)
+
+---
+
+
+## Thank you
+
