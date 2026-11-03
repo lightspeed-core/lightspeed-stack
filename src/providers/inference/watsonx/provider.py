@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 from typing import TYPE_CHECKING, Any, Optional
 
+import httpx
 from openai import APIError
 from pydantic_ai.embeddings import EmbeddingModel
 from pydantic_ai.embeddings.openai import OpenAIEmbeddingModel
@@ -63,7 +64,7 @@ class WatsonxInferenceProvider(
                 ),
                 self._list_foundation_model_functions(),
             )
-        except APIError as exc:
+        except (APIError, httpx.HTTPStatusError) as exc:
             raise ModelDiscoveryError(self.provider_id) from exc
 
         discovered: list[DiscoveredModel] = []
