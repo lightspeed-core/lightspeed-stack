@@ -6,8 +6,8 @@ from typing import TYPE_CHECKING, Any, Final, Literal, Optional, overload
 
 from pydantic_ai.embeddings import EmbeddingModel
 from pydantic_ai.models import Model
-from sentence_transformers import CrossEncoder
 
+from log import get_logger
 from providers.inference.azure.provider import AzureInferenceProvider
 from providers.inference.bedrock.provider import BedrockInferenceProvider
 from providers.inference.errors import (
@@ -25,6 +25,8 @@ from providers.inference.watsonx.provider import WatsonxInferenceProvider
 from utils.types import Singleton
 
 if TYPE_CHECKING:
+    from sentence_transformers import CrossEncoder
+
     from models.config import InferenceConfiguration
     from providers.inference.base import InferenceProvider
     from providers.inference.catalog import CatalogModel
@@ -39,6 +41,8 @@ PROVIDER_CLASSES: Final[dict[ProviderType, type[InferenceProvider[Any, Any]]]] =
     "vllm": VllmInferenceProvider,
     "sentence_transformers": SentenceTransformersInferenceProvider,
 }
+
+logger = get_logger(__name__)
 
 
 class ProviderRegistry(metaclass=Singleton):
@@ -60,6 +64,13 @@ class ProviderRegistry(metaclass=Singleton):
             provider = provider_cls(entry)
             await provider.initialize()
             self._providers[provider.provider_id] = provider
+
+        provider_ids = [provider.provider_id for provider in self.list_providers()]
+        logger.info(
+            "Inference provider registry initialized with %d provider(s): %s",
+            len(provider_ids),
+            provider_ids,
+        )
 
     def find_provider(
         self, provider_id: ProviderId

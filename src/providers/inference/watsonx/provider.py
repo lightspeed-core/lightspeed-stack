@@ -20,6 +20,8 @@ from providers.inference.watsonx.pai_provider import WatsonxProvider
 from providers.inference.watsonx.specs import FoundationModelSpecsResponse
 
 if TYPE_CHECKING:
+    from sentence_transformers import CrossEncoder
+
     from providers.inference.types import ModelType
 
 

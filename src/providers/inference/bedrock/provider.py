@@ -30,6 +30,8 @@ from providers.inference.catalog import CatalogModel, DiscoveredModel
 from providers.inference.errors import ModelDiscoveryError
 
 if TYPE_CHECKING:
+    from sentence_transformers import CrossEncoder
+
     from providers.inference.types import ModelType
 
 

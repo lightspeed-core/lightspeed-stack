@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING, Any, Generic, Literal, Optional, TypeVar, over
 from pydantic_ai.embeddings import EmbeddingModel
 from pydantic_ai.models import Model
 from pydantic_ai.providers import Provider
-from sentence_transformers import CrossEncoder
 
 from log import get_logger
 from models.config import (
@@ -22,6 +21,8 @@ from providers.inference.errors import (
 )
 
 if TYPE_CHECKING:
+    from sentence_transformers import CrossEncoder
+
     from providers.inference.types import ModelType, ProviderId
 
 logger = get_logger(__name__)
