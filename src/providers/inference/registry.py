@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-import logging
 from typing import TYPE_CHECKING, Any, Final, Literal, Optional, overload
 
 from pydantic_ai.embeddings import EmbeddingModel
 from pydantic_ai.models import Model
 
+from log import get_logger
 from providers.inference.azure.provider import AzureInferenceProvider
 from providers.inference.bedrock.provider import BedrockInferenceProvider
 from providers.inference.errors import (
@@ -42,7 +42,7 @@ PROVIDER_CLASSES: Final[dict[ProviderType, type[InferenceProvider[Any, Any]]]] =
     "sentence_transformers": SentenceTransformersInferenceProvider,
 }
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class ProviderRegistry(metaclass=Singleton):
