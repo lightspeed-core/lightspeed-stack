@@ -28,6 +28,10 @@ Singleton registry of initialized inference providers.
 
 Soft-fallback helpers for request-path model resolution.
 
+## [llm_settings.py](llm_settings.py)
+
+Helpers for LLM request settings and Pydantic AI run configuration.
+
 ## [types.py](types.py)
 
 Shared literals and aliases for the inference provider registry.

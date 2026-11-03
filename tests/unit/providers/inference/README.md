@@ -32,3 +32,7 @@ Unit tests for the ProviderRegistry singleton.
 
 Unit tests for soft-fallback resolution helpers.
 
+## [test_llm_settings.py](test_llm_settings.py)
+
+Unit tests for shared LLM settings mapping.
+
