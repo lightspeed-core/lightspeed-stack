@@ -17,7 +17,6 @@ from pydantic_ai.embeddings.bedrock import BedrockEmbeddingModel
 from pydantic_ai.models import Model
 from pydantic_ai.models.bedrock import BedrockConverseModel
 from pydantic_ai.providers.bedrock import BedrockProvider
-from sentence_transformers import CrossEncoder
 
 from models.config import BedrockInferenceProviderEntry
 from providers.inference.base import InferenceProvider
@@ -31,6 +30,8 @@ from providers.inference.catalog import CatalogModel, DiscoveredModel
 from providers.inference.errors import ModelDiscoveryError, ModelTypeNotSupportedError
 
 if TYPE_CHECKING:
+    from sentence_transformers import CrossEncoder
+
     from providers.inference.types import ModelType
 
 

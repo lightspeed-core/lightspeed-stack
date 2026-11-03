@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from openai import APIError
 from pydantic_ai.embeddings import EmbeddingModel
@@ -10,7 +10,6 @@ from pydantic_ai.embeddings.openai import OpenAIEmbeddingModel
 from pydantic_ai.models import Model
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.vllm import VLLMProvider
-from sentence_transformers import CrossEncoder
 
 from models.config import VllmInferenceProviderEntry
 from providers.inference.base import InferenceProvider
@@ -20,6 +19,9 @@ from providers.inference.model_type_inference import (
     infer_model_type_from_pai_known_names,
 )
 from providers.inference.types import ModelType
+
+if TYPE_CHECKING:
+    from sentence_transformers import CrossEncoder
 
 
 class VllmInferenceProvider(

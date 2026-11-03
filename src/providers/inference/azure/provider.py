@@ -12,7 +12,6 @@ from pydantic_ai.embeddings.openai import OpenAIEmbeddingModel
 from pydantic_ai.models import Model
 from pydantic_ai.models.openai import OpenAIResponsesModel
 from pydantic_ai.providers.azure import AzureProvider
-from sentence_transformers import CrossEncoder
 
 from configuration import configuration
 from models.config import AzureInferenceProviderEntry
@@ -24,6 +23,8 @@ from providers.inference.model_type_inference import (
 )
 
 if TYPE_CHECKING:
+    from sentence_transformers import CrossEncoder
+
     from providers.inference.types import ModelType
 
 

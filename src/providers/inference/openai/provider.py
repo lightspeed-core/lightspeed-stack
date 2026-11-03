@@ -10,7 +10,6 @@ from pydantic_ai.embeddings.openai import OpenAIEmbeddingModel
 from pydantic_ai.models import Model
 from pydantic_ai.models.openai import OpenAIResponsesModel
 from pydantic_ai.providers.openai import OpenAIProvider
-from sentence_transformers import CrossEncoder
 
 from models.config import OpenAIInferenceProviderEntry
 from providers.inference.base import InferenceProvider
@@ -21,6 +20,8 @@ from providers.inference.model_type_inference import (
 )
 
 if TYPE_CHECKING:
+    from sentence_transformers import CrossEncoder
+
     from providers.inference.types import ModelType
 
 

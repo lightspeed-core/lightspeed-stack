@@ -11,7 +11,6 @@ from pydantic_ai.embeddings.google import GoogleEmbeddingModel
 from pydantic_ai.models import Model
 from pydantic_ai.models.google import GoogleModel
 from pydantic_ai.providers.google_cloud import GoogleCloudProvider
-from sentence_transformers import CrossEncoder
 
 from models.config import VertexAIInferenceProviderEntry
 from providers.inference.base import InferenceProvider
@@ -22,6 +21,8 @@ from providers.inference.model_type_inference import (
 )
 
 if TYPE_CHECKING:
+    from sentence_transformers import CrossEncoder
+
     from providers.inference.types import ModelType
 
 

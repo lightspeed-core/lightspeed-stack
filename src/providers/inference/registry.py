@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING, Any, Final, Literal, Optional, overload
 
 from pydantic_ai.embeddings import EmbeddingModel
 from pydantic_ai.models import Model
-from sentence_transformers import CrossEncoder
 
 from providers.inference.azure.provider import AzureInferenceProvider
 from providers.inference.bedrock.provider import BedrockInferenceProvider
@@ -26,6 +25,8 @@ from providers.inference.watsonx.provider import WatsonxInferenceProvider
 from utils.types import Singleton
 
 if TYPE_CHECKING:
+    from sentence_transformers import CrossEncoder
+
     from models.config import InferenceConfiguration
     from providers.inference.base import InferenceProvider
     from providers.inference.catalog import CatalogModel

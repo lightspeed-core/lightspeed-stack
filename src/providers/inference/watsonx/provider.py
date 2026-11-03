@@ -10,7 +10,6 @@ from pydantic_ai.embeddings import EmbeddingModel
 from pydantic_ai.embeddings.openai import OpenAIEmbeddingModel
 from pydantic_ai.models import Model
 from pydantic_ai.models.openai import OpenAIChatModel
-from sentence_transformers import CrossEncoder
 
 from models.config import WatsonxInferenceProviderEntry
 from providers.inference.base import InferenceProvider
@@ -20,6 +19,8 @@ from providers.inference.watsonx.pai_provider import WatsonxProvider
 from providers.inference.watsonx.specs import FoundationModelSpecsResponse
 
 if TYPE_CHECKING:
+    from sentence_transformers import CrossEncoder
+
     from providers.inference.types import ModelType
 
 
