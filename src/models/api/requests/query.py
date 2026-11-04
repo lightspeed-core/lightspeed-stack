@@ -186,20 +186,22 @@ class QueryRequest(BaseModel):
         An empty or whitespace-only query leaves nothing to send to the model,
         which the backend rejects with an error that surfaces to the client as an
         opaque HTTP 500. Reject such requests at the validation layer instead.
-        Requests whose content comes from a non-image attachment are still valid.
+        Requests whose content comes from a non-image attachment holding actual
+        text are still valid; a blank attachment carries no text either.
 
         Returns:
             The model instance when validation passes.
 
         Raises:
             ValueError: If the query is empty or whitespace-only and no non-image
-                attachment supplies content.
+                attachment supplies non-blank content.
 
         """
         if self.query.strip():
             return self
         has_text_attachment = any(
             attachment.content_type not in IMAGE_CONTENT_TYPES
+            and attachment.content.strip()
             for attachment in self.attachments or []
         )
         if not has_text_attachment:

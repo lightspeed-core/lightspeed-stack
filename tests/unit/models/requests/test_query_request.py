@@ -219,6 +219,21 @@ class TestQueryRequestEmptyQuery:
         )  # pyright: ignore[reportCallIssue]
         assert qr.attachments == [attachment]
 
+    @pytest.mark.parametrize("content", ["", " ", "   \n\t  "])
+    def test_empty_query_with_blank_text_attachment_rejected(
+        self, content: str
+    ) -> None:
+        """A non-image attachment without text leaves nothing for the model too."""
+        attachment = Attachment(
+            attachment_type="log",
+            content_type="text/plain",
+            content=content,
+        )
+        with pytest.raises(ValueError, match="Query must not be empty"):
+            _ = QueryRequest(
+                query="", attachments=[attachment]
+            )  # pyright: ignore[reportCallIssue]
+
     def test_empty_query_with_image_only_attachment_rejected(self) -> None:
         """Image attachments alone leave no text for the model, so reject them."""
         attachment = Attachment(

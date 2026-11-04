@@ -280,8 +280,10 @@ def test_query_v2_endpoint_empty_query(
     assert any("Query must not be empty" in message for message in messages), messages
 
     # Step 3: nothing was sent to the backend and no agent run was started.
-    mock_ogx_client.assert_not_called()
-    mock_query_agent.assert_not_called()
+    mock_ogx_client.conversations.create.assert_not_called()
+    mock_ogx_client.responses.create.assert_not_called()
+    mock_query_agent.build_agent_mock.assert_not_called()
+    mock_query_agent.run.assert_not_called()
 
 
 # ==========================================
