@@ -1,1 +1,4 @@
 --index-url https://pypi.org/simple
+pyarrow==26.0.0 \
+    --hash=sha256:01c863a18bd9c8412453dd0d92de6d0ee7b2b3d6fb079d9734a4b2a3c8bd4453 \
+    --hash=sha256:6a628922ba20705fa964ca73e4ef959c2fb2f14b9bbec5589a6a1e68e6257c85

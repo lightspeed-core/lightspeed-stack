@@ -3,3 +3,6 @@
 #
 # Pure-Python packages whose build backends pull in C-extension deps
 # (e.g. jinja2→markupsafe) that conflict with RHOAI-rebuilt wheels.
+#
+# RHOAI pyarrow wheels require libthrift.so at runtime (not in ubi9-minimal).
+pyarrow
