@@ -43,6 +43,7 @@ class KnowledgeReadiness:
     message: str = ""
     """Human-readable summary for operators and logs."""
 
+
 @dataclass(frozen=True)
 class KnowledgeChunk:
     """A chunk of knowledge."""
