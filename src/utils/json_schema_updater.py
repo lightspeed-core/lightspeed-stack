@@ -10,9 +10,12 @@ def recursive_update(
     """Transform a JSON Schema-like dictionary into an OpenAPI-compatible schema.
 
     Recursively walks the input mapping and applies compatibility fixes:
-    - converts patterns like `anyOf: [{ "type": X }, { "type": "null" }]` into
-      a single `"type": X` with `"nullable": True` (optional types)
-    - rewrites `"exclusiveMinimum"` to `"minimum"`
+    - converts patterns like `anyOf: [{"type": X, ...constraints}, {"type": "null"}]`
+      into a single `"type": X` with `"nullable": True`, preserving all additional
+      constraints from the first variant and recursively applying OpenAPI 3.0
+      fixes to them (optional types)
+    - rewrites `"exclusiveMinimum"` to `"minimum"` plus `"exclusiveMinimum": true`
+      (OpenAPI 3.0 boolean form)
     - otherwise preserves entries
 
     Parameters:
@@ -43,14 +46,20 @@ def recursive_update(
         ):
             # only the first type is correct,
             # we need to ignore the second one
-            val = value[0]["type"]
-            new["type"] = val
+            first_item = value[0]
+            new["type"] = first_item["type"]
+            # preserve all other constraints from the first item,
+            # processing them through recursive_update so that keys like
+            # exclusiveMinimum are converted to OpenAPI 3.0 form
+            remaining = {k: v for k, v in first_item.items() if k != "type"}
+            new.update(recursive_update(remaining))
             # create new attribute
             new["nullable"] = True
         # exclusiveMinimum attribute handling is broken
         # in Pydantic - this is simple fix
         elif key == "exclusiveMinimum":
             new["minimum"] = value
+            new["exclusiveMinimum"] = True
         else:
             new[key] = value
     return new
