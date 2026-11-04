@@ -66,7 +66,7 @@ Both endpoints accept a JSON body with the following fields. Unknown fields are 
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| `query` | string | **Yes** | -- | The question to send to the LLM |
+| `query` | string | **Yes** | -- | The question to send to the LLM (must not be empty or whitespace-only) |
 | `conversation_id` | string | No | `null` | Conversation ID to continue (UUID, 48-char hex, or `conv_`-prefixed hex) |
 | `provider` | string | No | `null` | Provider identifier (e.g., `"openai"`). Must be specified with `model` |
 | `model` | string | No | `null` | Model identifier (e.g., `"gpt4mini"`). Must be specified with `provider` |
@@ -117,7 +117,7 @@ The optional `solr` field configures Solr inline RAG behavior:
 
 ### Validation Rules
 
-- `query` is required. Missing it returns HTTP 422.
+- `query` is required. Missing it returns HTTP 422. An empty or whitespace-only `query` also returns HTTP 422 (`Query must not be empty`), unless a non-image attachment supplies the content.
 - `provider` and `model` must both be specified or both be omitted. Specifying one without the other returns HTTP 422.
 - `conversation_id` must be a valid UUID, 48-character hex string, or `conv_`-prefixed 48-character hex string. Invalid formats return HTTP 422.
 - `media_type` must be exactly `"application/json"` or `"text/plain"` if specified.

@@ -136,7 +136,7 @@ This section examines some of the more complex request attributes with explanati
 
 #### `input`
 
-Required. Either a **string** or a list of input items. Each **item** is one of:
+Required. Either a **string** or a list of input items. The value must carry content: an empty or whitespace-only string, or an empty list, is rejected with HTTP 422 (`Input must not be empty`). Each **item** is one of:
 
 - [message](#message) — one turn with `role` and `content` (string or list of content parts)
 - [web_search_call](#web_search_call) — completed web search

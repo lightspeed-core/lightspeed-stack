@@ -188,6 +188,53 @@ class TestQueryRequest:
         assert solr_request.filters == {"fq": ["x:y"]}
 
 
+class TestQueryRequestEmptyQuery:
+    """Validation of empty or whitespace-only queries (RSPEED-3909)."""
+
+    @pytest.mark.parametrize("query", ["", " ", "   \n\t  "])
+    def test_empty_or_blank_query_rejected(self, query: str) -> None:
+        """Empty and whitespace-only queries raise a clear validation error."""
+        with pytest.raises(ValueError, match="Query must not be empty"):
+            _ = QueryRequest(query=query)  # pyright: ignore[reportCallIssue]
+
+    def test_non_empty_query_accepted(self) -> None:
+        """A query with visible characters is accepted unchanged."""
+        qr = QueryRequest(
+            query=" What is SELinux? "
+        )  # pyright: ignore[reportCallIssue]
+        assert qr.query == " What is SELinux? "
+
+    @pytest.mark.parametrize(
+        "content_type", ["text/plain", "application/yaml", "application/json"]
+    )
+    def test_empty_query_with_text_attachment_accepted(self, content_type: str) -> None:
+        """Attachment content can stand in for the query text."""
+        attachment = Attachment(
+            attachment_type="log",
+            content_type=content_type,
+            content="some content",
+        )
+        qr = QueryRequest(
+            query="", attachments=[attachment]
+        )  # pyright: ignore[reportCallIssue]
+        assert qr.attachments == [attachment]
+
+    def test_empty_query_with_image_only_attachment_rejected(self) -> None:
+        """Image attachments alone leave no text for the model, so reject them."""
+        attachment = Attachment(
+            attachment_type="image",
+            content_type="image/png",
+            content=(
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8"
+                "z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+            ),
+        )
+        with pytest.raises(ValueError, match="Query must not be empty"):
+            _ = QueryRequest(
+                query="   ", attachments=[attachment]
+            )  # pyright: ignore[reportCallIssue]
+
+
 class TestStreamingInterruptRequest:
     """Test cases for the StreamingInterruptRequest model."""
 

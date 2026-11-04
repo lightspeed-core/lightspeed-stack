@@ -4,7 +4,7 @@ from typing import Optional, Self
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-from constants import MEDIA_TYPE_JSON, MEDIA_TYPE_TEXT
+from constants import IMAGE_CONTENT_TYPES, MEDIA_TYPE_JSON, MEDIA_TYPE_TEXT
 from models.common.query import Attachment, SolrVectorSearchRequest
 from utils import suid
 
@@ -178,6 +178,33 @@ class QueryRequest(BaseModel):
         if value and not suid.check_suid(value):
             raise ValueError(f"Improper conversation ID '{value}'")
         return value
+
+    @model_validator(mode="after")
+    def validate_query_not_empty(self) -> Self:
+        """Ensure the request carries some actual input for the LLM.
+
+        An empty or whitespace-only query leaves nothing to send to the model,
+        which the backend rejects with an error that surfaces to the client as an
+        opaque HTTP 500. Reject such requests at the validation layer instead.
+        Requests whose content comes from a non-image attachment are still valid.
+
+        Returns:
+            The model instance when validation passes.
+
+        Raises:
+            ValueError: If the query is empty or whitespace-only and no non-image
+                attachment supplies content.
+
+        """
+        if self.query.strip():
+            return self
+        has_text_attachment = any(
+            attachment.content_type not in IMAGE_CONTENT_TYPES
+            for attachment in self.attachments or []
+        )
+        if not has_text_attachment:
+            raise ValueError("Query must not be empty")
+        return self
 
     @model_validator(mode="after")
     def validate_provider_and_model(self) -> Self:

@@ -6,7 +6,9 @@
 
 import pytest
 from fastapi import HTTPException, Request, status
+from fastapi.testclient import TestClient
 from ogx_client import ApiException
+from pydantic import ValidationError
 from pytest_mock import AsyncMockType, MockerFixture
 from sqlalchemy.orm import Session
 
@@ -235,48 +237,51 @@ async def test_query_v2_endpoint_returns_401_for_mcp_oauth(
         )
 
 
-@pytest.mark.asyncio
-async def test_query_v2_endpoint_empty_query(
+@pytest.mark.parametrize(
+    "query", ["", " ", "   \n\t  "], ids=["empty", "space", "blank"]
+)
+def test_query_v2_endpoint_empty_query(
     test_config: AppConfig,
     mock_ogx_client: AsyncMockType,
     mock_query_agent: AsyncMockType,
-    test_request: Request,
-    test_auth: AuthTuple,
+    integration_http_client: TestClient,
+    query: str,
 ) -> None:
-    """Test query v2 endpoint with empty query string.
+    """Test query v2 endpoint with an empty or whitespace-only query string.
 
     This integration test verifies:
-    - Empty queries are handled appropriately
-    - Validation works correctly
-    - Error response is returned if needed
+    - The request model refuses to carry an empty query, so the endpoint handler
+      can never forward an empty prompt to the LLM backend
+    - A real HTTP request to the endpoint answers with HTTP 422 instead of the
+      HTTP 500 the backend produces for an empty prompt
+    - The error message names the offending field
+    - The backend is never contacted
 
     Parameters:
     ----------
         test_config: Test configuration
         mock_ogx_client: Mocked OGX client
         mock_query_agent: Mocked Pydantic AI agent for build_agent/agent.run
-        test_request: FastAPI request
-        test_auth: noop authentication tuple
-
-    Returns:
-    -------
-        None
+        integration_http_client: Client for the real application
+        query: Empty or whitespace-only query string under test
 
     """
     _ = test_config
-    _ = mock_ogx_client
-    _ = mock_query_agent
 
-    query_request = QueryRequest(query="")
+    # Step 1: the request model rejects the payload before the handler runs.
+    with pytest.raises(ValidationError, match="Query must not be empty"):
+        _ = QueryRequest(query=query)  # pyright: ignore[reportCallIssue]
 
-    response = await query_endpoint_handler(
-        request=test_request,
-        query_request=query_request,
-        auth=test_auth,
-        mcp_headers={},
-    )
+    # Step 2: the same payload sent over HTTP is reported as a client error.
+    response = integration_http_client.post("/v1/query", json={"query": query})
 
-    assert response is not None
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+    messages = [item["msg"] for item in response.json()["detail"]]
+    assert any("Query must not be empty" in message for message in messages), messages
+
+    # Step 3: nothing was sent to the backend and no agent run was started.
+    mock_ogx_client.assert_not_called()
+    mock_query_agent.assert_not_called()
 
 
 # ==========================================
