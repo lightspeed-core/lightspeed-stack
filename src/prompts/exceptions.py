@@ -11,3 +11,7 @@ class PromptValidationError(PromptError):
 
 class PromptNotFoundError(PromptError):
     """No prompt exists for the given identifier."""
+
+
+class PromptRenderError(PromptError):
+    """Prompt rendering error."""

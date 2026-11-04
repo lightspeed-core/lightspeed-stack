@@ -6,23 +6,10 @@ from uuid import uuid4
 from app.database import get_session
 from log import get_logger
 from models.database.prompts import Prompt, PromptVersion
-from prompts.exceptions import PromptNotFoundError, PromptValidationError
+from prompts.exceptions import PromptNotFoundError
+from prompts.template import validate_template
 
 logger = get_logger(__name__)
-
-
-def _validate_variables(variables: list[str]) -> None:
-    """Reject duplicate variable names.
-
-    Parameters:
-        variables: Declared variable names to validate.
-
-    Raises:
-        PromptValidationError: If the list contains duplicate names.
-
-    """
-    if len(variables) != len(set(variables)):
-        raise PromptValidationError("The variables contain duplicate names")
 
 
 def create_prompt(name: str, template: str, variables: list[str]) -> PromptVersion:
@@ -37,12 +24,12 @@ def create_prompt(name: str, template: str, variables: list[str]) -> PromptVersi
         PromptVersion: The initial version row.
 
     Raises:
-        PromptValidationError: If variables contain duplicates.
+        PromptValidationError: If the template is empty, contains invalid
+            placeholder names, has duplicate or invalid variable names,
+            or has undeclared placeholders.
 
     """
-    # TODO: template validation  # pylint: disable=fixme
-
-    _validate_variables(variables)
+    validate_template(template, variables)
 
     prompt_id = f"pmpt_{uuid4()}"
     version = 1
@@ -132,12 +119,12 @@ def update_prompt(
 
     Raises:
         PromptNotFoundError: If the prompt does not exist.
-        PromptValidationError: If variables contain duplicates.
+        PromptValidationError: If the template is empty, contains invalid
+            placeholder names, has duplicate or invalid variable names,
+            or has undeclared placeholders.
 
     """
-    # TODO: validate template  # pylint: disable=fixme
-
-    _validate_variables(variables)
+    validate_template(template, variables)
 
     with get_session() as session:
         max_prompt_version = (

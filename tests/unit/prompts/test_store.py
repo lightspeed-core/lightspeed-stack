@@ -180,6 +180,12 @@ class TestPromptStoreOperation:
         with pytest.raises(PromptValidationError, match="duplicate names"):
             create_prompt(name, template, variables)
 
+    def test_create_prompt_with_empty_template(self, db_session: Session) -> None:
+        """Test creating a prompt with empty template raises PromptValidationError."""
+        _ = db_session
+        with pytest.raises(PromptValidationError, match="must not be empty"):
+            create_prompt("test-prompt", "", ["name"])
+
     def test_get_prompt(self, db_session: Session) -> None:
         """Test retrieving a prompt by default version and by explicit version."""
         prompt, expected_pv_v1, expected_pv_v2 = _setup_db(db_session, True)
@@ -290,6 +296,13 @@ class TestPromptStoreOperation:
 
         with pytest.raises(PromptValidationError, match="duplicate names"):
             update_prompt(prompt.id, "{{x}} {{x}}", ["x", "x"])
+
+    def test_update_prompt_with_empty_template(self, db_session: Session) -> None:
+        """Test updating a prompt with empty template raises PromptValidationError."""
+        prompt, _, _ = _setup_db(db_session)
+
+        with pytest.raises(PromptValidationError, match="must not be empty"):
+            update_prompt(prompt.id, "", ["x"])
 
     def test_list_prompts(self, db_session: Session) -> None:
         """Test listing prompts returns all prompt identities."""
