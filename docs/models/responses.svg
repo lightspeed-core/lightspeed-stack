@@ -227,16 +227,15 @@
     </g>
     <!--class src.models.api.responses.successful.probes.InfoResponse-->
     <g id="elem_src.models.api.responses.successful.probes.InfoResponse">
-      <rect codeLine="99" fill="#F1F1F1" height="124.2717" id="src.models.api.responses.successful.probes.InfoResponse" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="140.7435" x="95.22" y="519.48"/>
+      <rect codeLine="99" fill="#F1F1F1" height="105.2037" id="src.models.api.responses.successful.probes.InfoResponse" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="140.7435" x="95.22" y="519.48"/>
       <ellipse cx="118.5071" cy="535.48" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
       <path d="M118.6165,530.7612 Q117.6946,530.7612 116.9603,531.0737 Q116.2415,531.3862 115.7415,531.98 Q115.2415,532.5581 114.9603,533.4331 Q114.6946,534.3081 114.6946,535.4019 Q114.6946,536.8394 115.1321,537.8862 Q115.5853,538.9331 116.429,539.48 Q117.2884,540.0269 118.6009,540.0269 Q119.3821,540.0269 120.0696,539.9019 Q120.7728,539.7612 121.7728,539.4487 L121.7728,541.3237 Q120.9134,541.6519 120.1478,541.7769 Q119.3978,541.9019 118.3821,541.9019 Q116.4603,541.9019 115.1478,541.105 Q113.8509,540.2925 113.1946,538.8237 Q112.5384,537.3394 112.5384,535.3706 Q112.5384,533.9487 112.929,532.7769 Q113.3353,531.5894 114.1165,530.7144 Q114.8978,529.8394 116.0384,529.3706 Q117.179,528.8862 118.6478,528.8862 Q119.6009,528.8862 120.4915,529.0894 Q121.3978,529.2769 122.3353,529.7456 L121.5071,531.5269 Q120.7259,531.1519 120.0696,530.9644 Q119.4134,530.7612 118.6165,530.7612 Z " fill="#000000"/>
       <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="90.3277" x="134.3487" y="540.912">InfoResponse</text>
       <line style="stroke:#181818;stroke-width:0.5;" x1="96.22" x2="234.9635" y1="551.48" y2="551.48"/>
       <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="123.8015" x="101.22" y="570.4459">model_config : dict</text>
       <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="66.0658" x="101.22" y="589.5139">name : str</text>
-      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="107.5056" x="101.22" y="608.5818">ogx_version : str</text>
-      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="128.7435" x="101.22" y="627.6497">service_version : str</text>
-      <line style="stroke:#181818;stroke-width:0.5;" x1="96.22" x2="234.9635" y1="635.7517" y2="635.7517"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="128.7435" x="101.22" y="608.5818">service_version : str</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="96.22" x2="234.9635" y1="616.6837" y2="616.6837"/>
     </g>
     <!--class src.models.api.responses.error.internal.InternalServerErrorResponse-->
     <g id="elem_src.models.api.responses.error.internal.InternalServerErrorResponse">

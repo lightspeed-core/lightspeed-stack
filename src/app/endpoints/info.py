@@ -2,14 +2,12 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Request
-from ogx_client import ApiException
+from fastapi import APIRouter, Depends, Request
 from opentelemetry import trace
 
 from authentication import get_auth_dependency
 from authentication.interface import AuthTuple
 from authorization.middleware import authorize
-from client.ogx import AsyncOgxClientHolder
 from configuration import configuration
 from log import get_logger
 from models.api.responses.constants import UNAUTHORIZED_OPENAPI_EXAMPLES
@@ -33,9 +31,7 @@ get_info_responses: Responses = {
     200: InfoResponse.openapi_response(),
     401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
-    503: ServiceUnavailableResponse.openapi_response(
-        examples=["OGX", "kubernetes api"]
-    ),
+    503: ServiceUnavailableResponse.openapi_response(examples=["kubernetes api"]),
 }
 
 
@@ -49,7 +45,7 @@ async def info_endpoint_handler(
     Handle request to the /info endpoint.
 
     Process GET requests to the /info endpoint, returning the
-    service name, version and OGX version.
+    service name and version. The answer does not depend on OGX.
 
     ### Parameters:
     - request: The incoming HTTP request (used by middleware).
@@ -59,7 +55,7 @@ async def info_endpoint_handler(
     - HTTPException: with status 401 for unauthorized access.
     - HTTPException: with status 403 if permission is denied.
     - HTTPException: with status 503 and a detail object containing `response`
-      and `cause` when unable to connect to OGX.
+      and `cause` when the Kubernetes authentication backend is unreachable.
 
     ### Returns:
     - InfoResponse: An object containing the service's name and version.
@@ -73,29 +69,16 @@ async def info_endpoint_handler(
     with tracer.start_as_current_span("info.handle_request") as span:
         logger.info("Response to /v1/info endpoint")
 
-        try:
-            # try to get OGX client
-            client = AsyncOgxClientHolder().get_client()
-            # retrieve version
-            ogx_version_object = await client.inspect.version()
-            ogx_version = ogx_version_object.version
-            logger.debug("Service name: %s", configuration.configuration.name)
-            logger.debug("Service version: %s", __version__)
-            logger.debug("OGX version: %s", ogx_version)
-            set_span_attributes(
-                span,
-                {
-                    SpanAttributes.SERVICE_NAME: configuration.configuration.name,
-                    SpanAttributes.SERVICE_VERSION: __version__,
-                },
-            )
-            return InfoResponse(
-                name=configuration.configuration.name,
-                service_version=__version__,
-                ogx_version=ogx_version,
-            )
-        # connection to OGX server
-        except ApiException as e:
-            logger.error("Unable to connect to OGX: %s", e)
-            response = ServiceUnavailableResponse(backend_name="OGX")
-            raise HTTPException(**response.model_dump()) from e
+        logger.debug("Service name: %s", configuration.configuration.name)
+        logger.debug("Service version: %s", __version__)
+        set_span_attributes(
+            span,
+            {
+                SpanAttributes.SERVICE_NAME: configuration.configuration.name,
+                SpanAttributes.SERVICE_VERSION: __version__,
+            },
+        )
+        return InfoResponse(
+            name=configuration.configuration.name,
+            service_version=__version__,
+        )
