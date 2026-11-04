@@ -436,6 +436,16 @@ single PR to avoid iterative CI failures.
 1. **Update `pyproject.toml`** with the new version constraints.
 2. **Regenerate `uv.lock`** — run `uv lock` to sync the lockfile with the
    updated constraints.
+
+> **Important:** If you modify `pyproject.toml` in any way (adding, removing, or
+> changing version constraints) and the sandbox cannot run `uv lock` due to
+> network restrictions, do NOT include the `pyproject.toml` change in your
+> commit. Instead:
+> 1. Complete the non-`pyproject.toml` changes (docs, config, scripts) in the PR.
+> 2. Note the needed `pyproject.toml` change in the PR body as a follow-up item
+>    requiring manual lockfile regeneration.
+> 3. Do not present the work as complete if `uv lock` could not run.
+
 3. **Regenerate Konflux requirement files** — run
    `python3 scripts/konflux_resolve.py --profile cpu` to regenerate the hashed
    requirement files under `.konflux/`:
