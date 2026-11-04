@@ -12,6 +12,10 @@ Unit tests for knowledge.capability.
 
 Unit tests for knowledge.reranker.
 
+## [test_faiss.py](test_faiss.py)
+
+Unit tests for knowledge.sources.faiss.
+
 ## [test_search.py](test_search.py)
 
 Unit tests for knowledge.search.

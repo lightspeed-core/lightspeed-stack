@@ -42,3 +42,19 @@ class KnowledgeReadiness:
 
     message: str = ""
     """Human-readable summary for operators and logs."""
+
+@dataclass(frozen=True)
+class KnowledgeChunk:
+    """A chunk of knowledge."""
+
+    content: str
+    """The chunk's text."""
+
+    id: str
+    """The chunk's unique identifier."""
+
+    source: Optional[str] = None
+    """The chunk's source."""
+
+    metadata: Mapping[str, Any] = field(default_factory=dict)
+    """Optional backend-specific metadata carried alongside the chunk."""
