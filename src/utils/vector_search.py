@@ -697,8 +697,9 @@ async def build_rag_context(  # pylint: disable=too-many-locals,too-many-branche
         # Rerank full pool with cross-encoder if enabled; then take top_k
         if configuration.reranker and configuration.reranker.enabled:
             logger.info(
-                "Reranker enabled: processing %d chunks with model '%s'",
+                "Reranker enabled: processing %d chunks with provider=%s model=%s",
                 len(merged),
+                configuration.reranker.provider,
                 configuration.reranker.model,
             )
             reranked = await rerank_chunks_with_cross_encoder(

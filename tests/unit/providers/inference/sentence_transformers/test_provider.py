@@ -75,6 +75,13 @@ def provider() -> SentenceTransformersInferenceProvider:
     )
 
 
+def _patch_no_rag_rerank_on_configuration(mocker: Any) -> None:
+    """Prevent _load_catalog from reading the process default inline reranker."""
+    mocker.patch(
+        "providers.inference.sentence_transformers.provider.configuration"
+    ).reranker = None
+
+
 def test_build_provider_returns_none(
     provider: SentenceTransformersInferenceProvider,
 ) -> None:
@@ -91,8 +98,9 @@ async def test_discover_models_returns_empty(
 
 
 @pytest.mark.asyncio
-async def test_load_catalog_from_allowed_models() -> None:
+async def test_load_catalog_from_allowed_models(mocker: Any) -> None:
     """Allow-list only: infers types, prefers explicit model_type, omits llm."""
+    _patch_no_rag_rerank_on_configuration(mocker)
     provider = SentenceTransformersInferenceProvider(
         _entry(
             allowed_models=[
@@ -136,8 +144,45 @@ async def test_load_catalog_from_allowed_models() -> None:
 
 
 @pytest.mark.asyncio
+async def test_load_catalog_registers_rerank_from_rag_config(mocker: Any) -> None:
+    """Append rerank catalog row from rag.retrieval when provider id matches."""
+    reranker = mocker.Mock()
+    reranker.provider = "sentence_transformers"
+    reranker.model = "cross-encoder/ms-marco-MiniLM-L6-v2"
+    mocker.patch(
+        "providers.inference.sentence_transformers.provider.configuration"
+    ).reranker = reranker
+
+    provider = SentenceTransformersInferenceProvider(
+        _entry(
+            allowed_models=[
+                {
+                    "name": "custom-rerank",
+                    "provider_model_id": "cross-encoder/custom",
+                    "model_type": "rerank",
+                }
+            ]
+        )
+    )
+
+    catalog = await provider._load_catalog()
+
+    assert [
+        (model.name, model.provider_model_id, model.model_type) for model in catalog
+    ] == [
+        ("custom-rerank", "cross-encoder/custom", "rerank"),
+        (
+            "cross-encoder/ms-marco-MiniLM-L6-v2",
+            "cross-encoder/ms-marco-MiniLM-L6-v2",
+            "rerank",
+        ),
+    ]
+
+
+@pytest.mark.asyncio
 async def test_initialize_does_not_load_models(mocker: Any) -> None:
     """Models stay lazy; initialize only builds the catalog."""
+    _patch_no_rag_rerank_on_configuration(mocker)
     sentence_transformer_cls = mocker.patch(
         "providers.inference.sentence_transformers.provider.SentenceTransformer",
     )

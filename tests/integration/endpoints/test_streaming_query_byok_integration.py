@@ -1024,7 +1024,6 @@ async def test_streaming_query_rag_content_limit_caps_inline_rag(  # pylint: dis
     test_config.configuration.rag.byok.stores = [entry]
     test_config.configuration.rag.retrieval.inline.sources = ["big-source"]
     test_config.configuration.rag.retrieval.inline.max_chunks = 3
-    test_config.configuration.rag.retrieval.inline.reranker.enabled = False
 
     mock_holder_class = mocker.patch(
         "app.endpoints.streaming_query.AsyncOgxClientHolder"
