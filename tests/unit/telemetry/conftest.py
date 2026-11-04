@@ -597,6 +597,7 @@ def build_fully_populated_config() -> Configuration:
                     max_chunks=10,
                     reranker=RerankerConfiguration.model_construct(
                         enabled=True,
+                        provider="sentence_transformers",
                         model="cross-encoder/ms-marco-MiniLM-L6-v2",
                     ),
                 ),
@@ -768,6 +769,7 @@ def build_minimal_config() -> Configuration:
                     max_chunks=10,
                     reranker=RerankerConfiguration.model_construct(
                         enabled=False,
+                        provider="sentence_transformers",
                         model="cross-encoder/ms-marco-MiniLM-L6-v2",
                     ),
                 ),

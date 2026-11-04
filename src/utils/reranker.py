@@ -5,58 +5,61 @@ to improve the relevance of retrieved documents in RAG applications.
 """
 
 import asyncio
-from typing import Any
+from typing import Any, Optional
 
 import constants
 from configuration import configuration
 from log import get_logger
 from models.common.turn_summary import RAGChunk
+from providers.inference.registry import ProviderRegistry
 
 logger = get_logger(__name__)
 
-# Lazy-loaded cross-encoder models for reranking RAG chunks (CPU-bound, use in thread).
-# Cache models by name to avoid reloading the same model multiple times.
-# Not a constant; pylint invalid-name is disabled for this module-level singleton.
-_cross_encoder_models: dict[str, Any] = {}  # pylint: disable=invalid-name
-_cross_encoder_load_lock = asyncio.Lock()
 
+async def _get_cross_encoder() -> Optional[Any]:
+    """Resolve the cross-encoder from the inference provider registry.
 
-async def _get_cross_encoder(model_name: str) -> Any:
-    """Return the lazy-loaded cross-encoder model for reranking.
-
-    Args:
-        model_name: Name of the cross-encoder model to load.
+    Uses ``configuration.reranker.provider`` and ``configuration.reranker.model``
+    (local catalog name) with the typed rerank getter. Does not construct a
+    Hub ``CrossEncoder`` at this call site.
 
     Returns:
-        Loaded CrossEncoder model instance, or None if loading fails.
+        Loaded CrossEncoder model instance, or None if resolution fails
+        or reranking is disabled.
 
     """
-    # Check if reranking is enabled before attempting to load the model
     if (
         not configuration.reranker or not configuration.reranker.enabled
     ):  # pylint: disable=no-member
         logger.debug("Reranker is disabled, not loading cross-encoder model")
         return None
 
-    if model_name in _cross_encoder_models:
-        return _cross_encoder_models[model_name]
-    async with _cross_encoder_load_lock:
-        if model_name in _cross_encoder_models:
-            return _cross_encoder_models[model_name]
-        try:
-            from sentence_transformers import (  # pylint: disable=import-outside-toplevel
-                CrossEncoder,
-            )
+    provider_id = configuration.reranker.provider
+    model_id = configuration.reranker.model
 
-            model = await asyncio.to_thread(CrossEncoder, model_name)
-            _cross_encoder_models[model_name] = model
-            logger.info("Loaded cross-encoder for RAG reranking: %s", model_name)
-        except Exception as e:  # pylint: disable=broad-exception-caught  # noqa: BLE001
-            logger.warning(
-                "Could not load cross-encoder for reranking (%s): %s", model_name, e
-            )
-            _cross_encoder_models[model_name] = None
-    return _cross_encoder_models[model_name]
+    try:
+        # Model construction may load Hub weights; keep it off the event loop.
+        model = await asyncio.to_thread(
+            ProviderRegistry().resolve_model_instance,
+            "rerank",
+            provider_id,
+            model_id,
+        )
+        logger.info(
+            "Resolved cross-encoder for RAG reranking: provider=%s model=%s",
+            provider_id,
+            model_id,
+        )
+        return model
+    except Exception as e:  # pylint: disable=broad-exception-caught  # noqa: BLE001
+        logger.warning(
+            "Could not resolve cross-encoder for reranking "
+            "(provider=%s model=%s): %s",
+            provider_id,
+            model_id,
+            e,
+        )
+        return None
 
 
 # pylint: disable=too-many-locals,too-many-branches
@@ -80,13 +83,11 @@ async def rerank_chunks_with_cross_encoder(
         return []
 
     try:
-        # Get the cached cross-encoder model
-        model_name = constants.DEFAULT_CROSS_ENCODER_MODEL
-        model = await _get_cross_encoder(model_name)
+        model = await _get_cross_encoder()
         if model is None:
-            raise RuntimeError(f"Failed to load cross-encoder model: {model_name}")
+            raise RuntimeError("Failed to resolve cross-encoder model from registry")
 
-        logger.debug("Using cross-encoder model: %s", model_name)
+        logger.debug("Using registry-resolved cross-encoder for RAG reranking")
 
         # Create query-chunk pairs for scoring
         pairs = [(query, chunk.content) for chunk in chunks]

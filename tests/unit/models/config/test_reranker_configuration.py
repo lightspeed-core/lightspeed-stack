@@ -14,18 +14,24 @@ class TestRerankerConfiguration:
         """Test that RerankerConfiguration has correct default values."""
         config = RerankerConfiguration()
         assert config.enabled is False
+        assert config.provider == constants.DEFAULT_RERANK_PROVIDER
         assert config.model == constants.DEFAULT_CROSS_ENCODER_MODEL
 
-    def test_custom_model(self) -> None:
-        """Test configuration with custom cross-encoder model."""
-        config = RerankerConfiguration(model="cross-encoder/ms-marco-TinyBERT-L2-v2")
-        assert config.model == "cross-encoder/ms-marco-TinyBERT-L2-v2"
+    def test_custom_provider_and_model(self) -> None:
+        """Test configuration with custom provider and catalog model name."""
+        config = RerankerConfiguration(
+            provider="local-st",
+            model="rerank-mini",
+        )
+        assert config.provider == "local-st"
+        assert config.model == "rerank-mini"
         assert config.enabled is False
 
     def test_disabled_reranker(self) -> None:
         """Test configuration with reranker disabled."""
         config = RerankerConfiguration(enabled=False)
         assert config.enabled is False
+        assert config.provider == constants.DEFAULT_RERANK_PROVIDER
         assert config.model == constants.DEFAULT_CROSS_ENCODER_MODEL
 
     def test_model_fields_set_detection(self) -> None:
@@ -35,8 +41,13 @@ class TestRerankerConfiguration:
 
     def test_all_custom_values(self) -> None:
         """Test configuration with all custom values."""
-        config = RerankerConfiguration(enabled=False, model="custom-cross-encoder")
+        config = RerankerConfiguration(
+            enabled=False,
+            provider="st",
+            model="custom-cross-encoder",
+        )
         assert config.enabled is False
+        assert config.provider == "st"
         assert config.model == "custom-cross-encoder"
 
     def test_explicit_configuration_detection(self) -> None:

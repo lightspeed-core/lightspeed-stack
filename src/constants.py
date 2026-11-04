@@ -216,7 +216,10 @@ DEFAULT_EMBEDDING_MODEL: Final[str] = "sentence-transformers/all-mpnet-base-v2"
 # Default embedding vector dimension for the sentence transformer model
 DEFAULT_EMBEDDING_DIMENSION: Final[int] = 768
 
-# Default sentence transformer cross encoder model for reranking RAG chunk scores
+# Default inference provider ID for RAG chunk reranking
+DEFAULT_RERANK_PROVIDER: Final[str] = "sentence_transformers"
+
+# Default local catalog name for the rerank cross-encoder model
 DEFAULT_CROSS_ENCODER_MODEL: Final[str] = "cross-encoder/ms-marco-MiniLM-L6-v2"
 
 # quota limiters constants

@@ -2886,11 +2886,17 @@ class RerankerConfiguration(ConfigurationBase):
         description="When True, reranking applied to RAG chunks. "
         "When False, reranking is disabled and original scoring used.",
     )
+    provider: str = Field(
+        default=constants.DEFAULT_RERANK_PROVIDER,
+        title="Reranker provider",
+        description="Inference provider ID that exposes the rerank model "
+        "in its catalog.",
+    )
     model: str = Field(
-        default="cross-encoder/ms-marco-MiniLM-L6-v2",
+        default=constants.DEFAULT_CROSS_ENCODER_MODEL,
         title="Reranker model",
-        description="Cross-encoder model name for reranking RAG chunks. "
-        "Defaults to 'cross-encoder/ms-marco-MiniLM-L6-v2' from sentence-transformers.",
+        description="Local catalog name of the rerank model on the provider. "
+        f"Defaults to '{constants.DEFAULT_CROSS_ENCODER_MODEL}'.",
     )
 
     _explicitly_configured: bool = PrivateAttr(default=False)

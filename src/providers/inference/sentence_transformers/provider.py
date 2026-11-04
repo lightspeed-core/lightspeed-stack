@@ -10,6 +10,7 @@ from pydantic_ai.embeddings.sentence_transformers import (
 from pydantic_ai.providers import Provider
 from sentence_transformers import CrossEncoder, SentenceTransformer
 
+from configuration import LogicError, configuration
 from log import get_logger
 from models.config import SentenceTransformersInferenceProviderEntry
 from providers.inference.base import InferenceProvider
@@ -64,10 +65,16 @@ class SentenceTransformersInferenceProvider(
         return []
 
     async def _load_catalog(self) -> list[CatalogModel]:
-        """Build the catalog exclusively from configured allowed models.
+        """Build the catalog from allowed models plus configured defaults.
 
         Equivalent to the base-class skip_model_discovery path. Entries typed
         as llm are omitted so this provider never exposes chat models.
+
+        For backward compatibility, also registers models referenced by the
+        loaded application configuration when those local names are absent
+        (name == provider_model_id): the inline reranker model when it targets
+        this provider, and embedding models from BYOK stores / vector-store
+        providers.
 
         Returns:
             Catalog rows for embedding and rerank models only.
@@ -94,6 +101,66 @@ class SentenceTransformersInferenceProvider(
                     model_type=model_type,
                     metadata=dict(allowed.metadata),
                 )
+            )
+        return self._with_configured_catalog_models(catalog)
+
+    def _with_configured_catalog_models(
+        self,
+        catalog: list[CatalogModel],
+    ) -> list[CatalogModel]:
+        """Append config-referenced embedding/rerank models when missing.
+
+        Args:
+            catalog: Catalog built from configured allowed models.
+
+        Returns:
+            Catalog with application-config model IDs added under matching
+            local names when those names are absent. No-op when application
+            configuration is not loaded.
+
+        """
+        try:
+            root = configuration.configuration
+        except LogicError:
+            return catalog
+
+        existing_names = {model.name for model in catalog}
+        defaults: list[tuple[str, ModelType]] = []
+
+        reranker = root.rag.retrieval.inline.reranker
+        if (
+            reranker is not None
+            and reranker.provider == self.provider_id
+            and reranker.model
+        ):
+            defaults.append((reranker.model, "rerank"))
+
+        # There is no dedicated default-embedding config; register embedding
+        # models declared on BYOK stores and dynamic vector-store providers.
+        for store in root.rag.byok.stores:
+            if store.embedding_model:
+                defaults.append((store.embedding_model, "embedding"))
+        for vs_provider in root.vector_store.providers:
+            if vs_provider.embedding_model:
+                defaults.append((vs_provider.embedding_model, "embedding"))
+
+        for model_id, model_type in defaults:
+            if model_id in existing_names:
+                continue
+            catalog.append(
+                CatalogModel(
+                    name=model_id,
+                    provider_model_id=model_id,
+                    model_type=model_type,
+                )
+            )
+            existing_names.add(model_id)
+            logger.debug(
+                "Registered configured %s model %r on sentence-transformers "
+                "provider %r for backward compatibility",
+                model_type,
+                model_id,
+                self.provider_id,
             )
         return catalog
 

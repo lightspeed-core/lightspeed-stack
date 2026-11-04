@@ -132,6 +132,12 @@ async def test_load_catalog_from_allowed_models() -> None:
             "cross-encoder/looks-like-rerank",
             "embedding",
         ),
+        # From tests/unit/__init__.py app config RerankerConfiguration default.
+        (
+            "cross-encoder/ms-marco-MiniLM-L6-v2",
+            "cross-encoder/ms-marco-MiniLM-L6-v2",
+            "rerank",
+        ),
     ]
 
 
@@ -156,6 +162,83 @@ async def test_initialize_does_not_load_models(mocker: Any) -> None:
     ] == [
         ("embed", "embedding"),
         ("rerank", "rerank"),
+        # From tests/unit/__init__.py app config RerankerConfiguration default.
+        ("cross-encoder/ms-marco-MiniLM-L6-v2", "rerank"),
+    ]
+
+
+@pytest.mark.asyncio
+async def test_load_catalog_registers_models_from_app_config(mocker: Any) -> None:
+    """Registers reranker + BYOK/vector-store embedding models from app config."""
+    root = mocker.Mock()
+    root.rag.retrieval.inline.reranker.provider = "sentence_transformers"
+    root.rag.retrieval.inline.reranker.model = "cross-encoder/ms-marco-MiniLM-L6-v2"
+    byok_store = mocker.Mock()
+    byok_store.embedding_model = "sentence-transformers/all-mpnet-base-v2"
+    root.rag.byok.stores = [byok_store]
+    vs_provider = mocker.Mock()
+    vs_provider.embedding_model = "sentence-transformers/all-MiniLM-L6-v2"
+    root.vector_store.providers = [vs_provider]
+    mocker.patch(
+        "providers.inference.sentence_transformers.provider.configuration"
+    ).configuration = root
+
+    provider = SentenceTransformersInferenceProvider(
+        _entry(
+            allowed_models=[
+                {
+                    "name": "custom-rerank",
+                    "provider_model_id": "cross-encoder/custom",
+                    "model_type": "rerank",
+                }
+            ]
+        )
+    )
+
+    catalog = await provider._load_catalog()
+
+    assert [
+        (model.name, model.provider_model_id, model.model_type) for model in catalog
+    ] == [
+        ("custom-rerank", "cross-encoder/custom", "rerank"),
+        (
+            "cross-encoder/ms-marco-MiniLM-L6-v2",
+            "cross-encoder/ms-marco-MiniLM-L6-v2",
+            "rerank",
+        ),
+        (
+            "sentence-transformers/all-mpnet-base-v2",
+            "sentence-transformers/all-mpnet-base-v2",
+            "embedding",
+        ),
+        (
+            "sentence-transformers/all-MiniLM-L6-v2",
+            "sentence-transformers/all-MiniLM-L6-v2",
+            "embedding",
+        ),
+    ]
+
+
+@pytest.mark.asyncio
+async def test_load_catalog_skips_reranker_for_other_provider(mocker: Any) -> None:
+    """Does not register the reranker model when it targets another provider."""
+    root = mocker.Mock()
+    root.rag.retrieval.inline.reranker.provider = "other-provider"
+    root.rag.retrieval.inline.reranker.model = "cross-encoder/ms-marco-MiniLM-L6-v2"
+    root.rag.byok.stores = []
+    root.vector_store.providers = []
+    mocker.patch(
+        "providers.inference.sentence_transformers.provider.configuration"
+    ).configuration = root
+
+    provider = SentenceTransformersInferenceProvider(
+        _entry(allowed_models=[{"name": "only", "provider_model_id": "only"}])
+    )
+
+    catalog = await provider._load_catalog()
+
+    assert [(model.name, model.model_type) for model in catalog] == [
+        ("only", "embedding"),
     ]
 
 

@@ -1131,6 +1131,7 @@ class TestBuildRagContext:
         }
         config_mock.rag_id_mapping = {"vs_1": "rag_1"}
         config_mock.reranker.enabled = True
+        config_mock.reranker.provider = "sentence_transformers"
         config_mock.reranker.model = "test-model"
         mocker.patch("utils.vector_search.configuration", config_mock)
         mocker.patch("utils.reranker.configuration", config_mock)
@@ -1219,112 +1220,75 @@ class TestGetCrossEncoder:
     """Tests for _get_cross_encoder function."""
 
     @pytest.mark.asyncio
-    async def test_loads_model_successfully(self, mocker: MockerFixture) -> None:
-        """Test successful model loading and caching when reranker is enabled."""
-        # Clear the cache for testing
-        # pylint: disable=import-outside-toplevel
-        from utils.reranker import _cross_encoder_models
-
-        _cross_encoder_models.clear()
-
-        # Mock reranker configuration to be enabled
+    async def test_resolves_model_from_registry(self, mocker: MockerFixture) -> None:
+        """Test successful registry resolution when reranker is enabled."""
         mock_config = mocker.Mock()
         mock_config.reranker.enabled = True
-        mocker.patch("utils.vector_search.configuration", mock_config)
+        mock_config.reranker.provider = "st"
+        mock_config.reranker.model = "rerank-mini"
         mocker.patch("utils.reranker.configuration", mock_config)
 
-        # Mock the CrossEncoder class by patching the import
         mock_model_instance = mocker.Mock()
-        mock_cross_encoder = mocker.Mock(return_value=mock_model_instance)
-
-        # Patch the import at the module level where it happens
-        mocker.patch.dict(
-            "sys.modules",
-            {"sentence_transformers": mocker.Mock(CrossEncoder=mock_cross_encoder)},
+        mock_registry = mocker.Mock()
+        mock_registry.resolve_model_instance.return_value = mock_model_instance
+        mocker.patch(
+            "utils.reranker.ProviderRegistry",
+            return_value=mock_registry,
         )
+        mocker.patch("asyncio.to_thread", side_effect=lambda fn, *a, **k: fn(*a, **k))
 
-        # Mock asyncio.to_thread
-        mocker.patch("asyncio.to_thread", return_value=mock_model_instance)
-
-        model = await _get_cross_encoder("test-model")
+        model = await _get_cross_encoder()
 
         assert model == mock_model_instance
-
-    @pytest.mark.asyncio
-    async def test_caches_loaded_model(self, mocker: MockerFixture) -> None:
-        """Test that models are cached and not reloaded when reranker is enabled."""
-        # Clear the cache for testing
-        # pylint: disable=import-outside-toplevel
-        from utils.reranker import _cross_encoder_models
-
-        _cross_encoder_models.clear()
-
-        # Mock reranker configuration to be enabled
-        mock_config = mocker.Mock()
-        mock_config.reranker.enabled = True
-        mocker.patch("utils.vector_search.configuration", mock_config)
-        mocker.patch("utils.reranker.configuration", mock_config)
-
-        mock_model_instance = mocker.Mock()
-        mock_cross_encoder = mocker.Mock(return_value=mock_model_instance)
-
-        # Patch the import at the module level where it happens
-        mocker.patch.dict(
-            "sys.modules",
-            {"sentence_transformers": mocker.Mock(CrossEncoder=mock_cross_encoder)},
+        mock_registry.resolve_model_instance.assert_called_once_with(
+            "rerank", "st", "rerank-mini"
         )
 
-        # Mock asyncio.to_thread
-        mocker.patch("asyncio.to_thread", return_value=mock_model_instance)
-
-        # First call should load the model
-        model1 = await _get_cross_encoder("test-model")
-        # Second call should return cached model
-        model2 = await _get_cross_encoder("test-model")
-
-        assert model1 == model2 == mock_model_instance
-
     @pytest.mark.asyncio
-    async def test_handles_import_error(self, mocker: MockerFixture) -> None:
-        """Test graceful handling of sentence_transformers import error when reranker is enabled."""
-        # Clear the cache for testing
-        # pylint: disable=import-outside-toplevel
-        from utils.reranker import _cross_encoder_models
-
-        _cross_encoder_models.clear()
-
-        # Mock reranker configuration to be enabled
+    async def test_returns_none_when_provider_missing(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test soft fallback when the provider is not registered."""
         mock_config = mocker.Mock()
         mock_config.reranker.enabled = True
-        mocker.patch("utils.vector_search.configuration", mock_config)
+        mock_config.reranker.provider = "missing"
+        mock_config.reranker.model = "rerank-mini"
         mocker.patch("utils.reranker.configuration", mock_config)
 
-        # Mock asyncio.to_thread to raise an exception
-        mocker.patch("asyncio.to_thread", side_effect=Exception("Model loading failed"))
+        mock_registry = mocker.Mock()
+        mock_registry.resolve_model_instance.side_effect = Exception(
+            "Inference provider 'missing' is not registered"
+        )
+        mocker.patch(
+            "utils.reranker.ProviderRegistry",
+            return_value=mock_registry,
+        )
+        mocker.patch("asyncio.to_thread", side_effect=lambda fn, *a, **k: fn(*a, **k))
 
-        model = await _get_cross_encoder("test-model")
+        model = await _get_cross_encoder()
 
         assert model is None
 
     @pytest.mark.asyncio
-    async def test_handles_model_loading_error(self, mocker: MockerFixture) -> None:
-        """Test graceful handling of model instantiation error when reranker is enabled."""
-        # Clear the cache for testing
-        # pylint: disable=import-outside-toplevel
-        from utils.reranker import _cross_encoder_models
-
-        _cross_encoder_models.clear()
-
-        # Mock reranker configuration to be enabled
+    async def test_returns_none_when_model_missing(self, mocker: MockerFixture) -> None:
+        """Test soft fallback when the catalog model is unavailable."""
         mock_config = mocker.Mock()
         mock_config.reranker.enabled = True
-        mocker.patch("utils.vector_search.configuration", mock_config)
+        mock_config.reranker.provider = "st"
+        mock_config.reranker.model = "missing"
         mocker.patch("utils.reranker.configuration", mock_config)
 
-        # Mock asyncio.to_thread to raise an exception
-        mocker.patch("asyncio.to_thread", side_effect=Exception("Model loading failed"))
+        mock_registry = mocker.Mock()
+        mock_registry.resolve_model_instance.side_effect = Exception(
+            "Model 'missing' of type 'rerank' is not available"
+        )
+        mocker.patch(
+            "utils.reranker.ProviderRegistry",
+            return_value=mock_registry,
+        )
+        mocker.patch("asyncio.to_thread", side_effect=lambda fn, *a, **k: fn(*a, **k))
 
-        model = await _get_cross_encoder("test-model")
+        model = await _get_cross_encoder()
 
         assert model is None
 
@@ -1333,54 +1297,20 @@ class TestGetCrossEncoder:
         self, mocker: MockerFixture
     ) -> None:
         """Test that _get_cross_encoder returns None when reranker is disabled."""
-        # Clear the cache for testing
-        # pylint: disable=import-outside-toplevel
-        from utils.reranker import _cross_encoder_models
-
-        _cross_encoder_models.clear()
-
-        # Mock reranker configuration to be disabled
         mock_config = mocker.Mock()
         mock_config.reranker.enabled = False
-        mocker.patch("utils.vector_search.configuration", mock_config)
+        mocker.patch("utils.reranker.configuration", mock_config)
 
-        # Mock the CrossEncoder class - should not be called since reranker is disabled
-        mock_cross_encoder = mocker.Mock()
-        mocker.patch.dict(
-            "sys.modules",
-            {"sentence_transformers": mocker.Mock(CrossEncoder=mock_cross_encoder)},
+        mock_registry = mocker.Mock()
+        mocker.patch(
+            "utils.reranker.ProviderRegistry",
+            return_value=mock_registry,
         )
 
-        model = await _get_cross_encoder("test-model")
+        model = await _get_cross_encoder()
 
         assert model is None
-        # Verify CrossEncoder was not instantiated since reranker is disabled
-        mock_cross_encoder.assert_not_called()
-
-    @pytest.mark.asyncio
-    async def test_does_not_cache_when_reranker_disabled(
-        self, mocker: MockerFixture
-    ) -> None:
-        """Test that no caching occurs when reranker is disabled."""
-        # Clear the cache for testing
-        # pylint: disable=import-outside-toplevel
-        from utils.reranker import _cross_encoder_models
-
-        _cross_encoder_models.clear()
-
-        # Mock reranker configuration to be disabled
-        mock_config = mocker.Mock()
-        mock_config.reranker.enabled = False
-        mocker.patch("utils.vector_search.configuration", mock_config)
-
-        # Call multiple times
-        model1 = await _get_cross_encoder("test-model")
-        model2 = await _get_cross_encoder("test-model")
-
-        assert model1 is None
-        assert model2 is None
-        # Verify cache remains empty
-        assert "test-model" not in _cross_encoder_models
+        mock_registry.resolve_model_instance.assert_not_called()
 
 
 class TestRerankChunksWithCrossEncoder:
