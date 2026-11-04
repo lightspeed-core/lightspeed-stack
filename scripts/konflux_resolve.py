@@ -315,7 +315,7 @@ class SimpleIndexParser:
         collector.feed(html)
         entries: list[dict[str, Any]] = []
 
-        for href, link_text in zip(collector.hrefs, collector.link_texts):
+        for href, link_text in zip(collector.hrefs, collector.link_texts, strict=False):
             filename = link_text.strip()
             if not filename:
                 filename = href.rsplit("/", 1)[-1].split("#")[0]
