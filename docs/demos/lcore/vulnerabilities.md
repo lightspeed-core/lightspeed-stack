@@ -13,6 +13,26 @@ ptisnovs@redhat.com
 
 ---
 
+## Requirements
+
+* LCore published on PyPI
+* Images based on UBI
+* Images published on catalog.redhat.com
+* Images published on Quay.io
+
+---
+
+## Problems
+
+* UBI is not minimal anymore
+    - many packages and many CVEs
+* Many Python dependencies
+* Image Health index degrades over time
+    - quickly under the new policy
+* [Example](https://catalog.redhat.com/en/software/containers/lightspeed-core/lightspeed-stack-rhel9/69149c6590bc83e678940a63#security)
+
+---
+
 ## Direct vs transitive dependencies
 
 ```
@@ -108,6 +128,13 @@ Resolved 322 packages in 2ms
 ---
 
 ![RHOAI](../rhoai_packages/sequence_diagram.svg)
+
+---
+
+## Cost for every fix (PR)
+
+* Fullsend
+    - Effort: high · Cost: $2.84 - $4.28
 
 ---
 
