@@ -161,6 +161,8 @@
                 "properties": {
                     "doc_url": {
                         "type": "string",
+                        "format": "uri",
+                        "minLength": 1,
                         "nullable": true,
                         "default": null,
                         "description": "URL of the referenced document",

@@ -435,6 +435,7 @@
                     },
                     "input_schema": {
                         "type": "object",
+                        "additionalProperties": true,
                         "nullable": true,
                         "default": null,
                         "title": "Input Schema"
@@ -586,6 +587,9 @@
                     },
                     "referenced_documents": {
                         "type": "array",
+                        "items": {
+                            "$ref": "`#/components/schemas/`ReferencedDocument"
+                        },
                         "nullable": true,
                         "default": null,
                         "description": "List of documents referenced in the response (assistant messages only)",
@@ -1030,6 +1034,9 @@
                     },
                     "logprobs": {
                         "type": "array",
+                        "items": {
+                            "$ref": "`#/components/schemas/`OpenAITokenLogProb"
+                        },
                         "nullable": true,
                         "default": null,
                         "title": "Logprobs"
@@ -1067,6 +1074,9 @@
                     },
                     "results": {
                         "type": "array",
+                        "items": {
+                            "$ref": "`#/components/schemas/`OpenAIResponseOutputMessageFileSearchToolCallResults"
+                        },
                         "nullable": true,
                         "default": null,
                         "title": "Results"
@@ -1284,6 +1294,9 @@
                     },
                     "content": {
                         "type": "array",
+                        "items": {
+                            "$ref": "`#/components/schemas/`OpenAIResponseOutputMessageReasoningContent"
+                        },
                         "nullable": true,
                         "default": null,
                         "description": "The reasoning content from the model.",
@@ -1291,6 +1304,11 @@
                     },
                     "status": {
                         "type": "string",
+                        "enum": [
+                            "in_progress",
+                            "completed",
+                            "incomplete"
+                        ],
                         "nullable": true,
                         "default": null,
                         "description": "The status of the reasoning output.",
@@ -1379,6 +1397,9 @@
                     },
                     "bytes": {
                         "type": "array",
+                        "items": {
+                            "type": "integer"
+                        },
                         "nullable": true,
                         "default": null,
                         "description": "The bytes for the token.",
@@ -1391,6 +1412,9 @@
                     },
                     "top_logprobs": {
                         "type": "array",
+                        "items": {
+                            "$ref": "`#/components/schemas/`OpenAITopLogProb"
+                        },
                         "nullable": true,
                         "default": null,
                         "description": "The top log probabilities for the token.",
@@ -1414,6 +1438,9 @@
                     },
                     "bytes": {
                         "type": "array",
+                        "items": {
+                            "type": "integer"
+                        },
                         "nullable": true,
                         "default": null,
                         "description": "The bytes for the token.",
@@ -1493,6 +1520,7 @@
                     },
                     "attributes": {
                         "type": "object",
+                        "additionalProperties": true,
                         "nullable": true,
                         "default": null,
                         "description": "Document metadata from the RAG provider (e.g., url, title, author)",
@@ -1539,6 +1567,8 @@
                 "properties": {
                     "doc_url": {
                         "type": "string",
+                        "format": "uri",
+                        "minLength": 1,
                         "nullable": true,
                         "default": null,
                         "description": "URL of the referenced document",
@@ -1634,6 +1664,12 @@
                 "properties": {
                     "mode": {
                         "type": "string",
+                        "enum": [
+                            "semantic",
+                            "hybrid",
+                            "lexical",
+                            "keyword"
+                        ],
                         "nullable": true,
                         "default": null,
                         "description": "Solr vector_io search mode. When omitted, the configured OKP default is used; otherwise 'hybrid' applies. 'keyword' and 'lexical' both use BM25 text search.",
@@ -1647,6 +1683,7 @@
                     },
                     "filters": {
                         "type": "object",
+                        "additionalProperties": true,
                         "nullable": true,
                         "default": null,
                         "description": "Solr provider filter payload passed through as params['solr']. Supports structured metadata filters (eq, ne, in, nin comparison operators). Legacy filter-only objects (e.g. fq) are still accepted.",
@@ -1768,6 +1805,7 @@
                     },
                     "input_schema": {
                         "type": "object",
+                        "additionalProperties": true,
                         "nullable": true,
                         "default": null,
                         "description": "JSON schema for the tool input",
@@ -2099,12 +2137,18 @@
                     },
                     "queries": {
                         "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
                         "nullable": true,
                         "default": null,
                         "title": "Queries"
                     },
                     "sources": {
                         "type": "array",
+                        "items": {
+                            "$ref": "`#/components/schemas/`WebSearchSource"
+                        },
                         "nullable": true,
                         "default": null,
                         "title": "Sources"
