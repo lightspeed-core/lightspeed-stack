@@ -1044,9 +1044,6 @@ async def test_query_rag_content_limit_caps_retrieved_results(  # pylint: disabl
     test_config.configuration.rag.byok.stores = [entry]
     test_config.configuration.rag.retrieval.inline.sources = ["big-source"]
 
-    # Disable reranker for this test since it's testing chunk capping, not reranking
-    test_config.configuration.rag.retrieval.inline.reranker.enabled = False
-
     mock_holder_class = mocker.patch("app.endpoints.query.AsyncOgxClientHolder")
     mock_client = _build_base_mock_client(mocker)
 
@@ -1243,7 +1240,6 @@ async def test_query_rag_content_limit_caps_inline_rag(  # pylint: disable=too-m
     test_config.configuration.rag.byok.stores = [entry]
     test_config.configuration.rag.retrieval.inline.sources = ["big-source"]
     test_config.configuration.rag.retrieval.inline.max_chunks = 3
-    test_config.configuration.rag.retrieval.inline.reranker.enabled = False
 
     mock_holder_class = mocker.patch("app.endpoints.query.AsyncOgxClientHolder")
     mock_client = _build_base_mock_client(mocker)

@@ -14,6 +14,7 @@ class TestRerankerConfiguration:
         """Test that RerankerConfiguration has correct default values."""
         config = RerankerConfiguration()
         assert config.enabled is False
+        assert config.provider == constants.DEFAULT_RERANK_PROVIDER
         assert config.model == constants.DEFAULT_CROSS_ENCODER_MODEL
 
     def test_custom_model(self) -> None:

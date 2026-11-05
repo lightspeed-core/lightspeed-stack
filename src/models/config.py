@@ -2937,11 +2937,19 @@ class RerankerConfiguration(ConfigurationBase):
         description="When True, reranking applied to RAG chunks. "
         "When False, reranking is disabled and original scoring used.",
     )
+    provider: str = Field(
+        default=constants.DEFAULT_RERANK_PROVIDER,
+        title="Rerank model provider",
+        description="The `id` of the inference provider in `inference.providers` "
+        "that loads this cross-encoder (typically `sentence_transformers`).",
+    )
     model: str = Field(
-        default="cross-encoder/ms-marco-MiniLM-L6-v2",
-        title="Reranker model",
-        description="Cross-encoder model name for reranking RAG chunks. "
-        "Defaults to 'cross-encoder/ms-marco-MiniLM-L6-v2' from sentence-transformers.",
+        default=constants.DEFAULT_CROSS_ENCODER_MODEL,
+        title="Cross-encoder model id",
+        description="Hugging Face cross-encoder model id used for reranking. "
+        "When it matches `provider`, the sentence-transformers provider also "
+        "registers it in its catalog at startup (`name` and backend id both "
+        "set to this value) if not already listed in `allowed_models`.",
     )
 
     _explicitly_configured: bool = PrivateAttr(default=False)

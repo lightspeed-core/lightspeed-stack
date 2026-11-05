@@ -101,6 +101,12 @@ def write_config(tmp_path: Path, *, inference: dict[str, Any]) -> Path:
         },
         "user_data_collection": {"feedback_enabled": False},
         "mcp_servers": [],
+        "rag": {
+            "retrieval": {
+                "inline": {"sources": [], "reranker": None},
+                "tool": {"sources": []},
+            },
+        },
         "inference": inference,
     }
     config_path.write_text(yaml.dump(payload), encoding="utf-8")
