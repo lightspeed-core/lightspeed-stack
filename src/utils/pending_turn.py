@@ -165,6 +165,10 @@ class PendingTurn:
     async def store_blocked(self, refusal: OpenAIResponseMessage) -> bool:
         """Store the turn of a request a shield blocked.
 
+        The turn is stored with the blocked mark: it stays in the history,
+        and conversation compaction does not send it to the model on a later
+        request (LCORE-3788).
+
         Parameters:
             refusal: The refusal message returned in place of an answer.
 
@@ -175,7 +179,7 @@ class PendingTurn:
             HTTPException: When the write fails.
 
         """
-        return await self._store("blocked", [refusal])
+        return await self._store("blocked", [refusal], blocked=True)
 
     async def store_interrupted(self, partial_response: str) -> bool:
         """Store the turn of a stream the client interrupted.
@@ -227,7 +231,11 @@ class PendingTurn:
         return True
 
     async def _store(
-        self, outcome: str, output_items: Sequence[OpenAIResponseOutput]
+        self,
+        outcome: str,
+        output_items: Sequence[OpenAIResponseOutput],
+        *,
+        blocked: bool = False,
     ) -> bool:
         """Settle the turn and append it to the conversation.
 
@@ -238,6 +246,7 @@ class PendingTurn:
         Parameters:
             outcome: How the turn ended; recorded when this call settles it.
             output_items: The assistant's side of the turn.
+            blocked: Whether the turn is stored with the blocked mark.
 
         Returns:
             Whether this call wrote the turn. ``False`` when the turn was
@@ -252,7 +261,11 @@ class PendingTurn:
             return False
         try:
             await append_turn_items_to_conversation(
-                self.client, self.conversation_id, self.user_input, output_items
+                self.client,
+                self.conversation_id,
+                self.user_input,
+                output_items,
+                blocked=blocked,
             )
         except BaseException:
             self.outcome = f"failed: {outcome}"
