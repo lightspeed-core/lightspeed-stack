@@ -25,7 +25,7 @@ spec:
       default: 'g5.12xlarge,g6.12xlarge,g5.24xlarge,g6.24xlarge'
       type: string
     - name: spot
-      description: 'Use spot instances (cheaper, searches all regions). If false, uses on-demand with region fallback.'
+      description: 'Use spot instances when true (retry, then fail; no on-demand fallback). If false, on-demand only with region fallback.'
       default: 'true'
       type: string
     - name: model
@@ -132,38 +132,60 @@ spec:
               echo "[mapt] =================================="
 
               CREATED=0
+              # Spot: retry the same MAPT create block. No on-demand fallback.
+              SPOT_RETRIES=3
+              SPOT_RETRY_INTERVAL_SECONDS=300
 
               if [[ "$(params.spot)" == "true" ]]; then
                 export AWS_DEFAULT_REGION="us-east-1"
-                echo "[mapt] Using spot instances (searching all regions)..."
-                if mapt aws rhel-ai create \
-                    --project-name "mapt-rhel-ai-${RUN_ID}" \
-                    --backed-url "s3://${BUCKET}/mapt/rhel-ai/${RUN_ID}" \
-                    --conn-details-output /opt/host-info \
-                    --compute-sizes "$(params.instance-type)" \
-                    --version "$(params.rhelai-version)" \
-                    --spot --spot-eviction-tolerance highest \
-                    --auto-start \
-                    --model "$(params.model)" \
-                    --hf-token "${HF_TOKEN}" \
-                    --api-key "${VLLM_API_KEY}" \
-                    --expose-ports 8000 \
-                    --vllm-extra-args "--max-model-len 69632 --gpu-memory-utilization 0.90 --enable-auto-tool-choice --tool-call-parser qwen3_coder --reasoning-parser qwen3" \
-                    --tags "project=lightspeed-core,environment=konflux-ci"; then
-                  CREATED=1
-                else
-                  echo "[mapt] ERROR: Spot instance creation failed"
+                echo "[mapt] Using spot instances (searching all regions, up to ${SPOT_RETRIES} attempts)..."
+                spot_attempt=1
+                while [ "${spot_attempt}" -le "${SPOT_RETRIES}" ]; do
+                  echo "[mapt] Spot attempt ${spot_attempt}/${SPOT_RETRIES}..."
+                  if mapt aws rhel-ai create \
+                      --project-name "mapt-rhel-ai-${RUN_ID}" \
+                      --backed-url "s3://${BUCKET}/mapt/rhel-ai/${RUN_ID}" \
+                      --conn-details-output /opt/host-info \
+                      --compute-sizes "$(params.instance-type)" \
+                      --version "$(params.rhelai-version)" \
+                      --spot --spot-eviction-tolerance highest \
+                      --auto-start \
+                      --model "$(params.model)" \
+                      --hf-token "${HF_TOKEN}" \
+                      --api-key "${VLLM_API_KEY}" \
+                      --expose-ports 8000 \
+                      --vllm-extra-args "--max-model-len 69632 --gpu-memory-utilization 0.90 --enable-auto-tool-choice --tool-call-parser qwen3_coder --reasoning-parser qwen3" \
+                      --tags "project=lightspeed-core,environment=konflux-ci" \
+                  && [ -s /opt/host-info/host ] && [ -s /opt/host-info/username ]; then
+                    CREATED=1
+                    break
+                  fi
+                  echo "[mapt] Spot attempt ${spot_attempt} failed or MAPT did not write conn details"
+                  mapt aws rhel-ai destroy \
+                      --project-name "mapt-rhel-ai-${RUN_ID}" \
+                      --backed-url "s3://${BUCKET}/mapt/rhel-ai/${RUN_ID}" \
+                      --force-destroy 2>/dev/null || true
+                  if [ "${spot_attempt}" -lt "${SPOT_RETRIES}" ]; then
+                    echo "[mapt] Waiting ${SPOT_RETRY_INTERVAL_SECONDS}s before next spot attempt..."
+                    sleep "${SPOT_RETRY_INTERVAL_SECONDS}"
+                  fi
+                  spot_attempt=$((spot_attempt + 1))
+                done
+                if [ "${CREATED}" -ne 1 ]; then
+                  echo "[mapt] ERROR: Spot instance was not fulfilled after ${SPOT_RETRIES} attempt(s). Not launching on-demand."
                   exit 1
                 fi
-              else
+              fi
+
+              if [ "${CREATED}" -ne 1 ]; then
                 REGIONS="us-east-1 us-east-2 us-west-2 eu-west-1 eu-central-1 ap-northeast-1"
                 TIMEOUT=600
 
                 for REGION in $REGIONS; do
                   echo "[mapt] Trying on-demand in ${REGION}..."
-                  export AWS_DEFAULT_REGION="$REGION"
+                  export AWS_DEFAULT_REGION="${REGION}"
 
-                  if timeout $TIMEOUT mapt aws rhel-ai create \
+                  if timeout "${TIMEOUT}" mapt aws rhel-ai create \
                       --project-name "mapt-rhel-ai-${RUN_ID}" \
                       --backed-url "s3://${BUCKET}/mapt/rhel-ai/${RUN_ID}" \
                       --conn-details-output /opt/host-info \
@@ -175,7 +197,8 @@ spec:
                       --api-key "${VLLM_API_KEY}" \
                       --expose-ports 8000 \
                       --vllm-extra-args "--max-model-len 69632 --gpu-memory-utilization 0.90 --enable-auto-tool-choice --tool-call-parser qwen3_coder --reasoning-parser qwen3" \
-                      --tags "project=lightspeed-core,environment=konflux-ci"; then
+                      --tags "project=lightspeed-core,environment=konflux-ci" \
+                  && [ -s /opt/host-info/host ] && [ -s /opt/host-info/username ]; then
                     CREATED=1
                     break
                   fi
@@ -186,15 +209,32 @@ spec:
                       --backed-url "s3://${BUCKET}/mapt/rhel-ai/${RUN_ID}" \
                       --force-destroy 2>/dev/null || true
                 done
+              fi
 
-                if [ "$CREATED" -ne 1 ]; then
-                  echo "[mapt] ERROR: Failed to create instance in any region"
+              if [ "${CREATED}" -ne 1 ]; then
+                echo "[mapt] ERROR: Failed to create RHEL AI instance in any region"
+                exit 1
+              fi
+
+              if ! [ -s /opt/host-info/host ] || ! [ -s /opt/host-info/username ]; then
+                echo "[mapt] ERROR: MAPT did not write conn details under /opt/host-info; provisioning failed"
+                exit 1
+              fi
+
+              if ! command -v curl >/dev/null 2>&1 || ! command -v grep >/dev/null 2>&1; then
+                echo "[mapt] Installing curl and grep for vLLM readiness check..."
+                if command -v microdnf >/dev/null 2>&1; then
+                  microdnf -y install curl-minimal grep
+                elif command -v yum >/dev/null 2>&1; then
+                  yum -y install curl grep
+                else
+                  echo "[mapt] ERROR: curl and grep are required but no supported package manager found"
                   exit 1
                 fi
               fi
 
-              echo "[mapt] Instance created; waiting for vLLM to expose $(params.model)..."
               VLLM_HOST="$(cat /opt/host-info/host)"
+              echo "[mapt] Provisioning OK (host=${VLLM_HOST}); waiting for vLLM to expose $(params.model)..."
               VLLM_READINESS_DEADLINE=$((SECONDS + 1200))
               n=0
               while true; do
@@ -203,7 +243,7 @@ spec:
                   echo "[mapt] vLLM models API ready (poll ${n})"
                   break
                 fi
-                if [ "$SECONDS" -ge "$VLLM_READINESS_DEADLINE" ]; then
+                if [ "${SECONDS}" -ge "${VLLM_READINESS_DEADLINE}" ]; then
                   echo "[mapt] ERROR: vLLM did not list model after 20m (check instance logs / OOM)"
                   exit 1
                 fi
