@@ -12,15 +12,15 @@ roles:
     - fix
     - retro
 agents:
-    # Retro: run only on an explicit /fs-retro comment from a human, not on
-    # every closed PR. 
+    # Retro and prioritize: disabled for the initial Jira rollout.
     - name: retro
-      runtime: pi
-      trigger: >-
-        event.transition.kind == "comment_added"
-        && has(event.transition.comment.command)
-        && event.transition.comment.command == "/fs-retro"
-        && event.actor.kind == "human"
+      enabled: false
+    - name: prioritize
+      enabled: false
+    - name: triage
+      source: harness/triage.yaml
+    - name: code
+      source: harness/code.yaml
 allowed_remote_resources:
     - https://raw.githubusercontent.com/fullsend-ai/fullsend/
     - https://raw.githubusercontent.com/fullsend-ai/agents/

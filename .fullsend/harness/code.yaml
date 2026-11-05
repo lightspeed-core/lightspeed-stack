@@ -1,0 +1,21 @@
+# Code harness overlay that extends the upstream fullsend-ai/agents code harness
+# and narrows dispatch to:
+#   - issues carries exactly one `repo:..` label
+#   - code dispatches only when ready-to-code is added, or a comment's first line is the /fs-code command
+base: https://raw.githubusercontent.com/fullsend-ai/agents/4a6645268c6c8063c15ce5cb1b88a4f3930c74da/harness/code.yaml#sha256=0cf4e64085a181606a0f33af5250cf56d8f12d4c6b91ae7bdf9f72a28e2137eb
+
+trigger: >
+  event.source.system == "jira"
+    && event.entity.kind == "work_item"
+    && "repo:lightspeed-core/lightspeed-stack" in event.state.labels
+    && event.state.labels.filter(label, label.startsWith("repo:")).size() == 1
+    && (
+      (event.transition.kind == "label_changed"
+        && event.transition.label.action == "added"
+        && event.transition.label.name == "ready-to-code")
+      ||
+      (event.transition.kind == "comment_added"
+        && has(event.transition.comment.command)
+        && event.transition.comment.command == "/fs-code"
+        && event.actor.kind == "human")
+    )

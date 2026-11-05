@@ -1,0 +1,32 @@
+# Triage harness overlay that extends the upstream fullsend-ai/agents triage harness
+# and narrows dispatch to
+#   - issues that carry exactly one `repo: ` label
+#   - triage dispatches only when ready-to-triage is added, or a comment's
+#     first line is the /fs-triage command
+# Automatic triage -> code handoff is disabled.
+base: https://raw.githubusercontent.com/fullsend-ai/agents/4a6645268c6c8063c15ce5cb1b88a4f3930c74da/harness/triage.yaml#sha256=f935d591305e127967c4378ab9474f50da9cbd59e5dc299eebba83241faf1718
+
+trigger: >
+  event.source.system == "jira"
+    && event.entity.kind == "work_item"
+    && "repo:lightspeed-core/lightspeed-stack" in event.state.labels
+    && event.state.labels.filter(label, label.startsWith("repo:")).size() == 1
+    && (
+     (event.transition.kind == "label_changed"
+       && event.transition.label.action == "added"
+       && event.transition.label.name == "ready-to-triage")
+     ||
+     (event.transition.kind == "comment_added"
+       && has(event.transition.comment.command)
+       && event.transition.comment.command == "/fs-triage"
+       && event.actor.kind == "human")
+   )
+
+# Disable automatic code-agent handoff.
+env:
+  runner:
+    TRIAGE_AUTO_CODE: "off"
+    TRIAGE_AUTO_CODE_CATEGORIES: ""
+  sandbox:
+    TRIAGE_AUTO_CODE: "off"
+    TRIAGE_AUTO_CODE_CATEGORIES: ""
