@@ -142,6 +142,7 @@ spec:
                 spot_attempt=1
                 while [ "${spot_attempt}" -le "${SPOT_RETRIES}" ]; do
                   echo "[mapt] Spot attempt ${spot_attempt}/${SPOT_RETRIES}..."
+                  rm -f /opt/host-info/host /opt/host-info/username
                   if mapt aws rhel-ai create \
                       --project-name "mapt-rhel-ai-${RUN_ID}" \
                       --backed-url "s3://${BUCKET}/mapt/rhel-ai/${RUN_ID}" \
@@ -184,6 +185,7 @@ spec:
                 for REGION in $REGIONS; do
                   echo "[mapt] Trying on-demand in ${REGION}..."
                   export AWS_DEFAULT_REGION="${REGION}"
+                  rm -f /opt/host-info/host /opt/host-info/username
 
                   if timeout "${TIMEOUT}" mapt aws rhel-ai create \
                       --project-name "mapt-rhel-ai-${RUN_ID}" \
