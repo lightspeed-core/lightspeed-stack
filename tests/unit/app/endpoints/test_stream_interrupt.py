@@ -1,6 +1,5 @@
 """Unit tests for streaming query interrupt endpoint."""
 
-import asyncio
 import threading
 from collections.abc import Generator
 from typing import Any
@@ -11,6 +10,7 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
     InMemorySpanExporter,
 )
 from opentelemetry.trace import StatusCode
+from pydantic_ai import CancellationToken
 from pytest_mock import MockerFixture
 
 from app.endpoints.stream_interrupt import stream_interrupt_endpoint_handler
@@ -56,12 +56,8 @@ async def test_stream_interrupt_endpoint_success(
     registry: StreamInterruptRegistry,
 ) -> None:
     """Interrupt endpoint cancels an active stream for the same user."""
-
-    async def pending_stream() -> None:
-        await asyncio.sleep(10)
-
-    task = asyncio.create_task(pending_stream())
-    registry.register_stream(REQUEST_ID_SUCCESS, OWNER_USER_ID, task)
+    token = CancellationToken()
+    registry.register_stream(REQUEST_ID_SUCCESS, OWNER_USER_ID, token)
 
     response = await stream_interrupt_endpoint_handler(
         interrupt_request=StreamingInterruptRequest(request_id=REQUEST_ID_SUCCESS),
@@ -72,9 +68,7 @@ async def test_stream_interrupt_endpoint_success(
     assert isinstance(response, StreamingInterruptResponse)
     assert response.request_id == REQUEST_ID_SUCCESS
     assert response.interrupted is True
-
-    with pytest.raises(asyncio.CancelledError):
-        await task
+    assert token.cancelled is True
 
 
 @pytest.mark.asyncio
@@ -104,15 +98,11 @@ async def test_stream_interrupt_endpoint_wrong_user(
     registry: StreamInterruptRegistry,
 ) -> None:
     """Interrupt endpoint does not cancel streams owned by other users."""
-
-    async def pending_stream() -> None:
-        await asyncio.sleep(10)
-
-    task = asyncio.create_task(pending_stream())
+    token = CancellationToken()
     registry.register_stream(
         request_id=REQUEST_ID_WRONG_USER,
         user_id=OWNER_USER_ID,
-        task=task,
+        token=token,
     )
 
     with pytest.raises(HTTPException) as exc_info:
@@ -130,25 +120,17 @@ async def test_stream_interrupt_endpoint_wrong_user(
         )
 
     assert exc_info.value.status_code == 403
-    assert task.done() is False
-
-    task.cancel()
-    with pytest.raises(asyncio.CancelledError):
-        await task
+    assert token.cancelled is False
 
 
 @pytest.mark.asyncio
 async def test_stream_interrupt_endpoint_already_completed(
     registry: StreamInterruptRegistry,
 ) -> None:
-    """Interrupt endpoint reports already-completed streams without error."""
-
-    async def completed_stream() -> None:
-        return None
-
-    task = asyncio.create_task(completed_stream())
-    await task
-    registry.register_stream(REQUEST_ID_ALREADY_COMPLETED, OWNER_USER_ID, task)
+    """Interrupt endpoint reports already-cancelled streams without error."""
+    token = CancellationToken()
+    token.cancel()
+    registry.register_stream(REQUEST_ID_ALREADY_COMPLETED, OWNER_USER_ID, token)
 
     response = await stream_interrupt_endpoint_handler(
         interrupt_request=StreamingInterruptRequest(
@@ -163,17 +145,11 @@ async def test_stream_interrupt_endpoint_already_completed(
     assert response.interrupted is False
 
 
-@pytest.mark.asyncio
-async def test_stream_interrupt_registry_concurrent_cancel_and_deregister(
+def test_stream_interrupt_registry_concurrent_cancel_and_deregister(
     registry: StreamInterruptRegistry,
 ) -> None:
     """Concurrent cancel and deregister do not raise under the registry lock."""
-
-    async def pending_stream() -> None:
-        await asyncio.sleep(10)
-
-    task = asyncio.create_task(pending_stream())
-    registry.register_stream(REQUEST_ID_SUCCESS, OWNER_USER_ID, task)
+    registry.register_stream(REQUEST_ID_SUCCESS, OWNER_USER_ID, CancellationToken())
 
     barrier = threading.Barrier(2)
     errors: list[Exception] = []
@@ -201,23 +177,14 @@ async def test_stream_interrupt_registry_concurrent_cancel_and_deregister(
         CancelStreamResult.NOT_FOUND,
     )
 
-    if not task.done():
-        task.cancel()
-        with pytest.raises(asyncio.CancelledError):
-            await task
-
 
 @pytest.mark.asyncio
 async def test_stream_interrupt_endpoint_double_interrupt(
     registry: StreamInterruptRegistry,
 ) -> None:
     """Second interrupt on the same stream returns interrupted=False."""
-
-    async def pending_stream() -> None:
-        await asyncio.sleep(10)
-
-    task = asyncio.create_task(pending_stream())
-    registry.register_stream(REQUEST_ID_SUCCESS, OWNER_USER_ID, task)
+    token = CancellationToken()
+    registry.register_stream(REQUEST_ID_SUCCESS, OWNER_USER_ID, token)
 
     first_response = await stream_interrupt_endpoint_handler(
         interrupt_request=StreamingInterruptRequest(request_id=REQUEST_ID_SUCCESS),
@@ -225,9 +192,7 @@ async def test_stream_interrupt_endpoint_double_interrupt(
         registry=registry,
     )
     assert first_response.interrupted is True
-
-    with pytest.raises(asyncio.CancelledError):
-        await task
+    assert token.cancelled is True
 
     second_response = await stream_interrupt_endpoint_handler(
         interrupt_request=StreamingInterruptRequest(request_id=REQUEST_ID_SUCCESS),
@@ -250,15 +215,11 @@ class TestStreamInterruptOtelSpans:
         """A successful interrupt emits one span with the expected attributes."""
         tracer, exporter = otel
         mocker.patch("app.endpoints.stream_interrupt.tracer", tracer)
-
-        async def pending_stream() -> None:
-            await asyncio.sleep(10)
-
-        task = asyncio.create_task(pending_stream())
+        token = CancellationToken()
         registry.register_stream(
             REQUEST_ID_SUCCESS,
             OWNER_USER_ID,
-            task,
+            token,
             conversation_id=CONVERSATION_ID,
         )
 
@@ -278,9 +239,7 @@ class TestStreamInterruptOtelSpans:
         assert attrs["stream.conversation.id"] == CONVERSATION_ID
         assert attrs["interrupt.result"] == CancelStreamResult.CANCELLED.value
         assert span.status.status_code == StatusCode.OK
-
-        with pytest.raises(asyncio.CancelledError):
-            await task
+        assert token.cancelled is True
 
     @pytest.mark.asyncio
     async def test_interrupt_not_found_sets_error_status(
@@ -322,15 +281,11 @@ class TestStreamInterruptOtelSpans:
         """A non-owner interrupt records forbidden and does not leak conversation id."""
         tracer, exporter = otel
         mocker.patch("app.endpoints.stream_interrupt.tracer", tracer)
-
-        async def pending_stream() -> None:
-            await asyncio.sleep(10)
-
-        task = asyncio.create_task(pending_stream())
+        token = CancellationToken()
         registry.register_stream(
             request_id=REQUEST_ID_WRONG_USER,
             user_id=OWNER_USER_ID,
-            task=task,
+            token=token,
             conversation_id=CONVERSATION_ID,
         )
 
@@ -351,10 +306,7 @@ class TestStreamInterruptOtelSpans:
         # A non-owner must not see the stream's conversation id.
         assert "stream.conversation.id" not in attrs
         assert span.status.status_code == StatusCode.ERROR
-
-        task.cancel()
-        with pytest.raises(asyncio.CancelledError):
-            await task
+        assert token.cancelled is False
 
     @pytest.mark.asyncio
     async def test_interrupt_already_done_records_ok_status(
@@ -363,19 +315,15 @@ class TestStreamInterruptOtelSpans:
         registry: StreamInterruptRegistry,
         otel: tuple[Any, InMemorySpanExporter],
     ) -> None:
-        """An already-completed stream records already_done with an OK status."""
+        """An already-cancelled stream records already_done with an OK status."""
         tracer, exporter = otel
         mocker.patch("app.endpoints.stream_interrupt.tracer", tracer)
-
-        async def completed_stream() -> None:
-            return None
-
-        task = asyncio.create_task(completed_stream())
-        await task
+        token = CancellationToken()
+        token.cancel()
         registry.register_stream(
             REQUEST_ID_ALREADY_COMPLETED,
             OWNER_USER_ID,
-            task,
+            token,
             conversation_id=CONVERSATION_ID,
         )
 

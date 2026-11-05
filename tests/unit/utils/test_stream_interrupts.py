@@ -1,10 +1,12 @@
 """Unit tests for stream interrupt registry and persistence utilities."""
 
 import asyncio
+from collections.abc import Generator
 from typing import Any
 
 import pytest
 from ogx_api.openai_responses import OpenAIResponseMessage
+from pydantic_ai import CancellationToken
 from pytest_mock import MockerFixture
 
 from constants import INTERRUPTED_RESPONSE_MESSAGE
@@ -15,14 +17,94 @@ from models.common.responses.types import ResponseInput
 from models.common.turn_summary import TurnSummary
 from utils.pending_turn import PendingTurn
 from utils.stream_interrupts import (
+    CancelStreamResult,
     StreamInterruptRegistry,
     build_interrupted_response,
     persist_interrupted_turn,
-    register_interrupt_callback,
 )
 from utils.token_estimator import extract_message_text
 
 INTERRUPTED_INDICATOR = f"\n\n*{INTERRUPTED_RESPONSE_MESSAGE}*"
+
+REQUEST_ID = "123e4567-e89b-12d3-a456-426614174005"
+OWNER_USER_ID = "00000001-0001-0001-0001-000000000001"
+NON_OWNER_USER_ID = "00000001-0001-0001-0001-000000000999"
+
+
+@pytest.fixture(name="registry")
+def registry_fixture() -> Generator[StreamInterruptRegistry, None, None]:
+    """Provide the singleton registry without this module's test stream."""
+    registry = StreamInterruptRegistry()
+    registry.deregister_stream(REQUEST_ID)
+    yield registry
+    registry.deregister_stream(REQUEST_ID)
+
+
+@pytest.mark.parametrize(
+    ("state", "caller", "expected_result", "expected_cancelled"),
+    [
+        pytest.param(
+            "absent",
+            OWNER_USER_ID,
+            CancelStreamResult.NOT_FOUND,
+            False,
+            id="not_registered",
+        ),
+        pytest.param(
+            "deregistered",
+            OWNER_USER_ID,
+            CancelStreamResult.NOT_FOUND,
+            False,
+            id="deregistered",
+        ),
+        pytest.param(
+            "registered",
+            NON_OWNER_USER_ID,
+            CancelStreamResult.FORBIDDEN,
+            False,
+            id="other_user",
+        ),
+        pytest.param(
+            "cancelled",
+            NON_OWNER_USER_ID,
+            CancelStreamResult.FORBIDDEN,
+            True,
+            id="other_user_already_cancelled",
+        ),
+        pytest.param(
+            "cancelled",
+            OWNER_USER_ID,
+            CancelStreamResult.ALREADY_DONE,
+            True,
+            id="already_cancelled",
+        ),
+        pytest.param(
+            "registered",
+            OWNER_USER_ID,
+            CancelStreamResult.CANCELLED,
+            True,
+            id="owner",
+        ),
+    ],
+)
+def test_cancel_stream_outcomes(
+    registry: StreamInterruptRegistry,
+    state: str,
+    caller: str,
+    expected_result: CancelStreamResult,
+    expected_cancelled: bool,
+) -> None:
+    """cancel_stream checks ownership and cancels the registered token once."""
+    token = CancellationToken()
+    if state == "cancelled":
+        token.cancel()
+    if state != "absent":
+        registry.register_stream(REQUEST_ID, OWNER_USER_ID, token)
+    if state == "deregistered":
+        registry.deregister_stream(REQUEST_ID)
+
+    assert registry.cancel_stream(REQUEST_ID, caller) == expected_result
+    assert token.cancelled is expected_cancelled
 
 
 def _params(
@@ -183,54 +265,6 @@ async def test_persist_interrupted_turn_schedules_background_topic_summary(
         context=context,
         model="provider1/model1",
     )
-
-
-def test_register_interrupt_callback_registers_current_task(
-    mocker: MockerFixture,
-) -> None:
-    """register_interrupt_callback binds the current asyncio task to the registry."""
-    registry = mocker.Mock(spec=StreamInterruptRegistry)
-    mocker.patch(
-        "utils.stream_interrupts.get_stream_interrupt_registry",
-        return_value=registry,
-    )
-    persist_mock = mocker.patch(
-        "utils.stream_interrupts.persist_interrupted_turn",
-        new=mocker.AsyncMock(),
-    )
-
-    context = mocker.Mock(spec=ResponseGeneratorContext)
-    context.request_id = "req-1"
-    context.user_id = "user_1"
-    context.conversation_id = "conv-1"
-    responses_params = mocker.Mock(spec=ResponsesApiParams)
-    turn_summary = TurnSummary()
-    background_tasks: list[asyncio.Task[None]] = []
-
-    async def run() -> list[bool]:
-        return register_interrupt_callback(
-            context,
-            responses_params,
-            turn_summary,
-            background_tasks,
-        )
-
-    guard = asyncio.run(run())
-
-    assert guard == [False]
-    registry.register_stream.assert_called_once()
-    assert registry.register_stream.call_args.kwargs["request_id"] == "req-1"
-    assert registry.register_stream.call_args.kwargs["user_id"] == "user_1"
-    assert registry.register_stream.call_args.kwargs["conversation_id"] == "conv-1"
-    assert persist_mock.await_count == 0
-
-    on_interrupt = registry.register_stream.call_args.kwargs["on_interrupt"]
-
-    async def invoke_callback() -> None:
-        await on_interrupt()
-
-    asyncio.run(invoke_callback())
-    persist_mock.assert_awaited_once()
 
 
 class TestBuildInterruptedResponse:

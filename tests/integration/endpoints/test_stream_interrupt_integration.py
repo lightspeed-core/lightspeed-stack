@@ -1,11 +1,11 @@
 """Integration tests for the streaming query interrupt lifecycle."""
 
-import asyncio
 from collections.abc import Generator
 
 import pytest
 from fastapi import HTTPException, status
 from fastapi.testclient import TestClient
+from pydantic_ai import CancellationToken
 
 from app.endpoints.stream_interrupt import stream_interrupt_endpoint_handler
 from configuration import AppConfig
@@ -35,11 +35,8 @@ async def test_stream_interrupt_full_round_trip(
     # test_config loads configuration so @authorize on the handler can resolve.
     _ = test_config
 
-    async def pending_stream() -> None:
-        await asyncio.sleep(10)
-
-    task = asyncio.create_task(pending_stream())
-    registry.register_stream(TEST_REQUEST_ID, OWNER_USER_ID, task)
+    token = CancellationToken()
+    registry.register_stream(TEST_REQUEST_ID, OWNER_USER_ID, token)
 
     assert registry.get_stream(TEST_REQUEST_ID) is not None
 
@@ -49,9 +46,7 @@ async def test_stream_interrupt_full_round_trip(
         registry=registry,
     )
     assert response.interrupted is True
-
-    with pytest.raises(asyncio.CancelledError):
-        await task
+    assert token.cancelled is True
 
     completed_response = await stream_interrupt_endpoint_handler(
         interrupt_request=StreamingInterruptRequest(request_id=TEST_REQUEST_ID),

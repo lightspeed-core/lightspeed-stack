@@ -216,14 +216,9 @@ def patch_streaming_configuration_fixture(mocker: MockerFixture) -> None:
 
 @pytest.fixture(autouse=True, name="stream_interrupt_mocks")
 def stream_interrupt_mocks_fixture(mocker: MockerFixture) -> dict[str, Any]:
-    """Patch stream interrupt registry and deregister for wrapper tests."""
-    registry = mocker.Mock()
-    mocker.patch(
-        "utils.stream_interrupts.get_stream_interrupt_registry",
-        return_value=registry,
-    )
+    """Patch deregister_stream for wrapper tests."""
     deregister = mocker.patch("utils.agents.streaming.deregister_stream")
-    return {"registry": registry, "deregister": deregister}
+    return {"deregister": deregister}
 
 
 class TestSerializeEvent:
@@ -718,10 +713,6 @@ class TestGenerateAgentResponse:
             "utils.agents.streaming.persist_interrupted_turn",
             new=mocker.AsyncMock(),
         )
-        mocker.patch(
-            "utils.agents.streaming.register_interrupt_callback",
-            return_value=[False],
-        )
 
         result = [
             event
@@ -766,10 +757,6 @@ class TestGenerateAgentResponse:
             "utils.agents.error_handler.map_agent_inference_error",
             return_value=mock_error,
         )
-        mocker.patch(
-            "utils.agents.streaming.register_interrupt_callback",
-            return_value=[False],
-        )
 
         result = [
             event
@@ -786,48 +773,6 @@ class TestGenerateAgentResponse:
 
         assert _sse_event_types(result) == ["token", "error"]
         stream_interrupt_mocks["deregister"].assert_called_once_with(context.request_id)
-
-    @pytest.mark.asyncio
-    async def test_interrupt_guard_skips_duplicate_persist(
-        self,
-        mocker: MockerFixture,
-        make_generator_context: Callable[..., ResponseGeneratorContext],
-        responses_params: ResponsesApiParams,
-    ) -> None:
-        """Test persist guard prevents double persistence when already handled."""
-        context = make_generator_context()
-        turn_summary = TurnSummary()
-
-        async def inner() -> AsyncIterator[str]:
-            yield serialize_event(
-                TokenStreamPayload.create(chunk_id=0, token="partial"),
-                MEDIA_TYPE_JSON,
-            )
-            raise asyncio.CancelledError()
-
-        persist_mock = mocker.patch(
-            "utils.agents.streaming.persist_interrupted_turn",
-            new=mocker.AsyncMock(),
-        )
-        mocker.patch(
-            "utils.agents.streaming.register_interrupt_callback",
-            return_value=[True],
-        )
-
-        result = [
-            event
-            async for event in generate_agent_response(
-                inner(),
-                context,
-                responses_params,
-                turn_summary,
-                [],
-                root_span=_dummy_root_span(),
-            )
-        ]
-
-        assert _sse_event_types(result) == ["start", "token", "token", "interrupted"]
-        persist_mock.assert_not_awaited()
 
 
 class TestGenerateAgentResponseOtel:
@@ -999,7 +944,6 @@ class TestGenerateAgentResponseOtel:
     @pytest.mark.asyncio
     async def test_span_ended_on_stream_error(
         self,
-        mocker: MockerFixture,
         make_generator_context: Callable[..., ResponseGeneratorContext],
         responses_params: ResponsesApiParams,
         otel: tuple[Any, InMemorySpanExporter],
@@ -1015,11 +959,6 @@ class TestGenerateAgentResponseOtel:
                 MEDIA_TYPE_JSON,
             )
             raise AgentRunError("inference failure")
-
-        mocker.patch(
-            "utils.agents.streaming.register_interrupt_callback",
-            return_value=[False],
-        )
 
         [
             event
@@ -1113,10 +1052,6 @@ class TestGenerateAgentResponseOtel:
         mocker.patch(
             "utils.agents.streaming.persist_interrupted_turn",
             new=mocker.AsyncMock(),
-        )
-        mocker.patch(
-            "utils.agents.streaming.register_interrupt_callback",
-            return_value=[False],
         )
 
         [
@@ -1445,10 +1380,6 @@ class TestInterruptPartialTokenAccumulation:
             "utils.agents.streaming.persist_interrupted_turn",
             new=mocker.AsyncMock(),
         )
-        mocker.patch(
-            "utils.agents.streaming.register_interrupt_callback",
-            return_value=[False],
-        )
 
         inner = agent_response_generator(
             mock_agent,
@@ -1514,10 +1445,6 @@ class TestInterruptPartialTokenAccumulation:
         persist_mock = mocker.patch(
             "utils.agents.streaming.persist_interrupted_turn",
             new=mocker.AsyncMock(),
-        )
-        mocker.patch(
-            "utils.agents.streaming.register_interrupt_callback",
-            return_value=[False],
         )
 
         result = [
@@ -1688,61 +1615,6 @@ class TestCompactedTurnPersistence:
         assert stored == []
 
     @pytest.mark.asyncio
-    async def test_interrupt_guard_prevents_double_persistence(
-        self,
-        mocker: MockerFixture,
-        make_generator_context: Callable[..., ResponseGeneratorContext],
-        make_responses_params: Callable[..., ResponsesApiParams],
-    ) -> None:
-        """An interrupt that already persisted the turn blocks the success path.
-
-        Both protections agree here: the guard shared with the interrupt path
-        is set, and the turn is settled. The next test opens the guard.
-        """
-        context = make_generator_context()
-        compacted_params = make_responses_params(omit_conversation=True)
-        stored = capture_conversation_writes(context)
-        self._patch_finalizers(mocker)
-        # The interrupt path has already persisted this turn.
-        turn = PendingTurn.for_request(
-            context.client, compacted_params, "the original question"
-        )
-        await turn.store_interrupted("The ans")
-        mocker.patch(
-            "utils.agents.streaming.register_interrupt_callback", return_value=[True]
-        )
-
-        turn_summary = TurnSummary()
-        turn_summary.token_usage = TokenCounter(input_tokens=1, output_tokens=1)
-        turn_summary.output_items = [
-            OpenAIResponseMessage(role="assistant", content="The answer.")
-        ]
-
-        async def inner() -> AsyncIterator[str]:
-            yield serialize_event(
-                TokenStreamPayload.create(chunk_id=0, token="x"), MEDIA_TYPE_JSON
-            )
-
-        _ = [
-            event
-            async for event in generate_agent_response(
-                inner(),
-                context,
-                compacted_params,
-                turn_summary,
-                [],
-                turn=turn,
-                root_span=_dummy_root_span(),
-            )
-        ]
-
-        texts = [str(item) for item in stored]
-        assert len(stored) == 2, f"expected the interrupted turn only, got {texts}"
-        assert "the original question" in texts[0]
-        assert "The ans" in texts[1]
-        assert "The answer." not in texts[1]
-
-    @pytest.mark.asyncio
     async def test_settled_turn_is_not_stored_again_at_the_end_of_the_stream(
         self,
         mocker: MockerFixture,
@@ -1763,9 +1635,6 @@ class TestCompactedTurnPersistence:
             context.client, compacted_params, "the original question"
         )
         await turn.store_interrupted("The ans")
-        mocker.patch(
-            "utils.agents.streaming.register_interrupt_callback", return_value=[False]
-        )
 
         turn_summary = TurnSummary()
         turn_summary.token_usage = TokenCounter(input_tokens=1, output_tokens=1)
