@@ -975,7 +975,7 @@ verify                            Run all linters
 distribution-archives             Generate distribution archives to be uploaded into Python registry
 upload-distribution-archives      Upload distribution archives into Python registry
 konflux-requirements              Generate .konflux/requirements.*.txt files for Konflux hermetic build
-konflux-rpm-lock                  Generate rpm.lock.yaml file for Konflux build
+konflux-rpm-lock                  Generate .konflux/rpms.lock.yaml file for Konflux build (requires KONFLUX_BASE_IMAGE, RHSM_ACTIVATION_KEY and RHSM_ORG_ID)
 help                              Show this help screen
 ```
 
@@ -1559,7 +1559,7 @@ sed -i "s/$(uname -m)/\$basearch/g" redhat.repo
 
 1. **Generate the lock file**:
 ```shell
-make konflux-rpm-lock
+make konflux-rpm-lock KONFLUX_BASE_IMAGE=<image> RHSM_ACTIVATION_KEY=<key> RHSM_ORG_ID=<org>
 ```
 
-This creates `rpms.lock.yaml` with pinned RPM versions.
+This creates `.konflux/rpms.lock.yaml` with pinned RPM versions.
