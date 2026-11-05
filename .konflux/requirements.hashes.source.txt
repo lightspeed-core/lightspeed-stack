@@ -41,6 +41,9 @@ presidio-anonymizer==2.2.366 \
 pydantic-ai==2.38.0 \
     --hash=sha256:2dc423fefdaf04998889440404ec84ea9060f7bc9dfadbc94be1f5c8cbcc0324 \
     --hash=sha256:90fff4dd3b1db9994861bd102c786d471b81e07a3165c751f403b414bd02e3f9
+pydantic-ai-harness==0.30.0 \
+    --hash=sha256:226d35fc3602852e92adf26b5a29717721d66da0f99d5cbff6043bf49ecb0fee \
+    --hash=sha256:f9eaa6c19abf47e7af9a84c86124e96c59b432afe8b9f7deae3d9e98fa4677ef
 pydantic-ai-skills==1.4.0 \
     --hash=sha256:7303e0738a837218415f8b2e7bd5b5cbc0ceeb74850b1902c2d079550e0b9b83 \
     --hash=sha256:bce8731a042f50c45965acc520dc883163e511c34b208f720eb62067ef5be686
