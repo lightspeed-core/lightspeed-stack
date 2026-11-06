@@ -45,6 +45,44 @@ lightweight. The trade-off is weaker person/location recall: it mislabels many
 non-English place names and surnames as organizations, which are exempt from
 redaction by default.
 
+## What gets redacted 
+
+The entity types in the two tables here are the *complete* detectable set. 
+Each detected value is replaced with a typed `<ENTITY_TYPE>` marker (Presidio's
+default `replace` operator), e.g. `<EMAIL_ADDRESS>`, `<PERSON>`.
+
+Redacted by default (`DEFAULT_ENTITIES`):
+
+| Entity | Marker | Detected by | Notes |
+|---|---|---|---|
+| `EMAIL_ADDRESS` | `<EMAIL_ADDRESS>` | custom `EmailRecognizer` (regex/structural) | Also handles emails split by special characters. |
+| `HOSTNAME` | `<HOSTNAME>` | custom `HostnameRecognizer` (structural) | ccTLD / internal-TLD aware; disambiguates domains from file extensions in support text. |
+| `IP_ADDRESS` | `<IP_ADDRESS>` | `IpRecognizer` (structural) | IPv4/IPv6. |
+| `PHONE_NUMBER` | `<PHONE_NUMBER>` | `PhoneRecognizer` | ~60 curated regions; CZ/VN deliberately excluded (their formats collide with CVE/Bugzilla IDs). |
+| `PERSON` | `<PERSON>` | spaCy NER | Case-sensitive; recall limited for non-English names (see trade-off above). |
+| `LOCATION` | `<LOCATION>` | spaCy NER + case-normalized pass | A second pass over a title-cased copy recovers ALL-CAPS place names (e.g. address blocks). |
+
+Detectable but off by default — opt in via `RedactionConfig.entities` (their
+recognizers are already registered):
+
+| Entity | Marker | Why it is off |
+|---|---|---|
+| `ORGANIZATION` | `<ORGANIZATION>` | Over-flags product/tech names (`OpenShift`, `RHEL`, `Sosreport`); usually paired with an `allow_list` when enabled. |
+| `URL` | `<URL>` | URLs are usually wanted in telemetry. |
+
+### LCORE-specific tuning
+
+Domain tuning beyond the entity selection above:
+
+- **Structural matches outrank NER guesses** — an IP/hostname/email/URL matched by
+  regex is not re-labelled as a person/location by the model.
+- **Custom recognizers** — `EmailRecognizer` and `HostnameRecognizer` (see table),
+  tuned for Red Hat support text.
+- **Case-normalization pass** — recovers ALL-CAPS locations spaCy's case-sensitive
+  NER misses.
+- **allow_list / deny_list** — keep specific terms even if detected, or always
+  redact given terms regardless of what the model detects.
+
 ## Provenance and attribution
 
 This code is **vendored** from Red Hat's internal `data-anonymizer` library
@@ -64,24 +102,3 @@ correct for every PII variation; validation for Lightspeed is owned in this repo
 
 Licensed under Apache-2.0 (the Lightspeed Core license). Presidio and the spaCy
 models are used under their respective open-source licenses.
-
-## Customizations over stock Presidio
-
-The value over a from-scratch Presidio config is domain tuning carried over from
-`data-anonymizer`:
-
-- **Organization detection is off by default** — product/tech names (`OpenShift`,
-  `RHEL`, `Sosreport`) would otherwise be flagged as organizations. Add
-  `"ORGANIZATION"` to `RedactionConfig.entities`, usually paired with an
-  `allow_list`, to enable it.
-- **Structural matches outrank NER guesses** — an IP/hostname/email/URL matched by
-  regex is not re-labelled as a person/location by the model.
-- **Custom recognizers** — `EmailRecognizer` (handles emails separated by special
-  characters) and `HostnameRecognizer` (ccTLDs, internal TLDs, and file-extension
-  vs domain disambiguation for support text).
-- **Curated phone regions** — ~60 regions, deliberately excluding CZ/VN because
-  their formats collide with CVE and Bugzilla identifiers common in support text.
-- **Case-normalization pass** — a second pass over a title-cased copy recovers
-  ALL-CAPS locations (e.g. address blocks) that spaCy's case-sensitive NER misses.
-- **allow_list / deny_list** — keep specific terms, or always redact them
-  regardless of what the model detects.
