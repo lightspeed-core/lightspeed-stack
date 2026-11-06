@@ -526,6 +526,72 @@ Feature: MCP tests
       And The body of the response has proper client auth options structure
       And The response contains server "mcp-client" with client auth header "Authorization"
 
+# Two MCP servers in ONE request (LCORE-4782). OGX closed a request's MCP sessions in
+# opening order, which anyio rejects, so query and blocking responses answered 500 after
+# the model had answered. The single-server configs above never reach that path; both
+# servers below are the one mock-mcp process, with /second serving distinct tool names.
+
+  @MCPTwoServersConfig @cfg_mcp
+  Scenario: Check if tools endpoint lists tools of both MCP servers when two servers are configured
+    Given MCP configuration is reset for a new scenario
+      And The service uses the lightspeed-stack-mcp-two-servers.yaml configuration
+      And The service is restarted
+    When I access REST API endpoint "tools" using HTTP GET method
+    Then The status code of the response is 200
+    And The body of the response contains mcp-file
+    And The body of the response contains mock_tool_e2e
+    And The body of the response contains mcp-second
+    And The body of the response contains mock_tool_second
+
+
+  @MCPTwoServersConfig @flaky @cfg_mcp
+  Scenario: Check if query endpoint succeeds when two MCP servers are configured
+      Given The service uses the lightspeed-stack-mcp-two-servers.yaml configuration
+      And The service is restarted
+    And I capture the current token metrics
+    When I use "query" to ask question
+    """
+    {"query": "Say hello", "model": "{MODEL}", "provider": "{PROVIDER}"}
+    """
+    Then The status code of the response is 200
+    And The response contains following fragments
+        | Fragments in LLM response |
+        | Hello                     |
+    And The token metrics have increased
+
+
+  @MCPTwoServersConfig @flaky @cfg_mcp
+  Scenario: Check if streaming_query endpoint succeeds when two MCP servers are configured
+      Given The service uses the lightspeed-stack-mcp-two-servers.yaml configuration
+      And The service is restarted
+    And I capture the current token metrics
+    When I use "streaming_query" to ask question
+    """
+    {"query": "Say hello", "model": "{MODEL}", "provider": "{PROVIDER}"}
+    """
+    When I wait for the response to be completed
+    Then The status code of the response is 200
+    And The streamed response contains following fragments
+        | Fragments in LLM response |
+        | Hello                     |
+    And The token metrics have increased
+
+
+  @MCPTwoServersConfig @flaky @cfg_mcp
+  Scenario: Check if blocking responses endpoint succeeds when two MCP servers are configured
+      Given The service uses the lightspeed-stack-mcp-two-servers.yaml configuration
+      And The service is restarted
+    And I capture the current token metrics
+    When I use "responses" to ask question
+    """
+    {"input": "Say hello", "model": "{PROVIDER}/{MODEL}", "stream": false}
+    """
+    Then The status code of the response is 200
+    And The responses output_text contains following fragments
+        | Fragments in LLM response |
+        | Hello                     |
+    And The token metrics have increased
+
 # Invalid MCP file token uses lightspeed-stack-mcp-invalid.yaml (@cfg_mcp_invalid)
 
   @InvalidMCPFileAuthConfig @cfg_mcp_invalid

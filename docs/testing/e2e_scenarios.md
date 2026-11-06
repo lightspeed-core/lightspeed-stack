@@ -108,6 +108,44 @@
 * Check if metrics endpoint is working
 * Check if MCP client auth options endpoint is working
 
+## [`mcp.feature`](https://github.com/lightspeed-core/lightspeed-stack/blob/main/tests/e2e/features/mcp.feature)
+
+* Check if tools endpoint succeeds when MCP file-based auth token is passed
+* Check if query endpoint succeeds when MCP file-based auth token is passed
+* Check if streaming_query endpoint succeeds when MCP file-based auth token is passed
+* Check if tools endpoint succeeds when MCP kubernetes auth token is passed
+* Check if query endpoint succeeds when MCP kubernetes auth token is passed
+* Check if streaming_query endpoint succeeds when MCP kubernetes auth token is passed
+* Check if tools endpoint reports error when MCP kubernetes invalid auth token is passed
+* Check if query endpoint reports error when MCP kubernetes invalid auth token is passed
+* Check if streaming_query endpoint reports error when MCP kubernetes invalid auth token is passed
+* Check if tools endpoint succeeds when MCP client-provided auth token is passed
+* Check if query endpoint succeeds when MCP client-provided auth token is passed
+* Check if streaming_query endpoint succeeds when MCP client-provided auth token is passed
+* Check if tools endpoint succeeds by skipping when MCP client-provided auth token is omitted
+* Check if query endpoint succeeds by skipping when MCP client-provided auth token is omitted
+* Check if streaming_query endpoint succeeds by skipping when MCP client-provided auth token is omitted
+* Check if tools endpoint reports error when MCP client-provided invalid auth token is passed
+* Check if query endpoint reports error when MCP client-provided invalid auth token is passed
+* Check if streaming_query endpoint reports error when MCP client-provided invalid auth token is passed
+* Check if tools endpoint succeeds when MCP OAuth auth token is passed
+* Check if query endpoint succeeds when MCP OAuth auth token is passed
+* Check if streaming_query endpoint succeeds when MCP OAuth auth token is passed
+* Check if tools endpoint reports error when MCP OAuth requires authentication
+* Check if query endpoint reports error when MCP OAuth requires authentication
+* Check if streaming_query endpoint reports error when MCP OAuth requires authentication
+* Check if tools endpoint reports error when MCP OAuth invalid auth token is passed
+* Check if query endpoint reports error when MCP OAuth invalid auth token is passed
+* Check if streaming_query endpoint reports error when MCP OAuth invalid auth token is passed
+* Check if MCP client auth options endpoint is working
+* Check if tools endpoint lists tools of both MCP servers when two servers are configured
+* Check if query endpoint succeeds when two MCP servers are configured
+* Check if streaming_query endpoint succeeds when two MCP servers are configured
+* Check if blocking responses endpoint succeeds when two MCP servers are configured
+* Check if tools endpoint reports error when MCP file-based invalid auth token is passed
+* Check if query endpoint reports error when MCP file-based invalid auth token is passed
+* Check if streaming_query endpoint reports error when MCP file-based invalid auth token is passed
+
 ## [`models.feature`](https://github.com/lightspeed-core/lightspeed-stack/blob/main/tests/e2e/features/models.feature)
 
 * Check if models endpoint is working

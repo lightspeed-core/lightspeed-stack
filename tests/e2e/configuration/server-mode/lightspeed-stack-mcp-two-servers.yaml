@@ -1,0 +1,37 @@
+# @cfg_mcp
+# Two MCP servers resolved in ONE request (mcp.feature, LCORE-4782 regression):
+# OGX tore the request's MCP sessions down in opening order, which anyio
+# rejects, so /v1/query and blocking /v1/responses answered 500 after the model
+# had answered. A single-server config never reaches that path.
+# Both entries point at the one mock-mcp process; the request path selects the
+# tool set, so the servers expose distinct tool names (OGX rejects duplicates).
+# Both tokens resolve statically from /tmp/mcp-token: no client header needed.
+name: Lightspeed Core Service (LCS)
+service:
+  host: 0.0.0.0
+  port: 8080
+  auth_enabled: false
+  workers: 1
+  color_log: true
+  access_log: true
+ogx:
+  # Server mode - connects to separate OGX service
+  use_as_library_client: false
+  url: http://${env.E2E_OGX_HOSTNAME}:8321
+  api_key: xyzzy
+user_data_collection:
+  feedback_enabled: true
+  feedback_storage: "/tmp/data/feedback"
+  transcripts_enabled: true
+  transcripts_storage: "/tmp/data/transcripts"
+authentication:
+  module: "noop"
+mcp_servers:
+  - name: "mcp-file"
+    url: "http://mock-mcp:3000"
+    authorization_headers:
+      Authorization: "/tmp/mcp-token"
+  - name: "mcp-second"
+    url: "http://mock-mcp:3000/second"
+    authorization_headers:
+      Authorization: "/tmp/mcp-token"
