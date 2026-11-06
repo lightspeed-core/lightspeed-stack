@@ -3,10 +3,9 @@
 from datetime import datetime
 
 from sqlalchemy import JSON, DateTime, ForeignKey, String, Text, func
-from sqlalchemy.orm import Mapped, mapped_column, validates
+from sqlalchemy.orm import Mapped, mapped_column
 
 from models.database.base import Base
-from prompts.exceptions import PromptValidationError
 
 
 class Prompt(Base):  # pylint: disable=too-few-public-methods
@@ -50,11 +49,3 @@ class PromptVersion(Base):  # pylint: disable=too-few-public-methods
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
-
-    @validates("variables")
-    def validate_unique_variables(self, _key: str, value: list[str]) -> list[str]:
-        """Ensure no duplicate variable names."""
-        if len(value) != len(set(value)):
-            raise PromptValidationError("The variables contain duplicate names")
-
-        return value

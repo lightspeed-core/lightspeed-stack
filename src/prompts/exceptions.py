@@ -7,3 +7,7 @@ class PromptError(Exception):
 
 class PromptValidationError(PromptError):
     """Invalid prompt field values."""
+
+
+class PromptNotFoundError(PromptError):
+    """No prompt exists for the given identifier."""
