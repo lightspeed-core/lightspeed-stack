@@ -14,6 +14,7 @@ from ogx_client import ApiException, AsyncOgxClient
 
 import constants
 from authorization.azure_token_manager import AzureEntraIDManager
+from client.ogx_library_patches import apply_ogx_library_patches
 from configuration import configuration
 from log import get_logger, setup_logging
 from models.api.responses.error import ServiceUnavailableResponse
@@ -92,6 +93,7 @@ class AsyncOgxClientHolder(metaclass=Singleton):
         synthesis. Stores the final config path for use in reload.
         """
         logger.info("Using OGX as library client")
+        apply_ogx_library_patches()
 
         # Configure logging before synthesis/enrichment so INFO lines from those
         # steps are not dropped. Without handlers, Python's lastResort only
