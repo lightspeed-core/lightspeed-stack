@@ -1,4 +1,4 @@
-"""Unit tests for ResponsesRequest body-size validation."""
+"""Unit tests for ResponsesRequest validation."""
 
 import json
 
@@ -133,3 +133,23 @@ class TestResponsesRequestBodySize:
         )
 
         assert req.prompt_cache_key == "example-cache-key"
+
+
+class TestResponsesRequestInputValidation:
+    """Validation of empty input values (RSPEED-3909)."""
+
+    @pytest.mark.parametrize("input_value", ["", " ", "  \n\t "])
+    def test_empty_string_input_rejected(self, input_value: str) -> None:
+        """Empty and whitespace-only string input raises a clear validation error."""
+        with pytest.raises(ValidationError, match="Input must not be empty"):
+            ResponsesRequest(input=input_value)  # pyright: ignore[reportCallIssue]
+
+    def test_empty_list_input_rejected(self) -> None:
+        """An empty list of input items raises a clear validation error."""
+        with pytest.raises(ValidationError, match="Input must not be empty"):
+            ResponsesRequest(input=[])  # pyright: ignore[reportCallIssue]
+
+    def test_non_empty_input_accepted(self) -> None:
+        """Input carrying content is accepted unchanged."""
+        req = ResponsesRequest(input="  hello  ")  # pyright: ignore[reportCallIssue]
+        assert req.input == "  hello  "
