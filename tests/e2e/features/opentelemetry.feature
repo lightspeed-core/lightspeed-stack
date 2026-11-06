@@ -25,3 +25,33 @@ Feature: OpenTelemetry observability tests
       """
     Then The status code of the response is 200
      And The OpenTelemetry service received data containing e2e-otel-delivery-marker
+
+
+  Scenario: PII in span content is redacted in-process before telemetry export
+    # One request carrying every default-redacted entity type. safety_identifier is
+    # intentionally not redacted (it is a caller-supplied tracking id, not user
+    # content), so it doubles as the delivery marker.
+    Given The system is in default state
+    When I use "responses" to ask question with authorization header
+      """
+      {
+        "input": "Reach me at test.user@redhat.com or 212-555-0199, host db.example.com at 10.1.2.3; contact Barack Obama in Chicago regarding e2e-redaction-check",
+        "model": "{PROVIDER}/{MODEL}",
+        "stream": false,
+        "safety_identifier": "e2e-redaction-check"
+      }
+      """
+    Then The status code of the response is 200
+     And The OpenTelemetry service received data containing e2e-redaction-check
+     # Raw PII values must never reach the collector.
+     And The OpenTelemetry service did not receive data containing test.user@redhat.com
+     And The OpenTelemetry service did not receive data containing 212-555-0199
+     And The OpenTelemetry service did not receive data containing db.example.com
+     And The OpenTelemetry service did not receive data containing 10.1.2.3
+     # Each entity is replaced in-process with its typed marker.
+     And The OpenTelemetry service received data containing <EMAIL_ADDRESS>
+     And The OpenTelemetry service received data containing <PHONE_NUMBER>
+     And The OpenTelemetry service received data containing <HOSTNAME>
+     And The OpenTelemetry service received data containing <IP_ADDRESS>
+     And The OpenTelemetry service received data containing <PERSON>
+     And The OpenTelemetry service received data containing <LOCATION>

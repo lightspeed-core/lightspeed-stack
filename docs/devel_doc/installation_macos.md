@@ -15,3 +15,5 @@
 `git clone https://github.com/lightspeed-core/lightspeed-stack`
 1. `cd lightspeed-stack`
 1. `uv sync`
+1. (Optional) If you plan to use OpenTelemetry tracing with in-process PII redaction:
+   `uv run python -m spacy download en_core_web_lg`

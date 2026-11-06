@@ -123,6 +123,10 @@ services:
       - OTEL_SERVICE_NAME=${OTEL_SERVICE_NAME:-lightspeed-stack-e2e}
       - OTEL_ANONYMIZATION_SECRET=${OTEL_ANONYMIZATION_SECRET:-lightspeed-stack-otel-anonymization-dev-default}
       - OTEL_SDK_DISABLED=${OTEL_SDK_DISABLED:-false}
+      # In-process PII redaction is enabled: OTEL_TRACES_EXPORTER=redacting_otlp
+      # routes spans through the RedactingSpanExporter before export. The spaCy
+      # model (en_core_web_lg) is baked into the image at build time.
+      - OTEL_TRACES_EXPORTER=${OTEL_TRACES_EXPORTER:-redacting_otlp}
     depends_on:
         ogx:
           condition: service_healthy
@@ -228,7 +232,6 @@ services:
       timeout: 3s
       retries: 3
       start_period: 5s
-
 
 volumes:
   ogx-storage:

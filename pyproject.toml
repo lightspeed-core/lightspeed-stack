@@ -121,6 +121,11 @@ paths = ["tests/e2e/features"]
 [project.scripts]
 lightspeed-stack = "lightspeed_stack:main"
 
+# In-process PII redaction span exporter. Enable by setting
+# OTEL_TRACES_EXPORTER=redacting_otlp (auto-instrumentation picks it up).
+[project.entry-points.opentelemetry_traces_exporter]
+redacting_otlp = "observability.redacting_span_exporter:RedactingSpanExporter"
+
 [project.urls]
 Homepage = "https://github.com/lightspeed-core/lightspeed-stack"
 Issues = "https://github.com/lightspeed-core/lightspeed-stack/issues"
