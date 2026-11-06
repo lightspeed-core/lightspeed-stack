@@ -1,11 +1,10 @@
 """Step definitions for token counter validation."""
 
-import json
-from typing import Optional
-
 import requests
 from behave import given, then  # pyright: ignore[reportAttributeAccessIssue]
 from behave.runner import Context
+
+from tests.e2e.utils.utils import parse_streaming_query_end_event
 
 DEFAULT_TIMEOUT = 10
 
@@ -102,7 +101,7 @@ def check_streamed_token_counter_fields(context: Context) -> None:
     assert context.response is not None, "Request needs to be performed first"
 
     # Parse the end event from the streaming response to get token info
-    end_event_data = _get_end_event_data(context.response.text)
+    end_event_data = parse_streaming_query_end_event(context.response.text)
     assert end_event_data is not None, "End event not found in streaming response"
 
     assert "input_tokens" in end_event_data, (
@@ -149,34 +148,6 @@ def _get_current_token_metrics(context: Context) -> dict[str, float]:
     ), f"Failed to get metrics, status: {response.status_code}"
 
     return _parse_token_metrics(response.text)
-
-
-def _get_end_event_data(response_text: str) -> Optional[dict]:
-    """Extract the end event data from streaming SSE response.
-
-    Parameters:
-    ----------
-        response_text: The raw SSE response text.
-
-    Returns:
-    -------
-        The data dictionary from the end event (including available_quotas),
-        or None if not found.
-
-    """
-    lines = response_text.strip().split("\n")
-    for line in lines:
-        if line.startswith("data: "):
-            try:
-                event = json.loads(line[6:])
-                if event.get("event") == "end":
-                    # Merge data contents with available_quotas from parent level
-                    result = event.get("data", {})
-                    result["available_quotas"] = event.get("available_quotas", {})
-                    return result
-            except json.JSONDecodeError:
-                continue
-    return None
 
 
 def _parse_token_metrics(metrics_text: str) -> dict[str, float]:

@@ -68,6 +68,10 @@ Behave steps for /v1/prompts endpoint end-to-end tests.
 
 Step definitions for proxy and TLS networking e2e tests.
 
+## [quota.py](quota.py)
+
+Step definitions for the quota management e2e feature (LCORE-4610).
+
 ## [rbac.py](rbac.py)
 
 Step definitions for RBAC E2E tests.

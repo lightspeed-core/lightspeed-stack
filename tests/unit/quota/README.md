@@ -24,6 +24,10 @@ Unit tests for QuotaExceedError class.
 
 Unit tests for quota limiter factory class.
 
+## [test_token_usage_history.py](test_token_usage_history.py)
+
+Unit tests for the TokenUsageHistory class.
+
 ## [test_user_quota_limiter.py](test_user_quota_limiter.py)
 
 Unit tests for UserQuotaLimiter class.

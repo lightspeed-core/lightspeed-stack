@@ -1,0 +1,49 @@
+# @cfg_quota
+# Quota renewal e2e (LCORE-4610): the same limiters as
+# lightspeed-stack-quota.yaml, but every user and the cluster start with
+# nothing and the scheduler adds a large allowance two seconds after a row
+# was last renewed, checking every second. A fresh user is rejected at once
+# and is served within a few seconds, which the feature observes by polling.
+# Only the increase is set, so the reset statement is skipped (LCORE-4606).
+name: Lightspeed Core Service (LCS)
+service:
+  host: 0.0.0.0
+  port: 8080
+  auth_enabled: false
+  workers: 1
+  color_log: true
+  access_log: true
+ogx:
+  use_as_library_client: false
+  url: http://${env.E2E_OGX_HOSTNAME}:8321
+  api_key: xyzzy
+user_data_collection:
+  feedback_enabled: true
+  feedback_storage: "/tmp/data/feedback"
+  transcripts_enabled: true
+  transcripts_storage: "/tmp/data/transcripts"
+authentication:
+  module: "noop"
+inference:
+  default_provider: openai
+  default_model: gpt-5.6-luna
+rlsapi_v1:
+  quota_subject: user_id
+quota_handlers:
+  sqlite:
+    # Directly under /tmp: nothing on the quota path creates a parent
+    # directory, and /tmp/data exists only once another feature wrote there.
+    db_path: /tmp/quota.db
+  limiters:
+    - name: user quota
+      type: user_limiter
+      initial_quota: 0
+      quota_increase: 1000000
+      period: "2 seconds"
+    - name: cluster quota
+      type: cluster_limiter
+      initial_quota: 0
+      quota_increase: 1000000
+      period: "2 seconds"
+  scheduler:
+    period: 1

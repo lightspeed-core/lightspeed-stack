@@ -80,6 +80,10 @@ Integration tests for the /query endpoint BYOK inline and tool RAG functionality
 
 Integration tests for the /query endpoint (using Responses API).
 
+## [test_quota_endpoints.py](test_quota_endpoints.py)
+
+Integration tests for quota enforcement on the endpoints (LCORE-4610).
+
 ## [test_responses_byok_integration.py](test_responses_byok_integration.py)
 
 Integration tests for the /responses endpoint BYOK RAG functionality.

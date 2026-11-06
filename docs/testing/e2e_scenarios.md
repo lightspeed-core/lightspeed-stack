@@ -158,6 +158,16 @@ Konflux only (`@konflux-only`) in CI. Targeted local Behave (match YAML to OGX/L
 * Check if LLM responds for query request with error for inability to connect to OGX
 * Check if LLM responds properly when XML and JSON attachments are sent
 
+## [`quota.feature`](https://github.com/lightspeed-core/lightspeed-stack/blob/main/tests/e2e/features/quota.feature)
+
+* query is served once, reports the balances, then is rejected with the quota error
+* streaming_query reports the balances in its end event, then is rejected
+* responses reports the balances in its body, then is rejected
+* streamed responses reports the balances in its terminal event, then is rejected
+* infer is served once, then is rejected, when the quota subject is the user id
+* the cluster balance is paid by every user and a rejected request costs nothing
+* an exhausted balance is renewed by the scheduler while the service runs
+
 ## [`rbac.feature`](https://github.com/lightspeed-core/lightspeed-stack/blob/main/tests/e2e/features/rbac.feature)
 
 * Request without token returns 401

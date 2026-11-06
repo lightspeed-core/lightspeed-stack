@@ -418,6 +418,43 @@ RESPONSE_TOOL_OUTPUT_ITEM_TYPES = frozenset(
 )
 
 
+# Longer timeout for Prow/OpenShift with CPU-based vLLM
+DEFAULT_LLM_TIMEOUT = 180 if os.getenv("RUNNING_PROW") else 120
+
+
+def read_streamed_response(response: requests.Response) -> str:
+    """Read a streaming response body, tolerating premature close (e.g. after error event)."""
+    chunks = []
+    try:
+        for line in response.iter_lines(decode_unicode=True):
+            if line is not None:
+                chunks.append(line + "\n")
+    except requests.exceptions.ChunkedEncodingError:
+        pass  # Server may close stream after sending an error event
+    return "".join(chunks)
+
+
+def parse_streaming_query_end_event(text: str) -> Optional[dict[str, Any]]:
+    """Return the ``end`` event of a ``/streaming_query`` SSE body, or None.
+
+    The event's ``data`` is returned with the ``available_quotas`` of the
+    event itself merged in, since the service reports them next to ``data``.
+    """
+    for line in text.strip().split("\n"):
+        if not line.startswith("data: "):
+            continue
+        try:
+            event = json.loads(line[6:])
+        except json.JSONDecodeError:
+            continue
+        if event.get("event") == "end":
+            return {
+                **event.get("data", {}),
+                "available_quotas": event.get("available_quotas", {}),
+            }
+    return None
+
+
 def parse_responses_sse_final_response_object(text: str) -> dict[str, Any]:
     """Return the ``response`` object from the last terminal LCORE ``/responses`` SSE event."""
     last: Optional[dict[str, Any]] = None
