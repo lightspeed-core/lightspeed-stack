@@ -602,3 +602,126 @@ def test_synthesized_config_output_override(
     assert Path(written) == custom_output
     assert isinstance(yaml.safe_load(custom_output.read_text(encoding="utf-8")), dict)
     assert not (tmp_path / constants.DEFAULT_SYNTHESIZED_CONFIG_PATH).exists()
+
+
+@pytest.mark.parametrize("secret_is_set", [True, False], ids=["set", "unset"])
+def test_synthesis_defers_native_override_environment_references(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    reference_prefix: str,
+    secret_is_set: bool,
+) -> None:
+    """Emit deferred references with secrets either set or absent during synthesis."""
+    secret = "native-override-secret-must-stay-off-disk"
+    monkeypatch.delenv("AZURE_API_KEY", raising=False)
+    if secret_is_set:
+        monkeypatch.setenv("AZURE_API_KEY", secret)
+    override = copy.deepcopy(_OPERATOR_RUN_YAML)
+    override["providers"]["inference"][0]["config"][
+        "api_key"
+    ] = f"${{{reference_prefix}AZURE_API_KEY}}"
+    config = _base_config_dict()
+    config["ogx"] = {
+        "use_as_library_client": True,
+        "config": {"baseline": "empty", "native_override": override},
+    }
+
+    synthesized, output = _load_and_synthesize(tmp_path, config)
+
+    provider = synthesized["providers"]["inference"][0]
+    assert provider["config"]["api_key"] == "${env.AZURE_API_KEY}"
+    assert secret not in output.read_text(encoding="utf-8")
+
+
+def test_synthesis_defers_inference_environment_references(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, reference_prefix: str
+) -> None:
+    """Keep explicit API key and URL references canonical in generated config."""
+    secret = "inference-secret-must-stay-off-disk"
+    base_url = "https://inference.example.test"
+    monkeypatch.setenv("LCORE_TEST_API_KEY", secret)
+    monkeypatch.setenv("LCORE_TEST_INFERENCE_URL", base_url)
+    config = _base_config_dict()
+    config["ogx"] = {"use_as_library_client": True, "config": {"baseline": "empty"}}
+    config["inference"] = {
+        "providers": [
+            {
+                "type": "openai",
+                "extra": {
+                    "api_key": f"${{{reference_prefix}LCORE_TEST_API_KEY}}",
+                    "base_url": f"${{{reference_prefix}LCORE_TEST_INFERENCE_URL}}",
+                },
+            }
+        ]
+    }
+
+    synthesized, output = _load_and_synthesize(tmp_path, config)
+
+    provider_config = synthesized["providers"]["inference"][0]["config"]
+    assert provider_config["api_key"] == "${env.LCORE_TEST_API_KEY}"
+    assert provider_config["base_url"] == "${env.LCORE_TEST_INFERENCE_URL}"
+    text = output.read_text(encoding="utf-8")
+    assert secret not in text
+    assert base_url not in text
+
+
+@pytest.mark.parametrize("source", ["byok", "vector_store"])
+def test_synthesis_defers_pgvector_environment_references(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    reference_prefix: str,
+    source: str,
+) -> None:
+    """Preserve canonical connection references through both pgvector enrichments."""
+    variables = {
+        "host": ("LCORE_TEST_PG_HOST", "postgres.example.test"),
+        "port": ("LCORE_TEST_PG_PORT", "5432"),
+        "db": ("LCORE_TEST_PG_DATABASE", "knowledge"),
+        "user": ("LCORE_TEST_PG_USER", "lightspeed"),
+        "password": ("LCORE_TEST_PG_PASSWORD", "pg-secret-must-stay-off-disk"),
+    }
+    for variable, value in variables.values():
+        monkeypatch.setenv(variable, value)
+    references = {
+        field: f"${{{reference_prefix}{variable}}}"
+        for field, (variable, _) in variables.items()
+    }
+    config = _base_config_dict()
+    config["ogx"] = {"use_as_library_client": True, "config": {"baseline": "empty"}}
+    if source == "byok":
+        config.setdefault("rag", {})["byok"] = {
+            "stores": [
+                {
+                    "rag_id": "pg",
+                    "backend": "pgvector",
+                    "vector_db_id": "knowledge-store",
+                    "embedding_model": "test-model",
+                    "embedding_dimension": 768,
+                    **references,
+                }
+            ]
+        }
+    else:
+        config["vector_store"] = {
+            "default_provider": "pg",
+            "providers": [
+                {
+                    "id": "pg",
+                    "type": "pgvector",
+                    "embedding_model": "test-model",
+                    "embedding_dimension": 768,
+                    "config": references,
+                }
+            ],
+        }
+
+    synthesized, output = _load_and_synthesize(tmp_path, config)
+
+    provider = next(
+        provider
+        for provider in synthesized["providers"]["vector_io"]
+        if provider["provider_type"] == "remote::pgvector"
+    )
+    for field, (variable, _) in variables.items():
+        assert provider["config"][field] == f"${{env.{variable}}}"
+    assert variables["password"][1] not in output.read_text(encoding="utf-8")

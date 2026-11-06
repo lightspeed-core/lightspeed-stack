@@ -4,10 +4,6 @@ from typing import Any, Optional, Self
 
 import yaml
 
-# We want to support environment variable replacement in the configuration
-# similarly to how it is done in OGX, so we use their function directly
-from ogx.core.stack import replace_env_vars
-
 import constants
 from cache.cache import Cache
 from cache.cache_factory import CacheFactory
@@ -40,6 +36,7 @@ from models.config import (
 from quota.quota_limiter import QuotaLimiter
 from quota.quota_limiter_factory import QuotaLimiterFactory
 from quota.token_usage_history import TokenUsageHistory
+from utils.env_vars import normalize_env_references, resolve_env_references
 
 logger = get_logger(__name__)
 
@@ -47,18 +44,18 @@ logger = get_logger(__name__)
 def replace_env_vars_preserving_native_override(
     config_dict: dict[Any, Any],
 ) -> dict[Any, Any]:
-    """Resolve ${env.*} references in the config, except in native_override.
+    """Resolve ${env.VAR} and ${VAR} references, except in native_override.
 
     LCORE resolves environment-variable references throughout
     lightspeed-stack.yaml so typed fields receive concrete values. But
     ``ogx.config.native_override`` is raw OGX schema that OGX
     resolves itself, in memory, at its own startup. Resolving it eagerly
-    here would (a) defeat the ${env.*} pattern LCORE recommends for secrets and
+    here would (a) defeat the ${env.VAR} and ${VAR} patterns for secrets and
     (b) pull resolved secrets into the loaded Configuration model, which is
     logged at startup. So native_override is held aside, the rest of the config
-    is resolved, and the raw (unresolved) native_override is restored verbatim.
-    Synthesis reads native_override from the raw YAML, so this does not change
-    the generated run.yaml.
+    is resolved, and native_override is restored with ${VAR} normalized to
+    ${env.VAR} without resolving it. Synthesis reads native_override from the
+    raw YAML and applies the same normalization to the generated run.yaml.
 
     Parameters:
         config_dict: The parsed lightspeed-stack.yaml.
@@ -69,24 +66,24 @@ def replace_env_vars_preserving_native_override(
 
     """
     if not isinstance(config_dict, dict):
-        return replace_env_vars(config_dict)
+        return resolve_env_references(config_dict)
 
     ogx_section = config_dict.get("ogx")
     if ogx_section is None:
         ogx_section = config_dict.get("llama_stack")
     ogx_config = ogx_section.get("config") if isinstance(ogx_section, dict) else None
     if not (isinstance(ogx_config, dict) and "native_override" in ogx_config):
-        return replace_env_vars(config_dict)
+        return resolve_env_references(config_dict)
 
     raw_override = ogx_config["native_override"]
     ogx_config["native_override"] = {}  # keep secrets out of env resolution
-    resolved = replace_env_vars(config_dict)
+    resolved = resolve_env_references(config_dict)
     ogx_config["native_override"] = raw_override  # restore source dict if reused
     resolved_ogx = (resolved.get("ogx") or resolved.get("llama_stack") or {}).get(
         "config"
     )
     if isinstance(resolved_ogx, dict):
-        resolved_ogx["native_override"] = raw_override
+        resolved_ogx["native_override"] = normalize_env_references(raw_override)
     return resolved
 
 

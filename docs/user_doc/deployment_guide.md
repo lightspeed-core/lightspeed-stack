@@ -4,6 +4,8 @@
 
 * [Preface](#preface)
 * [Deployment methods](#deployment-methods)
+* [Configuration modes](#configuration-modes)
+    * [Environment variable references](#environment-variable-references)
 * [Integration with OGX framework](#integration-with-ogx-framework)
     * [OGX as a library](#ogx-as-a-library)
     * [OGX as a server](#ogx-as-a-server)
@@ -106,6 +108,38 @@ ways it can drive the underlying OGX:
 The two modes are mutually exclusive in one file — configuration loading
 fails if a unified synthesis input and `library_client_config_path` are both
 present.
+
+
+### Environment variable references
+
+`lightspeed-stack.yaml` accepts `${VAR}` wherever `${env.VAR}` is supported.
+Both forms behave the same. Variable names contain one or more uppercase
+letters, digits, or underscores.
+
+Both spellings support these forms:
+
+- `${VAR}` or `${env.VAR}` uses the variable's value. Resolution fails if the
+  variable is missing or empty.
+- `${VAR:=default}` or `${env.VAR:=default}` uses `default` when the variable
+  is missing or empty.
+- `${VAR:+value}` or `${env.VAR:+value}` uses `value` when the variable is
+  non-empty. Otherwise, it substitutes an empty string.
+
+The shell-style `:-` default operator is not supported. OGX converts resolved
+numeric strings to numbers and boolean strings to booleans. An empty result
+becomes `null`.
+
+Both references below use defaults if their variables are missing or empty:
+
+```yaml
+service:
+  host: "${SERVICE_HOST:=0.0.0.0}"
+  port: "${env.SERVICE_PORT:=8080}"
+```
+
+LCORE resolves its configuration values while loading. For deferred values,
+including those in `ogx.config.native_override`, LCORE writes `${env.VAR}`
+references to the generated `run.yaml`. OGX resolves them at startup.
 
 
 
@@ -283,7 +317,7 @@ llama_stack:
    ```
 
 3. Replace literal secrets. If your `run.yaml` contained secret values
-   directly, replace them with `${env.MY_VAR}` environment references —
+   directly, replace them with `${MY_VAR}` or `${env.MY_VAR}` environment references —
    the migrated file otherwise carries them onto disk verbatim (the
    synthesized output is written owner-only, mode 0600, as a safety net).
 
