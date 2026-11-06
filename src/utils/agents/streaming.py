@@ -441,7 +441,10 @@ async def agent_response_generator(
             prompt = agent_prompt_text(responses_params)
 
         logger.debug("Starting agent streaming response processing")
-        async with agent.run_stream_events(prompt) as stream:
+        async with agent.run_stream_events(
+            prompt,
+            conversation_id=responses_params.conversation,
+        ) as stream:
             async for event in stream:
                 if payload := dispatch_stream_event(event, dispatch_state):
                     yield serialize_event(payload, media_type)

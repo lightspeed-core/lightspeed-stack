@@ -11,9 +11,11 @@ from ogx.core.stack import replace_env_vars
 import constants
 from cache.cache import Cache
 from cache.cache_factory import CacheFactory
+from conversations.agent_history.service import AgentHistoryService
 from log import get_logger
 from models.config import (
     A2AStateConfiguration,
+    AgentStepPersistenceConfiguration,
     ApprovalsConfiguration,
     AuthenticationConfiguration,
     AuthorizationConfiguration,
@@ -146,6 +148,7 @@ class AppConfig:  # pylint: disable=too-many-public-methods
         """
         # clear cached values when configuration changes
         self._conversation_cache = None
+        AgentHistoryService().clear_store()
         self._quota_limiters = []
         self._token_usage_history = None
         # now it is possible to re-read configuration
@@ -415,6 +418,22 @@ class AppConfig:  # pylint: disable=too-many-public-methods
         if self._configuration is None:
             raise LogicError("logic error: configuration is not loaded")
         return self._configuration.conversation_cache
+
+    @property
+    def agent_step_persistence_configuration(self) -> AgentStepPersistenceConfiguration:
+        """Return harness step persistence settings (noop or sqlite).
+
+        Returns:
+            AgentStepPersistenceConfiguration: Pydantic AI StepPersistence storage
+            settings from the loaded application configuration.
+
+        Raises:
+            LogicError: If the configuration has not been loaded.
+
+        """
+        if self._configuration is None:
+            raise LogicError("logic error: configuration is not loaded")
+        return self._configuration.agent_step_persistence
 
     @property
     def database_configuration(self) -> DatabaseConfiguration:

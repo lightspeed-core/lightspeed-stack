@@ -395,7 +395,7 @@ class TestRetrieveAgentResponse:
             endpoint_path=ENDPOINT_PATH_QUERY,
         )
 
-        mock_agent.run.assert_awaited_once_with("Say hello")
+        mock_agent.run.assert_awaited_once_with("Say hello", conversation_id="conv_123")
         assert summary.llm_response == "Hello!"
         assert summary.id == "resp-success"
 
@@ -430,7 +430,9 @@ class TestRetrieveAgentResponse:
             turn=PendingTurn.for_request(client, params, "new question"),
         )
 
-        mock_agent.run.assert_awaited_once_with("new question")
+        mock_agent.run.assert_awaited_once_with(
+            "new question", conversation_id="conv_123"
+        )
         assert summary.llm_response == "Answer"
 
     @pytest.mark.asyncio
