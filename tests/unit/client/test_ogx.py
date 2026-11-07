@@ -50,8 +50,9 @@ def test_async_client_get_client_method() -> None:
 
 
 @pytest.mark.asyncio
-async def test_get_async_ogx_library_client() -> None:
+async def test_get_async_ogx_library_client(mocker: MockerFixture) -> None:
     """Test the initialization of asynchronous OGX client in library mode."""
+    apply_patches = mocker.patch("client.ogx.apply_ogx_library_patches")
     cfg = OgxConfiguration(
         url=None,
         api_key=None,
@@ -62,6 +63,7 @@ async def test_get_async_ogx_library_client() -> None:
     client = AsyncOgxClientHolder()
     await client.load(cfg)
     assert client is not None
+    apply_patches.assert_called_once_with()
 
     async with client.get_client() as ls_client:
         assert ls_client is not None
