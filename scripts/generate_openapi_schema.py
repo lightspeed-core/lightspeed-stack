@@ -28,7 +28,14 @@ def read_version_from_openapi(openapi_filename: str) -> str:
     Extract the OpenAPI document's version from a generated OpenAPI JSON file.
 
     Returns:
-        str: The value of the OpenAPI document's `info.version`.
+        str: The OpenAPI document's `info.version`, converted to a string.
+
+    Raises:
+        OSError: If the file cannot be read.
+        UnicodeDecodeError: If the file is not valid UTF-8.
+        json.JSONDecodeError: If the file is not valid JSON.
+        AssertionError: If the document is null or lacks `info` or `version`.
+        TypeError: If the document or `info` has an incompatible structure.
 
     """
     # retrieve pre-generated OpenAPI schema
@@ -47,6 +54,11 @@ def read_version_from_pyproject() -> str:
 
     Returns:
         str: The project version string.
+
+    Raises:
+        subprocess.CalledProcessError: If PDM exits unsuccessfully.
+        OSError: If PDM cannot be started.
+        UnicodeDecodeError: If PDM's output is not valid UTF-8.
 
     """
     # it is not safe to just try to read version from pyproject.toml file directly
@@ -67,9 +79,11 @@ def generate_openapi_schema(schema_file_name: str) -> None:
     if the check fails.
 
     Raises:
-        AssertionError: If the schema and project versions differ.
+        AssertionError: If the schema lacks version information or its version
+            differs from the project version.
         subprocess.CalledProcessError: If ``pdm show --version`` fails.
-        OSError: If the file cannot be written or PDM cannot be started.
+        OSError: If the file cannot be accessed or PDM cannot be started.
+        UnicodeDecodeError: If PDM's output is not valid UTF-8.
 
     """
     print("Service metadata:")
