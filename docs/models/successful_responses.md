@@ -2413,7 +2413,8 @@ Reranker configuration for RAG chunk reranking.
 | Field | Type | Description |
 |-------|------|-------------|
 | enabled | boolean | When True, reranking applied to RAG chunks. When False, reranking is disabled and original scoring used. |
-| model | string | Cross-encoder model name for reranking RAG chunks. Defaults to 'cross-encoder/ms-marco-MiniLM-L6-v2' from sentence-transformers. |
+| provider | string | The `id` of the inference provider in `inference.providers` that loads this cross-encoder (typically `sentence_transformers`). |
+| model | string | Hugging Face cross-encoder model id used for reranking. When it matches `provider`, the sentence-transformers provider also registers it in its catalog at startup (`name` and backend id both set to this value) if not already listed in `allowed_models`. |
 
 
 ## ResponsesResponse

@@ -11,3 +11,4 @@ Unit tests for the in-process sentence-transformers model cache.
 ## [test_provider.py](test_provider.py)
 
 Unit tests for the sentence-transformers inference provider.
+

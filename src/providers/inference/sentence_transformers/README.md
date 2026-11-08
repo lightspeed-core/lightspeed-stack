@@ -11,3 +11,4 @@ In-process cache for sentence-transformers embedding and rerank models.
 ## [provider.py](provider.py)
 
 Local sentence-transformers inference provider (embedding and rerank).
+

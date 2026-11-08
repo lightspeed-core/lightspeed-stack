@@ -66,6 +66,7 @@ class "QueryRequest" as src.models.api.requests.query.QueryRequest {
   check_uuid(value: Optional[str]) -> Optional[str]
   validate_media_type() -> Self
   validate_provider_and_model() -> Self
+  validate_query_not_empty() -> Self
 }
 class "ResponsesRequest" as src.models.api.requests.responses_openai.ResponsesRequest {
   conversation : Optional[str]
@@ -97,6 +98,7 @@ class "ResponsesRequest" as src.models.api.requests.responses_openai.ResponsesRe
   check_suid(value: Optional[str]) -> Optional[str]
   validate_body_size(values: Any, info: ValidationInfo) -> Any
   validate_conversation_and_previous_response_id_mutually_exclusive() -> Self
+  validate_input_not_empty(value: ResponseInput) -> ResponseInput
 }
 class "RlsapiV1Attachment" as src.models.api.requests.rlsapi.RlsapiV1Attachment {
   contents : str
