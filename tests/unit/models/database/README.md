@@ -4,6 +4,10 @@
 
 Unit tests for database models.
 
+## [test_prompts.py](test_prompts.py)
+
+Unit tests for Prompt and PromptVersion database models.
+
 ## [test_saved_prompts.py](test_saved_prompts.py)
 
 Unit tests for SavedPrompt database model.
