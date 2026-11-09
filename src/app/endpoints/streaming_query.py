@@ -84,6 +84,7 @@ from utils.responses import (
     prepare_responses_params,
 )
 from utils.shields import validate_shield_ids_override
+from utils.stream_interrupts import deregister_stream, register_stream
 from utils.streaming_sse import (
     http_exception_stream_event,
     stream_compaction_event,
@@ -420,6 +421,14 @@ async def generate_response_with_compaction(
     """
     try:
         media_type = context.query_request.media_type or MEDIA_TYPE_JSON
+        # Before the start event, so an interrupt sent as soon as the client
+        # sees the request id finds the run (LCORE-4733).
+        register_stream(
+            context.request_id,
+            context.user_id,
+            context.cancellation_token,
+            context.conversation_id,
+        )
         yield stream_start_event(
             conversation_id=context.conversation_id,
             request_id=context.request_id,
@@ -508,4 +517,5 @@ async def generate_response_with_compaction(
         ):
             yield event
     finally:
+        deregister_stream(context.request_id)
         root_span.end()

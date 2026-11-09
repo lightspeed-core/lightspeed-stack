@@ -86,6 +86,7 @@ from utils.stream_interrupts import (
     build_interrupted_response,
     deregister_stream,
     persist_interrupted_turn,
+    register_stream,
 )
 from utils.token_counter import TokenCounter
 
@@ -237,15 +238,25 @@ async def generate_agent_response(  # pylint: disable=too-many-statements
         turn = PendingTurn.for_request(context.client, responses_params)
     persist_guard: list[bool] = [False]
     stream_completed = False
-    if emit_start:
-        yield serialize_event(
-            StartStreamPayload.create(
-                conversation_id=context.conversation_id,
-                request_id=context.request_id,
-            ),
-            media_type,
-        )
+    # Registered before the start event, so an interrupt sent as soon as the
+    # client sees the request id finds the run (LCORE-4733). The compaction
+    # path registers earlier, before its own start event; registering twice
+    # is harmless, and the finally below deregisters for both.
+    register_stream(
+        context.request_id,
+        context.user_id,
+        context.cancellation_token,
+        context.conversation_id,
+    )
     try:
+        if emit_start:
+            yield serialize_event(
+                StartStreamPayload.create(
+                    conversation_id=context.conversation_id,
+                    request_id=context.request_id,
+                ),
+                media_type,
+            )
         with trace.use_span(  # pylint: disable=not-context-manager
             root_span, end_on_exit=False
         ):
@@ -434,7 +445,9 @@ async def agent_response_generator(
             prompt = agent_prompt_text(responses_params)
 
         logger.debug("Starting agent streaming response processing")
-        async with agent.run_stream_events(prompt) as stream:
+        async with agent.run_stream_events(
+            prompt, cancellation_token=context.cancellation_token
+        ) as stream:
             async for event in stream:
                 if payload := dispatch_stream_event(event, dispatch_state):
                     yield serialize_event(payload, media_type)

@@ -163,6 +163,31 @@ def get_stream_interrupt_registry() -> StreamInterruptRegistry:
     return StreamInterruptRegistry()
 
 
+def register_stream(
+    request_id: str,
+    user_id: str,
+    token: CancellationToken,
+    conversation_id: Optional[str] = None,
+) -> None:
+    """Register a streaming run in the interrupt registry.
+
+    Called by the streaming request before it sends the ``start`` event, so
+    that an interrupt sent as soon as the client learns the request id finds
+    the run.
+
+    Parameters:
+    ----------
+        request_id: Unique streaming request identifier.
+        user_id: User identifier that owns the stream.
+        token: Cancellation token passed to the agent run of the stream.
+        conversation_id: Conversation the stream belongs to.
+
+    """
+    get_stream_interrupt_registry().register_stream(
+        request_id, user_id, token, conversation_id
+    )
+
+
 def deregister_stream(request_id: str) -> None:
     """Remove a stream from the interrupt registry after completion or cancellation.
 

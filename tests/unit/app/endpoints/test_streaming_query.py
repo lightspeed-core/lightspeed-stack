@@ -14,6 +14,7 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
     InMemorySpanExporter,
 )
 from opentelemetry.trace import NonRecordingSpan, SpanContext, TraceFlags
+from pydantic_ai import CancellationToken
 from pytest_mock import MockerFixture
 
 from app.endpoints.streaming_query import (
@@ -891,7 +892,7 @@ class TestStreamingQueryOtelInstrumentation:
             assert child.parent.span_id == root_spans[0].context.span_id
 
 
-class TestGenerateResponseWithCompaction:  # pylint: disable=too-few-public-methods
+class TestGenerateResponseWithCompaction:
     """Tests for the compaction-aware SSE generator."""
 
     @pytest.mark.asyncio
@@ -1002,3 +1003,89 @@ class TestGenerateResponseWithCompaction:  # pylint: disable=too-few-public-meth
         assert captured_kwargs["summarization_usage"] == TokenCounter(
             input_tokens=640, output_tokens=72
         )
+
+    @pytest.mark.asyncio
+    async def test_registers_the_stream_before_the_start_event(
+        self, mocker: MockerFixture
+    ) -> None:
+        """The compaction path registers the run's token first and deregisters at the end (LCORE-4733)."""
+        responses_params = ResponsesApiParams.model_validate(
+            {
+                "model": "provider1/model1",
+                "input": "What is OpenShift?",
+                "conversation": "conv_123",
+                "stream": True,
+                "store": True,
+            }
+        )
+        context = mocker.Mock()
+        context.conversation_id = "conv_123"
+        context.request_id = "req_123"
+        context.user_id = "user_123"
+        context.skip_userid_check = False
+        context.client = mocker.AsyncMock()
+        context.inline_rag_context = RAGContext()
+        context.cancellation_token = CancellationToken()
+        context.query_request = QueryRequest(
+            query="What is OpenShift?"
+        )  # pyright: ignore[reportCallIssue]
+
+        async def fake_apply_compaction(
+            *_args: Any, **_kwargs: Any
+        ) -> AsyncIterator[CompactionResult]:
+            yield CompactionResult(responses_params, compacted=False)
+
+        mocker.patch(
+            "app.endpoints.streaming_query.apply_compaction",
+            new=fake_apply_compaction,
+        )
+        mocker.patch(
+            "app.endpoints.streaming_query.configured_conversation_cache",
+            return_value=None,
+        )
+        mocker.patch("app.endpoints.streaming_query.configuration", mocker.Mock())
+
+        async def inner_generator() -> AsyncIterator[str]:
+            yield "data: test\n\n"
+
+        mocker.patch(
+            "app.endpoints.streaming_query.retrieve_agent_response_generator",
+            new=mocker.AsyncMock(return_value=(inner_generator(), TurnSummary())),
+        )
+
+        async def fake_generate_agent_response(
+            *_args: Any, **_kwargs: Any
+        ) -> AsyncIterator[str]:
+            yield "data: end\n\n"
+
+        mocker.patch(
+            "app.endpoints.streaming_query.generate_agent_response",
+            new=fake_generate_agent_response,
+        )
+        register = mocker.patch("app.endpoints.streaming_query.register_stream")
+        deregister = mocker.patch("app.endpoints.streaming_query.deregister_stream")
+
+        stream = generate_response_with_compaction(
+            context=context,
+            responses_params=responses_params,
+            endpoint_path="/v1/streaming_query",
+            root_span=NonRecordingSpan(
+                SpanContext(
+                    trace_id=0x1,
+                    span_id=0x2,
+                    is_remote=False,
+                    trace_flags=TraceFlags(0x01),
+                )
+            ),
+        )
+        first = await anext(stream)
+
+        assert '"event": "start"' in first
+        register.assert_called_once_with(
+            "req_123", "user_123", context.cancellation_token, "conv_123"
+        )
+        deregister.assert_not_called()
+
+        [event async for event in stream]
+
+        deregister.assert_called_once_with("req_123")

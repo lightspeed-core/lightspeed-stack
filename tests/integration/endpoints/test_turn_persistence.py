@@ -378,8 +378,8 @@ async def _interrupt_stream(test_request: Request, test_auth: AuthTuple) -> list
 
     consumer = asyncio.create_task(_consume())
     await asyncio.wait_for(first_token.wait(), timeout=5)
-    # The registry holds no cancellation token for the run until LCORE-4733,
-    # so the stream is cancelled the way a client disconnect cancels it.
+    # The fake agent ignores the cancellation token the run is given, so the
+    # stream is cancelled the way a client disconnect cancels it.
     consumer.cancel()
     with contextlib.suppress(asyncio.CancelledError):
         await asyncio.wait_for(consumer, timeout=5)
