@@ -119,21 +119,6 @@ spec:
               #!/usr/bin/env bash
               set -uo pipefail
 
-              # MAPT image (Hummingbird OS) has no package manager and no curl/grep.
-              vllm_models_list_model() {
-                local host="$1" api_key="$2" model="$3" body
-                { exec 3<>"/dev/tcp/${host}/8000"; } 2>/dev/null || return 1
-                printf 'GET /v1/models HTTP/1.1\r\nHost: %s\r\nAuthorization: Bearer %s\r\nConnection: close\r\n\r\n' \
-                  "${host}" "${api_key}" >&3
-                body="$(timeout 15 cat <&3)" || { exec 3<&-; exec 3>&-; return 1; }
-                exec 3<&-
-                exec 3>&-
-                case "${body}" in
-                  *"${model}"*) return 0 ;;
-                  *) return 1 ;;
-                esac
-              }
-
               BUCKET=$(cat /opt/aws-credentials/S3_BUCKET)
               RUN_ID="$(context.pipelineRun.name)"
               HF_TOKEN=$(cat /opt/aws-credentials/HUGGING_FACE_HUB_TOKEN)
@@ -239,13 +224,25 @@ spec:
               fi
 
               VLLM_HOST="$(cat /opt/host-info/host)"
-              # Fail before OCP deploy + e2e if vLLM never serves the model (OOM, HF token, bad id).
+              # MAPT image has no curl; bash /dev/tcp polls GET /v1/models before OCP deploy + e2e.
               VLLM_READINESS_TIMEOUT_SECONDS=600
               echo "[mapt] Provisioning OK (host=${VLLM_HOST}); waiting up to ${VLLM_READINESS_TIMEOUT_SECONDS}s for vLLM to list $(params.model)..."
               VLLM_READINESS_DEADLINE=$((SECONDS + VLLM_READINESS_TIMEOUT_SECONDS))
               n=0
               while true; do
-                if vllm_models_list_model "${VLLM_HOST}" "${VLLM_API_KEY}" "$(params.model)"; then
+                vllm_ready=0
+                if { exec 3<>"/dev/tcp/${VLLM_HOST}/8000"; } 2>/dev/null; then
+                  if printf 'GET /v1/models HTTP/1.1\r\nHost: %s\r\nAuthorization: Bearer %s\r\nConnection: close\r\n\r\n' \
+                      "${VLLM_HOST}" "${VLLM_API_KEY}" >&3 \
+                    && vllm_models_body="$(timeout 15 cat <&3)"; then
+                    case "${vllm_models_body}" in
+                      *"$(params.model)"*) vllm_ready=1 ;;
+                    esac
+                  fi
+                  exec 3<&-
+                  exec 3>&-
+                fi
+                if [ "${vllm_ready}" -eq 1 ]; then
                   echo "[mapt] vLLM models API ready (poll ${n})"
                   break
                 fi
