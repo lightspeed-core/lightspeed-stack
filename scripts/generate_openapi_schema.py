@@ -111,6 +111,8 @@ def generate_openapi_schema(schema_file_name: str) -> None:
         tags=app.openapi_tags,
     )
 
+    temporary_name = None
+
     # dump the schema into file
     # if dump fail, the original OpenAPI schema file won't be overwritten
     try:
