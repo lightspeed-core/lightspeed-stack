@@ -16,7 +16,7 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
     InMemorySpanExporter,
 )
 from opentelemetry.trace import NonRecordingSpan, SpanContext, TraceFlags
-from pydantic_ai import AgentRunResultEvent, CancellationToken
+from pydantic_ai import AgentRunResultEvent, CancellationToken, RunCancelled
 from pydantic_ai.exceptions import AgentRunError
 from pydantic_ai.messages import (
     FinishReason,
@@ -68,6 +68,7 @@ from utils.agents.streaming import (
 )
 from utils.otel_tracing import SpanAttributes, SpanEvents
 from utils.pending_turn import PendingTurn
+from utils.stream_interrupts import build_interrupted_response
 from utils.token_counter import TokenCounter
 
 INTERRUPTED_INDICATOR = f"\n\n*{INTERRUPTED_RESPONSE_MESSAGE}*"
@@ -1858,3 +1859,166 @@ class TestStreamRegistration:
         await stream.aclose()
 
         stream_interrupt_mocks["deregister"].assert_called_once_with(context.request_id)
+
+
+class TestRunCancelledFinalization:
+    """An interrupt ends the run with RunCancelled, and the request finishes the turn (LCORE-4734)."""
+
+    @staticmethod
+    def _cancelled(*texts: str) -> RunCancelled:
+        """Build the exception pydantic-ai raises for a cancelled run with these text parts."""
+        messages = [ModelResponse(parts=[TextPart(content=text)]) for text in texts]
+        return RunCancelled("The agent run was cancelled.", messages=messages)
+
+    @pytest.mark.asyncio
+    async def test_mid_stream_interrupt_finishes_the_turn(
+        self,
+        mocker: MockerFixture,
+        make_generator_context: Callable[..., ResponseGeneratorContext],
+        responses_params: ResponsesApiParams,
+        stream_interrupt_mocks: dict[str, Any],
+    ) -> None:
+        """The projected text is repaired, persisted once, and the stream ends with interrupted."""
+        context = make_generator_context()
+        turn_summary = TurnSummary()
+        cancelled = self._cancelled("**partial")
+
+        async def inner() -> AsyncIterator[str]:
+            turn_summary.partial_tokens.append("**partial")
+            yield serialize_event(
+                TokenStreamPayload.create(chunk_id=0, token="**partial"),
+                MEDIA_TYPE_JSON,
+            )
+            raise cancelled
+
+        persist_mock = mocker.patch(
+            "utils.agents.streaming.persist_interrupted_turn",
+            new=mocker.AsyncMock(),
+        )
+
+        result = [
+            event
+            async for event in generate_agent_response(
+                inner(),
+                context,
+                responses_params,
+                turn_summary,
+                [],
+                root_span=_dummy_root_span(),
+            )
+        ]
+
+        assert _sse_event_types(result) == ["start", "token", "token", "interrupted"]
+        full_text, suffix = build_interrupted_response(["**partial"])
+        last_token = json.loads(result[2].removeprefix("data: "))["data"]
+        assert last_token["token"] == suffix
+        assert turn_summary.llm_response == full_text
+        persist_mock.assert_awaited_once()
+        stream_interrupt_mocks["deregister"].assert_called_once_with(context.request_id)
+
+    @pytest.mark.asyncio
+    async def test_interrupt_before_any_text_is_still_an_interrupt(
+        self,
+        mocker: MockerFixture,
+        make_generator_context: Callable[..., ResponseGeneratorContext],
+        responses_params: ResponsesApiParams,
+    ) -> None:
+        """No model text yet: the client gets the indicator alone and the interrupted event."""
+        context = make_generator_context()
+        turn_summary = TurnSummary()
+
+        async def inner() -> AsyncIterator[str]:
+            raise RunCancelled("The agent run was cancelled.")
+            yield ""  # pragma: no cover
+
+        persist_mock = mocker.patch(
+            "utils.agents.streaming.persist_interrupted_turn",
+            new=mocker.AsyncMock(),
+        )
+
+        result = [
+            event
+            async for event in generate_agent_response(
+                inner(),
+                context,
+                responses_params,
+                turn_summary,
+                [],
+                root_span=_dummy_root_span(),
+            )
+        ]
+
+        assert _sse_event_types(result) == ["start", "token", "interrupted"]
+        token = json.loads(result[1].removeprefix("data: "))["data"]
+        assert token == {"id": 0, "token": INTERRUPTED_INDICATOR}
+        assert turn_summary.llm_response == INTERRUPTED_INDICATOR
+        persist_mock.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_text_the_run_completed_but_never_streamed_is_sent_with_the_indicator(
+        self,
+        mocker: MockerFixture,
+        make_generator_context: Callable[..., ResponseGeneratorContext],
+        responses_params: ResponsesApiParams,
+    ) -> None:
+        """Text that only exists in the cancelled run's messages reaches the client and the store."""
+        context = make_generator_context()
+        turn_summary = TurnSummary()
+
+        async def inner() -> AsyncIterator[str]:
+            raise self._cancelled("finished part")
+            yield ""  # pragma: no cover
+
+        mocker.patch(
+            "utils.agents.streaming.persist_interrupted_turn", new=mocker.AsyncMock()
+        )
+
+        result = [
+            event
+            async for event in generate_agent_response(
+                inner(),
+                context,
+                responses_params,
+                turn_summary,
+                [],
+                root_span=_dummy_root_span(),
+            )
+        ]
+
+        token = json.loads(result[1].removeprefix("data: "))["data"]["token"]
+        assert token == "finished part" + INTERRUPTED_INDICATOR
+        assert turn_summary.llm_response == "finished part" + INTERRUPTED_INDICATOR
+
+    @pytest.mark.asyncio
+    async def test_interrupt_is_not_reported_as_an_error(
+        self,
+        mocker: MockerFixture,
+        make_generator_context: Callable[..., ResponseGeneratorContext],
+        responses_params: ResponsesApiParams,
+    ) -> None:
+        """RunCancelled is an AgentRunError, but it must not take the error path."""
+        context = make_generator_context()
+
+        async def inner() -> AsyncIterator[str]:
+            raise RunCancelled("The agent run was cancelled.")
+            yield ""  # pragma: no cover
+
+        mocker.patch(
+            "utils.agents.streaming.persist_interrupted_turn", new=mocker.AsyncMock()
+        )
+        map_error = mocker.patch("utils.agents.streaming.map_agent_inference_error")
+
+        result = [
+            event
+            async for event in generate_agent_response(
+                inner(),
+                context,
+                responses_params,
+                TurnSummary(),
+                [],
+                root_span=_dummy_root_span(),
+            )
+        ]
+
+        assert "error" not in _sse_event_types(result)
+        map_error.assert_not_called()
