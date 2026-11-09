@@ -12,7 +12,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from string import Template
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 from uuid import uuid4
 
 from pydantic_ai import AgentRunResult, RunContext
@@ -35,9 +35,6 @@ from models.common.moderation import (
     ShieldModerationPassed,
     ShieldModerationResult,
 )
-from models.config import (
-    QuestionValidityConfig,
-)
 from pydantic_ai_lightspeed.capabilities.base import AbstractSafetyCapability
 from pydantic_ai_lightspeed.capabilities.utils import (
     extract_conversation_id,
@@ -45,6 +42,11 @@ from pydantic_ai_lightspeed.capabilities.utils import (
 )
 from pydantic_ai_lightspeed.ogx import OgxResponsesModel
 from utils.conversations import append_turn_to_conversation
+
+if TYPE_CHECKING:
+    from models.config import (
+        QuestionValidityConfig,
+    )
 
 logger = get_logger(__name__)
 

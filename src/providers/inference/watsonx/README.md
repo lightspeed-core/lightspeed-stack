@@ -6,13 +6,17 @@ WatsonX inference provider package.
 
 ## [auth.py](auth.py)
 
-IBM IAM authentication for WatsonX HTTP clients (`WatsonxIAMAuth`).
+IBM IAM authentication for WatsonX HTTP clients.
 
 ## [pai_provider.py](pai_provider.py)
 
-Pydantic AI `Provider[AsyncOpenAI]` for WatsonX (`WatsonxProvider`).
-Builds the IAM-authenticated AsyncOpenAI client from config/env.
+Pydantic AI provider for IBM WatsonX OpenAI-compatible APIs.
 
 ## [provider.py](provider.py)
 
 WatsonX runtime inference provider backed by Pydantic AI.
+
+## [specs.py](specs.py)
+
+Wire models for WatsonX foundation_model_specs responses.
+

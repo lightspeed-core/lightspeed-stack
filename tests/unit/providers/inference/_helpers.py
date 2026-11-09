@@ -28,8 +28,8 @@ class FakeInferenceProvider(
         return []
 
     def _create_llm(self, model: CatalogModel) -> Model:
-        """Return a PydanticAI test chat model."""
-        return TestModel()
+        """Return a PydanticAI test chat model tagged with the catalog name."""
+        return TestModel(model_name=model.name)
 
     def _create_embedding(self, model: CatalogModel) -> EmbeddingModel:
         """Return a PydanticAI test embedding model."""

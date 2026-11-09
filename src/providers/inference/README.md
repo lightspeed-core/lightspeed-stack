@@ -16,6 +16,10 @@ Internal inference catalog models.
 
 Exceptions raised by inference providers.
 
+## [llm_settings.py](llm_settings.py)
+
+Helpers for LLM request settings and Pydantic AI run configuration.
+
 ## [model_type_inference.py](model_type_inference.py)
 
 Helpers for inferring catalog model types from known model ids.
@@ -23,6 +27,10 @@ Helpers for inferring catalog model types from known model ids.
 ## [registry.py](registry.py)
 
 Singleton registry of initialized inference providers.
+
+## [resolve.py](resolve.py)
+
+Soft-fallback helpers for request-path model resolution.
 
 ## [types.py](types.py)
 

@@ -4,8 +4,10 @@ import pytest
 
 from models.config import InferenceProviderEntryBase
 from providers.inference.errors import (
+    ModelDiscoveryError,
     ModelNotAvailableError,
     ModelTypeNotSupportedError,
+    NoModelConfiguredError,
     ProviderNotFoundError,
 )
 from providers.inference.types import ModelType
@@ -33,12 +35,28 @@ def test_model_type_not_supported_error_message_and_attributes() -> None:
     assert str(error) == ("Model type 'rerank' is not supported by provider 'openai'")
 
 
-def test_unknown_provider_type_error_message_and_attributes() -> None:
-    """Error message and attributes identify the unknown provider type."""
+def test_provider_not_found_error_message_and_attributes() -> None:
+    """Error message and attributes identify the unknown provider id."""
     error = ProviderNotFoundError("fake-openai")
 
     assert error.provider_id == "fake-openai"
     assert str(error) == "Inference provider 'fake-openai' is not registered"
+
+
+def test_no_model_configured_error_message_and_attributes() -> None:
+    """Error message and attributes identify the unresolved model type."""
+    error = NoModelConfiguredError("llm")
+
+    assert error.model_type == "llm"
+    assert str(error) == ("No 'llm' model is configured or available in the catalog")
+
+
+def test_model_discovery_error_message_and_attributes() -> None:
+    """Error message and attributes identify the provider without foreign details."""
+    error = ModelDiscoveryError("azure")
+
+    assert error.provider_id == "azure"
+    assert str(error) == "Failed to discover models for provider 'azure'"
 
 
 @pytest.mark.parametrize("model_type", ["llm", "embedding", "rerank"])

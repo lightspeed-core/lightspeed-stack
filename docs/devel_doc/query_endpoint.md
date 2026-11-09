@@ -66,7 +66,7 @@ Both endpoints accept a JSON body with the following fields. Unknown fields are 
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| `query` | string | **Yes** | -- | The question to send to the LLM |
+| `query` | string | **Yes** | -- | The question to send to the LLM (must not be empty or whitespace-only) |
 | `conversation_id` | string | No | `null` | Conversation ID to continue (UUID, 48-char hex, or `conv_`-prefixed hex) |
 | `provider` | string | No | `null` | Provider identifier (e.g., `"openai"`). Must be specified with `model` |
 | `model` | string | No | `null` | Model identifier (e.g., `"gpt4mini"`). Must be specified with `provider` |
@@ -117,7 +117,7 @@ The optional `solr` field configures Solr inline RAG behavior:
 
 ### Validation Rules
 
-- `query` is required. Missing it returns HTTP 422.
+- `query` is required. Missing it returns HTTP 422. An empty or whitespace-only `query` also returns HTTP 422 (`Query must not be empty`), unless a non-image attachment supplies the content.
 - `provider` and `model` must both be specified or both be omitted. Specifying one without the other returns HTTP 422.
 - `conversation_id` must be a valid UUID, 48-character hex string, or `conv_`-prefixed 48-character hex string. Invalid formats return HTTP 422.
 - `media_type` must be exactly `"application/json"` or `"text/plain"` if specified.
@@ -308,7 +308,7 @@ Cancels an in-progress streaming query.
 | `interrupted` | boolean | Whether an active stream was interrupted (`false` if already completed) |
 | `message` | string | Human-readable status message |
 
-When a stream is interrupted, any partial response is persisted to conversation history and token consumption is skipped.
+When a stream is interrupted, any partial response is persisted to conversation history and token consumption for the answer is skipped. The summarization calls conversation compaction made for the request were charged when they were made (see [Quota and Token Counting](#quota-and-token-counting)).
 
 ---
 
@@ -360,9 +360,10 @@ If the server configuration sets `disable_query_system_prompt` to `true`, reques
 ## Quota and Token Counting
 
 - **Pre-request:** `check_tokens_available()` verifies the user/cluster has available quota (429 if not)
-- **Post-response:** `consume_query_tokens()` deducts `input_tokens` and `output_tokens` from configured quota limiters
+- **Post-response:** `consume_query_tokens()` deducts the input and output tokens of the answer from configured quota limiters
+- **Compaction:** each LLM call that summarizes older turns is charged by `consume_summarization_tokens()` as soon as it returned, so also when the turn is then blocked, fails or is interrupted. The `input_tokens` and `output_tokens` the response reports include these calls
 - **Available quotas:** Remaining balances per limiter are included in the response (`available_quotas` field in sync, `end` event in streaming)
-- **Stream interruption:** Token consumption is skipped for interrupted streams
+- **Stream interruption:** Token consumption is skipped for interrupted streams, except for the summarization calls, which were charged before the answer started
 
 ---
 

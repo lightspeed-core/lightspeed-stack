@@ -1,7 +1,6 @@
 """Implementation of common test steps."""
 
 import json
-import re
 
 from behave import then  # pyright: ignore[reportAttributeAccessIssue]
 from behave.runner import Context
@@ -17,23 +16,6 @@ def check_name_version(context: Context, service_name: str, version: str) -> Non
     assert (
         response_json["service_version"] == version
     ), f"version is {response_json["service_version"]}"
-
-
-@then("The body of the response has ogx version {ogx_version}")
-def check_ogx_version(context: Context, ogx_version: str) -> None:
-    """Check proper OGX version number."""
-    response_json = context.response.json()
-    assert response_json is not None, "Response is not valid JSON"
-
-    version_pattern = r"\d+\.\d+\.\d+"
-    response_ogx_version = response_json["ogx_version"]
-    match = re.search(version_pattern, response_ogx_version)
-    assert match is not None, f"Could not extract version from {response_ogx_version}"
-    extracted_version = match.group(0)
-
-    assert (
-        extracted_version == ogx_version
-    ), f"ogx version is {extracted_version}, expected {ogx_version}"
 
 
 @then("The response contains {count:d} tools listed for provider {provider_name}")

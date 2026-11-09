@@ -396,6 +396,7 @@ class GraniteGuardian(AbstractSafetyCapability):
             timeout=self.config.timeout,
         )
 
+        # OpenAI 3 types http_client as httpx2 only; legacy httpx still works.
         openai_client = AsyncOpenAI(
             base_url=self.config.url,
             api_key=(
@@ -404,7 +405,7 @@ class GraniteGuardian(AbstractSafetyCapability):
                 else "api-key-not-set"
             ),
             max_retries=self.config.max_retries,
-            http_client=http_client,
+            http_client=http_client,  # type: ignore[arg-type]
         )
 
         provider = OpenAIProvider(openai_client=openai_client)

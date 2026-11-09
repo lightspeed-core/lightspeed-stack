@@ -17,7 +17,6 @@ class InfoResponse(AbstractSuccessfulResponse):
     Attributes:
         name: Service name.
         service_version: Service version.
-        ogx_version: OGX version.
 
     """
 
@@ -31,11 +30,6 @@ class InfoResponse(AbstractSuccessfulResponse):
         examples=["0.1.0", "0.2.0", "1.0.0"],
     )
 
-    ogx_version: str = Field(
-        description="OGX version",
-        examples=["0.2.1", "0.2.2", "0.2.18", "0.2.21", "0.2.22"],
-    )
-
     # provides examples for /docs endpoint
     model_config = {
         "json_schema_extra": {
@@ -43,7 +37,6 @@ class InfoResponse(AbstractSuccessfulResponse):
                 {
                     "name": "Lightspeed Stack",
                     "service_version": "1.0.0",
-                    "ogx_version": "1.0.0",
                 }
             ]
         }

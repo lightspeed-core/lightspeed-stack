@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-from typing import Optional, TypeAliasType, get_args
+from typing import TYPE_CHECKING, Optional, TypeAliasType, get_args
 
 from pydantic_ai.embeddings import KnownEmbeddingModelName
 from pydantic_ai.models import KnownModelName
 
-from providers.inference.types import ModelType
+if TYPE_CHECKING:
+    from providers.inference.types import ModelType
 
 
 def _model_ids_from_known_names(known_names: TypeAliasType) -> frozenset[str]:

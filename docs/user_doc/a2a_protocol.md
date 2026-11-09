@@ -62,8 +62,10 @@ The A2A protocol is an open standard for agent-to-agent communication that allow
 | Endpoint      | Method | Description                             |
 |---------------|--------|-----------------------------------------|
 | `/a2a`        | POST   | Main JSON-RPC endpoint for A2A protocol |
-| `/a2a`        | GET    | Agent card retrieval via GET            |
 | `/a2a/health` | GET    | Health check endpoint                   |
+
+`/a2a` accepts POST only. Fetch the agent card from one of the discovery paths
+above.
 
 ## Configuration
 

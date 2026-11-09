@@ -590,6 +590,7 @@ class TestRequestStream:
         )
         model._provider = mocker.Mock()
         model._provider.name = "test-provider"
+        model._provider.model_id_namespace = "test-provider"
         model._provider.base_url = "http://localhost"
         mocker.patch("pydantic_ai_lightspeed.ogx._model.check_allow_model_requests")
         mocker.patch.object(

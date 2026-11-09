@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Generic, Literal, Optional, TypeVar, overload
+from typing import TYPE_CHECKING, Any, Generic, Literal, Optional, TypeVar, overload
 
 from pydantic_ai.embeddings import EmbeddingModel
 from pydantic_ai.models import Model
 from pydantic_ai.providers import Provider
-from sentence_transformers import CrossEncoder
 
 from log import get_logger
 from models.config import (
@@ -16,8 +15,15 @@ from models.config import (
     InferenceProviderEntryBase,
 )
 from providers.inference.catalog import CatalogModel, DiscoveredModel
-from providers.inference.errors import ModelNotAvailableError
-from providers.inference.types import ModelType, ProviderId
+from providers.inference.errors import (
+    ModelNotAvailableError,
+    ModelTypeNotSupportedError,
+)
+
+if TYPE_CHECKING:
+    from sentence_transformers import CrossEncoder
+
+    from providers.inference.types import ModelType, ProviderId
 
 logger = get_logger(__name__)
 
@@ -84,41 +90,44 @@ class InferenceProvider(ABC, Generic[EntryT, ProviderT]):  # noqa: UP046
 
         """
 
-    @abstractmethod
     def _create_llm(self, model: CatalogModel) -> Model:
-        """Create an LLM from a catalog model.
+        """Create an LLM from a catalog model; override if supported.
 
         Args:
             model: Catalog entry describing the LLM to instantiate.
 
-        Returns:
-            The instantiated PydanticAI model.
+        Raises:
+            ModelTypeNotSupportedError: Default; llm is unsupported.
 
         """
+        _ = model
+        raise ModelTypeNotSupportedError("llm", self.provider_id)
 
-    @abstractmethod
     def _create_embedding(self, model: CatalogModel) -> EmbeddingModel:
-        """Create an embedding model from a catalog model.
+        """Create an embedding model from a catalog model; override if supported.
 
         Args:
             model: Catalog entry describing the embedding model to instantiate.
 
-        Returns:
-            The instantiated embedding model.
+        Raises:
+            ModelTypeNotSupportedError: Default; embedding is unsupported.
 
         """
+        _ = model
+        raise ModelTypeNotSupportedError("embedding", self.provider_id)
 
-    @abstractmethod
     def _create_rerank(self, model: CatalogModel) -> CrossEncoder:
-        """Create a reranker from a catalog model.
+        """Create a reranker from a catalog model; override if supported.
 
         Args:
             model: Catalog entry describing the reranker to instantiate.
 
-        Returns:
-            The instantiated reranking model.
+        Raises:
+            ModelTypeNotSupportedError: Default; rerank is unsupported.
 
         """
+        _ = model
+        raise ModelTypeNotSupportedError("rerank", self.provider_id)
 
     @abstractmethod
     def _infer_model_type(

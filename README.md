@@ -919,15 +919,15 @@ Usage: make <OPTIONS> ... <TARGETS>
 
 Available targets are:
 
-run-ogx                         Run lightspeed-stack directly, without building dependent service/s
+run-ogx                           Run lightspeed-stack directly, without building dependent service/s
 run                               Run the service locally with dependent services
-build-ogx-image           Build OGX container image
-stop-ogx-container        Gracefully stop OGX container
-remove-ogx-container      Remove OGX container (saves logs first)
-start-ogx-container       Start OGX container
-wait-for-ogx-health       Wait for OGX container to be healthy
-clean-ogx                 Remove container and image
-run-ogx-local                   Start OGX with enriched config (for local service mode)
+build-ogx-image                   Build OGX container image
+stop-ogx-container                Gracefully stop OGX container
+remove-ogx-container              Remove OGX container (saves logs first)
+start-ogx-container               Start OGX container
+wait-for-ogx-health               Wait for OGX container to be healthy
+clean-ogx                         Remove container and image
+run-ogx-local                     Start OGX with enriched config (for local service mode)
 test-unit                         Run the unit tests
 test-integration                  Run integration tests tests
 test-e2e                          Run end to end tests for the service
@@ -970,12 +970,12 @@ pylint                            Check source code using Pylint static code ana
 pyright                           Check source code using Pyright static type checker
 docstyle                          Check the docstring style using Docstyle checker
 ruff                              Check source code using Ruff linter
-lint-openapi                      Lint docs/openapi.json (Spectral OAS ruleset; fail on error)
+lint-openapi                      Lint docs/devel_doc/openapi.json (Spectral OAS ruleset; fail on error)
 verify                            Run all linters
 distribution-archives             Generate distribution archives to be uploaded into Python registry
 upload-distribution-archives      Upload distribution archives into Python registry
-konflux-requirements              Generate hermetic requirements.*.txt file for Konflux build
-konflux-rpm-lock                  Generate rpm.lock.yaml file for Konflux build
+konflux-requirements              Generate .konflux/requirements.*.txt files for Konflux hermetic build
+konflux-rpm-lock                  Generate .konflux/rpms.lock.yaml file for Konflux build (requires KONFLUX_BASE_IMAGE, RHSM_ACTIVATION_KEY and RHSM_ORG_ID)
 help                              Show this help screen
 ```
 
@@ -1559,7 +1559,7 @@ sed -i "s/$(uname -m)/\$basearch/g" redhat.repo
 
 1. **Generate the lock file**:
 ```shell
-make konflux-rpm-lock
+make konflux-rpm-lock KONFLUX_BASE_IMAGE=<image> RHSM_ACTIVATION_KEY=<key> RHSM_ORG_ID=<org>
 ```
 
-This creates `rpms.lock.yaml` with pinned RPM versions.
+This creates `.konflux/rpms.lock.yaml` with pinned RPM versions.

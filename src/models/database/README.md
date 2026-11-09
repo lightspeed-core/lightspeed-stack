@@ -12,6 +12,10 @@ Base model for SQLAlchemy ORM classes.
 
 User conversation models.
 
+## [prompts.py](prompts.py)
+
+Persistence models for the versioned prompt catalog.
+
 ## [saved_prompts.py](saved_prompts.py)
 
 User saved prompt models.

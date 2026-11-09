@@ -4,7 +4,7 @@ import builtins
 import json
 
 import psycopg2
-from psycopg2.extensions import AsIs
+from psycopg2 import sql
 
 from cache.cache import Cache
 from cache.cache_entry import CacheEntry
@@ -50,7 +50,7 @@ class PostgresCache(Cache):
     """
 
     CREATE_SCHEMA = """
-       CREATE SCHEMA IF NOT EXISTS %s;
+       CREATE SCHEMA IF NOT EXISTS {namespace};
        """
 
     CREATE_CACHE_TABLE = """
@@ -272,7 +272,11 @@ class PostgresCache(Cache):
 
         logger.info("Initializing schema")
         if namespace != "public":
-            cursor.execute(PostgresCache.CREATE_SCHEMA, (AsIs(namespace),))
+            cursor.execute(
+                sql.SQL(PostgresCache.CREATE_SCHEMA).format(
+                    namespace=sql.Identifier(namespace)
+                )
+            )
 
         logger.info("Initializing table for cache")
         cursor.execute(PostgresCache.CREATE_CACHE_TABLE)

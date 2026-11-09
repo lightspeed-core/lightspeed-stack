@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import asyncio
 import os
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 import boto3
 from botocore.client import BaseClient
 from botocore.config import Config
+from botocore.exceptions import BotoCoreError, ClientError
 from botocore.session import Session
 from botocore.tokens import FrozenAuthToken
 from pydantic_ai.embeddings import EmbeddingModel
@@ -16,14 +17,20 @@ from pydantic_ai.embeddings.bedrock import BedrockEmbeddingModel
 from pydantic_ai.models import Model
 from pydantic_ai.models.bedrock import BedrockConverseModel
 from pydantic_ai.providers.bedrock import BedrockProvider
-from sentence_transformers import CrossEncoder
 
 from models.config import BedrockInferenceProviderEntry
 from providers.inference.base import InferenceProvider
-from providers.inference.bedrock.specs import FoundationModelSummary
+from providers.inference.bedrock.model_discovery import (
+    first_profile_id_by_foundation_model_id,
+    list_foundation_models,
+    list_inference_profiles,
+    to_discovered_model,
+)
 from providers.inference.catalog import CatalogModel, DiscoveredModel
-from providers.inference.errors import ModelTypeNotSupportedError
-from providers.inference.types import ModelType
+from providers.inference.errors import ModelDiscoveryError
+
+if TYPE_CHECKING:
+    from providers.inference.types import ModelType
 
 
 class _BearerTokenSession(Session):
@@ -108,31 +115,36 @@ class BedrockInferenceProvider(
         )
 
     async def _discover_models(self) -> list[DiscoveredModel]:
-        """List regional foundation models and infer their types.
+        """Discover invokable regional models with inferred types.
 
         Returns:
-            Discovered models with inferred types, before allow-list filtering.
-            Models without TEXT or EMBEDDING output modalities are omitted.
+            Discovered models before allow-list filtering.
+
+        Raises:
+            ModelDiscoveryError: If Bedrock control-plane listing or AWS
+                credentials/transport fail.
 
         """
-        client = self._create_bedrock_client()
-        response = await asyncio.to_thread(client.list_foundation_models)
+        try:
+            client = self._create_bedrock_client()
+            foundations = await asyncio.to_thread(list_foundation_models, client)
+            profiles = await asyncio.to_thread(list_inference_profiles, client)
+        except (ClientError, BotoCoreError) as exc:
+            raise ModelDiscoveryError(self.provider_id) from exc
+        profile_ids = first_profile_id_by_foundation_model_id(profiles)
 
         discovered: list[DiscoveredModel] = []
-        for summary in response.get("modelSummaries", []):
-            model = FoundationModelSummary.model_validate(summary)
-            model_type = self._infer_model_type(
-                model.model_id,
-                output_modalities=model.output_modalities,
+        for model in foundations:
+            discovered_model = to_discovered_model(
+                model,
+                profile_ids,
+                self._infer_model_type(
+                    model.model_id,
+                    output_modalities=model.output_modalities,
+                ),
             )
-            if model_type is None:
-                continue
-            discovered.append(
-                DiscoveredModel(
-                    provider_model_id=model.model_id,
-                    model_type=model_type,
-                )
-            )
+            if discovered_model is not None:
+                discovered.append(discovered_model)
         return discovered
 
     def _create_llm(self, model: CatalogModel) -> Model:
@@ -164,19 +176,6 @@ class BedrockInferenceProvider(
             model.provider_model_id,
             provider=self._get_provider,
         )
-
-    def _create_rerank(self, model: CatalogModel) -> CrossEncoder:
-        """Reject rerank requests; this provider has no rerank API.
-
-        Args:
-            model: Catalog entry that requested rerank support.
-
-        Raises:
-            ModelTypeNotSupportedError: Always, because rerank is unsupported.
-
-        """
-        _ = model
-        raise ModelTypeNotSupportedError("rerank", self.provider_id)
 
     def _infer_model_type(
         self,

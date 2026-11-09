@@ -20,6 +20,10 @@ Unit tests for internal inference catalog models.
 
 Unit tests for inference provider errors.
 
+## [test_llm_settings.py](test_llm_settings.py)
+
+Unit tests for shared LLM settings mapping.
+
 ## [test_model_type_inference.py](test_model_type_inference.py)
 
 Unit tests for model type inference helpers.
@@ -27,4 +31,8 @@ Unit tests for model type inference helpers.
 ## [test_registry.py](test_registry.py)
 
 Unit tests for the ProviderRegistry singleton.
+
+## [test_resolve.py](test_resolve.py)
+
+Unit tests for soft-fallback resolution helpers.
 

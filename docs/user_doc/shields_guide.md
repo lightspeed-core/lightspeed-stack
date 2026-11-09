@@ -179,6 +179,12 @@ functionality directly** through a custom API (`run_shield_moderation`) before
 each request. When moderation blocks the input, the endpoint returns a refusal
 (and may persist the blocked turn) without calling the model.
 
+On `/v1/responses`, clients that resend full history (`store: false`) can opt
+into windowed moderation with the
+`X-LCS-Shield-After-Last-Refusal: true` header. Shields then judge only input
+items after the last prior refusal (`modr-…`). See
+[Shield Moderation After Last Refusal](../devel_doc/responses.md#shield-moderation-after-last-refusal).
+
 ## Per-endpoint behavior
 
 | Endpoint | How shields run | `shield_ids` |

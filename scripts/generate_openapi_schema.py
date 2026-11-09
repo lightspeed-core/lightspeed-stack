@@ -1,9 +1,11 @@
 """Utility script to generate OpenAPI schema."""
 
 import json
+import os
 import pprint
 import subprocess
 import sys
+import tempfile
 
 from fastapi.openapi.utils import get_openapi
 
@@ -28,7 +30,14 @@ def read_version_from_openapi(openapi_filename: str) -> str:
     Extract the OpenAPI document's version from a generated OpenAPI JSON file.
 
     Returns:
-        str: The value of the OpenAPI document's `info.version`.
+        str: The OpenAPI document's `info.version`, converted to a string.
+
+    Raises:
+        OSError: If the file cannot be read.
+        UnicodeDecodeError: If the file is not valid UTF-8.
+        json.JSONDecodeError: If the file is not valid JSON.
+        AssertionError: If the document is null or lacks `info` or `version`.
+        TypeError: If the document or `info` has an incompatible structure.
 
     """
     # retrieve pre-generated OpenAPI schema
@@ -48,6 +57,11 @@ def read_version_from_pyproject() -> str:
     Returns:
         str: The project version string.
 
+    Raises:
+        subprocess.CalledProcessError: If PDM exits unsuccessfully.
+        OSError: If PDM cannot be started.
+        UnicodeDecodeError: If PDM's output is not valid UTF-8.
+
     """
     # it is not safe to just try to read version from pyproject.toml file directly
     # the PDM tool itself is able to retrieve the version, even if the version
@@ -61,7 +75,19 @@ def read_version_from_pyproject() -> str:
 
 
 def generate_openapi_schema(schema_file_name: str) -> None:
-    """Generate OpenAPI schema into file with provided name."""
+    """Write the app's OpenAPI schema, then check its version against PDM.
+
+    Overwrites the named JSON file before checking versions; the file remains
+    if the check fails.
+
+    Raises:
+        AssertionError: If the schema lacks version information or its version
+            differs from the project version.
+        subprocess.CalledProcessError: If ``pdm show --version`` fails.
+        OSError: If the file cannot be accessed or PDM cannot be started.
+        UnicodeDecodeError: If PDM's output is not valid UTF-8.
+
+    """
     print("Service metadata:")
     print(app.title)
     print(app.description)
@@ -85,15 +111,30 @@ def generate_openapi_schema(schema_file_name: str) -> None:
         tags=app.openapi_tags,
     )
 
+    temporary_name = None
+
     # dump the schema into file
-    with open(schema_file_name, "w", encoding="utf-8") as fout:
-        json.dump(open_api, fout, indent=4)
+    # if dump fail, the original OpenAPI schema file won't be overwritten
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            dir=os.path.dirname(os.path.abspath(schema_file_name)),
+            delete=False,
+        ) as fout:
+            temporary_name = fout.name
+            json.dump(open_api, fout, indent=4)
+        os.replace(temporary_name, schema_file_name)
+    finally:
+        if temporary_name is not None and os.path.exists(temporary_name):
+            os.unlink(temporary_name)
 
     openapi_version = read_version_from_openapi(schema_file_name)
     project_version = read_version_from_pyproject()
-    assert (
-        openapi_version == project_version
-    ), f"OpenAPI version {openapi_version} != project version {project_version}"
+    if openapi_version != project_version:
+        raise AssertionError(
+            f"OpenAPI version {openapi_version} != project version {project_version}"
+        )
     print(f"OpenAPI schema generated into file {schema_file_name}")
 
 

@@ -426,3 +426,71 @@ Allowed prefixes: `LCORE-`, `RSPEED-`, `MGTM-`, `OLS-`, `RHIDP-`, `LEADS-`, `CWF
 4. Follow existing code patterns in the module you're modifying
 5. Write unit tests covering new functionality
 6. Run format and verify before completion
+
+### Dependency Update Process (Konflux)
+
+When bumping or adding Python dependencies, the Konflux hermetic build requires
+several files to be regenerated **in order**. Complete all of these steps in a
+single PR to avoid iterative CI failures.
+
+1. **Update `pyproject.toml`** with the new version constraints.
+2. **Regenerate `uv.lock`** — run `uv lock` to sync the lockfile with the
+   updated constraints.
+
+> **Important:** If you modify `pyproject.toml` in any way (adding, removing, or
+> changing version constraints) and the sandbox cannot run `uv lock` due to
+> network restrictions, do NOT include the `pyproject.toml` change in your
+> commit. Instead:
+> 1. Complete the non-`pyproject.toml` changes (docs, config, scripts) in the PR.
+> 2. Note the needed `pyproject.toml` change in the PR body as a follow-up item
+>    requiring manual lockfile regeneration.
+> 3. Do not present the work as complete if `uv lock` could not run.
+
+3. **Regenerate Konflux requirement files** — run
+   `python3 scripts/konflux_resolve.py --profile cpu` to regenerate the hashed
+   requirement files under `.konflux/`:
+   - `.konflux/requirements.hashes.wheel.txt` (RHOAI wheels)
+   - `.konflux/requirements.hashes.source.txt` (PyPI sdists)
+   - `.konflux/requirements.hashes.wheel.pypi.txt` (PyPI wheel fallbacks)
+   - `.konflux/requirements-build.txt` (build dependencies for sdist packages)
+
+   This script requires `podman` and network access. See
+   `scripts/konflux_resolve.py --help` for additional options (`--verbose`,
+   `--quiet`). Build profiles are defined in `.konflux/profiles.toml`.
+4. **Verify `.tekton/*.yaml` prefetch package lists** — the resolve script
+   patches the `"packages"` field in the Tekton pipeline files listed in
+   `.konflux/profiles.toml` (`tekton_files`). Confirm that the package list in
+   `.tekton/lightspeed-stack-0-8-pull-request.yaml` and
+   `.tekton/lightspeed-stack-0-8-push.yaml` reflects the updated dependency set
+   (packages added or removed as needed).
+5. **Check for dropped transitive dependencies** — if a dependency is removed
+   or downgraded, verify that no source files import packages that were only
+   available as transitive dependencies of the removed/changed package.
+6. **Run `uv run make verify`** to confirm linting and type checking pass with
+   the updated dependencies.
+
+### Dependency Removal Cleanup
+
+When removing a dependency from `pyproject.toml`, follow the standard update
+process above **and** perform these additional cleanup steps to eliminate stale
+references:
+
+1. **Grep the entire repo for the removed package name** to find stale
+   references in source files, docs, scripts, configs, and examples:
+   ```bash
+   grep -rn '<package_name>' --include='*.py' --include='*.md' \
+     --include='*.yaml' --include='*.yml' --include='*.toml' \
+     --include='*.txt' --include='Makefile' --include='Containerfile'
+   ```
+2. **Check for package-specific environment variables** — removed packages
+   often have env vars that should also be cleaned up (e.g., `LITELLM_DROP_PARAMS`
+   for litellm). Search for these across the repo.
+3. **Remove or update all stale references** found in:
+   - README and other documentation files
+   - Makefile and build scripts
+   - Containerfile and docker-compose files
+   - Example and default configuration files
+   - Inline code comments referencing the removed package
+4. **Verify no runtime imports remain** — confirm that no Python source file
+   still imports the removed package (including conditional or try/except
+   imports).

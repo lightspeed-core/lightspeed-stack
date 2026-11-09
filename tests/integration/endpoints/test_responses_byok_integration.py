@@ -517,7 +517,6 @@ async def test_responses_rag_content_limit_caps_retrieved_results(  # pylint: di
 
     test_config.configuration.rag.byok.stores = [entry]
     test_config.configuration.rag.retrieval.inline.sources = ["big-source"]
-    test_config.configuration.rag.retrieval.inline.reranker.enabled = False
 
     mock_client = _build_responses_mock_client(mocker)
     _patch_all_client_holders(mocker, mock_client)
@@ -666,7 +665,6 @@ async def test_responses_rag_content_limit_caps_inline_rag(  # pylint: disable=t
     test_config.configuration.rag.byok.stores = [entry]
     test_config.configuration.rag.retrieval.inline.sources = ["big-source"]
     test_config.configuration.rag.retrieval.inline.max_chunks = 3
-    test_config.configuration.rag.retrieval.inline.reranker.enabled = False
 
     mock_client = _build_responses_mock_client(mocker)
     _patch_all_client_holders(mocker, mock_client)

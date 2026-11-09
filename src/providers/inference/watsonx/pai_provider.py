@@ -55,11 +55,12 @@ class WatsonxProvider(Provider[AsyncOpenAI]):
             base_url or os.getenv("WATSONX_BASE_URL") or DEFAULT_WATSONX_BASE_URL
         )
         self._base_url = resolved_base_url.rstrip("/")
+        # OpenAI 3 types http_client as httpx2 only; legacy httpx still works.
         self._client = AsyncOpenAI(
             api_key="unused",
             base_url=f"{self._base_url}/ml/v1",
             default_query={"version": WATSONX_API_VERSION},
-            http_client=httpx.AsyncClient(auth=WatsonxIAMAuth(api_key)),
+            http_client=httpx.AsyncClient(auth=WatsonxIAMAuth(api_key)),  # type: ignore[arg-type]
         )
 
     @property

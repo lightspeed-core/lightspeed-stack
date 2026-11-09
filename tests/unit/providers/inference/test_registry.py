@@ -1,9 +1,12 @@
 """Unit tests for the ProviderRegistry singleton."""
 
 from collections.abc import Generator
-from typing import Optional
+from typing import Any, Optional
 
 import pytest
+from pydantic_ai.embeddings import TestEmbeddingModel
+from pydantic_ai.models.test import TestModel
+from sentence_transformers import CrossEncoder
 
 from models.config import (
     AllowedModel,
@@ -11,9 +14,13 @@ from models.config import (
     OpenAIInferenceProviderEntry,
     VllmInferenceProviderEntry,
 )
-from providers.inference.errors import ProviderNotFoundError
+from providers.inference.errors import (
+    ModelNotAvailableError,
+    NoModelConfiguredError,
+    ProviderNotFoundError,
+)
 from providers.inference.registry import PROVIDER_CLASSES, ProviderRegistry
-from providers.inference.types import ProviderType
+from providers.inference.types import ModelType, ProviderType
 from tests.unit.providers.inference._helpers import FakeInferenceProvider
 from utils.types import Singleton
 
@@ -57,7 +64,17 @@ def _openai_entry(
                     name="chat",
                     provider_model_id="gpt-4o-mini",
                     model_type="llm",
-                )
+                ),
+                AllowedModel(
+                    name="embed",
+                    provider_model_id="text-embedding-3-small",
+                    model_type="embedding",
+                ),
+                AllowedModel(
+                    name="rerank",
+                    provider_model_id="cross-encoder",
+                    model_type="rerank",
+                ),
             ]
         ),
     )  # pyright: ignore[reportCallIssue]
@@ -93,6 +110,81 @@ def _inference_config(
     return InferenceConfiguration.model_validate(
         {"providers": [provider.model_dump() for provider in providers]}
     )
+
+
+def _llm_model(name: str, provider_model_id: str = "gpt-4o") -> AllowedModel:
+    """Return an llm allow-list entry with the given local name."""
+    return AllowedModel(
+        name=name,
+        provider_model_id=provider_model_id,
+        model_type="llm",
+    )
+
+
+def _embed_only_models() -> list[AllowedModel]:
+    """Return an allow-list with embedding models only."""
+    return [
+        AllowedModel(
+            name="embed-only",
+            provider_model_id="text-embedding-3-small",
+            model_type="embedding",
+        )
+    ]
+
+
+def _rerank_only_models() -> list[AllowedModel]:
+    """Return an allow-list with rerank models only."""
+    return [
+        AllowedModel(
+            name="rerank-only",
+            provider_model_id="cross-encoder",
+            model_type="rerank",
+        )
+    ]
+
+
+def _patch_inference_defaults(
+    mocker: Any,
+    *,
+    default_model: Optional[str],
+    default_provider: Optional[str],
+) -> None:
+    """Patch resolve.configuration with fixed default provider/model ids."""
+    mocker.patch(
+        "providers.inference.resolve.configuration",
+        mocker.Mock(
+            inference=mocker.Mock(
+                default_model=default_model,
+                default_provider=default_provider,
+            )
+        ),
+    )
+
+
+def _patch_conversation(
+    mocker: Any,
+    *,
+    last_used_provider: str = "openai",
+    last_used_model: str = "conv-chat",
+) -> None:
+    """Patch conversation lookup used by soft last-used fallback."""
+    conversation = mocker.Mock()
+    conversation.last_used_provider = last_used_provider
+    conversation.last_used_model = last_used_model
+    mocker.patch(
+        "providers.inference.resolve.retrieve_conversation",
+        return_value=conversation,
+    )
+
+
+async def _ready_registry(
+    *providers: OpenAIInferenceProviderEntry,
+) -> ProviderRegistry:
+    """Register FakeInferenceProvider and initialize with the given providers."""
+    _register_fake("openai")
+    registry = ProviderRegistry()
+    await registry.initialize(_inference_config(*providers))
+    return registry
 
 
 @pytest.mark.asyncio
@@ -195,3 +287,240 @@ async def test_list_models_aggregates_providers_and_filters_by_type() -> None:
         "embed-a",
         "embed-b",
     ]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("model_type", "model_id", "expected_type"),
+    [
+        ("llm", "chat", TestModel),
+        ("embedding", "embed", TestEmbeddingModel),
+        ("rerank", "rerank", CrossEncoder),
+    ],
+)
+async def test_resolve_model_instance_explicit_success(
+    model_type: ModelType,
+    model_id: str,
+    expected_type: type,
+) -> None:
+    """Explicit provider/model ids return the typed model instance."""
+    registry = await _ready_registry(_openai_entry())
+
+    instance = registry.resolve_model_instance(
+        model_type,
+        provider_id="openai",
+        model_id=model_id,
+    )
+
+    assert isinstance(instance, expected_type)
+
+
+@pytest.mark.asyncio
+async def test_resolve_model_instance_unknown_provider_raises() -> None:
+    """Explicit unknown provider_id raises ProviderNotFoundError."""
+    registry = await _ready_registry(_openai_entry())
+
+    with pytest.raises(ProviderNotFoundError) as exc_info:
+        registry.resolve_model_instance(
+            "llm",
+            provider_id="missing",
+            model_id="chat",
+        )
+
+    assert exc_info.value.provider_id == "missing"
+
+
+@pytest.mark.asyncio
+async def test_resolve_model_instance_unknown_model_raises() -> None:
+    """Explicit unknown model_id raises ModelNotAvailableError."""
+    registry = await _ready_registry(_openai_entry())
+
+    with pytest.raises(ModelNotAvailableError) as exc_info:
+        registry.resolve_model_instance(
+            "llm",
+            provider_id="openai",
+            model_id="missing",
+        )
+
+    assert exc_info.value.name == "missing"
+    assert exc_info.value.model_type == "llm"
+    assert exc_info.value.provider_id == "openai"
+
+
+@pytest.mark.asyncio
+async def test_resolve_model_instance_type_mismatch_raises() -> None:
+    """Explicit model present under another type raises ModelNotAvailableError."""
+    registry = await _ready_registry(_openai_entry())
+
+    with pytest.raises(ModelNotAvailableError) as exc_info:
+        registry.resolve_model_instance(
+            "embedding",
+            provider_id="openai",
+            model_id="chat",
+        )
+
+    assert exc_info.value.name == "chat"
+    assert exc_info.value.model_type == "embedding"
+
+
+@pytest.mark.asyncio
+async def test_resolve_model_instance_prefers_conversation_over_defaults(
+    mocker: Any,
+) -> None:
+    """Conversation last-used wins when both it and configured defaults are available."""
+    registry = await _ready_registry(
+        _openai_entry(
+            allowed_models=[
+                _llm_model("conv-chat"),
+                _llm_model("default-chat"),
+                _llm_model("first-chat"),
+            ]
+        )
+    )
+    _patch_conversation(mocker, last_used_model="conv-chat")
+    _patch_inference_defaults(
+        mocker, default_model="default-chat", default_provider="openai"
+    )
+
+    instance = registry.resolve_model_instance("llm", conversation_id="conv-1")
+
+    assert isinstance(instance, TestModel)
+    assert instance.model_name == "conv-chat"
+
+
+@pytest.mark.asyncio
+async def test_resolve_model_instance_skips_unavailable_conversation_model(
+    mocker: Any,
+) -> None:
+    """Missing conversation last-used model falls through to configured defaults."""
+    registry = await _ready_registry(
+        _openai_entry(
+            allowed_models=[
+                _llm_model("default-chat"),
+                _llm_model("first-chat"),
+            ]
+        )
+    )
+    _patch_conversation(mocker, last_used_model="gone-chat")
+    _patch_inference_defaults(
+        mocker, default_model="default-chat", default_provider="openai"
+    )
+
+    instance = registry.resolve_model_instance("llm", conversation_id="conv-1")
+
+    assert isinstance(instance, TestModel)
+    assert instance.model_name == "default-chat"
+
+
+@pytest.mark.asyncio
+async def test_resolve_model_instance_skips_unregistered_conversation_provider(
+    mocker: Any,
+) -> None:
+    """Unregistered conversation last-used provider falls through to defaults."""
+    registry = await _ready_registry(
+        _openai_entry(
+            allowed_models=[
+                _llm_model("default-chat"),
+                _llm_model("first-chat"),
+            ]
+        )
+    )
+    _patch_conversation(
+        mocker, last_used_provider="missing", last_used_model="conv-chat"
+    )
+    _patch_inference_defaults(
+        mocker, default_model="default-chat", default_provider="openai"
+    )
+
+    instance = registry.resolve_model_instance("llm", conversation_id="conv-1")
+
+    assert isinstance(instance, TestModel)
+    assert instance.model_name == "default-chat"
+
+
+@pytest.mark.asyncio
+async def test_resolve_model_instance_skips_unavailable_default_model(
+    mocker: Any,
+) -> None:
+    """Unavailable conversation and default models fall through to first llm."""
+    registry = await _ready_registry(
+        _openai_entry(allowed_models=[_llm_model("first-chat")])
+    )
+    _patch_conversation(mocker, last_used_model="gone-chat")
+    _patch_inference_defaults(
+        mocker, default_model="gone-default", default_provider="openai"
+    )
+
+    instance = registry.resolve_model_instance("llm", conversation_id="conv-1")
+
+    assert isinstance(instance, TestModel)
+    assert instance.model_name == "first-chat"
+
+
+@pytest.mark.asyncio
+async def test_resolve_model_instance_skips_unregistered_default_provider(
+    mocker: Any,
+) -> None:
+    """Unregistered configured default provider falls through to first llm."""
+    registry = await _ready_registry(
+        _openai_entry(allowed_models=[_llm_model("first-chat")])
+    )
+    _patch_conversation(mocker, last_used_model="gone-chat")
+    _patch_inference_defaults(
+        mocker, default_model="default-chat", default_provider="missing"
+    )
+
+    instance = registry.resolve_model_instance("llm", conversation_id="conv-1")
+
+    assert isinstance(instance, TestModel)
+    assert instance.model_name == "first-chat"
+
+
+@pytest.mark.asyncio
+async def test_resolve_model_instance_selects_first_available_llm_in_order(
+    mocker: Any,
+) -> None:
+    """First-available llm uses registration order and skips non-llm providers."""
+    registry = await _ready_registry(
+        _openai_entry("embed-provider", allowed_models=_embed_only_models()),
+        _openai_entry("rerank-provider", allowed_models=_rerank_only_models()),
+        _openai_entry(
+            "llm-provider",
+            allowed_models=[
+                _llm_model("first-chat"),
+                _llm_model("second-chat"),
+            ],
+        ),
+        _openai_entry(
+            "later-provider",
+            allowed_models=[_llm_model("later-chat")],
+        ),
+    )
+    _patch_inference_defaults(mocker, default_model=None, default_provider=None)
+
+    instance = registry.resolve_model_instance("llm")
+
+    assert isinstance(instance, TestModel)
+    assert instance.model_name == "first-chat"
+
+
+@pytest.mark.asyncio
+async def test_resolve_model_instance_raises_when_nothing_resolvable(
+    mocker: Any,
+) -> None:
+    """Exhausted soft fallbacks raise NoModelConfiguredError."""
+    registry = await _ready_registry(
+        _openai_entry("embed-provider", allowed_models=_embed_only_models()),
+        _openai_entry("rerank-provider", allowed_models=_rerank_only_models()),
+    )
+    _patch_conversation(
+        mocker, last_used_provider="missing", last_used_model="gone-chat"
+    )
+    _patch_inference_defaults(
+        mocker, default_model="gone-default", default_provider="missing"
+    )
+
+    with pytest.raises(NoModelConfiguredError) as exc_info:
+        registry.resolve_model_instance("llm", conversation_id="conv-1")
+
+    assert exc_info.value.model_type == "llm"

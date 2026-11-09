@@ -35,6 +35,8 @@ from models.common.turn_summary import (
 from models.config import Action
 from utils.conversation_compaction import CompactionResult
 from utils.otel_tracing import SpanAttributes, SpanEvents
+from utils.query import consume_summarization_tokens
+from utils.token_counter import TokenCounter
 
 INTERRUPTED_INDICATOR = f"\n\n*{INTERRUPTED_RESPONSE_MESSAGE}*"
 
@@ -925,11 +927,18 @@ class TestGenerateResponseWithCompaction:  # pylint: disable=too-few-public-meth
             query="What is OpenShift?"
         )  # pyright: ignore[reportCallIssue]
 
-        compaction_result = CompactionResult(responses_params, compacted=compacted)
+        compaction_result = CompactionResult(
+            responses_params,
+            compacted=compacted,
+            summarization_usage=TokenCounter(input_tokens=640, output_tokens=72),
+        )
+
+        compaction_kwargs: dict[str, Any] = {}
 
         async def fake_apply_compaction(
-            *_args: Any, **_kwargs: Any
+            *_args: Any, **kwargs: Any
         ) -> AsyncIterator[CompactionResult]:
+            compaction_kwargs.update(kwargs)
             yield compaction_result
 
         mocker.patch(
@@ -983,3 +992,13 @@ class TestGenerateResponseWithCompaction:  # pylint: disable=too-few-public-meth
 
         assert events  # the start event plus the delegated events
         assert captured_kwargs["context_status"] == expected_status
+        # The summarization calls are recorded under this endpoint and charged
+        # to the user of the request (LCORE-3910).
+        assert compaction_kwargs["endpoint_path"] == "/v1/streaming_query"
+        charge = compaction_kwargs["charge"]
+        assert charge.func is consume_summarization_tokens
+        assert charge.args == ("user_123",)
+        # Their usage is handed on to be reported in the end event.
+        assert captured_kwargs["summarization_usage"] == TokenCounter(
+            input_tokens=640, output_tokens=72
+        )

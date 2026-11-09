@@ -4,7 +4,7 @@ from collections.abc import Sequence
 from typing import Optional
 
 from pydantic_ai.messages import TextContent, UserContent
-from pydantic_ai.models import Model
+from pydantic_ai.models import AbstractModel, Model
 
 
 def extract_message_str_from_user_content(
@@ -49,13 +49,17 @@ def message_to_str(message: Optional[str | Sequence[UserContent]]) -> str:
             return ""
 
 
-def extract_conversation_id(model: Model) -> Optional[str]:
+def extract_conversation_id(model: AbstractModel) -> Optional[str]:
     """Extract the conversation ID from the agent's model settings.
 
     The main agent's model is built with ``conversation`` in its
     ``extra_body`` model settings (see ``OgxResponsesModel.from_ogx_client``).
     This pulls it back out so the capability can persist the rejected turn
     to the same conversation.
+
+    ``RunContext.model`` is typed as ``AbstractModel`` (no settings). Request-
+    response models are ``Model`` subclasses that expose typed ``settings``;
+    realtime models and other non-``Model`` identities return ``None``.
 
     Parameters:
         model: The model bound to the current agent run (``ctx.model``).
@@ -64,6 +68,9 @@ def extract_conversation_id(model: Model) -> Optional[str]:
         The conversation ID, or None if the model has no such setting.
 
     """
+    if not isinstance(model, Model):
+        return None
+
     extra_body = (model.settings or {}).get("extra_body")
     if not isinstance(extra_body, dict):
         return None

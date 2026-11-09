@@ -255,7 +255,7 @@ correct_configurations = [
             "db": "Present ever art central. Work smile six.",
             "user": "Later spring song.",
             "password": "&8wr@Mt@lMZG",
-            "namespace": "Seem own offer deal energy.",
+            "namespace": "Seem_own_offer_deal_energy",
             "ssl_mode": "disable",
             "gss_encmode": "disable",
         },
@@ -406,7 +406,7 @@ correct_configurations = [
             "db": "Decide history worker can stand.",
             "user": "Type away organization debate stand.",
             "password": "@alvNH%qK%47",
-            "namespace": "Compare gun trip establish key.",
+            "namespace": "Compare_gun_trip_establish_key",
             "ssl_mode": "disable",
             "gss_encmode": "disable",
         },
@@ -743,7 +743,7 @@ def test_quota_handlers_from_dict_negative_cases(config_dict: dict[str, Any]) ->
     """Test the configuration initialization from dictionary with config values."""
     with pytest.raises(
         ValidationError,
-        match=" validation error for QuotaHandlersConfiguration",
+        match=" validation errors? for QuotaHandlersConfiguration",
     ):
         # try to initialize the app config and load configuration from a Python
         # dictionary

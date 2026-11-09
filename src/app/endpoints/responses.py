@@ -6,7 +6,8 @@ import json
 import time
 from collections.abc import AsyncIterator, Sequence
 from datetime import UTC, datetime
-from typing import Annotated, Any, Final, NoReturn, Optional, cast
+from functools import partial
+from typing import TYPE_CHECKING, Annotated, Any, Final, NoReturn, Optional, cast
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
@@ -55,7 +56,6 @@ from models.api.responses.error import (
 )
 from models.api.responses.error.bases import AbstractErrorResponse
 from models.api.responses.successful import ResponsesResponse
-from models.common.moderation import ShieldModerationBlocked
 from models.common.responses.contexts import ResponsesContext
 from models.common.responses.responses_api_params import ResponsesApiParams
 from models.common.responses.types import ResponseInput, ResponseMessage
@@ -91,6 +91,7 @@ from utils.pending_turn import PendingTurn
 from utils.prompts import get_system_prompt
 from utils.query import (
     consume_query_tokens,
+    consume_summarization_tokens,
     extract_provider_and_model_from_model_id,
     handle_known_apistatus_errors,
     is_context_length_error,
@@ -104,7 +105,7 @@ from utils.responses import (
     build_turn_summary,
     check_model_configured,
     deduplicate_referenced_documents,
-    extract_attachments_text,
+    extract_shield_moderation_text,
     extract_text_from_response_items,
     extract_token_usage,
     extract_vector_store_ids_from_tools,
@@ -128,6 +129,9 @@ from utils.vector_search import (
     append_inline_rag_context_to_responses_input,
     build_rag_context,
 )
+
+if TYPE_CHECKING:
+    from models.common.moderation import ShieldModerationBlocked
 
 logger = get_logger(__name__)
 tracer = trace.get_tracer(__name__)
@@ -651,13 +655,18 @@ async def handle_responses_with_tracing(  # pylint: disable=too-many-locals
     ):
         client = await AsyncOgxClientHolder().update_azure_token()
 
-    attachments_text = extract_attachments_text(original_request.input)
     add_span_event(root_span, SpanEvents.VALIDATION_COMPLETED)
 
     endpoint_path = ENDPOINT_PATH_RESPONSES
 
+    shield_after_last_refusal = (
+        request.headers.get("X-LCS-Shield-After-Last-Refusal", "").lower() == "true"
+    )
     moderation_result = await run_shield_moderation_v2(
-        input_text + "\n\n" + attachments_text,
+        extract_shield_moderation_text(
+            original_request.input,
+            shield_after_last_refusal,
+        ),
         configuration.configuration.shields,
         responses_request.shield_ids,
     )
@@ -730,6 +739,11 @@ async def handle_responses_with_tracing(  # pylint: disable=too-many-locals
             cache=configured_conversation_cache(),
             user_id=user_id,
             skip_user_id_check=skip_userid_check,
+            endpoint_path=endpoint_path,
+            # The summarization calls are charged to the user. The usage
+            # object of the response stays as OGX reported it, so it covers
+            # the answer alone.
+            charge=partial(consume_summarization_tokens, user_id),
         )
         api_params = compaction.params
         if compaction.compacted:

@@ -23,10 +23,11 @@ class ShieldModerationBlocked(BaseModel):
 
     @property
     def refusal_response(self) -> ResponseMessage:
-        """Build a ResponseMessage carrying the shield's refusal text."""
+        """Build a refusal message; ``id`` is the moderation id (``modr-…``)."""
         return ResponseMessage(
             role="assistant",
             content=self.message,
+            id=self.moderation_id,
         )
 
 

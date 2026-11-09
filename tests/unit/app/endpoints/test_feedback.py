@@ -7,7 +7,7 @@ import json
 import threading
 from collections.abc import Generator
 from pathlib import Path
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 import pytest
 from fastapi import HTTPException, status
@@ -25,11 +25,13 @@ from app.endpoints.feedback import (
     store_feedback,
     update_feedback_status,
 )
-from authentication.interface import AuthTuple
 from configuration import AppConfig, configuration
 from models.api.requests import FeedbackRequest, FeedbackStatusUpdateRequest
 from models.config import UserDataCollection
 from tests.unit.utils.auth_helpers import mock_authorization_resolvers
+
+if TYPE_CHECKING:
+    from authentication.interface import AuthTuple
 
 MOCK_AUTH = ("mock_user_id", "mock_username", False, "mock_token")
 

@@ -9,7 +9,7 @@ class ModelNotAvailableError(Exception):
     def __init__(self, name: str, model_type: str, provider_id: str) -> None:
         """Initialize with the unavailable model identity.
 
-        Parameters:
+        Args:
             name: Local catalog model name that was requested.
             model_type: Requested model type (llm, embedding, or rerank).
             provider_id: Provider that rejected the request.
@@ -53,4 +53,34 @@ class ProviderNotFoundError(Exception):
 
         """
         super().__init__(f"Inference provider {provider_id!r} is not registered")
+        self.provider_id = provider_id
+
+
+class NoModelConfiguredError(Exception):
+    """Raised when no model can be resolved after soft fallbacks."""
+
+    def __init__(self, model_type: ModelType) -> None:
+        """Initialize with the unresolved model capability.
+
+        Args:
+            model_type: Model type that could not be resolved.
+
+        """
+        super().__init__(
+            f"No {model_type!r} model is configured or available in the catalog"
+        )
+        self.model_type = model_type
+
+
+class ModelDiscoveryError(Exception):
+    """Raised when a provider cannot discover available models."""
+
+    def __init__(self, provider_id: ProviderId) -> None:
+        """Initialize with the provider whose model discovery failed.
+
+        Args:
+            provider_id: Provider whose model discovery failed.
+
+        """
+        super().__init__(f"Failed to discover models for provider {provider_id!r}")
         self.provider_id = provider_id

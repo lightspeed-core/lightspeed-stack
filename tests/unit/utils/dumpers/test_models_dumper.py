@@ -2504,10 +2504,9 @@ def test_dump_models(tmpdir: Path) -> None:
                     "type": "object"
                 },
                 "InfoResponse": {
-                    "description": "Model representing a response to an info request.\n\nAttributes:\n    name: Service name.\n    service_version: Service version.\n    ogx_version: OGX version.",
+                    "description": "Model representing a response to an info request.\n\nAttributes:\n    name: Service name.\n    service_version: Service version.",
                     "examples": [
                         {
-                            "ogx_version": "1.0.0",
                             "name": "Lightspeed Stack",
                             "service_version": "1.0.0"
                         }
@@ -2530,24 +2529,11 @@ def test_dump_models(tmpdir: Path) -> None:
                             ],
                             "title": "Service Version",
                             "type": "string"
-                        },
-                        "ogx_version": {
-                            "description": "OGX version",
-                            "examples": [
-                                "0.2.1",
-                                "0.2.2",
-                                "0.2.18",
-                                "0.2.21",
-                                "0.2.22"
-                            ],
-                            "title": "OGX Version",
-                            "type": "string"
                         }
                     },
                     "required": [
                         "name",
-                        "service_version",
-                        "ogx_version"
+                        "service_version"
                     ],
                     "title": "InfoResponse",
                     "type": "object"

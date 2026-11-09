@@ -202,6 +202,12 @@ product questions using backend LLM services, agents, and RAG databases.
 
 [Design](https://lightspeed-core.github.io/lightspeed-stack/design/widget-system/widget-system.html)
 
+*** RAG Knowledge capability ***
+
+[Spike](https://lightspeed-core.github.io/lightspeed-stack/design/rag-vector-stores-migration/rag-vector-stores-migration-spike.html)
+
+[Design](https://lightspeed-core.github.io/lightspeed-stack/design/rag-vector-stores-migration/knowledge-capability.html)
+
 ## Demos
 
 [LCORE introduction](https://lightspeed-core.github.io/lightspeed-stack/demos/lcore/lcore.html#/)

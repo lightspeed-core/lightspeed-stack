@@ -57,8 +57,6 @@ dependencies = [
     # Used by authorization resolvers
     "jsonpath-ng>=1.6.1,<1.9.0",
     "psycopg2-binary>=2.9.10",
-    # LCORE-1565
-    "litellm>=1.83.7",
     "urllib3>=2.6.3",
     # Used for agent card configuration
     "PyYAML>=6.0.0",
@@ -86,12 +84,22 @@ dependencies = [
     # Used for model context windows in conversation compaction (LCORE-4765)
     "genai-prices>=0.1.12",
     # Used for Pydantic AI
-    "pydantic-ai==2.27.1",
-    "pydantic-ai-skills>=0.11.0",
+    "pydantic-ai==2.38.0",
+    # Used for conversation compaction (TieredCompaction, LCORE-4692); 0.30.0 is the
+    # newest release that supports pydantic-ai 2.38.x (0.31+ needs pydantic-ai-slim>=2.40)
+    "pydantic-ai-harness==0.30.0",
+    "pydantic-ai-skills>=0.11.0,<2.0.0",
+    # Used by the sentence-transformers inference provider (embedding / rerank)
+    "sentence-transformers>=5.6.0",
     # Used for OpenTelemetry instrumentation
     "opentelemetry-distro>=0.49b0",
     "opentelemetry-exporter-otlp>=1.34.1",
     "opentelemetry-instrumentation-fastapi>=0.49b0",
+    # Used by the redaction engine (src/pii_redaction_engine) for PII detection/redaction
+    "presidio-analyzer>=2.2.364",
+    "presidio-anonymizer>=2.2.364",
+    "boto3",
+    "nh3>=0.3.6",
 ]
 
 
@@ -161,6 +169,7 @@ dev = [
     "pygal>=3.1.3",
     "pygaljs>=1.0.2",
     "pdm>=2.29.2",
+    "pandas>=2.2.3",
 ]
 ogxlibdev = [
     # To check OGX API provider dependecies:
@@ -179,8 +188,6 @@ ogxlibdev = [
     "langdetect>=1.0.9",
     "emoji>=2.1.0",
     "nltk>=3.8.1",
-    # API inference: inline::sentence-transformers
-    "sentence-transformers>=5.6.0",
     # API vector_io: inline::faiss, inline::sqlite-vec, remote::pgvector
     "faiss-cpu>=1.11.0",
     "chardet>=5.2.0",
@@ -207,9 +214,6 @@ ogxlibdev = [
     "peft>=0.15.2",
     # API inference: remote::vertexai
     "google-cloud-aiplatform>=1.130.0",
-    # API inference: remote::watsonx
-    # LCORE-1565
-    "litellm>=1.88.6",
     # Other
     "autoevals>=0.0.129",
     "fire>=0.7.0",
@@ -274,3 +278,7 @@ disallow_untyped_defs = true
 disallow_incomplete_defs = true
 ignore_missing_imports = true
 disable_error_code = "attr-defined"
+# Presidio (used by src/pii_redaction_engine) ships py.typed but leaves some public
+# constructors unannotated, so calling them trips disallow_untyped_calls. Allow
+# those specific untyped calls rather than annotating a third-party library.
+untyped_calls_exclude = ["presidio_analyzer", "presidio_anonymizer"]

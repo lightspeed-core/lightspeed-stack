@@ -4,8 +4,10 @@
 
 from typing import Any
 
+import httpx
 import pytest
-from openai import AsyncAzureOpenAI
+from azure.core.exceptions import ClientAuthenticationError
+from openai import APIConnectionError, AsyncAzureOpenAI
 from pydantic import SecretStr
 from pydantic_ai.embeddings.openai import OpenAIEmbeddingModel
 from pydantic_ai.models.openai import OpenAIResponsesModel
@@ -14,7 +16,7 @@ from pydantic_ai.providers.azure import AzureProvider
 from models.config import AzureEntraIdConfiguration, AzureInferenceProviderEntry
 from providers.inference.azure.provider import AzureInferenceProvider
 from providers.inference.catalog import CatalogModel
-from providers.inference.errors import ModelTypeNotSupportedError
+from providers.inference.errors import ModelDiscoveryError, ModelTypeNotSupportedError
 
 AZURE_ENDPOINT = "https://example.openai.azure.com/"
 API_VERSION = "2024-12-01-preview"
@@ -63,9 +65,13 @@ def _patch_entra_dependencies(mocker: Any) -> tuple[Any, Any, Any]:
         "providers.inference.azure.provider.get_bearer_token_provider",
         return_value=token_provider,
     )
+    # PAI AzureProvider(openai_client=...) reads api_key and base_url at init.
+    openai_client = mocker.MagicMock(spec=AsyncAzureOpenAI)
+    openai_client.api_key = None
+    openai_client.base_url = AZURE_ENDPOINT
     client = mocker.patch(
         "providers.inference.azure.provider.AsyncAzureOpenAI",
-        return_value=mocker.MagicMock(spec=AsyncAzureOpenAI),
+        return_value=openai_client,
     )
     return credential, get_token_provider, client
 
@@ -184,6 +190,38 @@ async def test_discover_models_infers_model_types(
     assert discovered[0].provider_model_id == model_id
     assert discovered[0].model_type == expected_type
     pai_provider.client.models.list.assert_awaited_once_with()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "cause",
+    [
+        APIConnectionError(
+            message="connection failed",
+            request=httpx.Request(  # pyright: ignore[reportArgumentType]
+                "GET", f"{AZURE_ENDPOINT}openai/models"
+            ),
+        ),
+        ClientAuthenticationError(message="token acquisition failed"),
+    ],
+    ids=["connection-error", "entra-auth-error"],
+)
+async def test_discover_models_wraps_foreign_failures(
+    provider: AzureInferenceProvider,
+    mocker: Any,
+    cause: Exception,
+) -> None:
+    """OpenAI API subclasses and Entra auth failures become ModelDiscoveryError."""
+    pai_provider = mocker.MagicMock(spec=AzureProvider)
+    pai_provider.client.models.list = mocker.AsyncMock(side_effect=cause)
+    provider._provider = pai_provider
+
+    with pytest.raises(ModelDiscoveryError) as exc_info:
+        await provider._discover_models()
+
+    assert exc_info.value.provider_id == "azure"
+    assert str(exc_info.value) == "Failed to discover models for provider 'azure'"
+    assert exc_info.value.__cause__ is cause
 
 
 def test_create_llm_uses_openai_responses_model(

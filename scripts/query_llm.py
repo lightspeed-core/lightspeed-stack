@@ -19,7 +19,7 @@ def main() -> int:
     Parses command-line arguments (--query, --system-prompt, --url, --timeout),
     POSTs a JSON payload with the query and system prompt to the configured
     endpoint, and prints the returned "response" value followed by the request
-    elapsed time. Error diagnostics are printed to stderr.
+    elapsed time in seconds. Error diagnostics are printed to stderr.
 
     Returns:
         int: Exit code where
@@ -27,6 +27,10 @@ def main() -> int:
             `1` indicates an HTTP/request failure,
             `2` indicates the server response was not valid JSON,
             `3` indicates the JSON response did not contain a `"response"` field.
+
+    Raises:
+        SystemExit: If command-line arguments are invalid or help is requested.
+        TypeError: If a non-object JSON response cannot be processed.
 
     """
     parser = argparse.ArgumentParser(
@@ -74,7 +78,7 @@ def main() -> int:
         print(resp.text[:1000], file=sys.stderr)
         return 2
 
-    if "response" not in obj:
+    if not isinstance(obj, dict) or "response" not in obj:
         print("JSON is missing 'response' field:", file=sys.stderr)
         print(obj, file=sys.stderr)
         return 3

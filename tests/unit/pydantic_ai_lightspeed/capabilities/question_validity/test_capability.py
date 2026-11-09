@@ -7,6 +7,7 @@ from pydantic import ValidationError
 from pydantic_ai import AgentRunResult, RunContext
 from pydantic_ai.messages import ImageUrl, ModelResponse, TextContent, TextPart
 from pydantic_ai.models.openai import OpenAIResponsesModelSettings
+from pydantic_ai.models.test import TestModel
 from pydantic_ai.usage import RequestUsage, RunUsage
 from pytest_mock import MockerFixture, MockType
 
@@ -71,40 +72,39 @@ class TestExtractMessageStrFromUserContent:
 class TestExtractConversationId:
     """Tests for extract_conversation_id helper."""
 
-    def test_extracts_conversation_id(self, mocker: MockerFixture) -> None:
+    def test_extracts_conversation_id(self) -> None:
         """Test extraction when extra_body.conversation is set."""
-        model = mocker.Mock()
-        model.settings = {"extra_body": {"conversation": "conv_123"}}
+        model = TestModel(settings={"extra_body": {"conversation": "conv_123"}})
 
         assert extract_conversation_id(model) == "conv_123"
 
-    def test_returns_none_when_settings_missing(self, mocker: MockerFixture) -> None:
+    def test_returns_none_when_settings_missing(self) -> None:
         """Test that None settings yields None."""
-        model = mocker.Mock()
-        model.settings = None
+        model = TestModel(settings=None)
 
         assert extract_conversation_id(model) is None
 
-    def test_returns_none_when_extra_body_missing(self, mocker: MockerFixture) -> None:
+    def test_returns_none_when_extra_body_missing(self) -> None:
         """Test that missing extra_body yields None."""
-        model = mocker.Mock()
-        model.settings = {}
+        model = TestModel(settings={})
 
         assert extract_conversation_id(model) is None
 
-    def test_returns_none_when_extra_body_not_dict(self, mocker: MockerFixture) -> None:
+    def test_returns_none_when_extra_body_not_dict(self) -> None:
         """Test that a non-dict extra_body yields None instead of raising."""
-        model = mocker.Mock()
-        model.settings = {"extra_body": "not-a-dict"}
+        model = TestModel(settings={"extra_body": "not-a-dict"})
 
         assert extract_conversation_id(model) is None
 
-    def test_returns_none_when_conversation_not_string(
-        self, mocker: MockerFixture
-    ) -> None:
+    def test_returns_none_when_conversation_not_string(self) -> None:
         """Test that a non-string conversation value yields None."""
-        model = mocker.Mock()
-        model.settings = {"extra_body": {"conversation": 123}}
+        model = TestModel(settings={"extra_body": {"conversation": 123}})
+
+        assert extract_conversation_id(model) is None
+
+    def test_returns_none_for_non_model_abstract(self, mocker: MockerFixture) -> None:
+        """Test that AbstractModel without Model settings yields None."""
+        model = mocker.Mock(spec=["model_name", "system"])
 
         assert extract_conversation_id(model) is None
 
@@ -273,8 +273,7 @@ class TestWrapRun:
         ctx = mocker.Mock(spec=RunContext)
         ctx.prompt = "How do I create a pod?"
         ctx.usage = RunUsage()
-        ctx.model = mocker.Mock()
-        ctx.model.settings = {"extra_body": {"conversation": "conv_test"}}
+        ctx.model = TestModel(settings={"extra_body": {"conversation": "conv_test"}})
         return ctx
 
     @pytest.fixture(name="mock_handler")
@@ -375,7 +374,7 @@ class TestWrapRun:
         mock_append_turn: MockType,
     ) -> None:
         """Test that persistence is skipped (not crashed) without a conversation ID."""
-        mock_ctx.model = mocker.Mock(settings={})
+        mock_ctx.model = TestModel(settings={})
         mock_response = ModelResponse(
             parts=[TextPart(content=SUBJECT_REJECTED)],
             usage=RequestUsage(),
@@ -605,8 +604,7 @@ class TestWrapRun:
         ctx = mocker.Mock(spec=RunContext)
         ctx.prompt = None
         ctx.usage = RunUsage()
-        ctx.model = mocker.Mock()
-        ctx.model.settings = {"extra_body": {"conversation": "conv_test"}}
+        ctx.model = TestModel(settings={"extra_body": {"conversation": "conv_test"}})
 
         mock_response = ModelResponse(
             parts=[TextPart(content=SUBJECT_REJECTED)],
@@ -742,6 +740,7 @@ class TestQuestionValidityRun:
         assert result.moderation_id.startswith("modr-")
         assert result.refusal_response.role == "assistant"
         assert result.refusal_response.content == DEFAULT_INVALID_QUESTION_RESPONSE
+        assert result.refusal_response.id == result.moderation_id
 
     @pytest.mark.asyncio
     async def test_unexpected_response_returns_blocked(

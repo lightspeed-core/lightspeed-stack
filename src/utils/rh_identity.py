@@ -4,11 +4,12 @@ This module provides functions to extract organization and system identifiers
 from Red Hat Identity request state for telemetry and logging purposes.
 """
 
-from typing import Final, Optional
+from typing import TYPE_CHECKING, Final, Optional
 
 from starlette.requests import Request
 
-from authentication.rh_identity import RHIdentityData
+if TYPE_CHECKING:
+    from authentication.rh_identity import RHIdentityData
 
 # Default value when RH Identity auth is not configured
 AUTH_DISABLED: Final[str] = "auth_disabled"

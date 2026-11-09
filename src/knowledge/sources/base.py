@@ -1,7 +1,6 @@
 """Abstract base for pluggable knowledge sources."""
 
 from abc import ABC, abstractmethod
-from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import Literal, Optional
 
@@ -46,7 +45,7 @@ class VectorStore(ABC):  # pylint: disable=too-few-public-methods
     @abstractmethod
     async def search(
         self,
-        embeddings: Sequence[Sequence[float]],
+        embeddings: list[list[float]],
         limit: int = 5,
         threshold: float = 0.0,
     ) -> list[KnowledgeMatch]:
@@ -84,8 +83,9 @@ class VectorStoreKnowledgeSource(KnowledgeSource):
         embedding_result = await self.embedder.embed_query(
             prompt, settings=self.embedding_settings
         )
+        embeddings = [list(vector) for vector in embedding_result.embeddings]
         return await self.store.search(
-            embedding_result.embeddings,
+            embeddings,
             limit=self.top_k,
             threshold=self.score_threshold,
         )

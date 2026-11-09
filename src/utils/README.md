@@ -20,6 +20,10 @@ Common utilities for the project.
 
 Conversation compaction — partitioning, summarization, additive fold-up.
 
+## [compaction_usage.py](compaction_usage.py)
+
+Accounting for the LLM calls conversation compaction makes (LCORE-3910).
+
 ## [connection_decorator.py](connection_decorator.py)
 
 Decorator that makes sure the object is 'connected' according to it's connected predicate.
@@ -72,6 +76,10 @@ Check if the OGX version is supported by the LCS.
 
 OpenTelemetry tracing utilities for Lightspeed Core Stack.
 
+## [pending_turn.py](pending_turn.py)
+
+The owner of the turns lightspeed-stack has to store itself (LCORE-3908).
+
 ## [prompts.py](prompts.py)
 
 Utility functions for system prompts.
@@ -119,6 +127,10 @@ SSE formatting helpers for streaming query responses.
 ## [suid.py](suid.py)
 
 Session ID utility functions.
+
+## [tiered_compaction.py](tiered_compaction.py)
+
+Build the harness ``TieredCompaction`` capability from the compaction config.
 
 ## [token_counter.py](token_counter.py)
 

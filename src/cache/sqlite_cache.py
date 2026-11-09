@@ -3,6 +3,7 @@
 import builtins
 import json
 import sqlite3
+from pathlib import Path
 from time import time
 
 from cache.cache import Cache
@@ -185,10 +186,12 @@ class SQLiteCache(Cache):
     def connect(self) -> None:
         """Initialize connection to database.
 
-        Establish a SQLite connection using the configured db_path, initialize
-        the cache schema, and enable autocommit.
+        Create the parent directory of the configured db_path if needed,
+        establish a SQLite connection, initialize the cache schema, and enable
+        autocommit.
 
         Raises:
+            CacheError: If the parent directory of db_path cannot be created.
             sqlite3.Error: If the database cannot be opened or the cache schema
             cannot be initialized.
 
@@ -198,6 +201,13 @@ class SQLiteCache(Cache):
         # even if SQLite is not alive
         self.connection = None
         config = self.sqlite_config
+        try:
+            Path(config.db_path).parent.mkdir(parents=True, exist_ok=True)
+        except OSError as e:
+            logger.exception("Error creating SQLite cache directory:\n%s", e)
+            raise CacheError(
+                f"Cannot create directory for SQLite cache {config.db_path}: {e}"
+            ) from e
         try:
             self.connection = sqlite3.connect(database=config.db_path)
             self.initialize_cache()

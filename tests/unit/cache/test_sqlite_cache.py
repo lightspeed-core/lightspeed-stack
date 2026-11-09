@@ -124,17 +124,40 @@ def test_cache_initialization(tmpdir: Path) -> None:
     assert cache.connection is not None
 
 
-def test_cache_initialization_wrong_connection() -> None:
-    """Test the get operation when DB can not be connected.
+def test_cache_initialization_creates_missing_directories(tmp_path: Path) -> None:
+    """Test that the cache creates the missing parents of its database file."""
+    db_path = tmp_path / "non-existent" / "nested" / "test.sqlite"
 
-    Verify that creating a cache with an invalid database path fails to open the database.
+    cache = SQLiteCache(SQLiteDatabaseConfiguration(db_path=str(db_path)))
 
-    Asserts that attempting to create a SQLiteCache with a non-existent or
-    inaccessible path raises an exception containing the text "unable to open
-    database file".
+    assert cache.connected()
+    assert db_path.is_file()
+
+
+@pytest.mark.parametrize("db_path", ["test.sqlite", ":memory:"])
+def test_cache_initialization_without_directory(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, db_path: str
+) -> None:
+    """Test that a database path with no directory part is still accepted."""
+    monkeypatch.chdir(tmp_path)
+
+    cache = SQLiteCache(SQLiteDatabaseConfiguration(db_path=db_path))
+
+    assert cache.connected()
+
+
+def test_cache_initialization_directory_cannot_be_created(tmp_path: Path) -> None:
+    """Test that a directory that cannot be created is reported with its path.
+
+    A regular file in the middle of the path makes the directory impossible to
+    create for any user, including root.
     """
-    with pytest.raises(Exception, match="unable to open database file"):
-        _ = create_cache(Path("/foo/bar/baz"))
+    blocker = tmp_path / "regular-file"
+    blocker.touch()
+    db_path = str(blocker / "nested" / "test.sqlite")
+
+    with pytest.raises(CacheError, match="Cannot create directory.*test.sqlite"):
+        SQLiteCache(SQLiteDatabaseConfiguration(db_path=db_path))
 
 
 def test_connected_when_connected(tmpdir: Path) -> None:
