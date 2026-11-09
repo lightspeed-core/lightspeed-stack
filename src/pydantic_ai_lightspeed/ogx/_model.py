@@ -22,7 +22,7 @@ from __future__ import annotations as _annotations
 from collections import defaultdict
 from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
-from typing import Any, Final, Optional, cast
+from typing import TYPE_CHECKING, Any, Final, Optional, cast
 
 from ogx.core.library_client import AsyncOGXAsLibraryClient
 from ogx_client import AsyncOgxClient
@@ -48,8 +48,10 @@ from pydantic_ai.profiles import ModelProfileSpec
 from pydantic_ai.settings import ModelSettings
 
 from log import get_logger
-from models.common.responses.responses_api_params import ResponsesApiParams
 from pydantic_ai_lightspeed.ogx._provider import OgxProvider
+
+if TYPE_CHECKING:
+    from models.common.responses.responses_api_params import ResponsesApiParams
 
 logger = get_logger(__name__)
 
@@ -485,7 +487,7 @@ class OgxResponsesModel(OpenAIResponsesModel):
                 responses.ResponseStreamEvent, _FilteredResponseStream
             ] = PeekableAsyncStream(filtered_stream)
 
-            with _map_api_errors(self.model_name):
+            with _map_api_errors(self.model_name, self._provider.model_id_namespace):
                 first_chunk = await peekable.peek()
 
             if isinstance(first_chunk, Unset):
@@ -507,6 +509,7 @@ class OgxResponsesModel(OpenAIResponsesModel):
                 _model_settings=model_settings_cast,
                 _response=peekable,  # type: ignore[arg-type]
                 _provider_name=self._provider.name,
+                _model_id_namespace=self._provider.model_id_namespace,
                 _provider_url=self._provider.base_url,
                 _provider_timestamp=(
                     number_to_datetime(first_chunk.response.created_at)

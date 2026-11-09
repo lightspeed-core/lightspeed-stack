@@ -142,7 +142,8 @@ class TestFormatConversationForSummary:
         ]
         out = format_conversation_for_summary(items)
         assert "function_call" not in out
-        assert "user: hello" in out and "assistant: world" in out
+        assert "user: hello" in out
+        assert "assistant: world" in out
 
     def test_dicts_are_skipped(self) -> None:
         """Plain dicts are not treated as messages and produce no output."""

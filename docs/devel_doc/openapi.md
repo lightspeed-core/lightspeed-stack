@@ -186,12 +186,10 @@ Lightspeed Core Stack (LCS) service API specification.
         * [✅ Responses](#-responses-39)
     * [GET `/.well-known/agent.json`](#get-well-knownagentjson)
         * [✅ Responses](#-responses-40)
-    * [GET `/a2a`](#get-a2a)
-        * [✅ Responses](#-responses-41)
     * [POST `/a2a`](#post-a2a)
-        * [✅ Responses](#-responses-42)
+        * [✅ Responses](#-responses-41)
     * [GET `/a2a/health`](#get-a2ahealth)
-        * [✅ Responses](#-responses-43)
+        * [✅ Responses](#-responses-42)
 * [📋 Components](#-components)
     * [A2AStateConfiguration](#a2astateconfiguration)
     * [APIKeySecurityScheme](#apikeysecurityscheme)
@@ -408,7 +406,7 @@ Lightspeed Core Stack (LCS) service API specification.
 | Method | Path                                                  | Description                                                                                                                                          |
 |--------|-------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------|
 | GET    | `/`                                                   | Returns the static HTML index page                                                                                                                   |
-| GET    | `/v1/info`                                            | Returns the service name, version and OGX version                                                                                            |
+| GET    | `/v1/info`                                            | Returns the service name and version                                                                                                         |
 | GET    | `/v1/models`                                          | List of available models                                                                                                                             |
 | GET    | `/v1/tools`                                           | Consolidated list of available tools from all configured MCP servers                                                                                 |
 | GET    | `/v1/mcp-auth/client-options`                         | List of MCP servers configured to accept client-provided authorization tokens, along with the header names where clients should provide these tokens |
@@ -458,7 +456,6 @@ Lightspeed Core Stack (LCS) service API specification.
 | GET    | `/metrics`                                            | Returns the latest Prometheus metrics in a form of plain text                                                                                        |
 | GET    | `/.well-known/agent-card.json`                        | Serve the A2A Agent Card at the well-known location                                                                                                  |
 | GET    | `/.well-known/agent.json`                             | Handle A2A JSON-RPC requests following the A2A protocol specification                                                                                |
-| GET    | `/a2a`                                                | Handle A2A JSON-RPC requests following the A2A protocol specification                                                                                |
 | POST   | `/a2a`                                                | Handle A2A JSON-RPC requests following the A2A protocol specification                                                                                |
 | GET    | `/a2a/health`                                         | Handle A2A JSON-RPC requests following the A2A protocol specification                                                                                |
 
@@ -625,7 +622,7 @@ Examples
 Handle request to the /info endpoint.
 
 Process GET requests to the /info endpoint, returning the
-service name, version and OGX version.
+service name and version. The answer does not depend on OGX.
 
 ### Parameters:
 - request: The incoming HTTP request (used by middleware).
@@ -635,7 +632,7 @@ service name, version and OGX version.
 - HTTPException: with status 401 for unauthorized access.
 - HTTPException: with status 403 if permission is denied.
 - HTTPException: with status 503 and a detail object containing `response`
-  and `cause` when unable to connect to OGX.
+  and `cause` when the Kubernetes authentication backend is unreachable.
 
 ### Returns:
 - InfoResponse: An object containing the service's name and version.
@@ -760,18 +757,6 @@ Examples
   }
 }
 ```
-
-```json
-{
-  "detail": {
-    "cause": "Connection error while trying to reach backend service.",
-    "response": "Unable to connect to OGX"
-  }
-}
-```
-
-
-
 
 ```json
 {
@@ -5522,39 +5507,6 @@ capabilities according to the A2A protocol specification.
 |-------------|-------------|-----------|
 | 200 | Successful Response | [AgentCard](#agentcard) |
 
-## GET `/a2a`
-
-> **Handle A2A Jsonrpc**
-
-Handle A2A JSON-RPC requests following the A2A protocol specification.
-
-This endpoint uses the DefaultRequestHandler from the A2A SDK to handle
-all JSON-RPC requests including message/send, message/stream, etc.
-
-The A2A SDK application is created per-request to include authentication
-context while still leveraging FastAPI's authorization middleware.
-
-Automatically detects streaming requests (message/stream JSON-RPC method)
-and returns a StreamingResponse to enable real-time chunk delivery.
-
-Args:
-    request: FastAPI request object
-    auth: Authentication tuple
-    mcp_headers: MCP headers for context propagation
-
-Returns:
-    JSON-RPC response or streaming response
-
-
-
-
-
-### ✅ Responses
-
-| Status Code | Description | Component |
-|-------------|-------------|-----------|
-| 200 | Successful Response | ... |
-
 ## POST `/a2a`
 
 > **Handle A2A Jsonrpc**
@@ -6078,6 +6030,10 @@ Attributes:
     buffer_max_ratio: Hard cap on the fraction of the context
         window the buffer zone may occupy, regardless of
         buffer_turns.
+    summary_prompt: Optional prompt template for summarizing older
+        turns in the Pydantic AI compaction. It must contain the
+        ``{messages}`` placeholder and no other replacement field;
+        when unset, the default prompt is used.
 
 
 | Field | Type | Description |
@@ -6087,6 +6043,7 @@ Attributes:
 | token_floor | integer | Minimum token count before compaction can trigger. Prevents triggering on very small context windows. |
 | buffer_turns | integer | Number of recent turns to keep verbatim. |
 | buffer_max_ratio | number | Maximum fraction of context window the buffer zone can occupy, regardless of buffer_turns. |
+| summary_prompt |  | Prompt template for summarizing older turns in the Pydantic AI compaction. The conversation transcript replaces the {messages} placeholder, which is required; no other replacement field is allowed, so double any literal braces. When unset, the default prompt is used. |
 
 
 ## Configuration
@@ -6600,14 +6557,12 @@ Model representing a response to an info request.
 Attributes:
     name: Service name.
     service_version: Service version.
-    ogx_version: OGX version.
 
 
 | Field | Type | Description |
 |-------|------|-------------|
 | name | string | Service name |
 | service_version | string | Service version |
-| ogx_version | string | OGX version |
 
 
 ## InputToolMCP
@@ -7621,11 +7576,13 @@ Controls how much reasoning the model performs before generating a response.
 Text response configuration for OpenAI responses.
 
 :param format: (Optional) Text format configuration specifying output format requirements
+:param verbosity: (Optional) Controls response verbosity level
 
 
 | Field | Type | Description |
 |-------|------|-------------|
 | format |  |  |
+| verbosity |  |  |
 
 
 ## OpenAIResponseTextFormat
@@ -7764,6 +7721,46 @@ Defines configuration details for the OAuth 2.0 Resource Owner Password flow.
 | refreshUrl |  |  |
 | scopes | object |  |
 | tokenUrl | string |  |
+
+
+## PgvectorVectorStoreProvider
+
+
+Dynamic pgvector vector-store provider (runtime create capacity).
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| id | string | OGX vector_io provider_id. Surrounding whitespace is stripped before validation and emission. |
+| embedding_model | string | Embedding model identification used for stores created against this provider. |
+| embedding_dimension | integer | Dimensionality of embedding vectors for this provider. |
+| type | string | Product type for this dynamic vector-store provider. |
+| config |  | pgvector connection settings for this provider. |
+
+
+## PgvectorVectorStoreProviderConfig
+
+
+Storage config for a pgvector dynamic vector-store provider.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| host |  | PostgreSQL host. Defaults to ${env.POSTGRES_HOST}. |
+| port |  | PostgreSQL port. Defaults to ${env.POSTGRES_PORT}. Accepts string placeholders and integer values. |
+| db |  | PostgreSQL database name. Defaults to ${env.POSTGRES_DATABASE}. |
+| user |  | PostgreSQL user. Defaults to ${env.POSTGRES_USER}. |
+| password |  | PostgreSQL password. Defaults to ${env.POSTGRES_PASSWORD}. |
+
+
+## PositiveFeedbackCategory
+
+
+Enum representing predefined categories for positive AI responses.
+
+These categories cover qualities commonly associated with a useful answer.
+
+
 
 
 ## PostgreSQLDatabaseConfiguration
@@ -7961,7 +7958,7 @@ Attributes:
     generate_topic_summary: Whether to generate topic summary for new conversations.
     media_type: The optional media type for response format (application/json or text/plain).
     vector_store_ids: The optional list of specific vector store IDs to query for RAG.
-    shield_ids: The optional list of safety shield IDs to apply.
+    shield_ids: The optional list of configured shield names to apply.
     solr: Optional Solr inline RAG options (mode, filters) or legacy filter-only dict.
 
 
@@ -7977,7 +7974,7 @@ Attributes:
 | generate_topic_summary |  | Whether to generate topic summary for new conversations |
 | media_type |  | Media type for the response format |
 | vector_store_ids |  | Optional list of specific vector store IDs to query for RAG. If not provided, all available vector stores will be queried. |
-| shield_ids |  | Optional list of safety shield IDs to apply. If None, all configured shields are used.  |
+| shield_ids |  | Optional list of configured shield names to apply. If None, all configured shields are used. |
 | solr |  | Solr inline RAG config: mode (semantic, hybrid, lexical) and filters; a legacy filter-only object (e.g. fq) is still accepted. |
 
 
@@ -7995,10 +7992,11 @@ Attributes:
     tool_calls: List of tool calls made during response generation.
     tool_results: List of tool results.
     truncated: Whether conversation history was truncated.
+    context_status: Whether the conversation context was sent in full
+        ("full") or older turns were replaced by a summary ("summarized").
     input_tokens: Number of tokens sent to LLM.
     output_tokens: Number of tokens received from LLM.
     available_quotas: Quota available as measured by all configured quota limiters.
-    context_status: Indicates whether the conversation context sent to the LLM is "full" (complete history) or "summarized" (older turns were summarized). Present in QueryResponse and in the end event payload (EndEventData) of the streaming query response; omitted from /v1/responses (OpenAI-compatible) and /a2a responses.
 
 
 | Field | Type | Description |
@@ -8008,12 +8006,12 @@ Attributes:
 | rag_chunks | array | Deprecated: List of RAG chunks used to generate the response. |
 | referenced_documents | array | List of documents referenced in generating the response |
 | truncated | boolean | Deprecated: whether conversation history was truncated |
+| context_status |  | Context status: "full" (no compaction) or "summarized" (older turns replaced by a summary) |
 | input_tokens | integer | Number of tokens sent to LLM |
 | output_tokens | integer | Number of tokens received from LLM |
 | available_quotas | object | Quota available as measured by all configured quota limiters |
 | tool_calls | array | List of tool calls made during response generation |
 | tool_results | array | List of tool results |
-| context_status | string | Indicates whether the conversation context sent to the LLM is `"full"` (complete history) or `"summarized"` (older turns were summarized). Present in QueryResponse and in the `end` event payload (EndEventData) of the streaming query response; omitted from `/v1/responses` (OpenAI-compatible) and `/a2a` responses. |
 
 
 ## QuotaExceededResponse
@@ -8253,6 +8251,8 @@ Attributes:
     parallel_tool_calls: Whether the model can make multiple tool calls in parallel.
     previous_response_id: Identifier of the previous response in a multi-turn
         conversation. Mutually exclusive with conversation.
+    prompt_cache_key: Prompt cache key used by providers that support prompt
+        caching.
     prompt: Prompt object containing a template with variables for dynamic
         substitution.
     reasoning: Reasoning configuration for the response.
@@ -8268,8 +8268,8 @@ Attributes:
         calls, MCP tools). Defaults to all tools available to the model.
     generate_topic_summary: LCORE-specific flag indicating whether to generate a
         topic summary for new conversations. Defaults to True.
-    shield_ids: LCORE-specific list of safety shield IDs to apply. If None, all
-        configured shields are used.
+    shield_ids: LCORE-specific list of configured shield names to apply.
+        If None, all configured shields are used.
     solr: Optional Solr inline RAG options (mode, filters) or legacy filter-only dict.
 
 
@@ -8286,6 +8286,7 @@ Attributes:
 | metadata |  |  |
 | parallel_tool_calls |  |  |
 | previous_response_id |  |  |
+| prompt_cache_key |  |  |
 | prompt |  |  |
 | reasoning |  |  |
 | safety_identifier |  |  |
@@ -8317,6 +8318,8 @@ Attributes:
     parallel_tool_calls: Whether the model can make multiple tool calls in parallel.
     previous_response_id: Identifier of the previous response in a multi-turn
         conversation.
+    prompt_cache_key: Prompt cache key used by providers that support prompt
+        caching.
     prompt: The input prompt object that was sent to the model.
     status: Current status of the response (e.g., "completed", "blocked",
         "in_progress").
@@ -8353,6 +8356,7 @@ Attributes:
 | output | array |  |
 | parallel_tool_calls | boolean |  |
 | previous_response_id |  |  |
+| prompt_cache_key |  |  |
 | prompt |  |  |
 | status | string |  |
 | temperature |  |  |
@@ -8372,6 +8376,69 @@ Attributes:
 | conversation |  |  |
 | available_quotas | object |  |
 | output_text | string |  |
+
+
+## RetrievalConfiguration
+
+
+Configuration for inline and tool retrieval strategies.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| inline |  | Inline RAG: context injected before the LLM request. |
+| tool |  | Tool RAG: LLM can call file_search on demand. |
+
+
+## RetrievalStrategyConfiguration
+
+
+Configuration for a single retrieval strategy (inline or tool).
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| sources | array | RAG IDs to use for this retrieval strategy. Use 'okp' to include the OKP vector store. |
+| max_chunks | integer | Maximum number of chunks returned by this retrieval strategy. |
+| reranker |  | Neural reranking of RAG chunks using cross-encoder. Only applicable to inline retrieval. |
+
+
+## RiskDefinition
+
+
+Definition for a custom risk category.
+
+Custom risks allow applications to add use-case-specific safety checks
+beyond the standard harm, jailbreak, leetspeak, amnesia, and
+history_politics checks.
+Example:
+    liability_risk = RiskDefinition(
+        name="liability",
+        description="Content requesting legal, medical, or financial advice",
+        threshold=0.55,
+        points=["input"],
+    )
+    pii_risk = RiskDefinition(
+        name="pii_request",
+        description="User is asking the AI to reveal personal information",
+        threshold=0.50,
+        points=["input", "tool"],
+    )
+Note:
+    To enable think mode (detailed reasoning) for a risk, add the risk name
+    to the `thinking_enabled` list in `ModerationConfig`. Do not set
+    `enable_thinking` directly - it is managed internally.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| name | string | Unique identifier for this risk (e.g., 'liability', 'competitor_mention') |
+| description | string | Risk definition text passed to Granite Guardian as custom_criteria |
+| threshold | number | Score threshold for flagging (lower = more sensitive) |
+| enabled | boolean | Whether to run this check |
+| enable_thinking | boolean | Internal field - set via ModerationConfig.thinking_enabled list, not directly. When True, Granite Guardian provides detailed reasoning before scoring. |
+| points | array | Where this risk is evaluated: `input` (user message), `output` (model response), or `tool` (tool/MCP content). |
+| violation_message | string | Message to be displayed when this risk is violated |
 
 
 ## RlsapiV1Attachment
@@ -8562,6 +8629,119 @@ SQLite database configuration.
 | db_path | string | Path to file where SQLite database is stored |
 
 
+## SavedPromptCreateRequest
+
+
+Request body to create a user-scoped saved prompt.
+
+Length and emptiness limits are enforced by the endpoint using configured
+saved-prompts limits, not by static field constraints here.
+
+Attributes:
+    name: Display name of the saved prompt.
+    content: Prompt body text.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| name | string | Display name of the saved prompt |
+| content | string | Prompt body text |
+
+
+## SavedPromptDeleteResponse
+
+
+Result of deleting a saved prompt (always HTTP 200).
+
+Attributes:
+    prompt_id: Saved prompt identifier that was passed to delete.
+    deleted: Whether the prompt was deleted successfully.
+    response: Human-readable outcome of the delete operation.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| deleted | boolean | Whether the deletion was successful. |
+| prompt_id | string | Saved prompt identifier that was passed to delete. |
+| response | string | Human-readable outcome of the delete operation. |
+
+
+## SavedPromptResponse
+
+
+Single saved prompt returned to an authenticated user.
+
+Attributes:
+    id: Unique identifier of the saved prompt.
+    name: Display name of the saved prompt.
+    content: Prompt body text.
+    created_at: When the prompt was created.
+    updated_at: When the prompt was last updated.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| id | string | Unique identifier of the saved prompt |
+| name | string | Display name of the saved prompt |
+| content | string | Prompt body text |
+| created_at | string | When the prompt was created |
+| updated_at | string | When the prompt was last updated |
+
+
+## SavedPromptsConfigResponse
+
+
+Saved prompts configuration limits returned to consuming services.
+
+Attributes:
+    max_prompts_per_user: Maximum number of saved prompts allowed per user.
+    max_display_name_length: Maximum character length for prompt display name.
+    max_content_length: Maximum character length for prompt content body.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| max_prompts_per_user | integer | Maximum number of saved prompts allowed per user |
+| max_display_name_length | integer | Maximum character length for prompt display name |
+| max_content_length | integer | Maximum character length for prompt content body |
+
+
+## SavedPromptsConfiguration
+
+
+Configuration for saved prompts feature limits.
+
+Controls the maximum number of prompts a user can save, the maximum
+display name (title) length, and the maximum prompt content length.
+Omitted fields use the defaults defined in constants.
+
+Attributes:
+    max_prompts_per_user: Maximum number of saved prompts allowed per user.
+    max_display_name_length: Maximum character length for the prompt display name.
+    max_content_length: Maximum character length for the prompt content body.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| max_prompts_per_user | integer | Maximum number of saved prompts a user can create. Defaults to 50. Cannot exceed 200. |
+| max_display_name_length | integer | Maximum character length for prompt display name (title). Defaults to 255. Cannot exceed 255. |
+| max_content_length | integer | Maximum character length for the prompt content body. Defaults to 10000. Cannot exceed 30000. |
+
+
+## SavedPromptsListResponse
+
+
+List of saved prompts belonging to the authenticated user.
+
+Attributes:
+    prompts: Saved prompts ordered by created_at descending (newest first).
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| prompts | array | Saved prompts for the authenticated user |
+
+
 ## SearchRankingOptions
 
 
@@ -8587,7 +8767,7 @@ Examples:
 :param ranker: (Optional) Name of the ranking algorithm to use. Supported values:
     - "weighted": Weighted combination of vector and keyword scores
     - "rrf": Reciprocal Rank Fusion algorithm
-    - "neural": Neural reranking model (requires model parameter, Part II)
+    - "neural": Neural reranking model (requires model parameter)
     Note: For OpenAI API compatibility, any string value is accepted, but only the above values are supported.
 :param score_threshold: (Optional) Minimum relevance score threshold for results. Default: 0.0
 :param alpha: (Optional) Weight factor for weighted ranker (0-1).
@@ -8602,10 +8782,11 @@ Examples:
     Falls back to VectorStoresConfig.chunk_retrieval_params.rrf_impact_factor if not provided.
 :param weights: (Optional) Dictionary of weights for combining different signal types.
     Keys can be "vector", "keyword", "neural". Values should sum to 1.0.
-    Used when combining algorithm-based reranking with neural reranking (Part II).
+    Used when combining algorithm-based reranking with neural reranking.
     Example: {"vector": 0.3, "keyword": 0.3, "neural": 0.4}
-:param model: (Optional) Model identifier for neural reranker (e.g., "vllm/Qwen3-Reranker-0.6B").
-    Required when ranker="neural" or when weights contains "neural" (Part II).
+:param model: (Optional) Model identifier for neural reranker
+    (e.g., "sentence-transformers/Qwen/Qwen3-Reranker-0.6B"). Required when ranker="neural" or when
+    weights contains "neural".
 
 
 | Field | Type | Description |
@@ -8622,6 +8803,36 @@ Examples:
 
 
 
+
+
+## SentenceTransformersInferenceProviderConfig
+
+
+Settings for the local sentence-transformers inference provider.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| device |  |  |
+| cache_dir |  |  |
+
+
+## SentenceTransformersInferenceProviderEntry
+
+
+Local sentence-transformers inference provider.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| id | string |  |
+| skip_model_discovery | boolean |  |
+| allowed_models | array |  |
+| model_profiles_path |  |  |
+| api_key_env |  | Deprecated: prefer config.api_key with ${env.VAR}. |
+| extra |  | Deprecated escape hatch for unmodeled provider knobs. |
+| type | string | Local sentence-transformers embedding and rerank provider. |
+| config |  | Optional device and Hugging Face cache directory. |
 
 
 ## ServiceConfiguration
@@ -8642,6 +8853,9 @@ the service can handle requests concurrently.
 | base_url |  | Externally reachable base URL for the service; needed for A2A support. |
 | auth_enabled | boolean | Enables the authentication subsystem |
 | workers | integer | Number of Uvicorn worker processes to start |
+| max_concurrent_file_uploads | integer | Maximum number of file uploads (POST /v1/files) processed concurrently per worker. Each in-flight upload can hold up to the configured maximum file size in memory, so this bounds worst-case memory usage from concurrent uploads. Additional uploads are rejected with 429 until a slot frees up. |
+| max_concurrent_vector_store_attaches | integer | Maximum number of vector store file attachments (POST /v1/vector-stores/{id}/files) processed concurrently per worker. Each in-flight attachment re-reads and chunks the source file, so this bounds worst-case memory usage independently of max_concurrent_file_uploads. Additional attachments are rejected with 429 until a slot frees up. |
+| delete_file_after_vector_store_attach | boolean | When true, deletes a file (POST /v1/files) once it has been successfully attached to a vector store, since the vector store keeps its own chunked/embedded copy of the content. Defaults to false to match the OpenAI Files API, where a file remains reusable across multiple vector stores until the caller explicitly deletes it - enabling this makes attached files single-use: re-attaching the same file_id to another vector store will fail once it has been deleted. |
 | color_log | boolean | Enables colorized logging |
 | access_log | boolean | Enables logging of all access information |
 | tls_config |  | Transport Layer Security configuration for HTTPS support |
@@ -8669,7 +8883,23 @@ Model representing a response to shields request.
 
 | Field | Type | Description |
 |-------|------|-------------|
-| shields | array | List of shields available |
+| shields | array | List of shields configured in Lightspeed Core Stack |
+
+
+## SkillMetadata
+
+
+Metadata describing a single loaded agent skill.
+
+Attributes:
+    name: Unique name of the skill.
+    description: Human readable description of what the skill does.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| name | string | Unique name of the skill |
+| description | string | Human readable description of what the skill does |
 
 
 ## SkillsConfiguration
@@ -8692,13 +8922,27 @@ Paths are validated at startup to ensure they exist and contain valid SKILL.md f
 | paths | array | Paths to skill directories or directories containing skill subdirectories. |
 
 
+## SkillsResponse
+
+
+Model representing a response to skills request.
+
+Attributes:
+    skills: List of loaded skills with metadata (name and description).
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| skills | array | List of loaded skills with metadata |
+
+
 ## SolrVectorSearchRequest
 
 
 LCORE Solr inline RAG options for vector_io.query (mode and provider filters).
 
 Attributes:
-    mode: Solr vector_io search mode. When omitted, the server default (hybrid) is used.
+    mode: Solr vector_io search mode. When omitted, the configured OKP default is used.
     filters: Solr provider filter payload passed through as params['solr'].
 
 Legacy clients may send a plain JSON object with filter keys only;
@@ -8707,7 +8951,7 @@ that object is accepted as filters with mode unset (server default applies).
 
 | Field | Type | Description |
 |-------|------|-------------|
-| mode |  | Solr vector_io search mode. When omitted, the server default ('hybrid') is used. |
+| mode |  | Solr vector_io search mode. When omitted, the configured OKP default is used; otherwise 'hybrid' applies. 'keyword' and 'lexical' both use BM25 text search. |
 | filters |  | Solr provider filter payload passed through as params['solr']. Supports structured metadata filters (eq, ne, in, nin comparison operators). Legacy filter-only objects (e.g. fq) are still accepted. |
 
 
@@ -8810,6 +9054,18 @@ Useful resources:
 | tls_key_password |  | Path to file containing the password to decrypt the SSL/TLS private key. |
 
 
+## TooManyConcurrentRequestsResponse
+
+
+429 Too Many Requests - concurrency limit exceeded.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| status_code | integer | HTTP status code for the errors response |
+| detail |  | The detail model containing error summary and cause |
+
+
 ## ToolCallSummary
 
 
@@ -8886,6 +9142,41 @@ A Kubernetes ServiceAccount identity for trusted-proxy allowlist.
 | detail |  | The detail model containing error summary and cause |
 
 
+## UnifiedOgxConfig
+
+
+Backend-specific knobs for unified-mode OGX synthesis.
+
+Per Decision S5 of the design spike, backend-agnostic high-level sections
+(inference, ...) live at the configuration root, not here. This block holds
+only the OGX-specific synthesis controls: which baseline to start
+from, an optional profile file, and a raw native_override escape hatch.
+
+Attributes:
+    baseline: Synthesis starting point. "default" begins from LCORE's
+        built-in baseline (src/data/default_run.yaml) including the
+        conditional OpenAI inference provider. "byo-llm" begins from the
+        same file with that OpenAI row removed. "empty" begins from an
+        empty dict (used by the migration tool for an exact round-trip).
+        Ignored when `profile` is set.
+    profile: Optional path to a user-authored run.yaml-shaped file used as
+        the synthesis baseline. Relative paths resolve against the directory
+        of the loaded lightspeed-stack.yaml.
+    native_override: Raw OGX schema deep-merged last (maps merge
+        recursively, lists and scalars replace). The escape hatch for
+        anything the high-level sections do not express. Note:
+        `registered_resources.models` is a list, so a native_override
+        that sets it replaces — not merges with — any LLM models LCORE
+        auto-registered from `inference.providers[].allowed_models`.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| baseline | string | Synthesis starting point: 'default' uses LCORE's built-in baseline including the conditional OpenAI provider, 'byo-llm' uses the same baseline without that OpenAI row, 'empty' starts from {}. Ignored when 'profile' is set. |
+| profile |  | Path to a run.yaml-shaped baseline file. Relative paths resolve against the directory of the loaded lightspeed-stack.yaml. |
+| native_override | object | Raw OGX schema deep-merged last (maps merge recursively; lists and scalars replace). Note: setting registered_resources.models here replaces, not merges with, any LLM models LCORE auto-registered from inference.providers[].allowed_models. |
+
+
 ## UnprocessableEntityResponse
 
 
@@ -8923,6 +9214,30 @@ User data collection configuration.
 | type | string |  |
 | input |  |  |
 | ctx | object |  |
+
+
+## VectorStoreConfiguration
+
+
+Configuration for dynamic vector-store providers.
+
+Mirrors ``InferenceConfiguration``: a providers list plus a sibling
+``default_provider`` pointer, rather than a per-entry default flag.
+
+Attributes:
+    default_provider: Provider id used for vector_stores.default_* in the
+        synthesized OGX config. Required when providers is
+        non-empty; must match one of providers[].id. Must be omitted when
+        providers is empty.
+    providers: Dynamic vector-store provider capacity for runtime
+        POST /v1/vector-stores creates. Not the same as rag.byok.stores (static
+        registered corpora).
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| default_provider |  | Provider id used for vector_stores.default_* in the synthesized OGX config. Required when providers is non-empty; must match one of providers[].id. |
+| providers | array | Dynamic vector-store provider capacity for runtime POST /v1/vector-stores creates. Not the same as rag.byok.stores (static registered corpora). |
 
 
 ## VectorStoreCreateRequest
@@ -9093,3 +9408,175 @@ Attributes:
 |-------|------|-------------|
 | data | array | List of vector stores |
 | object | string | Object type |
+
+
+## VertexAIInferenceProviderConfig
+
+
+Connection settings for a Vertex AI inference provider.
+
+Authentication uses Google Application Default Credentials. Set
+GOOGLE_APPLICATION_CREDENTIALS in the environment when a credentials file
+is required; there is no credentials path field in config.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| project |  |  |
+| location |  |  |
+
+
+## VertexAIInferenceProviderEntry
+
+
+Vertex AI inference provider.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| id | string |  |
+| skip_model_discovery | boolean |  |
+| allowed_models | array |  |
+| model_profiles_path |  |  |
+| api_key_env |  | Deprecated: prefer config.api_key with ${env.VAR}. |
+| extra |  | Deprecated escape hatch for unmodeled provider knobs. |
+| type | string | Google Vertex AI remote inference provider. |
+| config |  | GCP project and location. |
+
+
+## VllmInferenceProviderConfig
+
+
+Connection settings for a vLLM inference provider.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| base_url |  |  |
+| api_key |  |  |
+
+
+## VllmInferenceProviderEntry
+
+
+vLLM inference provider.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| id | string |  |
+| skip_model_discovery | boolean |  |
+| allowed_models | array |  |
+| model_profiles_path |  |  |
+| api_key_env |  | Deprecated: prefer config.api_key with ${env.VAR}. |
+| extra |  | Deprecated escape hatch for unmodeled provider knobs. |
+| type | string | vLLM OpenAI-compatible remote inference provider. |
+| config |  | Base URL and optional API key. |
+
+
+## WatsonxInferenceProviderConfig
+
+
+Connection settings for a WatsonX inference provider.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| api_key |  |  |
+| project_id |  |  |
+| base_url |  |  |
+
+
+## WatsonxInferenceProviderEntry
+
+
+WatsonX inference provider.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| id | string |  |
+| skip_model_discovery | boolean |  |
+| allowed_models | array |  |
+| model_profiles_path |  |  |
+| api_key_env |  | Deprecated: prefer config.api_key with ${env.VAR}. |
+| extra |  | Deprecated escape hatch for unmodeled provider knobs. |
+| type | string | IBM WatsonX remote inference provider. |
+| config |  | API key, project ID, and base URL. |
+
+
+## WebSearchActionFind
+
+
+Web search action: searches for a pattern within a loaded page.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| type | string |  |
+| url | string |  |
+| pattern | string |  |
+
+
+## WebSearchActionOpenPage
+
+
+Web search action: opens a specific URL from search results.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| type | string |  |
+| url |  |  |
+
+
+## WebSearchActionSearch
+
+
+Web search action: performs a search query.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| type | string |  |
+| query | string |  |
+| queries |  |  |
+| sources |  |  |
+
+
+## WebSearchFilters
+
+
+Domain filters for web search results.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| allowed_domains |  |  |
+
+
+## WebSearchSource
+
+
+A source URL returned by a web search action.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| type | string |  |
+| url | string |  |
+
+
+## WebSearchUserLocation
+
+
+Approximate user location to refine web search results.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| type | string |  |
+| city |  |  |
+| country |  |  |
+| region |  |  |
+| timezone |  |  |

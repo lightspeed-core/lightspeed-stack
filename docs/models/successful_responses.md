@@ -418,6 +418,10 @@ Attributes:
     buffer_max_ratio: Hard cap on the fraction of the context
         window the buffer zone may occupy, regardless of
         buffer_turns.
+    summary_prompt: Optional prompt template for summarizing older
+        turns in the Pydantic AI compaction. It must contain the
+        ``{messages}`` placeholder and no other replacement field;
+        when unset, the default prompt is used.
 
 
 | Field | Type | Description |
@@ -427,6 +431,7 @@ Attributes:
 | token_floor | integer | Minimum token count before compaction can trigger. Prevents triggering on very small context windows. |
 | buffer_turns | integer | Number of recent turns to keep verbatim. |
 | buffer_max_ratio | number | Maximum fraction of context window the buffer zone can occupy, regardless of buffer_turns. |
+| summary_prompt | string | Prompt template for summarizing older turns in the Pydantic AI compaction. The conversation transcript replaces the {messages} placeholder, which is required; no other replacement field is allowed, so double any literal braces. When unset, the default prompt is used. |
 
 
 ## Configuration
@@ -873,14 +878,12 @@ Model representing a response to an info request.
 Attributes:
     name: Service name.
     service_version: Service version.
-    ogx_version: OGX version.
 
 
 | Field | Type | Description |
 |-------|------|-------------|
 | name | string | Service name |
 | service_version | string | Service version |
-| ogx_version | string | OGX version |
 
 
 ## JsonPathOperator
@@ -2410,7 +2413,8 @@ Reranker configuration for RAG chunk reranking.
 | Field | Type | Description |
 |-------|------|-------------|
 | enabled | boolean | When True, reranking applied to RAG chunks. When False, reranking is disabled and original scoring used. |
-| model | string | Cross-encoder model name for reranking RAG chunks. Defaults to 'cross-encoder/ms-marco-MiniLM-L6-v2' from sentence-transformers. |
+| provider | string | The `id` of the inference provider in `inference.providers` that loads this cross-encoder (typically `sentence_transformers`). |
+| model | string | Hugging Face cross-encoder model id used for reranking. When it matches `provider`, the sentence-transformers provider also registers it in its catalog at startup (`name` and backend id both set to this value) if not already listed in `allowed_models`. |
 
 
 ## ResponsesResponse
@@ -2430,6 +2434,8 @@ Attributes:
     parallel_tool_calls: Whether the model can make multiple tool calls in parallel.
     previous_response_id: Identifier of the previous response in a multi-turn
         conversation.
+    prompt_cache_key: Prompt cache key used by providers that support prompt
+        caching.
     prompt: The input prompt object that was sent to the model.
     status: Current status of the response (e.g., "completed", "blocked",
         "in_progress").
@@ -2466,6 +2472,7 @@ Attributes:
 | output | array |  |
 | parallel_tool_calls | boolean |  |
 | previous_response_id | string |  |
+| prompt_cache_key | string |  |
 | prompt |  |  |
 | status | string |  |
 | temperature | number |  |

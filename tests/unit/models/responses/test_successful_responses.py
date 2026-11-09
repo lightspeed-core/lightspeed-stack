@@ -403,12 +403,10 @@ class TestInfoResponse:
         response = InfoResponse(
             name="Lightspeed Stack",
             service_version="1.0.0",
-            ogx_version="1.0.0",
         )
         assert isinstance(response, AbstractSuccessfulResponse)
         assert response.name == "Lightspeed Stack"
         assert response.service_version == "1.0.0"
-        assert response.ogx_version == "1.0.0"
 
     def test_missing_required_parameters(self) -> None:
         """Test InfoResponse raises ValidationError when required fields are missing."""
@@ -416,6 +414,12 @@ class TestInfoResponse:
             InfoResponse()  # pyright: ignore[reportCallIssue]
         with pytest.raises(ValidationError):
             InfoResponse(name="Test")  # pyright: ignore[reportCallIssue]
+
+    def test_exposes_only_lcore_identity(self) -> None:
+        """Test InfoResponse fields and example carry only the LCORE identity."""
+        expected_fields = {"name", "service_version"}
+        assert set(InfoResponse.model_fields) == expected_fields
+        assert set(InfoResponse.model_json_schema()["examples"][0]) == expected_fields
 
     def test_openapi_response(self) -> None:
         """Test InfoResponse.openapi_response() method."""

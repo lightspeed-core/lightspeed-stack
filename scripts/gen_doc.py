@@ -10,6 +10,8 @@ DIRECTORIES = ["src", "tests/unit", "tests/integration", "tests/e2e"]
 
 # README.md files won't be generated in following directories
 DIRS_TO_SKIP = {
+    "src/pii_redaction_engine",
+    "src/providers/inference",
     "tests/integration",
     "tests/e2e",
     "tests/e2e/configuration",
@@ -32,8 +34,9 @@ def generate_docfile(directory: Path) -> None:
     The file will begin with a header indicating the provided `directory` path.
     For each `.py` file in the current working directory the function writes a
     second-level Markdown header linking to the file, then writes the first
-    line of the module docstring if present, and finally writes the filename as
-    a separate entry.
+    line of the module docstring if present. Files with syntax errors retain
+    their headers but have no summary. File access and UTF-8 decoding errors
+    propagate, potentially leaving a partially written README.
     """
     with open("README.md", "w", encoding="utf-8", newline="\n") as indexfile:
         print(
@@ -66,6 +69,11 @@ def generate_documentation_on_path(path: Path) -> None:
 
     Directory can be skipped if it's part of DIRS_TO_SKIP global list.
 
+    Skip paths whose POSIX representation is in DIRS_TO_SKIP. Otherwise,
+    temporarily change the working directory to path and attempt to restore it
+    after generation, including when generation fails. File access and UTF-8
+    decoding errors propagate.
+
     Parameters:
     ----------
         path (str or os.PathLike): Directory in which to generate the README.md file.
@@ -87,7 +95,7 @@ def generate_documentation_on_path(path: Path) -> None:
 
 
 def main() -> None:
-    """Entry point to this script, regenerates documentation in all directories."""
+    """Regenerate READMEs under DIRECTORIES, subject to the configured exclusions."""
     for directory in DIRECTORIES:
         generate_documentation_on_path(Path(f"{directory}/"))
         for path in Path(directory).rglob("*"):

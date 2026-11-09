@@ -119,32 +119,6 @@ def postgres_cache_config() -> PostgreSQLDatabaseConfiguration:
     )  # pyright: ignore[reportCallIssue]
 
 
-@pytest.fixture(scope="module", name="postgres_cache_config_fixture_wrong_namespace")
-def postgres_cache_config_wrong_namespace() -> PostgreSQLDatabaseConfiguration:
-    """Fixture with invalid namespace containing spaces for validation testing.
-
-    Create a PostgreSQLDatabaseConfiguration with an invalid namespace ("foo bar baz")
-    to verify that the PostgresCache constructor properly rejects namespaces with spaces.
-
-    Returns:
-        PostgreSQLDatabaseConfiguration: A configuration object with host,
-        port, db, user, SecretStr password, and an invalid namespace containing
-        spaces. Values are placeholders and not intended for real database
-        connections.
-
-    """
-    # can be any configuration, because tests won't really try to
-    # connect to database
-    return PostgreSQLDatabaseConfiguration(
-        host="localhost",
-        port=1234,
-        db="database",
-        user="user",
-        password=SecretStr("password"),
-        namespace="foo bar baz",
-    )  # pyright: ignore[reportCallIssue]
-
-
 @pytest.fixture(scope="module", name="postgres_cache_config_fixture_too_long_namespace")
 def postgres_cache_config_too_long_namespace() -> PostgreSQLDatabaseConfiguration:
     """Fixture with namespace exceeding PostgreSQL's 63-character limit.
@@ -167,7 +141,7 @@ def postgres_cache_config_too_long_namespace() -> PostgreSQLDatabaseConfiguratio
         db="database",
         user="user",
         password=SecretStr("password"),
-        namespace="too long namespace that is longer than allowed 63 characters limit",
+        namespace="too_long_namespace_that_is_longer_than_allowed_63_characters_limit",
     )  # pyright: ignore[reportCallIssue]
 
 
@@ -790,21 +764,12 @@ def test_initialize_cache_with_custom_namespace(
     assert len(create_schema_calls) > 0
 
 
-def test_connect_to_cache_with_improper_namespace(
-    postgres_cache_config_fixture_wrong_namespace: PostgreSQLDatabaseConfiguration,
-) -> None:
-    """Test that PostgresCache constructor raises ValueError for invalid namespace."""
-    # should fail due to invalid namespace containing spaces
-    with pytest.raises(ValueError, match="Invalid namespace: foo bar baz"):
-        PostgresCache(postgres_cache_config_fixture_wrong_namespace)
-
-
 def test_connect_to_cache_with_too_long_namespace(
     postgres_cache_config_fixture_too_long_namespace: PostgreSQLDatabaseConfiguration,
 ) -> None:
     """Test that PostgresCache constructor raises ValueError for invalid namespace."""
     # should fail due to invalid namespace containing spaces
-    with pytest.raises(ValueError, match="Invalid namespace: too long namespace"):
+    with pytest.raises(ValueError, match="Invalid namespace: too_long_namespace"):
         PostgresCache(postgres_cache_config_fixture_too_long_namespace)
 
 

@@ -67,6 +67,23 @@ Note: this is not a real model, just an enumeration of all action names.
 
 
 
+## AllowedModel
+
+
+Configuration for an allowed inference model.
+
+Accepts string IDs or dictionaries. String IDs populate both `name` and
+`provider_model_id`; dictionary inputs default `name` to `provider_model_id`.
+
+
+| Field             | Type   | Description                                                                                                       |
+|--------           |--------|--------------                                                                                                     |
+| name              | string |                                                                                                                   |
+| provider_model_id | string |                                                                                                                   |
+| model_type        | string | Optional capability override (llm, embedding, or rerank).                                                         |
+| metadata          | object | Optional catalog metadata. context_window: the model's context window in tokens, used by conversation compaction. |
+
+
 ## ApprovalFilter
 
 
@@ -146,6 +163,69 @@ Microsoft Entra ID authentication attributes for Azure.
 | scope         | string | Azure Cognitive Services scope for token requests. Override only if using a different Azure service. |
 
 
+## AzureInferenceProviderConfig
+
+
+Connection settings for an Azure OpenAI inference provider.
+
+
+| Field       | Type   | Description                                                                                                    |
+|--------     |--------|--------------                                                                                                  |
+| base_url    | string |                                                                                                                |
+| api_key     | string |                                                                                                                |
+| api_version | string |                                                                                                                |
+| entra_id    |        | Preferred Entra ID auth for this provider. Takes precedence over the legacy top-level Azure Entra ID settings. |
+
+
+## AzureInferenceProviderEntry
+
+
+Azure OpenAI inference provider.
+
+
+| Field                | Type    | Description                                           |
+|--------              |---------|--------------                                         |
+| id                   | string  |                                                       |
+| skip_model_discovery | boolean |                                                       |
+| allowed_models       | array   |                                                       |
+| model_profiles_path  | string  |                                                       |
+| api_key_env          | string  | Deprecated: prefer config.api_key with ${env.VAR}.    |
+| extra                | object  | Deprecated escape hatch for unmodeled provider knobs. |
+| type                 | string  | Azure OpenAI remote inference provider.               |
+| config               |         | Endpoint, API key or Entra ID, and API version.       |
+
+
+## BedrockInferenceProviderConfig
+
+
+Connection settings for an AWS Bedrock inference provider.
+
+
+| Field        | Type   | Description                                           |
+|--------      |--------|--------------                                         |
+| region       | string |                                                       |
+| profile_name | string |                                                       |
+| api_key      | string | Optional Bedrock bearer token (alternative to SigV4). |
+
+
+## BedrockInferenceProviderEntry
+
+
+AWS Bedrock inference provider.
+
+
+| Field                | Type    | Description                                              |
+|--------              |---------|--------------                                            |
+| id                   | string  |                                                          |
+| skip_model_discovery | boolean |                                                          |
+| allowed_models       | array   |                                                          |
+| model_profiles_path  | string  |                                                          |
+| api_key_env          | string  | Deprecated: prefer config.api_key with ${env.VAR}.       |
+| extra                | object  | Deprecated escape hatch for unmodeled provider knobs.    |
+| type                 | string  | AWS Bedrock remote inference provider.                   |
+| config               |         | AWS region, optional profile, and optional bearer token. |
+
+
 ## ByokConfiguration
 
 
@@ -209,15 +289,20 @@ Attributes:
     buffer_max_ratio: Hard cap on the fraction of the context
         window the buffer zone may occupy, regardless of
         buffer_turns.
+    summary_prompt: Optional prompt template for summarizing older
+        turns in the Pydantic AI compaction. It must contain the
+        ``{messages}`` placeholder and no other replacement field;
+        when unset, the default prompt is used.
 
 
-| Field            | Type    | Description                                                                                                 |
-|------------------|---------|--------------                                                                                               |
-| enabled          | boolean | When true, older conversation turns are summarized when estimated tokens approach the context window limit. |
-| threshold_ratio  | number  | Trigger compaction when estimated tokens exceed this fraction of the model's context window (0.0-1.0).      |
-| token_floor      | integer | Minimum token count before compaction can trigger. Prevents triggering on very small context windows.       |
-| buffer_turns     | integer | Number of recent turns to keep verbatim.                                                                    |
-| buffer_max_ratio | number  | Maximum fraction of context window the buffer zone can occupy, regardless of buffer_turns.                  |
+| Field            | Type    | Description                                                                                                                                                                                                                                                                 |
+|------------------|---------|--------------                                                                                                                                                                                                                                                               |
+| enabled          | boolean | When true, older conversation turns are summarized when estimated tokens approach the context window limit.                                                                                                                                                                 |
+| threshold_ratio  | number  | Trigger compaction when estimated tokens exceed this fraction of the model's context window (0.0-1.0).                                                                                                                                                                      |
+| token_floor      | integer | Minimum token count before compaction can trigger. Prevents triggering on very small context windows.                                                                                                                                                                       |
+| buffer_turns     | integer | Number of recent turns to keep verbatim.                                                                                                                                                                                                                                    |
+| buffer_max_ratio | number  | Maximum fraction of context window the buffer zone can occupy, regardless of buffer_turns.                                                                                                                                                                                  |
+| summary_prompt   | string  | Prompt template for summarizing older turns in the Pydantic AI compaction. The conversation transcript replaces the {messages} placeholder, which is required; no other replacement field is allowed, so double any literal braces. When unset, the default prompt is used. |
 
 
 ## Configuration
@@ -253,7 +338,7 @@ Global service configuration.
 | rag                    |        | Unified RAG configuration: BYOK stores, OKP provider, and retrieval strategies (inline and tool-based).                                                                                                                                                                                                                                                                                      |
 | skills                 |        | Agent skills configuration. Specifies paths to skill directories.                                                                                                                                                                                                                                                                                                                            |
 | saved_prompts          |        | Configuration for saved prompts feature limits including maximum prompts per user, display name length, and content length.                                                                                                                                                                                                                                                                  |
-| shields                | array  | List of LCS guardrail shields (question validity, PII redaction, and Granite Guardian). Each entry has a unique 'name', a 'provider_id' ('question_validity', 'redaction', or 'granite_guardian'), and a type-specific 'config'. See [shields_guide.md](shields_guide.md). |
+| shields                | array  | List of pydantic-ai-lightspeed agent guardrail shields (question validity and PII redaction). Each entry has a unique 'name', a 'provider_id' ('question_validity' or 'redaction'), and a type-specific 'config'.                                                                                                                                                                            |
 
 
 ## ConversationHistoryConfiguration
@@ -298,6 +383,7 @@ Service customization.
 | agent_card_path             | string  |               |
 | agent_card_config           | object  |               |
 | custom_profile              |         |               |
+| responses_request_max_size  | integer | Maximum character length for the serialized /v1/response responses request body |
 
 
 ## DatabaseConfiguration
@@ -355,8 +441,9 @@ Configuration for the Granite Guardian moderation guardrail.
   - True: Verify using system CA bundle (default, recommended)
   - False: Disable verification (insecure, for dev only)
   - str: Path to custom CA bundle file (for internal PKI) |
-| parallel |       | True to run all risk checks in parallel, False to run sequentially, or an integer 1-10 for explicit batch size. |
-| risks    | array | Risks to be considered while applying this guardrail                                                            |
+| parallel                               |         | True to run all risk checks in parallel, False to run sequentially, or an integer 1-10 for explicit batch size. |
+| risks                                  | array   | Risks to be considered while applying this guardrail                                                            |
+| streaming_output_check_interval_tokens | integer | For risks with `output` in `points`, re-check the response against those risks approximately every N generated output tokens while streaming, plus once more over any remaining text once generation completes. Ignored when no configured risk targets the `output` point. |
 
 
 ## GraniteGuardianShieldConfiguration
@@ -601,6 +688,36 @@ or ``rag.retrieval.tool.sources``.
 | chunk_filter_query | string  | Additional OKP filter query applied to every OKP search request. Use Solr boolean syntax, e.g. 'product:ansible AND product:*openshift*'.                                                                                                      |
 | search_mode        | string  | Default Solr search mode for OKP queries. 'keyword' uses BM25 text search (no embedding model needed). 'hybrid' combines vector + keyword search. 'semantic' uses pure vector search. When unset, falls back to the global default ('hybrid'). |
 | max_chunks         | integer | Maximum number of chunks fetched from OKP.                                                                                                                                                                                                     |
+
+
+## OpenAIInferenceProviderConfig
+
+
+Connection settings for an OpenAI inference provider.
+
+
+| Field    | Type   | Description   |
+|----------|--------|---------------|
+| api_key  | string |               |
+| base_url | string |               |
+
+
+## OpenAIInferenceProviderEntry
+
+
+OpenAI inference provider.
+
+
+| Field                | Type    | Description                                           |
+|--------              |---------|--------------                                         |
+| id                   | string  |                                                       |
+| skip_model_discovery | boolean |                                                       |
+| allowed_models       | array   |                                                       |
+| model_profiles_path  | string  |                                                       |
+| api_key_env          | string  | Deprecated: prefer config.api_key with ${env.VAR}.    |
+| extra                | object  | Deprecated escape hatch for unmodeled provider knobs. |
+| type                 | string  | OpenAI remote inference provider.                     |
+| config               |         | API key and optional base URL.                        |
 
 
 ## PgvectorVectorStoreProvider
@@ -870,23 +987,6 @@ Attributes:
 | config      |        | Redaction-specific configuration for this shield.          |
 
 
-## RiskDefinition
-
-
-Definition for a custom risk category evaluated by Granite Guardian.
-
-
-| Field             | Type    | Description |
-|-------------------|---------|-------------|
-| name              | string  | Unique identifier for this risk (for example `roleplay-jailbreak`). |
-| description       | string  | Risk definition text passed to Granite Guardian as `custom_criteria`. |
-| threshold         | number  | Score threshold for flagging, 0.0–1.0 (default 0.65; lower = more sensitive). |
-| enabled           | boolean | Whether to run this check (default `true`). |
-| enable_thinking   | boolean | Internal — set via `ModerationConfig.thinking_enabled`, not directly. |
-| points            | array   | Where to evaluate: `input`, `output`, and/or `tool` (at least one). |
-| violation_message | string  | Message returned when this risk is violated. |
-
-
 ## RerankerConfiguration
 
 
@@ -1009,6 +1109,36 @@ Attributes:
 | max_prompts_per_user    | integer | Maximum number of saved prompts a user can create. Defaults to 50. Cannot exceed 200.         |
 | max_display_name_length | integer | Maximum character length for prompt display name (title). Defaults to 255. Cannot exceed 255. |
 | max_content_length      | integer | Maximum character length for the prompt content body. Defaults to 10000. Cannot exceed 30000. |
+
+
+## SentenceTransformersInferenceProviderConfig
+
+
+Settings for the local sentence-transformers inference provider.
+
+
+| Field     | Type   | Description   |
+|--------   |--------|---------------|
+| device    | string |               |
+| cache_dir | string |               |
+
+
+## SentenceTransformersInferenceProviderEntry
+
+
+Local sentence-transformers inference provider.
+
+
+| Field                | Type    | Description                                                |
+|--------              |---------|--------------                                              |
+| id                   | string  |                                                            |
+| skip_model_discovery | boolean |                                                            |
+| allowed_models       | array   |                                                            |
+| model_profiles_path  | string  |                                                            |
+| api_key_env          | string  | Deprecated: prefer config.api_key with ${env.VAR}.         |
+| extra                | object  | Deprecated escape hatch for unmodeled provider knobs.      |
+| type                 | string  | Local sentence-transformers embedding and rerank provider. |
+| config               |         | Optional device and Hugging Face cache directory.          |
 
 
 ## ServiceConfiguration
@@ -1134,44 +1264,6 @@ A Kubernetes ServiceAccount identity for trusted-proxy allowlist.
 | name      | string | Name of the Kubernetes ServiceAccount.      |
 
 
-## UnifiedInferenceProviderEntry
-
-
-A high-level inference provider entry for unified-mode synthesis.
-
-Operators describe inference providers at this high level (backend-agnostic
-vocabulary) instead of authoring raw OGX provider blocks. The
-synthesizer (`apply_high_level_inference`) expands each entry into an OGX
-`providers.inference` entry, mapping `type` to a `provider_type` and
-emitting `${env.<VAR>}` references for secrets (never literal values).
-
-Attributes:
-    type: Canonical provider identifier. Vendor-neutral so it survives a
-        future backend change; each backend-specific synthesizer maps it to
-        its own provider vocabulary.
-    id: Optional identifier emitted as the OGX provider_id. When
-        omitted, synthesized as type with underscores hyphenated. If set,
-        must be non-empty after stripping whitespace and may contain only
-        lowercase letters, digits, underscores, and hyphens.
-    api_key_env: Name of the environment variable holding the provider API
-        key. Emitted verbatim as `${env.<name>}` so the secret never lands
-        on disk resolved.
-    allowed_models: Optional allow-list of model identifiers passed through
-        to the synthesized provider config.
-    extra: Additional provider-config keys merged verbatim into the
-        synthesized provider's `config` block — an escape hatch for
-        provider-specific knobs not modeled here.
-
-
-| Field          | Type   | Description                                                                                                                                                                                                                                       |
-|----------------|--------|--------------                                                                                                                                                                                                                                     |
-| type           | string | Canonical, backend-agnostic provider identifier mapped to an OGX provider_type by the synthesizer.                                                                                                                                                |
-| id             | string | Optional identifier emitted as the OGX provider_id. When omitted, synthesized as type with underscores hyphenated. If set, must be non-empty after stripping whitespace and may contain only lowercase letters, digits, underscores, and hyphens. |
-| api_key_env    | string | Name of the environment variable holding the provider API key. Emitted as a ${env.<name>} reference so the secret is never written to disk in resolved form.                                                                                      |
-| allowed_models | array  | Optional allow-list of model identifiers for this provider.                                                                                                                                                                                       |
-| extra          | object | Additional provider-config keys merged verbatim into the synthesized provider's config block.                                                                                                                                                     |
-
-
 ## UnifiedOgxConfig
 
 
@@ -1243,3 +1335,98 @@ Attributes:
 |------------------|--------|--------------                                                                                                                                       |
 | default_provider | string | Provider id used for vector_stores.default_* in the synthesized OGX config. Required when providers is non-empty; must match one of providers[].id. |
 | providers        | array  | Dynamic vector-store provider capacity for runtime POST /v1/vector-stores creates. Not the same as rag.byok.stores (static registered corpora).     |
+
+
+## VertexAIInferenceProviderConfig
+
+
+Connection settings for a Vertex AI inference provider.
+
+Authentication uses Google Application Default Credentials. Set
+GOOGLE_APPLICATION_CREDENTIALS in the environment when a credentials file
+is required; there is no credentials path field in config.
+
+
+| Field    | Type   | Description   |
+|----------|--------|---------------|
+| project  | string |               |
+| location | string |               |
+
+
+## VertexAIInferenceProviderEntry
+
+
+Vertex AI inference provider.
+
+
+| Field                | Type    | Description                                           |
+|--------              |---------|--------------                                         |
+| id                   | string  |                                                       |
+| skip_model_discovery | boolean |                                                       |
+| allowed_models       | array   |                                                       |
+| model_profiles_path  | string  |                                                       |
+| api_key_env          | string  | Deprecated: prefer config.api_key with ${env.VAR}.    |
+| extra                | object  | Deprecated escape hatch for unmodeled provider knobs. |
+| type                 | string  | Google Vertex AI remote inference provider.           |
+| config               |         | GCP project and location.                             |
+
+
+## VllmInferenceProviderConfig
+
+
+Connection settings for a vLLM inference provider.
+
+
+| Field    | Type   | Description   |
+|----------|--------|---------------|
+| base_url | string |               |
+| api_key  | string |               |
+
+
+## VllmInferenceProviderEntry
+
+
+vLLM inference provider.
+
+
+| Field                | Type    | Description                                           |
+|--------              |---------|--------------                                         |
+| id                   | string  |                                                       |
+| skip_model_discovery | boolean |                                                       |
+| allowed_models       | array   |                                                       |
+| model_profiles_path  | string  |                                                       |
+| api_key_env          | string  | Deprecated: prefer config.api_key with ${env.VAR}.    |
+| extra                | object  | Deprecated escape hatch for unmodeled provider knobs. |
+| type                 | string  | vLLM OpenAI-compatible remote inference provider.     |
+| config               |         | Base URL and optional API key.                        |
+
+
+## WatsonxInferenceProviderConfig
+
+
+Connection settings for a WatsonX inference provider.
+
+
+| Field      | Type   | Description   |
+|--------    |--------|---------------|
+| api_key    | string |               |
+| project_id | string |               |
+| base_url   | string |               |
+
+
+## WatsonxInferenceProviderEntry
+
+
+WatsonX inference provider.
+
+
+| Field                | Type    | Description                                           |
+|--------              |---------|--------------                                         |
+| id                   | string  |                                                       |
+| skip_model_discovery | boolean |                                                       |
+| allowed_models       | array   |                                                       |
+| model_profiles_path  | string  |                                                       |
+| api_key_env          | string  | Deprecated: prefer config.api_key with ${env.VAR}.    |
+| extra                | object  | Deprecated escape hatch for unmodeled provider knobs. |
+| type                 | string  | IBM WatsonX remote inference provider.                |
+| config               |         | API key, project ID, and base URL.                    |

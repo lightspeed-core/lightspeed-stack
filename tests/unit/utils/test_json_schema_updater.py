@@ -85,7 +85,7 @@ def test_recursive_recurse_into_subdicts() -> None:
         "type": "object",
         "properties": {
             "name": {"type": "string"},
-            "age": {"type": "integer", "minimum": 0},
+            "age": {"type": "integer", "minimum": 0, "exclusiveMinimum": True},
         },
     }
 
@@ -115,7 +115,7 @@ def test_exclusive_minimum_handling_positive_value() -> None:
         "type": "object",
         "properties": {
             "name": {"type": "string"},
-            "age": {"type": "integer", "minimum": 100},
+            "age": {"type": "integer", "minimum": 100, "exclusiveMinimum": True},
         },
     }
 
@@ -145,7 +145,7 @@ def test_exclusive_minimum_handling_zero_value() -> None:
         "type": "object",
         "properties": {
             "name": {"type": "string"},
-            "age": {"type": "integer", "minimum": 0},
+            "age": {"type": "integer", "minimum": 0, "exclusiveMinimum": True},
         },
     }
 
@@ -175,7 +175,7 @@ def test_exclusive_minimum_handling_negative_value() -> None:
         "type": "object",
         "properties": {
             "name": {"type": "string"},
-            "age": {"type": "integer", "minimum": -100},
+            "age": {"type": "integer", "minimum": -100, "exclusiveMinimum": True},
         },
     }
 
@@ -248,6 +248,7 @@ def test_anyof_list_with_more_complex_first_entry() -> None:
     # expected output from updater
     expected = {
         "type": "array",
+        "items": {"type": "integer"},
         "nullable": True,
     }
 
@@ -291,9 +292,11 @@ def test_mixed_keys_preserve_order_like_behavior() -> None:
     }
 
     # expected output from updater
-    # exclusiveMinimum should become minimum; anyOf -> type+nullable and description preserved
+    # exclusiveMinimum should become minimum+exclusiveMinimum;
+    # anyOf -> type+nullable and description preserved
     expected = {
         "minimum": 5,
+        "exclusiveMinimum": True,
         "type": "integer",
         "nullable": True,
         "description": "example",
@@ -326,8 +329,10 @@ def test_deeply_nested_anyof_and_exclusive_minimum() -> None:
         "level1": {
             "level2": {
                 "type": "object",
+                "properties": {"x": {"type": "string"}},
                 "nullable": True,
                 "minimum": 1,
+                "exclusiveMinimum": True,
             }
         }
     }
@@ -425,6 +430,89 @@ def test_anyof_with_additional_fields_on_first_item() -> None:
     # expected output from updater
     expected = {
         "type": "string",
+        "format": "email",
+        "maxLength": 50,
+        "nullable": True,
+    }
+
+    # perform the update
+    result = recursive_update(original)
+
+    # non-empty dict with known content should be returned
+    assert result == expected
+
+
+def test_anyof_nullable_preserves_enum() -> None:
+    """Test that enum constraints are preserved when converting anyOf to nullable."""
+    # input to updater
+    original = {
+        "anyOf": [
+            {"type": "string", "enum": ["llm", "embedding", "rerank"]},
+            {"type": "null"},
+        ]
+    }
+
+    # expected output from updater
+    expected = {
+        "type": "string",
+        "enum": ["llm", "embedding", "rerank"],
+        "nullable": True,
+    }
+
+    # perform the update
+    result = recursive_update(original)
+
+    # non-empty dict with known content should be returned
+    assert result == expected
+
+
+def test_anyof_nullable_preserves_nested_items() -> None:
+    """Test that nested items dict is recursively updated when preserving anyOf constraints."""
+    # input to updater
+    original = {
+        "anyOf": [
+            {
+                "type": "array",
+                "items": {"type": "integer", "exclusiveMinimum": 0},
+            },
+            {"type": "null"},
+        ]
+    }
+
+    # expected output from updater
+    expected = {
+        "type": "array",
+        "items": {"type": "integer", "minimum": 0, "exclusiveMinimum": True},
+        "nullable": True,
+    }
+
+    # perform the update
+    result = recursive_update(original)
+
+    # non-empty dict with known content should be returned
+    assert result == expected
+
+
+def test_anyof_nullable_with_top_level_exclusive_minimum() -> None:
+    """Test anyOf nullable conversion when first item contains exclusiveMinimum.
+
+    This covers the Optional[PositiveInt] pattern where Pydantic emits
+    {"anyOf": [{"type": "integer", "exclusiveMinimum": 0}, {"type": "null"}]}.
+    The integer exclusiveMinimum must be converted to OpenAPI 3.0 boolean form.
+    """
+    # input to updater — Optional[PositiveInt] pattern
+    original = {
+        "anyOf": [
+            {"type": "integer", "exclusiveMinimum": 0},
+            {"type": "null"},
+        ]
+    }
+
+    # expected output from updater
+    expected = {
+        "type": "integer",
+        "minimum": 0,
+        "exclusiveMinimum": True,
         "nullable": True,
     }
 
@@ -450,7 +538,10 @@ def test_anyof_with_additional_fields_more_items() -> None:
     # expected output from updater
     expected = {
         "minimum": 5,
+        "exclusiveMinimum": True,
         "type": "string",
+        "format": "email",
+        "maxLength": 50,
         "nullable": True,
         "description": "example",
     }

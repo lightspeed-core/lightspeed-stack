@@ -100,7 +100,6 @@ class "ForbiddenResponse" as src.models.api.responses.error.forbidden.ForbiddenR
 class "InfoResponse" as src.models.api.responses.successful.probes.InfoResponse {
   model_config : dict
   name : str
-  ogx_version : str
   service_version : str
 }
 class "InternalServerErrorResponse" as src.models.api.responses.error.internal.InternalServerErrorResponse {
@@ -241,6 +240,7 @@ class "ResponsesResponse" as src.models.api.responses.successful.responses_opena
   parallel_tool_calls : bool
   previous_response_id : Optional[str]
   prompt : Optional[Prompt]
+  prompt_cache_key : Optional[str]
   reasoning : Optional[Reasoning]
   safety_identifier : Optional[str]
   status : str

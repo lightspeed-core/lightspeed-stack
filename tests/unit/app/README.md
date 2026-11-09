@@ -8,9 +8,17 @@ Init of tests/unit/app.
 
 Unit tests for app.database module.
 
+## [test_main_lifespan.py](test_main_lifespan.py)
+
+Unit tests for the startup sequence of the FastAPI application.
+
 ## [test_main_middleware.py](test_main_middleware.py)
 
 Unit tests for the pure ASGI middlewares in main.py.
+
+## [test_main_startup.py](test_main_startup.py)
+
+Unit tests for FastAPI lifespan wiring of the inference provider registry.
 
 ## [test_routers.py](test_routers.py)
 

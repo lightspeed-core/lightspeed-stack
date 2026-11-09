@@ -132,6 +132,41 @@
         "title": "Action",
         "type": "string"
       },
+      "AllowedModel": {
+        "additionalProperties": false,
+        "description": "Configuration for an allowed inference model.\n\nAccepts string IDs or dictionaries. String IDs populate both `name` and\n`provider_model_id`; dictionary inputs default `name` to `provider_model_id`.",
+        "properties": {
+          "name": {
+            "minLength": 1,
+            "title": "Local model name",
+            "type": "string"
+          },
+          "provider_model_id": {
+            "minLength": 1,
+            "title": "Backend model id",
+            "type": "string"
+          },
+          "model_type": {
+            "type": "string",
+            "nullable": true,
+            "default": null,
+            "description": "Optional capability override (llm, embedding, or rerank).",
+            "title": "Model type"
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "description": "Optional catalog metadata. context_window: the model's context window in tokens, used by conversation compaction.",
+            "title": "Model metadata",
+            "type": "object"
+          }
+        },
+        "required": [
+          "name",
+          "provider_model_id"
+        ],
+        "title": "AllowedModel",
+        "type": "object"
+      },
       "ApprovalFilter": {
         "additionalProperties": false,
         "description": "Granular approval control for specific MCP tools.\n\nAttributes:\n    always: Tool names that always require human approval before execution.\n    never: Tool names that never require approval (pre-approved).",
@@ -286,19 +321,19 @@
         "properties": {
           "tenant_id": {
             "format": "password",
-            "title": "Tenant Id",
+            "title": "Tenant ID",
             "type": "string",
             "writeOnly": true
           },
           "client_id": {
             "format": "password",
-            "title": "Client Id",
+            "title": "Client ID",
             "type": "string",
             "writeOnly": true
           },
           "client_secret": {
             "format": "password",
-            "title": "Client Secret",
+            "title": "Client secret",
             "type": "string",
             "writeOnly": true
           },
@@ -315,6 +350,190 @@
           "client_secret"
         ],
         "title": "AzureEntraIdConfiguration",
+        "type": "object"
+      },
+      "AzureInferenceProviderConfig": {
+        "additionalProperties": false,
+        "description": "Connection settings for an Azure OpenAI inference provider.",
+        "properties": {
+          "base_url": {
+            "type": "string",
+            "nullable": true,
+            "default": null,
+            "title": "Azure OpenAI endpoint"
+          },
+          "api_key": {
+            "type": "string",
+            "nullable": true,
+            "default": null,
+            "title": "API key"
+          },
+          "api_version": {
+            "type": "string",
+            "nullable": true,
+            "default": null,
+            "title": "API version"
+          },
+          "entra_id": {
+            "anyOf": [
+              {
+                "$ref": "`#/components/schemas/`AzureEntraIdConfiguration"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Preferred Entra ID auth for this provider. Takes precedence over the legacy top-level Azure Entra ID settings.",
+            "title": "Entra ID"
+          }
+        },
+        "title": "AzureInferenceProviderConfig",
+        "type": "object"
+      },
+      "AzureInferenceProviderEntry": {
+        "additionalProperties": false,
+        "description": "Azure OpenAI inference provider.",
+        "properties": {
+          "id": {
+            "title": "Provider ID",
+            "type": "string"
+          },
+          "skip_model_discovery": {
+            "default": false,
+            "title": "Skip model discovery",
+            "type": "boolean"
+          },
+          "allowed_models": {
+            "items": {
+              "$ref": "`#/components/schemas/`AllowedModel"
+            },
+            "title": "Allowed models",
+            "type": "array"
+          },
+          "model_profiles_path": {
+            "type": "string",
+            "nullable": true,
+            "default": null,
+            "title": "Model profiles path"
+          },
+          "api_key_env": {
+            "type": "string",
+            "nullable": true,
+            "default": null,
+            "description": "Deprecated: prefer config.api_key with ${env.VAR}.",
+            "title": "API key environment variable"
+          },
+          "extra": {
+            "type": "object",
+            "nullable": true,
+            "default": null,
+            "description": "Deprecated escape hatch for unmodeled provider knobs.",
+            "title": "Extra provider config"
+          },
+          "type": {
+            "const": "azure",
+            "default": "azure",
+            "description": "Azure OpenAI remote inference provider.",
+            "title": "Provider type",
+            "type": "string"
+          },
+          "config": {
+            "$ref": "`#/components/schemas/`AzureInferenceProviderConfig",
+            "description": "Endpoint, API key or Entra ID, and API version.",
+            "title": "Connection settings"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "title": "AzureInferenceProviderEntry",
+        "type": "object"
+      },
+      "BedrockInferenceProviderConfig": {
+        "additionalProperties": false,
+        "description": "Connection settings for an AWS Bedrock inference provider.",
+        "properties": {
+          "region": {
+            "type": "string",
+            "nullable": true,
+            "default": null,
+            "title": "AWS region"
+          },
+          "profile_name": {
+            "type": "string",
+            "nullable": true,
+            "default": null,
+            "title": "AWS profile"
+          },
+          "api_key": {
+            "type": "string",
+            "nullable": true,
+            "default": null,
+            "description": "Optional Bedrock bearer token (alternative to SigV4).",
+            "title": "Bearer token"
+          }
+        },
+        "title": "BedrockInferenceProviderConfig",
+        "type": "object"
+      },
+      "BedrockInferenceProviderEntry": {
+        "additionalProperties": false,
+        "description": "AWS Bedrock inference provider.",
+        "properties": {
+          "id": {
+            "title": "Provider ID",
+            "type": "string"
+          },
+          "skip_model_discovery": {
+            "default": false,
+            "title": "Skip model discovery",
+            "type": "boolean"
+          },
+          "allowed_models": {
+            "items": {
+              "$ref": "`#/components/schemas/`AllowedModel"
+            },
+            "title": "Allowed models",
+            "type": "array"
+          },
+          "model_profiles_path": {
+            "type": "string",
+            "nullable": true,
+            "default": null,
+            "title": "Model profiles path"
+          },
+          "api_key_env": {
+            "type": "string",
+            "nullable": true,
+            "default": null,
+            "description": "Deprecated: prefer config.api_key with ${env.VAR}.",
+            "title": "API key environment variable"
+          },
+          "extra": {
+            "type": "object",
+            "nullable": true,
+            "default": null,
+            "description": "Deprecated escape hatch for unmodeled provider knobs.",
+            "title": "Extra provider config"
+          },
+          "type": {
+            "const": "bedrock",
+            "default": "bedrock",
+            "description": "AWS Bedrock remote inference provider.",
+            "title": "Provider type",
+            "type": "string"
+          },
+          "config": {
+            "$ref": "`#/components/schemas/`BedrockInferenceProviderConfig",
+            "description": "AWS region, optional profile, and optional bearer token.",
+            "title": "Connection settings"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "title": "BedrockInferenceProviderEntry",
         "type": "object"
       },
       "ByokConfiguration": {
@@ -389,7 +608,7 @@
       },
       "CompactionConfiguration": {
         "additionalProperties": false,
-        "description": "Configuration for conversation history compaction.\n\nCompaction summarizes older conversation turns when their estimated\ntoken count approaches the context window limit, keeping the\nconversation usable instead of failing with HTTP 413. The\nconfiguration here controls when compaction triggers and how much\nrecent context is preserved verbatim.\n\nAttributes:\n    enabled: Master switch. When False, compaction never triggers\n        and other fields are inert.\n    threshold_ratio: Trigger compaction when estimated input tokens\n        exceed this fraction of the model's context window\n        (clamped to 0.0..1.0).\n    token_floor: Minimum estimated token count before compaction\n        can trigger, regardless of threshold_ratio. Prevents\n        triggering on very small context windows.\n    buffer_turns: Initial number of recent turns to keep verbatim.\n        The runtime applies a degrading guard — if these turns\n        exceed the available budget, it reduces buffer_turns by\n        one repeatedly until the budget fits, down to zero.\n    buffer_max_ratio: Hard cap on the fraction of the context\n        window the buffer zone may occupy, regardless of\n        buffer_turns.",
+        "description": "Configuration for conversation history compaction.\n\nCompaction summarizes older conversation turns when their estimated\ntoken count approaches the context window limit, keeping the\nconversation usable instead of failing with HTTP 413. The\nconfiguration here controls when compaction triggers and how much\nrecent context is preserved verbatim.\n\nAttributes:\n    enabled: Master switch. When False, compaction never triggers\n        and other fields are inert.\n    threshold_ratio: Trigger compaction when estimated input tokens\n        exceed this fraction of the model's context window\n        (clamped to 0.0..1.0).\n    token_floor: Minimum estimated token count before compaction\n        can trigger, regardless of threshold_ratio. Prevents\n        triggering on very small context windows.\n    buffer_turns: Initial number of recent turns to keep verbatim.\n        The runtime applies a degrading guard — if these turns\n        exceed the available budget, it reduces buffer_turns by\n        one repeatedly until the budget fits, down to zero.\n    buffer_max_ratio: Hard cap on the fraction of the context\n        window the buffer zone may occupy, regardless of\n        buffer_turns.\n    summary_prompt: Optional prompt template for summarizing older\n        turns in the Pydantic AI compaction. It must contain the\n        ``{messages}`` placeholder and no other replacement field;\n        when unset, the default prompt is used.",
         "properties": {
           "enabled": {
             "default": false,
@@ -422,6 +641,13 @@
             "description": "Maximum fraction of context window the buffer zone can occupy, regardless of buffer_turns.",
             "title": "Buffer max ratio",
             "type": "number"
+          },
+          "summary_prompt": {
+            "type": "string",
+            "nullable": true,
+            "default": null,
+            "description": "Prompt template for summarizing older turns in the Pydantic AI compaction. The conversation transcript replaces the {messages} placeholder, which is required; no other replacement field is allowed, so double any literal braces. When unset, the default prompt is used.",
+            "title": "Summary prompt"
           }
         },
         "title": "CompactionConfiguration",
@@ -767,6 +993,12 @@
               }
             ],
             "default": null
+          },
+          "responses_request_max_size": {
+            "default": 131072,
+            "description": "Maximum character length for the serialized /v1/response responses request body",
+            "title": "Maximum character length for the serialized responses request body",
+            "type": "integer"
           }
         },
         "title": "Customization",
@@ -940,6 +1172,13 @@
             },
             "title": "Defined risks",
             "type": "array"
+          },
+          "streaming_output_check_interval_tokens": {
+            "default": 50,
+            "description": "For risks with `output` in `points`, re-check the response against those risks approximately every N generated output tokens while streaming, plus once more over any remaining text once generation completes. Ignored when no configured risk targets the `output` point.",
+            "minimum": 0,
+            "title": "Streaming output check interval (tokens)",
+            "type": "integer"
           }
         },
         "required": [
@@ -1023,11 +1262,45 @@
             "type": "object"
           },
           "providers": {
-            "description": "Unified-mode synthesis input (Decision S5): a high-level, backend-agnostic list of inference providers the synthesizer expands into OGX provider entries. Lives at the configuration root so it survives a future backend change. A non-empty list signals unified mode. Empty (the default) leaves legacy/remote modes unaffected. The sibling default_model / default_provider keep their query-time routing meaning and are independent of this list.",
+            "description": "Discriminated list of inference providers. Empty by default. The sibling default_model / default_provider keep their query-time routing meaning and are independent of this list.",
             "items": {
-              "$ref": "`#/components/schemas/`UnifiedInferenceProviderEntry"
+              "discriminator": {
+                "mapping": {
+                  "azure": "`#/components/schemas/`AzureInferenceProviderEntry",
+                  "bedrock": "`#/components/schemas/`BedrockInferenceProviderEntry",
+                  "openai": "`#/components/schemas/`OpenAIInferenceProviderEntry",
+                  "sentence_transformers": "`#/components/schemas/`SentenceTransformersInferenceProviderEntry",
+                  "vertexai": "`#/components/schemas/`VertexAIInferenceProviderEntry",
+                  "vllm": "`#/components/schemas/`VllmInferenceProviderEntry",
+                  "watsonx": "`#/components/schemas/`WatsonxInferenceProviderEntry"
+                },
+                "propertyName": "type"
+              },
+              "oneOf": [
+                {
+                  "$ref": "`#/components/schemas/`OpenAIInferenceProviderEntry"
+                },
+                {
+                  "$ref": "`#/components/schemas/`AzureInferenceProviderEntry"
+                },
+                {
+                  "$ref": "`#/components/schemas/`VertexAIInferenceProviderEntry"
+                },
+                {
+                  "$ref": "`#/components/schemas/`BedrockInferenceProviderEntry"
+                },
+                {
+                  "$ref": "`#/components/schemas/`VllmInferenceProviderEntry"
+                },
+                {
+                  "$ref": "`#/components/schemas/`WatsonxInferenceProviderEntry"
+                },
+                {
+                  "$ref": "`#/components/schemas/`SentenceTransformersInferenceProviderEntry"
+                }
+              ]
             },
-            "title": "High-level inference providers",
+            "title": "Inference providers",
             "type": "array"
           },
           "max_infer_iters": {
@@ -1353,6 +1626,85 @@
           }
         },
         "title": "OkpConfiguration",
+        "type": "object"
+      },
+      "OpenAIInferenceProviderConfig": {
+        "additionalProperties": false,
+        "description": "Connection settings for an OpenAI inference provider.",
+        "properties": {
+          "api_key": {
+            "type": "string",
+            "nullable": true,
+            "default": null,
+            "title": "API key"
+          },
+          "base_url": {
+            "type": "string",
+            "nullable": true,
+            "default": null,
+            "title": "Base URL"
+          }
+        },
+        "title": "OpenAIInferenceProviderConfig",
+        "type": "object"
+      },
+      "OpenAIInferenceProviderEntry": {
+        "additionalProperties": false,
+        "description": "OpenAI inference provider.",
+        "properties": {
+          "id": {
+            "title": "Provider ID",
+            "type": "string"
+          },
+          "skip_model_discovery": {
+            "default": false,
+            "title": "Skip model discovery",
+            "type": "boolean"
+          },
+          "allowed_models": {
+            "items": {
+              "$ref": "`#/components/schemas/`AllowedModel"
+            },
+            "title": "Allowed models",
+            "type": "array"
+          },
+          "model_profiles_path": {
+            "type": "string",
+            "nullable": true,
+            "default": null,
+            "title": "Model profiles path"
+          },
+          "api_key_env": {
+            "type": "string",
+            "nullable": true,
+            "default": null,
+            "description": "Deprecated: prefer config.api_key with ${env.VAR}.",
+            "title": "API key environment variable"
+          },
+          "extra": {
+            "type": "object",
+            "nullable": true,
+            "default": null,
+            "description": "Deprecated escape hatch for unmodeled provider knobs.",
+            "title": "Extra provider config"
+          },
+          "type": {
+            "const": "openai",
+            "default": "openai",
+            "description": "OpenAI remote inference provider.",
+            "title": "Provider type",
+            "type": "string"
+          },
+          "config": {
+            "$ref": "`#/components/schemas/`OpenAIInferenceProviderConfig",
+            "description": "API key and optional base URL.",
+            "title": "Connection settings"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "title": "OpenAIInferenceProviderEntry",
         "type": "object"
       },
       "PgvectorVectorStoreProvider": {
@@ -2159,6 +2511,85 @@
         "title": "SavedPromptsConfiguration",
         "type": "object"
       },
+      "SentenceTransformersInferenceProviderConfig": {
+        "additionalProperties": false,
+        "description": "Settings for the local sentence-transformers inference provider.",
+        "properties": {
+          "device": {
+            "type": "string",
+            "nullable": true,
+            "default": null,
+            "title": "Device"
+          },
+          "cache_dir": {
+            "type": "string",
+            "nullable": true,
+            "default": null,
+            "title": "Hugging Face cache directory"
+          }
+        },
+        "title": "SentenceTransformersInferenceProviderConfig",
+        "type": "object"
+      },
+      "SentenceTransformersInferenceProviderEntry": {
+        "additionalProperties": false,
+        "description": "Local sentence-transformers inference provider.",
+        "properties": {
+          "id": {
+            "title": "Provider ID",
+            "type": "string"
+          },
+          "skip_model_discovery": {
+            "default": false,
+            "title": "Skip model discovery",
+            "type": "boolean"
+          },
+          "allowed_models": {
+            "items": {
+              "$ref": "`#/components/schemas/`AllowedModel"
+            },
+            "title": "Allowed models",
+            "type": "array"
+          },
+          "model_profiles_path": {
+            "type": "string",
+            "nullable": true,
+            "default": null,
+            "title": "Model profiles path"
+          },
+          "api_key_env": {
+            "type": "string",
+            "nullable": true,
+            "default": null,
+            "description": "Deprecated: prefer config.api_key with ${env.VAR}.",
+            "title": "API key environment variable"
+          },
+          "extra": {
+            "type": "object",
+            "nullable": true,
+            "default": null,
+            "description": "Deprecated escape hatch for unmodeled provider knobs.",
+            "title": "Extra provider config"
+          },
+          "type": {
+            "const": "sentence_transformers",
+            "default": "sentence_transformers",
+            "description": "Local sentence-transformers embedding and rerank provider.",
+            "title": "Provider type",
+            "type": "string"
+          },
+          "config": {
+            "$ref": "`#/components/schemas/`SentenceTransformersInferenceProviderConfig",
+            "description": "Optional device and Hugging Face cache directory.",
+            "title": "Connection settings"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "title": "SentenceTransformersInferenceProviderEntry",
+        "type": "object"
+      },
       "ServiceConfiguration": {
         "additionalProperties": false,
         "description": "Service configuration.\n\nLightspeed Core Stack is a REST API service that accepts requests on a\nspecified hostname and port. It is also possible to enable authentication\nand specify the number of Uvicorn workers. When more workers are specified,\nthe service can handle requests concurrently.",
@@ -2391,63 +2822,9 @@
         "title": "TrustedProxyServiceAccount",
         "type": "object"
       },
-      "UnifiedInferenceProviderEntry": {
-        "additionalProperties": false,
-        "description": "A high-level inference provider entry for unified-mode synthesis.\n\nOperators describe inference providers at this high level (backend-agnostic\nvocabulary) instead of authoring raw OGX provider blocks. The\nsynthesizer (`apply_high_level_inference`) expands each entry into an OGX\n`providers.inference` entry, mapping `type` to a `provider_type` and\nemitting `${env.<VAR>}` references for secrets (never literal values).\n\nAttributes:\n    type: Canonical provider identifier. Vendor-neutral so it survives a\n        future backend change; each backend-specific synthesizer maps it to\n        its own provider vocabulary.\n    id: Optional identifier emitted as the OGX provider_id. When\n        omitted, synthesized as type with underscores hyphenated. If set,\n        must be non-empty after stripping whitespace and may contain only\n        lowercase letters, digits, underscores, and hyphens.\n    api_key_env: Name of the environment variable holding the provider API\n        key. Emitted verbatim as `${env.<name>}` so the secret never lands\n        on disk resolved.\n    allowed_models: Optional allow-list of model identifiers passed through\n        to the synthesized provider config.\n    extra: Additional provider-config keys merged verbatim into the\n        synthesized provider's `config` block — an escape hatch for\n        provider-specific knobs not modeled here.",
-        "properties": {
-          "type": {
-            "description": "Canonical, backend-agnostic provider identifier mapped to an OGX provider_type by the synthesizer.",
-            "enum": [
-              "openai",
-              "ollama",
-              "vllm",
-              "sentence_transformers",
-              "azure",
-              "vertexai",
-              "watsonx",
-              "vllm_rhaiis",
-              "vllm_rhel_ai"
-            ],
-            "title": "Provider type",
-            "type": "string"
-          },
-          "id": {
-            "type": "string",
-            "nullable": true,
-            "default": null,
-            "description": "Optional identifier emitted as the OGX provider_id. When omitted, synthesized as type with underscores hyphenated. If set, must be non-empty after stripping whitespace and may contain only lowercase letters, digits, underscores, and hyphens.",
-            "title": "Provider ID"
-          },
-          "api_key_env": {
-            "type": "string",
-            "nullable": true,
-            "default": null,
-            "description": "Name of the environment variable holding the provider API key. Emitted as a ${env.<name>} reference so the secret is never written to disk in resolved form.",
-            "title": "API key environment variable"
-          },
-          "allowed_models": {
-            "type": "array",
-            "nullable": true,
-            "default": null,
-            "description": "Optional allow-list of model identifiers for this provider.",
-            "title": "Allowed models"
-          },
-          "extra": {
-            "additionalProperties": true,
-            "description": "Additional provider-config keys merged verbatim into the synthesized provider's config block.",
-            "title": "Extra provider config",
-            "type": "object"
-          }
-        },
-        "required": [
-          "type"
-        ],
-        "title": "UnifiedInferenceProviderEntry",
-        "type": "object"
-      },
       "UnifiedOgxConfig": {
         "additionalProperties": false,
-        "description": "Backend-specific knobs for unified-mode OGX synthesis.\n\nPer Decision S5 of the design spike, backend-agnostic high-level sections\n(inference, ...) live at the configuration root, not here. This block holds\nonly the OGX-specific synthesis controls: which baseline to start\nfrom, an optional profile file, and a raw native_override escape hatch.\n\nAttributes:\n    baseline: Synthesis starting point. \"default\" begins from LCORE's\n        built-in baseline (src/data/default_run.yaml) including the\n        conditional OpenAI inference provider. \"byo-llm\" begins from the\n        same file with that OpenAI row removed. \"empty\" begins from an\n        empty dict (used by the migration tool for an exact round-trip).\n        Ignored when `profile` is set.\n    profile: Optional path to a user-authored run.yaml-shaped file used as\n        the synthesis baseline. Relative paths resolve against the directory\n        of the loaded lightspeed-stack.yaml.\n    native_override: Raw OGX schema deep-merged last (maps merge\n        recursively, lists and scalars replace). The escape hatch for\n        anything the high-level sections do not express.",
+        "description": "Backend-specific knobs for unified-mode OGX synthesis.\n\nPer Decision S5 of the design spike, backend-agnostic high-level sections\n(inference, ...) live at the configuration root, not here. This block holds\nonly the OGX-specific synthesis controls: which baseline to start\nfrom, an optional profile file, and a raw native_override escape hatch.\n\nAttributes:\n    baseline: Synthesis starting point. \"default\" begins from LCORE's\n        built-in baseline (src/data/default_run.yaml) including the\n        conditional OpenAI inference provider. \"byo-llm\" begins from the\n        same file with that OpenAI row removed. \"empty\" begins from an\n        empty dict (used by the migration tool for an exact round-trip).\n        Ignored when `profile` is set.\n    profile: Optional path to a user-authored run.yaml-shaped file used as\n        the synthesis baseline. Relative paths resolve against the directory\n        of the loaded lightspeed-stack.yaml.\n    native_override: Raw OGX schema deep-merged last (maps merge\n        recursively, lists and scalars replace). The escape hatch for\n        anything the high-level sections do not express. Note:\n        `registered_resources.models` is a list, so a native_override\n        that sets it replaces — not merges with — any LLM models LCORE\n        auto-registered from `inference.providers[].allowed_models`.",
         "properties": {
           "baseline": {
             "default": "default",
@@ -2469,7 +2846,7 @@
           },
           "native_override": {
             "additionalProperties": true,
-            "description": "Raw OGX schema deep-merged last (maps merge recursively; lists and scalars replace).",
+            "description": "Raw OGX schema deep-merged last (maps merge recursively; lists and scalars replace). Note: setting registered_resources.models here replaces, not merges with, any LLM models LCORE auto-registered from inference.providers[].allowed_models.",
             "title": "Native override",
             "type": "object"
           }
@@ -2546,6 +2923,249 @@
           }
         },
         "title": "VectorStoreConfiguration",
+        "type": "object"
+      },
+      "VertexAIInferenceProviderConfig": {
+        "additionalProperties": false,
+        "description": "Connection settings for a Vertex AI inference provider.\n\nAuthentication uses Google Application Default Credentials. Set\nGOOGLE_APPLICATION_CREDENTIALS in the environment when a credentials file\nis required; there is no credentials path field in config.",
+        "properties": {
+          "project": {
+            "type": "string",
+            "nullable": true,
+            "default": null,
+            "title": "GCP project"
+          },
+          "location": {
+            "type": "string",
+            "nullable": true,
+            "default": null,
+            "title": "GCP location"
+          }
+        },
+        "title": "VertexAIInferenceProviderConfig",
+        "type": "object"
+      },
+      "VertexAIInferenceProviderEntry": {
+        "additionalProperties": false,
+        "description": "Vertex AI inference provider.",
+        "properties": {
+          "id": {
+            "title": "Provider ID",
+            "type": "string"
+          },
+          "skip_model_discovery": {
+            "default": false,
+            "title": "Skip model discovery",
+            "type": "boolean"
+          },
+          "allowed_models": {
+            "items": {
+              "$ref": "`#/components/schemas/`AllowedModel"
+            },
+            "title": "Allowed models",
+            "type": "array"
+          },
+          "model_profiles_path": {
+            "type": "string",
+            "nullable": true,
+            "default": null,
+            "title": "Model profiles path"
+          },
+          "api_key_env": {
+            "type": "string",
+            "nullable": true,
+            "default": null,
+            "description": "Deprecated: prefer config.api_key with ${env.VAR}.",
+            "title": "API key environment variable"
+          },
+          "extra": {
+            "type": "object",
+            "nullable": true,
+            "default": null,
+            "description": "Deprecated escape hatch for unmodeled provider knobs.",
+            "title": "Extra provider config"
+          },
+          "type": {
+            "const": "vertexai",
+            "default": "vertexai",
+            "description": "Google Vertex AI remote inference provider.",
+            "title": "Provider type",
+            "type": "string"
+          },
+          "config": {
+            "$ref": "`#/components/schemas/`VertexAIInferenceProviderConfig",
+            "description": "GCP project and location.",
+            "title": "Connection settings"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "title": "VertexAIInferenceProviderEntry",
+        "type": "object"
+      },
+      "VllmInferenceProviderConfig": {
+        "additionalProperties": false,
+        "description": "Connection settings for a vLLM inference provider.",
+        "properties": {
+          "base_url": {
+            "type": "string",
+            "nullable": true,
+            "default": null,
+            "title": "Base URL"
+          },
+          "api_key": {
+            "type": "string",
+            "nullable": true,
+            "default": null,
+            "title": "API key"
+          }
+        },
+        "title": "VllmInferenceProviderConfig",
+        "type": "object"
+      },
+      "VllmInferenceProviderEntry": {
+        "additionalProperties": false,
+        "description": "vLLM inference provider.",
+        "properties": {
+          "id": {
+            "title": "Provider ID",
+            "type": "string"
+          },
+          "skip_model_discovery": {
+            "default": false,
+            "title": "Skip model discovery",
+            "type": "boolean"
+          },
+          "allowed_models": {
+            "items": {
+              "$ref": "`#/components/schemas/`AllowedModel"
+            },
+            "title": "Allowed models",
+            "type": "array"
+          },
+          "model_profiles_path": {
+            "type": "string",
+            "nullable": true,
+            "default": null,
+            "title": "Model profiles path"
+          },
+          "api_key_env": {
+            "type": "string",
+            "nullable": true,
+            "default": null,
+            "description": "Deprecated: prefer config.api_key with ${env.VAR}.",
+            "title": "API key environment variable"
+          },
+          "extra": {
+            "type": "object",
+            "nullable": true,
+            "default": null,
+            "description": "Deprecated escape hatch for unmodeled provider knobs.",
+            "title": "Extra provider config"
+          },
+          "type": {
+            "const": "vllm",
+            "default": "vllm",
+            "description": "vLLM OpenAI-compatible remote inference provider.",
+            "title": "Provider type",
+            "type": "string"
+          },
+          "config": {
+            "$ref": "`#/components/schemas/`VllmInferenceProviderConfig",
+            "description": "Base URL and optional API key.",
+            "title": "Connection settings"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "title": "VllmInferenceProviderEntry",
+        "type": "object"
+      },
+      "WatsonxInferenceProviderConfig": {
+        "additionalProperties": false,
+        "description": "Connection settings for a WatsonX inference provider.",
+        "properties": {
+          "api_key": {
+            "type": "string",
+            "nullable": true,
+            "default": null,
+            "title": "API key"
+          },
+          "project_id": {
+            "type": "string",
+            "nullable": true,
+            "default": null,
+            "title": "Project ID"
+          },
+          "base_url": {
+            "type": "string",
+            "nullable": true,
+            "default": null,
+            "title": "Base URL"
+          }
+        },
+        "title": "WatsonxInferenceProviderConfig",
+        "type": "object"
+      },
+      "WatsonxInferenceProviderEntry": {
+        "additionalProperties": false,
+        "description": "WatsonX inference provider.",
+        "properties": {
+          "id": {
+            "title": "Provider ID",
+            "type": "string"
+          },
+          "skip_model_discovery": {
+            "default": false,
+            "title": "Skip model discovery",
+            "type": "boolean"
+          },
+          "allowed_models": {
+            "items": {
+              "$ref": "`#/components/schemas/`AllowedModel"
+            },
+            "title": "Allowed models",
+            "type": "array"
+          },
+          "model_profiles_path": {
+            "type": "string",
+            "nullable": true,
+            "default": null,
+            "title": "Model profiles path"
+          },
+          "api_key_env": {
+            "type": "string",
+            "nullable": true,
+            "default": null,
+            "description": "Deprecated: prefer config.api_key with ${env.VAR}.",
+            "title": "API key environment variable"
+          },
+          "extra": {
+            "type": "object",
+            "nullable": true,
+            "default": null,
+            "description": "Deprecated escape hatch for unmodeled provider knobs.",
+            "title": "Extra provider config"
+          },
+          "type": {
+            "const": "watsonx",
+            "default": "watsonx",
+            "description": "IBM WatsonX remote inference provider.",
+            "title": "Provider type",
+            "type": "string"
+          },
+          "config": {
+            "$ref": "`#/components/schemas/`WatsonxInferenceProviderConfig",
+            "description": "API key, project ID, and base URL.",
+            "title": "Connection settings"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "title": "WatsonxInferenceProviderEntry",
         "type": "object"
       }
     }

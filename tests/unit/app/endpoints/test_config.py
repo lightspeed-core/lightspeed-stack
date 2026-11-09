@@ -1,6 +1,6 @@
 """Unit tests for the /config REST API endpoint."""
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pytest
 from fastapi import HTTPException, Request, status
@@ -11,9 +11,11 @@ from opentelemetry.trace import StatusCode
 from pytest_mock import MockerFixture
 
 from app.endpoints.config import config_endpoint_handler
-from authentication.interface import AuthTuple
 from configuration import AppConfig
 from tests.unit.utils.auth_helpers import mock_authorization_resolvers
+
+if TYPE_CHECKING:
+    from authentication.interface import AuthTuple
 
 
 @pytest.mark.asyncio

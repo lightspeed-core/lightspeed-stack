@@ -2,23 +2,26 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
+from google.auth.exceptions import GoogleAuthError
+from google.genai.errors import APIError as GoogleGenAIAPIError
 from pydantic_ai.embeddings import EmbeddingModel
 from pydantic_ai.embeddings.google import GoogleEmbeddingModel
 from pydantic_ai.models import Model
 from pydantic_ai.models.google import GoogleModel
 from pydantic_ai.providers.google_cloud import GoogleCloudProvider
-from sentence_transformers import CrossEncoder
 
 from models.config import VertexAIInferenceProviderEntry
 from providers.inference.base import InferenceProvider
 from providers.inference.catalog import CatalogModel, DiscoveredModel
-from providers.inference.errors import ModelTypeNotSupportedError
+from providers.inference.errors import ModelDiscoveryError
 from providers.inference.model_type_inference import (
     infer_model_type_from_pai_known_names,
 )
-from providers.inference.types import ModelType
+
+if TYPE_CHECKING:
+    from providers.inference.types import ModelType
 
 
 class VertexAIInferenceProvider(
@@ -49,21 +52,27 @@ class VertexAIInferenceProvider(
         Returns:
             Discovered models with inferred types, before allow-list filtering.
 
+        Raises:
+            ModelDiscoveryError: If the Vertex AI models API or Google auth fails.
+
         """
         discovered: list[DiscoveredModel] = []
-        pager = await self._get_provider.client.aio.models.list()
-        async for model in pager:
-            if not model.name:
-                continue
-            discovered.append(
-                DiscoveredModel(
-                    provider_model_id=model.name,
-                    model_type=self._infer_model_type(
-                        model.name,
-                        supported_actions=model.supported_actions,
-                    ),
+        try:
+            pager = await self._get_provider.client.aio.models.list()
+            async for model in pager:
+                if not model.name:
+                    continue
+                discovered.append(
+                    DiscoveredModel(
+                        provider_model_id=model.name,
+                        model_type=self._infer_model_type(
+                            model.name,
+                            supported_actions=model.supported_actions,
+                        ),
+                    )
                 )
-            )
+        except (GoogleGenAIAPIError, GoogleAuthError) as exc:
+            raise ModelDiscoveryError(self.provider_id) from exc
         return discovered
 
     def _create_llm(self, model: CatalogModel) -> Model:
@@ -95,19 +104,6 @@ class VertexAIInferenceProvider(
             model.provider_model_id,
             provider=self._get_provider,
         )
-
-    def _create_rerank(self, model: CatalogModel) -> CrossEncoder:
-        """Reject rerank requests; this provider has no rerank API.
-
-        Args:
-            model: Catalog entry that requested rerank support.
-
-        Raises:
-            ModelTypeNotSupportedError: Always, because rerank is unsupported.
-
-        """
-        _ = model
-        raise ModelTypeNotSupportedError("rerank", self.provider_id)
 
     def _infer_model_type(
         self,

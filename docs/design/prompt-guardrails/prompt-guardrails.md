@@ -442,7 +442,8 @@ product need justifies it.
   version-specific prompt.
 - **Guardian token usage:** whether guardian calls should count against user
   quota or be tracked as service overhead. Compaction's summarization calls
-  raise the same question.
+  are charged to the user's quota (LCORE-3910); the same choice is open for
+  guardian calls.
 - **Streaming checkpoint sizing:** defaults for LCORE-3391 (spike Decision
   T4, 70% confidence); tune with real latency data.
 - **Cheap classifier tier for `tool`:** Prompt Guard 2-class, and its

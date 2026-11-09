@@ -94,6 +94,7 @@ class ConfigurationResponse(AbstractSuccessfulResponse):
                                     "max_chunks": 10,
                                     "reranker": {
                                         "enabled": False,
+                                        "provider": "sentence_transformers",
                                         "model": "cross-encoder/ms-marco-MiniLM-L6-v2",
                                     },
                                 },

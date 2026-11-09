@@ -42,6 +42,8 @@ class ResponsesRequest(BaseModel):
         parallel_tool_calls: Whether the model can make multiple tool calls in parallel.
         previous_response_id: Identifier of the previous response in a multi-turn
             conversation. Mutually exclusive with conversation.
+        prompt_cache_key: Prompt cache key used by providers that support prompt
+            caching.
         prompt: Prompt object containing a template with variables for dynamic
             substitution.
         reasoning: Reasoning configuration for the response.
@@ -74,6 +76,7 @@ class ResponsesRequest(BaseModel):
     metadata: Optional[dict[str, str]] = None
     parallel_tool_calls: Optional[bool] = None
     previous_response_id: Optional[str] = None
+    prompt_cache_key: Optional[str] = None
     prompt: Optional[Prompt] = None
     reasoning: Optional[Reasoning] = None
     safety_identifier: Optional[str] = None
@@ -96,6 +99,7 @@ class ResponsesRequest(BaseModel):
                     "input": "Hello World!",
                     "model": "openai/gpt-5.6-luna",
                     "instructions": "You are a helpful assistant",
+                    "prompt_cache_key": "example-cache-key",
                     "store": True,
                     "stream": False,
                     "generate_topic_summary": True,
@@ -143,6 +147,32 @@ class ResponsesRequest(BaseModel):
                 f"allowed size of {max_size} characters"
             )
         return values
+
+    @field_validator("input")
+    @classmethod
+    def validate_input_not_empty(cls, value: ResponseInput) -> ResponseInput:
+        """Ensure the request carries some actual input for the model.
+
+        An empty string or an empty list of input items leaves nothing to send to
+        the model, which the backend rejects with an error that surfaces to the
+        client as an opaque HTTP 500. Reject such requests at the validation layer
+        instead.
+
+        Parameters:
+            value: Raw ``input`` value, either a string or a list of input items.
+
+        Returns:
+            The unmodified ``input`` value when it carries content.
+
+        Raises:
+            ValueError: If ``input`` is an empty/whitespace-only string or an
+                empty list.
+
+        """
+        normalized = value.strip() if isinstance(value, str) else value
+        if not normalized:
+            raise ValueError("Input must not be empty")
+        return value
 
     @model_validator(mode="after")
     def validate_conversation_and_previous_response_id_mutually_exclusive(self) -> Self:

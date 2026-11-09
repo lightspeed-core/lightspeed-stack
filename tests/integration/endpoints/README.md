@@ -8,6 +8,10 @@ Integration tests for API endpoints.
 
 Shared helpers for conversation compaction integration tests.
 
+## [test_a2a_routes_integration.py](test_a2a_routes_integration.py)
+
+Integration tests for the HTTP routes of the A2A endpoint.
+
 ## [test_authorized_endpoint.py](test_authorized_endpoint.py)
 
 Integration tests for the /authorized endpoint.
@@ -35,6 +39,10 @@ Integration tests for conversation compaction in the responses endpoint.
 ## [test_compaction_streaming_query.py](test_compaction_streaming_query.py)
 
 Integration tests for conversation compaction in the streaming_query endpoint.
+
+## [test_compaction_token_usage.py](test_compaction_token_usage.py)
+
+Integration tests for the quota charge of the summarization calls (LCORE-3910).
 
 ## [test_config_integration.py](test_config_integration.py)
 
@@ -111,4 +119,8 @@ Integration tests for the /streaming_query endpoint (using Responses API).
 ## [test_tools_integration.py](test_tools_integration.py)
 
 Integration tests for the /tools endpoint.
+
+## [test_turn_persistence.py](test_turn_persistence.py)
+
+Integration tests for the turns lightspeed-stack stores itself (LCORE-3908).
 

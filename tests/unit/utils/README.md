@@ -20,6 +20,10 @@ Unit tests for functions defined in utils/checks module.
 
 Unit tests for utils/compaction — partitioning, prompt, summarization.
 
+## [test_compaction_usage.py](test_compaction_usage.py)
+
+Unit tests for the accounting of the summarization calls (LCORE-3910).
+
 ## [test_connection_decorator.py](test_connection_decorator.py)
 
 Unit tests for the connection decorator.
@@ -68,6 +72,10 @@ Unit tests for utility function to check OGX version.
 
 Unit tests for utils/otel_tracing.py functions.
 
+## [test_pending_turn.py](test_pending_turn.py)
+
+Unit tests for the owner of the turns lightspeed-stack stores itself (LCORE-3908).
+
 ## [test_prompts.py](test_prompts.py)
 
 Unit tests for prompts utility functions.
@@ -107,6 +115,10 @@ Unit tests for utils/streaming_sse.py.
 ## [test_suid.py](test_suid.py)
 
 Unit tests for functions defined in utils.suid module.
+
+## [test_tiered_compaction.py](test_tiered_compaction.py)
+
+Unit tests for utils/tiered_compaction.
 
 ## [test_token_estimator.py](test_token_estimator.py)
 

@@ -1,65 +1,93 @@
 <?xml version="1.0"?>
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" contentStyleType="text/css" height="456px" preserveAspectRatio="none" style="width:536px;height:456px;background:#FFFFFF;" version="1.1" viewBox="0 0 536 456" width="536px" zoomAndPan="magnify">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" contentStyleType="text/css" height="436px" preserveAspectRatio="none" style="width:791px;height:436px;background:#FFFFFF;" version="1.1" viewBox="0 0 791 436" width="791px" zoomAndPan="magnify">
   <defs/>
   <g>
     <!--class src.models.database.base.Base-->
     <g id="elem_src.models.database.base.Base">
-      <rect codeLine="2" fill="#F1F1F1" height="48" id="src.models.database.base.Base" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="63.5559" x="101.68" y="64.2"/>
-      <ellipse cx="116.68" cy="80.2" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
-      <path d="M116.7894,75.4812 Q115.8675,75.4812 115.1331,75.7937 Q114.4144,76.1062 113.9144,76.7 Q113.4144,77.2781 113.1331,78.1531 Q112.8675,79.0281 112.8675,80.1219 Q112.8675,81.5594 113.305,82.6062 Q113.7581,83.6531 114.6019,84.2 Q115.4613,84.7469 116.7738,84.7469 Q117.555,84.7469 118.2425,84.6219 Q118.9456,84.4812 119.9456,84.1687 L119.9456,86.0437 Q119.0863,86.3719 118.3206,86.4969 Q117.5706,86.6219 116.555,86.6219 Q114.6331,86.6219 113.3206,85.825 Q112.0238,85.0125 111.3675,83.5437 Q110.7113,82.0594 110.7113,80.0906 Q110.7113,78.6687 111.1019,77.4969 Q111.5081,76.3094 112.2894,75.4344 Q113.0706,74.5594 114.2113,74.0906 Q115.3519,73.6062 116.8206,73.6062 Q117.7738,73.6062 118.6644,73.8094 Q119.5706,73.9969 120.5081,74.4656 L119.68,76.2469 Q118.8988,75.8719 118.2425,75.6844 Q117.5863,75.4812 116.7894,75.4812 Z " fill="#000000"/>
-      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="31.5559" x="130.68" y="85.632">Base</text>
-      <line style="stroke:#181818;stroke-width:0.5;" x1="102.68" x2="164.2359" y1="96.2" y2="96.2"/>
-      <line style="stroke:#181818;stroke-width:0.5;" x1="102.68" x2="164.2359" y1="104.2" y2="104.2"/>
+      <rect codeLine="2" fill="#F1F1F1" height="48" id="src.models.database.base.Base" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="63.5559" x="85.22" y="54.67"/>
+      <ellipse cx="100.22" cy="70.67" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M100.3294,65.9513 Q99.4075,65.9513 98.6731,66.2638 Q97.9544,66.5763 97.4544,67.17 Q96.9544,67.7481 96.6731,68.6231 Q96.4075,69.4981 96.4075,70.5919 Q96.4075,72.0294 96.845,73.0763 Q97.2981,74.1231 98.1419,74.67 Q99.0013,75.2169 100.3138,75.2169 Q101.095,75.2169 101.7825,75.0919 Q102.4856,74.9513 103.4856,74.6388 L103.4856,76.5138 Q102.6263,76.8419 101.8606,76.9669 Q101.1106,77.0919 100.095,77.0919 Q98.1731,77.0919 96.8606,76.295 Q95.5638,75.4825 94.9075,74.0138 Q94.2513,72.5294 94.2513,70.5606 Q94.2513,69.1388 94.6419,67.9669 Q95.0481,66.7794 95.8294,65.9044 Q96.6106,65.0294 97.7513,64.5606 Q98.8919,64.0763 100.3606,64.0763 Q101.3138,64.0763 102.2044,64.2794 Q103.1106,64.4669 104.0481,64.9356 L103.22,66.7169 Q102.4388,66.3419 101.7825,66.1544 Q101.1263,65.9513 100.3294,65.9513 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="31.5559" x="114.22" y="76.102">Base</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="86.22" x2="147.7759" y1="86.67" y2="86.67"/>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="86.22" x2="147.7759" y1="94.67" y2="94.67"/>
+    </g>
+    <!--class src.models.database.prompts.Prompt-->
+    <g id="elem_src.models.database.prompts.Prompt">
+      <rect codeLine="4" fill="#F1F1F1" height="143.3396" id="src.models.database.prompts.Prompt" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="219.9972" x="184" y="7"/>
+      <ellipse cx="265.0107" cy="23" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M265.1201,18.2813 Q264.1982,18.2813 263.4638,18.5938 Q262.7451,18.9063 262.2451,19.5 Q261.7451,20.0781 261.4638,20.9531 Q261.1982,21.8281 261.1982,22.9219 Q261.1982,24.3594 261.6357,25.4063 Q262.0888,26.4531 262.9326,27 Q263.792,27.5469 265.1045,27.5469 Q265.8857,27.5469 266.5732,27.4219 Q267.2763,27.2813 268.2763,26.9688 L268.2763,28.8438 Q267.417,29.1719 266.6513,29.2969 Q265.9013,29.4219 264.8857,29.4219 Q262.9638,29.4219 261.6513,28.625 Q260.3545,27.8125 259.6982,26.3438 Q259.042,24.8594 259.042,22.8906 Q259.042,21.4688 259.4326,20.2969 Q259.8388,19.1094 260.6201,18.2344 Q261.4013,17.3594 262.542,16.8906 Q263.6826,16.4063 265.1513,16.4063 Q266.1045,16.4063 266.9951,16.6094 Q267.9013,16.7969 268.8388,17.2656 L268.0107,19.0469 Q267.2295,18.6719 266.5732,18.4844 Q265.917,18.2813 265.1201,18.2813 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="49.4758" x="285.5107" y="28.432">Prompt</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="185" x2="402.9972" y1="39" y2="39"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="202.5233" x="190" y="57.9659">created_at : Mapped[datetime]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="192.7793" x="190" y="77.0339">default_version : Mapped[int]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="104.2856" x="190" y="96.1018">id : Mapped[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="129.5555" x="190" y="115.1697">name : Mapped[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="207.9972" x="190" y="134.2376">updated_at : Mapped[datetime]</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="185" x2="402.9972" y1="142.3396" y2="142.3396"/>
+    </g>
+    <!--class src.models.database.prompts.PromptVersion-->
+    <g id="elem_src.models.database.prompts.PromptVersion">
+      <rect codeLine="11" fill="#F1F1F1" height="143.3396" id="src.models.database.prompts.PromptVersion" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="214.5233" x="438.74" y="7"/>
+      <ellipse cx="492.2548" cy="23" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M492.3642,18.2813 Q491.4423,18.2813 490.7079,18.5938 Q489.9892,18.9063 489.4892,19.5 Q488.9892,20.0781 488.7079,20.9531 Q488.4423,21.8281 488.4423,22.9219 Q488.4423,24.3594 488.8798,25.4063 Q489.3329,26.4531 490.1767,27 Q491.0361,27.5469 492.3486,27.5469 Q493.1298,27.5469 493.8173,27.4219 Q494.5204,27.2813 495.5204,26.9688 L495.5204,28.8438 Q494.6611,29.1719 493.8954,29.2969 Q493.1454,29.4219 492.1298,29.4219 Q490.2079,29.4219 488.8954,28.625 Q487.5986,27.8125 486.9423,26.3438 Q486.2861,24.8594 486.2861,22.8906 Q486.2861,21.4688 486.6767,20.2969 Q487.0829,19.1094 487.8642,18.2344 Q488.6454,17.3594 489.7861,16.8906 Q490.9267,16.4063 492.3954,16.4063 Q493.3486,16.4063 494.2392,16.6094 Q495.1454,16.7969 496.0829,17.2656 L495.2548,19.0469 Q494.4736,18.6719 493.8173,18.4844 Q493.1611,18.2813 492.3642,18.2813 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="98.9936" x="512.7548" y="28.432">PromptVersion</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="439.74" x2="652.2633" y1="39" y2="39"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="202.5233" x="444.74" y="57.9659">created_at : Mapped[datetime]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="160.1174" x="444.74" y="77.0339">prompt_id : Mapped[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="151.1295" x="444.74" y="96.1018">template : Mapped[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="179.2974" x="444.74" y="115.1697">variables : Mapped[list[str]]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="140.0695" x="444.74" y="134.2376">version : Mapped[int]</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="439.74" x2="652.2633" y1="142.3396" y2="142.3396"/>
     </g>
     <!--class src.models.database.saved_prompts.SavedPrompt-->
     <g id="elem_src.models.database.saved_prompts.SavedPrompt">
-      <rect codeLine="4" fill="#F1F1F1" height="162.4075" id="src.models.database.saved_prompts.SavedPrompt" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="219.9972" x="200.46" y="7"/>
-      <ellipse cx="261.8918" cy="23" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
-      <path d="M262.0012,18.2813 Q261.0793,18.2813 260.3449,18.5938 Q259.6262,18.9063 259.1262,19.5 Q258.6262,20.0781 258.3449,20.9531 Q258.0793,21.8281 258.0793,22.9219 Q258.0793,24.3594 258.5168,25.4063 Q258.9699,26.4531 259.8137,27 Q260.673,27.5469 261.9855,27.5469 Q262.7668,27.5469 263.4543,27.4219 Q264.1574,27.2813 265.1574,26.9688 L265.1574,28.8438 Q264.298,29.1719 263.5324,29.2969 Q262.7824,29.4219 261.7668,29.4219 Q259.8449,29.4219 258.5324,28.625 Q257.2355,27.8125 256.5793,26.3438 Q255.923,24.8594 255.923,22.8906 Q255.923,21.4688 256.3137,20.2969 Q256.7199,19.1094 257.5012,18.2344 Q258.2824,17.3594 259.423,16.8906 Q260.5637,16.4063 262.0324,16.4063 Q262.9855,16.4063 263.8762,16.6094 Q264.7824,16.7969 265.7199,17.2656 L264.8918,19.0469 Q264.1105,18.6719 263.4543,18.4844 Q262.798,18.2813 262.0012,18.2813 Z " fill="#000000"/>
-      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="88.6337" x="282.3918" y="28.432">SavedPrompt</text>
-      <line style="stroke:#181818;stroke-width:0.5;" x1="201.46" x2="419.4572" y1="39" y2="39"/>
-      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="142.5615" x="206.46" y="57.9659">content : Mapped[str]</text>
-      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="202.5233" x="206.46" y="77.0339">created_at : Mapped[datetime]</text>
-      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="104.2856" x="206.46" y="96.1018">id : Mapped[str]</text>
-      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="129.5555" x="206.46" y="115.1697">name : Mapped[str]</text>
-      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="207.9972" x="206.46" y="134.2376">updated_at : Mapped[datetime]</text>
-      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="139.5375" x="206.46" y="153.3055">user_id : Mapped[str]</text>
-      <line style="stroke:#181818;stroke-width:0.5;" x1="201.46" x2="419.4572" y1="161.4075" y2="161.4075"/>
+      <rect codeLine="18" fill="#F1F1F1" height="162.4075" id="src.models.database.saved_prompts.SavedPrompt" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="219.9972" x="7" y="238.94"/>
+      <ellipse cx="68.4318" cy="254.94" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M68.5412,250.2213 Q67.6193,250.2213 66.8849,250.5338 Q66.1662,250.8463 65.6662,251.44 Q65.1662,252.0181 64.8849,252.8931 Q64.6193,253.7681 64.6193,254.8619 Q64.6193,256.2994 65.0568,257.3463 Q65.5099,258.3931 66.3537,258.94 Q67.213,259.4869 68.5255,259.4869 Q69.3068,259.4869 69.9943,259.3619 Q70.6974,259.2213 71.6974,258.9088 L71.6974,260.7838 Q70.838,261.1119 70.0724,261.2369 Q69.3224,261.3619 68.3068,261.3619 Q66.3849,261.3619 65.0724,260.565 Q63.7755,259.7525 63.1193,258.2838 Q62.463,256.7994 62.463,254.8306 Q62.463,253.4088 62.8537,252.2369 Q63.2599,251.0494 64.0412,250.1744 Q64.8224,249.2994 65.963,248.8306 Q67.1037,248.3463 68.5724,248.3463 Q69.5255,248.3463 70.4162,248.5494 Q71.3224,248.7369 72.2599,249.2056 L71.4318,250.9869 Q70.6505,250.6119 69.9943,250.4244 Q69.338,250.2213 68.5412,250.2213 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="88.6337" x="88.9318" y="260.372">SavedPrompt</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="8" x2="225.9972" y1="270.94" y2="270.94"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="142.5615" x="13" y="289.9059">content : Mapped[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="202.5233" x="13" y="308.9739">created_at : Mapped[datetime]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="104.2856" x="13" y="328.0418">id : Mapped[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="129.5555" x="13" y="347.1097">name : Mapped[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="207.9972" x="13" y="366.1776">updated_at : Mapped[datetime]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="139.5375" x="13" y="385.2455">user_id : Mapped[str]</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="8" x2="225.9972" y1="393.3475" y2="393.3475"/>
     </g>
     <!--class src.models.database.conversations.UserConversation-->
     <g id="elem_src.models.database.conversations.UserConversation">
-      <rect codeLine="12" fill="#F1F1F1" height="219.6113" id="src.models.database.conversations.UserConversation" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="252.9111" x="7" y="229.41"/>
-      <ellipse cx="70.3428" cy="245.41" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
-      <path d="M70.4522,240.6912 Q69.5303,240.6912 68.7959,241.0037 Q68.0772,241.3162 67.5772,241.91 Q67.0772,242.4881 66.7959,243.3631 Q66.5303,244.2381 66.5303,245.3319 Q66.5303,246.7694 66.9678,247.8162 Q67.4209,248.8631 68.2647,249.41 Q69.124,249.9569 70.4365,249.9569 Q71.2178,249.9569 71.9053,249.8319 Q72.6084,249.6912 73.6084,249.3787 L73.6084,251.2537 Q72.749,251.5819 71.9834,251.7069 Q71.2334,251.8319 70.2178,251.8319 Q68.2959,251.8319 66.9834,251.035 Q65.6865,250.2225 65.0303,248.7537 Q64.374,247.2694 64.374,245.3006 Q64.374,243.8787 64.7647,242.7069 Q65.1709,241.5194 65.9522,240.6444 Q66.7334,239.7694 67.874,239.3006 Q69.0147,238.8162 70.4834,238.8162 Q71.4365,238.8162 72.3272,239.0194 Q73.2334,239.2069 74.1709,239.6756 L73.3428,241.4569 Q72.5615,241.0819 71.9053,240.8944 Q71.249,240.6912 70.4522,240.6912 Z " fill="#000000"/>
-      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="117.7256" x="90.8428" y="250.842">UserConversation</text>
-      <line style="stroke:#181818;stroke-width:0.5;" x1="8" x2="258.9111" y1="261.41" y2="261.41"/>
-      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="202.5233" x="13" y="280.3759">created_at : Mapped[datetime]</text>
-      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="104.2856" x="13" y="299.4439">id : Mapped[str]</text>
-      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="240.9111" x="13" y="318.5118">last_message_at : Mapped[datetime]</text>
-      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="200.6613" x="13" y="337.5797">last_response_id : Mapped[str]</text>
-      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="201.2633" x="13" y="356.6476">last_used_model : Mapped[str]</text>
-      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="215.4592" x="13" y="375.7155">last_used_provider : Mapped[str]</text>
-      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="194.3613" x="13" y="394.7834">message_count : Mapped[int]</text>
-      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="193.0593" x="13" y="413.8514">topic_summary : Mapped[str]</text>
-      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="139.5375" x="13" y="432.9193">user_id : Mapped[str]</text>
-      <line style="stroke:#181818;stroke-width:0.5;" x1="8" x2="258.9111" y1="441.0213" y2="441.0213"/>
+      <rect codeLine="26" fill="#F1F1F1" height="219.6113" id="src.models.database.conversations.UserConversation" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="252.9111" x="261.54" y="210.34"/>
+      <ellipse cx="324.8828" cy="226.34" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M324.9922,221.6212 Q324.0703,221.6212 323.3359,221.9337 Q322.6172,222.2462 322.1172,222.84 Q321.6172,223.4181 321.3359,224.2931 Q321.0703,225.1681 321.0703,226.2619 Q321.0703,227.6994 321.5078,228.7462 Q321.9609,229.7931 322.8047,230.34 Q323.664,230.8869 324.9765,230.8869 Q325.7578,230.8869 326.4453,230.7619 Q327.1484,230.6212 328.1484,230.3087 L328.1484,232.1837 Q327.289,232.5119 326.5234,232.6369 Q325.7734,232.7619 324.7578,232.7619 Q322.8359,232.7619 321.5234,231.965 Q320.2265,231.1525 319.5703,229.6837 Q318.914,228.1994 318.914,226.2306 Q318.914,224.8087 319.3047,223.6369 Q319.7109,222.4494 320.4922,221.5744 Q321.2734,220.6994 322.414,220.2306 Q323.5547,219.7462 325.0234,219.7462 Q325.9765,219.7462 326.8672,219.9494 Q327.7734,220.1369 328.7109,220.6056 L327.8828,222.3869 Q327.1015,222.0119 326.4453,221.8244 Q325.789,221.6212 324.9922,221.6212 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="117.7256" x="345.3828" y="231.772">UserConversation</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="262.54" x2="513.4511" y1="242.34" y2="242.34"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="202.5233" x="267.54" y="261.3059">created_at : Mapped[datetime]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="104.2856" x="267.54" y="280.3739">id : Mapped[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="240.9111" x="267.54" y="299.4418">last_message_at : Mapped[datetime]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="200.6613" x="267.54" y="318.5097">last_response_id : Mapped[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="201.2633" x="267.54" y="337.5776">last_used_model : Mapped[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="215.4592" x="267.54" y="356.6455">last_used_provider : Mapped[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="194.3613" x="267.54" y="375.7134">message_count : Mapped[int]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="193.0593" x="267.54" y="394.7814">topic_summary : Mapped[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="139.5375" x="267.54" y="413.8493">user_id : Mapped[str]</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="262.54" x2="513.4511" y1="421.9513" y2="421.9513"/>
     </g>
     <!--class src.models.database.conversations.UserTurn-->
     <g id="elem_src.models.database.conversations.UserTurn">
-      <rect codeLine="23" fill="#F1F1F1" height="181.4754" id="src.models.database.conversations.UserTurn" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="234.6692" x="295.12" y="248.48"/>
-      <ellipse cx="377.4607" cy="264.48" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
-      <path d="M377.5701,259.7613 Q376.6482,259.7613 375.9138,260.0738 Q375.1951,260.3863 374.6951,260.98 Q374.1951,261.5581 373.9138,262.4331 Q373.6482,263.3081 373.6482,264.4019 Q373.6482,265.8394 374.0857,266.8863 Q374.5388,267.9331 375.3826,268.48 Q376.242,269.0269 377.5545,269.0269 Q378.3357,269.0269 379.0232,268.9019 Q379.7263,268.7613 380.7263,268.4488 L380.7263,270.3238 Q379.867,270.6519 379.1013,270.7769 Q378.3513,270.9019 377.3357,270.9019 Q375.4138,270.9019 374.1013,270.105 Q372.8045,269.2925 372.1482,267.8238 Q371.492,266.3394 371.492,264.3706 Q371.492,262.9488 371.8826,261.7769 Q372.2888,260.5894 373.0701,259.7144 Q373.8513,258.8394 374.992,258.3706 Q376.1326,257.8863 377.6013,257.8863 Q378.5545,257.8863 379.4451,258.0894 Q380.3513,258.2769 381.2888,258.7456 L380.4607,260.5269 Q379.6795,260.1519 379.0232,259.9644 Q378.367,259.7613 377.5701,259.7613 Z " fill="#000000"/>
-      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="61.4878" x="397.9607" y="269.912">UserTurn</text>
-      <line style="stroke:#181818;stroke-width:0.5;" x1="296.12" x2="528.7892" y1="280.48" y2="280.48"/>
-      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="222.6692" x="301.12" y="299.4459">completed_at : Mapped[datetime]</text>
-      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="195.4813" x="301.12" y="318.5139">conversation_id : Mapped[str]</text>
-      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="133.7415" x="301.12" y="337.5818">model : Mapped[str]</text>
-      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="147.9375" x="301.12" y="356.6497">provider : Mapped[str]</text>
-      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="171.2194" x="301.12" y="375.7176">response_id : Mapped[str]</text>
-      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="199.6673" x="301.12" y="394.7855">started_at : Mapped[datetime]</text>
-      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="178.8773" x="301.12" y="413.8534">turn_number : Mapped[int]</text>
-      <line style="stroke:#181818;stroke-width:0.5;" x1="296.12" x2="528.7892" y1="421.9554" y2="421.9554"/>
+      <rect codeLine="37" fill="#F1F1F1" height="181.4754" id="src.models.database.conversations.UserTurn" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="234.6692" x="549.66" y="229.41"/>
+      <ellipse cx="632.0007" cy="245.41" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M632.1101,240.6913 Q631.1882,240.6913 630.4538,241.0038 Q629.7351,241.3163 629.2351,241.91 Q628.7351,242.4881 628.4538,243.3631 Q628.1882,244.2381 628.1882,245.3319 Q628.1882,246.7694 628.6257,247.8163 Q629.0788,248.8631 629.9226,249.41 Q630.782,249.9569 632.0945,249.9569 Q632.8757,249.9569 633.5632,249.8319 Q634.2663,249.6913 635.2663,249.3788 L635.2663,251.2538 Q634.407,251.5819 633.6413,251.7069 Q632.8913,251.8319 631.8757,251.8319 Q629.9538,251.8319 628.6413,251.035 Q627.3445,250.2225 626.6882,248.7538 Q626.032,247.2694 626.032,245.3006 Q626.032,243.8788 626.4226,242.7069 Q626.8288,241.5194 627.6101,240.6444 Q628.3913,239.7694 629.532,239.3006 Q630.6726,238.8163 632.1413,238.8163 Q633.0945,238.8163 633.9851,239.0194 Q634.8913,239.2069 635.8288,239.6756 L635.0007,241.4569 Q634.2195,241.0819 633.5632,240.8944 Q632.907,240.6913 632.1101,240.6913 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="61.4878" x="652.5007" y="250.842">UserTurn</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="550.66" x2="783.3292" y1="261.41" y2="261.41"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="222.6692" x="555.66" y="280.3759">completed_at : Mapped[datetime]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="195.4813" x="555.66" y="299.4439">conversation_id : Mapped[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="133.7415" x="555.66" y="318.5118">model : Mapped[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="147.9375" x="555.66" y="337.5797">provider : Mapped[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="171.2194" x="555.66" y="356.6476">response_id : Mapped[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="199.6673" x="555.66" y="375.7155">started_at : Mapped[datetime]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="178.8773" x="555.66" y="394.7834">turn_number : Mapped[int]</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="550.66" x2="783.3292" y1="402.8854" y2="402.8854"/>
     </g>
-    <!--SRC=[bLBBQiCm4BpdAqG-m1_GOtik1DAUIX4RQIa2wy7kob1A_hqhfocYZbroyM5tPZmpAqOn2I9o0OT7B40WcKpA2NTk16QpVmJ6lG4sJ6w8sUF8WmU1ayw7-TCGvcjtlZAECA4_K8v5LedSCBRC81uwXWePut8IJ68Up3EKWlwDXTxRd114UT2jL18bH6pxu1UKbcunhCLlwbH6iWkntu2lkdxAQK9Ya93JQahNWNZuIxj4lJ-IcX2hDsFum5NU328zhFuPxPgA1lLsThsnrojDmICj85SFBjV-M259sqekmLckCG9zBa_mVyKlbUwfji5_Nayi8swLsfDlTNExaTKUjcfc0Tgo8khQfXfFlUxSuFaR]-->
+    <!--SRC=[hLFBQiGm3BplLvZzW7n0Z-svKDYsbrACrbQB8NuWAO5I-kzLads4pMEtq8iFcXbRCx8OnII8o0KSxh00WMGoAIVSk1gOpVOU6BS6s32vAcQFDLSU1FPQh_gZOvZlpSzHyKGv5bdKb1xcQg2fq1X728BUWfWxymYbe7zJFag8-AwunmzeQh4j4eUSpgIGfCE3FvTOg2jrhYR5flYLTouCl0wFtUZZmBx9pg2qCrqBnb8hSmAqG07sDV8PgGDB3_VuR38dHpjeqL-P2tSSUtGrKWoUSX9CCcdicjV_6OtYZ3HDx6JmHU67dBeOGDQcvaOahYvbDurlnf8s8LRNYE4J5tKzYNJNz6MqIxUeKM_xhbTmdL8RFDA4Skp1vMOyhCEUI2x1MMvY1FgQZk1wnCyD_INQZdxuFVglSItKiNWkc_b45dDOYva5QAqLqQvjQk9-VE-mJxy0]-->
   </g>
 </svg>

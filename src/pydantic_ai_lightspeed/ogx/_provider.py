@@ -9,6 +9,7 @@ from ogx.core.library_client import AsyncOGXAsLibraryClient
 from ogx_client import AsyncOgxClient
 from openai import AsyncOpenAI
 from pydantic_ai import ModelProfile
+from pydantic_ai._http import AsyncHTTPClient
 from pydantic_ai.models import create_async_http_client
 from pydantic_ai.profiles.openai import openai_model_profile
 from pydantic_ai.providers import Provider
@@ -88,7 +89,7 @@ class OgxProvider(Provider[AsyncOpenAI]):
         base_url: Optional[str] = None,
         api_key: Optional[str] = None,
         library_client: Optional[AsyncOGXAsLibraryClient] = None,
-        http_client: Optional[httpx.AsyncClient] = None,
+        http_client: Optional[AsyncHTTPClient] = None,
     ) -> None:
         """Create a new OGX provider.
 
@@ -102,8 +103,8 @@ class OgxProvider(Provider[AsyncOpenAI]):
             library_client: An initialized ``AsyncOGXAsLibraryClient`` for library mode.
                 When provided, requests are dispatched in-process (no server needed).
                 Mutually exclusive with ``base_url``, ``api_key``, and ``http_client``.
-            http_client: An existing ``httpx.AsyncClient`` to use for making HTTP requests.
-                Must be ``None`` when ``library_client`` is provided.
+            http_client: An existing ``httpx``/``httpx2`` async client for HTTP
+                requests. Must be ``None`` when ``library_client`` is provided.
 
         """
         if library_client is not None:
@@ -123,8 +124,9 @@ class OgxProvider(Provider[AsyncOpenAI]):
                 base_url="http://ogx-library",
                 timeout=httpx.Timeout(None),
             )
+            # OpenAI 3 types http_client as httpx2 only; legacy httpx still works.
             self._client = AsyncOpenAI(
-                http_client=lib_http_client,
+                http_client=lib_http_client,  # type: ignore[arg-type]
                 base_url="http://ogx-library/v1",
                 api_key="not-needed",
             )
@@ -135,15 +137,15 @@ class OgxProvider(Provider[AsyncOpenAI]):
             self._client = AsyncOpenAI(
                 base_url=base_url,
                 api_key=api_key,
-                http_client=http_client or create_async_http_client(),
+                http_client=http_client or create_async_http_client(),  # type: ignore[arg-type]
             )
 
     def __repr__(self) -> str:
         """Return a string representation of the provider."""
         return f"OgxProvider(name={self.name!r}, base_url={self.base_url!r})"
 
-    def _set_http_client(self, http_client: httpx.AsyncClient) -> None:
-        """Inject an httpx.AsyncClient into the underlying OpenAI client.
+    def _set_http_client(self, http_client: AsyncHTTPClient) -> None:
+        """Inject an async HTTP client into the underlying OpenAI client.
 
         Replaces the internal HTTP transport by assigning directly to the
         protected ``self._client._client`` attribute of the AsyncOpenAI instance.
@@ -152,4 +154,4 @@ class OgxProvider(Provider[AsyncOpenAI]):
             http_client: The async HTTP client to use for subsequent requests.
 
         """
-        self._client._client = http_client  # pyright: ignore[reportPrivateUsage]  # pylint: disable=protected-access
+        self._client._client = http_client  # type: ignore[assignment]  # pylint: disable=protected-access

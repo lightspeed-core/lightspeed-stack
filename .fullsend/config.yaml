@@ -1,0 +1,34 @@
+# fullsend per-repo configuration
+# https://github.com/fullsend-ai/fullsend
+#
+# This file configures fullsend for per-repo installation mode.
+# See https://fullsend.sh/docs/guides/infrastructure/layered-config-reference
+version: "1"
+runtime: pi
+roles:
+    - triage
+    - coder
+    - review
+    - fix
+    - retro
+agents:
+    # Retro and prioritize: disabled for the initial Jira rollout.
+    - name: retro
+      enabled: false
+    - name: prioritize
+      enabled: false
+    - name: triage
+      source: harness/triage.yaml
+    - name: code
+      source: harness/code.yaml
+allowed_remote_resources:
+    - https://raw.githubusercontent.com/fullsend-ai/fullsend/
+    - https://raw.githubusercontent.com/fullsend-ai/agents/
+create_issues:
+    allow_targets:
+        repos:
+            - fullsend-ai/fullsend
+            - fullsend-ai/agents
+inference:
+    project: firefly-868139
+    wif_provider: projects/275116376890/locations/global/workloadIdentityPools/uie-github-fullsend-inference/providers/gh-repo-975968014

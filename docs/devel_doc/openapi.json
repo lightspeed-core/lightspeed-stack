@@ -13,7 +13,7 @@
             "name": "Apache 2.0",
             "url": "https://www.apache.org/licenses/LICENSE-2.0.html"
         },
-        "version": "0.7.0"
+        "version": "0.8.0rc1"
     },
     "servers": [
         {
@@ -172,7 +172,7 @@
                     "info"
                 ],
                 "summary": "Info Endpoint Handler",
-                "description": "Handle request to the /info endpoint.\n\nProcess GET requests to the /info endpoint, returning the\nservice name, version and OGX version.\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- auth: Authentication tuple from the auth dependency (used by middleware).\n\n### Raises:\n- HTTPException: with status 401 for unauthorized access.\n- HTTPException: with status 403 if permission is denied.\n- HTTPException: with status 503 and a detail object containing `response`\n  and `cause` when unable to connect to OGX.\n\n### Returns:\n- InfoResponse: An object containing the service's name and version.",
+                "description": "Handle request to the /info endpoint.\n\nProcess GET requests to the /info endpoint, returning the\nservice name and version. The answer does not depend on OGX.\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- auth: Authentication tuple from the auth dependency (used by middleware).\n\n### Raises:\n- HTTPException: with status 401 for unauthorized access.\n- HTTPException: with status 403 if permission is denied.\n- HTTPException: with status 503 and a detail object containing `response`\n  and `cause` when the Kubernetes authentication backend is unreachable.\n\n### Returns:\n- InfoResponse: An object containing the service's name and version.",
                 "operationId": "info_endpoint_handler_v1_info_get",
                 "responses": {
                     "200": {
@@ -184,7 +184,6 @@
                                 },
                                 "example": {
                                     "name": "Lightspeed Stack",
-                                    "ogx_version": "1.0.0",
                                     "service_version": "1.0.0"
                                 }
                             }
@@ -294,14 +293,6 @@
                                     "$ref": "#/components/schemas/ServiceUnavailableResponse"
                                 },
                                 "examples": {
-                                    "OGX": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to OGX"
-                                            }
-                                        }
-                                    },
                                     "kubernetes api": {
                                         "value": {
                                             "detail": {
@@ -6948,7 +6939,8 @@
                                                     "max_chunks": 10,
                                                     "reranker": {
                                                         "enabled": false,
-                                                        "model": "cross-encoder/ms-marco-MiniLM-L6-v2"
+                                                        "model": "cross-encoder/ms-marco-MiniLM-L6-v2",
+                                                        "provider": "sentence_transformers"
                                                     },
                                                     "sources": []
                                                 },
@@ -11587,40 +11579,6 @@
             }
         },
         "/a2a": {
-            "get": {
-                "tags": [
-                    "a2a"
-                ],
-                "summary": "Handle A2A JSON-RPC GET",
-                "description": "Handle GET on /a2a for A2A JSON-RPC requests following the A2A protocol specification.",
-                "operationId": "handle_a2a_jsonrpc_a2a_get",
-                "responses": {
-                    "200": {
-                        "description": "Successful response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "description": "JSON-RPC 2.0 response or A2A-over-HTTP payload"
-                                },
-                                "example": {
-                                    "jsonrpc": "2.0",
-                                    "id": "1",
-                                    "result": {}
-                                }
-                            },
-                            "text/event-stream": {
-                                "schema": {
-                                    "type": "string",
-                                    "format": "text/event-stream",
-                                    "description": "Server-Sent Events stream when the JSON-RPC method is message/stream"
-                                },
-                                "example": "data: {\"jsonrpc\":\"2.0\",\"id\":\"1\",\"result\":{}}\n\n"
-                            }
-                        }
-                    }
-                }
-            },
             "post": {
                 "tags": [
                     "a2a"
@@ -13417,12 +13375,24 @@
                         "title": "Buffer max ratio",
                         "description": "Maximum fraction of context window the buffer zone can occupy, regardless of buffer_turns.",
                         "default": 0.3
+                    },
+                    "summary_prompt": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Summary prompt",
+                        "description": "Prompt template for summarizing older turns in the Pydantic AI compaction. The conversation transcript replaces the {messages} placeholder, which is required; no other replacement field is allowed, so double any literal braces. When unset, the default prompt is used."
                     }
                 },
                 "additionalProperties": false,
                 "type": "object",
                 "title": "CompactionConfiguration",
-                "description": "Configuration for conversation history compaction.\n\nCompaction summarizes older conversation turns when their estimated\ntoken count approaches the context window limit, keeping the\nconversation usable instead of failing with HTTP 413. The\nconfiguration here controls when compaction triggers and how much\nrecent context is preserved verbatim.\n\nAttributes:\n    enabled: Master switch. When False, compaction never triggers\n        and other fields are inert.\n    threshold_ratio: Trigger compaction when estimated input tokens\n        exceed this fraction of the model's context window\n        (clamped to 0.0..1.0).\n    token_floor: Minimum estimated token count before compaction\n        can trigger, regardless of threshold_ratio. Prevents\n        triggering on very small context windows.\n    buffer_turns: Initial number of recent turns to keep verbatim.\n        The runtime applies a degrading guard \u2014 if these turns\n        exceed the available budget, it reduces buffer_turns by\n        one repeatedly until the budget fits, down to zero.\n    buffer_max_ratio: Hard cap on the fraction of the context\n        window the buffer zone may occupy, regardless of\n        buffer_turns."
+                "description": "Configuration for conversation history compaction.\n\nCompaction summarizes older conversation turns when their estimated\ntoken count approaches the context window limit, keeping the\nconversation usable instead of failing with HTTP 413. The\nconfiguration here controls when compaction triggers and how much\nrecent context is preserved verbatim.\n\nAttributes:\n    enabled: Master switch. When False, compaction never triggers\n        and other fields are inert.\n    threshold_ratio: Trigger compaction when estimated input tokens\n        exceed this fraction of the model's context window\n        (clamped to 0.0..1.0).\n    token_floor: Minimum estimated token count before compaction\n        can trigger, regardless of threshold_ratio. Prevents\n        triggering on very small context windows.\n    buffer_turns: Initial number of recent turns to keep verbatim.\n        The runtime applies a degrading guard \u2014 if these turns\n        exceed the available budget, it reduces buffer_turns by\n        one repeatedly until the budget fits, down to zero.\n    buffer_max_ratio: Hard cap on the fraction of the context\n        window the buffer zone may occupy, regardless of\n        buffer_turns.\n    summary_prompt: Optional prompt template for summarizing older\n        turns in the Pydantic AI compaction. It must contain the\n        ``{messages}`` placeholder and no other replacement field;\n        when unset, the default prompt is used."
             },
             "Configuration": {
                 "properties": {
@@ -13711,7 +13681,8 @@
                                         "max_chunks": 10,
                                         "reranker": {
                                             "enabled": false,
-                                            "model": "cross-encoder/ms-marco-MiniLM-L6-v2"
+                                            "model": "cross-encoder/ms-marco-MiniLM-L6-v2",
+                                            "provider": "sentence_transformers"
                                         },
                                         "sources": []
                                     },
@@ -15369,32 +15340,18 @@
                             "0.2.0",
                             "1.0.0"
                         ]
-                    },
-                    "ogx_version": {
-                        "type": "string",
-                        "title": "Ogx Version",
-                        "description": "OGX version",
-                        "examples": [
-                            "0.2.1",
-                            "0.2.2",
-                            "0.2.18",
-                            "0.2.21",
-                            "0.2.22"
-                        ]
                     }
                 },
                 "type": "object",
                 "required": [
                     "name",
-                    "service_version",
-                    "ogx_version"
+                    "service_version"
                 ],
                 "title": "InfoResponse",
-                "description": "Model representing a response to an info request.\n\nAttributes:\n    name: Service name.\n    service_version: Service version.\n    ogx_version: OGX version.",
+                "description": "Model representing a response to an info request.\n\nAttributes:\n    name: Service name.\n    service_version: Service version.",
                 "examples": [
                     {
                         "name": "Lightspeed Stack",
-                        "ogx_version": "1.0.0",
                         "service_version": "1.0.0"
                     }
                 ]
@@ -18728,7 +18685,8 @@
                     "namespace": {
                         "anyOf": [
                             {
-                                "type": "string"
+                                "type": "string",
+                                "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
                             },
                             {
                                 "type": "null"
@@ -20546,10 +20504,16 @@
                         "description": "When True, reranking applied to RAG chunks. When False, reranking is disabled and original scoring used.",
                         "default": false
                     },
+                    "provider": {
+                        "type": "string",
+                        "title": "Rerank model provider",
+                        "description": "The `id` of the inference provider in `inference.providers` that loads this cross-encoder (typically `sentence_transformers`).",
+                        "default": "sentence_transformers"
+                    },
                     "model": {
                         "type": "string",
-                        "title": "Reranker model",
-                        "description": "Cross-encoder model name for reranking RAG chunks. Defaults to 'cross-encoder/ms-marco-MiniLM-L6-v2' from sentence-transformers.",
+                        "title": "Cross-encoder model id",
+                        "description": "Hugging Face cross-encoder model id used for reranking. When it matches `provider`, the sentence-transformers provider also registers it in its catalog at startup (`name` and backend id both set to this value) if not already listed in `allowed_models`.",
                         "default": "cross-encoder/ms-marco-MiniLM-L6-v2"
                     }
                 },
@@ -20725,6 +20689,17 @@
                             }
                         ],
                         "title": "Previous Response Id"
+                    },
+                    "prompt_cache_key": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Prompt Cache Key"
                     },
                     "prompt": {
                         "anyOf": [
@@ -20917,13 +20892,14 @@
                     "input"
                 ],
                 "title": "ResponsesRequest",
-                "description": "Model representing a request for the Responses API following LCORE specification.\n\nAttributes:\n    input: Input text or structured input items containing the query.\n    model: Model identifier in format \"provider/model\". Auto-selected if not provided.\n    conversation: Conversation ID linking to an existing conversation. Accepts both\n        OpenAI and LCORE formats. Mutually exclusive with previous_response_id.\n    include: Explicitly specify output item types that are excluded by default but\n        should be included in the response.\n    instructions: System instructions or guidelines provided to the model (acts as\n        the system prompt).\n    max_infer_iters: Maximum number of inference iterations the model can perform.\n    max_output_tokens: Maximum number of tokens allowed in the response.\n    max_tool_calls: Maximum number of tool calls allowed in a single response.\n    metadata: Custom metadata dictionary with key-value pairs for tracking or logging.\n    parallel_tool_calls: Whether the model can make multiple tool calls in parallel.\n    previous_response_id: Identifier of the previous response in a multi-turn\n        conversation. Mutually exclusive with conversation.\n    prompt: Prompt object containing a template with variables for dynamic\n        substitution.\n    reasoning: Reasoning configuration for the response.\n    safety_identifier: Safety identifier for the response.\n    store: Whether to store the response in conversation history. Defaults to True.\n    stream: Whether to stream the response as it is generated. Defaults to False.\n    temperature: Sampling temperature controlling randomness (typically 0.0\u20132.0).\n    text: Text response configuration specifying output format constraints (JSON\n        schema, JSON object, or plain text).\n    tool_choice: Tool selection strategy (\"auto\", \"required\", \"none\", or specific\n        tool configuration).\n    tools: List of tools available to the model (file search, web search, function\n        calls, MCP tools). Defaults to all tools available to the model.\n    generate_topic_summary: LCORE-specific flag indicating whether to generate a\n        topic summary for new conversations. Defaults to True.\n    shield_ids: LCORE-specific list of configured shield names to apply.\n        If None, all configured shields are used.\n    solr: Optional Solr inline RAG options (mode, filters) or legacy filter-only dict.",
+                "description": "Model representing a request for the Responses API following LCORE specification.\n\nAttributes:\n    input: Input text or structured input items containing the query.\n    model: Model identifier in format \"provider/model\". Auto-selected if not provided.\n    conversation: Conversation ID linking to an existing conversation. Accepts both\n        OpenAI and LCORE formats. Mutually exclusive with previous_response_id.\n    include: Explicitly specify output item types that are excluded by default but\n        should be included in the response.\n    instructions: System instructions or guidelines provided to the model (acts as\n        the system prompt).\n    max_infer_iters: Maximum number of inference iterations the model can perform.\n    max_output_tokens: Maximum number of tokens allowed in the response.\n    max_tool_calls: Maximum number of tool calls allowed in a single response.\n    metadata: Custom metadata dictionary with key-value pairs for tracking or logging.\n    parallel_tool_calls: Whether the model can make multiple tool calls in parallel.\n    previous_response_id: Identifier of the previous response in a multi-turn\n        conversation. Mutually exclusive with conversation.\n    prompt_cache_key: Prompt cache key used by providers that support prompt\n        caching.\n    prompt: Prompt object containing a template with variables for dynamic\n        substitution.\n    reasoning: Reasoning configuration for the response.\n    safety_identifier: Safety identifier for the response.\n    store: Whether to store the response in conversation history. Defaults to True.\n    stream: Whether to stream the response as it is generated. Defaults to False.\n    temperature: Sampling temperature controlling randomness (typically 0.0\u20132.0).\n    text: Text response configuration specifying output format constraints (JSON\n        schema, JSON object, or plain text).\n    tool_choice: Tool selection strategy (\"auto\", \"required\", \"none\", or specific\n        tool configuration).\n    tools: List of tools available to the model (file search, web search, function\n        calls, MCP tools). Defaults to all tools available to the model.\n    generate_topic_summary: LCORE-specific flag indicating whether to generate a\n        topic summary for new conversations. Defaults to True.\n    shield_ids: LCORE-specific list of configured shield names to apply.\n        If None, all configured shields are used.\n    solr: Optional Solr inline RAG options (mode, filters) or legacy filter-only dict.",
                 "examples": [
                     {
                         "generate_topic_summary": true,
                         "input": "Hello World!",
                         "instructions": "You are a helpful assistant",
                         "model": "openai/gpt-5.6-luna",
+                        "prompt_cache_key": "example-cache-key",
                         "store": true,
                         "stream": false
                     }
@@ -21030,6 +21006,17 @@
                             }
                         ],
                         "title": "Previous Response Id"
+                    },
+                    "prompt_cache_key": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Prompt Cache Key"
                     },
                     "prompt": {
                         "anyOf": [
@@ -21297,7 +21284,7 @@
                     "output_text"
                 ],
                 "title": "ResponsesResponse",
-                "description": "Model representing a response from the Responses API following LCORE specification.\n\nAttributes:\n    created_at: Unix timestamp when the response was created.\n    completed_at: Unix timestamp when the response was completed, if applicable.\n    error: Error details if the response failed or was blocked.\n    id: Unique identifier for this response.\n    model: Model identifier in \"provider/model\" format used for generation.\n    object: Object type identifier, always \"response\".\n    output: List of structured output items containing messages, tool calls, and\n        other content. This is the primary response content.\n    parallel_tool_calls: Whether the model can make multiple tool calls in parallel.\n    previous_response_id: Identifier of the previous response in a multi-turn\n        conversation.\n    prompt: The input prompt object that was sent to the model.\n    status: Current status of the response (e.g., \"completed\", \"blocked\",\n        \"in_progress\").\n    temperature: Temperature parameter used for generation (controls randomness).\n    text: Text response configuration object used for OpenAI responses.\n    top_p: Top-p sampling parameter used for generation.\n    tools: List of tools available to the model during generation.\n    tool_choice: Tool selection strategy used (e.g., \"auto\", \"required\", \"none\").\n    truncation: Strategy used for handling content that exceeds context limits.\n    usage: Token usage statistics including input_tokens, output_tokens, and\n        total_tokens.\n    instructions: System instructions or guidelines provided to the model.\n    max_tool_calls: Maximum number of tool calls allowed in a single response.\n    reasoning: Reasoning configuration (effort level) used for the response.\n    max_output_tokens: Upper bound for tokens generated in the response.\n    safety_identifier: Safety/guardrail identifier applied to the request.\n    metadata: Additional metadata dictionary with custom key-value pairs.\n    store: Whether the response was stored.\n    conversation: Conversation ID linking this response to a conversation thread\n        (LCORE-specific).\n    available_quotas: Remaining token quotas for the user (LCORE-specific).\n    output_text: Aggregated text output from all output_text items in the\n        output array.",
+                "description": "Model representing a response from the Responses API following LCORE specification.\n\nAttributes:\n    created_at: Unix timestamp when the response was created.\n    completed_at: Unix timestamp when the response was completed, if applicable.\n    error: Error details if the response failed or was blocked.\n    id: Unique identifier for this response.\n    model: Model identifier in \"provider/model\" format used for generation.\n    object: Object type identifier, always \"response\".\n    output: List of structured output items containing messages, tool calls, and\n        other content. This is the primary response content.\n    parallel_tool_calls: Whether the model can make multiple tool calls in parallel.\n    previous_response_id: Identifier of the previous response in a multi-turn\n        conversation.\n    prompt_cache_key: Prompt cache key used by providers that support prompt\n        caching.\n    prompt: The input prompt object that was sent to the model.\n    status: Current status of the response (e.g., \"completed\", \"blocked\",\n        \"in_progress\").\n    temperature: Temperature parameter used for generation (controls randomness).\n    text: Text response configuration object used for OpenAI responses.\n    top_p: Top-p sampling parameter used for generation.\n    tools: List of tools available to the model during generation.\n    tool_choice: Tool selection strategy used (e.g., \"auto\", \"required\", \"none\").\n    truncation: Strategy used for handling content that exceeds context limits.\n    usage: Token usage statistics including input_tokens, output_tokens, and\n        total_tokens.\n    instructions: System instructions or guidelines provided to the model.\n    max_tool_calls: Maximum number of tool calls allowed in a single response.\n    reasoning: Reasoning configuration (effort level) used for the response.\n    max_output_tokens: Upper bound for tokens generated in the response.\n    safety_identifier: Safety/guardrail identifier applied to the request.\n    metadata: Additional metadata dictionary with custom key-value pairs.\n    store: Whether the response was stored.\n    conversation: Conversation ID linking this response to a conversation thread\n        (LCORE-specific).\n    available_quotas: Remaining token quotas for the user (LCORE-specific).\n    output_text: Aggregated text output from all output_text items in the\n        output array.",
                 "examples": [
                     {
                         "available_quotas": {

@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Optional, cast
+from typing import TYPE_CHECKING, Any, Optional, cast
 
 from openai.types.responses.response_file_search_tool_call import (
     Result as OpenAIFileSearchResult,
@@ -22,7 +22,6 @@ from pydantic_ai.native_tools import FileSearchTool, MCPServerTool, WebSearchToo
 import constants
 from constants import DEFAULT_RAG_TOOL
 from log import get_logger
-from models.common.agents import AgentTurnAccumulator
 from models.common.turn_summary import (
     MCPListToolsSummary,
     RAGChunk,
@@ -36,6 +35,9 @@ from utils.responses import (
     parse_arguments_string,
     resolve_source_for_result,
 )
+
+if TYPE_CHECKING:
+    from models.common.agents import AgentTurnAccumulator
 
 logger = get_logger(__name__)
 

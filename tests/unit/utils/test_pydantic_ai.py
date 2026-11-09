@@ -223,7 +223,10 @@ class TestBuildAgent:
 
         agent = build_agent(mock_client, mock_params, make_agent_config())
 
-        assert "You are a helpful assistant." in agent._instructions
+        assert any(
+            instruction.instruction == "You are a helpful assistant."
+            for instruction in agent._instructions
+        )
 
     def test_agent_with_library_client(
         self,

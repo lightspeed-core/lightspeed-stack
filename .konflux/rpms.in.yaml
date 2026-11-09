@@ -9,8 +9,7 @@ packages:
   ]
 upgradePackages:
   [
-    python3,
-    python3-libs,
+    libbrotli,
   ]
 contentOrigin:
   repofiles: ["./redhat.repo"]

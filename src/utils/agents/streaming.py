@@ -9,7 +9,7 @@ import datetime
 import time
 from collections.abc import AsyncIterator
 from functools import singledispatch
-from typing import Any, Final, Optional
+from typing import TYPE_CHECKING, Any, Final, Optional
 
 from fastapi import HTTPException
 from ogx_client import ApiException
@@ -43,9 +43,6 @@ from models.common.agents import (
     ToolResultStreamPayload,
     TurnCompleteStreamPayload,
 )
-from models.common.query import Attachment
-from models.common.responses.contexts import ResponseGeneratorContext
-from models.common.responses.responses_api_params import ResponsesApiParams
 from models.common.turn_summary import ContextStatus, TurnSummary
 from utils.agents.error_handler import map_agent_inference_error
 from utils.agents.query import (
@@ -90,6 +87,12 @@ from utils.stream_interrupts import (
     deregister_stream,
     persist_interrupted_turn,
 )
+from utils.token_counter import TokenCounter
+
+if TYPE_CHECKING:
+    from models.common.query import Attachment
+    from models.common.responses.contexts import ResponseGeneratorContext
+    from models.common.responses.responses_api_params import ResponsesApiParams
 
 type AgentDispatchEvent = AgentStreamEvent | AgentRunResultEvent
 
@@ -192,6 +195,7 @@ async def generate_agent_response(  # pylint: disable=too-many-statements
     emit_start: bool = True,
     turn: Optional[PendingTurn] = None,
     context_status: ContextStatus = "full",
+    summarization_usage: Optional[TokenCounter] = None,
 ) -> AsyncIterator[str]:
     """Wrap an agent SSE generator with cleanup logic.
 
@@ -215,6 +219,9 @@ async def generate_agent_response(  # pylint: disable=too-many-statements
         context_status: Whether the conversation context was sent in full
             ("full") or older turns were replaced by a summary ("summarized").
             Reported to the client in the SSE end event.
+        summarization_usage: Usage of the summarization calls compaction made
+            for this request (LCORE-3910). They were charged when they were
+            made; here they are added to the usage the turn reports.
 
     Yields:
         SSE-formatted strings from the wrapped generator.
@@ -328,6 +335,9 @@ async def generate_agent_response(  # pylint: disable=too-many-statements
         model_id=responses_params.model,
         token_usage=turn_summary.token_usage,
     )
+    # The turn reports the summarization calls made for it as part of its
+    # usage. They were charged when they were made.
+    reported_usage = turn_summary.token_usage + (summarization_usage or TokenCounter())
     logger.info("Getting available quotas")
     available_quotas = get_available_quotas(
         quota_limiters=configuration.quota_limiters,
@@ -336,8 +346,8 @@ async def generate_agent_response(  # pylint: disable=too-many-statements
     end_payload = EndStreamPayload.create(
         referenced_documents=turn_summary.referenced_documents,
         context_status=context_status,
-        input_tokens=turn_summary.token_usage.input_tokens,
-        output_tokens=turn_summary.token_usage.output_tokens,
+        input_tokens=reported_usage.input_tokens,
+        output_tokens=reported_usage.output_tokens,
         available_quotas=available_quotas,
     )
     yield serialize_event(end_payload, media_type)

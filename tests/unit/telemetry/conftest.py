@@ -597,7 +597,8 @@ def build_fully_populated_config() -> Configuration:
                     max_chunks=10,
                     reranker=RerankerConfiguration.model_construct(
                         enabled=True,
-                        model="cross-encoder/ms-marco-MiniLM-L6-v2",
+                        provider=constants.DEFAULT_RERANK_PROVIDER,
+                        model=constants.DEFAULT_CROSS_ENCODER_MODEL,
                     ),
                 ),
                 tool=RetrievalStrategyConfiguration.model_construct(
@@ -768,7 +769,8 @@ def build_minimal_config() -> Configuration:
                     max_chunks=10,
                     reranker=RerankerConfiguration.model_construct(
                         enabled=False,
-                        model="cross-encoder/ms-marco-MiniLM-L6-v2",
+                        provider=constants.DEFAULT_RERANK_PROVIDER,
+                        model=constants.DEFAULT_CROSS_ENCODER_MODEL,
                     ),
                 ),
                 tool=RetrievalStrategyConfiguration.model_construct(

@@ -316,6 +316,7 @@ LIGHTSPEED_STACK_FIELDS: tuple[FieldSpec | ListFieldSpec, ...] = (
     FieldSpec("rag.okp.max_chunks", MaskingType.PASSTHROUGH),
     # Reranker (inline retrieval)
     FieldSpec("rag.retrieval.inline.reranker.enabled", MaskingType.PASSTHROUGH),
+    FieldSpec("rag.retrieval.inline.reranker.provider", MaskingType.PASSTHROUGH),
     FieldSpec("rag.retrieval.inline.reranker.model", MaskingType.PASSTHROUGH),
     # Vector Store (dynamic provider capacity)
     # default_provider / providers[].id are user-chosen names (potential PII)

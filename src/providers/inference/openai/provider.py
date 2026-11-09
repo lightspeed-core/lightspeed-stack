@@ -2,23 +2,25 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
+from openai import APIError
 from pydantic_ai.embeddings import EmbeddingModel
 from pydantic_ai.embeddings.openai import OpenAIEmbeddingModel
 from pydantic_ai.models import Model
 from pydantic_ai.models.openai import OpenAIResponsesModel
 from pydantic_ai.providers.openai import OpenAIProvider
-from sentence_transformers import CrossEncoder
 
 from models.config import OpenAIInferenceProviderEntry
 from providers.inference.base import InferenceProvider
 from providers.inference.catalog import CatalogModel, DiscoveredModel
-from providers.inference.errors import ModelTypeNotSupportedError
+from providers.inference.errors import ModelDiscoveryError
 from providers.inference.model_type_inference import (
     infer_model_type_from_pai_known_names,
 )
-from providers.inference.types import ModelType
+
+if TYPE_CHECKING:
+    from providers.inference.types import ModelType
 
 
 class OpenAIInferenceProvider(
@@ -46,8 +48,14 @@ class OpenAIInferenceProvider(
         Returns:
             Discovered models with inferred types, before allow-list filtering.
 
+        Raises:
+            ModelDiscoveryError: If the OpenAI models API fails.
+
         """
-        response = await self._get_provider.client.models.list()
+        try:
+            response = await self._get_provider.client.models.list()
+        except APIError as exc:
+            raise ModelDiscoveryError(self.provider_id) from exc
         return [
             DiscoveredModel(
                 provider_model_id=model.id,
@@ -85,19 +93,6 @@ class OpenAIInferenceProvider(
             model.provider_model_id,
             provider=self._get_provider,
         )
-
-    def _create_rerank(self, model: CatalogModel) -> CrossEncoder:
-        """Reject rerank requests; this provider has no rerank API.
-
-        Args:
-            model: Catalog entry that requested rerank support.
-
-        Raises:
-            ModelTypeNotSupportedError: Always, because rerank is unsupported.
-
-        """
-        _ = model
-        raise ModelTypeNotSupportedError("rerank", self.provider_id)
 
     def _infer_model_type(
         self,

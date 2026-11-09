@@ -93,6 +93,18 @@ def wait_for_pod_health(pod_name: str, max_attempts: int = 60) -> None:
 _OGX_RESTART_NAMES = frozenset({"ogx", "llama-stack", "llama-stack-service"})
 _LIGHTSPEED_RESTART_NAMES = frozenset({"lightspeed-stack", "lightspeed-stack-service"})
 
+# e2e-ops Konflux ``restart-ogx``: up to 360×3s pod wait, then health, port-forward, vLLM poll.
+_KONFLUX_RESTART_OGX_E2E_OPS_TIMEOUT = 2700
+
+
+def _restart_ogx_e2e_ops_timeout_seconds() -> int:
+    """Subprocess cap for ``restart-ogx``; must cover e2e-ops internal poll budgets."""
+    if os.environ.get("E2E_COPY_MOCK_TLS_CERTS_TO_OGX") == "1":
+        return _KONFLUX_RESTART_OGX_E2E_OPS_TIMEOUT
+    if os.environ.get("E2E_KONFLUX_E2E") == "1":
+        return _KONFLUX_RESTART_OGX_E2E_OPS_TIMEOUT
+    return 420
+
 
 def restart_pod(container_name: str) -> None:
     """Restart OGX or Lightspeed pod in OpenShift/Prow (not Docker).
@@ -108,18 +120,17 @@ def restart_pod(container_name: str) -> None:
     """
     if container_name in _OGX_RESTART_NAMES:
         op = "restart-ogx"
-        # Subprocess cap must exceed e2e-ops internal waits (pod + in-pod health + port-forward).
-        # Konflux TLS full recreate: ~6-12 min typical, 15+ min under load (user-reported 400s+).
-        if os.environ.get("E2E_COPY_MOCK_TLS_CERTS_TO_OGX") == "1":
-            timeout = 1200
-        elif os.environ.get("E2E_KONFLUX_E2E") == "1":
-            timeout = 720
-        else:
-            timeout = 420
+        timeout = _restart_ogx_e2e_ops_timeout_seconds()
     elif container_name in _LIGHTSPEED_RESTART_NAMES:
         op = "restart-lightspeed"
-        # Konflux LCS: TCP readiness + OGX handshake; full recreate can exceed 10 min under load.
-        timeout = 1200 if os.environ.get("E2E_KONFLUX_E2E") == "1" else 320
+        # e2e-ops may restore OGX first when unhealthy (same shell waits as restart-ogx).
+        if (
+            os.environ.get("E2E_KONFLUX_E2E") == "1"
+            or os.environ.get("E2E_COPY_MOCK_TLS_CERTS_TO_OGX") == "1"
+        ):
+            timeout = _restart_ogx_e2e_ops_timeout_seconds()
+        else:
+            timeout = 320
     else:
         print(
             f"Warning: restart_pod({container_name!r}) unknown; "
@@ -157,12 +168,7 @@ def restore_ogx_pod() -> None:
         subprocess.TimeoutExpired: If the operation times out.
 
     """
-    if os.environ.get("E2E_KONFLUX_E2E") == "1":
-        # Konflux: PVC fast-path init ~60-90s + Llama startup ~120-180s + health +
-        # port-forward. 600s gives ample headroom without masking runaway installs.
-        timeout = 600
-    else:
-        timeout = 420
+    timeout = _restart_ogx_e2e_ops_timeout_seconds()
     result = run_e2e_ops("restart-ogx", timeout=timeout)
     print(result.stdout, end="")
     if result.returncode != 0:

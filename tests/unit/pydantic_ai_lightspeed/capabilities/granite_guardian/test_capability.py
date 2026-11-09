@@ -10,6 +10,7 @@ import pytest
 from pydantic_ai import AgentRunResult, RunContext
 from pydantic_ai.exceptions import ModelAPIError, UnexpectedModelBehavior
 from pydantic_ai.messages import ToolCallPart, ToolReturnPart
+from pydantic_ai.models.test import TestModel
 from pydantic_ai.tools import ToolDefinition
 from pydantic_ai.usage import RequestUsage, RunUsage
 from pytest_mock import MockerFixture, MockType
@@ -405,8 +406,7 @@ class TestGraniteGuardianWrapRun:
         ctx = mocker.Mock(spec=RunContext)
         ctx.prompt = "How do I create a pod?"
         ctx.usage = RunUsage()
-        ctx.model = mocker.Mock()
-        ctx.model.settings = {"extra_body": {"conversation": "conv_test"}}
+        ctx.model = TestModel(settings={"extra_body": {"conversation": "conv_test"}})
         return ctx
 
     @pytest.fixture(name="mock_handler")
@@ -501,7 +501,7 @@ class TestGraniteGuardianWrapRun:
         mock_append_turn: MockType,
     ) -> None:
         """Test that persistence is skipped without a conversation ID."""
-        mock_ctx.model = mocker.Mock(settings={})
+        mock_ctx.model = TestModel(settings={})
         mocker.patch(
             f"{_MODULE}._run_risk_check",
             return_value=(
