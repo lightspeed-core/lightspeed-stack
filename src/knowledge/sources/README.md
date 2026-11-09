@@ -8,3 +8,7 @@ Knowledge Sources for Knowledge/RAG in Lightspeed Core.
 
 Abstract base for pluggable knowledge sources.
 
+## [faiss.py](faiss.py)
+
+Faiss vector store backed by a sqlite-faiss kvstore file.
+

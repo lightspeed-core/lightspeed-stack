@@ -8,13 +8,13 @@ Unit tests for the knowledge package.
 
 Unit tests for knowledge.capability.
 
-## [test_reranker.py](test_reranker.py)
-
-Unit tests for knowledge.reranker.
-
 ## [test_faiss.py](test_faiss.py)
 
 Unit tests for knowledge.sources.faiss.
+
+## [test_reranker.py](test_reranker.py)
+
+Unit tests for knowledge.reranker.
 
 ## [test_search.py](test_search.py)
 

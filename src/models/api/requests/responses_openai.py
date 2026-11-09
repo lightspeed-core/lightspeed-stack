@@ -148,6 +148,32 @@ class ResponsesRequest(BaseModel):
             )
         return values
 
+    @field_validator("input")
+    @classmethod
+    def validate_input_not_empty(cls, value: ResponseInput) -> ResponseInput:
+        """Ensure the request carries some actual input for the model.
+
+        An empty string or an empty list of input items leaves nothing to send to
+        the model, which the backend rejects with an error that surfaces to the
+        client as an opaque HTTP 500. Reject such requests at the validation layer
+        instead.
+
+        Parameters:
+            value: Raw ``input`` value, either a string or a list of input items.
+
+        Returns:
+            The unmodified ``input`` value when it carries content.
+
+        Raises:
+            ValueError: If ``input`` is an empty/whitespace-only string or an
+                empty list.
+
+        """
+        normalized = value.strip() if isinstance(value, str) else value
+        if not normalized:
+            raise ValueError("Input must not be empty")
+        return value
+
     @model_validator(mode="after")
     def validate_conversation_and_previous_response_id_mutually_exclusive(self) -> Self:
         """

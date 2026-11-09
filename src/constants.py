@@ -219,6 +219,9 @@ DEFAULT_EMBEDDING_DIMENSION: Final[int] = 768
 # Default sentence transformer cross encoder model for reranking RAG chunk scores
 DEFAULT_CROSS_ENCODER_MODEL: Final[str] = "cross-encoder/ms-marco-MiniLM-L6-v2"
 
+# Default inference provider id for RAG reranking (sentence_transformers provider)
+DEFAULT_RERANK_PROVIDER: Final[str] = "sentence_transformers"
+
 # quota limiters constants
 USER_QUOTA_LIMITER: Final[str] = "user_limiter"
 CLUSTER_QUOTA_LIMITER: Final[str] = "cluster_limiter"

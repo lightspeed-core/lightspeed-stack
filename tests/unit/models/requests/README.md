@@ -22,7 +22,7 @@ Unit tests for QueryRequest model.
 
 ## [test_responses_request.py](test_responses_request.py)
 
-Unit tests for ResponsesRequest body-size validation.
+Unit tests for ResponsesRequest validation.
 
 ## [test_vector_store_requests.py](test_vector_store_requests.py)
 

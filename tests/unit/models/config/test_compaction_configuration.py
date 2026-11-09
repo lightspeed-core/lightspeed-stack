@@ -1,6 +1,7 @@
 """Unit tests for CompactionConfiguration and its placement on Configuration."""
 
 import pytest
+from pydantic import ValidationError
 
 from models.config import CompactionConfiguration, Configuration
 
@@ -17,6 +18,7 @@ def test_default_values() -> None:
     assert config.token_floor == 4096
     assert config.buffer_turns == 4
     assert config.buffer_max_ratio == 0.3
+    assert config.summary_prompt is None
 
 
 def test_enabled_can_be_turned_on() -> None:
@@ -85,6 +87,35 @@ def test_token_floor_zero_is_allowed() -> None:
 def test_buffer_turns_zero_is_allowed() -> None:
     """Zero buffer turns are allowed — caller may want full summarization."""
     assert CompactionConfiguration(buffer_turns=0).buffer_turns == 0
+
+
+@pytest.mark.parametrize(
+    "summary_prompt",
+    ["Summarize for support:\n{messages}", "Keep {{literal}} braces.\n{messages}"],
+)
+def test_summary_prompt_accepts_messages_placeholder(summary_prompt: str) -> None:
+    """A prompt whose only replacement field is {messages} is kept unchanged."""
+    config = CompactionConfiguration.model_validate({"summary_prompt": summary_prompt})
+    assert config.summary_prompt == summary_prompt
+
+
+@pytest.mark.parametrize(
+    ("summary_prompt", "message"),
+    [
+        ("Summarize the conversation.", "must contain the {messages} placeholder"),
+        ("", "must contain the {messages} placeholder"),
+        ("{messages} about {product}", "no other replacement field"),
+        ("{messages:.100}", "no other replacement field"),
+        ("{messages!r}", "no other replacement field"),
+        ("{messages", "not a valid format string"),
+    ],
+)
+def test_summary_prompt_rejects_invalid_template(
+    summary_prompt: str, message: str
+) -> None:
+    """A prompt without {messages}, or with any other field, fails to load."""
+    with pytest.raises(ValidationError, match=message):
+        CompactionConfiguration.model_validate({"summary_prompt": summary_prompt})
 
 
 def test_rejects_unknown_field() -> None:

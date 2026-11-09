@@ -10,6 +10,7 @@ from pydantic_ai.embeddings.sentence_transformers import (
 from pydantic_ai.providers import Provider
 from sentence_transformers import CrossEncoder, SentenceTransformer
 
+from configuration import configuration
 from log import get_logger
 from models.config import SentenceTransformersInferenceProviderEntry
 from providers.inference.base import InferenceProvider
@@ -64,10 +65,12 @@ class SentenceTransformersInferenceProvider(
         return []
 
     async def _load_catalog(self) -> list[CatalogModel]:
-        """Build the catalog exclusively from configured allowed models.
+        """Build the catalog from allowed_models plus configured rerank references.
 
         Equivalent to the base-class skip_model_discovery path. Entries typed
         as llm are omitted so this provider never exposes chat models.
+
+        Also adds a rerank row when its provider id matches this provider id.
 
         Returns:
             Catalog rows for embedding and rerank models only.
@@ -95,7 +98,48 @@ class SentenceTransformersInferenceProvider(
                     metadata=dict(allowed.metadata),
                 )
             )
+
+        rerank_catalog_names = {
+            model.name for model in catalog if model.model_type == "rerank"
+        }
+        if row := self._inline_reranker_catalog_row(rerank_catalog_names):
+            catalog.append(row)
         return catalog
+
+    def _inline_reranker_catalog_row(
+        self,
+        rerank_catalog_names: set[str],
+    ) -> Optional[CatalogModel]:
+        """Return inline reranker as a catalog row when missing from the allow-list.
+
+        Args:
+            rerank_catalog_names: Catalog names already used by rerank entries.
+
+        Returns:
+            A rerank catalog row for this provider, or None if not applicable.
+
+        """
+        reranker = configuration.reranker
+        if (
+            reranker is None
+            or not reranker.model
+            or reranker.provider != self.provider_id
+            or reranker.model in rerank_catalog_names
+        ):
+            return None
+
+        model_name = reranker.model
+        logger.debug(
+            "Registered RAG-configured rerank model %r on "
+            "sentence-transformers provider %r",
+            model_name,
+            self.provider_id,
+        )
+        return CatalogModel(
+            name=model_name,
+            provider_model_id=model_name,
+            model_type="rerank",
+        )
 
     def _create_embedding(self, model: CatalogModel) -> EmbeddingModel:
         """Create or reuse a cached Pydantic AI sentence-transformers embedding model.

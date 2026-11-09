@@ -939,7 +939,8 @@ class TestBuildLightspeedStackSnapshot:
         snapshot = build_lightspeed_stack_snapshot(build_minimal_config())
         reranker = snapshot["rag"]["retrieval"]["inline"]["reranker"]
         assert reranker["enabled"] is False
-        assert reranker["model"] == "cross-encoder/ms-marco-MiniLM-L6-v2"
+        assert reranker["provider"] == constants.DEFAULT_RERANK_PROVIDER
+        assert reranker["model"] == constants.DEFAULT_CROSS_ENCODER_MODEL
 
     def test_approvals_fields(self) -> None:
         """Test approvals fields extraction."""

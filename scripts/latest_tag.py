@@ -44,7 +44,7 @@ def get_latest_stable() -> Optional[str]:
 
 
 def main() -> None:
-    """Entry point to this script, retrieves latest tag defined on GitHub.
+    """Compare GIT_TAG with the highest stable local Git tag.
 
     Append ``apply_latest=true`` or ``apply_latest=false`` when GITHUB_OUTPUT
     is set. An unset or prerelease GIT_TAG produces false without querying Git.

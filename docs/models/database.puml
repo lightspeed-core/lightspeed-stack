@@ -2,6 +2,20 @@
 set namespaceSeparator none
 class "Base" as src.models.database.base.Base {
 }
+class "Prompt" as src.models.database.prompts.Prompt {
+  created_at : Mapped[datetime]
+  default_version : Mapped[int]
+  id : Mapped[str]
+  name : Mapped[str]
+  updated_at : Mapped[datetime]
+}
+class "PromptVersion" as src.models.database.prompts.PromptVersion {
+  created_at : Mapped[datetime]
+  prompt_id : Mapped[str]
+  template : Mapped[str]
+  variables : Mapped[list[str]]
+  version : Mapped[int]
+}
 class "SavedPrompt" as src.models.database.saved_prompts.SavedPrompt {
   content : Mapped[str]
   created_at : Mapped[datetime]
