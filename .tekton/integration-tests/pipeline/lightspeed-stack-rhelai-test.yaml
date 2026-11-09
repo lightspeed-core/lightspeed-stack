@@ -30,7 +30,7 @@ spec:
       type: string
     - name: model
       description: 'HuggingFace model to serve on RHEL AI.'
-      default: 'RedHatAI/Qwen3.8-27B-INT4'
+      default: 'RedHatAI/Qwen3.5-9B-quantized.w4a16'
       type: string
     - name: namespace
       description: 'Namespace to run tests in'
@@ -116,8 +116,23 @@ spec:
                 cpu: "300m"
                 memory: "2Gi"
             script: |
-              #!/bin/sh
+              #!/usr/bin/env bash
               set -uo pipefail
+
+              # MAPT image (Hummingbird OS) has no package manager and no curl/grep.
+              vllm_models_list_model() {
+                local host="$1" api_key="$2" model="$3" body
+                { exec 3<>"/dev/tcp/${host}/8000"; } 2>/dev/null || return 1
+                printf 'GET /v1/models HTTP/1.1\r\nHost: %s\r\nAuthorization: Bearer %s\r\nConnection: close\r\n\r\n' \
+                  "${host}" "${api_key}" >&3
+                body="$(timeout 15 cat <&3)" || { exec 3<&-; exec 3>&-; return 1; }
+                exec 3<&-
+                exec 3>&-
+                case "${body}" in
+                  *"${model}"*) return 0 ;;
+                  *) return 1 ;;
+                esac
+              }
 
               BUCKET=$(cat /opt/aws-credentials/S3_BUCKET)
               RUN_ID="$(context.pipelineRun.name)"
@@ -223,34 +238,23 @@ spec:
                 exit 1
               fi
 
-              if ! command -v curl >/dev/null 2>&1 || ! command -v grep >/dev/null 2>&1; then
-                echo "[mapt] Installing curl and grep for vLLM readiness check..."
-                if command -v microdnf >/dev/null 2>&1; then
-                  microdnf -y install curl-minimal grep
-                elif command -v yum >/dev/null 2>&1; then
-                  yum -y install curl grep
-                else
-                  echo "[mapt] ERROR: curl and grep are required but no supported package manager found"
-                  exit 1
-                fi
-              fi
-
               VLLM_HOST="$(cat /opt/host-info/host)"
-              echo "[mapt] Provisioning OK (host=${VLLM_HOST}); waiting for vLLM to expose $(params.model)..."
-              VLLM_READINESS_DEADLINE=$((SECONDS + 1200))
+              # Fail before OCP deploy + e2e if vLLM never serves the model (OOM, HF token, bad id).
+              VLLM_READINESS_TIMEOUT_SECONDS=600
+              echo "[mapt] Provisioning OK (host=${VLLM_HOST}); waiting up to ${VLLM_READINESS_TIMEOUT_SECONDS}s for vLLM to list $(params.model)..."
+              VLLM_READINESS_DEADLINE=$((SECONDS + VLLM_READINESS_TIMEOUT_SECONDS))
               n=0
               while true; do
-                if curl -sf --max-time 15 -H "Authorization: Bearer ${VLLM_API_KEY}" \
-                    "http://${VLLM_HOST}:8000/v1/models" | grep -Fq "$(params.model)"; then
+                if vllm_models_list_model "${VLLM_HOST}" "${VLLM_API_KEY}" "$(params.model)"; then
                   echo "[mapt] vLLM models API ready (poll ${n})"
                   break
                 fi
                 if [ "${SECONDS}" -ge "${VLLM_READINESS_DEADLINE}" ]; then
-                  echo "[mapt] ERROR: vLLM did not list model after 20m (check instance logs / OOM)"
+                  echo "[mapt] ERROR: vLLM did not list model after ${VLLM_READINESS_TIMEOUT_SECONDS}s (check instance logs / OOM / HF token)"
                   exit 1
                 fi
                 n=$((n + 1))
-                sleep 20
+                sleep 10
               done
               echo -n "${VLLM_API_KEY}" > $(results.vllm-api-key.path)
               echo -n "$(cat /opt/host-info/host)" > $(results.host.path)

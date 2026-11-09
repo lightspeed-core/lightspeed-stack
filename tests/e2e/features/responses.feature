@@ -145,7 +145,7 @@ Feature: Responses endpoint API tests
   # OGX's chat-completion router mutates the model id in place when routing
   # the auto-selected model (no .model_copy() guard on the non-reasoning
   # path, see ogx streaming.py), collapsing "org/model"-style provider
-  # resource ids (e.g. vLLM's "RedHatAI/Qwen3.8-27B-INT4") down to just the
+  # resource ids (e.g. vLLM's "RedHatAI/Qwen3.5-9B-quantized.w4a16") down to just the
   # last path segment in the echoed response. Harmless for slash-free ids
   # (e.g. openai's "gpt-5.6-luna"), so only skipped on the vLLM matrix.
   @skip-on-vllm
