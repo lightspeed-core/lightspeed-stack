@@ -17,7 +17,7 @@ providers:
   - provider_id: azure
     provider_type: remote::azure
     config: 
-      base_url: https://ols-test.openai.azure.com/openai/v1
+      base_url: https://lcore-test.openai.azure.com/openai/v1
       # v1 endpoint: REST api-version is "preview", not the model catalog date (2026-07-09).
       api_version: preview
       allowed_models: ["gpt-6-luna"]
