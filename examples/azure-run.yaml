@@ -19,6 +19,7 @@ providers:
     config: 
       base_url: https://lcore-test.openai.azure.com/openai/v1
       api_version: preview
+      allowed_models: ["gpt-6-luna"]
       model_validation: false
   - provider_id: openai
     provider_type: remote::openai
