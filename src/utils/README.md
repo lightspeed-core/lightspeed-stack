@@ -4,10 +4,6 @@
 
 Utility classes and functions for the Lightspeed Stack core service.
 
-## [builtin_tools.py](builtin_tools.py)
-
-Discover builtin file-search tools when that provider is configured.
-
 ## [checks.py](checks.py)
 
 Checks that are performed to configuration options.
