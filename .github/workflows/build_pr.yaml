@@ -19,9 +19,17 @@ jobs:
     steps:
       - name: Install qemu and buildah
         run: |
-          sudo apt update
-          # qemu is required for arm64 builds
-          sudo apt install -y buildah qemu-user-static
+          sudo apt-get update
+          # arm64 builds need qemu-user binfmt registration. On Ubuntu 26.04
+          # qemu-user-static is only a virtual package, provided by both
+          # qemu-user-binfmt and qemu-user-binfmt-hwe, and apt will not
+          # choose a provider. Older runners still ship the real package.
+          if sudo apt-get install --simulate qemu-user-static >/dev/null 2>&1; then
+            qemu_pkg=qemu-user-static
+          else
+            qemu_pkg=qemu-user-binfmt
+          fi
+          sudo apt-get install -y buildah "${qemu_pkg}"
       - name: Checkout code
         uses: actions/checkout@v4
         with:
