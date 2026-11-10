@@ -8,6 +8,10 @@ Integration tests for API endpoints.
 
 Shared helpers for conversation compaction integration tests.
 
+## [test_a2a_integration.py](test_a2a_integration.py)
+
+Integration tests for the A2A JSON-RPC endpoint.
+
 ## [test_a2a_routes_integration.py](test_a2a_routes_integration.py)
 
 Integration tests for the HTTP routes of the A2A endpoint.
@@ -15,10 +19,6 @@ Integration tests for the HTTP routes of the A2A endpoint.
 ## [test_authorized_endpoint.py](test_authorized_endpoint.py)
 
 Integration tests for the /authorized endpoint.
-
-## [test_a2a_integration.py](test_a2a_integration.py)
-
-Integration tests for the A2A JSON-RPC endpoint.
 
 ## [test_compaction_a2a.py](test_compaction_a2a.py)
 

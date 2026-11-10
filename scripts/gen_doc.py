@@ -12,6 +12,7 @@ DIRECTORIES = ["src", "tests/unit", "tests/integration", "tests/e2e"]
 DIRS_TO_SKIP = {
     "src/pii_redaction_engine",
     "src/providers/inference",
+    "src/providers/inference/bedrock",
     "tests/integration",
     "tests/e2e",
     "tests/e2e/configuration",
