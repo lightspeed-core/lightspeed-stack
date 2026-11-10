@@ -133,7 +133,10 @@ class ResponsesApiParams(BaseModel):
         "request body while remaining on the object for identity. "
         "Set by conversation compaction (LCORE-1572): once a conversation is "
         "compacted, lightspeed-stack supplies explicit input and must not let "
-        "OGX reload the full history via the conversation parameter.",
+        "OGX reload the full history via the conversation parameter. "
+        "Also set for stateless /v1/responses requests (store=false with no "
+        "conversation or previous_response_id) so that OGX does not "
+        "copy the request's full input into the auto-created conversation.",
     )
 
     def model_dump(self, *args: Any, **kwargs: Any) -> dict[str, Any]:
