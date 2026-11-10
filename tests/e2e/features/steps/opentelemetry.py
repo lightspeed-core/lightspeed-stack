@@ -85,3 +85,29 @@ def collector_received_data(context: Context, marker: str) -> None:
         f"Mock OTEL collector did not receive data containing {marker!r} "
         f"within {_DELIVERY_TIMEOUT_S:.0f}s"
     )
+
+
+@then("The OpenTelemetry service did not receive data containing {marker}")
+def collector_did_not_receive_data(context: Context, marker: str) -> None:
+    """Assert the mock collector buffered telemetry that does NOT contain ``marker``.
+
+    Used to verify in-process redaction: a known PII value sent in a query must be
+    absent from the exported telemetry. Ordering matters — a preceding "received
+    data containing ..." step should already have confirmed the span was delivered,
+    so a single check proves the value is absent (redacted) rather than merely
+    not-yet-delivered.
+    """
+    assert getattr(
+        context, "otel_collector_ready", False
+    ), "The OpenTelemetry service must be started before asserting on delivery"
+    marker = marker.strip()
+    response = requests.get(
+        f"{MOCK_OTEL_CONTROL_BASE}/received", params={"contains": marker}, timeout=5
+    )
+    assert (
+        response.status_code == 200
+    ), f"Failed to query mock OTEL collector: HTTP {response.status_code}"
+    assert not response.json().get("found"), (
+        f"Mock OTEL collector unexpectedly received data containing {marker!r} "
+        "(expected it to be redacted in-process)"
+    )
