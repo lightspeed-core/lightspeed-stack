@@ -86,7 +86,6 @@ from utils.stream_interrupts import (
     build_interrupted_response,
     deregister_stream,
     persist_interrupted_turn,
-    register_stream,
 )
 from utils.token_counter import TokenCounter
 
@@ -238,17 +237,10 @@ async def generate_agent_response(  # pylint: disable=too-many-statements
         turn = PendingTurn.for_request(context.client, responses_params)
     persist_guard: list[bool] = [False]
     stream_completed = False
-    # Registered before the start event, so an interrupt sent as soon as the
-    # client sees the request id finds the run (LCORE-4733). The compaction
-    # path registers earlier, before its own start event; registering twice
-    # is harmless, and the finally below deregisters for both.
-    register_stream(
-        context.request_id,
-        context.user_id,
-        context.cancellation_token,
-        context.conversation_id,
-    )
     try:
+        # The start event is sent inside the try, so that a client that goes
+        # away right after it still reaches the finally, which removes the
+        # run from the interrupt registry (LCORE-4733).
         if emit_start:
             yield serialize_event(
                 StartStreamPayload.create(

@@ -1733,7 +1733,7 @@ class TestCompactedTurnPersistence:
 
 
 class TestStreamRegistration:
-    """A streaming run registers its cancellation token and hands it to the agent (LCORE-4733)."""
+    """The run gets the context's token and leaves the registry at its end (LCORE-4733)."""
 
     @pytest.mark.asyncio
     async def test_agent_response_generator_passes_the_context_token_to_the_run(
@@ -1792,16 +1792,15 @@ class TestStreamRegistration:
         mocker.patch("utils.agents.streaming.configuration", mock_config)
 
     @pytest.mark.asyncio
-    async def test_registers_before_the_start_event_and_deregisters_at_the_end(
+    async def test_deregisters_at_the_end(
         self,
         mocker: MockerFixture,
         make_generator_context: Callable[..., ResponseGeneratorContext],
         responses_params: ResponsesApiParams,
         stream_interrupt_mocks: dict[str, Any],
     ) -> None:
-        """The entry exists when the client learns the request id, and is gone at the end."""
+        """The entry the handler registered is gone once the stream ran to its end."""
         context = make_generator_context()
-        register = mocker.patch("utils.agents.streaming.register_stream")
         self._patch_completion(mocker)
         turn_summary = TurnSummary()
         turn_summary.token_usage = TokenCounter(input_tokens=3, output_tokens=7)
@@ -1823,12 +1822,6 @@ class TestStreamRegistration:
         first = await anext(stream)
 
         assert _sse_event_types([first]) == ["start"]
-        register.assert_called_once_with(
-            context.request_id,
-            context.user_id,
-            context.cancellation_token,
-            context.conversation_id,
-        )
         stream_interrupt_mocks["deregister"].assert_not_called()
 
         rest = [event async for event in stream]
@@ -1846,7 +1839,6 @@ class TestStreamRegistration:
     ) -> None:
         """A client that goes away right after the start event leaves no entry behind."""
         context = make_generator_context()
-        mocker.patch("utils.agents.streaming.register_stream")
 
         async def inner() -> AsyncIterator[str]:
             yield serialize_event(
