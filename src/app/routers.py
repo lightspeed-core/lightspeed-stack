@@ -17,7 +17,6 @@ from app.endpoints import (
     metrics,
     models,
     prompts,
-    providers,
     # Query endpoints for Response API support
     query,
     rags,
@@ -58,7 +57,6 @@ def include_routers(app: FastAPI) -> None:
     app.include_router(mcp_servers.router, prefix="/v1")
     app.include_router(shields.router, prefix="/v1")
     app.include_router(skills.router, prefix="/v1")
-    app.include_router(providers.router, prefix="/v1")
     app.include_router(prompts.router, prefix="/v1")
     app.include_router(rags.router, prefix="/v1")
     app.include_router(vector_stores.router, prefix="/v1")

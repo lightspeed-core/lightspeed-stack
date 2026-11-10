@@ -217,7 +217,7 @@ The system defines 30+ actions that can be authorized. Examples (see `docs/user_
 - `REGISTER_MCP_SERVER`, `LIST_MCP_SERVERS`, `DELETE_MCP_SERVER`
 
 **Metadata Operations:**
-- `LIST_MODELS`, `LIST_SHIELDS`, `LIST_TOOLS`, `LIST_PROVIDERS`
+- `LIST_MODELS`, `LIST_SHIELDS`, `LIST_TOOLS`
 
 **How Authorization Works:**
 1. Each endpoint is decorated with required action (e.g., `@authorize(Action.QUERY)`)

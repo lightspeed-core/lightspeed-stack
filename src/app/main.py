@@ -60,7 +60,6 @@ _OPENAPI_TAGS: Final[list[dict[str, str]]] = [
     {"name": "metrics", "description": "Prometheus metrics."},
     {"name": "models", "description": "LLM models."},
     {"name": "prompts", "description": "Prompt management."},
-    {"name": "providers", "description": "Inference providers."},
     {"name": "query", "description": "Non-streaming query."},
     {"name": "rags", "description": "RAG configuration."},
     {"name": "responses", "description": "OpenAI-compatible Responses API."},

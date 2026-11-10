@@ -106,8 +106,6 @@
           "get_tools",
           "get_skills",
           "get_shields",
-          "list_providers",
-          "get_provider",
           "list_rags",
           "get_rag",
           "get_metrics",

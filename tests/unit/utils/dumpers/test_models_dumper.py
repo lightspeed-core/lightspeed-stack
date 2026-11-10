@@ -141,8 +141,6 @@ def test_dump_models(tmpdir: Path) -> None:
                         "get_models",
                         "get_tools",
                         "get_shields",
-                        "list_providers",
-                        "get_provider",
                         "list_rags",
                         "get_rag",
                         "get_metrics",
@@ -5519,105 +5517,6 @@ def test_dump_models(tmpdir: Path) -> None:
                     "title": "ProviderHealthStatus",
                     "type": "object"
                 },
-                "ProviderResponse": {
-                    "description": "Model representing a response to get specific provider request.",
-                    "examples": [
-                        {
-                            "api": "inference",
-                            "config": {
-                                "api_key": "********"
-                            },
-                            "health": {
-                                "message": "Healthy",
-                                "status": "OK"
-                            },
-                            "provider_id": "openai",
-                            "provider_type": "remote::openai"
-                        }
-                    ],
-                    "properties": {
-                        "api": {
-                            "description": "The API this provider implements",
-                            "title": "Api",
-                            "type": "string"
-                        },
-                        "config": {
-                            "additionalProperties": true,
-                            "description": "Provider configuration parameters",
-                            "title": "Config",
-                            "type": "object"
-                        },
-                        "health": {
-                            "additionalProperties": true,
-                            "description": "Current health status of the provider",
-                            "title": "Health",
-                            "type": "object"
-                        },
-                        "provider_id": {
-                            "description": "Unique provider identifier",
-                            "title": "Provider Id",
-                            "type": "string"
-                        },
-                        "provider_type": {
-                            "description": "Provider implementation type",
-                            "title": "Provider Type",
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "api",
-                        "config",
-                        "health",
-                        "provider_id",
-                        "provider_type"
-                    ],
-                    "title": "ProviderResponse",
-                    "type": "object"
-                },
-                "ProvidersListResponse": {
-                    "description": "Model representing a response to providers request.",
-                    "examples": [
-                        {
-                            "providers": {
-                                "agents": [
-                                    {
-                                        "provider_id": "meta-reference",
-                                        "provider_type": "inline::meta-reference"
-                                    }
-                                ],
-                                "inference": [
-                                    {
-                                        "provider_id": "sentence-transformers",
-                                        "provider_type": "inline::sentence-transformers"
-                                    },
-                                    {
-                                        "provider_id": "openai",
-                                        "provider_type": "remote::openai"
-                                    }
-                                ]
-                            }
-                        }
-                    ],
-                    "properties": {
-                        "providers": {
-                            "additionalProperties": {
-                                "items": {
-                                    "additionalProperties": true,
-                                    "type": "object"
-                                },
-                                "type": "array"
-                            },
-                            "description": "List of available API types and their corresponding providers",
-                            "title": "Providers",
-                            "type": "object"
-                        }
-                    },
-                    "required": [
-                        "providers"
-                    ],
-                    "title": "ProvidersListResponse",
-                    "type": "object"
-                },
                 "QueryRequest": {
                     "additionalProperties": false,
                     "description": "Model representing a request for the LLM (Language Model).\n\nAttributes:\n    query: The query string.\n    conversation_id: The optional conversation ID (UUID).\n    provider: The optional provider.\n    model: The optional model.\n    system_prompt: The optional system prompt.\n    attachments: The optional attachments.\n    no_tools: Whether to bypass all tools and MCP servers (default: False).\n    generate_topic_summary: Whether to generate topic summary for new conversations.\n    media_type: The optional media type for response format (application/json or text/plain).\n    vector_store_ids: The optional list of specific vector store IDs to query for RAG.\n    shield_ids: The optional list of configured shield names to apply.\n    solr: Optional Solr inline RAG options (mode, filters) or legacy filter-only dict.",
@@ -10173,8 +10072,6 @@ def test_dump_models(tmpdir: Path) -> None:
             "PromptUpdateRequest",
             "PromptsListResponse",
             "ProviderHealthStatus",
-            "ProviderResponse",
-            "ProvidersListResponse",
             "QueryRequest",
             "QueryResponse",
             "QuotaExceededResponse",
@@ -10366,8 +10263,6 @@ def test_dump_models_group_successful_responses(tmpdir: Path) -> None:
         "PromptDeleteResponse",
         "PromptResourceResponse",
         "PromptsListResponse",
-        "ProviderResponse",
-        "ProvidersListResponse",
         "QueryResponse",
         "RAGInfoResponse",
         "RAGListResponse",

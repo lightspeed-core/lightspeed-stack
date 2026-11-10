@@ -2050,32 +2050,6 @@ Attributes:
 | message | string | Optional message about the health status |
 
 
-## ProviderResponse
-
-
-Model representing a response to get specific provider request.
-
-
-| Field | Type | Description |
-|-------|------|-------------|
-| api | string | The API this provider implements |
-| config | object | Provider configuration parameters |
-| health | object | Current health status of the provider |
-| provider_id | string | Unique provider identifier |
-| provider_type | string | Provider implementation type |
-
-
-## ProvidersListResponse
-
-
-Model representing a response to providers request.
-
-
-| Field | Type | Description |
-|-------|------|-------------|
-| providers | object | List of available API types and their corresponding providers |
-
-
 ## QueryResponse
 
 

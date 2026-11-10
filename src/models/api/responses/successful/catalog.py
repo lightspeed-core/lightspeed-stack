@@ -1,6 +1,6 @@
 """Successful response bodies for catalog-style endpoints."""
 
-from typing import Any, Optional
+from typing import Optional
 
 from pydantic import Field
 
@@ -238,75 +238,6 @@ class RAGListResponse(AbstractSuccessfulResponse):
                         "vs_7b52a8cf-0fa3-489c-beab-27e061d102f3",
                         "vs_7b52a8cf-0fa3-489c-cafe-27e061d102f3",
                     ]
-                }
-            ]
-        }
-    }
-
-
-class ProvidersListResponse(AbstractSuccessfulResponse):
-    """Model representing a response to providers request."""
-
-    providers: dict[str, list[dict[str, Any]]] = Field(
-        ...,
-        description="List of available API types and their corresponding providers",
-    )
-
-    model_config = {
-        "json_schema_extra": {
-            "examples": [
-                {
-                    "providers": {
-                        "inference": [
-                            {
-                                "provider_id": "sentence-transformers",
-                                "provider_type": "inline::sentence-transformers",
-                            },
-                            {
-                                "provider_id": "openai",
-                                "provider_type": "remote::openai",
-                            },
-                        ],
-                        "agents": [
-                            {
-                                "provider_id": "meta-reference",
-                                "provider_type": "inline::meta-reference",
-                            },
-                        ],
-                    },
-                }
-            ]
-        }
-    }
-
-
-class ProviderResponse(AbstractSuccessfulResponse):
-    """Model representing a response to get specific provider request."""
-
-    api: str = Field(
-        ...,
-        description="The API this provider implements",
-    )
-    config: dict[str, Any] = Field(
-        ...,
-        description="Provider configuration parameters",
-    )
-    health: dict[str, Any] = Field(
-        ...,
-        description="Current health status of the provider",
-    )
-    provider_id: str = Field(..., description="Unique provider identifier")
-    provider_type: str = Field(..., description="Provider implementation type")
-
-    model_config = {
-        "json_schema_extra": {
-            "examples": [
-                {
-                    "api": "inference",
-                    "config": {"api_key": "********"},
-                    "health": {"status": "OK", "message": "Healthy"},
-                    "provider_id": "openai",
-                    "provider_type": "remote::openai",
                 }
             ]
         }

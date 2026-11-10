@@ -20,8 +20,6 @@ from models.api.responses.successful import (
     LivenessResponse,
     MCPClientAuthOptionsResponse,
     ModelsResponse,
-    ProviderResponse,
-    ProvidersListResponse,
     QueryResponse,
     RAGInfoResponse,
     RAGListResponse,
@@ -218,95 +216,6 @@ class TestShieldsResponse:
         result = ShieldsResponse.openapi_response()
         assert result["description"] == "Successful response"
         assert result["model"] == ShieldsResponse
-        assert "example" in result["content"]["application/json"]
-
-        # Verify example count matches schema examples count (should be 1)
-        assert expected_count == 1
-
-
-class TestProvidersListResponse:
-    """Test cases for ProvidersListResponse."""
-
-    def test_constructor(self) -> None:
-        """Test ProvidersListResponse with valid providers dict."""
-        providers = {
-            "inference": [{"provider_id": "openai", "provider_type": "remote::openai"}]
-        }
-        response = ProvidersListResponse(providers=providers)
-        assert isinstance(response, AbstractSuccessfulResponse)
-        assert response.providers == providers
-
-    def test_empty_providers(self) -> None:
-        """Test ProvidersListResponse with empty providers dict."""
-        response = ProvidersListResponse(providers={})
-        assert response.providers == {}
-
-    def test_missing_required_parameter(self) -> None:
-        """Test ProvidersListResponse raises ValidationError when providers is missing."""
-        with pytest.raises(ValidationError):
-            ProvidersListResponse()  # pyright: ignore[reportCallIssue]
-
-    def test_openapi_response(self) -> None:
-        """Test ProvidersListResponse.openapi_response() method.
-
-        Verify ProvidersListResponse.openapi_response() returns a Successful
-        response structure and that the model schema contains exactly one
-        example.
-
-        Asserts that:
-        - the OpenAPI response description equals "Successful response",
-        - the `model` is ProvidersListResponse,
-        - `content["application/json"]` contains an `example`,
-        - the ProvidersListResponse JSON schema includes exactly one example.
-        """
-        schema = ProvidersListResponse.model_json_schema()
-        model_examples = schema.get("examples", [])
-        expected_count = len(model_examples)
-
-        result = ProvidersListResponse.openapi_response()
-        assert result["description"] == "Successful response"
-        assert result["model"] == ProvidersListResponse
-        assert "example" in result["content"]["application/json"]
-
-        # Verify example count matches schema examples count (should be 1)
-        assert expected_count == 1
-
-
-class TestProviderResponse:
-    """Test cases for ProviderResponse."""
-
-    def test_constructor(self) -> None:
-        """Test ProviderResponse with all required fields."""
-        response = ProviderResponse(
-            api="inference",
-            config={"api_key": "test"},
-            health={"status": "OK"},
-            provider_id="openai",
-            provider_type="remote::openai",
-        )
-        assert isinstance(response, AbstractSuccessfulResponse)
-        assert response.api == "inference"
-        assert response.config == {"api_key": "test"}
-        assert response.health == {"status": "OK"}
-        assert response.provider_id == "openai"
-        assert response.provider_type == "remote::openai"
-
-    def test_missing_required_parameters(self) -> None:
-        """Test ProviderResponse raises ValidationError when required fields are missing."""
-        with pytest.raises(ValidationError):
-            ProviderResponse()  # pyright: ignore[reportCallIssue]
-        with pytest.raises(ValidationError):
-            ProviderResponse(api="inference")  # pyright: ignore[reportCallIssue]
-
-    def test_openapi_response(self) -> None:
-        """Test ProviderResponse.openapi_response() method."""
-        schema = ProviderResponse.model_json_schema()
-        model_examples = schema.get("examples", [])
-        expected_count = len(model_examples)
-
-        result = ProviderResponse.openapi_response()
-        assert result["description"] == "Successful response"
-        assert result["model"] == ProviderResponse
         assert "example" in result["content"]["application/json"]
 
         # Verify example count matches schema examples count (should be 1)
