@@ -114,7 +114,7 @@ class ResponsesRequest(BaseModel):
         """Validate that the request body does not exceed the maximum allowed size.
 
         Serializes the raw request payload to JSON and checks the total character
-        count against the 65,536-character limit.  This guard runs before field
+        count against the configured character limit. This guard runs before field
         coercion so that the limit reflects only what the client actually sent,
         not the expanded representation produced by Pydantic's defaults.
 
@@ -126,7 +126,7 @@ class ResponsesRequest(BaseModel):
 
         Raises:
             ValueError: If the JSON-serialized size of ``values`` exceeds
-                65,536 characters.
+                the configured character limit.
 
         """
         try:
