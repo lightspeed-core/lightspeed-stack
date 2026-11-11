@@ -25,8 +25,14 @@ from pytest_mock import AsyncMockType, MockerFixture
 
 from configuration import AppConfig
 from constants import DEFAULT_LOGGER_NAME
+from conversations.agent_history.service import AgentHistoryService
 from models.common.responses.responses_api_params import ResponsesApiParams
-from models.config import ShieldConfiguration, SkillsConfiguration
+from models.config import (
+    AgentStepPersistenceSqliteConfiguration,
+    ShieldConfiguration,
+    SkillsConfiguration,
+    SQLiteDatabaseConfiguration,
+)
 
 type AgentFixtures = Generator[
     tuple[
@@ -279,15 +285,20 @@ def make_agent_config_fixture(
 ) -> Callable[..., AppConfig]:
     """Return a factory building a duck-typed AppConfig stand-in for build_agent.
 
-    ``build_agent`` only reads ``config.skills`` and ``config.shields`` off the
-    config object it receives, so tests can pass a lightweight mock instead of
-    a fully-initialized ``AppConfig``.
+    build_agent reads config.skills and config.shields from the object it receives.
+    Step persistence is initialized on ``AgentHistoryService``.
     """
 
     def _make(
         skills: Optional[SkillsConfiguration] = None,
         shields: Optional[list[ShieldConfiguration]] = None,
     ) -> AppConfig:
+        AgentHistoryService().clear_store()
+        AgentHistoryService().initialize(
+            AgentStepPersistenceSqliteConfiguration(
+                sqlite=SQLiteDatabaseConfiguration(db_path=":memory:"),
+            )
+        )
         config = mocker.Mock()
         config.skills = skills
         config.shields = shields or []
