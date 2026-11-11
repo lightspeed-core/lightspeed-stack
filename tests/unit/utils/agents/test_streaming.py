@@ -16,7 +16,7 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
     InMemorySpanExporter,
 )
 from opentelemetry.trace import NonRecordingSpan, SpanContext, TraceFlags
-from pydantic_ai import AgentRunResultEvent
+from pydantic_ai import AgentRunResultEvent, CancellationToken
 from pydantic_ai.exceptions import AgentRunError
 from pydantic_ai.messages import (
     FinishReason,
@@ -157,6 +157,7 @@ def make_generator_context_fixture(
         context.inline_rag_context = RAGContext()
         context.vector_store_ids = []
         context.rag_id_mapping = {}
+        context.cancellation_token = CancellationToken()
         context.query_request = QueryRequest(
             query=query,
             media_type=media_type,
@@ -1729,3 +1730,131 @@ class TestCompactedTurnPersistence:
         ]
 
         assert _sse_event_types(events) == ["start", "token", "end"]
+
+
+class TestStreamRegistration:
+    """The run gets the context's token and leaves the registry at its end (LCORE-4733)."""
+
+    @pytest.mark.asyncio
+    async def test_agent_response_generator_passes_the_context_token_to_the_run(
+        self,
+        mocker: MockerFixture,
+        make_generator_context: Callable[..., ResponseGeneratorContext],
+        responses_params: ResponsesApiParams,
+        make_agent_run_result: Callable[..., Any],
+    ) -> None:
+        """The token of the request context is the one the agent run gets."""
+        context = make_generator_context()
+        events = [
+            PartStartEvent(index=0, part=TextPart(content="Answer")),
+            AgentRunResultEvent(
+                result=make_agent_run_result(input_tokens=1, output_tokens=2)
+            ),
+        ]
+        mock_agent = mocker.Mock()
+        mock_agent.run_stream_events.return_value = _mock_run_stream(events)
+        mocker.patch(
+            "utils.agents.streaming.get_agent_finish_reason",
+            return_value=AgentFinishReason.SUCCESS,
+        )
+        mocker.patch(
+            "utils.agents.streaming.deduplicate_referenced_documents",
+            side_effect=lambda docs: docs,
+        )
+        mocker.patch("utils.agents.streaming.captured_output_items", return_value=[])
+
+        [
+            event
+            async for event in agent_response_generator(
+                mock_agent,
+                responses_params,
+                context,
+                TurnSummary(),
+                ENDPOINT_PATH_STREAMING_QUERY,
+            )
+        ]
+
+        passed = mock_agent.run_stream_events.call_args.kwargs["cancellation_token"]
+        assert passed is context.cancellation_token
+
+    @staticmethod
+    def _patch_completion(mocker: MockerFixture) -> None:
+        """Patch what the end of a stream touches, as the other wrapper tests do."""
+        mocker.patch("utils.agents.streaming.consume_query_tokens")
+        mocker.patch("utils.agents.streaming.get_available_quotas", return_value={})
+        mocker.patch(
+            "utils.agents.streaming.maybe_get_topic_summary",
+            new=mocker.AsyncMock(return_value=None),
+        )
+        mocker.patch("utils.agents.streaming.store_query_results")
+        mock_config = mocker.Mock()
+        mock_config.quota_limiters = []
+        mocker.patch("utils.agents.streaming.configuration", mock_config)
+
+    @pytest.mark.asyncio
+    async def test_deregisters_at_the_end(
+        self,
+        mocker: MockerFixture,
+        make_generator_context: Callable[..., ResponseGeneratorContext],
+        responses_params: ResponsesApiParams,
+        stream_interrupt_mocks: dict[str, Any],
+    ) -> None:
+        """The entry the handler registered is gone once the stream ran to its end."""
+        context = make_generator_context()
+        self._patch_completion(mocker)
+        turn_summary = TurnSummary()
+        turn_summary.token_usage = TokenCounter(input_tokens=3, output_tokens=7)
+
+        async def inner() -> AsyncIterator[str]:
+            yield serialize_event(
+                TokenStreamPayload.create(chunk_id=0, token="Hi"), MEDIA_TYPE_JSON
+            )
+
+        stream = generate_agent_response(
+            inner(),
+            context,
+            responses_params,
+            turn_summary,
+            [],
+            root_span=_dummy_root_span(),
+        )
+
+        first = await anext(stream)
+
+        assert _sse_event_types([first]) == ["start"]
+        stream_interrupt_mocks["deregister"].assert_not_called()
+
+        rest = [event async for event in stream]
+
+        assert _sse_event_types(rest) == ["token", "end"]
+        stream_interrupt_mocks["deregister"].assert_called_once_with(context.request_id)
+
+    @pytest.mark.asyncio
+    async def test_deregisters_when_the_client_leaves_after_the_start_event(
+        self,
+        mocker: MockerFixture,
+        make_generator_context: Callable[..., ResponseGeneratorContext],
+        responses_params: ResponsesApiParams,
+        stream_interrupt_mocks: dict[str, Any],
+    ) -> None:
+        """A client that goes away right after the start event leaves no entry behind."""
+        context = make_generator_context()
+
+        async def inner() -> AsyncIterator[str]:
+            yield serialize_event(
+                TokenStreamPayload.create(chunk_id=0, token="Hi"), MEDIA_TYPE_JSON
+            )
+
+        stream = generate_agent_response(
+            inner(),
+            context,
+            responses_params,
+            TurnSummary(),
+            [],
+            root_span=_dummy_root_span(),
+        )
+        await anext(stream)
+
+        await stream.aclose()
+
+        stream_interrupt_mocks["deregister"].assert_called_once_with(context.request_id)

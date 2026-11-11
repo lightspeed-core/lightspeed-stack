@@ -8,6 +8,7 @@ from fastapi import BackgroundTasks
 from ogx_client import AsyncOgxClient
 from opentelemetry import trace
 from pydantic import BaseModel, ConfigDict, Field
+from pydantic_ai import CancellationToken
 
 from models.api.requests import QueryRequest
 from models.common.moderation import ShieldModerationResult
@@ -90,6 +91,9 @@ class ResponseGeneratorContext:  # pylint: disable=too-many-instance-attributes
         inline_rag_context: Inline RAG context
         vector_store_ids: Vector store IDs used in the query for source resolution.
         rag_id_mapping: Mapping from vector_db_id to user-facing rag_id.
+        cancellation_token: Token that stops the agent run of this request when
+            the stream is interrupted (LCORE-4733). One per request; the run gets
+            it and the interrupt registry holds it under ``request_id``.
 
     """
 
@@ -113,3 +117,6 @@ class ResponseGeneratorContext:  # pylint: disable=too-many-instance-attributes
     inline_rag_context: RAGContext
     vector_store_ids: list[str] = field(default_factory=list)
     rag_id_mapping: dict[str, str] = field(default_factory=dict)
+
+    # Interrupt support
+    cancellation_token: CancellationToken = field(default_factory=CancellationToken)

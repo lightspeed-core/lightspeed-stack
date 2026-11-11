@@ -14,6 +14,7 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
     InMemorySpanExporter,
 )
 from opentelemetry.trace import NonRecordingSpan, SpanContext, TraceFlags
+from pydantic_ai import CancellationToken
 from pytest_mock import MockerFixture
 
 from app.endpoints.streaming_query import (
@@ -568,6 +569,138 @@ async def _drain_response(response: StreamingResponse) -> None:
         pass
 
 
+class TestStreamRegistrationInHandler:
+    """The handler registers the run before it chooses the response path (LCORE-4733)."""
+
+    @staticmethod
+    def _mock_dependencies(
+        mocker: MockerFixture, setup_configuration: AppConfig
+    ) -> dict[str, Any]:
+        """Patch what the handler touches before it hands the stream over."""
+        mocker.patch("app.endpoints.streaming_query.configuration", setup_configuration)
+        mocker.patch("app.endpoints.streaming_query.check_configuration_loaded")
+        mocker.patch("app.endpoints.streaming_query.check_tokens_available")
+        mocker.patch("app.endpoints.streaming_query.validate_model_provider_override")
+        mocker.patch(
+            "app.endpoints.streaming_query.build_rag_context",
+            new=mocker.AsyncMock(return_value=RAGContext()),
+        )
+        mock_client_holder = mocker.Mock()
+        mock_client_holder.get_client.return_value = mocker.AsyncMock(
+            spec=AsyncOgxClient
+        )
+        mocker.patch(
+            "app.endpoints.streaming_query.AsyncOgxClientHolder",
+            return_value=mock_client_holder,
+        )
+        responses_params = mocker.Mock(spec=ResponsesApiParams)
+        responses_params.model = "provider1/model1"
+        responses_params.conversation = "conv_123"
+        responses_params.tools = None
+        mocker.patch(
+            "app.endpoints.streaming_query.prepare_responses_params",
+            new=mocker.AsyncMock(return_value=responses_params),
+        )
+        mocker.patch("app.endpoints.streaming_query.AzureEntraIDManager")
+        mocker.patch(
+            "app.endpoints.streaming_query.extract_provider_and_model_from_model_id",
+            return_value=("provider1", "model1"),
+        )
+        mocker.patch("app.endpoints.streaming_query.recording.record_llm_call")
+        mocker.patch(
+            "app.endpoints.streaming_query.normalize_conversation_id",
+            return_value="conv_123",
+        )
+        mocker.patch("app.endpoints.streaming_query.get_suid", return_value="req_1")
+        calls: list[str] = []
+        mocker.patch(
+            "app.endpoints.streaming_query.register_stream",
+            side_effect=lambda *_args: calls.append("register"),
+        )
+        mocker.patch(
+            "app.endpoints.streaming_query.needs_compaction_path",
+            new=mocker.AsyncMock(
+                side_effect=lambda *_args: calls.append("choose path") or False
+            ),
+        )
+        return {"calls": calls}
+
+    @pytest.mark.asyncio
+    async def test_registers_the_run_before_choosing_the_response_path(
+        self,
+        dummy_request: Request,  # pylint: disable=redefined-outer-name
+        setup_configuration: AppConfig,
+        mocker: MockerFixture,
+    ) -> None:
+        """The entry carries the request id, the user, the run's token and the conversation."""
+        mocks = self._mock_dependencies(mocker, setup_configuration)
+        seen_contexts: list[Any] = []
+
+        async def fake_retrieve(
+            **kwargs: Any,
+        ) -> tuple[AsyncIterator[str], TurnSummary]:
+            seen_contexts.append(kwargs["context"])
+
+            async def events() -> AsyncIterator[str]:
+                yield "data: test\n\n"
+
+            return events(), TurnSummary()
+
+        mocker.patch(
+            "app.endpoints.streaming_query.retrieve_agent_response_generator",
+            new=fake_retrieve,
+        )
+        mocker.patch("app.endpoints.streaming_query.generate_agent_response")
+        register = mocker.patch(
+            "app.endpoints.streaming_query.register_stream",
+            side_effect=lambda *_args: mocks["calls"].append("register"),
+        )
+
+        await streaming_query_endpoint_handler(
+            request=dummy_request,
+            query_request=QueryRequest(
+                query="What is Kubernetes?"
+            ),  # pyright: ignore[reportCallIssue]
+            auth=MOCK_AUTH_STREAMING,
+            mcp_headers={},
+        )
+
+        assert mocks["calls"] == ["register", "choose path"]
+        context = seen_contexts[0]
+        register.assert_called_once_with(
+            "req_1", MOCK_AUTH_STREAMING[0], context.cancellation_token, "conv_123"
+        )
+
+    @pytest.mark.asyncio
+    async def test_a_failure_before_the_stream_starts_deregisters_the_run(
+        self,
+        dummy_request: Request,  # pylint: disable=redefined-outer-name
+        setup_configuration: AppConfig,
+        mocker: MockerFixture,
+    ) -> None:
+        """When the response cannot be built, the entry does not outlive the request."""
+        self._mock_dependencies(mocker, setup_configuration)
+        mocker.patch(
+            "app.endpoints.streaming_query.retrieve_agent_response_generator",
+            new=mocker.AsyncMock(
+                side_effect=HTTPException(status_code=500, detail="no agent")
+            ),
+        )
+        deregister = mocker.patch("app.endpoints.streaming_query.deregister_stream")
+
+        with pytest.raises(HTTPException):
+            await streaming_query_endpoint_handler(
+                request=dummy_request,
+                query_request=QueryRequest(
+                    query="What is Kubernetes?"
+                ),  # pyright: ignore[reportCallIssue]
+                auth=MOCK_AUTH_STREAMING,
+                mcp_headers={},
+            )
+
+        deregister.assert_called_once_with("req_1")
+
+
 class TestStreamingQueryOtelInstrumentation:
     """Tests for OpenTelemetry instrumentation in the streaming query endpoint."""
 
@@ -891,7 +1024,7 @@ class TestStreamingQueryOtelInstrumentation:
             assert child.parent.span_id == root_spans[0].context.span_id
 
 
-class TestGenerateResponseWithCompaction:  # pylint: disable=too-few-public-methods
+class TestGenerateResponseWithCompaction:
     """Tests for the compaction-aware SSE generator."""
 
     @pytest.mark.asyncio
@@ -1002,3 +1135,85 @@ class TestGenerateResponseWithCompaction:  # pylint: disable=too-few-public-meth
         assert captured_kwargs["summarization_usage"] == TokenCounter(
             input_tokens=640, output_tokens=72
         )
+
+    @pytest.mark.asyncio
+    async def test_deregisters_the_stream_at_the_end(
+        self, mocker: MockerFixture
+    ) -> None:
+        """The compaction path removes the run from the registry at its end (LCORE-4733)."""
+        responses_params = ResponsesApiParams.model_validate(
+            {
+                "model": "provider1/model1",
+                "input": "What is OpenShift?",
+                "conversation": "conv_123",
+                "stream": True,
+                "store": True,
+            }
+        )
+        context = mocker.Mock()
+        context.conversation_id = "conv_123"
+        context.request_id = "req_123"
+        context.user_id = "user_123"
+        context.skip_userid_check = False
+        context.client = mocker.AsyncMock()
+        context.inline_rag_context = RAGContext()
+        context.cancellation_token = CancellationToken()
+        context.query_request = QueryRequest(
+            query="What is OpenShift?"
+        )  # pyright: ignore[reportCallIssue]
+
+        async def fake_apply_compaction(
+            *_args: Any, **_kwargs: Any
+        ) -> AsyncIterator[CompactionResult]:
+            yield CompactionResult(responses_params, compacted=False)
+
+        mocker.patch(
+            "app.endpoints.streaming_query.apply_compaction",
+            new=fake_apply_compaction,
+        )
+        mocker.patch(
+            "app.endpoints.streaming_query.configured_conversation_cache",
+            return_value=None,
+        )
+        mocker.patch("app.endpoints.streaming_query.configuration", mocker.Mock())
+
+        async def inner_generator() -> AsyncIterator[str]:
+            yield "data: test\n\n"
+
+        mocker.patch(
+            "app.endpoints.streaming_query.retrieve_agent_response_generator",
+            new=mocker.AsyncMock(return_value=(inner_generator(), TurnSummary())),
+        )
+
+        async def fake_generate_agent_response(
+            *_args: Any, **_kwargs: Any
+        ) -> AsyncIterator[str]:
+            yield "data: end\n\n"
+
+        mocker.patch(
+            "app.endpoints.streaming_query.generate_agent_response",
+            new=fake_generate_agent_response,
+        )
+        deregister = mocker.patch("app.endpoints.streaming_query.deregister_stream")
+
+        stream = generate_response_with_compaction(
+            context=context,
+            responses_params=responses_params,
+            endpoint_path="/v1/streaming_query",
+            root_span=NonRecordingSpan(
+                SpanContext(
+                    trace_id=0x1,
+                    span_id=0x2,
+                    is_remote=False,
+                    trace_flags=TraceFlags(0x01),
+                )
+            ),
+        )
+        first = await anext(stream)
+
+        assert '"event": "start"' in first
+        deregister.assert_not_called()
+
+        _ = [event async for event in stream]
+
+        deregister.assert_called_once_with("req_123")

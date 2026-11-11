@@ -84,6 +84,7 @@ from utils.responses import (
     prepare_responses_params,
 )
 from utils.shields import validate_shield_ids_override
+from utils.stream_interrupts import deregister_stream, register_stream
 from utils.streaming_sse import (
     http_exception_stream_event,
     stream_compaction_event,
@@ -330,30 +331,44 @@ async def _handle_streaming_query_with_tracing(  # pylint: disable=too-many-loca
     # flushed before the summarization LLM call. Every other request keeps the
     # unchanged path: the response stream is created here, so create-time errors
     # surface as HTTP responses exactly as before.
-    if await needs_compaction_path(
-        context.client,
-        responses_params,
-        configuration.inference,
-        configuration.compaction,
-    ):
-        return StreamingResponse(
-            generate_response_with_compaction(
-                context=context,
-                responses_params=responses_params,
-                endpoint_path=endpoint_path,
-                image_attachments=image_attachments,
-                root_span=root_span,
-            ),
-            media_type=response_media_type,
-        )
-
-    generator, turn_summary = await retrieve_agent_response_generator(
-        responses_params=responses_params,
-        context=context,
-        endpoint_path=endpoint_path,
-        no_tools=bool(query_request.no_tools),
-        image_attachments=image_attachments,
+    # Register the run before the response path is chosen, so an interrupt
+    # sent as soon as the client sees the request id finds it (LCORE-4733).
+    # The stream deregisters it in its finally; until the stream owns the
+    # entry, a failure here has to.
+    register_stream(
+        request_id,
+        user_id,
+        context.cancellation_token,
+        context.conversation_id,
     )
+    try:
+        if await needs_compaction_path(
+            context.client,
+            responses_params,
+            configuration.inference,
+            configuration.compaction,
+        ):
+            return StreamingResponse(
+                generate_response_with_compaction(
+                    context=context,
+                    responses_params=responses_params,
+                    endpoint_path=endpoint_path,
+                    image_attachments=image_attachments,
+                    root_span=root_span,
+                ),
+                media_type=response_media_type,
+            )
+
+        generator, turn_summary = await retrieve_agent_response_generator(
+            responses_params=responses_params,
+            context=context,
+            endpoint_path=endpoint_path,
+            no_tools=bool(query_request.no_tools),
+            image_attachments=image_attachments,
+        )
+    except BaseException:  # pylint: disable=broad-exception-caught
+        deregister_stream(request_id)
+        raise
 
     # Combine inline RAG results (BYOK + Solr) with tool-based results
     turn_summary.referenced_documents = deduplicate_referenced_documents(
@@ -508,4 +523,5 @@ async def generate_response_with_compaction(
         ):
             yield event
     finally:
+        deregister_stream(context.request_id)
         root_span.end()
