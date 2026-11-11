@@ -1,6 +1,8 @@
 """Validation helpers and data access for saved prompts."""
 
+from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
 
 import constants
 from app.database import get_session
@@ -121,6 +123,42 @@ def validate_saved_prompt_content(
         )
 
 
+def _next_position(session: Session, user_id: str) -> int:
+    """Compute the next per-user position for a new saved prompt.
+
+    Positions are append-only on create: the next value is one past the
+    user's current maximum, so deletions leave gaps that are never backfilled.
+
+    Parameters:
+        session: DAL session to query within.
+        user_id: Owner whose maximum position is looked up.
+
+    Returns:
+        The next position value (1 for a user with no prompts).
+
+    """
+    max_position = (
+        session.query(func.max(SavedPrompt.position))
+        .filter_by(user_id=user_id)
+        .scalar()
+    )
+    return (max_position or 0) + 1
+
+
+def _is_position_conflict(exc: IntegrityError) -> bool:
+    """Check whether an IntegrityError comes from the position unique constraint.
+
+    Parameters:
+        exc: The IntegrityError raised by a commit.
+
+    Returns:
+        True if the error references the per-user position constraint.
+
+    """
+    message = str(getattr(exc, "orig", exc)).lower()
+    return "position" in message
+
+
 def create_saved_prompt(
     user_id: str,
     name: str,
@@ -131,8 +169,10 @@ def create_saved_prompt(
 
     Caller is responsible for validating ``name`` and ``content``. This function
     counts existing prompts for ``user_id``, enforces ``max_prompts_per_user``,
-    inserts a new row with a generated id, and returns the persisted entity with
-    timestamps loaded.
+    inserts a new row with a generated id and the user's next append position,
+    and returns the persisted entity with timestamps loaded. If a concurrent
+    create wins the same position (unique constraint violation), the insert is
+    retried once with a freshly computed position.
 
     Parameters:
         user_id: Owner of the saved prompt.
@@ -141,7 +181,7 @@ def create_saved_prompt(
         max_prompts_per_user: Maximum prompts the user may hold.
 
     Returns:
-        The created ``SavedPrompt`` with id and timestamps populated.
+        The created ``SavedPrompt`` with id, position, and timestamps populated.
 
     Raises:
         SavedPromptLimitExceededError: If the user is already at the limit.
@@ -158,16 +198,41 @@ def create_saved_prompt(
             user_id=user_id,
             name=name,
             content=content,
+            position=_next_position(session, user_id),
         )
         session.add(saved_prompt)
         try:
             session.commit()
         except IntegrityError as exc:
-            logger.debug(
-                "Saved prompt create conflict for user_id=%s",
-                user_id,
-            )
-            raise SavedPromptConflictError("Saved prompt name already exists") from exc
+            session.rollback()
+            if _is_position_conflict(exc):
+                # A concurrent create took the same position; retry once
+                # with a freshly computed maximum before giving up.
+                logger.debug(
+                    "Saved prompt position conflict for user_id=%s, retrying",
+                    user_id,
+                )
+                saved_prompt.position = _next_position(session, user_id)
+                session.add(saved_prompt)
+                try:
+                    session.commit()
+                except IntegrityError as retry_exc:
+                    session.rollback()
+                    logger.debug(
+                        "Saved prompt create conflict for user_id=%s",
+                        user_id,
+                    )
+                    raise SavedPromptConflictError(
+                        "Saved prompt name already exists"
+                    ) from retry_exc
+            else:
+                logger.debug(
+                    "Saved prompt create conflict for user_id=%s",
+                    user_id,
+                )
+                raise SavedPromptConflictError(
+                    "Saved prompt name already exists"
+                ) from exc
 
         # reload server default timestamps so they remain usable after the session closes
         session.refresh(saved_prompt)

@@ -12,6 +12,7 @@ from sqlalchemy.pool import StaticPool
 
 from models.database.base import Base
 from models.database.saved_prompts import SavedPrompt
+from utils import saved_prompts as saved_prompts_utils
 from utils.saved_prompts import (
     SavedPromptAccessDeniedError,
     SavedPromptConflictError,
@@ -298,6 +299,90 @@ class TestCreateSavedPrompt:
         first = create_saved_prompt("user-a", "shared", "a", max_prompts_per_user=50)
         second = create_saved_prompt("user-b", "shared", "b", max_prompts_per_user=50)
         assert first.id != second.id
+
+
+@pytest.mark.usefixtures("patch_saved_prompts_get_session")
+class TestCreateSavedPromptPosition:
+    """Test cases for per-user position assignment on create."""
+
+    def test_create_assigns_position_1_for_first_prompt(self) -> None:
+        """Test the first prompt created for a user gets position 1."""
+        created = create_saved_prompt("user-1", "first", "c", max_prompts_per_user=50)
+
+        assert created.position == 1
+
+    def test_create_assigns_incrementing_positions(self) -> None:
+        """Test subsequent creates append with max-plus-one positions."""
+        first = create_saved_prompt("user-1", "one", "c1", max_prompts_per_user=50)
+        second = create_saved_prompt("user-1", "two", "c2", max_prompts_per_user=50)
+        third = create_saved_prompt("user-1", "three", "c3", max_prompts_per_user=50)
+
+        assert (first.position, second.position, third.position) == (1, 2, 3)
+
+    def test_create_assigns_max_plus_one_after_delete(self) -> None:
+        """Test positions are not gap-filled after a deletion."""
+        first = create_saved_prompt("user-1", "one", "c1", max_prompts_per_user=50)
+        create_saved_prompt("user-1", "two", "c2", max_prompts_per_user=50)
+
+        delete_saved_prompt_by_id_and_user(first.id, "user-1")
+        third = create_saved_prompt("user-1", "three", "c3", max_prompts_per_user=50)
+
+        assert third.position == 3
+
+    def test_create_positions_independent_per_user(self) -> None:
+        """Test each user's position sequence is independent."""
+        user_a = create_saved_prompt("user-a", "a", "c", max_prompts_per_user=50)
+        user_b = create_saved_prompt("user-b", "b", "c", max_prompts_per_user=50)
+
+        assert user_a.position == 1
+        assert user_b.position == 1
+
+    def test_create_retries_once_on_position_conflict(
+        self, sqlite_engine: Engine, mocker: MockerFixture
+    ) -> None:
+        """Test a position IntegrityError is retried once with a fresh max."""
+        session_factory = sessionmaker(
+            autocommit=False, autoflush=False, bind=sqlite_engine
+        )
+        with session_factory() as session:
+            session.add(
+                SavedPrompt(
+                    id="seed",
+                    user_id="user-1",
+                    name="seed",
+                    content="c",
+                    position=1,
+                )
+            )
+            session.commit()
+
+        real_next_position = saved_prompts_utils._next_position
+        calls: list[int] = []
+
+        def fake_next_position(session: Session, user_id: str) -> int:
+            """Simulate a concurrent create taking the computed position.
+
+            Parameters:
+                session: DAL session.
+                user_id: Owner of the prompt.
+
+            Returns:
+                A colliding position on the first call, the real value after.
+
+            """
+            calls.append(len(calls) + 1)
+            if len(calls) == 1:
+                return 1  # collides with the seeded row
+            return real_next_position(session, user_id)
+
+        mocker.patch(
+            "utils.saved_prompts._next_position", side_effect=fake_next_position
+        )
+
+        created = create_saved_prompt("user-1", "new", "c", max_prompts_per_user=50)
+
+        assert created.position == 2
+        assert len(calls) == 2
 
 
 @pytest.mark.usefixtures("patch_saved_prompts_get_session")
