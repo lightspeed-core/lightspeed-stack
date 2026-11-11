@@ -22,7 +22,7 @@ from ogx_client.models.open_ai_response_object import OpenAIResponseObject
 from ogx_client.models.version_info import VersionInfo
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+from opentelemetry.sdk.trace.export import SimpleSpanProcessor, SpanExporter
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
     InMemorySpanExporter,
 )
@@ -54,6 +54,7 @@ from authentication.noop import NoopAuthDependency
 from configuration import configuration
 from models.config import Action
 from models.database.base import Base
+from pii_redaction_engine.anonymizer import PIIAnonymizer
 
 # ==========================================
 # Common Test Constants
@@ -569,9 +570,13 @@ OTEL_INSTRUMENTED_MODULES = (
 
 
 def install_integration_otel_provider(
-    exporter: InMemorySpanExporter,
+    exporter: SpanExporter,
 ) -> TracerProvider:
-    """Install a global TracerProvider and refresh cached module tracers."""
+    """Install a global TracerProvider and refresh cached module tracers.
+
+    ``exporter`` may be a plain collector (``InMemorySpanExporter``) or a wrapper
+    such as ``RedactingSpanExporter`` that mutates spans before delegating.
+    """
     provider = TracerProvider()
     provider.add_span_processor(SimpleSpanProcessor(exporter))
 
@@ -698,6 +703,57 @@ def otel_collector_fixture() -> Generator[InMemorySpanExporter, None, None]:
     provider = install_integration_otel_provider(exporter)
 
     yield exporter
+
+    shutdown_integration_otel_provider(provider)
+
+
+# Sentinel used by FakeAnonymizer: tests embed it in handler inputs so the fake
+# has something deterministic to redact. Deliberately not a real PII pattern.
+REDACTION_SENTINEL = "PII-SENTINEL-7f3a2b"
+REDACTION_MARKER = "<REDACTED>"
+
+
+class FakeAnonymizer(PIIAnonymizer):  # pylint: disable=too-few-public-methods
+    """Presidio-free stand-in for ``PIIAnonymizer`` used in redaction wiring tests.
+
+    Subclasses ``PIIAnonymizer`` only to satisfy the exporter's type contract; the
+    no-op ``__init__`` skips the real spaCy/Presidio setup, and ``anonymize_text``
+    just replaces ``REDACTION_SENTINEL`` with ``REDACTION_MARKER``. This keeps the
+    integration tests focused on *which span attributes the real handlers emit and
+    whether the exporter scrubs them* — not on Presidio's detection accuracy
+    (covered by the engine's own unit tests).
+    """
+
+    def __init__(self) -> None:  # pylint: disable=super-init-not-called
+        """Skip the real engine setup; no spaCy model is loaded."""
+
+    def anonymize_text(self, content_text: str) -> str:
+        """Redact the sentinel; leave everything else unchanged."""
+        if not content_text:
+            return content_text
+        return content_text.replace(REDACTION_SENTINEL, REDACTION_MARKER)
+
+
+@pytest.fixture(name="redacting_otel_collector")
+def redacting_otel_collector_fixture() -> Generator[InMemorySpanExporter, None, None]:
+    """OTEL collector whose spans pass through the real RedactingSpanExporter.
+
+    Wires ``SimpleSpanProcessor -> RedactingSpanExporter(FakeAnonymizer) ->
+    InMemorySpanExporter`` and installs it as the global provider, so spans emitted
+    by real handlers are redacted in-process exactly as in production before they
+    reach the returned collector. Function-scoped for per-test isolation.
+    """
+    # Imported lazily so the exporter's spaCy-backed default anonymizer is never
+    # constructed (we inject FakeAnonymizer instead).
+    from observability.redacting_span_exporter import (  # pylint: disable=import-outside-toplevel
+        RedactingSpanExporter,
+    )
+
+    in_memory = InMemorySpanExporter()
+    redacting = RedactingSpanExporter(delegate=in_memory, anonymizer=FakeAnonymizer())
+    provider = install_integration_otel_provider(redacting)
+
+    yield in_memory
 
     shutdown_integration_otel_provider(provider)
 
