@@ -275,6 +275,135 @@ def list_saved_prompts_by_user(user_id: str) -> list[SavedPrompt]:
         )
 
 
+def _renumber_positions(
+    session: Session,
+    user_id: str,
+    target_id: str,
+    new_position: int,
+) -> None:
+    """Move one prompt to ``new_position`` and normalize the user's positions.
+
+    The move is applied in two phases inside the caller's transaction: first
+    every row of the user is shifted to values beyond any existing position,
+    then all rows are normalized to a dense 1..N sequence. The two phases
+    avoid transient collisions that would violate the
+    ``(user_id, position)`` unique constraint on tables that enforce it.
+    A ``new_position`` above the number of prompts the user holds moves the
+    prompt to the end.
+
+    Parameters:
+        session: DAL session to query and update within.
+        user_id: Owner whose prompts are renumbered.
+        target_id: Primary key of the prompt being moved.
+        new_position: Target position (1-based, clamped to the end).
+
+    """
+    rows = (
+        session.query(SavedPrompt)
+        .filter_by(user_id=user_id)
+        .order_by(
+            SavedPrompt.position.asc(),
+            SavedPrompt.created_at.desc(),
+            SavedPrompt.id,
+        )
+        .all()
+    )
+    ordered_ids = [row.id for row in rows]
+    ordered_ids.remove(target_id)
+    insert_index = min(new_position, len(ordered_ids) + 1) - 1
+    ordered_ids.insert(insert_index, target_id)
+
+    offset = len(ordered_ids) + 1
+    # Phase 1: shift beyond any existing value so no intermediate state
+    # collides with a still-present old position.
+    for sequence, row_id in enumerate(ordered_ids):
+        session.query(SavedPrompt).filter_by(id=row_id).update(
+            {"position": sequence + 1 + offset}
+        )
+    session.flush()
+    # Phase 2: normalize to a dense 1..N sequence.
+    for sequence, row_id in enumerate(ordered_ids):
+        session.query(SavedPrompt).filter_by(id=row_id).update(
+            {"position": sequence + 1}
+        )
+
+
+def update_saved_prompt_by_id_and_user(
+    prompt_id: str,
+    user_id: str,
+    name: str,
+    content: str,
+    position: int,
+) -> SavedPrompt:
+    """Update a saved prompt in place, reordering within the user's list.
+
+    Applies full-replace semantics: ``name`` and ``content`` are set to the
+    given values and the prompt is moved to ``position`` (clamped to the end
+    when above the user's prompt count), with the user's remaining positions
+    renormalized deterministically to 1..N. Ownership is enforced the same
+    way as delete.
+
+    Parameters:
+        prompt_id: Primary key of the saved prompt.
+        user_id: Authenticated user attempting the update.
+        name: New display name (validated by the caller).
+        content: New prompt body (validated by the caller).
+        position: New position (1-based, validated by the caller).
+
+    Returns:
+        The updated ``SavedPrompt`` with refreshed timestamps.
+
+    Raises:
+        SavedPromptNotFoundError: If no row exists for ``prompt_id``.
+        SavedPromptAccessDeniedError: If the row exists but ``user_id`` does
+            not match the owner.
+        SavedPromptConflictError: If the update violates a unique constraint
+            (practically always renaming to a ``(user_id, name)`` that
+            already exists).
+
+    """
+    with get_session() as session:
+        saved_prompt = session.query(SavedPrompt).filter_by(id=prompt_id).first()
+        if saved_prompt is None:
+            logger.debug(
+                "Saved prompt not found for update prompt_id=%s user_id=%s",
+                prompt_id,
+                user_id,
+            )
+            raise SavedPromptNotFoundError("Saved prompt not found")
+
+        if saved_prompt.user_id != user_id:
+            logger.debug(
+                "Saved prompt access denied for update prompt_id=%s user_id=%s",
+                prompt_id,
+                user_id,
+            )
+            raise SavedPromptAccessDeniedError("Saved prompt access denied")
+
+        saved_prompt.name = name
+        saved_prompt.content = content
+        try:
+            _renumber_positions(session, user_id, prompt_id, position)
+            session.commit()
+        except IntegrityError as exc:
+            session.rollback()
+            logger.debug(
+                "Saved prompt update conflict for prompt_id=%s",
+                prompt_id,
+            )
+            raise SavedPromptConflictError("Saved prompt name already exists") from exc
+
+        # reload server-generated timestamps so they remain usable after
+        # the session closes
+        session.refresh(saved_prompt)
+        logger.debug(
+            "Updated saved prompt id=%s for user_id=%s",
+            saved_prompt.id,
+            user_id,
+        )
+        return saved_prompt
+
+
 def delete_saved_prompt_by_id_and_user(prompt_id: str, user_id: str) -> None:
     """Delete a saved prompt only if it belongs to the given user.
 

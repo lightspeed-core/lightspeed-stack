@@ -1,5 +1,6 @@
 """Unit tests for saved prompt validation helpers and data access."""
 
+import time
 from collections.abc import Generator
 from datetime import UTC, datetime, timedelta
 
@@ -22,6 +23,7 @@ from utils.saved_prompts import (
     create_saved_prompt,
     delete_saved_prompt_by_id_and_user,
     list_saved_prompts_by_user,
+    update_saved_prompt_by_id_and_user,
     validate_saved_prompt_content,
     validate_saved_prompt_name,
     validate_saved_prompt_quota,
@@ -580,3 +582,119 @@ class TestDeleteSavedPromptByIdAndUser:
         )
         with session_factory() as session:
             assert session.get(SavedPrompt, created.id) is not None
+
+
+@pytest.mark.usefixtures("patch_saved_prompts_get_session")
+class TestUpdateSavedPromptByIdAndUser:
+    """Test cases for update_saved_prompt_by_id_and_user."""
+
+    def test_update_changes_name_and_content_in_place(self) -> None:
+        """Test update edits fields without delete + recreate."""
+        created = create_saved_prompt("user-1", "old name", "old body", 50)
+
+        updated = update_saved_prompt_by_id_and_user(
+            created.id, "user-1", "new name", "new body", 1
+        )
+
+        assert updated.id == created.id
+        assert updated.name == "new name"
+        assert updated.content == "new body"
+        assert updated.position == 1
+        assert updated.created_at == created.created_at
+
+    def test_update_advances_updated_at(self) -> None:
+        """Test a field update advances the updated_at timestamp."""
+        created = create_saved_prompt("user-1", "name", "body", 50)
+        time.sleep(1.1)  # SQLite CURRENT_TIMESTAMP has second resolution
+
+        updated = update_saved_prompt_by_id_and_user(
+            created.id, "user-1", "name", "new body", 1
+        )
+
+        assert updated.updated_at > created.updated_at
+
+    def test_reorder_to_front_renumbers_siblings(self) -> None:
+        """Test moving position 3 to 1 shifts siblings to 2, 3, 4."""
+        prompts = [
+            create_saved_prompt("user-1", f"p{i}", f"c{i}", 50) for i in range(4)
+        ]
+        target = prompts[2]  # position 3
+
+        updated = update_saved_prompt_by_id_and_user(
+            target.id, "user-1", target.name, target.content, 1
+        )
+
+        assert updated.position == 1
+        results = list_saved_prompts_by_user("user-1")
+        assert [p.id for p in results] == [
+            prompts[2].id,
+            prompts[0].id,
+            prompts[1].id,
+            prompts[3].id,
+        ]
+        assert [p.position for p in results] == [1, 2, 3, 4]
+
+    def test_position_beyond_count_clamps_to_end(self) -> None:
+        """Test a position above the prompt count moves the prompt to the end."""
+        prompts = [
+            create_saved_prompt("user-1", f"p{i}", f"c{i}", 50) for i in range(3)
+        ]
+        target = prompts[0]  # position 1
+
+        updated = update_saved_prompt_by_id_and_user(
+            target.id, "user-1", target.name, target.content, 99
+        )
+
+        assert updated.position == 3
+        results = list_saved_prompts_by_user("user-1")
+        assert [p.id for p in results] == [
+            prompts[1].id,
+            prompts[2].id,
+            prompts[0].id,
+        ]
+
+    def test_update_missing_raises_not_found(self) -> None:
+        """Test updating a nonexistent id raises not found."""
+        with pytest.raises(SavedPromptNotFoundError):
+            update_saved_prompt_by_id_and_user(
+                "nonexistent", "user-1", "name", "body", 1
+            )
+
+    def test_update_other_users_prompt_raises_access_denied(self) -> None:
+        """Test update by non-owner raises access denied and leaves the row."""
+        created = create_saved_prompt("owner", "private", "body", 50)
+
+        with pytest.raises(SavedPromptAccessDeniedError):
+            update_saved_prompt_by_id_and_user(
+                created.id, "intruder", "new name", "new body", 1
+            )
+
+        results = list_saved_prompts_by_user("owner")
+        assert results[0].name == "private"
+
+    def test_rename_to_existing_name_raises_conflict(self) -> None:
+        """Test renaming to a name the user already has raises conflict."""
+        first = create_saved_prompt("user-1", "first", "c1", 50)
+        second = create_saved_prompt("user-1", "second", "c2", 50)
+
+        with pytest.raises(SavedPromptConflictError):
+            update_saved_prompt_by_id_and_user(first.id, "user-1", "second", "c1", 1)
+
+        # The failed update leaves both rows unchanged.
+        results = list_saved_prompts_by_user("user-1")
+        assert [p.name for p in results] == ["first", "second"]
+        assert [p.position for p in results] == [1, 2]
+        assert second.name == "second"
+
+    def test_update_leaves_other_users_positions_untouched(self) -> None:
+        """Test a reorder does not renumber another user's prompts."""
+        mine = create_saved_prompt("user-1", "mine", "c", 50)
+        theirs = [create_saved_prompt("user-2", f"t{i}", f"c{i}", 50) for i in range(3)]
+
+        update_saved_prompt_by_id_and_user(
+            mine.id, "user-1", mine.name, mine.content, 1
+        )
+
+        their_results = list_saved_prompts_by_user("user-2")
+        assert [p.id for p in their_results] == [t.id for t in theirs]
+        assert [p.position for p in their_results] == [1, 2, 3]
