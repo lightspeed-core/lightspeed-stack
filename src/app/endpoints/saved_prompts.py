@@ -11,13 +11,14 @@ from authentication.interface import AuthTuple
 from authorization.middleware import authorize
 from configuration import configuration
 from log import get_logger
-from models.api.requests import SavedPromptCreateRequest
+from models.api.requests import SavedPromptCreateRequest, SavedPromptUpdateRequest
 from models.api.responses.constants import UNAUTHORIZED_OPENAPI_EXAMPLES
 from models.api.responses.error import (
     BadRequestResponse,
     ConflictResponse,
     ForbiddenResponse,
     InternalServerErrorResponse,
+    NotFoundResponse,
     ServiceUnavailableResponse,
     UnauthorizedResponse,
     UnprocessableEntityResponse,
@@ -39,6 +40,7 @@ from utils.saved_prompts import (
     create_saved_prompt,
     delete_saved_prompt_by_id_and_user,
     list_saved_prompts_by_user,
+    update_saved_prompt_by_id_and_user,
     validate_saved_prompt_content,
     validate_saved_prompt_name,
 )
@@ -85,6 +87,23 @@ delete_saved_prompts_responses: Responses = {
     401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
     403: ForbiddenResponse.openapi_response(
         examples=["endpoint", "saved prompt delete"]
+    ),
+    500: InternalServerErrorResponse.openapi_response(
+        examples=["configuration", "database"]
+    ),
+}
+
+update_saved_prompts_responses: Responses = {
+    200: SavedPromptResponse.openapi_response(),
+    400: BadRequestResponse.openapi_response(examples=["saved_prompt_id"]),
+    401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
+    403: ForbiddenResponse.openapi_response(
+        examples=["endpoint", "saved prompt update"]
+    ),
+    404: NotFoundResponse.openapi_response(examples=["saved prompt"]),
+    409: ConflictResponse.openapi_response(examples=["saved prompt"]),
+    422: UnprocessableEntityResponse.openapi_response(
+        examples=["saved prompt invalid"]
     ),
     500: InternalServerErrorResponse.openapi_response(
         examples=["configuration", "database"]
@@ -352,3 +371,124 @@ async def delete_saved_prompts_handler(
 
     logger.info("Deleted saved prompt id=%s", prompt_id)
     return SavedPromptDeleteResponse(deleted=True, prompt_id=prompt_id)
+
+
+@router.put(
+    "/saved-prompts/{prompt_id}",
+    responses=update_saved_prompts_responses,
+)
+@authorize(Action.MANAGE_SAVED_PROMPTS)
+async def update_saved_prompts_handler(
+    request: Request,
+    prompt_id: str,
+    body: SavedPromptUpdateRequest,
+    auth: Annotated[AuthTuple, Depends(get_auth_dependency())],
+) -> SavedPromptResponse:
+    """
+    Handle requests to the PUT /saved-prompts/{prompt_id} endpoint.
+
+    Process PUT requests that update a saved prompt belonging to the
+    authenticated user in place, with full-replace semantics: name, content,
+    and position are all required in the body, the prompt is moved to the
+    given position (values above the user's prompt count move it to the
+    end), and the user's remaining positions are renormalized. Prompts owned
+    by another user return 403, matching delete. For example:
+
+        curl -X PUT http://localhost:8080/v1/saved-prompts/{prompt_id} \
+          -H 'Content-Type: application/json' \
+          -d '{"name":"Deploy to staging","content":"...","position":2}'
+
+    ### Parameters:
+    - request: The incoming HTTP request (used by middleware).
+    - prompt_id: Identifier of the saved prompt to update.
+    - body: The complete updated saved prompt (name, content, position).
+    - auth: Authentication tuple from the auth dependency (used by middleware).
+
+    ### Raises:
+    - HTTPException: with status 400 when ``prompt_id`` has an invalid format.
+    - HTTPException: with status 401 for unauthorized access.
+    - HTTPException: with status 403 if permission is denied or the prompt is
+      owned by another user.
+    - HTTPException: with status 404 when the prompt does not exist.
+    - HTTPException: with status 409 when renaming to a name that already
+      exists.
+    - HTTPException: with status 422 when validation fails.
+    - HTTPException: with status 500 when configuration is not loaded or the
+      database update fails.
+
+    ### Returns:
+    - SavedPromptResponse: The updated saved prompt.
+
+    """
+    _ = request
+    check_configuration_loaded(configuration)
+
+    if not check_suid(prompt_id):
+        logger.error("Invalid saved prompt ID format: %s", prompt_id)
+        error_response = BadRequestResponse(
+            resource="saved prompt",
+            resource_id=prompt_id,
+        )
+        raise HTTPException(**error_response.model_dump())
+
+    saved_prompts_config = configuration.configuration.saved_prompts
+
+    try:
+        name = validate_saved_prompt_name(
+            body.name,
+            max_display_name_length=saved_prompts_config.max_display_name_length,
+        )
+        validate_saved_prompt_content(
+            body.content,
+            max_content_length=saved_prompts_config.max_content_length,
+        )
+    except SavedPromptValidationError as exc:
+        error_response = UnprocessableEntityResponse(
+            response="Invalid attribute value",
+            cause=str(exc),
+        )
+        raise HTTPException(**error_response.model_dump()) from exc
+
+    user_id = auth[0]
+    logger.info("Updating saved prompt id=%s", prompt_id)
+
+    try:
+        row = await run_in_threadpool(
+            update_saved_prompt_by_id_and_user,
+            prompt_id,
+            user_id,
+            name,
+            body.content,
+            body.position,
+        )
+    except SavedPromptNotFoundError:
+        logger.info("Saved prompt %s not found for update.", prompt_id)
+        error_response = NotFoundResponse(
+            resource="saved prompt",
+            resource_id=prompt_id,
+        )
+        raise HTTPException(**error_response.model_dump())
+    except SavedPromptAccessDeniedError as exc:
+        logger.warning(
+            "User attempted to update saved prompt %s they don't have access to",
+            prompt_id,
+        )
+        error_response = ForbiddenResponse.saved_prompt(
+            action="update",
+            resource_id=prompt_id,
+            user_id=user_id,
+        )
+        raise HTTPException(**error_response.model_dump()) from exc
+    except SavedPromptConflictError as exc:
+        error_response = ConflictResponse(
+            resource="Saved prompt",
+            resource_id=name,
+        )
+        raise HTTPException(**error_response.model_dump()) from exc
+    except SQLAlchemyError as exc:
+        logger.exception("Error updating saved prompt id=%s", prompt_id)
+        error_response = InternalServerErrorResponse.database_error()
+        raise HTTPException(**error_response.model_dump()) from exc
+
+    logger.info("Updated saved prompt id=%s", row.id)
+    return SavedPromptResponse.model_validate(row)

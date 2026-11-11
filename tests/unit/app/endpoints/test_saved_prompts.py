@@ -19,10 +19,11 @@ from app.endpoints.saved_prompts import (
     get_saved_prompts_config_handler,
     list_saved_prompts_handler,
     router,
+    update_saved_prompts_handler,
 )
 from authentication.interface import AuthTuple
 from configuration import AppConfig
-from models.api.requests import SavedPromptCreateRequest
+from models.api.requests import SavedPromptCreateRequest, SavedPromptUpdateRequest
 from models.config import Action
 from tests.unit.utils.auth_helpers import mock_authorization_resolvers
 from utils.saved_prompts import (
@@ -1123,3 +1124,244 @@ def test_delete_saved_prompts_returns_401_when_auth_rejects(
     response = client.delete(f"/v1/saved-prompts/{VALID_PROMPT_ID}")
 
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+@pytest.mark.asyncio
+async def test_update_saved_prompts_happy_path(
+    mocker: MockerFixture,
+    minimal_config: AppConfig,
+    saved_prompts_http_request: Request,
+) -> None:
+    """PUT /saved-prompts/{prompt_id} echoes the updated prompt for the owner."""
+    mock_authorization_resolvers(mocker)
+    mocker.patch("app.endpoints.saved_prompts.configuration", minimal_config)
+    updated_row = _prompt_row(
+        prompt_id=VALID_PROMPT_ID,
+        user_id="user-1",
+        name="new name",
+        content="new body",
+        position=2,
+        created_at=datetime(2026, 7, 22, 16, 0, 0, tzinfo=UTC),
+        updated_at=datetime(2026, 7, 22, 16, 5, 0, tzinfo=UTC),
+    )
+    mock_update = mocker.patch(
+        "app.endpoints.saved_prompts.update_saved_prompt_by_id_and_user",
+        return_value=updated_row,
+    )
+
+    response = await update_saved_prompts_handler(
+        request=saved_prompts_http_request,
+        prompt_id=VALID_PROMPT_ID,
+        body=SavedPromptUpdateRequest(
+            name="new name",
+            content="new body",
+            position=2,
+        ),
+        auth=MOCK_DELETE_AUTH,
+    )
+
+    mock_update.assert_called_once_with(
+        VALID_PROMPT_ID, "user-1", "new name", "new body", 2
+    )
+    payload = response.model_dump(mode="json")
+    assert payload["id"] == VALID_PROMPT_ID
+    assert payload["name"] == "new name"
+    assert payload["content"] == "new body"
+    assert payload["position"] == 2
+    assert "user_id" not in payload
+
+
+@pytest.mark.asyncio
+async def test_update_saved_prompts_invalid_id_format(
+    mocker: MockerFixture,
+    minimal_config: AppConfig,
+    saved_prompts_http_request: Request,
+) -> None:
+    """PUT returns 400 for invalid prompt_id and does not call DAL."""
+    mock_authorization_resolvers(mocker)
+    mocker.patch("app.endpoints.saved_prompts.configuration", minimal_config)
+    mock_update = mocker.patch(
+        "app.endpoints.saved_prompts.update_saved_prompt_by_id_and_user"
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        await update_saved_prompts_handler(
+            request=saved_prompts_http_request,
+            prompt_id=INVALID_PROMPT_ID,
+            body=SavedPromptUpdateRequest(name="n", content="c", position=1),
+            auth=MOCK_DELETE_AUTH,
+        )
+
+    assert exc_info.value.status_code == status.HTTP_400_BAD_REQUEST
+    detail = exc_info.value.detail
+    assert isinstance(detail, dict)
+    assert detail["response"] == "Invalid saved prompt ID format"  # type: ignore[index]
+    mock_update.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_update_saved_prompts_not_found(
+    mocker: MockerFixture,
+    minimal_config: AppConfig,
+    saved_prompts_http_request: Request,
+) -> None:
+    """PUT maps a missing prompt to 404."""
+    mock_authorization_resolvers(mocker)
+    mocker.patch("app.endpoints.saved_prompts.configuration", minimal_config)
+    mocker.patch(
+        "app.endpoints.saved_prompts.update_saved_prompt_by_id_and_user",
+        side_effect=SavedPromptNotFoundError("Saved prompt not found"),
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        await update_saved_prompts_handler(
+            request=saved_prompts_http_request,
+            prompt_id=VALID_PROMPT_ID,
+            body=SavedPromptUpdateRequest(name="n", content="c", position=1),
+            auth=MOCK_DELETE_AUTH,
+        )
+
+    assert exc_info.value.status_code == status.HTTP_404_NOT_FOUND
+
+
+@pytest.mark.asyncio
+async def test_update_saved_prompts_access_denied_returns_403(
+    mocker: MockerFixture,
+    minimal_config: AppConfig,
+    saved_prompts_http_request: Request,
+) -> None:
+    """PUT maps non-owner access denied to 403, matching DELETE."""
+    mock_authorization_resolvers(mocker)
+    mocker.patch("app.endpoints.saved_prompts.configuration", minimal_config)
+    mocker.patch(
+        "app.endpoints.saved_prompts.update_saved_prompt_by_id_and_user",
+        side_effect=SavedPromptAccessDeniedError("Saved prompt access denied"),
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        await update_saved_prompts_handler(
+            request=saved_prompts_http_request,
+            prompt_id=VALID_PROMPT_ID,
+            body=SavedPromptUpdateRequest(name="n", content="c", position=1),
+            auth=MOCK_DELETE_AUTH,
+        )
+
+    assert exc_info.value.status_code == status.HTTP_403_FORBIDDEN
+    detail = exc_info.value.detail
+    assert isinstance(detail, dict)
+    assert detail["response"] == "User does not have permission to perform this action"  # type: ignore[index]
+    assert "user-1" in detail["cause"]  # type: ignore[index]
+    assert VALID_PROMPT_ID in detail["cause"]  # type: ignore[index]
+
+
+@pytest.mark.asyncio
+async def test_update_saved_prompts_validation_failure_returns_422(
+    mocker: MockerFixture,
+    minimal_config: AppConfig,
+    saved_prompts_http_request: Request,
+) -> None:
+    """PUT returns 422 when the name fails configured validation."""
+    mock_authorization_resolvers(mocker)
+    mocker.patch("app.endpoints.saved_prompts.configuration", minimal_config)
+    mock_update = mocker.patch(
+        "app.endpoints.saved_prompts.update_saved_prompt_by_id_and_user"
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        await update_saved_prompts_handler(
+            request=saved_prompts_http_request,
+            prompt_id=VALID_PROMPT_ID,
+            body=SavedPromptUpdateRequest(name="  ", content="c", position=1),
+            auth=MOCK_DELETE_AUTH,
+        )
+
+    assert exc_info.value.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+    detail = exc_info.value.detail
+    assert isinstance(detail, dict)
+    assert detail["response"] == "Invalid attribute value"  # type: ignore[index]
+    mock_update.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_update_saved_prompts_name_conflict_returns_409(
+    mocker: MockerFixture,
+    minimal_config: AppConfig,
+    saved_prompts_http_request: Request,
+) -> None:
+    """PUT maps a rename collision to 409."""
+    mock_authorization_resolvers(mocker)
+    mocker.patch("app.endpoints.saved_prompts.configuration", minimal_config)
+    mocker.patch(
+        "app.endpoints.saved_prompts.update_saved_prompt_by_id_and_user",
+        side_effect=SavedPromptConflictError("Saved prompt name already exists"),
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        await update_saved_prompts_handler(
+            request=saved_prompts_http_request,
+            prompt_id=VALID_PROMPT_ID,
+            body=SavedPromptUpdateRequest(name="taken", content="c", position=1),
+            auth=MOCK_DELETE_AUTH,
+        )
+
+    assert exc_info.value.status_code == status.HTTP_409_CONFLICT
+    detail = exc_info.value.detail
+    assert isinstance(detail, dict)
+    assert detail["response"] == "Saved Prompt already exists"  # type: ignore[index]
+
+
+@pytest.mark.asyncio
+async def test_update_saved_prompts_uses_manage_saved_prompts_action(
+    mocker: MockerFixture,
+    minimal_config: AppConfig,
+    saved_prompts_http_request: Request,
+) -> None:
+    """PUT /saved-prompts/{prompt_id} authorizes with MANAGE_SAVED_PROMPTS."""
+    mock_authorization_resolvers(mocker)
+    mocker.patch("app.endpoints.saved_prompts.configuration", minimal_config)
+    mocker.patch(
+        "app.endpoints.saved_prompts.update_saved_prompt_by_id_and_user",
+        return_value=_prompt_row(
+            prompt_id=VALID_PROMPT_ID,
+            user_id="user-1",
+            name="n",
+            content="c",
+            created_at=datetime(2026, 7, 22, 16, 0, 0, tzinfo=UTC),
+            updated_at=datetime(2026, 7, 22, 16, 0, 0, tzinfo=UTC),
+        ),
+    )
+    perform_check = mocker.patch(
+        "authorization.middleware._perform_authorization_check",
+        return_value=None,
+    )
+
+    await update_saved_prompts_handler(
+        request=saved_prompts_http_request,
+        prompt_id=VALID_PROMPT_ID,
+        body=SavedPromptUpdateRequest(name="n", content="c", position=1),
+        auth=MOCK_DELETE_AUTH,
+    )
+
+    perform_check.assert_awaited_once()
+    await_args = perform_check.await_args
+    assert await_args is not None
+    assert await_args.args[0] == Action.MANAGE_SAVED_PROMPTS
+
+
+def test_update_saved_prompts_position_zero_rejected_by_request_model(
+    mocker: MockerFixture,
+    minimal_config: AppConfig,
+) -> None:
+    """PUT with position 0 fails request validation before the handler runs."""
+    mocker.patch("app.endpoints.saved_prompts.configuration", minimal_config)
+    mock_authorization_resolvers(mocker)
+
+    app = FastAPI()
+    app.include_router(router, prefix="/v1")
+    client = TestClient(app)
+    response = client.put(
+        f"/v1/saved-prompts/{VALID_PROMPT_ID}",
+        json={"name": "Deploy", "content": "body", "position": 0},
+    )
+
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
