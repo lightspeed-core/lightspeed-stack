@@ -35,7 +35,7 @@ Feature: OpenTelemetry observability tests
     When I use "responses" to ask question with authorization header
       """
       {
-        "input": "Reach me at test.user@redhat.com or 212-555-0199, host db.example.com at 10.1.2.3; contact Barack Obama in Chicago regarding e2e-redaction-check",
+        "input": "Reach me at test.user@redhat.com or 212-555-0199, host db.example.com at 10.1.2.3; contact Barack Obama in Chicago. Card 4111 1111 1111 1111, SSN 457-55-5462, IBAN GB33BUKB20201555555555 regarding e2e-redaction-check",
         "model": "{PROVIDER}/{MODEL}",
         "stream": false,
         "safety_identifier": "e2e-redaction-check"
@@ -48,6 +48,9 @@ Feature: OpenTelemetry observability tests
      And The OpenTelemetry service did not receive data containing 212-555-0199
      And The OpenTelemetry service did not receive data containing db.example.com
      And The OpenTelemetry service did not receive data containing 10.1.2.3
+     And The OpenTelemetry service did not receive data containing 4111 1111 1111 1111
+     And The OpenTelemetry service did not receive data containing 457-55-5462
+     And The OpenTelemetry service did not receive data containing GB33BUKB20201555555555
      # Each entity is replaced in-process with its typed marker.
      And The OpenTelemetry service received data containing <EMAIL_ADDRESS>
      And The OpenTelemetry service received data containing <PHONE_NUMBER>
@@ -55,3 +58,6 @@ Feature: OpenTelemetry observability tests
      And The OpenTelemetry service received data containing <IP_ADDRESS>
      And The OpenTelemetry service received data containing <PERSON>
      And The OpenTelemetry service received data containing <LOCATION>
+     And The OpenTelemetry service received data containing <CREDIT_CARD>
+     And The OpenTelemetry service received data containing <US_SSN>
+     And The OpenTelemetry service received data containing <IBAN_CODE>
