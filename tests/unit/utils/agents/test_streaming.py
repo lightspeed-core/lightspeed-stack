@@ -2019,3 +2019,87 @@ class TestRunCancelledFinalization:
 
         assert "error" not in _sse_event_types(result)
         map_error.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_usage_of_the_model_calls_that_completed_is_charged(
+        self,
+        mocker: MockerFixture,
+        make_generator_context: Callable[..., ResponseGeneratorContext],
+        responses_params: ResponsesApiParams,
+    ) -> None:
+        """What the run completed before the interrupt is charged like a finished turn (LCORE-4738)."""
+        context = make_generator_context()
+        turn_summary = TurnSummary()
+        cancelled = RunCancelled(
+            "The agent run was cancelled.",
+            usage=RunUsage(requests=1, input_tokens=5, output_tokens=3),
+        )
+
+        async def inner() -> AsyncIterator[str]:
+            raise cancelled
+            yield ""  # pragma: no cover
+
+        mocker.patch(
+            "utils.agents.streaming.persist_interrupted_turn", new=mocker.AsyncMock()
+        )
+        consume = mocker.patch("utils.agents.streaming.consume_query_tokens")
+
+        [
+            event
+            async for event in generate_agent_response(
+                inner(),
+                context,
+                responses_params,
+                turn_summary,
+                [],
+                root_span=_dummy_root_span(),
+            )
+        ]
+
+        assert (
+            turn_summary.token_usage.input_tokens,
+            turn_summary.token_usage.output_tokens,
+        ) == (5, 3)
+        consume.assert_called_once_with(
+            user_id=context.user_id,
+            model_id=responses_params.model,
+            token_usage=turn_summary.token_usage,
+        )
+
+    @pytest.mark.asyncio
+    async def test_interrupt_before_any_completed_model_call_charges_nothing(
+        self,
+        mocker: MockerFixture,
+        make_generator_context: Callable[..., ResponseGeneratorContext],
+        responses_params: ResponsesApiParams,
+    ) -> None:
+        """No completed model call, no charge."""
+        context = make_generator_context()
+        turn_summary = TurnSummary()
+
+        async def inner() -> AsyncIterator[str]:
+            raise RunCancelled("The agent run was cancelled.")
+            yield ""  # pragma: no cover
+
+        mocker.patch(
+            "utils.agents.streaming.persist_interrupted_turn", new=mocker.AsyncMock()
+        )
+        consume = mocker.patch("utils.agents.streaming.consume_query_tokens")
+
+        [
+            event
+            async for event in generate_agent_response(
+                inner(),
+                context,
+                responses_params,
+                turn_summary,
+                [],
+                root_span=_dummy_root_span(),
+            )
+        ]
+
+        consume.assert_not_called()
+        assert (
+            turn_summary.token_usage.input_tokens,
+            turn_summary.token_usage.output_tokens,
+        ) == (0, 0)

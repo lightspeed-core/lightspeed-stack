@@ -36,7 +36,7 @@ from pydantic_ai.messages import (
 )
 
 from configuration import configuration
-from constants import MEDIA_TYPE_JSON
+from constants import ENDPOINT_PATH_STREAMING_QUERY, MEDIA_TYPE_JSON
 from log import get_logger
 from models.common.agents import (
     AgentTurnAccumulator,
@@ -216,6 +216,7 @@ async def _finish_interrupted_turn(  # pylint: disable=too-many-arguments,too-ma
     background_topic_summary_tasks: list[asyncio.Task[None]],
     turn: PendingTurn,
     media_type: str,
+    endpoint_path: str,
 ) -> AsyncIterator[str]:
     """Finish the turn of a run an interrupt cancelled, and end the stream.
 
@@ -237,11 +238,24 @@ async def _finish_interrupted_turn(  # pylint: disable=too-many-arguments,too-ma
             task the persistence may start.
         turn: The pending turn that stores the interrupted turn.
         media_type: Media type the events are serialized for.
+        endpoint_path: Endpoint path the usage metrics are labelled with.
 
     Yields:
         The suffix token and the ``interrupted`` event.
 
     """
+    if cancelled.usage.requests:
+        # The model calls that completed before the interrupt are charged as
+        # those of a finished turn are (LCORE-4738); an interrupt before any
+        # completed call costs nothing.
+        turn_summary.token_usage = extract_agent_token_usage(
+            cancelled.usage, responses_params.model, endpoint_path
+        )
+        consume_query_tokens(
+            user_id=context.user_id,
+            model_id=responses_params.model,
+            token_usage=turn_summary.token_usage,
+        )
     tokens = turn_summary.partial_tokens or _text_of_cancelled_run(cancelled)
     full_text, suffix = build_interrupted_response(tokens)
     if not turn_summary.partial_tokens:
@@ -276,6 +290,7 @@ async def generate_agent_response(  # pylint: disable=too-many-statements
     turn: Optional[PendingTurn] = None,
     context_status: ContextStatus = "full",
     summarization_usage: Optional[TokenCounter] = None,
+    endpoint_path: str = ENDPOINT_PATH_STREAMING_QUERY,
 ) -> AsyncIterator[str]:
     """Wrap an agent SSE generator with cleanup logic.
 
@@ -302,6 +317,8 @@ async def generate_agent_response(  # pylint: disable=too-many-statements
         summarization_usage: Usage of the summarization calls compaction made
             for this request (LCORE-3910). They were charged when they were
             made; here they are added to the usage the turn reports.
+        endpoint_path: Endpoint path the usage of an interrupted run is
+            recorded under.
 
     Yields:
         SSE-formatted strings from the wrapped generator.
@@ -349,6 +366,7 @@ async def generate_agent_response(  # pylint: disable=too-many-statements
             background_topic_summary_tasks,
             turn,
             media_type,
+            endpoint_path,
         ):
             yield event
     except (AgentRunError, ApiException, RuntimeError) as exc:

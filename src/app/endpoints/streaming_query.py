@@ -383,6 +383,7 @@ async def _handle_streaming_query_with_tracing(  # pylint: disable=too-many-loca
             turn_summary=turn_summary,
             background_topic_summary_tasks=_background_topic_summary_tasks,
             root_span=root_span,
+            endpoint_path=endpoint_path,
         ),
         media_type=response_media_type,
     )
@@ -520,6 +521,7 @@ async def generate_response_with_compaction(
             turn=turn,
             context_status=context_status,
             summarization_usage=summarization_usage,
+            endpoint_path=endpoint_path,
         ):
             yield event
     finally:
