@@ -132,6 +132,42 @@
         "title": "Action",
         "type": "string"
       },
+      "AgentStepPersistenceNoopConfiguration": {
+        "additionalProperties": false,
+        "description": "Agent step persistence disabled (no harness store).",
+        "properties": {
+          "type": {
+            "const": "noop",
+            "default": "noop",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "title": "AgentStepPersistenceNoopConfiguration",
+        "type": "object"
+      },
+      "AgentStepPersistenceSqliteConfiguration": {
+        "additionalProperties": false,
+        "description": "SQLite-backed harness step store.",
+        "properties": {
+          "type": {
+            "const": "sqlite",
+            "default": "sqlite",
+            "title": "Type",
+            "type": "string"
+          },
+          "sqlite": {
+            "$ref": "`#/components/schemas/`SQLiteDatabaseConfiguration",
+            "description": "SQLite file for harness step persistence.",
+            "title": "SQLite database"
+          }
+        },
+        "required": [
+          "sqlite"
+        ],
+        "title": "AgentStepPersistenceSqliteConfiguration",
+        "type": "object"
+      },
       "AllowedModel": {
         "additionalProperties": false,
         "description": "Configuration for an allowed inference model.\n\nAccepts string IDs or dictionaries. String IDs populate both `name` and\n`provider_model_id`; dictionary inputs default `name` to `provider_model_id`.",
@@ -148,6 +184,11 @@
           },
           "model_type": {
             "type": "string",
+            "enum": [
+              "llm",
+              "embedding",
+              "rerank"
+            ],
             "nullable": true,
             "default": null,
             "description": "Optional capability override (llm, embedding, or rerank).",
@@ -199,6 +240,7 @@
             "default": 300,
             "description": "Seconds before pending approval requests expire",
             "minimum": 0,
+            "exclusiveMinimum": true,
             "title": "Approval timeout",
             "type": "integer"
           },
@@ -206,6 +248,7 @@
             "default": 30,
             "description": "Days to retain decided approvals before cleanup",
             "minimum": 0,
+            "exclusiveMinimum": true,
             "title": "Retention period",
             "type": "integer"
           }
@@ -241,12 +284,15 @@
           },
           "k8s_cluster_api": {
             "type": "string",
+            "format": "uri",
+            "minLength": 1,
             "nullable": true,
             "default": null,
             "title": "K8S Cluster Api"
           },
           "k8s_ca_cert_path": {
             "type": "string",
+            "format": "file-path",
             "nullable": true,
             "default": null,
             "title": "K8S Ca Cert Path"
@@ -364,6 +410,8 @@
           },
           "api_key": {
             "type": "string",
+            "format": "password",
+            "writeOnly": true,
             "nullable": true,
             "default": null,
             "title": "API key"
@@ -413,6 +461,7 @@
           },
           "model_profiles_path": {
             "type": "string",
+            "format": "file-path",
             "nullable": true,
             "default": null,
             "title": "Model profiles path"
@@ -426,6 +475,7 @@
           },
           "extra": {
             "type": "object",
+            "additionalProperties": true,
             "nullable": true,
             "default": null,
             "description": "Deprecated escape hatch for unmodeled provider knobs.",
@@ -468,6 +518,8 @@
           },
           "api_key": {
             "type": "string",
+            "format": "password",
+            "writeOnly": true,
             "nullable": true,
             "default": null,
             "description": "Optional Bedrock bearer token (alternative to SigV4).",
@@ -499,6 +551,7 @@
           },
           "model_profiles_path": {
             "type": "string",
+            "format": "file-path",
             "nullable": true,
             "default": null,
             "title": "Model profiles path"
@@ -512,6 +565,7 @@
           },
           "extra": {
             "type": "object",
+            "additionalProperties": true,
             "nullable": true,
             "default": null,
             "description": "Deprecated escape hatch for unmodeled provider knobs.",
@@ -544,6 +598,7 @@
             "default": 10,
             "description": "Maximum total number of chunks returned across all BYOK stores.",
             "minimum": 0,
+            "exclusiveMinimum": true,
             "title": "Max BYOK chunks",
             "type": "integer"
           },
@@ -664,6 +719,10 @@
           },
           "config_format_version": {
             "type": "string",
+            "enum": [
+              "legacy",
+              "unified"
+            ],
             "nullable": true,
             "default": null,
             "description": "Optional explicit marker of the configuration format. When set, it must agree with the shape detected from the configuration body: 'unified' requires a synthesis input (a non-empty inference.providers, a non-empty vector_store.providers, or an ogx.config block), 'legacy' requires no synthesis input. Reserved as the lever for a future breaking change of the unified schema (R11).",
@@ -736,6 +795,25 @@
           "conversation_cache": {
             "$ref": "`#/components/schemas/`ConversationHistoryConfiguration",
             "title": "Conversation history configuration"
+          },
+          "agent_step_persistence": {
+            "description": "Pydantic AI harness StepPersistence storage for agent run history.",
+            "discriminator": {
+              "mapping": {
+                "noop": "`#/components/schemas/`AgentStepPersistenceNoopConfiguration",
+                "sqlite": "`#/components/schemas/`AgentStepPersistenceSqliteConfiguration"
+              },
+              "propertyName": "type"
+            },
+            "oneOf": [
+              {
+                "$ref": "`#/components/schemas/`AgentStepPersistenceNoopConfiguration"
+              },
+              {
+                "$ref": "`#/components/schemas/`AgentStepPersistenceSqliteConfiguration"
+              }
+            ],
+            "title": "Agent step persistence"
           },
           "compaction": {
             "$ref": "`#/components/schemas/`CompactionConfiguration",
@@ -867,6 +945,12 @@
         "properties": {
           "type": {
             "type": "string",
+            "enum": [
+              "noop",
+              "memory",
+              "sqlite",
+              "postgres"
+            ],
             "nullable": true,
             "default": null,
             "description": "Type of database where the conversation history is to be stored.",
@@ -961,6 +1045,7 @@
           },
           "system_prompt_path": {
             "type": "string",
+            "format": "file-path",
             "nullable": true,
             "default": null,
             "title": "System Prompt Path"
@@ -973,12 +1058,14 @@
           },
           "agent_card_path": {
             "type": "string",
+            "format": "file-path",
             "nullable": true,
             "default": null,
             "title": "Agent Card Path"
           },
           "agent_card_config": {
             "type": "object",
+            "additionalProperties": true,
             "nullable": true,
             "default": null,
             "title": "Agent Card Config"
@@ -1057,6 +1144,7 @@
           "embedding_dimension": {
             "description": "Dimensionality of embedding vectors for this provider.",
             "minimum": 0,
+            "exclusiveMinimum": true,
             "title": "Embedding dimension",
             "type": "integer"
           },
@@ -1116,6 +1204,8 @@
           },
           "api_key": {
             "type": "string",
+            "format": "password",
+            "writeOnly": true,
             "nullable": true,
             "default": null,
             "description": "API key for the inference",
@@ -1125,6 +1215,7 @@
             "default": 2,
             "description": "Maximun number of retries",
             "minimum": 0,
+            "exclusiveMinimum": true,
             "maximum": 5,
             "title": "Max retries",
             "type": "integer"
@@ -1133,6 +1224,7 @@
             "default": 30,
             "description": "Request timeout in seconds",
             "minimum": 5,
+            "exclusiveMinimum": true,
             "maximum": 300,
             "title": "Timeout",
             "type": "integer"
@@ -1177,6 +1269,7 @@
             "default": 50,
             "description": "For risks with `output` in `points`, re-check the response against those risks approximately every N generated output tokens while streaming, plus once more over any remaining text once generation completes. Ignored when no configured risk targets the `output` point.",
             "minimum": 0,
+            "exclusiveMinimum": true,
             "title": "Streaming output check interval (tokens)",
             "type": "integer"
           }
@@ -1224,6 +1317,7 @@
           "max_entries": {
             "description": "Maximum number of entries stored in the in-memory cache",
             "minimum": 0,
+            "exclusiveMinimum": true,
             "title": "Max entries",
             "type": "integer"
           }
@@ -1255,6 +1349,7 @@
           "context_windows": {
             "additionalProperties": {
               "minimum": 0,
+              "exclusiveMinimum": true,
               "type": "integer"
             },
             "description": "Deprecated: set metadata.context_window on the model's inference.providers[].allowed_models entry instead. Map of fully-qualified model identifier (e.g., \"openai/gpt-5.6-luna\") to context window size in tokens, used by conversation compaction when the model's catalog metadata has no context_window.",
@@ -1305,6 +1400,8 @@
           },
           "max_infer_iters": {
             "type": "integer",
+            "minimum": 0,
+            "exclusiveMinimum": true,
             "nullable": true,
             "default": 10,
             "description": "Server-side default for the maximum number of inference iterations a model can perform in a single request. Prevents small models from looping indefinitely on tool calls. Per-request values take precedence over this default. Set to None to disable the limit.",
@@ -1312,6 +1409,8 @@
           },
           "max_tool_calls": {
             "type": "integer",
+            "minimum": 0,
+            "exclusiveMinimum": true,
             "nullable": true,
             "default": 30,
             "description": "Server-side default for the maximum number of tool calls allowed in a single response. Prevents small models from exhausting the context window with repeated tool calls. Per-request values take precedence over this default. Set to None to disable the limit.",
@@ -1480,6 +1579,8 @@
           },
           "timeout": {
             "type": "integer",
+            "minimum": 0,
+            "exclusiveMinimum": true,
             "nullable": true,
             "default": null,
             "description": "Timeout in seconds for requests to the MCP server. If not specified, the default timeout from OGX will be used. Note: This field is reserved for future use when OGX adds timeout support.",
@@ -1515,6 +1616,8 @@
         "properties": {
           "url": {
             "type": "string",
+            "format": "uri",
+            "minLength": 1,
             "nullable": true,
             "default": null,
             "description": "URL to OGX service; used when library mode is disabled. Must be a valid HTTP or HTTPS URL.",
@@ -1522,6 +1625,8 @@
           },
           "api_key": {
             "type": "string",
+            "format": "password",
+            "writeOnly": true,
             "nullable": true,
             "default": null,
             "description": "API key to access OGX service",
@@ -1545,6 +1650,7 @@
             "default": 180,
             "description": "Timeout in seconds for requests to OGX service. Default is 180 seconds (3 minutes) to accommodate long-running RAG queries.",
             "minimum": 0,
+            "exclusiveMinimum": true,
             "title": "Request timeout",
             "type": "integer"
           },
@@ -1552,6 +1658,7 @@
             "default": 5,
             "description": "Maximum number of connection attempts before giving up. Used on startup to connect to OGX and retrieve its version. Connection attempts are retried with a fixed delay to handle the case where OGX is still starting up (e.g., when running as a sidecar in the same pod).",
             "minimum": 0,
+            "exclusiveMinimum": true,
             "title": "Maximum number of connection attempts before giving up",
             "type": "integer"
           },
@@ -1559,6 +1666,7 @@
             "default": 2,
             "description": "Delay in seconds between retry attempts. Used on startup to connect to OGX and retrieve its version. Connection attempts are retried with a fixed delay to handle the case where OGX is still starting up (e.g., when running as a sidecar in the same pod).",
             "minimum": 0,
+            "exclusiveMinimum": true,
             "title": "Delay in seconds between retry attempts",
             "type": "integer"
           },
@@ -1592,6 +1700,8 @@
         "properties": {
           "rhokp_url": {
             "type": "string",
+            "format": "uri",
+            "minLength": 1,
             "nullable": true,
             "default": null,
             "description": "Base URL for the OKP server (http or https). Set to `${env.RH_SERVER_OKP}` in YAML to use the environment variable. When unset, the default from constants is used.",
@@ -1612,6 +1722,11 @@
           },
           "search_mode": {
             "type": "string",
+            "enum": [
+              "semantic",
+              "hybrid",
+              "keyword"
+            ],
             "nullable": true,
             "default": null,
             "description": "Default Solr search mode for OKP queries. 'keyword' uses BM25 text search (no embedding model needed). 'hybrid' combines vector + keyword search. 'semantic' uses pure vector search. When unset, falls back to the global default ('hybrid').",
@@ -1621,6 +1736,7 @@
             "default": 5,
             "description": "Maximum number of chunks fetched from OKP.",
             "minimum": 0,
+            "exclusiveMinimum": true,
             "title": "Max OKP chunks",
             "type": "integer"
           }
@@ -1634,6 +1750,8 @@
         "properties": {
           "api_key": {
             "type": "string",
+            "format": "password",
+            "writeOnly": true,
             "nullable": true,
             "default": null,
             "title": "API key"
@@ -1670,6 +1788,7 @@
           },
           "model_profiles_path": {
             "type": "string",
+            "format": "file-path",
             "nullable": true,
             "default": null,
             "title": "Model profiles path"
@@ -1683,6 +1802,7 @@
           },
           "extra": {
             "type": "object",
+            "additionalProperties": true,
             "nullable": true,
             "default": null,
             "description": "Deprecated escape hatch for unmodeled provider knobs.",
@@ -1726,6 +1846,7 @@
           "embedding_dimension": {
             "description": "Dimensionality of embedding vectors for this provider.",
             "minimum": 0,
+            "exclusiveMinimum": true,
             "title": "Embedding dimension",
             "type": "integer"
           },
@@ -1794,6 +1915,8 @@
           },
           "password": {
             "type": "string",
+            "format": "password",
+            "writeOnly": true,
             "nullable": true,
             "default": null,
             "description": "PostgreSQL password. Defaults to ${env.POSTGRES_PASSWORD}.",
@@ -1817,6 +1940,7 @@
             "default": 5432,
             "description": "Database server port",
             "minimum": 0,
+            "exclusiveMinimum": true,
             "title": "Port",
             "type": "integer"
           },
@@ -1839,6 +1963,7 @@
           },
           "namespace": {
             "type": "string",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
             "nullable": true,
             "default": "public",
             "description": "Database namespace",
@@ -1871,6 +1996,7 @@
           },
           "ca_cert_path": {
             "type": "string",
+            "format": "file-path",
             "nullable": true,
             "default": null,
             "description": "Path to CA certificate",
@@ -2049,6 +2175,7 @@
             "default": 1,
             "description": "Quota scheduler period specified in seconds",
             "minimum": 0,
+            "exclusiveMinimum": true,
             "title": "Period",
             "type": "integer"
           },
@@ -2056,6 +2183,7 @@
             "default": 10,
             "description": "Database reconnection count on startup. When database for quota is not available on startup, the service tries to reconnect N times with specified delay.",
             "minimum": 0,
+            "exclusiveMinimum": true,
             "title": "Database reconnection count on startup",
             "type": "integer"
           },
@@ -2063,6 +2191,7 @@
             "default": 1,
             "description": "Database reconnection delay specified in seconds. When database for quota is not available on startup, the service tries to reconnect N times with specified delay.",
             "minimum": 0,
+            "exclusiveMinimum": true,
             "title": "Database reconnection delay",
             "type": "integer"
           }
@@ -2076,6 +2205,9 @@
         "properties": {
           "required_entitlements": {
             "type": "array",
+            "items": {
+              "type": "string"
+            },
             "nullable": true,
             "default": null,
             "description": "List of all required entitlements.",
@@ -2085,6 +2217,7 @@
             "default": 8192,
             "description": "Maximum allowed size in bytes for the base64-encoded x-rh-identity header. Headers exceeding this size are rejected before decoding.",
             "minimum": 0,
+            "exclusiveMinimum": true,
             "title": "Maximum header size",
             "type": "integer"
           }
@@ -2143,6 +2276,7 @@
             "default": 768,
             "description": "Dimensionality of embedding vectors.",
             "minimum": 0,
+            "exclusiveMinimum": true,
             "title": "Embedding dimension",
             "type": "integer"
           },
@@ -2163,6 +2297,7 @@
             "default": 1.0,
             "description": "Multiplier applied to relevance scores from this vector store. Used to weight results when querying multiple knowledge sources. Values > 1 boost this store's results; values < 1 reduce them.",
             "minimum": 0,
+            "exclusiveMinimum": true,
             "title": "Score multiplier",
             "type": "number"
           },
@@ -2170,6 +2305,7 @@
             "default": 0.3,
             "description": "Minimum raw similarity score to consider a result relevant. Results with a similarity score below this threshold are not returned.",
             "minimum": 0,
+            "exclusiveMinimum": true,
             "title": "Relevance cutoff score",
             "type": "number"
           },
@@ -2212,6 +2348,8 @@
           },
           "password": {
             "type": "string",
+            "format": "password",
+            "writeOnly": true,
             "nullable": true,
             "default": null,
             "description": "PostgreSQL password for pgvector backend. Defaults to ${env.POSTGRES_PASSWORD} when backend is pgvector.",
@@ -2315,10 +2453,16 @@
             "title": "Reranker enabled",
             "type": "boolean"
           },
+          "provider": {
+            "default": "sentence_transformers",
+            "description": "The `id` of the inference provider in `inference.providers` that loads this cross-encoder (typically `sentence_transformers`).",
+            "title": "Rerank model provider",
+            "type": "string"
+          },
           "model": {
             "default": "cross-encoder/ms-marco-MiniLM-L6-v2",
-            "description": "Cross-encoder model name for reranking RAG chunks. Defaults to 'cross-encoder/ms-marco-MiniLM-L6-v2' from sentence-transformers.",
-            "title": "Reranker model",
+            "description": "Hugging Face cross-encoder model id used for reranking. When it matches `provider`, the sentence-transformers provider also registers it in its catalog at startup (`name` and backend id both set to this value) if not already listed in `allowed_models`.",
+            "title": "Cross-encoder model id",
             "type": "string"
           }
         },
@@ -2359,6 +2503,7 @@
             "default": 10,
             "description": "Maximum number of chunks returned by this retrieval strategy.",
             "minimum": 0,
+            "exclusiveMinimum": true,
             "title": "Max chunks",
             "type": "integer"
           },
@@ -2454,6 +2599,11 @@
           },
           "quota_subject": {
             "type": "string",
+            "enum": [
+              "user_id",
+              "org_id",
+              "system_id"
+            ],
             "nullable": true,
             "default": null,
             "description": "Identity field used as the quota subject for /v1/infer. When set, token quota enforcement is enabled for this endpoint. Requires quota_handlers to be configured. \"org_id\" and \"system_id\" require rh-identity authentication; falls back to user_id when rh-identity data is unavailable.",
@@ -2487,6 +2637,7 @@
             "default": 50,
             "description": "Maximum number of saved prompts a user can create. Defaults to 50. Cannot exceed 200.",
             "minimum": 0,
+            "exclusiveMinimum": true,
             "maximum": 200,
             "title": "Max prompts per user",
             "type": "integer"
@@ -2495,6 +2646,7 @@
             "default": 255,
             "description": "Maximum character length for prompt display name (title). Defaults to 255. Cannot exceed 255.",
             "minimum": 0,
+            "exclusiveMinimum": true,
             "maximum": 255,
             "title": "Max display name length",
             "type": "integer"
@@ -2503,6 +2655,7 @@
             "default": 10000,
             "description": "Maximum character length for the prompt content body. Defaults to 10000. Cannot exceed 30000.",
             "minimum": 0,
+            "exclusiveMinimum": true,
             "maximum": 30000,
             "title": "Max content length",
             "type": "integer"
@@ -2553,6 +2706,7 @@
           },
           "model_profiles_path": {
             "type": "string",
+            "format": "file-path",
             "nullable": true,
             "default": null,
             "title": "Model profiles path"
@@ -2566,6 +2720,7 @@
           },
           "extra": {
             "type": "object",
+            "additionalProperties": true,
             "nullable": true,
             "default": null,
             "description": "Deprecated escape hatch for unmodeled provider knobs.",
@@ -2604,6 +2759,7 @@
             "default": 8080,
             "description": "Service port",
             "minimum": 0,
+            "exclusiveMinimum": true,
             "title": "Port",
             "type": "integer"
           },
@@ -2624,6 +2780,7 @@
             "default": 1,
             "description": "Number of Uvicorn worker processes to start",
             "minimum": 0,
+            "exclusiveMinimum": true,
             "title": "Number of workers",
             "type": "integer"
           },
@@ -2631,6 +2788,7 @@
             "default": 5,
             "description": "Maximum number of file uploads (POST /v1/files) processed concurrently per worker. Each in-flight upload can hold up to the configured maximum file size in memory, so this bounds worst-case memory usage from concurrent uploads. Additional uploads are rejected with 429 until a slot frees up.",
             "minimum": 0,
+            "exclusiveMinimum": true,
             "title": "Maximum concurrent file uploads",
             "type": "integer"
           },
@@ -2638,6 +2796,7 @@
             "default": 5,
             "description": "Maximum number of vector store file attachments (POST /v1/vector-stores/{id}/files) processed concurrently per worker. Each in-flight attachment re-reads and chunks the source file, so this bounds worst-case memory usage independently of max_concurrent_file_uploads. Additional attachments are rejected with 429 until a slot frees up.",
             "minimum": 0,
+            "exclusiveMinimum": true,
             "title": "Maximum concurrent vector store file attachments",
             "type": "integer"
           },
@@ -2715,6 +2874,7 @@
           },
           "token_path": {
             "type": "string",
+            "format": "file-path",
             "nullable": true,
             "default": null,
             "description": "Path to file containing the Splunk HEC authentication token.",
@@ -2737,6 +2897,7 @@
             "default": 5,
             "description": "HTTP timeout in seconds for HEC requests.",
             "minimum": 0,
+            "exclusiveMinimum": true,
             "title": "Timeout",
             "type": "integer"
           },
@@ -2756,6 +2917,7 @@
         "properties": {
           "tls_certificate_path": {
             "type": "string",
+            "format": "file-path",
             "nullable": true,
             "default": null,
             "description": "SSL/TLS certificate file path for HTTPS support.",
@@ -2763,6 +2925,7 @@
           },
           "tls_key_path": {
             "type": "string",
+            "format": "file-path",
             "nullable": true,
             "default": null,
             "description": "SSL/TLS private key file path for HTTPS support.",
@@ -2770,6 +2933,7 @@
           },
           "tls_key_password": {
             "type": "string",
+            "format": "file-path",
             "nullable": true,
             "default": null,
             "description": "Path to file containing the password to decrypt the SSL/TLS private key.",
@@ -2791,6 +2955,9 @@
           },
           "allowed_service_accounts": {
             "type": "array",
+            "items": {
+              "$ref": "`#/components/schemas/`TrustedProxyServiceAccount"
+            },
             "nullable": true,
             "default": null,
             "description": "Optional allowlist of Kubernetes ServiceAccount identities permitted to act as trusted proxies. When set to null/omitted, any ServiceAccount with a valid token is accepted. When set to a non-empty list, only the listed ServiceAccounts are allowed. An empty list behaves the same as null (no restriction).",
@@ -2967,6 +3134,7 @@
           },
           "model_profiles_path": {
             "type": "string",
+            "format": "file-path",
             "nullable": true,
             "default": null,
             "title": "Model profiles path"
@@ -2980,6 +3148,7 @@
           },
           "extra": {
             "type": "object",
+            "additionalProperties": true,
             "nullable": true,
             "default": null,
             "description": "Deprecated escape hatch for unmodeled provider knobs.",
@@ -3016,6 +3185,8 @@
           },
           "api_key": {
             "type": "string",
+            "format": "password",
+            "writeOnly": true,
             "nullable": true,
             "default": null,
             "title": "API key"
@@ -3046,6 +3217,7 @@
           },
           "model_profiles_path": {
             "type": "string",
+            "format": "file-path",
             "nullable": true,
             "default": null,
             "title": "Model profiles path"
@@ -3059,6 +3231,7 @@
           },
           "extra": {
             "type": "object",
+            "additionalProperties": true,
             "nullable": true,
             "default": null,
             "description": "Deprecated escape hatch for unmodeled provider knobs.",
@@ -3089,6 +3262,8 @@
         "properties": {
           "api_key": {
             "type": "string",
+            "format": "password",
+            "writeOnly": true,
             "nullable": true,
             "default": null,
             "title": "API key"
@@ -3131,6 +3306,7 @@
           },
           "model_profiles_path": {
             "type": "string",
+            "format": "file-path",
             "nullable": true,
             "default": null,
             "title": "Model profiles path"
@@ -3144,6 +3320,7 @@
           },
           "extra": {
             "type": "object",
+            "additionalProperties": true,
             "nullable": true,
             "default": null,
             "description": "Deprecated escape hatch for unmodeled provider knobs.",
