@@ -58,6 +58,7 @@ class SavedPromptResponse(AbstractSuccessfulResponse):
         id: Unique identifier of the saved prompt.
         name: Display name of the saved prompt.
         content: Prompt body text.
+        position: Position of the prompt in the user's list (1-based).
         created_at: When the prompt was created.
         updated_at: When the prompt was last updated.
 
@@ -77,6 +78,11 @@ class SavedPromptResponse(AbstractSuccessfulResponse):
         ...,
         description="Prompt body text",
         examples=["Help me write a deployment checklist…"],
+    )
+    position: int = Field(
+        ...,
+        description="Position of the prompt in the user's list (1-based)",
+        examples=[1],
     )
     created_at: datetime = Field(
         ...,
@@ -98,6 +104,7 @@ class SavedPromptResponse(AbstractSuccessfulResponse):
                     "id": "abc123",
                     "name": "Deploy to staging",
                     "content": "Help me write a deployment checklist…",
+                    "position": 1,
                     "created_at": "2026-07-22T16:00:00+00:00",
                     "updated_at": "2026-07-22T16:00:00+00:00",
                 }
@@ -110,13 +117,14 @@ class SavedPromptsListResponse(AbstractSuccessfulResponse):
     """List of saved prompts belonging to the authenticated user.
 
     Attributes:
-        prompts: Saved prompts ordered by created_at descending (newest first).
+        prompts: Saved prompts ordered by position ascending.
 
     """
 
     prompts: list[SavedPromptResponse] = Field(
         ...,
-        description="Saved prompts for the authenticated user",
+        description="Saved prompts for the authenticated user, "
+        "ordered by position",
     )
 
     model_config = {
@@ -129,6 +137,7 @@ class SavedPromptsListResponse(AbstractSuccessfulResponse):
                             "id": "abc123",
                             "name": "Deploy to staging",
                             "content": "Help me write a deployment checklist…",
+                            "position": 1,
                             "created_at": "2026-07-22T16:00:00+00:00",
                             "updated_at": "2026-07-22T16:00:00+00:00",
                         }

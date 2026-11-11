@@ -245,24 +245,31 @@ def create_saved_prompt(
 
 
 def list_saved_prompts_by_user(user_id: str) -> list[SavedPrompt]:
-    """List saved prompts for a user ordered by created_at descending.
+    """List saved prompts for a user ordered by position ascending.
 
-    Results are capped at ``SAVED_PROMPTS_MAX_PER_USER_UPPER_BOUND`` so a
-    misconfigured or out-of-band insert path cannot materialize unbounded rows.
+    Order is ``position`` ascending with ``created_at`` descending and ``id``
+    as deterministic tiebreakers, so results stay stable even when duplicate
+    positions exist (possible on deployments upgraded before the
+    ``(user_id, position)`` unique constraint). Results are capped at
+    ``SAVED_PROMPTS_MAX_PER_USER_UPPER_BOUND`` so a misconfigured or
+    out-of-band insert path cannot materialize unbounded rows.
 
     Parameters:
         user_id: Owner whose prompts should be returned.
 
     Returns:
         List of ``SavedPrompt`` rows for the user. Empty list if none exist.
-        Tie order when ``created_at`` values are equal is database-defined.
 
     """
     with get_session() as session:
         return (
             session.query(SavedPrompt)
             .filter_by(user_id=user_id)
-            .order_by(SavedPrompt.created_at.desc())
+            .order_by(
+                SavedPrompt.position.asc(),
+                SavedPrompt.created_at.desc(),
+                SavedPrompt.id,
+            )
             .limit(constants.SAVED_PROMPTS_MAX_PER_USER_UPPER_BOUND)
             .all()
         )

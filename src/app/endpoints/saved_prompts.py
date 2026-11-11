@@ -145,7 +145,7 @@ async def list_saved_prompts_handler(
     Handle requests to the GET /saved-prompts endpoint.
 
     Process GET requests that return all saved prompts belonging to the
-    authenticated user, ordered by creation timestamp descending. For example:
+    authenticated user, ordered by per-user position ascending. For example:
 
         curl http://localhost:8080/v1/saved-prompts
 

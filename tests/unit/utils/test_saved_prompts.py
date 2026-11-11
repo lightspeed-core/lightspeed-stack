@@ -1,11 +1,11 @@
 """Unit tests for saved prompt validation helpers and data access."""
 
 from collections.abc import Generator
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from pytest_mock import MockerFixture
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
@@ -393,30 +393,101 @@ class TestListSavedPromptsByUser:
         """Test listing for a user with no prompts returns []."""
         assert list_saved_prompts_by_user("nobody") == []
 
-    def test_list_returns_only_that_users_prompts_ordered_by_created_at_desc(
+    def test_list_returns_only_that_users_prompts_ordered_by_position(
         self, sqlite_engine: Engine
     ) -> None:
-        """Test list is user-scoped and ordered by created_at descending."""
-        older = create_saved_prompt("user-1", "first", "c1", max_prompts_per_user=50)
-        newer = create_saved_prompt("user-1", "second", "c2", max_prompts_per_user=50)
-        create_saved_prompt("user-11", "other", "c3", max_prompts_per_user=50)
+        """Test list is user-scoped and ordered by position ascending."""
+        first = create_saved_prompt("user-1", "first", "c1", max_prompts_per_user=50)
+        second = create_saved_prompt("user-1", "second", "c2", max_prompts_per_user=50)
+        third = create_saved_prompt("user-1", "third", "c3", max_prompts_per_user=50)
+        create_saved_prompt("user-11", "other", "c4", max_prompts_per_user=50)
 
-        # Concurrent inserts can share the same created_at; force a clear order.
+        # Concurrent inserts can share the same created_at; force a clear
+        # tiebreaker order for the duplicate-position test below.
         session_factory = sessionmaker(
             autocommit=False, autoflush=False, bind=sqlite_engine
         )
         with session_factory() as session:
-            older_row = session.get(SavedPrompt, older.id)
-            newer_row = session.get(SavedPrompt, newer.id)
-            assert older_row is not None
-            assert newer_row is not None
-            older_row.created_at = newer_row.created_at - timedelta(seconds=1)
+            first_row = session.get(SavedPrompt, first.id)
+            second_row = session.get(SavedPrompt, second.id)
+            third_row = session.get(SavedPrompt, third.id)
+            assert first_row is not None
+            assert second_row is not None
+            assert third_row is not None
+            first_row.created_at = third_row.created_at - timedelta(seconds=2)
+            second_row.created_at = third_row.created_at - timedelta(seconds=1)
             session.commit()
 
         results = list_saved_prompts_by_user("user-1")
 
-        assert [p.id for p in results] == [newer.id, older.id]
+        assert [p.id for p in results] == [first.id, second.id, third.id]
         assert all(p.user_id == "user-1" for p in results)
+
+    def test_list_order_deterministic_with_duplicate_positions(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test duplicate positions fall back to created_at desc, then id.
+
+        Upgraded deployments may lack the (user_id, position) unique
+        constraint, so the listing must stay deterministic when duplicates
+        exist. The table here mirrors a migrated one: position column
+        present, no position unique constraint.
+        """
+        engine = create_engine(
+            "sqlite:///:memory:",
+            connect_args={"check_same_thread": False},
+            poolclass=StaticPool,
+        )
+        try:
+            with engine.begin() as connection:
+                connection.execute(
+                    text(
+                        "CREATE TABLE saved_prompt ("
+                        "id VARCHAR PRIMARY KEY, "
+                        "user_id VARCHAR, "
+                        "name VARCHAR(255), "
+                        "content TEXT, "
+                        "position INTEGER, "
+                        "created_at DATETIME, "
+                        "updated_at DATETIME)"
+                    )
+                )
+                connection.execute(
+                    text(
+                        "CREATE UNIQUE INDEX uq_saved_prompt_user_name "
+                        "ON saved_prompt (user_id, name)"
+                    )
+                )
+                base = datetime.now(UTC)
+                for prompt_id, offset in (("older-id", 0), ("newer-id", 1)):
+                    connection.execute(
+                        text(
+                            "INSERT INTO saved_prompt "
+                            "(id, user_id, name, content, position, "
+                            "created_at, updated_at) "
+                            "VALUES (:id, 'user-1', :name, 'c', 2, :ts, :ts)"
+                        ),
+                        {
+                            "id": prompt_id,
+                            "name": prompt_id,
+                            "ts": base + timedelta(seconds=offset),
+                        },
+                    )
+            session_factory = sessionmaker(
+                autocommit=False, autoflush=False, bind=engine
+            )
+            mocker.patch(
+                "utils.saved_prompts.get_session",
+                side_effect=lambda: session_factory(),
+            )
+
+            first_pass = list_saved_prompts_by_user("user-1")
+            second_pass = list_saved_prompts_by_user("user-1")
+
+            assert [p.id for p in first_pass] == ["newer-id", "older-id"]
+            assert [p.id for p in second_pass] == [p.id for p in first_pass]
+        finally:
+            engine.dispose()
 
     def test_list_excludes_near_collision_user_ids(self) -> None:
         """Test list does not match nearby user_id strings (prefix/substring)."""

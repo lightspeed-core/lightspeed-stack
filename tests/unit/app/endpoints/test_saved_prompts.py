@@ -260,6 +260,7 @@ def _prompt_row(  # pylint: disable=too-many-arguments
     user_id: str,
     name: str,
     content: str,
+    position: int = 1,
     created_at: datetime,
     updated_at: datetime,
 ) -> SimpleNamespace:
@@ -270,6 +271,7 @@ def _prompt_row(  # pylint: disable=too-many-arguments
         user_id: Owning user identifier (not exposed in API responses).
         name: Prompt display name.
         content: Prompt body text.
+        position: Per-user list position.
         created_at: Creation timestamp.
         updated_at: Last-update timestamp.
 
@@ -282,6 +284,7 @@ def _prompt_row(  # pylint: disable=too-many-arguments
         user_id=user_id,
         name=name,
         content=content,
+        position=position,
         created_at=created_at,
         updated_at=updated_at,
     )
@@ -307,6 +310,7 @@ async def test_list_saved_prompts_happy_path(
                 user_id="user-1",
                 name="second",
                 content="c2",
+                position=1,
                 created_at=newer_ts,
                 updated_at=newer_ts,
             ),
@@ -315,6 +319,7 @@ async def test_list_saved_prompts_happy_path(
                 user_id="user-1",
                 name="first",
                 content="c1",
+                position=2,
                 created_at=older_ts,
                 updated_at=older_ts,
             ),
@@ -572,12 +577,14 @@ async def test_create_saved_prompts_happy_path(
         "id",
         "name",
         "content",
+        "position",
         "created_at",
         "updated_at",
     }
     assert payload["id"] == "prompt-1"
     assert payload["name"] == "Deploy to staging"
     assert payload["content"] == "Help me write a checklist"
+    assert payload["position"] == 1
     assert "user_id" not in payload
 
 
