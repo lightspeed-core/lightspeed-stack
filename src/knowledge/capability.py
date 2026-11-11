@@ -22,10 +22,12 @@ from pydantic_ai.capabilities import AbstractCapability
 from pydantic_ai.messages import TextContent, UserContent
 from pydantic_ai.models import ModelRequestContext
 from pydantic_ai.tools import AgentDepsT, RunContext
+from pydantic_ai.toolsets import AgentToolset
 from sentence_transformers import CrossEncoder
 
 from knowledge.search import search_sources
 from knowledge.sources.base import KnowledgeSource
+from knowledge.toolset import KnowledgeToolset
 from knowledge.types import KnowledgeMatch
 from knowledge.utils import append_latest_message, extract_latest_message_text
 
@@ -92,3 +94,12 @@ class Knowledge(AbstractCapability[AgentDepsT]):
             append_latest_message(request_context.messages, message)
 
         return request_context
+
+    def get_toolset(self) -> AgentToolset[AgentDepsT] | None:
+        """Provide a `search_knowledge` tool spanning every `'tool'`-mode source."""
+        tool_sources = [source for source in self.sources if "tool" in source.mode]
+        return (
+            KnowledgeToolset(tool_sources, reranker=self.reranker)
+            if tool_sources
+            else None
+        )
