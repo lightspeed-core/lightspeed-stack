@@ -17,7 +17,6 @@ that is missing, a write that happens twice, and a write of the wrong input.
 # pylint: disable=too-many-lines
 
 import asyncio
-import contextlib
 import json
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime
@@ -42,7 +41,7 @@ from ogx_client.models.open_ai_response_object_stream_response_failed import (
 from ogx_client.models.open_ai_response_object_stream_response_incomplete import (
     OpenAIResponseObjectStreamResponseIncomplete,
 )
-from pydantic_ai import AgentRunResultEvent
+from pydantic_ai import AgentRunResultEvent, CancellationToken, RunCancelled
 from pydantic_ai.messages import ModelResponse, PartStartEvent, TextPart
 from pytest_mock import AsyncMockType, MockerFixture
 from sqlalchemy.orm import Session
@@ -50,10 +49,15 @@ from sqlalchemy.orm import Session
 from app.endpoints.a2a import handle_a2a_jsonrpc_post
 from app.endpoints.query import query_endpoint_handler
 from app.endpoints.responses import responses_endpoint_handler
+from app.endpoints.stream_interrupt import stream_interrupt_endpoint_handler
 from app.endpoints.streaming_query import streaming_query_endpoint_handler
 from authentication.interface import AuthTuple
 from configuration import AppConfig
-from models.api.requests import QueryRequest, ResponsesRequest
+from models.api.requests import (
+    QueryRequest,
+    ResponsesRequest,
+    StreamingInterruptRequest,
+)
 from models.common.moderation import ShieldModerationBlocked
 from models.common.responses.contexts import ResponsesContext
 from models.common.responses.responses_api_params import ResponsesApiParams
@@ -81,6 +85,7 @@ from tests.integration.endpoints._compaction_helpers import (
 )
 from utils.pending_turn import TurnNotStoredError
 from utils.stream_interrupts import (
+    StreamInterruptRegistry,
     build_interrupted_response,
 )
 from utils.token_estimator import extract_message_text
@@ -330,16 +335,21 @@ class TestQueryTurnPersistence:
 # ==========================================
 
 
-def _stream_that_stalls(release: asyncio.Event) -> Any:
-    """Build an agent stream that sends one token and then waits.
+def _stream_that_stops_when_cancelled(token: CancellationToken) -> Any:
+    """Build an agent stream that sends one token, then waits for its cancellation.
 
-    The wait ends only when the consuming task is cancelled, which is what an
-    interrupt does.
+    It ends the way pydantic-ai ends a cancelled run: with RunCancelled that
+    carries what the run produced so far.
     """
 
     async def _events() -> AsyncIterator[Any]:
         yield PartStartEvent(index=0, part=TextPart(content=PARTIAL_ANSWER))
-        await release.wait()
+        while not token.cancelled:
+            await asyncio.sleep(0.01)
+        raise RunCancelled(
+            "The agent run was cancelled.",
+            messages=[ModelResponse(parts=[TextPart(PARTIAL_ANSWER)])],
+        )
 
     class _RunStreamCtx:
         """Async context manager matching ``agent.run_stream_events``."""
@@ -351,6 +361,15 @@ def _stream_that_stalls(release: asyncio.Event) -> Any:
             return None
 
     return _RunStreamCtx()
+
+
+def _agent_stream_is_interruptible(agent: Any) -> None:
+    """Make the agent's stream react to the cancellation token it is given."""
+    agent.run_stream_events.side_effect = (
+        lambda _prompt, cancellation_token: _stream_that_stops_when_cancelled(
+            cancellation_token
+        )
+    )
 
 
 async def _send_streaming_query(test_request: Request, test_auth: AuthTuple) -> Any:
@@ -378,12 +397,18 @@ async def _interrupt_stream(test_request: Request, test_auth: AuthTuple) -> list
 
     consumer = asyncio.create_task(_consume())
     await asyncio.wait_for(first_token.wait(), timeout=5)
-    # The fake agent ignores the cancellation token the run is given, so the
-    # stream is cancelled the way a client disconnect cancels it.
-    consumer.cancel()
-    with contextlib.suppress(asyncio.CancelledError):
-        await asyncio.wait_for(consumer, timeout=5)
-    # The interrupt callback runs as a task of its own; let it finish.
+    # Interrupt the way a client does: through the endpoint, with the request
+    # id the start event carried. The HTTP stream is not cancelled; the agent
+    # run is, and the stream finishes the interrupted turn.
+    request_id = json.loads(chunks[0].removeprefix("data: "))["data"]["request_id"]
+    interrupt = await stream_interrupt_endpoint_handler(
+        interrupt_request=StreamingInterruptRequest(request_id=request_id),
+        auth=test_auth,
+        registry=StreamInterruptRegistry(),
+    )
+    assert interrupt.interrupted is True
+    await asyncio.wait_for(consumer, timeout=5)
+    # The topic summary of an interrupted turn runs as a task of its own.
     pending = [
         task
         for task in asyncio.all_tasks()
@@ -473,9 +498,7 @@ class TestStreamingQueryTurnPersistence:
         create_existing_conversation(patch_db_session, test_auth[0])
         await _seed(test_config, mock_conversation_store, stored_conversation())
         _agent_answer(mock_streaming_query_agent)
-        mock_streaming_query_agent.run_stream_events.return_value = _stream_that_stalls(
-            asyncio.Event()
-        )
+        _agent_stream_is_interruptible(mock_streaming_query_agent)
 
         chunks = await _interrupt_stream(test_request, test_auth)
 
@@ -1123,9 +1146,7 @@ class TestFailedWrite:
         create_existing_conversation(patch_db_session, test_auth[0])
         await _seed(test_config, mock_conversation_store, _compacted_conversation())
         _agent_answer(mock_streaming_query_agent)
-        mock_streaming_query_agent.run_stream_events.return_value = _stream_that_stalls(
-            asyncio.Event()
-        )
+        _agent_stream_is_interruptible(mock_streaming_query_agent)
         _break_the_store(mock_ogx_client, mocker)
 
         chunks = await _interrupt_stream(test_request, test_auth)
