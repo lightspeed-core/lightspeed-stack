@@ -28,7 +28,7 @@ class TestFixOpenapiDoc:
         assert result.stdout == expected
 
     @pytest.mark.parametrize(
-        "source, expected",
+        ("source", "expected"),
         [
             ("", ""),
             ("\n", "\n"),
@@ -53,7 +53,7 @@ class TestFixOpenapiDoc:
         )
 
     @pytest.mark.parametrize(
-        "source, expected",
+        ("source", "expected"),
         [
             ("```json\n```\n", ""),
             ('before\n```json\n{\n  "key": 1\n}\n```\nafter\n', "before\nafter\n"),
@@ -92,7 +92,7 @@ class TestFixOpenapiDoc:
         self.assert_filter("before\n``` \t\nafter\n", "before\n``` \t\nafter\n")
 
     @pytest.mark.parametrize(
-        "source, expected",
+        ("source", "expected"),
         [
             ("| row\n |\nafter\n", "| row |\nafter\n"),
             ("| row\n |", "| row |\n"),

@@ -60,9 +60,7 @@ def run_startup_migrations(engine: Engine) -> None:
         logger.debug("saved_prompt table absent; nothing to migrate")
         return
 
-    columns = {
-        column["name"] for column in inspector.get_columns("saved_prompt")
-    }
+    columns = {column["name"] for column in inspector.get_columns("saved_prompt")}
     if "position" in columns:
         logger.debug("saved_prompt.position already present; nothing to migrate")
         return

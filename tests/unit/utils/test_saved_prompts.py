@@ -356,7 +356,9 @@ class TestCreateSavedPromptPosition:
             )
             session.commit()
 
-        real_next_position = saved_prompts_utils._next_position
+        real_next_position = (
+            saved_prompts_utils._next_position  # pylint: disable=protected-access
+        )
         calls: list[int] = []
 
         def fake_next_position(session: Session, user_id: str) -> int:
@@ -478,7 +480,7 @@ class TestListSavedPromptsByUser:
             )
             mocker.patch(
                 "utils.saved_prompts.get_session",
-                side_effect=lambda: session_factory(),
+                side_effect=session_factory,
             )
 
             first_pass = list_saved_prompts_by_user("user-1")

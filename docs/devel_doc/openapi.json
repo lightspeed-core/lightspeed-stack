@@ -7290,7 +7290,7 @@
                     "saved-prompts"
                 ],
                 "summary": "List Saved Prompts Handler",
-                "description": "Handle requests to the GET /saved-prompts endpoint.\n\nProcess GET requests that return all saved prompts belonging to the\nauthenticated user, ordered by creation timestamp descending. For example:\n\n    curl http://localhost:8080/v1/saved-prompts\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- auth: Authentication tuple from the auth dependency.\n\n### Raises:\n- HTTPException: with status 401 for unauthorized access.\n- HTTPException: with status 403 if permission is denied.\n- HTTPException: with status 500 when configuration is not loaded or the\n  database query fails.\n\n### Returns:\n- SavedPromptsListResponse: Saved prompts for the authenticated user.",
+                "description": "Handle requests to the GET /saved-prompts endpoint.\n\nProcess GET requests that return all saved prompts belonging to the\nauthenticated user, ordered by per-user position ascending. For example:\n\n    curl http://localhost:8080/v1/saved-prompts\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- auth: Authentication tuple from the auth dependency.\n\n### Raises:\n- HTTPException: with status 401 for unauthorized access.\n- HTTPException: with status 403 if permission is denied.\n- HTTPException: with status 500 when configuration is not loaded or the\n  database query fails.\n\n### Returns:\n- SavedPromptsListResponse: Saved prompts for the authenticated user.",
                 "operationId": "list_saved_prompts_handler_v1_saved_prompts_get",
                 "responses": {
                     "200": {
@@ -7307,6 +7307,7 @@
                                             "created_at": "2026-07-22T16:00:00+00:00",
                                             "id": "abc123",
                                             "name": "Deploy to staging",
+                                            "position": 1,
                                             "updated_at": "2026-07-22T16:00:00+00:00"
                                         }
                                     ]
@@ -7470,6 +7471,7 @@
                                     "created_at": "2026-07-22T16:00:00+00:00",
                                     "id": "abc123",
                                     "name": "Deploy to staging",
+                                    "position": 1,
                                     "updated_at": "2026-07-22T16:00:00+00:00"
                                 }
                             }
@@ -22012,6 +22014,14 @@
                             "Help me write a deployment checklist\u2026"
                         ]
                     },
+                    "position": {
+                        "type": "integer",
+                        "title": "Position",
+                        "description": "Position of the prompt in the user's list (1-based)",
+                        "examples": [
+                            1
+                        ]
+                    },
                     "created_at": {
                         "type": "string",
                         "format": "date-time",
@@ -22037,17 +22047,19 @@
                     "id",
                     "name",
                     "content",
+                    "position",
                     "created_at",
                     "updated_at"
                 ],
                 "title": "SavedPromptResponse",
-                "description": "Single saved prompt returned to an authenticated user.\n\nAttributes:\n    id: Unique identifier of the saved prompt.\n    name: Display name of the saved prompt.\n    content: Prompt body text.\n    created_at: When the prompt was created.\n    updated_at: When the prompt was last updated.",
+                "description": "Single saved prompt returned to an authenticated user.\n\nAttributes:\n    id: Unique identifier of the saved prompt.\n    name: Display name of the saved prompt.\n    content: Prompt body text.\n    position: Position of the prompt in the user's list (1-based).\n    created_at: When the prompt was created.\n    updated_at: When the prompt was last updated.",
                 "examples": [
                     {
                         "content": "Help me write a deployment checklist\u2026",
                         "created_at": "2026-07-22T16:00:00+00:00",
                         "id": "abc123",
                         "name": "Deploy to staging",
+                        "position": 1,
                         "updated_at": "2026-07-22T16:00:00+00:00"
                     }
                 ]
@@ -22136,7 +22148,7 @@
                         },
                         "type": "array",
                         "title": "Prompts",
-                        "description": "Saved prompts for the authenticated user"
+                        "description": "Saved prompts for the authenticated user, ordered by position"
                     }
                 },
                 "additionalProperties": false,
@@ -22145,7 +22157,7 @@
                     "prompts"
                 ],
                 "title": "SavedPromptsListResponse",
-                "description": "List of saved prompts belonging to the authenticated user.\n\nAttributes:\n    prompts: Saved prompts ordered by created_at descending (newest first).",
+                "description": "List of saved prompts belonging to the authenticated user.\n\nAttributes:\n    prompts: Saved prompts ordered by position ascending.",
                 "examples": [
                     {
                         "prompts": [
@@ -22154,6 +22166,7 @@
                                 "created_at": "2026-07-22T16:00:00+00:00",
                                 "id": "abc123",
                                 "name": "Deploy to staging",
+                                "position": 1,
                                 "updated_at": "2026-07-22T16:00:00+00:00"
                             }
                         ]

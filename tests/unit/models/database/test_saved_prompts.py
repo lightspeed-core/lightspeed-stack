@@ -106,11 +106,13 @@ def _unique_constraints_by_name() -> dict[str, set[str]]:
         Dict keyed by constraint name, values are sets of column names.
 
     """
-    return {
-        constraint.name: {col.name for col in constraint.columns}
-        for constraint in SavedPrompt.__table_args__
-        if isinstance(constraint, UniqueConstraint)
-    }
+    constraints: dict[str, set[str]] = {}
+    for constraint in SavedPrompt.__table_args__:
+        if isinstance(constraint, UniqueConstraint) and isinstance(
+            constraint.name, str
+        ):
+            constraints[constraint.name] = {col.name for col in constraint.columns}
+    return constraints
 
 
 class TestSavedPromptPositionColumn:
@@ -121,9 +123,7 @@ class TestSavedPromptPositionColumn:
     ) -> None:
         """Test saved_prompt table includes position when created fresh."""
         inspector = inspect(sqlite_engine)
-        columns = {
-            column["name"] for column in inspector.get_columns("saved_prompt")
-        }
+        columns = {column["name"] for column in inspector.get_columns("saved_prompt")}
         assert "position" in columns
 
     def test_duplicate_user_id_and_position_raises_integrity_error(
@@ -151,9 +151,7 @@ class TestSavedPromptPositionColumn:
         with pytest.raises(IntegrityError):
             db_session.commit()
 
-    def test_same_position_different_users_succeeds(
-        self, db_session: Session
-    ) -> None:
+    def test_same_position_different_users_succeeds(self, db_session: Session) -> None:
         """Test equal positions are allowed across different users."""
         first_prompt = SavedPrompt(
             id="prompt-id-1",
@@ -173,8 +171,12 @@ class TestSavedPromptPositionColumn:
         db_session.add(second_prompt)
         db_session.commit()
 
-        assert db_session.get(SavedPrompt, "prompt-id-1").position == 1
-        assert db_session.get(SavedPrompt, "prompt-id-2").position == 1
+        first_row = db_session.get(SavedPrompt, "prompt-id-1")
+        second_row = db_session.get(SavedPrompt, "prompt-id-2")
+        assert first_row is not None
+        assert second_row is not None
+        assert first_row.position == 1
+        assert second_row.position == 1
 
 
 class TestSavedPromptDatabaseOperations:

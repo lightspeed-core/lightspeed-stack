@@ -18,8 +18,8 @@ import version
 from a2a_storage import A2AStorageFactory
 from app import routers
 from app.database import create_tables, get_engine, initialize_database
-from app.schema_migrations import run_startup_migrations
 from app.endpoints.streaming_query import shutdown_background_topic_summary_tasks
+from app.schema_migrations import run_startup_migrations
 from authorization.azure_token_manager import AzureEntraIDManager
 from client.ogx import AsyncOgxClientHolder
 from configuration import configuration

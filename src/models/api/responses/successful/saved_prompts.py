@@ -123,8 +123,7 @@ class SavedPromptsListResponse(AbstractSuccessfulResponse):
 
     prompts: list[SavedPromptResponse] = Field(
         ...,
-        description="Saved prompts for the authenticated user, "
-        "ordered by position",
+        description="Saved prompts for the authenticated user, ordered by position",
     )
 
     model_config = {

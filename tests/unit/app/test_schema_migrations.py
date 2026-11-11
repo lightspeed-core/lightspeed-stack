@@ -120,7 +120,7 @@ def _positions_by_id(engine: Engine) -> dict[str, int]:
         rows = connection.execute(
             text("SELECT id, position FROM saved_prompt")
         ).fetchall()
-    return {row_id: position for row_id, position in rows}
+    return dict(rows)
 
 
 def _has_position_column(engine: Engine) -> bool:
@@ -134,9 +134,7 @@ def _has_position_column(engine: Engine) -> bool:
 
     """
     inspector = inspect(engine)
-    columns = {
-        column["name"] for column in inspector.get_columns("saved_prompt")
-    }
+    columns = {column["name"] for column in inspector.get_columns("saved_prompt")}
     return "position" in columns
 
 
@@ -145,7 +143,9 @@ def test_migration_adds_position_column_to_old_table(
 ) -> None:
     """Old-table migration adds position and leaves no NULL values."""
     _insert_old_row(old_schema_engine, "p1", "user-123", "First", "2026-01-01 10:00:00")
-    _insert_old_row(old_schema_engine, "p2", "user-123", "Second", "2026-01-02 10:00:00")
+    _insert_old_row(
+        old_schema_engine, "p2", "user-123", "Second", "2026-01-02 10:00:00"
+    )
 
     run_startup_migrations(old_schema_engine)
 
@@ -161,8 +161,12 @@ def test_backfill_assigns_positions_newest_first_per_user(
     _insert_old_row(old_schema_engine, "oldest", "user-123", "A", "2026-01-01 10:00:00")
     _insert_old_row(old_schema_engine, "middle", "user-123", "B", "2026-01-02 10:00:00")
     _insert_old_row(old_schema_engine, "newest", "user-123", "C", "2026-01-03 10:00:00")
-    _insert_old_row(old_schema_engine, "other-old", "user-456", "D", "2026-01-01 09:00:00")
-    _insert_old_row(old_schema_engine, "other-new", "user-456", "E", "2026-01-05 09:00:00")
+    _insert_old_row(
+        old_schema_engine, "other-old", "user-456", "D", "2026-01-01 09:00:00"
+    )
+    _insert_old_row(
+        old_schema_engine, "other-new", "user-456", "E", "2026-01-05 09:00:00"
+    )
 
     run_startup_migrations(old_schema_engine)
 
@@ -239,4 +243,4 @@ def test_empty_old_table_gets_column(
     run_startup_migrations(old_schema_engine)
 
     assert _has_position_column(old_schema_engine)
-    assert _positions_by_id(old_schema_engine) == {}
+    assert not _positions_by_id(old_schema_engine)

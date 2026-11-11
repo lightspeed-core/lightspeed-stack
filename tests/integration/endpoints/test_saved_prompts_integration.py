@@ -110,6 +110,7 @@ async def test_create_saved_prompt_persists_and_is_listable(
     assert created.id
     assert created.name == "Deploy to staging"
     assert created.content == "Help me write a deployment checklist"
+    assert created.position == 1
     assert created.created_at is not None
     assert created.updated_at is not None
 
@@ -120,6 +121,46 @@ async def test_create_saved_prompt_persists_and_is_listable(
     assert len(listed.prompts) == 1
     assert listed.prompts[0].id == created.id
     assert listed.prompts[0].name == "Deploy to staging"
+    assert listed.prompts[0].position == 1
+
+
+@pytest.mark.asyncio
+async def test_list_saved_prompts_ordered_by_position(
+    test_config: AppConfig,
+    test_request: Request,
+    test_auth: AuthTuple,
+    patch_db_session: Session,
+) -> None:
+    """List returns the user's prompts ordered by position ascending."""
+    _ = test_config
+    _ = patch_db_session
+
+    first = await create_prompt_via_handler(
+        request=test_request,
+        auth=test_auth,
+        name="first",
+        content="body one",
+    )
+    second = await create_prompt_via_handler(
+        request=test_request,
+        auth=test_auth,
+        name="second",
+        content="body two",
+    )
+    third = await create_prompt_via_handler(
+        request=test_request,
+        auth=test_auth,
+        name="third",
+        content="body three",
+    )
+
+    listed = await list_saved_prompts_handler(
+        auth=test_auth,
+        request=test_request,
+    )
+
+    assert [p.id for p in listed.prompts] == [first.id, second.id, third.id]
+    assert [p.position for p in listed.prompts] == [1, 2, 3]
 
 
 @pytest.mark.asyncio

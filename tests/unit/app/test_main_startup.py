@@ -11,7 +11,6 @@ from fastapi import FastAPI
 from openai import APIConnectionError
 from pytest_mock import MockerFixture
 
-import app.main
 from app.main import lifespan
 from providers.inference.errors import ModelDiscoveryError
 from providers.inference.registry import ProviderRegistry
@@ -184,9 +183,10 @@ async def test_lifespan_runs_startup_schema_migrations(
         str(_write_config(tmp_path, inference={"providers": []})),
     )
     _patch_lifespan_foreign_dependencies(mocker)
+    mock_get_engine = mocker.patch("app.main.get_engine")
     mock_run_migrations = mocker.patch("app.main.run_startup_migrations")
 
     async with lifespan(FastAPI()):
         pass
 
-    mock_run_migrations.assert_called_once_with(app.main.get_engine.return_value)
+    mock_run_migrations.assert_called_once_with(mock_get_engine.return_value)

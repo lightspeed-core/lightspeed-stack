@@ -23,9 +23,7 @@ class SavedPrompt(Base):  # pylint: disable=too-few-public-methods
     __tablename__ = "saved_prompt"
     __table_args__ = (
         UniqueConstraint("user_id", "name", name="uq_saved_prompt_user_name"),
-        UniqueConstraint(
-            "user_id", "position", name="uq_saved_prompt_user_position"
-        ),
+        UniqueConstraint("user_id", "position", name="uq_saved_prompt_user_position"),
     )
 
     id: Mapped[str] = mapped_column(primary_key=True)
