@@ -810,7 +810,7 @@ print(f"Using model {model_id}")
 MODEL_ID = "openai/gpt-4-turbo"
 
 
-def print_rag_response(response):
+def print_rag_response(response) -> None:
     """Pomocná funkce pro tisk celé odpovědi."""
     print(f"ID: {response.id}")
     print(f"Status: {response.status}")

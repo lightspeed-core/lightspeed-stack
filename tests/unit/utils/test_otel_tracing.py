@@ -291,7 +291,7 @@ class TestEvalSpanAttributes:
 class TestAddSpanEvent:
     """Tests for add_span_event function."""
 
-    def test_add_event_without_attributes(self, otel):
+    def test_add_event_without_attributes(self, otel) -> None:
         """Test adding an event without additional attributes."""
         tracer, exporter = otel
         with tracer.start_as_current_span("test_span") as span:
@@ -304,7 +304,7 @@ class TestAddSpanEvent:
         assert events[0].name == SpanEvents.VALIDATION_COMPLETED
         assert events[0].attributes == {}
 
-    def test_add_event_with_attributes(self, otel):
+    def test_add_event_with_attributes(self, otel) -> None:
         """Test adding an event with additional attributes."""
         tracer, exporter = otel
         with tracer.start_as_current_span("test_span") as span:
@@ -325,7 +325,7 @@ class TestAddSpanEvent:
         assert events[0].attributes["shield.id"] == "test-shield"
         assert events[0].attributes["shield.categories"] == "violence,hate"
 
-    def test_add_multiple_events(self, otel):
+    def test_add_multiple_events(self, otel) -> None:
         """Test adding multiple events to a span."""
         tracer, exporter = otel
         with tracer.start_as_current_span("test_span") as span:
@@ -348,7 +348,7 @@ class TestAddSpanEvent:
 class TestRecordException:
     """Tests for record_exception function."""
 
-    def test_record_exception_basic(self, otel):
+    def test_record_exception_basic(self, otel) -> None:
         """Test recording a basic exception on a span."""
         tracer, exporter = otel
         test_exception = ValueError("Test error message")
@@ -365,7 +365,7 @@ class TestRecordException:
         assert events[0].attributes["exception.message"] == "Test error message"
         assert "exception.stacktrace" in events[0].attributes
 
-    def test_record_exception_with_custom_attributes(self, otel):
+    def test_record_exception_with_custom_attributes(self, otel) -> None:
         """Test recording an exception with custom attributes."""
         tracer, exporter = otel
         test_exception = RuntimeError("Runtime error")
@@ -385,7 +385,7 @@ class TestRecordException:
         assert events[0].attributes["exception.type"] == "RuntimeError"
         assert events[0].attributes[SpanAttributes.RESPONSE_ERROR] == "quota_check"
 
-    def test_record_multiple_exceptions(self, otel):
+    def test_record_multiple_exceptions(self, otel) -> None:
         """Test recording multiple exceptions on a span."""
         tracer, exporter = otel
 
