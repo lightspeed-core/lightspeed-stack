@@ -1,9 +1,9 @@
 """Behavioral tests for the OpenAPI documentation command-line filter."""
 
-from pathlib import Path
 import subprocess
 import sys
 import tempfile
+from pathlib import Path
 
 import pytest
 

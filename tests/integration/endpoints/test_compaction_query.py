@@ -404,7 +404,7 @@ class TestQueryConversationCompaction:
         test_auth: AuthTuple,
         patch_db_session: Session,
         mocker: MockerFixture,
-    ):
+    ) -> None:
         """Two successive queries produce additive summaries.
 
         Verifies:
@@ -525,7 +525,7 @@ class TestQueryConversationCompaction:
         test_auth: AuthTuple,
         patch_db_session: Session,
         mocker: MockerFixture,
-    ):
+    ) -> None:
         """Concurrent requests on the same conversation are serialized by the lock.
 
         Verifies:
