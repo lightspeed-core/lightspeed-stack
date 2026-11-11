@@ -22,10 +22,10 @@ from pytest_mock import MockerFixture
 
 from app.endpoints.responses import (
     _append_previous_response_turn,
-    _is_server_mcp_output_item,
+    _is_server_tool_output_item,
     _persist_blocked_response_turn,
     _sanitize_response_dict,
-    _should_filter_mcp_chunk,
+    _should_filter_server_tool_chunk,
     handle_non_streaming_response,
     handle_streaming_response,
     response_generator,
@@ -2147,22 +2147,22 @@ class TestResponsesInstructionResolution:
 
 
 class TestIsServerMcpOutputItem:
-    """Tests for _is_server_mcp_output_item helper."""
+    """Tests for _is_server_managed_tool_output_item helper."""
 
     def test_mcp_call_with_matching_label(self) -> None:
         """Test mcp_call item with a configured server_label returns True."""
         item: dict[str, Any] = {"type": "mcp_call", "server_label": "my-server"}
-        assert _is_server_mcp_output_item(item, {"my-server"}) is True
+        assert _is_server_tool_output_item(item, {"my-server"}, set()) is True
 
     def test_mcp_call_with_non_matching_label(self) -> None:
         """Test mcp_call item with unconfigured server_label returns False."""
         item: dict[str, Any] = {"type": "mcp_call", "server_label": "client-server"}
-        assert _is_server_mcp_output_item(item, {"my-server"}) is False
+        assert _is_server_tool_output_item(item, {"my-server"}, set()) is False
 
     def test_mcp_list_tools_with_matching_label(self) -> None:
         """Test mcp_list_tools item with configured label returns True."""
         item: dict[str, Any] = {"type": "mcp_list_tools", "server_label": "fs"}
-        assert _is_server_mcp_output_item(item, {"fs", "other"}) is True
+        assert _is_server_tool_output_item(item, {"fs", "other"}, set()) is True
 
     def test_mcp_approval_request_with_matching_label(self) -> None:
         """Test mcp_approval_request item with configured label returns True."""
@@ -2170,36 +2170,45 @@ class TestIsServerMcpOutputItem:
             "type": "mcp_approval_request",
             "server_label": "tool-a",
         }
-        assert _is_server_mcp_output_item(item, {"tool-a"}) is True
+        assert _is_server_tool_output_item(item, {"tool-a"}, set()) is True
 
     def test_mcp_call_missing_server_label(self) -> None:
         """Test mcp_call without server_label returns False."""
         item: dict[str, Any] = {"type": "mcp_call"}
-        assert _is_server_mcp_output_item(item, {"my-server"}) is False
+        assert _is_server_tool_output_item(item, {"my-server"}, set()) is False
 
     def test_message_type_returns_false(self) -> None:
         """Test non-MCP type returns False."""
         item: dict[str, Any] = {"type": "message", "role": "assistant"}
-        assert _is_server_mcp_output_item(item, {"my-server"}) is False
+        assert _is_server_tool_output_item(item, {"my-server"}, set()) is False
 
     def test_function_call_type_returns_false(self) -> None:
         """Test function_call type returns False."""
         item: dict[str, Any] = {"type": "function_call", "name": "get_weather"}
-        assert _is_server_mcp_output_item(item, {"my-server"}) is False
+        assert _is_server_tool_output_item(item, {"my-server"}, set()) is False
 
     def test_empty_configured_labels(self) -> None:
         """Test mcp_call with empty configured labels returns False."""
         item: dict[str, Any] = {"type": "mcp_call", "server_label": "any-server"}
-        assert _is_server_mcp_output_item(item, set()) is False
+        assert _is_server_tool_output_item(item, set(), set()) is False
 
-    def test_file_search_call_returns_false(self) -> None:
-        """Test file_search_call type returns False."""
+    def test_server_file_search_call_returns_true_when_not_client_provided(
+        self,
+    ) -> None:
+        """Test that an unrequested file_search_call is server-managed."""
         item: dict[str, Any] = {"type": "file_search_call"}
-        assert _is_server_mcp_output_item(item, {"my-server"}) is False
+        assert _is_server_tool_output_item(item, {"my-server"}, set()) is True
+
+    def test_client_file_search_call_returns_false(self) -> None:
+        """Test client-provided file_search_call type is retained."""
+        item: dict[str, Any] = {"type": "file_search_call"}
+        assert (
+            _is_server_tool_output_item(item, {"my-server"}, {"file_search"}) is False
+        )
 
 
 class TestShouldFilterMcpChunk:
-    """Tests for _should_filter_mcp_chunk helper."""
+    """Tests for _should_filter_server_tool_chunk helper."""
 
     def test_filters_mcp_call_substream_events(self, mocker: MockerFixture) -> None:
         """Test that response.mcp_call.* events are filtered for tracked indices."""
@@ -2208,9 +2217,10 @@ class TestShouldFilterMcpChunk:
         chunk.type = "response.mcp_call.in_progress"
         server_mcp_output_indices: set[int] = {5}
         assert (
-            _should_filter_mcp_chunk(
+            _should_filter_server_tool_chunk(
                 chunk,
                 {"server-a"},
+                set(),
                 server_mcp_output_indices,
             )
             is True
@@ -2225,9 +2235,10 @@ class TestShouldFilterMcpChunk:
         chunk.type = "response.mcp_list_tools.in_progress"
         server_mcp_output_indices: set[int] = {3}
         assert (
-            _should_filter_mcp_chunk(
+            _should_filter_server_tool_chunk(
                 chunk,
                 {"server-a"},
+                set(),
                 server_mcp_output_indices,
             )
             is True
@@ -2242,9 +2253,10 @@ class TestShouldFilterMcpChunk:
         chunk.type = "response.mcp_approval_request.in_progress"
         server_mcp_output_indices: set[int] = {7}
         assert (
-            _should_filter_mcp_chunk(
+            _should_filter_server_tool_chunk(
                 chunk,
                 {"server-a"},
+                set(),
                 server_mcp_output_indices,
             )
             is True
@@ -2259,9 +2271,10 @@ class TestShouldFilterMcpChunk:
         chunk.type = "response.mcp_approval_request.in_progress"
         server_mcp_output_indices: set[int] = {99}
         assert (
-            _should_filter_mcp_chunk(
+            _should_filter_server_tool_chunk(
                 chunk,
                 {"server-a"},
+                set(),
                 server_mcp_output_indices,
             )
             is False
@@ -2274,9 +2287,10 @@ class TestShouldFilterMcpChunk:
         chunk.type = "response.mcp_call.completed"
         server_mcp_output_indices: set[int] = {5}
         assert (
-            _should_filter_mcp_chunk(
+            _should_filter_server_tool_chunk(
                 chunk,
                 {"server-a"},
+                set(),
                 server_mcp_output_indices,
             )
             is False
@@ -2295,9 +2309,10 @@ class TestShouldFilterMcpChunk:
         chunk.type = "response.output_item.added"
         server_mcp_output_indices: set[int] = set()
         assert (
-            _should_filter_mcp_chunk(
+            _should_filter_server_tool_chunk(
                 chunk,
                 {"server-a"},
+                set(),
                 server_mcp_output_indices,
             )
             is True
@@ -2316,9 +2331,10 @@ class TestShouldFilterMcpChunk:
         chunk.type = "response.output_item.done"
         server_mcp_output_indices: set[int] = {2}
         assert (
-            _should_filter_mcp_chunk(
+            _should_filter_server_tool_chunk(
                 chunk,
                 {"server-a"},
+                set(),
                 server_mcp_output_indices,
             )
             is True
@@ -2329,11 +2345,91 @@ class TestShouldFilterMcpChunk:
         """Test that non-MCP events pass through."""
         chunk = mocker.Mock()
         chunk.type = "response.output_text.delta"
-        assert _should_filter_mcp_chunk(chunk, {"server-a"}, set()) is False
+        assert (
+            _should_filter_server_tool_chunk(chunk, {"server-a"}, set(), set()) is False
+        )
+
+    def test_filters_output_item_added_for_file_search_call(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test that output_item.added for file_search_call items is filtered."""
+        item = mocker.Mock()
+        item.type = "file_search_call"
+        chunk = mocker.Mock()
+        chunk.item = item
+        chunk.output_index = 0
+        chunk.type = "response.output_item.added"
+        assert (
+            _should_filter_server_tool_chunk(chunk, {"server-a"}, set(), set()) is True
+        )
+
+    def test_preserves_client_managed_file_search_call(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test that client-managed file_search_call items are not filtered."""
+        item = mocker.Mock()
+        item.type = "file_search_call"
+        chunk = mocker.Mock()
+        chunk.item = item
+        chunk.output_index = 0
+        chunk.type = "response.output_item.added"
+
+        assert (
+            _should_filter_server_tool_chunk(
+                chunk, {"server-a"}, {"file_search"}, set()
+            )
+            is False
+        )
+
+    def test_filters_output_item_done_for_file_search_call(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test that output_item.done for file_search_call items is filtered."""
+        item = mocker.Mock()
+        item.type = "file_search_call"
+        chunk = mocker.Mock()
+        chunk.item = item
+        chunk.output_index = 1
+        chunk.type = "response.output_item.done"
+        assert _should_filter_server_tool_chunk(chunk, {"server-a"}, set(), {1}) is True
+
+    def test_filters_file_search_call_substream_events(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test that response.file_search_call.* events are filtered."""
+        for event_type in (
+            "response.file_search_call.in_progress",
+            "response.file_search_call.searching",
+            "response.file_search_call.completed",
+        ):
+            chunk = mocker.Mock()
+            chunk.type = event_type
+            chunk.output_index = 4
+            assert (
+                _should_filter_server_tool_chunk(chunk, set(), set(), {4}) is True
+            ), f"{event_type} should be filtered"
+
+    def test_does_not_filter_message_or_function_call_items(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test that message and function_call output items pass through."""
+        for item_type in ("message", "function_call"):
+            item = mocker.Mock()
+            item.type = item_type
+            chunk = mocker.Mock()
+            chunk.item = item
+            chunk.output_index = 0
+            chunk.type = "response.output_item.added"
+            assert (
+                _should_filter_server_tool_chunk(chunk, set(), set(), set()) is False
+            ), f"{item_type} should not be filtered"
 
 
 def mock_original_request(
-    *, instructions: Optional[str] = None, model: Optional[str] = None
+    *,
+    instructions: Optional[str] = None,
+    model: Optional[str] = None,
+    tools: Optional[list[dict[str, Any]]] = None,
 ) -> ResponsesRequest:
     """Build a minimal ResponsesRequest for _sanitize_response_dict tests."""
     kwargs: dict[str, Any] = {"input": "x"}
@@ -2341,6 +2437,8 @@ def mock_original_request(
         kwargs["instructions"] = instructions
     if model is not None:
         kwargs["model"] = model
+    if tools is not None:
+        kwargs["tools"] = tools
     return ResponsesRequest(**kwargs)
 
 
@@ -2409,6 +2507,37 @@ class TestSanitizeResponseDict:
         _sanitize_response_dict(d, set(), mock_original_request())
         assert len(d["tools"]) == 2
 
+    def test_strips_file_search_tool_not_in_original_request(self) -> None:
+        """Test that a server-injected file_search tool is removed."""
+        d: dict[str, Any] = {
+            "tools": [
+                {"type": "file_search", "vector_store_ids": ["server-rag"]},
+                {"type": "function", "name": "client_tool"},
+            ]
+        }
+
+        _sanitize_response_dict(d, set(), mock_original_request())
+
+        assert d["tools"] == [{"type": "function", "name": "client_tool"}]
+
+    def test_preserves_file_search_tool_from_original_request(self) -> None:
+        """Test that a client-provided file_search tool remains."""
+        d: dict[str, Any] = {
+            "tools": [{"type": "file_search", "vector_store_ids": ["client-rag"]}]
+        }
+
+        _sanitize_response_dict(
+            d,
+            set(),
+            mock_original_request(
+                tools=[{"type": "file_search", "vector_store_ids": ["client-rag"]}]
+            ),
+        )
+
+        assert d["tools"] == [
+            {"type": "file_search", "vector_store_ids": ["client-rag"]}
+        ]
+
     def test_strips_server_mcp_items_from_output(self) -> None:
         """Test that server-deployed MCP output items are removed from output array."""
         d: dict[str, Any] = {
@@ -2444,6 +2573,42 @@ class TestSanitizeResponseDict:
         }
         _sanitize_response_dict(d, {"okp"}, mock_original_request())
         assert len(d["output"]) == 3
+
+    def test_strips_server_managed_file_search_call_items(self) -> None:
+        """Test that server-managed file_search_call items are removed."""
+        d: dict[str, Any] = {
+            "output": [
+                {
+                    "type": "file_search_call",
+                    "id": "fs_1",
+                    "queries": ["rhoso docs"],
+                    "status": "completed",
+                },
+                {"type": "message", "role": "assistant", "content": []},
+            ],
+        }
+        _sanitize_response_dict(d, set(), mock_original_request())
+        assert len(d["output"]) == 1
+        assert d["output"][0]["type"] == "message"
+
+    def test_preserves_client_managed_file_search_call_items(self) -> None:
+        """Test that client-managed file_search_call items are preserved."""
+        d: dict[str, Any] = {
+            "output": [
+                {"type": "file_search_call", "id": "fs_1"},
+                {"type": "message", "role": "assistant", "content": []},
+            ],
+        }
+
+        _sanitize_response_dict(
+            d,
+            set(),
+            mock_original_request(
+                tools=[{"type": "file_search", "vector_store_ids": ["client-rag"]}]
+            ),
+        )
+
+        assert len(d["output"]) == 2
 
     def test_no_error_when_output_absent(self) -> None:
         """Test that missing output field does not raise."""
