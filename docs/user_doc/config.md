@@ -67,6 +67,29 @@ Note: this is not a real model, just an enumeration of all action names.
 
 
 
+## AgentStepPersistenceNoopConfiguration
+
+
+Agent step persistence disabled (no harness store).
+
+
+| Field   | Type   | Description   |
+|---------|--------|---------------|
+| type    | string |               |
+
+
+## AgentStepPersistenceSqliteConfiguration
+
+
+SQLite-backed harness step store.
+
+
+| Field   | Type   | Description                               |
+|---------|--------|--------------                             |
+| type    | string |                                           |
+| sqlite  |        | SQLite file for harness step persistence. |
+
+
 ## AllowedModel
 
 
@@ -325,6 +348,7 @@ Global service configuration.
 | customization          |        | It is possible to customize Lightspeed Core Stack via this section. System prompt can be customized and also different parts of the service can be replaced by custom Python modules.                                                                                                                                                                                                        |
 | inference              |        | One LLM provider and one its model might be selected as default ones. When no provider+model pair is specified in REST API calls (query endpoints), the default provider and model are used.                                                                                                                                                                                                 |
 | conversation_cache     |        |                                                                                                                                                                                                                                                                                                                                                                                              |
+| agent_step_persistence |        | Pydantic AI harness StepPersistence storage for agent run history.                                                                                                                                                                                                                                                                                                                           |
 | compaction             |        | Controls when conversation history is summarized to keep the model's input below the context window limit. Disabled by default — when disabled, requests that exceed the window continue to surface as HTTP 413.                                                                                                                                                                             |
 | approvals              |        | Settings for human-in-the-loop approval of MCP tool invocations                                                                                                                                                                                                                                                                                                                              |
 | vector_store           |        | Dynamic vector-store provider capacity for runtime POST /v1/vector-stores creates. Not the same as rag.byok.stores (static registered corpora). When providers is non-empty, default_provider is required and must match one of providers[].id. Applied in unified synthesis only.                                                                                                           |
@@ -373,16 +397,16 @@ Custom profile customization for prompts and validation.
 Service customization.
 
 
-| Field                       | Type    | Description   |
-|--------                     |---------|---------------|
-| profile_path                | string  |               |
-| disable_query_system_prompt | boolean |               |
-| disable_shield_ids_override | boolean |               |
-| system_prompt_path          | string  |               |
-| system_prompt               | string  |               |
-| agent_card_path             | string  |               |
-| agent_card_config           | object  |               |
-| custom_profile              |         |               |
+| Field                       | Type    | Description                                                                     |
+|--------                     |---------|--------------                                                                   |
+| profile_path                | string  |                                                                                 |
+| disable_query_system_prompt | boolean |                                                                                 |
+| disable_shield_ids_override | boolean |                                                                                 |
+| system_prompt_path          | string  |                                                                                 |
+| system_prompt               | string  |                                                                                 |
+| agent_card_path             | string  |                                                                                 |
+| agent_card_config           | object  |                                                                                 |
+| custom_profile              |         |                                                                                 |
 | responses_request_max_size  | integer | Maximum character length for the serialized /v1/response responses request body |
 
 
@@ -993,10 +1017,11 @@ Attributes:
 Reranker configuration for RAG chunk reranking.
 
 
-| Field   | Type    | Description                                                                                                                      |
-|---------|---------|--------------                                                                                                                    |
-| enabled | boolean | When True, reranking applied to RAG chunks. When False, reranking is disabled and original scoring used.                         |
-| model   | string  | Cross-encoder model name for reranking RAG chunks. Defaults to 'cross-encoder/ms-marco-MiniLM-L6-v2' from sentence-transformers. |
+| Field    | Type    | Description                                                                                                                                                                                                                                                  |
+|----------|---------|--------------                                                                                                                                                                                                                                                |
+| enabled  | boolean | When True, reranking applied to RAG chunks. When False, reranking is disabled and original scoring used.                                                                                                                                                     |
+| provider | string  | The `id` of the inference provider in `inference.providers` that loads this cross-encoder (typically `sentence_transformers`).                                                                                                                               |
+| model    | string  | Hugging Face cross-encoder model id used for reranking. When it matches `provider`, the sentence-transformers provider also registers it in its catalog at startup (`name` and backend id both set to this value) if not already listed in `allowed_models`. |
 
 
 ## RetrievalConfiguration
