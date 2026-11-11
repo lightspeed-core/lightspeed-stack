@@ -161,7 +161,6 @@ async def _persist_compacted_turn(
     context: ResponseGeneratorContext,
     turn: PendingTurn,
     turn_summary: TurnSummary,
-    persist_guard: list[bool],
 ) -> None:
     """Append a completed compacted turn to the conversation (LCORE-3883).
 
@@ -174,13 +173,10 @@ async def _persist_compacted_turn(
         turn: The pending turn of the request. Nothing is written when OGX
             stores the turn itself.
         turn_summary: Completed turn, carrying the captured output items.
-        persist_guard: Single-element flag shared with the interrupt path, so
-            that only one of them finishes the turn.
 
     """
-    if not turn.ours or persist_guard[0]:
+    if not turn.ours:
         return
-    persist_guard[0] = True
     try:
         await turn.store_completed(turn_summary.output_items)
     except Exception:  # pylint: disable=broad-except
@@ -319,7 +315,6 @@ async def generate_agent_response(  # pylint: disable=too-many-statements
     media_type = context.query_request.media_type or MEDIA_TYPE_JSON
     if turn is None:
         turn = PendingTurn.for_request(context.client, responses_params)
-    persist_guard: list[bool] = [False]
     stream_completed = False
     try:
         # The start event is sent inside the try, so that a client that goes
@@ -362,32 +357,6 @@ async def generate_agent_response(  # pylint: disable=too-many-statements
             ErrorStreamPayload.from_error_response(error_response),
             media_type,
         )
-    except asyncio.CancelledError:
-        logger.info("Streaming request %s interrupted by user", context.request_id)
-        current_task = asyncio.current_task()
-        if current_task is not None:
-            current_task.uncancel()
-        full_text, suffix = build_interrupted_response(turn_summary.partial_tokens)
-        if not persist_guard[0]:
-            persist_guard[0] = True
-            turn_summary.llm_response = full_text
-            await persist_interrupted_turn(
-                context,
-                responses_params,
-                turn_summary,
-                background_topic_summary_tasks,
-                turn,
-            )
-        yield serialize_event(
-            TokenStreamPayload.create(
-                chunk_id=turn_summary.next_chunk_id, token=suffix
-            ),
-            media_type,
-        )
-        yield serialize_event(
-            InterruptedStreamPayload.create(request_id=context.request_id),
-            media_type,
-        )
     finally:
         deregister_stream(context.request_id)
 
@@ -395,9 +364,9 @@ async def generate_agent_response(  # pylint: disable=too-many-statements
         root_span.end()
         return
 
-    await _persist_compacted_turn(context, turn, turn_summary, persist_guard)
+    await _persist_compacted_turn(context, turn, turn_summary)
     # The stream ran to its end. Fail if its turn had to be stored here and
-    # neither this path nor an interrupt tried to.
+    # nobody did.
     turn.ensure_settled()
 
     should_generate_topic_summary = (
