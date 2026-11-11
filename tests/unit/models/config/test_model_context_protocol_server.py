@@ -184,14 +184,9 @@ def test_configuration_multiple_mcp_servers() -> None:
 def test_model_context_protocol_server_with_authorization_headers(
     tmp_path: Path,
 ) -> None:
-    """Test ModelContextProtocolServer with authorization headers.
+    """Test ModelContextProtocolServer stores authorization header file paths.
 
-    Verify that authorization headers supplied as file paths are preserved and resolved.
-
-    Creates temporary files for header secrets, constructs a ModelContextProtocolServer with
-    authorization_headers mapping header names to those file paths, and asserts that:
-    - the model retains the original mapping to file paths, and
-    - resolved_authorization_headers contains the file contents for each header.
+    Resolution of those paths happens when headers are built for a request.
     """
     auth_file = tmp_path / "auth.txt"
     auth_file.write_text("my-secret")
@@ -212,10 +207,6 @@ def test_model_context_protocol_server_with_authorization_headers(
     assert mcp.authorization_headers == {
         "Authorization": str(auth_file),
         "X-API-Key": str(api_key_file),
-    }
-    assert mcp.resolved_authorization_headers == {
-        "Authorization": "my-secret",
-        "X-API-Key": "api-key-secret",
     }
 
 
@@ -306,9 +297,6 @@ def test_configuration_mcp_servers_with_mixed_auth_headers(tmp_path: Path) -> No
     assert cfg.mcp_servers[1].authorization_headers == {
         "Authorization": str(secret_file)
     }
-    assert cfg.mcp_servers[1].resolved_authorization_headers == {
-        "Authorization": "my-secret"
-    }
 
     # Server with kubernetes special case
     assert cfg.mcp_servers[2].name == "server-with-k8s"
@@ -317,52 +305,6 @@ def test_configuration_mcp_servers_with_mixed_auth_headers(tmp_path: Path) -> No
     # Server with client special case
     assert cfg.mcp_servers[3].name == "server-with-client"
     assert cfg.mcp_servers[3].authorization_headers == {"Authorization": "client"}
-
-
-def test_model_context_protocol_server_resolved_headers_with_special_values() -> None:
-    """Test that resolved_authorization_headers preserves special values."""
-    mcp = ModelContextProtocolServer(
-        name="test-server",
-        url="http://localhost:8080",
-        authorization_headers={
-            "Authorization": "kubernetes",
-            "X-Custom": "client",
-        },
-    )
-    assert mcp is not None
-    # Special values should be preserved in resolved headers
-    assert mcp.resolved_authorization_headers == {
-        "Authorization": "kubernetes",
-        "X-Custom": "client",
-    }
-
-
-def test_model_context_protocol_server_resolved_headers_with_file(
-    tmp_path: Path,
-) -> None:
-    """Test that resolved_authorization_headers reads from files."""
-    # Create a temporary secret file
-    secret_file = tmp_path / "secret.txt"
-    secret_file.write_text("my-secret-value")
-
-    mcp = ModelContextProtocolServer(
-        name="test-server",
-        url="http://localhost:8080",
-        authorization_headers={"Authorization": str(secret_file)},
-    )
-    assert mcp is not None
-    # File content should be read into resolved headers
-    assert mcp.resolved_authorization_headers == {"Authorization": "my-secret-value"}
-
-
-def test_model_context_protocol_server_resolved_headers_empty() -> None:
-    """Test that resolved_authorization_headers is empty when no auth headers."""
-    mcp = ModelContextProtocolServer(
-        name="test-server",
-        url="http://localhost:8080",
-    )
-    assert mcp is not None
-    assert not mcp.resolved_authorization_headers
 
 
 def test_model_context_protocol_server_headers_valid() -> None:

@@ -1,5 +1,6 @@
 """Unit tests for MCP headers utility functions."""
 
+from pathlib import Path
 from typing import Optional
 
 import pytest
@@ -385,31 +386,30 @@ class TestBuildServerHeaders:
 
     def _make_server(
         self,
-        resolved_auth: Optional[dict[str, str]] = None,
+        authorization_headers: Optional[dict[str, str]] = None,
         headers: Optional[list[str]] = None,
     ) -> ModelContextProtocolServer:
         """Create a ModelContextProtocolServer with given auth and allowlist headers."""
-        server = ModelContextProtocolServer(
+        return ModelContextProtocolServer(
             name="test-server",
             url="http://test:8080",
             provider_id="xyzzy",
+            authorization_headers=authorization_headers or {},
             headers=headers or [],
         )
-        object.__setattr__(
-            server, "_resolved_authorization_headers", resolved_auth or {}
-        )
-        return server
 
-    def test_static_resolved_header_is_added(self) -> None:
-        """Test that a statically resolved header value is included in the result."""
-        server = self._make_server(resolved_auth={"Authorization": "static-token"})
+    def test_static_resolved_header_is_added(self, tmp_path: Path) -> None:
+        """Test that a secret file is read into the result."""
+        secret = tmp_path / "token"
+        secret.write_text("static-token")
+        server = self._make_server(authorization_headers={"Authorization": str(secret)})
         result = build_server_headers(server, {}, None, None)
         assert result == {"Authorization": "static-token"}
 
     def test_kubernetes_token_resolves_to_bearer(self) -> None:
         """Test that a kubernetes keyword resolves to a Bearer token."""
         server = self._make_server(
-            resolved_auth={"Authorization": constants.MCP_AUTH_KUBERNETES}
+            authorization_headers={"Authorization": constants.MCP_AUTH_KUBERNETES}
         )
         result = build_server_headers(server, {}, None, token="my-k8s-token")
         assert result == {"Authorization": "Bearer my-k8s-token"}
@@ -417,7 +417,7 @@ class TestBuildServerHeaders:
     def test_kubernetes_without_token_is_skipped(self) -> None:
         """Test that a kubernetes keyword with no token produces no header."""
         server = self._make_server(
-            resolved_auth={"Authorization": constants.MCP_AUTH_KUBERNETES}
+            authorization_headers={"Authorization": constants.MCP_AUTH_KUBERNETES}
         )
         result = build_server_headers(server, {}, None, token=None)
         assert not result
@@ -425,7 +425,7 @@ class TestBuildServerHeaders:
     def test_client_keyword_is_skipped(self) -> None:
         """Test that a client keyword is skipped (value comes from client_headers)."""
         server = self._make_server(
-            resolved_auth={"Authorization": constants.MCP_AUTH_CLIENT}
+            authorization_headers={"Authorization": constants.MCP_AUTH_CLIENT}
         )
         result = build_server_headers(server, {}, None, None)
         assert not result
@@ -433,22 +433,26 @@ class TestBuildServerHeaders:
     def test_oauth_keyword_is_skipped(self) -> None:
         """Test that an oauth keyword is skipped (value comes from client_headers)."""
         server = self._make_server(
-            resolved_auth={"Authorization": constants.MCP_AUTH_OAUTH}
+            authorization_headers={"Authorization": constants.MCP_AUTH_OAUTH}
         )
         result = build_server_headers(server, {}, None, None)
         assert not result
 
-    def test_client_headers_take_priority_over_resolved(self) -> None:
+    def test_client_headers_take_priority_over_resolved(self, tmp_path: Path) -> None:
         """Test that a client-supplied header is not overwritten by a resolved value."""
-        server = self._make_server(resolved_auth={"Authorization": "static-token"})
+        secret = tmp_path / "token"
+        secret.write_text("static-token")
+        server = self._make_server(authorization_headers={"Authorization": str(secret)})
         result = build_server_headers(
             server, {"Authorization": "client-token"}, None, None
         )
         assert result == {"Authorization": "client-token"}
 
-    def test_client_headers_priority_is_case_insensitive(self) -> None:
+    def test_client_headers_priority_is_case_insensitive(self, tmp_path: Path) -> None:
         """Test that case-insensitive comparison prevents overwriting client headers."""
-        server = self._make_server(resolved_auth={"authorization": "static-token"})
+        secret = tmp_path / "token"
+        secret.write_text("static-token")
+        server = self._make_server(authorization_headers={"authorization": str(secret)})
         result = build_server_headers(
             server, {"Authorization": "client-token"}, None, None
         )
@@ -479,12 +483,14 @@ class TestBuildServerHeaders:
         result = build_server_headers(server, {}, None, None)
         assert not result
 
-    def test_multiple_sources_are_merged(self) -> None:
+    def test_multiple_sources_are_merged(self, tmp_path: Path) -> None:
         """Test that all header sources are combined into one dictionary."""
+        secret = tmp_path / "api-key"
+        secret.write_text("static-key")
         server = self._make_server(
-            resolved_auth={
+            authorization_headers={
                 "Authorization": constants.MCP_AUTH_KUBERNETES,
-                "X-Api-Key": "static-key",
+                "X-Api-Key": str(secret),
             },
             headers=["x-request-id"],
         )
