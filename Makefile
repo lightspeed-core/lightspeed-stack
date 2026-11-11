@@ -166,6 +166,10 @@ test-integration: ## Run integration tests tests
 	@echo "Reports will be written to ${ARTIFACT_DIR}"
 	COVERAGE_FILE="${ARTIFACT_DIR}/.coverage.integration" uv run python -m pytest tests/integration --cov=src --cov-report term-missing --cov-report "json:${ARTIFACT_DIR}/coverage_integration.json" --junit-xml="${ARTIFACT_DIR}/junit_integration.xml" --cov-fail-under=10
 
+test-regression: ## Run regression tests for scripts
+	@echo "Running regression tests..."
+	uv run python -m pytest scripts/
+
 test-e2e: ## Run end to end tests for the service
 	script -q -e -c "uv run behave --color --format pretty --tags=-skip -D dump_errors=true @tests/e2e/test_list.txt"
 
