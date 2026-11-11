@@ -11,6 +11,7 @@ from fastapi import FastAPI
 from openai import APIConnectionError
 from pytest_mock import MockerFixture
 
+import app.main
 from app.main import lifespan
 from providers.inference.errors import ModelDiscoveryError
 from providers.inference.registry import ProviderRegistry
@@ -91,6 +92,7 @@ def _patch_lifespan_foreign_dependencies(mocker: MockerFixture) -> None:
     mocker.patch("app.main.setup_model_metrics", new=mocker.AsyncMock())
     mocker.patch("app.main.initialize_database")
     mocker.patch("app.main.create_tables")
+    mocker.patch("app.main.get_engine")
     mocker.patch(
         "app.main.shutdown_background_topic_summary_tasks",
         new=mocker.AsyncMock(),
@@ -168,3 +170,23 @@ async def test_lifespan_propagates_model_discovery_error(
 
     assert exc_info.value.provider_id == "openai"
     assert ProviderRegistry().list_providers() == []
+
+
+@pytest.mark.asyncio
+async def test_lifespan_runs_startup_schema_migrations(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    mocker: MockerFixture,
+) -> None:
+    """Startup runs schema migrations on the initialized database engine."""
+    monkeypatch.setenv(
+        "LIGHTSPEED_STACK_CONFIG_PATH",
+        str(_write_config(tmp_path, inference={"providers": []})),
+    )
+    _patch_lifespan_foreign_dependencies(mocker)
+    mock_run_migrations = mocker.patch("app.main.run_startup_migrations")
+
+    async with lifespan(FastAPI()):
+        pass
+
+    mock_run_migrations.assert_called_once_with(app.main.get_engine.return_value)

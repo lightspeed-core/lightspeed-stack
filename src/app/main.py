@@ -17,7 +17,8 @@ import constants
 import version
 from a2a_storage import A2AStorageFactory
 from app import routers
-from app.database import create_tables, initialize_database
+from app.database import create_tables, get_engine, initialize_database
+from app.schema_migrations import run_startup_migrations
 from app.endpoints.streaming_query import shutdown_background_topic_summary_tasks
 from authorization.azure_token_manager import AzureEntraIDManager
 from client.ogx import AsyncOgxClientHolder
@@ -153,6 +154,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
 
     initialize_database()
     create_tables()
+    run_startup_migrations(get_engine())
 
     # A bad db_path would otherwise surface only on the first request that needs
     # the cache. PostgreSQL stays lazy, an outage there must not stop the service.
