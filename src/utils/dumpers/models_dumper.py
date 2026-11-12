@@ -64,8 +64,6 @@ successful_responses_models: list[type[BaseModel]] = [
     s.PromptDeleteResponse,
     s.PromptResourceResponse,
     s.PromptsListResponse,
-    s.ProviderResponse,
-    s.ProvidersListResponse,
     s.QueryResponse,
     s.RAGInfoResponse,
     s.RAGListResponse,

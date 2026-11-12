@@ -131,8 +131,6 @@
                     "get_tools",
                     "get_skills",
                     "get_shields",
-                    "list_providers",
-                    "get_provider",
                     "list_rags",
                     "get_rag",
                     "get_metrics",
@@ -4872,105 +4870,6 @@
                     "status"
                 ],
                 "title": "ProviderHealthStatus",
-                "type": "object"
-            },
-            "ProviderResponse": {
-                "description": "Model representing a response to get specific provider request.",
-                "examples": [
-                    {
-                        "api": "inference",
-                        "config": {
-                            "api_key": "********"
-                        },
-                        "health": {
-                            "message": "Healthy",
-                            "status": "OK"
-                        },
-                        "provider_id": "openai",
-                        "provider_type": "remote::openai"
-                    }
-                ],
-                "properties": {
-                    "api": {
-                        "description": "The API this provider implements",
-                        "title": "Api",
-                        "type": "string"
-                    },
-                    "config": {
-                        "additionalProperties": true,
-                        "description": "Provider configuration parameters",
-                        "title": "Config",
-                        "type": "object"
-                    },
-                    "health": {
-                        "additionalProperties": true,
-                        "description": "Current health status of the provider",
-                        "title": "Health",
-                        "type": "object"
-                    },
-                    "provider_id": {
-                        "description": "Unique provider identifier",
-                        "title": "Provider Id",
-                        "type": "string"
-                    },
-                    "provider_type": {
-                        "description": "Provider implementation type",
-                        "title": "Provider Type",
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "api",
-                    "config",
-                    "health",
-                    "provider_id",
-                    "provider_type"
-                ],
-                "title": "ProviderResponse",
-                "type": "object"
-            },
-            "ProvidersListResponse": {
-                "description": "Model representing a response to providers request.",
-                "examples": [
-                    {
-                        "providers": {
-                            "agents": [
-                                {
-                                    "provider_id": "meta-reference",
-                                    "provider_type": "inline::meta-reference"
-                                }
-                            ],
-                            "inference": [
-                                {
-                                    "provider_id": "sentence-transformers",
-                                    "provider_type": "inline::sentence-transformers"
-                                },
-                                {
-                                    "provider_id": "openai",
-                                    "provider_type": "remote::openai"
-                                }
-                            ]
-                        }
-                    }
-                ],
-                "properties": {
-                    "providers": {
-                        "additionalProperties": {
-                            "items": {
-                                "additionalProperties": true,
-                                "type": "object"
-                            },
-                            "type": "array"
-                        },
-                        "description": "List of available API types and their corresponding providers",
-                        "title": "Providers",
-                        "type": "object"
-                    }
-                },
-                "required": [
-                    "providers"
-                ],
-                "title": "ProvidersListResponse",
                 "type": "object"
             },
             "QueryResponse": {

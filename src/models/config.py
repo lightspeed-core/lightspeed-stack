@@ -1568,8 +1568,6 @@ class Action(StrEnum):
     GET_TOOLS = "get_tools"
     GET_SKILLS = "get_skills"
     GET_SHIELDS = "get_shields"
-    LIST_PROVIDERS = "list_providers"
-    GET_PROVIDER = "get_provider"
     LIST_RAGS = "list_rags"
     GET_RAG = "get_rag"
     GET_METRICS = "get_metrics"

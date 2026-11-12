@@ -104,8 +104,6 @@ authorization:
 | `get_models` | List available models | `/models` |
 | `get_tools` | List available tools | `/tools`, `/mcp-auth/client-options` |
 | `get_shields` | List safety shields | `/shields` |
-| `list_providers` | List providers | `/providers` |
-| `get_provider` | Get provider details | `/providers/{provider_id}` |
 | `get_metrics` | Access metrics | `/metrics` |
 | `feedback` | Submit feedback | `/feedback` |
 | `model_override` | Override model in queries | N/A (permission flag) |

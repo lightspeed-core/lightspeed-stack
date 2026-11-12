@@ -6,8 +6,6 @@ from models.api.responses.successful.bases import (
 )
 from models.api.responses.successful.catalog import (
     ModelsResponse,
-    ProviderResponse,
-    ProvidersListResponse,
     RAGInfoResponse,
     RAGListResponse,
     ShieldsResponse,
@@ -93,8 +91,6 @@ __all__ = [
     "PromptDeleteResponse",
     "PromptResourceResponse",
     "PromptsListResponse",
-    "ProviderResponse",
-    "ProvidersListResponse",
     "QueryResponse",
     "RAGInfoResponse",
     "RAGListResponse",

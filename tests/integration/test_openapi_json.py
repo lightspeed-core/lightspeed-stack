@@ -226,12 +226,6 @@ def test_servers_section_present_from_url(spec_from_url: dict[str, Any]) -> None
         ("/v1/models", "get", {"200", "401", "403", "500", "503"}),
         ("/v1/tools", "get", {"200", "401", "403", "500", "503"}),
         ("/v1/shields", "get", {"200", "401", "403", "500"}),
-        ("/v1/providers", "get", {"200", "401", "403", "500", "503"}),
-        (
-            "/v1/providers/{provider_id}",
-            "get",
-            {"200", "401", "403", "404", "500", "503"},
-        ),
         ("/v1/rags", "get", {"200", "401", "403", "500", "503"}),
         (
             "/v1/rags/{rag_id}",
@@ -344,12 +338,6 @@ def test_paths_and_responses_exist_from_file(
         ("/v1/models", "get", {"200", "401", "403", "500", "503"}),
         ("/v1/tools", "get", {"200", "401", "403", "500", "503"}),
         ("/v1/shields", "get", {"200", "401", "403", "500"}),
-        ("/v1/providers", "get", {"200", "401", "403", "500", "503"}),
-        (
-            "/v1/providers/{provider_id}",
-            "get",
-            {"200", "401", "403", "404", "500", "503"},
-        ),
         ("/v1/rags", "get", {"200", "401", "403", "500", "503"}),
         (
             "/v1/rags/{rag_id}",
