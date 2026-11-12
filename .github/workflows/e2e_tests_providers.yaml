@@ -2,7 +2,9 @@
 name: E2E Inference Provider Tests
 
 on: 
-  push
+  schedule:
+    - cron: "0 0 * * *"  # Runs once a day at midnight UTC
+  workflow_dispatch:
 
 jobs:
   # Own job so repository secrets are never sent to a runner unless this passes.
@@ -17,7 +19,7 @@ jobs:
       fail-fast: false
       matrix:
         mode: ["server", "library"]
-        environment: ["azure"]
+        environment: ["azure", "vertexai", "watsonx", "bedrock"]
         # Expected default LLM for Behave (matches tests/e2e/configs/run-<env>.yaml).
         # | environment | model_id                                   | provider_id   |
         # |-------------|--------------------------------------------| --------------|
