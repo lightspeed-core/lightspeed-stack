@@ -8,6 +8,10 @@ Unit tests for observability module.
 
 Shared pytest fixtures for obesrvability unit tests.
 
+## [test_redacting_span_exporter.py](test_redacting_span_exporter.py)
+
+Unit tests for the in-process redacting span exporter.
+
 ## [test_responses_splunk.py](test_responses_splunk.py)
 
 Unit tests for Splunk telemetry in the /responses endpoint.

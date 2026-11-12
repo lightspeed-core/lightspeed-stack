@@ -78,7 +78,7 @@ def main() -> int:
         print(resp.text[:1000], file=sys.stderr)
         return 2
 
-    if "response" not in obj:
+    if not isinstance(obj, dict) or "response" not in obj:
         print("JSON is missing 'response' field:", file=sys.stderr)
         print(obj, file=sys.stderr)
         return 3

@@ -258,6 +258,47 @@ storage.</p>
     <p>Available actions in the system.</p>
     <p>Note: this is not a real model, just an enumeration of all action
 names.</p>
+    <h2 id="agentsteppersistencenoopconfiguration">AgentStepPersistenceNoopConfiguration</h2>
+    <p>Agent step persistence disabled (no harness store).</p>
+    <table>
+      <thead>
+        <tr>
+          <th>Field</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>type</td>
+          <td>string</td>
+          <td/>
+        </tr>
+      </tbody>
+    </table>
+    <h2 id="agentsteppersistencesqliteconfiguration">AgentStepPersistenceSqliteConfiguration</h2>
+    <p>SQLite-backed harness step store.</p>
+    <table>
+      <thead>
+        <tr>
+          <th>Field</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>type</td>
+          <td>string</td>
+          <td/>
+        </tr>
+        <tr>
+          <td>sqlite</td>
+          <td/>
+          <td>SQLite file for harness step persistence.</td>
+        </tr>
+      </tbody>
+    </table>
     <h2 id="allowedmodel">AllowedModel</h2>
     <p>Configuration for an allowed inference model.</p>
     <p>Accepts string IDs or dictionaries. String IDs populate both
@@ -940,6 +981,12 @@ endpoints), the default provider and model are used.</td>
           <td>conversation_cache</td>
           <td/>
           <td/>
+        </tr>
+        <tr>
+          <td>agent_step_persistence</td>
+          <td/>
+          <td>Pydantic AI harness StepPersistence storage for agent run
+history.</td>
         </tr>
         <tr>
           <td>compaction</td>
@@ -2603,10 +2650,20 @@ shield. config: Redaction-specific configuration.</p>
 disabled and original scoring used.</td>
         </tr>
         <tr>
+          <td>provider</td>
+          <td>string</td>
+          <td>The <code>id</code> of the inference provider in
+<code>inference.providers</code> that loads this cross-encoder
+(typically <code>sentence_transformers</code>).</td>
+        </tr>
+        <tr>
           <td>model</td>
           <td>string</td>
-          <td>Cross-encoder model name for reranking RAG chunks. Defaults to
-&#x2018;cross-encoder/ms-marco-MiniLM-L6-v2&#x2019; from sentence-transformers.</td>
+          <td>Hugging Face cross-encoder model id used for reranking. When it
+matches <code>provider</code>, the sentence-transformers provider also
+registers it in its catalog at startup (<code>name</code> and backend id
+both set to this value) if not already listed in
+<code>allowed_models</code>.</td>
         </tr>
       </tbody>
     </table>

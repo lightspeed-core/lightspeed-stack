@@ -302,7 +302,10 @@ async def retrieve_agent_response(
                 )
             else:
                 prompt = agent_prompt_text(responses_params)
-            run_result = await agent.run(prompt)
+            run_result = await agent.run(
+                prompt,
+                conversation_id=responses_params.conversation,
+            )
         except (AgentRunError, ApiException, RuntimeError) as exc:
             response = map_agent_inference_error(exc, responses_params.model)
             raise HTTPException(**response.model_dump()) from exc

@@ -84,7 +84,7 @@ def _run_container_command(
 class TestContainerLifecycle:
     """Integration tests for OGX container lifecycle management."""
 
-    def test_container_lifecycle(self, container_runtime):
+    def test_container_lifecycle(self, container_runtime) -> None:
         """Verify the full container lifecycle: build, start, health, files, and cleanup."""
         # Make sure we start clean
         _run_container_command(

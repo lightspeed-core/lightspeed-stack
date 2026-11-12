@@ -1,14 +1,14 @@
 @startuml classes
 set namespaceSeparator none
 class "A2AStateConfiguration" as src.models.config.A2AStateConfiguration {
-  config
+  config : Optional[SQLiteDatabaseConfiguration | PostgreSQLDatabaseConfiguration]
   postgres : Optional[PostgreSQLDatabaseConfiguration]
   sqlite : Optional[SQLiteDatabaseConfiguration]
-  storage_type
+  storage_type : Literal['memory', 'sqlite', 'postgres']
   check_a2a_state_configuration() -> Self
 }
 class "APIKeyTokenConfiguration" as src.models.config.APIKeyTokenConfiguration {
-  api_key : SecretStr
+  api_key
 }
 class "AccessRule" as src.models.config.AccessRule {
   actions : list[Action]
@@ -16,6 +16,22 @@ class "AccessRule" as src.models.config.AccessRule {
 }
 class "Action" as src.models.config.Action {
   name
+}
+class "AgentStepPersistenceNoopConfiguration" as src.models.config.AgentStepPersistenceNoopConfiguration {
+  type : Literal['noop']
+}
+class "AgentStepPersistenceSqliteConfiguration" as src.models.config.AgentStepPersistenceSqliteConfiguration {
+  sqlite
+  type : Literal['sqlite']
+}
+class "AllowedModel" as src.models.config.AllowedModel {
+  metadata : dict[str, Any]
+  model_type : Optional[Literal['llm', 'embedding', 'rerank']]
+  name : str
+  provider_model_id : str
+  normalize_input(data: Any) -> Any
+  strip_nonempty(value: str) -> str
+  validate_metadata(value: dict[str, Any]) -> dict[str, Any]
 }
 class "ApprovalFilter" as src.models.config.ApprovalFilter {
   always : list[str]
@@ -28,44 +44,53 @@ class "ApprovalsConfiguration" as src.models.config.ApprovalsConfiguration {
 }
 class "AuthenticationConfiguration" as src.models.config.AuthenticationConfiguration {
   api_key_config : Optional[APIKeyTokenConfiguration]
-  api_key_configuration
+  api_key_configuration : APIKeyTokenConfiguration
   jwk_config : Optional[JwkConfiguration]
-  jwk_configuration
+  jwk_configuration : JwkConfiguration
   k8s_ca_cert_path : Optional[FilePath]
   k8s_cluster_api : Optional[AnyHttpUrl]
   module : str
   rh_identity_config : Optional[RHIdentityConfiguration]
-  rh_identity_configuration
+  rh_identity_configuration : RHIdentityConfiguration
   skip_for_health_probes : bool
   skip_for_metrics : bool
   skip_tls_verification : bool
   trusted_proxy_config : Optional[TrustedProxyConfiguration]
-  trusted_proxy_configuration
+  trusted_proxy_configuration : TrustedProxyConfiguration
   check_authentication_model() -> Self
 }
 class "AuthorizationConfiguration" as src.models.config.AuthorizationConfiguration {
   access_rules : list[AccessRule]
 }
 class "AzureEntraIdConfiguration" as src.models.config.AzureEntraIdConfiguration {
-  client_id : SecretStr
-  client_secret : SecretStr
+  client_id
+  client_secret
   scope : str
-  tenant_id : SecretStr
+  tenant_id
 }
-class "ByokRag" as src.models.config.ByokRag {
-  db : Optional[str]
-  db_path : Optional[str]
-  embedding_dimension
-  embedding_model : str
-  host : Optional[str]
-  password : Optional[SecretStr]
-  port : Optional[str]
-  rag_id : str
-  rag_type : str
-  score_multiplier : float
-  user : Optional[str]
-  vector_db_id : str
-  validate_rag_type_fields() -> Self
+class "AzureInferenceProviderConfig" as src.models.config.AzureInferenceProviderConfig {
+  api_key : Optional[SecretStr]
+  api_version : Optional[str]
+  base_url : Optional[str]
+  entra_id : Optional[AzureEntraIdConfiguration]
+}
+class "AzureInferenceProviderEntry" as src.models.config.AzureInferenceProviderEntry {
+  config
+  type : Literal['azure']
+}
+class "BedrockInferenceProviderConfig" as src.models.config.BedrockInferenceProviderConfig {
+  api_key : Optional[SecretStr]
+  profile_name : Optional[str]
+  region : Optional[str]
+}
+class "BedrockInferenceProviderEntry" as src.models.config.BedrockInferenceProviderEntry {
+  config
+  type : Literal['bedrock']
+}
+class "ByokConfiguration" as src.models.config.ByokConfiguration {
+  max_chunks
+  stores : list[RagStore]
+  validate_unique_rag_ids() -> Self
 }
 class "CORSConfiguration" as src.models.config.CORSConfiguration {
   allow_credentials : bool
@@ -78,40 +103,44 @@ class "CompactionConfiguration" as src.models.config.CompactionConfiguration {
   buffer_max_ratio : float
   buffer_turns
   enabled : bool
+  summary_prompt : Optional[str]
   threshold_ratio : float
   token_floor
 }
 class "Configuration" as src.models.config.Configuration {
   a2a_state
+  agent_step_persistence
   approvals
   authentication
   authorization : Optional[AuthorizationConfiguration]
   azure_entra_id : Optional[AzureEntraIdConfiguration]
-  byok_rag : list[ByokRag]
   compaction
+  config_format_version : Optional[Literal['legacy', 'unified']]
   conversation_cache
   customization : Optional[Customization]
   database
   deployment_environment : str
   inference
-  ogx
   mcp_servers : list[ModelContextProtocolServer]
   name : str
-  okp
+  observability
+  ogx
   quota_handlers
   rag
-  reranker
   rlsapi_v1
+  saved_prompts
   service
+  shields : list[ShieldConfiguration]
   skills : Optional[SkillsConfiguration]
   splunk : Optional[SplunkConfiguration]
   user_data_collection
+  vector_store
   accept_llama_stack_section_alias(data: Any) -> Any
   check_unified_vs_legacy() -> Self
   dump(filename: str | Path) -> None
   validate_mcp_auth_headers() -> Self
-  validate_reranker_auto_enable() -> Self
   validate_rlsapi_v1_quota_configuration() -> Self
+  validate_shield_names_unique() -> Self
 }
 class "ConfigurationBase" as src.models.config.ConfigurationBase {
   model_config
@@ -135,16 +164,41 @@ class "Customization" as src.models.config.Customization {
   disable_query_system_prompt : bool
   disable_shield_ids_override : bool
   profile_path : Optional[str]
+  responses_request_max_size : int
   system_prompt : Optional[str]
   system_prompt_path : Optional[FilePath]
   check_customization_model() -> Self
 }
 class "DatabaseConfiguration" as src.models.config.DatabaseConfiguration {
-  config
-  db_type
+  config : SQLiteDatabaseConfiguration | PostgreSQLDatabaseConfiguration
+  db_type : Literal['sqlite', 'postgres']
   postgres : Optional[PostgreSQLDatabaseConfiguration]
   sqlite : Optional[SQLiteDatabaseConfiguration]
   check_database_configuration() -> Self
+}
+class "FaissVectorStoreProvider" as src.models.config.FaissVectorStoreProvider {
+  config
+  type : Literal['faiss']
+}
+class "FaissVectorStoreProviderConfig" as src.models.config.FaissVectorStoreProviderConfig {
+  path : str
+}
+class "GraniteGuardianConfig" as src.models.config.GraniteGuardianConfig {
+  api_key : Optional[SecretStr]
+  max_retries
+  model_id : str
+  parallel : StrictBool | Annotated[int, Field(ge=1, le=10)]
+  risks : list[RiskDefinition]
+  streaming_output_check_interval_tokens
+  timeout
+  url : str
+  verify_ssl : bool | str
+  validate_api_key_requires_https() -> Self
+}
+class "GraniteGuardianShieldConfiguration" as src.models.config.GraniteGuardianShieldConfiguration {
+  config
+  name : str
+  provider_id : Literal['granite_guardian']
 }
 class "InMemoryCacheConfig" as src.models.config.InMemoryCacheConfig {
   max_entries
@@ -153,8 +207,22 @@ class "InferenceConfiguration" as src.models.config.InferenceConfiguration {
   context_windows : dict[str, PositiveInt]
   default_model : Optional[str]
   default_provider : Optional[str]
-  providers : list[UnifiedInferenceProvider]
+  max_infer_iters : Optional[PositiveInt]
+  max_tool_calls : Optional[PositiveInt]
+  providers : list[UnifiedInferenceProviderEntry]
   check_default_model_and_provider() -> Self
+  validate_unique_provider_ids(providers: list[UnifiedInferenceProviderEntry]) -> list[UnifiedInferenceProviderEntry]
+}
+class "InferenceProviderEntryBase" as src.models.config.InferenceProviderEntryBase {
+  allowed_models : list[AllowedModel]
+  api_key_env : Optional[str]
+  extra : Optional[dict[str, object]]
+  id : str
+  model_profiles_path : Optional[FilePath]
+  skip_model_discovery : bool
+  default_id_from_type(data: Any) -> Any
+  validate_allowed_models() -> Self
+  validate_id(value: str) -> str
 }
 class "JsonPathOperator" as src.models.config.JsonPathOperator {
   name
@@ -169,7 +237,7 @@ class "JwtConfiguration" as src.models.config.JwtConfiguration {
   username_claim : str
 }
 class "JwtRoleRule" as src.models.config.JwtRoleRule {
-  compiled_regex
+  compiled_regex : Optional[Pattern[str]]
   jsonpath : str
   negate : bool
   operator
@@ -178,6 +246,23 @@ class "JwtRoleRule" as src.models.config.JwtRoleRule {
   check_jsonpath() -> Self
   check_regex_pattern() -> Self
   check_roles() -> Self
+}
+class "ModelContextProtocolServer" as src.models.config.ModelContextProtocolServer {
+  authorization_headers : dict[str, str]
+  headers : list[str]
+  name : str
+  provider_id : str
+  require_approval : Literal['always', 'never'] | ApprovalFilter
+  resolved_authorization_headers : dict[str, str]
+  timeout : Optional[PositiveInt]
+  url : str
+  resolve_auth_headers() -> Self
+  validate_headers(value: list[str]) -> list[str]
+}
+class "ObservabilityConfiguration" as src.models.config.ObservabilityConfiguration {
+  otel : dict[str, str]
+  from_environment() -> 'ObservabilityConfiguration'
+  redact_secrets(value: dict[str, str]) -> dict[str, str]
 }
 class "OgxConfiguration" as src.models.config.OgxConfiguration {
   allow_degraded_mode : Optional[bool]
@@ -191,34 +276,54 @@ class "OgxConfiguration" as src.models.config.OgxConfiguration {
   use_as_library_client : Optional[bool]
   check_ogx_model() -> Self
 }
-class "ModelContextProtocolServer" as src.models.config.ModelContextProtocolServer {
-  authorization_headers : dict[str, str]
-  headers : list[str]
-  name : str
-  provider_id : str
-  require_approval : Literal['always', 'never'] | ApprovalFilter
-  resolved_authorization_headers
-  timeout : Optional[PositiveInt]
-  url : str
-  resolve_auth_headers() -> Self
-  validate_headers(value: list[str]) -> list[str]
-}
 class "OkpConfiguration" as src.models.config.OkpConfiguration {
   chunk_filter_query : Optional[str]
+  max_chunks
   offline : bool
   rhokp_url : Optional[AnyHttpUrl]
+  search_mode : Optional[Literal['semantic', 'hybrid', 'keyword']]
+}
+class "OpenAIInferenceProviderConfig" as src.models.config.OpenAIInferenceProviderConfig {
+  api_key : Optional[SecretStr]
+  base_url : Optional[str]
+}
+class "OpenAIInferenceProviderEntry" as src.models.config.OpenAIInferenceProviderEntry {
+  config
+  type : Literal['openai']
+}
+class "PgvectorVectorStoreProvider" as src.models.config.PgvectorVectorStoreProvider {
+  config
+  type : Literal['pgvector']
+}
+class "PgvectorVectorStoreProviderConfig" as src.models.config.PgvectorVectorStoreProviderConfig {
+  db : Optional[str]
+  host : Optional[str]
+  password : Optional[SecretStr]
+  port : Optional[str | int]
+  user : Optional[str]
+  apply_pgvector_env_defaults() -> Self
 }
 class "PostgreSQLDatabaseConfiguration" as src.models.config.PostgreSQLDatabaseConfiguration {
   ca_cert_path : Optional[FilePath]
   db : str
   gss_encmode : Literal['disable', 'prefer', 'require']
   host : str
-  namespace : Optional[str]
-  password : SecretStr
+  namespace : Annotated[Optional[str], StringConstraints(pattern='^[A-Za-z_][A-Za-z0-9_]*$')]
+  password
   port
   ssl_mode : Literal['disable', 'allow', 'prefer', 'require', 'verify-ca', 'verify-full']
   user : str
   check_postgres_configuration() -> Self
+}
+class "QuestionValidityConfig" as src.models.config.QuestionValidityConfig {
+  invalid_question_response : str
+  model_id : str
+  model_prompt : str
+}
+class "QuestionValidityShieldConfiguration" as src.models.config.QuestionValidityShieldConfiguration {
+  config
+  name : str
+  provider_id : Literal['question_validity']
 }
 class "QuotaHandlersConfiguration" as src.models.config.QuotaHandlersConfiguration {
   enable_token_history : bool
@@ -226,6 +331,7 @@ class "QuotaHandlersConfiguration" as src.models.config.QuotaHandlersConfigurati
   postgres : Optional[PostgreSQLDatabaseConfiguration]
   scheduler
   sqlite : Optional[SQLiteDatabaseConfiguration]
+  check_limiter_periods() -> Self
 }
 class "QuotaLimiterConfiguration" as src.models.config.QuotaLimiterConfiguration {
   initial_quota
@@ -244,13 +350,68 @@ class "RHIdentityConfiguration" as src.models.config.RHIdentityConfiguration {
   required_entitlements : Optional[list[str]]
 }
 class "RagConfiguration" as src.models.config.RagConfiguration {
-  inline : list[str]
-  tool : list[str]
+  byok
+  okp
+  retrieval
+  validate_reranker_auto_enable() -> Self
+  validate_retrieval_sources() -> Self
+}
+class "RagStore" as src.models.config.RagStore {
+  backend : str
+  db : Optional[str]
+  db_path : Optional[str]
+  embedding_dimension
+  embedding_model : str
+  host : Optional[str]
+  password : Optional[SecretStr]
+  port : Optional[str | int]
+  rag_id : str
+  relevance_cutoff_score : float
+  score_multiplier : float
+  user : Optional[str]
+  vector_db_id : str
+  validate_backend(value: str) -> str
+  validate_backend_fields() -> Self
+}
+class "RedactionConfig" as src.models.config.RedactionConfig {
+  case_sensitive : bool
+  compiled_patterns : CompiledPatterns
+  rules : list[RedactionRule]
+  compile_patterns() -> Self
+}
+class "RedactionRule" as src.models.config.RedactionRule {
+  case_sensitive : Optional[bool]
+  pattern : str
+  replacement : str
+}
+class "RedactionShieldConfiguration" as src.models.config.RedactionShieldConfiguration {
+  config
+  name : str
+  provider_id : Literal['redaction']
 }
 class "RerankerConfiguration" as src.models.config.RerankerConfiguration {
   enabled : bool
   model : str
+  provider : str
   mark_as_explicitly_configured() -> Self
+}
+class "RetrievalConfiguration" as src.models.config.RetrievalConfiguration {
+  inline
+  tool
+}
+class "RetrievalStrategyConfiguration" as src.models.config.RetrievalStrategyConfiguration {
+  max_chunks
+  reranker : Optional[RerankerConfiguration]
+  sources : list[str]
+}
+class "RiskDefinition" as src.models.config.RiskDefinition {
+  description : str
+  enable_thinking : bool
+  enabled : bool
+  name : str
+  points : list[Literal['input', 'output', 'tool']]
+  threshold : float
+  violation_message : str
 }
 class "RlsapiV1Configuration" as src.models.config.RlsapiV1Configuration {
   allow_verbose_infer : bool
@@ -259,13 +420,30 @@ class "RlsapiV1Configuration" as src.models.config.RlsapiV1Configuration {
 class "SQLiteDatabaseConfiguration" as src.models.config.SQLiteDatabaseConfiguration {
   db_path : str
 }
+class "SavedPromptsConfiguration" as src.models.config.SavedPromptsConfiguration {
+  max_content_length
+  max_display_name_length
+  max_prompts_per_user
+}
+class "SentenceTransformersInferenceProviderConfig" as src.models.config.SentenceTransformersInferenceProviderConfig {
+  cache_dir : Optional[str]
+  device : Optional[str]
+}
+class "SentenceTransformersInferenceProviderEntry" as src.models.config.SentenceTransformersInferenceProviderEntry {
+  config
+  type : Literal['sentence_transformers']
+  require_allowed_models() -> Self
+}
 class "ServiceConfiguration" as src.models.config.ServiceConfiguration {
   access_log : bool
   auth_enabled : bool
   base_url : Optional[str]
   color_log : bool
   cors
+  delete_file_after_vector_store_attach : bool
   host : str
+  max_concurrent_file_uploads
+  max_concurrent_vector_store_attaches
   port
   root_path : str
   tls_config
@@ -300,15 +478,8 @@ class "TrustedProxyServiceAccount" as src.models.config.TrustedProxyServiceAccou
   name : str
   namespace : str
 }
-class "UnifiedInferenceProvider" as src.models.config.UnifiedInferenceProvider {
-  allowed_models : Optional[list[str]]
-  api_key_env : Optional[str]
-  extra : dict[str, object]
-  id : str | None
-  type : Literal['openai', 'ollama', 'vllm', 'sentence_transformers', 'azure', 'vertexai', 'watsonx', 'vllm_rhaiis', 'vllm_rhel_ai']
-}
 class "UnifiedOgxConfig" as src.models.config.UnifiedOgxConfig {
-  baseline : Literal['default', 'empty']
+  baseline : Literal['default', 'empty', 'byo-llm']
   native_override : dict[str, object]
   profile : Optional[str]
 }
@@ -319,67 +490,158 @@ class "UserDataCollection" as src.models.config.UserDataCollection {
   transcripts_storage : Optional[str]
   check_storage_location_is_set_when_needed() -> Self
 }
+class "VectorStoreConfiguration" as src.models.config.VectorStoreConfiguration {
+  default_provider : Optional[str]
+  providers : list[VectorStoreProvider]
+  validate_providers_and_default() -> Self
+}
+class "VectorStoreProviderBase" as src.models.config.VectorStoreProviderBase {
+  embedding_dimension
+  embedding_model : str
+  id : str
+  validate_id(value: str) -> str
+}
+class "VertexAIInferenceProviderConfig" as src.models.config.VertexAIInferenceProviderConfig {
+  location : Optional[str]
+  project : Optional[str]
+}
+class "VertexAIInferenceProviderEntry" as src.models.config.VertexAIInferenceProviderEntry {
+  config
+  type : Literal['vertexai']
+}
+class "VllmInferenceProviderConfig" as src.models.config.VllmInferenceProviderConfig {
+  api_key : Optional[SecretStr]
+  base_url : Optional[str]
+}
+class "VllmInferenceProviderEntry" as src.models.config.VllmInferenceProviderEntry {
+  config
+  type : Literal['vllm']
+}
+class "WatsonxInferenceProviderConfig" as src.models.config.WatsonxInferenceProviderConfig {
+  api_key : Optional[SecretStr]
+  base_url : Optional[str]
+  project_id : Optional[str]
+}
+class "WatsonxInferenceProviderEntry" as src.models.config.WatsonxInferenceProviderEntry {
+  config
+  type : Literal['watsonx']
+}
 src.models.config.A2AStateConfiguration --|> src.models.config.ConfigurationBase
 src.models.config.APIKeyTokenConfiguration --|> src.models.config.ConfigurationBase
 src.models.config.AccessRule --|> src.models.config.ConfigurationBase
+src.models.config.AgentStepPersistenceNoopConfiguration --|> src.models.config.ConfigurationBase
+src.models.config.AgentStepPersistenceSqliteConfiguration --|> src.models.config.ConfigurationBase
+src.models.config.AllowedModel --|> src.models.config.ConfigurationBase
 src.models.config.ApprovalFilter --|> src.models.config.ConfigurationBase
 src.models.config.ApprovalsConfiguration --|> src.models.config.ConfigurationBase
 src.models.config.AuthenticationConfiguration --|> src.models.config.ConfigurationBase
 src.models.config.AuthorizationConfiguration --|> src.models.config.ConfigurationBase
 src.models.config.AzureEntraIdConfiguration --|> src.models.config.ConfigurationBase
-src.models.config.ByokRag --|> src.models.config.ConfigurationBase
+src.models.config.AzureInferenceProviderConfig --|> src.models.config.ConfigurationBase
+src.models.config.AzureInferenceProviderEntry --|> src.models.config.InferenceProviderEntryBase
+src.models.config.BedrockInferenceProviderConfig --|> src.models.config.ConfigurationBase
+src.models.config.BedrockInferenceProviderEntry --|> src.models.config.InferenceProviderEntryBase
+src.models.config.ByokConfiguration --|> src.models.config.ConfigurationBase
 src.models.config.CORSConfiguration --|> src.models.config.ConfigurationBase
 src.models.config.CompactionConfiguration --|> src.models.config.ConfigurationBase
 src.models.config.Configuration --|> src.models.config.ConfigurationBase
 src.models.config.ConversationHistoryConfiguration --|> src.models.config.ConfigurationBase
 src.models.config.Customization --|> src.models.config.ConfigurationBase
 src.models.config.DatabaseConfiguration --|> src.models.config.ConfigurationBase
+src.models.config.FaissVectorStoreProvider --|> src.models.config.VectorStoreProviderBase
+src.models.config.FaissVectorStoreProviderConfig --|> src.models.config.ConfigurationBase
+src.models.config.GraniteGuardianConfig --|> src.models.config.ConfigurationBase
+src.models.config.GraniteGuardianShieldConfiguration --|> src.models.config.ConfigurationBase
 src.models.config.InMemoryCacheConfig --|> src.models.config.ConfigurationBase
 src.models.config.InferenceConfiguration --|> src.models.config.ConfigurationBase
+src.models.config.InferenceProviderEntryBase --|> src.models.config.ConfigurationBase
 src.models.config.JwkConfiguration --|> src.models.config.ConfigurationBase
 src.models.config.JwtConfiguration --|> src.models.config.ConfigurationBase
 src.models.config.JwtRoleRule --|> src.models.config.ConfigurationBase
-src.models.config.OgxConfiguration --|> src.models.config.ConfigurationBase
 src.models.config.ModelContextProtocolServer --|> src.models.config.ConfigurationBase
+src.models.config.ObservabilityConfiguration --|> src.models.config.ConfigurationBase
+src.models.config.OgxConfiguration --|> src.models.config.ConfigurationBase
 src.models.config.OkpConfiguration --|> src.models.config.ConfigurationBase
+src.models.config.OpenAIInferenceProviderConfig --|> src.models.config.ConfigurationBase
+src.models.config.OpenAIInferenceProviderEntry --|> src.models.config.InferenceProviderEntryBase
+src.models.config.PgvectorVectorStoreProvider --|> src.models.config.VectorStoreProviderBase
+src.models.config.PgvectorVectorStoreProviderConfig --|> src.models.config.ConfigurationBase
 src.models.config.PostgreSQLDatabaseConfiguration --|> src.models.config.ConfigurationBase
+src.models.config.QuestionValidityConfig --|> src.models.config.ConfigurationBase
+src.models.config.QuestionValidityShieldConfiguration --|> src.models.config.ConfigurationBase
 src.models.config.QuotaHandlersConfiguration --|> src.models.config.ConfigurationBase
 src.models.config.QuotaLimiterConfiguration --|> src.models.config.ConfigurationBase
 src.models.config.QuotaSchedulerConfiguration --|> src.models.config.ConfigurationBase
 src.models.config.RHIdentityConfiguration --|> src.models.config.ConfigurationBase
 src.models.config.RagConfiguration --|> src.models.config.ConfigurationBase
+src.models.config.RagStore --|> src.models.config.ConfigurationBase
+src.models.config.RedactionConfig --|> src.models.config.ConfigurationBase
+src.models.config.RedactionRule --|> src.models.config.ConfigurationBase
+src.models.config.RedactionShieldConfiguration --|> src.models.config.ConfigurationBase
 src.models.config.RerankerConfiguration --|> src.models.config.ConfigurationBase
+src.models.config.RetrievalConfiguration --|> src.models.config.ConfigurationBase
+src.models.config.RetrievalStrategyConfiguration --|> src.models.config.ConfigurationBase
+src.models.config.RiskDefinition --|> src.models.config.ConfigurationBase
 src.models.config.RlsapiV1Configuration --|> src.models.config.ConfigurationBase
 src.models.config.SQLiteDatabaseConfiguration --|> src.models.config.ConfigurationBase
+src.models.config.SavedPromptsConfiguration --|> src.models.config.ConfigurationBase
+src.models.config.SentenceTransformersInferenceProviderConfig --|> src.models.config.ConfigurationBase
+src.models.config.SentenceTransformersInferenceProviderEntry --|> src.models.config.InferenceProviderEntryBase
 src.models.config.ServiceConfiguration --|> src.models.config.ConfigurationBase
 src.models.config.SkillsConfiguration --|> src.models.config.ConfigurationBase
 src.models.config.SplunkConfiguration --|> src.models.config.ConfigurationBase
 src.models.config.TLSConfiguration --|> src.models.config.ConfigurationBase
 src.models.config.TrustedProxyConfiguration --|> src.models.config.ConfigurationBase
 src.models.config.TrustedProxyServiceAccount --|> src.models.config.ConfigurationBase
-src.models.config.UnifiedInferenceProvider --|> src.models.config.ConfigurationBase
 src.models.config.UnifiedOgxConfig --|> src.models.config.ConfigurationBase
 src.models.config.UserDataCollection --|> src.models.config.ConfigurationBase
-src.models.config.A2AStateConfiguration --* src.models.config.Configuration : a2a_state
-src.models.config.ApprovalsConfiguration --* src.models.config.Configuration : approvals
-src.models.config.AuthenticationConfiguration --* src.models.config.Configuration : authentication
-src.models.config.CORSConfiguration --* src.models.config.ServiceConfiguration : cors
-src.models.config.CompactionConfiguration --* src.models.config.Configuration : compaction
-src.models.config.ConversationHistoryConfiguration --* src.models.config.Configuration : conversation_cache
+src.models.config.VectorStoreConfiguration --|> src.models.config.ConfigurationBase
+src.models.config.VectorStoreProviderBase --|> src.models.config.ConfigurationBase
+src.models.config.VertexAIInferenceProviderConfig --|> src.models.config.ConfigurationBase
+src.models.config.VertexAIInferenceProviderEntry --|> src.models.config.InferenceProviderEntryBase
+src.models.config.VllmInferenceProviderConfig --|> src.models.config.ConfigurationBase
+src.models.config.VllmInferenceProviderEntry --|> src.models.config.InferenceProviderEntryBase
+src.models.config.WatsonxInferenceProviderConfig --|> src.models.config.ConfigurationBase
+src.models.config.WatsonxInferenceProviderEntry --|> src.models.config.InferenceProviderEntryBase
+src.models.config.Configuration --> src.models.config.A2AStateConfiguration : a2a_state
+src.models.config.Configuration --> src.models.config.ApprovalsConfiguration : approvals
+src.models.config.Configuration --> src.models.config.AuthenticationConfiguration : authentication
+src.models.config.AzureInferenceProviderEntry --> src.models.config.AzureInferenceProviderConfig : config
+src.models.config.BedrockInferenceProviderEntry --> src.models.config.BedrockInferenceProviderConfig : config
+src.models.config.RagConfiguration --> src.models.config.ByokConfiguration : byok
+src.models.config.ServiceConfiguration --> src.models.config.CORSConfiguration : cors
+src.models.config.Configuration --> src.models.config.CompactionConfiguration : compaction
+src.models.config.Configuration --> src.models.config.ConversationHistoryConfiguration : conversation_cache
+src.models.config.Configuration --> src.models.config.DatabaseConfiguration : database
+src.models.config.FaissVectorStoreProvider --> src.models.config.FaissVectorStoreProviderConfig : config
+src.models.config.GraniteGuardianShieldConfiguration --> src.models.config.GraniteGuardianConfig : config
+src.models.config.Configuration --> src.models.config.InferenceConfiguration : inference
+src.models.config.JwtRoleRule --> src.models.config.JsonPathOperator : operator
+src.models.config.JwkConfiguration --> src.models.config.JwtConfiguration : jwt_configuration
+src.models.config.Configuration --> src.models.config.ObservabilityConfiguration : observability
+src.models.config.Configuration --> src.models.config.OgxConfiguration : ogx
+src.models.config.RagConfiguration --> src.models.config.OkpConfiguration : okp
+src.models.config.OpenAIInferenceProviderEntry --> src.models.config.OpenAIInferenceProviderConfig : config
+src.models.config.PgvectorVectorStoreProvider --> src.models.config.PgvectorVectorStoreProviderConfig : config
+src.models.config.QuestionValidityShieldConfiguration --> src.models.config.QuestionValidityConfig : config
+src.models.config.Configuration --> src.models.config.QuotaHandlersConfiguration : quota_handlers
+src.models.config.QuotaHandlersConfiguration --> src.models.config.QuotaSchedulerConfiguration : scheduler
+src.models.config.Configuration --> src.models.config.RagConfiguration : rag
+src.models.config.RedactionShieldConfiguration --> src.models.config.RedactionConfig : config
+src.models.config.RagConfiguration --> src.models.config.RetrievalConfiguration : retrieval
+src.models.config.RetrievalConfiguration --> src.models.config.RetrievalStrategyConfiguration : inline
+src.models.config.RetrievalConfiguration --> src.models.config.RetrievalStrategyConfiguration : tool
+src.models.config.Configuration --> src.models.config.RlsapiV1Configuration : rlsapi_v1
+src.models.config.AgentStepPersistenceSqliteConfiguration --> src.models.config.SQLiteDatabaseConfiguration : sqlite
+src.models.config.Configuration --> src.models.config.SavedPromptsConfiguration : saved_prompts
+src.models.config.SentenceTransformersInferenceProviderEntry --> src.models.config.SentenceTransformersInferenceProviderConfig : config
+src.models.config.Configuration --> src.models.config.ServiceConfiguration : service
+src.models.config.ServiceConfiguration --> src.models.config.TLSConfiguration : tls_config
+src.models.config.Configuration --> src.models.config.UserDataCollection : user_data_collection
+src.models.config.Configuration --> src.models.config.VectorStoreConfiguration : vector_store
+src.models.config.VertexAIInferenceProviderEntry --> src.models.config.VertexAIInferenceProviderConfig : config
+src.models.config.VllmInferenceProviderEntry --> src.models.config.VllmInferenceProviderConfig : config
+src.models.config.WatsonxInferenceProviderEntry --> src.models.config.WatsonxInferenceProviderConfig : config
 src.models.config.CustomProfile --* src.models.config.Customization : custom_profile
-src.models.config.DatabaseConfiguration --* src.models.config.Configuration : database
-src.models.config.InferenceConfiguration --* src.models.config.Configuration : inference
-src.models.config.JsonPathOperator --* src.models.config.JwtRoleRule : operator
-src.models.config.JwtConfiguration --* src.models.config.JwkConfiguration : jwt_configuration
-src.models.config.OgxConfiguration --* src.models.config.Configuration : ogx
-src.models.config.OkpConfiguration --* src.models.config.Configuration : okp
-src.models.config.QuotaHandlersConfiguration --* src.models.config.Configuration : quota_handlers
-src.models.config.QuotaSchedulerConfiguration --* src.models.config.QuotaHandlersConfiguration : scheduler
-src.models.config.RagConfiguration --* src.models.config.Configuration : rag
-src.models.config.RerankerConfiguration --* src.models.config.Configuration : reranker
-src.models.config.RlsapiV1Configuration --* src.models.config.Configuration : rlsapi_v1
 src.models.config.SQLiteDatabaseConfiguration --* src.models.config.DatabaseConfiguration : sqlite
-src.models.config.ServiceConfiguration --* src.models.config.Configuration : service
-src.models.config.TLSConfiguration --* src.models.config.ServiceConfiguration : tls_config
-src.models.config.UserDataCollection --* src.models.config.Configuration : user_data_collection
 @enduml

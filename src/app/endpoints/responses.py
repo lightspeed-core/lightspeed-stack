@@ -634,6 +634,19 @@ async def handle_responses_with_tracing(  # pylint: disable=too-many-locals
     )
     updated_request.conversation = response_context.conversation
     updated_request.generate_topic_summary = response_context.generate_topic_summary
+    # A store=false request with no conversation or previous_response_id is
+    # stateless: the client sends the full history as input on every request
+    # (e.g. a Chat Completions proxy). Nothing is persisted for it, so don't
+    # attach the auto-created conversation (OGX would copy the whole
+    # history into it, failing once that exceeds its 20-items-per-add limit),
+    # and don't generate a topic summary that would only be thrown away.
+    stateless = (
+        not original_request.store
+        and not original_request.conversation
+        and not original_request.previous_response_id
+    )
+    if stateless:
+        updated_request.generate_topic_summary = False
     client = AsyncOgxClientHolder().get_client()
 
     # LCORE-specific: Automatically select model if not provided in request
@@ -718,6 +731,8 @@ async def handle_responses_with_tracing(  # pylint: disable=too-many-locals
         updated_request.max_tool_calls = configuration.inference.max_tool_calls
 
     api_params = ResponsesApiParams.model_validate(updated_request.model_dump())
+    if stateless:
+        api_params = api_params.model_copy(update={"omit_conversation": True})
 
     # Compact the conversation if it is approaching the context window limit.
     # /v1/responses is OpenAI-compatible, so compaction is silent (no custom SSE

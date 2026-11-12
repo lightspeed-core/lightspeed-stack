@@ -11,7 +11,9 @@ from pydantic_ai.agent import Agent
 from pydantic_ai.capabilities import AbstractCapability, AgentCapability
 from pydantic_ai_skills import SkillsCapability
 
+from conversations.agent_history.service import AgentHistoryService
 from log import get_logger
+from models.common.responses.responses_api_params import ResponsesApiParams
 from models.common.skills import SkillMetadata
 from models.common.tools import CatalogTool, CatalogToolParameter
 from models.config import (
@@ -31,12 +33,13 @@ from utils.shields import get_shields_for_request
 
 if TYPE_CHECKING:
     from configuration import AppConfig
-    from models.common.responses.responses_api_params import ResponsesApiParams
 
 _AGENT_SKILLS_PROVIDER_ID: Final[str] = "agent-skills"
 _AGENT_SKILLS_TOOLGROUP_ID: Final[str] = "builtin::agent-skills"
 _BUILTIN_CAPABILITY_SERVER_SOURCE: Final[str] = "builtin"
 _CAPABILITY_TOOL_TYPE: Final[str] = "tool"
+
+logger = get_logger(__name__)
 
 
 def _skills_capability(
@@ -213,6 +216,8 @@ def _agent_capabilities(
 
     """
     capabilities: list[AgentCapability[object]] = []
+    if step_persistence := AgentHistoryService().step_persistence:
+        capabilities.append(step_persistence)
     for shield in shields or []:
         capabilities.append(_shield_capability(shield))
     if skills_capability := _skills_capability(skills):
@@ -227,9 +232,6 @@ def _agent_capabilities(
             )
         ]
     return capabilities or None
-
-
-logger = get_logger(__name__)
 
 
 def captured_output_items(agent: Any) -> list[Any]:
@@ -281,6 +283,7 @@ def build_agent(
         responses_params: Parameters produced by ``prepare_responses_params`` for this turn.
         config: Application configuration. Agent skills (``config.skills``) and the
             configured guardrail shields (``config.shields``) are extracted from it.
+            ``agent_step_persistence`` configures PAI ``StepPersistence`` storage.
         shields: Optional list of shield names to run for this turn, matching each
             shield's configured ``name``. Mirrors ``QueryRequest.shield_ids``: if
             ``None``, all shields configured in ``config.shields`` run; an empty

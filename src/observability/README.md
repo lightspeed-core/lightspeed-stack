@@ -8,6 +8,10 @@ Observability module for telemetry and event collection.
 
 Pyroscope CPU profiling initialization for Lightspeed Core Stack.
 
+## [redacting_span_exporter.py](redacting_span_exporter.py)
+
+Span exporter that redacts PII from span content before delegating to OTLP.
+
 ## [responses_telemetry.py](responses_telemetry.py)
 
 Splunk telemetry helpers for the Responses API endpoint.

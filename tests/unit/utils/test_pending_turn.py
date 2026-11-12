@@ -150,6 +150,32 @@ def test_compacted_request_needs_its_original_input() -> None:
         )
 
 
+@pytest.mark.asyncio
+async def test_stateless_request_without_conversation_stores_nothing() -> None:
+    """A store=false request that drops the conversation without compaction is accepted.
+
+    The /v1/responses endpoint omits the auto-created conversation for stateless
+    requests (store=false with no conversation context); there is no original
+    input then, and none is needed since the turn is not stored.
+    """
+    client = RecordingClient()
+    params = ResponsesApiParams(
+        input=QUERY,
+        model=MODEL,
+        conversation=CONVERSATION,
+        store=False,
+        stream=False,
+        omit_conversation=True,
+    )
+
+    turn = PendingTurn.for_request(client, params)  # type: ignore[arg-type]
+
+    assert await turn.store_completed([ANSWER]) is False
+    turn.ensure_settled()
+    assert await turn.store_blocked(REFUSAL) is False
+    assert client.writes == 0
+
+
 # --- blocked and interrupted turns ---
 
 

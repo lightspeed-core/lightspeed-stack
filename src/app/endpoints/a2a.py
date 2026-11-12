@@ -656,7 +656,9 @@ class A2AAgentExecutor(AgentExecutor):
         text_parts: list[str] = []
         run_result: Optional[AgentRunResult[str]] = None
 
-        async with agent.run_stream_events(prompt) as stream:
+        async with agent.run_stream_events(
+            prompt, conversation_id=conversation_id
+        ) as stream:
             async for event in stream:
                 if isinstance(event, AgentRunResultEvent):
                     run_result = event.result

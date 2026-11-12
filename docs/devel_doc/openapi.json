@@ -12314,6 +12314,42 @@
                 "title": "AgentSkill",
                 "description": "Represents a distinct capability or function that an agent can perform."
             },
+            "AgentStepPersistenceNoopConfiguration": {
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "const": "noop",
+                        "title": "Type",
+                        "default": "noop"
+                    }
+                },
+                "additionalProperties": false,
+                "type": "object",
+                "title": "AgentStepPersistenceNoopConfiguration",
+                "description": "Agent step persistence disabled (no harness store)."
+            },
+            "AgentStepPersistenceSqliteConfiguration": {
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "const": "sqlite",
+                        "title": "Type",
+                        "default": "sqlite"
+                    },
+                    "sqlite": {
+                        "$ref": "#/components/schemas/SQLiteDatabaseConfiguration",
+                        "title": "SQLite database",
+                        "description": "SQLite file for harness step persistence."
+                    }
+                },
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                    "sqlite"
+                ],
+                "title": "AgentStepPersistenceSqliteConfiguration",
+                "description": "SQLite-backed harness step store."
+            },
             "AllowedModel": {
                 "properties": {
                     "name": {
@@ -13483,6 +13519,25 @@
                         "$ref": "#/components/schemas/ConversationHistoryConfiguration",
                         "title": "Conversation history configuration"
                     },
+                    "agent_step_persistence": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/AgentStepPersistenceNoopConfiguration"
+                            },
+                            {
+                                "$ref": "#/components/schemas/AgentStepPersistenceSqliteConfiguration"
+                            }
+                        ],
+                        "title": "Agent step persistence",
+                        "description": "Pydantic AI harness StepPersistence storage for agent run history.",
+                        "discriminator": {
+                            "propertyName": "type",
+                            "mapping": {
+                                "noop": "#/components/schemas/AgentStepPersistenceNoopConfiguration",
+                                "sqlite": "#/components/schemas/AgentStepPersistenceSqliteConfiguration"
+                            }
+                        }
+                    },
                     "compaction": {
                         "$ref": "#/components/schemas/CompactionConfiguration",
                         "title": "Conversation compaction configuration",
@@ -14425,7 +14480,7 @@
                         "type": "integer",
                         "title": "Maximum character length for the serialized responses request body",
                         "description": "Maximum character length for the serialized /v1/response responses request body",
-                        "default": 131072
+                        "default": 1048576
                     }
                 },
                 "additionalProperties": false,

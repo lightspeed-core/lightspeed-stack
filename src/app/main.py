@@ -22,6 +22,7 @@ from app.endpoints.streaming_query import shutdown_background_topic_summary_task
 from authorization.azure_token_manager import AzureEntraIDManager
 from client.ogx import AsyncOgxClientHolder
 from configuration import configuration
+from conversations.agent_history.service import AgentHistoryService
 from log import get_logger
 from metrics import recording
 from metrics.utils import setup_model_metrics
@@ -160,6 +161,8 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         == constants.CACHE_TYPE_SQLITE
     ):
         _ = configuration.conversation_cache
+
+    AgentHistoryService().initialize(configuration.agent_step_persistence_configuration)
 
     yield
 

@@ -367,6 +367,73 @@ class TestResponsesEndpointHandler:
         assert response.conversation == "conv_new_123"
 
     @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("store", "conversation", "previous_response_id", "stateless"),
+        [
+            (False, None, None, True),
+            (True, None, None, False),
+            (False, VALID_CONV_ID, None, False),
+            (False, None, "resp_prev_123", False),
+        ],
+    )
+    async def test_stateless_request_omits_conversation_and_topic_summary(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+        self,
+        dummy_request: Request,
+        minimal_config: AppConfig,
+        mocker: MockerFixture,
+        store: bool,
+        conversation: Optional[str],
+        previous_response_id: Optional[str],
+        stateless: bool,
+    ) -> None:
+        """Test store=false without conversation context doesn't send the auto-created conversation.
+
+        Stateless clients resend the full history as input each request; attaching
+        the auto-created conversation would make Llama Stack copy all of it into
+        the conversation (failing beyond 20 items), and a topic summary would be
+        generated only to be discarded.
+        """
+        responses_request = ResponsesRequest(
+            input="Hello",
+            store=store,
+            conversation=conversation,
+            previous_response_id=previous_response_id,
+        )
+        _patch_base(mocker, minimal_config)
+        _patch_client(mocker)
+        _patch_resolve_response_context(
+            mocker, conversation=VALID_CONV_ID, generate_topic_summary=True
+        )
+        mocker.patch(
+            f"{MODULE}.select_model_for_responses",
+            new=mocker.AsyncMock(return_value="provider/model1"),
+        )
+        mocker.patch(
+            f"{MODULE}.check_model_configured",
+            new=mocker.AsyncMock(return_value=True),
+        )
+        _patch_rag(mocker)
+        _patch_moderation(mocker, decision="passed")
+        mock_handle = mocker.patch(
+            f"{MODULE}.handle_non_streaming_response",
+            new=mocker.AsyncMock(return_value=_make_responses_response()),
+        )
+
+        await responses_endpoint_handler(
+            request=dummy_request,
+            responses_request=responses_request,
+            auth=MOCK_AUTH,
+            mcp_headers={},
+        )
+
+        api_params = mock_handle.call_args.kwargs["api_params"]
+        context = mock_handle.call_args.kwargs["context"]
+        assert api_params.omit_conversation is stateless
+        sends_conversation = not stateless and previous_response_id is None
+        assert ("conversation" in api_params.model_dump()) is sends_conversation
+        assert context.generate_topic_summary is not stateless
+
+    @pytest.mark.asyncio
     async def test_responses_with_conversation_validates_and_retrieves(
         self,
         dummy_request: Request,

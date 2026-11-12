@@ -8,12 +8,15 @@ import pytest
 from fastapi import HTTPException
 from ogx.core.library_client import AsyncOGXAsLibraryClient
 from ogx_client import AsyncOgxClient
+from pydantic_ai_harness.step_persistence import StepPersistence
 from pydantic_ai_skills import SkillsCapability
 from pytest_mock import MockerFixture
 
 from configuration import AppConfig
+from conversations.agent_history.service import AgentHistoryService
 from models.common.responses.responses_api_params import ResponsesApiParams
 from models.config import (
+    AgentStepPersistenceNoopConfiguration,
     QuestionValidityConfig,
     QuestionValidityShieldConfiguration,
     RedactionConfig,
@@ -111,6 +114,12 @@ class TestShieldCapability:
 class TestAgentCapabilities:
     """Tests for _agent_capabilities."""
 
+    @pytest.fixture(autouse=True)
+    def _noop_agent_step_persistence(self) -> None:
+        """Capability tests default to persistence off unless a case enables it."""
+        AgentHistoryService().clear_store()
+        AgentHistoryService().initialize(AgentStepPersistenceNoopConfiguration())
+
     def test_returns_none_when_no_capabilities_configured(self) -> None:
         """Test that missing configuration yields None for Agent construction."""
         assert _agent_capabilities(None) is None
@@ -169,6 +178,48 @@ class TestAgentCapabilities:
 
 class TestBuildAgent:
     """Tests for the build_agent factory function."""
+
+    def test_build_agent_omits_step_persistence_when_unconfigured(
+        self,
+        mocker: MockerFixture,
+        mock_client: AsyncOgxClient,
+        mock_params: ResponsesApiParams,
+    ) -> None:
+        """Noop agent step persistence does not attach StepPersistence."""
+        mock_agent_ctor = mocker.patch("utils.pydantic_ai_helpers.Agent")
+        mocker.patch(
+            "pydantic_ai_lightspeed.ogx.OgxResponsesModel.from_ogx_client",
+            return_value=mocker.Mock(),
+        )
+        config = mocker.Mock()
+        config.skills = None
+        config.shields = []
+        AgentHistoryService().clear_store()
+        AgentHistoryService().initialize(AgentStepPersistenceNoopConfiguration())
+
+        build_agent(mock_client, mock_params, config)
+        capabilities = mock_agent_ctor.call_args.kwargs["capabilities"]
+        assert capabilities is None or not any(
+            isinstance(cap, StepPersistence) for cap in capabilities
+        )
+
+    def test_build_agent_attaches_step_persistence_when_sqlite_enabled(
+        self,
+        mocker: MockerFixture,
+        mock_client: AsyncOgxClient,
+        mock_params: ResponsesApiParams,
+        make_agent_config: Callable[..., AppConfig],
+    ) -> None:
+        """Configured SQLite persistence attaches harness StepPersistence."""
+        mock_agent_ctor = mocker.patch("utils.pydantic_ai_helpers.Agent")
+        mocker.patch(
+            "pydantic_ai_lightspeed.ogx.OgxResponsesModel.from_ogx_client",
+            return_value=mocker.Mock(),
+        )
+        build_agent(mock_client, mock_params, make_agent_config())
+        capabilities = mock_agent_ctor.call_args.kwargs["capabilities"]
+        assert capabilities
+        assert any(isinstance(cap, StepPersistence) for cap in capabilities)
 
     def test_returns_agent_with_correct_model(
         self,

@@ -116,6 +116,17 @@ class PendingTurn:
                 store=params.store,
                 left_to_ogx=not params.previous_response_id,
             )
+        if original_input is None and not params.store:
+            # A stateless /v1/responses request (store=false without any
+            # conversation context) drops the conversation parameter without
+            # being compacted. Its turn is not stored, so there is no original
+            # input to store it against.
+            return cls(
+                client=client,
+                conversation_id=params.conversation,
+                user_input=params.input,
+                store=False,
+            )
         if original_input is None:
             raise ValueError(
                 "a request served in compacted mode needs its original input "

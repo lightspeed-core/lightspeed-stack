@@ -2340,6 +2340,30 @@ class ConversationHistoryConfiguration(ConfigurationBase):
         return self
 
 
+class AgentStepPersistenceNoopConfiguration(ConfigurationBase):
+    """Agent step persistence disabled (no harness store)."""
+
+    type: Literal["noop"] = "noop"
+
+
+class AgentStepPersistenceSqliteConfiguration(ConfigurationBase):
+    """SQLite-backed harness step store."""
+
+    type: Literal["sqlite"] = "sqlite"
+
+    sqlite: SQLiteDatabaseConfiguration = Field(
+        ...,
+        title="SQLite database",
+        description="SQLite file for harness step persistence.",
+    )
+
+
+AgentStepPersistenceConfiguration = Annotated[
+    AgentStepPersistenceNoopConfiguration | AgentStepPersistenceSqliteConfiguration,
+    Field(discriminator="type"),
+]
+
+
 class A2AStateConfiguration(ConfigurationBase):
     """A2A protocol persistent state configuration.
 
@@ -3843,6 +3867,12 @@ class Configuration(ConfigurationBase):
         ),
         title="Conversation history configuration",
         description="Conversation history configuration.",
+    )
+
+    agent_step_persistence: AgentStepPersistenceConfiguration = Field(
+        default_factory=AgentStepPersistenceNoopConfiguration,
+        title="Agent step persistence",
+        description="Pydantic AI harness StepPersistence storage for agent run history.",
     )
 
     compaction: CompactionConfiguration = Field(

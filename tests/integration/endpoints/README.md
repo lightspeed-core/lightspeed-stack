@@ -8,6 +8,10 @@ Integration tests for API endpoints.
 
 Shared helpers for conversation compaction integration tests.
 
+## [test_a2a_integration.py](test_a2a_integration.py)
+
+Integration tests for the A2A JSON-RPC endpoint.
+
 ## [test_a2a_routes_integration.py](test_a2a_routes_integration.py)
 
 Integration tests for the HTTP routes of the A2A endpoint.
@@ -79,6 +83,10 @@ Integration tests for the /query endpoint BYOK inline and tool RAG functionality
 ## [test_query_integration.py](test_query_integration.py)
 
 Integration tests for the /query endpoint (using Responses API).
+
+## [test_quota_endpoints.py](test_quota_endpoints.py)
+
+Integration tests for quota enforcement on the endpoints (LCORE-4610).
 
 ## [test_responses_byok_integration.py](test_responses_byok_integration.py)
 
