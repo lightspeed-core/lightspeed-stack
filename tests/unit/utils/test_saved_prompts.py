@@ -538,6 +538,58 @@ class TestListSavedPromptsByUser:
         results = list_saved_prompts_by_user("user-1")
         assert len(results) == 2
 
+    def test_list_heals_null_positions(self, sqlite_engine: Engine) -> None:
+        """Test rows written without a position get one when listed.
+
+        During a rolling update, old-code pods insert rows with a NULL
+        position after the new pod has already migrated. Listing must heal
+        those rows (append after the user's maximum) rather than fail
+        response validation.
+        """
+        session_factory = sessionmaker(
+            autocommit=False, autoflush=False, bind=sqlite_engine
+        )
+        base = datetime.now(UTC)
+        with session_factory() as session:
+            session.add(
+                SavedPrompt(
+                    id="p1",
+                    user_id="user-1",
+                    name="p1",
+                    content="c",
+                    position=1,
+                    created_at=base,
+                    updated_at=base,
+                )
+            )
+            session.add(
+                SavedPrompt(
+                    id="p2",
+                    user_id="user-1",
+                    name="p2",
+                    content="c",
+                    position=2,
+                    created_at=base,
+                    updated_at=base,
+                )
+            )
+            session.add(
+                SavedPrompt(
+                    id="p3-null",
+                    user_id="user-1",
+                    name="p3-null",
+                    content="c",
+                    created_at=base + timedelta(seconds=1),
+                    updated_at=base + timedelta(seconds=1),
+                )
+            )
+            session.commit()
+
+        results = list_saved_prompts_by_user("user-1")
+
+        assert [row.id for row in results] == ["p1", "p2", "p3-null"]
+        assert [row.position for row in results] == [1, 2, 3]
+
 
 @pytest.mark.usefixtures("patch_saved_prompts_get_session")
 class TestDeleteSavedPromptByIdAndUser:
@@ -633,6 +685,59 @@ class TestUpdateSavedPromptByIdAndUser:
             prompts[3].id,
         ]
         assert [p.position for p in results] == [1, 2, 3, 4]
+
+    def test_update_succeeds_when_positions_have_gaps(self) -> None:
+        """Test PUT keeps working after interior deletes leave position gaps.
+
+        Deletes never renumber, so a user's positions are routinely sparse
+        (e.g. {1, 4} after deleting the middle two of four). The renumber
+        must not collide with still-present old positions.
+        """
+        prompts = [
+            create_saved_prompt("user-1", f"p{i}", f"c{i}", 50) for i in range(4)
+        ]
+        # Delete the middle two, leaving positions {1, 4}.
+        delete_saved_prompt_by_id_and_user(prompts[1].id, "user-1")
+        delete_saved_prompt_by_id_and_user(prompts[2].id, "user-1")
+        target = prompts[3]  # position 4
+
+        updated = update_saved_prompt_by_id_and_user(
+            target.id, "user-1", target.name, target.content, 4
+        )
+
+        assert updated.position == 2
+        results = list_saved_prompts_by_user("user-1")
+        assert [p.id for p in results] == [prompts[0].id, prompts[3].id]
+        assert [p.position for p in results] == [1, 2]
+
+    def test_update_succeeds_with_wide_gap_from_multiple_deletes(
+        self,
+    ) -> None:
+        """Test PUT keeps working when deletes leave a wide position gap.
+
+        Six prompts with the middle three deleted leave positions {1, 5, 6};
+        a naive offset based on row count collides with the row still
+        holding position 5.
+        """
+        prompts = [
+            create_saved_prompt("user-1", f"p{i}", f"c{i}", 50) for i in range(6)
+        ]
+        for deleted in prompts[1:4]:  # positions 2, 3, 4
+            delete_saved_prompt_by_id_and_user(deleted.id, "user-1")
+        target = prompts[5]  # position 6
+
+        updated = update_saved_prompt_by_id_and_user(
+            target.id, "user-1", target.name, target.content, 6
+        )
+
+        assert updated.position == 3
+        results = list_saved_prompts_by_user("user-1")
+        assert [p.id for p in results] == [
+            prompts[0].id,
+            prompts[4].id,
+            prompts[5].id,
+        ]
+        assert [p.position for p in results] == [1, 2, 3]
 
     def test_position_beyond_count_clamps_to_end(self) -> None:
         """Test a position above the prompt count moves the prompt to the end."""

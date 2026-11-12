@@ -244,13 +244,42 @@ def create_saved_prompt(
         return saved_prompt
 
 
+def _heal_null_positions(session: Session, rows: list[SavedPrompt]) -> None:
+    """Assign positions to rows written without one (lazy healing).
+
+    Old-code pods serving during a rolling update insert rows with a NULL
+    position after the new pod has already migrated. Such rows are appended
+    after the user's current maximum position, newest first, so the list
+    endpoint can return them instead of failing response validation.
+
+    Parameters:
+        session: DAL session the rows belong to; changes are flushed by the
+            caller's commit.
+        rows: The user's rows as fetched by the list query.
+
+    """
+    positioned = [row.position for row in rows if row.position is not None]
+    next_position = (max(positioned) if positioned else 0) + 1
+    strays = [row for row in rows if row.position is None]
+    # created_at DESC with id ASC as tiebreaker, matching the startup
+    # backfill rule; two stable sorts achieve the mixed direction.
+    strays.sort(key=lambda row: row.id)
+    strays.sort(key=lambda row: row.created_at, reverse=True)
+    for stray in strays:
+        stray.position = next_position
+        next_position += 1
+    session.flush()
+
+
 def list_saved_prompts_by_user(user_id: str) -> list[SavedPrompt]:
     """List saved prompts for a user ordered by position ascending.
 
     Order is ``position`` ascending with ``created_at`` descending and ``id``
     as deterministic tiebreakers, so results stay stable even when duplicate
     positions exist (possible on deployments upgraded before the
-    ``(user_id, position)`` unique constraint). Results are capped at
+    ``(user_id, position)`` unique constraint). Rows with a NULL position
+    (written by old-code pods during a rolling update) are healed by
+    appending them after the user's maximum position. Results are capped at
     ``SAVED_PROMPTS_MAX_PER_USER_UPPER_BOUND`` so a misconfigured or
     out-of-band insert path cannot materialize unbounded rows.
 
@@ -262,7 +291,7 @@ def list_saved_prompts_by_user(user_id: str) -> list[SavedPrompt]:
 
     """
     with get_session() as session:
-        return (
+        rows = (
             session.query(SavedPrompt)
             .filter_by(user_id=user_id)
             .order_by(
@@ -273,6 +302,21 @@ def list_saved_prompts_by_user(user_id: str) -> list[SavedPrompt]:
             .limit(constants.SAVED_PROMPTS_MAX_PER_USER_UPPER_BOUND)
             .all()
         )
+        if any(row.position is None for row in rows):
+            _heal_null_positions(session, rows)
+            session.commit()
+            rows = (
+                session.query(SavedPrompt)
+                .filter_by(user_id=user_id)
+                .order_by(
+                    SavedPrompt.position.asc(),
+                    SavedPrompt.created_at.desc(),
+                    SavedPrompt.id,
+                )
+                .limit(constants.SAVED_PROMPTS_MAX_PER_USER_UPPER_BOUND)
+                .all()
+            )
+        return rows
 
 
 def _renumber_positions(
@@ -313,7 +357,13 @@ def _renumber_positions(
     insert_index = min(new_position, len(ordered_ids) + 1) - 1
     ordered_ids.insert(insert_index, target_id)
 
-    offset = len(ordered_ids) + 1
+    # Positions are not dense: creates append max+1 and deletes never
+    # renumber, so a user's max position can far exceed their row count.
+    # The phase-1 offset must therefore clear the *max existing position*,
+    # not the row count, or a still-present old position inside the target
+    # range collides mid-renumber.
+    max_existing = max((row.position or 0) for row in rows)
+    offset = max(max_existing, len(ordered_ids)) + 1
     # Phase 1: shift beyond any existing value so no intermediate state
     # collides with a still-present old position.
     for sequence, row_id in enumerate(ordered_ids):

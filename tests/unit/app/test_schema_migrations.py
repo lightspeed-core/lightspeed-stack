@@ -236,6 +236,49 @@ def test_noop_when_column_already_present(
     assert _positions_by_id(modern_schema_engine) == {"p1": 7}
 
 
+def test_migration_heals_null_positions_on_modern_table(
+    modern_schema_engine: Engine,
+) -> None:
+    """Rows written without a position during a rolling update heal on boot.
+
+    Old-code pods serving during a rolling update insert rows with no
+    position (their ORM predates the column). Every boot re-runs the
+    backfill so such rows get positions appended after the user's current
+    maximum instead of breaking the list endpoint.
+    """
+    with modern_schema_engine.begin() as connection:
+        for prompt_id, position, created_at in (
+            ("p1", 1, "2026-01-01 10:00:00"),
+            ("p2", 2, "2026-01-02 10:00:00"),
+            ("p3-null", None, "2026-01-05 10:00:00"),
+            ("p4-null", None, "2026-01-06 10:00:00"),
+        ):
+            connection.execute(
+                text(
+                    "INSERT INTO saved_prompt "
+                    "(id, user_id, name, content, position, created_at, updated_at) "
+                    "VALUES (:id, 'user-123', :name, 'c', :position, :ts, :ts)"
+                ),
+                {
+                    "id": prompt_id,
+                    "name": prompt_id,
+                    "position": position,
+                    "ts": created_at,
+                },
+            )
+
+    run_startup_migrations(modern_schema_engine)
+
+    # Existing positions are preserved; NULL rows are appended after the
+    # user's maximum, newest first, deterministically.
+    assert _positions_by_id(modern_schema_engine) == {
+        "p1": 1,
+        "p2": 2,
+        "p4-null": 3,
+        "p3-null": 4,
+    }
+
+
 def test_empty_old_table_gets_column(
     old_schema_engine: Engine,
 ) -> None:
