@@ -30,7 +30,7 @@ inference:
   # not listed and get the 128K default window.
   context_windows:
     openai/gpt-5.6-luna: 2000
-    azure/gpt-5.6-luna: 2000
+    azure/gpt-6-luna: 2000
     google-vertex/publishers/google/models/gemini-3.5-flash-lite: 2000
     watsonx/openai/gpt-oss-120b: 2000
     aws-bedrock/google.gemma-4-31b: 2000

@@ -17,8 +17,9 @@ providers:
   - provider_id: azure
     provider_type: remote::azure
     config: 
-      base_url: https://ols-test.openai.azure.com/openai/v1
+      base_url: https://lscore-test.openai.azure.com/openai/v1
       api_version: preview
+      allowed_models: ["gpt-6-luna"]
       model_validation: false
   - provider_id: openai
     provider_type: remote::openai
@@ -97,10 +98,10 @@ storage:
       backend: sql_default
 registered_resources:
   models:
-  - model_id: gpt-5.6-luna
+  - model_id: gpt-6-luna
     provider_id: azure
     model_type: llm
-    provider_model_id: gpt-5.6-luna
+    provider_model_id: gpt-6-luna
   - model_id: all-mpnet-base-v2
     model_type: embedding
     provider_id: sentence-transformers
