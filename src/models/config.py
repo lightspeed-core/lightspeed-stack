@@ -1154,13 +1154,6 @@ class OgxConfiguration(ConfigurationBase):
         "when running as a sidecar in the same pod).",
     )
 
-    allow_degraded_mode: Optional[bool] = Field(
-        False,
-        title="Allow degraded mode",
-        description="If enabled, Lightspeed Core can be started even when "
-        "OGX is not accessible (valid for server mode only)",
-    )
-
     config: Optional["UnifiedOgxConfig"] = Field(
         None,
         title="Unified OGX configuration",

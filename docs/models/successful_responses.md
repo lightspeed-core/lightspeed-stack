@@ -837,7 +837,6 @@ This enum serves two purposes:
 
 2. Service-level health (overall LCORE status):
    - HEALTHY: All systems operational, LLS connected, all providers healthy
-   - DEGRADED: Service running with reduced functionality (e.g., LLS unavailable)
    - UNHEALTHY: Service connected but one or more providers are unhealthy
 
 
@@ -1187,7 +1186,6 @@ Useful resources:
 | timeout | integer | Timeout in seconds for requests to OGX service. Default is 180 seconds (3 minutes) to accommodate long-running RAG queries. |
 | max_retries | integer | Maximum number of connection attempts before giving up. Used on startup to connect to OGX and retrieve its version. Connection attempts are retried with a fixed delay to handle the case where OGX is still starting up (e.g., when running as a sidecar in the same pod). |
 | retry_delay | integer | Delay in seconds between retry attempts. Used on startup to connect to OGX and retrieve its version. Connection attempts are retried with a fixed delay to handle the case where OGX is still starting up (e.g., when running as a sidecar in the same pod). |
-| allow_degraded_mode | boolean | If enabled, Lightspeed Core can be started even when OGX is not accessible (valid for server mode only) |
 | config |  | Backend-specific knobs for unified mode, where LCORE synthesizes the OGX run.yaml instead of reading an external file. Holds the baseline selector, an optional profile path, and a raw native_override escape hatch. Backend-agnostic high-level sections (e.g. inference.providers) live at the configuration root, not here. Mutually exclusive with library_client_config_path; that cross-field check lives on the root Configuration model. When set in library mode, library_client_config_path is not required. |
 
 
@@ -2287,8 +2285,8 @@ Model representing response to a readiness request.
 Attributes:
     ready: If service is ready to handle requests.
     reason: The reason for the readiness status.
-    overall_status: Overall service health status (healthy/degraded/unhealthy).
-    impacts: Optional list of functional impacts when degraded or unhealthy.
+    overall_status: Overall service health status (healthy/unhealthy).
+    impacts: Optional list of functional impacts when unhealthy.
     providers: List of unhealthy providers (empty when all healthy).
 
 
@@ -2297,7 +2295,7 @@ Attributes:
 | ready | boolean | Flag indicating if service is ready to handle requests |
 | reason | string | The reason for the readiness status |
 | overall_status |  | Overall service health status |
-| impacts | array | List of functional impacts when service is degraded or unhealthy |
+| impacts | array | List of functional impacts when service is unhealthy |
 | providers | array | List of unhealthy providers (empty when all healthy) |
 
 

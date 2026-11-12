@@ -110,7 +110,6 @@ LIGHTSPEED_STACK_FIELDS: tuple[FieldSpec | ListFieldSpec, ...] = (
     FieldSpec("ogx.timeout", MaskingType.PASSTHROUGH),
     FieldSpec("ogx.max_retries", MaskingType.PASSTHROUGH),
     FieldSpec("ogx.retry_delay", MaskingType.PASSTHROUGH),
-    FieldSpec("ogx.allow_degraded_mode", MaskingType.PASSTHROUGH),
     FieldSpec("ogx.config.baseline", MaskingType.PASSTHROUGH),
     FieldSpec("ogx.config.profile", MaskingType.SENSITIVE),
     FieldSpec("ogx.config.native_override", MaskingType.SENSITIVE),

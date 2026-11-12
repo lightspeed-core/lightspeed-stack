@@ -2407,14 +2407,13 @@ def test_dump_models(tmpdir: Path) -> None:
                     "type": "object"
                 },
                 "HealthStatus": {
-                    "description": "Health status enum for provider and service health checks.\n\nThis enum serves two purposes:\n\n1. Provider-level health (returned by OGX providers):\n   - OK: Provider is healthy and operational\n   - ERROR: Provider is unhealthy or failed health check\n   - NOT_IMPLEMENTED: Provider does not implement health checks\n   - UNKNOWN: Fallback when provider status cannot be determined\n\n2. Service-level health (overall LCORE status):\n   - HEALTHY: All systems operational, LLS connected, all providers healthy\n   - DEGRADED: Service running with reduced functionality (e.g., LLS unavailable)\n   - UNHEALTHY: Service connected but one or more providers are unhealthy",
+                    "description": "Health status enum for provider and service health checks.\n\nThis enum serves two purposes:\n\n1. Provider-level health (returned by OGX providers):\n   - OK: Provider is healthy and operational\n   - ERROR: Provider is unhealthy or failed health check\n   - NOT_IMPLEMENTED: Provider does not implement health checks\n   - UNKNOWN: Fallback when provider status cannot be determined\n\n2. Service-level health (overall LCORE status):\n   - HEALTHY: All systems operational, LLS connected, all providers healthy\n   - UNHEALTHY: Service connected but one or more providers are unhealthy",
                     "enum": [
                         "ok",
                         "error",
                         "not_implemented",
                         "unknown",
                         "healthy",
-                        "degraded",
                         "unhealthy"
                     ],
                     "title": "HealthStatus",
@@ -2921,13 +2920,6 @@ def test_dump_models(tmpdir: Path) -> None:
                             "minimum": 0,
                             "title": "Delay in seconds between retry attempts",
                             "type": "integer"
-                        },
-                        "allow_degraded_mode": {
-                            "type": "boolean",
-                            "nullable": true,
-                            "default": false,
-                            "description": "If enabled, Lightspeed Core can be started even when OGX is not accessible (valid for server mode only)",
-                            "title": "Allow degraded mode"
                         },
                         "config": {
                             "anyOf": [
@@ -6365,7 +6357,7 @@ def test_dump_models(tmpdir: Path) -> None:
                     "type": "object"
                 },
                 "ReadinessResponse": {
-                    "description": "Model representing response to a readiness request.\n\nAttributes:\n    ready: If service is ready to handle requests.\n    reason: The reason for the readiness status.\n    overall_status: Overall service health status (healthy/degraded/unhealthy).\n    impacts: Optional list of functional impacts when degraded or unhealthy.\n    providers: List of unhealthy providers (empty when all healthy).",
+                    "description": "Model representing response to a readiness request.\n\nAttributes:\n    ready: If service is ready to handle requests.\n    reason: The reason for the readiness status.\n    overall_status: Overall service health status (healthy/unhealthy).\n    impacts: Optional list of functional impacts when unhealthy.\n    providers: List of unhealthy providers (empty when all healthy).",
                     "examples": [
                         {
                             "impacts": null,
@@ -6373,17 +6365,6 @@ def test_dump_models(tmpdir: Path) -> None:
                             "providers": [],
                             "ready": true,
                             "reason": "All providers are healthy"
-                        },
-                        {
-                            "impacts": [
-                                "LLM inference unavailable",
-                                "RAG functionality unavailable",
-                                "Agent tools unavailable"
-                            ],
-                            "overall_status": "degraded",
-                            "providers": [],
-                            "ready": true,
-                            "reason": "Service running in degraded mode"
                         }
                     ],
                     "properties": {
@@ -6409,7 +6390,6 @@ def test_dump_models(tmpdir: Path) -> None:
                             "description": "Overall service health status",
                             "examples": [
                                 "healthy",
-                                "degraded",
                                 "unhealthy"
                             ]
                         },
@@ -6417,7 +6397,7 @@ def test_dump_models(tmpdir: Path) -> None:
                             "type": "array",
                             "nullable": true,
                             "default": null,
-                            "description": "List of functional impacts when service is degraded or unhealthy",
+                            "description": "List of functional impacts when service is unhealthy",
                             "examples": [
                                 [
                                     "LLM inference unavailable",

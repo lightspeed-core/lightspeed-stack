@@ -82,9 +82,3 @@ llm_inference_duration_seconds = Histogram(
     ["provider", "model", "endpoint", "result"],
     buckets=LLM_INFERENCE_DURATION_BUCKETS,
 )
-
-# Gauge to track degraded mode startup state
-started_in_degraded_mode = Gauge(
-    "ls_started_in_degraded_mode",
-    "Indicates if service started in degraded mode (1 = degraded, 0 = healthy)",
-)

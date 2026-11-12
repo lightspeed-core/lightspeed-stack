@@ -47,7 +47,7 @@ These fail only when the running stack is wrong, and they look at surfaces a cal
 | `tests/e2e/features/health.feature`, `smoketests.feature` | The local service is up. Status, schema, and — for health — an exact JSON body the service produces, not a model. |
 | `tests/e2e/features/unified-mode-boot.feature` | A unified-mode YAML, a container restart, then `readiness` and `query` return 200. It does not inspect the synthesized file. |
 | `tests/e2e/features/unified-mode-synthesis.feature` | After restart, container logs contain the synthesized path (`docker inspect` / `docker logs` in `tests/e2e/features/steps/unified_mode.py`). Synthesis rules stay in `test_unified_synthesis.py`. |
-| `tests/e2e/features/ogx_disrupted.feature`, `degraded_mode_startup.feature` | OGX is actually stopped. HTTP then shows 503, readiness `unhealthy`, or `ls_started_in_degraded_mode`. Mocking `ApiException` in `test_info_integration.py` covers the handler branch; it does not cover restart order. |
+| `tests/e2e/features/ogx_disrupted.feature` | OGX is actually stopped. HTTP then shows 503, readiness `unhealthy`. Mocking `ApiException` in `test_info_integration.py` covers the handler branch; it does not cover restart order. |
 | `tests/e2e/features/unified-mode-migration.feature` | The stack boots from the committed `lightspeed-stack-unified-migrated.yaml`. The scenario does not run `--migrate-config`. `test_unified_mode_cli.py` guards that fixture against drift. |
 
 ## Poor fits

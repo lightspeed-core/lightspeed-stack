@@ -568,11 +568,6 @@ class TestBuildLightspeedStackSnapshot:
         snapshot = build_lightspeed_stack_snapshot(build_fully_populated_config())
         assert snapshot["ogx"]["retry_delay"] == 2
 
-    def test_ogx_allow_degraded_mode_passthrough(self) -> None:
-        """Test ogx allow_degraded_mode passes through."""
-        snapshot = build_lightspeed_stack_snapshot(build_fully_populated_config())
-        assert snapshot["ogx"]["allow_degraded_mode"] is True
-
     def test_ogx_config_baseline_passthrough(self) -> None:
         """Test ogx config baseline passes through."""
         snapshot = build_lightspeed_stack_snapshot(build_fully_populated_config())

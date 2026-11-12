@@ -6486,7 +6486,6 @@ Useful resources:
 | timeout | integer | Timeout in seconds for requests to OGX service. Default is 180 seconds (3 minutes) to accommodate long-running RAG queries. |
 | max_retries | integer | Maximum number of connection attempts before giving up. Used on startup to connect to OGX and retrieve its version. Connection attempts are retried with a fixed delay to handle the case where OGX is still starting up (e.g., when running as a sidecar in the same pod). |
 | retry_delay | integer | Delay in seconds between retry attempts. Used on startup to connect to OGX and retrieve its version. Connection attempts are retried with a fixed delay to handle the case where OGX is still starting up (e.g., when running as a sidecar in the same pod). |
-| allow_degraded_mode |  | If enabled, Lightspeed Core can be started even when OGX is not accessible (valid for server mode only) |
 
 
 ## MCPClientAuthOptionsResponse

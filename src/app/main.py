@@ -30,7 +30,6 @@ from models.api.responses.error import InternalServerErrorResponse
 from observability.profiling import initialize_pyroscope
 from observability.sentry import initialize_sentry
 from providers.inference.registry import ProviderRegistry
-from utils.degraded_mode import DegradedModeTracker
 from utils.ogx_version import check_ogx_version
 
 logger = get_logger(__name__)
@@ -105,21 +104,15 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     await AsyncOgxClientHolder().load(ogx_config)
     client: AsyncOgxClient = AsyncOgxClientHolder().get_client()
     logger.debug("OGX client initialized, trying to connect to OGX")
-    # Check connectivity to OGX and set degraded mode if unavailable
-    degraded_tracker = DegradedModeTracker()
     try:
         ogx_version = await check_ogx_version(
             client, ogx_config.max_retries, ogx_config.retry_delay
         )
         if ogx_version is None:
             logger.error("Cannot retrieve OGX version, check connection")
-            if ogx_config.allow_degraded_mode:
-                degraded_tracker.set_degraded("OGX connection check failed")
         else:
             logger.debug("OGX version: %s", ogx_version)
-            degraded_tracker.set_healthy()
     except ApiException as e:
-        # if degraded mode is allowed, simply ignore the exception
         ogx_url = ogx_config.url
         logger.error(
             "Failed to connect to OGX at '%s'. "
@@ -129,11 +122,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
             ogx_url,
             e,
         )
-        if ogx_config.allow_degraded_mode:
-            logger.info("Entering degraded mode: LCORE running w/o OGX")
-            degraded_tracker.set_degraded(f"Failed to connect to OGX: {e!s}")
-        else:
-            raise
+        raise
 
     azure_entra_id_config = configuration.configuration.azure_entra_id
     if azure_entra_id_config is not None:
@@ -141,12 +130,10 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         azure_base_url = await AsyncOgxClientHolder().get_azure_base_url()
         AzureEntraIDManager().set_base_url(azure_base_url)
 
-    # Set up model metrics if in healthy mode
-    if not degraded_tracker.is_degraded():
-        try:
-            await setup_model_metrics()
-        except ApiException as e:
-            logger.warning("Failed to set up model metrics: %s", e, exc_info=True)
+    try:
+        await setup_model_metrics()
+    except ApiException as e:
+        logger.warning("Failed to set up model metrics: %s", e, exc_info=True)
 
     logger.info("App startup complete")
 

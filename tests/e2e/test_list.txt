@@ -40,7 +40,6 @@ features/byok_pdf.feature
 features/tls-ca.feature
 features/tls-mtls.feature
 features/tls-tlsv13.feature
-features/degraded_mode_startup.feature
 features/unified-mode-boot.feature
 features/unified-mode-legacy.feature
 features/unified-mode-migration.feature

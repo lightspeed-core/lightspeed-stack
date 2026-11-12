@@ -608,32 +608,6 @@ def restart_container(container_name: str) -> None:
         reset_ogx_disrupt_once_tracking()
 
 
-def restart_lightspeed_stack_service(*, skip_ogx_restore: bool = False) -> None:
-    """Restart the lightspeed-stack container used by Behave steps.
-
-    Wraps ``restart_container("lightspeed-stack")`` so step modules share one
-    LCS restart path. That path already waits for Docker health and then for
-    HTTP on the host-mapped port, so callers need no wait of their own.
-
-    Parameters:
-    ----------
-        skip_ogx_restore: When True on Prow/Konflux, tell e2e-ops not to
-            bring llama back before recreating LCS (degraded-mode startup).
-
-    """
-    previous = os.environ.get("E2E_SKIP_OGX_RESTORE_ON_LCS_RESTART")
-    if skip_ogx_restore:
-        os.environ["E2E_SKIP_OGX_RESTORE_ON_LCS_RESTART"] = "1"
-    try:
-        restart_container("lightspeed-stack")
-    finally:
-        if skip_ogx_restore:
-            if previous is None:
-                os.environ.pop("E2E_SKIP_OGX_RESTORE_ON_LCS_RESTART", None)
-            else:
-                os.environ["E2E_SKIP_OGX_RESTORE_ON_LCS_RESTART"] = previous
-
-
 def wait_for_lightspeed_stack_http_ready(
     timeout_s: float = 120.0,
     delay_s: float = 1.5,

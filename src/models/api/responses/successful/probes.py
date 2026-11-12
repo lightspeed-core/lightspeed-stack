@@ -49,8 +49,8 @@ class ReadinessResponse(AbstractSuccessfulResponse):
     Attributes:
         ready: If service is ready to handle requests.
         reason: The reason for the readiness status.
-        overall_status: Overall service health status (healthy/degraded/unhealthy).
-        impacts: Optional list of functional impacts when degraded or unhealthy.
+        overall_status: Overall service health status (healthy/unhealthy).
+        impacts: Optional list of functional impacts when unhealthy.
         providers: List of unhealthy providers (empty when all healthy).
 
     """
@@ -70,12 +70,12 @@ class ReadinessResponse(AbstractSuccessfulResponse):
     overall_status: HealthStatus = Field(
         ...,
         description="Overall service health status",
-        examples=["healthy", "degraded", "unhealthy"],
+        examples=["healthy", "unhealthy"],
     )
 
     impacts: Optional[list[str]] = Field(
         None,
-        description="List of functional impacts when service is degraded or unhealthy",
+        description="List of functional impacts when service is unhealthy",
         examples=[
             [
                 "LLM inference unavailable",
@@ -100,17 +100,6 @@ class ReadinessResponse(AbstractSuccessfulResponse):
                     "reason": "All providers are healthy",
                     "overall_status": "healthy",
                     "impacts": None,
-                    "providers": [],
-                },
-                {
-                    "ready": True,
-                    "reason": "Service running in degraded mode",
-                    "overall_status": "degraded",
-                    "impacts": [
-                        "LLM inference unavailable",
-                        "RAG functionality unavailable",
-                        "Agent tools unavailable",
-                    ],
                     "providers": [],
                 },
             ]

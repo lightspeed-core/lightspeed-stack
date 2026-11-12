@@ -3985,7 +3985,6 @@ wrong_configurations = [
             "timeout": 683,
             "max_retries": 624,
             "retry_delay": 497,
-            "allow_degraded_mode": None,
         },
         "user_data_collection": {
             "feedback_enabled": False,
