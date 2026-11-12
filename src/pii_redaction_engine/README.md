@@ -59,8 +59,22 @@ Redacted by default (`DEFAULT_ENTITIES`):
 | `HOSTNAME` | `<HOSTNAME>` | custom `HostnameRecognizer` (structural) | ccTLD / internal-TLD aware; disambiguates domains from file extensions in support text. |
 | `IP_ADDRESS` | `<IP_ADDRESS>` | `IpRecognizer` (structural) | IPv4/IPv6. |
 | `PHONE_NUMBER` | `<PHONE_NUMBER>` | `PhoneRecognizer` | ~60 curated regions; CZ/VN deliberately excluded (their formats collide with CVE/Bugzilla IDs). |
+| `CREDIT_CARD` | `<CREDIT_CARD>` | `CreditCardRecognizer` (Luhn checksum) | Major card formats; checksum keeps false positives low. |
+| `US_SSN` | `<US_SSN>` | `UsSsnRecognizer` | `ddd-dd-dddd` with context; Presidio rejects obviously-fake/sequential values. |
+| `US_ITIN` | `<US_ITIN>` | `UsItinRecognizer` | Individual taxpayer id; SSN-like strict format. |
+| `IBAN_CODE` | `<IBAN_CODE>` | `IbanRecognizer` (checksum) | International bank account numbers. |
+| `CRYPTO` | `<CRYPTO>` | `CryptoRecognizer` (checksum) | Bitcoin-style wallet addresses. |
+| `ABA_ROUTING_NUMBER` | `<ABA_ROUTING_NUMBER>` | `AbaRoutingRecognizer` (checksum) | US bank routing numbers. |
 | `PERSON` | `<PERSON>` | spaCy NER | Case-sensitive; recall limited for non-English names (see trade-off above). |
 | `LOCATION` | `<LOCATION>` | spaCy NER + case-normalized pass | A second pass over a title-cased copy recovers ALL-CAPS place names (e.g. address blocks). |
+
+The financial/government-id types above are all backed by a checksum or a strict
+format, so they stay reliable under the no-threshold `analyze()` this engine uses.
+Presidio's looser predefined recognizers that match bare digit runs
+(`US_BANK_NUMBER`, `US_PASSPORT`, `US_DRIVER_LICENSE`, `MEDICAL_LICENSE`) are
+intentionally **not** registered: they flag ordinary support-text identifiers
+(CVE, Bugzilla, build and case numbers) and `MEDICAL_LICENSE` even checksum-matches
+substrings inside IBANs.
 
 Detectable but off by default — opt in via `RedactionConfig.entities` (their
 recognizers are already registered):

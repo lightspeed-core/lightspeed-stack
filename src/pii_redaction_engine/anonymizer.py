@@ -17,10 +17,16 @@ from presidio_analyzer import (
 )
 from presidio_analyzer.nlp_engine import NlpEngineProvider
 from presidio_analyzer.predefined_recognizers import (
+    AbaRoutingRecognizer,
+    CreditCardRecognizer,
+    CryptoRecognizer,
+    IbanRecognizer,
     IpRecognizer,
     PhoneRecognizer,
     SpacyRecognizer,
     UrlRecognizer,
+    UsItinRecognizer,
+    UsSsnRecognizer,
 )
 from presidio_anonymizer import AnonymizerEngine
 from presidio_anonymizer.entities import RecognizerResult as AnonymizerRecognizerResult
@@ -28,11 +34,29 @@ from presidio_anonymizer.entities import RecognizerResult as AnonymizerRecognize
 from pii_redaction_engine.recognizers.email_recognizer import EmailRecognizer
 from pii_redaction_engine.recognizers.hostname_recognizer import HostnameRecognizer
 
-# Entity types detected by default. ORGANIZATION and URL are intentionally off:
-# organization detection over-flags product/tech names (OpenShift, RHEL), and URLs
-# are usually wanted in telemetry. Enable them via RedactionConfig.entities.
+# Entity types detected by default. The financial/government-id types below are all
+# backed by a checksum or a strict format, so they add little false-positive risk to
+# the no-threshold analyze() this engine uses. Loose predefined recognizers that match
+# bare digit runs (US_BANK_NUMBER, US_PASSPORT, US_DRIVER_LICENSE, MEDICAL_LICENSE) are
+# intentionally NOT enabled: they flag ordinary support-text identifiers (CVE, Bugzilla,
+# build and case numbers). ORGANIZATION and URL are also off: organization detection
+# over-flags product/tech names (OpenShift, RHEL), and URLs are usually wanted in
+# telemetry. Enable any of these via RedactionConfig.entities.
 DEFAULT_ENTITIES: frozenset[str] = frozenset(
-    {"EMAIL_ADDRESS", "HOSTNAME", "IP_ADDRESS", "LOCATION", "PERSON", "PHONE_NUMBER"}
+    {
+        "ABA_ROUTING_NUMBER",
+        "CREDIT_CARD",
+        "CRYPTO",
+        "EMAIL_ADDRESS",
+        "HOSTNAME",
+        "IBAN_CODE",
+        "IP_ADDRESS",
+        "LOCATION",
+        "PERSON",
+        "PHONE_NUMBER",
+        "US_ITIN",
+        "US_SSN",
+    }
 )
 
 
@@ -95,7 +119,18 @@ class PIIAnonymizer:
     # Entities matched by regex rather than by the NER model. A structural match is near
     # certain, so it outranks any NER guess covering the same span: spaCy scores its guesses
     # at 0.85, which otherwise beats IpRecognizer's 0.6 and reports an IP address as a person.
-    STRUCTURAL_ENTITIES = {"EMAIL_ADDRESS", "HOSTNAME", "IP_ADDRESS", "URL"}
+    STRUCTURAL_ENTITIES = {
+        "ABA_ROUTING_NUMBER",
+        "CREDIT_CARD",
+        "CRYPTO",
+        "EMAIL_ADDRESS",
+        "HOSTNAME",
+        "IBAN_CODE",
+        "IP_ADDRESS",
+        "URL",
+        "US_ITIN",
+        "US_SSN",
+    }
     NER_ENTITIES = {"LOCATION", "ORGANIZATION", "PERSON"}
 
     # All caps text is an address block trait, so the case normalized pass only looks for
@@ -186,6 +221,13 @@ class PIIAnonymizer:
         )
         self.registry.add_recognizer(SpacyRecognizer())
         self.registry.add_recognizer(UrlRecognizer())
+        # Financial / government-id recognizers (all checksum- or strict-format-backed).
+        self.registry.add_recognizer(CreditCardRecognizer())
+        self.registry.add_recognizer(UsSsnRecognizer())
+        self.registry.add_recognizer(UsItinRecognizer())
+        self.registry.add_recognizer(IbanRecognizer())
+        self.registry.add_recognizer(CryptoRecognizer())
+        self.registry.add_recognizer(AbaRoutingRecognizer())
 
         for entity_type, terms in (config.deny_list or {}).items():
             self.registry.add_recognizer(

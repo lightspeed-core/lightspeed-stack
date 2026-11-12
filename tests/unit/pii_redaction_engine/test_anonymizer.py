@@ -36,6 +36,27 @@ def test_default_config_entities() -> None:
     assert config.case_normalization is True
 
 
+def test_financial_and_id_entities_redacted_by_default() -> None:
+    """Checksum/strict-format financial and government-id types are on by default."""
+    expected = {
+        "ABA_ROUTING_NUMBER",
+        "CREDIT_CARD",
+        "CRYPTO",
+        "IBAN_CODE",
+        "US_ITIN",
+        "US_SSN",
+    }
+    assert expected <= set(DEFAULT_ENTITIES)
+    # These are structural (pattern/checksum), so they must outrank NER guesses.
+    assert expected <= PIIAnonymizer.STRUCTURAL_ENTITIES
+
+
+def test_loose_predefined_recognizers_stay_off_by_default() -> None:
+    """Noisy digit-run recognizers must not be enabled (they flag support-text ids)."""
+    noisy = {"US_BANK_NUMBER", "US_PASSPORT", "US_DRIVER_LICENSE", "MEDICAL_LICENSE"}
+    assert noisy.isdisjoint(DEFAULT_ENTITIES)
+
+
 def test_default_config_entities_are_independent_instances() -> None:
     """Each RedactionConfig gets its own entities set (no shared mutable default)."""
     first = RedactionConfig()
