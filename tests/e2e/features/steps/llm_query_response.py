@@ -97,7 +97,14 @@ def wait_for_complete_response(context: Context) -> None:
 
 @step('I use "{endpoint}" to ask question')
 def ask_question(context: Context, endpoint: str) -> None:
-    """Call the service REST API endpoint with question."""
+    """Call the service REST API endpoint with question.
+
+    When a scenario acts as a specific user (``context.request_user_id``, set
+    by "I am a user the service has not seen before"), the id goes to the
+    noop authentication as the ``user_id`` query parameter. The endpoint and
+    the payload are kept in ``context.last_request`` for steps that resend or
+    interpret the response.
+    """
     base = f"http://{context.hostname}:{context.port}"
     path = f"{context.api_prefix}/{endpoint}".replace("//", "/")
     url = base + path
@@ -106,8 +113,14 @@ def ask_question(context: Context, endpoint: str) -> None:
     json_str = replace_placeholders(context, context.text or "{}")
 
     data = json.loads(json_str)
+    user_id = getattr(context, "request_user_id", None)
+    context.last_request = (endpoint, data)
     context.response = request_with_transient_retry(
-        method="POST", url=url, json=data, timeout=DEFAULT_LLM_TIMEOUT
+        method="POST",
+        url=url,
+        json=data,
+        params={"user_id": user_id} if user_id else None,
+        timeout=DEFAULT_LLM_TIMEOUT,
     )
 
 

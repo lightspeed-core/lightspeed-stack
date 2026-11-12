@@ -160,8 +160,6 @@ Konflux only (`@konflux-only`) in CI. Targeted local Behave (match YAML to OGX/L
 
 ## [`quota.feature`](https://github.com/lightspeed-core/lightspeed-stack/blob/main/tests/e2e/features/quota.feature)
 
-* query is served once, reports the balances, then is rejected with the quota error
-* streaming_query reports the balances in its end event, then is rejected
 * responses reports the balances in its body, then is rejected
 * streamed responses reports the balances in its terminal event, then is rejected
 * infer is served once, then is rejected, when the quota subject is the user id

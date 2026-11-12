@@ -15,7 +15,9 @@ Feature: Quota management
   Every scenario acts as a user the service has never seen, so the balances
   it reads are its own whatever the quota database already holds, and the
   cluster balance, which every scenario pays into, is only ever compared
-  with an earlier reading of the same scenario.
+  with an earlier reading of the same scenario. Charging and rejection on
+  query and streaming_query are covered by the integration tests; the
+  responses endpoint stands for all of them here.
 
   Background:
     Given The service is started locally
@@ -27,42 +29,8 @@ Feature: Quota management
       And I am a user the service has not seen before
 
 
-  Scenario: query is served once, reports the balances, then is rejected with the quota error
-     When I use "query" to ask question as that user
-     """
-     {"query": "Reply with the single word: ok.", "model": "{MODEL}", "provider": "{PROVIDER}"}
-     """
-     Then The status code of the response is 200
-      And The response reports a positive token usage of the turn
-      And The available quota "UserQuotaLimiter" is 1 minus the tokens of the turn
-      And The available quota "ClusterQuotaLimiter" is reported
-     When I use "query" to ask question as that user
-     """
-     {"query": "Reply with the single word: ok.", "model": "{MODEL}", "provider": "{PROVIDER}"}
-     """
-     Then The status code of the response is 429
-      And The response is the quota exceeded error for that user
-
-
-  Scenario: streaming_query reports the balances in its end event, then is rejected
-     When I use "streaming_query" to ask question as that user
-     """
-     {"query": "Reply with the single word: ok.", "model": "{MODEL}", "provider": "{PROVIDER}"}
-     """
-     Then The status code of the response is 200
-      And The response reports a positive token usage of the turn
-      And The available quota "UserQuotaLimiter" is 1 minus the tokens of the turn
-      And The available quota "ClusterQuotaLimiter" is reported
-     When I use "streaming_query" to ask question as that user
-     """
-     {"query": "Reply with the single word: ok.", "model": "{MODEL}", "provider": "{PROVIDER}"}
-     """
-     Then The status code of the response is 429
-      And The response is the quota exceeded error for that user
-
-
   Scenario: responses reports the balances in its body, then is rejected
-     When I use "responses" to ask question as that user
+     When I use "responses" to ask question
      """
      {"input": "Reply with the single word: ok.", "model": "{PROVIDER}/{MODEL}"}
      """
@@ -70,7 +38,7 @@ Feature: Quota management
       And The response reports a positive token usage of the turn
       And The available quota "UserQuotaLimiter" is 1 minus the tokens of the turn
       And The available quota "ClusterQuotaLimiter" is reported
-     When I use "responses" to ask question as that user
+     When I use "responses" to ask question
      """
      {"input": "Reply with the single word: ok.", "model": "{PROVIDER}/{MODEL}"}
      """
@@ -79,7 +47,7 @@ Feature: Quota management
 
 
   Scenario: streamed responses reports the balances in its terminal event, then is rejected
-     When I use "responses" to ask question as that user
+     When I use "responses" to ask question
      """
      {"input": "Reply with the single word: ok.", "model": "{PROVIDER}/{MODEL}", "stream": true}
      """
@@ -87,7 +55,7 @@ Feature: Quota management
       And The response reports a positive token usage of the turn
       And The available quota "UserQuotaLimiter" is 1 minus the tokens of the turn
       And The available quota "ClusterQuotaLimiter" is reported
-     When I use "responses" to ask question as that user
+     When I use "responses" to ask question
      """
      {"input": "Reply with the single word: ok.", "model": "{PROVIDER}/{MODEL}", "stream": true}
      """
@@ -96,13 +64,13 @@ Feature: Quota management
 
 
   Scenario: infer is served once, then is rejected, when the quota subject is the user id
-     When I use "infer" to ask question as that user
+     When I use "infer" to ask question
      """
      {"question": "Reply with the single word: ok."}
      """
      Then The status code of the response is 200
       And The rlsapi response has valid structure
-     When I use "infer" to ask question as that user
+     When I use "infer" to ask question
      """
      {"question": "Reply with the single word: ok."}
      """
@@ -111,46 +79,46 @@ Feature: Quota management
 
 
   Scenario: the cluster balance is paid by every user and a rejected request costs nothing
-     When I use "query" to ask question as that user
+     When I use "responses" to ask question
      """
-     {"query": "Reply with the single word: ok.", "model": "{MODEL}", "provider": "{PROVIDER}"}
+     {"input": "Reply with the single word: ok.", "model": "{PROVIDER}/{MODEL}"}
      """
      Then The status code of the response is 200
       And I remember the available cluster quota
     Given I am a user the service has not seen before
-     When I use "query" to ask question as that user
+     When I use "responses" to ask question
      """
-     {"query": "Reply with the single word: ok.", "model": "{MODEL}", "provider": "{PROVIDER}"}
+     {"input": "Reply with the single word: ok.", "model": "{PROVIDER}/{MODEL}"}
      """
      Then The status code of the response is 200
       And The response reports a positive token usage of the turn
       And The available cluster quota went down by the tokens of the turn since I remembered it
       And I remember the available cluster quota
-     When I use "query" to ask question as that user
+     When I use "responses" to ask question
      """
-     {"query": "Reply with the single word: ok.", "model": "{MODEL}", "provider": "{PROVIDER}"}
+     {"input": "Reply with the single word: ok.", "model": "{PROVIDER}/{MODEL}"}
      """
      Then The status code of the response is 429
     Given I am a user the service has not seen before
-     When I use "query" to ask question as that user
+     When I use "responses" to ask question
      """
-     {"query": "Reply with the single word: ok.", "model": "{MODEL}", "provider": "{PROVIDER}"}
+     {"input": "Reply with the single word: ok.", "model": "{PROVIDER}/{MODEL}"}
      """
      Then The status code of the response is 200
       And The response reports a positive token usage of the turn
-      And The available cluster quota went down by the tokens of the turn since I remembered it
+      And The rejected request cost nothing: the available cluster quota went down only by the tokens of this turn since I remembered it
 
 
   Scenario: an exhausted balance is renewed by the scheduler while the service runs
     Given The service uses the lightspeed-stack-quota-renewal.yaml configuration
       And The service is restarted
-     When I use "query" to ask question as that user
+     When I use "responses" to ask question
      """
-     {"query": "Reply with the single word: ok.", "model": "{MODEL}", "provider": "{PROVIDER}"}
+     {"input": "Reply with the single word: ok.", "model": "{PROVIDER}/{MODEL}"}
      """
      Then The status code of the response is 429
       And The response is the quota exceeded error for that user
-     When I repeat the question as that user until it is no longer rejected, within 30 seconds
+     When I resend the question once a second until it is served, at most 30 times
      Then The status code of the response is 200
       And The response reports a positive token usage of the turn
       And The available quota "UserQuotaLimiter" is at least 1000000 minus the tokens of the turn

@@ -1,10 +1,11 @@
 """Step definitions for the quota management e2e feature (LCORE-4610).
 
-The steps talk to the service over HTTP only. A scenario acts as a user the
-service has never seen, a fresh uuid handed to the noop authentication as the
-``user_id`` query parameter, so the balances it reads are its own whatever
-the quota database already holds. The cluster balance is shared, so it is
-only ever compared with an earlier reading of the same scenario.
+A scenario acts as a user the service has never seen: a fresh uuid that the
+shared "I use ... to ask question" step hands to the noop authentication as
+the ``user_id`` query parameter, so the balances the scenario reads are its
+own whatever the quota database already holds. The cluster balance is
+shared, so it is only ever compared with an earlier reading of the same
+scenario.
 """
 
 import json
@@ -21,12 +22,8 @@ from behave import (
 from behave.runner import Context
 
 from tests.e2e.utils.utils import (
-    DEFAULT_LLM_TIMEOUT,
     parse_responses_sse_final_response_object,
     parse_streaming_query_end_event,
-    read_streamed_response,
-    replace_placeholders,
-    request_with_transient_retry,
 )
 
 QUOTA_EXCEEDED_RESPONSE = "The quota has been exceeded"
@@ -37,67 +34,36 @@ POLL_INTERVAL_SECONDS = 1.0
 
 @given("I am a user the service has not seen before")
 def fresh_user(context: Context) -> None:
-    """Act as a user with a fresh id from now on."""
-    context.quota_user_id = str(uuid.uuid4())
+    """Act as a user with a fresh id from now on.
 
-
-def _ask(context: Context, endpoint: str, payload: dict[str, Any]) -> None:
-    """Send the payload to the endpoint as the scenario's user and keep the response."""
-    base = f"http://{context.hostname}:{context.port}"
-    path = f"{context.api_prefix}/{endpoint}".replace("//", "/")
-    url = f"{base}{path}?user_id={context.quota_user_id}"
-    streamed = endpoint == "streaming_query" or (
-        endpoint == "responses" and bool(payload.get("stream"))
-    )
-    response = request_with_transient_retry(
-        method="POST",
-        url=url,
-        json=payload,
-        timeout=DEFAULT_LLM_TIMEOUT,
-        stream=streamed,
-    )
-    if streamed:
-        body = read_streamed_response(response)
-        response._content = body.encode(  # pylint: disable=protected-access
-            response.encoding or "utf-8"
-        )
-    context.response = response
-    # the steps of this module read the raw response, not a parsed stream
-    context.use_streaming_response_data = False
-
-
-@step('I use "{endpoint}" to ask question as that user')
-def ask_as_that_user(context: Context, endpoint: str) -> None:
-    """Send the question in the step text as the scenario's user."""
-    payload = json.loads(replace_placeholders(context, context.text or "{}"))
-    context.quota_last_request = (endpoint, payload)
-    _ask(context, endpoint, payload)
+    The id is sent by "I use ... to ask question" as the ``user_id`` query
+    parameter, which the noop authentication takes as the caller.
+    """
+    context.request_user_id = str(uuid.uuid4())
 
 
 @when(
-    "I repeat the question as that user until it is no longer rejected, "
-    "within {budget:d} seconds"
+    "I resend the question once a second until it is served, "
+    "at most {attempts:d} times"
 )
-def repeat_until_served(context: Context, budget: int) -> None:
-    """Resend the last question every second while it gets a 429, up to the budget.
+def resend_until_served(context: Context, attempts: int) -> None:
+    """Resend the last question while it gets a 429, a bounded number of times.
 
     A rejected request costs no tokens, so repeating it cannot delay the
     renewal it waits for. The last response, served or not, is kept.
     """
-    endpoint, payload = context.quota_last_request
-    deadline = time.monotonic() + budget
-    attempts = 0
-    while True:
-        attempts += 1
-        _ask(context, endpoint, payload)
+    endpoint, payload = context.last_request
+    for attempt in range(1, attempts + 1):
+        context.execute_steps(
+            f'When I use "{endpoint}" to ask question\n"""\n{json.dumps(payload)}\n"""'
+        )
         if context.response.status_code != HTTP_TOO_MANY_REQUESTS:
             return
-        if time.monotonic() + POLL_INTERVAL_SECONDS > deadline:
-            raise AssertionError(
-                f"Still rejected after {attempts} attempts within {budget} seconds: "
-                f"{context.response.text}"
-            )
-        time.sleep(POLL_INTERVAL_SECONDS)
+        if attempt < attempts:
+            time.sleep(POLL_INTERVAL_SECONDS)
+    raise AssertionError(
+        f"Still rejected after {attempts} attempts: {context.response.text}"
+    )
 
 
 def _end_event(text: str) -> dict[str, Any]:
@@ -118,7 +84,7 @@ def _result(context: Context) -> dict[str, Any]:
     assert (
         context.response.status_code == 200
     ), f"Expected a served request, got {context.response.status_code}"
-    endpoint, payload = context.quota_last_request
+    endpoint, payload = context.last_request
     if endpoint == "streaming_query":
         return _end_event(context.response.text)
     if endpoint == "responses" and bool(payload.get("stream")):
@@ -186,18 +152,37 @@ def remember_cluster_quota(context: Context) -> None:
     context.quota_remembered_cluster = _available_quota(context, CLUSTER_LIMITER)
 
 
-@then(
-    "The available cluster quota went down by the tokens of the turn "
-    "since I remembered it"
-)
-def cluster_quota_went_down_by_the_turn(context: Context) -> None:
-    """Only the turn was charged to the cluster since the balance was remembered."""
+def _cluster_quota_went_down_by_the_turn(context: Context) -> None:
+    """Check that only the turn was charged to the cluster since the balance was remembered."""
     expected = context.quota_remembered_cluster - context.quota_turn_tokens
     actual = _available_quota(context, CLUSTER_LIMITER)
     assert actual == expected, (
         f"Cluster balance {context.quota_remembered_cluster} should have gone down "
         f"by {context.quota_turn_tokens} to {expected}, got {actual}"
     )
+
+
+@then(
+    "The available cluster quota went down by the tokens of the turn "
+    "since I remembered it"
+)
+def cluster_quota_went_down_by_the_turn(context: Context) -> None:
+    """Only the turn was charged to the cluster since the balance was remembered."""
+    _cluster_quota_went_down_by_the_turn(context)
+
+
+@then(
+    "The rejected request cost nothing: the available cluster quota went down "
+    "only by the tokens of this turn since I remembered it"
+)
+def rejected_request_cost_nothing(context: Context) -> None:
+    """A rejected request in between left the cluster balance alone.
+
+    The balance can only be read through a served request, so the proof is
+    that the served turn after the rejection is the only thing charged since
+    the balance was remembered before the rejection.
+    """
+    _cluster_quota_went_down_by_the_turn(context)
 
 
 @then("The response is the quota exceeded error for that user")
@@ -208,5 +193,5 @@ def quota_exceeded_error(context: Context) -> None:
     assert "detail" in body, f"No detail in the error body: {body}"
     assert body["detail"] == {
         "response": QUOTA_EXCEEDED_RESPONSE,
-        "cause": f"User {context.quota_user_id} has no available tokens",
+        "cause": f"User {context.request_user_id} has no available tokens",
     }, f"Unexpected error body: {body}"
