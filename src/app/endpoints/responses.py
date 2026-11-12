@@ -91,7 +91,7 @@ from utils.responses import (
     build_turn_summary,
     check_model_configured,
     deduplicate_referenced_documents,
-    extract_attachments_text,
+    extract_shield_moderation_text,
     extract_text_from_response_items,
     extract_token_usage,
     extract_vector_store_ids_from_tools,
@@ -429,17 +429,22 @@ async def responses_endpoint_handler(
     ):
         client = await AsyncLlamaStackClientHolder().update_azure_token()
 
+    shield_after_last_refusal = (
+        request.headers.get("X-LCS-Shield-After-Last-Refusal", "").lower() == "true"
+    )
     input_text = (
         original_request.input
         if isinstance(original_request.input, str)
         else extract_text_from_response_items(original_request.input)
     )
-    attachments_text = extract_attachments_text(original_request.input)
 
     endpoint_path = ENDPOINT_PATH_RESPONSES
     moderation_result = await run_shield_moderation(
         client,
-        input_text + "\n\n" + attachments_text,
+        extract_shield_moderation_text(
+            original_request.input,
+            after_last_refusal=shield_after_last_refusal,
+        ),
         endpoint_path,
         original_request.shield_ids,
     )

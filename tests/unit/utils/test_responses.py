@@ -11,6 +11,7 @@ from fastapi import HTTPException
 from llama_stack_api.openai_responses import (
     AllowedToolsFilter,
     OpenAIResponseInputToolChoiceAllowedTools,
+    OpenAIResponseMessage,
 )
 from llama_stack_api.openai_responses import ApprovalFilter as LlamaStackApprovalFilter
 from llama_stack_api.openai_responses import (
@@ -70,6 +71,7 @@ from utils.responses import (
     build_tool_call_summary,
     build_tool_result_from_mcp_output_item_done,
     extract_rag_chunks_from_file_search_item,
+    extract_shield_moderation_text,
     extract_text_from_response_item,
     extract_text_from_response_items,
     extract_token_usage,
@@ -77,6 +79,7 @@ from utils.responses import (
     filter_tools_by_allowed_entries,
     get_mcp_tools,
     get_rag_tools,
+    get_shield_moderation_input,
     get_topic_summary,
     get_vector_store_ids,
     is_server_deployed_output,
@@ -364,6 +367,44 @@ class TestExtractTextFromResponseItems:
         )
         result = extract_text_from_response_items([output_item])  # type: ignore[arg-type]
         assert result == "Part 1 Part 2"
+
+
+class TestGetShieldModerationInput:
+    """Test shield moderation history windowing."""
+
+    @staticmethod
+    def _message(
+        role: str, content: str, item_id: Optional[str] = None
+    ) -> OpenAIResponseMessage:
+        """Build a response message for a moderation window test."""
+        return OpenAIResponseMessage(role=role, content=content, id=item_id)  # type: ignore[arg-type]
+
+    def test_returns_full_input_when_disabled(self) -> None:
+        """Return the original list when windowing is disabled."""
+        items = [self._message("assistant", "refusal", "modr-1")]
+        assert get_shield_moderation_input(items) is items
+
+    def test_windows_after_last_refusal(self) -> None:
+        """Return only items after the last moderation refusal."""
+        items = [
+            self._message("user", "blocked"),
+            self._message("assistant", "refusal", "modr-1"),
+            self._message("user", "clean"),
+        ]
+        window = get_shield_moderation_input(items, after_last_refusal=True)
+        assert isinstance(window, list)
+        assert extract_text_from_response_items(window) == "clean"
+
+    def test_uses_last_refusal(self) -> None:
+        """Use the suffix after the most recent moderation refusal."""
+        items = [
+            self._message("user", "old"),
+            self._message("assistant", "refusal", "modr-1"),
+            self._message("user", "new blocked"),
+            self._message("assistant", "refusal", "modr-2"),
+            self._message("user", "clean"),
+        ]
+        assert extract_shield_moderation_text(items, True).startswith("clean")
 
 
 class TestGetRAGTools:
