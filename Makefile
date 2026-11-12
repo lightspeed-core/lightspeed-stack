@@ -314,8 +314,8 @@ docs/models/database.svg:	docs/models/database.puml	## Generate a SVG with datab
 	popd
 
 docs/user_doc/config.puml:	src/models/config.py ## Generate PlantUML class diagram for configuration
-	${UML_GENERATOR} $< --output puml --output-directory=docs/
-	mv docs/classes.puml docs/config.puml
+	${UML_GENERATOR} $< --output puml --output-directory=docs/user_doc/
+	mv docs/user_doc/classes.puml docs/user_doc/config.puml
 
 # Omit --theme rose on the CLI: it fails with some plantuml.jar builds on pyreverse output.
 # To use rose, add a line after @startuml: !theme rose  (requires a recent JAR).
