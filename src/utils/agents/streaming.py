@@ -14,11 +14,18 @@ from typing import TYPE_CHECKING, Any, Final, Optional
 from fastapi import HTTPException
 from ogx_client import ApiException
 from opentelemetry import trace
-from pydantic_ai import Agent, AgentRunError, AgentRunResultEvent, ToolReturnPart
+from pydantic_ai import (
+    Agent,
+    AgentRunError,
+    AgentRunResultEvent,
+    RunCancelled,
+    ToolReturnPart,
+)
 from pydantic_ai.messages import (
     AgentStreamEvent,
     FunctionToolCallEvent,
     FunctionToolResultEvent,
+    ModelResponse,
     NativeToolCallPart,
     NativeToolReturnPart,
     PartDeltaEvent,
@@ -29,7 +36,7 @@ from pydantic_ai.messages import (
 )
 
 from configuration import configuration
-from constants import MEDIA_TYPE_JSON
+from constants import ENDPOINT_PATH_STREAMING_QUERY, MEDIA_TYPE_JSON
 from log import get_logger
 from models.common.agents import (
     AgentTurnAccumulator,
@@ -154,7 +161,6 @@ async def _persist_compacted_turn(
     context: ResponseGeneratorContext,
     turn: PendingTurn,
     turn_summary: TurnSummary,
-    persist_guard: list[bool],
 ) -> None:
     """Append a completed compacted turn to the conversation (LCORE-3883).
 
@@ -167,13 +173,10 @@ async def _persist_compacted_turn(
         turn: The pending turn of the request. Nothing is written when OGX
             stores the turn itself.
         turn_summary: Completed turn, carrying the captured output items.
-        persist_guard: Single-element flag shared with the interrupt path, so
-            that only one of them finishes the turn.
 
     """
-    if not turn.ours or persist_guard[0]:
+    if not turn.ours:
         return
-    persist_guard[0] = True
     try:
         await turn.store_completed(turn_summary.output_items)
     except Exception:  # pylint: disable=broad-except
@@ -183,6 +186,97 @@ async def _persist_compacted_turn(
             "Failed to append compacted turn to conversation for request %s",
             context.request_id,
         )
+
+
+def _text_of_cancelled_run(cancelled: RunCancelled) -> list[str]:
+    """Return the text parts the cancelled run produced in this turn.
+
+    Parameters:
+        cancelled: The exception pydantic-ai raised for the cancelled run.
+
+    Returns:
+        The text contents of the model responses among the run's new messages,
+        in order; empty when the run was cancelled before any model text.
+
+    """
+    return [
+        part.content
+        for message in cancelled.new_messages()
+        if isinstance(message, ModelResponse)
+        for part in message.parts
+        if isinstance(part, TextPart) and part.content
+    ]
+
+
+async def _finish_interrupted_turn(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+    cancelled: RunCancelled,
+    context: ResponseGeneratorContext,
+    responses_params: ResponsesApiParams,
+    turn_summary: TurnSummary,
+    background_topic_summary_tasks: list[asyncio.Task[None]],
+    turn: PendingTurn,
+    media_type: str,
+    endpoint_path: str,
+) -> AsyncIterator[str]:
+    """Finish the turn of a run an interrupt cancelled, and end the stream.
+
+    The text the client has seen is what was projected as tokens; when nothing
+    was projected, the text the run completed before the cancellation is taken
+    from its messages, so the client and the stored turn agree. The text is
+    repaired and the interruption indicator appended, the turn is stored once
+    as interrupted, and the client receives what it is still missing followed
+    by the ``interrupted`` event. A cancellation before any model text is an
+    interrupt all the same: the client gets the indicator alone.
+
+    Parameters:
+        cancelled: The exception pydantic-ai raised for the cancelled run.
+        context: The response generator context.
+        responses_params: The Responses API parameters of the turn.
+        turn_summary: Turn summary filled while streaming; its ``llm_response``
+            is set to the stored text.
+        background_topic_summary_tasks: Tracking list for the topic summary
+            task the persistence may start.
+        turn: The pending turn that stores the interrupted turn.
+        media_type: Media type the events are serialized for.
+        endpoint_path: Endpoint path the usage metrics are labelled with.
+
+    Yields:
+        The suffix token and the ``interrupted`` event.
+
+    """
+    if cancelled.usage.requests:
+        # The model calls that completed before the interrupt are charged as
+        # those of a finished turn are (LCORE-4738); an interrupt before any
+        # completed call costs nothing.
+        turn_summary.token_usage = extract_agent_token_usage(
+            cancelled.usage, responses_params.model, endpoint_path
+        )
+        consume_query_tokens(
+            user_id=context.user_id,
+            model_id=responses_params.model,
+            token_usage=turn_summary.token_usage,
+        )
+    tokens = turn_summary.partial_tokens or _text_of_cancelled_run(cancelled)
+    full_text, suffix = build_interrupted_response(tokens)
+    if not turn_summary.partial_tokens:
+        # Nothing was streamed, so the whole text is still owed to the client.
+        suffix = full_text
+    turn_summary.llm_response = full_text
+    await persist_interrupted_turn(
+        context,
+        responses_params,
+        turn_summary,
+        background_topic_summary_tasks,
+        turn,
+    )
+    yield serialize_event(
+        TokenStreamPayload.create(chunk_id=turn_summary.next_chunk_id, token=suffix),
+        media_type,
+    )
+    yield serialize_event(
+        InterruptedStreamPayload.create(request_id=context.request_id),
+        media_type,
+    )
 
 
 async def generate_agent_response(  # pylint: disable=too-many-statements
@@ -196,6 +290,7 @@ async def generate_agent_response(  # pylint: disable=too-many-statements
     turn: Optional[PendingTurn] = None,
     context_status: ContextStatus = "full",
     summarization_usage: Optional[TokenCounter] = None,
+    endpoint_path: str = ENDPOINT_PATH_STREAMING_QUERY,
 ) -> AsyncIterator[str]:
     """Wrap an agent SSE generator with cleanup logic.
 
@@ -222,6 +317,8 @@ async def generate_agent_response(  # pylint: disable=too-many-statements
         summarization_usage: Usage of the summarization calls compaction made
             for this request (LCORE-3910). They were charged when they were
             made; here they are added to the usage the turn reports.
+        endpoint_path: Endpoint path the usage of an interrupted run is
+            recorded under.
 
     Yields:
         SSE-formatted strings from the wrapped generator.
@@ -235,7 +332,6 @@ async def generate_agent_response(  # pylint: disable=too-many-statements
     media_type = context.query_request.media_type or MEDIA_TYPE_JSON
     if turn is None:
         turn = PendingTurn.for_request(context.client, responses_params)
-    persist_guard: list[bool] = [False]
     stream_completed = False
     try:
         # The start event is sent inside the try, so that a client that goes
@@ -257,36 +353,26 @@ async def generate_agent_response(  # pylint: disable=too-many-statements
 
         stream_completed = True
 
+    except RunCancelled as cancelled:
+        # The interrupt endpoint cancelled the run's token: pydantic-ai stopped
+        # the run and reports what it completed, and the request, which was not
+        # cancelled, finishes the interrupted turn (LCORE-4734).
+        logger.info("Streaming request %s interrupted by user", context.request_id)
+        async for event in _finish_interrupted_turn(
+            cancelled,
+            context,
+            responses_params,
+            turn_summary,
+            background_topic_summary_tasks,
+            turn,
+            media_type,
+            endpoint_path,
+        ):
+            yield event
     except (AgentRunError, ApiException, RuntimeError) as exc:
         error_response = map_agent_inference_error(exc, responses_params.model)
         yield serialize_event(
             ErrorStreamPayload.from_error_response(error_response),
-            media_type,
-        )
-    except asyncio.CancelledError:
-        logger.info("Streaming request %s interrupted by user", context.request_id)
-        current_task = asyncio.current_task()
-        if current_task is not None:
-            current_task.uncancel()
-        full_text, suffix = build_interrupted_response(turn_summary.partial_tokens)
-        if not persist_guard[0]:
-            persist_guard[0] = True
-            turn_summary.llm_response = full_text
-            await persist_interrupted_turn(
-                context,
-                responses_params,
-                turn_summary,
-                background_topic_summary_tasks,
-                turn,
-            )
-        yield serialize_event(
-            TokenStreamPayload.create(
-                chunk_id=turn_summary.next_chunk_id, token=suffix
-            ),
-            media_type,
-        )
-        yield serialize_event(
-            InterruptedStreamPayload.create(request_id=context.request_id),
             media_type,
         )
     finally:
@@ -296,9 +382,9 @@ async def generate_agent_response(  # pylint: disable=too-many-statements
         root_span.end()
         return
 
-    await _persist_compacted_turn(context, turn, turn_summary, persist_guard)
+    await _persist_compacted_turn(context, turn, turn_summary)
     # The stream ran to its end. Fail if its turn had to be stored here and
-    # neither this path nor an interrupt tried to.
+    # nobody did.
     turn.ensure_settled()
 
     should_generate_topic_summary = (
