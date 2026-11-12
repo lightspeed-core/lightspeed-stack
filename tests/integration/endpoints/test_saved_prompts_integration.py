@@ -9,10 +9,11 @@ from app.endpoints.saved_prompts import (
     delete_saved_prompts_handler,
     get_saved_prompts_config_handler,
     list_saved_prompts_handler,
+    update_saved_prompts_handler,
 )
 from authentication.interface import AuthTuple
 from configuration import AppConfig
-from models.api.requests import SavedPromptCreateRequest
+from models.api.requests import SavedPromptCreateRequest, SavedPromptUpdateRequest
 from models.api.responses.successful import SavedPromptResponse
 from tests.integration.conftest import (
     TEST_NON_EXISTENT_ID,
@@ -323,3 +324,145 @@ async def test_delete_other_users_saved_prompt_returns_403(
         request=test_request,
     )
     assert any(prompt.id == other_prompt.id for prompt in remaining.prompts)
+
+
+@pytest.mark.asyncio
+async def test_update_saved_prompt_reorders_the_list(
+    test_config: AppConfig,
+    test_request: Request,
+    test_auth: AuthTuple,
+    patch_db_session: Session,
+) -> None:
+    """PUT moves a prompt to the front; the list reflects the new order."""
+    _ = test_config
+    _ = patch_db_session
+
+    first = await create_prompt_via_handler(
+        request=test_request,
+        auth=test_auth,
+        name="first",
+        content="body one",
+    )
+    second = await create_prompt_via_handler(
+        request=test_request,
+        auth=test_auth,
+        name="second",
+        content="body two",
+    )
+    third = await create_prompt_via_handler(
+        request=test_request,
+        auth=test_auth,
+        name="third",
+        content="body three",
+    )
+
+    updated = await update_saved_prompts_handler(
+        request=test_request,
+        prompt_id=third.id,
+        body=SavedPromptUpdateRequest(
+            name="third",
+            content="body three",
+            position=1,
+        ),
+        auth=test_auth,
+    )
+
+    assert updated.id == third.id
+    assert updated.position == 1
+
+    listed = await list_saved_prompts_handler(
+        auth=test_auth,
+        request=test_request,
+    )
+    assert [prompt.id for prompt in listed.prompts] == [
+        third.id,
+        first.id,
+        second.id,
+    ]
+    assert [prompt.position for prompt in listed.prompts] == [1, 2, 3]
+
+
+@pytest.mark.asyncio
+async def test_update_saved_prompt_rename_to_taken_name_returns_409(
+    test_config: AppConfig,
+    test_request: Request,
+    test_auth: AuthTuple,
+    patch_db_session: Session,
+) -> None:
+    """PUT renaming to a name the user already has returns 409."""
+    _ = test_config
+    _ = patch_db_session
+
+    first = await create_prompt_via_handler(
+        request=test_request,
+        auth=test_auth,
+        name="first",
+        content="body one",
+    )
+    await create_prompt_via_handler(
+        request=test_request,
+        auth=test_auth,
+        name="second",
+        content="body two",
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        await update_saved_prompts_handler(
+            request=test_request,
+            prompt_id=first.id,
+            body=SavedPromptUpdateRequest(
+                name="second",
+                content="body one",
+                position=1,
+            ),
+            auth=test_auth,
+        )
+
+    assert exc_info.value.status_code == status.HTTP_409_CONFLICT
+
+    # The failed update left both prompts unchanged.
+    listed = await list_saved_prompts_handler(
+        auth=test_auth,
+        request=test_request,
+    )
+    assert [prompt.name for prompt in listed.prompts] == ["first", "second"]
+
+
+@pytest.mark.asyncio
+async def test_update_other_users_saved_prompt_returns_403(
+    test_config: AppConfig,
+    test_request: Request,
+    test_auth: AuthTuple,
+    other_auth: AuthTuple,
+    patch_db_session: Session,
+) -> None:
+    """PUT on another user's prompt returns 403 and leaves it unchanged."""
+    _ = test_config
+    _ = patch_db_session
+
+    owned = await create_prompt_via_handler(
+        request=test_request,
+        auth=other_auth,
+        name="private",
+        content="private body",
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        await update_saved_prompts_handler(
+            request=test_request,
+            prompt_id=owned.id,
+            body=SavedPromptUpdateRequest(
+                name="hijacked",
+                content="hijacked body",
+                position=1,
+            ),
+            auth=test_auth,
+        )
+
+    assert exc_info.value.status_code == status.HTTP_403_FORBIDDEN
+
+    remaining = await list_saved_prompts_handler(
+        auth=other_auth,
+        request=test_request,
+    )
+    assert remaining.prompts[0].name == "private"

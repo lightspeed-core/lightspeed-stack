@@ -7861,6 +7861,250 @@
                         }
                     }
                 }
+            },
+            "put": {
+                "tags": [
+                    "saved-prompts"
+                ],
+                "summary": "Update Saved Prompts Handler",
+                "description": "Handle requests to the PUT /saved-prompts/{prompt_id} endpoint.\n\nProcess PUT requests that update a saved prompt belonging to the\nauthenticated user in place, with full-replace semantics: name, content,\nand position are all required in the body, the prompt is moved to the\ngiven position (values above the user's prompt count move it to the\nend), and the user's remaining positions are renormalized. Prompts owned\nby another user return 403, matching delete. For example:\n\n    curl -X PUT http://localhost:8080/v1/saved-prompts/{prompt_id}           -H 'Content-Type: application/json'           -d '{\"name\":\"Deploy to staging\",\"content\":\"...\",\"position\":2}'\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- prompt_id: Identifier of the saved prompt to update.\n- body: The complete updated saved prompt (name, content, position).\n- auth: Authentication tuple from the auth dependency (used by middleware).\n\n### Raises:\n- HTTPException: with status 400 when ``prompt_id`` has an invalid format.\n- HTTPException: with status 401 for unauthorized access.\n- HTTPException: with status 403 if permission is denied or the prompt is\n  owned by another user.\n- HTTPException: with status 404 when the prompt does not exist.\n- HTTPException: with status 409 when renaming to a name that already\n  exists.\n- HTTPException: with status 422 when validation fails.\n- HTTPException: with status 500 when configuration is not loaded or the\n  database update fails.\n\n### Returns:\n- SavedPromptResponse: The updated saved prompt.",
+                "operationId": "update_saved_prompts_handler_v1_saved_prompts__prompt_id__put",
+                "parameters": [
+                    {
+                        "name": "prompt_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Prompt Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SavedPromptUpdateRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SavedPromptResponse"
+                                },
+                                "example": {
+                                    "content": "Help me write a deployment checklist\u2026",
+                                    "created_at": "2026-07-22T16:00:00+00:00",
+                                    "id": "abc123",
+                                    "name": "Deploy to staging",
+                                    "position": 1,
+                                    "updated_at": "2026-07-22T16:00:00+00:00"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request format",
+                        "content": {
+                            "application/json": {
+                                "examples": {
+                                    "saved_prompt_id": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "The saved prompt ID 123e4567-e89b-12d3-a456-426614174000 has invalid format.",
+                                                "response": "Invalid saved prompt ID format"
+                                            }
+                                        }
+                                    }
+                                },
+                                "schema": {
+                                    "$ref": "#/components/schemas/BadRequestResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "examples": {
+                                    "missing header": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "No Authorization header found",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "missing token": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "No token found in Authorization header",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "expired token": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Token has expired",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "invalid signature": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Invalid token signature",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "invalid key": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Token signed by unknown key",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "missing claim": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Token missing claim: user_id",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "invalid k8s token": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Invalid or expired Kubernetes token",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "invalid jwk token": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Authentication key server returned invalid data",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    }
+                                },
+                                "schema": {
+                                    "$ref": "#/components/schemas/UnauthorizedResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Permission denied",
+                        "content": {
+                            "application/json": {
+                                "examples": {
+                                    "endpoint": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "User 6789 is not authorized to access this endpoint.",
+                                                "response": "User does not have permission to access this endpoint"
+                                            }
+                                        }
+                                    }
+                                },
+                                "schema": {
+                                    "$ref": "#/components/schemas/ForbiddenResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Resource not found",
+                        "content": {
+                            "application/json": {
+                                "examples": {},
+                                "schema": {
+                                    "$ref": "#/components/schemas/NotFoundResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Resource already exists",
+                        "content": {
+                            "application/json": {
+                                "examples": {
+                                    "saved prompt": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Saved Prompt with name 'Deploy to staging' is already registered",
+                                                "response": "Saved Prompt already exists"
+                                            }
+                                        }
+                                    }
+                                },
+                                "schema": {
+                                    "$ref": "#/components/schemas/ConflictResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Request validation failed",
+                        "content": {
+                            "application/json": {
+                                "examples": {
+                                    "saved prompt invalid": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Saved prompt name must not be empty",
+                                                "response": "Invalid attribute value"
+                                            }
+                                        }
+                                    }
+                                },
+                                "schema": {
+                                    "$ref": "#/components/schemas/UnprocessableEntityResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "content": {
+                            "application/json": {
+                                "examples": {
+                                    "configuration": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Lightspeed Stack configuration has not been initialized.",
+                                                "response": "Configuration is not loaded"
+                                            }
+                                        }
+                                    },
+                                    "database": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Failed to query the database",
+                                                "response": "Database query failed"
+                                            }
+                                        }
+                                    }
+                                },
+                                "schema": {
+                                    "$ref": "#/components/schemas/InternalServerErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
             }
         },
         "/v1/feedback": {
@@ -22061,6 +22305,51 @@
                         "name": "Deploy to staging",
                         "position": 1,
                         "updated_at": "2026-07-22T16:00:00+00:00"
+                    }
+                ]
+            },
+            "SavedPromptUpdateRequest": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Display name of the saved prompt",
+                        "examples": [
+                            "Deploy to staging"
+                        ]
+                    },
+                    "content": {
+                        "type": "string",
+                        "title": "Content",
+                        "description": "Prompt body text",
+                        "examples": [
+                            "Help me write a deployment checklist\u2026"
+                        ]
+                    },
+                    "position": {
+                        "type": "integer",
+                        "minimum": 1.0,
+                        "title": "Position",
+                        "description": "Target position in the user's list (1-based)",
+                        "examples": [
+                            1
+                        ]
+                    }
+                },
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                    "name",
+                    "content",
+                    "position"
+                ],
+                "title": "SavedPromptUpdateRequest",
+                "description": "Request body to update a user-scoped saved prompt in place.\n\nFull-replace semantics: the caller sends the complete prompt object and\nevery field is required; omitting a field is a validation error rather\nthan \"leave unchanged\". Length limits are enforced by the endpoint using\nconfigured saved-prompts limits, not by static field constraints here.\n\nAttributes:\n    name: Display name of the saved prompt.\n    content: Prompt body text.\n    position: Target position in the user's list (1-based); values above\n        the number of prompts the user holds move the prompt to the end.",
+                "examples": [
+                    {
+                        "content": "Help me write a deployment checklist\u2026",
+                        "name": "Deploy to staging",
+                        "position": 1
                     }
                 ]
             },

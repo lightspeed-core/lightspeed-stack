@@ -461,13 +461,13 @@ async def update_saved_prompts_handler(
             body.content,
             body.position,
         )
-    except SavedPromptNotFoundError:
+    except SavedPromptNotFoundError as exc:
         logger.info("Saved prompt %s not found for update.", prompt_id)
         error_response = NotFoundResponse(
             resource="saved prompt",
             resource_id=prompt_id,
         )
-        raise HTTPException(**error_response.model_dump())
+        raise HTTPException(**error_response.model_dump()) from exc
     except SavedPromptAccessDeniedError as exc:
         logger.warning(
             "User attempted to update saved prompt %s they don't have access to",
