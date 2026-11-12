@@ -10,6 +10,7 @@ import pytest
 from fastapi import HTTPException
 from llama_stack_api.openai_responses import (
     AllowedToolsFilter,
+    OpenAIResponseInputMessageContentFile,
     OpenAIResponseInputToolChoiceAllowedTools,
     OpenAIResponseMessage,
 )
@@ -374,7 +375,7 @@ class TestGetShieldModerationInput:
 
     @staticmethod
     def _message(
-        role: str, content: str, item_id: Optional[str] = None
+        role: str, content: Any, item_id: str | None = None
     ) -> OpenAIResponseMessage:
         """Build a response message for a moderation window test."""
         return OpenAIResponseMessage(role=role, content=content, id=item_id)  # type: ignore[arg-type]
@@ -405,6 +406,22 @@ class TestGetShieldModerationInput:
             self._message("user", "clean"),
         ]
         assert extract_shield_moderation_text(items, True).startswith("clean")
+
+    def test_retains_only_attachments_after_last_refusal(self) -> None:
+        """Keep suffix attachments and exclude attachments before the refusal."""
+        items = [
+            self._message(
+                "user",
+                [OpenAIResponseInputMessageContentFile(file_data="old-file")],
+            ),
+            self._message("assistant", "refusal", "modr-1"),
+            self._message(
+                "user",
+                [OpenAIResponseInputMessageContentFile(file_data="new-file")],
+            ),
+        ]
+
+        assert extract_shield_moderation_text(items, True) == "\n\nnew-file"
 
 
 class TestGetRAGTools:
