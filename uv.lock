@@ -1,18 +1,18 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.12, <3.15"
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform == 'win32'",
     "python_full_version >= '3.14' and sys_platform == 'emscripten'",
     "python_full_version >= '3.14' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version >= '3.14' and sys_platform == 'darwin'",
     "python_full_version == '3.13.*' and sys_platform == 'win32'",
     "python_full_version == '3.13.*' and sys_platform == 'emscripten'",
     "python_full_version == '3.13.*' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version == '3.13.*' and sys_platform == 'darwin'",
     "python_full_version < '3.13' and sys_platform == 'win32'",
     "python_full_version < '3.13' and sys_platform == 'emscripten'",
     "python_full_version < '3.13' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
-    "python_full_version >= '3.14' and sys_platform == 'darwin'",
-    "python_full_version == '3.13.*' and sys_platform == 'darwin'",
     "python_full_version < '3.13' and sys_platform == 'darwin'",
 ]
 
@@ -616,11 +616,11 @@ wheels = [
 
 [[package]]
 name = "certifi"
-version = "2026.7.22"
+version = "2026.10.23"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/a3/c2/24167ea9858356b47a87a50d39908bfdb72ceeefe0041586e704e5376b3a/certifi-2026.7.22.tar.gz", hash = "sha256:741e2c3b351ddf169a738da9f2c048608ff7f2c5cc02f1ebc6b118bb090d5d55", size = 138112, upload-time = "2026-07-22T03:35:12.644Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/fd/11/b524cbd9bbdaca58608e4cf4053fd463417549e1959fa8d3aa18319f9555/certifi-2026.10.23.tar.gz", hash = "sha256:a9895e6e2758b371e0545e321a3a8fd1fcfd9829ada8824a936dfb16aaaf36cd", size = 136225, upload-time = "2026-10-23T11:36:16.478Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/0b/a7/71ac2cff56fec219ed242bb11b8efb69fcc4bec75db06fb7bfe35de520e6/certifi-2026.7.22-py3-none-any.whl", hash = "sha256:62f22742b58a1a33014a2b6b706588a8d7e2a88ae7bd1a6ebe8c992928483775", size = 136983, upload-time = "2026-07-22T03:35:11.276Z" },
+    { url = "https://files.pythonhosted.org/packages/32/d1/a3652fe2c19134d0d15922177821d863cbd7e842d53a21bbe7e8e3a1b5ac/certifi-2026.10.23-py3-none-any.whl", hash = "sha256:e9b54de76e530bb6cf0ccd036787103acb58fd42ba930ea8bf948ddbaa2f61d1", size = 135082, upload-time = "2026-10-23T11:36:14.763Z" },
 ]
 
 [[package]]
@@ -1844,8 +1844,8 @@ name = "httpcore2"
 version = "2.13.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "h11", marker = "sys_platform != 'emscripten'" },
-    { name = "truststore", marker = "sys_platform != 'emscripten'" },
+    { name = "h11" },
+    { name = "truststore" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/cb/f3/1db7aa2bc2524062192bb0e0323969492d1883152a232fe36eea65f4e35c/httpcore2-2.13.1.tar.gz", hash = "sha256:e0aa977abe17e69a3b820a24542a6fa88702676d83880b8d194dcd18408e5103", size = 68071, upload-time = "2026-09-23T07:47:22.372Z" }
 wheels = [
@@ -5114,8 +5114,8 @@ name = "secretstorage"
 version = "3.5.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "cryptography", marker = "sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'" },
-    { name = "jeepney", marker = "sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'" },
+    { name = "cryptography" },
+    { name = "jeepney" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/1c/03/e834bcd866f2f8a49a85eaff47340affa3bfa391ee9912a952a1faa68c7b/secretstorage-3.5.0.tar.gz", hash = "sha256:f04b8e4689cbce351744d5537bf6b1329c6fc68f91fa666f60a380edddcd11be", size = 19884, upload-time = "2025-11-23T19:02:53.191Z" }
 wheels = [
@@ -5467,13 +5467,13 @@ resolution-markers = [
     "python_full_version < '3.13' and sys_platform == 'darwin'",
 ]
 dependencies = [
-    { name = "filelock", marker = "sys_platform == 'darwin'" },
-    { name = "fsspec", marker = "sys_platform == 'darwin'" },
-    { name = "jinja2", marker = "sys_platform == 'darwin'" },
-    { name = "networkx", marker = "sys_platform == 'darwin'" },
-    { name = "setuptools", marker = "sys_platform == 'darwin'" },
-    { name = "sympy", marker = "sys_platform == 'darwin'" },
-    { name = "typing-extensions", marker = "sys_platform == 'darwin'" },
+    { name = "filelock" },
+    { name = "fsspec" },
+    { name = "jinja2" },
+    { name = "networkx" },
+    { name = "setuptools" },
+    { name = "sympy" },
+    { name = "typing-extensions" },
 ]
 wheels = [
     { url = "https://download-r2.pytorch.org/whl/cpu/torch-2.11.0-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:43b35116802c85fb88d99f4a396b8bd4472bfca1dd82e69499e5a4f9b8b4e252", upload-time = "2026-03-23T15:16:58Z" },
@@ -5499,13 +5499,13 @@ resolution-markers = [
     "python_full_version < '3.13' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
 ]
 dependencies = [
-    { name = "filelock", marker = "sys_platform != 'darwin'" },
-    { name = "fsspec", marker = "sys_platform != 'darwin'" },
-    { name = "jinja2", marker = "sys_platform != 'darwin'" },
-    { name = "networkx", marker = "sys_platform != 'darwin'" },
-    { name = "setuptools", marker = "sys_platform != 'darwin'" },
-    { name = "sympy", marker = "sys_platform != 'darwin'" },
-    { name = "typing-extensions", marker = "sys_platform != 'darwin'" },
+    { name = "filelock" },
+    { name = "fsspec" },
+    { name = "jinja2" },
+    { name = "networkx" },
+    { name = "setuptools" },
+    { name = "sympy" },
+    { name = "typing-extensions" },
 ]
 wheels = [
     { url = "https://download-r2.pytorch.org/whl/cpu/torch-2.11.0%2Bcpu-cp312-cp312-linux_s390x.whl", hash = "sha256:2db3ae5404e32cb42b5fcbd94f13607761eaec0cf1687fde95095289d1e26cfb", upload-time = "2026-04-28T00:06:06Z" },
