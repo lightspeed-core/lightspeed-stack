@@ -12,7 +12,10 @@ from openai import APIConnectionError
 from pytest_mock import MockerFixture
 
 from app.main import lifespan
-from providers.inference.errors import ModelDiscoveryError
+from providers.inference.errors import (
+    DefaultModelNotAvailableError,
+    ModelDiscoveryError,
+)
 from providers.inference.registry import ProviderRegistry
 from utils.types import Singleton
 
@@ -168,3 +171,123 @@ async def test_lifespan_propagates_model_discovery_error(
 
     assert exc_info.value.provider_id == "openai"
     assert ProviderRegistry().list_providers() == []
+
+
+@pytest.mark.asyncio
+async def test_lifespan_validates_default_model_exists(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    mocker: MockerFixture,
+) -> None:
+    """Startup succeeds when configured default model exists in registry."""
+    monkeypatch.setenv(
+        "LIGHTSPEED_STACK_CONFIG_PATH",
+        str(
+            _write_config(
+                tmp_path,
+                inference={
+                    "default_provider": "openai",
+                    "default_model": "chat",
+                    "providers": [
+                        _openai_provider_entry(skip_model_discovery=True),
+                    ],
+                },
+            )
+        ),
+    )
+    _patch_lifespan_foreign_dependencies(mocker)
+
+    async with lifespan(FastAPI()):
+        registry = ProviderRegistry()
+        assert [model.name for model in registry.list_models()] == ["chat"]
+
+
+@pytest.mark.asyncio
+async def test_lifespan_aborts_when_default_model_missing(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    mocker: MockerFixture,
+) -> None:
+    """Startup aborts when configured default model is missing from registry."""
+    monkeypatch.setenv(
+        "LIGHTSPEED_STACK_CONFIG_PATH",
+        str(
+            _write_config(
+                tmp_path,
+                inference={
+                    "default_provider": "openai",
+                    "default_model": "nonexistent",
+                    "providers": [
+                        _openai_provider_entry(skip_model_discovery=True),
+                    ],
+                },
+            )
+        ),
+    )
+    _patch_lifespan_foreign_dependencies(mocker)
+
+    with pytest.raises(DefaultModelNotAvailableError) as exc_info:
+        async with lifespan(FastAPI()):
+            pass
+
+    assert exc_info.value.provider_id == "openai"
+    assert exc_info.value.model_id == "nonexistent"
+
+
+@pytest.mark.asyncio
+async def test_lifespan_aborts_when_default_provider_missing(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    mocker: MockerFixture,
+) -> None:
+    """Startup aborts when configured default provider is not in registry."""
+    monkeypatch.setenv(
+        "LIGHTSPEED_STACK_CONFIG_PATH",
+        str(
+            _write_config(
+                tmp_path,
+                inference={
+                    "default_provider": "nonexistent-provider",
+                    "default_model": "chat",
+                    "providers": [
+                        _openai_provider_entry(skip_model_discovery=True),
+                    ],
+                },
+            )
+        ),
+    )
+    _patch_lifespan_foreign_dependencies(mocker)
+
+    with pytest.raises(DefaultModelNotAvailableError) as exc_info:
+        async with lifespan(FastAPI()):
+            pass
+
+    assert exc_info.value.provider_id == "nonexistent-provider"
+    assert exc_info.value.model_id == "chat"
+
+
+@pytest.mark.asyncio
+async def test_lifespan_skips_default_model_check_when_not_configured(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    mocker: MockerFixture,
+) -> None:
+    """Startup succeeds when no default model is configured."""
+    monkeypatch.setenv(
+        "LIGHTSPEED_STACK_CONFIG_PATH",
+        str(
+            _write_config(
+                tmp_path,
+                inference={
+                    "providers": [
+                        _openai_provider_entry(skip_model_discovery=True),
+                    ],
+                },
+            )
+        ),
+    )
+    _patch_lifespan_foreign_dependencies(mocker)
+
+    async with lifespan(FastAPI()):
+        registry = ProviderRegistry()
+        assert len(registry.list_providers()) == 1
