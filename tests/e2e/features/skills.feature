@@ -20,32 +20,6 @@ Feature: Agent skills tests
       {
         "tools": [
           {
-            "identifier": "insert_into_memory",
-            "description": "Insert documents into memory",
-            "parameters": [],
-            "provider_id": "file-search",
-            "toolgroup_id": "builtin::file_search",
-            "server_source": "builtin",
-            "type": "tool"
-          },
-          {
-            "identifier": "file_search",
-            "description": "Search files for relevant information",
-            "parameters": [
-              {
-                "name": "query",
-                "description": "The query to search for. Can be a natural language sentence or keywords.",
-                "parameter_type": "string",
-                "required": true,
-                "default": null
-              }
-            ],
-            "provider_id": "file-search",
-            "toolgroup_id": "builtin::file_search",
-            "server_source": "builtin",
-            "type": "tool"
-          },
-          {
             "identifier": "list_skills",
             "description": "Get an overview of all available skills and what they do.\n\nUse this when you need to discover what skills exist or refresh your knowledge\nof available capabilities. Skills provide domain-specific knowledge and instructions\nfor specialized tasks.",
             "parameters": [],
@@ -731,34 +705,7 @@ Feature: Agent skills tests
      And The body of the response is the following
       """
       {
-        "tools": [
-          {
-            "identifier": "insert_into_memory",
-            "description": "Insert documents into memory",
-            "parameters": [],
-            "provider_id": "file-search",
-            "toolgroup_id": "builtin::file_search",
-            "server_source": "builtin",
-            "type": "tool"
-          },
-          {
-            "identifier": "file_search",
-            "description": "Search files for relevant information",
-            "parameters": [
-              {
-                "name": "query",
-                "description": "The query to search for. Can be a natural language sentence or keywords.",
-                "parameter_type": "string",
-                "required": true,
-                "default": null
-              }
-            ],
-            "provider_id": "file-search",
-            "toolgroup_id": "builtin::file_search",
-            "server_source": "builtin",
-            "type": "tool"
-          }
-        ]
+        "tools": []
       }
       """
 
