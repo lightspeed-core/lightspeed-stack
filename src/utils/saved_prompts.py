@@ -1,8 +1,10 @@
 """Validation helpers and data access for saved prompts."""
 
+from typing import Optional
+
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, load_only
 
 import constants
 from app.database import get_session
@@ -145,20 +147,6 @@ def _next_position(session: Session, user_id: str) -> int:
     return (max_position or 0) + 1
 
 
-def _is_position_conflict(exc: IntegrityError) -> bool:
-    """Check whether an IntegrityError comes from the position unique constraint.
-
-    Parameters:
-        exc: The IntegrityError raised by a commit.
-
-    Returns:
-        True if the error references the per-user position constraint.
-
-    """
-    message = str(getattr(exc, "orig", exc)).lower()
-    return "position" in message
-
-
 def create_saved_prompt(
     user_id: str,
     name: str,
@@ -170,9 +158,11 @@ def create_saved_prompt(
     Caller is responsible for validating ``name`` and ``content``. This function
     counts existing prompts for ``user_id``, enforces ``max_prompts_per_user``,
     inserts a new row with a generated id and the user's next append position,
-    and returns the persisted entity with timestamps loaded. If a concurrent
-    create wins the same position (unique constraint violation), the insert is
-    retried once with a freshly computed position.
+    and returns the persisted entity with timestamps loaded. If the insert
+    violates a unique constraint, it is retried once with a freshly computed
+    position (a concurrent create may have transiently taken the same
+    position); a conflict that survives the retry is reported as a name
+    conflict.
 
     Parameters:
         user_id: Owner of the saved prompt.
@@ -201,38 +191,29 @@ def create_saved_prompt(
             position=_next_position(session, user_id),
         )
         session.add(saved_prompt)
-        try:
-            session.commit()
-        except IntegrityError as exc:
-            session.rollback()
-            if _is_position_conflict(exc):
-                # A concurrent create took the same position; retry once
-                # with a freshly computed maximum before giving up.
-                logger.debug(
-                    "Saved prompt position conflict for user_id=%s, retrying",
-                    user_id,
-                )
-                saved_prompt.position = _next_position(session, user_id)
-                session.add(saved_prompt)
-                try:
-                    session.commit()
-                except IntegrityError as retry_exc:
-                    session.rollback()
+        for attempt in range(2):
+            try:
+                session.commit()
+                break
+            except IntegrityError as exc:
+                session.rollback()
+                if attempt > 0:
                     logger.debug(
                         "Saved prompt create conflict for user_id=%s",
                         user_id,
                     )
                     raise SavedPromptConflictError(
                         "Saved prompt name already exists"
-                    ) from retry_exc
-            else:
+                    ) from exc
+                # A concurrent create may have transiently taken the computed
+                # position; retry once with a fresh maximum. A name conflict
+                # is not transient and fails again on the next commit.
                 logger.debug(
-                    "Saved prompt create conflict for user_id=%s",
+                    "Saved prompt insert conflict for user_id=%s, retrying",
                     user_id,
                 )
-                raise SavedPromptConflictError(
-                    "Saved prompt name already exists"
-                ) from exc
+                saved_prompt.position = _next_position(session, user_id)
+                session.add(saved_prompt)
 
         # reload server default timestamps so they remain usable after the session closes
         session.refresh(saved_prompt)
@@ -271,17 +252,70 @@ def _heal_null_positions(session: Session, rows: list[SavedPrompt]) -> None:
     session.flush()
 
 
+def _ordered_user_prompts(
+    session: Session,
+    user_id: str,
+    *,
+    limit: Optional[int] = None,
+    defer_body: bool = False,
+) -> tuple[list[SavedPrompt], bool]:
+    """Load a user's prompts in canonical order, healing NULL positions.
+
+    This is the single loader shared by every saved-prompt read and
+    renumber path, so the ordering contract — ``position`` ascending with
+    ``created_at`` descending and ``id`` as deterministic tiebreakers
+    (stable even with duplicate positions, possible on deployments upgraded
+    before the ``(user_id, position)`` unique constraint) — is defined once.
+    Rows with a NULL position (written by old-code pods during a rolling
+    update) are healed by appending them after the user's maximum position
+    and the query is re-run so the returned rows reflect the healed order.
+
+    Parameters:
+        session: DAL session to query within.
+        user_id: Owner whose prompts are loaded.
+        limit: Optional row cap (the list endpoint caps at
+            ``SAVED_PROMPTS_MAX_PER_USER_UPPER_BOUND``).
+        defer_body: Defer loading the large ``content`` column; set when the
+            caller only renumbers rows and never reads the body.
+
+    Returns:
+        The ordered rows and whether NULL positions were healed (the caller
+        owns committing the heal).
+
+    """
+    query = session.query(SavedPrompt).filter_by(user_id=user_id)
+    if defer_body:
+        query = query.options(
+            load_only(SavedPrompt.id, SavedPrompt.position, SavedPrompt.created_at)
+        )
+    query = query.order_by(
+        SavedPrompt.position.asc(),
+        SavedPrompt.created_at.desc(),
+        SavedPrompt.id,
+    )
+    if limit is not None:
+        query = query.limit(limit)
+    rows = query.all()
+    if not any(row.position is None for row in rows):
+        return rows, False
+    # Heal over the user's FULL row set, not just the capped window: strays
+    # beyond a cap would otherwise re-enter the window on the re-query
+    # (NULLs sort first on SQLite) and collide with freshly assigned
+    # positions. The uncapped recursive call performs the heal.
+    if limit is not None:
+        _ordered_user_prompts(session, user_id)
+    else:
+        _heal_null_positions(session, rows)
+    return query.all(), True
+
+
 def list_saved_prompts_by_user(user_id: str) -> list[SavedPrompt]:
     """List saved prompts for a user ordered by position ascending.
 
-    Order is ``position`` ascending with ``created_at`` descending and ``id``
-    as deterministic tiebreakers, so results stay stable even when duplicate
-    positions exist (possible on deployments upgraded before the
-    ``(user_id, position)`` unique constraint). Rows with a NULL position
-    (written by old-code pods during a rolling update) are healed by
-    appending them after the user's maximum position. Results are capped at
-    ``SAVED_PROMPTS_MAX_PER_USER_UPPER_BOUND`` so a misconfigured or
-    out-of-band insert path cannot materialize unbounded rows.
+    Rows are loaded in canonical order (see ``_ordered_user_prompts``),
+    capped at ``SAVED_PROMPTS_MAX_PER_USER_UPPER_BOUND`` so a misconfigured
+    or out-of-band insert path cannot materialize unbounded rows. NULL
+    positions, if any, are healed and committed before returning.
 
     Parameters:
         user_id: Owner whose prompts should be returned.
@@ -291,30 +325,18 @@ def list_saved_prompts_by_user(user_id: str) -> list[SavedPrompt]:
 
     """
     with get_session() as session:
-        rows = (
-            session.query(SavedPrompt)
-            .filter_by(user_id=user_id)
-            .order_by(
-                SavedPrompt.position.asc(),
-                SavedPrompt.created_at.desc(),
-                SavedPrompt.id,
-            )
-            .limit(constants.SAVED_PROMPTS_MAX_PER_USER_UPPER_BOUND)
-            .all()
+        rows, healed = _ordered_user_prompts(
+            session,
+            user_id,
+            limit=constants.SAVED_PROMPTS_MAX_PER_USER_UPPER_BOUND,
         )
-        if any(row.position is None for row in rows):
-            _heal_null_positions(session, rows)
+        if healed:
             session.commit()
-            rows = (
-                session.query(SavedPrompt)
-                .filter_by(user_id=user_id)
-                .order_by(
-                    SavedPrompt.position.asc(),
-                    SavedPrompt.created_at.desc(),
-                    SavedPrompt.id,
-                )
-                .limit(constants.SAVED_PROMPTS_MAX_PER_USER_UPPER_BOUND)
-                .all()
+            # commit expires the loaded rows; re-load them fresh
+            rows, _ = _ordered_user_prompts(
+                session,
+                user_id,
+                limit=constants.SAVED_PROMPTS_MAX_PER_USER_UPPER_BOUND,
             )
         return rows
 
@@ -342,20 +364,11 @@ def _renumber_positions(
         new_position: Target position (1-based, clamped to the end).
 
     """
-    rows = (
-        session.query(SavedPrompt)
-        .filter_by(user_id=user_id)
-        .order_by(
-            SavedPrompt.position.asc(),
-            SavedPrompt.created_at.desc(),
-            SavedPrompt.id,
-        )
-        .all()
-    )
-    ordered_ids = [row.id for row in rows]
-    ordered_ids.remove(target_id)
-    insert_index = min(new_position, len(ordered_ids) + 1) - 1
-    ordered_ids.insert(insert_index, target_id)
+    rows, _healed = _ordered_user_prompts(session, user_id, defer_body=True)
+    target = next(row for row in rows if row.id == target_id)
+    rows.remove(target)
+    insert_index = min(new_position, len(rows) + 1) - 1
+    rows.insert(insert_index, target)
 
     # Positions are not dense: creates append max+1 and deletes never
     # renumber, so a user's max position can far exceed their row count.
@@ -363,19 +376,62 @@ def _renumber_positions(
     # not the row count, or a still-present old position inside the target
     # range collides mid-renumber.
     max_existing = max((row.position or 0) for row in rows)
-    offset = max(max_existing, len(ordered_ids)) + 1
+    offset = max(max_existing, len(rows)) + 1
     # Phase 1: shift beyond any existing value so no intermediate state
     # collides with a still-present old position.
-    for sequence, row_id in enumerate(ordered_ids):
-        session.query(SavedPrompt).filter_by(id=row_id).update(
-            {"position": sequence + 1 + offset}
-        )
+    for sequence, row in enumerate(rows):
+        row.position = sequence + 1 + offset
     session.flush()
     # Phase 2: normalize to a dense 1..N sequence.
-    for sequence, row_id in enumerate(ordered_ids):
-        session.query(SavedPrompt).filter_by(id=row_id).update(
-            {"position": sequence + 1}
+    for sequence, row in enumerate(rows):
+        row.position = sequence + 1
+
+
+def _get_owned_saved_prompt(
+    session: Session,
+    prompt_id: str,
+    user_id: str,
+    action: str,
+) -> SavedPrompt:
+    """Fetch a saved prompt and enforce ownership for a mutating action.
+
+    Shared by the update and delete paths so the ownership ladder (missing
+    row, wrong owner) is defined once.
+
+    Parameters:
+        session: DAL session to query within.
+        prompt_id: Primary key of the saved prompt.
+        user_id: Authenticated user attempting the action.
+        action: Action name for log messages (e.g. "update", "delete").
+
+    Returns:
+        The owned ``SavedPrompt`` row.
+
+    Raises:
+        SavedPromptNotFoundError: If no row exists for ``prompt_id``.
+        SavedPromptAccessDeniedError: If the row exists but ``user_id`` does
+            not match the owner.
+
+    """
+    saved_prompt = session.query(SavedPrompt).filter_by(id=prompt_id).first()
+    if saved_prompt is None:
+        logger.debug(
+            "Saved prompt not found for %s prompt_id=%s user_id=%s",
+            action,
+            prompt_id,
+            user_id,
         )
+        raise SavedPromptNotFoundError("Saved prompt not found")
+
+    if saved_prompt.user_id != user_id:
+        logger.debug(
+            "Saved prompt access denied for %s prompt_id=%s user_id=%s",
+            action,
+            prompt_id,
+            user_id,
+        )
+        raise SavedPromptAccessDeniedError("Saved prompt access denied")
+    return saved_prompt
 
 
 def update_saved_prompt_by_id_and_user(
@@ -413,22 +469,7 @@ def update_saved_prompt_by_id_and_user(
 
     """
     with get_session() as session:
-        saved_prompt = session.query(SavedPrompt).filter_by(id=prompt_id).first()
-        if saved_prompt is None:
-            logger.debug(
-                "Saved prompt not found for update prompt_id=%s user_id=%s",
-                prompt_id,
-                user_id,
-            )
-            raise SavedPromptNotFoundError("Saved prompt not found")
-
-        if saved_prompt.user_id != user_id:
-            logger.debug(
-                "Saved prompt access denied for update prompt_id=%s user_id=%s",
-                prompt_id,
-                user_id,
-            )
-            raise SavedPromptAccessDeniedError("Saved prompt access denied")
+        saved_prompt = _get_owned_saved_prompt(session, prompt_id, user_id, "update")
 
         saved_prompt.name = name
         saved_prompt.content = content
@@ -468,22 +509,7 @@ def delete_saved_prompt_by_id_and_user(prompt_id: str, user_id: str) -> None:
 
     """
     with get_session() as session:
-        saved_prompt = session.query(SavedPrompt).filter_by(id=prompt_id).first()
-        if saved_prompt is None:
-            logger.debug(
-                "Saved prompt not found for delete prompt_id=%s user_id=%s",
-                prompt_id,
-                user_id,
-            )
-            raise SavedPromptNotFoundError("Saved prompt not found")
-
-        if saved_prompt.user_id != user_id:
-            logger.debug(
-                "Saved prompt access denied for delete prompt_id=%s user_id=%s",
-                prompt_id,
-                user_id,
-            )
-            raise SavedPromptAccessDeniedError("Saved prompt access denied")
+        saved_prompt = _get_owned_saved_prompt(session, prompt_id, user_id, "delete")
 
         session.delete(saved_prompt)
         session.commit()

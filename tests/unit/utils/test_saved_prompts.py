@@ -537,6 +537,9 @@ class TestListSavedPromptsByUser:
 
         results = list_saved_prompts_by_user("user-1")
         assert len(results) == 2
+        # The cap must not return unhealed rows: strays beyond the window
+        # are healed too, and the window re-reads stably.
+        assert all(row.position is not None for row in results)
 
     def test_list_heals_null_positions(self, sqlite_engine: Engine) -> None:
         """Test rows written without a position get one when listed.

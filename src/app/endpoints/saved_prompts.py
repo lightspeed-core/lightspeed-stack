@@ -111,6 +111,59 @@ update_saved_prompts_responses: Responses = {
 }
 
 
+def check_valid_saved_prompt_id(prompt_id: str) -> None:
+    """Validate the saved prompt id path parameter format.
+
+    Parameters:
+        prompt_id: Identifier of the saved prompt from the request path.
+
+    Raises:
+        HTTPException: with status 400 when ``prompt_id`` is not a valid
+        suid.
+
+    """
+    if not check_suid(prompt_id):
+        logger.error("Invalid saved prompt ID format: %s", prompt_id)
+        error_response = BadRequestResponse(
+            resource="saved prompt",
+            resource_id=prompt_id,
+        )
+        raise HTTPException(**error_response.model_dump())
+
+
+def _validated_prompt_name(name: str, content: str) -> str:
+    """Validate prompt name and content against configured limits.
+
+    Parameters:
+        name: Prompt display name from the request body.
+        content: Prompt body from the request body.
+
+    Returns:
+        The stripped display name.
+
+    Raises:
+        HTTPException: with status 422 when validation fails.
+
+    """
+    saved_prompts_config = configuration.configuration.saved_prompts
+    try:
+        validated_name = validate_saved_prompt_name(
+            name,
+            max_display_name_length=saved_prompts_config.max_display_name_length,
+        )
+        validate_saved_prompt_content(
+            content,
+            max_content_length=saved_prompts_config.max_content_length,
+        )
+    except SavedPromptValidationError as exc:
+        error_response = UnprocessableEntityResponse(
+            response="Invalid attribute value",
+            cause=str(exc),
+        )
+        raise HTTPException(**error_response.model_dump()) from exc
+    return validated_name
+
+
 @router.get("/saved-prompts/config", responses=get_saved_prompts_config_responses)
 @authorize(Action.GET_CONFIG)
 async def get_saved_prompts_config_handler(
@@ -240,23 +293,7 @@ async def create_saved_prompts_handler(
     _ = request
     check_configuration_loaded(configuration)
 
-    saved_prompts_config = configuration.configuration.saved_prompts
-
-    try:
-        name = validate_saved_prompt_name(
-            body.name,
-            max_display_name_length=saved_prompts_config.max_display_name_length,
-        )
-        validate_saved_prompt_content(
-            body.content,
-            max_content_length=saved_prompts_config.max_content_length,
-        )
-    except SavedPromptValidationError as exc:
-        error_response = UnprocessableEntityResponse(
-            response="Invalid attribute value",
-            cause=str(exc),
-        )
-        raise HTTPException(**error_response.model_dump()) from exc
+    name = _validated_prompt_name(body.name, body.content)
 
     user_id = auth[0]
     logger.info("Creating saved prompt")
@@ -267,7 +304,7 @@ async def create_saved_prompts_handler(
             user_id,
             name,
             body.content,
-            saved_prompts_config.max_prompts_per_user,
+            configuration.configuration.saved_prompts.max_prompts_per_user,
         )
     except SavedPromptLimitExceededError as exc:
         error_response = UnprocessableEntityResponse(
@@ -330,13 +367,7 @@ async def delete_saved_prompts_handler(
     _ = request
     check_configuration_loaded(configuration)
 
-    if not check_suid(prompt_id):
-        logger.error("Invalid saved prompt ID format: %s", prompt_id)
-        error_response = BadRequestResponse(
-            resource="saved prompt",
-            resource_id=prompt_id,
-        )
-        raise HTTPException(**error_response.model_dump())
+    check_valid_saved_prompt_id(prompt_id)
 
     user_id = auth[0]
     logger.info("Deleting saved prompt id=%s", prompt_id)
@@ -423,31 +454,9 @@ async def update_saved_prompts_handler(
     _ = request
     check_configuration_loaded(configuration)
 
-    if not check_suid(prompt_id):
-        logger.error("Invalid saved prompt ID format: %s", prompt_id)
-        error_response = BadRequestResponse(
-            resource="saved prompt",
-            resource_id=prompt_id,
-        )
-        raise HTTPException(**error_response.model_dump())
+    check_valid_saved_prompt_id(prompt_id)
 
-    saved_prompts_config = configuration.configuration.saved_prompts
-
-    try:
-        name = validate_saved_prompt_name(
-            body.name,
-            max_display_name_length=saved_prompts_config.max_display_name_length,
-        )
-        validate_saved_prompt_content(
-            body.content,
-            max_content_length=saved_prompts_config.max_content_length,
-        )
-    except SavedPromptValidationError as exc:
-        error_response = UnprocessableEntityResponse(
-            response="Invalid attribute value",
-            cause=str(exc),
-        )
-        raise HTTPException(**error_response.model_dump()) from exc
+    name = _validated_prompt_name(body.name, body.content)
 
     user_id = auth[0]
     logger.info("Updating saved prompt id=%s", prompt_id)

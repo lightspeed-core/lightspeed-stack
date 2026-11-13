@@ -3,12 +3,15 @@
 from collections.abc import Generator
 
 import pytest
+from pytest_mock import MockerFixture
 from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.engine import Engine
+from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.schema_migrations import run_startup_migrations
 from models.database.base import Base
+from utils.saved_prompts import list_saved_prompts_by_user
 
 # The RHDH 2.1 schema of saved_prompt, before the position column existed.
 _OLD_TABLE_SQL = """
@@ -246,26 +249,7 @@ def test_migration_heals_null_positions_on_modern_table(
     backfill so such rows get positions appended after the user's current
     maximum instead of breaking the list endpoint.
     """
-    with modern_schema_engine.begin() as connection:
-        for prompt_id, position, created_at in (
-            ("p1", 1, "2026-01-01 10:00:00"),
-            ("p2", 2, "2026-01-02 10:00:00"),
-            ("p3-null", None, "2026-01-05 10:00:00"),
-            ("p4-null", None, "2026-01-06 10:00:00"),
-        ):
-            connection.execute(
-                text(
-                    "INSERT INTO saved_prompt "
-                    "(id, user_id, name, content, position, created_at, updated_at) "
-                    "VALUES (:id, 'user-123', :name, 'c', :position, :ts, :ts)"
-                ),
-                {
-                    "id": prompt_id,
-                    "name": prompt_id,
-                    "position": position,
-                    "ts": created_at,
-                },
-            )
+    _seed_rows_with_null_positions(modern_schema_engine)
 
     run_startup_migrations(modern_schema_engine)
 
@@ -287,3 +271,71 @@ def test_empty_old_table_gets_column(
 
     assert _has_position_column(old_schema_engine)
     assert not _positions_by_id(old_schema_engine)
+
+
+def test_lazy_heal_matches_startup_backfill_ordering(
+    modern_schema_engine: Engine,
+    mocker: MockerFixture,
+) -> None:
+    """The lazy heal and the startup backfill assign identical positions.
+
+    The stray-NULL heal rule exists twice — in SQL (startup backfill) and in
+    Python (lazy heal on read) — so this test pins both implementations to
+    the same outcome for identical input; drift between them would make a
+    user's list order change across a reboot.
+    """
+    _seed_rows_with_null_positions(modern_schema_engine)
+    backfill_engine = modern_schema_engine
+
+    lazy_engine = create_engine(
+        "sqlite:///:memory:",
+        echo=False,
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    Base.metadata.create_all(lazy_engine)
+    try:
+        _seed_rows_with_null_positions(lazy_engine)
+        session_factory = sessionmaker(
+            autocommit=False, autoflush=False, bind=lazy_engine
+        )
+        mocker.patch(
+            "utils.saved_prompts.get_session",
+            side_effect=session_factory,
+        )
+
+        run_startup_migrations(backfill_engine)
+        list_saved_prompts_by_user("user-123")
+
+        assert _positions_by_id(backfill_engine) == _positions_by_id(lazy_engine)
+    finally:
+        lazy_engine.dispose()
+
+
+def _seed_rows_with_null_positions(engine: Engine) -> None:
+    """Seed a modern-schema table with positioned rows and NULL strays.
+
+    Parameters:
+        engine: Engine owning a modern saved_prompt table.
+
+    """
+    with engine.begin() as connection:
+        for prompt_id, position, created_at in (
+            ("p1", 1, "2026-01-01 10:00:00"),
+            ("p2", 2, "2026-01-02 10:00:00"),
+            ("p3-null", None, "2026-01-05 10:00:00"),
+            ("p4-null", None, "2026-01-06 10:00:00"),
+        ):
+            connection.execute(
+                text(
+                    "INSERT INTO saved_prompt "
+                    "(id, user_id, name, content, position, created_at, updated_at) "
+                    "VALUES (:id, 'user-123', :name, 'c', :position, :ts, :ts)"
+                ),
+                {
+                    "id": prompt_id,
+                    "name": prompt_id,
+                    "position": position,
+                    "ts": created_at,
+                },
+            )

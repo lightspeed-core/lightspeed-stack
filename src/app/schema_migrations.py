@@ -82,7 +82,7 @@ def run_startup_migrations(engine: Engine) -> None:
     # during a rolling update, not only the one-time column addition.
     with engine.begin() as connection:
         result = connection.execute(text(_BACKFILL_POSITION_SQL))
-        healed = getattr(result, "rowcount", -1)
+        healed = result.rowcount
     if column_added:
         logger.info(
             "Migrated saved_prompt: added position column and backfilled %s rows",
