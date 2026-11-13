@@ -225,7 +225,7 @@ spec:
 
               VLLM_HOST="$(cat /opt/host-info/host)"
               # MAPT image has no curl; bash /dev/tcp polls GET /v1/models before OCP deploy + e2e.
-              VLLM_READINESS_TIMEOUT_SECONDS=600
+              VLLM_READINESS_TIMEOUT_SECONDS=1200
               echo "[mapt] Provisioning OK (host=${VLLM_HOST}); waiting up to ${VLLM_READINESS_TIMEOUT_SECONDS}s for vLLM to list $(params.model)..."
               VLLM_READINESS_DEADLINE=$((SECONDS + VLLM_READINESS_TIMEOUT_SECONDS))
               n=0
