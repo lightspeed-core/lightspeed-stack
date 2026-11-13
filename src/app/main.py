@@ -29,6 +29,7 @@ from metrics.utils import setup_model_metrics
 from models.api.responses.error import InternalServerErrorResponse
 from observability.profiling import initialize_pyroscope
 from observability.sentry import initialize_sentry
+from providers.inference.errors import DefaultModelNotAvailableError
 from providers.inference.registry import ProviderRegistry
 from utils.degraded_mode import DegradedModeTracker
 from utils.ogx_version import check_ogx_version
@@ -99,7 +100,19 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     initialize_sentry()
     initialize_pyroscope()
 
-    await ProviderRegistry().initialize(configuration.inference)
+    registry = ProviderRegistry()
+    await registry.initialize(configuration.inference)
+
+    # Validate configured default model exists in the registry.
+    _default_provider = configuration.inference.default_provider
+    _default_model = configuration.inference.default_model
+    if _default_provider is not None and _default_model is not None:
+        _provider = registry.find_provider(_default_provider)
+        if (
+            _provider is None
+            or _provider.get_catalog_model(_default_model, "llm") is None
+        ):
+            raise DefaultModelNotAvailableError(_default_provider, _default_model)
 
     ogx_config = configuration.configuration.ogx
     await AsyncOgxClientHolder().load(ogx_config)
