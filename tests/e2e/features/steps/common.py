@@ -11,7 +11,6 @@ from tests.e2e.utils.utils import (
     create_config_backup,
     is_prow_environment,
     restart_container,
-    restart_lightspeed_stack_service,
     switch_config,
 )
 
@@ -203,21 +202,6 @@ def restart_service(context: Context) -> None:
         context.lightspeed_stack_skip_restart = False
         return
     restart_container("lightspeed-stack")
-
-
-@given("The service is restarted without restoring ogx")
-def restart_service_without_restoring_ogx(context: Context) -> None:
-    """Restart LCS while leaving OGX disrupted (degraded-mode startup e2e).
-
-    On Prow/Konflux, the default ``restart-lightspeed`` path restores OGX when
-    it is unhealthy so LCS can come up. Degraded-mode scenarios need the
-    opposite: LCS must boot with OGX still down. Docker Compose already
-    restarts only the LCS container, so this matches local server-mode behavior.
-    """
-    if getattr(context, "lightspeed_stack_skip_restart", False):
-        context.lightspeed_stack_skip_restart = False
-        return
-    restart_lightspeed_stack_service(skip_ogx_restore=True)
 
 
 @given("The system is in default state")

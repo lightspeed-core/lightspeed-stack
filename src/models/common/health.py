@@ -19,7 +19,6 @@ class HealthStatus(StrEnum):
 
     2. Service-level health (overall LCORE status):
        - HEALTHY: All systems operational, LLS connected, all providers healthy
-       - DEGRADED: Service running with reduced functionality (e.g., LLS unavailable)
        - UNHEALTHY: Service connected but one or more providers are unhealthy
     """
 
@@ -31,7 +30,6 @@ class HealthStatus(StrEnum):
 
     # Service-level statuses (LCORE overall health)
     HEALTHY = "healthy"
-    DEGRADED = "degraded"
     UNHEALTHY = "unhealthy"
 
 

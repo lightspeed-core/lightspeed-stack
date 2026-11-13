@@ -10525,7 +10525,7 @@
                     "health"
                 ],
                 "summary": "Readiness Probe Get Method",
-                "description": "Handle the readiness probe endpoint, returning service readiness and health status.\n\nReturns comprehensive health information including overall service status,\nprovider health, and functional impacts. The service is considered \"ready\" even\nin degraded mode (returns 200), but reports reduced functionality.\n\n### Parameters:\n- response: The outgoing HTTP response (used by middleware).\n- auth: Authentication tuple from the auth dependency (used by middleware).\n\n### Raises:\n- HTTPException: with status 401 for unauthorized access.\n- HTTPException: with status 403 if permission is denied.\n- HTTPException: with status 503 when service is unhealthy (providers down,\n  models unavailable) and degraded mode is not enabled.\n\n### Returns:\n- ReadinessResponse: Object with comprehensive health status including:\n  - ready: True if service can handle requests (even in degraded mode)\n  - reason: Description of service state\n  - overall_status: healthy, degraded, or unhealthy\n  - impacts: Functional limitations when degraded/unhealthy\n  - providers: List of unhealthy providers",
+                "description": "Handle the readiness probe endpoint, returning service readiness and health status.\n\nReturns comprehensive health information including overall service status,\nprovider health, and functional impacts.\n\n### Parameters:\n- response: The outgoing HTTP response (used by middleware).\n- auth: Authentication tuple from the auth dependency (used by middleware).\n\n### Raises:\n- HTTPException: with status 401 for unauthorized access.\n- HTTPException: with status 403 if permission is denied.\n- HTTPException: with status 503 when service is unhealthy (providers down,\n  models unavailable).\n\n### Returns:\n- ReadinessResponse: Object with comprehensive health status including:\n  - ready: True if service can handle requests\n  - reason: Description of service state\n  - overall_status: healthy or unhealthy\n  - impacts: Functional limitations when unhealthy\n  - providers: List of unhealthy providers",
                 "operationId": "readiness_probe_get_method_readiness_get",
                 "responses": {
                     "200": {
@@ -14781,11 +14781,10 @@
                     "not_implemented",
                     "unknown",
                     "healthy",
-                    "degraded",
                     "unhealthy"
                 ],
                 "title": "HealthStatus",
-                "description": "Health status enum for provider and service health checks.\n\nThis enum serves two purposes:\n\n1. Provider-level health (returned by OGX providers):\n   - OK: Provider is healthy and operational\n   - ERROR: Provider is unhealthy or failed health check\n   - NOT_IMPLEMENTED: Provider does not implement health checks\n   - UNKNOWN: Fallback when provider status cannot be determined\n\n2. Service-level health (overall LCORE status):\n   - HEALTHY: All systems operational, LLS connected, all providers healthy\n   - DEGRADED: Service running with reduced functionality (e.g., LLS unavailable)\n   - UNHEALTHY: Service connected but one or more providers are unhealthy"
+                "description": "Health status enum for provider and service health checks.\n\nThis enum serves two purposes:\n\n1. Provider-level health (returned by OGX providers):\n   - OK: Provider is healthy and operational\n   - ERROR: Provider is unhealthy or failed health check\n   - NOT_IMPLEMENTED: Provider does not implement health checks\n   - UNKNOWN: Fallback when provider status cannot be determined\n\n2. Service-level health (overall LCORE status):\n   - HEALTHY: All systems operational, LLS connected, all providers healthy\n   - UNHEALTHY: Service connected but one or more providers are unhealthy"
             },
             "ImplicitOAuthFlow": {
                 "properties": {
@@ -16154,19 +16153,6 @@
                         "title": "Delay in seconds between retry attempts",
                         "description": "Delay in seconds between retry attempts. Used on startup to connect to OGX and retrieve its version. Connection attempts are retried with a fixed delay to handle the case where OGX is still starting up (e.g., when running as a sidecar in the same pod).",
                         "default": 2
-                    },
-                    "allow_degraded_mode": {
-                        "anyOf": [
-                            {
-                                "type": "boolean"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Allow degraded mode",
-                        "description": "If enabled, Lightspeed Core can be started even when OGX is not accessible (valid for server mode only)",
-                        "default": false
                     },
                     "config": {
                         "anyOf": [
@@ -19838,7 +19824,6 @@
                         "description": "Overall service health status",
                         "examples": [
                             "healthy",
-                            "degraded",
                             "unhealthy"
                         ]
                     },
@@ -19855,7 +19840,7 @@
                             }
                         ],
                         "title": "Impacts",
-                        "description": "List of functional impacts when service is degraded or unhealthy",
+                        "description": "List of functional impacts when service is unhealthy",
                         "examples": [
                             [
                                 "LLM inference unavailable",
@@ -19882,24 +19867,13 @@
                     "providers"
                 ],
                 "title": "ReadinessResponse",
-                "description": "Model representing response to a readiness request.\n\nAttributes:\n    ready: If service is ready to handle requests.\n    reason: The reason for the readiness status.\n    overall_status: Overall service health status (healthy/degraded/unhealthy).\n    impacts: Optional list of functional impacts when degraded or unhealthy.\n    providers: List of unhealthy providers (empty when all healthy).",
+                "description": "Model representing response to a readiness request.\n\nAttributes:\n    ready: If service is ready to handle requests.\n    reason: The reason for the readiness status.\n    overall_status: Overall service health status (healthy/unhealthy).\n    impacts: Optional list of functional impacts when unhealthy.\n    providers: List of unhealthy providers (empty when all healthy).",
                 "examples": [
                     {
                         "overall_status": "healthy",
                         "providers": [],
                         "ready": true,
                         "reason": "All providers are healthy"
-                    },
-                    {
-                        "impacts": [
-                            "LLM inference unavailable",
-                            "RAG functionality unavailable",
-                            "Agent tools unavailable"
-                        ],
-                        "overall_status": "degraded",
-                        "providers": [],
-                        "ready": true,
-                        "reason": "Service running in degraded mode"
                     }
                 ]
             },

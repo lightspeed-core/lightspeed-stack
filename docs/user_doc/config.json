@@ -1668,13 +1668,6 @@
             "title": "Delay in seconds between retry attempts",
             "type": "integer"
           },
-          "allow_degraded_mode": {
-            "type": "boolean",
-            "nullable": true,
-            "default": false,
-            "description": "If enabled, Lightspeed Core can be started even when OGX is not accessible (valid for server mode only)",
-            "title": "Allow degraded mode"
-          },
           "config": {
             "anyOf": [
               {

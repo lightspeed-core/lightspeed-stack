@@ -396,7 +396,7 @@ class TestReadinessResponse:
         Asserts the returned mapping has description "Successful response", the
         `model` is ReadinessResponse, and `content["application/json"]`
         contains an "example". Also verifies the number of examples in
-        ReadinessResponse.model_json_schema() equals 2 (healthy and degraded).
+        ReadinessResponse.model_json_schema() equals 1 (healthy).
         """
         schema = ReadinessResponse.model_json_schema()
         model_examples = schema.get("examples", [])
@@ -407,8 +407,8 @@ class TestReadinessResponse:
         assert result["model"] == ReadinessResponse
         assert "example" in result["content"]["application/json"]
 
-        # Verify example count matches schema examples count (should be 2)
-        assert expected_count == 2
+        # Verify example count matches schema examples count (should be 1)
+        assert expected_count == 1
 
 
 class TestLivenessResponse:
@@ -1023,7 +1023,6 @@ class TestConfigurationResponse:
                 timeout=60,
                 max_retries=10,
                 retry_delay=10,
-                allow_degraded_mode=False,
             ),
             user_data_collection=UserDataCollection(
                 feedback_enabled=False,

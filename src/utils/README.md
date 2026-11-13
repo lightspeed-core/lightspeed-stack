@@ -40,10 +40,6 @@ Runtime integration of conversation compaction into the request flow.
 
 Utilities for conversations.
 
-## [degraded_mode.py](degraded_mode.py)
-
-Degraded mode state tracking.
-
 ## [endpoints.py](endpoints.py)
 
 Utility functions for endpoint handlers.
