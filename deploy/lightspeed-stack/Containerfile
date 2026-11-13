@@ -24,7 +24,7 @@ USER root
 # Install gcc - required by polyleven python package on aarch64
 # (dependency of autoevals, no pre-built binary wheels for linux on aarch64)
 # cmake and cargo are required by fastuuid, maturin
-RUN ${BUILDER_DNF_COMMAND} install -y --nodocs --setopt=keepcache=0 --setopt=tsflags=nodocs gcc gcc-c++ cmake cargo && \
+RUN ${BUILDER_DNF_COMMAND} install -y --nodocs --setopt=keepcache=0 --setopt=tsflags=nodocs gcc gcc-c++ cmake cargo patch && \
     ${BUILDER_DNF_COMMAND} update -y --nodocs --setopt=keepcache=0 --setopt=tsflags=nodocs
 
 # Install uv package manager
@@ -78,6 +78,21 @@ RUN if [ -f /cachi2/cachi2.env ]; then \
     else \
     uv sync --locked --no-dev --group llslibdev; \
     fi
+
+# Apply patches to bundled Python packages (see patch/README.md).
+# patch/<package>/NNN-*.patch files are applied in order to
+# site-packages/<package>.
+COPY ${LSC_SOURCE_DIR}/patch /tmp/patch
+RUN set -eu; \
+    SITE_PACKAGES=/app-root/.venv/lib/python3.12/site-packages; \
+    for pkg_dir in /tmp/patch/*/; do \
+        pkg="$(basename "${pkg_dir}")"; \
+        for patch_file in "${pkg_dir}"[0-9][0-9][0-9]-*.patch; do \
+            echo "Applying ${patch_file}"; \
+            patch -p1 --batch --forward --fuzz=0 -d "${SITE_PACKAGES}/${pkg}" < "${patch_file}"; \
+        done; \
+    done; \
+    rm -rf /tmp/patch
 
 # Explicitly remove some packages to mitigate some CVEs
 # - GHSA-wj6h-64fc-37mp: python-ecdsa package won't fix it upstream.
