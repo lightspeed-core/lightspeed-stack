@@ -16,3 +16,7 @@ Faiss vector store backed by a sqlite-faiss kvstore file.
 
 pgvector knowledge source that reads OGX ``remote::pgvector`` tables.
 
+## [okp.py](okp.py)
+
+OKP knowledge source backed by the OKP MCP server.
+
