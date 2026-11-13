@@ -31,3 +31,4 @@ Feature: FAISS support tests
       And The response contains following fragments
           | Fragments in LLM response |
           | great work                |
+
