@@ -69,6 +69,7 @@ class TestSavedPromptModelDefinition:
             "user_id",
             "name",
             "content",
+            "position",
             "created_at",
             "updated_at",
         }
@@ -87,13 +88,95 @@ class TestSavedPromptModelDefinition:
 
     def test_unique_constraint_on_user_id_and_name(self) -> None:
         """Test unique constraint exists on (user_id, name)."""
-        table_args = SavedPrompt.__table_args__
-        assert len(table_args) == 1
-        constraint = table_args[0]
-        assert isinstance(constraint, UniqueConstraint)
-        assert constraint.name == "uq_saved_prompt_user_name"
-        column_names = {col.name for col in constraint.columns}
-        assert column_names == {"user_id", "name"}
+        constraints = _unique_constraints_by_name()
+        assert "uq_saved_prompt_user_name" in constraints
+        assert constraints["uq_saved_prompt_user_name"] == {"user_id", "name"}
+
+    def test_unique_constraint_on_user_id_and_position(self) -> None:
+        """Test unique constraint exists on (user_id, position)."""
+        constraints = _unique_constraints_by_name()
+        assert "uq_saved_prompt_user_position" in constraints
+        assert constraints["uq_saved_prompt_user_position"] == {"user_id", "position"}
+
+
+def _unique_constraints_by_name() -> dict[str, set[str]]:
+    """Map SavedPrompt unique constraint names to their column name sets.
+
+    Returns:
+        Dict keyed by constraint name, values are sets of column names.
+
+    """
+    constraints: dict[str, set[str]] = {}
+    for constraint in SavedPrompt.__table_args__:
+        if isinstance(constraint, UniqueConstraint) and isinstance(
+            constraint.name, str
+        ):
+            constraints[constraint.name] = {col.name for col in constraint.columns}
+    return constraints
+
+
+class TestSavedPromptPositionColumn:
+    """Test cases for the per-user position column."""
+
+    def test_position_column_exists_after_create_all(
+        self, sqlite_engine: Engine
+    ) -> None:
+        """Test saved_prompt table includes position when created fresh."""
+        inspector = inspect(sqlite_engine)
+        columns = {column["name"] for column in inspector.get_columns("saved_prompt")}
+        assert "position" in columns
+
+    def test_duplicate_user_id_and_position_raises_integrity_error(
+        self, db_session: Session
+    ) -> None:
+        """Test inserting duplicate (user_id, position) raises IntegrityError."""
+        first_prompt = SavedPrompt(
+            id="prompt-id-1",
+            user_id="user-123",
+            name="First",
+            content="First content",
+            position=1,
+        )
+        second_prompt = SavedPrompt(
+            id="prompt-id-2",
+            user_id="user-123",
+            name="Second",
+            content="Second content",
+            position=1,
+        )
+        db_session.add(first_prompt)
+        db_session.commit()
+
+        db_session.add(second_prompt)
+        with pytest.raises(IntegrityError):
+            db_session.commit()
+
+    def test_same_position_different_users_succeeds(self, db_session: Session) -> None:
+        """Test equal positions are allowed across different users."""
+        first_prompt = SavedPrompt(
+            id="prompt-id-1",
+            user_id="user-123",
+            name="First",
+            content="First content",
+            position=1,
+        )
+        second_prompt = SavedPrompt(
+            id="prompt-id-2",
+            user_id="user-456",
+            name="Second",
+            content="Second content",
+            position=1,
+        )
+        db_session.add(first_prompt)
+        db_session.add(second_prompt)
+        db_session.commit()
+
+        first_row = db_session.get(SavedPrompt, "prompt-id-1")
+        second_row = db_session.get(SavedPrompt, "prompt-id-2")
+        assert first_row is not None
+        assert second_row is not None
+        assert first_row.position == 1
+        assert second_row.position == 1
 
 
 class TestSavedPromptDatabaseOperations:
