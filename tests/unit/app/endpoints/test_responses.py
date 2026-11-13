@@ -782,6 +782,7 @@ class TestResponsesEndpointHandler:
             VALID_CONV_ID,
             responses_request.input,
             [mock_moderation.refusal_response],
+            blocked=True,
         )
         assert isinstance(response, ResponsesResponse)
         payload = response.model_dump()
@@ -3094,7 +3095,7 @@ async def test_append_previous_response_turn_compacted(mocker: MockerFixture) ->
     await _append_previous_response_turn(api_params, context, ["out"])
 
     append.assert_awaited_once_with(
-        context.client, "conv_x", "the original query", ["out"]
+        context.client, "conv_x", "the original query", ["out"], blocked=False
     )
 
 
@@ -3148,5 +3149,5 @@ async def test_persist_blocked_response_turn_compacted(mocker: MockerFixture) ->
     await _persist_blocked_response_turn(api_params, context)
 
     append.assert_awaited_once_with(
-        context.client, "conv_x", "the original query", [refusal]
+        context.client, "conv_x", "the original query", [refusal], blocked=True
     )
