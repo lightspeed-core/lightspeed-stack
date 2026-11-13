@@ -1,0 +1,52 @@
+# @cfg_quota
+# Quota enforcement e2e (LCORE-4610): one user limiter and one cluster
+# limiter on a SQLite file. A user quota of a single token lets exactly one
+# request through: the check passes while the balance is positive, and the
+# usage of that request drives the balance below zero whatever the provider
+# counts. The periods are a day, so nothing is renewed during a run; renewal
+# is covered by lightspeed-stack-quota-renewal.yaml. /v1/infer is enforced
+# per user id. No RAG, no MCP, no shields: every request is one model call.
+name: Lightspeed Core Service (LCS)
+service:
+  host: 0.0.0.0
+  port: 8080
+  auth_enabled: false
+  workers: 1
+  color_log: true
+  access_log: true
+ogx:
+  use_as_library_client: true
+  # Unified mode: run.yaml (materialized per provider by CI/the harness)
+  # is consumed as the synthesis profile instead of the legacy two-file path.
+  config:
+    profile: run.yaml
+user_data_collection:
+  feedback_enabled: true
+  feedback_storage: "/tmp/data/feedback"
+  transcripts_enabled: true
+  transcripts_storage: "/tmp/data/transcripts"
+authentication:
+  module: "noop"
+inference:
+  default_provider: openai
+  default_model: gpt-5.6-luna
+rlsapi_v1:
+  quota_subject: user_id
+quota_handlers:
+  sqlite:
+    # Directly under /tmp: nothing on the quota path creates a parent
+    # directory, and /tmp/data exists only once another feature wrote there.
+    db_path: /tmp/quota.db
+  limiters:
+    - name: user quota
+      type: user_limiter
+      initial_quota: 1
+      quota_increase: 0
+      period: "1 day"
+    - name: cluster quota
+      type: cluster_limiter
+      initial_quota: 1000000
+      quota_increase: 0
+      period: "1 day"
+  scheduler:
+    period: 1

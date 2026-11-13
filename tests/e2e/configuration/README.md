@@ -76,6 +76,7 @@ can shard by config (fewer restarts per job). See
 | `lightspeed-stack-byok-pdf.yaml` | BYOK PDF (library only) |
 | `lightspeed-stack-tls.yaml` / `-degraded.yaml` | TLS / degraded mode (server only) |
 | `lightspeed-stack-shields.yaml` | LCORE shields (`question_validity`, `redaction`, `granite_guardian`). CI points `granite_guardian` at `mock-guardian`. |
+| `lightspeed-stack-quota.yaml` / `-quota-renewal.yaml` | Quota management (`quota.feature`): user and cluster limiters on SQLite, `/v1/infer` enforced per user id; the renewal variant renews every two seconds. |
 
 Bootstrap default: `lightspeed-stack.yaml`. Environment-specific:
 `lightspeed-stack-rhelai.yaml`, `lightspeed-stack-rhoai.yaml`.

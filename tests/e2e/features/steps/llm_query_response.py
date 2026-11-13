@@ -1,22 +1,19 @@
 """LLM query and response steps."""
 
 import json
-import os
 from typing import Any, cast
 
-import requests
 from behave import step, then  # pyright: ignore[reportAttributeAccessIssue]
 from behave.runner import Context
 
 from tests.e2e.utils.utils import (
+    DEFAULT_LLM_TIMEOUT,
     RESPONSE_TOOL_OUTPUT_ITEM_TYPES,
     parse_responses_sse_final_response_object,
+    read_streamed_response,
     replace_placeholders,
     request_with_transient_retry,
 )
-
-# Longer timeout for Prow/OpenShift with CPU-based vLLM
-DEFAULT_LLM_TIMEOUT = 180 if os.getenv("RUNNING_PROW") else 120
 
 
 def _response_contains_fragment(text: str, fragment: str) -> bool:
@@ -100,7 +97,14 @@ def wait_for_complete_response(context: Context) -> None:
 
 @step('I use "{endpoint}" to ask question')
 def ask_question(context: Context, endpoint: str) -> None:
-    """Call the service REST API endpoint with question."""
+    """Call the service REST API endpoint with question.
+
+    When a scenario acts as a specific user (``context.request_user_id``, set
+    by "I am a user the service has not seen before"), the id goes to the
+    noop authentication as the ``user_id`` query parameter. The endpoint and
+    the payload are kept in ``context.last_request`` for steps that resend or
+    interpret the response.
+    """
     base = f"http://{context.hostname}:{context.port}"
     path = f"{context.api_prefix}/{endpoint}".replace("//", "/")
     url = base + path
@@ -109,21 +113,15 @@ def ask_question(context: Context, endpoint: str) -> None:
     json_str = replace_placeholders(context, context.text or "{}")
 
     data = json.loads(json_str)
+    user_id = getattr(context, "request_user_id", None)
+    context.last_request = (endpoint, data)
     context.response = request_with_transient_retry(
-        method="POST", url=url, json=data, timeout=DEFAULT_LLM_TIMEOUT
+        method="POST",
+        url=url,
+        json=data,
+        params={"user_id": user_id} if user_id else None,
+        timeout=DEFAULT_LLM_TIMEOUT,
     )
-
-
-def _read_streamed_response(response: requests.Response) -> str:
-    """Read a streaming response body, tolerating premature close (e.g. after error event)."""
-    chunks = []
-    try:
-        for line in response.iter_lines(decode_unicode=True):
-            if line is not None:
-                chunks.append(line + "\n")
-    except requests.exceptions.ChunkedEncodingError:
-        pass  # Server may close stream after sending an error event
-    return "".join(chunks)
 
 
 @step('I use "{endpoint}" to ask question with authorization header')
@@ -150,7 +148,7 @@ def ask_question_authorized(context: Context, endpoint: str) -> None:
             stream=True,
         )
         # Consume stream so server close after error event does not raise
-        body = _read_streamed_response(resp)
+        body = read_streamed_response(resp)
         resp._content = body.encode(resp.encoding or "utf-8")
         context.response = resp
         # Parse SSE events and make data available for assertions
